@@ -1,0 +1,71 @@
+//--------------------------------------------------------------------------------------------------
+// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//--------------------------------------------------------------------------------------------------
+
+#include "common/brdf.gsl"
+
+localSize = 16, 16, 1;
+
+uniform samplerCube
+{
+	filter = linear;
+} cubemap;
+
+uniform writeonly restrict image2DArray specular : f16rgba;
+
+struct CacheItem
+{
+	float4 l;
+	float4 nolMip;
+};
+
+buffer readonly Cache
+{
+	CacheItem items[];
+} cache;
+
+uniform pushConstants
+{
+	uint32 count;
+} pc;
+
+//--------------------------------------------------------------------------------------------------
+void main()
+{
+	uint2 specularSize = imageSize(specular).xy;
+	if (any(greaterThanEqual(gl.globalInvocationID.xy, specularSize))) return;
+
+	float3 dir = coordsToDir(gl.globalInvocationID, 1.0f / specularSize.x);
+
+	float3x3 r;
+	float3 up = abs(dir.z) < 0.999f ?
+		float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+	r[0] = normalize(cross(up, dir));
+	r[1] = cross(dir, r[0]);
+	r[2] = dir;
+	
+	// TODO: try to add blue noise random rotation. It may improve quality.
+
+	float3 li = float3(0.0f);
+	for (uint32 i = 0; i < pc.count; i++)
+	{
+		CacheItem item = cache.items[i];
+		float3 l = r * item.l.xyz;
+		float3 c0 = textureLod(cubemap, l, item.nolMip.y).rgb;
+        li += c0 * item.nolMip.x;
+    }
+
+	imageStore(specular, int3(gl.globalInvocationID), float4(li, 1.0f));
+}
