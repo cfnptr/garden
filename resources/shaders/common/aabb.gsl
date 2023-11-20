@@ -1,0 +1,85 @@
+//--------------------------------------------------------------------------------------------------
+// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Axis Aligned Bounding Box
+//--------------------------------------------------------------------------------------------------
+
+#ifndef AABB_GSL
+#define AABB_GSL
+
+#include "ray.gsl"
+
+struct Aabb
+{
+	float3 min;
+	float3 max;
+};
+
+//--------------------------------------------------------------------------------------------------
+float2 raycast2(Aabb aabb, Ray ray)
+{
+	float3 directionInv = 1.0f / ray.direction;
+	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * directionInv.xx;
+	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * directionInv.yy;
+	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * directionInv.zz;
+	float tMin = max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
+   	float tMax = min(min(max(t0.x, t0.y), max(t1.x, t1.y)), max(t2.x, t2.y));
+	return float2(tMin, tMax);
+}
+float2 raycast2I(Aabb aabb, Ray ray)
+{
+	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * ray.direction.xx;
+	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * ray.direction.yy;
+	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * ray.direction.zz;
+	float tMin = max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
+   	float tMax = min(min(max(t0.x, t0.y), max(t1.x, t1.y)), max(t2.x, t2.y));
+	return float2(tMin, tMax);
+}
+
+//--------------------------------------------------------------------------------------------------
+float raycast1(Aabb aabb, Ray ray)
+{
+	float3 directionInv = 1.0f / ray.direction;
+	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * directionInv.xx;
+	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * directionInv.yy;
+	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * directionInv.zz;
+	return max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
+}
+float raycast1I(Aabb aabb, Ray ray)
+{
+	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * ray.direction.xx;
+	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * ray.direction.yy;
+	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * ray.direction.zz;
+	return max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
+}
+
+//--------------------------------------------------------------------------------------------------
+bool isIntersected(float2 hitPoints)
+{
+	// If tMax < 0.0f, ray is intersecting AABB, but whole AABB is behing us.
+	return hitPoints.x <= hitPoints.y && hitPoints.y >= 0.0f;
+}
+
+//--------------------------------------------------------------------------------------------------
+bool raycast(Aabb aabb, Ray ray)
+{
+	return isIntersected(raycast2(aabb, ray));
+}
+bool raycastI(Aabb aabb, Ray ray)
+{
+	return isIntersected(raycast2I(aabb, ray));
+}
+
+#endif // AABB_GSL

@@ -1,0 +1,57 @@
+[submodule "libraries/ecsm"]
+	path = libraries/ecsm
+	url = https://github.com/cfnptr/ecsm
+[submodule "libraries/math"]
+	path = libraries/math
+	url = https://github.com/cfnptr/math
+[submodule "libraries/logy"]
+	path = libraries/logy
+	url = https://github.com/cfnptr/logy
+[submodule "libraries/glfw"]
+	path = libraries/glfw
+	url = https://github.com/glfw/glfw
+[submodule "libraries/vma"]
+	path = libraries/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "libraries/xxhash"]
+	path = libraries/xxhash
+	url = https://github.com/Cyan4973/xxHash
+[submodule "libraries/imgui"]
+	path = libraries/imgui
+	url = https://github.com/cfnptr/imgui
+[submodule "libraries/stb"]
+	path = libraries/stb
+	url = https://github.com/nothings/stb
+[submodule "libraries/cgltf"]
+	path = libraries/cgltf
+	url = https://github.com/jkuhlmann/cgltf
+[submodule "libraries/webp"]
+	path = libraries/webp
+	url = https://github.com/webmproject/libwebp
+[submodule "libraries/openexr"]
+	path = libraries/openexr
+	url = https://github.com/AcademySoftwareFoundation/openexr
+[submodule "libraries/imath"]
+	path = libraries/imath
+	url = https://github.com/AcademySoftwareFoundation/Imath
+[submodule "libraries/freetype"]
+	path = libraries/freetype
+	url = https://github.com/freetype/freetype
+[submodule "libraries/conf"]
+	path = libraries/conf
+	url = https://github.com/cfnptr/conf
+[submodule "libraries/pack"]
+	path = libraries/pack
+	url = https://github.com/cfnptr/pack
+[submodule "libraries/nets"]
+	path = libraries/nets
+	url = https://github.com/cfnptr/nets
+[submodule "libraries/physx"]
+	path = libraries/physx
+	url = https://github.com/NVIDIA-Omniverse/PhysX
+[submodule "libraries/fastnoise2"]
+	path = libraries/fastnoise2
+	url = https://github.com/Auburn/FastNoise2
+[submodule "libraries/voxy"]
+	path = libraries/voxy
+	url = https://github.com/cfnptr/voxy
