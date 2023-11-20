@@ -1,0 +1,69 @@
+//--------------------------------------------------------------------------------------------------
+// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//--------------------------------------------------------------------------------------------------
+
+#ifndef GBUFFER_GSL
+#define GBUFFER_GSL
+
+#include "math.gsl"
+
+//--------------------------------------------------------------------------------------------------
+// Signed Octahedron Normal Encoding (R10G10B10A2)
+// https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
+
+float3 encodeNormalOct(float3 normal)
+{
+    float3 encoded;
+    normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+    encoded.y = normal.y *  0.5f + 0.5f;
+    encoded.x = normal.x *  0.5f + encoded.y;
+    encoded.y = normal.x * -0.5f + encoded.y;
+    encoded.z = clamp(normal.z * FLOAT32_MAX, 0.0f, 1.0f);
+    return encoded;
+}
+float3 decodeNormalOct(float3 encoded)
+{
+    float3 normal;
+    normal.x = (encoded.x - encoded.y);
+    normal.y = (encoded.x + encoded.y) - 1.0f;
+    normal.z = encoded.z * 2.0f - 1.0f;
+    normal.z = normal.z * (1.0f - abs(normal.x) - abs(normal.y));
+    return normalize(normal);
+}
+
+//--------------------------------------------------------------------------------------------------
+float4 encodeGBuffer0(float3 baseColor, float metallic)
+{
+	return float4(baseColor.r, baseColor.g, baseColor.b, metallic);
+}
+float4 encodeGBuffer1(float3 normal, float reflectance)
+{
+	float3 encodedNormal = encodeNormalOct(normal);
+	return float4(encodedNormal.x, encodedNormal.y, reflectance, encodedNormal.z);
+}
+float4 encodeGBuffer2(float3 emissive, float roughness)
+{
+	return float4(emissive * (1.0f / 25.5f), roughness);
+}
+
+float3 decodeBaseColor(float4 gData0) { return gData0.rgb; }
+float decodeMetallic(float4 gData0) { return gData0.a; }
+float3 decodeNormal(float4 gData1)
+{ return decodeNormalOct(float3(gData1.x, gData1.y, gData1.w)); }
+float decodeRoughness(float4 gData2) { return gData2.a; }
+float3 decodeEmissive(float4 gData2) { return gData2.rgb * 25.5f; }
+float decodeReflectance(float4 gData1) { return gData1.z; }
+
+#endif // GBUFFER_GSL
