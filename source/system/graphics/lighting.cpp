@@ -355,27 +355,38 @@ static ID<GraphicsPipeline> createAoDenoisePipeline(
 //--------------------------------------------------------------------------------------------------
 static ID<Image> createDfgLUT(Manager* manager, GraphicsSystem* graphicsSystem)
 {
-	auto threadSystem = manager->get<ThreadSystem>();
-	auto& threadPool = threadSystem->getForegroundPool();
-
 	auto pixels = malloc(IBL_DFG_SIZE * IBL_DFG_SIZE * sizeof(float2));
 	if (!pixels) abort();
 
-	threadPool.addItems(ThreadPool::Task([](const ThreadPool::Task& task)
+	// TODO: check if release build DFG image looks the same as debug.
+	auto threadSystem = manager->tryGet<ThreadSystem>();
+	if (threadSystem)
 	{
-		auto pixels = (float2*)task.getArgument();
-		auto itemCount = task.getItemCount();
-
-		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.addItems(ThreadPool::Task([](const ThreadPool::Task& task)
 		{
-			// TODO: check if release build DFG image looks the same as debug.
-			auto y = i / IBL_DFG_SIZE, x = i - y * IBL_DFG_SIZE;
-			pixels[i] = dfvMultiscatter(x, (IBL_DFG_SIZE - 1) - y);
-		}
-	},
-	pixels), IBL_DFG_SIZE * IBL_DFG_SIZE);
-	threadPool.wait();
+			auto pixels = (float2*)task.getArgument();
+			auto itemCount = task.getItemCount();
 
+			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+			{
+				auto y = i / IBL_DFG_SIZE, x = i - y * IBL_DFG_SIZE;
+				pixels[i] = dfvMultiscatter(x, (IBL_DFG_SIZE - 1) - y);
+			}
+		},
+		pixels), IBL_DFG_SIZE * IBL_DFG_SIZE);
+		threadPool.wait();
+	}
+	else
+	{
+		auto pixelData = (float2*)pixels; uint32 index = 0;
+		for (int32 y = IBL_DFG_SIZE - 1; y >= 0; y--)
+		{
+			for (uint32 x = 0; x < IBL_DFG_SIZE; x++)
+				pixelData[index++] = dfvMultiscatter(x, y);
+		}
+	}
+	
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16,
 		Image::Bind::TransferDst | Image::Bind::Sampled, { { pixels } },
 		int2(IBL_DFG_SIZE), Image::Format::SfloatR32G32);
@@ -390,8 +401,6 @@ void LightingRenderSystem::initialize()
 	auto manager = getManager();
 	auto graphicsSystem = getGraphicsSystem();
 	auto deferredSystem = getDeferredSystem();
-	auto threadSystem = manager->get<ThreadSystem>();
-	auto& threadPool = threadSystem->getForegroundPool();
 
 	if (!dfgLUT) dfgLUT = createDfgLUT(manager, graphicsSystem);
 	if (!shadowBuffer) shadowBuffer = createShadowBuffer(
@@ -927,6 +936,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path,
 {
 	GARDEN_ASSERT(!path.empty());
 	auto graphicsSystem = getGraphicsSystem();
+	// TODO: rewrite with tryGet. Propagate to generateIblSH and generateIblSpecular.
 	auto threadSystem = getManager()->get<ThreadSystem>();
 	auto& threadPool = threadSystem->getForegroundPool();
 

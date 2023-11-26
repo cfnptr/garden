@@ -135,8 +135,8 @@ static ID<Framebuffer> createLdrFramebuffer(
 void DeferredRenderSystem::initialize()
 {
 	auto manager = getManager();
-	auto settingsSystem = manager->get<SettingsSystem>();
-	settingsSystem->getFloat("renderScale", renderScale);
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
 
 	auto graphicsSystem = getGraphicsSystem();
 	framebufferSize = max((int2)(float2(
@@ -373,8 +373,8 @@ void DeferredRenderSystem::setRenderScale(float renderScale)
 static int2 getScaledFrameSize(GraphicsSystem* graphicsSystem,
 	Manager* manager, float& renderScale)
 {
-	auto settingsSystem = manager->get<SettingsSystem>();
-	settingsSystem->getFloat("renderScale", renderScale);
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
 	return max((int2)(float2(graphicsSystem->getFramebufferSize()) * renderScale), int2(1));
 }
 

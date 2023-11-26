@@ -57,8 +57,8 @@ void FxaaRenderSystem::initialize()
 	deferredSystem->runSwapchainPass = false;
 	if (!pipeline) pipeline = createPipeline(getGraphicsSystem());
 
-	auto settingsSystem = manager->get<SettingsSystem>();
-	settingsSystem->getBool("useFXAA", isEnabled);
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getBool("useFXAA", isEnabled);
 }
 
 //--------------------------------------------------------------------------------------------------

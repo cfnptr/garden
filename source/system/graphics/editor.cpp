@@ -43,6 +43,7 @@ EditorRenderSystem::~EditorRenderSystem()
 //--------------------------------------------------------------------------------------------------
 void EditorRenderSystem::showMainMenuBar()
 {
+	auto manager = getManager();
 	auto graphicsSystem = getGraphicsSystem();
 	if (graphicsSystem->getCursorMode() == CursorMode::Locked) return;
 
@@ -58,8 +59,12 @@ void EditorRenderSystem::showMainMenuBar()
 	}
 	if (ImGui::BeginMenu("File"))
 	{
-		if (ImGui::MenuItem("New Scene")) newScene = true;
-		if (ImGui::MenuItem("Export Scene")) exportScene = true;
+		if (manager->has<TransformSystem>())
+		{
+			if (ImGui::MenuItem("New Scene")) newScene = true;
+			if (ImGui::MenuItem("Export Scene")) exportScene = true;
+		}
+		else if (barFiles.empty()) ImGui::TextDisabled("Nothing here");
 		if (!barFiles.empty()) for (auto onBarFile : barFiles) onBarFile();
 		ImGui::EndMenu();
 	}
@@ -80,11 +85,18 @@ void EditorRenderSystem::showMainMenuBar()
 		ImGui::EndMenu();
 	}
 
-	auto manager = getManager();
-	auto& threadPool = manager->get<ThreadSystem>()->getBackgroundPool();
+	auto threadSystem = manager->tryGet<ThreadSystem>();
+
+	uint32 taskCount = 0;
+	if (threadSystem)
+	{
+		auto& threadPool = threadSystem->getBackgroundPool();
+		taskCount = threadPool.getTaskCount();
+	}
+	
 	auto stats = "[S: " + to_string((uint32)manager->getSystems().size()) +
 		" | E: " + to_string(manager->getEntities().getCount()) +
-		" | T: " + to_string(threadPool.getTaskCount()) + "]";
+		" | T: " + to_string(taskCount) + "]";
 	auto textSize = ImGui::CalcTextSize(stats.c_str());
 	ImGui::SameLine(ImGui::GetWindowWidth() - (textSize.x + 16.0f));
 	ImGui::Text("%s", stats.c_str());
@@ -128,16 +140,17 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync); ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
-		ImGui::SameLine();
-		auto fxaaSystem = manager->get<FxaaRenderSystem>();
-		if (ImGui::Checkbox("FXAA", &fxaaSystem->isEnabled))
+		auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
+		auto fxaaSystem = manager->tryGet<FxaaRenderSystem>();
+		if (fxaaSystem && deferredSystem)
 		{
-			auto deferredSystem = manager->get<DeferredRenderSystem>();
-			deferredSystem->runSwapchainPass = !fxaaSystem->isEnabled;
+			ImGui::SameLine();
+			if (ImGui::Checkbox("FXAA", &fxaaSystem->isEnabled))
+				deferredSystem->runSwapchainPass = !fxaaSystem->isEnabled;
 		}
 
 		const auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";
-		if (ImGui::Combo("Render Scale", renderScaleType, renderScaleTypes))
+		if (deferredSystem && ImGui::Combo("Render Scale", renderScaleType, renderScaleTypes))
 		{
 			float renderScale;
 			switch (renderScaleType)
@@ -150,10 +163,9 @@ void EditorRenderSystem::showOptionsWindow()
 			default: abort();
 			}
 			
-			auto deferredSystem = manager->get<DeferredRenderSystem>();
 			deferredSystem->setRenderScale(renderScale);
-			auto settingsSystem = manager->get<SettingsSystem>();
-			settingsSystem->setFloat("renderScale", renderScale);
+			auto settingsSystem = manager->tryGet<SettingsSystem>();
+			if (settingsSystem) settingsSystem->setFloat("renderScale", renderScale);
 		}
 		ImGui::Spacing();
 
@@ -248,11 +260,15 @@ void EditorRenderSystem::showPerformanceStatistics()
 		auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 		uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
 
-		auto result = Vulkan::device.getQueryPoolResults(
-			swapchainBuffer.queryPool, 0, 2, sizeof(uint64) * 2, timestamps,
-			(vk::DeviceSize)sizeof(uint64), vk::QueryResultFlagBits::e64);
-
-		if (result == vk::Result::eSuccess)
+		auto vkResult = vk::Result::eNotReady;
+		if (swapchainBuffer.isPoolClean)
+		{
+			vkResult = Vulkan::device.getQueryPoolResults(
+				swapchainBuffer.queryPool, 0, 2, sizeof(uint64) * 2, timestamps,
+				(vk::DeviceSize)sizeof(uint64), vk::QueryResultFlagBits::e64);
+		}
+		
+		if (vkResult == vk::Result::eSuccess)
 		{
 			auto difference = (double)(timestamps[1] - timestamps[0]) *
 				(double)Vulkan::deviceProperties.properties.limits.timestampPeriod;
@@ -430,8 +446,8 @@ void EditorRenderSystem::showExportScene()
 void EditorRenderSystem::initialize()
 {
 	auto renderScale = 1.0f;
-	auto settingsSystem = getManager()->get<SettingsSystem>();
-	settingsSystem->getFloat("renderScale", renderScale);
+	auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
 	if (renderScale <= 0.5f) renderScaleType = 0;
 	else if (renderScale <= 0.75f) renderScaleType = 1;
 	else if (renderScale <= 1.0f) renderScaleType = 2;

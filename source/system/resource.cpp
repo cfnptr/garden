@@ -110,7 +110,7 @@ ResourceSystem::ResourceSystem()
 void ResourceSystem::initialize()
 {
 	auto manager = getManager();
-	threadSystem = manager->get<ThreadSystem>();
+	threadSystem = manager->tryGet<ThreadSystem>();
 	graphicsSystem = manager->get<GraphicsSystem>();
 
 	#if !GARDEN_DEBUG
@@ -151,7 +151,7 @@ void ResourceSystem::terminate()
 void ResourceSystem::update()
 {
 	#if GARDEN_DEBUG
-	auto logSystem = getManager()->get<LogSystem>();
+	auto logSystem = getManager()->tryGet<LogSystem>();
 	#endif
 
 	queueLocker.lock();
@@ -169,8 +169,11 @@ void ResourceSystem::update()
 			{
 				GraphicsPipelineExt::moveInternalObjects(item.pipeline, pipeline);
 				#if GARDEN_DEBUG
-				logSystem->trace("Loaded graphics pipeline. (" +
-					pipeline.getPath().generic_string() + ")");
+				if (logSystem)
+				{
+					logSystem->trace("Loaded graphics pipeline. (" +
+						pipeline.getPath().generic_string() + ")");
+				}
 				#endif
 			}
 			else PipelineExt::destroy(item.pipeline);
@@ -203,8 +206,11 @@ void ResourceSystem::update()
 			{
 				ComputePipelineExt::moveInternalObjects(item.pipeline, pipeline);
 				#if GARDEN_DEBUG
-				logSystem->trace("Loaded compute pipeline. (" +
-					pipeline.getPath().generic_string() + ")");
+				if (logSystem)
+				{
+					logSystem->trace("Loaded compute pipeline. (" +
+						pipeline.getPath().generic_string() + ")");
+				}
 				#endif
 			}
 			else PipelineExt::destroy(item.pipeline);
@@ -405,8 +411,8 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, data, size, format);
 
 	#if GARDEN_DEBUG
-	auto logSystem = getManager()->get<LogSystem>();
-	logSystem->trace("Loaded image. (" + path.generic_string() + ")");
+	auto logSystem = getManager()->tryGet<LogSystem>();
+	if (logSystem) logSystem->trace("Loaded image. (" + path.generic_string() + ")");
 	#endif
 }
 
@@ -463,7 +469,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			auto dstData = floatData.data();
 			auto srcData = (const Color*)equiData.data();
 
-			if (threadIndex < 0)
+			if (threadIndex < 0 && threadSystem)
 			{
 				auto& threadPool = threadSystem->getForegroundPool();
 				threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
@@ -509,7 +515,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			(float4*)front.data(), (float4*)back.data(),
 		};
 
-		if (threadIndex < 0)
+		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
@@ -549,7 +555,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 
 		fs::create_directories(filePath.parent_path());
-		if (threadIndex < 0)
+		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
 			threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
@@ -583,8 +589,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
 		}
 
-		auto logSystem = getManager()->get<LogSystem>();
-		logSystem->trace("Converted spherical cubemap. (" + path.generic_string() + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->trace("Converted spherical cubemap. (" +
+				path.generic_string() + ")");
+		}
 		return;
 	}
 	#endif
@@ -592,7 +602,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	int2 leftSize, rightSize, bottomSize, topSize, backSize, frontSize;
 	Image::Format leftFormat, rightFormat, bottomFormat, topFormat, backFormat, frontFormat;
 
-	if (threadIndex < 0)
+	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
@@ -739,7 +749,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 	auto version = Vulkan::imageVersion++;
 	auto image = Vulkan::imagePool.create(bind, version);
 
-	if (loadAsync)
+	if (loadAsync && threadSystem)
 	{
 		auto data = new ImageLoadData();
 		data->version = version;
@@ -898,6 +908,8 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 			outputPath = fragmentOutputPath.parent_path();
 		}
 
+		auto logSystem = manager->tryGet<LogSystem>();
+
 		try
 		{
 			auto dataPath = data.path; data.path = dataPath.filename();
@@ -909,9 +921,11 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() << "(.frag):" << e.what() << "\n"; // TODO: get info which stage throw.
-			auto logSystem = manager->get<LogSystem>();
-			logSystem->error("Failed to compile graphics shaders. ("
-				"name: " + data.path.generic_string() + ")");
+			if (logSystem)
+			{
+				logSystem->error("Failed to compile graphics shaders. ("
+					"name: " + data.path.generic_string() + ")");
+			}
 			return false;
 		}
 		
@@ -921,8 +935,11 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 				"path: " + data.path.generic_string() + ")");
 		}
 
-		auto logSystem = manager->get<LogSystem>();
-		logSystem->trace("Compiled graphics shaders. (" + data.path.generic_string() + ")");
+		if (logSystem)
+		{
+			logSystem->trace("Compiled graphics shaders. (" +
+				data.path.generic_string() + ")");
+		}
 		return true;
 	}
 	#endif
@@ -933,10 +950,13 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = manager->get<LogSystem>();
-		logSystem->error("Failed to load graphics shaders. ("
-			"name: " + data.path.generic_string() + ", "
-			"error: " + string(e.what()) + ")");
+		auto logSystem = manager->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->error("Failed to load graphics shaders. ("
+				"name: " + data.path.generic_string() + ", "
+				"error: " + string(e.what()) + ")");
+		}
 		return false;
 	}
 
@@ -997,7 +1017,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		depthStencilFormat = attachment->getFormat();
 	}
 
-	if (loadAsync)
+	if (loadAsync && threadSystem)
 	{
 		auto data = new GraphicsPipelineLoadData();
 		data->path = path;
@@ -1074,8 +1094,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
-		auto logSystem = getManager()->get<LogSystem>();
-		logSystem->trace("Loaded graphics pipeline. (" + path.generic_string() + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->trace("Loaded graphics pipeline. (" + 
+				path.generic_string() + ")");
+		}
 		#endif
 	}
 
@@ -1106,6 +1130,8 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 		};
 		bool compileResult = false;
 
+		auto logSystem = manager->tryGet<LogSystem>();
+
 		try
 		{
 			auto dataPath = data.path; data.path = dataPath.filename();
@@ -1117,9 +1143,11 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() << ":" << e.what() << "\n";
-			auto logSystem = manager->get<LogSystem>();
-			logSystem->error("Failed to compile compute shader. ("
-				"name: " + data.path.generic_string() + ")");
+			if (logSystem)
+			{
+				logSystem->error("Failed to compile compute shader. ("
+					"name: " + data.path.generic_string() + ")");
+			}
 			return false;
 		}
 		
@@ -1129,8 +1157,11 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 				"path: " + data.path.generic_string() + ")");
 		}
 		
-		auto logSystem = manager->get<LogSystem>();
-		logSystem->trace("Compiled compute shader. (" + data.path.generic_string() + ")");
+		if (logSystem)
+		{
+			logSystem->trace("Compiled compute shader. (" +
+				data.path.generic_string() + ")");
+		}
 		return true;
 	}
 	#endif
@@ -1141,10 +1172,13 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = manager->get<LogSystem>();
-		logSystem->error("Failed to load compute shader. ("
-			"name: " + data.path.generic_string() + ", "
-			"error: " + string(e.what()) + ")");
+		auto logSystem = manager->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->error("Failed to load compute shader. ("
+				"name: " + data.path.generic_string() + ", "
+				"error: " + string(e.what()) + ")");
+		}
 		return false;
 	}
 
@@ -1160,7 +1194,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	auto pipeline = Vulkan::computePipelinePool.create(
 		path, maxBindlessCount, useAsync, version);
 
-	if (loadAsync)
+	if (loadAsync && threadSystem)
 	{
 		auto data = new ComputePipelineLoadData();
 		data->version = version;
@@ -1220,8 +1254,12 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
-		auto logSystem = getManager()->get<LogSystem>();
-		logSystem->trace("Loaded compute pipeline. (" + path.generic_string() + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->trace("Loaded compute pipeline. (" +
+				path.generic_string() + ")");
+		}
 		#endif
 	}
 
@@ -1267,8 +1305,8 @@ void ResourceSystem::loadScene(const fs::path& path)
 	}
 
 	#if GARDEN_DEBUG
-	auto logSystem = manager->get<LogSystem>();
-	logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
+	auto logSystem = manager->tryGet<LogSystem>();
+	if (logSystem) logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
 	#endif
 }
 void ResourceSystem::storeScene(const fs::path& path)
@@ -1315,8 +1353,8 @@ void ResourceSystem::storeScene(const fs::path& path)
 	}
 
 	#if GARDEN_DEBUG
-	auto logSystem = manager->get<LogSystem>();
-	logSystem->trace("Stored scene. (" + path.generic_string() + ")");
+	auto logSystem = manager->tryGet<LogSystem>();
+	if (logSystem) logSystem->trace("Stored scene. (" + path.generic_string() + ")");
 	#endif
 }
 void ResourceSystem::clearScene()
@@ -1341,8 +1379,8 @@ void ResourceSystem::clearScene()
 	}
 
 	#if GARDEN_DEBUG
-	auto logSystem = getManager()->get<LogSystem>();
-	logSystem->trace("Cleaned scene.");
+	auto logSystem = getManager()->tryGet<LogSystem>();
+	if (logSystem) logSystem->trace("Cleaned scene.");
 	#endif
 }
 
@@ -2017,8 +2055,8 @@ shared_ptr<Model> ResourceSystem::loadModel(const fs::path& path)
 			"error: " + string(cgltfToString(result)) + ")");
 	}
 
-	auto logSystem = getManager()->get<LogSystem>();
-	logSystem->trace("Loaded model. (" + path.generic_string() + ")");
+	auto logSystem = getManager()->tryGet<LogSystem>();
+	if (logSystem) logSystem->trace("Loaded model. (" + path.generic_string() + ")");
 
 	filePath.remove_filename();
 	auto relativePath = path.parent_path();
@@ -2071,7 +2109,7 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 	auto buffer = Vulkan::bufferPool.create(bind,
 		Buffer::Usage::GpuOnly, version);
 
-	if (loadAsync)
+	if (loadAsync && threadSystem)
 	{
 		auto data = new GeneralBufferLoadData(accessor);
 		data->version = version;
@@ -2147,7 +2185,7 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 	auto buffer = Vulkan::bufferPool.create(bind,
 		Buffer::Usage::GpuOnly, version);
 
-	if (loadAsync)
+	if (loadAsync && threadSystem)
 	{
 		auto data = new VertexBufferLoadData(primitive);
 		data->version = version;

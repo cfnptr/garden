@@ -121,8 +121,8 @@ void SsaoRenderSystem::initialize()
 	if (!noiseTexture) noiseTexture = createNoiseTexture(graphicsSystem);
 	if (!pipeline) pipeline = createPipeline(manager->get<LightingRenderSystem>());
 
-	auto settingsSystem = manager->get<SettingsSystem>();
-	settingsSystem->getBool("useSSAO", isEnabled);
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getBool("useSSAO", isEnabled);
 
 	#if GARDEN_EDITOR
 	editor = new SsaoEditor(this);

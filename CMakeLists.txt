@@ -82,7 +82,7 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan xxHash::xxhash ecsm math-static
-	conf-static pack-static glfw webp FastNoise OpenEXR)
+	conf-static pack-static voxy glfw webp FastNoise OpenEXR)
 set(GARDEN_LINK_DIRS)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -115,6 +115,9 @@ add_subdirectory(libraries/pack)
 set(CONF_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(CONF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/conf)
+
+set(VOXY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/voxy)
 
 set(XXHASH_BUILD_XXHSUM OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/xxhash/cmake_unofficial)
@@ -183,6 +186,8 @@ list(APPEND GARDEN_LINK_LIBS
 		PhysXFoundation_static_64
 		PhysXPvdSDK_static_64
 		PhysXCharacterKinematic_static_64
+		PhysXVehicle_static_64
+		PhysXCooking_static_64
 	-Wl,--end-group)
 list(APPEND GARDEN_INCLUDE_DIRS libraries/physx/physx/include)
 
