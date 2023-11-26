@@ -332,13 +332,13 @@ void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 //--------------------------------------------------------------------------------------------------
 void CommandBuffer::submit()
 {
-	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
+	auto swapchainBuffer = (Swapchain::Buffer*)&Vulkan::swapchain.getCurrentBuffer();
 	vk::CommandBuffer commandBuffer; vk::Queue queue;
 
 	if (type == CommandBufferType::Frame)
 	{
 		instance = commandBuffer = vk::CommandBuffer((VkCommandBuffer)
-			swapchainBuffer.primaryCommandBuffer);
+			swapchainBuffer->primaryCommandBuffer);
 		timeCounter++;
 	}
 	else
@@ -376,9 +376,10 @@ void CommandBuffer::submit()
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (type == CommandBufferType::Frame && Vulkan::recordGpuTime)
 	{
-		commandBuffer.resetQueryPool(swapchainBuffer.queryPool, 0, 2);
+		commandBuffer.resetQueryPool(swapchainBuffer->queryPool, 0, 2);
 		commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe,
-			swapchainBuffer.queryPool, 0);
+			swapchainBuffer->queryPool, 0);
+		swapchainBuffer->isPoolClean = true;
 		// TODO: record transfer and compute command buffer perf.
 	}
 	#endif
@@ -451,11 +452,34 @@ void CommandBuffer::submit()
 	if (type == CommandBufferType::Frame)
 	{
 		vk::Image swapchainImage((VkImage)Vulkan::imagePool.get(
-			swapchainBuffer.colorImage)->instance);
+			swapchainBuffer->colorImage)->instance);
+
+		if (!hasAnyCommand)
+		{
+			vk::ImageMemoryBarrier imageMemoryBarrier(
+				vk::AccessFlagBits::eNone, vk::AccessFlagBits::eTransferWrite,
+				vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+				swapchainImage, vk::ImageSubresourceRange(
+					vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+			commandBuffer.pipelineBarrier(
+				vk::PipelineStageFlagBits::eTopOfPipe,
+				vk::PipelineStageFlagBits::eTransfer,
+				{}, {}, {}, imageMemoryBarrier);
+			array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+			commandBuffer.clearColorImage(swapchainImage,
+				vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(clearColor),
+				vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+			
+			auto& imageState = getImageState(swapchainBuffer->colorImage, 0, 0);
+			imageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
+			imageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
+			imageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+		}
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		{
-			auto& oldImageState = getImageState(swapchainBuffer.colorImage, 0, 0);
+			auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
 			ImageState newImageState;
 			// We adding read barrier because we loading buffer pixels.
 			newImageState.access = (uint32)(vk::AccessFlagBits::eColorAttachmentRead |
@@ -492,64 +516,35 @@ void CommandBuffer::submit()
 			commandBuffer.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
     		ImGui_ImplVulkan_RenderDrawData(drawData, (VkCommandBuffer)commandBuffer);
 			commandBuffer.endRenderPass();
-			hasAnyCommand = true;
 		}
 		#endif
 
-		if (!hasAnyCommand)
-		{
-			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlagBits::eNone, vk::AccessFlagBits::eTransferWrite,
-				vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				swapchainImage, vk::ImageSubresourceRange(
-					vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-			commandBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTopOfPipe,
-				vk::PipelineStageFlagBits::eTransfer,
-				{}, {}, {}, imageMemoryBarrier);
-			array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-			commandBuffer.clearColorImage(swapchainImage,
-				vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(clearColor),
-				vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-			imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eNone;
-			imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-			imageMemoryBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-			commandBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer,
-				vk::PipelineStageFlagBits::eBottomOfPipe,
-				{}, {}, {}, imageMemoryBarrier);
-		}
-		else
-		{
-			auto& oldImageState = getImageState(swapchainBuffer.colorImage, 0, 0);
-			auto oldPipelineStage = (vk::PipelineStageFlagBits)oldImageState.stage;
-			if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
-				oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
-			ImageState newImageState;
-			newImageState.access = (uint32)vk::AccessFlagBits::eNone;
-			newImageState.layout = (uint32)vk::ImageLayout::ePresentSrcKHR;
-			newImageState.stage = (uint32)vk::PipelineStageFlagBits::eBottomOfPipe;
-			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlags(oldImageState.access),
-				vk::AccessFlags(newImageState.access),
-				(vk::ImageLayout)oldImageState.layout,
-				(vk::ImageLayout)newImageState.layout,
-				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				swapchainImage, vk::ImageSubresourceRange(
-					vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-			commandBuffer.pipelineBarrier(oldPipelineStage,
-				vk::PipelineStageFlags(newImageState.stage),
-				{}, {}, {}, imageMemoryBarrier);
-			oldImageState = newImageState;
-		}
+		auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
+		auto oldPipelineStage = (vk::PipelineStageFlagBits)oldImageState.stage;
+		if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
+			oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		ImageState newImageState;
+		newImageState.access = (uint32)vk::AccessFlagBits::eNone;
+		newImageState.layout = (uint32)vk::ImageLayout::ePresentSrcKHR;
+		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eBottomOfPipe;
+		vk::ImageMemoryBarrier imageMemoryBarrier(
+			vk::AccessFlags(oldImageState.access),
+			vk::AccessFlags(newImageState.access),
+			(vk::ImageLayout)oldImageState.layout,
+			(vk::ImageLayout)newImageState.layout,
+			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+			swapchainImage, vk::ImageSubresourceRange(
+				vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+		commandBuffer.pipelineBarrier(oldPipelineStage,
+			vk::PipelineStageFlags(newImageState.stage),
+			{}, {}, {}, imageMemoryBarrier);
+		oldImageState = newImageState;
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (Vulkan::recordGpuTime)
 		{
 			commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
-				swapchainBuffer.queryPool, 1);
+				swapchainBuffer->queryPool, 1);
 		}
 		#endif
 	}

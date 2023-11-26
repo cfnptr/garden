@@ -1,9 +1,8 @@
 # GARDEN ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
 
-Garden is an open-source, cross-platform game engine designed for efficiency <br/>
-and flexibility. Written in C++ and utilizing the Vulkan API for rendering, <br/>
-it is aimed at providing developers with a robust toolset for creating <br/>
-high-performance, visually stunning games.
+Garden is an open-source, cross-platform game engine designed for efficiency and flexibility.
+Written in C++ and utilizing the Vulkan API for rendering, it is aimed at providing
+developers with a robust toolset for creating high-performance, visually stunning games.
 
 ## Features
 
@@ -15,28 +14,19 @@ high-performance, visually stunning games.
 
 ## Supported operating systems
 
-* Ubuntu
+* Ubuntu (Linux)
 * MacOS
 * Windows
 
-## Minimum PC system requirements
-
-* OS: Ubuntu 22.04+ / Windows 10+
-* GPU: Nvidia GTX 750 / AMD RX 470
-* Graphics API: Vulkan 1.3
-
-
 ## Build requirements
 
-* [Clang](https://clang.llvm.org/)
+* [Clang 12.0+](https://clang.llvm.org/)
 * [Git 2.30+](https://git-scm.com/)
 * [CMake 3.22+](https://cmake.org/)
 * [Vulkan SDK 1.3+](https://vulkan.lunarg.com/)
 * [X11](https://www.x.org/) (Linux only)
 * [OpenSSL 3.0+](https://openssl.org/)
 * Execute scripts/build-physx.sh
-
-TODO: move generate_projects execution to the cmake.
 
 ### X11 installation
 

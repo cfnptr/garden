@@ -132,8 +132,8 @@ static map<string, DescriptorSet::Uniform> getUniforms(
 void ShadowMappingRenderSystem::initialize()
 {
 	auto graphicsSystem = getGraphicsSystem();
-	auto settingsSystem = getManager()->get<SettingsSystem>();
-	settingsSystem->getInt("shadowMapSize", shadowMapSize);
+	auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getInt("shadowMapSize", shadowMapSize);
 
 	if (!pipeline) pipeline = createPipeline(getManager());
 	if (!shadowMap) shadowMap = createShadowData(graphicsSystem, imageViews, shadowMapSize);

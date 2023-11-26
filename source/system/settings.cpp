@@ -80,9 +80,12 @@ void SettingsSystem::terminate()
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = getManager()->get<LogSystem>();
-		logSystem->error("Failed to write settings file. ("
-			"error: " + string(e.what()) + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->error("Failed to write settings file. ("
+				"error: " + string(e.what()) + ")");
+		}
 	}
 }
 
