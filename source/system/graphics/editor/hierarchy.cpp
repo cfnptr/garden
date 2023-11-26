@@ -25,7 +25,8 @@ using namespace garden;
 HierarchyEditor::HierarchyEditor(EditorRenderSystem* system)
 {
 	auto manager = system->getManager();
-	system->registerBarTool([this]() { onBarTool(); });
+	if (manager->has<TransformSystem>())
+		system->registerBarTool([this]() { onBarTool(); });
 	this->system = system;
 }
 

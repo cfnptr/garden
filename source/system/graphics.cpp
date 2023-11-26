@@ -124,7 +124,7 @@ static void setImGuiSyle()
 }
 
 //--------------------------------------------------------------------------------------------------
-void GraphicsSystem:: initializeImGui()
+void GraphicsSystem::initializeImGui()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -199,7 +199,7 @@ void GraphicsSystem:: initializeImGui()
 	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), 14.0f * contentScale);
 	GARDEN_ASSERT(fontResult);
 	io.FontGlobalScale = 1.0f / pixelRatio;
-	io.DisplayFramebufferScale = ImVec2(windowSize.x, windowSize.y);
+	io.DisplayFramebufferScale = ImVec2(pixelRatioXY.x, pixelRatioXY.y);
 
 	// TODO: dynamically detect when system scale is changed or moved to another monitor and recreate fonts.
 }
@@ -297,7 +297,7 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen, bool isBorder
 	glfwGetFramebufferSize((GLFWwindow*)Vulkan::window,
 		&framebufferSize.x, &framebufferSize.y);
 	glfwGetWindowSize((GLFWwindow*)Vulkan::window,
-		&windowSize.x, &windowSize.y);
+		&this->windowSize.x, &this->windowSize.y);
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos((GLFWwindow*)Vulkan::window, &x, &y);

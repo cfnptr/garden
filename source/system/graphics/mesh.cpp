@@ -25,6 +25,7 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 void MeshRenderSystem::initialize()
 {
+	// TODO: use tryGet instead. But should we? Most modern systems have several cores.
 	threadSystem = getManager()->get<ThreadSystem>();
 
 	#if GARDEN_EDITOR
@@ -334,7 +335,6 @@ void MeshRenderSystem::renderTranslucentItems(
 		translucentBuffer->drawCount->store(0);
 	}
 
-	auto& threadPool = threadSystem->getForegroundPool();
 	auto bufferData = translucentBuffers.data();
 	auto items = translucentItems.data();
 	auto indices = translucentIndices.data();

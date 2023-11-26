@@ -47,6 +47,7 @@ public:
 		vector<vk::CommandBuffer> secondaryCommandBuffers;
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		vk::QueryPool queryPool = {};
+		uint32 isPoolClean = false;
 		#endif
 	};
 private:

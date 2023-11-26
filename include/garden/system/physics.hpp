@@ -251,6 +251,7 @@ class PhysicsSystem final : public System
 	LinearPool<Material> materials;
 	LinearPool<Shape> shapes;
 	void* graphicsSystem = nullptr;
+	void* data = nullptr;
 	void* foundation = nullptr;
 	void* instance = nullptr;
 	void* scene = nullptr;
@@ -260,6 +261,7 @@ class PhysicsSystem final : public System
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
+	void* pvd = nullptr;
 	#endif
 
 	void initialize() final;

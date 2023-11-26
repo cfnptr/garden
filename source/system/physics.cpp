@@ -22,6 +22,8 @@
 #include "PxConfig.h"
 #include "PxPhysicsAPI.h"
 
+#define SCRATCH_BUFFER_SIZE 65536
+
 using namespace physx;
 using namespace garden;
 
@@ -38,6 +40,7 @@ public:
 	void reportError(PxErrorCode::Enum code, const char* message,
 		const char* file, int line) final
 	{
+		if (!logSystem) return;
 		LogSystem::Severity severity;
 		switch (code)
 		{
@@ -107,7 +110,7 @@ public:
 			{
 				auto& pair = pairs[i];
 
-				if(pair.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER |
+				if (pair.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER |
 					PxTriggerPairFlag::eREMOVED_SHAPE_OTHER)) continue;
 				
 				*data.triggerEntity = (uint32)(psize)pair.triggerActor->userData;
@@ -119,6 +122,15 @@ public:
 			}
 		}
 	}
+};
+
+struct PhysicsData
+{
+	PxDefaultAllocator defaultAllocatorCallback;
+	GardenPxErrorCallback gardenErrorCallback;
+	GardenPxCpuDispatcher gardenCpuDispatcher;
+	GardenPxSimulation gardenSimulation;
+	PxCpuDispatcher* defaultCpuDispatcher = nullptr;
 };
 
 }
@@ -673,32 +685,33 @@ static PxFilterFlags gardenSimulationFilterShader(
 }
 
 //--------------------------------------------------------------------------------------------------
-static PxDefaultAllocator defaultAllocatorCallback;
-static GardenPxErrorCallback gardenErrorCallback;
-static GardenPxCpuDispatcher gardenCpuDispatcher;
-static GardenPxSimulation gardenSimulation;
-
-#if GARDEN_DEBUG
-static PxPvd* pvd = nullptr;
-#endif
-
 void PhysicsSystem::initialize()
 {
 	auto manager = getManager();
 	graphicsSystem = manager->tryGet<GraphicsSystem>();
+	auto logSystem = manager->tryGet<LogSystem>();
+	auto threadSystem = manager->tryGet<ThreadSystem>();
 
-	auto logSystem = getManager()->get<LogSystem>();
-	gardenErrorCallback = GardenPxErrorCallback(logSystem);
+	auto data = new PhysicsData();
+	data->gardenErrorCallback = GardenPxErrorCallback(logSystem);
+	data->gardenSimulation = GardenPxSimulation(this);
+	this->data = data;
+
 	foundation = PxCreateFoundation(PX_PHYSICS_VERSION,
-		defaultAllocatorCallback, gardenErrorCallback);
+		data->defaultAllocatorCallback, data->gardenErrorCallback);
 	if (!foundation) throw runtime_error("Failed to create PhysX foundation.");
 
 	#if GARDEN_DEBUG
-	pvd = PxCreatePvd(*(PxFoundation*)foundation);
+	auto pvd = PxCreatePvd(*(PxFoundation*)foundation);
+	this->pvd = pvd;
+
 	auto transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
-	if (pvd->connect(*transport, PxPvdInstrumentationFlag::eALL))
-		logSystem->debug("Connected to the PhysX debugger.");
-	else logSystem->warn("Failed to connect to the PhysX debugger.");
+	if (logSystem)
+	{
+		if (pvd->connect(*transport, PxPvdInstrumentationFlag::eALL))
+			logSystem->info("Connected to the PhysX debugger.");
+		else logSystem->info("PhysX debugger is not connected.");
+	}
 	#else
 	PxPvd* pvd = nullptr;
 	#endif
@@ -708,22 +721,29 @@ void PhysicsSystem::initialize()
 	if (!instance) throw runtime_error("Failed to create PhysX instance.");
 	this->instance = instance;
 
-	// TODO:
-	// if (!PxInitExtensions(*mPhysics, mPvd))
-    // fatalError("PxInitExtensions failed!");
-
-	// TODO: set default cpu dispatcher if no thread system.
-	auto threadSystem = manager->get<ThreadSystem>();
-	gardenCpuDispatcher = GardenPxCpuDispatcher(&threadSystem->getForegroundPool());
-	gardenSimulation = GardenPxSimulation(this);
+	 if (!PxInitExtensions(*instance, pvd))
+	 	throw runtime_error("Failed to initialize PhysX extensions.");
 
 	PxSceneDesc sceneDesc(instance->getTolerancesScale());
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-	sceneDesc.cpuDispatcher	= &gardenCpuDispatcher;
 	sceneDesc.filterShader = gardenSimulationFilterShader;
 	sceneDesc.solverType = PxSolverType::ePGS;
 	// sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
-	sceneDesc.simulationEventCallback = &gardenSimulation;
+	sceneDesc.simulationEventCallback = &data->gardenSimulation;
+
+	if (threadSystem)
+	{
+		data->gardenCpuDispatcher = GardenPxCpuDispatcher(
+			&threadSystem->getForegroundPool());
+		sceneDesc.cpuDispatcher = &data->gardenCpuDispatcher;
+	}
+	else
+	{
+		data->defaultCpuDispatcher = PxDefaultCpuDispatcherCreate(
+			thread::hardware_concurrency());
+		sceneDesc.cpuDispatcher = data->defaultCpuDispatcher;
+	}
+
 	auto scene = instance->createScene(sceneDesc);
 	this->scene = scene;
 
@@ -744,9 +764,8 @@ void PhysicsSystem::initialize()
 	#endif
 
 	ccManager = PxCreateControllerManager(*scene);
-
 	defaultMaterial = createMaterial(0.5f, 0.5f, 0.1f);
-	scratchBuffer = malloc(65536);
+	scratchBuffer = malloc(SCRATCH_BUFFER_SIZE);
 
 	auto& subsystems = manager->getSubsystems<PhysicsSystem>();
 	for (auto subsystem : subsystems)
@@ -768,15 +787,20 @@ void PhysicsSystem::terminate()
 
 	((PxControllerManager*)ccManager)->release();
 	((PxScene*)scene)->release();
+	((PxDefaultCpuDispatcher*)((PhysicsData*)
+		data)->defaultCpuDispatcher)->release();
+	PxCloseExtensions();
 	((PxPhysics*)instance)->release();
 
 	#if GARDEN_DEBUG
+	auto pvd = (PxPvd*)this->pvd;
 	auto transport = pvd->getTransport();
 	pvd->release();
 	transport->release();
 	#endif
 
 	((PxFoundation*)foundation)->release();
+	delete (PhysicsData*)data;
 	free(scratchBuffer);
 
 	#if GARDEN_EDITOR
@@ -839,14 +863,14 @@ void PhysicsSystem::update()
 				}
 
 				scene->simulate(deltaTime, nullptr,
-					scratchBuffer, 65536);
+					scratchBuffer, SCRATCH_BUFFER_SIZE);
 				scene->fetchResults(true);
 			}
 		}
 		else
 		{
 			scene->simulate(deltaTime, nullptr,
-				scratchBuffer, 65536);
+				scratchBuffer, SCRATCH_BUFFER_SIZE);
 			scene->fetchResults(true);
 		}
 	}

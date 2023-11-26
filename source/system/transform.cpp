@@ -375,8 +375,8 @@ bool TransformSystem::deserialize(conf::Reader& reader,
 	if (!entities.emplace(id, entity).second)
 	{
 		#if GARDEN_DEBUG
-		auto logSystem = getManager()->get<LogSystem>();
-		logSystem->warn("Scene entity with the same ID. (" + to_string(id) + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem) logSystem->warn("Scene entity with the same ID. (" + to_string(id) + ")");
 		#endif
 		return false;
 	}
@@ -429,8 +429,12 @@ void TransformSystem::postDeserialize(conf::Reader& reader)
 		if (searchResult == entities.end())
 		{
 			#if GARDEN_DEBUG
-			auto logSystem = getManager()->get<LogSystem>();
-			logSystem->warn("Missing scene entity parent. (" + to_string(pair.first) + ")");
+			auto logSystem = getManager()->tryGet<LogSystem>();
+			if (logSystem)
+			{
+				logSystem->warn("Missing scene entity parent. (" +
+					to_string(pair.first) + ")");
+			}
 			#endif
 			continue;
 		}

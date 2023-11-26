@@ -79,8 +79,8 @@ void WatcherSystem::initialize()
 	CFRelease(pathToWatch);
 	#endif
 
-	logSystem = getManager()->get<LogSystem>();
-	logSystem->info("Started watcher system.");
+	logSystem = getManager()->tryGet<LogSystem>();
+	if (logSystem) logSystem->info("Started watcher system.");
 }
 void WatcherSystem::terminate()
 {
@@ -91,7 +91,7 @@ void WatcherSystem::terminate()
 	FSEventStreamRelease(stream);
 	#endif
 
-	logSystem->info("Stopped watcher system.");
+	if (logSystem) logSystem->info("Stopped watcher system.");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ void WatcherSystem::update()
 		for (auto& changedFile : changedFiles)
 		{
 			#if GARDEN_DEBUG
-			logSystem->trace("Changed file. (" + changedFile + ")");
+			if (logSystem) logSystem->trace("Changed file. (" + changedFile + ")");
 			#endif
 			
 			auto extensionIndex = changedFile.find_last_of('.');
