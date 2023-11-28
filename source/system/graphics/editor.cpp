@@ -17,6 +17,7 @@
 #include "garden/system/graphics/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "mpio/os.hpp"
 #include "mpio/directory.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/system/graphics.hpp"
@@ -110,6 +111,27 @@ void EditorRenderSystem::showAboutWindow()
 	{
 		ImGui::Text("Creator: Nikita Fediuchin");
 		ImGui::Text("Version: " GARDEN_VERSION_STRING);
+
+		#if __linux__
+		auto osName = "Linux";
+		#elif __APPLE__
+		auto osName = "macOS";
+		#else
+		auto osName = "Windows";
+		#endif
+
+		ImGui::SeparatorText("PC");
+		ImGui::Text("OS: %s", osName);
+		ImGui::Text("CPU: %s", ::getCpuName());
+		auto ramString = toBinarySizeString(OS::getRamSize());
+		ImGui::Text("RAM: %s", ramString.c_str());
+
+		ImGui::Text("GPU: %s", Vulkan::deviceProperties.properties.deviceName.data());
+		auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
+		auto apiString = to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
+			to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
+			to_string(VK_API_VERSION_PATCH(apiVersion));
+		ImGui::Text("Vulkan API: %s", apiString.c_str());
 	}
 	ImGui::End();
 }

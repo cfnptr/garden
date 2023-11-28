@@ -19,6 +19,7 @@
 #include "garden/system/graphics.hpp"
 #include "garden/system/log.hpp"
 
+/* TODO: use Jolt physics library instead
 #include "PxConfig.h"
 #include "PxPhysicsAPI.h"
 
@@ -1004,3 +1005,4 @@ void PhysicsSystem::destroy(ID<Shape> shape)
 {
 	shapes.destroy(shape);
 }
+*/

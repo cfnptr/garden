@@ -16,7 +16,7 @@
 
 cmake_minimum_required(VERSION 3.22)
 
-if(${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
 endif()
 
@@ -52,9 +52,21 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(BUILD_SHARED_LIBS OFF) # Bettet to have only one executable.
+set(BUILD_SHARED_LIBS OFF)
 
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+	set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	enable_language(OBJC)
+	enable_language(OBJCXX)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
 	set(GARDEN_DEBUG 1)
 	set(GARDEN_EDITOR 1)
 else()
@@ -82,21 +94,11 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan xxHash::xxhash ecsm math-static
-	conf-static pack-static voxy glfw webp FastNoise OpenEXR)
+	conf-static pack-static logy-static voxy glfw webp FastNoise OpenEXR)
 set(GARDEN_LINK_DIRS)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	enable_language(OBJC)
-	enable_language(OBJCXX)
-	if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-		list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
-	endif()
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
-	else()
-		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
 endif()
 
 find_package(Vulkan REQUIRED)
@@ -115,6 +117,10 @@ add_subdirectory(libraries/pack)
 set(CONF_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(CONF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/conf)
+
+set(LOGY_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(LOGY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/logy)
 
 set(VOXY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/voxy)
@@ -153,7 +159,7 @@ add_subdirectory(libraries/openexr)
 #---------------------------------------------------------------------------------------------------
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)
 
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug" OR GARDEN_RELEASE_EDITOR)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR GARDEN_RELEASE_EDITOR)
 	file(GLOB IMGUI_SOURCES libraries/imgui/*.cpp)
 	file(GLOB IMGUI_MISC_SOURCES libraries/imgui/misc/cpp/*.cpp)
 	list(APPEND GARDEN_INCLUDE_DIRS
@@ -166,38 +172,13 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug" OR GARDEN_RELEASE_EDITOR)
 	list(APPEND GARDEN_INCLUDE_DIRS libraries/cgltf)
 endif()
 
-set(PX_BUILDSNIPPETS OFF CACHE BOOL "" FORCE)
-set(NV_USE_STATIC_WINCRT ON CACHE BOOL "" FORCE)
-set(PX_GENERATE_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
-
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-	list(APPEND GARDEN_LINK_DIRS libraries/physx/physx/bin/linux.clang/checked)
-else()
-	list(APPEND GARDEN_LINK_DIRS libraries/physx/physx/bin/linux.clang/release)
-endif()
-
-# TODO: append dirs on windows
-
-list(APPEND GARDEN_LINK_LIBS
-	-Wl,--start-group
-		PhysX_static_64
-		PhysXCommon_static_64
-		PhysXExtensions_static_64
-		PhysXFoundation_static_64
-		PhysXPvdSDK_static_64
-		PhysXCharacterKinematic_static_64
-		PhysXVehicle_static_64
-		PhysXCooking_static_64
-	-Wl,--end-group)
-list(APPEND GARDEN_INCLUDE_DIRS libraries/physx/physx/include)
-
 #---------------------------------------------------------------------------------------------------
 add_library(garden STATIC ${GARDEN_SOURCES})
 target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
 
-if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang") # TODO: Fix VMA warnings
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # TODO: Fix VMA warnings
 	target_compile_options(garden PRIVATE -Wno-nullability-completeness)
 endif()
 

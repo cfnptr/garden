@@ -18,12 +18,16 @@
 #include "garden/defines.hpp"
 #include "ecsm.hpp"
 #include "math/types.hpp"
-#include "garden/thread.hpp"
 
 #include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+
+extern "C"
+{
+#include "mpmt/thread.h"
+};
 
 // TODO: move this to logy repo
 
@@ -55,7 +59,7 @@ private:
 	ofstream fileStream;
 	Severity severity = {};
 
-	LogSystem(Severity severity);
+	LogSystem(Severity severity = Severity::All);
 	~LogSystem() final;
 	
 	friend class ecsm::Manager;
@@ -84,11 +88,13 @@ public:
 		auto ms =
 			chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count() - 
 			chrono::duration_cast<chrono::seconds>(now.time_since_epoch()).count() * 1000;
+		char threadName[16];
+		getThreadName(threadName, 16);
 		fileStream.fill('0');
 		fileStream << "[" << tm->tm_year + 1900 << "-" << setw(2) << tm->tm_mon + 1 <<
 			"-" << setw(2) << tm->tm_mday << " " << setw(2) << tm->tm_hour << ":" <<
 			setw(2) << tm->tm_min << ":" << setw(2) << tm->tm_sec << "." << setw(3) << 
-			(int)ms << "] [" << Thread::getName() << "] [" <<
+			(int)ms << "] [" << threadName << "] [" <<
 			severityToString(severity) << "]: " << message << "\n";
 		fileStream.flush();
 
@@ -114,7 +120,7 @@ public:
 			tm->tm_mon + 1 << "-" << setw(2) << tm->tm_mday << " " << setw(2) <<
 			tm->tm_hour << ":" << setw(2) << tm->tm_min << ":" << setw(2) <<
 			tm->tm_sec << "." << setw(3) << (int)ms << ANSI_RESET_COLOR "] ["
-			ANSI_NAME_COLOR << Thread::getName() << ANSI_RESET_COLOR "] [" <<
+			ANSI_NAME_COLOR << threadName << ANSI_RESET_COLOR "] [" <<
 			color << severityToString(severity) << ANSI_RESET_COLOR "]: " <<
 			message << "\n";
 		#endif

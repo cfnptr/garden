@@ -10,23 +10,21 @@ developers with a robust toolset for creating high-performance, visually stunnin
 * Vulkan API Rendering Backend: High-efficiency graphics and compute operations.
 * Modern C++ Design: Written in modern C++ for clarity, performance, and reliability.
 * Extensible Architecture: Designed to be easily extendable and modifiable.
-* TODO: add more features
 
 ## Supported operating systems
 
-* Ubuntu (Linux)
-* MacOS
 * Windows
+* Ubuntu (Linux)
+* macOS
 
 ## Build requirements
 
-* [Clang 12.0+](https://clang.llvm.org/)
-* [Git 2.30+](https://git-scm.com/)
-* [CMake 3.22+](https://cmake.org/)
-* [Vulkan SDK 1.3+](https://vulkan.lunarg.com/)
-* [X11](https://www.x.org/) (Linux only)
-* [OpenSSL 3.0+](https://openssl.org/)
-* Execute scripts/build-physx.sh
+* C++17 compiler
+* [Git 2.30+](https://git-scm.com)
+* [CMake 3.22+](https://cmake.org)
+* [Vulkan SDK 1.3+](https://vulkan.lunarg.com)
+* [OpenSSL 3.0+](https://openssl.org)
+* [X11](https://www.x.org) (Linux only)
 
 ### X11 installation
 
@@ -34,9 +32,9 @@ developers with a robust toolset for creating high-performance, visually stunnin
 
 ### OpenSSL installation
 
+* Windows: [choco](https://chocolatey.org) install openssl
 * Ubuntu: sudo apt install libssl-dev
-* MacOS: [brew](https://brew.sh/) install openssl
-* Windows: [choco](https://chocolatey.org/) install openssl
+* macOS: [brew](https://brew.sh) install openssl
 
 ### Zlib installation (Windows only)
 

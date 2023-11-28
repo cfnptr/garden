@@ -116,6 +116,7 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 		severity = "WARNING";
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		severity = "ERROR";
+	else severity = "UNKNOWN";
 	cout << "VULKAN::" << severity << ": " << callbackData->pMessage << "\n";
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
@@ -429,22 +430,24 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 		computeQueueIndex = 0;
 	}
 
-	const auto queuePriority = 1.0f;
+	vector<float> queuePriorities(std::max(std::max(
+		graphicsQueueCount, transferQueueCount), computeQueueCount), 1.0f);
+
 	vector<vk::DeviceQueueCreateInfo> queueInfos =
 	{
 		vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex,
-			graphicsQueueCount, &queuePriority)
+			graphicsQueueCount, queuePriorities.data())
 	};
 
 	if (transferQueueCount > 0)
 	{
 		queueInfos.push_back(vk::DeviceQueueCreateInfo({},
-			transferQueueFamilyIndex, transferQueueCount, &queuePriority));
+		transferQueueFamilyIndex, transferQueueCount, queuePriorities.data()));
 	}
 	if (computeQueueCount > 0)
 	{
 		queueInfos.push_back(vk::DeviceQueueCreateInfo({},
-			computeQueueFamilyIndex, computeQueueCount, &queuePriority));
+			computeQueueFamilyIndex, computeQueueCount, queuePriorities.data()));
 	}
 	
 	vector<const char*> extensions =

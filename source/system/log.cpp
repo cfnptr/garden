@@ -15,13 +15,10 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "garden/system/log.hpp"
+#include "garden/file.hpp"
 #include "mpio/directory.hpp"
+#include "mpio/os.hpp"
 #include <thread>
-
-extern "C"
-{
-#include "mpio/os.h"
-}
 
 using namespace mpio;
 using namespace garden;
@@ -31,20 +28,34 @@ LogSystem::LogSystem(Severity severity)
 {
 	this->severity = severity;
 
-	auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
+	#if __linux__
+	auto appName = GARDEN_APP_NAME_LOWERCASE_STRING;
+	#else
+	auto appName = GARDEN_APP_NAME_STRING;
+	#endif
+
+	auto appDataPath = Directory::getAppDataPath(appName);
 	fs::create_directory(appDataPath);
 	fileStream.open(appDataPath / "log.txt");
 
 	if (!fileStream.is_open())
 		throw runtime_error("Failed to open log file stream.");
 
-	Thread::setName("MAIN");
-	auto concurrentThreadCount = thread::hardware_concurrency();
+#if __linux__
+	auto osName = "Linux";
+#elif __APPLE__
+	auto osName = "macOS";
+#else
+	auto osName = "Windows";
+#endif
+
+	setThreadName("MAIN");
 	info("Started logging system. (UTC+0)");
 	info(GARDEN_APP_NAME_STRING " version: " GARDEN_VERSION_STRING);
-	info("Concurrent thread count: " + to_string(concurrentThreadCount));
-	info("RAM size: " + to_string(getRamSize()));
-	info("CPU: " + string(getCpuName()));
+	info("OS: " + string(osName));
+	info("CPU: " + string(OS::getCpuName()));
+	info("Thread count: " + to_string(thread::hardware_concurrency()));
+	info("RAM size: " + toBinarySizeString(OS::getRamSize()));
 }
 LogSystem::~LogSystem()
 {

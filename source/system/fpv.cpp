@@ -66,8 +66,9 @@ void FpvSystem::update()
 	auto manager = getManager();
 	auto camera = graphicsSystem->camera;
 	auto transformComponent = manager->get<TransformComponent>(camera);
-	auto hasRigidBody = manager->has<RigidBodyComponent>(camera);
+	// auto hasRigidBody = manager->has<RigidBodyComponent>(camera);
 
+	/*
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::F10) &&
 		manager->has<PhysicsSystem>())
 	{
@@ -127,6 +128,7 @@ void FpvSystem::update()
 		}
 	}
 	else lastF10State = false;
+	*/
 
 	if (graphicsSystem->getCursorMode() == CursorMode::Default) return;
 	
@@ -149,9 +151,9 @@ void FpvSystem::update()
 		moveDirection.x = -moveSensitivity;
 	else if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::D))
 		moveDirection.x = moveSensitivity;
-	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::Q) && !hasRigidBody)
+	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::Q)) // && !hasRigidBody)
 		moveDirection.y = -moveSensitivity;
-	else if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::E) && !hasRigidBody)
+	else if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::E)) // && !hasRigidBody)
 		moveDirection.y = moveSensitivity;
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::S))
 		moveDirection.z = -moveSensitivity;
@@ -159,12 +161,13 @@ void FpvSystem::update()
 		moveDirection.z = moveSensitivity;
 	moveDirection = moveDirection * boost * rotationQuat;
 
-	if (!hasRigidBody)
+	if (true) // !hasRigidBody)
 	{
 		velocity = lerp(velocity, moveDirection,
 			std::min(deltaTime * lerpMultiplier, 1.0f));
 		transformComponent->position += velocity * deltaTime;
 	}
+	/*
 	else
 	{
 		auto rigidBodyComponent = manager->get<RigidBodyComponent>(camera);
@@ -189,9 +192,11 @@ void FpvSystem::update()
 		velocity.z = lerp(velocity.z, 0.0f, delta);
 		rigidBodyComponent->setLinearVelocity(velocity);
 	}
+	*/
 }
 
 //--------------------------------------------------------------------------------------------------
+/*
 void FpvSystem::onTrigger(const TriggerData& data)
 {
 	auto manager = getManager();
@@ -210,5 +215,6 @@ void FpvSystem::postSimulate()
 	auto transformComponent = manager->get<TransformComponent>(camera);
 	rigidBodyComponent->getPose(transformComponent->position, rotation);
 }
+*/
 
 // TODO: fix strange shuttering when rotating camera on macOS, problem inside glfw
