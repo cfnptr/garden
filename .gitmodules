@@ -46,9 +46,6 @@
 [submodule "libraries/nets"]
 	path = libraries/nets
 	url = https://github.com/cfnptr/nets
-[submodule "libraries/physx"]
-	path = libraries/physx
-	url = https://github.com/NVIDIA-Omniverse/PhysX
 [submodule "libraries/fastnoise2"]
 	path = libraries/fastnoise2
 	url = https://github.com/Auburn/FastNoise2

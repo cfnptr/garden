@@ -15,7 +15,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #pragma once
-#include "garden/system/physics.hpp"
+// #include "garden/system/physics.hpp" TODO: move physx to jolt code
 #include "garden/system/graphics.hpp"
 
 namespace garden
@@ -24,16 +24,16 @@ namespace garden
 using namespace math;
 using namespace ecsm;
 using namespace garden;
-using namespace garden::physics;
+//using namespace garden::physics;
 
 //--------------------------------------------------------------------------------------------------
-class FpvSystem final : public System, public IPhysicsSystem
+class FpvSystem final : public System // , public IPhysicsSystem
 {
 	GraphicsSystem* graphicsSystem = nullptr;
 	float2 lastCursorPosition = float2(0.0f);
 	float2 rotation = float2(0.0f);
 	float3 velocity = float3(0.0f);
-	ID<Material> material = {};
+	// ID<Material> material = {};
 	int32 triggerCount = 0;
 public:
 	float viewSensitivity = 1.0f;
@@ -49,8 +49,8 @@ private:
 	void initialize() final;
 	void update() final;
 
-	void onTrigger(const TriggerData& data) final;
-	void postSimulate() final;
+	// void onTrigger(const TriggerData& data) final;
+	// void postSimulate() final;
 	
 	friend class ecsm::Manager;
 };
