@@ -53,7 +53,7 @@ static void loadBinaryFile(const fs::path& filePath, vector<uint8>& data)
 			"path: " + filePath.generic_string() + ")");
 	}
 }
-//--------------------------------------------------------------------------------------------------
+
 static bool tryLoadBinaryFile(const fs::path& filePath, vector<uint8>& data)
 {
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
@@ -75,6 +75,29 @@ static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath
 	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile)) return false;
 	filePath = hasEngineFile ? enginePath : appPath;
 	return true;
+}
+
+static string toBinarySizeString(uint64 size)
+{
+	if (size > (uint64)(1024 * 1024 * 1024))
+	{
+		auto floatSize = (double)size / (double)(1024 * 1024 * 1024);
+		return to_string((uint64)floatSize) + "." + to_string((uint64)(
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " GB";
+	}
+	if (size > (uint64)(1024 * 1024))
+	{
+		auto floatSize = (double)size / (double)(1024 * 1024);
+		return to_string((uint64)floatSize) + "." + to_string((uint64)(
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " MB";
+	}
+	if (size > (uint64)(1024))
+	{
+		auto floatSize = (double)size / (double)(1024);
+		return to_string((uint64)floatSize) + "." + to_string((uint64)(
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " KB";
+	}
+	return to_string(size) + " B";
 }
 
 } // garden

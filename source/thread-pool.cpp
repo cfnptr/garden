@@ -16,8 +16,12 @@
 
 #include "garden/thread-pool.hpp"
 #include "garden/defines.hpp"
-#include "garden/thread.hpp"
 #include <cmath>
+
+extern "C"
+{
+#include "mpmt/thread.h"
+};
 
 using namespace garden;
 
@@ -27,9 +31,14 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 void ThreadPool::threadFunction(uint32 index)
 {
-	if (!name.empty()) Thread::setName(name + "#" + to_string(index));
-	if (background) Thread::setBackgroundPriority();
-	else Thread::setForegroundPriority();
+	if (!name.empty())
+	{
+		auto threadName = name + "#" + to_string(index);
+		setThreadName(threadName.c_str());
+	}
+
+	if (background) setThreadBackgroundPriority();
+	else setThreadForegroundPriority();
 
 	auto locker = unique_lock(mutex);
 
