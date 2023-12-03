@@ -221,12 +221,12 @@ static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 		#endif
 
 		buffer.colorImage = imagePool.create((VkImage)images[i],
-			imageFormat, imageBind, framebufferSize, Vulkan::imageVersion++);
+			imageFormat, imageBind, framebufferSize, GraphicsAPI::imageVersion++);
 		buffer.secondaryCommandPools = createVkCommandPools(
 			device, graphicsQueueFamilyIndex, commandPoolCount);
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		auto colorImage = Vulkan::imagePool.get(buffer.colorImage);
+		auto colorImage = GraphicsAPI::imagePool.get(buffer.colorImage);
 		colorImage->setDebugName("image.swapchain" + to_string(i));	
 		#endif
 
@@ -268,7 +268,7 @@ Swapchain::Swapchain(int2 framebufferSize, bool useVsync,
 	instance = createVkSwapchain(Vulkan::physicalDevice, Vulkan::device,
 		Vulkan::surface, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
 	buffers = createVkSwapchainBuffers(Vulkan::device,
-		instance, format, Vulkan::frameCommandPool, Vulkan::imagePool,
+		instance, format, Vulkan::frameCommandPool, GraphicsAPI::imagePool,
 		Vulkan::graphicsQueueFamilyIndex, framebufferSize, useThreading);
 
 	this->framebufferSize = framebufferSize;
@@ -278,7 +278,7 @@ Swapchain::Swapchain(int2 framebufferSize, bool useVsync,
 }
 void Swapchain::destroy()
 {
-	destroyVkSwapchainBuffers(Vulkan::device, Vulkan::imagePool, buffers);
+	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, buffers);
 	Vulkan::device.destroySwapchainKHR(instance);
 
 	for (uint8 i = 0; i < GARDEN_FRAME_LAG; i++)
@@ -301,13 +301,13 @@ void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuff
 	Vulkan::device.waitIdle();
 	vk::Format format;
 
-	destroyVkSwapchainBuffers(Vulkan::device, Vulkan::imagePool, buffers);
+	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, buffers);
 	auto newInstance = createVkSwapchain(Vulkan::physicalDevice, Vulkan::device,
 		Vulkan::surface, framebufferSize, useVsync, useTripleBuffering, instance, format);
 	Vulkan::device.destroySwapchainKHR(instance);
 
 	buffers = createVkSwapchainBuffers(Vulkan::device,
-		newInstance, format, Vulkan::frameCommandPool, Vulkan::imagePool,
+		newInstance, format, Vulkan::frameCommandPool, GraphicsAPI::imagePool,
 		Vulkan::graphicsQueueFamilyIndex, framebufferSize, useThreading);
 
 	this->framebufferSize = framebufferSize;
@@ -457,13 +457,13 @@ void Swapchain::beginSecondaryCommandBuffers(
 
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
-			auto imageView = Vulkan::imageViewPool.get(colorAttachments[i].imageView);
+			auto imageView = GraphicsAPI::imageViewPool.get(colorAttachments[i].imageView);
 			colorAttachmentFormats[i] = toVkFormat(imageView->getFormat());
 		}
 
 		if (depthStencilAttachment.imageView)
 		{
-			auto imageView = Vulkan::imageViewPool.get(depthStencilAttachment.imageView);
+			auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 			auto format = imageView->getFormat();
 
 			if (isFormatDepthOnly(format))
@@ -523,7 +523,7 @@ void Swapchain::endSecondaryCommandBuffers()
 		ExecuteCommand command;
 		command.bufferCount = (uint16)secondaryCommandBuffers.size();
 		command.buffers = secondaryCommandBuffers.data();
-		Vulkan::currentCommandBuffer->addCommand(command);
+		GraphicsAPI::currentCommandBuffer->addCommand(command);
 		secondaryCommandBuffers.clear();
 	}
 

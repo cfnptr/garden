@@ -164,10 +164,13 @@ public:
 	static Buffer::Bind& getBind(Buffer& buffer) noexcept { return buffer.bind; }
 	static uint8*& getMap(Buffer& buffer) noexcept { return buffer.map; }
 
-	static Buffer create(Buffer::Bind bind,
-		Buffer::Usage usage, uint64 size, uint64 version)
+	static Buffer create(Buffer::Bind bind, Buffer::Usage usage, uint64 size, uint64 version)
 	{
 		return Buffer(bind, usage, size, version);
+	}
+	static Buffer create(Buffer::Bind bind, Buffer::Usage usage, uint64 version)
+	{
+		return Buffer(bind, usage, version);
 	}
 	static void moveInternalObjects(Buffer& source, Buffer& destination) noexcept
 	{

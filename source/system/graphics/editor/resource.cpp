@@ -42,10 +42,10 @@ void ResourceEditor::render()
 			ImGui::TableSetupColumn("Images");
 			ImGui::TableSetupColumn("Image Views");
 			ImGui::TableHeadersRow(); ImGui::TableNextRow();
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::bufferPool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::bufferPool.getCount());
 			ImGui::TableNextColumn(); ImGui::Text("%d", 0); // TODO:
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::imagePool.getCount());
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::imageViewPool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::imagePool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::imageViewPool.getCount());
 			ImGui::EndTable();
 
 			ImGui::BeginTable("ViewerResources2", 3, ImGuiTableFlags_Borders);
@@ -53,8 +53,8 @@ void ResourceEditor::render()
 			ImGui::TableSetupColumn("Compute Pipelines");
 			ImGui::TableSetupColumn("Raytracing Pipelines");
 			ImGui::TableHeadersRow(); ImGui::TableNextRow();
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::graphicsPipelinePool.getCount());
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::computePipelinePool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::graphicsPipelinePool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::computePipelinePool.getCount());
 			ImGui::TableNextColumn(); ImGui::Text("%d", 0); // TODO:
 			ImGui::EndTable();
 
@@ -62,18 +62,18 @@ void ResourceEditor::render()
 			ImGui::TableSetupColumn("Framebuffers");
 			ImGui::TableSetupColumn("Descriptor Sets");
 			ImGui::TableHeadersRow(); ImGui::TableNextRow();
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::framebufferPool.getCount());
-			ImGui::TableNextColumn(); ImGui::Text("%d", Vulkan::descriptorSetPool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::framebufferPool.getCount());
+			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::descriptorSetPool.getCount());
 			ImGui::EndTable();
 
-			ImGui::Text("Destroy Resources: %d", (int)Vulkan::destroyBuffer.size());
+			ImGui::Text("Destroy Resources: %d", (int)GraphicsAPI::destroyBuffer.size());
 			ImGui::Spacing();
 
 			if (ImGui::CollapsingHeader("Buffers"))
 			{
 				ImGui::BeginChild("ViewerBuffers", ImVec2(0.0f, 192.0f));
-				auto buffers = Vulkan::bufferPool.getData();
-				auto occupancy = Vulkan::bufferPool.getOccupancy();
+				auto buffers = GraphicsAPI::bufferPool.getData();
+				auto occupancy = GraphicsAPI::bufferPool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& buffer = buffers[i];
@@ -96,8 +96,8 @@ void ResourceEditor::render()
 			if (ImGui::CollapsingHeader("Images"))
 			{
 				ImGui::BeginChild("ViewerImages", ImVec2(0.0f, 192.0f));
-				auto images = Vulkan::imagePool.getData();
-				auto occupancy = Vulkan::imagePool.getOccupancy();
+				auto images = GraphicsAPI::imagePool.getData();
+				auto occupancy = GraphicsAPI::imagePool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& image = images[i];
@@ -119,8 +119,8 @@ void ResourceEditor::render()
 			if (ImGui::CollapsingHeader("Image Views"))
 			{
 				ImGui::BeginChild("ViewerImageViews", ImVec2(0.0f, 192.0f));
-				auto imageViews = Vulkan::imageViewPool.getData();
-				auto occupancy = Vulkan::imageViewPool.getOccupancy();
+				auto imageViews = GraphicsAPI::imageViewPool.getData();
+				auto occupancy = GraphicsAPI::imageViewPool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& imageView = imageViews[i];
@@ -141,8 +141,8 @@ void ResourceEditor::render()
 			if (ImGui::CollapsingHeader("Graphics Pipelines"))
 			{
 				ImGui::BeginChild("ViewerGraphicsPipelines", ImVec2(0.0f, 192.0f));
-				auto graphicsPipelines = Vulkan::graphicsPipelinePool.getData();
-				auto occupancy = Vulkan::graphicsPipelinePool.getOccupancy();
+				auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
+				auto occupancy = GraphicsAPI::graphicsPipelinePool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& graphicsPipeline = graphicsPipelines[i];
@@ -157,8 +157,8 @@ void ResourceEditor::render()
 			if (ImGui::CollapsingHeader("Compute Pipelines"))
 			{
 				ImGui::BeginChild("ViewerComputePipelines", ImVec2(0.0f, 192.0f));
-				auto computePipelines = Vulkan::computePipelinePool.getData();
-				auto occupancy = Vulkan::computePipelinePool.getOccupancy();
+				auto computePipelines = GraphicsAPI::computePipelinePool.getData();
+				auto occupancy = GraphicsAPI::computePipelinePool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& computePipeline = computePipelines[i];
@@ -179,8 +179,8 @@ void ResourceEditor::render()
 			if (ImGui::CollapsingHeader("Framebuffers"))
 			{
 				ImGui::BeginChild("ViewerFramebuffers", ImVec2(0.0f, 192.0f));
-					auto framebuffers = Vulkan::framebufferPool.getData();
-				auto occupancy = Vulkan::framebufferPool.getOccupancy();
+					auto framebuffers = GraphicsAPI::framebufferPool.getData();
+				auto occupancy = GraphicsAPI::framebufferPool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& framebuffer = framebuffers[i];
@@ -196,8 +196,8 @@ void ResourceEditor::render()
 			if (ImGui::CollapsingHeader("Descriptor Sets"))
 			{
 				ImGui::BeginChild("ViewerDescriptorSets", ImVec2(0.0f, 192.0f));
-				auto descriptorSets = Vulkan::descriptorSetPool.getData();
-				auto occupancy = Vulkan::descriptorSetPool.getOccupancy();
+				auto descriptorSets = GraphicsAPI::descriptorSetPool.getData();
+				auto occupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& descriptorSet = descriptorSets[i];

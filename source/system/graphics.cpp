@@ -134,7 +134,7 @@ void GraphicsSystem::initializeImGui()
 	ImGuiData::pipelineCache = Vulkan::device.createPipelineCache(pipelineCacheInfo);
 
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto swapchainImage = Vulkan::imagePool.get(swapchainBuffer.colorImage);
+	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 
 	vector<Framebuffer::Subpass> subpasses =
 	{
@@ -168,7 +168,7 @@ void GraphicsSystem::initializeImGui()
 		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
 	}
 
-	ImGui_ImplGlfw_InitForVulkan((GLFWwindow*)Vulkan::window, true);
+	ImGui_ImplGlfw_InitForVulkan((GLFWwindow*)GraphicsAPI::window, true);
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance = Vulkan::instance;
 	init_info.PhysicalDevice = Vulkan::physicalDevice;
@@ -189,7 +189,7 @@ void GraphicsSystem::initializeImGui()
 	auto pixelRatioXY = (float2)framebufferSize / windowSize;
 	auto pixelRatio = std::max(pixelRatioXY.x, pixelRatioXY.y);
 	auto contentScaleX = 0.0f, contentScaleY = 0.0f;
-	glfwGetWindowContentScale((GLFWwindow*)Vulkan::window,
+	glfwGetWindowContentScale((GLFWwindow*)GraphicsAPI::window,
 		&contentScaleX, &contentScaleY);
 	auto contentScale = std::max(contentScaleX, contentScaleY);
 
@@ -291,21 +291,21 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen, bool isBorder
 	Vulkan::initialize(windowSize, isFullscreen, isBorderless,
 		useVsync, useTripleBuffering, useThreading);
 
-	glfwSetWindowUserPointer((GLFWwindow*)Vulkan::window, this);
-	glfwSetDropCallback((GLFWwindow*)Vulkan::window, (GLFWdropfun)onFileDrop);
+	glfwSetWindowUserPointer((GLFWwindow*)GraphicsAPI::window, this);
+	glfwSetDropCallback((GLFWwindow*)GraphicsAPI::window, (GLFWdropfun)onFileDrop);
 
-	glfwGetFramebufferSize((GLFWwindow*)Vulkan::window,
+	glfwGetFramebufferSize((GLFWwindow*)GraphicsAPI::window,
 		&framebufferSize.x, &framebufferSize.y);
-	glfwGetWindowSize((GLFWwindow*)Vulkan::window,
+	glfwGetWindowSize((GLFWwindow*)GraphicsAPI::window,
 		&this->windowSize.x, &this->windowSize.y);
 
 	double x = 0.0, y = 0.0;
-	glfwGetCursorPos((GLFWwindow*)Vulkan::window, &x, &y);
+	glfwGetCursorPos((GLFWwindow*)GraphicsAPI::window, &x, &y);
 	cursorPosition = float2((float)x, (float)y);
 
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto swapchainImage = Vulkan::imagePool.get(swapchainBuffer.colorImage);
-	swapchainFramebuffer = Vulkan::framebufferPool.create(
+	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
+	swapchainFramebuffer = GraphicsAPI::framebufferPool.create(
 		framebufferSize, swapchainImage->getDefaultView());
 	SET_THIS_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
@@ -401,11 +401,11 @@ void GraphicsSystem::update()
 	glfwPollEvents();
 	auto manager = getManager();
 
-	if (glfwWindowShouldClose((GLFWwindow*)Vulkan::window))
+	if (glfwWindowShouldClose((GLFWwindow*)GraphicsAPI::window))
 	{
 		// TODO: add modal if user sure want to exit.
 		// And also allow to force quit or wait for running threads.
-		glfwHideWindow((GLFWwindow*)Vulkan::window);
+		glfwHideWindow((GLFWwindow*)GraphicsAPI::window);
 		manager->stop();
 		return;
 	}
@@ -417,14 +417,14 @@ void GraphicsSystem::update()
 			auto primaryMonitor = glfwGetPrimaryMonitor();
 			auto videoMode = glfwGetVideoMode(primaryMonitor);
 
-			if (glfwGetWindowMonitor((GLFWwindow*)Vulkan::window))
+			if (glfwGetWindowMonitor((GLFWwindow*)GraphicsAPI::window))
 			{
-				glfwSetWindowMonitor((GLFWwindow*)Vulkan::window,
+				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window,
 					nullptr, 0, 0, 1280, 720, videoMode->refreshRate);
 			}
 			else
 			{
-				glfwSetWindowMonitor((GLFWwindow*)Vulkan::window, primaryMonitor,
+				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window, primaryMonitor,
 					0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
 			}
 
@@ -437,13 +437,13 @@ void GraphicsSystem::update()
 	deltaTime = newTime - time;
 	time = newTime;
 	
-	glfwGetFramebufferSize((GLFWwindow*)Vulkan::window,
+	glfwGetFramebufferSize((GLFWwindow*)GraphicsAPI::window,
 		&framebufferSize.x, &framebufferSize.y);
-	glfwGetWindowSize((GLFWwindow*)Vulkan::window,
+	glfwGetWindowSize((GLFWwindow*)GraphicsAPI::window,
 		&windowSize.x, &windowSize.y);
 
 	double x = 0.0, y = 0.0;
-	glfwGetCursorPos((GLFWwindow*)Vulkan::window, &x, &y);
+	glfwGetCursorPos((GLFWwindow*)GraphicsAPI::window, &x, &y);
 	cursorPosition = float2((float)x, (float)y);
 
 	IRenderSystem::SwapchainChanges swapchainChanges;
@@ -507,8 +507,8 @@ void GraphicsSystem::update()
 
 	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto& framebuffer = **Vulkan::framebufferPool.get(swapchainFramebuffer);
-	auto colorImage = Vulkan::imagePool.get(swapchainBuffer.colorImage);
+	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
+	auto colorImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 	FramebufferExt::getColorAttachments(framebuffer)[0].imageView =
 		colorImage->getDefaultView();
 	FramebufferExt::getSize(framebuffer) = framebufferSize;
@@ -525,43 +525,69 @@ void GraphicsSystem::update()
 	for (auto subsystem : subsystems)
 		subsystem.system->update(); // Updating after swapchain recreate.
 
-	auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
-
 	if (camera)
 	{
-		auto cameraComponent = manager->get<CameraComponent>(camera);
-		cameraComponent->p.perspective.aspectRatio =
-			(float)framebufferSize.x / (float)framebufferSize.y;
-		
-		auto frameSize = manager->get<DeferredRenderSystem>()->getFramebufferSize();
-		auto transformComponent = manager->get<TransformComponent>(camera);
-		currentCameraConstants.view = calcRelativeView(manager, *transformComponent);
-		setTranslation(currentCameraConstants.view, float3(0.0f));
+		auto transformComponent = manager->tryGet<TransformComponent>(camera);
+		if (transformComponent)
+		{
+			currentCameraConstants.view = calcRelativeView(manager, *transformComponent);
+			setTranslation(currentCameraConstants.view, float3(0.0f));
+			currentCameraConstants.cameraPos = float4(transformComponent->position, 0.0f);
+		}
+		else
+		{
+			currentCameraConstants.view = float4x4::identity;
+			currentCameraConstants.cameraPos = 0.0f;
+		}
 
-		currentCameraConstants.projection = cameraComponent->calcProjection();
+		auto cameraComponent = manager->tryGet<CameraComponent>(camera);
+		if (cameraComponent)
+		{
+			cameraComponent->p.perspective.aspectRatio =
+				(float)framebufferSize.x / (float)framebufferSize.y;
+			currentCameraConstants.projection = cameraComponent->calcProjection();
+			currentCameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
+		}
+		else
+		{
+			currentCameraConstants.projection = float4x4::identity;
+			currentCameraConstants.nearPlane = DEFAULT_HMD_DEPTH;
+		}
+		
+		auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
+		if (deferredSystem)
+		{
+			auto frameSize = deferredSystem->getFramebufferSize();
+			currentCameraConstants.frameSize = frameSize;
+			currentCameraConstants.frameSizeInv = 1.0f / (float2)frameSize;
+		}
+		else
+		{
+			currentCameraConstants.frameSize = currentCameraConstants.frameSizeInv = 1.0f;
+		}
+		
 		currentCameraConstants.viewProj =
 			currentCameraConstants.projection * currentCameraConstants.view;
 		currentCameraConstants.viewInverse = inverse(currentCameraConstants.view);
 		currentCameraConstants.projInverse = inverse(currentCameraConstants.projection);
 		currentCameraConstants.viewProjInv = inverse(currentCameraConstants.viewProj);
-		currentCameraConstants.cameraPos = float4(transformComponent->position, 0.0f);
-		currentCameraConstants.frameSize = frameSize;
-		currentCameraConstants.frameSizeInv = 1.0f / (float2)frameSize;
 		currentCameraConstants.frameSizeInv2 = currentCameraConstants.frameSizeInv * 2.0f;
-		currentCameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
-
 		auto viewDir = currentCameraConstants.view * float4(float3::front, 1.0f);
 		currentCameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
 		
 		if (directionalLight)
 		{
-			auto lightTransform = manager->get<TransformComponent>(directionalLight);
-			auto lightDir = lightTransform->rotation * float3::front;
-			currentCameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
+			auto lightTransform = manager->tryGet<TransformComponent>(directionalLight);
+			if (lightTransform)
+			{
+				auto lightDir = lightTransform->rotation * float3::front;
+				currentCameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
+			}
 		}
 		else currentCameraConstants.lightDir = float4(float3::bottom, 0.0f);
 
-		auto cameraBuffer = Vulkan::bufferPool.get(
+		auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
+		auto cameraBuffer = GraphicsAPI::bufferPool.get(
 			cameraConstantsBuffers[swapchainBufferIndex][0]);
 		cameraBuffer->setData(&currentCameraConstants);
 	}
@@ -587,18 +613,18 @@ void GraphicsSystem::update()
 	stopRecording();
 	#endif
 
-	Vulkan::graphicsCommandBuffer.submit();
-	Vulkan::transferCommandBuffer.submit();
-	Vulkan::computeCommandBuffer.submit();
-	Vulkan::frameCommandBuffer.submit();
+	GraphicsAPI::graphicsCommandBuffer.submit();
+	GraphicsAPI::transferCommandBuffer.submit();
+	GraphicsAPI::computeCommandBuffer.submit();
+	GraphicsAPI::frameCommandBuffer.submit();
 
-	Vulkan::descriptorSetPool.dispose();
-	Vulkan::computePipelinePool.dispose();
-	Vulkan::graphicsPipelinePool.dispose();
-	Vulkan::framebufferPool.dispose();
-	Vulkan::imageViewPool.dispose();
-	Vulkan::imagePool.dispose();
-	Vulkan::bufferPool.dispose();
+	GraphicsAPI::descriptorSetPool.dispose();
+	GraphicsAPI::computePipelinePool.dispose();
+	GraphicsAPI::graphicsPipelinePool.dispose();
+	GraphicsAPI::framebufferPool.dispose();
+	GraphicsAPI::imageViewPool.dispose();
+	GraphicsAPI::imagePool.dispose();
+	GraphicsAPI::bufferPool.dispose();
 
 	Vulkan::updateDestroyBuffer();
 	frameIndex++;
@@ -627,17 +653,17 @@ uint32 GraphicsSystem::getSwapchainIndex() const
 }
 bool GraphicsSystem::isKeyboardButtonPressed(KeyboardButton button) const
 {
-	return glfwGetKey((GLFWwindow*)Vulkan::window, (int)button) == GLFW_PRESS;
+	return glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_PRESS;
 }
 bool GraphicsSystem::isMouseButtonPressed(MouseButton button) const
 {
-	return glfwGetMouseButton((GLFWwindow*)Vulkan::window, (int)button) == GLFW_PRESS;
+	return glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_PRESS;
 }
 void GraphicsSystem::setCursorMode(CursorMode mode)
 {
 	if (cursorMode == mode) return;
 	cursorMode = mode;
-	glfwSetInputMode((GLFWwindow*)Vulkan::window, GLFW_CURSOR, (int)mode);
+	glfwSetInputMode((GLFWwindow*)GraphicsAPI::window, GLFW_CURSOR, (int)mode);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -704,27 +730,27 @@ void GraphicsSystem::recreateSwapchain(const IRenderSystem::SwapchainChanges& ch
 //--------------------------------------------------------------------------------------------------
 void GraphicsSystem::setDebugName(ID<Buffer> instance, const string& name)
 {
-	auto resource = Vulkan::bufferPool.get(instance);
+	auto resource = GraphicsAPI::bufferPool.get(instance);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Image> instance, const string& name)
 {
-	auto resource = Vulkan::imagePool.get(instance);
+	auto resource = GraphicsAPI::imagePool.get(instance);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<ImageView> instance, const string& name)
 {
-	auto resource = Vulkan::imageViewPool.get(instance);
+	auto resource = GraphicsAPI::imageViewPool.get(instance);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Framebuffer> instance, const string& name)
 {
-	auto resource = Vulkan::framebufferPool.get(instance);
+	auto resource = GraphicsAPI::framebufferPool.get(instance);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<DescriptorSet> instance, const string& name)
 {
-	auto resource = Vulkan::descriptorSetPool.get(instance);
+	auto resource = GraphicsAPI::descriptorSetPool.get(instance);
 	resource->setDebugName(name);
 }
 #endif
@@ -739,22 +765,22 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind,
 	if (data) GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
 	#endif
 
-	auto buffer = Vulkan::bufferPool.create(bind, usage, size, Vulkan::bufferVersion++);
+	auto buffer = GraphicsAPI::bufferPool.create(bind, usage, size, GraphicsAPI::bufferVersion++);
 
 	if (data)
 	{
 		if (usage == Buffer::Usage::CpuOnly || usage == Buffer::Usage::CpuToGpu)
 		{
-			auto bufferView = Vulkan::bufferPool.get(buffer);
+			auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 			bufferView->setData(data, size);
 		}
 		else
 		{
-			auto stagingBuffer = Vulkan::bufferPool.create(Buffer::Bind::TransferSrc,
-				Buffer::Usage::CpuOnly, size, Vulkan::bufferVersion++);
+			auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+				Buffer::Usage::CpuOnly, size, GraphicsAPI::bufferVersion++);
 			SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
 				"buffer.staging" + to_string(*stagingBuffer));
-			auto stagingBufferView = Vulkan::bufferPool.get(stagingBuffer);
+			auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
 			stagingBufferView->setData(data, size);
 
 			if (!isRecording())
@@ -765,7 +791,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind,
 			}
 			else Buffer::copy(stagingBuffer, buffer);
 
-			Vulkan::bufferPool.destroy(stagingBuffer);
+			GraphicsAPI::bufferPool.destroy(stagingBuffer);
 		}
 	}
 
@@ -773,11 +799,11 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind,
 }
 void GraphicsSystem::destroy(ID<Buffer> instance)
 {
-	Vulkan::bufferPool.destroy(instance);
+	GraphicsAPI::bufferPool.destroy(instance);
 }
 View<Buffer> GraphicsSystem::get(ID<Buffer> instance) const
 {
-	return Vulkan::bufferPool.get(instance);
+	return GraphicsAPI::bufferPool.get(instance);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -851,14 +877,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 		mipSize = max(mipSize / 2, int3(1));
 	}
 
-	auto image = Vulkan::imagePool.create(type, format, bind,
-		size, mipCount, layerCount, Vulkan::imageVersion++);
+	auto image = GraphicsAPI::imagePool.create(type, format, bind,
+		size, mipCount, layerCount, GraphicsAPI::imageVersion++);
 
 	if (stagingCount > 0)
 	{
 		GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
-		auto stagingBuffer = Vulkan::bufferPool.create(Buffer::Bind::TransferSrc,
-			Buffer::Usage::CpuOnly, stagingSize, Vulkan::bufferVersion++);
+		auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+			Buffer::Usage::CpuOnly, stagingSize, GraphicsAPI::bufferVersion++);
 		SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
 			"buffer.staging" + to_string(*stagingBuffer));
 		
@@ -866,14 +892,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 		if (format == dataFormat) targetImage = image;
 		else
 		{
-			targetImage = Vulkan::imagePool.create(type, dataFormat,
+			targetImage = GraphicsAPI::imagePool.create(type, dataFormat,
 				Image::Bind::TransferDst | Image::Bind::TransferSrc,
-				size, mipCount, layerCount, Vulkan::imageVersion++);
+				size, mipCount, layerCount, GraphicsAPI::imageVersion++);
 			SET_THIS_RESOURCE_DEBUG_NAME(targetImage,
 				"image.staging" + to_string(*targetImage));
 		}
 
-		auto stagingBufferView = Vulkan::bufferPool.get(stagingBuffer);
+		auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
 		auto stagingMap = stagingBufferView->getMap();
 		vector<Image::CopyBufferRegion> regions(stagingCount);
 		mipSize = size;
@@ -921,7 +947,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 			}
 
 			Image::copy(stagingBuffer, targetImage, regions);
-			Vulkan::bufferPool.destroy(stagingBuffer);
+			GraphicsAPI::bufferPool.destroy(stagingBuffer);
 
 			vector<Image::BlitRegion> blitRegions(mipCount);
 			mipSize = size;
@@ -940,7 +966,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 
 			Image::blit(targetImage, image, blitRegions);
 			if (shouldEnd) stopRecording();
-			Vulkan::imagePool.destroy(targetImage);
+			GraphicsAPI::imagePool.destroy(targetImage);
 		}
 		else
 		{
@@ -951,7 +977,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 				stopRecording();
 			}
 			else Image::copy(stagingBuffer, targetImage, regions);
-			Vulkan::bufferPool.destroy(stagingBuffer);
+			GraphicsAPI::bufferPool.destroy(stagingBuffer);
 		}
 	}
 
@@ -959,12 +985,12 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 }
 void GraphicsSystem::destroy(ID<Image> instance)
 {
-	if (instance) GARDEN_ASSERT(!Vulkan::imagePool.get(instance)->isSwapchain());
-	Vulkan::imagePool.destroy(instance);
+	if (instance) GARDEN_ASSERT(!GraphicsAPI::imagePool.get(instance)->isSwapchain());
+	GraphicsAPI::imagePool.destroy(instance);
 }
 View<Image> GraphicsSystem::get(ID<Image> instance) const
 {
-	return Vulkan::imagePool.get(instance);
+	return GraphicsAPI::imagePool.get(instance);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -977,7 +1003,7 @@ ID<ImageView> GraphicsSystem::createImageView(
 	GARDEN_ASSERT(layerCount > 0);
 	
 	#if GARDEN_DEBUG
-	auto _image = Vulkan::imagePool.get(image);
+	auto _image = GraphicsAPI::imagePool.get(image);
 	GARDEN_ASSERT(ResourceExt::getInstance(**_image));
 	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
@@ -995,23 +1021,23 @@ ID<ImageView> GraphicsSystem::createImageView(
 
 	if (format == Image::Format::Undefined)
 	{
-		auto imageView = Vulkan::imagePool.get(image);
+		auto imageView = GraphicsAPI::imagePool.get(image);
 		format = imageView->getFormat();
 	}
 
-	return Vulkan::imageViewPool.create(false, image,
+	return GraphicsAPI::imageViewPool.create(false, image,
 		type, format, baseMip, mipCount, baseLayer, layerCount);
 }
 void GraphicsSystem::destroy(ID<ImageView> instance)
 {
 	#if GARDEN_DEBUG
-	if (instance) GARDEN_ASSERT(!Vulkan::imageViewPool.get(instance)->isDefault());
+	if (instance) GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(instance)->isDefault());
 	#endif
-	Vulkan::imageViewPool.destroy(instance);
+	GraphicsAPI::imageViewPool.destroy(instance);
 }
 View<ImageView> GraphicsSystem::get(ID<ImageView> instance) const
 {
-	return Vulkan::imageViewPool.get(instance);
+	return GraphicsAPI::imageViewPool.get(instance);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1028,25 +1054,25 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 	for	(auto colorAttachment : colorAttachments)
 	{
 		GARDEN_ASSERT(colorAttachment.imageView);
-		auto imageView = Vulkan::imageViewPool.get(colorAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
-		auto image = Vulkan::imagePool.get(imageView->getImage());
+		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip(
 			(int2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
 	}
 	if (depthStencilAttachment.imageView)
 	{
-		auto imageView = Vulkan::imageViewPool.get(depthStencilAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
-		auto image = Vulkan::imagePool.get(imageView->getImage());
+		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip(
 			(int2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
 	}
 	#endif
 
-	return Vulkan::framebufferPool.create(size,
+	return GraphicsAPI::framebufferPool.create(size,
 		std::move(colorAttachments), depthStencilAttachment);
 }
 ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
@@ -1063,8 +1089,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 		{
 			GARDEN_ASSERT(inputAttachment.imageView);
 			GARDEN_ASSERT(inputAttachment.shaderStages != ShaderStage::None);
-			auto imageView = Vulkan::imageViewPool.get(inputAttachment.imageView);
-			auto image = Vulkan::imagePool.get(imageView->getImage());
+			auto imageView = GraphicsAPI::imageViewPool.get(inputAttachment.imageView);
+			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip(
 				(int2)image->getSize(), imageView->getBaseMip()));
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
@@ -1077,8 +1103,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 			GARDEN_ASSERT((!outputAttachment.clear && !outputAttachment.load) ||
 				(outputAttachment.clear && !outputAttachment.load) ||
 				(!outputAttachment.clear && outputAttachment.load));
-			auto imageView = Vulkan::imageViewPool.get(outputAttachment.imageView);
-			auto image = Vulkan::imagePool.get(imageView->getImage());
+			auto imageView = GraphicsAPI::imageViewPool.get(outputAttachment.imageView);
+			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip(
 				(int2)image->getSize(), imageView->getBaseMip()));
 			#if GARDEN_DEBUG
@@ -1095,37 +1121,37 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 	GARDEN_ASSERT(outputAttachmentCount > 0);
 	#endif
 
-	return Vulkan::framebufferPool.create(size, std::move(subpasses));
+	return GraphicsAPI::framebufferPool.create(size, std::move(subpasses));
 }
 void GraphicsSystem::destroy(ID<Framebuffer> instance)
 {
 	#if GARDEN_DEBUG
-	if (instance) GARDEN_ASSERT(!Vulkan::framebufferPool.get(instance)->isSwapchainFramebuffer());
+	if (instance) GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(instance)->isSwapchainFramebuffer());
 	#endif
-	Vulkan::framebufferPool.destroy(instance);
+	GraphicsAPI::framebufferPool.destroy(instance);
 }
 View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> instance) const
 {
-	return Vulkan::framebufferPool.get(instance);
+	return GraphicsAPI::framebufferPool.get(instance);
 }
 
 //--------------------------------------------------------------------------------------------------
 void GraphicsSystem::destroy(ID<GraphicsPipeline> instance)
 {
-	Vulkan::graphicsPipelinePool.destroy(instance);
+	GraphicsAPI::graphicsPipelinePool.destroy(instance);
 }
 View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> instance) const
 {
-	return Vulkan::graphicsPipelinePool.get(instance);
+	return GraphicsAPI::graphicsPipelinePool.get(instance);
 }
 
 void GraphicsSystem::destroy(ID<ComputePipeline> instance)
 {
-	Vulkan::computePipelinePool.destroy(instance);
+	GraphicsAPI::computePipelinePool.destroy(instance);
 }
 View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> instance) const
 {
-	return Vulkan::computePipelinePool.get(instance);
+	return GraphicsAPI::computePipelinePool.get(instance);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1136,12 +1162,12 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = Vulkan::graphicsPipelinePool.get(graphicsPipeline);
+	auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(graphicsPipeline);
 	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
 	#endif
 
-	return Vulkan::descriptorSetPool.create(ID<Pipeline>(graphicsPipeline),
+	return GraphicsAPI::descriptorSetPool.create(ID<Pipeline>(graphicsPipeline),
 		PipelineType::Graphics, std::move(uniforms), index);
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> computePipeline,
@@ -1151,50 +1177,53 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = Vulkan::computePipelinePool.get(computePipeline);
+	auto pipelineView = GraphicsAPI::computePipelinePool.get(computePipeline);
 	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
 	#endif
 
-	return Vulkan::descriptorSetPool.create(ID<Pipeline>(computePipeline),
+	return GraphicsAPI::descriptorSetPool.create(ID<Pipeline>(computePipeline),
 		PipelineType::Compute, std::move(uniforms), index);
 }
 void GraphicsSystem::destroy(ID<DescriptorSet> instance)
 {
-	Vulkan::descriptorSetPool.destroy(instance);
+	GraphicsAPI::descriptorSetPool.destroy(instance);
 }
 View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> instance) const
 {
-	return Vulkan::descriptorSetPool.get(instance);
+	return GraphicsAPI::descriptorSetPool.get(instance);
 }
 
 //--------------------------------------------------------------------------------------------------
 bool GraphicsSystem::isRecording() const noexcept
 {
-	return Vulkan::currentCommandBuffer;
+	return GraphicsAPI::currentCommandBuffer;
 }
 void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 {
 	#if GARDEN_DEBUG
-	if (Vulkan::currentCommandBuffer) throw runtime_error("Already recording.");
+	if (GraphicsAPI::currentCommandBuffer) throw runtime_error("Already recording.");
 	#endif
 	
-	if (commandBufferType == CommandBufferType::Frame)
-		Vulkan::currentCommandBuffer = &Vulkan::frameCommandBuffer;
-	else if (commandBufferType == CommandBufferType::Graphics)
-		Vulkan::currentCommandBuffer = &Vulkan::graphicsCommandBuffer;
-	else if (commandBufferType == CommandBufferType::TransferOnly)
-		Vulkan::currentCommandBuffer = &Vulkan::transferCommandBuffer;
-	else if (commandBufferType == CommandBufferType::ComputeOnly)
-		Vulkan::currentCommandBuffer = &Vulkan::computeCommandBuffer;
-	else abort();
+	switch (commandBufferType)
+	{
+	case CommandBufferType::Frame:
+		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::frameCommandBuffer; break;
+	case CommandBufferType::Graphics:
+		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::graphicsCommandBuffer; break;
+	case CommandBufferType::TransferOnly:
+		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::transferCommandBuffer; break;
+	case CommandBufferType::ComputeOnly:
+		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::computeCommandBuffer; break;
+	default: abort();
+	}
 }
 void GraphicsSystem::stopRecording()
 {
 	#if GARDEN_DEBUG
-	if (!Vulkan::currentCommandBuffer) throw runtime_error("Not recording.");
+	if (!GraphicsAPI::currentCommandBuffer) throw runtime_error("Not recording.");
 	#endif
-	Vulkan::currentCommandBuffer = nullptr;
+	GraphicsAPI::currentCommandBuffer = nullptr;
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR

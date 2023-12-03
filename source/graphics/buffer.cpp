@@ -56,6 +56,9 @@ static VmaMemoryUsage toVmaMemoryUsage(Memory::Usage memoryUsage)
 Buffer::Buffer(Bind bind, Usage usage, uint64 size, uint64 version) :
 	Memory(size, usage, version)
 {
+	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(version > 0);
+
 	VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bufferInfo.size = size;
 	bufferInfo.usage = (VkBufferUsageFlags)toVkBufferUsages(bind);
@@ -94,9 +97,9 @@ bool Buffer::destroy()
 {
 	if (isBusy()) return false;
 
-	if (Vulkan::isRunning)
+	if (GraphicsAPI::isRunning)
 	{
-		Vulkan::destroyResource(Vulkan::DestroyResourceType::Buffer,
+		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Buffer,
 			instance, allocation);
 	}
 	else
@@ -158,22 +161,22 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	GARDEN_ASSERT(size == 0 || size + offset <= binarySize);
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	FillBufferCommand command;
-	command.buffer = Vulkan::bufferPool.getID(this);
+	command.buffer = GraphicsAPI::bufferPool.getID(this);
 	command.data = data;
 	command.size = size;
 	command.offset = offset;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::transferCommandBuffer)
-		lastTransferTime = Vulkan::transferCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
+		lastTransferTime = GraphicsAPI::transferCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -185,13 +188,13 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination,
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
-	auto srcView = Vulkan::bufferPool.get(source);
+	auto srcView = GraphicsAPI::bufferPool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-	auto dstView = Vulkan::bufferPool.get(destination);
+	auto dstView = GraphicsAPI::bufferPool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 	
@@ -220,26 +223,26 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination,
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
 	{
 		srcView->lastGraphicsTime = dstView->lastGraphicsTime =
-			Vulkan::graphicsCommandBuffer.getBusyTime();
+			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::transferCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
 	{
 		srcView->lastTransferTime = dstView->lastTransferTime =
-			Vulkan::transferCommandBuffer.getBusyTime();
+			GraphicsAPI::transferCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
 	{
 		srcView->lastComputeTime = dstView->lastComputeTime =
-			Vulkan::computeCommandBuffer.getBusyTime();
+			GraphicsAPI::computeCommandBuffer.getBusyTime();
 	}
 	else
 	{
 		srcView->lastFrameTime = dstView->lastFrameTime =
-			Vulkan::frameCommandBuffer.getBusyTime();
+			GraphicsAPI::frameCommandBuffer.getBusyTime();
 	}
 }
