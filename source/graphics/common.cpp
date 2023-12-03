@@ -25,25 +25,25 @@ using namespace garden::graphics;
 void DebugLabel::begin(const string& name, const Color& color)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	BeginLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 void DebugLabel::end()
 {
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	EndLabelCommand command;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 void DebugLabel::insert(const string& name, const Color& color)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	InsertLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 #endif

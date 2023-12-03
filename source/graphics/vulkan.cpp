@@ -45,11 +45,9 @@ static const vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 #endif
 
 //--------------------------------------------------------------------------------------------------
-void* Vulkan::hashState = nullptr;
 vk::Instance Vulkan::instance = {};
 vk::DispatchLoaderDynamic Vulkan::dynamicLoader = {};
 vk::PhysicalDevice Vulkan::physicalDevice = {};
-void* Vulkan::window = nullptr;
 vk::SurfaceKHR Vulkan::surface = {};
 uint32 Vulkan::graphicsQueueFamilyIndex = 0;
 uint32 Vulkan::transferQueueFamilyIndex = 0;
@@ -65,38 +63,15 @@ vk::CommandPool Vulkan::graphicsCommandPool = {};
 vk::CommandPool Vulkan::transferCommandPool = {};
 vk::CommandPool Vulkan::computeCommandPool = {};
 vk::DescriptorPool Vulkan::descriptorPool = {};
-LinearPool<Buffer> Vulkan::bufferPool;
-LinearPool<Image> Vulkan::imagePool;
-LinearPool<ImageView> Vulkan::imageViewPool;
-LinearPool<Framebuffer> Vulkan::framebufferPool;
-LinearPool<GraphicsPipeline> Vulkan::graphicsPipelinePool;
-LinearPool<ComputePipeline> Vulkan::computePipelinePool;
-LinearPool<DescriptorSet> Vulkan::descriptorSetPool;
-uint64 Vulkan::graphicsPipelineVersion = 0;
-uint64 Vulkan::computePipelineVersion = 0;
-uint64 Vulkan::bufferVersion = 0;
-uint64 Vulkan::imageVersion = 0;
 vector<vk::CommandBuffer> Vulkan::secondaryCommandBuffers;
 vector<bool> Vulkan::secondaryCommandStates;
-vector<Vulkan::DestroyResource> Vulkan::destroyBuffer;
-map<void*, uint64> Vulkan::renderPasses;
 Swapchain Vulkan::swapchain;
-CommandBuffer Vulkan::frameCommandBuffer;
-CommandBuffer Vulkan::graphicsCommandBuffer;
-CommandBuffer Vulkan::transferCommandBuffer;
-CommandBuffer Vulkan::computeCommandBuffer;
-CommandBuffer* Vulkan::currentCommandBuffer = nullptr;
 vk::PhysicalDeviceProperties2 Vulkan::deviceProperties = {};
 vk::PhysicalDeviceFeatures2 Vulkan::deviceFeatures = {};
-bool Vulkan::isDeviceIntegrated = false;
-bool Vulkan::isRunning = false;
 
 #if GARDEN_DEBUG
 vk::DebugUtilsMessengerEXT Vulkan::debugMessenger = {};
 bool Vulkan::hasDebugUtils = false;
-#endif
-#if GARDEN_EDITOR
-bool Vulkan::recordGpuTime = false;
 #endif
 
 #if GARDEN_DEBUG
@@ -563,14 +538,14 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 	bool useVsync, bool useTripleBuffering, bool useThreading)
 {
-	GARDEN_ASSERT(!isRunning);
+	GARDEN_ASSERT(!GraphicsAPI::isRunning);
 
-	isRunning = true;
-	hashState = XXH3_createState();
-	graphicsPipelineVersion = 1;
-	computePipelineVersion = 1;
-	bufferVersion = 1;
-	imageVersion = 1;
+	GraphicsAPI::isRunning = true;
+	GraphicsAPI::hashState = XXH3_createState();
+	GraphicsAPI::graphicsPipelineVersion = 1;
+	GraphicsAPI::computePipelineVersion = 1;
+	GraphicsAPI::bufferVersion = 1;
+	GraphicsAPI::imageVersion = 1;
 
 	if (!glfwInit()) throw runtime_error("Failed to initialize GLFW.");
 
@@ -596,7 +571,7 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 	auto window = glfwCreateWindow(windowSize.x, windowSize.y,
 		GARDEN_APP_NAME_STRING, primaryMonitor, NULL);
 	if (!window) throw runtime_error("Failed to create GLFW window.");
-	Vulkan::window = window;
+	GraphicsAPI::window = window;
 
 	if (glfwRawMouseMotionSupported())
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -648,8 +623,8 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 	dynamicLoader = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 	#endif
 	
-	physicalDevice = getBestPhysicalDevice(instance, isDeviceIntegrated);
-	surface = createVkSurface(instance, (GLFWwindow*)window);
+	physicalDevice = getBestPhysicalDevice(instance, GraphicsAPI::isDeviceIntegrated);
+	surface = createVkSurface(instance, window);
 	getVkQueueFamilyIndices(physicalDevice, surface, graphicsQueueFamilyIndex,
 		transferQueueFamilyIndex, computeQueueFamilyIndex, graphicsQueueMaxCount,
 		transferQueueMaxCount, computeQueueMaxCount);
@@ -670,23 +645,10 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 	transferCommandPool = createVkCommandPool(device, transferQueueFamilyIndex);
 	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex); 
 	descriptorPool = createVkDescriptorPool(device);
-	frameCommandBuffer.initialize(CommandBufferType::Frame);
-	graphicsCommandBuffer.initialize(CommandBufferType::Graphics);
-	transferCommandBuffer.initialize(CommandBufferType::TransferOnly);
-	computeCommandBuffer.initialize(CommandBufferType::ComputeOnly);
-
-	#if GARDEN_DEBUG
-	if (Vulkan::hasDebugUtils)
-	{
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer);
-		nameInfo.objectHandle = (uint64)(VkCommandBuffer)transferCommandBuffer.instance;
-		nameInfo.pObjectName = "commandBuffer.transfer";
-		device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
-		nameInfo.objectHandle = (uint64)(VkCommandBuffer)computeCommandBuffer.instance;
-		nameInfo.pObjectName = "commandBuffer.compute";
-		device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
-	}
-	#endif
+	GraphicsAPI::frameCommandBuffer.initialize(CommandBufferType::Frame);
+	GraphicsAPI::graphicsCommandBuffer.initialize(CommandBufferType::Graphics);
+	GraphicsAPI::transferCommandBuffer.initialize(CommandBufferType::TransferOnly);
+	GraphicsAPI::computeCommandBuffer.initialize(CommandBufferType::ComputeOnly);
 
 	int2 framebufferSize;
 	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
@@ -696,26 +658,26 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 //--------------------------------------------------------------------------------------------------
 void Vulkan::terminate()
 {
-	if (!isRunning) return;
+	if (!GraphicsAPI::isRunning) return;
 
 	// Should be set here, to destroy resources.
-	isRunning = false; 
+	GraphicsAPI::isRunning = false;
 	Vulkan::updateDestroyBuffer();
 	swapchain.destroy();
 
-	computeCommandBuffer.terminate();
-	transferCommandBuffer.terminate();
-	graphicsCommandBuffer.terminate();
-	frameCommandBuffer.terminate();
+	GraphicsAPI::computeCommandBuffer.terminate();
+	GraphicsAPI::transferCommandBuffer.terminate();
+	GraphicsAPI::graphicsCommandBuffer.terminate();
+	GraphicsAPI::frameCommandBuffer.terminate();
 
-	descriptorSetPool.clear();
-	computePipelinePool.clear();
-	graphicsPipelinePool.clear();
-	framebufferPool.clear();
-	Vulkan::renderPasses.clear();
-	imageViewPool.clear();
-	imagePool.clear();
-	bufferPool.clear();
+	GraphicsAPI::descriptorSetPool.clear();
+	GraphicsAPI::computePipelinePool.clear();
+	GraphicsAPI::graphicsPipelinePool.clear();
+	GraphicsAPI::framebufferPool.clear();
+	GraphicsAPI::renderPasses.clear();
+	GraphicsAPI::imageViewPool.clear();
+	GraphicsAPI::imagePool.clear();
+	GraphicsAPI::bufferPool.clear();
 
 	if (device)
 	{
@@ -729,7 +691,7 @@ void Vulkan::terminate()
 	}
 	
 	instance.destroySurfaceKHR(surface);
-	glfwDestroyWindow((GLFWwindow*)window);
+	glfwDestroyWindow((GLFWwindow*)GraphicsAPI::window);
 
 	#if GARDEN_DEBUG
 	if (hasDebugUtils) instance.destroy(debugMessenger, nullptr, dynamicLoader);
@@ -737,23 +699,23 @@ void Vulkan::terminate()
 
 	instance.destroy();
 	glfwTerminate();
-	XXH3_freeState((XXH3_state_t*)hashState);
+	XXH3_freeState((XXH3_state_t*)GraphicsAPI::hashState);
 }
 
 //--------------------------------------------------------------------------------------------------
 void Vulkan::updateDestroyBuffer()
 {
-	if (Vulkan::destroyBuffer.empty()) return;
+	if (GraphicsAPI::destroyBuffer.empty()) return;
 
-	sort(Vulkan::destroyBuffer.begin(), Vulkan::destroyBuffer.end(),
-		[](const Vulkan::DestroyResource& a, const Vulkan::DestroyResource& b)
+	sort(GraphicsAPI::destroyBuffer.begin(), GraphicsAPI::destroyBuffer.end(),
+		[](const GraphicsAPI::DestroyResource& a, const GraphicsAPI::DestroyResource& b)
 		{ return (uint32)a.type < (uint32)b.type; });
 
-	for (auto& resource : Vulkan::destroyBuffer)
+	for (auto& resource : GraphicsAPI::destroyBuffer)
 	{
 		switch (resource.type)
 		{
-		case Vulkan::DestroyResourceType::DescriptorSet:
+		case GraphicsAPI::DestroyResourceType::DescriptorSet:
 			if (resource.count > 0)
 			{
 				Vulkan::device.freeDescriptorSets(Vulkan::descriptorPool,
@@ -766,7 +728,7 @@ void Vulkan::updateDestroyBuffer()
 					Vulkan::descriptorPool, 1, (vk::DescriptorSet*)&resource.data0);
 			}
 			break;
-		case Vulkan::DestroyResourceType::Pipeline:
+		case GraphicsAPI::DestroyResourceType::Pipeline:
 			if (resource.count > 0)
 			{
 				for (uint32 i = 0; i < resource.count; i++)
@@ -780,28 +742,28 @@ void Vulkan::updateDestroyBuffer()
 			Vulkan::device.destroyPipelineLayout((VkPipelineLayout)resource.data1);
 			Vulkan::device.destroyPipelineCache((VkPipelineCache)resource.data2);
 			break;
-		case Vulkan::DestroyResourceType::DescriptorPool:
+		case GraphicsAPI::DestroyResourceType::DescriptorPool:
 			Vulkan::device.destroyDescriptorPool((VkDescriptorPool)resource.data0);
 			break;
-		case Vulkan::DestroyResourceType::DescriptorSetLayout:
+		case GraphicsAPI::DestroyResourceType::DescriptorSetLayout:
 			Vulkan::device.destroyDescriptorSetLayout(
 				(VkDescriptorSetLayout)resource.data0);
 			break;
-		case Vulkan::DestroyResourceType::Sampler:
+		case GraphicsAPI::DestroyResourceType::Sampler:
 			Vulkan::device.destroySampler((VkSampler)resource.data0);
 			break;
-		case Vulkan::DestroyResourceType::Framebuffer:
+		case GraphicsAPI::DestroyResourceType::Framebuffer:
 			Vulkan::device.destroyFramebuffer((VkFramebuffer)resource.data0);
 			Vulkan::device.destroyRenderPass((VkRenderPass)resource.data1);
 			break;
-		case Vulkan::DestroyResourceType::ImageView:
+		case GraphicsAPI::DestroyResourceType::ImageView:
 			Vulkan::device.destroyImageView((VkImageView)resource.data0);
 			break;
-		case Vulkan::DestroyResourceType::Image:
+		case GraphicsAPI::DestroyResourceType::Image:
 			vmaDestroyImage(Vulkan::memoryAllocator,
 				(VkImage)resource.data0, (VmaAllocation)resource.data1);
 			break;
-		case Vulkan::DestroyResourceType::Buffer:
+		case GraphicsAPI::DestroyResourceType::Buffer:
 			vmaDestroyBuffer(Vulkan::memoryAllocator,
 				(VkBuffer)resource.data0, (VmaAllocation)resource.data1);
 			break;
@@ -809,5 +771,5 @@ void Vulkan::updateDestroyBuffer()
 		}
 	}
 
-	Vulkan::destroyBuffer.clear();
+	GraphicsAPI::destroyBuffer.clear();
 }

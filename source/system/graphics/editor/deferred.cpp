@@ -212,8 +212,6 @@ void DeferredEditor::render()
 
 			auto framebufferView = graphicsSystem->get(
 				graphicsSystem->getSwapchainFramebuffer());
-			auto cameraComponent = manager->get<CameraComponent>(
-				graphicsSystem->camera);
 			auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 			SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);

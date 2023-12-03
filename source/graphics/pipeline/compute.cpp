@@ -81,7 +81,7 @@ void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	#if GARDEN_DEBUG
 	if (!Vulkan::secondaryCommandBuffers.empty())
@@ -91,11 +91,11 @@ void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
 	DispatchCommand command;
 	command.groupCount = isGlobalCount ?
 		(int3)ceil((float3)count / (float3)localSize) : count;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }

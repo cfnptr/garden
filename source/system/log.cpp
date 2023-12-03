@@ -16,30 +16,28 @@
 
 #include "garden/system/log.hpp"
 #include "garden/file.hpp"
-#include "mpio/directory.hpp"
 #include "mpio/os.hpp"
 #include <thread>
+
+extern "C"
+{
+#include "mpmt/thread.h"
+};
 
 using namespace mpio;
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
-LogSystem::LogSystem(Severity severity)
+LogSystem::LogSystem(LogLevel level)
 {
-	this->severity = severity;
-
 	#if __linux__
 	auto appName = GARDEN_APP_NAME_LOWERCASE_STRING;
 	#else
 	auto appName = GARDEN_APP_NAME_STRING;
 	#endif
 
-	auto appDataPath = Directory::getAppDataPath(appName);
-	fs::create_directory(appDataPath);
-	fileStream.open(appDataPath / "log.txt");
-
-	if (!fileStream.is_open())
-		throw runtime_error("Failed to open log file stream.");
+	this->logger = logy::Logger(appName, level,
+		GARDEN_DEBUG ? true : false);
 
 #if __linux__
 	auto osName = "Linux";
