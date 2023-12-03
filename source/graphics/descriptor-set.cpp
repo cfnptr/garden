@@ -35,7 +35,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 
 	if (pipelineType == PipelineType::Graphics)
 	{
-		auto pipelineView = Vulkan::graphicsPipelinePool.get(
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 			ID<GraphicsPipeline>(pipeline));
 		descriptorSetLayout = (VkDescriptorSetLayout)
 			pipelineView->descriptorSetLayouts[index];
@@ -43,7 +43,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 	}
 	else if (pipelineType == PipelineType::Compute)
 	{
-		auto pipelineView = Vulkan::computePipelinePool.get(
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(
 			ID<ComputePipeline>(pipeline));
 		descriptorSetLayout = (VkDescriptorSetLayout)
 			pipelineView->descriptorSetLayouts[index];
@@ -82,18 +82,18 @@ bool DescriptorSet::destroy()
 {
 	if (isBusy()) return false;
 
-	if (Vulkan::isRunning)
+	if (GraphicsAPI::isRunning)
 	{
 		bool isBindless;
 		if (pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = Vulkan::graphicsPipelinePool.get(
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 				ID<GraphicsPipeline>(this->pipeline));
 			isBindless = pipelineView->descriptorPools[index];
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = Vulkan::computePipelinePool.get(
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(
 				ID<ComputePipeline>(this->pipeline));
 			isBindless = pipelineView->descriptorPools[index];
 		}
@@ -101,8 +101,8 @@ bool DescriptorSet::destroy()
 		
 		if (!isBindless)
 		{
-			Vulkan::destroyResource(
-				Vulkan::DestroyResourceType::DescriptorSet,
+			GraphicsAPI::destroyResource(
+				GraphicsAPI::DestroyResourceType::DescriptorSet,
 				instance, nullptr, nullptr,
 				uniforms.begin()->second.resourceSets.size() - 1);
 		}
@@ -137,7 +137,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 
 	if (pipelineType == PipelineType::Graphics)
 	{
-		auto pipelineView = Vulkan::graphicsPipelinePool.get(
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 			ID<GraphicsPipeline>(this->pipeline));
 		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
 		maxBindlessCount = pipelineView->maxBindlessCount;
@@ -145,7 +145,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 	}
 	else if (pipelineType == PipelineType::Compute)
 	{
-		auto pipelineView = Vulkan::computePipelinePool.get(
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(
 			ID<ComputePipeline>(this->pipeline));
 		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
 		maxBindlessCount = pipelineView->maxBindlessCount;
@@ -182,14 +182,14 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 		vk::DescriptorSetLayout descriptorSetLayout;
 		if (pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = Vulkan::graphicsPipelinePool.get(
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 				ID<GraphicsPipeline>(pipeline));
 			descriptorSetLayout = (VkDescriptorSetLayout)
 				pipelineView->descriptorSetLayouts[index];
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = Vulkan::computePipelinePool.get(
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(
 				ID<ComputePipeline>(pipeline));
 			descriptorSetLayout = (VkDescriptorSetLayout)
 				pipelineView->descriptorSetLayouts[index];
@@ -281,10 +281,10 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
 					if (!resourceArray[j]) continue;
-					auto imageView = Vulkan::imageViewPool.get(ID<ImageView>(resourceArray[j]));
+					auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[j]));
 			
 					#if GARDEN_DEBUG
-					auto image = Vulkan::imagePool.get(imageView->image);
+					auto image = GraphicsAPI::imagePool.get(imageView->image);
 					if (isSamplerType(uniformType))
 					{
 						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
@@ -340,7 +340,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
 					if (!resourceArray[j]) continue;
-					auto buffer = Vulkan::bufferPool.get(ID<Buffer>(resourceArray[j]));
+					auto buffer = GraphicsAPI::bufferPool.get(ID<Buffer>(resourceArray[j]));
 
 					#if GARDEN_DEBUG
 					if (uniformType == GslUniformType::UniformBuffer)
@@ -394,7 +394,7 @@ void DescriptorSet::updateUniform(const string& name,
 
 	if (pipelineType == PipelineType::Graphics)
 	{
-		auto pipelineView = Vulkan::graphicsPipelinePool.get(
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 			ID<GraphicsPipeline>(this->pipeline));
 		GARDEN_ASSERT(pipelineView->bindless);
 		maxBindlessCount = pipelineView->maxBindlessCount;
@@ -402,7 +402,7 @@ void DescriptorSet::updateUniform(const string& name,
 	}
 	else if (pipelineType == PipelineType::Compute)
 	{
-		auto pipelineView = Vulkan::computePipelinePool.get(
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(
 			ID<ComputePipeline>(this->pipeline));
 		GARDEN_ASSERT(pipelineView->bindless);
 		maxBindlessCount = pipelineView->maxBindlessCount;
@@ -438,10 +438,10 @@ void DescriptorSet::updateUniform(const string& name,
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
 			if (!resourceArray[i]) continue;
-			auto imageView = Vulkan::imageViewPool.get(ID<ImageView>(resourceArray[i]));
+			auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[i]));
 			
 			#if GARDEN_DEBUG
-			auto image = Vulkan::imagePool.get(imageView->image);
+			auto image = GraphicsAPI::imagePool.get(imageView->image);
 			if (isSamplerType(uniformType))
 			{
 				GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
@@ -470,7 +470,7 @@ void DescriptorSet::updateUniform(const string& name,
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
 			if (!resourceArray[i]) continue;
-			auto buffer = Vulkan::bufferPool.get(ID<Buffer>(resourceArray[0]));
+			auto buffer = GraphicsAPI::bufferPool.get(ID<Buffer>(resourceArray[0]));
 
 			#if GARDEN_DEBUG
 			if (uniformType == GslUniformType::UniformBuffer)

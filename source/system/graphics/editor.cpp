@@ -55,7 +55,7 @@ void EditorRenderSystem::showMainMenuBar()
 		if (ImGui::MenuItem("Options")) optionsWindow = true;
 		if (ImGui::MenuItem("ImGui Demo")) demoWindow = true;
 		if (ImGui::MenuItem("Exit"))
-			glfwSetWindowShouldClose((GLFWwindow*)Vulkan::window, GLFW_TRUE);
+			glfwSetWindowShouldClose((GLFWwindow*)GraphicsAPI::window, GLFW_TRUE);
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("File"))
@@ -303,13 +303,13 @@ void EditorRenderSystem::showPerformanceStatistics()
 			Vulkan::graphicsQueueFamilyIndex,
 			Vulkan::transferQueueFamilyIndex,
 			Vulkan::computeQueueFamilyIndex);
-		auto isIntegrated = !Vulkan::isDeviceIntegrated;
+		auto isIntegrated = !GraphicsAPI::isDeviceIntegrated;
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
 		ImGui::Text("Swapchain Size: %d", (int)Vulkan::swapchain.getBufferCount());
 		
-		Vulkan::recordGpuTime = true;
+		GraphicsAPI::recordGpuTime = true;
 	}
-	else Vulkan::recordGpuTime = false;
+	else GraphicsAPI::recordGpuTime = false;
 	ImGui::End();
 }
 

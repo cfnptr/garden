@@ -17,128 +17,35 @@
 #pragma once
 #include "garden/defines.hpp"
 #include "ecsm.hpp"
-#include "math/types.hpp"
-
-#include <chrono>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-
-extern "C"
-{
-#include "mpmt/thread.h"
-};
-
-// TODO: move this to logy repo
+#include "logy/logger.hpp"
 
 namespace garden
 {
 
-#if _WIN32
-#define ANSI_NAME_COLOR ""
-#define ANSI_RESET_COLOR ""
-#else
-#define ANSI_NAME_COLOR "\e[0;90m"
-#define ANSI_RESET_COLOR "\e[0m"
-#endif
-
-using namespace math;
 using namespace ecsm;
 
-//--------------------------------------------------------------------------------------------------
 class LogSystem final : public System
 {
-public:
-	enum class Severity : uint8
-	{
-		Off, Fatal, Error, Warn, Info, Debug, Trace, All, Count
-	};
-
 private:
-	mutex writeMutex = {};
-	ofstream fileStream;
-	Severity severity = {};
+	logy::Logger logger;
 
-	LogSystem(Severity severity = Severity::All);
+	LogSystem(LogLevel level = ALL_LOG_LEVEL);
 	~LogSystem() final;
 	
 	friend class ecsm::Manager;
 	friend class LogEditor;
 public:
-//--------------------------------------------------------------------------------------------------
-	static string_view severityToString(Severity severity)
+	void log(LogLevel level, const string& message) noexcept
 	{
-		GARDEN_ASSERT((uint8)severity < (uint8)Severity::Count);
-		static const string_view names[(uint8)Severity::Count] =
-		{ "OFF", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", "ALL" };
-		return names[(psize)severity];
+		logger.log(level, "%.*s", message.length(), message.c_str());
 	}
 
-	Severity getSeverity() const noexcept { return severity; }
-
-	template<class T = string>
-	void log(Severity severity, const T& message)
-	{
-		if (severity > this->severity) return;
-		
-		lock_guard lock(writeMutex);
-		auto now = chrono::system_clock::now();
-		auto time = chrono::system_clock::to_time_t(now);
-		auto tm = gmtime(&time);
-		auto ms =
-			chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count() - 
-			chrono::duration_cast<chrono::seconds>(now.time_since_epoch()).count() * 1000;
-		char threadName[16];
-		getThreadName(threadName, 16);
-		fileStream.fill('0');
-		fileStream << "[" << tm->tm_year + 1900 << "-" << setw(2) << tm->tm_mon + 1 <<
-			"-" << setw(2) << tm->tm_mday << " " << setw(2) << tm->tm_hour << ":" <<
-			setw(2) << tm->tm_min << ":" << setw(2) << tm->tm_sec << "." << setw(3) << 
-			(int)ms << "] [" << threadName << "] [" <<
-			severityToString(severity) << "]: " << message << "\n";
-		fileStream.flush();
-
-		#if GARDEN_DEBUG
-		const char* color;
-
-		#if _WIN32
-		color = "";
-		#else
-		switch (severity)
-		{
-		default: color = "\e[0;37m"; break;
-		case LogSystem::Severity::Fatal: color = "\e[0;31m"; break;
-		case LogSystem::Severity::Error: color = "\e[0;91m"; break;
-		case LogSystem::Severity::Warn: color = "\e[0;93m"; break;
-		case LogSystem::Severity::Debug: color = "\e[0;92m"; break;
-		case LogSystem::Severity::Trace: color = "\e[0;94m"; break;
-		}
-		#endif
-
-		cout.fill('0');
-		cout << "[" ANSI_NAME_COLOR << tm->tm_year + 1900 << "-" << setw(2) <<
-			tm->tm_mon + 1 << "-" << setw(2) << tm->tm_mday << " " << setw(2) <<
-			tm->tm_hour << ":" << setw(2) << tm->tm_min << ":" << setw(2) <<
-			tm->tm_sec << "." << setw(3) << (int)ms << ANSI_RESET_COLOR "] ["
-			ANSI_NAME_COLOR << threadName << ANSI_RESET_COLOR "] [" <<
-			color << severityToString(severity) << ANSI_RESET_COLOR "]: " <<
-			message << "\n";
-		#endif
-	}
-
-//--------------------------------------------------------------------------------------------------
-	template<class T = string>
-	void trace(const T& message) { log(Severity::Trace, message); }
-	template<class T = string>
-	void debug(const T& message) { log(Severity::Debug, message); }
-	template<class T = string>
-	void info(const T& message) { log(Severity::Info, message); }
-	template<class T = string>
-	void warn(const T& message) { log(Severity::Warn, message); }
-	template<class T = string>
-	void error(const T& message) { log(Severity::Error, message); }
-	template<class T = string>
-	void fatal(const T& message) { log(Severity::Fatal, message); }
+	void trace(const string& message) noexcept  { log(TRACE_LOG_LEVEL, message); }
+	void debug(const string& message) noexcept  { log(DEBUG_LOG_LEVEL, message); }
+	void info(const string& message) noexcept  { log(INFO_LOG_LEVEL, message); }
+	void warn(const string& message) noexcept  { log(WARN_LOG_LEVEL, message); }
+	void error(const string& message) noexcept  { log(ERROR_LOG_LEVEL, message); }
+	void fatal(const string& message) noexcept { log(FATAL_LOG_LEVEL, message); }
 };
 
 } // garden

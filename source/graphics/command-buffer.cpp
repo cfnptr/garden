@@ -48,14 +48,43 @@ static vk::Fence createVkFence(vk::Device device, bool isSignaled = false)
 //--------------------------------------------------------------------------------------------------
 void CommandBuffer::initialize(CommandBufferType type)
 {
-	if (type == CommandBufferType::Graphics)
-		instance = createVkCommandBuffer(Vulkan::device, Vulkan::graphicsCommandPool);
-	else if (type == CommandBufferType::TransferOnly)
-		instance = createVkCommandBuffer(Vulkan::device, Vulkan::transferCommandPool);
-	else if (type == CommandBufferType::ComputeOnly)
-		instance = createVkCommandBuffer(Vulkan::device, Vulkan::computeCommandPool);
-	else if (type == CommandBufferType::Frame) timeCounter = GARDEN_FRAME_LAG + 1;
-	else abort();
+	switch (type)
+	{
+	case CommandBufferType::Graphics:
+		instance = createVkCommandBuffer(Vulkan::device, Vulkan::graphicsCommandPool); break;
+	case CommandBufferType::TransferOnly:
+		instance = createVkCommandBuffer(Vulkan::device, Vulkan::transferCommandPool); break;
+	case CommandBufferType::ComputeOnly:
+		instance = createVkCommandBuffer(Vulkan::device, Vulkan::computeCommandPool); break;
+	case CommandBufferType::Frame:
+		timeCounter = GARDEN_FRAME_LAG + 1; break;
+	default: abort();
+	}
+
+	#if GARDEN_DEBUG
+	if (Vulkan::hasDebugUtils)
+	{
+		const char* name = nullptr;
+		switch (type)
+		{
+		case CommandBufferType::Graphics:
+			name = "commandBuffer.graphics"; break;
+		case CommandBufferType::TransferOnly:
+			name = "commandBuffer.transferOnly"; break;
+		case CommandBufferType::ComputeOnly:
+			name = "commandBuffer.computeOnly"; break;
+		case CommandBufferType::Frame: break;
+		default: abort();
+		}
+
+		if (name)
+		{
+			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
+				(uint64)(VkCommandBuffer)instance, name);
+			Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+		}
+	}
+	#endif
 
 	if (instance) fence = createVkFence(Vulkan::device);
 
@@ -110,7 +139,7 @@ CommandBuffer::ImageState& CommandBuffer::getImageState(
 	}
 	else
 	{
-		auto imageView = Vulkan::imagePool.get(image);
+		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageState newImageState;
 		newImageState.access = (uint32)VK_ACCESS_NONE;
 		newImageState.layout = imageView->layouts[
@@ -167,20 +196,20 @@ void CommandBuffer::addDescriptorSetBarriers(
 	for (uint8 i = 0; i < descriptorDataSize; i++)
 	{
 		auto descriptor = descriptorData[i];
-		auto descriptorSet = Vulkan::descriptorSetPool.get(descriptor.set);
+		auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptor.set);
 		auto& descriptorSetUniforms = descriptorSet->uniforms;
 		auto pipelineType = descriptorSet->pipelineType;
 
 		const map<string, Pipeline::Uniform>* pipelineUniforms = nullptr;
 		if (pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = Vulkan::graphicsPipelinePool.get(
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 				ID<GraphicsPipeline>(descriptorSet->pipeline));
 			pipelineUniforms = &pipelineView->uniforms;
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = Vulkan::computePipelinePool.get(
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(
 				ID<ComputePipeline>(descriptorSet->pipeline));
 			pipelineUniforms = &pipelineView->uniforms;
 		}
@@ -219,10 +248,10 @@ void CommandBuffer::addDescriptorSetBarriers(
 					for (uint32 k = 0; k < (uint32)resourceArray.size(); k++)
 					{
 						if (!resourceArray[k]) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
-						auto imageView = Vulkan::imageViewPool.get(
+						auto imageView = GraphicsAPI::imageViewPool.get(
 							ID<ImageView>(resourceArray[k]));
 						auto instance = imageView->image;
-						auto image = Vulkan::imagePool.get(instance);
+						auto image = GraphicsAPI::imagePool.get(instance);
 						auto imageInstance = (VkImage)image->instance;
 						auto imageAspectFlags = toVkImageAspectFlags(imageView->format);
 						auto baseMip = imageView->baseMip;
@@ -288,7 +317,7 @@ void CommandBuffer::addDescriptorSetBarriers(
 
 						if (!isSameState(oldBufferState, newBufferState))
 						{
-							auto bufferView = Vulkan::bufferPool.get(buffer);
+							auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 							vk::BufferMemoryBarrier bufferMemoryBarrier(
 								vk::AccessFlags(oldBufferState.access),
 								vk::AccessFlags(newBufferState.access),
@@ -374,7 +403,7 @@ void CommandBuffer::submit()
 	commandBuffer.begin(beginInfo);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (type == CommandBufferType::Frame && Vulkan::recordGpuTime)
+	if (type == CommandBufferType::Frame && GraphicsAPI::recordGpuTime)
 	{
 		commandBuffer.resetQueryPool(swapchainBuffer->queryPool, 0, 2);
 		commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe,
@@ -451,7 +480,7 @@ void CommandBuffer::submit()
 
 	if (type == CommandBufferType::Frame)
 	{
-		vk::Image swapchainImage((VkImage)Vulkan::imagePool.get(
+		vk::Image swapchainImage((VkImage)GraphicsAPI::imagePool.get(
 			swapchainBuffer->colorImage)->instance);
 
 		if (!hasAnyCommand)
@@ -541,7 +570,7 @@ void CommandBuffer::submit()
 		oldImageState = newImageState;
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		if (Vulkan::recordGpuTime)
+		if (GraphicsAPI::recordGpuTime)
 		{
 			commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
 				swapchainBuffer->queryPool, 1);
@@ -566,7 +595,7 @@ void CommandBuffer::submit()
 	for (auto pair : imageStates)
 	{
 		auto imageState = pair.first;
-		auto image = Vulkan::imagePool.get(imageState.image);
+		auto image = GraphicsAPI::imagePool.get(imageState.image);
 		image->layouts[imageState.mip * image->layerCount +
 			imageState.layer] = pair.second.layout;
 	}
@@ -585,7 +614,7 @@ static vector<vk::ClearValue> clearValues;
 void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto framebuffer = Vulkan::framebufferPool.get(command.framebuffer);
+	auto framebuffer = GraphicsAPI::framebufferPool.get(command.framebuffer);
 	auto& colorAttachments = framebuffer->colorAttachments;
 	auto colorAttachmentCount = (uint32)colorAttachments.size();
 	auto commandBufferData = (const uint8*)&command;
@@ -602,7 +631,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	for (uint32 i = 0; i < colorAttachmentCount; i++)
 	{
 		auto colorAttachment = colorAttachments[i];
-		auto imageView = Vulkan::imageViewPool.get(colorAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		auto& oldImageState = getImageState(imageView->image,
 			imageView->baseMip, imageView->baseLayer);
 		oldPipelineStage |= oldImageState.stage;
@@ -615,7 +644,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 		if (!isSameState(oldImageState, newImageState))
 		{
-			auto image = Vulkan::imagePool.get(imageView->image);
+			auto image = GraphicsAPI::imagePool.get(imageView->image);
 			vk::ImageMemoryBarrier imageMemoryBarrier(
 				vk::AccessFlags(oldImageState.access),
 				vk::AccessFlags(newImageState.access),
@@ -678,7 +707,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	if (framebuffer->depthStencilAttachment.imageView)
 	{
 		auto depthStencilAttachment = framebuffer->depthStencilAttachment;
-		auto imageView = Vulkan::imageViewPool.get(depthStencilAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 		auto& oldImageState = getImageState(imageView->image,
 			imageView->baseMip, imageView->baseLayer);
 		oldPipelineStage |= oldImageState.stage;
@@ -765,7 +794,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 		if (!isSameState(oldImageState, newImageState))
 		{
-			auto image = Vulkan::imagePool.get(imageView->image);
+			auto image = GraphicsAPI::imagePool.get(imageView->image);
 			vk::ImageMemoryBarrier imageMemoryBarrier(
 				vk::AccessFlags(oldImageState.access),
 				vk::AccessFlags(newImageState.access),
@@ -815,7 +844,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (!isSameState(oldBufferState, newBufferState))
 			{
-				auto bufferView = Vulkan::bufferPool.get(drawCommand.vertexBuffer);
+				auto bufferView = GraphicsAPI::bufferPool.get(drawCommand.vertexBuffer);
 				vk::BufferMemoryBarrier bufferMemoryBarrier(
 					vk::AccessFlags(oldBufferState.access),
 					vk::AccessFlags(newBufferState.access),
@@ -839,7 +868,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (!isSameState(oldVertexBufferState, newBufferState))
 			{
-				auto bufferView = Vulkan::bufferPool.get(drawIndexedCommand.vertexBuffer);
+				auto bufferView = GraphicsAPI::bufferPool.get(drawIndexedCommand.vertexBuffer);
 				vk::BufferMemoryBarrier bufferMemoryBarrier(
 					vk::AccessFlags(oldVertexBufferState.access),
 					vk::AccessFlags(newBufferState.access),
@@ -859,7 +888,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (!isSameState(oldIndexBufferState, newBufferState))
 			{
-				auto bufferView = Vulkan::bufferPool.get(drawIndexedCommand.vertexBuffer);
+				auto bufferView = GraphicsAPI::bufferPool.get(drawIndexedCommand.vertexBuffer);
 				vk::BufferMemoryBarrier bufferMemoryBarrier(
 					vk::AccessFlags(oldIndexBufferState.access),
 					vk::AccessFlags(newBufferState.access),
@@ -899,7 +928,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		for (uint32 i = 0; i < colorAttachmentCount; i++)
 		{
 			auto colorAttachment = colorAttachments[i];
-			auto imageView = Vulkan::imageViewPool.get(colorAttachment.imageView);
+			auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 			auto& imageState = getImageState(imageView->image,
 				imageView->baseMip, imageView->baseLayer);
 			imageState.layout = (uint32)vk::ImageLayout::eGeneral;
@@ -937,7 +966,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		if (framebuffer->depthStencilAttachment.imageView)
 		{
 			auto depthStencilAttachment = framebuffer->depthStencilAttachment;
-			auto imageView = Vulkan::imageViewPool.get(depthStencilAttachment.imageView);
+			auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 			auto& imageState = getImageState(imageView->image,
 				imageView->baseMip, imageView->baseLayer);
 			imageState.layout = (uint32)vk::ImageLayout::eGeneral;
@@ -1017,7 +1046,7 @@ static vector<vk::ClearRect> clearAttachmentsRects;
 void CommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto framebufferView = Vulkan::framebufferPool.get(command.framebuffer);
+	auto framebufferView = GraphicsAPI::framebufferPool.get(command.framebuffer);
 
 	auto& colorAttachments = framebufferView->colorAttachments;
 	auto attachments = (const Framebuffer::ClearAttachment*)(
@@ -1047,7 +1076,7 @@ void CommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		}
 		else abort();
 
-		auto imageView = Vulkan::imageViewPool.get(attachmentView);
+		auto imageView = GraphicsAPI::imageViewPool.get(attachmentView);
 		auto format = imageView->format;
 		vk::ClearValue clearValue;
 
@@ -1109,7 +1138,7 @@ void CommandBuffer::processCommand(const BindPipelineCommand& command)
 		vk::Pipeline pipeline;
 		if (command.pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = Vulkan::graphicsPipelinePool.get(
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 				ID<GraphicsPipeline>(command.pipeline));
 			pipeline = pipelineView->variantCount > 1 ?
 				((VkPipeline*)pipelineView->instance)[command.variant] :
@@ -1117,7 +1146,7 @@ void CommandBuffer::processCommand(const BindPipelineCommand& command)
 		}
 		else if (command.pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = Vulkan::computePipelinePool.get(
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(
 				ID<ComputePipeline>(command.pipeline));
 			pipeline = pipelineView->variantCount > 1 ?
 				((VkPipeline*)pipelineView->instance)[command.variant] :
@@ -1146,7 +1175,7 @@ void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 	for (uint8 i = 0; i < command.descriptorDataSize; i++)
 	{
 		auto descriptor = descriptorData[i];
-		auto descriptorSet = Vulkan::descriptorSetPool.get(descriptor.set);
+		auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptor.set);
 		auto instance = (vk::DescriptorSet*)descriptorSet->instance;
 
 		if (descriptorSet->getSetCount() > 1)
@@ -1158,21 +1187,21 @@ void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 		else descriptorSets.push_back((VkDescriptorSet)instance);
 	}
 
-	auto descriptorSet = Vulkan::descriptorSetPool.get(descriptorData[0].set);
+	auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptorData[0].set);
 	auto pipelineType = descriptorSet->pipelineType;
 	vk::PipelineBindPoint bindPoint; vk::PipelineLayout pipelineLayout;
 
 	if (pipelineType == PipelineType::Graphics)
 	{
 		bindPoint = vk::PipelineBindPoint::eGraphics;
-		auto pipelineView = Vulkan::graphicsPipelinePool.get(
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
 			ID<GraphicsPipeline>(descriptorSet->pipeline));
 		pipelineLayout = (VkPipelineLayout)pipelineView->pipelineLayout;
 	}
 	else if (pipelineType == PipelineType::Compute)
 	{
 		bindPoint = vk::PipelineBindPoint::eCompute;
-		auto pipelineView = Vulkan::computePipelinePool.get(
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(
 			ID<ComputePipeline>(descriptorSet->pipeline));
 		pipelineLayout = (VkPipelineLayout)pipelineView->pipelineLayout;
 	}
@@ -1235,7 +1264,7 @@ void CommandBuffer::processCommand(const DrawCommand& command)
 	if (command.vertexBuffer && command.vertexBuffer != Framebuffer::currentVertexBuffers[0])
 	{
 		const vk::DeviceSize size = 0;
-		auto buffer = Vulkan::bufferPool.get(command.vertexBuffer);
+		auto buffer = GraphicsAPI::bufferPool.get(command.vertexBuffer);
 		vk::Buffer instance = (VkBuffer)buffer->instance;
 		commandBuffer.bindVertexBuffers(0, 1, &instance, &size);
 		Framebuffer::currentVertexBuffers[0] = command.vertexBuffer;
@@ -1256,14 +1285,14 @@ void CommandBuffer::processCommand(const DrawIndexedCommand& command)
 	if (command.vertexBuffer != Framebuffer::currentVertexBuffers[0])
 	{
 		const vk::DeviceSize size = 0;
-		auto buffer = Vulkan::bufferPool.get(command.vertexBuffer);
+		auto buffer = GraphicsAPI::bufferPool.get(command.vertexBuffer);
 		vk::Buffer instance = (VkBuffer)buffer->instance;
 		commandBuffer.bindVertexBuffers(0, 1, &instance, &size);
 		Framebuffer::currentVertexBuffers[0] = command.vertexBuffer;
 	}
 	if (command.indexBuffer != Framebuffer::currentIndexBuffers[0])
 	{
-		auto buffer = Vulkan::bufferPool.get(command.indexBuffer);
+		auto buffer = GraphicsAPI::bufferPool.get(command.indexBuffer);
 		commandBuffer.bindIndexBuffer((VkBuffer)buffer->instance,
 			(vk::DeviceSize)(command.indexOffset * toBinarySize(command.indexType)),
 			toVkIndexType(command.indexType));
@@ -1315,7 +1344,7 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 void CommandBuffer::processCommand(const FillBufferCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto buffer = Vulkan::bufferPool.get(command.buffer);
+	auto buffer = GraphicsAPI::bufferPool.get(command.buffer);
 
 	uint32 oldPipelineStage = 0, newPipelineStage = 
 		(uint32)vk::PipelineStageFlagBits::eTransfer;
@@ -1351,8 +1380,8 @@ static vector<vk::BufferCopy> bufferCopies;
 void CommandBuffer::processCommand(const CopyBufferCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto srcBuffer = Vulkan::bufferPool.get(command.source);
-	auto dstBuffer = Vulkan::bufferPool.get(command.destination);
+	auto srcBuffer = GraphicsAPI::bufferPool.get(command.source);
+	auto dstBuffer = GraphicsAPI::bufferPool.get(command.destination);
 
 	auto regions = (const Buffer::CopyRegion*)(
 		(const uint8*)&command + sizeof(CopyBufferCommandBase));
@@ -1418,7 +1447,7 @@ static vector<vk::ImageSubresourceRange> imageClears;
 void CommandBuffer::processCommand(const ClearImageCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto image = Vulkan::imagePool.get(command.image);
+	auto image = GraphicsAPI::imagePool.get(command.image);
 
 	auto regions = (const Image::ClearRegion*)(
 		(const uint8*)&command + sizeof(ClearImageCommandBase));
@@ -1501,8 +1530,8 @@ static vector<vk::ImageCopy> imageCopies;
 void CommandBuffer::processCommand(const CopyImageCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto srcImage = Vulkan::imagePool.get(command.source);
-	auto dstImage = Vulkan::imagePool.get(command.destination);
+	auto srcImage = GraphicsAPI::imagePool.get(command.source);
+	auto dstImage = GraphicsAPI::imagePool.get(command.destination);
 
 	auto regions = (const Image::CopyImageRegion*)(
 		(const uint8*)&command + sizeof(CopyImageCommandBase));
@@ -1610,8 +1639,8 @@ static vector<vk::BufferImageCopy> bufferImageCopies;
 void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto buffer = Vulkan::bufferPool.get(command.buffer);
-	auto image = Vulkan::imagePool.get(command.image);
+	auto buffer = GraphicsAPI::bufferPool.get(command.buffer);
+	auto image = GraphicsAPI::imagePool.get(command.image);
 
 	auto regions = (const Image::CopyBufferRegion*)(
 		(const uint8*)&command + sizeof(CopyBufferImageCommandBase));
@@ -1722,8 +1751,8 @@ static vector<vk::ImageBlit> imageBlits;
 void CommandBuffer::processCommand(const BlitImageCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	auto srcImage = Vulkan::imagePool.get(command.source);
-	auto dstImage = Vulkan::imagePool.get(command.destination);
+	auto srcImage = GraphicsAPI::imagePool.get(command.source);
+	auto dstImage = GraphicsAPI::imagePool.get(command.destination);
 
 	auto regions = (const Image::BlitRegion*)(
 		(const uint8*)&command + sizeof(BlitImageCommandBase));

@@ -107,7 +107,7 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 		for (uint32 j = 0; j < (uint32)outputAttachments.size(); j++)
 		{
 			auto outputAttachment = outputAttachments[j];
-			auto imageView = Vulkan::imageViewPool.get(outputAttachment.imageView);
+			auto imageView = GraphicsAPI::imageViewPool.get(outputAttachment.imageView);
 			auto imageFormat = imageView->format;
 			auto isImageFormatColor = isFormatColor(imageFormat);
 			auto result = imageViewStates.find(outputAttachment.imageView);
@@ -321,7 +321,7 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 		attachmentDescriptions, subpassDescriptions, subpassDependencies);
 	auto renderPass = Vulkan::device.createRenderPass(renderPassInfo);
 	this->renderPass = (VkRenderPass)renderPass;
-	Vulkan::renderPasses.emplace((VkRenderPass)renderPass, 0);
+	GraphicsAPI::renderPasses.emplace((VkRenderPass)renderPass, 0);
 
 	vk::FramebufferCreateInfo framebufferInfo({},
 		renderPass, imageViews, (uint32)size.x, (uint32)size.y, 1);
@@ -337,22 +337,22 @@ bool Framebuffer::destroy()
 	if (!instance) return !colorAttachments.empty() || depthStencilAttachment.imageView;
 	if (isBusy()) return false;
 
-	if (Vulkan::isRunning)
+	if (GraphicsAPI::isRunning)
 	{
 		void* destroyRenderPass = nullptr;
 
 		if (renderPass)
 		{
-			auto& shareCount = Vulkan::renderPasses.at(renderPass);
+			auto& shareCount = GraphicsAPI::renderPasses.at(renderPass);
 			if (shareCount == 0)
 			{
 				destroyRenderPass = renderPass;
-				Vulkan::renderPasses.erase(renderPass);
+				GraphicsAPI::renderPasses.erase(renderPass);
 			}
 			else shareCount--;
 		}
 
-		Vulkan::destroyResource(Vulkan::DestroyResourceType::Framebuffer,
+		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
 			instance, destroyRenderPass);
 	}
 	else
@@ -378,18 +378,18 @@ void Framebuffer::update(int2 size, const OutputAttachment* colorAttachments,
 	{
 		auto& colorAttachment = colorAttachments[i];
 		GARDEN_ASSERT(colorAttachment.imageView);
-		auto imageView = Vulkan::imageViewPool.get(colorAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->format));
-		auto image = Vulkan::imagePool.get(imageView->image);
+		auto image = GraphicsAPI::imagePool.get(imageView->image);
 		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->baseMip));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
 	}
 
 	if (depthStencilAttachment.imageView)
 	{
-		auto imageView = Vulkan::imageViewPool.get(depthStencilAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->format));
-		auto image = Vulkan::imagePool.get(imageView->image);
+		auto image = GraphicsAPI::imagePool.get(imageView->image);
 		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->baseMip));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
 	}
@@ -415,18 +415,18 @@ void Framebuffer::update(int2 size, vector<OutputAttachment>&& colorAttachments,
 	for	(auto& colorAttachment : colorAttachments)
 	{
 		GARDEN_ASSERT(colorAttachment.imageView);
-		auto imageView = Vulkan::imageViewPool.get(colorAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->format));
-		auto image = Vulkan::imagePool.get(imageView->image);
+		auto image = GraphicsAPI::imagePool.get(imageView->image);
 		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->baseMip));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
 	}
 
 	if (depthStencilAttachment.imageView)
 	{
-		auto imageView = Vulkan::imageViewPool.get(depthStencilAttachment.imageView);
+		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->format));
-		auto image = Vulkan::imagePool.get(imageView->image);
+		auto image = GraphicsAPI::imagePool.get(imageView->image);
 		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->baseMip));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
 	}
@@ -467,8 +467,8 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 			oldInputAttachment.imageView = newInputAttachment;
 
 			#if GARDEN_DEBUG
-			auto imageView = Vulkan::imageViewPool.get(newInputAttachment);
-			auto image = Vulkan::imagePool.get(imageView->image);
+			auto imageView = GraphicsAPI::imageViewPool.get(newInputAttachment);
+			auto image = GraphicsAPI::imagePool.get(imageView->image);
 			GARDEN_ASSERT(size == calcSizeAtMip(
 				(int2)image->getSize(), imageView->baseMip));
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
@@ -487,11 +487,11 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 			auto result = attachments.find(newOutputAttachment);
 			if (result != attachments.end()) continue;
 
-			auto newImageView = Vulkan::imageViewPool.get(newOutputAttachment);
+			auto newImageView = GraphicsAPI::imageViewPool.get(newOutputAttachment);
 			#if GARDEN_DEBUG
-			auto oldImageView = Vulkan::imageViewPool.get(oldOutputAttachment.imageView);
+			auto oldImageView = GraphicsAPI::imageViewPool.get(oldOutputAttachment.imageView);
 			GARDEN_ASSERT(newImageView->format == oldImageView->format);
-			auto newImage = Vulkan::imagePool.get(newImageView->image);
+			auto newImage = GraphicsAPI::imagePool.get(newImageView->image);
 			GARDEN_ASSERT(size == (int2)newImage->getSize());
 			#endif
 
@@ -516,7 +516,7 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 		}
 	}
 
-	Vulkan::destroyResource(Vulkan::DestroyResourceType::Framebuffer, instance);
+	GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer, instance);
 
 	vk::FramebufferCreateInfo framebufferInfo({}, (VkRenderPass)renderPass,
 		imageViews, (uint32)size.x, (uint32)size.y, 1);
@@ -550,10 +550,10 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	GARDEN_ASSERT(!clearColors || (clearColors && clearColorCount > 0));
 	GARDEN_ASSERT(region.x + region.z <= size.x);
 	GARDEN_ASSERT(region.y + region.w <= size.y);
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	
 	#if GARDEN_DEBUG
-	currentFramebuffer = Vulkan::framebufferPool.getID(this);
+	currentFramebuffer = GraphicsAPI::framebufferPool.getID(this);
 	#endif
 	currentSubpassIndex = 0;
 
@@ -579,22 +579,22 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	BeginRenderPassCommand command;
 	command.clearColorCount = clearColorCount;
 	command.recordAsync = recordAsync;
-	command.framebuffer = Vulkan::framebufferPool.getID(this);
+	command.framebuffer = GraphicsAPI::framebufferPool.getID(this);
 	command.clearDepth = clearDepth;
 	command.clearStencil = clearStencil;
 	command.region = region == 0 ? int4(0, 0, size.x, size.y) : region;
 	command.clearColors = clearColors;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 void Framebuffer::nextSubpass(bool recordAsync)
 {
-	GARDEN_ASSERT(currentFramebuffer == Vulkan::framebufferPool.getID(this));
+	GARDEN_ASSERT(currentFramebuffer == GraphicsAPI::framebufferPool.getID(this));
 	GARDEN_ASSERT(currentSubpassIndex + 1 < subpasses.size());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	if (!Vulkan::secondaryCommandBuffers.empty())
 		Vulkan::swapchain.endSecondaryCommandBuffers();
@@ -616,19 +616,19 @@ void Framebuffer::nextSubpass(bool recordAsync)
 
 	NextSubpassCommand command;
 	command.recordAsync = recordAsync;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	currentSubpassIndex++;
 }
 void Framebuffer::endRenderPass()
 {
-	GARDEN_ASSERT(currentFramebuffer == Vulkan::framebufferPool.getID(this));
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(currentFramebuffer == GraphicsAPI::framebufferPool.getID(this));
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	if (!Vulkan::secondaryCommandBuffers.empty())
 		Vulkan::swapchain.endSecondaryCommandBuffers();
 
 	EndRenderPassCommand command;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	#if GARDEN_DEBUG
 	currentFramebuffer = {};
@@ -639,8 +639,8 @@ void Framebuffer::endRenderPass()
 void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	uint8 attachmentCount, const ClearRegion* regions, uint32 regionCount)
 {
-	GARDEN_ASSERT(currentFramebuffer == Vulkan::framebufferPool.getID(this));
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(currentFramebuffer == GraphicsAPI::framebufferPool.getID(this));
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < regionCount; i++)
@@ -654,8 +654,8 @@ void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	ClearAttachmentsCommand command;
 	command.attachmentCount = attachmentCount;
 	command.regionCount = regionCount;
-	command.framebuffer = Vulkan::framebufferPool.getID(this);
+	command.framebuffer = GraphicsAPI::framebufferPool.getID(this);
 	command.attachments = attachments;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }

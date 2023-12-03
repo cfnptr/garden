@@ -446,7 +446,7 @@ bool Pipeline::destroy()
 			(VkPipelineCache)pipelineCache);
 		if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
 		{
-			auto hashState = (XXH3_state_t*)Vulkan::hashState;
+			auto hashState = (XXH3_state_t*)GraphicsAPI::hashState;
 			auto pathString = pipelinePath.generic_string();
 			if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
 			if (XXH3_128bits_update(hashState, pathString.c_str(),
@@ -486,25 +486,25 @@ bool Pipeline::destroy()
 		}
 	}
 
-	if (Vulkan::isRunning)
+	if (GraphicsAPI::isRunning)
 	{
-		Vulkan::destroyResource(Vulkan::DestroyResourceType::Pipeline,
+		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Pipeline,
 			instance, pipelineLayout, pipelineCache, variantCount - 1);
 
 		for (auto descriptorSetLayout : descriptorSetLayouts)
 		{
-			Vulkan::destroyResource(Vulkan::DestroyResourceType::DescriptorSetLayout,
+			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSetLayout,
 				descriptorSetLayout);
 		}
 		for (auto descriptorPool : descriptorPools)
 		{
 			if (!descriptorPool) continue;
-			Vulkan::destroyResource(Vulkan::DestroyResourceType::DescriptorPool,
+			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorPool,
 				descriptorPool);
 		}
 
 		for (auto sampler : samplers)
-			Vulkan::destroyResource(Vulkan::DestroyResourceType::Sampler, sampler);
+			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Sampler, sampler);
 	}
 	else
 	{
@@ -577,22 +577,22 @@ void Pipeline::updateDescriptorTime(
 {
 	for (uint8 i = 0; i < descriptorDataSize; i++)
 	{
-		auto dsView = Vulkan::descriptorSetPool.get(descriptorData[i].set);
-		if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-			dsView->lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-		else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-			dsView->lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-		else dsView->lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+		auto dsView = GraphicsAPI::descriptorSetPool.get(descriptorData[i].set);
+		if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+			dsView->lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+		else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+			dsView->lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+		else dsView->lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 
 		map<string, Pipeline::Uniform>* pipelineUniforms;
 		if (dsView->pipelineType == PipelineType::Graphics)
 		{
-			pipelineUniforms = &Vulkan::graphicsPipelinePool.get(
+			pipelineUniforms = &GraphicsAPI::graphicsPipelinePool.get(
 				ID<GraphicsPipeline>(dsView->pipeline))->uniforms;
 		}
 		else if (dsView->pipelineType == PipelineType::Compute)
 		{
-			pipelineUniforms = &Vulkan::computePipelinePool.get(
+			pipelineUniforms = &GraphicsAPI::computePipelinePool.get(
 				ID<ComputePipeline>(dsView->pipeline))->uniforms;
 		}
 		else abort();
@@ -611,26 +611,26 @@ void Pipeline::updateDescriptorTime(
 					for (auto resource : resourceArray)
 					{
 						if (!resource) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
-						auto imageViewView = Vulkan::imageViewPool.get(
+						auto imageViewView = GraphicsAPI::imageViewPool.get(
 							ID<ImageView>(resource));
-						auto imageView = Vulkan::imagePool.get(imageViewView->image);
+						auto imageView = GraphicsAPI::imagePool.get(imageViewView->image);
 
-						if (Vulkan::currentCommandBuffer ==
-							&Vulkan::graphicsCommandBuffer)
+						if (GraphicsAPI::currentCommandBuffer ==
+							&GraphicsAPI::graphicsCommandBuffer)
 						{
 							imageViewView->lastGraphicsTime = imageView->lastGraphicsTime =
-								Vulkan::graphicsCommandBuffer.getBusyTime();
+								GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 						}
-						else if (Vulkan::currentCommandBuffer ==
-							&Vulkan::computeCommandBuffer)
+						else if (GraphicsAPI::currentCommandBuffer ==
+							&GraphicsAPI::computeCommandBuffer)
 						{
 							imageViewView->lastComputeTime = imageView->lastComputeTime =
-								Vulkan::computeCommandBuffer.getBusyTime();
+								GraphicsAPI::computeCommandBuffer.getBusyTime();
 						}
 						else
 						{
 							imageViewView->lastFrameTime = imageView->lastFrameTime =
-								Vulkan::frameCommandBuffer.getBusyTime();
+								GraphicsAPI::frameCommandBuffer.getBusyTime();
 						}
 					}
 				}
@@ -643,24 +643,24 @@ void Pipeline::updateDescriptorTime(
 					for (auto resource : resourceArray)
 					{
 						if (!resource) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
-						auto bufferiew = Vulkan::bufferPool.get(ID<Buffer>(resource));
+						auto bufferiew = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
 						
-						if (Vulkan::currentCommandBuffer ==
-							&Vulkan::graphicsCommandBuffer)
+						if (GraphicsAPI::currentCommandBuffer ==
+							&GraphicsAPI::graphicsCommandBuffer)
 						{
 							bufferiew->lastGraphicsTime =
-								Vulkan::graphicsCommandBuffer.getBusyTime();
+								GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 						}
-						else if (Vulkan::currentCommandBuffer ==
-							&Vulkan::computeCommandBuffer)
+						else if (GraphicsAPI::currentCommandBuffer ==
+							&GraphicsAPI::computeCommandBuffer)
 						{
 							bufferiew->lastComputeTime =
-								Vulkan::computeCommandBuffer.getBusyTime();
+								GraphicsAPI::computeCommandBuffer.getBusyTime();
 						}
 						else
 						{
 							bufferiew->lastFrameTime =
-								Vulkan::frameCommandBuffer.getBusyTime();
+								GraphicsAPI::frameCommandBuffer.getBusyTime();
 						}
 					}
 				}
@@ -676,17 +676,17 @@ void Pipeline::bind(uint8 variant)
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(variant < variantCount);
 	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
 	{
-		pipeline = ID<Pipeline>(Vulkan::graphicsPipelinePool.
+		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.
 			getID((GraphicsPipeline*)this));
 	}
 	else if (type == PipelineType::Compute)
 	{
-		pipeline = ID<Pipeline>(Vulkan::computePipelinePool.
+		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.
 			getID((ComputePipeline*)this));
 	}
 	else abort();
@@ -695,13 +695,13 @@ void Pipeline::bind(uint8 variant)
 	command.pipelineType = type;
 	command.variant = variant;
 	command.pipeline = pipeline;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 {
@@ -710,7 +710,7 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 	GARDEN_ASSERT(variant < variantCount);
 	GARDEN_ASSERT(taskIndex < 0 || taskIndex < thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	int32 taskCount;
 	if (taskIndex < 0)
@@ -722,22 +722,22 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 
 	if (taskIndex == 0)
 	{
-		if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-			lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-		else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-			lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-		else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+		if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+			lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+		else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+			lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+		else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 	}
 
 	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
 	{
-		pipeline = ID<Pipeline>(Vulkan::graphicsPipelinePool.
+		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.
 			getID((GraphicsPipeline*)this));
 	}
 	else if (type == PipelineType::Compute)
 	{
-		pipeline = ID<Pipeline>(Vulkan::computePipelinePool.
+		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.
 			getID((ComputePipeline*)this));
 	}
 	else abort();
@@ -764,14 +764,14 @@ void Pipeline::bindDescriptorSets(
 	GARDEN_ASSERT(descriptorData);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < descriptorDataSize; i++)
 	{
 		auto descriptor = descriptorData[i];
 		GARDEN_ASSERT(descriptor.set);
-		auto descriptorSetView = Vulkan::descriptorSetPool.get(descriptor.set);
+		auto descriptorSetView = GraphicsAPI::descriptorSetPool.get(descriptor.set);
 		GARDEN_ASSERT(descriptor.offset + descriptor.count <=
 			descriptorSetView->getSetCount());
 		
@@ -779,12 +779,12 @@ void Pipeline::bindDescriptorSets(
 		if (pipelineType == PipelineType::Graphics)
 		{
 			GARDEN_ASSERT(ID<GraphicsPipeline>(descriptorSetView->pipeline) ==
-				Vulkan::graphicsPipelinePool.getID(((const GraphicsPipeline*)this)));
+				GraphicsAPI::graphicsPipelinePool.getID(((const GraphicsPipeline*)this)));
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
 			GARDEN_ASSERT(ID<ComputePipeline>(descriptorSetView->pipeline) ==
-				Vulkan::computePipelinePool.getID(((const ComputePipeline*)this)));
+				GraphicsAPI::computePipelinePool.getID(((const ComputePipeline*)this)));
 		}
 		else abort();
 	}
@@ -793,7 +793,7 @@ void Pipeline::bindDescriptorSets(
 	BindDescriptorSetsCommand command;
 	command.descriptorDataSize = descriptorDataSize;
 	command.descriptorData = descriptorData;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	updateDescriptorTime(descriptorData, descriptorDataSize);
 }
@@ -810,13 +810,13 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(taskIndex < 0 || taskIndex < thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	for (uint8 i = 0; i < descriptorDataSize; i++)
 	{
 		auto descriptor = descriptorData[i];
 		GARDEN_ASSERT(descriptor.set);
-		auto descriptorSetView = Vulkan::descriptorSetPool.get(descriptor.set);
+		auto descriptorSetView = GraphicsAPI::descriptorSetPool.get(descriptor.set);
 		GARDEN_ASSERT(descriptor.offset + descriptor.count <=
 			descriptorSetView->getSetCount());
 		
@@ -834,12 +834,12 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 		if (pipelineType == PipelineType::Graphics)
 		{
 			GARDEN_ASSERT(ID<GraphicsPipeline>(descriptorSetView->pipeline) ==
-				Vulkan::graphicsPipelinePool.getID(((const GraphicsPipeline*)this)));
+				GraphicsAPI::graphicsPipelinePool.getID(((const GraphicsPipeline*)this)));
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
 			GARDEN_ASSERT(ID<ComputePipeline>(descriptorSetView->pipeline) ==
-				Vulkan::computePipelinePool.getID(((const ComputePipeline*)this)));
+				GraphicsAPI::computePipelinePool.getID(((const ComputePipeline*)this)));
 		}
 		else abort();
 		#endif
@@ -868,7 +868,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 	command.isAsync = true;
 	command.descriptorDataSize = descriptorDataSize;
 	command.descriptorData = descriptorData;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	descriptorSets.clear();
 }
 
@@ -878,14 +878,14 @@ void Pipeline::pushConstants()
 	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	PushConstantsCommand command;
 	command.dataSize = pushConstantsSize;
 	command.shaderStages = pushConstantsMask;
 	command.pipelineLayout = pipelineLayout;
 	command.data = pushConstantsBuffer.data();
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 void Pipeline::pushConstantsAsync(int32 taskIndex)
 {
@@ -895,7 +895,7 @@ void Pipeline::pushConstantsAsync(int32 taskIndex)
 	GARDEN_ASSERT(taskIndex >= 0);
 	GARDEN_ASSERT(taskIndex < thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
 	Vulkan::secondaryCommandBuffers[taskIndex].pushConstants(
 		vk::PipelineLayout((VkPipelineLayout)pipelineLayout),

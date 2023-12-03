@@ -17,7 +17,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/compiler.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/api.hpp"
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
@@ -156,8 +156,8 @@ void ResourceSystem::update()
 
 	queueLocker.lock();
 
-	auto graphicsPipelines = Vulkan::graphicsPipelinePool.getData();
-	auto graphicsOccupancy = Vulkan::graphicsPipelinePool.getOccupancy();
+	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
+	auto graphicsOccupancy = GraphicsAPI::graphicsPipelinePool.getOccupancy();
 
 	while (graphicsQueue.size() > 0)
 	{
@@ -180,12 +180,12 @@ void ResourceSystem::update()
 			
 			if (item.renderPass)
 			{
-				auto& shareCount = Vulkan::renderPasses.at(item.renderPass);
+				auto& shareCount = GraphicsAPI::renderPasses.at(item.renderPass);
 				if (shareCount == 0)
 				{
-					Vulkan::destroyResource(Vulkan::DestroyResourceType::Framebuffer,
+					GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
 						nullptr, item.renderPass);
-					Vulkan::renderPasses.erase(item.renderPass);
+					GraphicsAPI::renderPasses.erase(item.renderPass);
 				}
 				else shareCount--;
 			}
@@ -193,8 +193,8 @@ void ResourceSystem::update()
 		graphicsQueue.pop();
 	}
 
-	auto computePipelines = Vulkan::computePipelinePool.getData();
-	auto computeOccupancy = Vulkan::computePipelinePool.getOccupancy();
+	auto computePipelines = GraphicsAPI::computePipelinePool.getData();
+	auto computeOccupancy = GraphicsAPI::computePipelinePool.getOccupancy();
 
 	while (computeQueue.size() > 0)
 	{
@@ -225,9 +225,9 @@ void ResourceSystem::update()
 		while (bufferQueue.size() > 0)
 		{
 			auto& item = bufferQueue.front();
-			if (*item.instance <= Vulkan::bufferPool.getOccupancy()) // getOccupancy() required.
+			if (*item.instance <= GraphicsAPI::bufferPool.getOccupancy()) // getOccupancy() required.
 			{
-				auto& buffer = Vulkan::bufferPool.getData()[*item.instance - 1];
+				auto& buffer = GraphicsAPI::bufferPool.getData()[*item.instance - 1];
 				if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
 				{
 					BufferExt::moveInternalObjects(item.buffer, buffer);
@@ -237,20 +237,20 @@ void ResourceSystem::update()
 				}
 				else BufferExt::destroy(item.buffer);
 			
-				auto staging = Vulkan::bufferPool.create(
+				auto staging = GraphicsAPI::bufferPool.create(
 					Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, 0);
-				auto stagingView = Vulkan::bufferPool.get(staging);
+				auto stagingView = GraphicsAPI::bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				Buffer::copy(staging, item.instance);
-				Vulkan::bufferPool.destroy(staging);
+				GraphicsAPI::bufferPool.destroy(staging);
 			}
 			else BufferExt::destroy(item.staging);
 			bufferQueue.pop();
 		}
 	}
 
-	auto images = Vulkan::imagePool.getData();
-	auto imageOccupancy = Vulkan::imagePool.getOccupancy();
+	auto images = GraphicsAPI::imagePool.getData();
+	auto imageOccupancy = GraphicsAPI::imagePool.getOccupancy();
 
 	{
 		SET_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
@@ -269,12 +269,12 @@ void ResourceSystem::update()
 				}
 				else ImageExt::destroy(item.image);
 
-				auto staging = Vulkan::bufferPool.create(
+				auto staging = GraphicsAPI::bufferPool.create(
 					Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, 0);
-				auto stagingView = Vulkan::bufferPool.get(staging);
+				auto stagingView = GraphicsAPI::bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				Image::copy(staging, item.instance);
-				Vulkan::bufferPool.destroy(staging);
+				GraphicsAPI::bufferPool.destroy(staging);
 			}
 			else BufferExt::destroy(item.staging);
 			imageQueue.pop();
@@ -746,8 +746,8 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
 
-	auto version = Vulkan::imageVersion++;
-	auto image = Vulkan::imagePool.create(bind, version);
+	auto version = GraphicsAPI::imageVersion++;
+	auto image = GraphicsAPI::imagePool.create(bind, version);
 
 	if (loadAsync && threadSystem)
 	{
@@ -828,12 +828,12 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 			targetSize.x == 1 ? Image::Type::Texture1D :
 			Image::Type::Texture2D, format, bind,
 			int3(targetSize, 1), mipCount, 1, version);
-		auto imageView = Vulkan::imagePool.get(image);
+		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
-		auto staging = Vulkan::bufferPool.create(Buffer::Bind::TransferSrc,
+		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
 			Buffer::Usage::CpuOnly, bufferBinarySize, 0);
-		auto stagingView = Vulkan::bufferPool.get(staging);
+		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 
 		if (downscaleCount > 0)
 		{
@@ -854,7 +854,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		Image::copy(staging, image);
 		graphicsSystem->stopRecording();
-		Vulkan::bufferPool.destroy(staging);
+		GraphicsAPI::bufferPool.destroy(staging);
 	}
 
 	return image;
@@ -971,7 +971,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(framebuffer);
-	auto& framebufferView = **Vulkan::framebufferPool.get(framebuffer);
+	auto& framebufferView = **GraphicsAPI::framebufferPool.get(framebuffer);
 	auto& subpasses = framebufferView.getSubpasses();
 
 	#if GARDEN_DEBUG
@@ -979,12 +979,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		(!subpasses.empty() && subpassIndex < subpasses.size()));
 	#endif
 
-	auto version = Vulkan::graphicsPipelineVersion++;
-	auto pipeline = Vulkan::graphicsPipelinePool.create(path,
+	auto version = GraphicsAPI::graphicsPipelineVersion++;
+	auto pipeline = GraphicsAPI::graphicsPipelinePool.create(path,
 		maxBindlessCount, useAsync, version, framebuffer, subpassIndex);
 
 	auto renderPass = FramebufferExt::getRenderPass(framebufferView);
-	if (renderPass) Vulkan::renderPasses.at(renderPass)++;
+	if (renderPass) GraphicsAPI::renderPasses.at(renderPass)++;
 
 	vector<Image::Format> colorFormats;
 	if (subpasses.empty())
@@ -993,7 +993,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		colorFormats.resize(colorAttachments.size());
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
-			auto attachment = Vulkan::imageViewPool.get(colorAttachments[i].imageView);
+			auto attachment = GraphicsAPI::imageViewPool.get(colorAttachments[i].imageView);
 			colorFormats[i] = attachment->getFormat();
 		}
 	}
@@ -1002,7 +1002,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		auto& outputAttachments = subpasses[subpassIndex].outputAttachments;
 		if (!outputAttachments.empty())
 		{
-			auto attachment = Vulkan::imageViewPool.get(
+			auto attachment = GraphicsAPI::imageViewPool.get(
 				outputAttachments[outputAttachments.size() - 1].imageView);
 			colorFormats.resize(isFormatColor(attachment->getFormat()) ?
 				(uint32)outputAttachments.size() : (uint32)outputAttachments.size() - 1);
@@ -1012,7 +1012,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 	auto depthStencilFormat = Image::Format::Undefined;
 	if (framebufferView.getDepthStencilAttachment().imageView)
 	{
-		auto attachment = Vulkan::imageViewPool.get(
+		auto attachment = GraphicsAPI::imageViewPool.get(
 			framebufferView.getDepthStencilAttachment().imageView);
 		depthStencilFormat = attachment->getFormat();
 	}
@@ -1090,7 +1090,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		if (!loadOrCompileGraphics(getManager(), pipelineData)) abort();
 			
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsync);
-		auto pipelineView = Vulkan::graphicsPipelinePool.get(pipeline);
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
@@ -1190,8 +1190,8 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	bool useAsync, bool loadAsync, uint32 maxBindlessCount)
 {
 	GARDEN_ASSERT(!path.empty());
-	auto version = Vulkan::computePipelineVersion++;
-	auto pipeline = Vulkan::computePipelinePool.create(
+	auto version = GraphicsAPI::computePipelineVersion++;
+	auto pipeline = GraphicsAPI::computePipelinePool.create(
 		path, maxBindlessCount, useAsync, version);
 
 	if (loadAsync && threadSystem)
@@ -1250,7 +1250,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		if (!loadOrCompileCompute(getManager(), pipelineData)) abort();
 
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsync);
-		auto pipelineView = Vulkan::computePipelinePool.get(pipeline);
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
@@ -2105,9 +2105,9 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 	GARDEN_ASSERT(model);
 	GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
 
-	auto version = Vulkan::bufferVersion++;
-	auto buffer = Vulkan::bufferPool.create(bind,
-		Buffer::Usage::GpuOnly, version);
+	auto version = GraphicsAPI::bufferVersion++;
+	auto buffer = GraphicsAPI::bufferPool.create(
+		bind, Buffer::Usage::GpuOnly, version);
 
 	if (loadAsync && threadSystem)
 	{
@@ -2149,18 +2149,18 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 		auto size = (uint64)(accessor.getCount() * accessor.getBinaryStride());
 		auto bufferInstance = BufferExt::create(bind,
 			Buffer::Usage::GpuOnly, size, version);
-		auto bufferView = Vulkan::bufferPool.get(buffer);
+		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
 
-		auto staging = Vulkan::bufferPool.create(
+		auto staging = GraphicsAPI::bufferPool.create(
 			Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, size, 0);
-		auto stagingView = Vulkan::bufferPool.get(staging);
+		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 		accessor.copy(stagingView->getMap()); // TODO: convert uint8 to uintXX.
 		stagingView->flush();
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		Buffer::copy(staging, buffer);
 		graphicsSystem->stopRecording();
-		Vulkan::bufferPool.destroy(staging);
+		GraphicsAPI::bufferPool.destroy(staging);
 	}
 
 	return buffer;
@@ -2181,9 +2181,9 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 	GARDEN_ASSERT(hasAnyAttribute);
 	#endif
 
-	auto version = Vulkan::bufferVersion++;
-	auto buffer = Vulkan::bufferPool.create(bind,
-		Buffer::Usage::GpuOnly, version);
+	auto version = GraphicsAPI::bufferVersion++;
+	auto buffer = GraphicsAPI::bufferPool.create(
+		bind, Buffer::Usage::GpuOnly, version);
 
 	if (loadAsync && threadSystem)
 	{
@@ -2230,18 +2230,18 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 			primitive.getBinaryStride(attributes);
 		auto bufferInstance = BufferExt::create(bind,
 			Buffer::Usage::GpuOnly, size, version);
-		auto bufferView = Vulkan::bufferPool.get(buffer);
+		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
 
-		auto staging = Vulkan::bufferPool.create(
+		auto staging = GraphicsAPI::bufferPool.create(
 			Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, size, 0);
-		auto stagingView = Vulkan::bufferPool.get(staging);
+		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 		primitive.copyVertices(attributes, stagingView->getMap());
 		stagingView->flush();
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		Buffer::copy(staging, buffer);
 		graphicsSystem->stopRecording();
-		Vulkan::bufferPool.destroy(staging);
+		GraphicsAPI::bufferPool.destroy(staging);
 	}
 
 	return buffer;

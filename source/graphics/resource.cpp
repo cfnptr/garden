@@ -22,35 +22,35 @@ using namespace garden::graphics;
 //--------------------------------------------------------------------------------------------------
 bool Resource::isBusy() noexcept
 {
-	if (lastFrameTime > Vulkan::frameCommandBuffer.getBusyTime())
-		lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
-	if (lastTransferTime > Vulkan::transferCommandBuffer.getBusyTime())
-		lastTransferTime = Vulkan::transferCommandBuffer.getBusyTime();
-	if (lastComputeTime > Vulkan::computeCommandBuffer.getBusyTime())
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	if (lastGraphicsTime > Vulkan::graphicsCommandBuffer.getBusyTime())
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
+	if (lastFrameTime > GraphicsAPI::frameCommandBuffer.getBusyTime())
+		lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+	if (lastTransferTime > GraphicsAPI::transferCommandBuffer.getBusyTime())
+		lastTransferTime = GraphicsAPI::transferCommandBuffer.getBusyTime();
+	if (lastComputeTime > GraphicsAPI::computeCommandBuffer.getBusyTime())
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	if (lastGraphicsTime > GraphicsAPI::graphicsCommandBuffer.getBusyTime())
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 
 	// Note: lastFrameTime <= GARDEN_FRAME_LAG
 	// because we are incrementing in the same frame.
 	
-	return !instance || Vulkan::isRunning &&
-		(Vulkan::frameCommandBuffer.getBusyTime() - lastFrameTime <= GARDEN_FRAME_LAG ||
-		Vulkan::transferCommandBuffer.getBusyTime() == lastTransferTime ||
-		Vulkan::computeCommandBuffer.getBusyTime() == lastComputeTime ||
-		Vulkan::graphicsCommandBuffer.getBusyTime() == lastGraphicsTime);
+	return !instance || GraphicsAPI::isRunning &&
+		(GraphicsAPI::frameCommandBuffer.getBusyTime() - lastFrameTime <= GARDEN_FRAME_LAG ||
+		GraphicsAPI::transferCommandBuffer.getBusyTime() == lastTransferTime ||
+		GraphicsAPI::computeCommandBuffer.getBusyTime() == lastComputeTime ||
+		GraphicsAPI::graphicsCommandBuffer.getBusyTime() == lastGraphicsTime);
 }
 bool Resource::isReady() noexcept
 {
-	if (lastTransferTime > Vulkan::transferCommandBuffer.getBusyTime())
-		lastTransferTime = Vulkan::transferCommandBuffer.getBusyTime();
-	if (lastComputeTime > Vulkan::computeCommandBuffer.getBusyTime())
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	if (lastGraphicsTime > Vulkan::graphicsCommandBuffer.getBusyTime())
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
+	if (lastTransferTime > GraphicsAPI::transferCommandBuffer.getBusyTime())
+		lastTransferTime = GraphicsAPI::transferCommandBuffer.getBusyTime();
+	if (lastComputeTime > GraphicsAPI::computeCommandBuffer.getBusyTime())
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	if (lastGraphicsTime > GraphicsAPI::graphicsCommandBuffer.getBusyTime())
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	
 	return instance &&
-		Vulkan::transferCommandBuffer.getBusyTime() != lastTransferTime &&
-		Vulkan::computeCommandBuffer.getBusyTime() != lastComputeTime &&
-		Vulkan::graphicsCommandBuffer.getBusyTime() != lastGraphicsTime;
+		GraphicsAPI::transferCommandBuffer.getBusyTime() != lastTransferTime &&
+		GraphicsAPI::computeCommandBuffer.getBusyTime() != lastComputeTime &&
+		GraphicsAPI::graphicsCommandBuffer.getBusyTime() != lastGraphicsTime;
 }

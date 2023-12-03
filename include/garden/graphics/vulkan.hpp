@@ -15,10 +15,8 @@
 //--------------------------------------------------------------------------------------------------
 
 #pragma once
+#include "garden/graphics/api.hpp"
 #include "garden/graphics/swapchain.hpp"
-#include "garden/graphics/command-buffer.hpp"
-#include "garden/graphics/pipeline/compute.hpp"
-#include "garden/graphics/pipeline/graphics.hpp"
 
 namespace garden::graphics
 {
@@ -33,28 +31,9 @@ namespace garden::graphics
 class Vulkan final
 {
 public:
-	using PipelineCache = pair<vk::PipelineCache, uint64>;
-	using DescriptorSetLayout = pair<vk::DescriptorSetLayout, uint64>;
-
-	enum class DestroyResourceType : uint32
-	{
-		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
-		Sampler, Framebuffer, ImageView, Image, Buffer, Count
-	};
-	struct DestroyResource final
-	{
-		void* data0 = nullptr;
-		void* data1 = nullptr;
-		void* data2 = nullptr;
-		DestroyResourceType type = {};
-		uint32 count = 0;
-	};
-
-	static void* hashState;
 	static vk::Instance instance;
 	static vk::DispatchLoaderDynamic dynamicLoader;
 	static vk::PhysicalDevice physicalDevice;
-	static void* window;
 	static vk::SurfaceKHR surface;
 	static uint32 graphicsQueueFamilyIndex;
 	static uint32 transferQueueFamilyIndex;
@@ -70,57 +49,22 @@ public:
 	static vk::CommandPool transferCommandPool;
 	static vk::CommandPool computeCommandPool;
 	static vk::DescriptorPool descriptorPool;
-	// TODO: move linear pools to the generic class, when new GAPI arrive.
-	static LinearPool<Buffer> bufferPool;
-	static LinearPool<Image> imagePool;
-	static LinearPool<ImageView> imageViewPool;
-	static LinearPool<Framebuffer> framebufferPool;
-	static LinearPool<GraphicsPipeline> graphicsPipelinePool;
-	static LinearPool<ComputePipeline> computePipelinePool;
-	static LinearPool<DescriptorSet> descriptorSetPool;
-	static uint64 graphicsPipelineVersion;
-	static uint64 computePipelineVersion;
-	static uint64 bufferVersion;
-	static uint64 imageVersion;
 	static vector<vk::CommandBuffer> secondaryCommandBuffers;
 	static vector<bool> secondaryCommandStates;
-	static vector<DestroyResource> destroyBuffer;
-	static map<void*, uint64> renderPasses;
 	static Swapchain swapchain;
-	// TODO: move command buffer to the generic class, when new GAPI arrive.
-	static CommandBuffer frameCommandBuffer;
-	static CommandBuffer graphicsCommandBuffer;
-	static CommandBuffer transferCommandBuffer;
-	static CommandBuffer computeCommandBuffer;
-	static CommandBuffer* currentCommandBuffer;
 	static vk::PhysicalDeviceProperties2 deviceProperties;
 	static vk::PhysicalDeviceFeatures2 deviceFeatures;
-	static bool isDeviceIntegrated;
-	static bool isRunning;
 	#if GARDEN_DEBUG
 	static vk::DebugUtilsMessengerEXT debugMessenger;
 	static bool hasDebugUtils;
 	#endif
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	static bool recordGpuTime;
-	#endif
+
+	// TODO: move rest to api.hpp and make these calls universal.
 
 	static void initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 		bool useVsync, bool useTripleBuffering, bool useThreading);
 	static void terminate();
 	static void updateDestroyBuffer();
-
-	static void destroyResource(DestroyResourceType type, void* data0,
-		void* data1 = nullptr, void* data2 = nullptr, uint32 count = 0)
-	{
-		Vulkan::DestroyResource destroyResource;
-		destroyResource.data0 = data0;
-		destroyResource.data1 = data1;
-		destroyResource.data2 = data2;
-		destroyResource.type = type;
-		destroyResource.count = count;
-		Vulkan::destroyBuffer.push_back(destroyResource);
-	}
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -175,46 +119,6 @@ static Image::Format toImageFormat(vk::Format formatType)
 	case vk::Format::eD32SfloatS8Uint: return Image::Format::SfloatD32Uint8S;
 	default: abort();
 	}
-}
-
-//--------------------------------------------------------------------------------------------------
-static bool isFormatColor(Image::Format formatType)
-{
-	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
-}
-static bool isFormatDepthOnly(Image::Format formatType)
-{
-	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SfloatD32;
-}
-static bool isFormatStencilOnly(Image::Format formatType)
-{
-	return false; // TODO:
-}
-static bool isFormatDepthStencil(Image::Format formatType)
-{
-	return (uint8)Image::Format::UnormD24UintS8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
-}
-static bool isFormatDepthOrStencil(Image::Format formatType)
-{
-	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
-}
-static bool isFormatFloat(Image::Format formatType)
-{
-	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
-}
-static bool isFormatInt(Image::Format formatType)
-{
-	return false; // TODO:
-}
-static bool isFormatUint(Image::Format formatType)
-{
-	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UintR32;
 }
 
 //--------------------------------------------------------------------------------------------------

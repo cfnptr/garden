@@ -298,6 +298,46 @@ public:
 };
 
 //--------------------------------------------------------------------------------------------------
+static bool isFormatColor(Image::Format formatType)
+{
+	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
+}
+static bool isFormatDepthOnly(Image::Format formatType)
+{
+	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::SfloatD32;
+}
+static bool isFormatStencilOnly(Image::Format formatType)
+{
+	return false; // TODO:
+}
+static bool isFormatDepthStencil(Image::Format formatType)
+{
+	return (uint8)Image::Format::UnormD24UintS8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
+}
+static bool isFormatDepthOrStencil(Image::Format formatType)
+{
+	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
+}
+static bool isFormatFloat(Image::Format formatType)
+{
+	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
+}
+static bool isFormatInt(Image::Format formatType)
+{
+	return false; // TODO:
+}
+static bool isFormatUint(Image::Format formatType)
+{
+	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::UintR32;
+}
+
+//--------------------------------------------------------------------------------------------------
 static psize toBinarySize(Image::Format imageFormat)
 {
 	// Note: not guaranteed same size on hardware.

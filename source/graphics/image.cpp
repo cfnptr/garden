@@ -77,6 +77,11 @@ Image::Image(Type type, Format format, Bind bind, const int3& size,
 	uint8 mipCount, uint32 layerCount, uint64 version) :
 	Memory(0, Usage::GpuOnly, version), layouts(mipCount * layerCount)
 {
+	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(mipCount > 0);
+	GARDEN_ASSERT(layerCount > 0);
+	GARDEN_ASSERT(version > 0);
+
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.imageType = (VkImageType)toVkImageType(type);
 	imageInfo.format = (VkFormat)toVkFormat(format);
@@ -150,14 +155,14 @@ bool Image::destroy()
 {
 	if (isBusy()) return false;
 
-	if (Vulkan::isRunning)
-		Vulkan::imageViewPool.destroy(defaultView);
+	if (GraphicsAPI::isRunning)
+		GraphicsAPI::imageViewPool.destroy(defaultView);
 	
 	if (!this->swapchain)
 	{
-		if (Vulkan::isRunning)
+		if (GraphicsAPI::isRunning)
 		{
-			Vulkan::destroyResource(Vulkan::DestroyResourceType::Image,
+			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Image,
 				instance, allocation);
 		}
 		else
@@ -177,10 +182,10 @@ ID<ImageView> Image::getDefaultView()
 	if (!defaultView)
 	{
 		GARDEN_ASSERT(instance); // is ready
-		defaultView = Vulkan::imageViewPool.create(true,
-			Vulkan::imagePool.getID(this), type, format, 0, mipCount, 0, layerCount);
+		defaultView = GraphicsAPI::imageViewPool.create(true,
+			GraphicsAPI::imagePool.getID(this), type, format, 0, mipCount, 0, layerCount);
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		auto view = Vulkan::imageViewPool.get(defaultView);
+		auto view = GraphicsAPI::imageViewPool.get(defaultView);
 		view->setDebugName(debugName + ".defaultView");
 		#endif
 	}
@@ -206,7 +211,7 @@ void Image::generateMips(SamplerFilter filter)
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
 
-	auto image = Vulkan::imagePool.getID(this);
+	auto image = GraphicsAPI::imagePool.getID(this);
 	auto mipSize = size;
 
 	for (uint8 i = 1; i < mipCount; i++)
@@ -228,69 +233,69 @@ void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	GARDEN_ASSERT(isFormatFloat(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
 
 	ClearImageCommand command;
 	command.clearType = 1;
 	command.regionCount = count;
-	command.image = Vulkan::imagePool.getID(this);
+	command.image = GraphicsAPI::imagePool.getID(this);
 	command.color = color;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	GARDEN_ASSERT(isFormatInt(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
 
 	ClearImageCommand command;
 	command.clearType = 2;
 	command.regionCount = count;
-	command.image = Vulkan::imagePool.getID(this);
+	command.image = GraphicsAPI::imagePool.getID(this);
 	memcpy(&command.color, &color, sizeof(float4));
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	GARDEN_ASSERT(isFormatDepthOrStencil(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
 	
 	ClearImageCommand command;
 	command.regionCount = count;
-	command.image = Vulkan::imagePool.getID(this);
+	command.image = GraphicsAPI::imagePool.getID(this);
 	command.color.x = depth;
 	memcpy(&command.color.y, &stencil, sizeof(uint32));
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
-		lastGraphicsTime = Vulkan::graphicsCommandBuffer.getBusyTime();
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
-		lastComputeTime = Vulkan::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = Vulkan::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -302,13 +307,13 @@ void Image::copy(ID<Image> source, ID<Image> destination,
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
-	auto srcView = Vulkan::imagePool.get(source);
+	auto srcView = GraphicsAPI::imagePool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-    auto dstView = Vulkan::imagePool.get(destination);
+    auto dstView = GraphicsAPI::imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 	GARDEN_ASSERT(toBinarySize(srcView->format) == toBinarySize(dstView->format));
@@ -347,27 +352,27 @@ void Image::copy(ID<Image> source, ID<Image> destination,
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
 	{
 		srcView->lastGraphicsTime = dstView->lastGraphicsTime =
-			Vulkan::graphicsCommandBuffer.getBusyTime();
+			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::transferCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
 	{
 		srcView->lastTransferTime = dstView->lastTransferTime =
-			Vulkan::transferCommandBuffer.getBusyTime();
+			GraphicsAPI::transferCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
 	{
 		srcView->lastComputeTime = dstView->lastComputeTime =
-			Vulkan::computeCommandBuffer.getBusyTime();
+			GraphicsAPI::computeCommandBuffer.getBusyTime();
 	}
 	else
 	{
 		srcView->lastFrameTime = dstView->lastFrameTime =
-			Vulkan::frameCommandBuffer.getBusyTime();
+			GraphicsAPI::frameCommandBuffer.getBusyTime();
 	}
 }
 
@@ -380,13 +385,13 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
-	auto bufferView = Vulkan::bufferPool.get(source);
+	auto bufferView = GraphicsAPI::bufferPool.get(source);
 	GARDEN_ASSERT(bufferView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(bufferView->bind, Buffer::Bind::TransferSrc));
 	
-    auto imageView = Vulkan::imagePool.get(destination);
+    auto imageView = GraphicsAPI::imagePool.get(destination);
 	GARDEN_ASSERT(imageView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(imageView->bind, Bind::TransferDst));
 	
@@ -421,27 +426,27 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 	command.buffer = source;
 	command.image = destination;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
 	{
 		bufferView->lastGraphicsTime = imageView->lastGraphicsTime =
-			Vulkan::graphicsCommandBuffer.getBusyTime();
+			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::transferCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
 	{
 		bufferView->lastTransferTime = imageView->lastTransferTime =
-			Vulkan::transferCommandBuffer.getBusyTime();
+			GraphicsAPI::transferCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
 	{
 		bufferView->lastComputeTime = imageView->lastComputeTime =
-			Vulkan::computeCommandBuffer.getBusyTime();
+			GraphicsAPI::computeCommandBuffer.getBusyTime();
 	}
 	else
 	{
 		bufferView->lastFrameTime = imageView->lastFrameTime =
-			Vulkan::frameCommandBuffer.getBusyTime();
+			GraphicsAPI::frameCommandBuffer.getBusyTime();
 	}
 }
 
@@ -454,13 +459,13 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
-	auto imageView = Vulkan::imagePool.get(source);
+	auto imageView = GraphicsAPI::imagePool.get(source);
 	GARDEN_ASSERT(imageView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(imageView->bind, Bind::TransferSrc));
     
-	auto bufferView = Vulkan::bufferPool.get(destination);
+	auto bufferView = GraphicsAPI::bufferPool.get(destination);
 	GARDEN_ASSERT(bufferView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(bufferView->bind, Buffer::Bind::TransferDst));
 
@@ -495,27 +500,27 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 	command.buffer = destination;
 	command.image = source;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
 	{
 		imageView->lastGraphicsTime = bufferView->lastGraphicsTime =
-			Vulkan::graphicsCommandBuffer.getBusyTime();
+			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::transferCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
 	{
 		imageView->lastTransferTime = bufferView->lastTransferTime =
-			Vulkan::transferCommandBuffer.getBusyTime();
+			GraphicsAPI::transferCommandBuffer.getBusyTime();
 	}
-	else if (Vulkan::currentCommandBuffer == &Vulkan::computeCommandBuffer)
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
 	{
 		imageView->lastComputeTime = bufferView->lastComputeTime =
-			Vulkan::computeCommandBuffer.getBusyTime();
+			GraphicsAPI::computeCommandBuffer.getBusyTime();
 	}
 	else
 	{
 		imageView->lastFrameTime = bufferView->lastFrameTime =
-			Vulkan::frameCommandBuffer.getBusyTime();
+			GraphicsAPI::frameCommandBuffer.getBusyTime();
 	}
 }
 
@@ -528,13 +533,13 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(Vulkan::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
-	auto srcView = Vulkan::imagePool.get(source);
+	auto srcView = GraphicsAPI::imagePool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-	auto dstView = Vulkan::imagePool.get(destination);
+	auto dstView = GraphicsAPI::imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 
@@ -580,17 +585,17 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	Vulkan::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (Vulkan::currentCommandBuffer == &Vulkan::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
 	{
 		srcView->lastGraphicsTime = dstView->lastGraphicsTime = 
-			Vulkan::graphicsCommandBuffer.getBusyTime();
+			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	}
 	else
 	{
 		srcView->lastFrameTime = dstView->lastFrameTime = 
-			Vulkan::frameCommandBuffer.getBusyTime();
+			GraphicsAPI::frameCommandBuffer.getBusyTime();
 	}
 }
 
@@ -598,7 +603,7 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	Image::Format format, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
-	auto imageView = Vulkan::imagePool.get(image);
+	auto imageView = GraphicsAPI::imagePool.get(image);
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)imageView->instance,
 		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
@@ -622,8 +627,8 @@ bool ImageView::destroy()
 {
 	if (isBusy()) return false;
 
-	if (Vulkan::isRunning)
-		Vulkan::destroyResource(Vulkan::DestroyResourceType::ImageView, instance);
+	if (GraphicsAPI::isRunning)
+		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
 	else Vulkan::device.destroyImageView((VkImageView)instance);
 
 	instance = nullptr;
