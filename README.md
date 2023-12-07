@@ -34,7 +34,7 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 * Automatic Memory Barriers
 * Bindless Descriptors
 * Custom Shader Language (GSL)
-* Simple Rendering Pipelines
+* Easy To Use Rendering Pipelines
 * Linear Resource Pool
 * Built-in Thread Pool (Tasks)
 * Settings / Logging System
@@ -66,6 +66,8 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 - [ ] Soft / Point Shadows
 - [ ] Translucent Shadow Maps
 - [ ] Vulkan Memory Aliasing
+- [ ] Particles / Trails
+- [ ] 2D Tile Maps (9-sliced)
 - [ ] Nvidia DLSS Support
 - [ ] Nvidia Reflex Support
 - [ ] AMD FSR Support
@@ -75,12 +77,23 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 - [ ] HDR Monitor Support
 - [ ] Virtual Reality Support
 - [ ] Consoles Support
+- [ ] Mobiles Support
 
 ## Supported operating systems
 
-* Windows
-* Ubuntu (Linux)
-* macOS
+* Windows (10/11)
+* Ubuntu (22.04 LTS)
+* macOS (Monterey 12)
+
+This list includes only those systems on which functionality testing is conducted.
+However, you can also compile it under any other Linux distribution or operating system.
+
+## Supported GPUs
+
+* Nvidia [Maxwell](https://developer.nvidia.com/maxwell-compute-architecture) microarchitecture and newer
+* AMD [GCN](https://en.wikipedia.org/wiki/Graphics_Core_Next) microarchitecture and newer
+* Intel [Gen9](https://en.wikichip.org/wiki/intel/microarchitectures/gen9) microarchitecture and newer
+* Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) processor and newer (partial support)
 
 ## Build requirements
 
@@ -91,15 +104,7 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 * [OpenSSL 3.0+](https://openssl.org)
 * [X11](https://www.x.org) (Linux only)
 
-### X11 installation
-
-* Ubuntu: sudo apt install xorg-dev
-
-### OpenSSL installation
-
-* Windows: [choco](https://chocolatey.org) install openssl
-* Ubuntu: sudo apt install libssl-dev
-* macOS: [brew](https://brew.sh) install openssl
+Use building [instructions](BUILDING.md) to install all required tools and libraries.
 
 ### CMake options
 
