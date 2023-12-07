@@ -22,6 +22,7 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/graphics/deferred.hpp"
 #include "garden/xxhash.hpp"
+#include "mpio/os.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
@@ -33,6 +34,7 @@
 #define SET_THIS_RESOURCE_DEBUG_NAME(resource, name)
 #endif
 
+using namespace mpio;
 using namespace garden;
 using namespace garden::graphics::primitive;
 
@@ -396,21 +398,9 @@ static float4x4 calcRelativeView(Manager* manager, const TransformComponent* tra
 }
 
 //--------------------------------------------------------------------------------------------------
-void GraphicsSystem::update()
+static void updateWindowMode(GraphicsSystem* graphicsSystem, bool& isF11Pressed)
 {
-	glfwPollEvents();
-	auto manager = getManager();
-
-	if (glfwWindowShouldClose((GLFWwindow*)GraphicsAPI::window))
-	{
-		// TODO: add modal if user sure want to exit.
-		// And also allow to force quit or wait for running threads.
-		glfwHideWindow((GLFWwindow*)GraphicsAPI::window);
-		manager->stop();
-		return;
-	}
-
-	if (isKeyboardButtonPressed(KeyboardButton::F11))
+	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::F11))
 	{
 		if (!isF11Pressed)
 		{
@@ -432,19 +422,151 @@ void GraphicsSystem::update()
 		}
 	}
 	else isF11Pressed = false;
+}
 
+//--------------------------------------------------------------------------------------------------
+static void updateWindowInput(double& time, double& deltaTime, int2& framebufferSize,
+	int2& windowSize, float2& cursorPosition, bool& isFramebufferSizeValid)
+{
 	auto newTime = glfwGetTime();
 	deltaTime = newTime - time;
 	time = newTime;
-	
+
+	int framebufferWidth = 0, framebufferHeight = 0;
 	glfwGetFramebufferSize((GLFWwindow*)GraphicsAPI::window,
-		&framebufferSize.x, &framebufferSize.y);
-	glfwGetWindowSize((GLFWwindow*)GraphicsAPI::window,
-		&windowSize.x, &windowSize.y);
+		&framebufferWidth, &framebufferHeight);
+	int windowWidth = 0, windowHeight = 0;
+	glfwGetWindowSize((GLFWwindow*)GraphicsAPI::window, &windowWidth, &windowHeight);
+
+	isFramebufferSizeValid = framebufferWidth != 0 && framebufferHeight != 0;
+	if (isFramebufferSizeValid)
+		framebufferSize = int2(framebufferWidth, framebufferHeight);
+	if (windowWidth != 0 && windowHeight != 0)
+		windowSize = int2(windowWidth, windowHeight);
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos((GLFWwindow*)GraphicsAPI::window, &x, &y);
 	cursorPosition = float2((float)x, (float)y);
+}
+
+//--------------------------------------------------------------------------------------------------
+static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
+	vector<vector<ID<Buffer>>>& cameraConstantsBuffers)
+{
+	for (uint32 i = 0; i < (uint32)cameraConstantsBuffers.size(); i++)
+		graphicsSystem->destroy(cameraConstantsBuffers[i][0]);
+	cameraConstantsBuffers.clear();
+
+	auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
+	cameraConstantsBuffers.resize(swapchainBufferCount);
+
+	for (uint32 i = 0; i < swapchainBufferCount; i++)
+	{
+		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform,
+			Buffer::Usage::CpuToGpu, sizeof(CameraConstants));
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, constantsBuffer,
+			"buffer.uniform.cameraConstants" + to_string(i));
+		cameraConstantsBuffers[i].push_back(constantsBuffer);
+	}
+}
+
+//--------------------------------------------------------------------------------------------------
+static void updateCurrentFrambuffer(ID<Framebuffer> swapchainFramebuffer, int2 framebufferSize)
+{
+	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
+	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
+	auto colorImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
+	FramebufferExt::getColorAttachments(framebuffer)[0].imageView = colorImage->getDefaultView();
+	FramebufferExt::getSize(framebuffer) = framebufferSize;
+}
+
+//--------------------------------------------------------------------------------------------------
+static void prepareCameraConstants(Manager* manager, ID<Entity> camera, ID<Entity> directionalLight,
+	int2 framebufferSize, CameraConstants& cameraConstants)
+{
+	auto transformComponent = manager->tryGet<TransformComponent>(camera);
+	if (transformComponent)
+	{
+		cameraConstants.view = calcRelativeView(manager, *transformComponent);
+		setTranslation(cameraConstants.view, float3(0.0f));
+		cameraConstants.cameraPos = float4(transformComponent->position, 0.0f);
+	}
+	else
+	{
+		cameraConstants.view = float4x4::identity;
+		cameraConstants.cameraPos = 0.0f;
+	}
+
+	auto cameraComponent = manager->tryGet<CameraComponent>(camera);
+	if (cameraComponent)
+	{
+		cameraComponent->p.perspective.aspectRatio =
+			(float)framebufferSize.x / (float)framebufferSize.y;
+		cameraConstants.projection = cameraComponent->calcProjection();
+		cameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
+	}
+	else
+	{
+		cameraConstants.projection = float4x4::identity;
+		cameraConstants.nearPlane = DEFAULT_HMD_DEPTH;
+	}
+
+	auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
+	if (deferredSystem)
+	{
+		auto frameSize = deferredSystem->getFramebufferSize();
+		cameraConstants.frameSize = frameSize;
+		cameraConstants.frameSizeInv = 1.0f / (float2)frameSize;
+	}
+	else
+	{
+		cameraConstants.frameSize = cameraConstants.frameSizeInv = 1.0f;
+	}
+
+	cameraConstants.viewProj =
+		cameraConstants.projection * cameraConstants.view;
+	cameraConstants.viewInverse = inverse(cameraConstants.view);
+	cameraConstants.projInverse = inverse(cameraConstants.projection);
+	cameraConstants.viewProjInv = inverse(cameraConstants.viewProj);
+	cameraConstants.frameSizeInv2 = cameraConstants.frameSizeInv * 2.0f;
+	auto viewDir = cameraConstants.view * float4(float3::front, 1.0f);
+	cameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
+
+	if (directionalLight)
+	{
+		auto lightTransform = manager->tryGet<TransformComponent>(directionalLight);
+		if (lightTransform)
+		{
+			auto lightDir = lightTransform->rotation * float3::front;
+			cameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
+		}
+	}
+	else cameraConstants.lightDir = float4(float3::bottom, 0.0f);
+}
+
+//--------------------------------------------------------------------------------------------------
+void GraphicsSystem::update()
+{
+	glfwPollEvents();
+	auto manager = getManager();
+
+	if (glfwWindowShouldClose((GLFWwindow*)GraphicsAPI::window))
+	{
+		// TODO: add modal if user sure want to exit.
+		// And also allow to force quit or wait for running threads.
+		glfwHideWindow((GLFWwindow*)GraphicsAPI::window);
+		manager->stop();
+		return;
+	}
+
+	updateWindowMode(this, isF11Pressed);
+
+	bool isFramebufferSizeValid = false;
+	updateWindowInput(time, deltaTime, framebufferSize,
+		windowSize, cursorPosition, isFramebufferSizeValid);
+
+	double beginClock = 0.0;
+	if (!isFramebufferSizeValid) beginClock = OS::getCurrentClock();
 
 	IRenderSystem::SwapchainChanges swapchainChanges;
 	swapchainChanges.framebufferSize =
@@ -461,8 +583,8 @@ void GraphicsSystem::update()
 		forceRecreateSwapchain = false;
 	}
 
-	auto swapchainRecreated = swapchainChanges.framebufferSize ||
-		swapchainChanges.bufferCount || swapchainChanges.vsyncState;
+	auto swapchainRecreated = isFramebufferSizeValid && (swapchainChanges.framebufferSize ||
+		swapchainChanges.bufferCount || swapchainChanges.vsyncState);
 
 	if (swapchainRecreated)
 	{
@@ -470,22 +592,7 @@ void GraphicsSystem::update()
 
 		if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
 		{
-			for (uint32 i = 0; i < (uint32)cameraConstantsBuffers.size(); i++)
-				destroy(cameraConstantsBuffers[i][0]);
-			cameraConstantsBuffers.clear();
-
-			auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
-			cameraConstantsBuffers.resize(swapchainBufferCount);
-
-			for (uint32 i = 0; i < swapchainBufferCount; i++)
-			{
-				auto constantsBuffer = createBuffer(Buffer::Bind::Uniform,
-					Buffer::Usage::CpuToGpu, sizeof(CameraConstants));
-				SET_THIS_RESOURCE_DEBUG_NAME(constantsBuffer,
-					"buffer.uniform.cameraConstants" + to_string(i));
-				cameraConstantsBuffers[i].push_back(constantsBuffer);
-			}
-
+			recreateCameraBuffers(this, cameraConstantsBuffers);
 			swapchainChanges.bufferCount = true;
 		}
 
@@ -500,19 +607,17 @@ void GraphicsSystem::update()
 		}
 	}
 
-	if (!Vulkan::swapchain.acquireNextImage())
+	if (isFramebufferSizeValid)
 	{
-		if (logSystem) logSystem->warn("Out fo date swapchain.");
+		if (!Vulkan::swapchain.acquireNextImage())
+		{
+			if (logSystem) logSystem->warn("Out fo date or subotimal swapchain.");
+		}
 	}
 
-	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
-	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
-	auto colorImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
-	FramebufferExt::getColorAttachments(framebuffer)[0].imageView =
-		colorImage->getDefaultView();
-	FramebufferExt::getSize(framebuffer) = framebufferSize;
+	updateCurrentFrambuffer(swapchainFramebuffer, framebufferSize);
 	
+	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
 	if (swapchainRecreated)
 	{
 		for (auto subsystem : subsystems)
@@ -527,97 +632,34 @@ void GraphicsSystem::update()
 
 	if (camera)
 	{
-		auto transformComponent = manager->tryGet<TransformComponent>(camera);
-		if (transformComponent)
-		{
-			currentCameraConstants.view = calcRelativeView(manager, *transformComponent);
-			setTranslation(currentCameraConstants.view, float3(0.0f));
-			currentCameraConstants.cameraPos = float4(transformComponent->position, 0.0f);
-		}
-		else
-		{
-			currentCameraConstants.view = float4x4::identity;
-			currentCameraConstants.cameraPos = 0.0f;
-		}
-
-		auto cameraComponent = manager->tryGet<CameraComponent>(camera);
-		if (cameraComponent)
-		{
-			cameraComponent->p.perspective.aspectRatio =
-				(float)framebufferSize.x / (float)framebufferSize.y;
-			currentCameraConstants.projection = cameraComponent->calcProjection();
-			currentCameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
-		}
-		else
-		{
-			currentCameraConstants.projection = float4x4::identity;
-			currentCameraConstants.nearPlane = DEFAULT_HMD_DEPTH;
-		}
-		
-		auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
-		if (deferredSystem)
-		{
-			auto frameSize = deferredSystem->getFramebufferSize();
-			currentCameraConstants.frameSize = frameSize;
-			currentCameraConstants.frameSizeInv = 1.0f / (float2)frameSize;
-		}
-		else
-		{
-			currentCameraConstants.frameSize = currentCameraConstants.frameSizeInv = 1.0f;
-		}
-		
-		currentCameraConstants.viewProj =
-			currentCameraConstants.projection * currentCameraConstants.view;
-		currentCameraConstants.viewInverse = inverse(currentCameraConstants.view);
-		currentCameraConstants.projInverse = inverse(currentCameraConstants.projection);
-		currentCameraConstants.viewProjInv = inverse(currentCameraConstants.viewProj);
-		currentCameraConstants.frameSizeInv2 = currentCameraConstants.frameSizeInv * 2.0f;
-		auto viewDir = currentCameraConstants.view * float4(float3::front, 1.0f);
-		currentCameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
-		
-		if (directionalLight)
-		{
-			auto lightTransform = manager->tryGet<TransformComponent>(directionalLight);
-			if (lightTransform)
-			{
-				auto lightDir = lightTransform->rotation * float3::front;
-				currentCameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
-			}
-		}
-		else currentCameraConstants.lightDir = float4(float3::bottom, 0.0f);
-
+		prepareCameraConstants(manager, camera, directionalLight,
+			framebufferSize, currentCameraConstants);
 		auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
 		auto cameraBuffer = GraphicsAPI::bufferPool.get(
 			cameraConstantsBuffers[swapchainBufferIndex][0]);
 		cameraBuffer->setData(&currentCameraConstants);
 	}
 
-	#if GARDEN_EDITOR
-	ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-	#endif
-
-	for (auto subsystem : subsystems)
+	if (isFramebufferSizeValid)
 	{
-		auto renderSystem = dynamic_cast<IRenderSystem*>(subsystem.system);
-		renderSystem->render();
+		#if GARDEN_EDITOR
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		#endif
+
+		for (auto subsystem : subsystems)
+		{
+			auto renderSystem = dynamic_cast<IRenderSystem*>(subsystem.system);
+			renderSystem->render();
+		}
+
+		GraphicsAPI::graphicsCommandBuffer.submit();
+		GraphicsAPI::transferCommandBuffer.submit();
+		GraphicsAPI::computeCommandBuffer.submit();
+		GraphicsAPI::frameCommandBuffer.submit();
 	}
-
-	#if GARDEN_EDITOR
-	startRecording(CommandBufferType::Frame);
-	{
-		INSERT_GPU_DEBUG_LABEL("ImGui", Color::transparent);
-		ImGui::Render();
-	}
-	stopRecording();
-	#endif
-
-	GraphicsAPI::graphicsCommandBuffer.submit();
-	GraphicsAPI::transferCommandBuffer.submit();
-	GraphicsAPI::computeCommandBuffer.submit();
-	GraphicsAPI::frameCommandBuffer.submit();
-
+	
 	GraphicsAPI::descriptorSetPool.dispose();
 	GraphicsAPI::computePipelinePool.dispose();
 	GraphicsAPI::graphicsPipelinePool.dispose();
@@ -625,13 +667,24 @@ void GraphicsSystem::update()
 	GraphicsAPI::imageViewPool.dispose();
 	GraphicsAPI::imagePool.dispose();
 	GraphicsAPI::bufferPool.dispose();
-
 	Vulkan::updateDestroyBuffer();
-	frameIndex++;
 
-	if (!Vulkan::swapchain.present())
+	if (isFramebufferSizeValid)
 	{
-		if (logSystem) logSystem->warn("Out fo date swapchain.");
+		if (!Vulkan::swapchain.present())
+		{
+			if (logSystem) logSystem->warn("Out fo date or subotimal swapchain.");
+		}
+
+		frameIndex++;
+	}
+	else
+	{
+		auto endClock = OS::getCurrentClock();
+		auto deltaClock = (endClock - beginClock) * 1000.0;
+		auto delayTime = 1000 / frameRate - (int)deltaClock;
+		if (delayTime > 0) this_thread::sleep_for(chrono::milliseconds(delayTime));
+		// TODO: use loop with empty cycles to improve sleep precission.
 	}
 }
 

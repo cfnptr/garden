@@ -57,7 +57,6 @@ Buffer::Buffer(Bind bind, Usage usage, uint64 size, uint64 version) :
 	Memory(size, usage, version)
 {
 	GARDEN_ASSERT(size > 0);
-	GARDEN_ASSERT(version > 0);
 
 	VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bufferInfo.size = size;
