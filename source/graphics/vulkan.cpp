@@ -575,7 +575,8 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 
 	if (glfwRawMouseMotionSupported())
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	glfwSetWindowSizeLimits(window, 2, 2, GLFW_DONT_CARE, GLFW_DONT_CARE);
+	glfwSetWindowSizeLimits(window, MIN_DISPLAY_SIZE, MIN_DISPLAY_SIZE,
+		GLFW_DONT_CARE, GLFW_DONT_CARE);
 
 	/* TODO: use if required
 	#if __APPLE__

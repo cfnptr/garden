@@ -22,6 +22,9 @@
 namespace garden::graphics
 {
 
+// Minimal DLSS output size
+#define MIN_DISPLAY_SIZE 32
+
 //--------------------------------------------------------------------------------------------------
 class GraphicsAPI final
 {
