@@ -15,7 +15,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
-        submodules: true
+        submodules: recursive
 
     - if: matrix.os == 'ubuntu-latest' 
       name: Install Ubuntu Packages

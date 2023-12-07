@@ -34,7 +34,7 @@ You may chose any other default Git editor instead of Vim during installation.
 ## 2. Install required packages
 
 1. ```sudo apt-get update```
-2. ```sudo apt-get install git cmake clang xorg-dev libssl-dev```
+2. ```sudo apt-get install git gcc g++ cmake clang xorg-dev libssl-dev```
 
 ## 3. Install Vulkan SDK
 
