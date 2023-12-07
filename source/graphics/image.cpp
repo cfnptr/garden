@@ -80,7 +80,6 @@ Image::Image(Type type, Format format, Bind bind, const int3& size,
 	GARDEN_ASSERT(size > 0);
 	GARDEN_ASSERT(mipCount > 0);
 	GARDEN_ASSERT(layerCount > 0);
-	GARDEN_ASSERT(version > 0);
 
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.imageType = (VkImageType)toVkImageType(type);

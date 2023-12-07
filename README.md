@@ -1,15 +1,80 @@
 # GARDEN ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
 
+![Engine screenshot](docs/engine-screenshot.png)
+
 Garden is an open-source, cross-platform game engine designed for efficiency and flexibility.
-Written in C++ and utilizing the Vulkan API for rendering, it is aimed at providing
+Written in modern C++ and utilizing the Vulkan API for rendering, it is aimed at providing
 developers with a robust toolset for creating high-performance, visually stunning games.
+The main features of the engine include extensible architecture, built-in editor,
+convenient creation of rendering pipelines using a custom shader language (GSL), and
+automatic placement of memory barriers, which are necessary in recent graphics APIs.
 
 ## Features
 
-* Cross-Platform Compatibility: Runs seamlessly on multiple platforms.
-* Vulkan API Rendering Backend: High-efficiency graphics and compute operations.
-* Modern C++ Design: Written in modern C++ for clarity, performance, and reliability.
-* Extensible Architecture: Designed to be easily extendable and modifiable.
+* Cross-Platform Compatibility
+* Entity Component System (ECS)
+* Built-in Editor (ImGui)
+* Deferred Rendering (G-Buffer)
+* Physically Based Rendering (PBR)
+* Image-Based Lighting (IBL)
+* Gamma Correction (HDR)
+* Tone Mapping (ACES, Uchimura)
+* Automatic Exposure (AE)
+* Light Bloom (Glow)
+* Screen Space Ambient Occlusion (SSAO)
+* Fast Approximate Anti-Aliasing (FXAA)
+* Cascade Shadow Mapping (CSM)
+* Skybox Rendering (Cubemap)
+* Perspective / Orthographic Camera
+* Frustum Culling (AABB)
+* Bounding Volume Hierarchy (BVH)
+* Opaque / Translucent / Cutoff Shaders
+* Vulkan API 1.3 backend
+* Multithreaded Rendering
+* Automatic Memory Barriers
+* Bindless Descriptors
+* Custom Shader Language (GSL)
+* Simple Rendering Pipelines
+* Linear Resource Pool
+* Built-in Thread Pool (Tasks)
+* Settings / Logging System
+* Scene Serialization / Deserialization
+* First Person View (FPV)
+* .web / .png / .jpg / .exr / .hdr Support
+* glTF Model And Scene Loader
+* Config File Reader / Writer
+* Resource Pack Reader / Writer
+* Equi To Cube Map Converter
+
+### Planned Features
+
+- [ ] Procedural Atmosphere (Sky)
+- [ ] Screen Space Reflections (SSR)
+- [ ] Motion Blur
+- [ ] Vignette Post-Process
+- [ ] Depth Of Field (DOF)
+- [ ] Physical Based Camera
+- [ ] Screen Space Shadows (SSS)
+- [ ] Froxel Culled Lights
+- [ ] GPU Occlusion Culling
+- [ ] Chromatic Abberation
+- [ ] Lens Flare / Glare
+- [ ] Color Grading (ACES)
+- [ ] Lens Distortion
+- [ ] God Rays
+- [ ] Volumetric Smoke / Clouds
+- [ ] Soft / Point Shadows
+- [ ] Translucent Shadow Maps
+- [ ] Vulkan Memory Aliasing
+- [ ] Nvidia DLSS Support
+- [ ] Nvidia Reflex Support
+- [ ] AMD FSR Support
+- [ ] Physics Support (Jolt)
+- [ ] Hardware Ray-Traicing
+- [ ] Ray-Traced Shadows
+- [ ] HDR Monitor Support
+- [ ] Virtual Reality Support
+- [ ] Consoles Support
 
 ## Supported operating systems
 
@@ -36,14 +101,6 @@ developers with a robust toolset for creating high-performance, visually stunnin
 * Ubuntu: sudo apt install libssl-dev
 * macOS: [brew](https://brew.sh) install openssl
 
-### Zlib installation (Windows only)
-
-* Download Zlib source code https://www.zlib.net
-* cmake --build . --config Release
-* cmake --install . --config Release
-
-TODO: maybe remove it and use built-in Zlib?
-
 ### CMake options
 
 | Name                  | Description                              | Default value |
@@ -52,4 +109,22 @@ TODO: maybe remove it and use built-in Zlib?
 
 ## Third-party
 
-* TODO
+* [cgltf](https://github.com/jkuhlmann/cgltf) (MIT license)
+* [Conf](https://github.com/cfnptr/conf) (Apache-2.0 license)
+* [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
+* [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
+* [FreeType](https://github.com/freetype/freetype) (FreeType license)
+* [GLFW](https://github.com/glfw/glfw) (Zlib license)
+* [Imath](https://github.com/AcademySoftwareFoundation/Imath) (BSD-3-Clause license)
+* [ImGui](https://github.com/ocornut/imgui) (MIT license)
+* [Logy](https://github.com/cfnptr/logy) (Apache-2.0 license)
+* [Math](https://github.com/cfnptr/math) (Apache-2.0 license)
+* [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)
+* [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) (BSD-3-Clause license)
+* [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
+* [stb](https://github.com/nothings/stb) (MIT license)
+* [VMA](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
+* [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)
+* [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)
+* [xxHash](https://github.com/Cyan4973/xxHash) (BSD-2-Clause license)
+* [Vulkan](https://github.com/KhronosGroup) (Apache-2.0 license)

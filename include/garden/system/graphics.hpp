@@ -112,6 +112,7 @@ class GraphicsSystem final : public System
 public:
 	ID<Entity> camera = {};
 	ID<Entity> directionalLight = {};
+	uint16 frameRate = 60;
 	bool useVsync = false, useTripleBuffering = false;
 
 //--------------------------------------------------------------------------------------------------
