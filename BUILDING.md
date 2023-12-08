@@ -23,15 +23,22 @@ You may chose any other default Git editor instead of Vim during installation.
 
 * Download and install latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **Windows**
 
+## 5. Install OpenSSL
+
+1. Install **Chocolatey** from [chocolatey.org](https://chocolatey.org/install)
+2. Run ```choco install openssl``` using **Terminal** or **CMD**.
+
 
 # Ubuntu (22.04 LTS)
 
 ## 1. Install Visual Studio Code (Or any other IDE)
 
 1. Download and install latest version from [code.visualstudio.com](https://code.visualstudio.com/download)
-2. Install "C/C++" And "CMake Tools" extensions inside **VS Code**
+2. Install "C/C++" And "CMake Tools" extensions inside **Visual Studio Code**
 
 ## 2. Install required packages
+
+Run these commands using **Terminal** app.
 
 1. ```sudo apt-get update```
 2. ```sudo apt-get install git gcc g++ cmake clang xorg-dev libssl-dev```
@@ -48,7 +55,7 @@ Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 ## 1. Install Xcode (Or any other IDE)
 
 1. Download and install latest version from **App Store** app
-2. Install tools using ```xcode-select --install``` in **Terminal**
+2. Run ```xcode-select --install``` using **Terminal** app to install tools
 
 ## 2. Install required packages
 

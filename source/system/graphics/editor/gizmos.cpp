@@ -171,11 +171,12 @@ void GizmosEditor::preSwapchainRender()
 	if (lastLmbState && !graphicsSystem->isMouseButtonPressed(MouseButton::Left))
 		lastLmbState = false; // Note: should be here to prevent selection freeze.
 
+	if (!selectedEntity || !frontPipelineView->isReady() ||
+		!backPipelineView->isReady() || !fullCubeView->isReady() ||
+		!fullArrowView->isReady() || !graphicsSystem->camera) return;
+
 	auto transform = manager->tryGet<TransformComponent>(selectedEntity);
-	if (!selectedEntity || !transform || transform->hasBaked() ||
-		!frontPipelineView->isReady() || !backPipelineView->isReady() ||
-		!fullCubeView->isReady() || !fullArrowView->isReady() ||
-		!graphicsSystem->camera) return;
+	if (!transform || transform->hasBaked()) return;
 
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;

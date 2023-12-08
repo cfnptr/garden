@@ -329,14 +329,9 @@ bool Swapchain::acquireNextImage()
 		imageAcquiredSemaphores[frameIndex], VK_NULL_HANDLE, &bufferIndex);
 		
 	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
-	{
 		return false;
-	}
 	else if (result != vk::Result::eSuccess)
-	{
-		throw runtime_error("Failed to acquire next image. (" +
-			vk::to_string(result) + ")");
-	}
+		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 
 	auto& buffer = buffers[bufferIndex];
 	auto& secondaryCommandPools = buffer.secondaryCommandPools;
@@ -382,7 +377,7 @@ bool Swapchain::present()
 	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
-		throw runtime_error("Failed to present image. (" + vk::to_string(result) + ")");
+		throw runtime_error("Failed to present image. (error: " + vk::to_string(result) + ")");
 
 	frameIndex = (frameIndex + 1) % GARDEN_FRAME_LAG;
 	return true;

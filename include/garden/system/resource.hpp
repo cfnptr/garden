@@ -304,7 +304,11 @@ protected:
 	
 	friend class ecsm::Manager;
 public:
-	static ResourceSystem* getInstance() noexcept { return instance; }
+	static ResourceSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // no system
+		return instance;
+	}
 
 	void loadImageData(const fs::path& path, vector<uint8>& data,
 		int2& size, Image::Format& format, int32 taskIndex = -1) const;
