@@ -77,8 +77,7 @@ protected:
 };
 
 //--------------------------------------------------------------------------------------------------
-class MeshRenderSystem final : public System,
-	public IRenderSystem, public IDeferredRenderSystem
+class MeshRenderSystem final : public System, public IRenderSystem, public IDeferredRenderSystem
 {
 public:
 	struct RenderItem

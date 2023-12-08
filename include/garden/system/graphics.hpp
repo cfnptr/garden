@@ -93,7 +93,7 @@ class GraphicsSystem final : public System
 
 	GraphicsSystem(int2 windowSize = int2(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT),
 		bool isFullscreen = !GARDEN_DEBUG, bool isBorderless = false, bool useVsync = true,
-		bool useTripleBuffering = true, bool useThreading = false);
+		bool useTripleBuffering = true, bool useThreading = true);
 	~GraphicsSystem() final;
 
 	#if GARDEN_EDITOR
@@ -124,6 +124,8 @@ public:
 	float2 getCursorPosition() const noexcept { return cursorPosition; }
 	uint32 getSwapchainSize() const;
 	uint32 getSwapchainIndex() const;
+
+	bool isUseThreading() const noexcept { return useThreading; }
 	bool isKeyboardButtonPressed(KeyboardButton button) const;
 	bool isMouseButtonPressed(MouseButton button) const;
 

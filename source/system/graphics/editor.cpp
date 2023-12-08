@@ -37,6 +37,8 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 EditorRenderSystem::~EditorRenderSystem()
 {
+	delete[] gpuSortedBuffer;
+	delete[] cpuSortedBuffer;
 	delete[] gpuFpsBuffer;
 	delete[] cpuFpsBuffer;
 }
@@ -214,7 +216,8 @@ void EditorRenderSystem::showOptionsWindow()
 }
 
 //--------------------------------------------------------------------------------------------------
-static void updateHistogram(const char* name, float* sampleBuffer, float deltaTime)
+static void updateHistogram(const char* name,
+	float* sampleBuffer, float* sortedBuffer, float deltaTime)
 {
 	auto minValue = (float)FLT_MAX;
 	auto maxValue = (float)-FLT_MAX;
@@ -233,11 +236,20 @@ static void updateHistogram(const char* name, float* sampleBuffer, float deltaTi
 	auto fps = 1.0f / deltaTime;
 	sampleBuffer[DATA_SAMPLE_BUFFER_SIZE - 1] = fps;
 
-	ImGui::Text("Time: %f | Average: %f", deltaTime, 1.0f / average);
-	ImGui::Text("FPS: %d | Average: %d | Minimal: %d",
-		(int)fps, (int)average, (int)minValue);
+	memcpy(sortedBuffer, sampleBuffer, DATA_SAMPLE_BUFFER_SIZE * sizeof(float));
+	std::sort(sortedBuffer, sortedBuffer + DATA_SAMPLE_BUFFER_SIZE, std::less<float>());
+
+	auto onePercentLow = 0.0f;
+	for (uint32 i = 0; i < DATA_SAMPLE_BUFFER_SIZE / 100; i++)
+		onePercentLow += sortedBuffer[i];
+	onePercentLow /= DATA_SAMPLE_BUFFER_SIZE / 100;
+
+	ImGui::Text("Time: %f | 1%% Low: %f",
+		1.0f / average, 1.0f / onePercentLow);
+	ImGui::Text("FPS: %d | 1%% Low: %d | Minimal: %d",
+		(int)average, (int)onePercentLow, (int)minValue);
 	ImGui::PlotHistogram(name, sampleBuffer, DATA_SAMPLE_BUFFER_SIZE,
-		0, nullptr, minValue, maxValue, { 256.0f, 64.0f });
+		0, nullptr, minValue, maxValue, { 256.0f, 64.0f }, 4);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -250,6 +262,8 @@ void EditorRenderSystem::showPerformanceStatistics()
 		{
 			cpuFpsBuffer = new float[DATA_SAMPLE_BUFFER_SIZE]();
 			gpuFpsBuffer = new float[DATA_SAMPLE_BUFFER_SIZE]();
+			cpuSortedBuffer = new float[DATA_SAMPLE_BUFFER_SIZE]();
+			gpuSortedBuffer = new float[DATA_SAMPLE_BUFFER_SIZE]();
 		}
 
 		ImGui::SeparatorText("Mesh Draw Calls");
@@ -276,7 +290,7 @@ void EditorRenderSystem::showPerformanceStatistics()
 		ImGui::SeparatorText("Frames Per Second");
 		auto graphicsSystem = getGraphicsSystem();
 		auto deltaTime = (float)graphicsSystem->getDeltaTime();
-		updateHistogram("CPU", cpuFpsBuffer, deltaTime);
+		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 
 		auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
@@ -295,7 +309,7 @@ void EditorRenderSystem::showPerformanceStatistics()
 			auto difference = (double)(timestamps[1] - timestamps[0]) *
 				(double)Vulkan::deviceProperties.properties.limits.timestampPeriod;
 			difference /= 1000000000.0;
-			updateHistogram("GPU", gpuFpsBuffer, (float)difference);
+			updateHistogram("GPU", gpuFpsBuffer, gpuSortedBuffer, (float)difference);
 		}
 
 		ImGui::SeparatorText("Device Information");

@@ -18,6 +18,7 @@
 #include "garden/file.hpp"
 
 #include <fstream>
+#include <iostream>
 
 #if __APPLE__
 #define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.2"

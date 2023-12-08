@@ -114,22 +114,25 @@ void SelectorEditor::preSwapchainRender()
 
 	if (isSkipped) isSkipped = false;
 
-	auto transform = manager->tryGet<TransformComponent>(selectedEntity);
-	if (selectedEntity && editorSystem->selectedEntityAabb != Aabb() && transform)
+	if (selectedEntity && editorSystem->selectedEntityAabb != Aabb())
 	{
-		auto deferredSystem = manager->get<DeferredRenderSystem>();
-		auto framebufferView = graphicsSystem->get(
-			deferredSystem->getEditorFramebuffer());
-		auto model = transform->calcModel();
-		setTranslation(model, getTranslation(model) - cameraPosition);
+		auto transform = manager->tryGet<TransformComponent>(selectedEntity);
+		if (transform)
+		{
+			auto deferredSystem = manager->get<DeferredRenderSystem>();
+			auto framebufferView = graphicsSystem->get(
+				deferredSystem->getEditorFramebuffer());
+			auto model = transform->calcModel();
+			setTranslation(model, getTranslation(model) - cameraPosition);
 
-		SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
-		framebufferView->beginRenderPass(float4(0.0f));
-		auto mvp = cameraConstants.viewProj * model *
-			translate(editorSystem->selectedEntityAabb.getPosition()) *
-			scale(editorSystem->selectedEntityAabb.getSize());
-		graphicsSystem->drawAabb(mvp);
-		framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
+			framebufferView->beginRenderPass(float4(0.0f));
+			auto mvp = cameraConstants.viewProj * model *
+				translate(editorSystem->selectedEntityAabb.getPosition()) *
+				scale(editorSystem->selectedEntityAabb.getSize());
+			graphicsSystem->drawAabb(mvp);
+			framebufferView->endRenderPass();
+		}
 	}
 }
 #endif

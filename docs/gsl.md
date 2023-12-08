@@ -5,7 +5,7 @@ GSL - Garden Shading Language
 ## Variable Types
 
 All GLSL default variable types vec2, ivec3, mat4... are replaced with
-more pleasant looking variants float2, int3, float4x4. Also built in variables gl_Xxx to gl.xxx. Don't be angry :)
+more pleasant looking variants float2, int3, float4x4. Also built in variables gl_Xxx with gl.xxx. Don't be angry :)
 
 You can use #include directive it's baked by the shaderc compiler internally.
 

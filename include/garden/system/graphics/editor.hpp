@@ -22,7 +22,7 @@
 #include "math/aabb.hpp"
 #include "garden/graphics/imgui.hpp"
 
-#define DATA_SAMPLE_BUFFER_SIZE 240
+#define DATA_SAMPLE_BUFFER_SIZE 512
 
 namespace garden
 {
@@ -40,6 +40,8 @@ class EditorRenderSystem final : public System, public IRenderSystem
 	map<type_index, function<void(ID<Entity>)>> entityInspectors;
 	float* cpuFpsBuffer = nullptr;
 	float* gpuFpsBuffer = nullptr;
+	float* cpuSortedBuffer = nullptr;
+	float* gpuSortedBuffer = nullptr;
 	void* hierarchyEditor = nullptr;
 	void* resourceEditor = nullptr;
 	string scenePath = "unnamed";

@@ -2,7 +2,7 @@
 
 ![Engine screenshot](docs/engine-screenshot.png)
 
-Garden is an open-source, cross-platform game engine designed for efficiency and flexibility.
+Garden is an open source, cross platform game engine designed for efficiency and flexibility.
 Written in modern C++ and utilizing the Vulkan API for rendering, it is aimed at providing
 developers with a robust toolset for creating high-performance, visually stunning games.
 The main features of the engine include extensible architecture, built-in editor,
@@ -111,6 +111,11 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | Name                  | Description                              | Default value |
 |-----------------------|------------------------------------------|---------------|
 | GARDEN_RELEASE_EDITOR | Build Garden editor in the release build | `OFF`         |
+
+## Garden Shading Language (GSL)
+
+Documentation with all GLSL changes is located [here](docs/gsl.md).
+You can install **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code.
 
 ## Third-party
 

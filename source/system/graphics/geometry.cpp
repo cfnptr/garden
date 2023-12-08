@@ -104,7 +104,8 @@ bool GeometryRenderSystem::isDrawReady()
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, baseDescriptorSet,
 			"descriptorSet.geometry.base");
 		
-		uniforms = getDefaultUniforms();
+		// TODO: we cant copy default images inside the render pass. FIX THIS!
+		uniforms = getDefaultUniforms(); 
 		defaultDescriptorSet = graphicsSystem->createDescriptorSet(
 			pipeline, std::move(uniforms), 1);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, defaultDescriptorSet,

@@ -198,6 +198,7 @@ void GraphicsSystem::initializeImGui()
 	auto& io = ImGui::GetIO();
 	auto fontPath = GARDEN_RESOURCES_PATH / "fonts/dejavu-bold.ttf";
 	auto fontString = fontPath.generic_string();
+	// TODO: load from resources on release
 	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), 14.0f * contentScale);
 	GARDEN_ASSERT(fontResult);
 	io.FontGlobalScale = 1.0f / pixelRatio;
@@ -247,31 +248,32 @@ void GraphicsSystem::onFileDrop(void* window, int count, const char** paths)
 	#if GARDEN_EDITOR
 	for (int i = 0; i < count; i++)
 	{
-		auto path = paths[i]; auto length = strlen(path);
+		auto path = fs::path(paths[i]).generic_string(); 
+		auto length = path.length();
 		if (length < 8) continue;
 
 		psize pathOffset = 0;
 		auto cmpPath = (GARDEN_RESOURCES_PATH / "scenes").generic_string();
 		if (length > cmpPath.length())
 		{
-			if (memcmp(path, cmpPath.c_str(), cmpPath.length()) == 0)
+			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
 				pathOffset = cmpPath.length() + 1;
 		}
 		cmpPath = (GARDEN_APP_RESOURCES_PATH / "scenes").generic_string();
 		if (length > cmpPath.length())
 		{
-			if (memcmp(path, cmpPath.c_str(), cmpPath.length()) == 0)
+			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
 				pathOffset = cmpPath.length() + 1;
 		}
 
-		if (memcmp(path + (length - 5), "scene", 5) == 0)
+		if (memcmp(path.c_str() + (length - 5), "scene", 5) == 0)
 		{
-			fs::path filePath = path + pathOffset; filePath.replace_extension();
+			fs::path filePath = path.c_str() + pathOffset; filePath.replace_extension();
 			try { ResourceSystem::getInstance()->loadScene(filePath); }
 			catch (const exception& e)
 			{
 				if (logSystem)
-					logSystem->error("Failed to load scene. (" + string(e.what()) + ")");
+					logSystem->error("Failed to load scene. (error: " + string(e.what()) + ")");
 			}
 			break;
 		}
@@ -653,6 +655,15 @@ void GraphicsSystem::update()
 			auto renderSystem = dynamic_cast<IRenderSystem*>(subsystem.system);
 			renderSystem->render();
 		}
+
+		#if GARDEN_EDITOR
+		startRecording(CommandBufferType::Frame);
+		{
+			INSERT_GPU_DEBUG_LABEL("ImGui", Color::transparent);
+			ImGui::Render();
+		}
+		stopRecording();
+		#endif
 
 		GraphicsAPI::graphicsCommandBuffer.submit();
 		GraphicsAPI::transferCommandBuffer.submit();
