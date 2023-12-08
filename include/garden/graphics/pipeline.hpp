@@ -174,7 +174,7 @@ public:
 	T* getPushConstants()
 	{
 		GARDEN_ASSERT(!useAsync);
-		GARDEN_ASSERT(pushConstantsSize == sizeof(T));
+		GARDEN_ASSERT(pushConstantsSize == sizeof(T));  // Different shader pushConstants size
 		return (T*)pushConstantsBuffer.data();
 	}
 	template<typename T>
@@ -187,7 +187,7 @@ public:
 		GARDEN_ASSERT(useAsync);
 		GARDEN_ASSERT(taskIndex >= 0);
 		GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
-		GARDEN_ASSERT(pushConstantsSize == sizeof(T));
+		GARDEN_ASSERT(pushConstantsSize == sizeof(T)); // Different shader pushConstants size
 		return (T*)(pushConstantsBuffer.data() + pushConstantsSize * taskIndex);
 	}
 	template<typename T>

@@ -974,10 +974,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 	auto& framebufferView = **GraphicsAPI::framebufferPool.get(framebuffer);
 	auto& subpasses = framebufferView.getSubpasses();
 
-	#if GARDEN_DEBUG
 	GARDEN_ASSERT((subpasses.empty() && subpassIndex == 0) ||
 		(!subpasses.empty() && subpassIndex < subpasses.size()));
-	#endif
 
 	auto version = GraphicsAPI::graphicsPipelineVersion++;
 	auto pipeline = GraphicsAPI::graphicsPipelinePool.create(path,
@@ -1190,6 +1188,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	bool useAsync, bool loadAsync, uint32 maxBindlessCount)
 {
 	GARDEN_ASSERT(!path.empty());
+
 	auto version = GraphicsAPI::computePipelineVersion++;
 	auto pipeline = GraphicsAPI::computePipelinePool.create(
 		path, maxBindlessCount, useAsync, version);
@@ -1271,7 +1270,7 @@ void ResourceSystem::loadScene(const fs::path& path)
 {
 	fs::path scenePath, filePath = "scenes" / path; filePath += ".scene";
 	if (!getResourceFilePath(filePath, scenePath))
-		throw runtime_error("Scene file does not exist. (" + path.generic_string() + ")");
+		throw runtime_error("Scene file does not exist. (path: " + path.generic_string() + ")");
 	conf::Reader confReader(scenePath);
 
 	auto manager = getManager();

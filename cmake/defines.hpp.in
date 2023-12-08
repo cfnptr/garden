@@ -22,7 +22,7 @@ namespace garden
 
 namespace fs = std::filesystem;
 
-#define GARDEN_NAME_STRING "@CMAKE_PROJECT_NAME@"
+#define GARDEN_NAME_STRING "Garden"
 #define GARDEN_VERSION_MAJOR @Garden_VERSION_MAJOR@
 #define GARDEN_VERSION_MINOR @Garden_VERSION_MINOR@
 #define GARDEN_VERSION_PATCH @Garden_VERSION_PATCH@
@@ -38,9 +38,9 @@ namespace fs = std::filesystem;
 #define GARDEN_DEBUG @GARDEN_DEBUG@
 #define GARDEN_EDITOR @GARDEN_EDITOR@
 #define GARDEN_LITTLE_ENDIAN @GARDEN_LITTLE_ENDIAN@
-#define GARDEN_CACHES_PATH fs::path("@PROJECT_SOURCE_DIR@/.caches")
+#define GARDEN_CACHES_PATH fs::path("@GARDEN_APP_CACHES_DIR@")
 #define GARDEN_RESOURCES_PATH fs::path("@PROJECT_SOURCE_DIR@/resources")
-#define GARDEN_APP_RESOURCES_PATH fs::path("@GARDEN_APP_RESOURCES_DIR@/resources")
+#define GARDEN_APP_RESOURCES_PATH fs::path("@GARDEN_APP_RESOURCES_DIR@")
 
 #if GARDEN_DEBUG
 //--------------------------------------------------------------------------------------------------

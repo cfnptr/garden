@@ -139,6 +139,8 @@ void DeferredRenderSystem::initialize()
 	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
 
 	auto graphicsSystem = getGraphicsSystem();
+	GARDEN_ASSERT(isAsync == graphicsSystem->isUseThreading());
+
 	framebufferSize = max((int2)(float2(
 		graphicsSystem->getFramebufferSize()) * renderScale), int2(1));
 
