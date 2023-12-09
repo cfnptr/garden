@@ -11,7 +11,7 @@ fi
 
 echo "Configuring project..."
 
-cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -S ../ -B ../.build-xcode/
+cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -S ../ -B ../build-xcode/
 status=$?
 
 if [ $status -ne 0 ]; then

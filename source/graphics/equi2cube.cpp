@@ -277,8 +277,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			inputPath = argv[i++ + 1];
+			inputPath = argv[i + 1];
 			logOffset += 2;
+			i++;
 		}
 		else if (strcmp(arg, "-o") == 0)
 		{
@@ -288,8 +289,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			outputPath = argv[i++ + 1];
+			outputPath = argv[i + 1];
 			logOffset += 2;
+			i++;
 		}
 		else if (arg[0] == '-')
 		{

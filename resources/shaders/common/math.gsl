@@ -37,12 +37,32 @@
 #define FLOAT_EPS6  0.000001f
 #define FLOAT32_MAX 3.402823466e+38f
 #define FLOAT32_MIN 1.175494351e-38f
+#define FLOAT32_LOW -3.402823466e+38f
+#define FLOAT64_MAX 1.7976931348623158e+308
+#define FLOAT64_MIN 2.2250738585072014e-308
+#define FLOAT64_LOW -1.7976931348623158e+308
 
-#define UINT32_MAX 4294967295
-#define UINT32_MIN 0
+
+#define INT8_MAX 127
+#define INT8_MIN -128
+#define INT16_MAX 32767
+#define INT16_MIN -32768
+#define INT32_MAX 2147483647
+#define INT32_MIN -2147483648
+#define INT64_MAX 9223372036854775807ll
+#define INT64_MIN -9223372036854775808ll
+
+#define UINT8_MAX 255u
+#define UINT8_MIN 0u
+#define UINT16_MAX 65535u
+#define UINT16_MIN 0u
+#define UINT32_MAX 4294967295u
+#define UINT32_MIN 0u
+#define UINT64_MAX 18446744073709551615ull
+#define UINT64_MIN 0ull
 
 // C++ atan2 implementation.
-float atan2(in float y, in float x)
+float atan2(float y, float x)
 {
     return abs(x) > abs(y) ? atan(y, x) : M_PI_2 - atan(x, y);
 }

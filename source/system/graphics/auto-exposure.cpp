@@ -154,7 +154,6 @@ void AutoExposureRenderSystem::render()
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, histogramDescriptorSet,
 			"descriptorSet.auto-exposure.histogram");
 		
-		auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
 		uniforms = getAverageUniforms(histogramBuffer, luminanceBuffer);
 		averageDescriptorSet = graphicsSystem->createDescriptorSet(
 			averagePipeline, std::move(uniforms));

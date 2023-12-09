@@ -34,11 +34,11 @@ bool Resource::isBusy() noexcept
 	// Note: lastFrameTime <= GARDEN_FRAME_LAG
 	// because we are incrementing in the same frame.
 	
-	return !instance || GraphicsAPI::isRunning &&
+	return !instance || (GraphicsAPI::isRunning &&
 		(GraphicsAPI::frameCommandBuffer.getBusyTime() - lastFrameTime <= GARDEN_FRAME_LAG ||
 		GraphicsAPI::transferCommandBuffer.getBusyTime() == lastTransferTime ||
 		GraphicsAPI::computeCommandBuffer.getBusyTime() == lastComputeTime ||
-		GraphicsAPI::graphicsCommandBuffer.getBusyTime() == lastGraphicsTime);
+		GraphicsAPI::graphicsCommandBuffer.getBusyTime() == lastGraphicsTime));
 }
 bool Resource::isReady() noexcept
 {

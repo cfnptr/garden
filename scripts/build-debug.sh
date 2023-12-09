@@ -11,7 +11,7 @@ fi
 
 echo "Configuring project..."
 
-cmake -DCMAKE_BUILD_TYPE=Debug -S ../ -B ../.build-debug/
+cmake -DCMAKE_BUILD_TYPE=Debug -S ../ -B ../build-debug/
 status=$?
 
 if [ $status -ne 0 ]; then
@@ -22,7 +22,7 @@ fi
 echo ""
 echo "Building project..."
 
-cmake --build ../.build-debug/ --config Debug
+cmake --build ../build-debug/ --config Debug
 status=$?
 
 if [ $status -ne 0 ]; then
@@ -34,7 +34,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo ""
     echo "Fixing up macOS bundle..."
 
-    cmake --install ../.build-debug/ --component FixupBundle
+    cmake --install ../build-debug/ --component FixupBundle
     status=$?
 
     if [ $status -ne 0 ]; then
