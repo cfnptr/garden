@@ -1,3 +1,10 @@
+# Operating Systems
+
+* [Window (10/11)](BUILDING.md#windows-1011)
+* [Ubuntu (22.04 LTS)](BUILDING.md#ubuntu-2204-lts)
+* [macOS (Monterey 12)](BUILDING.md#macos-monterey-12)
+* [Build Project](BUILDING.md#build-project)
+
 # Windows (10/11)
 
 ## 1. Install Visual Studio Community (Or any other IDE)
@@ -12,16 +19,18 @@
 
 * Download and install latest version from [git-cms.com](https://git-scm.com/downloads)
 
-You may chose any other default Git editor instead of Vim during installation.
+You may use default Git install options or chose any other default Git editor instead of Vim.
 
 ## 3. Install CMake
 
-1. Download latest release version from [cmake.org](https://cmake.org/download)
+1. Download latest release version of installer from [cmake.org](https://cmake.org/download)
 2. Select "Add CMake to the system PATH for the current user" during installation
 
 ## 4. Install Vulkan SDK
 
 * Download and install latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **Windows**
+
+To build the engine you will only need The Vulkan SDK Core components.
 
 ## 5. Install OpenSSL
 
@@ -65,4 +74,11 @@ Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 
 ## 3. Install Vulkan SDK
 
-* Download latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **macOS**
+1. Download latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **macOS**
+2. During **Select Components** screen "System Global Installation" should be checked
+
+To build the engine you will only need The Vulkan SDK Core components.
+
+# Build Project
+
+To build the project run ```build.sh``` script using **Git Bash**, **Terminal** or build it inside **IDE**.

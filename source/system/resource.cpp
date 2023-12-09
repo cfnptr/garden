@@ -1362,7 +1362,6 @@ void ResourceSystem::clearScene()
 	auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
-	auto transformSystem = manager->get<TransformSystem>();
 
 	for (uint32 i = 0; i < entityOccupancy; i++)
 	{

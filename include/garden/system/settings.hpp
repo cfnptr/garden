@@ -38,7 +38,7 @@ public:
 		Type type = {};
 
 		Item(Type _type, uint64 _data) :
-			type(_type), data(_data) { }
+			data(_data), type(_type) { }
 	};
 private:
 	void* confReader = nullptr;

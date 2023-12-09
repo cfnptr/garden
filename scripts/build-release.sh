@@ -11,7 +11,7 @@ fi
 
 echo "Configuring project..."
 
-cmake -DCMAKE_BUILD_TYPE=Release -S ../ -B ../.build-release/
+cmake -DCMAKE_BUILD_TYPE=Release -S ../ -B ../build-release/
 status=$?
 
 if [ $status -ne 0 ]; then
@@ -22,7 +22,7 @@ fi
 echo ""
 echo "Building project..."
 
-cmake --build ../.build-release/ --config Release
+cmake --build ../build-release/ --config Release
 status=$?
 
 if [ $status -ne 0 ]; then
@@ -34,7 +34,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo ""
     echo "Fixing up macOS bundle..."
 
-    cmake --install ../.build-release/ --component FixupBundle
+    cmake --install ../build-release/ --component FixupBundle
     status=$?
 
     if [ $status -ne 0 ]; then

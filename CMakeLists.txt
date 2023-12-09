@@ -29,7 +29,10 @@ project(Garden VERSION 0.1.0 LANGUAGES CXX
 		written in C++ with Vulkan API rendering backend"
 	HOMEPAGE_URL "https://github.com/cfnptr/garden")
 
+option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
+option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
 option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
+option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
 
 if(NOT DEFINED GARDEN_APP_NAME)
 	set(GARDEN_APP_NAME "GardenApp")
@@ -57,24 +60,21 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(BUILD_SHARED_LIBS OFF)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-	set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
-	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-endif()
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	enable_language(OBJC)
 	enable_language(OBJCXX)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
 	set(GARDEN_DEBUG 1)
 	set(GARDEN_EDITOR 1)
 else()
-	set(GARDEN_DEBUG 0)
-	if (GARDEN_RELEASE_EDITOR)
+	if(GARDEN_RELEASE_DEBUGGING)
+		set(GARDEN_DEBUG 1)
+	else()
+		set(GARDEN_DEBUG 0)
+	endif()
+	if(GARDEN_RELEASE_EDITOR)
 		set(GARDEN_EDITOR 1)
 	else()
 		set(GARDEN_EDITOR 0)
@@ -91,6 +91,8 @@ else()
 endif()
 
 set(GARDEN_APP_VERSION "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
+
+include(cmake/publish-functions.cmake)
 configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
 #---------------------------------------------------------------------------------------------------
@@ -181,14 +183,22 @@ target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # TODO: Fix VMA warnings
-	target_compile_options(garden PRIVATE -Wno-nullability-completeness)
+if(GARDEN_BUILD_GSLC)
+	add_executable(gslc source/graphics/compiler.cpp)
+	target_compile_definitions(gslc PUBLIC GSL_COMPILER)
+	target_link_libraries(gslc PUBLIC garden)
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		stripExecutable(gslc)
+	endif()
 endif()
 
-add_executable(gslc source/graphics/compiler.cpp)
-target_compile_definitions(gslc PUBLIC GSL_COMPILER)
-target_link_libraries(gslc PUBLIC garden)
+if(GARDEN_BUILD_EQUI2CUBE)
+	add_executable(equi2cube source/graphics/equi2cube.cpp)
+	target_compile_definitions(equi2cube PUBLIC EQUI2CUBE)
+	target_link_libraries(equi2cube PUBLIC garden)
 
-add_executable(equi2cube source/graphics/equi2cube.cpp)
-target_compile_definitions(equi2cube PUBLIC EQUI2CUBE)
-target_link_libraries(equi2cube PUBLIC garden)
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		stripExecutable(equi2cube)
+	endif()
+endif()
