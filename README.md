@@ -108,9 +108,27 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ### CMake options
 
-| Name                  | Description                              | Default value |
-|-----------------------|------------------------------------------|---------------|
-| GARDEN_RELEASE_EDITOR | Build Garden editor in the release build | `OFF`         |
+option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
+option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
+
+| Name                     | Description                                      | Default value |
+|--------------------------|--------------------------------------------------|---------------|
+| GARDEN_BUILD_GSLC        | Build GSL shader compiler                        | `ON`          |
+| GARDEN_BUILD_EQUI2CUBE   | Build equirectangular to cubemap converter       | `ON`          |
+| GARDEN_RELEASE_EDITOR    | Build Garden editor in the release build         | `OFF`         |
+| GARDEN_RELEASE_DEBUGGING | Build Garden debugging code in the release build | `OFF`         |
+
+### CMake variables
+
+| Name                      | Description                            | Default value      |
+|---------------------------|----------------------------------------|--------------------|
+| GARDEN_APP_NAME           | Garden application name                | `GardenApp`        |
+| GARDEN_APP_NAME_LOWERCASE | Garden application lowercase name      | `gardenapp`        |
+| GARDEN_APP_VERSION_MAJOR  | Garden application major version       | `1`                |
+| GARDEN_APP_VERSION_MINOR  | Garden application minor version       | `0`                |
+| GARDEN_APP_VERSION_PATCH  | Garden application patch version       | `0`                |
+| GARDEN_APP_RESOURCES_DIR  | Garden application resources directory | `garden/resources` |
+| GARDEN_APP_CACHES_DIR     | Garden application caches directory    | `garden/.caches`   |
 
 ## Garden Shading Language (GSL)
 

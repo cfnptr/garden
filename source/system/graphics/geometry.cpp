@@ -666,7 +666,6 @@ void GeometryShadowRenderSystem::draw(
 	auto indexBufferView = graphicsSystem->get(geometryShadowComponent->indexBuffer);
 	if (!vertexBufferView->isReady() || !indexBufferView->isReady()) return;
 
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto pushConstants = pipelineView->getPushConstantsAsync<GeometryShadowPC>(taskIndex);
 	pushConstants->mvp = viewProj * model;
 	pipelineView->pushConstantsAsync(taskIndex);

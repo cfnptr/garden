@@ -101,8 +101,8 @@ float3 computeEnergyCompensation(sampler2D dfgLUT, float nov, float roughness, f
 
 float specularAoLagarde(float nov, float visibility, float linearRoughness)
 {
-    return saturate(pow(nov + visibility, exp2(-16.0f *
-		linearRoughness - 1.0f)) - 1.0f + visibility);
+    return clamp(pow(nov + visibility, exp2(-16.0f *
+		linearRoughness - 1.0f)) - 1.0f + visibility, 0.0f, 1.0f);
 }
 float3 gtaoMultiBounce(float visibility, float3 albedo)
 {
