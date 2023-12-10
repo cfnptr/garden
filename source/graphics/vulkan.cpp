@@ -535,7 +535,7 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 }
 
 //--------------------------------------------------------------------------------------------------
-void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
+void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 	bool useVsync, bool useTripleBuffering, bool useThreading)
 {
 	GARDEN_ASSERT(!GraphicsAPI::isRunning);
@@ -561,10 +561,6 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
 		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 		windowSize.x = videoMode->width;
 		windowSize.y = videoMode->height;
-	}
-	else
-	{
-		if (isBorderless) glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 	}
 	
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);

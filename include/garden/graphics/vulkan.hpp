@@ -61,7 +61,7 @@ public:
 
 	// TODO: move rest to api.hpp and make these calls universal.
 
-	static void initialize(int2 windowSize, bool isFullscreen, bool isBorderless,
+	static void initialize(int2 windowSize, bool isFullscreen,
 		bool useVsync, bool useTripleBuffering, bool useThreading);
 	static void terminate();
 	static void updateDestroyBuffer();

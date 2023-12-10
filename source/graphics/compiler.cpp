@@ -2090,12 +2090,12 @@ int main(int argc, char *argv[])
 				"Usage: gslc [options] name...\n"
 				"\n"
 				"Options:\n"
-				"  -i <dir>		Read input from <dir>.\n"
-				"  -o <dir>		Write output to <dir>.\n"
-				"  -I <value>   Add directory to include search path.\n"
-				"  -h			Display available options.\n"
-				"  --help		Display available options.\n"
-				"  --version	Display compiler version information.\n";
+				"  -i <dir>      Read input from <dir>.\n"
+				"  -o <dir>      Write output to <dir>.\n"
+				"  -I <value>    Add directory to include search path.\n"
+				"  -h            Display available options.\n"
+				"  --help        Display available options.\n"
+				"  --version     Display compiler version information.\n";
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)
@@ -2111,8 +2111,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			inputPath = argv[i++ + 1];
+			inputPath = argv[i + 1];
 			logOffset += 2;
+			i++;
 		}
 		else if (strcmp(arg, "-o") == 0)
 		{
@@ -2122,8 +2123,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			outputPath = argv[i++ + 1];
+			outputPath = argv[i + 1];
 			logOffset += 2;
+			i++;
 		}
 		else if (strcmp(arg, "-I") == 0)
 		{
@@ -2133,8 +2135,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			includePaths.push_back(argv[i++ + 1]);
+			includePaths.push_back(argv[i + 1]);
 			logOffset += 2;
+			i++;
 		}
 		else if (arg[0] == '-')
 		{

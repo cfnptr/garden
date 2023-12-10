@@ -19,7 +19,17 @@
 
 #if GARDEN_DEBUG
 #define GARDEN_MAIN int main(int argc, char *argv[])
+#define GARDEN_MESSAGE_ERROR(cstr)
+#else
+
+#if _WIN32
+#define NOMINMAX
+#include <windows.h>
+#define GARDEN_MAIN int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
+#define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(NULL, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
 #else
 #define GARDEN_MAIN int main(int argc, char *argv[])
-// TODO: windows console-less main
+#define GARDEN_MESSAGE_ERROR(cstr)
+#endif
+
 #endif
