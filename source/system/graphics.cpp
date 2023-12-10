@@ -196,11 +196,22 @@ void GraphicsSystem::initializeImGui()
 	auto contentScale = std::max(contentScaleX, contentScaleY);
 
 	auto& io = ImGui::GetIO();
-	auto fontPath = GARDEN_RESOURCES_PATH / "fonts/dejavu-bold.ttf";
-	auto fontString = fontPath.generic_string();
-	// TODO: load from resources on release
-	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), 14.0f * contentScale);
+	const auto fontPath = "fonts/dejavu-bold.ttf";
+	const auto fontSize = 14.0f * contentScale;
+
+	#if GARDEN_DEBUG
+	auto fontString = (GARDEN_RESOURCES_PATH / fontPath).generic_string();
+	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), fontSize);
 	GARDEN_ASSERT(fontResult);
+	#else
+	auto& packReader = ResourceSystem::getInstance()->getPackReader();
+	auto fontIndex = packReader.getItemIndex(fontPath);
+	auto fontDataSize = packReader.getItemDataSize(fontIndex);
+	auto fontData = (uint8*)malloc(fontDataSize); if (!fontData) abort();
+	packReader.readItemData(fontIndex, fontData);
+	io.Fonts->AddFontFromMemoryTTF(fontData, fontDataSize, fontSize);
+	#endif
+
 	io.FontGlobalScale = 1.0f / pixelRatio;
 	io.DisplayFramebufferScale = ImVec2(pixelRatioXY.x, pixelRatioXY.y);
 
@@ -285,14 +296,14 @@ void GraphicsSystem::onFileDrop(void* window, int count, const char** paths)
 }
 
 //--------------------------------------------------------------------------------------------------
-GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen, bool isBorderless,
+GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen,
 	bool useVsync, bool useTripleBuffering, bool useThreading)
 {
 	this->useVsync = useVsync;
 	this->useTripleBuffering = useTripleBuffering;
 	this->useThreading = useThreading;
 
-	Vulkan::initialize(windowSize, isFullscreen, isBorderless,
+	Vulkan::initialize(windowSize, isFullscreen,
 		useVsync, useTripleBuffering, useThreading);
 
 	glfwSetWindowUserPointer((GLFWwindow*)GraphicsAPI::window, this);
@@ -324,10 +335,6 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen, bool isBorder
 			"buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
-	
-	#if GARDEN_EDITOR
-	initializeImGui();
-	#endif
 }
 GraphicsSystem::~GraphicsSystem()
 {
@@ -358,6 +365,10 @@ void GraphicsSystem::initialize()
 
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
 	if (settingsSystem) settingsSystem->getBool("useVsync", useVsync);
+
+	#if GARDEN_EDITOR
+	initializeImGui();
+	#endif
 
 	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
 	for (auto subsystem : subsystems)
@@ -409,15 +420,19 @@ static void updateWindowMode(GraphicsSystem* graphicsSystem, bool& isF11Pressed)
 			auto primaryMonitor = glfwGetPrimaryMonitor();
 			auto videoMode = glfwGetVideoMode(primaryMonitor);
 
-			if (glfwGetWindowMonitor((GLFWwindow*)GraphicsAPI::window))
+			if (glfwGetWindowAttrib((GLFWwindow*)GraphicsAPI::window, GLFW_DECORATED) == GLFW_FALSE)
 			{
-				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window,
-					nullptr, 0, 0, 1280, 720, videoMode->refreshRate);
+				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window, nullptr,
+					videoMode->width / 2 - DEFAULT_WINDOW_WIDTH / 2,
+					videoMode->height / 2 - DEFAULT_WINDOW_HEIGHT / 2,
+					DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, videoMode->refreshRate);
+				glfwSetWindowAttrib((GLFWwindow*)GraphicsAPI::window, GLFW_DECORATED, GLFW_TRUE);
 			}
 			else
 			{
 				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window, primaryMonitor,
 					0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
+				glfwSetWindowAttrib((GLFWwindow*)GraphicsAPI::window, GLFW_DECORATED, GLFW_FALSE);
 			}
 
 			isF11Pressed = true;

@@ -257,11 +257,11 @@ int main(int argc, char *argv[])
 				"Usage: equi2cube [options] name...\n"
 				"\n"
 				"Options:\n"
-				"  -i <dir>		Read input from <dir>.\n"
-				"  -o <dir>		Write output to <dir>.\n"
-				"  -h			Display available options.\n"
-				"  --help		Display available options.\n"
-				"  --version	Display converter version information.\n";
+				"  -i <dir>     Read input from <dir>.\n"
+				"  -o <dir>     Write output to <dir>.\n"
+				"  -h           Display available options.\n"
+				"  --help       Display available options.\n"
+				"  --version    Display converter version information.\n";
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)

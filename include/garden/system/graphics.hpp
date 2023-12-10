@@ -92,7 +92,7 @@ class GraphicsSystem final : public System
 	// TODO: support offscreen rendering mode and multiple windows.
 
 	GraphicsSystem(int2 windowSize = int2(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT),
-		bool isFullscreen = !GARDEN_DEBUG, bool isBorderless = false, bool useVsync = true,
+		bool isFullscreen = !GARDEN_DEBUG, bool useVsync = true,
 		bool useTripleBuffering = true, bool useThreading = true);
 	~GraphicsSystem() final;
 
