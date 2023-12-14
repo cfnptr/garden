@@ -48,6 +48,7 @@ namespace
 		fs::path path;
 		ID<Image> instance = {};
 		Image::Bind bind = {};
+		Image::Strategy strategy = {};
 		uint8 maxMipCount = 0;
 		uint8 downscaleCount = 0;
 		bool linearData = false;
@@ -80,6 +81,8 @@ namespace
 		ID<Buffer> instance = {};
 		Model::Accessor accessor;
 		Buffer::Bind bind = {};
+		Buffer::Access access = {};
+		Buffer::Strategy strategy = {};
 
 		GeneralBufferLoadData(Model::Accessor _accessor) :
 			accessor(_accessor) { }
@@ -92,6 +95,8 @@ namespace
 		ID<Buffer> instance = {};
 		Model::Primitive primitive;
 		Buffer::Bind bind = {};
+		Buffer::Access access = {};
+		Buffer::Strategy strategy = {};
 
 		VertexBufferLoadData(Model::Primitive _primitive) :
 			primitive(_primitive) { }
@@ -176,7 +181,12 @@ void ResourceSystem::update()
 				}
 				#endif
 			}
-			else PipelineExt::destroy(item.pipeline);
+			else
+			{
+				GraphicsAPI::isRunning = false;
+				PipelineExt::destroy(item.pipeline);
+				GraphicsAPI::isRunning = true;
+			}
 			
 			if (item.renderPass)
 			{
@@ -213,7 +223,12 @@ void ResourceSystem::update()
 				}
 				#endif
 			}
-			else PipelineExt::destroy(item.pipeline);
+			else
+			{
+				GraphicsAPI::isRunning = false;
+				PipelineExt::destroy(item.pipeline);
+				GraphicsAPI::isRunning = true;
+			}
 		}
 		computeQueue.pop();
 	}
@@ -235,16 +250,29 @@ void ResourceSystem::update()
 					buffer.setDebugName(buffer.getDebugName());
 					#endif
 				}
-				else BufferExt::destroy(item.buffer);
+				else
+				{
+					GraphicsAPI::isRunning = false;
+					BufferExt::destroy(item.buffer);
+					GraphicsAPI::isRunning = true;
+				}
 			
-				auto staging = GraphicsAPI::bufferPool.create(
-					Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, 0);
+				auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+					Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
+					item.staging.getMemoryStrategy(), 0);
+				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
+					"buffer.staging.loaded" + to_string(*staging));
 				auto stagingView = GraphicsAPI::bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				Buffer::copy(staging, item.instance);
 				GraphicsAPI::bufferPool.destroy(staging);
 			}
-			else BufferExt::destroy(item.staging);
+			else
+			{
+				GraphicsAPI::isRunning = false;
+				BufferExt::destroy(item.staging);
+				GraphicsAPI::isRunning = true;
+			}
 			bufferQueue.pop();
 		}
 	}
@@ -267,16 +295,29 @@ void ResourceSystem::update()
 					image.setDebugName(image.getDebugName());
 					#endif
 				}
-				else ImageExt::destroy(item.image);
+				else
+				{
+					GraphicsAPI::isRunning = false;
+					ImageExt::destroy(item.image);
+					GraphicsAPI::isRunning = true;
+				}
 
-				auto staging = GraphicsAPI::bufferPool.create(
-					Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, 0);
+				auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+					Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
+					item.staging.getMemoryStrategy(), 0);
+				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
+					"buffer.staging.loaded" + to_string(*staging));
 				auto stagingView = GraphicsAPI::bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				Image::copy(staging, item.instance);
 				GraphicsAPI::bufferPool.destroy(staging);
 			}
-			else BufferExt::destroy(item.staging);
+			else
+			{
+				GraphicsAPI::isRunning = false;
+				BufferExt::destroy(item.staging);
+				GraphicsAPI::isRunning = true;
+			}
 			imageQueue.pop();
 		}
 	}
@@ -740,14 +781,15 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 }
 
 //--------------------------------------------------------------------------------------------------
-Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
-	uint8 maxMipCount, uint8 downscaleCount, bool linearData, bool loadAsync)
+Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount,
+	uint8 downscaleCount, Image::Strategy strategy, bool linearData, bool loadAsync)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
 
 	auto version = GraphicsAPI::imageVersion++;
-	auto image = GraphicsAPI::imagePool.create(bind, version);
+	auto image = GraphicsAPI::imagePool.create(bind, strategy, version);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.loaded" + to_string(*image));
 
 	if (loadAsync && threadSystem)
 	{
@@ -756,6 +798,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 		data->path = path;
 		data->instance = image;
 		data->bind = bind;
+		data->strategy = strategy;
 		data->maxMipCount = maxMipCount;
 		data->downscaleCount = downscaleCount;
 		data->linearData = linearData;
@@ -782,10 +825,10 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 			ImageQueueItem item =
 			{
 				ImageExt::create(targetSize.x == 1 ? Image::Type::Texture1D :
-					Image::Type::Texture2D, format, data->bind,
+					Image::Type::Texture2D, format, data->bind, data->strategy,
 					int3(targetSize, 1), mipCount, 1, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc,
-					Buffer::Usage::CpuOnly, bufferBinarySize, 0),
+				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+					Buffer::Usage::Auto, data->strategy, bufferBinarySize, 0),
 				data->instance,
 			};
 
@@ -826,18 +869,23 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind,
 			std::min(maxMipCount, calcMipCount(targetSize));
 		auto imageInstance = ImageExt::create(
 			targetSize.x == 1 ? Image::Type::Texture1D :
-			Image::Type::Texture2D, format, bind,
-			int3(targetSize, 1), mipCount, 1, version);
+			Image::Type::Texture2D, format, bind, strategy,
+			int3(targetSize, 1), mipCount, 1, 0);
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
-		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-			Buffer::Usage::CpuOnly, bufferBinarySize, 0);
+		auto staging = GraphicsAPI::bufferPool.create(
+			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+			Buffer::Usage::Auto, strategy, bufferBinarySize, 0);
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
+			"buffer.staging.loaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 
 		if (downscaleCount > 0)
 		{
-			auto pixelData = pixels.data(), mapData = stagingView->getMap();
+			auto pixelData = pixels.data();
+			auto mapData = stagingView->getMap();
+
 			for (int32 y = 0; y < targetSize.y; y++)
 			{
 				for (int32 x = 0; x < targetSize.x; x++)
@@ -2097,15 +2145,16 @@ void ResourceSystem::loadModelBuffers(shared_ptr<Model> model)
 }
 
 //--------------------------------------------------------------------------------------------------
-Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
-	Model::Accessor accessor, Buffer::Bind bind, bool loadAsync)
+Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor accessor,
+	Buffer::Bind bind, Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)
 {
 	GARDEN_ASSERT(model);
 	GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
 
 	auto version = GraphicsAPI::bufferVersion++;
-	auto buffer = GraphicsAPI::bufferPool.create(
-		bind, Buffer::Usage::GpuOnly, version);
+	auto buffer = GraphicsAPI::bufferPool.create(bind,
+		access, Buffer::Usage::PreferGPU, strategy, version);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.loaded" + to_string(*buffer));
 
 	if (loadAsync && threadSystem)
 	{
@@ -2114,6 +2163,8 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 		data->model = model;
 		data->instance = buffer;
 		data->bind = bind;
+		data->access = access;
+		data->strategy = strategy;
 
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
@@ -2126,10 +2177,10 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 
 			BufferQueueItem item =
 			{
-				BufferExt::create(data->bind,
-					Buffer::Usage::GpuOnly, size, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc,
-					Buffer::Usage::CpuOnly, size, 0),
+				BufferExt::create(data->bind, data->access, Buffer::Usage::PreferGPU,
+					data->strategy, size, data->version),
+				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+					Buffer::Usage::Auto, data->strategy, size, 0),
 				data->instance,
 			};
 
@@ -2146,12 +2197,14 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 	{
 		auto size = (uint64)(accessor.getCount() * accessor.getBinaryStride());
 		auto bufferInstance = BufferExt::create(bind,
-			Buffer::Usage::GpuOnly, size, version);
+			access, Buffer::Usage::Auto, strategy, size, 0);
 		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
 
-		auto staging = GraphicsAPI::bufferPool.create(
-			Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, size, 0);
+		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, strategy, size, 0);
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
+			"buffer.staging.loaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 		accessor.copy(stagingView->getMap()); // TODO: convert uint8 to uintXX.
 		stagingView->flush();
@@ -2165,9 +2218,9 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model,
 }
 
 //--------------------------------------------------------------------------------------------------
-Ref<Buffer> ResourceSystem::loadVertexBuffer(
-	shared_ptr<Model> model, Model::Primitive primitive, Buffer::Bind bind,
-	const vector<Model::Attribute::Type>& attributes, bool loadAsync)
+Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Primitive primitive,
+	Buffer::Bind bind, const vector<Model::Attribute::Type>& attributes,
+	Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)
 {
 	GARDEN_ASSERT(model);
 	GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
@@ -2180,8 +2233,9 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 	#endif
 
 	auto version = GraphicsAPI::bufferVersion++;
-	auto buffer = GraphicsAPI::bufferPool.create(
-		bind, Buffer::Usage::GpuOnly, version);
+	auto buffer = GraphicsAPI::bufferPool.create(bind,
+		access, Buffer::Usage::PreferGPU, strategy, version);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.vertex.loaded" + to_string(*buffer));
 
 	if (loadAsync && threadSystem)
 	{
@@ -2191,6 +2245,8 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 		data->model = model;
 		data->instance = buffer;
 		data->bind = bind;
+		data->access = access;
+		data->strategy = strategy;
 
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
@@ -2206,10 +2262,10 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 
 			BufferQueueItem item =
 			{
-				BufferExt::create(data->bind,
-					Buffer::Usage::GpuOnly, size, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc,
-					Buffer::Usage::CpuOnly, size, 0),
+				BufferExt::create(data->bind, data->access, Buffer::Usage::PreferGPU,
+					data->strategy, size, data->version),
+				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+					Buffer::Usage::Auto, data->strategy, size, 0),
 				data->instance,
 			};
 
@@ -2227,12 +2283,14 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(
 		auto size = primitive.getVertexCount(attributes) *
 			primitive.getBinaryStride(attributes);
 		auto bufferInstance = BufferExt::create(bind,
-			Buffer::Usage::GpuOnly, size, version);
+			access, Buffer::Usage::Auto, strategy, size, 0);
 		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
 
-		auto staging = GraphicsAPI::bufferPool.create(
-			Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, size, 0);
+		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, strategy, size, 0);
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
+			"buffer.staging.loaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 		primitive.copyVertices(attributes, stagingView->getMap());
 		stagingView->flush();

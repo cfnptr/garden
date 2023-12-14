@@ -111,19 +111,19 @@ private:
 	Type type = {};
 	Format format = {};
 	Bind bind = {};
-	ID<ImageView> defaultView = {};
+	uint8 mipCount = 0;
+	bool swapchain = false;
 	vector<uint32> layouts;
 	int3 size = int3(0);
 	uint32 layerCount = 0;
-	uint8 mipCount = 0;
-	bool swapchain = false;
+	ID<ImageView> defaultView = {};
 	
 	Image() = default;
-	Image(Type type, Format format, Bind bind, const int3& size,
-		uint8 mipCount, uint32 layerCount, uint64 version);
-	Image(Bind bind, uint64 version) :
-		Memory(0, Usage::GpuOnly, version) { this->bind = bind; }
-	Image(void* instance, Format format, Bind bind, int2 size, uint64 version);
+	Image(Type type, Format format, Bind bind, Strategy strategy,
+		const int3& size, uint8 mipCount, uint32 layerCount, uint64 version);
+	Image(Bind bind, Strategy strategy, uint64 version) : Memory(
+		0, Access::None, Usage::Auto, strategy, version) { this->bind = bind; }
+	Image(void* instance, Format format, Bind bind, Strategy strategy, int2 size, uint64 version);
 	bool destroy() final;
 
 	friend class Vulkan;
@@ -493,10 +493,11 @@ public:
 	static ID<ImageView> getDefaultView(Image& image) noexcept { return image.defaultView; }
 	static vector<uint32>& getLayouts(Image& image) noexcept { return image.layouts; }
 
-	static Image create(Image::Type type, Image::Format format, Image::Bind bind,
-		const int3& size, uint8 mipCount, uint32 layerCount, uint64 version)
+	static Image create(Image::Type type, Image::Format format,
+		Image::Bind bind, Image::Strategy strategy, const int3& size,
+		uint8 mipCount, uint32 layerCount, uint64 version)
 	{
-		return Image(type, format, bind, size, mipCount, layerCount, version);
+		return Image(type, format, bind, strategy, size, mipCount, layerCount, version);
 	}
 	static void moveInternalObjects(Image& source, Image& destination) noexcept
 	{

@@ -25,7 +25,6 @@ namespace garden::graphics
 using namespace ecsm;
 class BufferExt;
 
-//--------------------------------------------------------------------------------------------------
 class Buffer final : public Memory
 {
 public:
@@ -43,13 +42,13 @@ public:
 	};
 private:
 	Bind bind = {};
-	uint16 _alignment = 0;
 	uint8* map = nullptr;
 	
 	Buffer() = default;
-	Buffer(Bind bind, Usage usage, uint64 size, uint64 version);
-	Buffer(Bind bind, Usage usage, uint64 version) :
-		Memory(0, usage, version) { this->bind = bind; }
+	Buffer(Bind bind, Access access, Usage usage,
+		Strategy strategy, uint64 size, uint64 version);
+	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) :
+		Memory(0, access, usage, strategy, version) { this->bind = bind; }
 	bool destroy() final;
 
 	friend class Image;
@@ -67,6 +66,7 @@ public:
 	uint8* getMap() noexcept { return map; }
 	const uint8* getMap() const noexcept { return map; }
 
+	bool isMappable() const;
 	// Note: invalidate before reading map.
 	void invalidate(uint64 size = 0, uint64 offset = 0);
 	// Note: flush before using buffer.
@@ -164,19 +164,22 @@ public:
 	static Buffer::Bind& getBind(Buffer& buffer) noexcept { return buffer.bind; }
 	static uint8*& getMap(Buffer& buffer) noexcept { return buffer.map; }
 
-	static Buffer create(Buffer::Bind bind, Buffer::Usage usage, uint64 size, uint64 version)
+	static Buffer create(Buffer::Bind bind, Buffer::Access access,
+		Buffer::Usage usage, Buffer::Strategy strategy, uint64 size, uint64 version)
 	{
-		return Buffer(bind, usage, size, version);
+		return Buffer(bind, access, usage, strategy, size, version);
 	}
-	static Buffer create(Buffer::Bind bind, Buffer::Usage usage, uint64 version)
+	static Buffer create(Buffer::Bind bind, Buffer::Access access,
+		Buffer::Usage usage, Buffer::Strategy strategy, uint64 version)
 	{
-		return Buffer(bind, usage, version);
+		return Buffer(bind, access, usage, strategy, version);
 	}
 	static void moveInternalObjects(Buffer& source, Buffer& destination) noexcept
 	{
 		MemoryExt::getAllocation(destination) = MemoryExt::getAllocation(source);
 		MemoryExt::getBinarySize(destination) = MemoryExt::getBinarySize(source);
 		ResourceExt::getInstance(destination) = ResourceExt::getInstance(source);
+		BufferExt::getMap(destination) = BufferExt::getMap(source);
 		ResourceExt::getInstance(source) = nullptr;
 	}
 	static void destroy(Buffer& buffer) { buffer.destroy(); }

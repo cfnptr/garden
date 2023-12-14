@@ -167,41 +167,50 @@ public:
 		const noexcept { return currentCameraConstants; }
 
 //--------------------------------------------------------------------------------------------------
-	ID<Buffer> createBuffer(Buffer::Bind bind,
-		Buffer::Usage usage, const void* data, uint64 size);
+	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access,
+		const void* data, uint64 size, Buffer::Usage usage = Buffer::Usage::Auto,
+		Buffer::Strategy strategy = Buffer::Strategy::Default);
 	
-	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Usage usage, uint64 size)
+	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access,
+		uint64 size, Buffer::Usage usage = Buffer::Usage::Auto,
+		Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
-		return createBuffer(bind, usage, nullptr, size);
+		return createBuffer(bind, access, nullptr, size, usage, strategy);
 	}
 	template<typename T = float>
-	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Usage usage,
-		const vector<T>& data, psize count = 0, psize offset = 0)
+	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access,
+		const vector<T>& data, psize count = 0, psize offset = 0,
+		Buffer::Usage usage = Buffer::Usage::Auto,
+		Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
 		if (count == 0)
 		{
-			return createBuffer(bind, usage, data.data() + offset,
-				(data.size() - offset) * sizeof(T));
+			return createBuffer(bind, access, data.data() + offset,
+				(data.size() - offset) * sizeof(T), usage, strategy);
 		}
 		else
 		{
 			GARDEN_ASSERT(count + offset <= data.size());
-			return createBuffer(bind, usage, data.data() + offset, count * sizeof(T));
+			return createBuffer(bind, access, data.data() + offset,
+				count * sizeof(T), usage, strategy);
 		}
 	}
 	template<typename T = float, psize S>
-	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Usage usage,
-		const array<T, S>& data, psize count = 0, psize offset = 0)
+	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access,
+		const array<T, S>& data, psize count = 0, psize offset = 0,
+		Buffer::Usage usage = Buffer::Usage::Auto,
+		Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
 		if (count == 0)
 		{
-			return createBuffer(bind, usage, data.data() + offset,
-				(data.size() - offset) * sizeof(T));
+			return createBuffer(bind, access, data.data() + offset,
+				(data.size() - offset) * sizeof(T), usage, strategy);
 		}
 		else
 		{
 			GARDEN_ASSERT(count + offset <= data.size());
-			return createBuffer(bind, usage, data.data() + offset, count * sizeof(T));
+			return createBuffer(bind, access, data.data() + offset,
+				count * sizeof(T), usage, strategy);
 		}
 	}
 
@@ -211,31 +220,35 @@ public:
 //--------------------------------------------------------------------------------------------------
 	ID<Image> createImage(Image::Type type, Image::Format format,
 		Image::Bind bind, const Image::Mips& data, const int3& size,
-		Image::Format dataFormat = Image::Format::Undefined);
+		Image::Format dataFormat = Image::Format::Undefined,
+		Image::Strategy strategy = Image::Strategy::Default);
 	
 	ID<Image> createImage(Image::Format format,
 		Image::Bind bind, const Image::Mips& data, const int3& size,
-		Image::Format dataFormat = Image::Format::Undefined)
+		Image::Format dataFormat = Image::Format::Undefined,
+		Image::Strategy strategy = Image::Strategy::Default)
 	{
-		return createImage(Image::Type::Texture3D, format, bind, data, size, dataFormat);
+		return createImage(Image::Type::Texture3D, format, bind, data, size, dataFormat, strategy);
 	}
 	ID<Image> createImage(Image::Format format,
 		Image::Bind bind, const Image::Mips& data, int2 size,
-		Image::Format dataFormat = Image::Format::Undefined)
+		Image::Format dataFormat = Image::Format::Undefined,
+		Image::Strategy strategy = Image::Strategy::Default)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ?
 			Image::Type::Texture2DArray : Image::Type::Texture2D;
-		return createImage(imageType, format, bind, data, int3(size, 1), dataFormat);
+		return createImage(imageType, format, bind, data, int3(size, 1), dataFormat, strategy);
 	}
 	ID<Image> createImage(Image::Format format,
 		Image::Bind bind, const Image::Mips& data, int32 size,
-		Image::Format dataFormat = Image::Format::Undefined)
+		Image::Format dataFormat = Image::Format::Undefined,
+		Image::Strategy strategy = Image::Strategy::Default)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ?
 			Image::Type::Texture1DArray : Image::Type::Texture1D;
-		return createImage(imageType, format, bind, data, int3(size, 1, 1), dataFormat);
+		return createImage(imageType, format, bind, data, int3(size, 1, 1), dataFormat, strategy);
 	}
 
 	/* TODO: create 2 images with the same shared memory allocation.

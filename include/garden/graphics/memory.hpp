@@ -29,36 +29,59 @@ class MemoryExt;
 class Memory : public Resource
 {
 public:
+	enum class Access : uint8
+	{
+		None, SequentialWrite, RandomReadWrite, Count
+	};
 	enum class Usage : uint8
 	{
-		GpuOnly, CpuOnly, CpuToGpu, GpuToCpu, Count
+		Auto, PreferGPU, PreferCPU, Count
+	};
+	enum class Strategy : uint8 // Allocation strategy
+	{
+		Default, Size, Speed, Count
 	};
 protected:
 	void* allocation = nullptr;
 	uint64 binarySize = 0;
 	uint64 version = 0;
+	Access access = {};
 	Usage usage = {};
+	Strategy strategy = {};
 
 	Memory() = default;
-	Memory(uint64 binarySize, Usage usage, uint64 version)
+	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version)
 	{
 		this->binarySize = binarySize;
 		this->version = version;
+		this->access = access;
 		this->usage = usage;
+		this->strategy = strategy;
 	}
 
 	friend class MemoryExt;
 public:
 	uint64 getBinarySize() const noexcept { return binarySize; }
+	Access getMemoryAccess() const noexcept { return access; }
 	Usage getMemoryUsage() const noexcept { return usage; }
+	Strategy getMemoryStrategy() const noexcept { return strategy; }
 };
 
 //--------------------------------------------------------------------------------------------------
+static const string_view memoryAccessNames[(psize)Memory::Usage::Count] =
+{
+	"None", "SequentialWrite", "RandomReadWrite"
+};
 static const string_view memoryUsageNames[(psize)Memory::Usage::Count] =
 {
-	"GpuOnly", "CpuOnly", "CpuToGpu", "GpuToCpu"
+	"Auto", "PreferGPU", "PreferCPU"
 };
 
+static string_view toString(Memory::Access memoryAccess)
+{
+	GARDEN_ASSERT((uint8)memoryAccess < (uint8)Memory::Access::Count);
+	return memoryAccessNames[(psize)memoryAccess];
+}
 static string_view toString(Memory::Usage memoryUsage)
 {
 	GARDEN_ASSERT((uint8)memoryUsage < (uint8)Memory::Usage::Count);

@@ -29,15 +29,14 @@ using namespace std;
 using namespace math;
 class ResourceExt;
 
-//--------------------------------------------------------------------------------------------------
 class Resource
 {
 protected:
 	void* instance = nullptr;
-	volatile uint32 lastFrameTime = false;
-	volatile uint32 lastTransferTime = false;
-	volatile uint32 lastComputeTime = false;
-	volatile uint32 lastGraphicsTime = false;
+	volatile uint32 lastFrameTime = 0;
+	volatile uint32 lastTransferTime = 0;
+	volatile uint32 lastComputeTime = 0;
+	volatile uint32 lastGraphicsTime = 0;
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	#define UNNAMED_RESOURCE "unnamed"
@@ -62,7 +61,6 @@ public:
 	#endif
 };
 
-//--------------------------------------------------------------------------------------------------
 class ResourceExt final
 {
 public:

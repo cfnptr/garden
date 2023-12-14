@@ -330,7 +330,8 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen,
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
 	{
 		auto constantsBuffer = createBuffer(Buffer::Bind::Uniform,
-			Buffer::Usage::CpuToGpu, sizeof(CameraConstants));
+			Buffer::Access::SequentialWrite, sizeof(CameraConstants),
+			Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_THIS_RESOURCE_DEBUG_NAME(constantsBuffer,
 			"buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
@@ -480,7 +481,8 @@ static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
 	{
 		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform,
-			Buffer::Usage::CpuToGpu, sizeof(CameraConstants));
+			Buffer::Access::SequentialWrite, sizeof(CameraConstants),
+			Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, constantsBuffer,
 			"buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
@@ -751,7 +753,7 @@ ID<Buffer> GraphicsSystem::getFullCubeVertices()
 	if (!fullCubeVertices)
 	{
 		fullCubeVertices = createBuffer(Buffer::Bind::Vertex |
-			Buffer::Bind::TransferDst, Buffer::Usage::GpuOnly, fullCubeVert);
+			Buffer::Bind::TransferDst, Buffer::Access::None, fullCubeVert);
 		SET_THIS_RESOURCE_DEBUG_NAME(fullCubeVertices, "buffer.vertex.fullCube");
 	}
 
@@ -835,8 +837,8 @@ void GraphicsSystem::setDebugName(ID<DescriptorSet> instance, const string& name
 #endif
 
 //--------------------------------------------------------------------------------------------------
-ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind,
-	Buffer::Usage usage, const void* data, uint64 size)
+ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access,
+	const void* data, uint64 size, Buffer::Usage usage, Buffer::Strategy strategy)
 {
 	GARDEN_ASSERT(size > 0);
 
@@ -844,19 +846,17 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind,
 	if (data) GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
 	#endif
 
-	auto buffer = GraphicsAPI::bufferPool.create(bind, usage, size, GraphicsAPI::bufferVersion++);
+	auto buffer = GraphicsAPI::bufferPool.create(bind, access, usage, strategy, size, 0);
+	SET_THIS_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
 
 	if (data)
 	{
-		if (usage == Buffer::Usage::CpuOnly || usage == Buffer::Usage::CpuToGpu)
-		{
-			auto bufferView = GraphicsAPI::bufferPool.get(buffer);
-			bufferView->setData(data, size);
-		}
+		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
+		if (bufferView->isMappable()) bufferView->setData(data, size);
 		else
 		{
 			auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-				Buffer::Usage::CpuOnly, size, GraphicsAPI::bufferVersion++);
+				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, strategy, size, 0);
 			SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
 				"buffer.staging" + to_string(*stagingBuffer));
 			auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
@@ -886,8 +886,8 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> instance) const
 }
 
 //--------------------------------------------------------------------------------------------------
-ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
-	Image::Bind bind, const Image::Mips& data, const int3& size, Image::Format dataFormat)
+ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Bind bind,
+	const Image::Mips& data, const int3& size, Image::Format dataFormat, Image::Strategy strategy)
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
 	GARDEN_ASSERT(!data.empty());
@@ -956,14 +956,16 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 		mipSize = max(mipSize / 2, int3(1));
 	}
 
-	auto image = GraphicsAPI::imagePool.create(type, format, bind,
-		size, mipCount, layerCount, GraphicsAPI::imageVersion++);
+	auto image = GraphicsAPI::imagePool.create(type, format,
+		bind, strategy, size, mipCount, layerCount, 0);
+	SET_THIS_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
 	{
 		GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
-		auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-			Buffer::Usage::CpuOnly, stagingSize, GraphicsAPI::bufferVersion++);
+		auto stagingBuffer = GraphicsAPI::bufferPool.create(
+			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+			Buffer::Usage::Auto, Buffer::Strategy::Default, stagingSize, 0);
 		SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
 			"buffer.staging" + to_string(*stagingBuffer));
 		
@@ -973,7 +975,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format,
 		{
 			targetImage = GraphicsAPI::imagePool.create(type, dataFormat,
 				Image::Bind::TransferDst | Image::Bind::TransferSrc,
-				size, mipCount, layerCount, GraphicsAPI::imageVersion++);
+				strategy, size, mipCount, layerCount, 0);
 			SET_THIS_RESOURCE_DEBUG_NAME(targetImage,
 				"image.staging" + to_string(*targetImage));
 		}
@@ -1104,8 +1106,10 @@ ID<ImageView> GraphicsSystem::createImageView(
 		format = imageView->getFormat();
 	}
 
-	return GraphicsAPI::imageViewPool.create(false, image,
+	auto imageView = GraphicsAPI::imageViewPool.create(false, image,
 		type, format, baseMip, mipCount, baseLayer, layerCount);
+	SET_THIS_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
+	return imageView;
 }
 void GraphicsSystem::destroy(ID<ImageView> instance)
 {
@@ -1151,11 +1155,13 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 	}
 	#endif
 
-	return GraphicsAPI::framebufferPool.create(size,
+	auto framebuffer = GraphicsAPI::framebufferPool.create(size,
 		std::move(colorAttachments), depthStencilAttachment);
+	SET_THIS_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
+	return framebuffer;
 }
-ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
-	vector<Framebuffer::Subpass>&& subpasses)
+ID<Framebuffer> GraphicsSystem::createFramebuffer(
+	int2 size, vector<Framebuffer::Subpass>&& subpasses)
 {
 	GARDEN_ASSERT(size > 0);
 	GARDEN_ASSERT(!subpasses.empty());
@@ -1200,7 +1206,9 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 	GARDEN_ASSERT(outputAttachmentCount > 0);
 	#endif
 
-	return GraphicsAPI::framebufferPool.create(size, std::move(subpasses));
+	auto framebuffer = GraphicsAPI::framebufferPool.create(size, std::move(subpasses));
+	SET_THIS_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
+	return framebuffer;
 }
 void GraphicsSystem::destroy(ID<Framebuffer> instance)
 {
@@ -1246,8 +1254,10 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
 	#endif
 
-	return GraphicsAPI::descriptorSetPool.create(ID<Pipeline>(graphicsPipeline),
-		PipelineType::Graphics, std::move(uniforms), index);
+	auto descriptorSet = GraphicsAPI::descriptorSetPool.create(
+		ID<Pipeline>(graphicsPipeline), PipelineType::Graphics, std::move(uniforms), index);
+	SET_THIS_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+	return descriptorSet;
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> computePipeline,
 	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
@@ -1261,8 +1271,10 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
 	#endif
 
-	return GraphicsAPI::descriptorSetPool.create(ID<Pipeline>(computePipeline),
-		PipelineType::Compute, std::move(uniforms), index);
+	auto descriptorSet = GraphicsAPI::descriptorSetPool.create(
+		ID<Pipeline>(computePipeline), PipelineType::Compute, std::move(uniforms), index);
+	SET_THIS_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+	return descriptorSet;
 }
 void GraphicsSystem::destroy(ID<DescriptorSet> instance)
 {

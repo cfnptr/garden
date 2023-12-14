@@ -24,7 +24,6 @@ using namespace garden::graphics;
 static vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
 static vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
 
-//--------------------------------------------------------------------------------------------------
 static vk::CommandBuffer createVkCommandBuffer(
 	vk::Device device, vk::CommandPool commandPool)
 {
@@ -36,8 +35,6 @@ static vk::CommandBuffer createVkCommandBuffer(
 	vk::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 	return commandBuffer;
 }
-
-//--------------------------------------------------------------------------------------------------
 static vk::Fence createVkFence(vk::Device device, bool isSignaled = false)
 {
 	vk::FenceCreateInfo fenceInfo(

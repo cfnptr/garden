@@ -54,6 +54,9 @@ public:
 	static Swapchain swapchain;
 	static vk::PhysicalDeviceProperties2 deviceProperties;
 	static vk::PhysicalDeviceFeatures2 deviceFeatures;
+	static bool hasMemoryBudget;
+	static bool hasMemoryPriority;
+	static bool hasPageableMemory;
 	#if GARDEN_DEBUG
 	static vk::DebugUtilsMessengerEXT debugMessenger;
 	static bool hasDebugUtils;

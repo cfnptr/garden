@@ -39,8 +39,7 @@ class CutoffRenderSystem final : public GeometryRenderSystem
 
 	void initialize() final;
 
-	void draw(TransformComponent* transformComponent,
-		MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) final;
 
 	type_index getComponentType() const final;

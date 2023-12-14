@@ -50,8 +50,9 @@ static void createInstanceBuffers(GraphicsSystem* graphicsSystem,
 
 	for (uint32 i = 0; i < swapchainSize; i++)
 	{
-		auto buffer = graphicsSystem->createBuffer(
-			Buffer::Bind::Storage, Buffer::Usage::CpuToGpu, bufferSize);
+		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage,
+			Buffer::Access::SequentialWrite, bufferSize,
+			Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer,
 			"buffer.storage.geometry.instances" + to_string(i));
 		instanceBuffers[i].push_back(buffer);
@@ -148,8 +149,7 @@ void GeometryRenderSystem::beginDraw(int32 taskIndex)
 }
 
 //--------------------------------------------------------------------------------------------------
-void GeometryRenderSystem::draw(
-	TransformComponent* transformComponent, MeshRenderComponent* meshRenderComponent,
+void GeometryRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto geometryComponent = (GeometryRenderComponent*)meshRenderComponent;
@@ -499,7 +499,8 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 				if (searchResult == loadData.textures.end())
 				{
 					baseColorMap = ResourceSystem::getInstance()->loadImage(
-						directoryPath / texturePath, flags, 0, downscaleCount, false);
+						directoryPath / texturePath, flags, 0,
+						downscaleCount, Buffer::Strategy::Size, false);
 					SET_RESOURCE_DEBUG_NAME(loadData.graphicsSystem, baseColorMap,
 						"image.baseColor." + (texture.getName().length() > 0 ?
 						string(texture.getName()) : to_string(*entity)));
@@ -515,7 +516,8 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 				if (searchResult == loadData.textures.end())
 				{
 					ormMap = ResourceSystem::getInstance()->loadImage(
-						directoryPath / texturePath, flags, 0, downscaleCount, true);
+						directoryPath / texturePath, flags, 0,
+						downscaleCount, Buffer::Strategy::Size, true);
 					SET_RESOURCE_DEBUG_NAME(loadData.graphicsSystem, ormMap,
 						"image.omr." + (texture.getName().length() > 0 ?
 						string(texture.getName()) : to_string(*entity)));
@@ -654,8 +656,7 @@ void GeometryShadowRenderSystem::beginDraw(int32 taskIndex)
 }
 
 //--------------------------------------------------------------------------------------------------
-void GeometryShadowRenderSystem::draw(
-	TransformComponent* transformComponent, MeshRenderComponent* meshRenderComponent,
+void GeometryShadowRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto geometryShadowComponent = (GeometryShadowRenderComponent*)meshRenderComponent;

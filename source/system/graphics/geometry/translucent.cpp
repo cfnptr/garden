@@ -102,7 +102,9 @@ ID<Component> TranslucentRenderSystem::createComponent(ID<Entity> entity)
 {
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
-	components.get(instance)->entity = entity;
+	auto component = components.get(instance);
+	component->entity = entity;
+	component->transform = getManager()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
 void TranslucentRenderSystem::destroyComponent(ID<Component> instance)

@@ -20,7 +20,6 @@
 using namespace std;
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
 static vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind)
 {
 	vk::BufferUsageFlags flags;
@@ -38,23 +37,44 @@ static vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind)
 		flags |= vk::BufferUsageFlagBits::eStorageBuffer;
 	return flags;
 }
-
-//--------------------------------------------------------------------------------------------------
-static VmaMemoryUsage toVmaMemoryUsage(Memory::Usage memoryUsage)
+static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::Access memoryAccess)
+{
+	switch (memoryAccess)
+	{
+	case Buffer::Access::None: return {};
+	case Buffer::Access::SequentialWrite:
+		return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+	case Buffer::Access::RandomReadWrite:
+		return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+	// TODO: support VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
+	default: abort();
+	}
+}
+static VmaMemoryUsage toVmaMemoryUsage(Buffer::Usage memoryUsage)
 {
 	switch (memoryUsage)
 	{
-	case Memory::Usage::GpuOnly: return VMA_MEMORY_USAGE_GPU_ONLY;
-	case Memory::Usage::CpuOnly: return VMA_MEMORY_USAGE_CPU_ONLY;
-	case Memory::Usage::CpuToGpu: return VMA_MEMORY_USAGE_CPU_TO_GPU;
-	case Memory::Usage::GpuToCpu: return VMA_MEMORY_USAGE_GPU_TO_CPU;
+	case Buffer::Usage::Auto: return VMA_MEMORY_USAGE_AUTO;
+	case Buffer::Usage::PreferGPU: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	case Buffer::Usage::PreferCPU: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+	default: abort();
+	}
+}
+static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUsage)
+{
+	switch (memoryUsage)
+	{
+	case Buffer::Strategy::Default: return {};
+	case Buffer::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+	case Buffer::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
 	default: abort();
 	}
 }
 
 //--------------------------------------------------------------------------------------------------
-Buffer::Buffer(Bind bind, Usage usage, uint64 size, uint64 version) :
-	Memory(size, usage, version)
+Buffer::Buffer(Bind bind, Access access, Usage usage,
+	Strategy strategy, uint64 size, uint64 version) :
+	Memory(size, access, usage, strategy, version)
 {
 	GARDEN_ASSERT(size > 0);
 
@@ -64,13 +84,14 @@ Buffer::Buffer(Bind bind, Usage usage, uint64 size, uint64 version) :
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	bufferInfo.queueFamilyIndexCount = 0;
 	bufferInfo.pQueueFamilyIndices = nullptr;
- 
-	VmaAllocationCreateInfo allocationCreateInfo = {};
-	allocationCreateInfo.usage = toVmaMemoryUsage(usage);
 
-	auto isMappable = usage == Usage::CpuOnly ||
-		usage == Usage::CpuToGpu || usage == Usage::GpuToCpu;
-	if (isMappable) allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	VmaAllocationCreateInfo allocationCreateInfo = {};
+	allocationCreateInfo.flags = toVmaMemoryAccess(access) | toVmaMemoryStrategy(strategy);
+	allocationCreateInfo.usage = toVmaMemoryUsage(usage);
+	allocationCreateInfo.priority = 0.5f; // TODO: expose this RAM offload priority?
+	if (access != Access::None) allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+	// TODO: VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT?
 
 	VkBuffer instance; VmaAllocation allocation;
 	auto result = vmaCreateBuffer(Vulkan::memoryAllocator,
@@ -81,13 +102,10 @@ Buffer::Buffer(Bind bind, Usage usage, uint64 size, uint64 version) :
 	VmaAllocationInfo allocationInfo = {};
 	vmaGetAllocationInfo(Vulkan::memoryAllocator, allocation, &allocationInfo);
 
-	if (isMappable)
-	{
-		if (!allocationInfo.pMappedData)
-			throw runtime_error("Failed to map GPU memory.");
-		this->map = (uint8*)allocationInfo.pMappedData;
-	}
+	if (access != Access::None && !allocationInfo.pMappedData)
+		throw runtime_error("Failed to map GPU memory.");
 
+	this->map = (uint8*)allocationInfo.pMappedData;
 	this->bind = bind;
 }
 
@@ -112,11 +130,19 @@ bool Buffer::destroy()
 }
 
 //--------------------------------------------------------------------------------------------------
+bool Buffer::isMappable() const
+{
+	if (map) return true;
+	VkMemoryPropertyFlags memoryPropertyFlags;
+	vmaGetAllocationMemoryProperties(Vulkan::memoryAllocator,
+		(VmaAllocation)allocation, &memoryPropertyFlags);
+	return memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+}
 void Buffer::invalidate(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
-	GARDEN_ASSERT(usage == Usage::GpuToCpu);
+	GARDEN_ASSERT(isMappable());
 	auto result = vmaInvalidateAllocation(Vulkan::memoryAllocator,
 		(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
 	if (result != VK_SUCCESS) throw runtime_error("Failed to invalidate GPU memory.");
@@ -125,7 +151,7 @@ void Buffer::flush(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
-	GARDEN_ASSERT(usage == Usage::CpuOnly || usage == Usage::CpuToGpu);
+	GARDEN_ASSERT(isMappable());
 	auto result = vmaFlushAllocation(Vulkan::memoryAllocator,
 		(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
 	if (result != VK_SUCCESS) throw runtime_error("Failed to flush GPU memory.");
@@ -135,9 +161,23 @@ void Buffer::setData(const void* data, uint64 size, uint64 offset)
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(data);
 	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
-	GARDEN_ASSERT(usage == Usage::CpuOnly || usage == Usage::CpuToGpu);
-	memcpy(map + offset, data, size == 0 ? this->binarySize : size);
-	flush(size, offset);
+	GARDEN_ASSERT(isMappable());
+
+	if (map)
+	{
+		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
+		flush(size, offset);
+	}
+	else
+	{
+		uint8* map;
+		auto result = vmaMapMemory(Vulkan::memoryAllocator,
+			(VmaAllocation)allocation, (void**)&map);
+		if (result != VK_SUCCESS) throw runtime_error("Failed to map GPU memory.");
+		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
+		flush(size, offset);
+		vmaUnmapMemory(Vulkan::memoryAllocator, (VmaAllocation)allocation);
+	}
 }
 
 #if GARDEN_DEBUG
