@@ -19,7 +19,6 @@
 
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
 static uint32 getBestVkImageCount(
 	const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering)
 {
@@ -87,7 +86,6 @@ static vk::Extent2D getBestVkSurfaceExtent(
 	return capabilities.currentExtent;
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::SurfaceTransformFlagBitsKHR getBestVkSurfaceTransform(
 	const vk::SurfaceCapabilitiesKHR& capabilities)
 {
@@ -96,7 +94,6 @@ static vk::SurfaceTransformFlagBitsKHR getBestVkSurfaceTransform(
 	return capabilities.currentTransform;
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::CompositeAlphaFlagBitsKHR getBestVkCompositeAlpha(
 	const vk::SurfaceCapabilitiesKHR& capabilities)
 {
@@ -112,7 +109,6 @@ static vk::CompositeAlphaFlagBitsKHR getBestVkCompositeAlpha(
 	throw runtime_error("No suitable composite alpha.");
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::PresentModeKHR getBestVkPresentMode(
 	vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, bool useVsync)
 {
@@ -175,7 +171,6 @@ static vk::Semaphore createVkSemaphore(vk::Device device)
 	return device.createSemaphore(semaphoreInfo);
 }
 
-//--------------------------------------------------------------------------------------------------
 static vector<vk::CommandPool> createVkCommandPools(vk::Device device,
 	uint32 queueFamilyIndex, uint32 count, bool isTransient = false)
 {
@@ -220,8 +215,8 @@ static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 		}
 		#endif
 
-		buffer.colorImage = imagePool.create((VkImage)images[i],
-			imageFormat, imageBind, framebufferSize, GraphicsAPI::imageVersion++);
+		buffer.colorImage = imagePool.create((VkImage)images[i], imageFormat,
+			imageBind, Image::Strategy::Default, framebufferSize, 0);
 		buffer.secondaryCommandPools = createVkCommandPools(
 			device, graphicsQueueFamilyIndex, commandPoolCount);
 
@@ -289,7 +284,6 @@ void Swapchain::destroy()
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
 void Swapchain::setThreadPool(ThreadPool& threadPool)
 {
 	this->threadPool = &threadPool;

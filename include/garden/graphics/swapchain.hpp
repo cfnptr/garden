@@ -34,7 +34,6 @@ using namespace std;
 using namespace math;
 using namespace ecsm;
 
-//--------------------------------------------------------------------------------------------------
 class Swapchain final
 {
 public:

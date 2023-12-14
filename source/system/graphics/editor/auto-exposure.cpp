@@ -39,7 +39,8 @@ static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 	auto size = (sizeof(ToneMappingRenderSystem::Luminance) +
 		AE_HISTOGRAM_SIZE * sizeof(uint32)) * swapchainSize;
 	auto buffer = graphicsSystem->createBuffer(
-		Buffer::Bind::TransferDst, Buffer::Usage::GpuToCpu, size);
+		Buffer::Bind::TransferDst, Buffer::Access::RandomReadWrite, size,
+		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer,
 		"buffer.auto-exposure.editor.readback");
 	return buffer;

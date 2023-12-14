@@ -30,7 +30,6 @@ using namespace math;
 using namespace ecsm;
 class PipelineExt;
 
-//--------------------------------------------------------------------------------------------------
 class Pipeline : public Resource
 {
 public:

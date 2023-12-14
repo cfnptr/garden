@@ -27,6 +27,8 @@ extern "C"
 using namespace mpio;
 using namespace garden;
 
+LogSystem* LogSystem::instance;
+
 //--------------------------------------------------------------------------------------------------
 LogSystem::LogSystem(LogLevel level)
 {
@@ -54,6 +56,7 @@ LogSystem::LogSystem(LogLevel level)
 	info("CPU: " + string(OS::getCpuName()));
 	info("Thread count: " + to_string(thread::hardware_concurrency()));
 	info("RAM size: " + toBinarySizeString(OS::getRamSize()));
+	instance = this;
 }
 LogSystem::~LogSystem()
 {

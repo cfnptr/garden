@@ -720,15 +720,6 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 	}
 	else taskCount = taskIndex + 1;
 
-	if (taskIndex == 0)
-	{
-		if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-			lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-		else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-			lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-		else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
-	}
-
 	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
 	{
@@ -754,6 +745,12 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 		}
 		taskIndex++;
 	}
+
+	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
+		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
+	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -853,9 +850,6 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 	}
 	else taskCount = taskIndex + 1;
 
-	if (taskIndex == 0)
-		updateDescriptorTime(descriptorData, descriptorDataSize);
-
 	auto bindPoint = toVkPipelineBindPoint(type);
 	while (taskIndex < taskCount)
 	{
@@ -870,6 +864,8 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 	command.descriptorData = descriptorData;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	descriptorSets.clear();
+
+	updateDescriptorTime(descriptorData, descriptorDataSize);
 }
 
 //--------------------------------------------------------------------------------------------------

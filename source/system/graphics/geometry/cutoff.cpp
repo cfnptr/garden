@@ -65,16 +65,13 @@ void CutoffRenderSystem::initialize()
 	#endif
 }
 
-void CutoffRenderSystem::draw(TransformComponent* transformComponent,
-	MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
-	const float4x4& model, uint32 drawIndex, int32 taskIndex)
+void CutoffRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto cutoffComponent = (CutoffRenderComponent*)meshRenderComponent;
 	auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(taskIndex);
 	pushConstants->alphaCutoff = cutoffComponent->alphaCutoff;
-	
-	GeometryRenderSystem::draw(transformComponent, meshRenderComponent,
-		viewProj, model, drawIndex, taskIndex);
+	GeometryRenderSystem::draw(meshRenderComponent, viewProj, model, drawIndex, taskIndex);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -86,7 +83,9 @@ ID<Component> CutoffRenderSystem::createComponent(ID<Entity> entity)
 {
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
-	components.get(instance)->entity = entity;
+	auto component = components.get(instance);
+	component->entity = entity;
+	component->transform = getManager()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
 void CutoffRenderSystem::destroyComponent(ID<Component> instance)

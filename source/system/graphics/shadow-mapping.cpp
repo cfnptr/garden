@@ -68,7 +68,8 @@ static void createDataBuffers(GraphicsSystem* graphicsSystem,
 	for (uint32 i = 0; i < swapchainSize; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform,
-			Buffer::Usage::CpuToGpu, sizeof(ShadowMappingRenderSystem::DataBuffer));
+			Buffer::Access::SequentialWrite, sizeof(ShadowMappingRenderSystem::DataBuffer),
+			Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer,
 			"buffer.uniform.shadow-mapping.data" + to_string(i));
 		dataBuffers[i].push_back(buffer);

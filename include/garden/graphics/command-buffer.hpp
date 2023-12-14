@@ -327,7 +327,7 @@ private:
 	map<ID<Buffer>, BufferState> bufferStates;
 	mutex commandMutex;
 	uint32 lastSize = 0;
-	uint32 timeCounter = 1;
+	uint32 timeCounter = 2;
 	CommandBufferType type = {};
 	bool noSubpass = false;
 	bool hasAnyCommand = false;
