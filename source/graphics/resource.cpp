@@ -19,7 +19,6 @@
 
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
 bool Resource::isBusy() noexcept
 {
 	if (lastFrameTime > GraphicsAPI::frameCommandBuffer.getBusyTime())
@@ -31,14 +30,14 @@ bool Resource::isBusy() noexcept
 	if (lastGraphicsTime > GraphicsAPI::graphicsCommandBuffer.getBusyTime())
 		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 
-	// Note: lastFrameTime <= GARDEN_FRAME_LAG
+	// Note: lastFrameTime < GARDEN_FRAME_LAG + 1
 	// because we are incrementing in the same frame.
 	
 	return !instance || (GraphicsAPI::isRunning &&
-		(GraphicsAPI::frameCommandBuffer.getBusyTime() - lastFrameTime <= GARDEN_FRAME_LAG ||
-		GraphicsAPI::transferCommandBuffer.getBusyTime() == lastTransferTime ||
-		GraphicsAPI::computeCommandBuffer.getBusyTime() == lastComputeTime ||
-		GraphicsAPI::graphicsCommandBuffer.getBusyTime() == lastGraphicsTime));
+		(GraphicsAPI::frameCommandBuffer.getBusyTime() - lastFrameTime < GARDEN_FRAME_LAG + 1 ||
+		GraphicsAPI::transferCommandBuffer.getBusyTime() - lastTransferTime < 2 ||
+		GraphicsAPI::computeCommandBuffer.getBusyTime() - lastComputeTime < 2 ||
+		GraphicsAPI::graphicsCommandBuffer.getBusyTime() - lastGraphicsTime < 2));
 }
 bool Resource::isReady() noexcept
 {
@@ -50,7 +49,7 @@ bool Resource::isReady() noexcept
 		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
 	
 	return instance &&
-		GraphicsAPI::transferCommandBuffer.getBusyTime() != lastTransferTime &&
-		GraphicsAPI::computeCommandBuffer.getBusyTime() != lastComputeTime &&
-		GraphicsAPI::graphicsCommandBuffer.getBusyTime() != lastGraphicsTime;
+		GraphicsAPI::transferCommandBuffer.getBusyTime() - lastTransferTime > 1 &&
+		GraphicsAPI::computeCommandBuffer.getBusyTime() - lastComputeTime > 1 &&
+		GraphicsAPI::graphicsCommandBuffer.getBusyTime() - lastGraphicsTime > 1;
 }

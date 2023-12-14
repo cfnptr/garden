@@ -20,7 +20,6 @@
 using namespace std;
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
 static vk::ImageType toVkImageType(Image::Type imageType)
 {
 	switch (imageType)
@@ -69,13 +68,23 @@ static vk::ImageUsageFlags toVkImageUsages(Image::Bind imageBind)
 		flags |= vk::ImageUsageFlagBits::eInputAttachment;
 	return flags;
 }
+static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsage)
+{
+	switch (memoryUsage)
+	{
+	case Image::Strategy::Default: return {};
+	case Image::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+	case Image::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
+	default: abort();
+	}
+}
 
 //--------------------------------------------------------------------------------------------------
 static vector<vk::BufferImageCopy> bufferImageCopies;
 
-Image::Image(Type type, Format format, Bind bind, const int3& size,
-	uint8 mipCount, uint32 layerCount, uint64 version) :
-	Memory(0, Usage::GpuOnly, version), layouts(mipCount * layerCount)
+Image::Image(Type type, Format format, Bind bind, Strategy strategy,
+	const int3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
+	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(mipCount * layerCount)
 {
 	GARDEN_ASSERT(size > 0);
 	GARDEN_ASSERT(mipCount > 0);
@@ -98,17 +107,22 @@ Image::Image(Type type, Format format, Bind bind, const int3& size,
 	if (type == Type::Cubemap)
 		imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
  
-	VmaAllocationCreateInfo allocationInfo = {};
-	allocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY; // TODO: cputogpu, gputocpu?
+	VmaAllocationCreateInfo allocationCreateInfo = {};
+	allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	allocationCreateInfo.flags = toVmaMemoryStrategy(strategy);
 
 	if (hasAnyFlag(bind, Bind::Fullscreen))
-		allocationInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+	{
+		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+		allocationCreateInfo.priority = 1.0f;
+	}
+	else allocationCreateInfo.priority = 0.5f;
 
 	VkImage instance;
 	VmaAllocation allocation;
 
-	auto result = vmaCreateImage(Vulkan::memoryAllocator,
-		&imageInfo, &allocationInfo, &instance, &allocation, nullptr);
+	auto result = vmaCreateImage(Vulkan::memoryAllocator, &imageInfo,
+		&allocationCreateInfo, &instance, &allocation, nullptr);
 	if (result != VK_SUCCESS) throw runtime_error("Failed to allocate image.");
 
 	this->instance = instance;
@@ -137,8 +151,9 @@ Image::Image(Type type, Format format, Bind bind, const int3& size,
 }
 
 //--------------------------------------------------------------------------------------------------
-Image::Image(void* instance, Format format, Bind bind, int2 size, uint64 version) :
-	Memory(toBinarySize(format) * size.x * size.y, Usage::GpuOnly, version), layouts(1)
+Image::Image(void* instance, Format format, Bind bind,
+	Strategy strategy, int2 size, uint64 version) : Memory(toBinarySize(format) * size.x * size.y,
+		Access::None, Usage::Auto, strategy, version), layouts(1)
 {
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;

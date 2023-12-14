@@ -321,6 +321,7 @@ public:
 
 	Ref<Image> loadImage(const fs::path& path, Image::Bind bind,
 		uint8 maxMipCount = 0, uint8 downscaleCount = 0,
+		Image::Strategy strategy = Buffer::Strategy::Default,
 		bool linearData = false, bool loadAsync = true);
 
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
@@ -339,10 +340,12 @@ public:
 	void loadModelBuffers(shared_ptr<Model> model);
 
 	Ref<Buffer> loadBuffer(shared_ptr<Model> model, Model::Accessor accessor,
-		Buffer::Bind bind, bool loadAsync = true); // TODO: offset, count?
-	Ref<Buffer> loadVertexBuffer(
-		shared_ptr<Model> model, Model::Primitive primitive, Buffer::Bind bind,
-		const vector<Model::Attribute::Type>& attributes, bool loadAsync = true);
+		Buffer::Bind bind, Buffer::Access access = Buffer::Access::None,
+		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true); // TODO: offset, count?
+	Ref<Buffer> loadVertexBuffer(shared_ptr<Model> model, Model::Primitive primitive,
+		Buffer::Bind bind, const vector<Model::Attribute::Type>& attributes,
+		Buffer::Access access = Buffer::Access::None,
+		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true);
 	#else
 	pack::Reader& getPackReader() noexcept { return packReader; }
 	#endif

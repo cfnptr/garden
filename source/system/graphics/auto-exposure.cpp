@@ -49,7 +49,8 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 	
 	auto buffer = graphicsSystem->createBuffer(
 		Buffer::Bind::Storage | Buffer::Bind::TransferDst | bind,
-		Buffer::Usage::GpuOnly, AE_HISTOGRAM_SIZE * sizeof(uint32));
+		Buffer::Access::None, AE_HISTOGRAM_SIZE * sizeof(uint32),
+		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.auto-exposure.histogram");
 	return buffer;
 }
@@ -65,7 +66,8 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 	
 	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage |
 		Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind,
-		Buffer::Usage::GpuOnly, data, sizeof(ToneMappingRenderSystem::Luminance));
+		Buffer::Access::None, data, sizeof(ToneMappingRenderSystem::Luminance),
+		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.toneMapping.luminance");
 	return buffer;
 }

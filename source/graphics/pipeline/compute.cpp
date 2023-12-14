@@ -92,10 +92,4 @@ void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
 	command.groupCount = isGlobalCount ?
 		(int3)ceil((float3)count / (float3)localSize) : count;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
-
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }

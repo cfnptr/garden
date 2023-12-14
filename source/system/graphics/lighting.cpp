@@ -729,8 +729,8 @@ const ID<ImageView>* LightingRenderSystem::getAoImageViews()
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem,
-	ThreadPool& threadPool, const vector<const void*>& _pixels, uint32 cubemapSize)
+static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem, ThreadPool& threadPool,
+	const vector<const void*>& _pixels, uint32 cubemapSize, Buffer::Strategy strategy)
 {
 	auto invDim = 1.0f / cubemapSize;
 	vector<float4> shBuffer(threadPool.getThreadCount() * SH_COEF_COUNT);
@@ -780,13 +780,14 @@ static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem,
 	shaderPreprocessSH(shData);
 
 	// TODO: check if final SH is the same as debug in release build.
-	return graphicsSystem->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
-		Buffer::Usage::GpuOnly, shData, SH_COEF_COUNT * sizeof(float4));
+	return graphicsSystem->createBuffer(
+		Buffer::Bind::TransferDst | Buffer::Bind::Uniform, Buffer::Access::None,
+		shData, SH_COEF_COUNT * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem,
-	ThreadPool& threadPool, ID<ComputePipeline> iblSpecularPipeline, ID<Image> cubemap)
+static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadPool& threadPool,
+	ID<ComputePipeline> iblSpecularPipeline, ID<Image> cubemap, Memory::Strategy strategy)
 {
 	auto cubemapView = graphicsSystem->get(cubemap);
 	auto cubemapSize = cubemapView->getSize().x;
@@ -801,8 +802,8 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem,
 
 	auto specular = graphicsSystem->createImage(Image::Type::Cubemap,
 		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst |
-		Image::Bind::Storage | Image::Bind::Sampled,
-		mips, int3(cubemapSize, cubemapSize, 1));
+		Image::Bind::Storage | Image::Bind::Sampled, mips,
+		int3(cubemapSize, cubemapSize, 1), Image::Format::Undefined, strategy);
 
 	uint64 specularCacheSize = 0;
 	for (uint8 i = 1; i < specularMipCount; i++)
@@ -810,7 +811,8 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem,
 	specularCacheSize *= sizeof(SpecularItem);
 
 	auto cpuSpecularCache = graphicsSystem->createBuffer(
-		Buffer::Bind::TransferSrc, Buffer::Usage::CpuOnly, specularCacheSize);
+		Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+		specularCacheSize, Buffer::Usage::Auto, strategy);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, cpuSpecularCache,
 		"buffer.storage.lighting.cpuSpecularCache" + to_string(*cpuSpecularCache));
 	auto cpuSpecularCacheView = graphicsSystem->get(cpuSpecularCache);
@@ -876,8 +878,9 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem,
 	for (uint32 i = 0; i < (uint32)gpuSpecularCaches.size(); i++)
 	{
 		auto cacheSize = countBuffer[i] * sizeof(SpecularItem);
-		auto gpuSpecularCache = graphicsSystem->createBuffer(Buffer::Bind::Storage |
-			Buffer::Bind::TransferDst, Buffer::Usage::GpuOnly, cacheSize);
+		auto gpuSpecularCache = graphicsSystem->createBuffer(
+			Buffer::Bind::Storage | Buffer::Bind::TransferDst,
+			Buffer::Access::None, cacheSize, Buffer::Usage::PreferGPU, strategy);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, gpuSpecularCache,
 			"buffer.storage.lighting.gpuSpecularCache" + to_string(*gpuSpecularCache));
 		gpuSpecularCaches[i] = gpuSpecularCache;
@@ -931,8 +934,8 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem,
 }
 
 //--------------------------------------------------------------------------------------------------
-void LightingRenderSystem::loadCubemap(const fs::path& path,
-	Ref<Image>& cubemap, Ref<Buffer>& sh, Ref<Image>& specular)
+void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
+	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto graphicsSystem = getGraphicsSystem();
@@ -955,21 +958,18 @@ void LightingRenderSystem::loadCubemap(const fs::path& path,
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
 
 	cubemap = graphicsSystem->createImage(Image::Type::Cubemap,
-		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst |
-		Image::Bind::TransferSrc | Image::Bind::Sampled,
-		mips, int3(size, 1), format);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, cubemap,
-		"image.cubemap." + path.generic_string());
+		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::TransferSrc |
+		Image::Bind::Sampled, mips, int3(size, 1), format);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);
 	cubemapView->generateMips();
 
-	sh = generateIblSH(graphicsSystem, threadPool, mips[0], cubemapSize);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh,
-		"buffer.sh." + path.generic_string());
+	sh = generateIblSH(graphicsSystem, threadPool, mips[0], cubemapSize, strategy);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh, "buffer.sh." + path.generic_string());
 
 	specular = generateIblSpecular(graphicsSystem,
-		threadPool, iblSpecularPipeline, cubemap);
+		threadPool, iblSpecularPipeline, cubemap, strategy);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, specular,
 		"image.cubemap.specular." + path.generic_string());
 	

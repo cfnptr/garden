@@ -54,7 +54,8 @@ static ID<Buffer> createSampleBuffer(GraphicsSystem* graphicsSystem)
 	}
 
 	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform |
-		Buffer::Bind::TransferDst, Buffer::Usage::GpuOnly, ssaoKernel);
+		Buffer::Bind::TransferDst, Buffer::Access::None, ssaoKernel,
+		0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.uniform.ssao.sample");
 	return buffer;
 }

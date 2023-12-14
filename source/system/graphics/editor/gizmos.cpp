@@ -81,7 +81,8 @@ GizmosEditor::GizmosEditor(MeshRenderSystem* system)
 	backGizmosPipeline = resourceSystem->loadGraphicsPipeline(
 		"editor/gizmos-back", editorFramebuffer);
 	fullArrowVertices = graphicsSystem->createBuffer(Buffer::Bind::Vertex |
-		Buffer::Bind::TransferDst, Buffer::Usage::GpuOnly, fullArrowVert);
+		Buffer::Bind::TransferDst, Buffer::Access::None, fullArrowVert,
+		0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, fullArrowVertices,
 		"buffer.vertex.gizmos.arrow");
 	this->system = system;

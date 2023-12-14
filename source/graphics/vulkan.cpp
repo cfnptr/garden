@@ -68,6 +68,9 @@ vector<bool> Vulkan::secondaryCommandStates;
 Swapchain Vulkan::swapchain;
 vk::PhysicalDeviceProperties2 Vulkan::deviceProperties = {};
 vk::PhysicalDeviceFeatures2 Vulkan::deviceFeatures = {};
+bool Vulkan::hasMemoryBudget = false;
+bool Vulkan::hasMemoryPriority = false;
+bool Vulkan::hasPageableMemory = false;
 
 #if GARDEN_DEBUG
 vk::DebugUtilsMessengerEXT Vulkan::debugMessenger = {};
@@ -360,7 +363,8 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 	uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount,
 	uint32 transferQueueMaxCount, uint32 computeQueueMaxCount,
 	uint32& frameQueueIndex, uint32& graphicsQueueIndex,
-	uint32& transferQueueIndex, uint32& computeQueueIndex)
+	uint32& transferQueueIndex, uint32& computeQueueIndex,
+	bool& hasMemoryBudget, bool& hasMemoryPriority, bool& hasPageableMemory)
 {
 	uint32 graphicsQueueCount = 1,
 		transferQueueCount = 0, computeQueueCount = 0;
@@ -433,14 +437,27 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 		#endif
 	};
 
+	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
+	for (auto& properties : extensionProperties)
+	{
+		if (strcmp(properties.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0)
+			hasMemoryBudget = true;
+		if (strcmp(properties.extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0)
+			hasMemoryPriority = true;
+		if (strcmp(properties.extensionName, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0)
+			hasPageableMemory = true;
+	}
+
+	if (hasMemoryBudget && !hasExtension(extensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
+		extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+	if (hasMemoryPriority && !hasExtension(extensions, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME))
+		extensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
+	if (hasPageableMemory && !hasExtension(extensions, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
+		extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+
 	vk::PhysicalDeviceMaintenance4Features maintenance4Features;
 	maintenance4Features.maintenance4 = VK_TRUE;
-
-	#if __APPLE__
-	vk::PhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
-	portabilityFeatures.mutableComparisonSamplers = VK_TRUE;
-	maintenance4Features.pNext = &portabilityFeatures;
-	#endif
+	void** lastPNext = &maintenance4Features.pNext;
 
 	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
 	dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
@@ -460,6 +477,21 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 	deviceFeatures.features.independentBlend = VK_TRUE;
 	deviceFeatures.features.depthClamp = VK_TRUE;
 	deviceFeatures.pNext = &descriptorIndexingFeatures;
+
+	#if __APPLE__
+	vk::PhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
+	portabilityFeatures.mutableComparisonSamplers = VK_TRUE;
+	*lastPNext = &portabilityFeatures;
+	lastPNext = &portabilityFeatures.pNext;
+	#endif
+
+	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
+	if (hasPageableMemory)
+	{
+		pageableMemoryFeatures.pageableDeviceLocalMemory = true;
+		*lastPNext = &pageableMemoryFeatures;
+		lastPNext = &pageableMemoryFeatures.pNext;
+	}
 
 	vk::DeviceCreateInfo deviceInfo({}, queueInfos, {}, extensions, {}, &deviceFeatures);
 	return physicalDevice.createDevice(deviceInfo);
@@ -482,13 +514,16 @@ static void updateVkDynamicLoader(vk::Device device,
 
 //--------------------------------------------------------------------------------------------------
 static VmaAllocator createVmaMemoryAllocator(vk::Instance instance,
-	vk::PhysicalDevice physicalDevice, vk::Device device)
+	vk::PhysicalDevice physicalDevice, vk::Device device,
+	bool hasMemoryBudget, bool hasMemoryPriority)
 {
 	VmaAllocatorCreateInfo allocatorInfo = {};
 	allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 	allocatorInfo.physicalDevice = physicalDevice;
 	allocatorInfo.device = device;
 	allocatorInfo.instance = instance;
+	if (hasMemoryBudget) allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+	if (hasMemoryPriority) allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
 	VmaAllocator allocator = VK_NULL_HANDLE;
 	auto result = vmaCreateAllocator(&allocatorInfo, &allocator);
 	if (result != VK_SUCCESS) throw runtime_error("Failed to create memory allocator.");
@@ -630,9 +665,11 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 	device = createVkDevice(physicalDevice, graphicsQueueFamilyIndex,
 		transferQueueFamilyIndex, computeQueueFamilyIndex,
 		graphicsQueueMaxCount, transferQueueMaxCount, computeQueueMaxCount,
-		frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex);
+		frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex,
+		hasMemoryBudget, hasMemoryPriority, hasPageableMemory);
 	updateVkDynamicLoader(device, dynamicLoader);
-	memoryAllocator = createVmaMemoryAllocator(instance, physicalDevice, device);
+	memoryAllocator = createVmaMemoryAllocator(instance,
+		physicalDevice, device, hasMemoryBudget, hasMemoryPriority);
 	frameQueue = device.getQueue(graphicsQueueFamilyIndex, frameQueueIndex);
 	graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, graphicsQueueIndex);
 	transferQueue = device.getQueue(transferQueueFamilyIndex, transferQueueIndex);

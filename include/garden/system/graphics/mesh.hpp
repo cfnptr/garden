@@ -32,12 +32,14 @@ struct MeshRenderComponent : public Component
 {
 protected:
 	ID<Entity> entity = {};
+	ID<TransformComponent> transform = {};
 	friend class MeshRenderSystem;
 public:
 	Aabb aabb = Aabb::one;
 	bool isEnabled = true;
 
 	ID<Entity> getEntity() const noexcept { return entity; }
+	ID<TransformComponent> getTransform() const noexcept { return transform; }
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -50,8 +52,7 @@ protected:
 	// WARNING: can be called from multiple threads asynchronously.
 	virtual void beginDraw(int32 taskIndex) { }
 	// WARNING: can be called from multiple threads asynchronously.
-	virtual void draw(TransformComponent* transformComponent,
-		MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	virtual void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
 	// WARNING: can be called from multiple threads asynchronously.
 	virtual void endDraw(uint32 drawCount, int32 taskIndex) { }
@@ -82,7 +83,6 @@ class MeshRenderSystem final : public System, public IRenderSystem, public IDefe
 public:
 	struct RenderItem
 	{
-		TransformComponent* transform = nullptr;
 		MeshRenderComponent* meshRender = nullptr;
 		float4x4 model = float4x4(0.0f);
 		float distance2 = 0.0f;
@@ -96,43 +96,22 @@ public:
 		IMeshRenderSystem* meshSystem = nullptr;
 		vector<RenderItem> items;
 		vector<uint32> indices;
-		atomic<uint32>* drawCount;
-
-		OpaqueBuffer() { drawCount = new atomic<uint32>(0); }
-		~OpaqueBuffer() { delete drawCount; }
-
-		OpaqueBuffer(OpaqueBuffer&& buffer) noexcept :
-			drawCount(std::exchange(buffer.drawCount, nullptr)) { }
-		OpaqueBuffer& operator=(OpaqueBuffer&& buffer) noexcept
-		{
-			drawCount = std::exchange(buffer.drawCount, nullptr);
-			return *this;
-		}
+		volatile int64 drawCount;
 	};
 	struct TranslucentBuffer final
 	{
 		IMeshRenderSystem* meshSystem = nullptr;
-		atomic<uint32>* drawCount;
-
-		TranslucentBuffer() { drawCount = new atomic<uint32>(0); }
-		~TranslucentBuffer() { delete drawCount; }
-
-		TranslucentBuffer(TranslucentBuffer&& buffer) noexcept :
-			drawCount(std::exchange(buffer.drawCount, nullptr)) { }
-		TranslucentBuffer& operator=(TranslucentBuffer&& buffer) noexcept
-		{
-			drawCount = std::exchange(buffer.drawCount, nullptr);
-			return *this;
-		}
+		volatile int64 drawCount;
 	};
 private:
+	TransformSystem* transformSystem = nullptr;
 	ThreadSystem* threadSystem = nullptr;
 	vector<IShadowMeshRenderSystem*> shadowSystems;
 	vector<OpaqueBuffer> opaqueBuffers;
 	vector<TranslucentBuffer> translucentBuffers;
 	vector<TranslucentItem> translucentItems;
 	vector<uint32> translucentIndices;
-	atomic<uint32> translucentIndex;
+	volatile int64 translucentIndex;
 	uint32 opaqueBufferCount = 0;
 	uint32 translucentBufferCount = 0;
 	bool isAsync = false;

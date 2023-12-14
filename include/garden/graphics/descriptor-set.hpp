@@ -30,7 +30,6 @@ using namespace ecsm;
 class Pipeline;
 class GraphicsPipeline;
 
-//--------------------------------------------------------------------------------------------------
 class DescriptorSet final : public Resource
 {
 public:

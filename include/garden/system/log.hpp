@@ -46,6 +46,10 @@ public:
 	void warn(const string& message) noexcept  { log(WARN_LOG_LEVEL, message); }
 	void error(const string& message) noexcept  { log(ERROR_LOG_LEVEL, message); }
 	void fatal(const string& message) noexcept { log(FATAL_LOG_LEVEL, message); }
+
+	#if GARDEN_DEBUG
+	static LogSystem* instance;
+	#endif
 };
 
 } // garden
