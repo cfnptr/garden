@@ -17,11 +17,6 @@
 #pragma once
 #include "garden/defines.hpp"
 
-#if GARDEN_DEBUG
-#define GARDEN_MAIN int main(int argc, char *argv[])
-#define GARDEN_MESSAGE_ERROR(cstr)
-#else
-
 #if _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -30,6 +25,4 @@
 #else
 #define GARDEN_MAIN int main(int argc, char *argv[])
 #define GARDEN_MESSAGE_ERROR(cstr)
-#endif
-
 #endif

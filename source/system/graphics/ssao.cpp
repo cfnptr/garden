@@ -47,7 +47,7 @@ static ID<Buffer> createSampleBuffer(GraphicsSystem* graphicsSystem)
 		auto sample = normalize(float3(
 			randomFloats(generator) * 2.0f - 1.0f,
 			randomFloats(generator) * 2.0f - 1.0f,
-			randomFloats(generator)));
+			randomFloats(generator) * 2.0f - 1.0f));
 		auto scale = (float)i / SAMPLE_COUNT; 
 		scale = lerp(0.1f, 1.0f, scale * scale);
 		ssaoKernel[i] = float4(sample * scale * randomFloats(generator), 0.0f);
