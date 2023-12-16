@@ -830,7 +830,7 @@ void PhysicsSystem::update()
 		if (!component->instance) component->setStatic(true);
 		if (component->staticBody || !component->updatePose) continue;
 
-		auto transformComponent = manager->get<TransformComponent>(component->entity);
+		auto transformComponent = manager->get<TransformComponent>(component->entity); // TODO: store transform ID inside component instead
 		auto position = transformComponent->position;
 		auto rotation = transformComponent->rotation;
 		auto pxTransform = PxTransform(position.x, position.y, position.z,
@@ -882,7 +882,7 @@ void PhysicsSystem::update()
 		auto component = &componentData[i];
 		if (!component->physicsSystem || component->staticBody ||
 			!component->updatePose) continue;
-		auto transformComponent = manager->get<TransformComponent>(component->entity);
+		auto transformComponent = manager->get<TransformComponent>(component->entity); // TODO: store transform ID inside component instead
 		auto rigidBody = (PxRigidActor*)component->instance;
 		auto pxTransform = rigidBody->getGlobalPose();
 		transformComponent->position = float3(

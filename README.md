@@ -26,6 +26,7 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 * Cascade Shadow Mapping (CSM)
 * Skybox Rendering (Cubemap)
 * Perspective / Orthographic Camera
+* Infinite far plane (Reverse Z-Buffer)
 * Frustum Culling (AABB)
 * Bounding Volume Hierarchy (BVH)
 * Opaque / Translucent / Cutoff Shaders
@@ -107,9 +108,6 @@ However, you can also compile it under any other Linux distribution or operating
 Use building [instructions](BUILDING.md) to install all required tools and libraries.
 
 ### CMake options
-
-option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
-option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
 
 | Name                     | Description                                      | Default value |
 |--------------------------|--------------------------------------------------|---------------|

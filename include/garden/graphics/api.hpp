@@ -56,7 +56,7 @@ public:
 	static uint64 computePipelineVersion;
 	static uint64 bufferVersion;
 	static uint64 imageVersion;
-	static vector<DestroyResource> destroyBuffer;
+	static vector<DestroyResource> destroyBuffers[GARDEN_FRAME_LAG + 1];
 	static map<void*, uint64> renderPasses;
 	static CommandBuffer frameCommandBuffer;
 	static CommandBuffer graphicsCommandBuffer;
@@ -65,22 +65,15 @@ public:
 	static CommandBuffer* currentCommandBuffer;
 	static bool isDeviceIntegrated;
 	static bool isRunning;
+	static uint8 fillDestroyIndex;
+	static uint8 flushDestroyIndex;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	static bool recordGpuTime;
 	#endif
 
-	static void destroyResource(GraphicsAPI::DestroyResourceType type, void* data0,
-		void* data1 = nullptr, void* data2 = nullptr, uint32 count = 0)
-	{
-		GraphicsAPI::DestroyResource destroyResource;
-		destroyResource.data0 = data0;
-		destroyResource.data1 = data1;
-		destroyResource.data2 = data2;
-		destroyResource.type = type;
-		destroyResource.count = count;
-		GraphicsAPI::destroyBuffer.push_back(destroyResource);
-	}
+	static void destroyResource(DestroyResourceType type, void* data0,
+		void* data1 = nullptr, void* data2 = nullptr, uint32 count = 0);
 };
 
 } // garden::graphics

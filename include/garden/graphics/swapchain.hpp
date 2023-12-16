@@ -71,6 +71,7 @@ public:
 	uint32 getBufferCount() const noexcept { return (uint32)buffers.size(); }
 	const Buffer& getCurrentBuffer() const noexcept { return buffers[bufferIndex]; }
 	uint32 getCurrentBufferIndex() const noexcept { return bufferIndex; }
+	uint32 getCurrentFrameIndex() const noexcept { return frameIndex; }
 	int2 getFramebufferSize() const noexcept { return framebufferSize; }
 	bool isUseVsync() const noexcept { return useVsync; }
 	bool isUseTripleBuffering() const noexcept { return useTripleBuffering; }

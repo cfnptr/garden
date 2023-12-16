@@ -48,7 +48,7 @@ static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 
 //--------------------------------------------------------------------------------------------------
 static map<string, DescriptorSet::Uniform> getLimitsUniforms(
-	Manager* manager, GraphicsSystem* graphicsSystem, ID<Buffer> luminanceBuffer)
+	Manager* manager, GraphicsSystem* graphicsSystem)
 {
 	auto deferredSystem = manager->get<DeferredRenderSystem>();
 	auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
@@ -58,7 +58,7 @@ static map<string, DescriptorSet::Uniform> getLimitsUniforms(
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(
 			hdrFramebufferView->getColorAttachments()[0].imageView) },
-		{ "luminance", DescriptorSet::Uniform(luminanceBuffer) }
+		{ "luminance", DescriptorSet::Uniform(toneMappingSystem->getLuminanceBuffer()) }
 	};
 	return uniforms;
 }
@@ -77,8 +77,6 @@ AutoExposureEditor::~AutoExposureEditor()
 }
 
 //--------------------------------------------------------------------------------------------------
-static float exposureValue = 1.0f;
-
 void AutoExposureEditor::render()
 {
 	if (!showWindow) return;
@@ -103,18 +101,7 @@ void AutoExposureEditor::render()
 			&system->darkAdaptRate, 0.01f, 0.001f);
 		ImGui::DragFloat("Bright Adaptation Rate",
 			&system->brightAdaptRate, 0.01f, 0.001f);
-
-		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
-		{
-			ImGui::DragFloat("Value", &exposureValue, 0.01f);
-			if (ImGui::Button("Set Exposure"))
-				system->setExposure(exposureValue);
-			ImGui::SameLine();
-			if (ImGui::Button("Set Luminance"))
-				system->setLuminance(exposureValue);
-		}
 			
-		auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
 		auto readbackBufferView = graphicsSystem->get(readbackBuffer);
 		auto size = sizeof(ToneMappingRenderSystem::Luminance) +
 			AE_HISTOGRAM_SIZE * sizeof(uint32);
@@ -163,10 +150,11 @@ void AutoExposureEditor::render()
 				ImGui::TextDisabled("Limits pipeline is loading...");
 		}
 
+		auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
 		Buffer::CopyRegion copyRegion;
 		copyRegion.dstOffset = offset;
 		copyRegion.size = sizeof(ToneMappingRenderSystem::Luminance);
-		Buffer::copy(system->luminanceBuffer, readbackBuffer, copyRegion);
+		Buffer::copy(toneMappingSystem->getLuminanceBuffer(), readbackBuffer, copyRegion);
 
 		copyRegion.dstOffset = offset + sizeof(ToneMappingRenderSystem::Luminance);
 		copyRegion.size = AE_HISTOGRAM_SIZE * sizeof(uint32);
@@ -188,8 +176,7 @@ void AutoExposureEditor::render()
 		{
 			if (!limitsDescriptorSet)
 			{
-				auto uniforms = getLimitsUniforms(system->getManager(),
-					graphicsSystem, system->luminanceBuffer);
+				auto uniforms = getLimitsUniforms(system->getManager(), graphicsSystem);
 				limitsDescriptorSet = graphicsSystem->createDescriptorSet(
 					limitsPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, limitsDescriptorSet,
@@ -227,8 +214,7 @@ void AutoExposureEditor::recreateSwapchain(const IRenderSystem::SwapchainChanges
 
 	if (changes.framebufferSize && limitsDescriptorSet)
 	{
-		auto uniforms = getLimitsUniforms(system->getManager(),
-			graphicsSystem, system->luminanceBuffer);
+		auto uniforms = getLimitsUniforms(system->getManager(), graphicsSystem);
 		auto limitsDescriptorSetView = graphicsSystem->get(limitsDescriptorSet);
 		limitsDescriptorSetView->recreate(std::move(uniforms));
 	}

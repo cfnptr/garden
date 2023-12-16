@@ -66,7 +66,6 @@ void ResourceEditor::render()
 			ImGui::TableNextColumn(); ImGui::Text("%d", GraphicsAPI::descriptorSetPool.getCount());
 			ImGui::EndTable();
 
-			ImGui::Text("Destroy Resources: %d", (int)GraphicsAPI::destroyBuffer.size());
 			ImGui::Spacing();
 
 			if (ImGui::CollapsingHeader("Buffers"))

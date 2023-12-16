@@ -27,8 +27,8 @@
 namespace garden::graphics
 {
 
-#define GARDEN_FRAME_LAG 2 // optimal
-#define GARDEN_MAX_PUSH_CONSTANTS_SIZE 128
+#define GARDEN_FRAME_LAG 2 // Optimal count
+#define GARDEN_MAX_PUSH_CONSTANTS_SIZE 128 // Nvidia maximum
 
 using namespace std;
 using namespace math;

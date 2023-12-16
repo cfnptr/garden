@@ -151,9 +151,11 @@ void FpvSystem::update()
 		moveDirection.x = -moveSensitivity;
 	else if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::D))
 		moveDirection.x = moveSensitivity;
-	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::Q)) // && !hasRigidBody)
+	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::Q) ||
+		graphicsSystem->isKeyboardButtonPressed(KeyboardButton::LeftControl)) // && !hasRigidBody)
 		moveDirection.y = -moveSensitivity;
-	else if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::E)) // && !hasRigidBody)
+	else if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::E) ||
+		graphicsSystem->isKeyboardButtonPressed(KeyboardButton::Space)) // && !hasRigidBody)
 		moveDirection.y = moveSensitivity;
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::S))
 		moveDirection.z = -moveSensitivity;
