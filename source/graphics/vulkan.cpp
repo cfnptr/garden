@@ -679,14 +679,15 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 	transferCommandPool = createVkCommandPool(device, transferQueueFamilyIndex);
 	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex); 
 	descriptorPool = createVkDescriptorPool(device);
-	GraphicsAPI::frameCommandBuffer.initialize(CommandBufferType::Frame);
-	GraphicsAPI::graphicsCommandBuffer.initialize(CommandBufferType::Graphics);
-	GraphicsAPI::transferCommandBuffer.initialize(CommandBufferType::TransferOnly);
-	GraphicsAPI::computeCommandBuffer.initialize(CommandBufferType::ComputeOnly);
 
 	int2 framebufferSize;
 	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
 	swapchain = Swapchain(framebufferSize, useVsync, useTripleBuffering, useThreading);
+
+	GraphicsAPI::frameCommandBuffer.initialize(CommandBufferType::Frame);
+	GraphicsAPI::graphicsCommandBuffer.initialize(CommandBufferType::Graphics);
+	GraphicsAPI::transferCommandBuffer.initialize(CommandBufferType::TransferOnly);
+	GraphicsAPI::computeCommandBuffer.initialize(CommandBufferType::ComputeOnly);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -696,13 +697,15 @@ void Vulkan::terminate()
 
 	// Should be set here, to destroy resources.
 	GraphicsAPI::isRunning = false;
-	Vulkan::updateDestroyBuffer();
-	swapchain.destroy();
 
 	GraphicsAPI::computeCommandBuffer.terminate();
 	GraphicsAPI::transferCommandBuffer.terminate();
 	GraphicsAPI::graphicsCommandBuffer.terminate();
 	GraphicsAPI::frameCommandBuffer.terminate();
+
+	for (int i = 0; i < GARDEN_FRAME_LAG + 1; i++)
+		Vulkan::updateDestroyBuffer();
+	swapchain.destroy();
 
 	GraphicsAPI::descriptorSetPool.clear();
 	GraphicsAPI::computePipelinePool.clear();
@@ -739,13 +742,15 @@ void Vulkan::terminate()
 //--------------------------------------------------------------------------------------------------
 void Vulkan::updateDestroyBuffer()
 {
-	if (GraphicsAPI::destroyBuffer.empty()) return;
+	auto& destroyBuffer = GraphicsAPI::destroyBuffers[GraphicsAPI::flushDestroyIndex];
+	GraphicsAPI::flushDestroyIndex = (GraphicsAPI::flushDestroyIndex + 1) % (GARDEN_FRAME_LAG + 1);
+	GraphicsAPI::fillDestroyIndex = (GraphicsAPI::fillDestroyIndex + 1) % (GARDEN_FRAME_LAG + 1);
+	if (destroyBuffer.empty()) return;
 
-	sort(GraphicsAPI::destroyBuffer.begin(), GraphicsAPI::destroyBuffer.end(),
-		[](const GraphicsAPI::DestroyResource& a, const GraphicsAPI::DestroyResource& b)
-		{ return (uint32)a.type < (uint32)b.type; });
+	sort(destroyBuffer.begin(), destroyBuffer.end(), [](const GraphicsAPI::DestroyResource& a,
+		const GraphicsAPI::DestroyResource& b) { return (uint32)a.type < (uint32)b.type; });
 
-	for (auto& resource : GraphicsAPI::destroyBuffer)
+	for (auto& resource : destroyBuffer)
 	{
 		switch (resource.type)
 		{
@@ -805,5 +810,5 @@ void Vulkan::updateDestroyBuffer()
 		}
 	}
 
-	GraphicsAPI::destroyBuffer.clear();
+	destroyBuffer.clear();
 }

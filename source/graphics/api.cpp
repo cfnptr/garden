@@ -15,6 +15,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/api.hpp"
+#include "garden/graphics/vulkan.hpp"
 
 using namespace std;
 using namespace garden::graphics;
@@ -32,7 +33,7 @@ uint64 GraphicsAPI::graphicsPipelineVersion = 0;
 uint64 GraphicsAPI::computePipelineVersion = 0;
 uint64 GraphicsAPI::bufferVersion = 0;
 uint64 GraphicsAPI::imageVersion = 0;
-vector<GraphicsAPI::DestroyResource> GraphicsAPI::destroyBuffer;
+vector<GraphicsAPI::DestroyResource> GraphicsAPI::destroyBuffers[];
 map<void*, uint64> GraphicsAPI::renderPasses;
 CommandBuffer GraphicsAPI::frameCommandBuffer;
 CommandBuffer GraphicsAPI::graphicsCommandBuffer;
@@ -41,7 +42,22 @@ CommandBuffer GraphicsAPI::computeCommandBuffer;
 CommandBuffer* GraphicsAPI::currentCommandBuffer = nullptr;
 bool GraphicsAPI::isDeviceIntegrated = false;
 bool GraphicsAPI::isRunning = false;
+uint8 GraphicsAPI::fillDestroyIndex = 0;
+uint8 GraphicsAPI::flushDestroyIndex = 1;
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
 bool GraphicsAPI::recordGpuTime = false;
 #endif
+
+//--------------------------------------------------------------------------------------------------
+void GraphicsAPI::destroyResource(DestroyResourceType type,
+	void* data0, void* data1, void* data2, uint32 count)
+{
+	DestroyResource destroyResource;
+	destroyResource.data0 = data0;
+	destroyResource.data1 = data1;
+	destroyResource.data2 = data2;
+	destroyResource.type = type;
+	destroyResource.count = count;
+	destroyBuffers[fillDestroyIndex].push_back(destroyResource);
+}

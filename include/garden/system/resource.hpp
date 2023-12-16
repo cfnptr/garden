@@ -399,7 +399,7 @@ static ResourceSystem::ImageFile toImageFile(string_view name)
 	if (name == "png") return ResourceSystem::ImageFile::Png;
 	if (name == "jpg" || name == "jpeg") return ResourceSystem::ImageFile::Jpg;
 	if (name == "hdr") return ResourceSystem::ImageFile::Hdr;
-	throw runtime_error("Unknown image file type.");
+	throw runtime_error("Unknown image file type. (name: " + string(name) + ")");
 }
 
 } // garden

@@ -89,7 +89,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(
 		if (!shadowPlaceholder)
 		{
 			shadowPlaceholder = graphicsSystem->createImage(Image::Format::UnormR8,
-				Image::Bind::Sampled, { { nullptr } }, int2(1));
+				Image::Bind::Sampled, { { nullptr } }, int2(1), Image::Strategy::Size);
 			SET_RESOURCE_DEBUG_NAME(graphicsSystem, shadowPlaceholder,
 				"image.shadowPlaceholder");
 		}

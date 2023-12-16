@@ -257,9 +257,9 @@ void ResourceSystem::update()
 					GraphicsAPI::isRunning = true;
 				}
 			
-				auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-					Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
-					item.staging.getMemoryStrategy(), 0);
+				auto staging = GraphicsAPI::bufferPool.create(
+					Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+					Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
 					"buffer.staging.loaded" + to_string(*staging));
 				auto stagingView = GraphicsAPI::bufferPool.get(staging);
@@ -302,11 +302,11 @@ void ResourceSystem::update()
 					GraphicsAPI::isRunning = true;
 				}
 
-				auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-					Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
-					item.staging.getMemoryStrategy(), 0);
+				auto staging = GraphicsAPI::bufferPool.create(
+					Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+					Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
-					"buffer.staging.loaded" + to_string(*staging));
+					"buffer.staging.imageLoaded" + to_string(*staging));
 				auto stagingView = GraphicsAPI::bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				Image::copy(staging, item.instance);
@@ -366,7 +366,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	// TODO: store images as bc compressed for polygon geometry. KTX 2.0
 	GARDEN_ASSERT(!path.empty());
 	vector<uint8> dataBuffer;
-	ImageFile fileType; int32 fileCount = 0;
+	ImageFile fileType = ImageFile::Count; int32 fileCount = 0;
 	auto imagePath = fs::path("images") / path;
 
 	if (threadIndex < 0) threadIndex = 0;
@@ -425,7 +425,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 			if (fileCount != 1)
 			{
-				throw runtime_error("Image file does not exist, or it is ambiguous."
+				throw runtime_error("Image file does not exist, or it is ambiguous. ("
 					"path: " + path.generic_string() + ")");
 			}
 		}
@@ -446,6 +446,12 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Jpg;
 	imagePath.replace_extension(".hdr");
 	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Hdr;
+
+	if (fileType == ImageFile::Count)
+	{
+		throw runtime_error("Image does not exist. ("
+			"path: " + path.generic_string() + ")");
+	}
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#endif
 
@@ -499,9 +505,15 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
-			throw runtime_error("Invalid equi cubemap size."); 
+		{
+			throw runtime_error("Invalid equi cubemap size. ("
+				"path: " + path.generic_string() + ")");
+		}
 		if (cubemapSize % 32 != 0)
-			throw runtime_error("Invalid cubemap size.");
+		{
+			throw runtime_error("Invalid cubemap size. ("
+				"path: " + path.generic_string() + ")");
+		}
 		
 		vector<float4> floatData; const float4* equiPixels;
 		if (format == Image::Format::SrgbR8G8B8A8)
@@ -685,24 +697,28 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
-		throw runtime_error("Invalid cubemap size.");
+		throw runtime_error("Invalid cubemap size. ("
+			"path: " + path.generic_string() + ")");
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		throw runtime_error("Invalid cubemap side size.");
+		throw runtime_error("Invalid cubemap side size. ("
+			"path: " + path.generic_string() + ")");
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		throw runtime_error("Invalid cubemap side size.");
+		throw runtime_error("Invalid cubemap side size. ("
+			"path: " + path.generic_string() + ")");
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
-		throw runtime_error("Invalid cubemap format.");
+		throw runtime_error("Invalid cubemap format. ("
+			"path: " + path.generic_string() + ")");
 	}
 	#endif
 
@@ -828,7 +844,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 					Image::Type::Texture2D, format, data->bind, data->strategy,
 					int3(targetSize, 1), mipCount, 1, data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, data->strategy, bufferBinarySize, 0),
+					Buffer::Usage::Auto, Buffer::Strategy::Speed, bufferBinarySize, 0),
 				data->instance,
 			};
 
@@ -876,9 +892,9 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 
 		auto staging = GraphicsAPI::bufferPool.create(
 			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, strategy, bufferBinarySize, 0);
+			Buffer::Usage::Auto, Buffer::Strategy::Speed, bufferBinarySize, 0);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
-			"buffer.staging.loaded" + to_string(*staging));
+			"buffer.staging.imageLoaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 
 		if (downscaleCount > 0)
@@ -2066,7 +2082,7 @@ shared_ptr<Model> ResourceSystem::loadModel(const fs::path& path)
 
 	if (hasGlbFile + hasGltfFile != 1)
 	{
-		throw runtime_error("Model file does not exist, or it is ambiguous."
+		throw runtime_error("Model file does not exist, or it is ambiguous. ("
 			"path: " + path.generic_string() + ")");
 	}
 
@@ -2180,7 +2196,7 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 				BufferExt::create(data->bind, data->access, Buffer::Usage::PreferGPU,
 					data->strategy, size, data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, data->strategy, size, 0),
+					Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0),
 				data->instance,
 			};
 
@@ -2201,8 +2217,9 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
 
-		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, strategy, size, 0);
+		auto staging = GraphicsAPI::bufferPool.create(
+			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+			Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
 			"buffer.staging.loaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
@@ -2287,10 +2304,11 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
 
-		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, strategy, size, 0);
+		auto staging = GraphicsAPI::bufferPool.create(
+			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+			Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
-			"buffer.staging.loaded" + to_string(*staging));
+			"buffer.staging.vertexLoaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 		primitive.copyVertices(attributes, stagingView->getMap());
 		stagingView->flush();

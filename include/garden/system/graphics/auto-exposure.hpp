@@ -43,7 +43,6 @@ class AutoExposureRenderSystem final : public System, public IRenderSystem
 	ID<DescriptorSet> histogramDescriptorSet = {};
 	ID<DescriptorSet> averageDescriptorSet = {};
 	ID<Buffer> histogramBuffer = {};
-	ID<Buffer> luminanceBuffer = {};
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
@@ -66,10 +65,6 @@ public:
 	ID<ComputePipeline> getHistogramPipeline();
 	ID<ComputePipeline> getAveragePipeline();
 	ID<Buffer> getHistogramBuffer();
-	ID<Buffer> getLuminanceBuffer();
-
-	void setLuminance(float luminance);
-	void setExposure(float exposure);
 };
 
 } // garden

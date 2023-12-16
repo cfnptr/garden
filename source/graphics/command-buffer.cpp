@@ -53,8 +53,7 @@ void CommandBuffer::initialize(CommandBufferType type)
 		instance = createVkCommandBuffer(Vulkan::device, Vulkan::transferCommandPool); break;
 	case CommandBufferType::ComputeOnly:
 		instance = createVkCommandBuffer(Vulkan::device, Vulkan::computeCommandPool); break;
-	case CommandBufferType::Frame:
-		timeCounter = GARDEN_FRAME_LAG + 1; break;
+	case CommandBufferType::Frame: break;
 	default: abort();
 	}
 
@@ -91,6 +90,11 @@ void CommandBuffer::initialize(CommandBufferType type)
 }
 void CommandBuffer::terminate()
 {
+	if (type != CommandBufferType::Frame)
+	{
+		flushLockedResources(lockedResources);
+		flushLockedResources(lockingResources);
+	}
 	Vulkan::device.destroyFence((VkFence)fence);
 	free(data);
 }
@@ -356,6 +360,40 @@ void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 }
 
 //--------------------------------------------------------------------------------------------------
+void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lockedResources)
+{
+	for (auto& pair : lockedResources)
+	{
+		switch (pair.second)
+		{
+		case ResourceType::Buffer:
+			GraphicsAPI::bufferPool.get(ID<Buffer>(pair.first))->readyLock--;
+			break;
+		case ResourceType::Image:
+			GraphicsAPI::imagePool.get(ID<Image>(pair.first))->readyLock--;
+			break;
+		case ResourceType::ImageView:
+			GraphicsAPI::imageViewPool.get(ID<ImageView>(pair.first))->readyLock--;
+			break;
+		case ResourceType::Framebuffer:
+			GraphicsAPI::framebufferPool.get(ID<Framebuffer>(pair.first))->readyLock--;
+			break;
+		case ResourceType::GraphicsPipeline:
+			GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(pair.first))->readyLock--;
+			break;
+		case ResourceType::ComputePipeline:
+			GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(pair.first))->readyLock--;
+			break;
+		case ResourceType::DescriptorSet:
+			GraphicsAPI::descriptorSetPool.get(ID<DescriptorSet>(pair.first))->readyLock--;
+			break;
+		default: abort();
+		}
+	}
+	lockedResources.clear();
+}
+
+//--------------------------------------------------------------------------------------------------
 void CommandBuffer::submit()
 {
 	auto swapchainBuffer = (Swapchain::Buffer*)&Vulkan::swapchain.getCurrentBuffer();
@@ -365,7 +403,6 @@ void CommandBuffer::submit()
 	{
 		instance = commandBuffer = vk::CommandBuffer((VkCommandBuffer)
 			swapchainBuffer->primaryCommandBuffer);
-		timeCounter++;
 	}
 	else
 	{
@@ -379,8 +416,7 @@ void CommandBuffer::submit()
 			auto status = Vulkan::device.getFenceStatus(fence);
 			if (status == vk::Result::eNotReady) return;
 			Vulkan::device.resetFences(fence);
-
-			timeCounter++;
+			flushLockedResources(lockedResources);
 			isRunning = false;
 		}
 
@@ -598,10 +634,10 @@ void CommandBuffer::submit()
 	}
 
 	imageStates.clear();
+	std::swap(lockingResources, lockedResources);
 	size = lastSize = 0;
 	hasAnyCommand = false;
 	isRunning = true;
-	return;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1907,6 +1943,7 @@ void CommandBuffer::addCommand(const BeginRenderPassCommand& command)
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
+	hasAnyCommand = true;
 }
 void CommandBuffer::addCommand(const NextSubpassCommand& command)
 {
@@ -1976,6 +2013,7 @@ void CommandBuffer::addCommand(const BindPipelineCommand& command)
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
+	hasAnyCommand = true;
 }
 void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 {
@@ -1984,7 +2022,6 @@ void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 		type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)(sizeof(BindDescriptorSetsCommandBase) + 
 		command.descriptorDataSize * sizeof(Pipeline::DescriptorData));
-	if (command.isAsync) commandMutex.lock();
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BindDescriptorSetsCommandBase));
 	memcpy((uint8*)allocation + sizeof(BindDescriptorSetsCommandBase),
@@ -1992,7 +2029,6 @@ void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
-	if (command.isAsync) commandMutex.unlock();
 }
 void CommandBuffer::addCommand(const PushConstantsCommand& command)
 {
@@ -2052,21 +2088,17 @@ void CommandBuffer::addCommand(const DrawCommand& command)
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
-	hasAnyCommand = true;
 }
 void CommandBuffer::addCommand(const DrawIndexedCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
 		type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(DrawIndexedCommand);
-	if (command.isAsync) commandMutex.lock();
 	auto allocation = (DrawIndexedCommand*)allocateCommand(commandSize);
 	*allocation = command;
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
-	hasAnyCommand = true;
-	if (command.isAsync) commandMutex.unlock();
 }
 void CommandBuffer::addCommand(const DispatchCommand& command)
 {
@@ -2191,6 +2223,7 @@ void CommandBuffer::addCommand(const BeginLabelCommand& command)
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
+	hasAnyCommand = true;
 }
 void CommandBuffer::addCommand(const EndLabelCommand& command)
 {
@@ -2213,5 +2246,6 @@ void CommandBuffer::addCommand(const InsertLabelCommand& command)
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
+	hasAnyCommand = true;
 }
 #endif

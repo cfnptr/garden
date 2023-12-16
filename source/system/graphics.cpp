@@ -559,6 +559,7 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera, ID<Entit
 			auto lightDir = lightTransform->rotation * float3::front;
 			cameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
 		}
+		else cameraConstants.lightDir = float4(float3::bottom, 0.0f);
 	}
 	else cameraConstants.lightDir = float4(float3::bottom, 0.0f);
 }
@@ -714,6 +715,8 @@ void GraphicsSystem::update()
 		if (delayTime > 0) this_thread::sleep_for(chrono::milliseconds(delayTime));
 		// TODO: use loop with empty cycles to improve sleep precission.
 	}
+
+	tickIndex++;
 }
 
 void GraphicsSystem::disposeComponents()
@@ -761,6 +764,18 @@ ID<Buffer> GraphicsSystem::getFullCubeVertices()
 }
 
 //--------------------------------------------------------------------------------------------------
+ID<Image> GraphicsSystem::getEmptyTexture()
+{
+	if (!emptyTexture)
+	{
+		const Color data[1] = { Color::transparent };
+		emptyTexture = createImage(Image::Format::UnormR8G8B8A8,
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
+		SET_THIS_RESOURCE_DEBUG_NAME(emptyTexture, "image.emptyTexture");
+	}
+
+	return emptyTexture;
+}
 ID<Image> GraphicsSystem::getWhiteTexture()
 {
 	if (!whiteTexture)
@@ -855,8 +870,9 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 		if (bufferView->isMappable()) bufferView->setData(data, size);
 		else
 		{
-			auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, strategy, size, 0);
+			auto stagingBuffer = GraphicsAPI::bufferPool.create(
+				Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+				Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
 			SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
 				"buffer.staging" + to_string(*stagingBuffer));
 			auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
@@ -887,7 +903,7 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> instance) const
 
 //--------------------------------------------------------------------------------------------------
 ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Bind bind,
-	const Image::Mips& data, const int3& size, Image::Format dataFormat, Image::Strategy strategy)
+	const Image::Mips& data, const int3& size, Image::Strategy strategy, Image::Format dataFormat)
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
 	GARDEN_ASSERT(!data.empty());
@@ -965,9 +981,9 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
 		auto stagingBuffer = GraphicsAPI::bufferPool.create(
 			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, Buffer::Strategy::Default, stagingSize, 0);
+			Buffer::Usage::Auto, Buffer::Strategy::Speed, stagingSize, 0);
 		SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
-			"buffer.staging" + to_string(*stagingBuffer));
+			"buffer.imageStaging" + to_string(*stagingBuffer));
 		
 		ID<Image> targetImage; 
 		if (format == dataFormat) targetImage = image;
@@ -975,7 +991,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		{
 			targetImage = GraphicsAPI::imagePool.create(type, dataFormat,
 				Image::Bind::TransferDst | Image::Bind::TransferSrc,
-				strategy, size, mipCount, layerCount, 0);
+				Image::Strategy::Speed, size, mipCount, layerCount, 0);
 			SET_THIS_RESOURCE_DEBUG_NAME(targetImage,
 				"image.staging" + to_string(*targetImage));
 		}

@@ -32,6 +32,8 @@ ToneMappingEditor::ToneMappingEditor(ToneMappingRenderSystem* system)
 }
 
 //--------------------------------------------------------------------------------------------------
+static float exposureValue = 1.0f;
+
 void ToneMappingEditor::render()
 {
 	if (!showWindow) return;
@@ -46,6 +48,14 @@ void ToneMappingEditor::render()
 		auto lightingSystem = system->getManager()->get<LightingRenderSystem>();
 		ImGui::ColorEdit4("Shadow Color", (float*)&lightingSystem->shadowColor, 
 			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+
+		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
+		{
+			ImGui::DragFloat("Value", &exposureValue, 0.01f);
+			if (ImGui::Button("Set Exposure")) system->setExposure(exposureValue);
+			ImGui::SameLine();
+			if (ImGui::Button("Set Luminance")) system->setLuminance(exposureValue);
+		}
 	}
 	ImGui::End();
 }

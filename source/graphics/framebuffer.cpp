@@ -334,8 +334,8 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 }
 bool Framebuffer::destroy()
 {
-	if (!instance) return !colorAttachments.empty() || depthStencilAttachment.imageView;
-	if (isBusy()) return false;
+	if (!instance || readyLock > 0)
+		return !colorAttachments.empty() || depthStencilAttachment.imageView;
 
 	if (GraphicsAPI::isRunning)
 	{
@@ -586,9 +586,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	command.clearColors = clearColors;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.framebuffer); }
 }
 void Framebuffer::nextSubpass(bool recordAsync)
 {

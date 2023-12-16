@@ -573,9 +573,11 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 	{
 		auto vertexBufferView = GraphicsAPI::bufferPool.get(vertexBuffer);
 		GARDEN_ASSERT(vertexBufferView->instance); // is ready
-		if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-			vertexBufferView->lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-		else vertexBufferView->lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			vertexBufferView->readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
+		}
 	}
 }
 void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
@@ -623,14 +625,18 @@ void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	DrawCommand command;
 	command.isAsync = true;
 	command.vertexBuffer = vertexBuffer;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
+	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	if (vertexBuffer)
 	{
-		if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-			vertexBufferView->lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-		else vertexBufferView->lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			vertexBufferView->readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
+		}
 	}
+	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -672,15 +678,11 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 	command.indexBuffer = indexBuffer;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		vertexBufferView->lastGraphicsTime = indexBufferView->lastGraphicsTime =
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	}
-	else
-	{
-		vertexBufferView->lastFrameTime = indexBufferView->lastFrameTime =
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
+		vertexBufferView->readyLock++; indexBufferView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
+		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
 	}
 }
 void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
@@ -737,18 +739,16 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 	command.isAsync = true;
 	command.vertexBuffer = vertexBuffer;
 	command.indexBuffer = indexBuffer;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		vertexBufferView->lastGraphicsTime = indexBufferView->lastGraphicsTime =
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
+		vertexBufferView->readyLock++; indexBufferView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
+		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
 	}
-	else
-	{
-		vertexBufferView->lastFrameTime = indexBufferView->lastFrameTime =
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
-	}
+	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 
 //--------------------------------------------------------------------------------------------------

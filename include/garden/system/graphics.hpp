@@ -72,10 +72,11 @@ class GraphicsSystem final : public System
 	int2 framebufferSize = int2(0), windowSize = int2(0);
 	float2 cursorPosition = float2(0.0f);
 	double time = 0.0, deltaTime = 0.0;
-	uint64 frameIndex = 0;
+	uint64 frameIndex = 0, tickIndex = 0;
 	CursorMode cursorMode = CursorMode::Default;
 	ID<Framebuffer> swapchainFramebuffer = {};
 	ID<Buffer> fullCubeVertices = {};
+	ID<Image> emptyTexture = {};
 	ID<Image> whiteTexture = {};
 	ID<Image> greenTexture = {};
 	ID<Image> normalMapTexture = {};
@@ -119,6 +120,7 @@ public:
 	double getTime() const noexcept { return time; }
 	double getDeltaTime() const noexcept { return deltaTime; }
 	uint64 getFrameIndex() const noexcept { return frameIndex; }
+	uint64 getTickIndex() const noexcept { return tickIndex; }
 	int2 getFramebufferSize() const noexcept { return framebufferSize; }
 	int2 getWindowSize() const noexcept { return windowSize; }
 	float2 getCursorPosition() const noexcept { return cursorPosition; }
@@ -133,6 +135,7 @@ public:
 	void setCursorMode(CursorMode mode);
 
 	ID<Buffer> getFullCubeVertices();
+	ID<Image> getEmptyTexture();
 	ID<Image> getWhiteTexture();
 	ID<Image> getGreenTexture();
 	ID<Image> getNormalMapTexture();
@@ -220,35 +223,38 @@ public:
 //--------------------------------------------------------------------------------------------------
 	ID<Image> createImage(Image::Type type, Image::Format format,
 		Image::Bind bind, const Image::Mips& data, const int3& size,
-		Image::Format dataFormat = Image::Format::Undefined,
-		Image::Strategy strategy = Image::Strategy::Default);
+		Image::Strategy strategy = Image::Strategy::Default,
+		Image::Format dataFormat = Image::Format::Undefined);
 	
 	ID<Image> createImage(Image::Format format,
 		Image::Bind bind, const Image::Mips& data, const int3& size,
-		Image::Format dataFormat = Image::Format::Undefined,
-		Image::Strategy strategy = Image::Strategy::Default)
+		Image::Strategy strategy = Image::Strategy::Default,
+		Image::Format dataFormat = Image::Format::Undefined)
 	{
-		return createImage(Image::Type::Texture3D, format, bind, data, size, dataFormat, strategy);
+		return createImage(Image::Type::Texture3D, format,
+			bind, data, size, strategy, dataFormat);
 	}
 	ID<Image> createImage(Image::Format format,
 		Image::Bind bind, const Image::Mips& data, int2 size,
-		Image::Format dataFormat = Image::Format::Undefined,
-		Image::Strategy strategy = Image::Strategy::Default)
+		Image::Strategy strategy = Image::Strategy::Default,
+		Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ?
 			Image::Type::Texture2DArray : Image::Type::Texture2D;
-		return createImage(imageType, format, bind, data, int3(size, 1), dataFormat, strategy);
+		return createImage(imageType, format, bind, data,
+			int3(size, 1), strategy, dataFormat);
 	}
 	ID<Image> createImage(Image::Format format,
 		Image::Bind bind, const Image::Mips& data, int32 size,
-		Image::Format dataFormat = Image::Format::Undefined,
-		Image::Strategy strategy = Image::Strategy::Default)
+		Image::Strategy strategy = Image::Strategy::Default,
+		Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ?
 			Image::Type::Texture1DArray : Image::Type::Texture1D;
-		return createImage(imageType, format, bind, data, int3(size, 1, 1), dataFormat, strategy);
+		return createImage(imageType, format, bind, data,
+			int3(size, 1, 1), strategy, dataFormat);
 	}
 
 	/* TODO: create 2 images with the same shared memory allocation.

@@ -15,6 +15,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #pragma once
+#include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
 namespace garden::graphics
@@ -318,6 +319,8 @@ public:
 		uint32 access = 0;
 		uint32 stage = 0;
 	};
+
+	typedef pair<ID<Resource>, ResourceType> LockResource;
 private:
 	void* instance = nullptr;
 	void* fence = nullptr;
@@ -325,9 +328,9 @@ private:
 	psize size = 0, capacity = 16;
 	map<ImageSubresource, ImageState> imageStates;
 	map<ID<Buffer>, BufferState> bufferStates;
-	mutex commandMutex;
+	vector<LockResource> lockedResources;
+	vector<LockResource> lockingResources;
 	uint32 lastSize = 0;
-	uint32 timeCounter = 2;
 	CommandBufferType type = {};
 	bool noSubpass = false;
 	bool hasAnyCommand = false;
@@ -369,14 +372,16 @@ private:
 	void processCommand(const InsertLabelCommand& command);
 	#endif
 
+	void flushLockedResources(vector<LockResource>& lockedResources);
 	friend class Vulkan;
 public:
 //--------------------------------------------------------------------------------------------------
+	mutex commandMutex;
+
 	void initialize(CommandBufferType type);
 	void terminate();
 
 	CommandBufferType getType() const noexcept { return type; }
-	uint32 getBusyTime() const noexcept { return timeCounter; }
 
 	void addCommand(const BeginRenderPassCommand& command);
 	void addCommand(const NextSubpassCommand& command);
@@ -406,6 +411,24 @@ public:
 	#endif
 
 	void submit();
+
+	// DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
+	//	Sampler, Framebuffer, ImageView, Image, Buffer, Count // Note: in destruction order
+
+	void addLockResource(ID<Buffer> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Buffer)); }
+	void addLockResource(ID<Image> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Image)); }
+	void addLockResource(ID<ImageView> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::ImageView)); }
+	void addLockResource(ID<Framebuffer> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Framebuffer)); }
+	void addLockResource(ID<GraphicsPipeline> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::GraphicsPipeline)); }
+	void addLockResource(ID<ComputePipeline> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::ComputePipeline)); }
+	void addLockResource(ID<DescriptorSet> resource)
+	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::DescriptorSet)); }
 };
 
 } // garden::graphics

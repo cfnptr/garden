@@ -174,7 +174,8 @@ bool Equi2Cube::convertImage(const fs::path& filePath,
 	{
 		auto pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &equiSize.x, &equiSize.y, nullptr, 4);
-		if (!pixels) throw runtime_error("Invalid image data.");
+		if (!pixels) throw runtime_error("Invalid image data.("
+			"path: " + filePath.generic_string() + ")");
 		equiData.resize(equiSize.x * equiSize.y * sizeof(float4));
 		memcpy(equiData.data(), pixels, equiData.size());
 		stbi_image_free(pixels);

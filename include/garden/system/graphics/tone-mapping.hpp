@@ -16,7 +16,6 @@
 
 #pragma once
 #include "garden/system/graphics/bloom.hpp"
-#include "garden/system/graphics/auto-exposure.hpp"
 
 namespace garden
 {
@@ -38,9 +37,9 @@ public:
 	};
 private:
 	BloomRenderSystem* bloomSystem = nullptr;
-	AutoExposureRenderSystem* autoExposureSystem = nullptr;
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
+	ID<Buffer> luminanceBuffer = {};
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
@@ -49,6 +48,7 @@ private:
 	void initialize() final;
 	void terminate() final;
 	void render() final;
+	void preLdrRender() final;
 	void ldrRender() final;
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
@@ -59,6 +59,10 @@ public:
 	float ditherStrength = (0.5f / 255.0f); // r8g8b8
 
 	ID<GraphicsPipeline> getPipeline();
+	ID<Buffer> getLuminanceBuffer();
+
+	void setLuminance(float luminance);
+	void setExposure(float exposure);
 };
 
 } // garden
