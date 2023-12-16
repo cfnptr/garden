@@ -40,7 +40,7 @@ void SsaoEditor::render()
 	{
 		ImGui::Checkbox("Enabled", &system->isEnabled);
 		ImGui::DragFloat("Radius", &system->radius, 0.01f, 0.0f, FLT_MAX);
-		ImGui::SliderFloat("Bias", &system->bias, 0.0f, 0.1f);
+		ImGui::SliderFloat("Bias", &system->bias, 0.0f, 1.0f);
 		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
 	}
 	ImGui::End();
