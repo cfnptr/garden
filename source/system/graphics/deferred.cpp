@@ -26,18 +26,18 @@ static void createGBuffers(GraphicsSystem* graphicsSystem,
 {
 	const Image::Mips mips = { { nullptr } };
 	gBuffers[0] = graphicsSystem->createImage(Image::Format::SrgbR8G8B8A8,
-		Image::Bind::ColorAttachment | Image::Bind::Sampled |
-		Image::Bind::Fullscreen, mips, framebufferSize);
+		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen,
+		mips, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, gBuffers[0], "image.deferred.gBuffer0");
 
 	gBuffers[1] = graphicsSystem->createImage(Image::Format::UnormA2R10G10B10,
-		Image::Bind::ColorAttachment | Image::Bind::Sampled |
-		Image::Bind::Fullscreen, mips, framebufferSize);
+		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen,
+		mips, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, gBuffers[1], "image.deferred.gBuffer1");
 
 	gBuffers[2] = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8,
-		Image::Bind::ColorAttachment | Image::Bind::Sampled |
-		Image::Bind::Fullscreen, mips, framebufferSize);
+		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen,
+		mips, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, gBuffers[2], "image.deferred.gBuffer2");
 }
 static void destroyGBuffers(GraphicsSystem* graphicsSystem, const ID<Image>* gBuffers)
@@ -50,16 +50,16 @@ static void destroyGBuffers(GraphicsSystem* graphicsSystem, const ID<Image>* gBu
 static ID<Image> createDepthBuffer(GraphicsSystem* graphicsSystem, int2 framebufferSize)
 {
 	auto image = graphicsSystem->createImage(Image::Format::SfloatD32,
-		Image::Bind::DepthStencilAttachment | Image::Bind::Sampled |
-		Image::Bind::Fullscreen, { { nullptr } }, framebufferSize);
+		Image::Bind::DepthStencilAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen,
+		{ { nullptr } }, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.deferred.depth");
 	return image;
 }
 static ID<Image> createHdrBuffer(GraphicsSystem* graphicsSystem, int2 framebufferSize)
 {
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16,
-		Image::Bind::ColorAttachment | Image::Bind::Sampled |
-		Image::Bind::Fullscreen, { { nullptr } }, framebufferSize);
+		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen,
+		{ { nullptr } }, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.deferred.hdr");
 	return image;
 }
@@ -70,7 +70,7 @@ static ID<Image> createLdrBuffer(GraphicsSystem* graphicsSystem, int2 framebuffe
 		swapchainView->getColorAttachments()[0].imageView);
 	auto image = graphicsSystem->createImage(swapchainImageView->getFormat(), 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen |
-		Image::Bind::TransferSrc, { { nullptr } }, framebufferSize);
+		Image::Bind::TransferSrc, { { nullptr } }, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.deferred.ldr");
 	return image;
 }

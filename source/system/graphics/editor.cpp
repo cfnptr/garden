@@ -114,26 +114,28 @@ void EditorRenderSystem::showAboutWindow()
 		ImGui::Text("Creator: Nikita Fediuchin");
 		ImGui::Text("Version: " GARDEN_VERSION_STRING);
 
-		#if __linux__
-		auto osName = "Linux";
-		#elif __APPLE__
-		auto osName = "macOS";
-		#else
-		auto osName = "Windows";
-		#endif
+		if (ImGui::CollapsingHeader("PC"))
+		{
+			#if __linux__
+			const auto osName = "Linux";
+			#elif __APPLE__
+			const auto osName = "macOS";
+			#else
+			const auto osName = "Windows";
+			#endif
 
-		ImGui::SeparatorText("PC");
-		ImGui::Text("OS: %s", osName);
-		ImGui::Text("CPU: %s", ::getCpuName());
-		auto ramString = toBinarySizeString(OS::getRamSize());
-		ImGui::Text("RAM: %s", ramString.c_str());
+			ImGui::Text("OS: %s", osName);
+			ImGui::Text("CPU: %s", ::getCpuName());
+			auto ramString = toBinarySizeString(OS::getRamSize());
+			ImGui::Text("RAM: %s", ramString.c_str());
 
-		ImGui::Text("GPU: %s", Vulkan::deviceProperties.properties.deviceName.data());
-		auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
-		auto apiString = to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
-			to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
-			to_string(VK_API_VERSION_PATCH(apiVersion));
-		ImGui::Text("Vulkan API: %s", apiString.c_str());
+			ImGui::Text("GPU: %s", Vulkan::deviceProperties.properties.deviceName.data());
+			auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
+			auto apiString = to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
+				to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
+				to_string(VK_API_VERSION_PATCH(apiVersion));
+			ImGui::Text("Vulkan API: %s", apiString.c_str());
+		}
 	}
 	ImGui::End();
 }

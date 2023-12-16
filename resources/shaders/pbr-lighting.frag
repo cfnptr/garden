@@ -71,8 +71,9 @@ void main()
 	PbrMaterial pbrMaterial; // TODO: define emissive strength in candela, lumens or wats.
 	pbrMaterial.baseColor = decodeBaseColor(gData0);
 	pbrMaterial.metallic = decodeMetallic(gData0);
-    pbrMaterial.roughness = decodeRoughness(gData2);
+	pbrMaterial.roughness = decodeRoughness(gData2);
 	pbrMaterial.reflectance = decodeReflectance(gData1);
+	pbrMaterial.ambientOcclusion = texture(aoBuffer, fs.texCoords).r;
 	pbrMaterial.viewDirection = viewDir;
 	pbrMaterial.normal = decodeNormal(gData1);
 	pbrMaterial.shadow = shadow;
@@ -86,5 +87,5 @@ void main()
 	fb.hdr = float4(hdrColor * obstruction, 1.0f);
 	
 	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.
-	fb.hdr *= texture(aoBuffer, fs.texCoords).r;
+	//fb.hdr *= texture(aoBuffer, fs.texCoords).r;
 }

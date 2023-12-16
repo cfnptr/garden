@@ -75,7 +75,7 @@ static ID<Image> createNoiseTexture(GraphicsSystem* graphicsSystem)
 
 	auto texture = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16,
 		Image::Bind::TransferDst | Image::Bind::Sampled, { { ssaoNoise.data() } },
-		int2(NOISE_SIZE), Image::Format::SfloatR32G32B32A32);
+		int2(NOISE_SIZE), Image::Strategy::Size, Image::Format::SfloatR32G32B32A32);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, texture, "image.ssao.random");
 	return texture;
 }

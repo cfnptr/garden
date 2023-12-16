@@ -112,7 +112,7 @@ Buffer::Buffer(Bind bind, Access access, Usage usage,
 //--------------------------------------------------------------------------------------------------
 bool Buffer::destroy()
 {
-	if (isBusy()) return false;
+	if (!instance || readyLock > 0) return false;
 
 	if (GraphicsAPI::isRunning)
 	{
@@ -209,13 +209,8 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	command.offset = offset;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
-		lastTransferTime = GraphicsAPI::transferCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.buffer); }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -264,24 +259,10 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination,
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		srcView->lastGraphicsTime = dstView->lastGraphicsTime =
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
-	{
-		srcView->lastTransferTime = dstView->lastTransferTime =
-			GraphicsAPI::transferCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-	{
-		srcView->lastComputeTime = dstView->lastComputeTime =
-			GraphicsAPI::computeCommandBuffer.getBusyTime();
-	}
-	else
-	{
-		srcView->lastFrameTime = dstView->lastFrameTime =
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
+		srcView->readyLock++; dstView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(source);
+		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
 }

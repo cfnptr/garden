@@ -29,14 +29,17 @@ using namespace std;
 using namespace math;
 class ResourceExt;
 
+enum class ResourceType : uint8
+{
+	Buffer, Image, ImageView, Framebuffer, GraphicsPipeline,
+	ComputePipeline, DescriptorSet, Count
+};
+
 class Resource
 {
 protected:
 	void* instance = nullptr;
-	volatile uint32 lastFrameTime = 0;
-	volatile uint32 lastTransferTime = 0;
-	volatile uint32 lastComputeTime = 0;
-	volatile uint32 lastGraphicsTime = 0;
+	uint32 readyLock = 0;
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	#define UNNAMED_RESOURCE "unnamed"
@@ -48,8 +51,7 @@ protected:
 
 	friend class ResourceExt;
 public:
-	bool isBusy() noexcept;
-	bool isReady() noexcept;
+	bool isReady() const noexcept { return instance && readyLock < 1; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	const string& getDebugName() const noexcept { return debugName; }

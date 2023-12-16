@@ -27,7 +27,9 @@ extern "C"
 using namespace mpio;
 using namespace garden;
 
+#if GARDEN_DEBUG
 LogSystem* LogSystem::instance;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 LogSystem::LogSystem(LogLevel level)
@@ -41,13 +43,13 @@ LogSystem::LogSystem(LogLevel level)
 	this->logger = logy::Logger(appName, level,
 		GARDEN_DEBUG ? true : false);
 
-#if __linux__
+	#if __linux__
 	auto osName = "Linux";
-#elif __APPLE__
+	#elif __APPLE__
 	auto osName = "macOS";
-#else
+	#else
 	auto osName = "Windows";
-#endif
+	#endif
 
 	setThreadName("MAIN");
 	info("Started logging system. (UTC+0)");
@@ -56,7 +58,10 @@ LogSystem::LogSystem(LogLevel level)
 	info("CPU: " + string(OS::getCpuName()));
 	info("Thread count: " + to_string(thread::hardware_concurrency()));
 	info("RAM size: " + toBinarySizeString(OS::getRamSize()));
+
+	#if GARDEN_DEBUG
 	instance = this;
+	#endif
 }
 LogSystem::~LogSystem()
 {

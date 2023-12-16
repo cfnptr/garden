@@ -21,11 +21,13 @@ With one of these formats: f32|f64|i8|i16|i32|i64|u8|u16|u32|u64.
 
 Shader parser gets pipeline state from the declared "pipelineState" properties in the shader.
 
+```
 pipelineState
 {
-	depthTesting = off;
-	faceCulling = on;
+    depthTesting = off;
+    faceCulling = on;
 }
+```
 
 discarding on|off - Controls whether primitives are discarded immediately before the rasterization stage.
 
@@ -82,10 +84,12 @@ Alpha blending example: Oa = sa * Sa + da * Da.
 
 Shader parser gets sampler state from the properties, writen inside sampler declaration block.
 
+```
 uniform sampler2D
 {
-	filter = nearest;
+    filter = nearest;
 } samplerName;
+```
 
 uniform samplerCube someSampler;
 

@@ -40,9 +40,9 @@ static ID<Image> createShadowData(GraphicsSystem* graphicsSystem,
 	vector<ID<ImageView>>& imageViews, int32 shadowMapSize)
 {
 	const auto shadowFormat = Image::Format::UnormD16;
-	auto image = graphicsSystem->createImage(shadowFormat,
-		Image::Bind::DepthStencilAttachment | Image::Bind::Sampled,
-		{ Image::Layers(SHADOW_MAP_CASCADE_COUNT) }, int2(shadowMapSize));
+	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::DepthStencilAttachment |
+		Image::Bind::Sampled, { Image::Layers(SHADOW_MAP_CASCADE_COUNT) },
+		int2(shadowMapSize), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.shadow-mapping.buffer");
 	imageViews.resize(SHADOW_MAP_CASCADE_COUNT);
 

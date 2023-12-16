@@ -38,7 +38,6 @@ namespace
 	};
 }
 
-//--------------------------------------------------------------------------------------------------
 static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 {
 	#if GARDEN_EDITOR
@@ -52,23 +51,6 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 		Buffer::Access::None, AE_HISTOGRAM_SIZE * sizeof(uint32),
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.auto-exposure.histogram");
-	return buffer;
-}
-static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
-{
-	#if GARDEN_EDITOR
-	const auto bind = Buffer::Bind::TransferSrc;
-	#else
-	const auto bind = Buffer::Bind::None;
-	#endif
-
-	const float data[2] = { 1.0f / LUM_TO_EXP, 1.0f };
-	
-	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage |
-		Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind,
-		Buffer::Access::None, data, sizeof(ToneMappingRenderSystem::Luminance),
-		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.toneMapping.luminance");
 	return buffer;
 }
 
@@ -87,17 +69,17 @@ static map<string, DescriptorSet::Uniform> getHistogramUniforms(
 	return uniforms;
 }
 static map<string, DescriptorSet::Uniform> getAverageUniforms(
-	ID<Buffer> histogramBuffer, ID<Buffer> luminanceBuffer)
+	Manager* manager, ID<Buffer> histogramBuffer)
 {
+	auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
 		{ "histogram", DescriptorSet::Uniform(histogramBuffer) },
-		{ "luminance", DescriptorSet::Uniform(luminanceBuffer) }
+		{ "luminance", DescriptorSet::Uniform(toneMappingSystem->getLuminanceBuffer()) }
 	};
 	return uniforms;
 }
 
-//--------------------------------------------------------------------------------------------------
 static ID<ComputePipeline> createHistogramPipeline()
 {
 	return ResourceSystem::getInstance()->loadComputePipeline("auto-exposure/histogram");
@@ -114,7 +96,6 @@ void AutoExposureRenderSystem::initialize()
 	deferredSystem = getManager()->get<DeferredRenderSystem>();
 
 	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(graphicsSystem);
-	if (!luminanceBuffer) luminanceBuffer = createLuminanceBuffer(graphicsSystem);
 	if (!histogramPipeline) histogramPipeline = createHistogramPipeline();
 	if (!averagePipeline) averagePipeline = createAveragePipeline();
 
@@ -135,16 +116,12 @@ static float calcTimeCoeff(float adaptationRate, float deltaTime)
 	return std::clamp(1.0f - std::exp(-deltaTime * adaptationRate), 0.0f, 1.0f);
 }
 
-//--------------------------------------------------------------------------------------------------
 void AutoExposureRenderSystem::render()
 {
 	auto graphicsSystem = getGraphicsSystem();
 	auto histogramPipelineView = graphicsSystem->get(histogramPipeline);
 	auto averagePipelineView = graphicsSystem->get(averagePipeline);
-	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
-	
-	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady() ||
-		!luminanceBufferView->isReady() || !graphicsSystem->camera) return;
+	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady()) return;
 
 	if (!histogramDescriptorSet)
 	{
@@ -156,7 +133,7 @@ void AutoExposureRenderSystem::render()
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, histogramDescriptorSet,
 			"descriptorSet.auto-exposure.histogram");
 		
-		uniforms = getAverageUniforms(histogramBuffer, luminanceBuffer);
+		uniforms = getAverageUniforms(manager, histogramBuffer);
 		averageDescriptorSet = graphicsSystem->createDescriptorSet(
 			averagePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, averageDescriptorSet,
@@ -218,7 +195,6 @@ void AutoExposureRenderSystem::recreateSwapchain(const SwapchainChanges& changes
 	#endif
 }
 
-//--------------------------------------------------------------------------------------------------
 ID<ComputePipeline> AutoExposureRenderSystem::getHistogramPipeline()
 {
 	if (!histogramPipeline) histogramPipeline = createHistogramPipeline();
@@ -230,30 +206,8 @@ ID<ComputePipeline> AutoExposureRenderSystem::getAveragePipeline()
 	return averagePipeline;
 }
 
-//--------------------------------------------------------------------------------------------------
 ID<Buffer> AutoExposureRenderSystem::getHistogramBuffer()
 {
 	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(getGraphicsSystem());
 	return histogramBuffer;
-}
-ID<Buffer> AutoExposureRenderSystem::getLuminanceBuffer()
-{
-	if (!luminanceBuffer) luminanceBuffer = createLuminanceBuffer(getGraphicsSystem());
-	return luminanceBuffer;
-}
-
-//--------------------------------------------------------------------------------------------------
-void AutoExposureRenderSystem::setLuminance(float luminance)
-{
-	auto exposure = 1.0f / (luminance * LUM_TO_EXP + 0.0001f);
-	auto luminanceBufferView = getGraphicsSystem()->get(luminanceBuffer);
-	luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
-	luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
-}
-void AutoExposureRenderSystem::setExposure(float exposure)
-{
-	auto luminance = (1.0f / exposure) * (1.0f / LUM_TO_EXP) - 0.0001f;
-	auto luminanceBufferView = getGraphicsSystem()->get(luminanceBuffer);
-	luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
-	luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
 }

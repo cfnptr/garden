@@ -65,6 +65,7 @@ void SelectorEditor::preSwapchainRender()
 		auto globalDirection = (float3)(cameraConstants.viewProjInv *
 			float4(uvPosition * 2.0f - 1.0f, 0.0f, 1.0f));
 		auto& subsystems = manager->getSubsystems<MeshRenderSystem>();
+		auto& transformComponents = manager->get<TransformSystem>()->getComponents();
 
 		float newDistance = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;
@@ -85,7 +86,7 @@ void SelectorEditor::preSwapchainRender()
 				auto entity = meshRender->getEntity();
 				if (!entity || !meshRender->isEnabled) continue;
 
-				auto transform = manager->get<TransformComponent>(entity);
+				auto transform = transformComponents.get(meshRender->getTransform());
 				auto model = transform->calcModel();
 				setTranslation(model, getTranslation(model) - cameraPosition);
 				auto modelInverse = inverse(model);

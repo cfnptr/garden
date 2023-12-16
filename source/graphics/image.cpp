@@ -167,7 +167,7 @@ Image::Image(void* instance, Format format, Bind bind,
 }
 bool Image::destroy()
 {
-	if (isBusy()) return false;
+	if (!instance || readyLock > 0) return false;
 
 	if (GraphicsAPI::isRunning)
 		GraphicsAPI::imageViewPool.destroy(defaultView);
@@ -259,11 +259,8 @@ void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.image); }
 }
 void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 {
@@ -282,11 +279,8 @@ void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.image); }
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
@@ -305,11 +299,8 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.image); }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -368,25 +359,11 @@ void Image::copy(ID<Image> source, ID<Image> destination,
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		srcView->lastGraphicsTime = dstView->lastGraphicsTime =
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
-	{
-		srcView->lastTransferTime = dstView->lastTransferTime =
-			GraphicsAPI::transferCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-	{
-		srcView->lastComputeTime = dstView->lastComputeTime =
-			GraphicsAPI::computeCommandBuffer.getBusyTime();
-	}
-	else
-	{
-		srcView->lastFrameTime = dstView->lastFrameTime =
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
+		srcView->readyLock++; dstView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(source);
+		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -442,25 +419,11 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		bufferView->lastGraphicsTime = imageView->lastGraphicsTime =
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
-	{
-		bufferView->lastTransferTime = imageView->lastTransferTime =
-			GraphicsAPI::transferCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-	{
-		bufferView->lastComputeTime = imageView->lastComputeTime =
-			GraphicsAPI::computeCommandBuffer.getBusyTime();
-	}
-	else
-	{
-		bufferView->lastFrameTime = imageView->lastFrameTime =
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
+		bufferView->readyLock++; imageView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(source);
+		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -516,25 +479,11 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		imageView->lastGraphicsTime = bufferView->lastGraphicsTime =
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::transferCommandBuffer)
-	{
-		imageView->lastTransferTime = bufferView->lastTransferTime =
-			GraphicsAPI::transferCommandBuffer.getBusyTime();
-	}
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-	{
-		imageView->lastComputeTime = bufferView->lastComputeTime =
-			GraphicsAPI::computeCommandBuffer.getBusyTime();
-	}
-	else
-	{
-		imageView->lastFrameTime = bufferView->lastFrameTime =
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
+		imageView->readyLock++; bufferView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(source);
+		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -601,15 +550,11 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	command.regions = regions;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		srcView->lastGraphicsTime = dstView->lastGraphicsTime = 
-			GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	}
-	else
-	{
-		srcView->lastFrameTime = dstView->lastFrameTime = 
-			GraphicsAPI::frameCommandBuffer.getBusyTime();
+		srcView->readyLock++; dstView->readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(source);
+		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -639,7 +584,7 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 }
 bool ImageView::destroy()
 {
-	if (isBusy()) return false;
+	if (!instance || readyLock > 0) return false;
 
 	if (GraphicsAPI::isRunning)
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);

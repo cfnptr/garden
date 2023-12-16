@@ -438,7 +438,7 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 //--------------------------------------------------------------------------------------------------
 bool Pipeline::destroy()
 {
-	if (isBusy()) return false;
+	if (!instance || readyLock > 0) return false;
 
 	if (!this->cacheLoaded)
 	{
@@ -577,12 +577,14 @@ void Pipeline::updateDescriptorTime(
 {
 	for (uint8 i = 0; i < descriptorDataSize; i++)
 	{
-		auto dsView = GraphicsAPI::descriptorSetPool.get(descriptorData[i].set);
-		if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-			dsView->lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-		else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-			dsView->lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-		else dsView->lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
+		auto descriptorSet = descriptorData[i].set;
+		auto dsView = GraphicsAPI::descriptorSetPool.get(descriptorSet);
+
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			dsView->readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(descriptorSet);
+		}
 
 		map<string, Pipeline::Uniform>* pipelineUniforms;
 		if (dsView->pipelineType == PipelineType::Graphics)
@@ -615,22 +617,11 @@ void Pipeline::updateDescriptorTime(
 							ID<ImageView>(resource));
 						auto imageView = GraphicsAPI::imagePool.get(imageViewView->image);
 
-						if (GraphicsAPI::currentCommandBuffer ==
-							&GraphicsAPI::graphicsCommandBuffer)
+						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 						{
-							imageViewView->lastGraphicsTime = imageView->lastGraphicsTime =
-								GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-						}
-						else if (GraphicsAPI::currentCommandBuffer ==
-							&GraphicsAPI::computeCommandBuffer)
-						{
-							imageViewView->lastComputeTime = imageView->lastComputeTime =
-								GraphicsAPI::computeCommandBuffer.getBusyTime();
-						}
-						else
-						{
-							imageViewView->lastFrameTime = imageView->lastFrameTime =
-								GraphicsAPI::frameCommandBuffer.getBusyTime();
+							imageViewView->readyLock++; imageView->readyLock++;
+							GraphicsAPI::currentCommandBuffer->addLockResource(ID<ImageView>(resource));
+							GraphicsAPI::currentCommandBuffer->addLockResource(imageViewView->image);
 						}
 					}
 				}
@@ -643,24 +634,12 @@ void Pipeline::updateDescriptorTime(
 					for (auto resource : resourceArray)
 					{
 						if (!resource) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
-						auto bufferiew = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
+						auto bufferView = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
 						
-						if (GraphicsAPI::currentCommandBuffer ==
-							&GraphicsAPI::graphicsCommandBuffer)
+						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 						{
-							bufferiew->lastGraphicsTime =
-								GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-						}
-						else if (GraphicsAPI::currentCommandBuffer ==
-							&GraphicsAPI::computeCommandBuffer)
-						{
-							bufferiew->lastComputeTime =
-								GraphicsAPI::computeCommandBuffer.getBusyTime();
-						}
-						else
-						{
-							bufferiew->lastFrameTime =
-								GraphicsAPI::frameCommandBuffer.getBusyTime();
+							bufferView->readyLock++;
+							GraphicsAPI::currentCommandBuffer->addLockResource(ID<Buffer>(resource));
 						}
 					}
 				}
@@ -683,11 +662,23 @@ void Pipeline::bind(uint8 variant)
 	{
 		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.
 			getID((GraphicsPipeline*)this));
+
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
+		}
 	}
 	else if (type == PipelineType::Compute)
 	{
 		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.
 			getID((ComputePipeline*)this));
+
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
+		}
 	}
 	else abort();
 
@@ -696,12 +687,6 @@ void Pipeline::bind(uint8 variant)
 	command.variant = variant;
 	command.pipeline = pipeline;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
-
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 {
@@ -725,11 +710,27 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 	{
 		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.
 			getID((GraphicsPipeline*)this));
+
+		GraphicsAPI::currentCommandBuffer->commandMutex.lock();
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
+		}
+		GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 	}
 	else if (type == PipelineType::Compute)
 	{
 		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.
 			getID((ComputePipeline*)this));
+
+		GraphicsAPI::currentCommandBuffer->commandMutex.lock();
+		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		{
+			readyLock++;
+			GraphicsAPI::currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
+		}
+		GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 	}
 	else abort();
 
@@ -745,12 +746,6 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 		}
 		taskIndex++;
 	}
-
-	if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::graphicsCommandBuffer)
-		lastGraphicsTime = GraphicsAPI::graphicsCommandBuffer.getBusyTime();
-	else if (GraphicsAPI::currentCommandBuffer == &GraphicsAPI::computeCommandBuffer)
-		lastComputeTime = GraphicsAPI::computeCommandBuffer.getBusyTime();
-	else lastFrameTime = GraphicsAPI::frameCommandBuffer.getBusyTime();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -862,10 +857,13 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 	command.isAsync = true;
 	command.descriptorDataSize = descriptorDataSize;
 	command.descriptorData = descriptorData;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	descriptorSets.clear();
 
+	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	updateDescriptorTime(descriptorData, descriptorDataSize);
+	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+
+	descriptorSets.clear();
 }
 
 //--------------------------------------------------------------------------------------------------

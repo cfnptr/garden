@@ -139,7 +139,7 @@ public:
 
 	void loadCubemap(const fs::path& path,
 		Ref<Image>& cubemap, Ref<Buffer>& sh, Ref<Image>& specular,
-		Memory::Strategy strategy = Memory::Strategy::Default);
+		Memory::Strategy strategy = Memory::Strategy::Size);
 	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular);
 };
 
