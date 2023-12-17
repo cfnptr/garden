@@ -50,13 +50,11 @@ bool GraphicsAPI::recordGpuTime = false;
 #endif
 
 //--------------------------------------------------------------------------------------------------
-void GraphicsAPI::destroyResource(DestroyResourceType type,
-	void* data0, void* data1, void* data2, uint32 count)
+void GraphicsAPI::destroyResource(DestroyResourceType type, void* data0, void* data1, uint32 count)
 {
 	DestroyResource destroyResource;
 	destroyResource.data0 = data0;
 	destroyResource.data1 = data1;
-	destroyResource.data2 = data2;
 	destroyResource.type = type;
 	destroyResource.count = count;
 	destroyBuffers[fillDestroyIndex].push_back(destroyResource);

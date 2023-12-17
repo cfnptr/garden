@@ -58,16 +58,14 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 
 		for (; variantIndex < createData.variantCount; variantIndex++)
 		{
-			auto result = Vulkan::device.createComputePipeline(
-				(VkPipelineCache)pipelineCache, pipelineInfo);
+			auto result = Vulkan::device.createComputePipeline(Vulkan::pipelineCache, pipelineInfo);
 			resultCheck(result.result, "vk::Device::createComputePipeline");
 			((void**)this->instance)[variantIndex] = result.value;
 		}
 	}
 	else
 	{
-		auto result = Vulkan::device.createComputePipeline(
-			(VkPipelineCache)pipelineCache, pipelineInfo);
+		auto result = Vulkan::device.createComputePipeline(Vulkan::pipelineCache, pipelineInfo);
 		resultCheck(result.result, "vk::Device::createComputePipeline");
 		this->instance = result.value;
 	}

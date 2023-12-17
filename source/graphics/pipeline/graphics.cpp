@@ -359,8 +359,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &blendInfo;
 
-		auto result = Vulkan::device.createGraphicsPipeline(
-			(VkPipelineCache)pipelineCache, pipelineInfo);
+		auto result = Vulkan::device.createGraphicsPipeline(Vulkan::pipelineCache, pipelineInfo);
 		resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
 		if (createData.variantCount > 1)

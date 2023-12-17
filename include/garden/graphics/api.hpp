@@ -38,7 +38,6 @@ public:
 	{
 		void* data0 = nullptr;
 		void* data1 = nullptr;
-		void* data2 = nullptr;
 		DestroyResourceType type = {};
 		uint32 count = 0;
 	};
@@ -72,8 +71,8 @@ public:
 	static bool recordGpuTime;
 	#endif
 
-	static void destroyResource(DestroyResourceType type, void* data0,
-		void* data1 = nullptr, void* data2 = nullptr, uint32 count = 0);
+	static void destroyResource(DestroyResourceType type,
+		void* data0, void* data1 = nullptr, uint32 count = 0);
 };
 
 } // garden::graphics
