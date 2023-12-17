@@ -49,6 +49,7 @@ public:
 	static vk::CommandPool transferCommandPool;
 	static vk::CommandPool computeCommandPool;
 	static vk::DescriptorPool descriptorPool;
+	static vk::PipelineCache pipelineCache;
 	static vector<vk::CommandBuffer> secondaryCommandBuffers;
 	static vector<bool> secondaryCommandStates;
 	static Swapchain swapchain;

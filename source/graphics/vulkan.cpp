@@ -18,6 +18,8 @@
 #include "garden/graphics/primitive.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/xxhash.hpp"
+#include "garden/hash.hpp"
+#include "mpio/directory.hpp"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -25,14 +27,16 @@
 #include <array>
 #include <vector>
 #include <thread>
+#include <fstream>
 #include <iostream>
 
 using namespace std;
+using namespace mpio;
+using namespace garden;
 using namespace garden::graphics;
 using namespace garden::graphics::primitive;
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
 static const vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
 	//vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
 	vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -44,7 +48,6 @@ static const vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding;
 #endif
 
-//--------------------------------------------------------------------------------------------------
 vk::Instance Vulkan::instance = {};
 vk::DispatchLoaderDynamic Vulkan::dynamicLoader = {};
 vk::PhysicalDevice Vulkan::physicalDevice = {};
@@ -63,6 +66,7 @@ vk::CommandPool Vulkan::graphicsCommandPool = {};
 vk::CommandPool Vulkan::transferCommandPool = {};
 vk::CommandPool Vulkan::computeCommandPool = {};
 vk::DescriptorPool Vulkan::descriptorPool = {};
+vk::PipelineCache Vulkan::pipelineCache = {};
 vector<vk::CommandBuffer> Vulkan::secondaryCommandBuffers;
 vector<bool> Vulkan::secondaryCommandStates;
 Swapchain Vulkan::swapchain;
@@ -105,7 +109,6 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
 static bool hasExtension(const vector<const char*>& extensions, const char* extension)
 {
 	for (auto check : extensions)
@@ -188,7 +191,6 @@ static vk::Instance createVkInstance(
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
 static vk::DebugUtilsMessengerEXT createVkDebugMessenger(
 	vk::Instance instance, const vk::DispatchLoaderDynamic& dynamicLoader)
 {
@@ -252,7 +254,6 @@ static vk::PhysicalDevice getBestPhysicalDevice(
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
 {
 	VkSurfaceKHR surface = nullptr;
@@ -512,7 +513,6 @@ static void updateVkDynamicLoader(vk::Device device,
 		PFN_vkCmdEndDebugUtilsLabelEXT(pointer);
 }
 
-//--------------------------------------------------------------------------------------------------
 static VmaAllocator createVmaMemoryAllocator(vk::Instance instance,
 	vk::PhysicalDevice physicalDevice, vk::Device device,
 	bool hasMemoryBudget, bool hasMemoryPriority)
@@ -530,7 +530,6 @@ static VmaAllocator createVmaMemoryAllocator(vk::Instance instance,
 	return allocator;
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::CommandPool createVkCommandPool(vk::Device device,
 	uint32 queueFamilyIndex, bool isTransient = false)
 {
@@ -540,7 +539,6 @@ static vk::CommandPool createVkCommandPool(vk::Device device,
 	return device.createCommandPool(commandPoolInfo);
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 {
 	// TODO: adjust based on a game usage
@@ -567,6 +565,117 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 		vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		maxSetCount, (uint32)sizes.size(), sizes.data());
 	return device.createDescriptorPool(descriptorPoolInfo);
+}
+
+//--------------------------------------------------------------------------------------------------
+namespace
+{
+	struct PipelineCacheHeader final
+	{
+		char							magic[4];
+		uint32							engineVersion;
+		uint32							appVersion;
+		uint32							dataSize;
+		Hash128							dataHash;
+		uint32	 						driverVersion;
+    	uint32	 						driverABI;
+		VkPipelineCacheHeaderVersionOne	cache;
+	};
+}
+
+static vk::PipelineCache createPipelineCache(vk::Device device,
+	const vk::PhysicalDeviceProperties2& deviceProperties, void* _hashState)
+{
+	const auto cacheHeaderSize = sizeof(PipelineCacheHeader) -
+		sizeof(VkPipelineCacheHeaderVersionOne);
+	auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
+	auto path = appDataPath / "caches/shaders";
+	ifstream inputStream(path, ios::in | ios::binary | ios::ate);
+	vector<uint8> fileData;
+
+	vk::PipelineCacheCreateInfo cacheInfo;
+	if (inputStream.is_open())
+	{
+		auto fileSize = (psize)inputStream.tellg();
+		if (fileSize > sizeof(PipelineCacheHeader))
+		{
+			fileData.resize(fileSize);
+			inputStream.seekg(0, ios::beg);
+
+			if (inputStream.read((char*)fileData.data(), fileSize))
+			{
+				auto hashState = (XXH3_state_t*)_hashState;
+				if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
+				if (XXH3_128bits_update(hashState, fileData.data() + cacheHeaderSize,
+					(psize)fileSize - cacheHeaderSize) == XXH_ERROR) abort();
+				auto hashResult = XXH3_128bits_digest(hashState);
+
+				PipelineCacheHeader targetHeader;
+				memcpy(targetHeader.magic, "GSLC", 4);
+				targetHeader.engineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
+					GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
+				targetHeader.appVersion = VK_MAKE_API_VERSION(0, GARDEN_APP_VERSION_MAJOR,
+					GARDEN_APP_VERSION_MINOR, GARDEN_APP_VERSION_PATCH);
+				targetHeader.dataSize = (uint32)(fileSize - cacheHeaderSize);
+				targetHeader.dataHash = Hash128(hashResult.low64, hashResult.high64);
+				targetHeader.driverVersion = deviceProperties.properties.driverVersion;
+				targetHeader.driverABI = sizeof(void*);
+				targetHeader.cache.headerSize = sizeof(VkPipelineCacheHeaderVersionOne);
+				targetHeader.cache.headerVersion = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
+				targetHeader.cache.vendorID = deviceProperties.properties.vendorID;
+				targetHeader.cache.deviceID = deviceProperties.properties.deviceID;
+				memcpy(targetHeader.cache.pipelineCacheUUID,
+					deviceProperties.properties.pipelineCacheUUID, VK_UUID_SIZE);
+
+				if (memcmp(fileData.data(), &targetHeader, sizeof(PipelineCacheHeader)) == 0)
+				{
+					cacheInfo.initialDataSize = fileData.size() - cacheHeaderSize;
+					cacheInfo.pInitialData = fileData.data() + cacheHeaderSize;
+				}
+			}
+		}
+	}
+
+	return device.createPipelineCache(cacheInfo);
+}
+static void destroyPipelineCache(vk::PipelineCache pipelineCache, vk::Device device,
+	const vk::PhysicalDeviceProperties2& deviceProperties)
+{
+	auto cacheData = Vulkan::device.getPipelineCacheData((VkPipelineCache)pipelineCache);
+	if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
+	{
+		auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
+		auto directory = appDataPath / "caches";
+		if (!fs::exists(directory)) fs::create_directories(directory);
+		auto path = directory / "shaders";
+		ofstream outputStream(path, ios::out | ios::binary);
+
+		if (outputStream.is_open())
+		{
+			outputStream.write("GSLC", 4);
+			const uint32 engineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
+				GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
+			const uint32 appVersion = VK_MAKE_API_VERSION(0, GARDEN_APP_VERSION_MAJOR,
+				GARDEN_APP_VERSION_MINOR, GARDEN_APP_VERSION_PATCH);
+			outputStream.write((const char*)&engineVersion, sizeof(uint32));
+			outputStream.write((const char*)&appVersion, sizeof(uint32));
+			auto dataSize = (uint32)cacheData.size();
+			outputStream.write((const char*)&dataSize, sizeof(uint32));
+			auto hashState = (XXH3_state_t*)GraphicsAPI::hashState;
+			if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
+			if (XXH3_128bits_update(hashState, cacheData.data(),
+				cacheData.size()) == XXH_ERROR) abort();
+			auto hashResult = XXH3_128bits_digest(hashState);
+			auto hash = Hash128(hashResult.low64, hashResult.high64);
+			outputStream.write((const char*)&hash, sizeof(Hash128));
+			outputStream.write((const char*)
+				&deviceProperties.properties.driverVersion, sizeof(uint32));
+			auto driverABI = (uint32)sizeof(void*);
+			outputStream.write((const char*)&driverABI, sizeof(uint32));
+			outputStream.write((const char*)cacheData.data(), cacheData.size());
+		}
+	}
+	device.destroyPipelineCache(pipelineCache);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -679,6 +788,7 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 	transferCommandPool = createVkCommandPool(device, transferQueueFamilyIndex);
 	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex); 
 	descriptorPool = createVkDescriptorPool(device);
+	pipelineCache = createPipelineCache(device, deviceProperties, GraphicsAPI::hashState);
 
 	int2 framebufferSize;
 	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
@@ -718,6 +828,7 @@ void Vulkan::terminate()
 
 	if (device)
 	{
+		destroyPipelineCache(pipelineCache, device, deviceProperties);
 		device.destroyDescriptorPool(descriptorPool);
 		device.destroyCommandPool(computeCommandPool);
 		device.destroyCommandPool(transferCommandPool);
@@ -779,7 +890,6 @@ void Vulkan::updateDestroyBuffer()
 				Vulkan::device.destroyPipeline((VkPipeline)resource.data0);
 			}
 			Vulkan::device.destroyPipelineLayout((VkPipelineLayout)resource.data1);
-			Vulkan::device.destroyPipelineCache((VkPipelineCache)resource.data2);
 			break;
 		case GraphicsAPI::DestroyResourceType::DescriptorPool:
 			Vulkan::device.destroyDescriptorPool((VkDescriptorPool)resource.data0);

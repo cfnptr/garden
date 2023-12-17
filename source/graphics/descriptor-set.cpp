@@ -104,8 +104,7 @@ bool DescriptorSet::destroy()
 		{
 			GraphicsAPI::destroyResource(
 				GraphicsAPI::DestroyResourceType::DescriptorSet,
-				instance, nullptr, nullptr,
-				uniforms.begin()->second.resourceSets.size() - 1);
+				instance, nullptr, uniforms.begin()->second.resourceSets.size() - 1);
 		}
 		else
 		{

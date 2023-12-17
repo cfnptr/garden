@@ -16,17 +16,13 @@
 
 #include "garden/graphics/pipeline.hpp"
 #include "garden/graphics/vulkan.hpp"
-#include "garden/xxhash.hpp"
-#include "mpio/directory.hpp"
 
 #include <fstream>
 
 using namespace std;
-using namespace mpio;
 using namespace garden;
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
 static vk::Filter toVkFilter(SamplerFilter filterType)
 {
 	switch (filterType)
@@ -75,103 +71,6 @@ static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor)
 			return vk::BorderColor::eIntOpaqueWhite;
 		default: abort();
 	}
-}
-
-//--------------------------------------------------------------------------------------------------
-namespace
-{
-	struct PipelineCacheHeader final
-	{
-		char							magic[4];
-		uint32							engineVersion;
-		uint32							appVersion;
-		uint32							dataSize;
-		Hash128							dataHash;
-		uint32	 						driverVersion;
-    	uint32	 						driverABI;
-		VkPipelineCacheHeaderVersionOne	cache;
-	};
-}
-
-static vk::PipelineCache createPipelineCache(
-	bool& isCacheLoaded, const fs::path& pipelinePath)
-{
-	auto hashState = XXH3_createState();
-	auto pathString = pipelinePath.generic_string();
-	if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
-	if (XXH3_128bits_update(hashState, pathString.c_str(),
-		pathString.length()) == XXH_ERROR) abort();
-	auto hashResult = XXH3_128bits_digest(hashState);
-	auto pipelineHash = Hash128(hashResult.low64, hashResult.high64);
-
-	const auto cacheHeaderSize = sizeof(PipelineCacheHeader) -
-		sizeof(VkPipelineCacheHeaderVersionOne);
-	auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
-	auto path = appDataPath / "caches/shaders" / pipelineHash.toString();
-	ifstream inputStream(path, ios::in | ios::binary | ios::ate);
-	vector<uint8> fileData;
-
-	if (inputStream.is_open())
-	{
-		auto fileSize = (psize)inputStream.tellg();
-		if (fileSize > sizeof(PipelineCacheHeader))
-		{
-			fileData.resize(fileSize);
-			inputStream.seekg(0, ios::beg);
-
-			if (inputStream.read((char*)fileData.data(), fileSize))
-			{
-				if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
-				if (XXH3_128bits_update(hashState, fileData.data() + cacheHeaderSize,
-					(psize)fileSize - cacheHeaderSize) == XXH_ERROR) abort();
-				hashResult = XXH3_128bits_digest(hashState);
-
-				PipelineCacheHeader targetHeader;
-				memcpy(targetHeader.magic, "GSLC", 4);
-				targetHeader.engineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
-					GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
-				targetHeader.appVersion = VK_MAKE_API_VERSION(0, GARDEN_APP_VERSION_MAJOR,
-					GARDEN_APP_VERSION_MINOR, GARDEN_APP_VERSION_PATCH);
-				targetHeader.dataSize = (uint32)(fileSize - cacheHeaderSize);
-				targetHeader.dataHash = Hash128(hashResult.low64, hashResult.high64);
-				targetHeader.driverVersion =
-					Vulkan::deviceProperties.properties.driverVersion;
-				targetHeader.driverABI = sizeof(void*);
-				targetHeader.cache.headerSize = sizeof(VkPipelineCacheHeaderVersionOne);
-				targetHeader.cache.headerVersion = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
-				targetHeader.cache.vendorID = Vulkan::deviceProperties.properties.vendorID;
-				targetHeader.cache.deviceID = Vulkan::deviceProperties.properties.deviceID;
-				memcpy(targetHeader.cache.pipelineCacheUUID,
-					Vulkan::deviceProperties.properties.pipelineCacheUUID, VK_UUID_SIZE);
-
-				isCacheLoaded = memcmp(fileData.data(),
-					&targetHeader, sizeof(PipelineCacheHeader)) == 0;
-			}
-		}
-	}
-
-	XXH3_freeState(hashState);
-
-	vk::PipelineCacheCreateInfo cacheInfo;
-	if (isCacheLoaded)
-	{
-		cacheInfo.initialDataSize = (uint32)(fileData.size() - cacheHeaderSize);
-		cacheInfo.pInitialData = fileData.data() + cacheHeaderSize;
-	}
-
-	auto cache = Vulkan::device.createPipelineCache(cacheInfo);
-
-	#if GARDEN_DEBUG
-	if (Vulkan::hasDebugUtils)
-	{
-		auto name = "pipelineCache." + pipelinePath.generic_string();
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::ePipelineCache,
-			(uint64)(VkPipelineCache)cache, name.c_str());
-		Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
-	}
-	#endif
-
-	return cache;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -409,7 +308,6 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 	this->pipelineVersion = createData.pipelineVersion;
 	this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
 	this->pushConstantsSize = createData.pushConstantsSize;
-	this->pipelineCache = createPipelineCache(this->cacheLoaded, createData.path);
 	this->variantCount = createData.variantCount;
 
 	map<string, void*> immutableSamplers;
@@ -440,56 +338,10 @@ bool Pipeline::destroy()
 {
 	if (!instance || readyLock > 0) return false;
 
-	if (!this->cacheLoaded)
-	{
-		auto cacheData = Vulkan::device.getPipelineCacheData(
-			(VkPipelineCache)pipelineCache);
-		if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
-		{
-			auto hashState = (XXH3_state_t*)GraphicsAPI::hashState;
-			auto pathString = pipelinePath.generic_string();
-			if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
-			if (XXH3_128bits_update(hashState, pathString.c_str(),
-				pathString.length()) == XXH_ERROR) abort();
-			auto hashResult = XXH3_128bits_digest(hashState);
-			auto pipelineHash = Hash128(hashResult.low64, hashResult.high64);
-
-			auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
-			auto directory = appDataPath / "caches/shaders";
-			if (!fs::exists(directory)) fs::create_directories(directory);
-			auto path = directory / pipelineHash.toString();
-			ofstream outputStream(path, ios::out | ios::binary);
-
-			if (outputStream.is_open())
-			{
-				outputStream.write("GSLC", 4);
-				const uint32 engineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
-					GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
-				const uint32 appVersion = VK_MAKE_API_VERSION(0, GARDEN_APP_VERSION_MAJOR,
-					GARDEN_APP_VERSION_MINOR, GARDEN_APP_VERSION_PATCH);
-				outputStream.write((const char*)&engineVersion, sizeof(uint32));
-				outputStream.write((const char*)&appVersion, sizeof(uint32));
-				auto dataSize = (uint32)cacheData.size();
-				outputStream.write((const char*)&dataSize, sizeof(uint32));
-				if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
-				if (XXH3_128bits_update(hashState, cacheData.data(),
-					cacheData.size()) == XXH_ERROR) abort();
-				auto hashResult = XXH3_128bits_digest(hashState);
-				auto hash = Hash128(hashResult.low64, hashResult.high64);
-				outputStream.write((const char*)&hash, sizeof(Hash128));
-				outputStream.write((const char*)
-					&Vulkan::deviceProperties.properties.driverVersion, sizeof(uint32));
-				auto driverABI = (uint32)sizeof(void*);
-				outputStream.write((const char*)&driverABI, sizeof(uint32));
-				outputStream.write((const char*)cacheData.data(), cacheData.size());
-			}
-		}
-	}
-
 	if (GraphicsAPI::isRunning)
 	{
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Pipeline,
-			instance, pipelineLayout, pipelineCache, variantCount - 1);
+			instance, pipelineLayout, variantCount - 1);
 
 		for (auto descriptorSetLayout : descriptorSetLayouts)
 		{
@@ -517,7 +369,6 @@ bool Pipeline::destroy()
 		else Vulkan::device.destroyPipeline((VkPipeline)instance);
 		
 		Vulkan::device.destroyPipelineLayout((VkPipelineLayout)pipelineLayout);
-		Vulkan::device.destroyPipelineCache((VkPipelineCache)pipelineCache);
 
 		for (auto descriptorSetLayout : descriptorSetLayouts)
 		{
