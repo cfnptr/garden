@@ -16,7 +16,6 @@
 
 #pragma once
 #include "math/matrix.hpp"
-#include "garden/hash.hpp"
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/descriptor-set.hpp"
 
@@ -113,7 +112,6 @@ protected:
 	vector<void*> descriptorSetLayouts;
 	vector<void*> descriptorPools;
 	fs::path pipelinePath;
-	void* pipelineCache = nullptr;
 	void* pipelineLayout = nullptr; 
 	uint64 pipelineVersion = 0;
 	uint32 maxBindlessCount = 0;
@@ -323,8 +321,6 @@ public:
 		noexcept { return pipeline.descriptorSetLayouts; }
 	static vector<void*>& getDescriptorPools(Pipeline& pipeline)
 		noexcept { return pipeline.descriptorPools; }
-	static void*& getCache(Pipeline& pipeline)
-		noexcept { return pipeline.pipelineCache; }
 	static void*& getLayout(Pipeline& pipeline)
 		noexcept { return pipeline.pipelineLayout; }
 	static uint64& getVersion(Pipeline& pipeline)
@@ -352,7 +348,6 @@ public:
 			std::move(PipelineExt::getDescriptorSetLayouts(source));
 		PipelineExt::getDescriptorPools(destination) =
 			std::move(PipelineExt::getDescriptorPools(source));
-		PipelineExt::getCache(destination) = PipelineExt::getCache(source);
 		PipelineExt::getLayout(destination) = PipelineExt::getLayout(source);
 		PipelineExt::getPushConstantsMask(destination) =
 			PipelineExt::getPushConstantsMask(source);
