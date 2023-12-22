@@ -15,6 +15,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "garden/system/watcher.hpp"
+#include "math/types.hpp"
 
 #if __linux__
 //#error TODO: implement
@@ -26,6 +27,7 @@
 #error Unknown operating system
 #endif
 
+using namespace math;
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
@@ -34,6 +36,7 @@ static void onChange(ConstFSEventStreamRef streamRef,
 	void* clientCallBackInfo, psize numEvents, void* eventPaths,
 	const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[])
 {
+	/*
 	auto watcherSystem = (WatcherSystem*)clientCallBackInfo;
 	auto& changedFiles = watcherSystem->getChangedFiles();
 	auto& locker = watcherSystem->getLocker();
@@ -49,12 +52,14 @@ static void onChange(ConstFSEventStreamRef streamRef,
 		}
 	}
 	locker.unlock();
+	*/
 }
 #endif
 
 //--------------------------------------------------------------------------------------------------
 void WatcherSystem::initialize()
 {
+	/*
 	#if __APPLE__
 	auto path = "TODO"; // GARDEN_PROJECT_PATH / "resources";
 	auto pathToWatch = CFStringCreateWithCString(
@@ -81,9 +86,11 @@ void WatcherSystem::initialize()
 
 	logSystem = getManager()->tryGet<LogSystem>();
 	if (logSystem) logSystem->info("Started watcher system.");
+	*/
 }
 void WatcherSystem::terminate()
 {
+	/*
 	#if __APPLE__
 	auto stream = (FSEventStreamRef)instance;
 	FSEventStreamStop(stream);
@@ -92,11 +99,13 @@ void WatcherSystem::terminate()
 	#endif
 
 	if (logSystem) logSystem->info("Stopped watcher system.");
+	*/
 }
 
 //--------------------------------------------------------------------------------------------------
 void WatcherSystem::update()
 {
+	/*
 	locker.lock();
 	if (!changedFiles.empty())
 	{
@@ -120,4 +129,5 @@ void WatcherSystem::update()
 		changedFiles.clear();
 	}
 	locker.unlock();
+	*/
 }

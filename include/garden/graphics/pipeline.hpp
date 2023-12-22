@@ -92,11 +92,81 @@ public:
 		uint8 _alignment0 = 0; uint16 _alignment1 = 0; // should be algined.
 		SamplerState() : anisoFiltering(0), comparing(0), unnormCoords(0), _unused(0) { }
 	};
+
+	enum class SpecConstType : uint32
+	{
+		Bool, Int32, Float, Int2, Float2, Int3, Float3, Int4, Float4, Count
+	};
+	struct SpecConstData
+	{
+		uint8 type = 0;
+		uint8 id = 0;
+	};
+	struct SpecConstBool
+	{
+		SpecConstType type = {};
+		bool value = false;
+	};
+	struct SpecConstInt32
+	{
+		SpecConstType type = {};
+		int32 value = 0;
+	};
+	struct SpecConstFloat
+	{
+		SpecConstType type = {};
+		float value = 0.0f;
+	};
+	struct SpecConstInt2
+	{
+		SpecConstType type = {};
+		int2 value = int2(0);
+	};
+	struct SpecConstFloat2
+	{
+		SpecConstType type = {};
+		float2 value = float2(0.0f);
+	};
+	struct SpecConstInt3
+	{
+		SpecConstType type = {};
+		int3 value = int3(0);
+	};
+	struct SpecConstFloat3
+	{
+		SpecConstType type = {};
+		float3 value = float3(0.0f);
+	};
+	struct SpecConstInt4
+	{
+		SpecConstType type = {};
+		int4 value = int4(0);
+	};
+	struct SpecConstFloat4
+	{
+		SpecConstType type = {};
+		float4 value = float4(0.0f);
+	};
+	union SpecConst
+	{
+		SpecConstBool constBool;
+		SpecConstInt32 constInt32;
+		SpecConstFloat constFloat;
+		SpecConstInt2 constInt2;
+		SpecConstFloat2 constFloat2;
+		SpecConstInt3 constInt3;
+		SpecConstFloat3 constFloat3;
+		SpecConstInt4 constInt4;
+		SpecConstFloat4 constFloat4;
+		SpecConst() { constInt4.value = int4(0); }
+	};
+
 	struct CreateData
 	{
 		fs::path path;
 		map<string, SamplerState> samplerStates;
 		map<string, Uniform> uniforms;
+		map<string, SpecConstData> specConsts;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
 		uint16 pushConstantsSize = 0;

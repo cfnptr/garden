@@ -48,6 +48,8 @@ static const vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding;
 #endif
 
+uint32 Vulkan::versionMajor = 0;
+uint32 Vulkan::versionMinor = 0;
 vk::Instance Vulkan::instance = {};
 vk::DispatchLoaderDynamic Vulkan::dynamicLoader = {};
 vk::PhysicalDevice Vulkan::physicalDevice = {};
@@ -121,24 +123,30 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 }
 
 //--------------------------------------------------------------------------------------------------
-static vk::Instance createVkInstance(
+static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor,
 	#if GARDEN_DEBUG
 	bool& hasDebugUtils
 	#endif
 	)
 {
-	#if __APPLE__
-	auto flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
-	#else
-	auto flags = vk::InstanceCreateFlags();
-	#endif
+	auto getInstanceVersion = (PFN_vkEnumerateInstanceVersion)
+		vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion");
+	if (!getInstanceVersion) throw runtime_error("Vulkan API 1.0 is not supported.");
+
+	uint32 instanceVersion = 0;
+	auto vkResult = (vk::Result)getInstanceVersion(&instanceVersion);
+	if (vkResult != vk::Result::eSuccess) throw runtime_error("Failed to get Vulkan version.");
+	versionMajor = VK_API_VERSION_MAJOR(instanceVersion);
+	versionMinor = VK_API_VERSION_MINOR(instanceVersion);
+	// versionMinor = 2; TODO: debugging
 
 	auto engineVersion = VK_MAKE_API_VERSION(0,
 		GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
 	auto appVersion = VK_MAKE_API_VERSION(0,
 		GARDEN_APP_VERSION_MAJOR, GARDEN_APP_VERSION_MINOR, GARDEN_APP_VERSION_PATCH);
+	auto vulkanVersion = VK_MAKE_API_VERSION(0, versionMajor, versionMinor, 0);
 	vk::ApplicationInfo appInfo(GARDEN_APP_NAME_STRING, appVersion,
-		GARDEN_NAME_STRING, appVersion, VK_API_VERSION_1_3);
+		GARDEN_NAME_STRING, appVersion, vulkanVersion);
 	
 	vector<const char*> extensions;
 	vector<const char*> layers;
@@ -183,6 +191,12 @@ static vk::Instance createVkInstance(
 			break;
 		}
 	}
+	#endif
+
+	#if __APPLE__
+	auto flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+	#else
+	auto flags = vk::InstanceCreateFlags();
 	#endif
 
 	vk::InstanceCreateInfo instanceInfo(
@@ -359,7 +373,8 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice,
 }
 
 //--------------------------------------------------------------------------------------------------
-static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
+static vk::Device createVkDevice(
+	uint32 versionMajor, uint32 versionMinor, vk::PhysicalDevice physicalDevice,
 	uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex,
 	uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount,
 	uint32 transferQueueMaxCount, uint32 computeQueueMaxCount,
@@ -439,6 +454,8 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 	};
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
+	auto hasDynamicRendering = false, hasDescriptorIndexing = false;
+
 	for (auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0)
@@ -447,6 +464,28 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 			hasMemoryPriority = true;
 		if (strcmp(properties.extensionName, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0)
 			hasPageableMemory = true;
+
+		if (versionMinor < 2)
+		{
+			if (strcmp(properties.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
+				hasDescriptorIndexing = true; // TODO: handle case when we don't have this extension.
+		}
+		if (versionMinor < 3)
+		{
+			if (strcmp(properties.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
+				hasDynamicRendering = true; // TODO: handle case when we don't have this extension.
+		}
+	}
+
+	if (versionMinor < 2)
+	{
+		if (hasDescriptorIndexing && !hasExtension(extensions, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME))
+			extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+	}
+	if (versionMinor < 3)
+	{
+		if (hasDynamicRendering && !hasExtension(extensions, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME))
+			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 	}
 
 	if (hasMemoryBudget && !hasExtension(extensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
@@ -456,28 +495,10 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 	if (hasPageableMemory && !hasExtension(extensions, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
 		extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
 
-	vk::PhysicalDeviceMaintenance4Features maintenance4Features;
-	maintenance4Features.maintenance4 = VK_TRUE;
-	void** lastPNext = &maintenance4Features.pNext;
-
-	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
-	dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
-	dynamicRenderingFeatures.pNext = &maintenance4Features;
-
-	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
-	descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
-	descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-	descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
-	descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
-	descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
-	descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
-	descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
-	descriptorIndexingFeatures.pNext = &dynamicRenderingFeatures;
-
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
 	deviceFeatures.features.independentBlend = VK_TRUE;
 	deviceFeatures.features.depthClamp = VK_TRUE;
-	deviceFeatures.pNext = &descriptorIndexingFeatures;
+	void** lastPNext = &deviceFeatures.pNext;
 
 	#if __APPLE__
 	vk::PhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
@@ -485,6 +506,14 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 	*lastPNext = &portabilityFeatures;
 	lastPNext = &portabilityFeatures.pNext;
 	#endif
+
+	vk::PhysicalDeviceMaintenance4Features maintenance4Features;
+	if (versionMinor >= 3)
+	{
+		maintenance4Features.maintenance4 = VK_TRUE;
+		*lastPNext = &maintenance4Features;
+		lastPNext = &maintenance4Features.pNext;
+	}
 
 	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
 	if (hasPageableMemory)
@@ -494,15 +523,50 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice,
 		lastPNext = &pageableMemoryFeatures.pNext;
 	}
 
+	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
+	if (hasDynamicRendering || versionMinor >= 3)
+	{
+		dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+		*lastPNext = &dynamicRenderingFeatures;
+		lastPNext = &dynamicRenderingFeatures.pNext;
+	}
+
+	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
+	if (hasDescriptorIndexing || versionMinor >= 3)
+	{
+		descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+		descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+		*lastPNext = &descriptorIndexingFeatures;
+		lastPNext = &descriptorIndexingFeatures.pNext;
+	}
+
 	vk::DeviceCreateInfo deviceInfo({}, queueInfos, {}, extensions, {}, &deviceFeatures);
 	return physicalDevice.createDevice(deviceInfo);
 }
 
 //--------------------------------------------------------------------------------------------------
-static void updateVkDynamicLoader(vk::Device device,
-	vk::DispatchLoaderDynamic& dynamicLoader)
+static void updateVkDynamicLoader(uint32 versionMajor, uint32 versionMinor,
+	vk::Device device, vk::DispatchLoaderDynamic& dynamicLoader)
 {
-	auto pointer = vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+	PFN_vkVoidFunction pointer;
+
+	if (versionMinor < 3)
+	{
+		pointer = vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR");
+		if (pointer) dynamicLoader.vkCmdBeginRenderingKHR =
+			PFN_vkCmdBeginRenderingKHR(pointer);
+		pointer = vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR");
+		if (pointer) dynamicLoader.vkCmdEndRenderingKHR =
+			PFN_vkCmdEndRenderingKHR(pointer);
+	}
+
+	#if GARDEN_DEBUG
+	pointer = vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
 	if (pointer) dynamicLoader.vkSetDebugUtilsObjectNameEXT =
 		PFN_vkSetDebugUtilsObjectNameEXT(pointer);
 	pointer = vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT");
@@ -511,14 +575,15 @@ static void updateVkDynamicLoader(vk::Device device,
 	pointer = vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT");
 	if (pointer) dynamicLoader.vkCmdEndDebugUtilsLabelEXT =
 		PFN_vkCmdEndDebugUtilsLabelEXT(pointer);
+	#endif
 }
 
-static VmaAllocator createVmaMemoryAllocator(vk::Instance instance,
-	vk::PhysicalDevice physicalDevice, vk::Device device,
+static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVersion,
+	vk::Instance instance, vk::PhysicalDevice physicalDevice, vk::Device device,
 	bool hasMemoryBudget, bool hasMemoryPriority)
 {
 	VmaAllocatorCreateInfo allocatorInfo = {};
-	allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+	allocatorInfo.vulkanApiVersion = VK_MAKE_API_VERSION(0, majorVersion, minorVersion, 0);
 	allocatorInfo.physicalDevice = physicalDevice;
 	allocatorInfo.device = device;
 	allocatorInfo.instance = instance;
@@ -718,49 +783,17 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 	glfwSetWindowSizeLimits(window, MIN_DISPLAY_SIZE, MIN_DISPLAY_SIZE,
 		GLFW_DONT_CARE, GLFW_DONT_CARE);
 
-	/* TODO: use if required
-	#if __APPLE__
-	auto libMoltenVK = dlopen("libMoltenVK.dylib", RTLD_LAZY);
-	auto getMoltenVKConfigurationMVK = (PFN_vkGetMoltenVKConfigurationMVK)
-		dlsym(libMoltenVK, "vkGetMoltenVKConfigurationMVK");
-	auto setMoltenVKConfigurationMVK = (PFN_vkSetMoltenVKConfigurationMVK)
-		dlsym(libMoltenVK, "vkSetMoltenVKConfigurationMVK");
-	if (!getMoltenVKConfigurationMVK || !setMoltenVKConfigurationMVK)
-		throw runtime_error("Failed to get MoltenVK configuration functions.");
-
-	MVKConfiguration mvkConfiguration;
-	psize mvkConfigurationSize = sizeof(MVKConfiguration);
-
-	auto vkResult = getMoltenVKConfigurationMVK(VK_NULL_HANDLE,
-		&mvkConfiguration, &mvkConfigurationSize);
-	if (vkResult != VK_SUCCESS)
-		throw runtime_error("Failed to get MoltenVK configuration.");
-
-	// configure
-
-	vkResult = setMoltenVKConfigurationMVK(VK_NULL_HANDLE, 
-		&mvkConfiguration, &mvkConfigurationSize);
-	if (vkResult != VK_SUCCESS)
-		throw runtime_error("Failed to set MoltenVK configuration.");
-	#endif
-	*/
-
-	#if __APPLE__ // TODO: MoltenVK should use by default when Metal 3 arrives.
-	// setenv("MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS", "1", 1);
-	// Unfortunatly xcode graphics debugger is not working with this flag :(
-	#endif
-
 	uint32 graphicsQueueMaxCount = 0,
 		transferQueueMaxCount = 0, computeQueueMaxCount = 0;
 	uint32 frameQueueIndex = 0, graphicsQueueIndex = 0,
 		transferQueueIndex = 0, computeQueueIndex = 0;
 
 	#if GARDEN_DEBUG
-	instance = createVkInstance(hasDebugUtils);
+	instance = createVkInstance(versionMajor, versionMinor, hasDebugUtils);
 	dynamicLoader = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 	if (hasDebugUtils) debugMessenger = createVkDebugMessenger(instance, dynamicLoader);
 	#else
-	instance = createVkInstance();
+	instance = createVkInstance(versionMajor, versionMinor);
 	dynamicLoader = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 	#endif
 	
@@ -771,14 +804,14 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 		transferQueueMaxCount, computeQueueMaxCount);
 	deviceProperties = physicalDevice.getProperties2();
 	deviceFeatures = physicalDevice.getFeatures2();
-	device = createVkDevice(physicalDevice, graphicsQueueFamilyIndex,
-		transferQueueFamilyIndex, computeQueueFamilyIndex,
+	device = createVkDevice(versionMajor, versionMinor, physicalDevice,
+		graphicsQueueFamilyIndex, transferQueueFamilyIndex, computeQueueFamilyIndex,
 		graphicsQueueMaxCount, transferQueueMaxCount, computeQueueMaxCount,
 		frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex,
 		hasMemoryBudget, hasMemoryPriority, hasPageableMemory);
-	updateVkDynamicLoader(device, dynamicLoader);
-	memoryAllocator = createVmaMemoryAllocator(instance,
-		physicalDevice, device, hasMemoryBudget, hasMemoryPriority);
+	updateVkDynamicLoader(versionMajor, versionMinor, device, dynamicLoader);
+	memoryAllocator = createVmaMemoryAllocator(versionMajor, versionMinor,
+		instance, physicalDevice, device, hasMemoryBudget, hasMemoryPriority);
 	frameQueue = device.getQueue(graphicsQueueFamilyIndex, frameQueueIndex);
 	graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, graphicsQueueIndex);
 	transferQueue = device.getQueue(transferQueueFamilyIndex, transferQueueIndex);

@@ -20,8 +20,6 @@
 
 #if __APPLE__
 #define VK_ENABLE_BETA_EXTENSIONS
-//TODO: use if required
-//#include "vk_mvk_moltenvk.h"
 #endif
 
 #include "vulkan/vulkan.hpp"
