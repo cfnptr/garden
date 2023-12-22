@@ -18,14 +18,13 @@
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
 void AtmosphereRenderSystem::initialize()
 {
-	// TODO: procedural atmosphere.
-	// https://sebh.github.io/publications/egsr2020.pdf
+	auto earthAirMolarMass = calcEarthAirMolarMass();
+	auto molecularDensity = calcMolecularDensity(EARTH_AIR_DENSITY, earthAirMolarMass);
+	auto test = calcRayleighScattering(EARTH_AIR_IOR, molecularDensity) * 1e6f;
+	test += test;
 }
-
-//--------------------------------------------------------------------------------------------------
 void AtmosphereRenderSystem::render()
 {
 

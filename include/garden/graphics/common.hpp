@@ -110,11 +110,16 @@ struct DebugLabel
 	DebugLabel(const string& name, const Color& color) { begin(name, color); }
 	~DebugLabel() { end(); }
 };
-#define SET_GPU_DEBUG_LABEL(name, color) DebugLabel _debugLabel(name, color);
-#define INSERT_GPU_DEBUG_LABEL(name, color) DebugLabel::insert(name, color);
+
+#define SET_GPU_DEBUG_LABEL(name, color) DebugLabel _debugLabel(name, color)
+#define INSERT_GPU_DEBUG_LABEL(name, color) DebugLabel::insert(name, color)
+#define BEGIN_GPU_DEBUG_LABEL(name, color) DebugLabel::begin(name, color)
+#define END_GPU_DEBUG_LABEL() DebugLabel::end()
 #else
 #define SET_GPU_DEBUG_LABEL(name, color)
 #define INSERT_GPU_DEBUG_LABEL(name, color)
+#define BEGIN_GPU_DEBUG_LABEL(name, color)
+#define END_GPU_DEBUG_LABEL(name, color)
 #endif
 
 } // garden::graphics

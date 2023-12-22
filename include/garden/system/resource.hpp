@@ -304,6 +304,7 @@ protected:
 	
 	friend class ecsm::Manager;
 public:
+//--------------------------------------------------------------------------------------------------
 	static ResourceSystem* getInstance() noexcept
 	{
 		GARDEN_ASSERT(instance); // no system
@@ -327,9 +328,11 @@ public:
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
 		ID<Framebuffer> framebuffer, bool useAsync = false, bool loadAsync = true,
 		uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
+		const map<string, GraphicsPipeline::SpecConst>& specConsts = {},
 		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
-		bool useAsync = false, bool loadAsync = true, uint32 maxBindlessCount = 0);
+		bool useAsync = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
+		const map<string, GraphicsPipeline::SpecConst>& specConsts = {});
 
 	void loadScene(const fs::path& path);
 	void storeScene(const fs::path& path);
