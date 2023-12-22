@@ -12,6 +12,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+// 
+// Based on this: https://lettier.github.io/3d-game-shaders-for-beginners/ssao.html
+// And this: https://learnopengl.com/Advanced-Lighting/SSAO
 //--------------------------------------------------------------------------------------------------
 
 #pragma once

@@ -94,7 +94,7 @@ namespace
 		int8 isComparing = 0, isCompareOperation = 0, isAnisoFiltering = 0, isUnnormCoords = 0,
 			isFilter = 0, isFilterMin = 0, isFilterMag = 0, isFilterMipmap = 0,
 			isBorderColor = 0, isWrap = 0, isWrapX = 0, isWrapY = 0, isWrapZ = 0,
-			isFeature = 0, isVariantCount = 0;
+			isSpecConst = 0, isFeature = 0, isVariantCount = 0;
 		uint8 arraySize = 1;
 		GslDataType dataType = {}; GslImageFormat imageFormat = {};
 		bool isNewLine = true;
@@ -1010,6 +1010,25 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 }
 
 //--------------------------------------------------------------------------------------------------
+static void onSpecConst(FileData& fileData, LineData& lineData,
+	map<string, Pipeline::SpecConstData>& specConsts)
+{
+	if (lineData.isSpecConst == 1)
+	{
+		if (lineData.word != "const")
+		{
+			throw CompileError("no specialization 'const' keyword",
+				fileData.lineIndex, lineData.word);
+		}
+
+		lineData.isSpecConst = 2;
+		return;
+	}
+
+	// TODO:
+}
+
+//--------------------------------------------------------------------------------------------------
 static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
 	if (lineData.word == "bindless")
@@ -1344,6 +1363,11 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 					data.pipelineState, data.blendStates);
 				overrideOutput = true;
 			}
+			else if (lineData.isSpecConst)
+			{
+				onSpecConst(fileData, lineData, data.specConsts);
+				overrideOutput = true;
+			}
 			else if (lineData.isFeature)
 			{
 				onShaderFeature(fileData, lineData);
@@ -1382,6 +1406,8 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 					fileData.isUniform = fileData.isBuffer = 1; overrideOutput = true; }
 				else if (lineData.word == "pipelineState") {
 					fileData.isPipelineState = 1; overrideOutput = true; }
+				else if (lineData.word == "spec") {
+					lineData.isSpecConst = 1; overrideOutput = true; }
 				else if (lineData.word == "#feature") {
 					lineData.isFeature = 1; overrideOutput = true; }
 				else if (lineData.word == "#variantCount") {
@@ -1532,6 +1558,11 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 					data.pipelineState, data.blendStates);
 				overrideOutput = true;
 			}
+			else if (lineData.isSpecConst)
+			{
+				onSpecConst(fileData, lineData, data.specConsts);
+				overrideOutput = true;
+			}
 			else if (lineData.isFeature)
 			{
 				onShaderFeature(fileData, lineData);
@@ -1558,6 +1589,8 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 					fileData.isUniform = fileData.isBuffer = 1; overrideOutput = true; }
 				else if (lineData.word == "pipelineState") {
 					fileData.isPipelineState = 1; overrideOutput = true;  }
+				else if (lineData.word == "spec") {
+					lineData.isSpecConst = 1; overrideOutput = true; }
 				else if (lineData.word == "#feature") {
 					lineData.isFeature = 1; overrideOutput = true; }
 				else if (lineData.word == "#variantCount") {
@@ -1822,6 +1855,11 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 				onShaderSamplerState(fileData, lineData);
 				overrideOutput = true;
 			}
+			else if (lineData.isSpecConst)
+			{
+				onSpecConst(fileData, lineData, data.specConsts);
+				overrideOutput = true;
+			}
 			else if (lineData.isFeature)
 			{
 				onShaderFeature(fileData, lineData);
@@ -1840,6 +1878,8 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 					fileData.isUniform = 1; overrideOutput = true; }
 				else if (lineData.word == "buffer") {
 					fileData.isUniform = fileData.isBuffer = 1; overrideOutput = true; }
+				else if (lineData.word == "spec") {
+					lineData.isSpecConst = 1; overrideOutput = true; }
 				else if (lineData.word == "#feature") {
 					lineData.isFeature = 1; overrideOutput = true; }
 				else if (lineData.word == "#variantCount") {

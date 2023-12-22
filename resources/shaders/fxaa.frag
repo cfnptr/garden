@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Based on this - https://github.com/kosua20/Rendu/blob/master/resources/common/shaders/screens/fxaa.frag
+// Based on this: https://github.com/kosua20/Rendu/blob/master/resources/common/shaders/screens/fxaa.frag
 //--------------------------------------------------------------------------------------------------
 
 #include "common/tone-mapping.gsl"

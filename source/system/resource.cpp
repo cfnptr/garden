@@ -59,6 +59,7 @@ namespace
 		fs::path path;
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
+		map<string, GraphicsPipeline::SpecConst> specConsts;
 		map<uint8, GraphicsPipeline::State> stateOverrides;
 		ID<GraphicsPipeline> instance = {};
 		uint32 maxBindlessCount = 0;
@@ -70,6 +71,7 @@ namespace
 	{
 		uint64 version = 0;
 		fs::path path;
+		map<string, GraphicsPipeline::SpecConst> specConsts;
 		uint32 maxBindlessCount = 0;
 		ID<ComputePipeline> instance = {};
 		bool useAsync = false;
@@ -1028,9 +1030,9 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 }
 
 //--------------------------------------------------------------------------------------------------
-ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
-	const fs::path& path, ID<Framebuffer> framebuffer, bool useAsync,
-	bool loadAsync, uint8 subpassIndex, uint32 maxBindlessCount,
+ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
+	ID<Framebuffer> framebuffer, bool useAsync, bool loadAsync, uint8 subpassIndex,
+	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConst>& specConsts,
 	const map<uint8, GraphicsPipeline::State>& stateOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -1087,6 +1089,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		data->renderPass = renderPass;
 		data->subpassIndex = subpassIndex;
 		data->colorFormats = std::move(colorFormats);
+		data->specConsts = specConsts;
 		data->stateOverrides = stateOverrides;
 		data->instance = pipeline;
 		data->maxBindlessCount = maxBindlessCount;
@@ -1140,6 +1143,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
+		pipelineData.stateOverrides = stateOverrides;
 		pipelineData.renderPass = renderPass;
 		pipelineData.subpassIndex = subpassIndex;
 		pipelineData.depthStencilFormat = depthStencilFormat;
@@ -1249,7 +1253,8 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 
 //--------------------------------------------------------------------------------------------------
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
-	bool useAsync, bool loadAsync, uint32 maxBindlessCount)
+	bool useAsync, bool loadAsync, uint32 maxBindlessCount,
+	const map<string, GraphicsPipeline::SpecConst>& specConsts)
 {
 	GARDEN_ASSERT(!path.empty());
 
@@ -1262,6 +1267,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		auto data = new ComputePipelineLoadData();
 		data->version = version;
 		data->path = path;
+		data->specConsts = specConsts;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
 		data->useAsync = useAsync;

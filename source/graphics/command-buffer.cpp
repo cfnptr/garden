@@ -946,7 +946,9 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			vk::RenderingFlagBits::eContentsSecondaryCommandBuffers : vk::RenderingFlags(),
 			rect, 1, 0, colorAttachmentCount, colorAttachmentInfos.data(),
 			depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
-		commandBuffer.beginRendering(renderingInfo);
+		if (Vulkan::versionMinor < 3)
+			commandBuffer.beginRenderingKHR(renderingInfo, Vulkan::dynamicLoader);
+		else commandBuffer.beginRendering(renderingInfo);
 	}
 	else
 	{
@@ -1068,7 +1070,11 @@ void CommandBuffer::processCommand(const ExecuteCommand& command)
 void CommandBuffer::processCommand(const EndRenderPassCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	if (noSubpass) commandBuffer.endRendering();
+	if (noSubpass)
+	{
+		if (Vulkan::versionMinor < 3) commandBuffer.endRenderingKHR(Vulkan::dynamicLoader);
+		else commandBuffer.endRendering();
+	}
 	else commandBuffer.endRenderPass();
 }
 

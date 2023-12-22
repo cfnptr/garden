@@ -29,13 +29,17 @@ void DebugLabel::begin(const string& name, const Color& color)
 	BeginLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
+	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 void DebugLabel::end()
 {
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	EndLabelCommand command;
+	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 void DebugLabel::insert(const string& name, const Color& color)
 {
@@ -44,6 +48,8 @@ void DebugLabel::insert(const string& name, const Color& color)
 	InsertLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
+	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 #endif

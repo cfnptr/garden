@@ -31,6 +31,8 @@ namespace garden::graphics
 class Vulkan final
 {
 public:
+	static uint32 versionMajor;
+	static uint32 versionMinor;
 	static vk::Instance instance;
 	static vk::DispatchLoaderDynamic dynamicLoader;
 	static vk::PhysicalDevice physicalDevice;
