@@ -123,9 +123,9 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 }
 
 //--------------------------------------------------------------------------------------------------
-static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor,
+static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor
 	#if GARDEN_DEBUG
-	bool& hasDebugUtils
+	, bool& hasDebugUtils
 	#endif
 	)
 {
@@ -138,7 +138,12 @@ static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor,
 	if (vkResult != vk::Result::eSuccess) throw runtime_error("Failed to get Vulkan version.");
 	versionMajor = VK_API_VERSION_MAJOR(instanceVersion);
 	versionMinor = VK_API_VERSION_MINOR(instanceVersion);
-	// versionMinor = 2; TODO: debugging
+	// versionMinor = 2; // TODO: debugging
+
+	#if __APPLE__
+	// TODO: remove after MoltenVK 1.3 support on mac.
+	if (versionMinor >= 3) versionMinor = 2;
+	#endif
 
 	auto engineVersion = VK_MAKE_API_VERSION(0,
 		GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
