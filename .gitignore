@@ -3,10 +3,10 @@
 
 ### Custom ###
 .caches
-.build
-.build-debug
-.build-release
-.build-xcode
+build
+build-debug
+build-release
+build-xcode
 
 ### C ###
 # Prerequisites
