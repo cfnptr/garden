@@ -20,8 +20,6 @@
 
 // TODO: share the one pipeline using #variantCount 2
 
-const 
-
 pipelineState
 {
 	faceCulling = off;
