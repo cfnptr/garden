@@ -123,9 +123,9 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 }
 
 //--------------------------------------------------------------------------------------------------
-static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor,
+static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor
 	#if GARDEN_DEBUG
-	bool& hasDebugUtils
+	, bool& hasDebugUtils
 	#endif
 	)
 {
