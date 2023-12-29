@@ -26,8 +26,8 @@ namespace
 	{
 		uint32 frameIndex;
 		float exposureCoeff;
-		float ditherStrength;
-		float bloomStrength;
+		float ditherIntensity;
+		float bloomIntensity;
 	};
 }
 
@@ -50,38 +50,47 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 }
 
 //--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getUniforms(
-	GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem,
-	BloomRenderSystem* bloomSystem, ID<Buffer> luminanceBuffer)
+static map<string, DescriptorSet::Uniform> getUniforms(GraphicsSystem* graphicsSystem,
+	DeferredRenderSystem* deferredSystem, BloomRenderSystem* bloomSystem,
+	ID<Buffer> luminanceBuffer, bool useBloomBuffer)
 {
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 
-	ID<ImageView> bloomBuffer;
-	if (bloomSystem)
+	ID<ImageView> bloomBufferView;
+	if (bloomSystem && useBloomBuffer)
 	{
-		auto bloomBufferView = graphicsSystem->get(bloomSystem->getBloomBuffer());
-		bloomBuffer = bloomBufferView->getDefaultView();
+		auto bloomBuffer = bloomSystem->getBloomBuffer();
+		auto bufferView = graphicsSystem->get(bloomBuffer);
+		bloomBufferView = bufferView->getDefaultView();
 	}
 	else
 	{
-		auto emptyTextureView = graphicsSystem->get(graphicsSystem->getEmptyTexture());
-		bloomBuffer = emptyTextureView->getDefaultView();
+		auto emptyTexture = graphicsSystem->getEmptyTexture();
+		auto textureView = graphicsSystem->get(emptyTexture);
+		bloomBufferView = textureView->getDefaultView();
 	}
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(
 			hdrFramebufferView->getColorAttachments()[0].imageView) },
-		{ "bloomBuffer", DescriptorSet::Uniform(bloomBuffer) },
+		{ "bloomBuffer", DescriptorSet::Uniform(bloomBufferView) },
 		{ "luminance", DescriptorSet::Uniform(luminanceBuffer) }
 	};
 	return uniforms;
 }
 
-static ID<GraphicsPipeline> createPipeline(DeferredRenderSystem* deferredSystem)
+static ID<GraphicsPipeline> createPipeline(DeferredRenderSystem* deferredSystem,
+	bool useBloomBuffer, ToneMapper toneMapper)
 {
-	return ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"tone-mapping", deferredSystem->getLdrFramebuffer());
+	map<string, Pipeline::SpecConst> specConsts =
+	{
+		{ "USE_BLOOM_BUFFER", Pipeline::SpecConst(useBloomBuffer) },
+		{ "TONE_MAPPER", Pipeline::SpecConst((uint32)toneMapper) }
+	};
+
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("tone-mapping",
+		deferredSystem->getLdrFramebuffer(), false, true, 0, 0, specConsts);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -91,7 +100,7 @@ void ToneMappingRenderSystem::initialize()
 	bloomSystem = manager->tryGet<BloomRenderSystem>();
 	
 	if (!luminanceBuffer) luminanceBuffer = createLuminanceBuffer(getGraphicsSystem());
-	if (!pipeline) pipeline = createPipeline(getDeferredSystem());
+	if (!pipeline) pipeline = createPipeline(getDeferredSystem(), useBloomBuffer, toneMapper);
 
 	#if GARDEN_EDITOR
 	editor = new ToneMappingEditor(this);
@@ -113,16 +122,16 @@ void ToneMappingRenderSystem::render()
 	graphicsSystem->stopRecording();
 	#endif
 }
+
+//--------------------------------------------------------------------------------------------------
 void ToneMappingRenderSystem::preLdrRender()
 {
-	if (!descriptorSet)
+	auto graphicsSystem = getGraphicsSystem();
+	auto pipelineView = graphicsSystem->get(pipeline);
+	if (pipelineView->isReady() && !descriptorSet)
 	{
-		auto graphicsSystem = getGraphicsSystem();
-		auto pipelineView = graphicsSystem->get(pipeline);
-		if (!pipelineView->isReady()) return;
-		
-		auto uniforms = getUniforms(graphicsSystem,
-			getDeferredSystem(), bloomSystem, luminanceBuffer);
+		auto uniforms = getUniforms(graphicsSystem, getDeferredSystem(),
+			bloomSystem, luminanceBuffer, useBloomBuffer);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
 			"descriptorSet.deferred.toneMapping");
@@ -133,7 +142,7 @@ void ToneMappingRenderSystem::ldrRender()
 	auto graphicsSystem = getGraphicsSystem();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
-	if (!pipelineView->isReady() || !luminanceBufferView->isReady()) return;
+	if (!pipelineView->isReady() || !luminanceBufferView->isReady() || !descriptorSet) return;
 
 	SET_GPU_DEBUG_LABEL("Tone Mapping", Color::transparent);
 	pipelineView->bind();
@@ -143,8 +152,8 @@ void ToneMappingRenderSystem::ldrRender()
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->frameIndex = (uint32)graphicsSystem->getFrameIndex();
 	pushConstants->exposureCoeff = exposureCoeff;
-	pushConstants->ditherStrength = ditherStrength;
-	pushConstants->bloomStrength = bloomSystem ? bloomSystem->strength : 0.0f;
+	pushConstants->ditherIntensity = ditherIntensity;
+	pushConstants->bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
 	pipelineView->pushConstants();
 	pipelineView->drawFullscreen();
 }
@@ -156,15 +165,29 @@ void ToneMappingRenderSystem::recreateSwapchain(const SwapchainChanges& changes)
 	{
 		auto graphicsSystem = getGraphicsSystem();
 		auto descriptorSetView = graphicsSystem->get(descriptorSet);
-		auto uniforms = getUniforms(graphicsSystem,
-			getDeferredSystem(), bloomSystem, luminanceBuffer);
+		auto uniforms = getUniforms(graphicsSystem, getDeferredSystem(),
+			bloomSystem, luminanceBuffer, useBloomBuffer);
 		descriptorSetView->recreate(std::move(uniforms));
 	}
 }
 
+void ToneMappingRenderSystem::setConsts(bool useBloomBuffer, ToneMapper toneMapper)
+{
+	if (this->useBloomBuffer == useBloomBuffer && this->toneMapper == toneMapper) return;
+	this->useBloomBuffer = useBloomBuffer; this->toneMapper = toneMapper;
+	if (!pipeline) return;
+
+	auto graphicsSystem = getGraphicsSystem();
+	graphicsSystem->destroy(descriptorSet);
+	descriptorSet = {};
+
+	graphicsSystem->destroy(pipeline);
+	pipeline = createPipeline(getDeferredSystem(), useBloomBuffer, toneMapper);
+}
+
 ID<GraphicsPipeline> ToneMappingRenderSystem::getPipeline()
 {
-	if (!pipeline) pipeline = createPipeline(getDeferredSystem());
+	if (!pipeline) pipeline = createPipeline(getDeferredSystem(), useBloomBuffer, toneMapper);
 	return pipeline;
 }
 ID<Buffer> ToneMappingRenderSystem::getLuminanceBuffer()

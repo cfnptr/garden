@@ -153,48 +153,42 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		if (!this->instance) abort();
 	}
 
-	vector<vector<uint8>> code; vector<ShaderStage> stages;
+	vector<ShaderStage> stages; vector<vector<uint8>> code;
 	if (!createData.vertexCode.empty())
 	{
-		code.push_back(std::move(createData.vertexCode));
 		stages.push_back(ShaderStage::Vertex);
+		code.push_back(std::move(createData.vertexCode));
+		
 	}
 	if (!createData.fragmentCode.empty())
 	{
-		code.push_back(std::move(createData.fragmentCode));
 		stages.push_back(ShaderStage::Fragment);
+		code.push_back(std::move(createData.fragmentCode));
 	}
 
 	auto shaders = createShaders(code, createData.path);
-	vector<vk::PipelineShaderStageCreateInfo> stageInfos(code.size());
+	vector<vk::PipelineShaderStageCreateInfo> stageInfos(stages.size());
 	vk::PipelineShaderStageCreateInfo stageInfo;
 	stageInfo.pName = "main";
 
-	uint32 variantIndex = 0;
-	vk::SpecializationInfo specializationInfoData;
-	vk::SpecializationMapEntry specializationMapEntry;
-	vk::SpecializationInfo* specializationInfo = nullptr;
-
-	if (createData.variantCount > 1)
+	vector<vk::SpecializationInfo> specializationInfos(stages.size());
+	for (uint32 i = 0; i < (uint32)stages.size(); i++)
 	{
-		specializationMapEntry.size = sizeof(uint32);
-		specializationInfoData.mapEntryCount = 1;
-		specializationInfoData.pMapEntries = &specializationMapEntry;
-		specializationInfoData.dataSize = sizeof(uint32);
-		specializationInfoData.pData = &variantIndex;
-		specializationInfo = &specializationInfoData;
-	}
+		auto stage = stages[i];
+		auto specializationInfo = &specializationInfos[i];
 
-	for (uint32 i = 0; i < (uint32)code.size(); i++)
-	{
-		stageInfo.stage = toVkShaderStage(stages[i]);
+		fillSpecConsts(createData.path, stage, createData.variantCount,
+			specializationInfo, createData.specConsts, createData.specConstData);
+
+		stageInfo.stage = toVkShaderStage(stage);
 		stageInfo.module = (VkShaderModule)shaders[i];
-		stageInfo.pSpecializationInfo = specializationInfo;
+		stageInfo.pSpecializationInfo =
+			specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr;
 		stageInfos[i] = stageInfo;
 	}
 
 	vk::GraphicsPipelineCreateInfo pipelineInfo({},
-		(uint32)code.size(), stageInfos.data(), nullptr,
+		(uint32)stageInfos.size(), stageInfos.data(), nullptr,
 		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr, nullptr, (VkPipelineLayout)pipelineLayout,
 		nullptr, createData.subpassIndex, nullptr, -1);
@@ -251,7 +245,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 	else pipelineInfo.renderPass = (VkRenderPass)createData.renderPass;
 
 	auto& stateOverrides = createData.stateOverrides;
-	for (; variantIndex < createData.variantCount; variantIndex++)
+	for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
 	{
 		auto stateSearch = stateOverrides.find(variantIndex);
 		auto& pipelineState = stateSearch == stateOverrides.end() ?
@@ -365,6 +359,12 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		if (createData.variantCount > 1)
 			((void**)this->instance)[variantIndex] = result.value;
 		else this->instance = result.value;
+	}
+
+	for (auto& info : specializationInfos)
+	{
+		free((void*)info.pMapEntries);
+		free((void*)info.pData);
 	}
 
 	destroyShaders(shaders);

@@ -31,23 +31,13 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 	auto _code = vector<vector<uint8>>(1); _code[0] = std::move(createData.code);
 	auto shaders = createShaders(_code, createData.path);
 
-	uint32 variantIndex = 0;
-	vk::SpecializationInfo specializationInfoData;
-	vk::SpecializationMapEntry specializationMapEntry;
-	vk::SpecializationInfo* specializationInfo = nullptr;
+	vk::SpecializationInfo specializationInfo;
+	fillSpecConsts(createData.path, ShaderStage::Compute, createData.variantCount,
+		&specializationInfo, createData.specConsts, createData.specConstData);
 
-	if (createData.variantCount > 1)
-	{
-		specializationMapEntry.size = sizeof(uint32);
-		specializationInfoData.mapEntryCount = 1;
-		specializationInfoData.pMapEntries = &specializationMapEntry;
-		specializationInfoData.dataSize = sizeof(uint32);
-		specializationInfoData.pData = &variantIndex;
-		specializationInfo = &specializationInfoData;
-	}
-
-	vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(ShaderStage::Compute),
-		(VkShaderModule)shaders[0], "main", specializationInfo);
+	vk::PipelineShaderStageCreateInfo stageInfo({},
+		toVkShaderStage(ShaderStage::Compute), (VkShaderModule)shaders[0], "main",
+		specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
 	vk::ComputePipelineCreateInfo pipelineInfo({}, stageInfo,
 		(VkPipelineLayout)pipelineLayout, VK_NULL_HANDLE, -1);
 
@@ -56,7 +46,7 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 		this->instance = malloc(sizeof(void*) * createData.variantCount);
 		if (!this->instance) abort();
 
-		for (; variantIndex < createData.variantCount; variantIndex++)
+		for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
 		{
 			auto result = Vulkan::device.createComputePipeline(Vulkan::pipelineCache, pipelineInfo);
 			resultCheck(result.result, "vk::Device::createComputePipeline");

@@ -19,8 +19,8 @@
 #include "common/gbuffer.gsl"
 #include "common/constants.gsl"
 
-#define SAMPLE_COUNT 32
 #define NOISE_SIZE 4
+spec const uint32 SAMPLE_COUNT = 32;
 
 pipelineState
 {

@@ -40,6 +40,9 @@ class BloomRenderSystem final : public System,
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
 	vector<int2> sizeBuffer;
+	bool useThreshold = false;
+	bool useAntiFlickering = true;
+	uint16 _alignment = 0;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
@@ -54,8 +57,13 @@ class BloomRenderSystem final : public System,
 	friend class ecsm::Manager;
 	friend class BloomEditor;
 public:
-	float strength = 0.004f;
+	float intensity = 0.004f;
 	float threshold = 0.0f;
+	bool isEnabled = true;
+
+	bool getUseThreshold() const noexcept { return useThreshold; }
+	bool getUseAntiFlickering() const noexcept { return useAntiFlickering; }
+	void setConsts(bool useThreshold, bool useAntiFlickering);
 
 	ID<GraphicsPipeline> getDownsample0Pipeline();
 	ID<GraphicsPipeline> getDownsamplePipeline();

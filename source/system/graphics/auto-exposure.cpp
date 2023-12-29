@@ -18,6 +18,7 @@
 #include "garden/system/graphics/editor/auto-exposure.hpp"
 #include "garden/system/graphics/tone-mapping.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/settings.hpp"
 
 using namespace garden;
 
@@ -92,10 +93,10 @@ static ID<ComputePipeline> createAveragePipeline()
 //--------------------------------------------------------------------------------------------------
 void AutoExposureRenderSystem::initialize()
 {
-	auto graphicsSystem = getGraphicsSystem();
-	deferredSystem = getManager()->get<DeferredRenderSystem>();
+	auto manager = getManager();
+	deferredSystem = manager->get<DeferredRenderSystem>();
 
-	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(graphicsSystem);
+	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(getGraphicsSystem());
 	if (!histogramPipeline) histogramPipeline = createHistogramPipeline();
 	if (!averagePipeline) averagePipeline = createAveragePipeline();
 

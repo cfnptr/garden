@@ -17,7 +17,7 @@
 #pragma once
 #include "garden/defines.hpp"
 
-#if _WIN32
+#if _WIN32 && !GARDEN_DEBUG
 #define NOMINMAX
 #include <windows.h>
 #define GARDEN_MAIN int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)

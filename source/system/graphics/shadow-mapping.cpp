@@ -100,6 +100,7 @@ static void createFramebuffers(
 static ID<GraphicsPipeline> createPipeline(Manager* manager)
 {
 	auto lightingSystem = manager->get<LightingRenderSystem>();
+	lightingSystem->setConsts(true, lightingSystem->getUseAoBuffer());
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"shadow/mapping", lightingSystem->getShadowFramebuffers()[0]);
 }

@@ -136,7 +136,7 @@ void FpvSystem::update()
 	auto cursorPosition = graphicsSystem->getCursorPosition();
 	auto deltaCursorPosition = lastCursorPosition - cursorPosition;
 	lastCursorPosition = cursorPosition;
-	rotation -= deltaCursorPosition * viewSensitivity * (1.0f / 180.0f);
+	rotation -= deltaCursorPosition * viewSensitivity * radians(0.1f);
 	rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
 
 	auto rotationQuat = quat(rotation.y, float3::left) *

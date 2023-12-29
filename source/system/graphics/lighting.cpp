@@ -191,9 +191,8 @@ static uint32 calcSampleCount(uint8 mipLevel)
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> createShadowBuffer(
-	GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem,
-	ID<ImageView> shadowImageViews[SHADOW_BUFFER_COUNT])
+static ID<Image> createShadowBuffer(GraphicsSystem* graphicsSystem,
+	DeferredRenderSystem* deferredSystem, ID<ImageView>* shadowImageViews)
 {
 	Image::Mips mips(1); mips[0].assign(SHADOW_BUFFER_COUNT, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8,
@@ -212,18 +211,20 @@ static ID<Image> createShadowBuffer(
 
 	return image;
 }
-static void destroyShadowBuffer(GraphicsSystem* graphicsSystem, ID<Image> shadowBuffer,
-	ID<ImageView> shadowImageViews[SHADOW_BUFFER_COUNT])
+static void destroyShadowBuffer(GraphicsSystem* graphicsSystem,
+	ID<Image> shadowBuffer, ID<ImageView>* shadowImageViews)
 {
 	for (uint32 i = 0; i < SHADOW_BUFFER_COUNT; i++)
+	{
 		graphicsSystem->destroy(shadowImageViews[i]);
+		shadowImageViews[i] = {};
+	}
 	graphicsSystem->destroy(shadowBuffer);
 }
 
 static void createShadowFramebuffers(
-	ID<Framebuffer> shadowFramebuffers[SHADOW_BUFFER_COUNT],
-	GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem,
-	const ID<ImageView> shadowImageViews[SHADOW_BUFFER_COUNT])
+	ID<Framebuffer>* shadowFramebuffers, GraphicsSystem* graphicsSystem,
+	DeferredRenderSystem* deferredSystem, const ID<ImageView>* shadowImageViews)
 {
 	auto framebufferSize = deferredSystem->getFramebufferSize();
 	for (uint32 i = 0; i < SHADOW_BUFFER_COUNT; i++)
@@ -237,15 +238,18 @@ static void createShadowFramebuffers(
 	}
 }
 static void destroyShadowFramebuffers(GraphicsSystem* graphicsSystem,
-	const ID<Framebuffer>* shadowFramebuffers)
+	ID<Framebuffer>* shadowFramebuffers)
 {
 	for (uint32 i = 0; i < SHADOW_BUFFER_COUNT; i++)
+	{
 		graphicsSystem->destroy(shadowFramebuffers[i]);
+		shadowFramebuffers[i] = {};
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
 static ID<Image> createAoBuffer(GraphicsSystem* graphicsSystem,
-	DeferredRenderSystem* deferredSystem, ID<ImageView> aoImageViews[AO_BUFFER_COUNT])
+	DeferredRenderSystem* deferredSystem, ID<ImageView>* aoImageViews)
 {
 	Image::Mips mips(1); mips[0].assign(AO_BUFFER_COUNT, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8,
@@ -264,17 +268,20 @@ static ID<Image> createAoBuffer(GraphicsSystem* graphicsSystem,
 
 	return image;
 }
-static void destroyAoBuffer(GraphicsSystem* graphicsSystem, ID<Image> aoBuffer,
-	ID<ImageView> aoImageViews[AO_BUFFER_COUNT])
+static void destroyAoBuffer(GraphicsSystem* graphicsSystem,
+	ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 {
 	for (uint32 i = 0; i < AO_BUFFER_COUNT; i++)
+	{
 		graphicsSystem->destroy(aoImageViews[i]);
+		aoImageViews[i] = {};
+	}
 	graphicsSystem->destroy(aoBuffer);
 }
 
-static void createAoFramebuffers(ID<Framebuffer> aoFramebuffers[AO_BUFFER_COUNT],
-	GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem,
-	const ID<ImageView> aoImageViews[AO_BUFFER_COUNT])
+static void createAoFramebuffers(
+	ID<Framebuffer>* aoFramebuffers, GraphicsSystem* graphicsSystem,
+	DeferredRenderSystem* deferredSystem, const ID<ImageView>* aoImageViews)
 {
 	auto framebufferSize = deferredSystem->getFramebufferSize();
 	for (uint32 i = 0; i < AO_BUFFER_COUNT; i++)
@@ -287,11 +294,13 @@ static void createAoFramebuffers(ID<Framebuffer> aoFramebuffers[AO_BUFFER_COUNT]
 			"framebuffer.lighting.ao" + to_string(i));
 	}
 }
-static void destroyAoFramebuffers(GraphicsSystem* graphicsSystem,
-	const ID<Framebuffer>* aoFramebuffers)
+static void destroyAoFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* aoFramebuffers)
 {
 	for (uint32 i = 0; i < AO_BUFFER_COUNT; i++)
+	{
 		graphicsSystem->destroy(aoFramebuffers[i]);
+		aoFramebuffers[i] = {};
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -303,6 +312,8 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(Manager* manager,
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
+	auto whiteTexture = graphicsSystem->getWhiteTexture();
+	auto whiteTextureView = graphicsSystem->get(whiteTexture);
 	auto dfgLutView = graphicsSystem->get(dfgLUT);
 
 	map<string, DescriptorSet::Uniform> uniforms =
@@ -311,8 +322,10 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(Manager* manager,
 		{ "gBuffer1", DescriptorSet::Uniform(colorAttachments[1].imageView) },
 		{ "gBuffer2", DescriptorSet::Uniform(colorAttachments[2].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
-		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) }, // TODO: [1]
-		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[1]) },
+		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ? // TODO: [1]
+			shadowImageViews[0] : whiteTextureView->getDefaultView()) },
+		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[1] ?
+			aoImageViews[1] : whiteTextureView->getDefaultView()) },
 		{ "dfgLUT", DescriptorSet::Uniform(dfgLutView->getDefaultView()) }
 	};
 
@@ -335,11 +348,18 @@ static map<string, DescriptorSet::Uniform> getAoDenoiseUniforms(
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createLightingPipeline(DeferredRenderSystem* deferredSystem)
+static ID<GraphicsPipeline> createLightingPipeline(
+	DeferredRenderSystem* deferredSystem, bool useShadowBuffer, bool useAoBuffer)
 {
+	map<string, Pipeline::SpecConst> specConsts =
+	{
+		{ "USE_SHADOW_BUFFER", Pipeline::SpecConst(useShadowBuffer) },
+		{ "USE_AO_BUFFER", Pipeline::SpecConst(useAoBuffer) }
+	};
+
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"pbr-lighting", deferredSystem->getHdrFramebuffer(), 
-		deferredSystem->isRenderAsync(), false);
+		deferredSystem->isRenderAsync(), false, 0, 0, specConsts);
 }
 static ID<ComputePipeline> createIblSpecularPipeline()
 {
@@ -404,24 +424,34 @@ void LightingRenderSystem::initialize()
 	auto deferredSystem = getDeferredSystem();
 
 	if (!dfgLUT) dfgLUT = createDfgLUT(manager, graphicsSystem);
-	if (!shadowBuffer) shadowBuffer = createShadowBuffer(
-		graphicsSystem, deferredSystem, shadowImageViews);
-	if (!aoBuffer) aoBuffer = createAoBuffer(graphicsSystem, deferredSystem, aoImageViews);
 
-	if (!shadowFramebuffers[0])
+	if (useShadowBuffer)
 	{
-		createShadowFramebuffers(shadowFramebuffers,
+		if (!shadowBuffer) shadowBuffer = createShadowBuffer(
 			graphicsSystem, deferredSystem, shadowImageViews);
-	}
-	if (!aoFramebuffers[0])
-	{
-		createAoFramebuffers(aoFramebuffers,
-			graphicsSystem, deferredSystem, aoImageViews);
-	}
 
-	if (!lightingPipeline) lightingPipeline = createLightingPipeline(deferredSystem);
+		if (!shadowFramebuffers[0])
+		{
+			createShadowFramebuffers(shadowFramebuffers,
+				graphicsSystem, deferredSystem, shadowImageViews);
+		}
+	}
+	if (useAoBuffer)
+	{
+		if (!aoBuffer) aoBuffer = createAoBuffer(graphicsSystem, deferredSystem, aoImageViews);
+
+		if (!aoFramebuffers[0])
+		{
+			createAoFramebuffers(aoFramebuffers,
+				graphicsSystem, deferredSystem, aoImageViews);
+		}
+
+		if (!aoDenoisePipeline) aoDenoisePipeline = createAoDenoisePipeline(aoFramebuffers);
+	}	
+
+	if (!lightingPipeline)
+		lightingPipeline = createLightingPipeline(deferredSystem, useShadowBuffer, useAoBuffer);
 	if (!iblSpecularPipeline) iblSpecularPipeline = createIblSpecularPipeline();
-	if (!aoDenoisePipeline) aoDenoisePipeline = createAoDenoisePipeline(aoFramebuffers);
 
 	auto& subsystems = getManager()->getSubsystems<LightingRenderSystem>();
 	for (auto subsystem : subsystems)
@@ -448,25 +478,56 @@ void LightingRenderSystem::preHdrRender()
 {
 	auto manager = getManager();
 	auto graphicsSystem = getGraphicsSystem();
-	auto aoPipelineView = graphicsSystem->get(aoDenoisePipeline);
-	auto& subsystems = manager->getSubsystems<LightingRenderSystem>();
-	if (!graphicsSystem->camera || !aoPipelineView->isReady()) return;
+	if (!graphicsSystem->camera) return;
 
+	auto pipelineView = graphicsSystem->get(lightingPipeline);
+	if (pipelineView->isReady() && !lightingDescriptorSet)
+	{
+		auto uniforms = getLightingUniforms(manager, graphicsSystem,
+			getDeferredSystem(), dfgLUT, shadowImageViews, aoImageViews);
+		lightingDescriptorSet = graphicsSystem->createDescriptorSet(
+			lightingPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, lightingDescriptorSet,
+			"descriptorSet.lighting.base");
+	}
+
+	auto& subsystems = manager->getSubsystems<LightingRenderSystem>();
 	auto hasAnyShadow = false, hasAnyAO = false;
+
 	if (!subsystems.empty())
 	{
-		if (!aoDenoiseDescriptorSet)
 		{
-			auto uniforms = getAoDenoiseUniforms(aoImageViews);
-			aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(
-				aoDenoisePipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(graphicsSystem, aoDenoiseDescriptorSet,
-				"descriptorSet.lighting.ao-denoise");
+			SET_GPU_DEBUG_LABEL("Pre Shadow Pass", Color::transparent);
+			for (auto subsystem : subsystems)
+			{
+				auto shadowSystem = dynamic_cast<IShadowRenderSystem*>(subsystem.system);
+				if (!shadowSystem) continue;
+				shadowSystem->preShadowRender();
+			}
+		}
+		{
+			SET_GPU_DEBUG_LABEL("Pre AO Pass", Color::transparent);
+			for (auto subsystem : subsystems)
+			{
+				auto aoSystem = dynamic_cast<IAoRenderSystem*>(subsystem.system);
+				if (!aoSystem) continue;
+				aoSystem->preAoRender();
+			}
 		}
 
-		auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
+		auto deferredSystem = getDeferredSystem();
+		if (useShadowBuffer)
 		{
+			if (!shadowBuffer) shadowBuffer = createShadowBuffer(
+				graphicsSystem, deferredSystem, shadowImageViews);
+			if (!shadowFramebuffers[0])
+			{
+				createShadowFramebuffers(shadowFramebuffers,
+					graphicsSystem, deferredSystem, shadowImageViews);
+			}
+
 			SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+			auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
 			framebufferView->beginRenderPass(float4(1.0f));
 
 			for (auto subsystem : subsystems)
@@ -478,10 +539,19 @@ void LightingRenderSystem::preHdrRender()
 
 			framebufferView->endRenderPass();
 		}
-
-		framebufferView = graphicsSystem->get(aoFramebuffers[0]);
+		if (useAoBuffer)
 		{
+			if (!aoBuffer) aoBuffer = createAoBuffer(
+				graphicsSystem, deferredSystem, aoImageViews);
+			if (!aoFramebuffers[0])
+			{
+				createAoFramebuffers(aoFramebuffers,
+					graphicsSystem, deferredSystem, aoImageViews);
+			}
+			if (!aoDenoisePipeline) aoDenoisePipeline = createAoDenoisePipeline(aoFramebuffers);
+
 			SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
+			auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
 			framebufferView->beginRenderPass(float4(1.0f));
 
 			for (auto subsystem : subsystems)
@@ -495,7 +565,7 @@ void LightingRenderSystem::preHdrRender()
 		}
 	}
 
-	if (!hasAnyShadow)
+	if (shadowBuffer && !hasAnyShadow)
 	{
 		auto imageView = graphicsSystem->get(shadowBuffer);
 		imageView->clear(float4(1.0f));
@@ -503,17 +573,30 @@ void LightingRenderSystem::preHdrRender()
 
 	if (hasAnyAO)
 	{
-		SET_GPU_DEBUG_LABEL("AO Denoising", Color::transparent);
-		auto framebufferView = graphicsSystem->get(aoFramebuffers[1]);
-		framebufferView->beginRenderPass(float4(1.0f));
-		aoPipelineView->bind();
-		aoPipelineView->setViewportScissor(float4(
-			float2(0), framebufferView->getSize()));
-		aoPipelineView->bindDescriptorSet(aoDenoiseDescriptorSet);
-		aoPipelineView->drawFullscreen();
-		framebufferView->endRenderPass();
+		auto aoPipelineView = graphicsSystem->get(aoDenoisePipeline);
+		if (aoPipelineView->isReady())
+		{
+			if (!aoDenoiseDescriptorSet)
+			{
+				auto uniforms = getAoDenoiseUniforms(aoImageViews);
+				aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(
+					aoDenoisePipeline, std::move(uniforms));
+				SET_RESOURCE_DEBUG_NAME(graphicsSystem, aoDenoiseDescriptorSet,
+					"descriptorSet.lighting.ao-denoise");
+			}
+
+			SET_GPU_DEBUG_LABEL("AO Denoise Pass", Color::transparent);
+			auto framebufferView = graphicsSystem->get(aoFramebuffers[1]);
+			framebufferView->beginRenderPass(float4(1.0f));
+			aoPipelineView->bind();
+			aoPipelineView->setViewportScissor(float4(
+				float2(0), framebufferView->getSize()));
+			aoPipelineView->bindDescriptorSet(aoDenoiseDescriptorSet);
+			aoPipelineView->drawFullscreen();
+			framebufferView->endRenderPass();
+		}
 	}
-	else
+	else if (aoBuffer)
 	{
 		auto imageView = graphicsSystem->get(aoBuffer);
 		imageView->clear(float4(1.0f));
@@ -527,29 +610,18 @@ void LightingRenderSystem::hdrRender()
 	auto graphicsSystem = getGraphicsSystem();
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	auto dfgLutView = graphicsSystem->get(dfgLUT);
-	if (!graphicsSystem->camera || !pipelineView->isReady() || !dfgLutView->isReady()) return;
+	if (!graphicsSystem->camera || !pipelineView->isReady() ||
+		!dfgLutView->isReady() || !lightingDescriptorSet) return;
 
 	auto lightingComponent = manager->tryGet<LightingRenderComponent>(graphicsSystem->camera);
-	if (!lightingComponent || !lightingComponent->cubemap || !lightingComponent->sh ||
-		!lightingComponent->specular) return;
+	if (!lightingComponent || !lightingComponent->cubemap ||
+		!lightingComponent->sh || !lightingComponent->specular) return;
 
 	auto cubemapView = graphicsSystem->get(lightingComponent->cubemap);
 	auto shView = graphicsSystem->get(lightingComponent->sh);
 	auto specularView = graphicsSystem->get(lightingComponent->specular);
+	if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady()) return;
 	
-	if (!cubemapView->isReady() || !shView->isReady() ||
-		!specularView->isReady()) return;
-
-	auto deferredSystem = getDeferredSystem();
-	if (!lightingDescriptorSet)
-	{
-		auto uniforms = getLightingUniforms(manager, graphicsSystem,
-			deferredSystem, dfgLUT, shadowImageViews, aoImageViews);
-		lightingDescriptorSet = graphicsSystem->createDescriptorSet(
-			lightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, lightingDescriptorSet,
-			"descriptorSet.lighting.base");
-	}
 	if (!lightingComponent->descriptorSet)
 	{
 		auto descriptorSet = createDescriptorSet(
@@ -573,6 +645,7 @@ void LightingRenderSystem::hdrRender()
 	descriptorData[0] = Pipeline::DescriptorData(lightingDescriptorSet);
 	descriptorData[1] = Pipeline::DescriptorData(lightingComponent->descriptorSet);
 
+	auto deferredSystem = getDeferredSystem();
 	if (deferredSystem->isRenderAsync())
 	{
 		pipelineView->bindAsync(0, 0);
@@ -606,28 +679,38 @@ void LightingRenderSystem::recreateSwapchain(const SwapchainChanges& changes)
 	{
 		auto graphicsSystem = getGraphicsSystem();
 		auto deferredSystem = getDeferredSystem();
-		destroyAoBuffer(graphicsSystem, aoBuffer, aoImageViews);
-		aoBuffer = createAoBuffer(graphicsSystem, deferredSystem, aoImageViews);
-
-		destroyShadowBuffer(graphicsSystem,
-			shadowBuffer, shadowImageViews);
-		shadowBuffer = createShadowBuffer(graphicsSystem,
-			deferredSystem, shadowImageViews);
-
 		auto framebufferSize = deferredSystem->getFramebufferSize();
-		for (uint32 i = 0; i < AO_BUFFER_COUNT; i++)
+
+		if (aoBuffer)
 		{
-			auto framebufferView = graphicsSystem->get(aoFramebuffers[i]);
-			Framebuffer::OutputAttachment colorAttachment(
-				aoImageViews[i], true, false, true);
-			framebufferView->update(framebufferSize, &colorAttachment, 1);
+			destroyAoBuffer(graphicsSystem, aoBuffer, aoImageViews);
+			aoBuffer = createAoBuffer(graphicsSystem, deferredSystem, aoImageViews);
 		}
-		for (uint32 i = 0; i < SHADOW_BUFFER_COUNT; i++)
+		if (aoFramebuffers[0])
 		{
-			auto framebufferView = graphicsSystem->get(shadowFramebuffers[i]);
-			Framebuffer::OutputAttachment colorAttachment(
-				shadowImageViews[i], true, false, true);
-			framebufferView->update(framebufferSize, &colorAttachment, 1);
+			for (uint32 i = 0; i < AO_BUFFER_COUNT; i++)
+			{
+				auto framebufferView = graphicsSystem->get(aoFramebuffers[i]);
+				Framebuffer::OutputAttachment colorAttachment(
+					aoImageViews[i], true, false, true);
+				framebufferView->update(framebufferSize, &colorAttachment, 1);
+			}
+		}
+
+		if (shadowBuffer)
+		{
+			destroyShadowBuffer(graphicsSystem, shadowBuffer, shadowImageViews);
+			shadowBuffer = createShadowBuffer(graphicsSystem, deferredSystem, shadowImageViews);
+		}
+		if (shadowFramebuffers[0])
+		{
+			for (uint32 i = 0; i < SHADOW_BUFFER_COUNT; i++)
+			{
+				auto framebufferView = graphicsSystem->get(shadowFramebuffers[i]);
+				Framebuffer::OutputAttachment colorAttachment(
+					shadowImageViews[i], true, false, true);
+				framebufferView->update(framebufferSize, &colorAttachment, 1);
+			}
 		}
 
 		if (lightingDescriptorSet)
@@ -677,9 +760,64 @@ View<Component> LightingRenderSystem::getComponent(ID<Component> instance)
 void LightingRenderSystem::disposeComponents() { components.dispose(); }
 
 //--------------------------------------------------------------------------------------------------
+void LightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
+{
+	if (this->useShadowBuffer == useShadowBuffer && this->useAoBuffer == useAoBuffer) return;
+	this->useShadowBuffer = useShadowBuffer; this->useAoBuffer = useAoBuffer;
+	if (!lightingPipeline) return;
+
+	auto graphicsSystem = getGraphicsSystem();
+	auto deferredSystem = getDeferredSystem();
+	graphicsSystem->destroy(lightingDescriptorSet);
+	lightingDescriptorSet = {};
+
+	auto lightingComponents = components.getData();
+	auto lightingOccupancy = components.getOccupancy();
+	for (uint32 i = 0; i < lightingOccupancy; i++)
+	{
+		graphicsSystem->destroy(lightingComponents[i].descriptorSet);
+		lightingComponents[i].descriptorSet = {};
+	}
+
+	if (this->useShadowBuffer != useShadowBuffer)
+	{
+		if (useShadowBuffer)
+		{
+			shadowBuffer = createShadowBuffer(graphicsSystem, deferredSystem, shadowImageViews);
+			createShadowFramebuffers(shadowFramebuffers,
+				graphicsSystem, deferredSystem, shadowImageViews);
+		}
+		else
+		{
+			destroyShadowFramebuffers(graphicsSystem, shadowFramebuffers);
+			destroyShadowBuffer(graphicsSystem, shadowBuffer, shadowImageViews);
+			shadowBuffer = {};
+		}
+	}
+	if (this->useAoBuffer != useAoBuffer)
+	{
+		if (useAoBuffer)
+		{
+			aoBuffer = createAoBuffer(graphicsSystem, deferredSystem, aoImageViews);
+			createAoFramebuffers(aoFramebuffers, graphicsSystem, deferredSystem, aoImageViews);
+		}
+		else
+		{
+			destroyAoFramebuffers(graphicsSystem, aoFramebuffers);
+			destroyAoBuffer(graphicsSystem, aoBuffer, aoImageViews);
+			aoBuffer = {};
+		}
+	}
+
+	graphicsSystem->destroy(lightingPipeline);
+	lightingPipeline = createLightingPipeline(getDeferredSystem(), useShadowBuffer, useAoBuffer);
+}
+
+//--------------------------------------------------------------------------------------------------
 ID<GraphicsPipeline> LightingRenderSystem::getLightingPipeline()
 {
-	if (!lightingPipeline) lightingPipeline = createLightingPipeline(getDeferredSystem());
+	if (!lightingPipeline)
+		lightingPipeline = createLightingPipeline(getDeferredSystem(), useShadowBuffer, useAoBuffer);
 	return lightingPipeline;
 }
 ID<ComputePipeline> LightingRenderSystem::getIblSpecularPipeline()

@@ -80,7 +80,6 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 //--------------------------------------------------------------------------------------------------
 bool DescriptorSet::destroy()
 {
-	// TODO: add also for each lockReady == 0;
 	if (!instance || readyLock > 0) return false;
 
 	if (GraphicsAPI::isRunning)
