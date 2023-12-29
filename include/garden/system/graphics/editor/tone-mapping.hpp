@@ -28,6 +28,7 @@ using namespace garden::graphics;
 class ToneMappingEditor final
 {
 	ToneMappingRenderSystem* system = nullptr;
+	int toneMapperType = (int)ToneMapper::Uchimura;
 	bool showWindow = false;
 
 	ToneMappingEditor(ToneMappingRenderSystem* system);

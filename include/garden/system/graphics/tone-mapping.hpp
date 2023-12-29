@@ -25,6 +25,11 @@ namespace garden
 using namespace garden;
 using namespace garden::graphics;
 
+enum class ToneMapper : uint8
+{
+	ACES, Uchimura, Count
+};
+
 //--------------------------------------------------------------------------------------------------
 class ToneMappingRenderSystem final : public System,
 	public IRenderSystem, public IDeferredRenderSystem
@@ -40,6 +45,9 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	ID<Buffer> luminanceBuffer = {};
+	bool useBloomBuffer = false;
+	ToneMapper toneMapper = ToneMapper::Uchimura;
+	uint16 _alignment1 = 0;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
@@ -56,7 +64,11 @@ private:
 	friend class ToneMappingEditor;
 public:
 	float exposureCoeff = 1.0f;
-	float ditherStrength = (0.5f / 255.0f); // r8g8b8
+	float ditherIntensity = (0.5f / 255.0f); // r8g8b8
+
+	bool getUseBloomBuffer() const noexcept { return useBloomBuffer; }
+	ToneMapper getToneMapper() const noexcept { return toneMapper; }
+	void setConsts(bool useBloomBuffer, ToneMapper toneMapper);
 
 	ID<GraphicsPipeline> getPipeline();
 	ID<Buffer> getLuminanceBuffer();

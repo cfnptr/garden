@@ -241,25 +241,28 @@ void GeometryRenderSystem::render()
 
 		for (auto geometryComponent : dsCreateBuffer)
 		{
-			View<Image> baseColorMapView, ormMapView;
+			ID<Image> baseColorMap, ormMap;
 			if (geometryComponent->baseColorMap)
 			{
-				baseColorMapView = graphicsSystem->get(geometryComponent->baseColorMap);
+				baseColorMap = geometryComponent->baseColorMap;
+				auto baseColorMapView = graphicsSystem->get(baseColorMap);
 				baseColorMapView->generateMips();
 			}
-			else baseColorMapView = graphicsSystem->get(graphicsSystem->getWhiteTexture());
+			else baseColorMap = graphicsSystem->getWhiteTexture();
 			if (geometryComponent->ormMap)
 			{
-				ormMapView = graphicsSystem->get(geometryComponent->ormMap);
+				ormMap = geometryComponent->ormMap;
+				auto ormMapView = graphicsSystem->get(ormMap);
 				ormMapView->generateMips();
 			}
-			else ormMapView = graphicsSystem->get(graphicsSystem->getGreenTexture());
+			else ormMap = graphicsSystem->getGreenTexture();
 
 			map<string, DescriptorSet::Uniform> uniforms =
 			{
 				{ "baseColorMap", DescriptorSet::Uniform(
-					baseColorMapView->getDefaultView()) },
-				{ "ormMap", DescriptorSet::Uniform(ormMapView->getDefaultView()) }
+					graphicsSystem->get(baseColorMap)->getDefaultView()) },
+				{ "ormMap", DescriptorSet::Uniform(
+					graphicsSystem->get(ormMap)->getDefaultView()) }
 			};
 
 			auto descriptorSet = graphicsSystem->createDescriptorSet(

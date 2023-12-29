@@ -18,7 +18,8 @@
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
 
-// TODO: share the one pipeline using #variantCount 2
+spec const bool USE_THRESHOLD = false;
+spec const bool USE_ANTI_FLICKERING = true;
 
 pipelineState
 {
@@ -42,6 +43,7 @@ uniform pushConstants
 //--------------------------------------------------------------------------------------------------
 void main()
 {
-	float3 color = downsample(srcTexture, fs.texCoords, pc.threshold, true);
+	float3 color = downsample(srcTexture, fs.texCoords,
+		pc.threshold, USE_THRESHOLD, USE_ANTI_FLICKERING);
 	fb.color = float4(max(color, 0.0001f), 0.0f);
 }

@@ -18,17 +18,23 @@
 #include "common/color-space.gsl"
 #include "common/tone-mapping.gsl"
 
+#define ACES_TONE_MAPPER 0
+#define UCHIMURA_TONE_MAPPER 1
+
 pipelineState
 {
 	faceCulling = off;
 }
 
+spec const bool USE_BLOOM_BUFFER = true;
+spec const uint32 TONE_MAPPER = ACES_TONE_MAPPER;
+
 uniform pushConstants
 {
 	uint32 frameIndex;
 	float exposureCoeff;
-	float ditherStrength;
-	float bloomStrength;
+	float ditherIntensity;
+	float bloomIntensity;
 } pc;
 
 uniform Luminance
@@ -52,18 +58,32 @@ out float4 fb.ldr;
 void main()
 {
 	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
-	float3 bloomColor = min(texture(bloomBuffer, fs.texCoords).rgb, 65500.0f); // r11b11b10
-	hdrColor = mix(hdrColor, bloomColor, pc.bloomStrength); // TODO: allow to disable bloom. 
-	// TODO: lens dirt? bloomColor + bloomColor * dirtColor * dirtStrength
+
+	if (USE_BLOOM_BUFFER)
+	{
+		float3 bloomColor = min(texture(bloomBuffer, fs.texCoords).rgb, 65500.0f); // r11b11b10
+		hdrColor = mix(hdrColor, bloomColor, pc.bloomIntensity);
+	}
+
+	// TODO: lens dirt? bloomColor + bloomColor * dirtColor * dirtIntensity
 
 	float3 yxyColor = rgbToYxy(hdrColor);
 	yxyColor.x *= luminance.exposure * pc.exposureCoeff;
 	hdrColor = yxyToRgb(yxyColor);
 
-	float3 tonemappedColor = uchimura(hdrColor);
-	float3 ldrColor = gammaCorrectionPrecise(tonemappedColor);
+	float3 tonemappedColor;
+	if (TONE_MAPPER == ACES_TONE_MAPPER)
+	{
+		tonemappedColor = aces(hdrColor);
+	}
+	else
+	{
+		tonemappedColor = uchimura(hdrColor);
+	}
+
+	float3 ldrColor = gammaCorrectionPrecise(tonemappedColor); // TODO: set precise or not via spec const?
 
 	float random = toFloat(pcg(uint3(gl.fragCoord.xy, pc.frameIndex)).x);
-	ldrColor += mix(-pc.ditherStrength, pc.ditherStrength, random);
+	ldrColor += mix(-pc.ditherIntensity, pc.ditherIntensity, random);
 	fb.ldr = float4(ldrColor, 1.0f);
 }

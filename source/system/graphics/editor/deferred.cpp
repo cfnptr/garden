@@ -79,7 +79,6 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(
 	ID<ImageView> shadowBuffer0, aoBuffer0, aoBuffer1;
 	if (lightingSystem)
 	{
-		
 		shadowBuffer0 = lightingSystem->getShadowImageViews()[0];
 		aoBuffer0 = lightingSystem->getAoImageViews()[0];
 		aoBuffer1 = lightingSystem->getAoImageViews()[1];
@@ -199,16 +198,14 @@ void DeferredEditor::render()
 		auto pipelineView = graphicsSystem->get(bufferPipeline);
 		if (pipelineView->isReady() && graphicsSystem->camera)
 		{
-			auto manager = system->getManager();
-			if (!bufferDescriptorSet)
-			{
-				auto uniforms = getBufferUniforms(manager, graphicsSystem,
-					system->gFramebuffer, system->hdrFramebuffer);
-				bufferDescriptorSet = graphicsSystem->createDescriptorSet(
-					bufferPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, bufferDescriptorSet,
-					"descriptorSet.deferred.editor.buffer");
-			}
+			// Note: we are doing this to get latest buffers. (suboptimal)
+			graphicsSystem->destroy(bufferDescriptorSet);
+			auto uniforms = getBufferUniforms(system->getManager(),
+				graphicsSystem, system->gFramebuffer, system->hdrFramebuffer);
+			bufferDescriptorSet = graphicsSystem->createDescriptorSet(
+				bufferPipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(graphicsSystem, bufferDescriptorSet,
+				"descriptorSet.deferred.editor.buffer");
 
 			auto framebufferView = graphicsSystem->get(
 				graphicsSystem->getSwapchainFramebuffer());

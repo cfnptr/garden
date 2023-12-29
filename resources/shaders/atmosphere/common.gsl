@@ -1,0 +1,369 @@
+//--------------------------------------------------------------------------------------------------
+// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
+//--------------------------------------------------------------------------------------------------
+
+#ifndef ATMOSPHERE_GSL
+#define ATMOSPHERE_GSL
+
+#include "common/math.gsl"
+
+#define TRANSMITTANCE_LUT_WIDTH 256
+#define TRANSMITTANCE_LUT_HEIGHT 64
+#define IRRADIANCE_LUT_WIDTH 
+#define IRRADIANCE_LUT_HEIGHT 
+
+//--------------------------------------------------------------------------------------------------
+struct AtmosphereParameters
+{
+  IrradianceSpectrum solar_irradiance;
+  Angle sun_angular_radius;
+  Length bottom_radius;
+  Length top_radius;
+  // The density profile of air molecules, i.e. a function from altitude to
+  // dimensionless values between 0 (null density) and 1 (maximum density).
+  DensityProfile rayleigh_density;
+  // The scattering coefficient of air molecules at the altitude where their
+  // density is maximum (usually the bottom of the atmosphere), as a function of
+  // wavelength. The scattering coefficient at altitude h is equal to
+  // 'rayleigh_scattering' times 'rayleigh_density' at this altitude.
+  ScatteringSpectrum rayleigh_scattering;
+  // The density profile of aerosols, i.e. a function from altitude to
+  // dimensionless values between 0 (null density) and 1 (maximum density).
+  DensityProfile mie_density;
+  // The scattering coefficient of aerosols at the altitude where their density
+  // is maximum (usually the bottom of the atmosphere), as a function of
+  // wavelength. The scattering coefficient at altitude h is equal to
+  // 'mie_scattering' times 'mie_density' at this altitude.
+  ScatteringSpectrum mie_scattering;
+  // The extinction coefficient of aerosols at the altitude where their density
+  // is maximum (usually the bottom of the atmosphere), as a function of
+  // wavelength. The extinction coefficient at altitude h is equal to
+  // 'mie_extinction' times 'mie_density' at this altitude.
+  ScatteringSpectrum mie_extinction;
+  // The asymetry parameter for the Cornette-Shanks phase function for the
+  // aerosols.
+  Number mie_phase_function_g;
+  // The density profile of air molecules that absorb light (e.g. ozone), i.e.
+  // a function from altitude to dimensionless values between 0 (null density)
+  // and 1 (maximum density).
+  DensityProfile absorption_density;
+  // The extinction coefficient of molecules that absorb light (e.g. ozone) at
+  // the altitude where their density is maximum, as a function of wavelength.
+  // The extinction coefficient at altitude h is equal to
+  // 'absorption_extinction' times 'absorption_density' at this altitude.
+  ScatteringSpectrum absorption_extinction;
+  // The average albedo of the ground.
+  DimensionlessSpectrum ground_albedo;
+  // The cosine of the maximum Sun zenith angle for which atmospheric scattering
+  // must be precomputed (for maximum precision, use the smallest Sun zenith
+  // angle yielding negligible sky light radiance values. For instance, for the
+  // Earth case, 102 degrees is a good choice - yielding mu_s_min = -0.2).
+  Number mu_s_min;
+};
+
+//--------------------------------------------------------------------------------------------------
+struct MediumSampleRGB
+{
+	float3 scattering;
+	float3 absorption;
+	float3 extinction;
+
+	float3 scatteringMie;
+	float3 absorptionMie;
+	float3 extinctionMie;
+
+	float3 scatteringRay;
+	float3 absorptionRay;
+	float3 extinctionRay;
+
+	float3 scatteringOzo;
+	float3 absorptionOzo;
+	float3 extinctionOzo;
+
+	float3 albedo;
+};
+
+MediumSampleRGB sampleMediumRGB(float3 worldPos, AtmosphereParameters Atmosphere)
+{
+	const float viewHeight = length(worldPos) - Atmosphere.BottomRadius;
+
+	const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
+	const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
+	const float densityOzo = saturate(viewHeight < Atmosphere.AbsorptionDensity0LayerWidth ?
+		Atmosphere.AbsorptionDensity0LinearTerm * viewHeight + Atmosphere.AbsorptionDensity0ConstantTerm :
+		Atmosphere.AbsorptionDensity1LinearTerm * viewHeight + Atmosphere.AbsorptionDensity1ConstantTerm);
+
+	MediumSampleRGB s;
+
+	s.scatteringMie = densityMie * Atmosphere.MieScattering;
+	s.absorptionMie = densityMie * Atmosphere.MieAbsorption;
+	s.extinctionMie = densityMie * Atmosphere.MieExtinction;
+
+	s.scatteringRay = densityRay * Atmosphere.RayleighScattering;
+	s.absorptionRay = 0.0f;
+	s.extinctionRay = s.scatteringRay + s.absorptionRay;
+
+	s.scatteringOzo = 0.0;
+	s.absorptionOzo = densityOzo * Atmosphere.AbsorptionExtinction;
+	s.extinctionOzo = s.scatteringOzo + s.absorptionOzo;
+
+	s.scattering = s.scatteringMie + s.scatteringRay + s.scatteringOzo;
+	s.absorption = s.absorptionMie + s.absorptionRay + s.absorptionOzo;
+	s.extinction = s.extinctionMie + s.extinctionRay + s.extinctionOzo;
+	s.albedo = getAlbedo(s.scattering, s.extinction);
+
+	return s;
+}
+
+//--------------------------------------------------------------------------------------------------
+float raySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR)
+{
+	float a = dot(rd, rd);
+	float3 s0r0 = r0 - s0;
+	float b = 2.0f * dot(rd, s0r0);
+	float c = dot(s0r0, s0r0) - (sR * sR);
+	float delta = b * b - 4.0f * a * c;
+	if (delta < 0.0f || a == 0.0f) return -1.0f;
+
+	float sol0 = (-b - sqrt(delta)) / (2.0f * a);
+	float sol1 = (-b + sqrt(delta)) / (2.0f * a);
+	if (sol0 < 0.0f && sol1 < 0.0f) return -1.0f;
+
+	if (sol0 < 0.0f) return max(0.0f, sol1);
+	else if (sol1 < 0.0f) return max(0.0f, sol0);
+	return max(0.0f, min(sol0, sol1));
+}
+float hgPhase(float g, float cosTheta) // CornetteShanksMiePhaseFunction
+{
+	float k = 3.0f / (8.0f * M_PI) * (1.0f - g * g) / (2.0f + g * g);
+	return k * (1.0f + cosTheta * cosTheta) / pow(1.0f + g * g - 2.0f * g * -cosTheta, 1.5f);
+}
+float rayleighPhaseFunction(float nu)
+{
+	float k = 3.0f / (16.0f * M_PI * sr);
+	return k * (1.0f + nu * nu);
+}
+
+//--------------------------------------------------------------------------------------------------
+struct SingleScatteringResult
+{
+	float3 l;
+	float3 opticalDepth;
+	float3 transmittance;
+	float3 multiScatAs1;
+	float3 newMultiScatStep0Out;
+	float3 newMultiScatStep1Out;
+};
+
+
+// TODO: use atmosphereparams instead of passing each value, like it's done in unreal atmosphere
+
+SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos,
+	float3 worldDir, float3 sunDir, float bottomRadius, float topRadius, float miePhaseG,
+	bool ground, float sampleCountIni, float fepthBufferValue, bool variableSampleCount, bool mieRayPhase,
+	float tMaxMax = 9000000.0f)
+{
+	SingleScatteringResult result = SingleScatteringResult(
+		float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f));
+	float3 clipSpace = float3(texCoords * float2(2.0f) + float2(-1.0f), 1.0f); // TODO: check if we should invert Y
+
+	float3 earthO = float3(0.0f, 0.0f, 0.0f);
+	float tBottom = raySphereIntersectNearest(worldPos, worldDir, earthO, bottomRadius);
+	float tTop = raySphereIntersectNearest(worldPos, worldDir, earthO, topRadius);
+
+	float tMax = 0.0f;
+	if (tBottom < 0.0f)
+	{
+		if (tTop < 0.0f)
+		{
+			tMax = 0.0f;
+			return result;
+		}
+		else tMax = tTop;
+	}
+	else
+	{
+		if (tTop > 0.0f) tMax = min(tTop, tBottom);
+	}
+
+	if (fepthBufferValue >= 0.0f)
+	{
+		clipSpace.z = depthBufferValue;
+		if (clipSpace.z < 1.0f)
+		{
+			float4 depthBufferWorldPos = gSkyInvViewProjMat * float4(clipSpace, 1.0); // TODO gSkyInvViewProjMat
+			depthBufferWorldPos /= depthBufferWorldPos.w;
+			float tDepth = length(depthBufferWorldPos.xyz -
+				(worldPos + float3(0.0, 0.0, -bottomRadius)));
+			if (tDepth < tMax) tMax = tDepth;
+		}
+	}
+	tMax = min(tMax, tMaxMax);
+
+	float sampleCount = sampleCountIni;
+	float sampleCountFloor = sampleCountIni;
+	float tMaxFloor = tMax;
+	if (variableSampleCount)
+	{
+		sampleCount = lerp(rayMarchMinMaxSPP.x,
+			rayMarchMinMaxSPP.y, clamp(tMax * 0.01f, 0.0f, 1.0f)); // TODO: rayMarchMinMaxSPP
+		sampleCountFloor = floor(sampleCount);
+		tMaxFloor = tMax * sampleCountFloor / sampleCount;
+	}
+	float dt = tMax / sampleCount;
+
+	const float uniformPhase = 1.0f / (4.0f * M_PI);
+	float3 wi = sunDir;
+	float3 wo = worldDir;
+	float cosTheta = dot(wi, wo);
+	float miePhaseValue = hgPhase(miePhaseG, -cosTheta);
+	float rayleighPhaseValue = rayleighPhaseFunction(cosTheta);
+
+	float3 l = 0.0f;
+	float3 throughput = 1.0f;
+	float3 opticalDepth = 0.0f;
+	float t = 0.0f, tPrev = 0.0f;
+	const float sampleSegmentT = 0.3f;
+
+	for (float s = 0.0f; s < sampleCount; s += 1.0f)
+	{
+		if (variableSampleCount)
+		{
+			float t0 = (s) / sampleCountFloor;
+			float t1 = (s + 1.0f) / sampleCountFloor;
+			t0 = t0 * t0, t1 = t1 * t1;
+
+			t0 = tMaxFloor * t0;
+			if (t1 > 1.0f) t1 = tMax;
+			else t1 = tMaxFloor * t1;
+			
+			t = t0 + (t1 - t0) * sampleSegmentT;
+			dt = t1 - t0;
+		}
+		else
+		{
+			float newT = tMax * (s + sampleSegmentT) / sampleCount;
+			dt = newT - t; t = newT;
+		}
+
+		float3 p = worldPos + t * worldDir;
+		MediumSampleRGB medium = sampleMediumRGB(p, Atmosphere);
+		float3 sampleOpticalDepth = medium.extinction * dt;
+		float3 sampleTransmittance = exp(-sampleOpticalDepth);
+		opticalDepth += sampleOpticalDepth;
+
+		float pHeight = length(p);
+		float3 upVector = p / pHeight;
+		float sunZenithCosAngle = dot(SunDir, UpVector);
+
+		float2 uv;
+		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
+		float3 transmittanceToSun = TransmittanceLutTexture.SampleLevel(samplerLinearClamp, uv, 0).rgb;
+
+		float3 PhaseTimesScattering;
+		if (MieRayPhase)
+		{
+			PhaseTimesScattering = medium.scatteringMie * MiePhaseValue + medium.scatteringRay * RayleighPhaseValue;
+		}
+		else
+		{
+			PhaseTimesScattering = medium.scattering * uniformPhase;
+		}
+
+		// Earth shadow 
+		float tEarth = raySphereIntersectNearest(P, SunDir, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius);
+		float earthShadow = tEarth >= 0.0f ? 0.0f : 1.0f;
+
+		// Dual scattering for multi scattering 
+
+		float3 multiScatteredLuminance = 0.0f;
+#if MULTISCATAPPROX_ENABLED
+		multiScatteredLuminance = GetMultipleScattering(Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
+#endif
+
+		float shadow = 1.0f;
+#if SHADOWMAP_ENABLED
+		// First evaluate opaque shadow
+		shadow = getShadow(Atmosphere, P);
+#endif
+
+		float3 S = (arthShadow * shadow * TransmittanceToSun * PhaseTimesScattering + multiScatteredLuminance * medium.scattering)
+
+		// When using the power serie to accumulate all sattering order, serie r must be <1 for a serie to converge.
+		// Under extreme coefficient, MultiScatAs1 can grow larger and thus result in broken visuals.
+		// The way to fix that is to use a proper analytical integration as proposed in slide 28 of http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/
+		// However, it is possible to disable as it can also work using simple power serie sum unroll up to 5th order. The rest of the orders has a really low contribution.
+#define MULTI_SCATTERING_POWER_SERIE 1
+
+#if MULTI_SCATTERING_POWER_SERIE==0
+		// 1 is the integration of luminance over the 4pi of a sphere, and assuming an isotropic phase function of 1.0/(4*PI)
+		result.MultiScatAs1 += throughput * medium.scattering * 1 * dt;
+#else
+		float3 MS = medium.scattering * 1;
+		float3 MSint = (MS - MS * SampleTransmittance) / medium.extinction;
+		result.MultiScatAs1 += throughput * MSint;
+#endif
+
+		// Evaluate input to multi scattering 
+		{
+			float3 newMS;
+
+			newMS = earthShadow * TransmittanceToSun * medium.scattering * uniformPhase * 1;
+			result.NewMultiScatStep0Out += throughput * (newMS - newMS * SampleTransmittance) / medium.extinction;
+			//	result.NewMultiScatStep0Out += SampleTransmittance * throughput * newMS * dt;
+
+			newMS = medium.scattering * uniformPhase * multiScatteredLuminance;
+			result.NewMultiScatStep1Out += throughput * (newMS - newMS * SampleTransmittance) / medium.extinction;
+			//	result.NewMultiScatStep1Out += SampleTransmittance * throughput * newMS * dt;
+		}
+
+#if 0
+		L += throughput * S * dt;
+		throughput *= SampleTransmittance;
+#else
+		// See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/ 
+		float3 Sint = (S - S * SampleTransmittance) / medium.extinction;	// integrate along the current step segment 
+		L += throughput * Sint;														// accumulate and also take into account the transmittance from previous steps
+		throughput *= SampleTransmittance;
+#endif
+
+		tPrev = t;
+	}
+
+	if (ground && tMax == tBottom && tBottom > 0.0)
+	{
+		// Account for bounced light off the earth
+		float3 P = WorldPos + tBottom * WorldDir;
+		float pHeight = length(P);
+
+		const float3 UpVector = P / pHeight;
+		float SunZenithCosAngle = dot(SunDir, UpVector);
+		float2 uv;
+		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
+		float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(samplerLinearClamp, uv, 0).rgb;
+
+		const float NdotL = saturate(dot(normalize(UpVector), normalize(SunDir)));
+		L += TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
+	}
+
+	result.L = L;
+	result.OpticalDepth = OpticalDepth;
+	result.Transmittance = throughput;
+	return result;
+}
+
+#endif // ATMOSPHERE_GSL

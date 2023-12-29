@@ -139,6 +139,7 @@ public:
 	ID<Image> getWhiteTexture();
 	ID<Image> getGreenTexture();
 	ID<Image> getNormalMapTexture();
+	// Note: be carefull when using these functions inside ->get image view code!
 
 	ID<Framebuffer> getSwapchainFramebuffer()
 		const noexcept { return swapchainFramebuffer; }

@@ -400,7 +400,8 @@ vector<void*> Pipeline::createShaders(
 	{
 		auto& shaderCode = code[i];
 		vk::ShaderModuleCreateInfo shaderInfo({},
-			(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
+	
+		(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
 		shaders[i] = (VkShaderModule)Vulkan::device.createShaderModule(shaderInfo);
 
 		#if GARDEN_DEBUG
@@ -423,7 +424,73 @@ void Pipeline::destroyShaders(const vector<void*>& shaders)
 }
 
 //--------------------------------------------------------------------------------------------------
-void Pipeline::updateDescriptorTime(
+void Pipeline::fillSpecConsts(
+	const fs::path& path, ShaderStage shaderStage, uint8 variantCount, void* specInfo,
+	const map<string, SpecConst>& specConsts, const map<string, SpecConstData>& specConstData)
+{
+	auto info = (vk::SpecializationInfo*)specInfo;
+	uint32 dataSize = 0, entryCount = 0;
+
+	if (variantCount > 1)
+	{
+		dataSize = sizeof(uint32);
+		entryCount = 1;
+	}
+
+	for (auto& pair : specConstData)
+	{
+		if (!hasAnyFlag(pair.second.shaderStages, shaderStage)) continue;
+		dataSize += toBinarySize(pair.second.dataType);
+		entryCount++;
+	}
+
+	if (entryCount == 0) return;
+
+	auto data = (uint8*)malloc(dataSize);
+	if (!data) abort();
+	auto entries = (vk::SpecializationMapEntry*)
+		malloc(entryCount * sizeof(vk::SpecializationMapEntry));
+	if (!entries) abort();
+
+	uint32 dataOffset = 0, itemIndex = 0;
+	if (variantCount > 1)
+	{
+		uint32 variantCountValue = variantCount;
+		vk::SpecializationMapEntry entry(0, 0, sizeof(uint32));
+		entries[itemIndex] = entry;
+		memcpy(data, &variantCountValue, sizeof(uint32));
+		itemIndex = 1; dataOffset = sizeof(uint32);
+	}
+
+	for (auto& pair : specConstData)
+	{
+		if (!hasAnyFlag(pair.second.shaderStages, shaderStage)) continue;
+
+		#if GARDEN_DEBUG
+		if (specConsts.find(pair.first) == specConsts.end())
+		{
+			throw runtime_error("Missing required pipeline spec const. ("
+				"specConst: " + pair.first + ","
+				"pipelinePath: " + path.generic_string() + ")");
+		}
+		#endif
+
+		auto& value = specConsts.at(pair.first);
+		vk::SpecializationMapEntry entry(pair.second.index,
+			dataOffset, toBinarySize(pair.second.dataType));
+		entries[itemIndex++] = entry;
+		memcpy(data + dataOffset, value.constBase.data, entry.size);
+		dataOffset += (uint32)entry.size;
+	}
+	
+	info->mapEntryCount = entryCount;
+	info->pMapEntries = entries;
+	info->dataSize = dataSize;
+	info->pData = data;
+}
+
+//--------------------------------------------------------------------------------------------------
+void Pipeline::updateDescriptorsLock(
 	const DescriptorData* descriptorData, uint8 descriptorDataSize)
 {
 	for (uint8 i = 0; i < descriptorDataSize; i++)
@@ -638,7 +705,7 @@ void Pipeline::bindDescriptorSets(
 	command.descriptorData = descriptorData;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	updateDescriptorTime(descriptorData, descriptorDataSize);
+	updateDescriptorsLock(descriptorData, descriptorDataSize);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -711,7 +778,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 
 	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	updateDescriptorTime(descriptorData, descriptorDataSize);
+	updateDescriptorsLock(descriptorData, descriptorDataSize);
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 
 	descriptorSets.clear();

@@ -16,8 +16,10 @@
 
 #include "garden/system/graphics/bloom.hpp"
 #include "garden/system/graphics/deferred.hpp"
+#include "garden/system/graphics/tone-mapping.hpp"
 #include "garden/system/graphics/editor/bloom.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/settings.hpp"
 
 using namespace garden;
 
@@ -39,8 +41,9 @@ static ID<Image> createBloomBufferData(GraphicsSystem* graphicsSystem,
 		(uint8)calcMipCount(bloomBufferSize));
 	Image::Mips mips(mipCount);
 	for (uint8 i = 0; i < mipCount; i++) mips[i].push_back(nullptr);
-	auto image = graphicsSystem->createImage(bufferFormat, Image::Bind::ColorAttachment |
-		Image::Bind::Sampled, mips, bloomBufferSize, Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(bufferFormat,
+		Image::Bind::ColorAttachment | Image::Bind::Sampled |
+		Image::Bind::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.bloom.buffer");
 
 	imageViews.resize(mipCount);
@@ -127,10 +130,20 @@ static void createBloomDescriptorSets(Manager* manager, GraphicsSystem* graphics
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createDownsample0Pipeline(ID<Framebuffer> framebuffer)
+static ID<GraphicsPipeline> createDownsample0Pipeline(Manager* manager,
+	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
+	map<string, Pipeline::SpecConst> specConsts =
+	{
+		{ "USE_THRESHOLD", Pipeline::SpecConst(useThreshold) },
+		{ "USE_ANTI_FLICKERING", Pipeline::SpecConst(useAntiFlickering) }
+	};
+
+	auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
+	toneMappingSystem->setConsts(true, toneMappingSystem->getToneMapper());
+
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"bloom/downsample0", framebuffer);
+		"bloom/downsample0", framebuffer, false, true, 0, 0, specConsts);
 }
 static ID<GraphicsPipeline> createDownsamplePipeline(ID<Framebuffer> framebuffer)
 {
@@ -146,24 +159,34 @@ static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 //--------------------------------------------------------------------------------------------------
 void BloomRenderSystem::initialize()
 {
-	auto graphicsSystem = getGraphicsSystem();
-	auto framebufferSize = getDeferredSystem()->getFramebufferSize();
+	auto manager = getManager();
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem) settingsSystem->getBool("useBloom", isEnabled);
 
-	if (!bloomBuffer)
+	if (isEnabled)
 	{
-		bloomBuffer = createBloomBufferData(graphicsSystem,
-			framebufferSize, imageViews, sizeBuffer);
+		auto graphicsSystem = getGraphicsSystem();
+		auto framebufferSize = getDeferredSystem()->getFramebufferSize();
+
+		if (!bloomBuffer)
+		{
+			bloomBuffer = createBloomBufferData(graphicsSystem,
+				framebufferSize, imageViews, sizeBuffer);
+		}
+		if (framebuffers.empty())
+		{
+			createBloomFramebuffers(graphicsSystem,
+				framebufferSize, imageViews, framebuffers);
+		}
+
+		if (!downsample0Pipeline)
+		{
+			downsample0Pipeline = createDownsample0Pipeline(manager,
+				framebuffers[0], useThreshold, useAntiFlickering);
+		}
+		if (!downsamplePipeline) downsamplePipeline = createDownsamplePipeline(framebuffers[0]);
+		if (!upsamplePipeline) upsamplePipeline = createUpsamplePipeline(framebuffers[0]);
 	}
-	if (framebuffers.empty())
-	{
-		createBloomFramebuffers(graphicsSystem,
-			framebufferSize, imageViews, framebuffers);
-	}
-	
-	auto framebuffer = framebuffers[0];
-	if (!downsample0Pipeline) downsample0Pipeline = createDownsample0Pipeline(framebuffer);
-	if (!downsamplePipeline) downsamplePipeline = createDownsamplePipeline(framebuffer);
-	if (!upsamplePipeline) upsamplePipeline = createUpsamplePipeline(framebuffer);
 
 	#if GARDEN_EDITOR
 	editor = new BloomEditor(this);
@@ -187,6 +210,35 @@ void BloomRenderSystem::render()
 void BloomRenderSystem::preLdrRender()
 {
 	auto graphicsSystem = getGraphicsSystem();
+	if (!isEnabled || intensity == 0.0f)
+	{
+		if (bloomBuffer)
+		{
+			auto imageView = graphicsSystem->get(bloomBuffer);
+			imageView->clear(float4(0.0f));
+		}
+		return;
+	}
+	
+	if (!bloomBuffer)
+	{
+		bloomBuffer = createBloomBufferData(graphicsSystem,
+			getDeferredSystem()->getFramebufferSize(), imageViews, sizeBuffer);
+	}
+	if (framebuffers.empty())
+	{
+		createBloomFramebuffers(graphicsSystem,
+			getDeferredSystem()->getFramebufferSize(), imageViews, framebuffers);
+	}
+
+	if (!downsample0Pipeline)
+	{
+		downsample0Pipeline = createDownsample0Pipeline(getManager(),
+			framebuffers[0], useThreshold, useAntiFlickering);
+	}
+	if (!downsamplePipeline) downsamplePipeline = createDownsamplePipeline(framebuffers[0]);
+	if (!upsamplePipeline) upsamplePipeline = createUpsamplePipeline(framebuffers[0]);
+	
 	auto downsample0PipelineView = graphicsSystem->get(downsample0Pipeline);
 	auto downsamplePipelineView = graphicsSystem->get(downsamplePipeline);
 	auto upsamplePipelineView = graphicsSystem->get(upsamplePipeline);
@@ -251,33 +303,80 @@ void BloomRenderSystem::recreateSwapchain(const SwapchainChanges& changes)
 		auto graphicsSystem = getGraphicsSystem();
 		auto framebufferSize = getDeferredSystem()->getFramebufferSize();
 
-		for (auto descriptorSet : descriptorSets)
-			graphicsSystem->destroy(descriptorSet);
-		descriptorSets.clear();
-		for (auto framebuffer : framebuffers)
-			graphicsSystem->destroy(framebuffer);
-		for (auto imageView : imageViews)
-			graphicsSystem->destroy(imageView);
-		graphicsSystem->destroy(bloomBuffer);
+		if (!descriptorSets.empty())
+		{
+			for (auto descriptorSet : descriptorSets)
+				graphicsSystem->destroy(descriptorSet);
+			descriptorSets.clear();
+		}
 
-		bloomBuffer = createBloomBufferData(graphicsSystem,
-			framebufferSize, imageViews, sizeBuffer);
-		createBloomFramebuffers(graphicsSystem,
-			framebufferSize, imageViews, framebuffers);
+		if (!framebuffers.empty())
+		{
+			for (auto framebuffer : framebuffers)
+				graphicsSystem->destroy(framebuffer);
+		}
+		if (!imageViews.empty())
+		{
+			for (auto imageView : imageViews)
+				graphicsSystem->destroy(imageView);
+		}
 
-		auto pipelineView = graphicsSystem->get(downsample0Pipeline);
-		pipelineView->updateFramebuffer(framebuffers[0]);
-		pipelineView = graphicsSystem->get(downsamplePipeline);
-		pipelineView->updateFramebuffer(framebuffers[0]);
-		pipelineView = graphicsSystem->get(upsamplePipeline);
-		pipelineView->updateFramebuffer(framebuffers[0]);
+		if (bloomBuffer)
+		{
+			graphicsSystem->destroy(bloomBuffer);
+			bloomBuffer = createBloomBufferData(graphicsSystem,
+				framebufferSize, imageViews, sizeBuffer);
+		}
+		if (!framebuffers.empty())
+		{
+			createBloomFramebuffers(graphicsSystem,
+				framebufferSize, imageViews, framebuffers);
+		}
+
+		if (downsample0Pipeline)
+		{
+			auto pipelineView = graphicsSystem->get(downsample0Pipeline);
+			pipelineView->updateFramebuffer(framebuffers[0]);
+		}
+		if (downsamplePipeline)
+		{
+			auto pipelineView = graphicsSystem->get(downsamplePipeline);
+			pipelineView->updateFramebuffer(framebuffers[0]);
+		}
+		if (upsamplePipeline)
+		{
+			auto pipelineView = graphicsSystem->get(upsamplePipeline);
+			pipelineView->updateFramebuffer(framebuffers[0]);
+		}
 	}
+}
+
+//--------------------------------------------------------------------------------------------------
+void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
+{
+	if ((this->useThreshold == useThreshold &&
+		this->useAntiFlickering == useAntiFlickering)) return;
+	this->useThreshold = useThreshold; this->useAntiFlickering = useAntiFlickering;
+	if (!downsample0Pipeline) return;
+
+	auto graphicsSystem = getGraphicsSystem();
+	for (auto descriptorSet : descriptorSets)
+		graphicsSystem->destroy(descriptorSet);
+	descriptorSets.clear();
+	graphicsSystem->destroy(downsample0Pipeline);
+
+	downsample0Pipeline = createDownsample0Pipeline(getManager(),
+		getFramebuffers()[0], useThreshold, useAntiFlickering);
 }
 
 //--------------------------------------------------------------------------------------------------
 ID<GraphicsPipeline> BloomRenderSystem::getDownsample0Pipeline()
 {
-	if (!downsample0Pipeline) downsample0Pipeline = createDownsample0Pipeline(getFramebuffers()[0]);
+	if (!downsample0Pipeline)
+	{
+		downsample0Pipeline = createDownsample0Pipeline(getManager(),
+			getFramebuffers()[0], useThreshold, useAntiFlickering);
+	}
 	return downsample0Pipeline;
 }
 ID<GraphicsPipeline> BloomRenderSystem::getDownsamplePipeline()

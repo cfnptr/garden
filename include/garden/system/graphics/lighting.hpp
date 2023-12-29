@@ -49,7 +49,9 @@ class IShadowRenderSystem
 {
 	LightingRenderSystem* lightingSystem = nullptr;
 protected:
+	virtual void preShadowRender() { }
 	virtual bool shadowRender() = 0;
+
 	friend class LightingRenderSystem;
 public:
 	LightingRenderSystem* getLightingSystem() noexcept
@@ -67,7 +69,9 @@ class IAoRenderSystem
 {
 	LightingRenderSystem* lightingSystem = nullptr;
 protected:
+	virtual void preAoRender() { }
 	virtual bool aoRender() = 0;
+
 	friend class LightingRenderSystem;
 public:
 	LightingRenderSystem* getLightingSystem() noexcept
@@ -101,6 +105,9 @@ class LightingRenderSystem final : public System,
 	ID<GraphicsPipeline> aoDenoisePipeline = {};
 	ID<DescriptorSet> lightingDescriptorSet = {};
 	ID<DescriptorSet> aoDenoiseDescriptorSet = {};
+	bool useShadowBuffer = false;
+	bool useAoBuffer = false;
+	uint16 _alignment = 0;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
@@ -123,6 +130,10 @@ class LightingRenderSystem final : public System,
 	friend class LightingEditor;
 public:
 	float4 shadowColor = float4(1.0f);
+
+	bool getUseShadowBuffer() const noexcept { return useShadowBuffer; }
+	bool getUseAoBuffer() const noexcept { return useAoBuffer; }
+	void setConsts(bool useShadowBuffer, bool useAoBuffer);
 
 	ID<GraphicsPipeline> getLightingPipeline();
 	ID<ComputePipeline> getIblSpecularPipeline();

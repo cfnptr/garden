@@ -19,6 +19,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/graphics/editor.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/settings.hpp"
 
 using namespace garden;
 
@@ -60,9 +61,25 @@ void BloomEditor::render()
 	if (ImGui::Begin("Light Bloom (Glow)", &showWindow,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::SliderFloat("Strength", &system->strength, 0.0f, 1.0f);
-		ImGui::DragFloat("Threshold", &system->threshold, 0.01f, 0.0f, FLT_MAX);
+		auto useThreshold = system->useThreshold;
+		auto useAntiFlickering = system->useAntiFlickering;
 
+		if (ImGui::Checkbox("Enabled", &system->isEnabled))
+		{
+			auto settingsSystem = system->getManager()->tryGet<SettingsSystem>();
+			if (settingsSystem) settingsSystem->setBool("useBloom", system->isEnabled);
+		}
+
+		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
+
+		if (ImGui::Checkbox("Use Anti Flickering", &useAntiFlickering) ||
+			ImGui::Checkbox("Use Threshold", &useThreshold))
+		{
+			system->setConsts(useThreshold, useAntiFlickering);
+		}
+
+		ImGui::DragFloat("Threshold", &system->threshold, 0.01f, 0.0f, FLT_MAX);
+		
 		ImGui::Checkbox("Visualize Threshold", &visualizeThreshold);
 		if (ImGui::BeginItemTooltip())
 		{

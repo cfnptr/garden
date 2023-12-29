@@ -18,6 +18,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/graphics/editor.hpp"
+#include "garden/system/settings.hpp"
 
 using namespace garden;
 
@@ -38,10 +39,19 @@ void SsaoEditor::render()
 	if (ImGui::Begin("SSAO (Ambient Occlusion)", &showWindow,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::Checkbox("Enabled", &system->isEnabled);
+		if (ImGui::Checkbox("Enabled", &system->isEnabled))
+		{
+			auto settingsSystem = system->getManager()->tryGet<SettingsSystem>();
+			if (settingsSystem) settingsSystem->setBool("useSSAO", system->isEnabled);
+		}
+
 		ImGui::DragFloat("Radius", &system->radius, 0.01f, 0.0f, FLT_MAX);
 		ImGui::SliderFloat("Bias", &system->bias, 0.0f, 1.0f);
 		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
+
+		int sampleCount = system->sampleCount;
+		if (ImGui::InputInt("Sample Count", &sampleCount))
+			system->setConsts(std::abs(sampleCount));
 	}
 	ImGui::End();
 }

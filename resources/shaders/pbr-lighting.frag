@@ -27,6 +27,9 @@ pipelineState
 in float2 fs.texCoords;
 out float4 fb.hdr;
 
+spec const bool USE_SHADOW_BUFFER = false;
+spec const bool USE_AO_BUFFER = false;
+
 uniform sampler2D gBuffer0;
 uniform sampler2D gBuffer1;
 uniform sampler2D gBuffer2;
@@ -63,8 +66,8 @@ void main()
 	float4 gData0 = texture(gBuffer0, fs.texCoords);
 	float4 gData1 = texture(gBuffer1, fs.texCoords);
 	float4 gData2 = texture(gBuffer2, fs.texCoords);
-	float shadow = texture(shadowBuffer, fs.texCoords).r;
-
+	float shadow = USE_SHADOW_BUFFER ? texture(shadowBuffer, fs.texCoords).r : 1.0f;
+	float ambientOcclusion = USE_AO_BUFFER ? texture(aoBuffer, fs.texCoords).r : 1.0f;
 	float4 worldPos = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
 	float3 viewDir = calcViewDirection(worldPos.xyz / worldPos.w);
 
@@ -73,7 +76,7 @@ void main()
 	pbrMaterial.metallic = decodeMetallic(gData0);
 	pbrMaterial.roughness = decodeRoughness(gData2);
 	pbrMaterial.reflectance = decodeReflectance(gData1);
-	pbrMaterial.ambientOcclusion = texture(aoBuffer, fs.texCoords).r;
+	pbrMaterial.ambientOcclusion = ambientOcclusion;
 	pbrMaterial.viewDirection = viewDir;
 	pbrMaterial.normal = decodeNormal(gData1);
 	pbrMaterial.shadow = shadow;

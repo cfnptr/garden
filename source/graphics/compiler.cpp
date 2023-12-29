@@ -20,6 +20,10 @@
 #include <fstream>
 #include <iostream>
 
+#if _WIN32
+#include <windows.h>
+#endif
+
 #if __APPLE__
 #define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.2"
 #else
@@ -45,20 +49,20 @@ namespace
 		uint8 descriptorSetCount = 0;
 		uint8 variantCount = 0;
 		uint16 pushConstantsSize = 0;
+		uint8 specConstCount = 0;
 	};
 	struct GraphicsGslValues final : public GslValues
 	{
-		uint16 vertexAttributesSize = 0;
 		uint8 vertexAttributeCount = 0;
 		uint8 blendStateCount = 0;
 		ShaderStage pushConstantsStages = {};
-		uint8 _alignmnet1 = 0;
+		uint16 vertexAttributesSize = 0;
 		GraphicsPipeline::State pipelineState;
-	// should be algined.
+		// should be algined.
 	};
 	struct ComputeGslValues final : public GslValues
 	{
-		uint16 _alignmnet1 = 0;
+		uint8 _alignmnet = 0;
 		int3 localSize = int3(0);
 		// should be algined.
 	};
@@ -76,9 +80,9 @@ namespace
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
 		bool isSkipMode = false, isReadonly = false, isWriteonly = false,
 			isRestrict = false, isVolatile = false, isCoherent = false;
-		uint8 attachmentIndex = 0, descriptorSetIndex = 0;
+		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
-		Pipeline::SamplerState samplerState; 
+		Pipeline::SamplerState samplerState;
 	};
 	struct GraphicsFileData final : public FileData
 	{
@@ -517,33 +521,25 @@ static SamplerFilter toSamplerFilter(string_view name, uint32 lineIndex)
 {
 	try { return toSamplerFilter(name); }
 	catch (const exception&)
-	{
-		throw CompileError("unrecognized sampler filter type", lineIndex, string(name));
-	}
+	{ throw CompileError("unrecognized sampler filter type", lineIndex, string(name)); }
 }
 static Pipeline::SamplerWrap toSamplerWrap(string_view name, uint32 lineIndex)
 {
 	try { return toSamplerWrap(name); }
 	catch (const exception&)
-	{
-		throw CompileError("unrecognized sampler wrap type", lineIndex, string(name));
-	}
+	{ throw CompileError("unrecognized sampler wrap type", lineIndex, string(name)); }
 }
 static Pipeline::BorderColor toBorderColor(string_view name, uint32 lineIndex)
 {
 	try { return toBorderColor(name); }
 	catch (const exception&)
-	{
-		throw CompileError("unrecognized border color type", lineIndex, string(name));
-	}
+	{ throw CompileError("unrecognized border color type", lineIndex, string(name)); }
 }
 static Pipeline::CompareOperation toCompareOperation(string_view name, uint32 lineIndex)
 {
 	try { return toCompareOperation(name); }
 	catch (const exception&)
-	{
-		throw CompileError("unrecognized compare operation type", lineIndex, string(name));
-	}
+	{ throw CompileError("unrecognized compare operation type", lineIndex, string(name)); }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1011,7 +1007,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 
 //--------------------------------------------------------------------------------------------------
 static void onSpecConst(FileData& fileData, LineData& lineData,
-	map<string, Pipeline::SpecConstData>& specConsts)
+	map<string, Pipeline::SpecConstData>& specConsts, ShaderStage shaderStage)
 {
 	if (lineData.isSpecConst == 1)
 	{
@@ -1024,23 +1020,76 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		lineData.isSpecConst = 2;
 		return;
 	}
+	else if (lineData.isSpecConst == 2)
+	{
+		try { lineData.dataType = toGslDataType(lineData.word); }
+		catch (const exception&)
+		{
+			throw CompileError("unrecognized spec const "
+				"GSL data type", fileData.lineIndex, lineData.word);
+		}
 
-	// TODO:
+		fileData.outputFileStream << "layout(constant_id = " <<
+			to_string(fileData.specConstIndex) << ") const " << lineData.word;
+		lineData.isSpecConst = 3;
+		return;
+	}
+	else if (lineData.isSpecConst == 3)
+	{
+		if (lineData.word.length() > UINT8_MAX)
+			throw CompileError("too long spec const name", fileData.lineIndex, lineData.word);
+
+		auto result = specConsts.find(lineData.word);
+		if (result == specConsts.end())
+		{
+			Pipeline::SpecConstData data;
+			data.shaderStages = shaderStage;
+			data.dataType = lineData.dataType;
+			data.index = fileData.specConstIndex++;
+
+			auto result = specConsts.emplace(lineData.word, data);
+			if (!result.second)
+			{
+				throw CompileError("different spec consts with the same name",
+					fileData.lineIndex, lineData.word);
+			}
+		}
+		else
+		{
+			if (lineData.dataType != result->second.dataType)
+			{
+				throw CompileError("different spec consts with the same name",
+					fileData.lineIndex, lineData.word);
+			}
+			
+			result->second.shaderStages |= shaderStage;
+		}
+
+		fileData.outputFileStream << " " << lineData.word;
+		lineData.isSpecConst = 4;
+		return;
+	}
+	else if (lineData.isSpecConst == 4)
+	{
+		if (lineData.word != "=")
+			throw CompileError("no '=' after spec const declaration", fileData.lineIndex);
+		lineData.isSpecConst = 5;
+		fileData.outputFileStream << " = ";
+		return;
+	}
+
+	if (lineData.word.find_first_of(';') == string::npos)
+		throw CompileError("no ';' after spec const value", fileData.lineIndex);
+	fileData.outputFileStream << lineData.word;
+	lineData.isSpecConst = 0;
 }
 
 //--------------------------------------------------------------------------------------------------
 static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
 	if (lineData.word == "bindless")
-	{
-		fileData.outputFileStream << "#extension "
-			"GL_EXT_nonuniform_qualifier : require";
-	}
-	else
-	{
-		throw CompileError("unknown GSL feature",
-			fileData.lineIndex, lineData.word);
-	}
+		fileData.outputFileStream << "#extension GL_EXT_nonuniform_qualifier : require";
+	else throw CompileError("unknown GSL feature", fileData.lineIndex, lineData.word);
 	lineData.isFeature = 0;
 }
 
@@ -1050,10 +1099,7 @@ static void onShaderVariantCount(FileData& fileData,
 {
 	auto count = strtol(lineData.word.c_str(), nullptr, 10);
 	if (count <= 1 || count > UINT8_MAX)
-	{
-		throw CompileError("invalid variant count",
-			fileData.lineIndex, lineData.word);
-	}
+		throw CompileError("invalid variant count", fileData.lineIndex, lineData.word);
 	variantCount = (uint8)count;
 	fileData.outputFileStream << "layout(constant_id = 0) const uint gsl_variant = 0; ";
 	lineData.isVariantCount = 0;
@@ -1065,10 +1111,7 @@ static void onShaderAttachmentOffset(
 {
 	auto offset = strtol(lineData.word.c_str(), nullptr, 10);
 	if (offset < 0 || offset > UINT8_MAX)
-	{
-		throw CompileError("invalid subpass input offset",
-			fileData.lineIndex, lineData.word);
-	}
+		throw CompileError("invalid subpass input offset", fileData.lineIndex, lineData.word);
 	fileData.attachmentIndex += (uint8)offset;
 	fileData.outputFileStream << "// #attachmentOffset ";
 	lineData.isAttachmentOffset = 0;
@@ -1159,9 +1202,9 @@ static void compileShaderFile(const fs::path& filePath,
 		command += " -I \"" + includePaths[i].generic_string() + "\"";
 	auto result = std::system(command.c_str());
 	if (result != 0) throw runtime_error("_GLSLC");
-	// On some systems file can be still locked. 
 
-	auto attemptCount = 0; 
+	// On some systems file can be still locked.
+	auto attemptCount = 0;
 	while (attemptCount < 10)
 	{
 		error_code errorCode;
@@ -1183,25 +1226,17 @@ static void writeGslHeaderValues(const fs::path& filePath,
 	headerStream.write((const char*)gslHeader, sizeof(gslHeader));
 	headerStream.write((const char*)&values, sizeof(T));
 }
-static void writeGslHeaderArrays(ofstream& headerStream,
-	const map<string, Pipeline::Uniform>& uniforms,
-	const map<string, Pipeline::SamplerState>& samplerStates)
+
+template<typename T>
+static void writeGslHeaderArray(ofstream& headerStream, const map<string, T>& valueArray)
 {
-	for (auto& pair : uniforms)
+	for (auto& pair : valueArray)
 	{
 		GARDEN_ASSERT(pair.first.length() <= UINT8_MAX);
 		auto length = (uint8)pair.first.length();
 		headerStream.write((char*)&length, sizeof(uint8));
 		headerStream.write(pair.first.c_str(), length);
-		headerStream.write((const char*)&pair.second, sizeof(Pipeline::Uniform));
-	}
-	for (auto& pair : samplerStates)
-	{
-		GARDEN_ASSERT(pair.first.length() <= UINT8_MAX);
-		auto length = (uint8)pair.first.length();
-		headerStream.write((char*)&length, sizeof(uint8));
-		headerStream.write(pair.first.c_str(), length);
-		headerStream.write((const char*)&pair.second, sizeof(Pipeline::SamplerState));
+		headerStream.write((const char*)&pair.second, sizeof(T));
 	}
 }
 
@@ -1365,7 +1400,7 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 			}
 			else if (lineData.isSpecConst)
 			{
-				onSpecConst(fileData, lineData, data.specConsts);
+				onSpecConst(fileData, lineData, data.specConstData, shaderStage);
 				overrideOutput = true;
 			}
 			else if (lineData.isFeature)
@@ -1560,7 +1595,7 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 			}
 			else if (lineData.isSpecConst)
 			{
-				onSpecConst(fileData, lineData, data.specConsts);
+				onSpecConst(fileData, lineData, data.specConstData, shaderStage);
 				overrideOutput = true;
 			}
 			else if (lineData.isFeature)
@@ -1701,10 +1736,11 @@ bool Compiler::compileGraphicsShaders(const fs::path& inputPath,
 	values.descriptorSetCount = data.descriptorSetCount;
 	values.variantCount = data.variantCount;
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.vertexAttributesSize = data.vertexAttributesSize;
+	values.specConstCount = (uint8)data.specConstData.size();
 	values.vertexAttributeCount = (uint8)data.vertexAttributes.size();
 	values.blendStateCount = (uint8)data.blendStates.size();
 	values.pushConstantsStages = data.pushConstantsStages;
+	values.vertexAttributesSize = data.vertexAttributesSize;
 	values.pipelineState = data.pipelineState;
 	
 	ofstream headerStream;
@@ -1722,7 +1758,9 @@ bool Compiler::compileGraphicsShaders(const fs::path& inputPath,
 			values.blendStateCount * sizeof(GraphicsPipeline::BlendState));
 	}
 	
-	writeGslHeaderArrays(headerStream, data.uniforms, data.samplerStates);
+	writeGslHeaderArray(headerStream, data.uniforms);
+	writeGslHeaderArray(headerStream, data.samplerStates);
+	writeGslHeaderArray(headerStream, data.specConstData);
 	return true;
 }
 
@@ -1857,7 +1895,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 			}
 			else if (lineData.isSpecConst)
 			{
-				onSpecConst(fileData, lineData, data.specConsts);
+				onSpecConst(fileData, lineData, data.specConstData, shaderStage);
 				overrideOutput = true;
 			}
 			else if (lineData.isFeature)
@@ -1924,12 +1962,15 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 	values.descriptorSetCount = data.descriptorSetCount;
 	values.variantCount = data.variantCount;
 	values.pushConstantsSize = data.pushConstantsSize;
+	values.specConstCount = (uint8)data.specConstData.size();
 	values.localSize = data.localSize;
 	
 	ofstream headerStream;
 	auto headerFilePath = outputPath / data.path; headerFilePath += ".gslh";
 	writeGslHeaderValues(headerFilePath, computeGslMagic, headerStream, values);
-	writeGslHeaderArrays(headerStream, data.uniforms, data.samplerStates);
+	writeGslHeaderArray(headerStream, data.uniforms);
+	writeGslHeaderArray(headerStream, data.samplerStates);
+	writeGslHeaderArray(headerStream, data.specConstData);
 	headerStream.close();
 
 	outputFilePath += ".spv";
@@ -1957,42 +1998,25 @@ static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	values = *(const T*)(data + dataOffset);
 	dataOffset += sizeof(T);
 }
-static void readGslHeaderArrays(
-	const uint8* data, uint32 dataSize, uint32& dataOffset, 
-	uint8 uniformCount, uint8 samplerStateCount,
-	map<string, Pipeline::Uniform>& uniforms,
-	map<string, Pipeline::SamplerState>& samplerStates)
+
+template<typename T>
+static void readGslHeaderArray(const uint8* data, uint32 dataSize,
+	uint32& dataOffset, uint8 count, map<string, T>& valueArray)
 {
-	for (uint8 i = 0; i < uniformCount; i++)
+	for (uint8 i = 0; i < count; i++)
 	{
 		if (dataOffset + sizeof(uint8) > dataSize)
 			throw runtime_error("Invalid GSL header data size.");
 		auto nameLength = *(const uint8*)(data + dataOffset);
 		dataOffset += sizeof(uint8);
-		if (dataOffset + nameLength + sizeof(Pipeline::Uniform) > dataSize)
+		if (dataOffset + nameLength + sizeof(T) > dataSize)
 			throw runtime_error("Invalid GSL header data size.");
 		string name(nameLength, ' ');
 		memcpy(name.data(), data + dataOffset, nameLength);
 		dataOffset += nameLength;
-		auto& uniform = *(const Pipeline::Uniform*)(data + dataOffset);
-		dataOffset += sizeof(Pipeline::Uniform);
-		auto result = uniforms.emplace(name, uniform);
-		if (!result.second) throw runtime_error("Invalid GSL header data.");
-	}
-	for (uint8 i = 0; i < samplerStateCount; i++)
-	{
-		if (dataOffset + sizeof(uint8) > dataSize)
-			throw runtime_error("Invalid GSL header data size.");
-		auto nameLength = *(const uint8*)(data + dataOffset);
-		dataOffset += sizeof(uint8);
-		if (dataOffset + nameLength + sizeof(Pipeline::SamplerState) > dataSize)
-			throw runtime_error("Invalid GSL header data size.");
-		string name(nameLength, ' ');
-		memcpy(name.data(), data + dataOffset, nameLength);
-		dataOffset += nameLength;
-		auto& samplerState = *(const Pipeline::SamplerState*)(data + dataOffset);
-		dataOffset += sizeof(Pipeline::SamplerState);
-		auto result = samplerStates.emplace(name, samplerState);
+		auto& value = *(const T*)(data + dataOffset);
+		dataOffset += sizeof(T);
+		auto result = valueArray.emplace(name, value);
 		if (!result.second) throw runtime_error("Invalid GSL header data.");
 	}
 }
@@ -2039,9 +2063,12 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
 	}
 
-	readGslHeaderArrays(shaderData, dataSize, dataOffset,
-		values.uniformCount, values.samplerStateCount,
-		data.uniforms, data.samplerStates);
+	readGslHeaderArray(shaderData, dataSize, dataOffset,
+		values.uniformCount, data.uniforms);
+	readGslHeaderArray(shaderData, dataSize, dataOffset,
+		values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray(shaderData, dataSize, dataOffset,
+		values.specConstCount, data.specConstData);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2085,9 +2112,12 @@ void Compiler::loadComputeShader(ComputeData& data)
 	auto shaderData = dataBuffer.data(); auto dataSize = (uint32)dataBuffer.size();
 	readGslHeaderValues(shaderData, dataSize, dataOffset, computeGslMagic, values);
 
-	readGslHeaderArrays(shaderData, dataSize, dataOffset,
-		values.uniformCount, values.samplerStateCount,
-		data.uniforms, data.samplerStates);
+	readGslHeaderArray(shaderData, dataSize, dataOffset,
+		values.uniformCount, data.uniforms);
+	readGslHeaderArray(shaderData, dataSize, dataOffset,
+		values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray(shaderData, dataSize, dataOffset,
+		values.specConstCount, data.specConstData);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2125,7 +2155,7 @@ int main(int argc, char *argv[])
 		if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
 		{
 			cout << "(C) 2022-2023 Nikita Fediuchin. All rights reserved.\n"
-				"gslc - Garden Shader Language Compiler (GLSL dialect)\n"
+				"gslc - Garden Shading Language Compiler (GLSL dialect)\n"
 				"\n"
 				"Usage: gslc [options] name...\n"
 				"\n"
