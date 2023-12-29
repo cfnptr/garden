@@ -38,12 +38,15 @@ void ToneMappingEditor::render()
 {
 	if (!showWindow) return;
 
-	if (ImGui::Begin("Tone Mapping", &showWindow,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
+		const auto toneMapperTypes = "ACES\0Uchimura\0\0";
+		if (ImGui::Combo("Tone Mapper", toneMapperType, toneMapperTypes))
+			system->setConsts(system->useBloomBuffer, (ToneMapper)toneMapperType);
+
 		ImGui::DragFloat("Exposure Coefficient",
 			&system->exposureCoeff, 0.01f, 0.0f, FLT_MAX);
-		ImGui::SliderFloat("Dither Strength", &system->ditherStrength, 0.0f, 1.0f);
+		ImGui::SliderFloat("Dither Intensity", &system->ditherIntensity, 0.0f, 1.0f);
 
 		auto lightingSystem = system->getManager()->get<LightingRenderSystem>();
 		ImGui::ColorEdit4("Shadow Color", (float*)&lightingSystem->shadowColor, 

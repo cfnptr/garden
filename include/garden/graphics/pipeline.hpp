@@ -93,64 +93,74 @@ public:
 		SamplerState() : anisoFiltering(0), comparing(0), unnormCoords(0), _unused(0) { }
 	};
 
-	enum class SpecConstType : uint32
-	{
-		Bool, Int32, Float, Int2, Float2, Int3, Float3, Int4, Float4, Count
-	};
 	struct SpecConstData
 	{
-		uint8 type = 0;
-		uint8 id = 0;
+		ShaderStage shaderStages = {};
+		GslDataType dataType = {};
+		uint8 index = 0;
+		uint8 _alignment = 0;
+	};
+	struct SpecConstBase
+	{
+		GslDataType type = {};
+		uint32 data[4];
 	};
 	struct SpecConstBool
 	{
-		SpecConstType type = {};
-		bool value = false;
+		GslDataType type = {};
+		uint32 value = false;
 	};
 	struct SpecConstInt32
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		int32 value = 0;
+	};
+	struct SpecConstUint32
+	{
+		GslDataType type = {};
+		uint32 value = 0;
 	};
 	struct SpecConstFloat
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		float value = 0.0f;
 	};
 	struct SpecConstInt2
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		int2 value = int2(0);
 	};
 	struct SpecConstFloat2
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		float2 value = float2(0.0f);
 	};
 	struct SpecConstInt3
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		int3 value = int3(0);
 	};
 	struct SpecConstFloat3
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		float3 value = float3(0.0f);
 	};
 	struct SpecConstInt4
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		int4 value = int4(0);
 	};
 	struct SpecConstFloat4
 	{
-		SpecConstType type = {};
+		GslDataType type = {};
 		float4 value = float4(0.0f);
 	};
 	union SpecConst
 	{
+		SpecConstBase constBase;
 		SpecConstBool constBool;
 		SpecConstInt32 constInt32;
+		SpecConstUint32 constUint32;
 		SpecConstFloat constFloat;
 		SpecConstInt2 constInt2;
 		SpecConstFloat2 constFloat2;
@@ -158,7 +168,18 @@ public:
 		SpecConstFloat3 constFloat3;
 		SpecConstInt4 constInt4;
 		SpecConstFloat4 constFloat4;
+
 		SpecConst() { constInt4.value = int4(0); }
+		SpecConst(bool value) { constBool.value = value; }
+		SpecConst(int32 value) { constInt32.value = value; }
+		SpecConst(uint32 value) { constUint32.value = value; }
+		SpecConst(float value) { constFloat.value = value; }
+		SpecConst(int2 value) { constInt2.value = value; }
+		SpecConst(float2 value) { constFloat2.value = value; }
+		SpecConst(const int3& value) { constInt3.value = value; }
+		SpecConst(const float3& value) { constFloat3.value = value; }
+		SpecConst(const int4& value) { constInt4.value = value; }
+		SpecConst(const float4& value) { constFloat4.value = value; }
 	};
 
 	struct CreateData
@@ -166,7 +187,8 @@ public:
 		fs::path path;
 		map<string, SamplerState> samplerStates;
 		map<string, Uniform> uniforms;
-		map<string, SpecConstData> specConsts;
+		map<string, SpecConst> specConsts;
+		map<string, SpecConstData> specConstData;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
 		uint16 pushConstantsSize = 0;
@@ -218,7 +240,10 @@ protected:
 		const vector<vector<uint8>>& code, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);
 
-	static void updateDescriptorTime(
+	static void fillSpecConsts(
+		const fs::path& path, ShaderStage shaderStage, uint8 variantCount, void* specInfo,
+		const map<string, SpecConst>& specConsts, const map<string, SpecConstData>& specConstData);
+	static void updateDescriptorsLock(
 		const DescriptorData* descriptorData, uint8 descriptorDataSize);
 
 	friend class PipelineExt;

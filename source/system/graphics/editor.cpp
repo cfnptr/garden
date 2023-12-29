@@ -163,7 +163,14 @@ void EditorRenderSystem::showOptionsWindow()
 	{
 		auto manager = getManager();
 		auto graphicsSystem = getGraphicsSystem();
-		ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync); ImGui::SameLine();
+
+		if (ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync))
+		{
+			auto settingsSystem = manager->tryGet<SettingsSystem>();
+			if (settingsSystem) settingsSystem->setBool("useVsync", graphicsSystem->useVsync);
+		}
+
+		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
 		auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
@@ -172,7 +179,11 @@ void EditorRenderSystem::showOptionsWindow()
 		{
 			ImGui::SameLine();
 			if (ImGui::Checkbox("FXAA", &fxaaSystem->isEnabled))
+			{
 				deferredSystem->runSwapchainPass = !fxaaSystem->isEnabled;
+				auto settingsSystem = manager->tryGet<SettingsSystem>();
+				if (settingsSystem) settingsSystem->setBool("useFXAA", fxaaSystem->isEnabled);
+			}
 		}
 
 		const auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";

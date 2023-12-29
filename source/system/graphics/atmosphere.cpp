@@ -14,30 +14,18 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "bloom/common.gsl"
+#include "garden/system/graphics/atmosphere.hpp"
 
-pipelineState
+using namespace garden;
+
+void AtmosphereRenderSystem::initialize()
 {
-	faceCulling = off;
-	blending0 = on;
+	auto earthAirMolarMass = calcEarthAirMolarMass();
+	auto molecularDensity = calcMolecularDensity(EARTH_AIR_DENSITY, earthAirMolarMass);
+	auto test = calcRayleighScattering(EARTH_AIR_IOR, molecularDensity) * 1e6f;
+	test += test;
 }
-
-in float2 fs.texCoords;
-out float4 fb.color;
-
-uniform sampler2D hdrBuffer;
-
-uniform pushConstants
+void AtmosphereRenderSystem::render()
 {
-	float threshold;
-} pc;
 
-//--------------------------------------------------------------------------------------------------
-void main()
-{
-	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
-	float3 color = downsample(hdrBuffer, fs.texCoords, 0.0f, true, true);
-	if (any(lessThan(color, float3(pc.threshold))))
-		fb.color = float4(0.8f, 0.0f, 0.0f, 0.5f);
-	else discard;
 }

@@ -87,7 +87,7 @@ void ShadowMappingEditor::render()
 			system->splitCoefs[1] * system->farPlane,
 			system->splitCoefs[2] * system->farPlane);
 
-		// TODO: set shadow map size
+		// TODO: set shadow map size, also set it in the settings
 
 		if (cascadesPipeline)
 		{

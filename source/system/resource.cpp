@@ -1103,6 +1103,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			auto data = (GraphicsPipelineLoadData*)task.getArgument();
 			Compiler::GraphicsData pipelineData;
 			pipelineData.path = std::move(data->path);
+			pipelineData.specConsts = std::move(data->specConsts);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			pipelineData.colorFormats = std::move(data->colorFormats);
@@ -1140,6 +1141,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		vector<uint8> vertexCode, fragmentCode;
 		Compiler::GraphicsData pipelineData;
 		pipelineData.path = path;
+		pipelineData.specConsts = specConsts;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
@@ -1278,6 +1280,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			auto data = (ComputePipelineLoadData*)task.getArgument();
 			Compiler::ComputeData pipelineData;
 			pipelineData.path = std::move(data->path);
+			pipelineData.specConsts = std::move(data->specConsts);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 
@@ -1308,6 +1311,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	{
 		Compiler::ComputeData pipelineData;
 		pipelineData.path = path;
+		pipelineData.specConsts = specConsts;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 

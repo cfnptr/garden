@@ -24,6 +24,7 @@
 #define QUALITY(q) ((q) < 5 ? 1.0f : ((q) > 5 ? ((q) < 10 ? 2.0f : ((q) < 11 ? 4.0f : 8.0f)) : 1.5f))
 #define ITERATIONS 12
 #define SUBPIXEL_QUALITY 0.75f
+// TODO: set these values using spec consts?
 
 pipelineState
 {

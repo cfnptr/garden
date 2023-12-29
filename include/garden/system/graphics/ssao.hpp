@@ -35,6 +35,7 @@ private:
 	ID<Image> noiseTexture = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
+	uint32 sampleCount = 32;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
@@ -44,15 +45,20 @@ private:
 	void terminate() final;
 
 	void render() final;
+	void preAoRender() final;
 	bool aoRender() final;
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
+	friend class SsaoEditor;
 public:
 	float radius = 0.5f;
 	float bias = 0.025f;
 	float intensity = 0.5f;
 	bool isEnabled = true;
+
+	uint32 getSampleCount() const noexcept { return sampleCount; }
+	void setConsts(uint32 sampleCount);
 
 	ID<Buffer> getSampleBuffer();
 	ID<Image> getNoiseTexture();

@@ -18,8 +18,6 @@
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
 
-// TODO: share the one pipeline using #variantCount 2
-
 pipelineState
 {
 	faceCulling = off;
@@ -37,6 +35,6 @@ uniform sampler2D
 //--------------------------------------------------------------------------------------------------
 void main()
 {
-	float3 color = downsample(srcTexture, fs.texCoords, 0.0f, false);
+	float3 color = downsample(srcTexture, fs.texCoords, 0.0f, false, false);
 	fb.color = float4(color, 0.0f);
 }
