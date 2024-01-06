@@ -476,6 +476,7 @@ void Pipeline::fillSpecConsts(
 		#endif
 
 		auto& value = specConsts.at(pair.first);
+		GARDEN_ASSERT(value.constBase.type == pair.second.dataType);
 		vk::SpecializationMapEntry entry(pair.second.index,
 			dataOffset, toBinarySize(pair.second.dataType));
 		entries[itemIndex++] = entry;
