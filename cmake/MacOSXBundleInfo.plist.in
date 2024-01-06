@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>${GARDEN_APP_VERSION}</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2022-2023 Nikita Fediuchin. All rights reserved.</string>
+	<string>Copyright © 2022-2024 Nikita Fediuchin. All rights reserved.</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>NSHighResolutionCapable</key>

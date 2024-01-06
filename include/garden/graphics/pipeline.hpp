@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -170,16 +170,16 @@ public:
 		SpecConstFloat4 constFloat4;
 
 		SpecConst() { constInt4.value = int4(0); }
-		SpecConst(bool value) { constBool.value = value; }
-		SpecConst(int32 value) { constInt32.value = value; }
-		SpecConst(uint32 value) { constUint32.value = value; }
-		SpecConst(float value) { constFloat.value = value; }
-		SpecConst(int2 value) { constInt2.value = value; }
-		SpecConst(float2 value) { constFloat2.value = value; }
-		SpecConst(const int3& value) { constInt3.value = value; }
-		SpecConst(const float3& value) { constFloat3.value = value; }
-		SpecConst(const int4& value) { constInt4.value = value; }
-		SpecConst(const float4& value) { constFloat4.value = value; }
+		SpecConst(bool value) { constBool.value = value; constBool.type = GslDataType::Bool; }
+		SpecConst(int32 value) { constInt32.value = value; constBool.type = GslDataType::Int32; }
+		SpecConst(uint32 value) { constUint32.value = value; constBool.type = GslDataType::Uint32; }
+		SpecConst(float value) { constFloat.value = value; constBool.type = GslDataType::Float; }
+		SpecConst(int2 value) { constInt2.value = value; constBool.type = GslDataType::Int2; }
+		SpecConst(float2 value) { constFloat2.value = value; constBool.type = GslDataType::Float2; }
+		SpecConst(const int3& value) { constInt3.value = value; constBool.type = GslDataType::Int3; }
+		SpecConst(const float3& value) { constFloat3.value = value; constBool.type = GslDataType::Float3; }
+		SpecConst(const int4& value) { constInt4.value = value; constBool.type = GslDataType::Int4; }
+		SpecConst(const float4& value) { constFloat4.value = value; constBool.type = GslDataType::Float4; }
 	};
 
 	struct CreateData
