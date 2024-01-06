@@ -26,6 +26,7 @@ With one of these formats: [ f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 |
 ## Pipeline state
 
 Shader parser gets pipeline state from the declared "pipelineState" properties in the shader.
+Also you can override pipeline state when loading pipeline in the code.
 
 ```
 pipelineState
@@ -35,7 +36,7 @@ pipelineState
 }
 ```
 
-* discarding [ on | off ] - Controls whether primitives are discarded immediately before the rasterization stage.
+* discarding [ on | off ] - Controls whether primitives are discarded immediately before the rasterization stage. (off)
 
 ### Input assembly
 

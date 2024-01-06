@@ -52,6 +52,7 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 - [ ] Procedural Atmosphere (Sky)
 - [ ] Screen Space Reflections (SSR)
 - [ ] Motion Blur
+- [ ] Forward Rendering
 - [ ] Vignette Post-Process
 - [ ] Depth Of Field (DOF)
 - [ ] Physical Based Camera
