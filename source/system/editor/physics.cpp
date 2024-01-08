@@ -17,7 +17,7 @@
 #include "garden/system/editor/physics.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/graphics/editor.hpp"
+#include "garden/system/render/editor.hpp"
 
 using namespace garden;
 
