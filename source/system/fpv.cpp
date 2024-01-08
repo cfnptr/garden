@@ -15,7 +15,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "garden/system/fpv.hpp"
-#include "garden/system/graphics/editor.hpp"
+#include "garden/system/render/editor.hpp"
 
 using namespace garden;
 
