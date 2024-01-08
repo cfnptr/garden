@@ -512,14 +512,6 @@ static vk::Device createVkDevice(
 	lastPNext = &portabilityFeatures.pNext;
 	#endif
 
-	vk::PhysicalDeviceMaintenance4Features maintenance4Features;
-	if (versionMinor >= 3)
-	{
-		maintenance4Features.maintenance4 = VK_TRUE;
-		*lastPNext = &maintenance4Features;
-		lastPNext = &maintenance4Features.pNext;
-	}
-
 	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
 	if (hasPageableMemory)
 	{

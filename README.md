@@ -74,7 +74,7 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 - [ ] Nvidia Reflex Support
 - [ ] AMD FSR Support
 - [ ] Physics Support (Jolt)
-- [ ] Hardware Ray-Traicing
+- [ ] Hardware Ray-Tracing
 - [ ] Ray-Traced Shadows
 - [ ] HDR Monitor Support
 - [ ] Virtual Reality Support

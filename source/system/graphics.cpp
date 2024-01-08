@@ -20,7 +20,7 @@
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/primitive.hpp"
 #include "garden/system/settings.hpp"
-#include "garden/system/graphics/deferred.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/xxhash.hpp"
 #include "mpio/os.hpp"
 
