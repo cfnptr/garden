@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ */
 
 #pragma once
-#include "garden/defines.hpp"
-#include "math/matrix.hpp"
-#include "math/quaternion.hpp"
-#include "garden/system/serialize.hpp"
+#include "garden/serialize.hpp"
 
 namespace garden
 {
@@ -26,7 +25,9 @@ namespace garden
 using namespace math;
 using namespace ecsm;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Contains information about object position, rotation, and scale within the game world.
+ */
 struct TransformComponent final : public Component
 {
 	float3 position = float3(0.0f);
@@ -39,7 +40,6 @@ private:
 	ID<Entity> parent = {};
 	uint32 childCount = 0;
 	uint32 childCapacity = 0;
-	ID<Entity> entity = {};
 	ID<Entity>* childs = nullptr;
 	Manager* manager = nullptr;
 
@@ -48,34 +48,99 @@ private:
 	friend class TransformSystem;
 	friend class LinearPool<TransformComponent>;
 public:
+	/**
+	 * @brief Returns this entity parent object, or null if it is root entity.
+	 * @details Entity parent affects it transformation in the world.
+	 */
 	ID<Entity> getParent() const noexcept { return parent; }
+	/**
+	 * @brief Returns this entity children count.
+	 * @details Use it to iterate over children array.
+	 */
 	uint32 getChildCount() const noexcept { return childCount; }
+	/**
+	 * @brief Returns this entity children array, or null if no children.
+	 * @details Use it to iterate over entity children.
+	 */
 	const ID<Entity>* getChilds() const noexcept { return childs; }
-	ID<Entity> getEntity() const noexcept { return entity; }
 
+	/**
+	 * @brief Calculates entity model matrix from it position, scale and rotation.
+	 * @note It also takes into account parent and grandparents transforms.
+	 * @return Object model 4x4 float matrix.
+	 */
 	float4x4 calcModel() const noexcept;
+
+	/**
+	 * @brief Sets this entity parent object.
+	 * @details You can pass null to unset the entity parent.
+	 * @param parent target parent entity or null
+	 */
 	void setParent(ID<Entity> parent);
+	/**
+	 * @brief Adds a new child to this entity.
+	 * @note It also changes parent of the child entity.
+	 * @param child target child entity
+	 */
 	void addChild(ID<Entity> child);
+	/**
+	 * @brief Removes child from this entity.
+	 * @note It also changes parent of the child entity.
+	 * @param child target child entity
+	 */
 	void removeChild(ID<Entity> child);
+	/**
+	 * @brief Removes child from this entity.
+	 * @note It also changes parent of the child entity.
+	 * @param index target child index in the array
+	 */
 	void removeChild(uint32 index);
+	/**
+	 * @brief Removes all children from this entity.
+	 * @note It also changes parent of the children entities.
+	 */
 	void removeAllChilds();
+
+	/**
+	 * @brief Returns true if this entity has specified child.
+	 * @param index target child to check
+	 */
 	bool hasChild(ID<Entity> child) const noexcept;
+	/**
+	 * @brief Returns true if this entity has specified ancestor
+	 * @details Including parent, grandparent, grandgrand...
+	 * @param index target ancestor to check
+	 */
 	bool hasAncestor(ID<Entity> ancestor) const noexcept;
+	/**
+	 * @brief Returns true if this entity or it children has baked transform.
+	 */
 	bool hasBaked() const noexcept;
 };
 
-//--------------------------------------------------------------------------------------------------
-class TransformSystem final : public System, public ISerializeSystem
+/***********************************************************************************************************************
+ * @brief Handles object transformations in the game world.
+ * 
+ * @details
+ * Fundamental aspect of the engine architecture that handles the 
+ * positioning, rotation, and scaling of game objects within the game world.
+ */
+class TransformSystem final : public System, public ISerializable
 {
-	LinearPool<TransformComponent> components;
+public:
+	using TransformComponents = LinearPool<TransformComponent>;
+private:
+	TransformComponents components;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
+
+	void init();
+	void deinit();
 	#endif
 
+	TransformSystem(Manager* manager);
 	~TransformSystem() final;
-	void initialize() final;
-	void terminate() final;
 
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
@@ -83,34 +148,42 @@ class TransformSystem final : public System, public ISerializeSystem
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void serialize(conf::Writer& writer,
-		uint32 index, ID<Component> component) final;
-	bool deserialize(conf::Reader& reader,
-		uint32 index, ID<Entity> entity) final;
-	void postDeserialize(conf::Reader& reader) final;
+	void serialize(ISerializer& serializer, ID<Entity> entity) final;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity) final;
 	
 	static void destroyRecursive(Manager* manager, ID<Entity> entity);
 
 	friend class ecsm::Manager;
 	friend class TransformEditor;
 public:
-	const LinearPool<TransformComponent>& getComponents()
-		const noexcept { return components; }
+	/**
+	 * @brief Returns transform component pool.
+	 */
+	const TransformComponents& getComponents() const noexcept { return components; }
+	/**
+	 * @brief Destroys the entity and all it descendants.
+	 * @param entity target entity
+	 */
 	void destroyRecursive(ID<Entity> entity);
 };
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief Component indicating that entity is baked and it transform should't be changed.
+ */
 struct BakedTransformComponent final : public Component { };
 
+/**
+ * @brief Handles baked or static components.
+ */
 class BakedTransformSystem final : public System
 {
 protected:
 	LinearPool<BakedTransformComponent, false> components;
 
-	type_index getComponentType() const override {
-		return typeid(BakedTransformComponent); }
-	ID<Component> createComponent(ID<Entity> entity) override {
-		return ID<Component>(components.create()); }
+	BakedTransformSystem(Manager* manager) : System(manager) { }
+
+	type_index getComponentType() const override { return typeid(BakedTransformComponent); }
+	ID<Component> createComponent(ID<Entity> entity) override { return ID<Component>(components.create()); }
 	void destroyComponent(ID<Component> instance) override {
 		components.destroy(ID<BakedTransformComponent>(instance)); }
 	View<Component> getComponent(ID<Component> instance) override {
@@ -120,4 +193,4 @@ protected:
 	friend class ecsm::Manager;
 };
 
-} // garden
+} // namespace garden

@@ -33,5 +33,5 @@ class LightingEditor final
 	friend class LightingRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

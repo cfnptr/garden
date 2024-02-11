@@ -17,6 +17,7 @@
 // One of implementations: https://www.shadertoy.com/view/slSXRW
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/graphics.hpp"
 
@@ -137,4 +138,5 @@ static float calcMarsAirMolarMass()
 	return calcMolarMass(gasses);
 }
 
-} // garden
+} // namespace garden
+*/

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/**********************************************************************************************************************
+ * @file
+ */
 
 #pragma once
 #include "garden/defines.hpp"
@@ -27,7 +29,6 @@ namespace garden
 using namespace std;
 using namespace math;
 
-//--------------------------------------------------------------------------------------------------
 static void loadBinaryFile(const fs::path& filePath, vector<uint8>& data)
 {
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
@@ -66,7 +67,9 @@ static bool tryLoadBinaryFile(const fs::path& filePath, vector<uint8>& data)
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+/**********************************************************************************************************************
+ * @brief
+ */
 static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath)
 {
 	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
@@ -100,4 +103,4 @@ static string toBinarySizeString(uint64 size)
 	return to_string(size) + " B";
 }
 
-} // garden
+} // namespace garden

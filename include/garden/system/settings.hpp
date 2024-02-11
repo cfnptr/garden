@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ */
 
 #pragma once
 #include "ecsm.hpp"
@@ -24,74 +26,151 @@ namespace garden
 using namespace math;
 using namespace ecsm;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Application settings holder.
+ * @details The system responsible for saving and loading settings between program runs.
+ */
 class SettingsSystem final : public System
 {
 public:
+	/**
+	 * @brief Setting value type.
+	 */
 	enum class Type : uint32
 	{
 		Int, Float, Bool, String, Count
 	};
+	/**
+	 * @brief Setting item.
+	 */
 	struct Item final
 	{
 		uint64 data = 0;
 		Type type = {};
 
-		Item(Type _type, uint64 _data) :
-			data(_data), type(_type) { }
+		Item(Type _type, uint64 _data) : data(_data), type(_type) { }
 	};
 private:
 	void* confReader = nullptr;
 	map<string, Item> items;
 
-	SettingsSystem();
+	SettingsSystem(Manager* manager);
 	~SettingsSystem() final;
-	void terminate() final;
+
+	void preInit();
+	void postDeinit();
 	
 	friend class ecsm::Manager;
 	friend class SettingsEditor;
 public:
+	/**
+	 * @brief Returns settings integer value. (int64)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, int64& value);
+	/**
+	 * @brief Returns settings floating value. (double)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getFloat(const string& name, double& value);
+	/**
+	 * @brief Returns settings boolean value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getBool(const string& name, bool& value);
+	/**
+	 * @brief Returns settings string value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getString(const string& name, string& value);
 
+	/**
+	 * @brief Returns settings integer value. (int32)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, int32& value)
 	{
 		auto intValue = (int64)value;
 		getInt(name, intValue);
 		value = (int32)intValue;
 	}
+	/**
+	 * @brief Returns settings integer value. (uint32)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, uint32& value)
 	{
 		auto intValue = (int64)value;
 		getInt(name, intValue);
 		value = (uint32)intValue;
 	}
+	/**
+	 * @brief Returns settings integer value. (int16)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, int16& value)
 	{
 		auto intValue = (int64)value;
 		getInt(name, intValue);
 		value = (int16)intValue;
 	}
+	/**
+	 * @brief Returns settings integer value. (uint16)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, uint16& value)
 	{
 		auto intValue = (int64)value;
 		getInt(name, intValue);
 		value = (uint16)intValue;
 	}
+	/**
+	 * @brief Returns settings integer value. (int8)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, int8& value)
 	{
 		auto intValue = (int64)value;
 		getInt(name, intValue);
 		value = (int8)intValue;
 	}
+	/**
+	 * @brief Returns settings integer value. (uint8)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getInt(const string& name, uint8& value)
 	{
 		auto intValue = (int64)value;
 		getInt(name, intValue);
 		value = (uint8)intValue;
 	}
+
+	/**
+	 * @brief Returns settings floating value. (float)
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getFloat(const string& name, float& value)
 	{
 		auto floatValue = (double)value;
@@ -99,18 +178,73 @@ public:
 		value = (float)floatValue;
 	}
 
+	/**
+	 * @brief Sets settings integer value. (int64)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, int64 value);
+	/**
+	 * @brief Sets settings floating value. (double)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setFloat(const string& name, double value);
+	/**
+	 * @brief Sets settings boolean value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setBool(const string& name, bool value);
+	/**
+	 * @brief Sets settings string value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setString(const string& name, string_view value);
 
+	/**
+	 * @brief Sets settings integer value. (int32)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, int32 value) { setInt(name, (int64)value); }
+	/**
+	 * @brief Sets settings integer value. (uint32)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, uint32 value) { setInt(name, (int64)value); }
+	/**
+	 * @brief Sets settings integer value. (int16)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, int16 value) { setInt(name, (int64)value); }
+	/**
+	 * @brief Sets settings integer value. (uint16)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, uint16 value) { setInt(name, (int64)value); }
+	/**
+	 * @brief Sets settings integer value. (int8)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, int8 value) { setInt(name, (int64)value); }
+	/**
+	 * @brief Sets settings integer value. (uint8)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setInt(const string& name, uint8 value) { setInt(name, (int64)value); }
+	/**
+	 * @brief Sets settings integer value. (float)
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
 	void setFloat(const string& name, float value) { setFloat(name, (double)value); }
 };
 
-} // garden
+} // namespace garden

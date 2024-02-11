@@ -328,16 +328,15 @@ bool Swapchain::acquireNextImage()
 		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 
 	auto& buffer = buffers[bufferIndex];
-	auto& secondaryCommandPools = buffer.secondaryCommandPools;
+	auto secondaryCommandPools = buffer.secondaryCommandPools.data();
 
 	if (useThreading)
 	{
-		threadPool->addTasks(ThreadPool::Task([](const ThreadPool::Task& task)
+		threadPool->addTasks(ThreadPool::Task([secondaryCommandPools](const ThreadPool::Task& task)
 		{
-			auto commandPools = (vk::CommandPool*)task.getArgument();
-			Vulkan::device.resetCommandPool(commandPools[task.getTaskIndex()]);
-		},
-		secondaryCommandPools.data()), (uint32)secondaryCommandPools.size());
+			Vulkan::device.resetCommandPool(secondaryCommandPools[task.getTaskIndex()]);
+		}),
+		(uint32)buffer.secondaryCommandPools.size());
 		threadPool->wait();
 	}
 	else
@@ -480,12 +479,12 @@ void Swapchain::beginSecondaryCommandBuffers(
 		inheritanceInfo.pNext = &inheritanceRenderingInfo;
 	}
 
-	threadPool->addTasks(ThreadPool::Task([](const ThreadPool::Task& task)
+	auto beingInfoPtr = &beginInfo;
+	threadPool->addTasks(ThreadPool::Task([beingInfoPtr](const ThreadPool::Task& task)
 	{
-		auto& info = *(vk::CommandBufferBeginInfo*)task.getArgument();
-		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(info);
-	},
-	&beginInfo), (uint32)Vulkan::secondaryCommandBuffers.size());
+		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(beingInfoPtr);
+	}),
+	(uint32)Vulkan::secondaryCommandBuffers.size());
 	threadPool->wait();
 }
 

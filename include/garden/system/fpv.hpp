@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #pragma once
 // #include "garden/system/physics.hpp" TODO: move physx to jolt code
@@ -26,7 +24,10 @@ using namespace ecsm;
 using namespace garden;
 //using namespace garden::physics;
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief
+ */
+/*
 class FpvSystem final : public System // , public IPhysicsSystem
 {
 	GraphicsSystem* graphicsSystem = nullptr;
@@ -42,10 +43,7 @@ public:
 	float lerpMultiplier = 20.0f;
 	float jumpDelay = 0.15f;
 private:
-	double lastJumpTime = 0.0f;
-	bool lastTabState = false;
-	bool lastF10State = false;
-
+	
 	void initialize() final;
 	void update() final;
 
@@ -54,5 +52,5 @@ private:
 	
 	friend class ecsm::Manager;
 };
-
-} // garden
+*/
+} // namespace garden

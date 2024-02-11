@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/lighting.hpp"
 #include "garden/system/render/editor/lighting.hpp"
 #include "garden/system/resource.hpp"
@@ -312,9 +313,6 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(Manager* manager,
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
-	auto whiteTexture = graphicsSystem->getWhiteTexture();
-	auto whiteTextureView = graphicsSystem->get(whiteTexture);
-	auto dfgLutView = graphicsSystem->get(dfgLUT);
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -323,10 +321,10 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(Manager* manager,
 		{ "gBuffer2", DescriptorSet::Uniform(colorAttachments[2].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ? // TODO: [1]
-			shadowImageViews[0] : whiteTextureView->getDefaultView()) },
+			shadowImageViews[0] : graphicsSystem->getWhiteTexture()) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[1] ?
-			aoImageViews[1] : whiteTextureView->getDefaultView()) },
-		{ "dfgLUT", DescriptorSet::Uniform(dfgLutView->getDefaultView()) }
+			aoImageViews[1] : graphicsSystem->getWhiteTexture()) },
+		{ "dfgLUT", DescriptorSet::Uniform(graphicsSystem->get(dfgLUT)->getDefaultView()) }
 	};
 
 	return uniforms;
@@ -1156,3 +1154,4 @@ Ref<DescriptorSet> LightingRenderSystem::createDescriptorSet(
 	return graphicsSystem->createDescriptorSet(
 		lightingPipeline, std::move(iblUniforms), 1);
 }
+*/

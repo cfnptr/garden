@@ -17,6 +17,7 @@
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
+/*
 namespace garden
 {
 
@@ -154,4 +155,5 @@ public:
 	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular);
 };
 
-} // garden
+} // namespace garden
+*/

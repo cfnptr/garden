@@ -304,6 +304,12 @@ static vk::PipelineLayout createPipelineLayout(
 //--------------------------------------------------------------------------------------------------
 Pipeline::Pipeline(CreateData& createData, bool useAsync)
 {
+	if (createData.maxBindlessCount > 0 && !Vulkan::hasDescriptorIndexing)
+	{
+		throw runtime_error("Bindless descriptors are not supported on this GPU. ("
+			"pipeline: )" + createData.path.generic_string() + ")");
+	}
+
 	this->uniforms = std::move(createData.uniforms);
 	this->pipelineVersion = createData.pipelineVersion;
 	this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);

@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/ssao.hpp"
 #include "garden/system/render/editor/ssao.hpp"
 #include "garden/system/resource.hpp"
@@ -96,7 +97,6 @@ static map<string, DescriptorSet::Uniform> getUniforms(Manager* manager,
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttahcment = gFramebufferView->getDepthStencilAttachment();
-	auto noiseTextureView = graphicsSystem->get(noiseTexture);
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -107,7 +107,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(Manager* manager,
 		{ "samples", DescriptorSet::Uniform(
 			sampleBuffer, 1, swapchainSize) },
 		{ "noise", DescriptorSet::Uniform(
-			noiseTextureView->getDefaultView(), 1, swapchainSize) },
+			graphicsSystem->get(noiseTexture)->getDefaultView(), 1, swapchainSize) },
 		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCameraConstantsBuffers()) }
 	};
 
@@ -261,3 +261,4 @@ ID<GraphicsPipeline> SsaoRenderSystem::getPipeline()
 	if (!pipeline) pipeline = createPipeline(getManager(), sampleCount);
 	return pipeline;
 }
+*/

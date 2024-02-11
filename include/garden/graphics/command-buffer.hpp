@@ -431,4 +431,4 @@ public:
 	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::DescriptorSet)); }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

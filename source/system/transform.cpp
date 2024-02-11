@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,18 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+// TODO: use stacks instead of recursion, potentially unsafe!
 
 #include "garden/system/transform.hpp"
 #include "garden/system/editor/transform.hpp"
+#include "garden/defines.hpp"
 
 #if GARDEN_DEBUG
 #include "garden/system/log.hpp"
 #endif
 
+using namespace ecsm;
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 bool TransformComponent::destroy()
 {
 	GARDEN_ASSERT(entity);
@@ -55,13 +57,13 @@ REMOVED_FROM_PARENT:
 			auto childTransform = manager->get<TransformComponent>(childs[i]);
 			childTransform->parent = {};
 		}
-		free(childs); // assuming that ID<> has no damagable constructor.
+		free(childs); // assuming that ID<> has no damageable constructor.
 	}
 
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 float4x4 TransformComponent::calcModel() const noexcept
 {
 	auto model = ::calcModel(position, rotation, this->scale);
@@ -140,7 +142,7 @@ REMOVED_FROM_PARENT:
 	this->parent = parent;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void TransformComponent::addChild(ID<Entity> child)
 {
 	GARDEN_ASSERT(child);
@@ -197,7 +199,7 @@ REMOVED_FROM_PARENT:
 	childTransform->parent = entity;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void TransformComponent::removeChild(ID<Entity> child)
 {
 	GARDEN_ASSERT(child);
@@ -252,7 +254,7 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 	return false;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static bool hasBakedTransform(Manager* manager, ID<Entity> entity)
 {
 	if (manager->has<BakedTransformComponent>(entity)) return true;
@@ -268,9 +270,25 @@ bool TransformComponent::hasBaked() const noexcept
 	return hasBakedTransform(manager, entity);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
+TransformSystem::TransformSystem(Manager* manager) : System(manager)
+{
+	#if 0
+	SUBSCRIBE_TO_EVENT("Init", TransformSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", TransformSystem::deinit);
+	#endif
+}
 TransformSystem::~TransformSystem()
 {
+	#if 0
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", TransformSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformSystem::deinit);
+	}
+	#endif
+
 	auto componentData = components.getData();
 	auto componentOccupancy = components.getOccupancy();
 	for (uint32 i = 0; i < componentOccupancy; i++)
@@ -278,21 +296,18 @@ TransformSystem::~TransformSystem()
 	components.clear(false);
 }
 
-//--------------------------------------------------------------------------------------------------
-void TransformSystem::initialize()
+#if 0
+void TransformSystem::init()
 {
-	#if GARDEN_EDITOR
 	editor = new TransformEditor(this);
-	#endif
 }
-void TransformSystem::terminate()
+void TransformSystem::deinit()
 {
-	#if GARDEN_EDITOR
 	delete (TransformEditor*)editor;
-	#endif
 }
+#endif
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 type_index TransformSystem::getComponentType() const
 {
 	return typeid(TransformComponent);
@@ -301,16 +316,15 @@ ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 {
 	auto component = components.create();
 	auto componentView = components.get(component);
-	componentView->entity = entity;
 	componentView->manager = getManager();
-	#if GARDEN_DEBUG || GARDEN_EDITOR
+	#if 0 && (GARDEN_DEBUG || GARDEN_EDITOR)
 	componentView->name = "Entity " + to_string(*entity);
 	#endif
 	return ID<Component>(component);
 }
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
-	#if GARDEN_EDITOR
+	#if 0
 	auto component = components.get(ID<TransformComponent>(instance));
 	((TransformEditor*)editor)->onDestroy(component->entity);
 	#endif
@@ -323,131 +337,25 @@ View<Component> TransformSystem::getComponent(ID<Component> instance)
 }
 void TransformSystem::disposeComponents() { components.dispose(); }
 
-//--------------------------------------------------------------------------------------------------
-void TransformSystem::serialize(conf::Writer& writer,
-	uint32 index, ID<Component> component)
-{
-	auto transformComponent = components.get(ID<TransformComponent>(component));
-	auto position = transformComponent->position;
-	auto rotation = transformComponent->rotation;
-	auto scale = transformComponent->scale;
-
-	auto entityName = "e" + to_string(index);
-	writer.write(entityName + ".transform", *transformComponent->entity);
-
-	#if GARDEN_EDITOR
-	writer.write(entityName + ".name", transformComponent->name);
-	#endif
-
-	if (position.x != 0.0f) writer.write(entityName + ".position.x", position.x, 4);
-	if (position.y != 0.0f) writer.write(entityName + ".position.y", position.y, 4);
-	if (position.z != 0.0f) writer.write(entityName + ".position.z", position.z, 4);
-	if (rotation.x != 0.0f) writer.write(entityName + ".rotation.x", rotation.x, 6);
-	if (rotation.y != 0.0f) writer.write(entityName + ".rotation.y", rotation.y, 6);
-	if (rotation.z != 0.0f) writer.write(entityName + ".rotation.z", rotation.z, 6);
-	if (rotation.w != 1.0f) writer.write(entityName + ".rotation.w", rotation.w, 6);
-
-	if (scale.x == scale.y && scale.x == scale.z)
-	{
-		if (scale.x != 1.0f) writer.write(entityName + ".scale", scale.x, 6);
-	}
-	else
-	{
-		if (scale.x != 1.0f) writer.write(entityName + ".scale.x", scale.x, 6);
-		if (scale.y != 1.0f) writer.write(entityName + ".scale.y", scale.y, 6);
-		if (scale.z != 1.0f) writer.write(entityName + ".scale.z", scale.z, 6);
-	}
-
-	if (transformComponent->parent)
-		writer.write(entityName + ".parent", *transformComponent->parent);
-}
-
-//--------------------------------------------------------------------------------------------------
-static map<uint32, ID<Entity>> entities;
-static vector<pair<uint32, ID<Entity>>> needParents;
-
-bool TransformSystem::deserialize(conf::Reader& reader,
-	uint32 index, ID<Entity> entity)
-{
-	auto entityName = "e" + to_string(index); uint32 id = 0;
-	if (!reader.get(entityName + ".transform", id)) return false;
-
-	if (!entities.emplace(id, entity).second)
-	{
-		#if GARDEN_DEBUG
-		auto logSystem = getManager()->tryGet<LogSystem>();
-		if (logSystem) logSystem->warn("Scene entity with the same ID. (" + to_string(id) + ")");
-		#endif
-		return false;
-	}
-
-	float3 position = float3(0.0), scale = float3(1.0f);
-	quat rotation = quat::identity; uint32 parentID = 0;
-	
-	reader.get(entityName + ".position.x", position.x);
-	reader.get(entityName + ".position.y", position.y);
-	reader.get(entityName + ".position.z", position.z);
-	reader.get(entityName + ".position.x", rotation.x);
-	reader.get(entityName + ".rotation.y", rotation.y);
-	reader.get(entityName + ".rotation.z", rotation.z);
-	reader.get(entityName + ".rotation.w", rotation.w);
-	reader.get(entityName + ".scale.x", scale.x);
-	reader.get(entityName + ".scale.y", scale.y);
-	reader.get(entityName + ".scale.z", scale.z);
-	reader.get(entityName + ".parent", parentID);
-
-	if (reader.get(entityName + ".scale", scale.x))
-		scale.z = scale.y = scale.x;
-
-	auto transformComponent = getManager()->add<TransformComponent>(entity);
-	transformComponent->position = position;
-	transformComponent->scale = scale;
-	transformComponent->rotation = normalize(rotation);
-
-	#if GARDEN_EDITOR
-	string_view name;
-	if (reader.get(entityName + ".name", name))
-		transformComponent->name = name;
-	#endif
-
-	if (parentID > 0)
-	{
-		auto searchResult = entities.find(parentID);
-		if (searchResult == entities.end())
-			needParents.emplace_back(make_pair(parentID, entity));
-		else transformComponent->setParent(searchResult->second);
-	}
-
-	return true;
-}
-void TransformSystem::postDeserialize(conf::Reader& reader)
+//**********************************************************************************************************************
+void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity)
 {
 	auto manager = getManager();
-	for (auto& pair : needParents)
-	{
-		auto searchResult = entities.find(pair.first);
-		if (searchResult == entities.end())
-		{
-			#if GARDEN_DEBUG
-			auto logSystem = getManager()->tryGet<LogSystem>();
-			if (logSystem)
-			{
-				logSystem->warn("Missing scene entity parent. (" +
-					to_string(pair.first) + ")");
-			}
-			#endif
-			continue;
-		}
-
-		auto transformComponent = manager->get<TransformComponent>(pair.second);
-		transformComponent->setParent(searchResult->second);
-	}
-
-	needParents.clear();
-	entities.clear();
+	auto transformComponent = manager->get<TransformComponent>(entity);
+	serializer.write("position", transformComponent->position, 4);
+	serializer.write("rotation", transformComponent->rotation, 6);
+	serializer.write("scale", transformComponent->scale, 6);
+}
+void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity)
+{
+	auto manager = getManager();
+	auto transformComponent = manager->get<TransformComponent>(entity);
+	deserializer.read("position", transformComponent->position);
+	deserializer.read("rotation", transformComponent->rotation);
+	deserializer.read("scale", transformComponent->scale);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void TransformSystem::destroyRecursive(Manager* manager, ID<Entity> entity)
 {
 	if (manager->has<DoNotDestroyComponent>(entity)) return;

@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/atmosphere.hpp"
 
 using namespace garden;
@@ -29,3 +30,4 @@ void AtmosphereRenderSystem::render()
 {
 
 }
+*/

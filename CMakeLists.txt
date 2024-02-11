@@ -1,4 +1,3 @@
-#---------------------------------------------------------------------------------------------------
 # Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#---------------------------------------------------------------------------------------------------
 
+#***********************************************************************************************************************
 cmake_minimum_required(VERSION 3.22)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -26,11 +25,12 @@ endif()
 
 project(Garden VERSION 0.1.0 LANGUAGES CXX
 	DESCRIPTION "An open source cross platform game engine \
-		written in C++ with Vulkan API rendering backend"
+		written in C++ with Vulkan API rendering backend."
 	HOMEPAGE_URL "https://github.com/cfnptr/garden")
 
 option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
 option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
+option(GARDEN_BUILD_EXAMPLES "Build Garden library examples." ON)
 option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
 option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
 
@@ -50,12 +50,13 @@ if(NOT DEFINED GARDEN_APP_VERSION_PATCH)
 	set(GARDEN_APP_VERSION_PATCH 0)
 endif()
 if(NOT DEFINED GARDEN_APP_RESOURCES_DIR)
-	set(GARDEN_APP_RESOURCES_DIR ${PROJECT_SOURCE_DIR}/resources)
+	set(GARDEN_APP_RESOURCES_DIR ${PROJECT_SOURCE_DIR}/resources/default)
 endif()
 if(NOT DEFINED GARDEN_APP_CACHES_DIR)
-	set(GARDEN_APP_RESOURCES_DIR ${PROJECT_SOURCE_DIR}/.caches)
+	set(GARDEN_APP_CACHES_DIR ${PROJECT_SOURCE_DIR}/.caches)
 endif()
 
+#***********************************************************************************************************************
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(BUILD_SHARED_LIBS OFF)
@@ -65,7 +66,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	enable_language(OBJCXX)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL Debug)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(GARDEN_DEBUG 1)
 	set(GARDEN_EDITOR 1)
 else()
@@ -79,6 +80,28 @@ else()
 	else()
 		set(GARDEN_EDITOR 0)
 	endif()
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT GARDEN_RELEASE_DEBUGGING)
+	if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+		set(GARDEN_RELEASE_LINUX 1)
+	else()
+		set(GARDEN_RELEASE_LINUX 0)
+	endif()
+	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+		set(GARDEN_RELEASE_MACOS 1)
+	else()
+		set(GARDEN_RELEASE_MACOS 0)
+	endif()
+	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+		set(GARDEN_RELEASE_WINDOWS 1)
+	else()
+		set(GARDEN_RELEASE_WINDOWS 0)
+	endif()
+else()
+	set(GARDEN_RELEASE_LINUX 0)
+	set(GARDEN_RELEASE_MACOS 0)
+	set(GARDEN_RELEASE_WINDOWS 0)
 endif()
 
 include(TestBigEndian)
@@ -95,7 +118,7 @@ set(GARDEN_APP_VERSION "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.
 include(cmake/publish-functions.cmake)
 configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
-#---------------------------------------------------------------------------------------------------
+#***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan xxHash::xxhash ecsm math-static
@@ -161,7 +184,7 @@ set(OPENEXR_INSTALL_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/imath)
 add_subdirectory(libraries/openexr)
 
-#---------------------------------------------------------------------------------------------------
+#***********************************************************************************************************************
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR GARDEN_RELEASE_EDITOR)
@@ -177,7 +200,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR GARDEN_RELEASE_EDITOR)
 	list(APPEND GARDEN_INCLUDE_DIRS libraries/cgltf)
 endif()
 
-#---------------------------------------------------------------------------------------------------
+#***********************************************************************************************************************
 add_library(garden STATIC ${GARDEN_SOURCES})
 target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
@@ -200,5 +223,20 @@ if(GARDEN_BUILD_EQUI2CUBE)
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		stripExecutable(equi2cube)
+	endif()
+endif()
+
+if(GARDEN_BUILD_EXAMPLES)
+	if(GARDEN_RELEASE_WINDOWS)
+		add_executable(garden-platformer WIN32 examples/platformer.cpp)
+	else()
+		add_executable(garden-platformer examples/platformer.cpp)
+	endif()
+	target_link_libraries(garden-platformer PUBLIC garden)
+	add_dependencies(garden-platformer packer gslc equi2cube)
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+		packResources(garden-platformer ${GARDEN_APP_CACHES_DIR}
+			${GARDEN_APP_RESOURCES_DIR} ${Garden_SOURCE_DIR}/resources ON)
 	endif()
 endif()

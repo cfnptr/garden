@@ -20,6 +20,15 @@
 #define RAY_MARCH_MIN_SPP 4
 #define RAY_MARCH_MAX_SPP 14
 
+in float2 fs.texCoords;
+out float4 fb.color;
+
+void main()
+{
+
+}
+
+/*
 #include "atmosphere/common.gsl"
 
 pipelineState
@@ -30,7 +39,7 @@ pipelineState
 in float2 fs.texCoords;
 out float4 fb.color;
 
-pushConstants
+uniform pushConstants
 {
 	float4 data0;
 	float4 data1;
@@ -94,4 +103,4 @@ void main()
 
 	// Optical depth to transmittance
 	return float4(transmittance, 1.0f);
-}
+}*/

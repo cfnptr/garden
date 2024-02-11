@@ -62,5 +62,5 @@ class DeferredEditor final
 	friend class DeferredRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

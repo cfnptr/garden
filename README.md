@@ -85,17 +85,27 @@ automatic placement of memory barriers, which are necessary in recent graphics A
 
 * Windows (10/11)
 * Ubuntu (22.04 LTS)
-* macOS (Monterey 12)
+* macOS (Ventura 13)
 
 This list includes only those systems on which functionality testing is conducted.
 However, you can also compile it under any other Linux distribution or operating system.
 
-## Supported GPUs
+## Supported hardware
 
-* Nvidia [Maxwell](https://developer.nvidia.com/maxwell-compute-architecture) microarchitecture and newer
+### Graphics processing unit (GPU)
+
+* Nvidia [Kepler](https://en.wikipedia.org/wiki/Kepler_(microarchitecture)) microarchitecture and newer
 * AMD [GCN](https://en.wikipedia.org/wiki/Graphics_Core_Next) microarchitecture and newer
 * Intel [Gen9](https://en.wikichip.org/wiki/intel/microarchitectures/gen9) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) processor and newer (partial support)
+
+### Central processing unit (CPU)
+
+* Intel [Haswell](https://en.wikipedia.org/wiki/Haswell_(microarchitecture)) microarchitecture and newer
+* AMD [Excavator](https://en.wikipedia.org/wiki/Excavator_(microarchitecture)) microarchitecture and newer
+
+These requirements are based on the support of the **AVX2** instruction set.
+If you want, you can freely disable it and compile for any other architecture, including **ARM**.
 
 ## Build requirements
 
@@ -114,6 +124,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 |--------------------------|--------------------------------------------------|---------------|
 | GARDEN_BUILD_GSLC        | Build GSL shader compiler                        | `ON`          |
 | GARDEN_BUILD_EQUI2CUBE   | Build equirectangular to cubemap converter       | `ON`          |
+| GARDEN_BUILD_EXAMPLES    | Build Garden library examples                    | `ON`          |
 | GARDEN_RELEASE_EDITOR    | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING | Build Garden debugging code in the release build | `OFF`         |
 

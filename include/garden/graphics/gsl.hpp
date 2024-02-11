@@ -389,4 +389,4 @@ static bool isImageType(GslUniformType uniformType)
 		(uint8)uniformType <= (uint8)GslUniformType::Uimage2DArray;
 }
 
-} // garden::graphics
+} // namespace garden::graphics

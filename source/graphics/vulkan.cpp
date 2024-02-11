@@ -77,6 +77,8 @@ vk::PhysicalDeviceFeatures2 Vulkan::deviceFeatures = {};
 bool Vulkan::hasMemoryBudget = false;
 bool Vulkan::hasMemoryPriority = false;
 bool Vulkan::hasPageableMemory = false;
+bool Vulkan::hasDynamicRendering = false;
+bool Vulkan::hasDescriptorIndexing = false;
 
 #if GARDEN_DEBUG
 vk::DebugUtilsMessengerEXT Vulkan::debugMessenger = {};
@@ -140,7 +142,7 @@ static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor
 	versionMinor = VK_API_VERSION_MINOR(instanceVersion);
 	// versionMinor = 2; // TODO: debugging
 
-	#if __APPLE__
+	#if GARDEN_OS_MACOS
 	// TODO: remove after MoltenVK 1.3 support on mac.
 	if (versionMinor >= 3) versionMinor = 2;
 	#endif
@@ -163,7 +165,7 @@ static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor
 	for (uint32 i = 0; i < glfwExtensionCount; i++)
 		extensions[i] = glfwExtensions[i];
 
-	#if __APPLE__
+	#if GARDEN_OS_MACOS
 	if (!hasExtension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
 		extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	#endif
@@ -198,7 +200,7 @@ static vk::Instance createVkInstance(uint32& versionMajor, uint32& versionMinor
 	}
 	#endif
 
-	#if __APPLE__
+	#if GARDEN_OS_MACOS
 	auto flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 	#else
 	auto flags = vk::InstanceCreateFlags();
@@ -379,13 +381,14 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice,
 
 //--------------------------------------------------------------------------------------------------
 static vk::Device createVkDevice(
-	uint32 versionMajor, uint32 versionMinor, vk::PhysicalDevice physicalDevice,
+	vk::PhysicalDevice physicalDevice, uint32 versionMajor, uint32 versionMinor,
 	uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex,
 	uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount,
 	uint32 transferQueueMaxCount, uint32 computeQueueMaxCount,
 	uint32& frameQueueIndex, uint32& graphicsQueueIndex,
 	uint32& transferQueueIndex, uint32& computeQueueIndex,
-	bool& hasMemoryBudget, bool& hasMemoryPriority, bool& hasPageableMemory)
+	bool& hasMemoryBudget, bool& hasMemoryPriority, bool& hasPageableMemory,
+	bool& hasDynamicRendering, bool& hasDescriptorIndexing)
 {
 	uint32 graphicsQueueCount = 1,
 		transferQueueCount = 0, computeQueueCount = 0;
@@ -453,14 +456,12 @@ static vk::Device createVkDevice(
 	vector<const char*> extensions =
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		#if __APPLE__
+		#if GARDEN_OS_MACOS
 		VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 		#endif
 	};
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
-	auto hasDynamicRendering = false, hasDescriptorIndexing = false;
-
 	for (auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0)
@@ -473,64 +474,101 @@ static vk::Device createVkDevice(
 		if (versionMinor < 2)
 		{
 			if (strcmp(properties.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
-				hasDescriptorIndexing = true; // TODO: handle case when we don't have this extension.
+				hasDescriptorIndexing = true;
 		}
 		if (versionMinor < 3)
 		{
 			if (strcmp(properties.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
-				hasDynamicRendering = true; // TODO: handle case when we don't have this extension.
+				hasDynamicRendering = true;
 		}
+	}
+
+	vk::PhysicalDeviceFeatures2 deviceFeatures;
+	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
+	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
+	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
+
+	if (hasMemoryBudget) extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+	if (hasMemoryPriority) extensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
+
+	if (hasPageableMemory)
+	{
+		deviceFeatures.pNext = &pageableMemoryFeatures;
+		physicalDevice.getFeatures2(&deviceFeatures);
+		if (pageableMemoryFeatures.pageableDeviceLocalMemory)
+			extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+		else hasPageableMemory = false;
 	}
 
 	if (versionMinor < 2)
 	{
-		if (hasDescriptorIndexing && !hasExtension(extensions, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME))
-			extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+		if (hasDescriptorIndexing)
+		{
+			deviceFeatures.pNext = &descriptorIndexingFeatures;
+			physicalDevice.getFeatures2(&deviceFeatures);
+			if (descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind &&
+				descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
+				descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind &&
+				descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind &&
+				descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind &&
+				descriptorIndexingFeatures.descriptorBindingPartiallyBound &&
+				descriptorIndexingFeatures.runtimeDescriptorArray)
+			{
+				extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+			}
+			else hasDescriptorIndexing = false;
+		}
+	}
+	else
+	{
+		hasDescriptorIndexing = true;
 	}
 	if (versionMinor < 3)
 	{
-		if (hasDynamicRendering && !hasExtension(extensions, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME))
-			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+		if (hasDynamicRendering)
+		{
+			deviceFeatures.pNext = &dynamicRenderingFeatures;
+			physicalDevice.getFeatures2(&deviceFeatures);
+			if (dynamicRenderingFeatures.dynamicRendering)
+				extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+			else hasDynamicRendering = false;
+		}
+	}
+	else
+	{
+		hasDynamicRendering = true;
 	}
 
-	if (hasMemoryBudget && !hasExtension(extensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
-		extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-	if (hasMemoryPriority && !hasExtension(extensions, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME))
-		extensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
-	if (hasPageableMemory && !hasExtension(extensions, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
-		extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
-
-	vk::PhysicalDeviceFeatures2 deviceFeatures;
+	deviceFeatures.features = vk::PhysicalDeviceFeatures();
 	deviceFeatures.features.independentBlend = VK_TRUE;
 	deviceFeatures.features.depthClamp = VK_TRUE;
+	deviceFeatures.pNext = nullptr;
 	void** lastPNext = &deviceFeatures.pNext;
 
-	#if __APPLE__
+	#if GARDEN_OS_MACOS
 	vk::PhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
 	portabilityFeatures.mutableComparisonSamplers = VK_TRUE;
 	*lastPNext = &portabilityFeatures;
 	lastPNext = &portabilityFeatures.pNext;
 	#endif
 
-	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
 	if (hasPageableMemory)
 	{
 		pageableMemoryFeatures.pageableDeviceLocalMemory = true;
+		pageableMemoryFeatures.pNext = nullptr;
 		*lastPNext = &pageableMemoryFeatures;
 		lastPNext = &pageableMemoryFeatures.pNext;
 	}
-
-	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
-	if (hasDynamicRendering || versionMinor >= 3)
+	if (hasDynamicRendering)
 	{
 		dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+		dynamicRenderingFeatures.pNext = nullptr;
 		*lastPNext = &dynamicRenderingFeatures;
 		lastPNext = &dynamicRenderingFeatures.pNext;
 	}
-
-	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
-	if (hasDescriptorIndexing || versionMinor >= 3)
+	if (hasDescriptorIndexing)
 	{
+		descriptorIndexingFeatures = vk::PhysicalDeviceDescriptorIndexingFeatures();
 		descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
@@ -777,7 +815,7 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 
 	if (glfwRawMouseMotionSupported())
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	glfwSetWindowSizeLimits(window, MIN_DISPLAY_SIZE, MIN_DISPLAY_SIZE,
+	glfwSetWindowSizeLimits(window, minFramebufferSize, minFramebufferSize,
 		GLFW_DONT_CARE, GLFW_DONT_CARE);
 
 	uint32 graphicsQueueMaxCount = 0,
@@ -801,11 +839,12 @@ void Vulkan::initialize(int2 windowSize, bool isFullscreen,
 		transferQueueMaxCount, computeQueueMaxCount);
 	deviceProperties = physicalDevice.getProperties2();
 	deviceFeatures = physicalDevice.getFeatures2();
-	device = createVkDevice(versionMajor, versionMinor, physicalDevice,
+	device = createVkDevice(physicalDevice, versionMajor, versionMinor,
 		graphicsQueueFamilyIndex, transferQueueFamilyIndex, computeQueueFamilyIndex,
 		graphicsQueueMaxCount, transferQueueMaxCount, computeQueueMaxCount,
 		frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex,
-		hasMemoryBudget, hasMemoryPriority, hasPageableMemory);
+		hasMemoryBudget, hasMemoryPriority, hasPageableMemory,
+		hasDynamicRendering, hasDescriptorIndexing);
 	updateVkDynamicLoader(versionMajor, versionMinor, device, dynamicLoader);
 	memoryAllocator = createVmaMemoryAllocator(versionMajor, versionMinor,
 		instance, physicalDevice, device, hasMemoryBudget, hasMemoryPriority);

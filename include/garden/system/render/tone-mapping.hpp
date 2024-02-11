@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/render/bloom.hpp"
 
@@ -77,4 +78,5 @@ public:
 	void setExposure(float exposure);
 };
 
-} // garden
+} // namespace garden
+*/

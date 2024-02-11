@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/auto-exposure.hpp"
 #include "garden/system/render/editor/auto-exposure.hpp"
 #include "garden/system/render/tone-mapping.hpp"
@@ -212,3 +213,4 @@ ID<Buffer> AutoExposureRenderSystem::getHistogramBuffer()
 	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(getGraphicsSystem());
 	return histogramBuffer;
 }
+*/

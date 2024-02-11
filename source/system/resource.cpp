@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/resource.hpp"
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/compiler.hpp"
@@ -81,26 +80,26 @@ namespace
 		uint64 version = 0;
 		shared_ptr<Model> model;
 		ID<Buffer> instance = {};
-		Model::Accessor accessor;
+		ModelData::Accessor accessor;
 		Buffer::Bind bind = {};
 		Buffer::Access access = {};
 		Buffer::Strategy strategy = {};
 
-		GeneralBufferLoadData(Model::Accessor _accessor) :
+		GeneralBufferLoadData(ModelData::Accessor _accessor) :
 			accessor(_accessor) { }
 	};
 	struct VertexBufferLoadData final
 	{
 		uint64 version = 0;
-		vector<Model::Attribute::Type> attributes;
+		vector<ModelData::Attribute::Type> attributes;
 		shared_ptr<Model> model;
 		ID<Buffer> instance = {};
-		Model::Primitive primitive;
+		ModelData::Primitive primitive;
 		Buffer::Bind bind = {};
 		Buffer::Access access = {};
 		Buffer::Strategy strategy = {};
 
-		VertexBufferLoadData(Model::Primitive _primitive) :
+		VertexBufferLoadData(ModelData::Primitive _primitive) :
 			primitive(_primitive) { }
 	};
 }
@@ -108,25 +107,26 @@ namespace
 //--------------------------------------------------------------------------------------------------
 ResourceSystem* ResourceSystem::instance = nullptr;
 
-ResourceSystem::ResourceSystem()
+ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 {
-	instance = this;
-}
+	if (!instance) instance = this;
 
-//--------------------------------------------------------------------------------------------------
-void ResourceSystem::initialize()
-{
-	auto manager = getManager();
-	threadSystem = manager->tryGet<ThreadSystem>();
-	graphicsSystem = manager->get<GraphicsSystem>();
+	SUBSCRIBE_TO_EVENT("PostDeinit", ResourceSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input); // TODO: move this to preinit.
 
 	#if !GARDEN_DEBUG
 	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
 	#endif
 }
+ResourceSystem::~ResourceSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", ResourceSystem::postDeinit);
+}
 
 //--------------------------------------------------------------------------------------------------
-void ResourceSystem::terminate()
+void ResourceSystem::postDeinit()
 {
 	while (imageQueue.size() > 0)
 	{
@@ -155,7 +155,7 @@ void ResourceSystem::terminate()
 }
 
 //--------------------------------------------------------------------------------------------------
-void ResourceSystem::update()
+void ResourceSystem::input()
 {
 	#if GARDEN_DEBUG
 	auto logSystem = getManager()->tryGet<LogSystem>();
@@ -344,7 +344,7 @@ namespace
 
 		bool isMemoryMapped() const final { return true; }
 
-		bool read(char c[/*n*/], int n)
+		bool read(char c[], int n)
 		{
 			if (n + offset > size) throw range_error("out of memory range");
 			memcpy(c, data + offset, n); offset += n;
@@ -368,7 +368,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	// TODO: store images as bc compressed for polygon geometry. KTX 2.0
 	GARDEN_ASSERT(!path.empty());
 	vector<uint8> dataBuffer;
-	ImageFile fileType = ImageFile::Count; int32 fileCount = 0;
+	ImageFileType fileType = ImageFileType::Count; int32 fileCount = 0;
 	auto imagePath = fs::path("images") / path;
 
 	if (threadIndex < 0) threadIndex = 0;
@@ -382,22 +382,22 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	{
 		imagePath += ".webp";
 		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFile::Webp; }
+		{ fileCount++; fileType = ImageFileType::Webp; }
 		imagePath.replace_extension(".exr");
 		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFile::Exr; }
+		{ fileCount++; fileType = ImageFileType::Exr; }
 		imagePath.replace_extension(".png");
 		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFile::Png; }
+		{ fileCount++; fileType = ImageFileType::Png; }
 		imagePath.replace_extension(".jpg");
 		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFile::Jpg; }
+		{ fileCount++; fileType = ImageFileType::Jpg; }
 		imagePath.replace_extension(".jpeg");
 		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFile::Jpg; }
+		{ fileCount++; fileType = ImageFileType::Jpg; }
 		imagePath.replace_extension(".hdr");
 		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFile::Hdr; }
+		{ fileCount++; fileType = ImageFileType::Hdr; }
 		
 		if (fileCount > 1)
 		{
@@ -408,22 +408,22 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		{
 			imagePath = fs::path("models") / path; imagePath += ".webp";
 			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFile::Webp; }
+			{ fileCount++; fileType = ImageFileType::Webp; }
 			imagePath.replace_extension(".exr");
 			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFile::Exr; }
+			{ fileCount++; fileType = ImageFileType::Exr; }
 			imagePath.replace_extension(".png");
 			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFile::Png; }
+			{ fileCount++; fileType = ImageFileType::Png; }
 			imagePath.replace_extension(".jpg");
 			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFile::Jpg; }
+			{ fileCount++; fileType = ImageFileType::Jpg; }
 			imagePath.replace_extension(".jpeg");
 			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFile::Jpg; }
+			{ fileCount++; fileType = ImageFileType::Jpg; }
 			imagePath.replace_extension(".hdr");
 			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFile::Hdr; }
+			{ fileCount++; fileType = ImageFileType::Hdr; }
 
 			if (fileCount != 1)
 			{
@@ -432,7 +432,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 			}
 		}
 	}
-	else fileType = ImageFile::Exr;
+	else fileType = ImageFileType::Exr;
 
 	loadBinaryFile(filePath, dataBuffer);
 	#else
@@ -2331,3 +2331,4 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 	return buffer;
 }
 #endif
+*/

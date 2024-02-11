@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #include "garden/system/render/geometry/opaque.hpp"
 #include "garden/system/render/editor/geometry.hpp"
 #include "garden/system/render/shadow-mapping.hpp"
@@ -70,7 +73,6 @@ ID<Component> OpaqueRenderSystem::createComponent(ID<Entity> entity)
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
-	component->entity = entity;
 	component->transform = getManager()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
@@ -133,7 +135,6 @@ ID<Component> OpaqueShadowRenderSystem::createComponent(ID<Entity> entity)
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
-	component->entity = entity;
 	component->transform = getManager()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
@@ -169,3 +170,4 @@ ID<GraphicsPipeline> OpaqueShadowRenderSystem::createPipeline()
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"geometry/opaque-shadow", shadowMappingSystem->getFramebuffers()[0], true);
 }
+*/

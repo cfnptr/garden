@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/render/editor/selector.hpp"
 #include "garden/system/render/editor/gizmos.hpp"
@@ -461,3 +462,4 @@ void MeshRenderSystem::preSwapchainRender()
 	((SelectorEditor*)selectorEditor)->preSwapchainRender();
 	#endif
 }
+*/

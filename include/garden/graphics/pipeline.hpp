@@ -457,4 +457,4 @@ public:
 	static void destroy(Pipeline& pipeline) { pipeline.destroy(); }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

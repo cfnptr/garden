@@ -16,6 +16,7 @@
 // Based on this: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
@@ -72,4 +73,5 @@ public:
 	const vector<ID<Framebuffer>>& getFramebuffers();
 };
 
-} // garden
+} // namespace garden
+*/

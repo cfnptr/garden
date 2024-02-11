@@ -295,4 +295,4 @@ public:
 	}
 };
 
-} // garden::graphics
+} // namespace garden::graphics

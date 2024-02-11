@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/**********************************************************************************************************************
+ * @file
+ * 
+ * @details
+ * Hash is a function that converts an input (or 'key') into a fixed-size set of bytes. 
+ * This output set is typically of a fixed length, regardless of the size of the input.
+ */
 
 #pragma once
 #include "math/types.hpp"
@@ -27,7 +33,9 @@ namespace garden
 using namespace std;
 using namespace math;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief An 128bit hash container.
+ */
 struct Hash128
 {
 	uint64 low64 = 0;
@@ -52,4 +60,4 @@ struct Hash128
 	}
 };
 
-} // garden
+} // namespace garden

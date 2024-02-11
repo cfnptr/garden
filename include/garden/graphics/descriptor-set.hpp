@@ -100,4 +100,4 @@ public:
 	#endif
 };
 
-} // garden::graphics
+} // namespace garden::graphics

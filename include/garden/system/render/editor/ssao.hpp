@@ -38,5 +38,5 @@ class SsaoEditor final
 	friend class SsaoRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

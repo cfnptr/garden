@@ -515,4 +515,4 @@ public:
 	static void destroy(Image& image) { image.destroy(); }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

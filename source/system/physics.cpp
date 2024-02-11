@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
+// TODO: use Jolt physics library instead
+
+/*
 #include "garden/system/physics.hpp"
 #include "garden/system/editor/physics.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/log.hpp"
 
-/* TODO: use Jolt physics library instead
 #include "PxConfig.h"
 #include "PxPhysicsAPI.h"
 
@@ -909,7 +909,6 @@ ID<Component> PhysicsSystem::createComponent(ID<Entity> entity)
 	auto component = components.create();
 	auto componentView = components.get(component);
 	componentView->physicsSystem = this;
-	componentView->entity = entity;
 	return ID<Component>(component);
 }
 void PhysicsSystem::destroyComponent(ID<Component> instance)
