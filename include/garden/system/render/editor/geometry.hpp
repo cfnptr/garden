@@ -44,5 +44,5 @@ public:
 	void renderInfo(GeometryShadowRenderComponent* geometryShadowComponent);
 };
 
-} // garden
+} // namespace garden
 #endif

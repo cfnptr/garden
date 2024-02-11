@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/**********************************************************************************************************************
+ * @file
+ * @brief Application entry point.
+ */
 
 #pragma once
+#include "ecsm.hpp"
 #include "garden/defines.hpp"
 
-#if _WIN32 && !GARDEN_DEBUG
+#if GARDEN_OS_WINDOWS && !GARDEN_DEBUG
 #define NOMINMAX
 #include <windows.h>
 #define GARDEN_MAIN int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
@@ -25,4 +29,28 @@
 #else
 #define GARDEN_MAIN int main(int argc, char *argv[])
 #define GARDEN_MESSAGE_ERROR(cstr)
+#endif
+
+#if GARDEN_DEBUG
+#define GARDEN_DECLARE_MAIN(entryPoint) \
+GARDEN_MAIN                             \
+{                                       \
+	entryPoint();                       \
+	return EXIT_SUCCESS;                \
+}
+#else
+#define GARDEN_DECLARE_MAIN(entryPoint) \
+GARDEN_MAIN                             \
+{                                       \
+	try                                 \
+	{                                   \
+		entryPoint();                   \
+	}                                   \
+	catch (const std::exception& e)     \
+	{                                   \
+		GARDEN_MESSAGE_ERROR(e.what()); \
+		return EXIT_FAILURE;            \
+	}                                   \
+	return EXIT_SUCCESS;                \
+}
 #endif

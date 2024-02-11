@@ -16,7 +16,7 @@
 
 #include "garden/system/editor/transform.hpp"
 
-#if GARDEN_EDITOR
+#if 0
 #include "garden/system/render/editor.hpp"
 
 using namespace garden;

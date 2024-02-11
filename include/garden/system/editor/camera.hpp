@@ -30,5 +30,5 @@ class CameraEditor final
 	friend class CameraSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

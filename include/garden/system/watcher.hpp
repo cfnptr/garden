@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this
+
+/*
 #pragma once
 #include "garden/system/log.hpp"
 #include <functional>
@@ -47,4 +50,5 @@ public:
 		listeners[extension].push_back(onChange); }
 };
 
-} // garden
+} // namespace garden
+*/

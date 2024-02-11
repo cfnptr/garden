@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
@@ -58,4 +59,5 @@ public:
 	ID<DescriptorSet> createDescriptorSet(ID<Image> cubemap);
 };
 
-} // garden
+} // namespace garden
+*/

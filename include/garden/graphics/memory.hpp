@@ -98,4 +98,4 @@ public:
 	static Memory::Usage& getUsage(Memory& memory) noexcept { return memory.usage; }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

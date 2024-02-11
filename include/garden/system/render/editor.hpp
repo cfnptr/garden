@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/graphics.hpp"
 
@@ -86,9 +87,9 @@ public:
 	void registerEntityInspector(type_index componentType,
 		function<void(ID<Entity>)> onComponent)
 	{
-		auto result = entityInspectors.emplace(componentType, onComponent);
+		auto result = entityInspectors.emplace(componentType, onComponent).second;
 		#if GARDEN_DEBUG
-		if (!result.second)
+		if (!result)
 		{
 			throw runtime_error("This component type is already registered. ("
 				"name: " + string(componentType.name()) + ")");
@@ -121,5 +122,6 @@ static string toBinarySizeString(uint64 size)
 	return to_string(size) + " B";
 }
 
-} // garden
+} // namespace garden
 #endif
+*/

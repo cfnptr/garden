@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #pragma once
-#include "garden/system/log.hpp"
-#include "garden/system/thread.hpp"
-#include "garden/system/camera.hpp"
-#include "garden/system/transform.hpp"
-#include "garden/graphics/input.hpp"
+#include "garden/system/input.hpp"
 #include "garden/graphics/constants.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
@@ -27,72 +21,48 @@
 namespace garden
 {
 
-#define DEFAULT_WINDOW_WIDTH 1280
-#define DEFAULT_WINDOW_HEIGHT 720
-
 using namespace ecsm;
 using namespace garden::graphics;
 class GraphicsSystem;
 
-//--------------------------------------------------------------------------------------------------
-class IRenderSystem
+/***********************************************************************************************************************
+ */
+struct SwapchainChanges final
 {
-public:
-	struct SwapchainChanges final
-	{
-		bool framebufferSize = false;
-		bool bufferCount = false;
-		bool vsyncState = false;
-	};
-private:
-	GraphicsSystem* graphicsSystem = nullptr;
-	friend class GraphicsSystem;
-protected:
-	virtual void render() { }
-	virtual void recreateSwapchain(const SwapchainChanges& changes) { }
-public:
-	GraphicsSystem* getGraphicsSystem() noexcept
-	{
-		GARDEN_ASSERT(graphicsSystem);
-		return graphicsSystem;
-	}
-	const GraphicsSystem* getGraphicsSystem() const noexcept
-	{
-		GARDEN_ASSERT(graphicsSystem);
-		return graphicsSystem;
-	}
+	bool framebufferSize = false;
+	bool bufferCount = false;
+	bool vsyncState = false;
 };
 
-//--------------------------------------------------------------------------------------------------
+/**
+ */
 class GraphicsSystem final : public System
 {
-	LogSystem* logSystem = nullptr;
-	vector<vector<ID<Buffer>>> cameraConstantsBuffers;
-	vector<function<void(const char**, uint32)>> onFileDrops;
+public:
+	using ConstantsBuffer = vector<vector<ID<Buffer>>>;
+private:
+	ConstantsBuffer cameraConstantsBuffers;
 	int2 framebufferSize = int2(0), windowSize = int2(0);
-	float2 cursorPosition = float2(0.0f);
-	double time = 0.0, deltaTime = 0.0;
 	uint64 frameIndex = 0, tickIndex = 0;
-	CursorMode cursorMode = CursorMode::Default;
 	ID<Framebuffer> swapchainFramebuffer = {};
 	ID<Buffer> fullCubeVertices = {};
-	ID<Image> emptyTexture = {};
-	ID<Image> whiteTexture = {};
-	ID<Image> greenTexture = {};
-	ID<Image> normalMapTexture = {};
+	ID<ImageView> emptyTexture = {};
+	ID<ImageView> whiteTexture = {};
+	ID<ImageView> greenTexture = {};
+	ID<ImageView> normalMapTexture = {};
 	CameraConstants currentCameraConstants = {};
+	double beginSleepClock = 0.0;
 	bool useThreading = false;
 	bool forceRecreateSwapchain = false;
-	bool isF11Pressed = false;
-	IRenderSystem::SwapchainChanges swapchainChanges;
+	bool isFramebufferSizeValid = false;
+	SwapchainChanges swapchainChanges;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	ID<GraphicsPipeline> aabbPipeline;
 	#endif
 
-	// TODO: support offscreen rendering mode and multiple windows.
-
-	GraphicsSystem(int2 windowSize = int2(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT),
+	GraphicsSystem(Manager* manager,
+		int2 windowSize = int2(defaultWindowWidth, defaultWindowHeight),
 		bool isFullscreen = !GARDEN_DEBUG, bool useVsync = true,
 		bool useTripleBuffering = true, bool useThreading = true);
 	~GraphicsSystem() final;
@@ -103,76 +73,69 @@ class GraphicsSystem final : public System
 	void recreateImGui();
 	#endif
 
-	void initialize() final;
-	void terminate() final;
-	void update() final;
-	void disposeComponents() final;
+	void preInit();
+	void preDeinit();
+	void input();
+	void update();
+	void present();
 
-	static void onFileDrop(void* window, int count, const char** paths);
 	friend class ecsm::Manager;
+
+	//******************************************************************************************************************
 public:
 	ID<Entity> camera = {};
 	ID<Entity> directionalLight = {};
 	uint16 frameRate = 60;
 	bool useVsync = false, useTripleBuffering = false;
-
-//--------------------------------------------------------------------------------------------------
-	double getTime() const noexcept { return time; }
-	double getDeltaTime() const noexcept { return deltaTime; }
 	uint64 getFrameIndex() const noexcept { return frameIndex; }
 	uint64 getTickIndex() const noexcept { return tickIndex; }
 	int2 getFramebufferSize() const noexcept { return framebufferSize; }
 	int2 getWindowSize() const noexcept { return windowSize; }
-	float2 getCursorPosition() const noexcept { return cursorPosition; }
-	uint32 getSwapchainSize() const;
-	uint32 getSwapchainIndex() const;
-
 	bool isUseThreading() const noexcept { return useThreading; }
-	bool isKeyboardButtonPressed(KeyboardButton button) const;
-	bool isMouseButtonPressed(MouseButton button) const;
+	const SwapchainChanges& getSwapchainChanges() const noexcept { swapchainChanges; }
 
-	CursorMode getCursorMode() const noexcept { return cursorMode; }
-	void setCursorMode(CursorMode mode);
+	bool hasDynamicRendering() const noexcept;
+	bool hasDescriptorIndexing() const noexcept;
+	uint32 getSwapchainSize() const noexcept;
+	uint32 getSwapchainIndex() const noexcept;
 
 	ID<Buffer> getFullCubeVertices();
-	ID<Image> getEmptyTexture();
-	ID<Image> getWhiteTexture();
-	ID<Image> getGreenTexture();
-	ID<Image> getNormalMapTexture();
-	// Note: be carefull when using these functions inside ->get image view code!
+	ID<ImageView> getEmptyTexture();
+	ID<ImageView> getWhiteTexture();
+	ID<ImageView> getGreenTexture();
+	ID<ImageView> getNormalMapTexture();
+	// Note: be careful when using these functions inside ->get image view code!
 
-	ID<Framebuffer> getSwapchainFramebuffer()
-		const noexcept { return swapchainFramebuffer; }
-	const vector<vector<ID<Buffer>>>& getCameraConstantsBuffers()
-		const noexcept { return cameraConstantsBuffers; }
-	void recreateSwapchain(const IRenderSystem::SwapchainChanges& changes);
+	void setWindowTitle(const string& title);
 
-	void registerFileDrop(function<void(const char**, uint32)> onFileDrop)
-		{ onFileDrops.push_back(onFileDrop); }
+	ID<Framebuffer> getSwapchainFramebuffer() const noexcept { return swapchainFramebuffer; }
+	const ConstantsBuffer& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
+	void recreateSwapchain(const SwapchainChanges& changes);
+
+
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	void setDebugName(ID<Buffer> instance, const string& name);
 	void setDebugName(ID<Image> instance, const string& name);
 	void setDebugName(ID<ImageView> instance, const string& name);
 	void setDebugName(ID<Framebuffer> instance, const string& name);
 	void setDebugName(ID<DescriptorSet> instance, const string& name);
-	#define SET_RESOURCE_DEBUG_NAME(graphicsSystem, resource, name) \
-		graphicsSystem->setDebugName(resource, name)
+	#define SET_RESOURCE_DEBUG_NAME(graphicsSystem, resource, name) graphicsSystem->setDebugName(resource, name)
 	#else
 	#define SET_RESOURCE_DEBUG_NAME(graphicsSystem, resource, name)
 	#endif
 
-//--------------------------------------------------------------------------------------------------
-// Returns current render call data.
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
+	// Returns current render call data.
+	//******************************************************************************************************************
 
-	const CameraConstants& getCurrentCameraConstants()
-		const noexcept { return currentCameraConstants; }
+	const CameraConstants& getCurrentCameraConstants() const noexcept { return currentCameraConstants; }
 
-//--------------------------------------------------------------------------------------------------
-	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access,
-		const void* data, uint64 size, Buffer::Usage usage = Buffer::Usage::Auto,
+	//******************************************************************************************************************
+	ID<Buffer> createBuffer(Buffer::Bind bind,
+		Buffer::Access access, const void* data, uint64 size,
+		Buffer::Usage usage = Buffer::Usage::Auto,
 		Buffer::Strategy strategy = Buffer::Strategy::Default);
 	
 	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access,
@@ -221,7 +184,7 @@ public:
 	void destroy(ID<Buffer> instance);
 	View<Buffer> get(ID<Buffer> instance) const;
 
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	ID<Image> createImage(Image::Type type, Image::Format format,
 		Image::Bind bind, const Image::Mips& data, const int3& size,
 		Image::Strategy strategy = Image::Strategy::Default,
@@ -270,30 +233,29 @@ public:
 	void destroy(ID<Image> instance);
 	View<Image> get(ID<Image> instance) const;
 
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	ID<ImageView> createImageView(ID<Image> image, Image::Type type,
 		Image::Format format = Image::Format::Undefined, uint8 baseMip = 0,
 		uint8 mipCount = 1, uint32 baseLayer = 0, uint32 layerCount = 1);
 	void destroy(ID<ImageView> instance);
 	View<ImageView> get(ID<ImageView> instance) const;
 
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	ID<Framebuffer> createFramebuffer(int2 size,
 		vector<Framebuffer::OutputAttachment>&& colorAttachments,
 		Framebuffer::OutputAttachment depthStencilAttachment = {});
-	ID<Framebuffer> createFramebuffer(int2 size,
-		vector<Framebuffer::Subpass>&& subpasses);
+	ID<Framebuffer> createFramebuffer(int2 size, vector<Framebuffer::Subpass>&& subpasses);
 	void destroy(ID<Framebuffer> instance);
 	View<Framebuffer> get(ID<Framebuffer> instance) const;
 
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	void destroy(ID<GraphicsPipeline> instance);
 	View<GraphicsPipeline> get(ID<GraphicsPipeline> instance) const;
 
 	void destroy(ID<ComputePipeline> instance);
 	View<ComputePipeline> get(ID<ComputePipeline> instance) const;
 
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	ID<DescriptorSet> createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
 	ID<DescriptorSet> createDescriptorSet(ID<ComputePipeline> computePipeline,
@@ -301,9 +263,9 @@ public:
 	void destroy(ID<DescriptorSet> instance);
 	View<DescriptorSet> get(ID<DescriptorSet> instance) const;
 	
-//--------------------------------------------------------------------------------------------------
-// Render commands
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
+	// Render commands
+	//******************************************************************************************************************
 
 	bool isRecording() const noexcept;
 	void startRecording(CommandBufferType commandBufferType = CommandBufferType::Frame);
@@ -314,4 +276,4 @@ public:
 	#endif
 };
 
-} // garden
+} // namespace garden

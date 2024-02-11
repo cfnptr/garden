@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this
+
+/*
 #pragma once
 #include "garden/defines.hpp"
 #include "ecsm.hpp"
@@ -22,7 +25,7 @@
 namespace garden
 {
 	class PhysicsSystem;
-}; // garden
+};
 
 namespace
 {
@@ -106,7 +109,7 @@ public:
 	void setRestOffset(float value);
 };
 
-} // garden::physics
+} // namespace garden::physics
 
 namespace garden
 {
@@ -129,7 +132,6 @@ public:
 private:
 	PhysicsSystem* physicsSystem = nullptr;
 	void* instance = nullptr;
-	ID<Entity> entity = {};
 	uint16 _alignment = 0;
 	bool staticBody = false;
 
@@ -305,4 +307,5 @@ public:
 	void destroy(ID<Shape> shape);
 };
 
-} // garden
+} // namespace garden
+*/

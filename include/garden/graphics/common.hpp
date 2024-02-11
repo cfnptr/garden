@@ -119,7 +119,7 @@ struct DebugLabel
 #define SET_GPU_DEBUG_LABEL(name, color)
 #define INSERT_GPU_DEBUG_LABEL(name, color)
 #define BEGIN_GPU_DEBUG_LABEL(name, color)
-#define END_GPU_DEBUG_LABEL(name, color)
+#define END_GPU_DEBUG_LABEL()
 #endif
 
-} // garden::graphics
+} // namespace garden::graphics

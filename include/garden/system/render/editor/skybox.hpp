@@ -33,5 +33,5 @@ class SkyboxEditor final
 	friend class SkyboxRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

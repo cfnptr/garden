@@ -40,5 +40,5 @@ class HierarchyEditor final
 	friend class EditorRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

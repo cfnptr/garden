@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/shadow-mapping.hpp"
 #include "garden/system/render/editor/shadow-mapping.hpp"
 #include "garden/system/settings.hpp"
@@ -365,3 +366,4 @@ void ShadowMappingRenderSystem::setShadowMapSize(int32 size)
 {
 	abort(); // TODO:
 }
+*/

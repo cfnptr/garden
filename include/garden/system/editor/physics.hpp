@@ -30,5 +30,5 @@ class PhysicsEditor final
 	friend class PhysicsSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

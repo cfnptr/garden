@@ -22,8 +22,10 @@
 namespace garden::graphics
 {
 
-// Minimal DLSS output size
-#define MIN_DISPLAY_SIZE 32
+/**
+ * @brief Minimal DLSS output size
+ */ 
+const int32 minFramebufferSize = 32;
 
 //--------------------------------------------------------------------------------------------------
 class GraphicsAPI final
@@ -75,4 +77,4 @@ public:
 		void* data0, void* data1 = nullptr, uint32 count = 0);
 };
 
-} // garden::graphics
+} // namespace garden::graphics

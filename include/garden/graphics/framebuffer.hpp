@@ -123,13 +123,7 @@ private:
 	Framebuffer() = default;
 	Framebuffer(int2 size, vector<Subpass>&& subpasses);
 	Framebuffer(int2 size, vector<OutputAttachment>&& colorAttachments,
-		OutputAttachment depthStencilAttachment)
-	{
-		this->colorAttachments = std::move(colorAttachments);
-		this->depthStencilAttachment = depthStencilAttachment;
-		this->size = size;
-		this->isSwapchain = false;
-	}
+		OutputAttachment depthStencilAttachment);
 	Framebuffer(int2 size, ID<ImageView> swapchainImage)
 	{
 		this->colorAttachments.push_back(
@@ -244,4 +238,4 @@ public:
 		noexcept { return framebuffer.renderPass; }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

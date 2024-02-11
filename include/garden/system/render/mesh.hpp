@@ -19,6 +19,7 @@
 #include "garden/system/render/deferred.hpp"
 #include <utility>
 
+/*
 namespace garden
 {
 
@@ -31,14 +32,12 @@ class IMeshRenderSystem;
 struct MeshRenderComponent : public Component
 {
 protected:
-	ID<Entity> entity = {};
 	ID<TransformComponent> transform = {};
 	friend class MeshRenderSystem;
 public:
 	Aabb aabb = Aabb::one;
 	bool isEnabled = true;
 
-	ID<Entity> getEntity() const noexcept { return entity; }
 	ID<TransformComponent> getTransform() const noexcept { return transform; }
 };
 
@@ -154,4 +153,5 @@ public:
 	}
 };
 
-} // garden
+} // namespace garden
+*/

@@ -34,7 +34,6 @@ class GizmosEditor final
 	ID<Buffer> fullArrowVertices = {};
 	float2 lastCursorPos = float2(0.0f);
 	uint32 dragMode = 0;
-	bool lastLmbState = false;
 
 	GizmosEditor(MeshRenderSystem* system);
 	void preSwapchainRender();
@@ -43,7 +42,7 @@ class GizmosEditor final
 	friend class MeshRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif
 
 

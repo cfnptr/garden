@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/system/graphics.hpp"
+#include "garden/system/input.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/camera.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
@@ -39,7 +41,7 @@ using namespace garden;
 using namespace garden::graphics::primitive;
 
 #if GARDEN_EDITOR
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 namespace
 {
 	struct AabbPC
@@ -49,83 +51,6 @@ namespace
 	};
 }
 
-static void imGuiCheckVkResult(VkResult result)
-{
-	if (result == 0) return;
-	fprintf(stderr, "IMGUI::VULKAN:ERROR: %d\n", result);
-	if (result < 0) abort();
-}
-
-static void setImGuiSyle()
-{
-	auto& style = ImGui::GetStyle();
-	style.FrameBorderSize = 1.0f;
-	style.TabBorderSize = 1.0f;
-	style.IndentSpacing = 8.0f;
-	style.ScrollbarSize = 12.0f;
-	style.GrabMinSize = 7.0f;
-	style.FramePadding = ImVec2(4.0f, 4.0f);
-	style.WindowRounding = 2.0f;
-	style.ChildRounding = 2.0f;
-	style.FrameRounding = 2.0f;
-	style.PopupRounding = 2.0f;
-	style.ScrollbarRounding = 2.0f;
-	style.GrabRounding = 2.0f;
-	style.SeparatorTextBorderSize = 2.0f;
-
-	#if __APPLE__
-	style.AntiAliasedFill = false;
-	#endif
-
-	auto colors = style.Colors;
-	colors[ImGuiCol_Text] = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
-	colors[ImGuiCol_TextDisabled] = ImVec4(0.549f, 0.549f, 0.549f, 1.0f);
-	colors[ImGuiCol_WindowBg] = ImVec4(0.122f, 0.122f, 0.122f, 0.996f);
-	colors[ImGuiCol_PopupBg] = ImVec4(0.122f, 0.122f, 0.122f, 0.996f);
-	colors[ImGuiCol_Border] = ImVec4(0.267f, 0.267f, 0.267f, 1.0f);
-	colors[ImGuiCol_FrameBg] = ImVec4(0.165f, 0.165f, 0.165f, 1.0f);
-	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.259f, 0.267f, 0.267f, 1.0f);
-	colors[ImGuiCol_FrameBgActive] = ImVec4(0.098f, 0.247f, 0.388f, 1.0f);
-	colors[ImGuiCol_TitleBg] = ImVec4(0.094f, 0.094f, 0.094f, 0.992f);
-	colors[ImGuiCol_TitleBgActive] = ImVec4(0.122f, 0.122f, 0.122f, 1.0f);
-	colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.094f, 0.094f, 0.094f, 0.992f);
-	colors[ImGuiCol_MenuBarBg] = ImVec4(0.094f, 0.094f, 0.094f, 0.992f);
-	// TODO: scroll bar
-	colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
-	colors[ImGuiCol_SliderGrab] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
-	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f); // TODO:
-	colors[ImGuiCol_Button] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
-	colors[ImGuiCol_ButtonHovered] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_ButtonActive] = ImVec4(0.098f, 0.247f, 0.388f, 1.0f);
-	colors[ImGuiCol_Header] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f);
-	colors[ImGuiCol_HeaderHovered] = ImVec4(0.259f, 0.267f, 0.267f, 1.0f);
-	colors[ImGuiCol_HeaderActive] = ImVec4(0.098f, 0.247f, 0.388f, 1.0f);
-	colors[ImGuiCol_Separator] = ImVec4(0.251f, 0.251f, 0.251f, 1.0f);
-	colors[ImGuiCol_SeparatorHovered] = ImVec4(0.251f, 0.251f, 0.251f, 1.0f); // TODO: 
-	colors[ImGuiCol_SeparatorActive] = ImVec4(0.251f, 0.251f, 0.251f, 1.0f); // TODO:
-	colors[ImGuiCol_ResizeGrip] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
-	colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_ResizeGripActive] = ImVec4(0.098f, 0.247f, 0.388f, 1.0f);
-	colors[ImGuiCol_Tab] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f);
-	colors[ImGuiCol_TabHovered] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_TabActive] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_TabUnfocused] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f); // TODO: where it used?
-	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_PlotHistogram] = ImVec4(0.969f, 0.510f, 0.106f, 1.0f);
-	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.976f, 0.627f, 0.318f, 1.0f);
-	colors[ImGuiCol_PlotLines] = ImVec4(0.969f, 0.510f, 0.106f, 1.0f); // TODO:
-	colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.976f, 0.627f, 0.318f, 1.0f); // TODO:
-	colors[ImGuiCol_TableHeaderBg] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f);
-	colors[ImGuiCol_TableBorderStrong] = ImVec4(0.267f, 0.267f, 0.267f, 1.0f);
-	colors[ImGuiCol_TableBorderLight] = ImVec4(0.267f, 0.267f, 0.267f, 0.8f);
-	colors[ImGuiCol_TextSelectedBg] = ImVec4(0.149f, 0.310f, 0.471f, 1.0f);
-	colors[ImGuiCol_NavHighlight] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
-	colors[ImGuiCol_DragDropTarget] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f); // TODO:
-	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.831f);
-	// TODO: others undeclared
-}
-
-//--------------------------------------------------------------------------------------------------
 void GraphicsSystem::initializeImGui()
 {
 	IMGUI_CHECKVERSION();
@@ -142,8 +67,7 @@ void GraphicsSystem::initializeImGui()
 	{
 		Framebuffer::Subpass(PipelineType::Graphics, {},
 		{
-			Framebuffer::OutputAttachment(
-				swapchainImage->getDefaultView(), false, true, true)
+			Framebuffer::OutputAttachment(swapchainImage->getDefaultView(), false, true, true)
 		})
 	};
 
@@ -151,8 +75,7 @@ void GraphicsSystem::initializeImGui()
 	auto imGuiFramebuffer = createFramebuffer(framebufferSize, std::move(subpasses));
 	auto& framebuffer = **get(imGuiFramebuffer);
 	ImGuiData::renderPass = (VkRenderPass)FramebufferExt::getRenderPass(framebuffer);
-	Vulkan::device.destroyFramebuffer(vk::Framebuffer(
-		(VkFramebuffer)ResourceExt::getInstance(framebuffer)));
+	Vulkan::device.destroyFramebuffer(vk::Framebuffer((VkFramebuffer)ResourceExt::getInstance(framebuffer)));
 	ResourceExt::getInstance(framebuffer) = nullptr;
 	FramebufferExt::getRenderPass(framebuffer) = nullptr;
 	destroy(imGuiFramebuffer);
@@ -165,12 +88,12 @@ void GraphicsSystem::initializeImGui()
 	{
 		auto colorImage = get(Vulkan::swapchain.getBuffers()[i].colorImage);
 		auto& imageView = **get(colorImage->getDefaultView());
-		framebufferInfo.pAttachments = (vk::ImageView*)
-			&ResourceExt::getInstance(imageView);
+		framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(imageView);
 		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
 	}
 
-	ImGui_ImplGlfw_InitForVulkan((GLFWwindow*)GraphicsAPI::window, true);
+	auto window = (GLFWwindow*)GraphicsAPI::window;
+	ImGui_ImplGlfw_InitForVulkan(window, true);
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance = Vulkan::instance;
 	init_info.PhysicalDevice = Vulkan::physicalDevice;
@@ -185,14 +108,13 @@ void GraphicsSystem::initializeImGui()
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	init_info.Allocator = nullptr;
 	init_info.CheckVkResultFn = imGuiCheckVkResult; 
-	// TODO: use init_info.UseDynamicRendering istead of render pass hack.
+	// TODO: use init_info.UseDynamicRendering instead of render pass hack.
 	ImGui_ImplVulkan_Init(&init_info, ImGuiData::renderPass);
 
 	auto pixelRatioXY = (float2)framebufferSize / windowSize;
 	auto pixelRatio = std::max(pixelRatioXY.x, pixelRatioXY.y);
 	auto contentScaleX = 0.0f, contentScaleY = 0.0f;
-	glfwGetWindowContentScale((GLFWwindow*)GraphicsAPI::window,
-		&contentScaleX, &contentScaleY);
+	glfwGetWindowContentScale(window, &contentScaleX, &contentScaleY);
 	auto contentScale = std::max(contentScaleX, contentScaleY);
 
 	auto& io = ImGui::GetIO();
@@ -240,83 +162,33 @@ void GraphicsSystem::recreateImGui()
 	{
 		auto colorImage = get(Vulkan::swapchain.getBuffers()[i].colorImage);
 		auto& imageView = **get(colorImage->getDefaultView());
-		framebufferInfo.pAttachments = (vk::ImageView*)
-			&ResourceExt::getInstance(imageView);
+		framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(imageView);
 		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
 	}
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
-void GraphicsSystem::onFileDrop(void* window, int count, const char** paths)
-{
-	auto graphicsSystem = (GraphicsSystem*)glfwGetWindowUserPointer((GLFWwindow*)window);
-	auto manager = graphicsSystem->getManager();
-
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem) logSystem->info("Dropped " + to_string(count) + " items on a window.");
-
-	#if GARDEN_EDITOR
-	for (int i = 0; i < count; i++)
-	{
-		auto path = fs::path(paths[i]).generic_string(); 
-		auto length = path.length();
-		if (length < 8) continue;
-
-		psize pathOffset = 0;
-		auto cmpPath = (GARDEN_RESOURCES_PATH / "scenes").generic_string();
-		if (length > cmpPath.length())
-		{
-			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
-				pathOffset = cmpPath.length() + 1;
-		}
-		cmpPath = (GARDEN_APP_RESOURCES_PATH / "scenes").generic_string();
-		if (length > cmpPath.length())
-		{
-			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
-				pathOffset = cmpPath.length() + 1;
-		}
-
-		if (memcmp(path.c_str() + (length - 5), "scene", 5) == 0)
-		{
-			fs::path filePath = path.c_str() + pathOffset; filePath.replace_extension();
-			try { ResourceSystem::getInstance()->loadScene(filePath); }
-			catch (const exception& e)
-			{
-				if (logSystem)
-					logSystem->error("Failed to load scene. (error: " + string(e.what()) + ")");
-			}
-			break;
-		}
-	}
-	#endif
-
-	auto& onFileDrops = graphicsSystem->onFileDrops;
-	for (auto onFileDrop : onFileDrops) onFileDrop(paths, (uint32)count);
-}
-
-//--------------------------------------------------------------------------------------------------
-GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen,
-	bool useVsync, bool useTripleBuffering, bool useThreading)
+//**********************************************************************************************************************
+GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscreen,
+	bool useVsync, bool useTripleBuffering, bool useThreading) : System(manager)
 {
 	this->useVsync = useVsync;
 	this->useTripleBuffering = useTripleBuffering;
 	this->useThreading = useThreading;
 
-	Vulkan::initialize(windowSize, isFullscreen,
-		useVsync, useTripleBuffering, useThreading);
+	manager->registerEventAfter("Render", "Update");
+	manager->registerEventAfter("Present", "Render");
+	manager->registerEvent("SwapchainRecreate");
+	SUBSCRIBE_TO_EVENT("PreInit", GraphicsSystem::preInit);
+	SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
+	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
+	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
-	glfwSetWindowUserPointer((GLFWwindow*)GraphicsAPI::window, this);
-	glfwSetDropCallback((GLFWwindow*)GraphicsAPI::window, (GLFWdropfun)onFileDrop);
+	Vulkan::initialize(windowSize, isFullscreen, useVsync, useTripleBuffering, useThreading);
 
-	glfwGetFramebufferSize((GLFWwindow*)GraphicsAPI::window,
-		&framebufferSize.x, &framebufferSize.y);
-	glfwGetWindowSize((GLFWwindow*)GraphicsAPI::window,
-		&this->windowSize.x, &this->windowSize.y);
-
-	double x = 0.0, y = 0.0;
-	glfwGetCursorPos((GLFWwindow*)GraphicsAPI::window, &x, &y);
-	cursorPosition = float2((float)x, (float)y);
+	auto window = (GLFWwindow*)GraphicsAPI::window;
+	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
+	glfwGetWindowSize(window, &this->windowSize.x, &this->windowSize.y);
 
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
@@ -339,20 +211,35 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, bool isFullscreen,
 }
 GraphicsSystem::~GraphicsSystem()
 {
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
+		UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
+		UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
+		manager->unregisterEvent("Render");
+		manager->unregisterEvent("Present");
+		manager->unregisterEvent("SwapchainRecreate");
+	}
+
 	#if GARDEN_EDITOR
 	terminateImGui();
 	#endif
 	Vulkan::terminate();
 }
 
-//--------------------------------------------------------------------------------------------------
-void GraphicsSystem::initialize()
+//**********************************************************************************************************************
+void GraphicsSystem::preInit()
 {
 	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<InputSystem>());
+	SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
+
 	auto threadSystem = manager->tryGet<ThreadSystem>();
 	if (threadSystem) Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
 
-	logSystem = manager->tryGet<LogSystem>();
+	auto logSystem = manager->tryGet<LogSystem>();
 	if (logSystem)
 	{
 		logSystem->info("GPU: " + string(
@@ -370,25 +257,17 @@ void GraphicsSystem::initialize()
 	#if GARDEN_EDITOR
 	initializeImGui();
 	#endif
-
-	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
-	for (auto subsystem : subsystems)
-	{
-		auto renderSystem = dynamic_cast<IRenderSystem*>(subsystem.system);
-		GARDEN_ASSERT(renderSystem);
-		renderSystem->graphicsSystem = this;
-	}
-	for (auto subsystem : subsystems) subsystem.system->initialize();
 }
-void GraphicsSystem::terminate()
+void GraphicsSystem::preDeinit()
 {
 	Vulkan::device.waitIdle();
 
-	auto& subsystems = getManager()->getSubsystems<GraphicsSystem>();
-	for (auto subsystem : subsystems) subsystem.system->terminate();
+	auto manager = getManager();
+	if (manager->isRunning())
+		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static float4x4 calcView(const TransformComponent* transform)
 {
 	return rotate(normalize(transform->rotation)) * translate(
@@ -411,63 +290,23 @@ static float4x4 calcRelativeView(Manager* manager, const TransformComponent* tra
 	return view;
 }
 
-//--------------------------------------------------------------------------------------------------
-static void updateWindowMode(GraphicsSystem* graphicsSystem, bool& isF11Pressed)
+//**********************************************************************************************************************
+static void updateWindowInput(int2& framebufferSize, int2& windowSize, bool& isFramebufferSizeValid)
 {
-	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::F11))
-	{
-		if (!isF11Pressed)
-		{
-			auto primaryMonitor = glfwGetPrimaryMonitor();
-			auto videoMode = glfwGetVideoMode(primaryMonitor);
-
-			if (glfwGetWindowAttrib((GLFWwindow*)GraphicsAPI::window, GLFW_DECORATED) == GLFW_FALSE)
-			{
-				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window, nullptr,
-					videoMode->width / 2 - DEFAULT_WINDOW_WIDTH / 2,
-					videoMode->height / 2 - DEFAULT_WINDOW_HEIGHT / 2,
-					DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, videoMode->refreshRate);
-				glfwSetWindowAttrib((GLFWwindow*)GraphicsAPI::window, GLFW_DECORATED, GLFW_TRUE);
-			}
-			else
-			{
-				glfwSetWindowMonitor((GLFWwindow*)GraphicsAPI::window, primaryMonitor,
-					0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
-				glfwSetWindowAttrib((GLFWwindow*)GraphicsAPI::window, GLFW_DECORATED, GLFW_FALSE);
-			}
-
-			isF11Pressed = true;
-		}
-	}
-	else isF11Pressed = false;
-}
-
-//--------------------------------------------------------------------------------------------------
-static void updateWindowInput(double& time, double& deltaTime, int2& framebufferSize,
-	int2& windowSize, float2& cursorPosition, bool& isFramebufferSizeValid)
-{
-	auto newTime = glfwGetTime();
-	deltaTime = newTime - time;
-	time = newTime;
-
+	auto window = (GLFWwindow*)GraphicsAPI::window;
 	int framebufferWidth = 0, framebufferHeight = 0;
-	glfwGetFramebufferSize((GLFWwindow*)GraphicsAPI::window,
-		&framebufferWidth, &framebufferHeight);
+	glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
 	int windowWidth = 0, windowHeight = 0;
-	glfwGetWindowSize((GLFWwindow*)GraphicsAPI::window, &windowWidth, &windowHeight);
+	glfwGetWindowSize(window, &windowWidth, &windowHeight);
 
 	isFramebufferSizeValid = framebufferWidth != 0 && framebufferHeight != 0;
 	if (isFramebufferSizeValid)
 		framebufferSize = int2(framebufferWidth, framebufferHeight);
 	if (windowWidth != 0 && windowHeight != 0)
 		windowSize = int2(windowWidth, windowHeight);
-
-	double x = 0.0, y = 0.0;
-	glfwGetCursorPos((GLFWwindow*)GraphicsAPI::window, &x, &y);
-	cursorPosition = float2((float)x, (float)y);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
 	vector<vector<ID<Buffer>>>& cameraConstantsBuffers)
 {
@@ -489,7 +328,7 @@ static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static void updateCurrentFrambuffer(ID<Framebuffer> swapchainFramebuffer, int2 framebufferSize)
 {
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
@@ -499,9 +338,9 @@ static void updateCurrentFrambuffer(ID<Framebuffer> swapchainFramebuffer, int2 f
 	FramebufferExt::getSize(framebuffer) = framebufferSize;
 }
 
-//--------------------------------------------------------------------------------------------------
-static void prepareCameraConstants(Manager* manager, ID<Entity> camera, ID<Entity> directionalLight,
-	int2 framebufferSize, CameraConstants& cameraConstants)
+//**********************************************************************************************************************
+static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
+	ID<Entity> directionalLight, int2 framebufferSize, CameraConstants& cameraConstants)
 {
 	auto transformComponent = manager->tryGet<TransformComponent>(camera);
 	if (transformComponent)
@@ -519,17 +358,18 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera, ID<Entit
 	auto cameraComponent = manager->tryGet<CameraComponent>(camera);
 	if (cameraComponent)
 	{
-		cameraComponent->p.perspective.aspectRatio =
-			(float)framebufferSize.x / (float)framebufferSize.y;
+		cameraComponent->p.perspective.aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
 		cameraConstants.projection = cameraComponent->calcProjection();
 		cameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
 	}
 	else
 	{
 		cameraConstants.projection = float4x4::identity;
-		cameraConstants.nearPlane = DEFAULT_HMD_DEPTH;
+		cameraConstants.nearPlane = defaultHmdDepth;
 	}
 
+	// TODO:
+	/*
 	auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
 	if (deferredSystem)
 	{
@@ -541,9 +381,9 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera, ID<Entit
 	{
 		cameraConstants.frameSize = cameraConstants.frameSizeInv = 1.0f;
 	}
+	*/
 
-	cameraConstants.viewProj =
-		cameraConstants.projection * cameraConstants.view;
+	cameraConstants.viewProj = cameraConstants.projection * cameraConstants.view;
 	cameraConstants.viewInverse = inverse(cameraConstants.view);
 	cameraConstants.projInverse = inverse(cameraConstants.projection);
 	cameraConstants.viewProjInv = inverse(cameraConstants.viewProj);
@@ -564,35 +404,17 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera, ID<Entit
 	else cameraConstants.lightDir = float4(float3::bottom, 0.0f);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
+void GraphicsSystem::input()
+{
+	updateWindowInput(framebufferSize, windowSize, isFramebufferSizeValid);
+	beginSleepClock = isFramebufferSizeValid ? 0.0 : OS::getCurrentClock();
+}
 void GraphicsSystem::update()
 {
-	glfwPollEvents();
-	auto manager = getManager();
 
-	if (glfwWindowShouldClose((GLFWwindow*)GraphicsAPI::window))
-	{
-		// TODO: add modal if user sure want to exit.
-		// And also allow to force quit or wait for running threads.
-		glfwHideWindow((GLFWwindow*)GraphicsAPI::window);
-		manager->stop();
-		return;
-	}
-
-	updateWindowMode(this, isF11Pressed);
-
-	bool isFramebufferSizeValid = false;
-	updateWindowInput(time, deltaTime, framebufferSize,
-		windowSize, cursorPosition, isFramebufferSizeValid);
-
-	double beginClock = 0.0;
-	if (!isFramebufferSizeValid) beginClock = OS::getCurrentClock();
-
-	IRenderSystem::SwapchainChanges swapchainChanges;
-	swapchainChanges.framebufferSize =
-		framebufferSize != Vulkan::swapchain.getFramebufferSize();
-	swapchainChanges.bufferCount = 
-		useTripleBuffering != Vulkan::swapchain.isUseTripleBuffering();
+	swapchainChanges.framebufferSize = framebufferSize != Vulkan::swapchain.getFramebufferSize();
+	swapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.isUseTripleBuffering();
 	swapchainChanges.vsyncState = useVsync != Vulkan::swapchain.isUseVsync();
 
 	if (forceRecreateSwapchain)
@@ -605,6 +427,9 @@ void GraphicsSystem::update()
 
 	auto swapchainRecreated = isFramebufferSizeValid && (swapchainChanges.framebufferSize ||
 		swapchainChanges.bufferCount || swapchainChanges.vsyncState);
+	
+	auto manager = getManager();
+	auto logSystem = manager->tryGet<LogSystem>();
 
 	if (swapchainRecreated)
 	{
@@ -631,24 +456,14 @@ void GraphicsSystem::update()
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
 		{
-			if (logSystem) logSystem->warn("Out fo date or subotimal swapchain.");
+			if (logSystem) logSystem->warn("Out fo date or suboptimal swapchain.");
 		}
 	}
 
 	updateCurrentFrambuffer(swapchainFramebuffer, framebufferSize);
 	
-	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
 	if (swapchainRecreated)
-	{
-		for (auto subsystem : subsystems)
-		{
-			auto renderSystem = dynamic_cast<IRenderSystem*>(subsystem.system);
-			renderSystem->recreateSwapchain(swapchainChanges);
-		}
-	}
-
-	for (auto subsystem : subsystems)
-		subsystem.system->update(); // Updating after swapchain recreate.
+		manager->runEvent("SwapchainRecreate");
 
 	if (camera)
 	{
@@ -667,13 +482,12 @@ void GraphicsSystem::update()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		#endif
-
-		for (auto subsystem : subsystems)
-		{
-			auto renderSystem = dynamic_cast<IRenderSystem*>(subsystem.system);
-			renderSystem->render();
-		}
-
+	}
+}
+void GraphicsSystem::present()
+{
+	if (isFramebufferSizeValid)
+	{
 		#if GARDEN_EDITOR
 		startRecording(CommandBufferType::Frame);
 		{
@@ -702,7 +516,8 @@ void GraphicsSystem::update()
 	{
 		if (!Vulkan::swapchain.present())
 		{
-			if (logSystem) logSystem->warn("Out fo date or subotimal swapchain.");
+			auto logSystem = getManager()->tryGet<LogSystem>();
+			if (logSystem) logSystem->warn("Out fo date or suboptimal swapchain.");
 		}
 
 		frameIndex++;
@@ -710,47 +525,34 @@ void GraphicsSystem::update()
 	else
 	{
 		auto endClock = OS::getCurrentClock();
-		auto deltaClock = (endClock - beginClock) * 1000.0;
+		auto deltaClock = (endClock - beginSleepClock) * 1000.0;
 		auto delayTime = 1000 / frameRate - (int)deltaClock;
 		if (delayTime > 0) this_thread::sleep_for(chrono::milliseconds(delayTime));
-		// TODO: use loop with empty cycles to improve sleep precission.
+		// TODO: use loop with empty cycles to improve sleep precision.
 	}
 
 	tickIndex++;
 }
 
-void GraphicsSystem::disposeComponents()
+//**********************************************************************************************************************
+bool GraphicsSystem::hasDynamicRendering() const noexcept
 {
-	auto manager = getManager();
-	auto& subsystems = manager->getSubsystems<GraphicsSystem>();
-	for (auto subsystem : subsystems) manager->disposeComponents(subsystem.system);
+	return Vulkan::hasDynamicRendering;
 }
-
-//--------------------------------------------------------------------------------------------------
-uint32 GraphicsSystem::getSwapchainSize() const
+bool GraphicsSystem::hasDescriptorIndexing() const noexcept
+{
+	return Vulkan::hasDescriptorIndexing;
+}
+uint32 GraphicsSystem::getSwapchainSize() const noexcept
 {
 	return (uint32)Vulkan::swapchain.getBufferCount();
 }
-uint32 GraphicsSystem::getSwapchainIndex() const
+uint32 GraphicsSystem::getSwapchainIndex() const noexcept
 {
 	return Vulkan::swapchain.getCurrentBufferIndex();
 }
-bool GraphicsSystem::isKeyboardButtonPressed(KeyboardButton button) const
-{
-	return glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_PRESS;
-}
-bool GraphicsSystem::isMouseButtonPressed(MouseButton button) const
-{
-	return glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_PRESS;
-}
-void GraphicsSystem::setCursorMode(CursorMode mode)
-{
-	if (cursorMode == mode) return;
-	cursorMode = mode;
-	glfwSetInputMode((GLFWwindow*)GraphicsAPI::window, GLFW_CURSOR, (int)mode);
-}
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<Buffer> GraphicsSystem::getFullCubeVertices()
 {
 	if (!fullCubeVertices)
@@ -763,67 +565,74 @@ ID<Buffer> GraphicsSystem::getFullCubeVertices()
 	return fullCubeVertices;
 }
 
-//--------------------------------------------------------------------------------------------------
-ID<Image> GraphicsSystem::getEmptyTexture()
+ID<ImageView> GraphicsSystem::getEmptyTexture()
 {
 	if (!emptyTexture)
 	{
 		const Color data[1] = { Color::transparent };
-		emptyTexture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(emptyTexture, "image.emptyTexture");
+		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
+		emptyTexture = get(texture)->getDefaultView();
 	}
 
 	return emptyTexture;
 }
-ID<Image> GraphicsSystem::getWhiteTexture()
+ID<ImageView> GraphicsSystem::getWhiteTexture()
 {
 	if (!whiteTexture)
 	{
 		const Color data[1] = { Color::white };
-		whiteTexture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(whiteTexture, "image.whiteTexture");
+		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
+		whiteTexture = get(texture)->getDefaultView();
 	}
 
 	return whiteTexture;
 }
-ID<Image> GraphicsSystem::getGreenTexture()
+ID<ImageView> GraphicsSystem::getGreenTexture()
 {
 	if (!greenTexture)
 	{
 		const Color data[1] = { Color::green };
-		greenTexture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(greenTexture, "image.greenTexture");
+		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
+		greenTexture = get(texture)->getDefaultView();
 	}
 
 	return greenTexture;
 }
-ID<Image> GraphicsSystem::getNormalMapTexture()
+ID<ImageView> GraphicsSystem::getNormalMapTexture()
 {
 	if (!normalMapTexture)
 	{
 		const Color data[1] = { Color(127, 127, 255, 255) };
-		normalMapTexture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(normalMapTexture, "image.normalMapTexture");
+		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
+		normalMapTexture = get(texture)->getDefaultView();
 	}
 
 	return normalMapTexture;
 }
 
-//--------------------------------------------------------------------------------------------------
-void GraphicsSystem::recreateSwapchain(const IRenderSystem::SwapchainChanges& changes)
+void GraphicsSystem::setWindowTitle(const string& title)
 {
-	GARDEN_ASSERT(changes.framebufferSize ||
-		changes.bufferCount || changes.vsyncState);
+	glfwSetWindowTitle((GLFWwindow*)GraphicsAPI::window, title.c_str());
+}
+
+//**********************************************************************************************************************
+void GraphicsSystem::recreateSwapchain(const SwapchainChanges& changes)
+{
+	GARDEN_ASSERT(changes.framebufferSize || changes.bufferCount || changes.vsyncState);
 	swapchainChanges = changes;
 	forceRecreateSwapchain = true;
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void GraphicsSystem::setDebugName(ID<Buffer> instance, const string& name)
 {
 	auto resource = GraphicsAPI::bufferPool.get(instance);
@@ -851,7 +660,7 @@ void GraphicsSystem::setDebugName(ID<DescriptorSet> instance, const string& name
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access,
 	const void* data, uint64 size, Buffer::Usage usage, Buffer::Strategy strategy)
 {
@@ -867,7 +676,10 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 	if (data)
 	{
 		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
-		if (bufferView->isMappable()) bufferView->setData(data, size);
+		if (bufferView->isMappable())
+		{
+			bufferView->setData(data, size);
+		}
 		else
 		{
 			auto stagingBuffer = GraphicsAPI::bufferPool.create(
@@ -884,7 +696,10 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 				Buffer::copy(stagingBuffer, buffer);
 				stopRecording();
 			}
-			else Buffer::copy(stagingBuffer, buffer);
+			else
+			{
+				Buffer::copy(stagingBuffer, buffer);
+			}
 
 			GraphicsAPI::bufferPool.destroy(stagingBuffer);
 		}
@@ -901,7 +716,7 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> instance) const
 	return GraphicsAPI::bufferPool.get(instance);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Bind bind,
 	const Image::Mips& data, const int3& size, Image::Strategy strategy, Image::Format dataFormat)
 {
@@ -959,8 +774,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		auto& mipData = data[mip];
-		auto binarySize = formatBinarySize *
-			mipSize.x * mipSize.y * mipSize.z;
+		auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
 		for (auto layerData : mipData)
 		{
@@ -986,7 +800,10 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			"buffer.imageStaging" + to_string(*stagingBuffer));
 		
 		ID<Image> targetImage; 
-		if (format == dataFormat) targetImage = image;
+		if (format == dataFormat)
+		{
+			targetImage = image;
+		}
 		else
 		{
 			targetImage = GraphicsAPI::imagePool.create(type, dataFormat,
@@ -1006,8 +823,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
 			auto& mipData = data[mip];
-			auto binarySize = formatBinarySize *
-				mipSize.x * mipSize.y * mipSize.z;
+			auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
 			for (uint32 layer = 0; layer < layerCount; layer++)
 			{
@@ -1062,7 +878,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			}
 
 			Image::blit(targetImage, image, blitRegions);
-			if (shouldEnd) stopRecording();
+			if (shouldEnd)
+				stopRecording();
 			GraphicsAPI::imagePool.destroy(targetImage);
 		}
 		else
@@ -1073,7 +890,10 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				Image::copy(stagingBuffer, targetImage, regions);
 				stopRecording();
 			}
-			else Image::copy(stagingBuffer, targetImage, regions);
+			else
+			{
+				Image::copy(stagingBuffer, targetImage, regions);
+			}
 			GraphicsAPI::bufferPool.destroy(stagingBuffer);
 		}
 	}
@@ -1090,7 +910,7 @@ View<Image> GraphicsSystem::get(ID<Image> instance) const
 	return GraphicsAPI::imagePool.get(instance);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<ImageView> GraphicsSystem::createImageView(
 	ID<Image> image, Image::Type type, Image::Format format,
 	uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
@@ -1105,8 +925,7 @@ ID<ImageView> GraphicsSystem::createImageView(
 	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
 
-	if (type == Image::Type::Texture1DArray ||
-		type == Image::Type::Texture2DArray)
+	if (type == Image::Type::Texture1DArray || type == Image::Type::Texture2DArray)
 	{
 		GARDEN_ASSERT(layerCount > 1);
 	}
@@ -1139,7 +958,7 @@ View<ImageView> GraphicsSystem::get(ID<ImageView> instance) const
 	return GraphicsAPI::imageViewPool.get(instance);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 // TODO: add checks if attachments do not overlaps and repeat.
 ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 	vector<Framebuffer::OutputAttachment>&& colorAttachments,
@@ -1156,8 +975,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip(
-			(int2)image->getSize(), imageView->getBaseMip()));
+		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
 	}
 	if (depthStencilAttachment.imageView)
@@ -1165,8 +983,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
 		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip(
-			(int2)image->getSize(), imageView->getBaseMip()));
+		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
 	}
 	#endif
@@ -1192,8 +1009,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 			GARDEN_ASSERT(inputAttachment.shaderStages != ShaderStage::None);
 			auto imageView = GraphicsAPI::imageViewPool.get(inputAttachment.imageView);
 			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip(
-				(int2)image->getSize(), imageView->getBaseMip()));
+			GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
 		}
 
@@ -1206,8 +1022,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 				(!outputAttachment.clear && outputAttachment.load));
 			auto imageView = GraphicsAPI::imageViewPool.get(outputAttachment.imageView);
 			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip(
-				(int2)image->getSize(), imageView->getBaseMip()));
+			GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
 			#if GARDEN_DEBUG
 			if (isFormatColor(imageView->getFormat()))
 				GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
@@ -1238,7 +1053,7 @@ View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> instance) const
 	return GraphicsAPI::framebufferPool.get(instance);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void GraphicsSystem::destroy(ID<GraphicsPipeline> instance)
 {
 	GraphicsAPI::graphicsPipelinePool.destroy(instance);
@@ -1257,7 +1072,7 @@ View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> instance) const
 	return GraphicsAPI::computePipelinePool.get(instance);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
 	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
@@ -1301,7 +1116,7 @@ View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> instance) const
 	return GraphicsAPI::descriptorSetPool.get(instance);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 bool GraphicsSystem::isRecording() const noexcept
 {
 	return GraphicsAPI::currentCommandBuffer;
@@ -1309,7 +1124,8 @@ bool GraphicsSystem::isRecording() const noexcept
 void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 {
 	#if GARDEN_DEBUG
-	if (GraphicsAPI::currentCommandBuffer) throw runtime_error("Already recording.");
+	if (GraphicsAPI::currentCommandBuffer)
+		throw runtime_error("Already recording.");
 	#endif
 	
 	switch (commandBufferType)
@@ -1328,13 +1144,14 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 void GraphicsSystem::stopRecording()
 {
 	#if GARDEN_DEBUG
-	if (!GraphicsAPI::currentCommandBuffer) throw runtime_error("Not recording.");
+	if (!GraphicsAPI::currentCommandBuffer)
+		throw runtime_error("Not recording.");
 	#endif
 	GraphicsAPI::currentCommandBuffer = nullptr;
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
-//--------------------------------------------------------------------------------------------------
+#if 0 && (GARDEN_DEBUG || GARDEN_EDITOR)
+//**********************************************************************************************************************
 void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 {
 	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
@@ -1346,8 +1163,7 @@ void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 
 	auto pipelineView = get(aabbPipeline);
 	pipelineView->bind();
-	pipelineView->setViewportScissor(float4(float2(0),
-		deferredSystem->getFramebufferSize()));
+	pipelineView->setViewportScissor(float4(float2(0), deferredSystem->getFramebufferSize()));
 	auto pushConstants = pipelineView->getPushConstants<AabbPC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;

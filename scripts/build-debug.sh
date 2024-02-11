@@ -22,7 +22,7 @@ fi
 echo ""
 echo "Building project..."
 
-cmake --build ../build-debug/ --config Debug
+cmake --build ../build-debug/ --config Debug --parallel
 status=$?
 
 if [ $status -ne 0 ]; then

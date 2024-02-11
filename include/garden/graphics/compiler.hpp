@@ -63,4 +63,4 @@ public:
 	static void loadComputeShader(ComputeData& data);
 };
 
-} // garden::graphics
+} // namespace garden::graphics

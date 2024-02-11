@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/editor/deferred.hpp"
 #include "garden/system/settings.hpp"
@@ -470,3 +471,4 @@ ID<Framebuffer> DeferredRenderSystem::getEditorFramebuffer()
 	return ((DeferredEditor*)editor)->getFramebuffer();
 }
 #endif
+*/

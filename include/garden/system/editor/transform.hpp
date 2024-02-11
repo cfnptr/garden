@@ -38,5 +38,5 @@ class TransformEditor final
 	friend class TransformSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

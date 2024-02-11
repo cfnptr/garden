@@ -18,6 +18,7 @@
 
 // TODO: possibly can be improved by using more luminance weight at screen center.
 
+/*
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
@@ -67,4 +68,5 @@ public:
 	ID<Buffer> getHistogramBuffer();
 };
 
-} // garden
+} // namespace garden
+*/

@@ -20,11 +20,11 @@
 #include <fstream>
 #include <iostream>
 
-#if _WIN32
+#if GARDEN_OS_WINDOWS
 #include <windows.h>
 #endif
 
-#if __APPLE__
+#if GARDEN_OS_MACOS
 #define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.2"
 #else
 #define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.3"
@@ -369,8 +369,9 @@ static void onShaderUniform(
 		uniform.arraySize = lineData.arraySize;
 		uniform.readAccess = readAccess;
 		uniform.writeAccess = writeAccess;
-		auto result = uniforms.emplace(lineData.uniformName, uniform);
-		if (!result.second) throw runtime_error("Failed to emplace uniform.");
+
+		if (!uniforms.emplace(lineData.uniformName, uniform).second)
+			throw runtime_error("Failed to emplace uniform.");
 	}
 	else
 	{
@@ -1047,8 +1048,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 			data.dataType = lineData.dataType;
 			data.index = fileData.specConstIndex++;
 
-			auto result = specConsts.emplace(lineData.word, data);
-			if (!result.second)
+			if (!specConsts.emplace(lineData.word, data).second)
 			{
 				throw CompileError("different spec consts with the same name",
 					fileData.lineIndex, lineData.word);
@@ -2016,8 +2016,8 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 		dataOffset += nameLength;
 		auto& value = *(const T*)(data + dataOffset);
 		dataOffset += sizeof(T);
-		auto result = valueArray.emplace(name, value);
-		if (!result.second) throw runtime_error("Invalid GSL header data.");
+		if (!valueArray.emplace(name, value).second)
+			throw runtime_error("Invalid GSL header data.");
 	}
 }
 
