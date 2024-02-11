@@ -55,4 +55,4 @@ namespace fs = std::filesystem;
 #define GARDEN_ASSERT(x)
 #endif
 
-} // garden
+} // namespace garden

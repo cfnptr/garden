@@ -69,4 +69,4 @@ public:
 	static void*& getInstance(Resource& resource) noexcept { return resource.instance; }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

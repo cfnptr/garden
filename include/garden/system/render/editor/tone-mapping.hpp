@@ -39,5 +39,5 @@ class ToneMappingEditor final
 	friend class ToneMappingRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this
+
+/*
 #include "garden/system/watcher.hpp"
+#include "garden/os.hpp"
 #include "math/types.hpp"
 
-#if __linux__
+#if GARDEN_OS_LINUX
 //#error TODO: implement
-#elif __APPLE__
+#elif GARDEN_OS_MACOS
 #include <CoreServices/CoreServices.h>
-#elif _WIN32
+#elif GARDEN_OS_WINDOWS
 //#error TODO: implement
 #else
 #error Unknown operating system
@@ -31,12 +33,11 @@ using namespace math;
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
-#if __APPLE__
+#if GARDEN_OS_MACOS
 static void onChange(ConstFSEventStreamRef streamRef,
 	void* clientCallBackInfo, psize numEvents, void* eventPaths,
 	const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[])
 {
-	/*
 	auto watcherSystem = (WatcherSystem*)clientCallBackInfo;
 	auto& changedFiles = watcherSystem->getChangedFiles();
 	auto& locker = watcherSystem->getLocker();
@@ -52,15 +53,13 @@ static void onChange(ConstFSEventStreamRef streamRef,
 		}
 	}
 	locker.unlock();
-	*/
 }
 #endif
 
 //--------------------------------------------------------------------------------------------------
 void WatcherSystem::initialize()
 {
-	/*
-	#if __APPLE__
+	#if GARDEN_OS_MACOS
 	auto path = "TODO"; // GARDEN_PROJECT_PATH / "resources";
 	auto pathToWatch = CFStringCreateWithCString(
 		kCFAllocatorDefault, path.c_str(), kCFStringEncodingUTF8);
@@ -86,12 +85,10 @@ void WatcherSystem::initialize()
 
 	logSystem = getManager()->tryGet<LogSystem>();
 	if (logSystem) logSystem->info("Started watcher system.");
-	*/
 }
 void WatcherSystem::terminate()
 {
-	/*
-	#if __APPLE__
+	#if GARDEN_OS_MACOS
 	auto stream = (FSEventStreamRef)instance;
 	FSEventStreamStop(stream);
 	FSEventStreamInvalidate(stream);
@@ -99,13 +96,11 @@ void WatcherSystem::terminate()
 	#endif
 
 	if (logSystem) logSystem->info("Stopped watcher system.");
-	*/
 }
 
 //--------------------------------------------------------------------------------------------------
 void WatcherSystem::update()
 {
-	/*
 	locker.lock();
 	if (!changedFiles.empty())
 	{
@@ -129,5 +124,5 @@ void WatcherSystem::update()
 		changedFiles.clear();
 	}
 	locker.unlock();
-	*/
 }
+*/

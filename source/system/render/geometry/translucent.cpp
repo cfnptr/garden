@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #include "garden/system/render/geometry/translucent.hpp"
 #include "garden/system/render/editor/geometry.hpp"
 #include "garden/system/render/lighting.hpp"
@@ -103,7 +106,6 @@ ID<Component> TranslucentRenderSystem::createComponent(ID<Entity> entity)
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
-	component->entity = entity;
 	component->transform = getManager()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
@@ -163,3 +165,4 @@ ID<GraphicsPipeline> TranslucentRenderSystem::createPipeline()
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"geometry/translucent", deferredSystem->getHdrFramebuffer(), true);
 }
+*/

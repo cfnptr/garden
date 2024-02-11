@@ -332,6 +332,17 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 	this->size = size;
 	this->isSwapchain = false;
 }
+Framebuffer::Framebuffer(int2 size, vector<OutputAttachment>&& colorAttachments,
+	OutputAttachment depthStencilAttachment)
+{
+	if (!Vulkan::hasDynamicRendering) // TODO: handle this case and use subpass framebuffer.
+		throw runtime_error("Dynamic rendering is not supported on this GPU.");
+
+	this->colorAttachments = std::move(colorAttachments);
+	this->depthStencilAttachment = depthStencilAttachment;
+	this->size = size;
+	this->isSwapchain = false;
+}
 bool Framebuffer::destroy()
 {
 	if (!instance || readyLock > 0)

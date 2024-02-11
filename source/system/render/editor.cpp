@@ -17,8 +17,8 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "mpio/os.hpp"
-#include "mpio/directory.hpp"
+#include "garden/os.hpp"
+#include "garden/simd.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/settings.hpp"
@@ -28,6 +28,9 @@
 #include "garden/system/render/deferred.hpp" // TODO: remove?
 #include "garden/system/render/editor/resource.hpp"
 #include "garden/system/render/editor/hierarchy.hpp"
+
+#include "mpio/os.hpp"
+#include "mpio/directory.hpp"
 
 using namespace mpio;
 using namespace garden;
@@ -116,17 +119,11 @@ void EditorRenderSystem::showAboutWindow()
 
 		if (ImGui::CollapsingHeader("PC"))
 		{
-			#if __linux__
-			const auto osName = "Linux";
-			#elif __APPLE__
-			const auto osName = "macOS";
-			#else
-			const auto osName = "Windows";
-			#endif
-
-			ImGui::Text("OS: %s", osName);
-			ImGui::Text("CPU: %s", ::getCpuName());
-			auto ramString = toBinarySizeString(OS::getRamSize());
+			ImGui::Text("OS: %s", GARDEN_OS_NAME);
+			ImGui::Text("SIMDs: %s", GARDEN_SIMD_STRING);
+			auto cpuName = OS::getCpuName();
+			ImGui::Text("CPU: %s", cpuName.c_str());
+			auto ramString = toBinarySizeString(OS::getTotalRamSize());
 			ImGui::Text("RAM: %s", ramString.c_str());
 
 			ImGui::Text("GPU: %s", Vulkan::deviceProperties.properties.deviceName.data());

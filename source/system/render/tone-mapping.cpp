@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/tone-mapping.hpp"
 #include "garden/system/render/editor/tone-mapping.hpp"
 #include "garden/system/resource.hpp"
@@ -60,15 +61,9 @@ static map<string, DescriptorSet::Uniform> getUniforms(GraphicsSystem* graphicsS
 	if (bloomSystem && useBloomBuffer)
 	{
 		auto bloomBuffer = bloomSystem->getBloomBuffer();
-		auto bufferView = graphicsSystem->get(bloomBuffer);
-		bloomBufferView = bufferView->getDefaultView();
+		bloomBufferView = graphicsSystem->get(bloomBuffer)->getDefaultView();
 	}
-	else
-	{
-		auto emptyTexture = graphicsSystem->getEmptyTexture();
-		auto textureView = graphicsSystem->get(emptyTexture);
-		bloomBufferView = textureView->getDefaultView();
-	}
+	else bloomBufferView = graphicsSystem->getEmptyTexture();
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -210,3 +205,4 @@ void ToneMappingRenderSystem::setExposure(float exposure)
 	luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
 	luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
 }
+*/

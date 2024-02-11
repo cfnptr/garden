@@ -45,5 +45,5 @@ class AutoExposureEditor final
 	friend class AutoExposureRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

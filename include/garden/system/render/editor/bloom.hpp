@@ -41,5 +41,5 @@ class BloomEditor final
 	friend class BloomRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

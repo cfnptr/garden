@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/graphics.hpp"
 
@@ -111,4 +112,5 @@ public:
 	#endif
 };
 
-} // garden
+} // namespace garden
+*/

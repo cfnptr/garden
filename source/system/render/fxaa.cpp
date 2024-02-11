@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/fxaa.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
@@ -117,3 +118,4 @@ ID<GraphicsPipeline> FxaaRenderSystem::getPipeline()
 	if (!pipeline) pipeline = createPipeline(getManager(), getGraphicsSystem());
 	return pipeline;
 }
+*/

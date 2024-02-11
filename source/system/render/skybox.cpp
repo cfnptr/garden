@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/skybox.hpp"
 #include "garden/system/render/editor/skybox.hpp"
 #include "garden/system/render/deferred.hpp"
@@ -150,3 +151,4 @@ ID<DescriptorSet> SkyboxRenderSystem::createDescriptorSet(ID<Image> cubemap)
 	{ { "cubemap", DescriptorSet::Uniform(cubemapView->getDefaultView()) } };
 	return graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 }
+*/

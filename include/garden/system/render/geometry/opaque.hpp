@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #pragma once
 #include "garden/system/render/geometry.hpp"
 
@@ -77,4 +80,5 @@ class OpaqueShadowRenderSystem final : public GeometryShadowRenderSystem
 	friend class ecsm::Manager;
 };
 
-} // garden
+} // namespace garden
+*/

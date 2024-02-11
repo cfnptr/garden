@@ -35,8 +35,7 @@ static map<string, DescriptorSet::Uniform> getCascadesUniforms(
 	Manager* manager, GraphicsSystem* graphicsSystem)
 {
 	auto deferredSystem = manager->get<DeferredRenderSystem>();
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-				
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());		
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
 		{ "depthBuffer", DescriptorSet::Uniform(

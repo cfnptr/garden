@@ -28,7 +28,6 @@ using namespace garden::graphics;
 class SelectorEditor final
 {
 	MeshRenderSystem* system = nullptr;
-	bool lastLmbState = false;
 	bool isSkipped = false;
 
 	SelectorEditor(MeshRenderSystem* system);
@@ -39,5 +38,5 @@ public:
 	void skipUpdate() { isSkipped = true; }
 };
 
-} // garden
+} // namespace garden
 #endif

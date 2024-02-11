@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #pragma once
 #include "garden/system/render/mesh.hpp"
 
@@ -149,4 +152,5 @@ public:
 	ID<GraphicsPipeline> getPipeline();
 };
 
-} // garden
+} // namespace garden
+*/

@@ -185,4 +185,4 @@ public:
 	static void destroy(Buffer& buffer) { buffer.destroy(); }
 };
 
-} // garden::graphics
+} // namespace garden::graphics

@@ -50,4 +50,4 @@ public:
 	ID<GraphicsPipeline> getPipeline();
 };
 
-} // garden
+} // namespace garden

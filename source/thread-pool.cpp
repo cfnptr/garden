@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,33 +11,30 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/thread-pool.hpp"
 #include "garden/defines.hpp"
+#include "mpmt/thread.hpp"
 #include <cmath>
-
-extern "C"
-{
-#include "mpmt/thread.h"
-};
 
 using namespace garden;
 
 // TODO: maybe add queue for each thread to reduce sync count.
-// This is usefull if we have alot of tasks.
+// This is useful if we have a lot of tasks.
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ThreadPool::threadFunction(uint32 index)
 {
 	if (!name.empty())
 	{
 		auto threadName = name + "#" + to_string(index);
-		setThreadName(threadName.c_str());
+		mpmt::Thread::setName(threadName.c_str());
 	}
 
-	if (background) setThreadBackgroundPriority();
-	else setThreadForegroundPriority();
+	if (background)
+		mpmt::Thread::setBackgroundPriority();
+	else
+		mpmt::Thread::setForegroundPriority();
 
 	auto locker = unique_lock(mutex);
 
@@ -71,7 +67,7 @@ void ThreadPool::threadFunction(uint32 index)
 	locker.unlock();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ThreadPool::ThreadPool(bool isBackground, const string& name, uint32 threadCount)
 {
 	GARDEN_ASSERT(threadCount > 0);
@@ -98,7 +94,7 @@ ThreadPool::~ThreadPool()
 		thread.join();
 }
 
-uint32 ThreadPool::getTaskCount()
+uint32 ThreadPool::getPendingTaskCount()
 {
 	mutex.lock();
 	auto count = (uint32)tasks.size();
@@ -106,7 +102,7 @@ uint32 ThreadPool::getTaskCount()
 	return count;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ThreadPool::addTask(const Task& task)
 {
 	mutex.lock();
@@ -127,7 +123,8 @@ void ThreadPool::addTasks(const vector<Task>& tasks)
 	}
 
 	mutex.unlock();
-	if (tasks.size() > 1) workCond.notify_all();
+	if (tasks.size() > 1)
+		workCond.notify_all();
 	else workCond.notify_one();
 }
 void ThreadPool::addTasks(const Task& task, uint32 count)
@@ -143,7 +140,8 @@ void ThreadPool::addTasks(const Task& task, uint32 count)
 	}
 
 	mutex.unlock();
-	if (count > 1) workCond.notify_all();
+	if (count > 1)
+		workCond.notify_all();
 	else workCond.notify_one();
 	
 }
@@ -156,7 +154,9 @@ void ThreadPool::addItems(const Task& task, uint32 count)
 
 	auto threadCount = (uint32)threads.size();
 	auto taskCount = (uint32)std::ceil((float)count / (float)threadCount);
-	if (taskCount > threadCount) taskCount = threadCount;
+
+	if (taskCount > threadCount)
+		taskCount = threadCount;
 
 	for (uint32 i = 0; i < taskCount; i++)
 	{
@@ -166,11 +166,12 @@ void ThreadPool::addItems(const Task& task, uint32 count)
 	}
 
 	mutex.unlock();
-	if (taskCount > 1) workCond.notify_all();
+	if (taskCount > 1)
+		workCond.notify_all();
 	else workCond.notify_one();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ThreadPool::wait()
 {
 	auto locker = unique_lock(mutex);

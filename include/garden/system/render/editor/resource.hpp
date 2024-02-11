@@ -38,5 +38,5 @@ class ResourceEditor final
 	friend class EditorRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

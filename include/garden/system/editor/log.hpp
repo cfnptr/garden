@@ -23,5 +23,5 @@ namespace garden
 
 
 
-} // garden
+} // namespace garden
 #endif

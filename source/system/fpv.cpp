@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/fpv.hpp"
 #include "garden/system/render/editor.hpp"
 
@@ -25,11 +24,10 @@ using namespace garden;
 #define PLAYER_PX_HEIGHT (PLAYER_HEIGHT - (PLAYER_RADIUS * 2.0f))
 #define PLAYER_PX_HALF_HEIGHT (PLAYER_PX_HEIGHT * 0.5f)
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void FpvSystem::initialize()
 {
 	auto manager = getManager();
-	graphicsSystem = manager->get<GraphicsSystem>();
 	lastJumpTime = graphicsSystem->getTime();
 }
 void FpvSystem::update()
@@ -68,7 +66,6 @@ void FpvSystem::update()
 	auto transformComponent = manager->get<TransformComponent>(camera);
 	// auto hasRigidBody = manager->has<RigidBodyComponent>(camera);
 
-	/*
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::F10) &&
 		manager->has<PhysicsSystem>())
 	{
@@ -128,7 +125,7 @@ void FpvSystem::update()
 		}
 	}
 	else lastF10State = false;
-	*/
+
 
 	if (graphicsSystem->getCursorMode() == CursorMode::Default) return;
 	
@@ -169,7 +166,6 @@ void FpvSystem::update()
 			std::min(deltaTime * lerpMultiplier, 1.0f));
 		transformComponent->position += velocity * deltaTime;
 	}
-	/*
 	else
 	{
 		auto rigidBodyComponent = manager->get<RigidBodyComponent>(camera);
@@ -194,11 +190,9 @@ void FpvSystem::update()
 		velocity.z = lerp(velocity.z, 0.0f, delta);
 		rigidBodyComponent->setLinearVelocity(velocity);
 	}
-	*/
 }
 
 //--------------------------------------------------------------------------------------------------
-/*
 void FpvSystem::onTrigger(const TriggerData& data)
 {
 	auto manager = getManager();
@@ -217,6 +211,6 @@ void FpvSystem::postSimulate()
 	auto transformComponent = manager->get<TransformComponent>(camera);
 	rigidBodyComponent->getPose(transformComponent->position, rotation);
 }
-*/
 
+*/
 // TODO: fix strange shuttering when rotating camera on macOS, problem inside glfw

@@ -17,6 +17,7 @@
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
+/*
 namespace garden
 {
 
@@ -43,4 +44,5 @@ public:
 	ID<GraphicsPipeline> getPipeline();
 };
 
-} // garden
+} // namespace garden
+*/

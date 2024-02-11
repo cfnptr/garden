@@ -41,5 +41,5 @@ class ShadowMappingEditor final
 	friend class ShadowMappingRenderSystem;
 };
 
-} // garden
+} // namespace garden
 #endif

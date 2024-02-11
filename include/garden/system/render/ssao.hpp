@@ -17,6 +17,7 @@
 // And this: https://learnopengl.com/Advanced-Lighting/SSAO
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/render/lighting.hpp"
 
@@ -65,4 +66,5 @@ public:
 	ID<GraphicsPipeline> getPipeline();
 };
 
-} // garden
+} // namespace garden
+*/

@@ -14,6 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+/*
 #include "garden/system/render/bloom.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/tone-mapping.hpp"
@@ -409,3 +410,4 @@ const vector<ID<Framebuffer>>& BloomRenderSystem::getFramebuffers()
 	}
 	return framebuffers;
 }
+*/

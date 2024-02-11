@@ -20,6 +20,8 @@
 namespace garden::graphics
 {
 
+using namespace math;
+
 struct CameraConstants final
 {
 	float4x4 view = float4x4(0.0f);
@@ -37,4 +39,4 @@ struct CameraConstants final
 	float nearPlane = 0.0f;
 };
 
-} // garden::graphics
+} // namespace garden::graphics

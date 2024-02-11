@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #include "garden/system/render/geometry/cutoff.hpp"
 #include "garden/system/render/editor/geometry.hpp"
 #include "garden/system/render/editor.hpp"
@@ -84,7 +87,6 @@ ID<Component> CutoffRenderSystem::createComponent(ID<Entity> entity)
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
-	component->entity = entity;
 	component->transform = getManager()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
@@ -120,3 +122,4 @@ ID<GraphicsPipeline> CutoffRenderSystem::createPipeline()
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"geometry/cutoff", deferredSystem->getGFramebuffer(), true, true);
 }
+*/

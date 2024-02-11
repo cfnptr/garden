@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #include "garden/system/render/geometry.hpp"
 #include "garden/system/render/geometry/translucent.hpp"
 #include "garden/system/render/geometry/opaque.hpp"
@@ -241,28 +244,26 @@ void GeometryRenderSystem::render()
 
 		for (auto geometryComponent : dsCreateBuffer)
 		{
-			ID<Image> baseColorMap, ormMap;
+			ID<ImageView> baseColorMap, ormMap;
 			if (geometryComponent->baseColorMap)
 			{
-				baseColorMap = geometryComponent->baseColorMap;
-				auto baseColorMapView = graphicsSystem->get(baseColorMap);
+				auto baseColorMapView = graphicsSystem->get(geometryComponent->baseColorMap);
 				baseColorMapView->generateMips();
+				baseColorMap = baseColorMapView->getDefaultView();
 			}
 			else baseColorMap = graphicsSystem->getWhiteTexture();
 			if (geometryComponent->ormMap)
 			{
-				ormMap = geometryComponent->ormMap;
-				auto ormMapView = graphicsSystem->get(ormMap);
+				auto ormMapView = graphicsSystem->get(geometryComponent->ormMap);
 				ormMapView->generateMips();
+				ormMap = ormMapView->getDefaultView();
 			}
 			else ormMap = graphicsSystem->getGreenTexture();
 
 			map<string, DescriptorSet::Uniform> uniforms =
 			{
-				{ "baseColorMap", DescriptorSet::Uniform(
-					graphicsSystem->get(baseColorMap)->getDefaultView()) },
-				{ "ormMap", DescriptorSet::Uniform(
-					graphicsSystem->get(ormMap)->getDefaultView()) }
+				{ "baseColorMap", DescriptorSet::Uniform(baseColorMap) },
+				{ "ormMap", DescriptorSet::Uniform(ormMap) }
 			};
 
 			auto descriptorSet = graphicsSystem->createDescriptorSet(
@@ -306,14 +307,10 @@ void GeometryRenderSystem::recreateSwapchain(const SwapchainChanges& changes)
 map<string, DescriptorSet::Uniform> GeometryRenderSystem::getDefaultUniforms()
 {
 	auto graphicsSystem = getGraphicsSystem();
-	auto whiteTexture = graphicsSystem->getWhiteTexture();
-	auto greenTexture = graphicsSystem->getGreenTexture();
-	auto whiteTextureView = graphicsSystem->get(whiteTexture);
-	auto greenTextureView = graphicsSystem->get(greenTexture);
 	map<string, DescriptorSet::Uniform> defaultUniforms =
 	{
-		{ "baseColorMap", DescriptorSet::Uniform(whiteTextureView->getDefaultView()) },
-		{ "ormMap", DescriptorSet::Uniform(greenTextureView->getDefaultView()) }
+		{ "baseColorMap", DescriptorSet::Uniform(graphicsSystem->getWhiteTexture()) },
+		{ "ormMap", DescriptorSet::Uniform(graphicsSystem->getGreenTexture()) }
 	};
 	return defaultUniforms;
 }
@@ -697,3 +694,4 @@ ID<GraphicsPipeline> GeometryShadowRenderSystem::getPipeline()
 	if (!pipeline) pipeline = createPipeline();
 	return pipeline;
 }
+*/

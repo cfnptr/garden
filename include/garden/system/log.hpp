@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ */
 
 #pragma once
 #include "garden/defines.hpp"
@@ -24,22 +26,39 @@ namespace garden
 
 using namespace ecsm;
 
+/**
+ * @brief Message logging system.
+ * 
+ * @details
+ * A logging system records events, actions, and status messages that occur within a software application, system, or 
+ * network. These logs provide a detailed record of activities and help developers, system administrators, and 
+ * support teams diagnose and troubleshoot issues, monitor performance, and ensure the security of the system.
+ */
 class LogSystem final : public System
 {
 private:
 	logy::Logger logger;
 
-	LogSystem(LogLevel level = ALL_LOG_LEVEL);
+	LogSystem(Manager* manager, LogLevel level = ALL_LOG_LEVEL);
 	~LogSystem() final;
 	
 	friend class ecsm::Manager;
 	friend class LogEditor;
 public:
-	void log(LogLevel level, const string& message) noexcept
-	{
-		logger.log(level, "%.*s", message.length(), message.c_str());
-	}
+	/**
+	 * @brief Writes message to the log.
+	 * 
+	 * @param level logging level
+	 * @param message target message
+	 */
+	void log(LogLevel level, const string& message) noexcept;
 
+	/**
+	 * @brief Writes message to the log.
+	 * 
+	 * @param level logging level
+	 * @param message target message
+	 */
 	void trace(const string& message) noexcept  { log(TRACE_LOG_LEVEL, message); }
 	void debug(const string& message) noexcept  { log(DEBUG_LOG_LEVEL, message); }
 	void info(const string& message) noexcept  { log(INFO_LOG_LEVEL, message); }
@@ -52,4 +71,4 @@ public:
 	#endif
 };
 
-} // garden
+} // namespace garden

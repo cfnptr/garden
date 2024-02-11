@@ -14,6 +14,9 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
+// TODO: refactor this code.
+
+/*
 #pragma once
 #include "garden/system/render/geometry.hpp"
 
@@ -55,4 +58,5 @@ class CutoffRenderSystem final : public GeometryRenderSystem
 	friend class ecsm::Manager;
 };
 
-} // garden
+} // namespace garden
+*/

@@ -60,6 +60,8 @@ public:
 	static bool hasMemoryBudget;
 	static bool hasMemoryPriority;
 	static bool hasPageableMemory;
+	static bool hasDynamicRendering;
+	static bool hasDescriptorIndexing;
 	#if GARDEN_DEBUG
 	static vk::DebugUtilsMessengerEXT debugMessenger;
 	static bool hasDebugUtils;
@@ -330,4 +332,4 @@ static vk::IndexType toVkIndexType(GraphicsPipeline::Index indexType)
 	}
 }
 
-} // garden::graphics
+} // namespace garden::graphics

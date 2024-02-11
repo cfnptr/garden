@@ -172,4 +172,4 @@ static const array<float3, 36> fullCubeVert =
 	float3( 0.5f,  0.5f,  0.5f),
 };
 
-} // garden::graphics::primitive
+} // namespace garden::graphics::primitive

@@ -16,6 +16,7 @@
 // Based on this: https://learnopengl.com/Guest-Articles/2021/CSM
 //--------------------------------------------------------------------------------------------------
 
+/*
 #pragma once
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/render/lighting.hpp"
@@ -85,4 +86,5 @@ public:
 	void setShadowMapSize(int32 size);
 };
 
-} // garden
+} // namespace garden
+*/

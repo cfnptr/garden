@@ -87,4 +87,4 @@ public:
 	void endSecondaryCommandBuffers();
 };
 
-} // garden::graphics
+} // namespace garden::graphics
