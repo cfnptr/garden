@@ -14,6 +14,7 @@
 
 /**********************************************************************************************************************
  * @file
+ * @brief Common hashing functions.
  * 
  * @details
  * Hash is a function that converts an input (or 'key') into a fixed-size set of bytes. 
@@ -21,11 +22,16 @@
  */
 
 #pragma once
-#include "math/types.hpp"
-#include "garden/file-base64.hpp"
-
-#include <string>
+#include "garden/defines.hpp"
+#include "garden/base64.hpp"
 #include <cstring>
+
+#define XXH_INLINE_ALL
+#define XXH_STATIC_LINKING_ONLY
+#if GARDEN_DEBUG
+#define XXH_DEBUGLEVEL 1
+#endif
+#include "xxhash.h"
 
 namespace garden
 {
@@ -50,6 +56,10 @@ struct Hash128
 	bool operator<(const Hash128& h) const noexcept { 
 		return memcmp(this, &h, sizeof(uint64) * 2) < 0; }
 	
+	/**
+	 * @brief Returns Base64 encoded hash string.
+	 * @details See the https://en.wikipedia.org/wiki/Base64
+	 */
 	string toString() const noexcept
 	{
 		psize length = 0;
@@ -58,6 +68,10 @@ struct Hash128
 		free(base64);
   		return value;
 	}
+
+	
 };
+
+
 
 } // namespace garden

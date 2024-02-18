@@ -79,10 +79,10 @@ AutoExposureEditor::~AutoExposureEditor()
 //--------------------------------------------------------------------------------------------------
 void AutoExposureEditor::render()
 {
-	if (!showWindow) return;
+	if (!showWindow)
+		return;
 
-	if (ImGui::Begin("Automatic Exposure", &showWindow,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Automatic Exposure", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto manager = system->getManager();
 		auto graphicsSystem = system->getGraphicsSystem();
@@ -222,6 +222,7 @@ void AutoExposureEditor::recreateSwapchain(const IRenderSystem::SwapchainChanges
 
 void AutoExposureEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Automatic Exposure")) showWindow = true;
+	if (ImGui::MenuItem("Automatic Exposure"))
+		showWindow = true;
 }
 #endif

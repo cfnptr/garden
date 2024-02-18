@@ -75,7 +75,8 @@ float3 downsample(sampler2D srcTexture, float2 texCoords,
 	}
 
 	float3 color = c0 * 0.5f + c1 * 0.125f;
-	if (useThreshold) color = any(lessThan(color, float3(threshold))) ? float3(0.0f) : color;
+	if (useThreshold)
+		color = any(lessThan(color, float3(threshold))) ? float3(0.0f) : color;
 	return color;
 }
 

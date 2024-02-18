@@ -14,11 +14,12 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief Settings storage functions.
  */
 
 #pragma once
+#include "garden/defines.hpp"
 #include "ecsm.hpp"
-#include "math/types.hpp"
 
 namespace garden
 {
@@ -32,17 +33,11 @@ using namespace ecsm;
  */
 class SettingsSystem final : public System
 {
-public:
-	/**
-	 * @brief Setting value type.
-	 */
 	enum class Type : uint32
 	{
 		Int, Float, Bool, String, Count
 	};
-	/**
-	 * @brief Setting item.
-	 */
+
 	struct Item final
 	{
 		uint64 data = 0;
@@ -50,11 +45,18 @@ public:
 
 		Item(Type _type, uint64 _data) : data(_data), type(_type) { }
 	};
-private:
+
 	void* confReader = nullptr;
 	map<string, Item> items;
 
+	/**
+	 * @brief Creates a new settings system instance.
+	 * @param[in,out] manager manager instance
+	 */
 	SettingsSystem(Manager* manager);
+	/**
+	 * @brief Destroys settings system instance.
+	 */
 	~SettingsSystem() final;
 
 	void preInit();

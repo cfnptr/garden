@@ -14,9 +14,13 @@
 
 #***********************************************************************************************************************
 cmake_minimum_required(VERSION 3.22)
+string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
+endif()
+if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+	message("CMAKE_BUILD_TYPE is either not declared or is null")
 endif()
 
 if(TARGET garden)
@@ -35,10 +39,22 @@ option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
 option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
 
 if(NOT DEFINED GARDEN_APP_NAME)
-	set(GARDEN_APP_NAME "GardenApp")
+	set(GARDEN_APP_NAME "Garden App")
 endif()
 if(NOT DEFINED GARDEN_APP_NAME_LOWERCASE)
 	string(TOLOWER ${GARDEN_APP_NAME} GARDEN_APP_NAME_LOWERCASE)
+endif()
+if(NOT DEFINED GARDEN_APP_FILE_NAME)
+	set(GARDEN_APP_FILE_NAME ${GARDEN_APP_NAME})
+endif()
+if(NOT DEFINED GARDEN_APP_DESCRIPTION)
+	set(GARDEN_APP_DESCRIPTION "Made using Garden engine.")
+endif()
+if(NOT DEFINED GARDEN_APP_CREATOR)
+	set(GARDEN_APP_CREATOR "Garden")
+endif()
+if(NOT DEFINED GARDEN_APP_COPYRIGHT)
+	set(GARDEN_APP_COPYRIGHT "2022-${GARDEN_CURRENT_YEAR} Nikita Fediuchin. All rights reserved.")
 endif()
 if(NOT DEFINED GARDEN_APP_VERSION_MAJOR)
 	set(GARDEN_APP_VERSION_MAJOR 1)
@@ -82,7 +98,7 @@ else()
 	endif()
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT GARDEN_RELEASE_DEBUGGING)
+if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND NOT GARDEN_RELEASE_DEBUGGING)
 	if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 		set(GARDEN_RELEASE_LINUX 1)
 	else()
@@ -115,7 +131,11 @@ endif()
 
 set(GARDEN_APP_VERSION "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
 
-include(cmake/publish-functions.cmake)
+if(GARDEN_BUILD_EXAMPLES)
+	include(cmake/publish-functions.cmake)
+	include(cmake/compile-options.cmake)
+endif()
+
 configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
 #***********************************************************************************************************************
@@ -227,16 +247,34 @@ if(GARDEN_BUILD_EQUI2CUBE)
 endif()
 
 if(GARDEN_BUILD_EXAMPLES)
-	if(GARDEN_RELEASE_WINDOWS)
-		add_executable(garden-platformer WIN32 examples/platformer.cpp)
+	set(GARDEN_APP_NAME "Platformer")
+	set(GARDEN_APP_NAME_LOWERCASE "platformer")
+	set(GARDEN_APP_FILE_NAME "Platformer")
+	set(GARDEN_APP_DESCRIPTION "Platformer made using Garden engine.")
+	set(GARDEN_APP_CREATOR "Nikita Fediuchin")
+	set(GARDEN_APP_RESOURCES_DIR ${PROJECT_SOURCE_DIR}/examples/platformer/resources)
+	configure_file(cmake/app-defines.hpp.in include/platformer/defines.hpp)
+	
+	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+		configure_file(examples/platformer/resources/images/platformer.ico platformer.ico COPYONLY)
+		configure_file(cmake/windows.rc.in platformer.rc)
+		add_executable(platformer $<$<CONFIG:Release>:WIN32> $<$<CONFIG:RelWithDebInfo>:WIN32>
+			examples/platformer/main.cpp ${PROJECT_BINARY_DIR}/platformer.rc)
 	else()
-		add_executable(garden-platformer examples/platformer.cpp)
+		add_executable(platformer examples/platformer/main.cpp)
 	endif()
-	target_link_libraries(garden-platformer PUBLIC garden)
-	add_dependencies(garden-platformer packer gslc equi2cube)
 
-	if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-		packResources(garden-platformer ${GARDEN_APP_CACHES_DIR}
-			${GARDEN_APP_RESOURCES_DIR} ${Garden_SOURCE_DIR}/resources ON)
+	target_link_libraries(platformer PUBLIC garden)
+	set_target_properties(platformer PROPERTIES OUTPUT_NAME ${GARDEN_APP_FILE_NAME})
+	add_dependencies(platformer packer gslc equi2cube)
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		stripExecutable(platformer)
+	endif()
+
+	if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND NOT GARDEN_RELEASE_DEBUGGING)
+		packResources(platformer ${GARDEN_APP_CACHES_DIR}
+			${GARDEN_APP_RESOURCES_DIR} ${Garden_SOURCE_DIR}/resources
+			${GARDEN_RELEASE_EDITOR} ${GARDEN_RELEASE_DEBUGGING})
 	endif()
 endif()

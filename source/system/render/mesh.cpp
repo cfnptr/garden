@@ -61,7 +61,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		GARDEN_ASSERT(meshSystem);
 		
 		auto renderType = meshSystem->getMeshRenderType();
-		if (renderType == opaqueType) opaqueBufferCount++;
+		if (renderType == opaqueType)
+			opaqueBufferCount++;
 		else if (renderType == translucentType)
 		{
 			auto& componentPool = meshSystem->getMeshComponentPool();
@@ -108,7 +109,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			auto opaqueBuffer = &opaqueBufferData[opaqueBufferIndex++];
 			opaqueBuffer->meshSystem = meshSystem;
 			opaqueBuffer->drawCount = 0;
-			if (componentCount == 0 || !meshSystem->isDrawReady()) continue;
+			if (componentCount == 0 || !meshSystem->isDrawReady())
+				continue;
 
 			if (opaqueBuffer->items.size() < componentCount)
 				opaqueBuffer->items.resize(componentCount);
@@ -132,14 +134,15 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 				{
 					auto meshRender = (MeshRenderComponent*)(
 						componentData + i * componentSize);
-					if (!meshRender->entity || !meshRender->isEnabled) continue;
+					if (!meshRender->entity || !meshRender->isEnabled)
+						continue;
 
 					auto transform = transformData.get(meshRender->transform);
 					auto model = transform->calcModel();
 					setTranslation(model, getTranslation(model) - cameraPosition);
 
-					if (isBehindFrustum(meshRender->aabb, model,
-						frustumPlanes, frustumPlaneCount)) continue;
+					if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
+						continue;
 					// TODO: optimize this using SpatialDB.
 					// Or we can potentially extract BVH from the PhysX or Vulkan?
 					// TODO: we can use full scene BVH to speed up frustum culling.
@@ -167,7 +170,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			auto translucentBuffer = &translucentBufferData[bufferIndex];
 			translucentBuffer->meshSystem = meshSystem;
 			translucentBuffer->drawCount = 0;
-			if (componentCount == 0 || !meshSystem->isDrawReady()) continue;
+			if (componentCount == 0 || !meshSystem->isDrawReady())
+				continue;
 
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
@@ -184,14 +188,18 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 				{
 					auto meshRender = (MeshRenderComponent*)(
 						componentData + i * componentSize);
-					if (!meshRender->entity || !meshRender->isEnabled) continue;
+					if (!meshRender->entity || !meshRender->isEnabled)
+						continue;
 
 					auto transform = transformData.get(meshRender->transform);
 					auto model = transform->calcModel();
 					setTranslation(model, getTranslation(model) - cameraPosition);
 
 					if (isBehindFrustum(meshRender->aabb, model,
-						frustumPlanes, frustumPlaneCount)) continue;
+						frustumPlanes, frustumPlaneCount))
+					{
+						continue;
+					}
 		
 					TranslucentItem translucentItem;
 					translucentItem.meshRender = meshRender;
@@ -220,7 +228,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	for (uint32 i = 0; i < opaqueBufferCount; i++)
 	{
 		auto opaqueBuffer = &opaqueBufferData[i];
-		if (opaqueBuffer->drawCount == 0) continue;
+		if (opaqueBuffer->drawCount == 0)
+			continue;
 
 		threadPool.addTask(ThreadPool::Task([](const ThreadPool::Task& task)
 		{
@@ -272,7 +281,8 @@ void MeshRenderSystem::renderOpaqueItems(
 	{
 		auto opaqueBuffer = &opaqueBuffers[i];
 		auto drawCount = (uint32)opaqueBuffer->drawCount;
-		if (drawCount == 0) continue;
+		if (drawCount == 0)
+			continue;
 
 		auto meshSystem = opaqueBuffer->meshSystem;
 		meshSystem->prepareDraw(viewProj, framebuffer, drawCount);
@@ -323,13 +333,16 @@ void MeshRenderSystem::renderTranslucentItems(
 	const float4x4& viewProj, ID<Framebuffer> framebuffer)
 {
 	auto drawCount = (uint32)translucentIndex;
-	if (drawCount == 0) return;
+	if (drawCount == 0)
+		return;
 
 	for (uint32 i = 0; i < translucentBufferCount; i++)
 	{
 		auto translucentBuffer = &translucentBuffers[i];
 		auto bufferDrawCount = (uint32)translucentBuffer->drawCount;
-		if (bufferDrawCount == 0) continue;
+		if (bufferDrawCount == 0)
+			continue;
+
 		auto meshSystem = translucentBuffer->meshSystem;
 		meshSystem->prepareDraw(viewProj, framebuffer, bufferDrawCount);
 		translucentBuffer->drawCount = 0;
@@ -373,7 +386,9 @@ void MeshRenderSystem::renderTranslucentItems(
 	{
 		auto translucentBuffer = &translucentBuffers[i];
 		auto drawCount = (uint32)translucentBuffer->drawCount;
-		if (drawCount == 0) continue;
+		if (drawCount == 0)
+			continue;
+
 		auto meshSystem = translucentBuffer->meshSystem;
 		meshSystem->finalizeDraw(viewProj, framebuffer, drawCount);
 	}
@@ -383,7 +398,8 @@ void MeshRenderSystem::renderTranslucentItems(
 void MeshRenderSystem::render()
 {
 	auto graphicsSystem = getGraphicsSystem();
-	if (!graphicsSystem->camera) return;
+	if (!graphicsSystem->camera)
+		return;
 
 	auto manager = getManager();
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
@@ -406,9 +422,8 @@ void MeshRenderSystem::render()
 			for (uint32 i = 0; i < passCount; i++)
 			{
 				float4x4 viewProj; float3 cameraOffset; ID<Framebuffer> framebuffer;
-				auto isReady = shadowSystem->prepareShadowRender(
-					i, viewProj, cameraOffset, framebuffer);
-				if (!isReady) continue;
+				if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset, framebuffer))
+					continue;
 
 				prepareItems(viewProj, cameraPosition, subsystems,
 					MeshRenderType::OpaqueShadow, MeshRenderType::TranslucentShadow,
@@ -432,7 +447,8 @@ void MeshRenderSystem::render()
 void MeshRenderSystem::deferredRender()
 {
 	auto graphicsSystem = getGraphicsSystem();
-	if (!graphicsSystem->camera) return;
+	if (!graphicsSystem->camera)
+		return;
 
 	auto manager = getManager();
 	auto& subsystems = manager->getSubsystems<MeshRenderSystem>();
@@ -448,7 +464,8 @@ void MeshRenderSystem::deferredRender()
 void MeshRenderSystem::hdrRender()
 {
 	auto graphicsSystem = getGraphicsSystem();
-	if (!graphicsSystem->camera) return;
+	if (!graphicsSystem->camera)
+		return;
 
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderTranslucentItems(cameraConstants.viewProj, getDeferredSystem()->getGFramebuffer());

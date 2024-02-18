@@ -14,9 +14,11 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief World transformation functions.
  */
 
 #pragma once
+#include "garden/defines.hpp"
 #include "garden/serialize.hpp"
 
 namespace garden
@@ -26,7 +28,7 @@ using namespace math;
 using namespace ecsm;
 
 /**
- * @brief Contains information about object position, rotation, and scale within the game world.
+ * @brief Contains information about object transformation within the 3D space.
  */
 struct TransformComponent final : public Component
 {
@@ -43,6 +45,9 @@ private:
 	ID<Entity>* childs = nullptr;
 	Manager* manager = nullptr;
 
+	/**
+	 * @brief Destroys childs array memory block, if allocated. 
+	 */
 	bool destroy();
 
 	friend class TransformSystem;
@@ -50,7 +55,7 @@ private:
 public:
 	/**
 	 * @brief Returns this entity parent object, or null if it is root entity.
-	 * @details Entity parent affects it transformation in the world.
+	 * @details Entity parent affects it transformation in the space.
 	 */
 	ID<Entity> getParent() const noexcept { return parent; }
 	/**
@@ -119,11 +124,11 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Handles object transformations in the game world.
+ * @brief Handles object transformations in the 3D space.
  * 
  * @details
  * Fundamental aspect of the engine architecture that handles the 
- * positioning, rotation, and scaling of game objects within the game world.
+ * positioning, rotation, scaling and other properties of objects within the 3D space.
  */
 class TransformSystem final : public System, public ISerializable
 {
@@ -139,7 +144,14 @@ private:
 	void deinit();
 	#endif
 
+	/**
+	 * @brief Creates a new transform system instance.
+	 * @param[in,out] manager manager instance
+	 */
 	TransformSystem(Manager* manager);
+	/**
+	 * @brief Destroy transform system instance.
+	 */
 	~TransformSystem() final;
 
 	type_index getComponentType() const final;
@@ -173,13 +185,17 @@ public:
 struct BakedTransformComponent final : public Component { };
 
 /**
- * @brief Handles baked or static components.
+ * @brief Handles baked, static components.
  */
 class BakedTransformSystem final : public System
 {
 protected:
 	LinearPool<BakedTransformComponent, false> components;
 
+	/**
+	 * @brief Creates a new baked transform system instance.
+	 * @param[in,out] manager manager instance
+	 */
 	BakedTransformSystem(Manager* manager) : System(manager) { }
 
 	type_index getComponentType() const override { return typeid(BakedTransformComponent); }

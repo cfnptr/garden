@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #pragma once
 #include "math/vector.hpp"
@@ -24,7 +22,7 @@ namespace garden::graphics::primitive
 using namespace std;
 using namespace math;
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static const array<float2, 4> oneSquareVert2D =
 {
 	float2(-0.5f, -0.5f), float2(-0.5f,  0.5f),
@@ -55,7 +53,7 @@ static const array<float3, 4> twoSquareVert3D =
 
 static const array<uint16, 6> squareInd16 = { 0, 1, 2, 0, 2, 3 };
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static const array<float3, 24> oneCubeVert =
 {
 	float3(-0.5f, -0.5f,  0.5f), float3(-0.5f,  0.5f,  0.5f),
@@ -124,7 +122,7 @@ static const array<uint16, 36> cubeInd16 =
 	12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23
 };
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 // TODO: test different layouts to find fastest.
 static const array<float3, 36> fullCubeVert =
 {

@@ -137,7 +137,8 @@ void DeferredRenderSystem::initialize()
 {
 	auto manager = getManager();
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
-	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
+	if (settingsSystem)
+		settingsSystem->getFloat("renderScale", renderScale);
 
 	auto graphicsSystem = getGraphicsSystem();
 	GARDEN_ASSERT(isAsync == graphicsSystem->isUseThreading());
@@ -145,10 +146,14 @@ void DeferredRenderSystem::initialize()
 	framebufferSize = max((int2)(float2(
 		graphicsSystem->getFramebufferSize()) * renderScale), int2(1));
 
-	if (!gBuffers[0]) createGBuffers(graphicsSystem, framebufferSize, gBuffers);
-	if (!depthBuffer) depthBuffer = createDepthBuffer(graphicsSystem, framebufferSize);
-	if (!hdrBuffer) hdrBuffer = createHdrBuffer(graphicsSystem, framebufferSize);
-	if (!ldrBuffer) ldrBuffer = createLdrBuffer(graphicsSystem, framebufferSize);
+	if (!gBuffers[0])
+		createGBuffers(graphicsSystem, framebufferSize, gBuffers);
+	if (!depthBuffer)
+		depthBuffer = createDepthBuffer(graphicsSystem, framebufferSize);
+	if (!hdrBuffer)
+		hdrBuffer = createHdrBuffer(graphicsSystem, framebufferSize);
+	if (!ldrBuffer)
+		ldrBuffer = createLdrBuffer(graphicsSystem, framebufferSize);
 	
 	if (!gFramebuffer)
 	{
@@ -167,7 +172,8 @@ void DeferredRenderSystem::initialize()
 	}
 
 	#if GARDEN_EDITOR
-	if (!editor) editor = new DeferredEditor(this);
+	if (!editor)
+		editor = new DeferredEditor(this);
 	#endif
 
 	auto& subsystems = manager->getSubsystems<DeferredRenderSystem>();
@@ -365,7 +371,8 @@ void DeferredRenderSystem::recreateSwapchain(const SwapchainChanges& changes)
 //--------------------------------------------------------------------------------------------------
 void DeferredRenderSystem::setRenderScale(float renderScale)
 {
-	if (renderScale == this->renderScale) return;
+	if (renderScale == this->renderScale)
+		return;
 	this->renderScale = renderScale;
 	IRenderSystem::SwapchainChanges swapchainChanges;
 	swapchainChanges.framebufferSize = true;
@@ -377,7 +384,8 @@ static int2 getScaledFrameSize(GraphicsSystem* graphicsSystem,
 	Manager* manager, float& renderScale)
 {
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
-	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
+	if (settingsSystem)
+		settingsSystem->getFloat("renderScale", renderScale);
 	return max((int2)(float2(graphicsSystem->getFramebufferSize()) * renderScale), int2(1));
 }
 
@@ -467,7 +475,8 @@ ID<Framebuffer> DeferredRenderSystem::getLdrFramebuffer()
 #if GARDEN_EDITOR
 ID<Framebuffer> DeferredRenderSystem::getEditorFramebuffer()
 {
-	if (!editor) editor = new DeferredEditor(this);
+	if (!editor)
+		editor = new DeferredEditor(this);
 	return ((DeferredEditor*)editor)->getFramebuffer();
 }
 #endif

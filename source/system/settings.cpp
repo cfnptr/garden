@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/settings.hpp"
+#include "garden/system/app-info.hpp"
 #include "garden/system/log.hpp"
 
 #include "conf/reader.hpp"
@@ -50,25 +51,36 @@ SettingsSystem::~SettingsSystem()
 //**********************************************************************************************************************
 void SettingsSystem::preInit()
 {
+	auto manager = getManager();
+	auto appInfoSystem = manager->get<AppInfoSystem>();
+	auto logSystem = manager->tryGet<LogSystem>();
+
 	try
 	{
-		auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
+		auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
 		confReader = new conf::Reader(appDataPath / "settings.txt");
+		if (logSystem)
+			logSystem->info("Loaded settings file.");
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = getManager()->tryGet<LogSystem>();
-		if (logSystem) logSystem->error("Failed to load settings file. (error: " + string(e.what()) + ")");
+		if (logSystem)
+			logSystem->warn("Failed to load settings file. (error: " + string(e.what()) + ")");
 	}
 }
 void SettingsSystem::postDeinit()
 {
+	auto manager = getManager();
+	auto appInfoSystem = manager->get<AppInfoSystem>();
+	auto logSystem = manager->tryGet<LogSystem>();
+
 	try
 	{
-		auto appDataPath = Directory::getAppDataPath(GARDEN_APP_NAME_LOWERCASE_STRING);
+		auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
 		conf::Writer confWriter(appDataPath / "settings.txt");
 
-		confWriter.writeComment(GARDEN_APP_NAME_STRING " Settings (v" GARDEN_APP_VERSION_STRING ")");
+		confWriter.writeComment(appInfoSystem->getName() +
+			" Settings (v" + appInfoSystem->getVersion().toString3() + ")");
 		confWriter.writeNewLine();
 
 		for (auto& pair : items)
@@ -82,11 +94,14 @@ void SettingsSystem::postDeinit()
 			default: abort();
 			}
 		}
+
+		if (logSystem)
+			logSystem->info("Stored settings file.");
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = getManager()->tryGet<LogSystem>();
-		if (logSystem) logSystem->error("Failed to write settings file. (error: " + string(e.what()) + ")");
+		if (logSystem)
+			logSystem->error("Failed to store settings file. (error: " + string(e.what()) + ")");
 	}
 }
 
@@ -97,7 +112,8 @@ void SettingsSystem::getInt(const string& name, int64& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader) ((conf::Reader*)confReader)->get(name, value);
+		if (confReader)
+			((conf::Reader*)confReader)->get(name, value);
 		items.emplace(name, Item(Type::Int, *((uint64*)&value)));
 		return;
 	}
@@ -111,7 +127,8 @@ void SettingsSystem::getFloat(const string& name, double& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader) ((conf::Reader*)confReader)->get(name, value);
+		if (confReader)
+			((conf::Reader*)confReader)->get(name, value);
 		items.emplace(name, Item(Type::Float, *((uint64*)&value)));
 		return;
 	}
@@ -125,7 +142,8 @@ void SettingsSystem::getBool(const string& name, bool& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader) ((conf::Reader*)confReader)->get(name, value);
+		if (confReader)
+			((conf::Reader*)confReader)->get(name, value);
 		items.emplace(name, Item(Type::Bool, value));
 		return;
 	}
@@ -143,8 +161,10 @@ void SettingsSystem::getString(const string& name, string& value)
 		{
 			string_view stringView;
 			auto result = ((conf::Reader*)confReader)->get(name, stringView);
-			if (result) value = string(stringView);
+			if (result)
+				value = string(stringView);
 		}
+
 		auto instance = new char[value.length() + 1];
 		memcpy(instance, value.c_str(), value.length());
 		instance[value.length()] = '\0';

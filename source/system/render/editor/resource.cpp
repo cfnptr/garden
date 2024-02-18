@@ -33,8 +33,7 @@ void ResourceEditor::render()
 {
 	if (showWindow)
 	{
-		if (ImGui::Begin("Resource Viewer", &showWindow,
-			ImGuiWindowFlags_AlwaysAutoResize))
+		if (ImGui::Begin("Resource Viewer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::BeginTable("ViewerResources1", 4, ImGuiTableFlags_Borders);
 			ImGui::TableSetupColumn("Buffers");
@@ -76,7 +75,9 @@ void ResourceEditor::render()
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& buffer = buffers[i];
-					if (buffer.getBinarySize() == 0) continue;
+					if (buffer.getBinarySize() == 0)
+						continue;
+
 					ImGui::Text("ID: %d, Name: %s", i, buffer.getDebugName().c_str());
 					ImGui::Text("Size: %s, Usage: %s",
 						toBinarySizeString(buffer.getBinarySize()).c_str(),
@@ -100,7 +101,9 @@ void ResourceEditor::render()
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& image = images[i];
-					if (image.getBinarySize() == 0) continue;
+					if (image.getBinarySize() == 0)
+						continue;
+
 					auto& size = image.getSize();
 					ImGui::Text("ID: %d, Name: %s", i, image.getDebugName().c_str());
 					ImGui::Text("Type: %s, Format: %s", toString(image.getType()).data(),
@@ -123,7 +126,9 @@ void ResourceEditor::render()
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& imageView = imageViews[i];
-					if (!imageView.getImage()) continue;
+					if (!imageView.getImage())
+						continue;
+
 					ImGui::Text("ID: %d, Name: %s", i, imageView.getDebugName().c_str());
 					ImGui::Text("Type: %s, Format: %s, Image ID: %d",
 						toString(imageView.getType()).data(),
@@ -145,7 +150,9 @@ void ResourceEditor::render()
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& graphicsPipeline = graphicsPipelines[i];
-					if (!graphicsPipeline.getFramebuffer()) continue;
+					if (!graphicsPipeline.getFramebuffer())
+						continue;
+
 					auto path = graphicsPipeline.getPath().generic_string();
 					ImGui::Text("ID: %d, Path: %s", i, path.c_str());
 					// TODO:
@@ -161,7 +168,9 @@ void ResourceEditor::render()
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& computePipeline = computePipelines[i];
-					if (computePipeline.getLocalSize() == 0) continue;
+					if (computePipeline.getLocalSize() == 0)
+						continue;
+
 					auto path = computePipeline.getPath().generic_string();
 					ImGui::Text("ID: %d, Path: %s", i, path.c_str());
 					// TODO:
@@ -184,7 +193,9 @@ void ResourceEditor::render()
 				{
 					auto& framebuffer = framebuffers[i];
 					auto size = framebuffer.getSize();
-					if (size == 0) continue;
+					if (size == 0)
+						continue;
+
 					ImGui::Text("ID: %d, Name: %s", i, framebuffer.getDebugName().c_str());
 					ImGui::Text("Size: %dx%d", size.x, size.y);
 					// TODO: attachments
@@ -200,7 +211,9 @@ void ResourceEditor::render()
 				for (uint32 i = 0; i < occupancy; i++)
 				{
 					auto& descriptorSet = descriptorSets[i];
-					if (!descriptorSet.getPipeline()) continue;
+					if (!descriptorSet.getPipeline())
+						continue;
+
 					ImGui::Text("ID: %d, Name: %s", i, descriptorSet.getDebugName().c_str());
 					// TODO:
 					ImGui::Separator();
@@ -214,6 +227,7 @@ void ResourceEditor::render()
 
 void ResourceEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Resource Viewer")) showWindow = true;
+	if (ImGui::MenuItem("Resource Viewer"))
+		showWindow = true;
 }
 #endif

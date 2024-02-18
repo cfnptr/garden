@@ -61,7 +61,8 @@ uniform pushConstants
 void main()
 {
 	float depth = texture(depthBuffer, fs.texCoords).x;
-	if (depth < FLOAT_EPS6) discard;
+	if (depth < FLOAT_EPS6)
+		discard;
 
 	float4 gData0 = texture(gBuffer0, fs.texCoords);
 	float4 gData1 = texture(gBuffer1, fs.texCoords);

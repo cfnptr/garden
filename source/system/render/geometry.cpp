@@ -64,7 +64,8 @@ static void createInstanceBuffers(GraphicsSystem* graphicsSystem,
 static void destroyInstanceBuffers(GraphicsSystem* graphicsSystem,
 	vector<vector<ID<Buffer>>>& instanceBuffers)
 {
-	for (auto& sets : instanceBuffers) graphicsSystem->destroy(sets[0]);
+	for (auto& sets : instanceBuffers)
+		graphicsSystem->destroy(sets[0]);
 	instanceBuffers.clear();
 }
 
@@ -75,11 +76,13 @@ void* GeometryRenderSystem::editor = nullptr;
 
 void GeometryRenderSystem::initialize()
 {
-	if (!pipeline) pipeline = createPipeline();
+	if (!pipeline)
+		pipeline = createPipeline();
 	createInstanceBuffers(getGraphicsSystem(), 16 * sizeof(InstanceData), instanceBuffers);
 	
 	#if GARDEN_EDITOR
-	if (!editor) editor = new GeometryEditor(this);
+	if (!editor)
+		editor = new GeometryEditor(this);
 	#endif
 }
 void GeometryRenderSystem::terminate()
@@ -98,7 +101,8 @@ bool GeometryRenderSystem::isDrawReady()
 {
 	auto graphicsSystem = getGraphicsSystem();
 	auto pipelineView = graphicsSystem->get(pipeline);
-	if (!pipelineView->isReady()) return false;
+	if (!pipelineView->isReady())
+		return false;
 
 	if (!baseDescriptorSet)
 	{
@@ -157,12 +161,14 @@ void GeometryRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto geometryComponent = (GeometryRenderComponent*)meshRenderComponent;
-	if (!geometryComponent->vertexBuffer || !geometryComponent->indexBuffer) return;
+	if (!geometryComponent->vertexBuffer || !geometryComponent->indexBuffer)
+		return;
 
 	auto graphicsSystem = getGraphicsSystem();
 	auto vertexBufferView = graphicsSystem->get(geometryComponent->vertexBuffer);
 	auto indexBufferView = graphicsSystem->get(geometryComponent->indexBuffer);
-	if (!vertexBufferView->isReady() || !indexBufferView->isReady()) return;
+	if (!vertexBufferView->isReady() || !indexBufferView->isReady())
+		return;
 
 	ID<DescriptorSet> descriptorSet;
 	if (!geometryComponent->descriptorSet)
@@ -196,7 +202,10 @@ void GeometryRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 			descriptorSet = defaultDescriptorSet;
 		}
 	}
-	else descriptorSet = geometryComponent->descriptorSet;
+	else
+	{
+		descriptorSet = geometryComponent->descriptorSet;
+	}
 
 	auto& instance = instanceMap[drawIndex];
 	instance.model = model;
@@ -251,14 +260,20 @@ void GeometryRenderSystem::render()
 				baseColorMapView->generateMips();
 				baseColorMap = baseColorMapView->getDefaultView();
 			}
-			else baseColorMap = graphicsSystem->getWhiteTexture();
+			else
+			{
+				baseColorMap = graphicsSystem->getWhiteTexture();
+			}
 			if (geometryComponent->ormMap)
 			{
 				auto ormMapView = graphicsSystem->get(geometryComponent->ormMap);
 				ormMapView->generateMips();
 				ormMap = ormMapView->getDefaultView();
 			}
-			else ormMap = graphicsSystem->getGreenTexture();
+			else
+			{
+				ormMap = graphicsSystem->getGreenTexture();
+			}
 
 			map<string, DescriptorSet::Uniform> uniforms =
 			{
@@ -338,7 +353,8 @@ void GeometryRenderSystem::destroyResources(GeometryRenderComponent* geometryCom
 
 ID<GraphicsPipeline> GeometryRenderSystem::getPipeline()
 {
-	if (!pipeline) pipeline = createPipeline();
+	if (!pipeline)
+		pipeline = createPipeline();
 	return pipeline;
 }
 
@@ -378,13 +394,18 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 		for (psize i = 0; i < primitiveCount; i++)
 		{
 			auto primitive = mesh.getPrimitive(i);
-			if (!primitive.hasMaterial()) continue;
+			if (!primitive.hasMaterial())
+				continue;
 
 			auto alphaMode = primitive.getMaterial().getAlphaMode();
-			if (alphaMode == Model::Material::AlphaMode::Opaque) opaqueIndex++;
-			else if (alphaMode == Model::Material::AlphaMode::Mask) cutoffIndex++;
-			else if (alphaMode == Model::Material::AlphaMode::Blend) translucentIndex++;
-			else continue;
+			if (alphaMode == Model::Material::AlphaMode::Opaque)
+				opaqueIndex++;
+			else if (alphaMode == Model::Material::AlphaMode::Mask)
+				cutoffIndex++;
+			else if (alphaMode == Model::Material::AlphaMode::Blend)
+				translucentIndex++;
+			else
+				continue;
 		}
 
 		auto hasSubEntities = opaqueIndex > 1 ||
@@ -396,20 +417,27 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 		{
 			auto primitive = mesh.getPrimitive(i);
 			if (!primitive.hasMaterial() || primitive.getType() !=
-				Model::Primitive::Type::Triangles) continue;
+				Model::Primitive::Type::Triangles)
+			{
+				continue;
+			}
 			// TODO: handle different primitive types
 
 			auto positionIndex = primitive.getAttributeIndex(
 				Model::Attribute::Type::Position);
 			auto normalIndex = primitive.getAttributeIndex(
 				Model::Attribute::Type::Normal);
-			if (positionIndex < 0 || normalIndex < 0) continue;
+			if (positionIndex < 0 || normalIndex < 0)
+				continue;
 			// TODO: generate normals and tangents if no in model.
 
 			auto indices = primitive.getIndices();
 			auto vertices = primitive.getAttribute(positionIndex).getAccessor();
 			if (vertices.getCount() == 0 || indices.getCount() == 0 ||
-				!vertices.hasAabb()) continue;
+				!vertices.hasAabb())
+			{
+				continue;
+			}
 			// TODO: generate aabb inside attribute taking into account sparse.
 
 			GraphicsPipeline::Index indexType;
@@ -418,7 +446,8 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 				indexType = GraphicsPipeline::Index::Uint32;
 			else if (componentType == Model::Accessor::ComponentType::R16U)
 				indexType = GraphicsPipeline::Index::Uint16;
-			else continue;
+			else
+				continue;
 			// TODO: convert uint8 to uint16 indices.
 
 			auto material = primitive.getMaterial();
@@ -433,23 +462,29 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 					opaqueIndex++;
 					if (opaqueIndex < (uint32)subEntities.size())
 						entity = subEntities[opaqueIndex];
-					else entity = {};
+					else
+						entity = {};
 				}
 				else if (alphaMode == Model::Material::AlphaMode::Mask)
 				{
 					cutoffIndex++;
 					if (cutoffIndex < (uint32)subEntities.size())
 						entity = subEntities[cutoffIndex];
-					else entity = {};
+					else
+						entity = {};
 				}
 				else if (alphaMode == Model::Material::AlphaMode::Blend)
 				{
 					translucentIndex++;
 					if (translucentIndex < (uint32)subEntities.size())
 						entity = subEntities[translucentIndex];
-					else entity = {};
+					else
+						entity = {};
 				}
-				else continue;
+				else
+				{
+					continue;
+				}
 
 				if (!entity)
 				{
@@ -463,7 +498,10 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 						transformComponent->name = string(material.getName());
 				}
 			}
-			else entity = rootEntity;
+			else
+			{
+				entity = rootEntity;
+			}
 
 			static const vector<Model::Attribute::Type> attributes =
 			{
@@ -507,7 +545,10 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 						string(texture.getName()) : to_string(*entity)));
 					loadData.textures.emplace(std::move(texturePath), baseColorMap);
 				}
-				else baseColorMap = searchResult->second;
+				else
+				{
+					baseColorMap = searchResult->second;
+				}
 			}
 			if (material.hasOrmTexture())
 			{
@@ -524,7 +565,10 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 						string(texture.getName()) : to_string(*entity)));
 					loadData.textures.emplace(std::move(texturePath), ormMap);
 				}
-				else ormMap = searchResult->second;
+				else
+				{
+					ormMap = searchResult->second;
+				}
 			}
 
 			// TODO: we need to recompute tangents due to different coordinate spaces.
@@ -600,10 +644,12 @@ ID<Entity> GeometryRenderSystem::loadModel(const fs::path& path, uint32 sceneInd
 
 	if (scene.getName().length() > 0)
 		transformComponent->name = scene.getName();
-	else transformComponent->name = path.generic_string();
+	else
+		transformComponent->name = path.generic_string();
 
 	auto nodeCount = scene.getNodeCount();
-	if (nodeCount == 0) return rootEntity;
+	if (nodeCount == 0)
+		return rootEntity;
 	
 	for (uint32 i = 0; i < nodeCount; i++)
 		loadNodeRecursive(loadData, scene.getNode(i), rootEntity);
@@ -618,10 +664,12 @@ void* GeometryShadowRenderSystem::editor = nullptr;
 
 void GeometryShadowRenderSystem::initialize()
 {
-	if (!pipeline) pipeline = createPipeline();
+	if (!pipeline)
+		pipeline = createPipeline();
 
 	#if GARDEN_EDITOR
-	if (!editor) editor = new GeometryShadowEditor(this);
+	if (!editor)
+		editor = new GeometryShadowEditor(this);
 	#endif
 }
 void GeometryShadowRenderSystem::terminate()
@@ -661,12 +709,14 @@ void GeometryShadowRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto geometryShadowComponent = (GeometryShadowRenderComponent*)meshRenderComponent;
-	if (!geometryShadowComponent->vertexBuffer || !geometryShadowComponent->indexBuffer) return;
+	if (!geometryShadowComponent->vertexBuffer || !geometryShadowComponent->indexBuffer)
+		return;
 
 	auto graphicsSystem = getGraphicsSystem();
 	auto vertexBufferView = graphicsSystem->get(geometryShadowComponent->vertexBuffer);
 	auto indexBufferView = graphicsSystem->get(geometryShadowComponent->indexBuffer);
-	if (!vertexBufferView->isReady() || !indexBufferView->isReady()) return;
+	if (!vertexBufferView->isReady() || !indexBufferView->isReady())
+		return;
 
 	auto pushConstants = pipelineView->getPushConstantsAsync<GeometryShadowPC>(taskIndex);
 	pushConstants->mvp = viewProj * model;
@@ -691,7 +741,8 @@ void GeometryShadowRenderSystem::destroyResources(
 
 ID<GraphicsPipeline> GeometryShadowRenderSystem::getPipeline()
 {
-	if (!pipeline) pipeline = createPipeline();
+	if (!pipeline)
+		pipeline = createPipeline();
 	return pipeline;
 }
 */

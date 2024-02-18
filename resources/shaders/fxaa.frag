@@ -139,8 +139,10 @@ void main()
 	
 	// Shift UV in the correct direction by half a pixel.
 	float2 currentUv = fs.texCoords;
-	if (isHorizontal) currentUv.y += stepLength * 0.5f;
-	else currentUv.x += stepLength * 0.5f;
+	if (isHorizontal)
+		currentUv.y += stepLength * 0.5f;
+	else
+		currentUv.x += stepLength * 0.5f;
 	
 	// Compute offset (for each iteration step) in the right direction.
 	float2 offset = isHorizontal ?
@@ -165,8 +167,10 @@ void main()
 	bool reachedBoth = reached1 && reached2;
 	
 	// If the side is not reached, we continue to explore in this direction.
-	if (!reached1) uv1 -= offset * QUALITY(1);
-	if (!reached2) uv2 += offset * QUALITY(1);
+	if (!reached1)
+		uv1 -= offset * QUALITY(1);
+	if (!reached2)
+		uv2 += offset * QUALITY(1);
 	
 	// If both sides have not been reached, continue to explore.
 	if (!reachedBoth)
@@ -195,11 +199,14 @@ void main()
 			
 			// If the side is not reached, we continue to
 			// explore in this direction, with a variable quality.
-			if (!reached1) uv1 -= offset * QUALITY(i);
-			if (!reached2) uv2 += offset * QUALITY(i);
+			if (!reached1)
+				uv1 -= offset * QUALITY(i);
+			if (!reached2)
+				uv2 += offset * QUALITY(i);
 			
 			// If both sides have been reached, stop the exploration.
-			if (reachedBoth) break;
+			if (reachedBoth)
+				break;
 		}
 	}
 	
@@ -250,8 +257,10 @@ void main()
 	
 	// Compute the final UV coordinates.
 	float2 finalUv = fs.texCoords;
-	if (isHorizontal) finalUv.y += finalOffset * stepLength;
-	else finalUv.x += finalOffset * stepLength;
+	if (isHorizontal)
+		finalUv.y += finalOffset * stepLength;
+	else
+		finalUv.x += finalOffset * stepLength;
 	
 	// Read the color at the new UV coordinates, and use it.
 	float3 finalColor = texture(ldrBuffer, finalUv).rgb;

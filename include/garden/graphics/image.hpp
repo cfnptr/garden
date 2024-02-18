@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,22 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common graphics image (texture) functions.
+ */
 
 #pragma once
 #include "garden/graphics/gsl.hpp"
 #include "garden/graphics/buffer.hpp"
-
-// Image Format Identification
-// Sfloat - signed float
-// Ufloat - unsigned float
-// Uint - unsigned integer
-// Sint - signed integer
-// Unorm - uint float [0.0, 1.0] (255 -> 1.0)
-// Snorm - int float [-1.0, 1.0] (0 -> -1.0)
-// Uscaled - uint as float (128 -> 128.0)
-// Sscaled - int as float (-32 -> -32.0)
-// Srgb - sRGB color space
 
 namespace garden::graphics
 {
@@ -39,14 +32,56 @@ class Image;
 class ImageExt;
 class ImageView;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Graphics image (texture) storage.
+ * 
+ * @details 
+ * A structured collection of data designed to store multidimensional arrays of pixels or texels (texture elements). 
+ * Images are used for a wide range of purposes, including textures for 3D models, render targets for off-screen 
+ * rendering, and as resources for various image-based operations like image processing or post-processing effects.
+ */
 class Image final : public Memory
 {
 public:
+	/**
+	 * @brief Image dimensionality type.
+	 * 
+	 * @details
+	 * Impacts how the image is allocated and used within the GPU, as well as how 
+	 * shaders sample data from the image. The choice between 1D, 2D, and 3D images 
+	 * depends on the specific requirements of the application, such as the 
+	 * nature of the textures being used, the desired effects, and the 
+	 * performance considerations of the rendering pipeline.
+	 */
 	enum class Type : uint8
 	{
-		Texture1D, Texture2D, Texture3D, Texture1DArray, Texture2DArray, Cubemap, Count
+		Texture1D,      /**< One-dimensional image. */
+		Texture2D,      /**< Two-dimensional image. */
+		Texture3D,      /**< Three-dimensional image. */
+		Texture1DArray, /**< One-dimensional image array. */
+		Texture2DArray, /**< Two-dimensional image array. */
+		Cubemap,        /**< Texture with six faces. */
+		Count           /**< Image dimensionality type count. */
 	};
+	/**
+	 * @brief Image data format.
+	 * 
+	 * @details
+	 * These formats determine how the data for each pixel in an image is 
+	 * arranged, including the number of color components, the bit depth of 
+	 * each component, and whether the data is compressed or uncompressed.
+	 * 
+	 * Image format identification:
+	 * Sfloat - signed float (0.0, -1.0, 2.22, -50.5, ...)
+	 * Ufloat - unsigned float (0.0, 1.0, 1.23, 10.0, ...)
+	 * Sint - signed integer (0, 1, 5, 32, ...)
+	 * Uint - unsigned integer (0, -2, 40, -12, ...)
+	 * Unorm - uint float [0.0, 1.0] (255 -> 1.0)
+	 * Snorm - int float [-1.0, 1.0] (0 -> -1.0)
+	 * Uscaled - uint as float (128 -> 128.0)
+	 * Sscaled - int as float (-32 -> -32.0)
+	 * Srgb - sRGB color space
+	 */
 	enum class Format : uint8
 	{
 		Undefined, UintR8, UintR16, UintR32,
@@ -55,11 +90,24 @@ public:
 		UnormA2R10G10B10, UfloatB10G11R11,
 		UnormD16, SfloatD32, UnormD24UintS8, SfloatD32Uint8S, Count
 	};
+	/**
+	 * @brief Image bind type. (Affects driver optimizations)
+	 * 
+	 * @details
+	 * Image bind flags are critical for ensuring that an image is compatible 
+	 * with the operations the application intends to perform on it.
+	 */
 	enum class Bind : uint8
 	{
-		None = 0x00, TransferSrc = 0x01, TransferDst = 0x02, Sampled = 0x04, Storage = 0x08,
-		ColorAttachment = 0x10, DepthStencilAttachment = 0x20, InputAttachment = 0x40,
-		Fullscreen = 0x80,
+		None = 0x00,                   /**< No image usage specified, zero mask. */
+		TransferSrc = 0x01,            /**< Image can be used as the source of a transfer command. */
+		TransferDst = 0x02,            /**< Image can be used as the destination of a transfer command. */
+		Sampled = 0x04,                /**< Image can be used in a descriptor set. */
+		Storage = 0x08,                /**< Image can be used in a descriptor set. */
+		ColorAttachment = 0x10,        /**< Image can be used as the framebuffer color attachment. */
+		DepthStencilAttachment = 0x20, /**< Image can be used as the framebuffer depth or/and stencil attachment. */
+		InputAttachment = 0x40,        /**< Image can be used as the framebuffer subpass input attachment. */
+		Fullscreen = 0x80,             /**< Image will be the size of the window or larger. (Better optimization) */
 	};
 
 	struct ClearRegion final
@@ -106,7 +154,6 @@ public:
 
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;
-//--------------------------------------------------------------------------------------------------
 private:
 	Type type = {};
 	Format format = {};
@@ -117,6 +164,8 @@ private:
 	int3 size = int3(0);
 	uint32 layerCount = 0;
 	ID<ImageView> defaultView = {};
+
+	// Use GraphicsSystem to create, destroy and access images.
 	
 	Image() = default;
 	Image(Type type, Format format, Bind bind, Strategy strategy,
@@ -147,9 +196,9 @@ public:
 	void setDebugName(const string& name) final;
 	#endif
 
-//--------------------------------------------------------------------------------------------------
-// Render commands
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
+	// Render commands
+	//******************************************************************************************************************
 
 	void generateMips(SamplerFilter filter = SamplerFilter::Linear);
 
@@ -258,9 +307,23 @@ public:
 	{ BlitRegion region; blit(source, destination, &region, 1, filter); }
 };
 
+/**
+ * @brief Image bind type count.
+ */
+const uint8 imageBindCount = 10;
+
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Bind)
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief View of the graphics image.
+ * 
+ * @details 
+ * Describes how to access an image and which part of the image to access. It acts as an interface between 
+ * the image data and shader programs or fixed-function stages of the pipeline, allowing them to interpret 
+ * the image data in a specific way. Image views do not change the underlying image data, instead, 
+ * they define a view into the image, specifying aspects like the format, dimensionality, 
+ * and which mip levels and array layers are accessible.
+ */
 class ImageView final : public Resource
 {
 	ID<Image> image = {};
@@ -271,6 +334,8 @@ class ImageView final : public Resource
 	Image::Type type = {};
 	Image::Format format = {};
 	bool _default = false;
+
+	// Use GraphicsSystem to create, destroy and access image views.
 
 	ImageView() = default;
 	ImageView(bool isDefault, ID<Image> image, Image::Type type, Image::Format format,
@@ -479,7 +544,10 @@ static string_view toString(Image::Format imageFormat)
 	return imageFormatNames[(psize)imageFormat];
 }
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief Graphics image resource extension mechanism.
+ * @warning Use only if you know what you are doing!
+ */
 class ImageExt final
 {
 public:

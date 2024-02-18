@@ -17,7 +17,6 @@
  */
 
 #pragma once
-#include "math/aabb.hpp"
 #include "garden/resource/image.hpp"
 #include "garden/resource/model.hpp"
 #include "garden/system/log.hpp"
@@ -25,6 +24,7 @@
 #include "garden/system/graphics.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+#include "math/aabb.hpp"
 
 // #include <memory>
 

@@ -70,16 +70,21 @@ bool TranslucentRenderSystem::isDrawReady()
 {
 	auto manager = getManager();
 	auto graphicsSystem = getGraphicsSystem();
-	if (!graphicsSystem->camera) return false;
+	if (!graphicsSystem->camera)
+		return false;
 
 	auto lightingComponent = manager->tryGet<LightingRenderComponent>(graphicsSystem->camera);
 	if (!lightingComponent || !lightingComponent->cubemap ||
-		!lightingComponent->sh || !lightingComponent->specular) return false;
+		!lightingComponent->sh || !lightingComponent->specular)
+	{
+		return false;
+	}
 	
 	auto cubemapView = graphicsSystem->get(lightingComponent->cubemap);
 	auto shView = graphicsSystem->get(lightingComponent->sh);
 	auto specularView = graphicsSystem->get(lightingComponent->specular);
-	if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady()) return false;
+	if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
+		return false;
 
 	if (!lightingDescriptorSet || lightingCubemap != lightingComponent->cubemap)
 	{

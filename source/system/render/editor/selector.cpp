@@ -33,7 +33,8 @@ SelectorEditor::SelectorEditor(MeshRenderSystem* system)
 void SelectorEditor::preSwapchainRender()
 {
 	auto graphicsSystem = system->getGraphicsSystem();
-	if (!graphicsSystem->camera) return;
+	if (!graphicsSystem->camera)
+		return;
 
 	auto manager = system->getManager();
 	auto editorSystem = manager->get<EditorRenderSystem>();
@@ -84,7 +85,8 @@ void SelectorEditor::preSwapchainRender()
 				auto meshRender = (const MeshRenderComponent*)(
 					componentData + i * componentSize);
 				auto entity = meshRender->getEntity();
-				if (!entity || !meshRender->isEnabled) continue;
+				if (!entity || !meshRender->isEnabled)
+					continue;
 
 				auto transform = transformComponents.get(meshRender->getTransform());
 				auto model = transform->calcModel();
@@ -94,7 +96,8 @@ void SelectorEditor::preSwapchainRender()
 				auto localDirection = float3x3(modelInverse) * globalDirection;
 				auto ray = Ray((float3)localOrigin, (float3)localDirection);
 				auto points = raycast2(meshRender->aabb, ray);
-				if (points.x < 0.0f || !isIntersected(points)) continue;
+				if (points.x < 0.0f || !isIntersected(points))
+					continue;
 			
 				if (points.x < newDistance && entity != selectedEntity)
 				{
@@ -110,10 +113,14 @@ void SelectorEditor::preSwapchainRender()
 			editorSystem->selectedEntity = newSelected;
 			editorSystem->selectedEntityAabb = newAabb;
 		}
-		else editorSystem->selectedEntity = {};
+		else
+		{
+			editorSystem->selectedEntity = {};
+		}
 	}
 
-	if (isSkipped) isSkipped = false;
+	if (isSkipped)
+		isSkipped = false;
 
 	if (selectedEntity && editorSystem->selectedEntityAabb != Aabb())
 	{

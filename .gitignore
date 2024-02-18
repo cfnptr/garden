@@ -10,6 +10,11 @@ build-debug-clang/
 build-release-clang/
 build-xcode/
 
+### Common ###
+.vs/
+.vscode/
+out/
+
 ### C ###
 # Prerequisites
 *.d

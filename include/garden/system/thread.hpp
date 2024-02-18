@@ -14,6 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief Common multithreading functions.
  */
 
 #pragma once
@@ -39,12 +40,19 @@ class ThreadSystem final : public System
 	ThreadPool backgroundPool;
 	ThreadPool foregroundPool;
 
+	/**
+	 * @brief Creates a new thread system instance.
+	 * @param[in,out] manager manager instance
+	 */
 	ThreadSystem(Manager* manager) : System(manager),
 		backgroundPool(true, "BG"), foregroundPool(false, "FG")
 	{
 		mpmt::Thread::setForegroundPriority();
 		SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 	}
+	/**
+	 * @brief Destroys thread system instance.
+	 */
 	~ThreadSystem() final
 	{
 		auto manager = getManager();

@@ -258,7 +258,7 @@ class PhysicsSystem final : public System
 	void* instance = nullptr;
 	void* scene = nullptr;
 	void* ccManager = nullptr;
-	void* scratchBuffer = nullptr;
+	uint8* scratchBuffer = nullptr;
 	ID<Material> defaultMaterial = {};
 
 	#if GARDEN_EDITOR

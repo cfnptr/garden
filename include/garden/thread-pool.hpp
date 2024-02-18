@@ -17,13 +17,12 @@
  */
 
 #pragma once
-#include "math/types.hpp"
+#include "garden/defines.hpp"
 
 #include <queue>
 #include <mutex>
 #include <vector>
 #include <thread>
-#include <string>
 #include <functional>
 #include <condition_variable>
 

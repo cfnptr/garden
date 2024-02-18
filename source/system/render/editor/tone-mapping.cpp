@@ -36,7 +36,8 @@ static float exposureValue = 1.0f;
 
 void ToneMappingEditor::render()
 {
-	if (!showWindow) return;
+	if (!showWindow)
+		return;
 
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
@@ -55,9 +56,11 @@ void ToneMappingEditor::render()
 		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
 		{
 			ImGui::DragFloat("Value", &exposureValue, 0.01f);
-			if (ImGui::Button("Set Exposure")) system->setExposure(exposureValue);
+			if (ImGui::Button("Set Exposure"))
+				system->setExposure(exposureValue);
 			ImGui::SameLine();
-			if (ImGui::Button("Set Luminance")) system->setLuminance(exposureValue);
+			if (ImGui::Button("Set Luminance"))
+				system->setLuminance(exposureValue);
 		}
 	}
 	ImGui::End();
@@ -65,6 +68,7 @@ void ToneMappingEditor::render()
 
 void ToneMappingEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Tone Mapping")) showWindow = true;
+	if (ImGui::MenuItem("Tone Mapping"))
+		showWindow = true;
 }
 #endif

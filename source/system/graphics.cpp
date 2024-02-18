@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "garden/system/graphics.hpp"
+#include "garden/system/log.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/camera.hpp"
+#include "garden/system/app-info.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/imgui-impl.hpp"
@@ -23,7 +26,6 @@
 #include "garden/graphics/primitive.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/render/deferred.hpp"
-#include "garden/xxhash.hpp"
 #include "mpio/os.hpp"
 
 #if GARDEN_EDITOR
@@ -55,7 +57,7 @@ void GraphicsSystem::initializeImGui()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	setImGuiSyle();
+	setImGuiStyle();
 
 	auto pipelineCacheInfo = vk::PipelineCacheCreateInfo();
 	ImGuiData::pipelineCache = Vulkan::device.createPipelineCache(pipelineCacheInfo);
@@ -129,7 +131,7 @@ void GraphicsSystem::initializeImGui()
 	auto& packReader = ResourceSystem::getInstance()->getPackReader();
 	auto fontIndex = packReader.getItemIndex(fontPath);
 	auto fontDataSize = packReader.getItemDataSize(fontIndex);
-	auto fontData = (uint8*)malloc(fontDataSize); if (!fontData) abort();
+	auto fontData = malloc<uint8>(fontDataSize);
 	packReader.readItemData(fontIndex, fontData);
 	io.Fonts->AddFontFromMemoryTTF(fontData, fontDataSize, fontSize);
 	#endif
@@ -184,7 +186,9 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
-	Vulkan::initialize(windowSize, isFullscreen, useVsync, useTripleBuffering, useThreading);
+	auto appInfoSystem = manager->get<AppInfoSystem>();
+	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
+		windowSize, isFullscreen, useVsync, useTripleBuffering, useThreading);
 
 	auto window = (GLFWwindow*)GraphicsAPI::window;
 	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
@@ -237,7 +241,8 @@ void GraphicsSystem::preInit()
 	SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 
 	auto threadSystem = manager->tryGet<ThreadSystem>();
-	if (threadSystem) Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
+	if (threadSystem)
+		Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
 
 	auto logSystem = manager->tryGet<LogSystem>();
 	if (logSystem)
@@ -252,7 +257,8 @@ void GraphicsSystem::preInit()
 	}
 
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
-	if (settingsSystem) settingsSystem->getBool("useVsync", useVsync);
+	if (settingsSystem)
+		settingsSystem->getBool("useVsync", useVsync);
 
 	#if GARDEN_EDITOR
 	initializeImGui();
@@ -399,9 +405,15 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
 			auto lightDir = lightTransform->rotation * float3::front;
 			cameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
 		}
-		else cameraConstants.lightDir = float4(float3::bottom, 0.0f);
+		else
+		{
+			cameraConstants.lightDir = float4(float3::bottom, 0.0f);
+		}
 	}
-	else cameraConstants.lightDir = float4(float3::bottom, 0.0f);
+	else
+	{
+		cameraConstants.lightDir = float4(float3::bottom, 0.0f);
+	}
 }
 
 //**********************************************************************************************************************
@@ -456,7 +468,8 @@ void GraphicsSystem::update()
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
 		{
-			if (logSystem) logSystem->warn("Out fo date or suboptimal swapchain.");
+			if (logSystem)
+				logSystem->warn("Out fo date or suboptimal swapchain.");
 		}
 	}
 
@@ -472,7 +485,7 @@ void GraphicsSystem::update()
 		auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
 		auto cameraBuffer = GraphicsAPI::bufferPool.get(
 			cameraConstantsBuffers[swapchainBufferIndex][0]);
-		cameraBuffer->setData(&currentCameraConstants);
+		cameraBuffer->writeData(&currentCameraConstants);
 	}
 
 	if (isFramebufferSizeValid)
@@ -517,7 +530,8 @@ void GraphicsSystem::present()
 		if (!Vulkan::swapchain.present())
 		{
 			auto logSystem = getManager()->tryGet<LogSystem>();
-			if (logSystem) logSystem->warn("Out fo date or suboptimal swapchain.");
+			if (logSystem)
+				logSystem->warn("Out fo date or suboptimal swapchain.");
 		}
 
 		frameIndex++;
@@ -527,7 +541,8 @@ void GraphicsSystem::present()
 		auto endClock = OS::getCurrentClock();
 		auto deltaClock = (endClock - beginSleepClock) * 1000.0;
 		auto delayTime = 1000 / frameRate - (int)deltaClock;
-		if (delayTime > 0) this_thread::sleep_for(chrono::milliseconds(delayTime));
+		if (delayTime > 0)
+			this_thread::sleep_for(chrono::milliseconds(delayTime));
 		// TODO: use loop with empty cycles to improve sleep precision.
 	}
 
@@ -667,7 +682,8 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 	GARDEN_ASSERT(size > 0);
 
 	#if GARDEN_DEBUG
-	if (data) GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
+	if (data)
+		GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
 	#endif
 
 	auto buffer = GraphicsAPI::bufferPool.create(bind, access, usage, strategy, size, 0);
@@ -678,7 +694,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 		if (bufferView->isMappable())
 		{
-			bufferView->setData(data, size);
+			bufferView->writeData(data, size);
 		}
 		else
 		{
@@ -688,7 +704,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 			SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
 				"buffer.staging" + to_string(*stagingBuffer));
 			auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
-			stagingBufferView->setData(data, size);
+			stagingBufferView->writeData(data, size);
 
 			if (!isRecording())
 			{
@@ -778,7 +794,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 		for (auto layerData : mipData)
 		{
-			if (!layerData) continue;
+			if (!layerData)
+				continue;
 			stagingSize += binarySize;
 			stagingCount++;
 		}
@@ -828,7 +845,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			for (uint32 layer = 0; layer < layerCount; layer++)
 			{
 				auto layerData = mipData[layer];
-				if (!layerData) continue;
+				if (!layerData)
+					continue;
 
 				Image::CopyBufferRegion region;
 				region.bufferOffset = stagingOffset;
@@ -902,7 +920,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 }
 void GraphicsSystem::destroy(ID<Image> instance)
 {
-	if (instance) GARDEN_ASSERT(!GraphicsAPI::imagePool.get(instance)->isSwapchain());
+	if (instance)
+		GARDEN_ASSERT(!GraphicsAPI::imagePool.get(instance)->isSwapchain());
 	GraphicsAPI::imagePool.destroy(instance);
 }
 View<Image> GraphicsSystem::get(ID<Image> instance) const
@@ -949,7 +968,8 @@ ID<ImageView> GraphicsSystem::createImageView(
 void GraphicsSystem::destroy(ID<ImageView> instance)
 {
 	#if GARDEN_DEBUG
-	if (instance) GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(instance)->isDefault());
+	if (instance)
+		GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(instance)->isDefault());
 	#endif
 	GraphicsAPI::imageViewPool.destroy(instance);
 }
@@ -1044,7 +1064,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 void GraphicsSystem::destroy(ID<Framebuffer> instance)
 {
 	#if GARDEN_DEBUG
-	if (instance) GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(instance)->isSwapchainFramebuffer());
+	if (instance)
+		GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(instance)->isSwapchainFramebuffer());
 	#endif
 	GraphicsAPI::framebufferPool.destroy(instance);
 }
@@ -1150,10 +1171,12 @@ void GraphicsSystem::stopRecording()
 	GraphicsAPI::currentCommandBuffer = nullptr;
 }
 
-#if 0 && (GARDEN_DEBUG || GARDEN_EDITOR)
+#if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
 void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 {
+	// TODO:
+	/*
 	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
 	if (!aabbPipeline)
 	{
@@ -1169,5 +1192,6 @@ void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 	pushConstants->color = color;
 	pipelineView->pushConstants();
 	pipelineView->draw({}, 24);
+	*/
 }
 #endif

@@ -43,14 +43,14 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 
 	if (createData.variantCount > 1)
 	{
-		this->instance = malloc(sizeof(void*) * createData.variantCount);
-		if (!this->instance) abort();
+		auto variants = malloc<vk::Pipeline>(createData.variantCount);
+		this->instance = variants;
 
 		for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
 		{
 			auto result = Vulkan::device.createComputePipeline(Vulkan::pipelineCache, pipelineInfo);
 			resultCheck(result.result, "vk::Device::createComputePipeline");
-			((void**)this->instance)[variantIndex] = result.value;
+			variants[variantIndex] = result.value;
 		}
 	}
 	else

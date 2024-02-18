@@ -28,7 +28,6 @@
 #include "stb_image.h"
 
 #include <vector>
-#include <cstring>
 #include <fstream>
 #include <iostream>
 
@@ -56,13 +55,15 @@ namespace
 
 		bool read(char c[/*n*/], int n)
 		{
-			if (n + offset > size) throw range_error("out of memory range");
+			if (n + offset > size)
+				throw range_error("out of memory range");
 			memcpy(c, data + offset, n); offset += n;
 			return offset < size;
 		}
 		char* readMemoryMapped(int n) final
 		{
-			if (n + offset > size) throw range_error("out of memory range");
+			if (n + offset > size)
+				throw range_error("out of memory range");
 			auto c = data + offset; offset += n;
 			return (char*)c;
 		}
@@ -123,7 +124,8 @@ static void writeExrImageData(const fs::path& filePath, int32 size, const vector
 	}
 
 	auto directory = filePath.parent_path();
-	if (!fs::exists(directory)) fs::create_directories(directory);
+	if (!fs::exists(directory))
+		fs::create_directories(directory);
 
 	auto pathString = filePath.generic_string();
 	Imf::RgbaOutputFile outputFile(pathString.c_str(), size, size, Imf::WRITE_RGBA, 1.0f,
@@ -138,7 +140,8 @@ bool Equi2Cube::convertImage(const fs::path& filePath,
 {	
 	GARDEN_ASSERT(!filePath.empty());
 	vector<uint8> dataBuffer, equiData; int2 equiSize;
-	if (!tryLoadBinaryFile(inputPath / filePath, dataBuffer)) return false;
+	if (!tryLoadBinaryFile(inputPath / filePath, dataBuffer))
+		return false;
 
 	auto extension = filePath.extension();
 	if (extension == ".exr")
@@ -174,8 +177,11 @@ bool Equi2Cube::convertImage(const fs::path& filePath,
 	{
 		auto pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &equiSize.x, &equiSize.y, nullptr, 4);
-		if (!pixels) throw runtime_error("Invalid image data.("
-			"path: " + filePath.generic_string() + ")");
+		if (!pixels)
+		{
+			throw runtime_error("Invalid image data.("
+				"path: " + filePath.generic_string() + ")");
+		}
 		equiData.resize(equiSize.x * equiSize.y * sizeof(float4));
 		memcpy(equiData.data(), pixels, equiData.size());
 		stbi_image_free(pixels);
@@ -305,10 +311,14 @@ int main(int argc, char *argv[])
 
 			int progress = (int)(((float)((i - logOffset) + 1) /
 				(float)(argc - logOffset)) * 100.0f);
+
 			const char* spacing;
-			if (progress < 10) spacing = "  ";
-			else if (progress < 100) spacing = " ";
-			else spacing = "";
+			if (progress < 10)
+				spacing = "  ";
+			else if (progress < 100)
+				spacing = " ";
+			else
+				spacing = "";
 
 			cout << "[" << spacing << progress << "%] " <<
 				"Converting image " << arg << "\n" << flush;

@@ -125,7 +125,8 @@ void ThreadPool::addTasks(const vector<Task>& tasks)
 	mutex.unlock();
 	if (tasks.size() > 1)
 		workCond.notify_all();
-	else workCond.notify_one();
+	else
+		workCond.notify_one();
 }
 void ThreadPool::addTasks(const Task& task, uint32 count)
 {
@@ -142,7 +143,8 @@ void ThreadPool::addTasks(const Task& task, uint32 count)
 	mutex.unlock();
 	if (count > 1)
 		workCond.notify_all();
-	else workCond.notify_one();
+	else
+		workCond.notify_one();
 	
 }
 void ThreadPool::addItems(const Task& task, uint32 count)
@@ -168,7 +170,8 @@ void ThreadPool::addItems(const Task& task, uint32 count)
 	mutex.unlock();
 	if (taskCount > 1)
 		workCond.notify_all();
-	else workCond.notify_one();
+	else
+		workCond.notify_one();
 }
 
 //**********************************************************************************************************************

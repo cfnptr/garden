@@ -16,8 +16,6 @@
 
 /*
 #include "garden/system/watcher.hpp"
-#include "garden/os.hpp"
-#include "math/types.hpp"
 
 #if GARDEN_OS_LINUX
 //#error TODO: implement
@@ -84,7 +82,8 @@ void WatcherSystem::initialize()
 	#endif
 
 	logSystem = getManager()->tryGet<LogSystem>();
-	if (logSystem) logSystem->info("Started watcher system.");
+	if (logSystem)
+		logSystem->info("Started watcher system.");
 }
 void WatcherSystem::terminate()
 {
@@ -95,7 +94,8 @@ void WatcherSystem::terminate()
 	FSEventStreamRelease(stream);
 	#endif
 
-	if (logSystem) logSystem->info("Stopped watcher system.");
+	if (logSystem)
+		logSystem->info("Stopped watcher system.");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -107,7 +107,8 @@ void WatcherSystem::update()
 		for (auto& changedFile : changedFiles)
 		{
 			#if GARDEN_DEBUG
-			if (logSystem) logSystem->trace("Changed file. (" + changedFile + ")");
+			if (logSystem)
+				logSystem->trace("Changed file. (" + changedFile + ")");
 			#endif
 			
 			auto extensionIndex = changedFile.find_last_of('.');

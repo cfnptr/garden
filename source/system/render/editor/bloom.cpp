@@ -56,10 +56,10 @@ BloomEditor::BloomEditor(BloomRenderSystem* system)
 //--------------------------------------------------------------------------------------------------
 void BloomEditor::render()
 {
-	if (!showWindow) return;
+	if (!showWindow)
+		return;
 
-	if (ImGui::Begin("Light Bloom (Glow)", &showWindow,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Light Bloom (Glow)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto useThreshold = system->useThreshold;
 		auto useAntiFlickering = system->useAntiFlickering;
@@ -67,7 +67,8 @@ void BloomEditor::render()
 		if (ImGui::Checkbox("Enabled", &system->isEnabled))
 		{
 			auto settingsSystem = system->getManager()->tryGet<SettingsSystem>();
-			if (settingsSystem) settingsSystem->setBool("useBloom", system->isEnabled);
+			if (settingsSystem)
+				settingsSystem->setBool("useBloom", system->isEnabled);
 		}
 
 		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
@@ -144,6 +145,7 @@ void BloomEditor::render()
 
 void BloomEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Light Bloom (Glow)")) showWindow = true;
+	if (ImGui::MenuItem("Light Bloom (Glow)"))
+		showWindow = true;
 }
 #endif

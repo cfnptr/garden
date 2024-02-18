@@ -34,8 +34,12 @@ uniform pushConstants
 void main()
 {
 	float depth = texture(depthBuffer, fs.texCoords).r;
-	if (depth > pc.farPlanes.x) fb.color = float4(0.0f, 0.8f, 0.0f, 0.5f);
-	else if (depth > pc.farPlanes.y) fb.color = float4(0.8f, 0.8f, 0.0f, 0.5f);
-	else if (depth > pc.farPlanes.z) fb.color = float4(0.8f, 0.0f, 0.0f, 0.5f);
-	else fb.color = float4(0.8f, 0.0f, 0.8f, 0.5f);
+	if (depth > pc.farPlanes.x)
+		fb.color = float4(0.0f, 0.8f, 0.0f, 0.5f);
+	else if (depth > pc.farPlanes.y)
+		fb.color = float4(0.8f, 0.8f, 0.0f, 0.5f);
+	else if (depth > pc.farPlanes.z)
+		fb.color = float4(0.8f, 0.0f, 0.0f, 0.5f);
+	else
+		fb.color = float4(0.8f, 0.0f, 0.8f, 0.5f);
 }
