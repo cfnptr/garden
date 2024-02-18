@@ -143,7 +143,8 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 		for	(auto pair : uniforms)
 		{
 			auto uniform = pair.second;
-			if (uniform.descriptorSetIndex != i) continue;
+			if (uniform.descriptorSetIndex != i)
+				continue;
 
 			auto& descriptorSetBinding = descriptorSetBindings[bindingIndex];
 			descriptorSetBinding.binding = (uint32)uniform.bindingIndex;
@@ -213,9 +214,14 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 				if (descriptorPoolSizes[j].descriptorCount == 0)
 				{
 					descriptorPoolSizes.erase(descriptorPoolSizes.begin() + j);
-					if (j > 0) j--;
+
+					if (j > 0)
+						j--;
 				}
-				else maxSetCount += descriptorPoolSizes[j].descriptorCount;
+				else
+				{
+					maxSetCount += descriptorPoolSizes[j].descriptorCount;
+				}
 			}
 
 			vk::DescriptorPoolCreateInfo descriptorPoolInfo(
@@ -342,7 +348,8 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 //--------------------------------------------------------------------------------------------------
 bool Pipeline::destroy()
 {
-	if (!instance || readyLock > 0) return false;
+	if (!instance || readyLock > 0)
+		return false;
 
 	if (GraphicsAPI::isRunning)
 	{
@@ -356,7 +363,8 @@ bool Pipeline::destroy()
 		}
 		for (auto descriptorPool : descriptorPools)
 		{
-			if (!descriptorPool) continue;
+			if (!descriptorPool)
+				continue;
 			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorPool,
 				descriptorPool);
 		}
@@ -372,7 +380,10 @@ bool Pipeline::destroy()
 				Vulkan::device.destroyPipeline(((VkPipeline*)instance)[i]);
 			free(instance);
 		}
-		else Vulkan::device.destroyPipeline((VkPipeline)instance);
+		else
+		{
+			Vulkan::device.destroyPipeline((VkPipeline)instance);
+		}
 		
 		Vulkan::device.destroyPipelineLayout((VkPipelineLayout)pipelineLayout);
 
@@ -383,7 +394,8 @@ bool Pipeline::destroy()
 		}
 		for (auto descriptorPool : descriptorPools)
 		{
-			if (!descriptorPool) continue;
+			if (!descriptorPool)
+				continue;
 			Vulkan::device.destroyDescriptorPool(vk::DescriptorPool(
 				(VkDescriptorPool)descriptorPool));
 		}
@@ -445,18 +457,17 @@ void Pipeline::fillSpecConsts(
 
 	for (auto& pair : specConstData)
 	{
-		if (!hasAnyFlag(pair.second.shaderStages, shaderStage)) continue;
+		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
+			continue;
 		dataSize += toBinarySize(pair.second.dataType);
 		entryCount++;
 	}
 
-	if (entryCount == 0) return;
+	if (entryCount == 0)
+		return;
 
-	auto data = (uint8*)malloc(dataSize);
-	if (!data) abort();
-	auto entries = (vk::SpecializationMapEntry*)
-		malloc(entryCount * sizeof(vk::SpecializationMapEntry));
-	if (!entries) abort();
+	auto data = malloc<uint8>(dataSize);
+	auto entries = malloc<vk::SpecializationMapEntry>(entryCount);
 
 	uint32 dataOffset = 0, itemIndex = 0;
 	if (variantCount > 1)
@@ -470,7 +481,8 @@ void Pipeline::fillSpecConsts(
 
 	for (auto& pair : specConstData)
 	{
-		if (!hasAnyFlag(pair.second.shaderStages, shaderStage)) continue;
+		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
+			continue;
 
 		#if GARDEN_DEBUG
 		if (specConsts.find(pair.first) == specConsts.end())
@@ -537,14 +549,17 @@ void Pipeline::updateDescriptorsLock(
 				{
 					for (auto resource : resourceArray)
 					{
-						if (!resource) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+						if (!resource)
+							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+
 						auto imageViewView = GraphicsAPI::imageViewPool.get(
 							ID<ImageView>(resource));
 						auto imageView = GraphicsAPI::imagePool.get(imageViewView->image);
 
 						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 						{
-							imageViewView->readyLock++; imageView->readyLock++;
+							imageViewView->readyLock++;
+							imageView->readyLock++;
 							GraphicsAPI::currentCommandBuffer->addLockResource(ID<ImageView>(resource));
 							GraphicsAPI::currentCommandBuffer->addLockResource(imageViewView->image);
 						}
@@ -558,9 +573,10 @@ void Pipeline::updateDescriptorsLock(
 				{
 					for (auto resource : resourceArray)
 					{
-						if (!resource) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+						if (!resource)
+							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+
 						auto bufferView = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
-						
 						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 						{
 							bufferView->readyLock++;
@@ -628,7 +644,10 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 		taskIndex = 0;
 		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
 	}
-	else taskCount = taskIndex + 1;
+	else
+	{
+		taskCount = taskIndex + 1;
+	}
 
 	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
@@ -744,7 +763,10 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 			for (uint32 j = descriptor.offset; j < count; j++)
 				descriptorSets.push_back(instance[j]);
 		}
-		else descriptorSets.push_back((VkDescriptorSet)instance);
+		else
+		{
+			descriptorSets.push_back((VkDescriptorSet)instance);
+		}
 
 		#if GARDEN_DEBUG
 		auto pipelineType = descriptorSetView->pipelineType;
@@ -768,7 +790,10 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 		taskIndex = 0;
 		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
 	}
-	else taskCount = taskIndex + 1;
+	else
+	{
+		taskCount = taskIndex + 1;
+	}
 
 	auto bindPoint = toVkPipelineBindPoint(type);
 	while (taskIndex < taskCount)

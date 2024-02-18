@@ -167,10 +167,14 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
 				else if (outputAttachment.load)
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eLoad;
-				else attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
+				else
+					attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
+				
 				if (outputAttachment.store)
 					attachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
-				else attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+				else
+					attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+
 				attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 				attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 				this->colorAttachments.push_back(outputAttachment);
@@ -183,10 +187,14 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 						attachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
 					else if (outputAttachment.load)
 						attachmentDescription.loadOp = vk::AttachmentLoadOp::eLoad;
-					else attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
+					else
+						attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
+					
 					if (outputAttachment.store)
 						attachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
-					else attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+					else
+						attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+
 					attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 					attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 				}
@@ -194,14 +202,18 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 				{
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
 					attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+
 					if (outputAttachment.clear)
 						attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eClear;
 					else if (outputAttachment.load)
 						attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eLoad;
-					else attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+					else
+						attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+
 					if (outputAttachment.store)
 						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eStore;
-					else attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+					else
+						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 				}
 				else
 				{
@@ -243,9 +255,14 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 					&attachmentReferences[j + referenceOffset];
 				
 				if (!this->depthStencilAttachment.imageView)
+				{
 					this->depthStencilAttachment = outputAttachment;
-				else GARDEN_ASSERT(outputAttachment.imageView ==
-					this->depthStencilAttachment.imageView);
+				}
+				else
+				{
+					GARDEN_ASSERT(outputAttachment.imageView ==
+						this->depthStencilAttachment.imageView);
+				}
 			}
 
 			ImageViewState imageViewState;
@@ -360,7 +377,10 @@ bool Framebuffer::destroy()
 				destroyRenderPass = renderPass;
 				GraphicsAPI::renderPasses.erase(renderPass);
 			}
-			else shareCount--;
+			else
+			{
+				shareCount--;
+			}
 		}
 
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
@@ -454,7 +474,8 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 
 	set<ID<ImageView>> attachments;
 	auto imageViewsCapacity = this->colorAttachments.size();
-	if (this->depthStencilAttachment.imageView) imageViewsCapacity++;
+	if (this->depthStencilAttachment.imageView)
+		imageViewsCapacity++;
 	vector<vk::ImageView> imageViews(imageViewsCapacity);
 	uint32 colorAttachmentIndex = 0, imageViewIndex = 0;
 	this->depthStencilAttachment.imageView = {};
@@ -496,7 +517,8 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 			oldOutputAttachment.imageView = newOutputAttachment;
 
 			auto result = attachments.find(newOutputAttachment);
-			if (result != attachments.end()) continue;
+			if (result != attachments.end())
+				continue;
 
 			auto newImageView = GraphicsAPI::imageViewPool.get(newOutputAttachment);
 			#if GARDEN_DEBUG
@@ -541,8 +563,10 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 void Framebuffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
-	if (!instance) return;
-	if (!Vulkan::hasDebugUtils) return;
+
+	if (!instance || !Vulkan::hasDebugUtils)
+		return;
+
 	vk::DebugUtilsObjectNameInfoEXT nameInfo(
 		vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());
 	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
@@ -598,7 +622,10 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
-	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.framebuffer); }
+	{
+		readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(command.framebuffer);
+	}
 }
 void Framebuffer::nextSubpass(bool recordAsync)
 {

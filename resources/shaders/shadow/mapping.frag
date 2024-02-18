@@ -55,13 +55,15 @@ uniform pushConstants
 void main()
 {
 	float pixelDepth = texture(depthBuffer, fs.texCoords).r;
-	if (pixelDepth < pc.farNearPlanes.z) discard;
+	if (pixelDepth < pc.farNearPlanes.z)
+		discard;
 
 	float2 steps = step(pc.farNearPlanes.xy, float2(pixelDepth));
 	uint32 cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y);
 	float4 lightProj = data.lightSpace[cascadeID] * float4(fs.texCoords, pixelDepth, 1.0f);
 	float3 lightCoords = lightProj.xyz / lightProj.w;
-	if (lightCoords.z < 0.0f) discard;
+	if (lightCoords.z < 0.0f)
+		discard;
 
 	float3 normal = decodeNormal(texture(gBuffer1, fs.texCoords));
 	float bias = max((dot(normal, pc.lightDir.xyz) + 1.0f) * pc.maxBias, pc.minBias);
@@ -80,7 +82,8 @@ void main()
 		}
 	}
 
-	if (shadow == 0.0f) discard;
+	if (shadow == 0.0f)
+		discard;
 
 	shadow *= (1.0f / 9.0f);
 	fb.shadow = float4(1.0f - shadow * pc.intensity, 0.0f, 0.0f, 0.0f);

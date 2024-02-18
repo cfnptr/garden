@@ -17,8 +17,6 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/os.hpp"
-#include "garden/simd.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/settings.hpp"
@@ -51,14 +49,18 @@ void EditorRenderSystem::showMainMenuBar()
 {
 	auto manager = getManager();
 	auto graphicsSystem = getGraphicsSystem();
-	if (graphicsSystem->getCursorMode() == CursorMode::Locked) return;
+	if (graphicsSystem->getCursorMode() == CursorMode::Locked)
+		return;
 
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Garden"))
 	{
-		if (ImGui::MenuItem("About")) aboutWindow = true;
-		if (ImGui::MenuItem("Options")) optionsWindow = true;
-		if (ImGui::MenuItem("ImGui Demo")) demoWindow = true;
+		if (ImGui::MenuItem("About"))
+			aboutWindow = true;
+		if (ImGui::MenuItem("Options"))
+			optionsWindow = true;
+		if (ImGui::MenuItem("ImGui Demo"))
+			demoWindow = true;
 		if (ImGui::MenuItem("Exit"))
 			glfwSetWindowShouldClose((GLFWwindow*)GraphicsAPI::window, GLFW_TRUE);
 		ImGui::EndMenu();
@@ -67,27 +69,42 @@ void EditorRenderSystem::showMainMenuBar()
 	{
 		if (manager->has<TransformSystem>())
 		{
-			if (ImGui::MenuItem("New Scene")) newScene = true;
-			if (ImGui::MenuItem("Export Scene")) exportScene = true;
+			if (ImGui::MenuItem("New Scene"))
+				newScene = true;
+			if (ImGui::MenuItem("Export Scene"))
+				exportScene = true;
 		}
-		else if (barFiles.empty()) ImGui::TextDisabled("Nothing here");
-		if (!barFiles.empty()) for (auto onBarFile : barFiles) onBarFile();
+		else if (barFiles.empty())
+		{
+			ImGui::TextDisabled("Nothing here");
+		}
+
+		if (!barFiles.empty())
+			for (auto onBarFile : barFiles)
+				onBarFile();
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("Create"))
 	{
 		if (!barCreates.empty())
 		{
-			for (auto onBarCreate : barCreates) onBarCreate();
+			for (auto onBarCreate : barCreates)
+				onBarCreate();
 		}
-		else ImGui::TextDisabled("Nothing here");
+		else
+		{
+			ImGui::TextDisabled("Nothing here");
+		}
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("Tools"))
 	{
-		for (auto onBarTool : barTools) onBarTool();
-		if (ImGui::MenuItem("Performance Statistics")) performanceStatistics = true;
-		if (ImGui::MenuItem("Memory Statistics")) memoryStatistics = true;
+		for (auto onBarTool : barTools)
+			onBarTool();
+		if (ImGui::MenuItem("Performance Statistics"))
+			performanceStatistics = true;
+		if (ImGui::MenuItem("Memory Statistics"))
+			memoryStatistics = true;
 		ImGui::EndMenu();
 	}
 
@@ -97,7 +114,7 @@ void EditorRenderSystem::showMainMenuBar()
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getBackgroundPool();
-		taskCount = threadPool.getTaskCount();
+		taskCount = threadPool.getPendingTaskCount();
 	}
 	
 	auto stats = "[S: " + to_string((uint32)manager->getSystems().size()) +
@@ -119,7 +136,7 @@ void EditorRenderSystem::showAboutWindow()
 
 		if (ImGui::CollapsingHeader("PC"))
 		{
-			ImGui::Text("OS: %s", GARDEN_OS_NAME);
+			ImGui::Text("OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
 			ImGui::Text("SIMDs: %s", GARDEN_SIMD_STRING);
 			auto cpuName = OS::getCpuName();
 			ImGui::Text("CPU: %s", cpuName.c_str());
@@ -149,7 +166,9 @@ static void getFileInfo(const fs::path& path, int& fileCount, uint64& binarySize
 			continue;
 		}
 		
-		if (!entry.is_regular_file()) continue;
+		if (!entry.is_regular_file())
+			continue;
+
 		binarySize += (uint64)entry.file_size();
 		fileCount++;
 	}
@@ -164,7 +183,8 @@ void EditorRenderSystem::showOptionsWindow()
 		if (ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync))
 		{
 			auto settingsSystem = manager->tryGet<SettingsSystem>();
-			if (settingsSystem) settingsSystem->setBool("useVsync", graphicsSystem->useVsync);
+			if (settingsSystem)
+				settingsSystem->setBool("useVsync", graphicsSystem->useVsync);
 		}
 
 		ImGui::SameLine();
@@ -179,7 +199,8 @@ void EditorRenderSystem::showOptionsWindow()
 			{
 				deferredSystem->runSwapchainPass = !fxaaSystem->isEnabled;
 				auto settingsSystem = manager->tryGet<SettingsSystem>();
-				if (settingsSystem) settingsSystem->setBool("useFXAA", fxaaSystem->isEnabled);
+				if (settingsSystem)
+					settingsSystem->setBool("useFXAA", fxaaSystem->isEnabled);
 			}
 		}
 
@@ -199,7 +220,8 @@ void EditorRenderSystem::showOptionsWindow()
 			
 			deferredSystem->setRenderScale(renderScale);
 			auto settingsSystem = manager->tryGet<SettingsSystem>();
-			if (settingsSystem) settingsSystem->setFloat("renderScale", renderScale);
+			if (settingsSystem)
+				settingsSystem->setFloat("renderScale", renderScale);
 		}
 		ImGui::Spacing();
 
@@ -236,9 +258,12 @@ static void updateHistogram(const char* name,
 	for (uint32 i = 0; i < DATA_SAMPLE_BUFFER_SIZE; i++)
 	{
 		auto sample = sampleBuffer[i];
-		if (i > 0) sampleBuffer[i - 1] = sampleBuffer[i];
-		if (sample < minValue) minValue = sample;
-		if (sample > maxValue) maxValue = sample;
+		if (i > 0)
+			sampleBuffer[i - 1] = sampleBuffer[i];
+		if (sample < minValue)
+			minValue = sample;
+		if (sample > maxValue)
+			maxValue = sample;
 		average += sample;
 	}
 
@@ -265,8 +290,7 @@ static void updateHistogram(const char* name,
 //--------------------------------------------------------------------------------------------------
 void EditorRenderSystem::showPerformanceStatistics()
 {
-	if (ImGui::Begin("Performance Statistics", &performanceStatistics,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Performance Statistics", &performanceStatistics, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		if (!cpuFpsBuffer)
 		{
@@ -333,15 +357,17 @@ void EditorRenderSystem::showPerformanceStatistics()
 		
 		GraphicsAPI::recordGpuTime = true;
 	}
-	else GraphicsAPI::recordGpuTime = false;
+	else
+	{
+		GraphicsAPI::recordGpuTime = false;
+	}
 	ImGui::End();
 }
 
 //--------------------------------------------------------------------------------------------------
 void EditorRenderSystem::showMemoryStatistics()
 {
-	if (ImGui::Begin("Memory Statistics", &memoryStatistics,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Memory Statistics", &memoryStatistics, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		// TODO: CPU RAM usage.
 
@@ -445,7 +471,8 @@ void EditorRenderSystem::showEntityInspector()
 	}
 	ImGui::End();
 
-	if (!showEntityInspector) selectedEntity = {};
+	if (!showEntityInspector)
+		selectedEntity = {};
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -468,7 +495,10 @@ void EditorRenderSystem::showNewScene()
 
 		ImGui::SetItemDefaultFocus(); ImGui::SameLine();
 		if (ImGui::Button("Cancel", ImVec2(140.0f, 0.0f)))
-		{ ImGui::CloseCurrentPopup(); newScene = false; }
+		{
+			ImGui::CloseCurrentPopup();
+			newScene = false;
+		}
 		ImGui::EndPopup();
 	}
 }
@@ -493,12 +523,19 @@ void EditorRenderSystem::initialize()
 {
 	auto renderScale = 1.0f;
 	auto settingsSystem = getManager()->tryGet<SettingsSystem>();
-	if (settingsSystem) settingsSystem->getFloat("renderScale", renderScale);
-	if (renderScale <= 0.5f) renderScaleType = 0;
-	else if (renderScale <= 0.75f) renderScaleType = 1;
-	else if (renderScale <= 1.0f) renderScaleType = 2;
-	else if (renderScale <= 1.5f) renderScaleType = 3;
-	else renderScaleType = 4;
+	if (settingsSystem)
+		settingsSystem->getFloat("renderScale", renderScale);
+	
+	if (renderScale <= 0.5f)
+		renderScaleType = 0;
+	else if (renderScale <= 0.75f)
+		renderScaleType = 1;
+	else if (renderScale <= 1.0f)
+		renderScaleType = 2;
+	else if (renderScale <= 1.5f)
+		renderScaleType = 3;
+	else
+		renderScaleType = 4;
 
 	hierarchyEditor = new HierarchyEditor(this);
 	resourceEditor = new ResourceEditor(this);
@@ -512,14 +549,22 @@ void EditorRenderSystem::render()
 {
 	showMainMenuBar();
 
-	if (demoWindow) ImGui::ShowDemoWindow(&demoWindow);
-	if (aboutWindow) showAboutWindow();
-	if (optionsWindow) showOptionsWindow();
-	if (performanceStatistics) showPerformanceStatistics();
-	if (memoryStatistics) showMemoryStatistics();
-	if (newScene) showNewScene();
-	if (exportScene) showExportScene();
-	if (selectedEntity) showEntityInspector();
+	if (demoWindow)
+		ImGui::ShowDemoWindow(&demoWindow);
+	if (aboutWindow)
+		showAboutWindow();
+	if (optionsWindow)
+		showOptionsWindow();
+	if (performanceStatistics)
+		showPerformanceStatistics();
+	if (memoryStatistics)
+		showMemoryStatistics();
+	if (newScene)
+		showNewScene();
+	if (exportScene)
+		showExportScene();
+	if (selectedEntity)
+		showEntityInspector();
 
 	((HierarchyEditor*)hierarchyEditor)->render();
 	((ResourceEditor*)resourceEditor)->render();

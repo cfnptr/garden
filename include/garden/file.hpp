@@ -14,11 +14,11 @@
 
 /**********************************************************************************************************************
  * @file
+ * @brief Common file system functions.
  */
 
 #pragma once
 #include "garden/defines.hpp"
-#include "math/types.hpp"
 
 #include <vector>
 #include <fstream>
@@ -29,57 +29,62 @@ namespace garden
 using namespace std;
 using namespace math;
 
+/**
+ * @brief Loads binary data from the file.
+ * 
+ * @param[in] filePath target file path
+ * @param[out] data binary data buffer
+ * 
+ * @throw runtime_error if failed to load file data.
+ */
 static void loadBinaryFile(const fs::path& filePath, vector<uint8>& data)
 {
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
+	inputStream.exceptions(ios::failbit | ios::badbit);
+
 	if (!inputStream.is_open())
-	{
-		throw runtime_error("Failed to open binary file. ("
-			"path: " + filePath.generic_string() + ")");
-	}
+		throw runtime_error("Failed to open binary file. (path: " + filePath.generic_string() + ")");
 
 	auto fileSize = (psize)inputStream.tellg();
 	if (fileSize == 0)
-	{
-		throw runtime_error("No binary file data. ("
-			"path: " + filePath.generic_string() + ")");
-	}
+		throw runtime_error("No binary file data. (path: " + filePath.generic_string() + ")");
 
 	inputStream.seekg(0, ios::beg);
 	data.resize(fileSize);
 
 	if (!inputStream.read((char*)data.data(), fileSize))
-	{
-		throw runtime_error("Failed to read binary file. ("
-			"path: " + filePath.generic_string() + ")");
-	}
+		throw runtime_error("Failed to read binary file. (path: " + filePath.generic_string() + ")");
 }
 
+/**
+ * @brief Loads binary data from the file.
+ * 
+ * @param[in] filePath target file path
+ * @param[out] data binary data buffer
+ * 
+ * @return True on success, otherwise false.
+ */
 static bool tryLoadBinaryFile(const fs::path& filePath, vector<uint8>& data)
 {
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
-	if (!inputStream.is_open()) return false;
+	if (!inputStream.is_open())
+		return false;
+
 	auto fileSize = (psize)inputStream.tellg();
-	if (fileSize == 0) return false;
+	if (fileSize == 0)
+		return false;
+
 	inputStream.seekg(0, ios::beg);
 	data.resize(fileSize);
-	if (!inputStream.read((char*)data.data(), fileSize)) return false;
+	if (!inputStream.read((char*)data.data(), fileSize))
+		return false;
 	return true;
 }
 
 /**********************************************************************************************************************
- * @brief
+ * @brief Converts binary size to the string representation. (KB, MB, GB)
+ * @param size target binary size
  */
-static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath)
-{
-	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
-	auto appPath = GARDEN_APP_RESOURCES_PATH / resourcePath;
-	auto hasEngineFile = fs::exists(enginePath), hasAppFile = fs::exists(appPath);
-	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile)) return false;
-	filePath = hasEngineFile ? enginePath : appPath;
-	return true;
-}
-
 static string toBinarySizeString(uint64 size)
 {
 	if (size > (uint64)(1024 * 1024 * 1024))

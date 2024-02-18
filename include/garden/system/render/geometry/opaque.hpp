@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 // TODO: refactor this code.
 
@@ -29,13 +27,11 @@ using namespace garden::graphics;
 class OpaqueRenderSystem;
 class OpaqueShadowRenderSystem;
 
-//--------------------------------------------------------------------------------------------------
 struct OpaqueRenderComponent final : public GeometryRenderComponent
 {
 	friend class OpaqueRenderSystem;
 };
 
-//--------------------------------------------------------------------------------------------------
 class OpaqueRenderSystem final : public GeometryRenderSystem
 {
 	LinearPool<OpaqueRenderComponent, false> components;
@@ -55,7 +51,6 @@ class OpaqueRenderSystem final : public GeometryRenderSystem
 	friend class ecsm::Manager;
 };
 
-//--------------------------------------------------------------------------------------------------
 struct OpaqueShadowRenderComponent final : public GeometryShadowRenderComponent
 {
 	friend class OpaqueShadowRenderSystem;

@@ -56,7 +56,8 @@ uniform pushConstants
 void main()
 {
 	float depth = texture(depthBuffer, fs.texCoords).x;
-	if (depth < FLOAT_EPS6) discard;
+	if (depth < FLOAT_EPS6)
+		discard;
 
 	float4x4 uvToView = pc.uvToView;
 	float radius = uvToView[0][3], bias = uvToView[1][3], intensity = uvToView[3][3];

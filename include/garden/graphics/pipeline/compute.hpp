@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Compute pipeline functions.
+ */
 
 #pragma once
 #include "garden/graphics/pipeline.hpp"
@@ -25,7 +28,16 @@ using namespace math;
 using namespace ecsm;
 class ComputePipelineExt;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Compute only stage container.
+ * 
+ * @details
+ * Compute pipeline is much simpler than the graphics pipeline and is designed for general-purpose computing tasks 
+ * that don't involve the fixed-function stages of the graphics pipeline. It consists of a single stage:
+ * 
+ * Compute Shader: Executes a compute operation, which can perform a wide range of tasks, including physics simulations, 
+ * post-processing effects, and any computation that doesn't require the graphics pipeline's specific stages.
+ */
 class ComputePipeline final : public Pipeline
 {
 public:
@@ -39,6 +51,8 @@ public:
 private:
 	uint8 _alignment = 0;
 	int3 localSize = int3(0);
+
+	// Use GraphicsSystem to create, destroy and access compute pipelines.
 
 	ComputePipeline() = default;
 	ComputePipeline(const fs::path& path,

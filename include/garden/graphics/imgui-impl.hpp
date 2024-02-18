@@ -36,13 +36,16 @@ public:
 
 static void imGuiCheckVkResult(VkResult result)
 {
-	if (result == VK_SUCCESS) return;
+	if (result == VK_SUCCESS)
+		return;
+		
 	auto resultString = vk::to_string(vk::Result(result));
 	fprintf(stderr, "IMGUI::VULKAN:ERROR: %s\n", resultString.c_str());
-	if (result < 0) throw runtime_error("IMGUI::VULKAN:ERROR: " + resultString);
+	if (result < 0)
+		throw runtime_error("IMGUI::VULKAN:ERROR: " + resultString);
 }
 
-static void setImGuiSyle()
+static void setImGuiStyle()
 {
 	auto& style = ImGui::GetStyle();
 	style.FrameBorderSize = 1.0f;

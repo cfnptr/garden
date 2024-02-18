@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,30 +11,30 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/swapchain.hpp"
 #include "garden/graphics/vulkan.hpp"
 
 using namespace garden::graphics;
 
-static uint32 getBestVkImageCount(
-	const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering)
+static uint32 getBestVkImageCount(const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering)
 {
 	auto imageCount = capabilities.minImageCount;
 	auto maxImageCount = capabilities.maxImageCount;
-	if (useTripleBuffering && imageCount < 3) imageCount = 3;
+	if (useTripleBuffering && imageCount < 3)
+		imageCount = 3;
 	if (maxImageCount > 0 && imageCount > maxImageCount)
 		imageCount = maxImageCount;
 	return imageCount;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 	vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, bool useHDR)
 {
 	auto formats = physicalDevice.getSurfaceFormatsKHR(surface);
-	if (formats.empty()) throw runtime_error("No suitable surface format.");
+	if (formats.empty())
+		throw runtime_error("No suitable surface format.");
 
 	if (useHDR)
 	{
@@ -69,9 +68,8 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 	return formats[0];
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::Extent2D getBestVkSurfaceExtent(
-	const vk::SurfaceCapabilitiesKHR& capabilities, int2 framebufferSize)
+//*********************************************************************************************************************
+static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, int2 framebufferSize)
 {
 	if (capabilities.currentExtent.width == UINT32_MAX)
 	{
@@ -86,16 +84,14 @@ static vk::Extent2D getBestVkSurfaceExtent(
 	return capabilities.currentExtent;
 }
 
-static vk::SurfaceTransformFlagBitsKHR getBestVkSurfaceTransform(
-	const vk::SurfaceCapabilitiesKHR& capabilities)
+static vk::SurfaceTransformFlagBitsKHR getBestVkSurfaceTransform(const vk::SurfaceCapabilitiesKHR& capabilities)
 {
 	if (capabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
 		return vk::SurfaceTransformFlagBitsKHR::eIdentity;
 	return capabilities.currentTransform;
 }
 
-static vk::CompositeAlphaFlagBitsKHR getBestVkCompositeAlpha(
-	const vk::SurfaceCapabilitiesKHR& capabilities)
+static vk::CompositeAlphaFlagBitsKHR getBestVkCompositeAlpha(const vk::SurfaceCapabilitiesKHR& capabilities)
 {
 	auto supportedCompositeAlpha = capabilities.supportedCompositeAlpha;
 	if (supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eOpaque)
@@ -113,9 +109,11 @@ static vk::PresentModeKHR getBestVkPresentMode(
 	vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, bool useVsync)
 {
 	auto modes = physicalDevice.getSurfacePresentModesKHR(surface);
-	if (modes.empty()) throw runtime_error("No suitable present mode.");
+	if (modes.empty())
+		throw runtime_error("No suitable present mode.");
 
-	if (useVsync) return vk::PresentModeKHR::eFifo;
+	if (useVsync)
+		return vk::PresentModeKHR::eFifo;
 
 	for (auto mode : modes)
 	{
@@ -136,7 +134,7 @@ static vk::PresentModeKHR getBestVkPresentMode(
 	return vk::PresentModeKHR::eFifo;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vk::SwapchainKHR createVkSwapchain(vk::PhysicalDevice physicalDevice,
 	vk::Device device, vk::SurfaceKHR surface, int2 framebufferSize, bool useVsync,
 	bool useTripleBuffering, vk::SwapchainKHR oldSwapchain, vk::Format& format)
@@ -150,15 +148,13 @@ static vk::SwapchainKHR createVkSwapchain(vk::PhysicalDevice physicalDevice,
 	auto presentMode = getBestVkPresentMode(physicalDevice, surface, useVsync);
 	format = surfaceFormat.format;
 
-	vk::SwapchainCreateInfoKHR swapchainInfo({}, surface, imageCount,
-		surfaceFormat.format, surfaceFormat.colorSpace, surfaceExtent, 1, 
-		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst,
-		vk::SharingMode::eExclusive, {}, surfaceTransform, compositeAlpha, presentMode,
-		VK_TRUE, oldSwapchain);
+	vk::SwapchainCreateInfoKHR swapchainInfo({}, surface, imageCount, surfaceFormat.format,
+		surfaceFormat.colorSpace, surfaceExtent, 1, vk::ImageUsageFlagBits::eColorAttachment | 
+		vk::ImageUsageFlagBits::eTransferDst, vk::SharingMode::eExclusive, {}, 
+		surfaceTransform, compositeAlpha, presentMode, VK_TRUE, oldSwapchain);
 	return device.createSwapchainKHR(swapchainInfo);
 }
 
-//--------------------------------------------------------------------------------------------------
 static vk::Fence createVkFence(vk::Device device, bool isSignaled = false)
 {
 	vk::FenceCreateInfo fenceInfo(
@@ -176,14 +172,15 @@ static vector<vk::CommandPool> createVkCommandPools(vk::Device device,
 {
 	vector<vk::CommandPool> commandPools(count);
 	vk::CommandPoolCreateFlags flags;
-	if (isTransient) flags |= vk::CommandPoolCreateFlagBits::eTransient;
+	if (isTransient)
+		flags |= vk::CommandPoolCreateFlagBits::eTransient;
 	vk::CommandPoolCreateInfo commandPoolInfo({}, queueFamilyIndex);
 	for (uint32 i = 0; i < count; i++)
 		commandPools[i] = device.createCommandPool(commandPoolInfo);
 	return commandPools;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 	vk::Device device, vk::SwapchainKHR swapchain, vk::Format surfaceFormat,
 	vk::CommandPool graphicsCommandPool, LinearPool<Image>& imagePool,
@@ -247,9 +244,8 @@ static void destroyVkSwapchainBuffers(vk::Device device,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-Swapchain::Swapchain(int2 framebufferSize, bool useVsync,
-	bool useTripleBuffering, bool useThreading)
+//*********************************************************************************************************************
+Swapchain::Swapchain(int2 framebufferSize, bool useVsync, bool useTripleBuffering, bool useThreading)
 {
 	for (uint8 i = 0; i < GARDEN_FRAME_LAG; i++)
 	{
@@ -289,7 +285,7 @@ void Swapchain::setThreadPool(ThreadPool& threadPool)
 	this->threadPool = &threadPool;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
 	Vulkan::device.waitIdle();
@@ -311,7 +307,7 @@ void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuff
 	this->frameIndex = 0;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 bool Swapchain::acquireNextImage()
 {
 	auto fence = fences[frameIndex]; // Note: emergency 10 seconds timeout.
@@ -349,7 +345,7 @@ bool Swapchain::acquireNextImage()
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void Swapchain::submit()
 {
 	auto& buffer = buffers[bufferIndex];
@@ -376,7 +372,7 @@ bool Swapchain::present()
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vector<vk::Format> colorAttachmentFormats;
 
 void Swapchain::beginSecondaryCommandBuffers(
@@ -482,13 +478,13 @@ void Swapchain::beginSecondaryCommandBuffers(
 	auto beingInfoPtr = &beginInfo;
 	threadPool->addTasks(ThreadPool::Task([beingInfoPtr](const ThreadPool::Task& task)
 	{
-		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(beingInfoPtr);
+		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(*beingInfoPtr);
 	}),
 	(uint32)Vulkan::secondaryCommandBuffers.size());
 	threadPool->wait();
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vector<vk::CommandBuffer> secondaryCommandBuffers;
 
 void Swapchain::endSecondaryCommandBuffers()

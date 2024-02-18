@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Graphics pipeline functions.
+ */
 
 #pragma once
 #include "garden/graphics/pipeline.hpp"
@@ -26,7 +29,21 @@ using namespace math;
 using namespace ecsm;
 class GraphicsPipelineExt;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Graphics rendering stages container.
+ * 
+ * @details
+ * Graphics pipeline is used for rendering operations. It is a highly configurable series of stages that process 
+ * vertex data into pixel data to be output to a framebuffer. The stages of a typical graphics pipeline include:
+ * 
+ * Input Assembler: Collects raw vertex data from buffers and may also use an index buffer to reuse vertex data.
+ * Vertex Shader: Processes each vertex, performing operations such as transformations and lighting calculations.
+ * Rasterization: Converts the geometry into fragments (potential pixels) for further processing.
+ * Fragment Shader: Processes each fragment to determine its final color and other attributes.
+ * Depth and Stencil Testing: Performs depth comparisons and stencil operations to determine if a fragment should be discarded.
+ * Color Blending: Combines the fragment's color with the color in the framebuffer based on various blending operations.
+ * Output Merger: Finalizes the processed fragments and writes them to the framebuffer attachments.
+ */
 class GraphicsPipeline final : public Pipeline
 {
 public:
@@ -126,6 +143,8 @@ public:
 private:
 	uint8 subpassIndex = 0;
 	ID<Framebuffer> framebuffer = {};
+
+	// Use GraphicsSystem to create, destroy and access graphics pipelines.
 	
 	GraphicsPipeline() = default;
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsync,

@@ -43,7 +43,8 @@ void SkyboxRenderSystem::initialize()
 {
 	auto graphicsSystem = getGraphicsSystem();	
 	fullCubeVertices = graphicsSystem->getFullCubeVertices();
-	if (!pipeline) pipeline = createPipeline(getDeferredSystem());
+	if (!pipeline)
+		pipeline = createPipeline(getDeferredSystem());
 
 	#if GARDEN_EDITOR
 	editor = new SkyboxEditor(this);
@@ -64,12 +65,16 @@ void SkyboxRenderSystem::hdrRender()
 	auto camera = graphicsSystem->camera;
 	auto pipelineView = graphicsSystem->get(pipeline);
 	auto fullCubeView = graphicsSystem->get(fullCubeVertices);
-	if (!camera || !pipelineView->isReady() || !fullCubeView->isReady()) return;
+	if (!camera || !pipelineView->isReady() || !fullCubeView->isReady())
+		return;
 	
 	auto component = manager->tryGet<SkyboxRenderComponent>(graphicsSystem->camera);
-	if (!component) return;
+	if (!component)
+		return;
+
 	auto cubemapView = graphicsSystem->get(component->cubemap);
-	if (!cubemapView->isReady()) return;
+	if (!cubemapView->isReady())
+		return;
 
 	if (!component->descriptorSet)
 	{
@@ -137,7 +142,8 @@ void SkyboxRenderSystem::disposeComponents() { components.dispose(); }
 ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()
 {
 	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
-	if (!pipeline) pipeline = createPipeline(deferredSystem);
+	if (!pipeline)
+		pipeline = createPipeline(deferredSystem);
 	return pipeline;
 }
 

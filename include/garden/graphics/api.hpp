@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/*******************************************************************************************************************
+ * @file
+ * @brief Common graphics API functions.
+ */
 
 #pragma once
 #include "garden/graphics/command-buffer.hpp"
@@ -27,15 +30,37 @@ namespace garden::graphics
  */ 
 const int32 minFramebufferSize = 32;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Base graphics API class.
+ * 
+ * @details
+ * Graphics API (Application Programming Interface) is a software interface that enables applications to 
+ * communicate with and utilize the graphical hardware of a computer system to perform rendering and 
+ * compute tasks. These APIs provide a set of functions and protocols for managing graphics rendering, 
+ * including drawing 2D and 3D objects, manipulating images and textures, handling shaders 
+ * (programs that run on the GPU), and controlling how scenes are rendered to the screen.
+ * 
+ * Graphics APIs abstract the complexity of interacting directly with the graphics hardware, 
+ * allowing developers to write applications that can produce graphical output without needing 
+ * to code for specific hardware devices. This abstraction layer enables applications 
+ * to run across a wide range of hardware with minimal changes to the application code.
+ * 
+ * @warning Use graphics API directly with caution!
+ */
 class GraphicsAPI final
 {
 public:
+	/**
+	 * @brief GPU object type to destroy.
+	 */
 	enum class DestroyResourceType : uint32
 	{
 		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
 		Sampler, Framebuffer, ImageView, Image, Buffer, Count
 	};
+	/**
+	 * @brief GPU object to destroy.
+	 */
 	struct DestroyResource final
 	{
 		void* data0 = nullptr;
@@ -44,6 +69,8 @@ public:
 		uint32 count = 0;
 	};
 
+	static string appDataName;
+	static Version appVersion;
 	static void* hashState;
 	static void* window;
 	static LinearPool<Buffer> bufferPool;
@@ -73,6 +100,14 @@ public:
 	static bool recordGpuTime;
 	#endif
 
+	/**
+	 * @brief Adds GPU objects to the destroy queue.
+	 * 
+	 * @param type target resource type
+	 * @param data0 GPU object 0
+	 * @param data1 GPU object 1 or nullptr
+	 * @param count GPU object count
+	 */
 	static void destroyResource(DestroyResourceType type,
 		void* data0, void* data1 = nullptr, uint32 count = 0);
 };

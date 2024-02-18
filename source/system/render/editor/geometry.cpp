@@ -48,7 +48,8 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 		(float*)&geometryComponent->roughnessFactor, 0.0f, 1.0f);
 	ImGui::SliderFloat("Reflectance Factor",
 		(float*)&geometryComponent->reflectanceFactor, 0.0f, 1.0f);
-	if (alphaCutoff) ImGui::SliderFloat("Alpha Cutoff", alphaCutoff, 0.0f, 1.0f);
+	if (alphaCutoff)
+		ImGui::SliderFloat("Alpha Cutoff", alphaCutoff, 0.0f, 1.0f);
 	ImGui::Spacing(); ImGui::Separator();
 
 	if (aabb.getMin().x > aabb.getMax().x || aabb.getMin().y > aabb.getMax().y ||
@@ -62,52 +63,82 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 	{
 		auto bufferView = graphicsSystem->get(geometryComponent->vertexBuffer);
 		auto stringOffset = bufferView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Vertex Buffer: %d (%s)", *geometryComponent->vertexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Vertex Buffer: null");
+	else
+	{
+		ImGui::Text("Vertex Buffer: null");
+	}
 
 	if (geometryComponent->indexBuffer)
 	{
 		auto bufferView = graphicsSystem->get(geometryComponent->indexBuffer);
 		auto stringOffset = bufferView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Index Buffer: %d (%s)", *geometryComponent->indexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Index Buffer: null");
+	else
+	{
+		ImGui::Text("Index Buffer: null");
+	}
 
 	if (geometryComponent->baseColorMap)
 	{
 		auto imageView = graphicsSystem->get(geometryComponent->baseColorMap);
 		auto stringOffset = imageView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Base Color Map: %d (%s)", *geometryComponent->baseColorMap,
 			imageView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Base Color Map: null");
+	else
+	{
+		ImGui::Text("Base Color Map: null");
+	}
 
 	if (geometryComponent->ormMap)
 	{
 		auto imageView = graphicsSystem->get(geometryComponent->ormMap);
 		auto stringOffset = imageView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Occlusion/Roughness/Metallic Map: %d (%s)",
 			*geometryComponent->ormMap,
 			imageView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Occlusion/Roughness/Metallic Map: null");
+	else
+	{
+		ImGui::Text("Occlusion/Roughness/Metallic Map: null");
+	}
 
 	if (geometryComponent->descriptorSet)
 	{
 		auto descriptorSetView = graphicsSystem->get(geometryComponent->descriptorSet);
 		auto stringOffset = descriptorSetView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Descriptor Set: %d (%s)", *geometryComponent->descriptorSet,
 			descriptorSetView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Descriptor Set: null");
+	else
+	{
+		ImGui::Text("Descriptor Set: null");
+	}
 		
 	ImGui::Text("Index Count: %d, Offset: %d",
 		geometryComponent->indexCount, geometryComponent->indexOffset);
@@ -125,8 +156,7 @@ GeometryShadowEditor::GeometryShadowEditor(GeometryShadowRenderSystem* system)
 }
 
 //--------------------------------------------------------------------------------------------------
-void GeometryShadowEditor::renderInfo(
-	GeometryShadowRenderComponent* geometryShadowComponent)
+void GeometryShadowEditor::renderInfo(GeometryShadowRenderComponent* geometryShadowComponent)
 {
 	auto graphicsSystem = system->getGraphicsSystem();
 	auto& aabb = geometryShadowComponent->aabb;
@@ -146,21 +176,33 @@ void GeometryShadowEditor::renderInfo(
 	{
 		auto bufferView = graphicsSystem->get(geometryShadowComponent->vertexBuffer);
 		auto stringOffset = bufferView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Vertex Buffer: %d (%s)", *geometryShadowComponent->vertexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Vertex Buffer: null");
+	else
+	{
+		ImGui::Text("Vertex Buffer: null");
+	}
 
 	if (geometryShadowComponent->indexBuffer)
 	{
 		auto bufferView = graphicsSystem->get(geometryShadowComponent->indexBuffer);
 		auto stringOffset = bufferView->getDebugName().find_last_of('.');
-		if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+		if (stringOffset == string::npos)
+			stringOffset = 0;
+		else
+			stringOffset++;
 		ImGui::Text("Index Buffer: %d (%s)", *geometryShadowComponent->indexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
-	else ImGui::Text("Index Buffer: null");
+	else
+	{
+		ImGui::Text("Index Buffer: null");
+	}
 		
 	ImGui::Text("Index Count: %d, Offset: %d",
 		geometryShadowComponent->indexCount, geometryShadowComponent->indexOffset);

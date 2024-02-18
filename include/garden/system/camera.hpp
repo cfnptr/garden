@@ -14,11 +14,12 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief Common camera projection functions.
  */
 
 #pragma once
-#include "math/angles.hpp"
 #include "garden/serialize.hpp"
+#include "math/angles.hpp"
 
 namespace garden
 {
@@ -40,25 +41,38 @@ using namespace math;
 using namespace ecsm;
 
 /***********************************************************************************************************************
+ * @brief Contains information about camera projection properties.
  */
 struct CameraComponent final : public Component
 {
+	/**
+	 * @brief Camera projection type.
+	 */
 	enum class Type : uint8
 	{
 		Perspective, Orthographic, Count,
 	};
+	/**
+	 * @brief Perspective camera projection properties.
+	 */
 	struct Perspective final
 	{
 		float fieldOfView = radians(defaultFieldOfView);
 		float aspectRatio = defaultAspectRatio;
 		float nearPlane = defaultHmdDepth;
 	};
+	/**
+	 * @brief Orthographic camera projection properties.
+	 */
 	struct Orthographic final
 	{
 		float2 width = float2(-1.0f, 1.0f);
 		float2 height = float2(-1.0f, 1.0f);
 		float2 depth = float2(-1.0f, 1.0f);
 	};
+	/**
+	 * @brief Camera perspective / orthographic properties.
+	 */
 	union Projection final
 	{
 		Perspective perspective;
@@ -66,22 +80,32 @@ struct CameraComponent final : public Component
 		Projection() : perspective() { }
 	};
 
+	/**
+	 * @brief Camera perspective / orthographic properties.
+	 */
 	Projection p = {};
+	/**
+	 * @brief Camera projection type.
+	 */
 	Type type = Type::Perspective;
-
 private:
 	uint8_t _alignment0 = 0;
 	uint16_t _alignment1 = 0;
 public:
-
 	friend class CameraSystem;
 	friend class LinearPool<CameraComponent, false>;
 
+	/**
+	 * @brief Calculate camera projection matrix.
+	 * @details See the @ref calcPerspProjInfRevZ().
+	 */
 	float4x4 calcProjection() const noexcept;
+
 	// TODO: add perspective/ortho morphing.
 };
 
 /***********************************************************************************************************************
+ * @brief Handles camera projections.
  */
 class CameraSystem final : public System, public ISerializable
 {
@@ -94,7 +118,14 @@ class CameraSystem final : public System, public ISerializable
 	void deinit();
 	#endif
 
+	/**
+	 * @brief Creates a new camera system instance.
+	 * @param[in,out] manager manager instance
+	 */
 	CameraSystem(Manager* manager);
+	/**
+	 * @brief Destroys camera system instance.
+	 */
 	~CameraSystem() final;
 
 	type_index getComponentType() const final;

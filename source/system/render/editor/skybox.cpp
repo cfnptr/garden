@@ -45,23 +45,35 @@ void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 		{
 			auto imageView = graphicsSystem->get(skyboxComponent->cubemap);
 			auto stringOffset = imageView->getDebugName().find_last_of('.');
-			if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+			if (stringOffset == string::npos)
+				stringOffset = 0;
+			else
+				stringOffset++;
 			auto image = to_string(*skyboxComponent->cubemap) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Cubemap", &image, ImGuiInputTextFlags_ReadOnly);
 		}
-		else ImGui::Text("Cubemap: null");
+		else
+		{
+			ImGui::Text("Cubemap: null");
+		}
 
 		if (skyboxComponent->descriptorSet)
 		{
 			auto descriptorSetView = graphicsSystem->get(skyboxComponent->descriptorSet);
 			auto stringOffset = descriptorSetView->getDebugName().find_last_of('.');
-			if (stringOffset == string::npos) stringOffset = 0; else stringOffset++;
+			if (stringOffset == string::npos)
+				stringOffset = 0;
+			else
+				stringOffset++;
 			auto descriptorSet = to_string(*skyboxComponent->descriptorSet) + " (" +
 				string(descriptorSetView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Descriptor Set", &descriptorSet, ImGuiInputTextFlags_ReadOnly);
 		}
-		else ImGui::Text("Descriptor Set: null");
+		else
+		{
+			ImGui::Text("Descriptor Set: null");
+		}
 		ImGui::Spacing();
 	}
 	ImGui::PopID();

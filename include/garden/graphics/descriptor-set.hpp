@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common graphics descriptor set functions.
+ */
 
 #pragma once
 #include "linear-pool.hpp"
@@ -30,6 +33,16 @@ using namespace ecsm;
 class Pipeline;
 class GraphicsPipeline;
 
+/***********************************************************************************************************************
+ * @brief Shader resource container.
+ * 
+ * @details
+ * Descriptor set is a mechanism for binding application resources, such as buffers and images, to the shader stages 
+ * in a pipeline. It acts as a bridge between the resources you have in your application (like textures, 
+ * uniform buffers, and samplers) and the shader programs that use those resources when drawing or computing. 
+ * Descriptors are part of Vulkan's way to abstract resource bindings and provide a highly efficient, 
+ * explicit, and flexible way to manage resource states and dependencies.
+ */
 class DescriptorSet final : public Resource
 {
 public:
@@ -70,6 +83,8 @@ private:
 	map<string, Uniform> uniforms;
 	PipelineType pipelineType = {};
 	uint8 index = 0;
+
+	// Use GraphicsSystem to create, destroy and access descriptor sets.
 
 	DescriptorSet() = default;
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,

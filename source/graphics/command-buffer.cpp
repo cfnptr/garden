@@ -82,10 +82,10 @@ void CommandBuffer::initialize(CommandBufferType type)
 	}
 	#endif
 
-	if (instance) fence = createVkFence(Vulkan::device);
+	if (instance)
+		fence = createVkFence(Vulkan::device);
 
-	data = (uint8*)malloc(sizeof(uint8) * capacity);
-	if (!data) abort();
+	data = malloc<uint8>(capacity);
 	this->type = type;
 }
 void CommandBuffer::terminate()
@@ -175,9 +175,7 @@ Command* CommandBuffer::allocateCommand(uint32 size)
 	if (this->size + size > capacity)
 	{
 		capacity = this->size + size;
-		auto newData = realloc(data, capacity);
-		if (!newData) abort();
-		data = (uint8*)newData;
+		data = realloc<uint8>(data, capacity);
 	}
 
 	auto allocation = (Command*)(data + this->size);
@@ -219,7 +217,8 @@ void CommandBuffer::addDescriptorSetBarriers(
 		for (auto& pipelineUniform : *pipelineUniforms)
 		{
 			auto uniform = pipelineUniform.second;
-			if (uniform.descriptorSetIndex != i) continue;
+			if (uniform.descriptorSetIndex != i)
+				continue;
 
 			auto setCount = descriptor.offset + descriptor.count;
 			auto& descriptorSetUniform = descriptorSetUniforms.at(pipelineUniform.first);
@@ -248,7 +247,9 @@ void CommandBuffer::addDescriptorSetBarriers(
 					auto& resourceArray = descriptorSetUniform.resourceSets[j];
 					for (uint32 k = 0; k < (uint32)resourceArray.size(); k++)
 					{
-						if (!resourceArray[k]) continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+						if (!resourceArray[k])
+							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+
 						auto imageView = GraphicsAPI::imageViewPool.get(
 							ID<ImageView>(resourceArray[k]));
 						auto instance = imageView->image;
@@ -341,7 +342,9 @@ void CommandBuffer::addDescriptorSetBarriers(
 //--------------------------------------------------------------------------------------------------
 void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 {
-	if (imageMemoryBarriers.empty() && bufferMemoryBarriers.empty()) return;
+	if (imageMemoryBarriers.empty() && bufferMemoryBarriers.empty())
+		return;
+
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto oldPipelineStage = (vk::PipelineStageFlagBits)oldStage;
 	auto newPipelineStage = (vk::PipelineStageFlagBits)newStage;
@@ -414,7 +417,9 @@ void CommandBuffer::submit()
 
 			vk::Fence fence((VkFence)this->fence);
 			auto status = Vulkan::device.getFenceStatus(fence);
-			if (status == vk::Result::eNotReady) return;
+			if (status == vk::Result::eNotReady)
+				return;
+			
 			Vulkan::device.resetFences(fence);
 			flushLockedResources(lockedResources);
 			isRunning = false;
@@ -426,9 +431,12 @@ void CommandBuffer::submit()
 			return;
 		}
 
-		if (type == CommandBufferType::TransferOnly) queue = Vulkan::transferQueue;
-		else if (type == CommandBufferType::ComputeOnly) queue = Vulkan::computeQueue;
-		else queue = Vulkan::graphicsQueue;
+		if (type == CommandBufferType::TransferOnly)
+			queue = Vulkan::transferQueue;
+		else if (type == CommandBufferType::ComputeOnly)
+			queue = Vulkan::computeQueue;
+		else
+			queue = Vulkan::graphicsQueue;
 		commandBuffer = vk::CommandBuffer((VkCommandBuffer)instance);
 	}
 
@@ -848,8 +856,10 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	{
 		auto subCommand = (const Command*)(data + offset);
 		GARDEN_ASSERT((uint8)subCommand->type < (uint8)Command::Type::Count);
+
 		auto commandType = subCommand->type;
-		if (commandType == Command::Type::EndRenderPass) break;
+		if (commandType == Command::Type::EndRenderPass)
+			break;
 
 		offset += subCommand->thisSize;
 		
@@ -931,7 +941,10 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				bufferMemoryBarriers.push_back(bufferMemoryBarrier);
 				oldIndexBufferState = newBufferState;
 			}
-			else oldIndexBufferState.stage = newBufferState.stage;
+			else
+			{
+				oldIndexBufferState.stage = newBufferState.stage;
+			}
 		}
 	}
 
@@ -948,7 +961,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
 		if (Vulkan::versionMinor < 3)
 			commandBuffer.beginRenderingKHR(renderingInfo, Vulkan::dynamicLoader);
-		else commandBuffer.beginRendering(renderingInfo);
+		else 
+			commandBuffer.beginRendering(renderingInfo);
 	}
 	else
 	{
@@ -979,7 +993,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 					if (colorAttachment.imageView == inputAttachment.imageView)
 					{
 						isLastInput = true; shaderStages = inputAttachment.shaderStages;
-						subpass = subpasses.rend() - 1; break;
+						subpass = subpasses.rend() - 1;
+						break;
 					}
 				}
 			}
@@ -1017,7 +1032,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 					if (depthStencilAttachment.imageView == inputAttachment.imageView)
 					{
 						isLastInput = true; shaderStages = inputAttachment.shaderStages;
-						subpass = subpasses.rend() - 1; break;
+						subpass = subpasses.rend() - 1;
+						break;
 					}
 				}
 			}
@@ -1072,10 +1088,15 @@ void CommandBuffer::processCommand(const EndRenderPassCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	if (noSubpass)
 	{
-		if (Vulkan::versionMinor < 3) commandBuffer.endRenderingKHR(Vulkan::dynamicLoader);
-		else commandBuffer.endRendering();
+		if (Vulkan::versionMinor < 3)
+			commandBuffer.endRenderingKHR(Vulkan::dynamicLoader);
+		else
+			commandBuffer.endRendering();
 	}
-	else commandBuffer.endRenderPass();
+	else
+	{
+		commandBuffer.endRenderPass();
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1205,7 +1226,9 @@ static vector<vk::DescriptorSet> descriptorSets;
 
 void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 {
-	if (command.isAsync) return;
+	if (command.isAsync)
+		return;
+
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 
 	auto descriptorData = (const Pipeline::DescriptorData*)(
@@ -1295,7 +1318,9 @@ void CommandBuffer::processCommand(const SetViewportScissorCommand& command)
 //--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const DrawCommand& command)
 {
-	if (command.isAsync) return;
+	if (command.isAsync)
+		return;
+
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	// TODO: support multiple buffer binding.
 	// TODO: add vertex buffer offset support if required.
@@ -1316,7 +1341,9 @@ void CommandBuffer::processCommand(const DrawCommand& command)
 //--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const DrawIndexedCommand& command)
 {
-	if (command.isAsync) return;
+	if (command.isAsync)
+		return;
+
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	// TODO: support multiple buffer binding.
 	// TODO: add vertex buffer offset support if required.
@@ -1354,14 +1381,19 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 	{
 		auto subCommand = (const Command*)(data + offset);
 		GARDEN_ASSERT((uint8)subCommand->type < (uint8)Command::Type::Count);
-		if (subCommand->lastSize == 0) break;
+		if (subCommand->lastSize == 0)
+			break;
 
 		auto commandType = subCommand->type;
 		if (commandType == Command::Type::Dispatch || 
-			commandType == Command::Type::BindPipeline) break;
+			commandType == Command::Type::BindPipeline)
+		{
+			break;
+		}
 
 		offset -= subCommand->lastSize;
-		if (commandType != Command::Type::BindDescriptorSets) continue;
+		if (commandType != Command::Type::BindDescriptorSets)
+			continue;
 
 		auto& bindDescriptorSetsCommand =
 			*(const BindDescriptorSetsCommand*)subCommand;

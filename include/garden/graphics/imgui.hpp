@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief ImGui extensions.
+ */
 
 #pragma once
 #include "garden/defines.hpp"
@@ -27,6 +30,14 @@
 namespace ImGui
 {
 
+/**
+ * @brief Enum class combo box. 
+ * 
+ * @tparam T target enum type
+ * @param[in] label combo box label
+ * @param[in,out] currentItem selected item
+ * @param[in] items all available item list
+ */
 template<typename T = int>
 bool Combo(const char* label, T& currentItem, const char* items)
 {

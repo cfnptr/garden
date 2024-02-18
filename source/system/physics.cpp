@@ -41,7 +41,9 @@ public:
 	void reportError(PxErrorCode::Enum code, const char* message,
 		const char* file, int line) final
 	{
-		if (!logSystem) return;
+		if (!logSystem)
+			return;
+
 		LogSystem::Severity severity;
 		switch (code)
 		{
@@ -112,7 +114,10 @@ public:
 				auto& pair = pairs[i];
 
 				if (pair.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER |
-					PxTriggerPairFlag::eREMOVED_SHAPE_OTHER)) continue;
+					PxTriggerPairFlag::eREMOVED_SHAPE_OTHER))
+				{
+					continue;
+				}
 				
 				*data.triggerEntity = (uint32)(psize)pair.triggerActor->userData;
 				*data.otherEntity = (uint32)(psize)pair.otherActor->userData;
@@ -289,7 +294,8 @@ bool RigidBodyComponent::destroy()
 //--------------------------------------------------------------------------------------------------
 void RigidBodyComponent::setStatic(bool isStatic)
 {
-	if (instance && isStatic == this->staticBody) return;
+	if (instance && isStatic == this->staticBody)
+		return;
 
 	auto scene = (PxScene*)physicsSystem->getScene();
 	auto physics = (PxPhysics*)physicsSystem->getInstance();
@@ -313,8 +319,10 @@ void RigidBodyComponent::setStatic(bool isStatic)
 		PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
 
 	PxRigidActor* rigidBody;
-	if (isStatic) rigidBody = physics->createRigidStatic(pxTransform);
-	else rigidBody = physics->createRigidDynamic(pxTransform);
+	if (isStatic)
+		rigidBody = physics->createRigidStatic(pxTransform);
+	else
+		rigidBody = physics->createRigidDynamic(pxTransform);
 	rigidBody->userData = (void*)(psize)*entity;
 
 	if (shapeCount > 0)
@@ -700,7 +708,8 @@ void PhysicsSystem::initialize()
 
 	foundation = PxCreateFoundation(PX_PHYSICS_VERSION,
 		data->defaultAllocatorCallback, data->gardenErrorCallback);
-	if (!foundation) throw runtime_error("Failed to create PhysX foundation.");
+	if (!foundation)
+		throw runtime_error("Failed to create PhysX foundation.");
 
 	#if GARDEN_DEBUG
 	auto pvd = PxCreatePvd(*(PxFoundation*)foundation);
@@ -711,7 +720,8 @@ void PhysicsSystem::initialize()
 	{
 		if (pvd->connect(*transport, PxPvdInstrumentationFlag::eALL))
 			logSystem->info("Connected to the PhysX debugger.");
-		else logSystem->info("PhysX debugger is not connected.");
+		else
+			logSystem->info("PhysX debugger is not connected.");
 	}
 	#else
 	PxPvd* pvd = nullptr;
@@ -719,10 +729,11 @@ void PhysicsSystem::initialize()
 
 	auto instance = PxCreatePhysics(PX_PHYSICS_VERSION,
 		*(PxFoundation*)foundation, PxTolerancesScale(), false, pvd);
-	if (!instance) throw runtime_error("Failed to create PhysX instance.");
+	if (!instance)
+		throw runtime_error("Failed to create PhysX instance.");
 	this->instance = instance;
 
-	 if (!PxInitExtensions(*instance, pvd))
+	if (!PxInitExtensions(*instance, pvd))
 	 	throw runtime_error("Failed to initialize PhysX extensions.");
 
 	PxSceneDesc sceneDesc(instance->getTolerancesScale());
@@ -766,7 +777,7 @@ void PhysicsSystem::initialize()
 
 	ccManager = PxCreateControllerManager(*scene);
 	defaultMaterial = createMaterial(0.5f, 0.5f, 0.1f);
-	scratchBuffer = malloc(SCRATCH_BUFFER_SIZE);
+	scratchBuffer = malloc<uint8>(SCRATCH_BUFFER_SIZE);
 
 	auto& subsystems = manager->getSubsystems<PhysicsSystem>();
 	for (auto subsystem : subsystems)
@@ -826,9 +837,13 @@ void PhysicsSystem::update()
 	for (uint32 i = 0; i < componentOccupancy; i++)
 	{
 		auto component = &componentData[i];
-		if (!component->physicsSystem) continue;
-		if (!component->instance) component->setStatic(true);
-		if (component->staticBody || !component->updatePose) continue;
+		if (!component->physicsSystem)
+			continue;
+
+		if (!component->instance)
+			component->setStatic(true);
+		if (component->staticBody || !component->updatePose)
+			continue;
 
 		auto transformComponent = manager->get<TransformComponent>(component->entity); // TODO: store transform ID inside component instead
 		auto position = transformComponent->position;
@@ -845,7 +860,8 @@ void PhysicsSystem::update()
 	{
 		auto graphicsSystem = (GraphicsSystem*)this->graphicsSystem;
 		auto deltaTime = graphicsSystem->getDeltaTime();
-		if (deltaTime == 0.0) return;
+		if (deltaTime == 0.0)
+			return;
 
 		auto scene = (PxScene*)this->scene;
 		auto targetDT = 1.0 / minUpdateRate;
@@ -881,7 +897,10 @@ void PhysicsSystem::update()
 	{
 		auto component = &componentData[i];
 		if (!component->physicsSystem || component->staticBody ||
-			!component->updatePose) continue;
+			!component->updatePose)
+		{
+			continue;
+		}
 		auto transformComponent = manager->get<TransformComponent>(component->entity); // TODO: store transform ID inside component instead
 		auto rigidBody = (PxRigidActor*)component->instance;
 		auto pxTransform = rigidBody->getGlobalPose();

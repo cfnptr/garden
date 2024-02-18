@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common graphics command buffer functions.
+ */
 
 #pragma once
 #include "garden/graphics/pipeline/compute.hpp"
@@ -24,9 +27,14 @@ namespace garden::graphics
 using namespace std;
 class CommandBuffer;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Base command buffer command structure.
+ */
 struct Command
 {
+	/**
+	 * @brief Command buffer command type.
+	 */
 	enum class Type : uint8
 	{
 		Unknown, BeginRenderPass, NextSubpass, Execute, EndRenderPass, ClearAttachments,
@@ -289,13 +297,20 @@ struct InsertLabelCommand final : public InsertLabelCommandBase
 };
 #endif
 
-//--------------------------------------------------------------------------------------------------
 static psize alignSize(psize size, psize alignment = 4) noexcept
 {
 	return (size + (alignment - 1)) & ~(alignment - 1);
 }
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief Rendering commands recorder.
+ * 
+ * @details
+ * Command buffer is a fundamental object used to record commands that can be submitted to the GPU for execution. 
+ * These commands can include drawing operations, compute dispatches, memory transfers, setting up rendering states, 
+ * and more. Command buffers are a key part of engine design to allow for explicit, low-level control over the GPU, 
+ * providing both flexibility and the potential for significant performance optimizations.
+ */
 class CommandBuffer final
 {
 public:
@@ -411,9 +426,6 @@ public:
 	#endif
 
 	void submit();
-
-	// DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
-	//	Sampler, Framebuffer, ImageView, Image, Buffer, Count // Note: in destruction order
 
 	void addLockResource(ID<Buffer> resource)
 	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Buffer)); }

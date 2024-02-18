@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common Vulkan API functions.
+ */
 
 #pragma once
 #include "garden/graphics/api.hpp"
@@ -27,7 +30,17 @@ namespace garden::graphics
 #define VK_DS_POOL_STORAGE_BUFFER_COUNT 128
 #define VK_DS_POOL_INPUT_ATTACHMENT_COUNT 128
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Low-level cross-platform graphics API.
+ * 
+ * @details
+ * Vulkan API is a modern, low-level graphics and compute API developed by the Khronos Group. It is designed to 
+ * provide high-efficiency, cross-platform access to modern GPUs used in a wide range of devices from PCs and 
+ * consoles to mobile devices and embedded platforms. Vulkan aims to offer better control over graphics hardware 
+ * than older graphics APIs like OpenGL, providing developers with more direct control over GPU operations and 
+ * memory management. This approach helps in reducing driver overhead and improving performance, 
+ * especially in applications where CPU bottlenecks are a concern.
+ */
 class Vulkan final
 {
 public:
@@ -69,8 +82,9 @@ public:
 
 	// TODO: move rest to api.hpp and make these calls universal.
 
-	static void initialize(int2 windowSize, bool isFullscreen,
-		bool useVsync, bool useTripleBuffering, bool useThreading);
+	static void initialize(const string& appName,
+		const string& appDataName, Version appVersion, int2 windowSize,
+		bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading);
 	static void terminate();
 	static void updateDestroyBuffer();
 };

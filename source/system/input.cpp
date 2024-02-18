@@ -25,7 +25,8 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
 	auto manager = (Manager*)glfwGetWindowUserPointer((GLFWwindow*)window);
 	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem) logSystem->info("Dropped " + to_string(count) + " items on a window.");
+	if (logSystem)
+		logSystem->info("Dropped " + to_string(count) + " items on a window.");
 
 	#if GARDEN_EDITOR
 	/* TODO: move these to the resources system
@@ -33,7 +34,8 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 	{
 		auto path = fs::path(paths[i]).generic_string(); 
 		auto length = path.length();
-		if (length < 8) continue;
+		if (length < 8)
+			continue;
 
 		psize pathOffset = 0;
 		auto cmpPath = (GARDEN_RESOURCES_PATH / "scenes").generic_string();
@@ -52,7 +54,10 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 		if (memcmp(path.c_str() + (length - 5), "scene", 5) == 0)
 		{
 			fs::path filePath = path.c_str() + pathOffset; filePath.replace_extension();
-			try { ResourceSystem::getInstance()->loadScene(filePath); }
+			try
+			{
+				ResourceSystem::getInstance()->loadScene(filePath);
+			}
 			catch (const exception& e)
 			{
 				if (logSystem)
@@ -201,7 +206,8 @@ bool InputSystem::isMousePressed(MouseButton button) const
 
 void InputSystem::setCursorMode(CursorMode mode)
 {
-	if (cursorMode == mode) return;
+	if (cursorMode == mode)
+		return;
 	cursorMode = mode;
 	glfwSetInputMode((GLFWwindow*)GraphicsAPI::window, GLFW_CURSOR, (int)mode);
 }

@@ -14,7 +14,7 @@
 
 /**********************************************************************************************************************
  * @file
- * @brief Target operating system.
+ * @brief Target operating system defines.
  */
 
 #pragma once

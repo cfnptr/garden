@@ -45,7 +45,8 @@ uniform pushConstants
 void main()
 {
 	uint2 specularSize = imageSize(specular).xy;
-	if (any(greaterThanEqual(gl.globalInvocationID.xy, specularSize))) return;
+	if (any(greaterThanEqual(gl.globalInvocationID.xy, specularSize)))
+		return;
 
 	float3 dir = coordsToDir(gl.globalInvocationID, 1.0f / specularSize.x);
 

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common graphics framebuffer functions.
+ */
 
 #pragma once
 #include "garden/graphics/image.hpp"
@@ -25,7 +28,15 @@ using namespace ecsm;
 class Pipeline;
 class FramebufferExt;
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief Rendering destinations container.
+ * 
+ * @details
+ * Framebuffer is a rendering destination that encapsulates a collection of image views representing 
+ * the attachments to which rendering will happen. These attachments typically include color, 
+ * depth and stencil buffers. The framebuffer object itself does not contain the image data, 
+ * instead, it references the image views that are the actual storage for these buffers.
+ */
 class Framebuffer final : public Resource
 {
 public:
@@ -119,6 +130,8 @@ private:
 	int2 size = int2(0);
 	OutputAttachment depthStencilAttachment = {};
 	bool isSwapchain = false;
+
+	// Use GraphicsSystem to create, destroy and access framebuffers.
 
 	Framebuffer() = default;
 	Framebuffer(int2 size, vector<Subpass>&& subpasses);

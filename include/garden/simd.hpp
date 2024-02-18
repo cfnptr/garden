@@ -14,6 +14,7 @@
 
 /**********************************************************************************************************************
  * @file
+ * @brief Target SIMD support defines.
  * 
  * @details
  * SIMD stands for Single Instruction, Multiple Data. In SIMD processing, a single instruction is applied to multiple 

@@ -136,12 +136,17 @@ void ShadowMappingRenderSystem::initialize()
 {
 	auto graphicsSystem = getGraphicsSystem();
 	auto settingsSystem = getManager()->tryGet<SettingsSystem>();
-	if (settingsSystem) settingsSystem->getInt("shadowMapSize", shadowMapSize);
+	if (settingsSystem)
+		settingsSystem->getInt("shadowMapSize", shadowMapSize);
 
-	if (!pipeline) pipeline = createPipeline(getManager());
-	if (!shadowMap) shadowMap = createShadowData(graphicsSystem, imageViews, shadowMapSize);
-	if (dataBuffers.empty()) createDataBuffers(graphicsSystem, dataBuffers);
-	if (framebuffers.empty()) createFramebuffers(graphicsSystem, imageViews, framebuffers, shadowMapSize);
+	if (!pipeline)
+		pipeline = createPipeline(getManager());
+	if (!shadowMap)
+		shadowMap = createShadowData(graphicsSystem, imageViews, shadowMapSize);
+	if (dataBuffers.empty())
+		createDataBuffers(graphicsSystem, dataBuffers);
+	if (framebuffers.empty())
+		createFramebuffers(graphicsSystem, imageViews, framebuffers, shadowMapSize);
 	
 	#if GARDEN_EDITOR
 	editor = new ShadowMappingEditor(this);
@@ -205,10 +210,16 @@ static float4x4 calcLightViewProj(
 		maximum = max(maximum, (float3)trf);
 	}
 
-	if (minimum.z < 0.0f) minimum.z *= zCoeff;
-	else minimum.z /= zCoeff;
-	if (maximum.z < 0.0f) maximum.z /= zCoeff;
-	else maximum.z *= zCoeff;
+	if (minimum.z < 0.0f)
+		minimum.z *= zCoeff;
+	else
+		minimum.z /= zCoeff;
+
+	if (maximum.z < 0.0f)
+		maximum.z /= zCoeff;
+	else
+		maximum.z *= zCoeff;
+		
 	cameraOffset = lightDir * minimum.z + center;
 
 	auto lightProj = calcOrthoProjRevZ(
@@ -225,14 +236,16 @@ bool ShadowMappingRenderSystem::prepareShadowRender(uint32 passIndex,
 	auto graphicsSystem = getGraphicsSystem();
 	auto camera = graphicsSystem->camera;
 	auto directionalLight = graphicsSystem->directionalLight;
-	if (!camera || !directionalLight) return false;
+	if (!camera || !directionalLight)
+		return false;
 
 	auto cameraComponent = getManager()->get<CameraComponent>(camera);
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	
 	auto nearPlane = cameraComponent->p.perspective.nearPlane;
 	auto farPlane = nearPlane + this->farPlane * splitCoefs[passIndex];
-	if (passIndex > 0) nearPlane += this->farPlane * splitCoefs[passIndex - 1];
+	if (passIndex > 0)
+		nearPlane += this->farPlane * splitCoefs[passIndex - 1];
 	farPlanes[passIndex] = farPlane;
 
 	viewProj = calcLightViewProj(cameraComponent->p.perspective.fieldOfView,
@@ -281,14 +294,16 @@ void ShadowMappingRenderSystem::recreateSwapchain(const SwapchainChanges& change
 void ShadowMappingRenderSystem::beginShadowRender(
 	uint32 passIndex, MeshRenderType renderType)
 {
-	if (renderType != MeshRenderType::OpaqueShadow) return;
+	if (renderType != MeshRenderType::OpaqueShadow)
+		return;
 	auto framebufferView = getGraphicsSystem()->get(framebuffers[passIndex]);
 	framebufferView->beginRenderPass(nullptr, 0, 0.0f, 0, int4(0), isAsync);
 }
 void ShadowMappingRenderSystem::endShadowRender(
 	uint32 passIndex, MeshRenderType renderType)
 {
-	if (renderType != MeshRenderType::OpaqueShadow) return;
+	if (renderType != MeshRenderType::OpaqueShadow)
+		return;
 	auto framebufferView = getGraphicsSystem()->get(framebuffers[passIndex]);
 	framebufferView->endRenderPass();
 }
@@ -298,7 +313,8 @@ bool ShadowMappingRenderSystem::shadowRender()
 {
 	auto graphicsSystem = getGraphicsSystem();
 	auto pipelineView = graphicsSystem->get(pipeline);
-	if (!pipelineView->isReady()) return false;
+	if (!pipelineView->isReady())
+		return false;
 
 	if (!descriptorSet)
 	{
@@ -338,26 +354,26 @@ bool ShadowMappingRenderSystem::shadowRender()
 //--------------------------------------------------------------------------------------------------
 ID<Image> ShadowMappingRenderSystem::getShadowMap()
 {
-	if (!shadowMap) shadowMap = createShadowData(getGraphicsSystem(), imageViews, shadowMapSize);
+	if (!shadowMap)
+		shadowMap = createShadowData(getGraphicsSystem(), imageViews, shadowMapSize);
 	return shadowMap;
 }
 ID<GraphicsPipeline> ShadowMappingRenderSystem::getPipeline()
 {
-	if (!pipeline) pipeline = createPipeline(getManager());
+	if (!pipeline)
+		pipeline = createPipeline(getManager());
 	return pipeline;
 }
 const vector<vector<ID<Buffer>>>& ShadowMappingRenderSystem::getDataBuffers()
 {
-	if (dataBuffers.empty()) createDataBuffers(getGraphicsSystem(), dataBuffers);
+	if (dataBuffers.empty())
+		createDataBuffers(getGraphicsSystem(), dataBuffers);
 	return dataBuffers;
 }
 const vector<ID<Framebuffer>>& ShadowMappingRenderSystem::getFramebuffers()
 {
 	if (framebuffers.empty())
-	{
-		createFramebuffers(getGraphicsSystem(),
-			imageViews, framebuffers, shadowMapSize);
-	}
+		createFramebuffers(getGraphicsSystem(), imageViews, framebuffers, shadowMapSize);
 	return framebuffers;
 }
 

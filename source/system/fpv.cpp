@@ -32,7 +32,8 @@ void FpvSystem::initialize()
 }
 void FpvSystem::update()
 {
-	if (!graphicsSystem->camera) return;
+	if (!graphicsSystem->camera)
+		return;
 
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::Tab))
 	{
@@ -59,7 +60,10 @@ void FpvSystem::update()
 			lastTabState = true;
 		}
 	}
-	else lastTabState = false;
+	else
+	{
+		lastTabState = false;
+	}
 
 	auto manager = getManager();
 	auto camera = graphicsSystem->camera;
@@ -72,7 +76,8 @@ void FpvSystem::update()
 		if (!lastF10State)
 		{
 			auto physicsSystem = getPhysicsSystem();
-			if (!material) material = physicsSystem->createMaterial(1.0f, 1.0f, 0.0f);
+			if (!material)
+				material = physicsSystem->createMaterial(1.0f, 1.0f, 0.0f);
 
 			if (!hasRigidBody)
 			{
@@ -124,10 +129,14 @@ void FpvSystem::update()
 			lastF10State = true;
 		}
 	}
-	else lastF10State = false;
+	else
+	{
+		lastF10State = false;
+	}
 
 
-	if (graphicsSystem->getCursorMode() == CursorMode::Default) return;
+	if (graphicsSystem->getCursorMode() == CursorMode::Default)
+		return;
 	
 	auto deltaTime = (float)graphicsSystem->getDeltaTime();
 	auto cursorPosition = graphicsSystem->getCursorPosition();
@@ -197,17 +206,27 @@ void FpvSystem::onTrigger(const TriggerData& data)
 {
 	auto manager = getManager();
 	if (graphicsSystem->camera != data.triggerEntity ||
-		!manager->has<RigidBodyComponent>(graphicsSystem->camera)) return;
-	if (data.isEntered) triggerCount++;
-	else triggerCount--;
+		!manager->has<RigidBodyComponent>(graphicsSystem->camera))
+	{
+		return;
+	}
+
+	if (data.isEntered)
+		triggerCount++;
+	else
+		triggerCount--;
 }
 void FpvSystem::postSimulate()
 {
 	auto manager = getManager();
-	if (!graphicsSystem->camera) return;
+	if (!graphicsSystem->camera)
+		return;
+
 	auto camera = graphicsSystem->camera; quat rotation;
 	auto rigidBodyComponent = manager->tryGet<RigidBodyComponent>(camera);
-	if (!rigidBodyComponent) return;
+	if (!rigidBodyComponent)
+		return;
+
 	auto transformComponent = manager->get<TransformComponent>(camera);
 	rigidBodyComponent->getPose(transformComponent->position, rotation);
 }

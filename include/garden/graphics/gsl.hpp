@@ -18,11 +18,6 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "math/types.hpp"
-
-#include <string>
-#include <stdexcept>
-#include <string_view>
 
 namespace garden::graphics
 {

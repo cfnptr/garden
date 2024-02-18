@@ -56,23 +56,28 @@ ShadowMappingEditor::ShadowMappingEditor(ShadowMappingRenderSystem* system)
 //--------------------------------------------------------------------------------------------------
 void ShadowMappingEditor::render()
 {
-	if (!showWindow) return;
+	if (!showWindow)
+		return;
 
-	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
 		ImGui::DragFloat("Far Plane", &system->farPlane, 1.0f);
 
 		if (ImGui::DragFloat("Min Bias", &system->minBias, 0.0001f, 0.0f, FLT_MAX, "%.4f"))
-		{ if (system->minBias > system->maxBias) system->minBias = system->maxBias; }
+		{
+			if (system->minBias > system->maxBias)
+				system->minBias = system->maxBias;
+		}
 		if (ImGui::DragFloat("Max Bias", &system->maxBias, 0.0001f, 0.0f, FLT_MAX, "%.4f"))
-		{ if (system->maxBias < system->minBias) system->maxBias = system->minBias; }
+		{
+			if (system->maxBias < system->minBias)
+				system->maxBias = system->minBias;
+		}
 
 		ImGui::DragFloat("Z-Axis Offset Coefficient", &system->zCoeff, 0.01f);
 		ImGui::SliderFloat3("Cascade Split Coefficients",
 			(float*)&system->splitCoefs, 0.0f, 1.0f);
-			
 
 		ImGui::Checkbox("Visualize Cascades", &visualizeCascades);
 		if (ImGui::BeginItemTooltip())
@@ -145,6 +150,7 @@ void ShadowMappingEditor::render()
 
 void ShadowMappingEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Cascade Shadow Mapping")) showWindow = true;
+	if (ImGui::MenuItem("Cascade Shadow Mapping"))
+		showWindow = true;
 }
 #endif
