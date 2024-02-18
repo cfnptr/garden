@@ -14,15 +14,19 @@
 
 /**********************************************************************************************************************
  * @file
- * @brief Extremely fast non-cryptographic hash algorithm.
+ * @brief Target CPU architecture defines.
  */
 
 #pragma once
-#include "garden/defines.hpp"
 
-#define XXH_INLINE_ALL
-#define XXH_STATIC_LINKING_ONLY
-#if GARDEN_DEBUG
-#define XXH_DEBUGLEVEL 1
+#if defined(__x86_64__) || defined(_M_X64)
+#define GARDEN_ARCH "x86-64"
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+#define GARDEN_ARCH "x86-32"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define GARDEN_ARCH "ARM64"
+#elif defined(__arm__) || defined(_M_ARM)
+#define GARDEN_ARCH "ARM32"
+#else
+#error "Unknown CPU architecture"
 #endif
-#include "xxhash.h"

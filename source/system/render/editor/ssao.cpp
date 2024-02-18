@@ -34,15 +34,16 @@ SsaoEditor::SsaoEditor(SsaoRenderSystem* system)
 //--------------------------------------------------------------------------------------------------
 void SsaoEditor::render()
 {
-	if (!showWindow) return;
+	if (!showWindow)
+		return;
 
-	if (ImGui::Begin("SSAO (Ambient Occlusion)", &showWindow,
-		ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("SSAO (Ambient Occlusion)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		if (ImGui::Checkbox("Enabled", &system->isEnabled))
 		{
 			auto settingsSystem = system->getManager()->tryGet<SettingsSystem>();
-			if (settingsSystem) settingsSystem->setBool("useSSAO", system->isEnabled);
+			if (settingsSystem)
+				settingsSystem->setBool("useSSAO", system->isEnabled);
 		}
 
 		ImGui::DragFloat("Radius", &system->radius, 0.01f, 0.0f, FLT_MAX);
@@ -58,6 +59,7 @@ void SsaoEditor::render()
 
 void SsaoEditor::onBarTool()
 {
-	if (ImGui::MenuItem("SSAO (Ambient Occlusion)")) showWindow = true;
+	if (ImGui::MenuItem("SSAO (Ambient Occlusion)"))
+		showWindow = true;
 }
 #endif

@@ -38,6 +38,17 @@
 using namespace garden;
 using namespace math::ibl;
 
+static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath)
+{
+	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
+	auto appPath = GARDEN_APP_RESOURCES_PATH / resourcePath;
+	auto hasEngineFile = fs::exists(enginePath), hasAppFile = fs::exists(appPath);
+	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
+		return false;
+	filePath = hasEngineFile ? enginePath : appPath;
+	return true;
+}
+
 //--------------------------------------------------------------------------------------------------
 namespace
 {
@@ -109,7 +120,8 @@ ResourceSystem* ResourceSystem::instance = nullptr;
 
 ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 {
-	if (!instance) instance = this;
+	if (!instance)
+		instance = this;
 
 	SUBSCRIBE_TO_EVENT("PostDeinit", ResourceSystem::postDeinit);
 	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input); // TODO: move this to preinit.
@@ -199,7 +211,10 @@ void ResourceSystem::input()
 						nullptr, item.renderPass);
 					GraphicsAPI::renderPasses.erase(item.renderPass);
 				}
-				else shareCount--;
+				else
+				{
+					shareCount--;
+				}
 			}
 		}
 		graphicsQueue.pop();
@@ -346,13 +361,15 @@ namespace
 
 		bool read(char c[], int n)
 		{
-			if (n + offset > size) throw range_error("out of memory range");
+			if (n + offset > size)
+				throw range_error("out of memory range");
 			memcpy(c, data + offset, n); offset += n;
 			return offset < size;
 		}
 		char* readMemoryMapped(int n) final
 		{
-			if (n + offset > size) throw range_error("out of memory range");
+			if (n + offset > size)
+				throw range_error("out of memory range");
 			auto c = data + offset; offset += n;
 			return (char*)c;
 		}
@@ -371,8 +388,10 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	ImageFileType fileType = ImageFileType::Count; int32 fileCount = 0;
 	auto imagePath = fs::path("images") / path;
 
-	if (threadIndex < 0) threadIndex = 0;
-	else threadIndex++;
+	if (threadIndex < 0)
+		threadIndex = 0;
+	else
+		threadIndex++;
 
 	#if GARDEN_DEBUG
 	auto filePath = GARDEN_CACHES_PATH / imagePath; filePath += ".exr";
@@ -432,22 +451,31 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 			}
 		}
 	}
-	else fileType = ImageFileType::Exr;
+	else
+	{
+		fileType = ImageFileType::Exr;
+	}
 
 	loadBinaryFile(filePath, dataBuffer);
 	#else
 	imagePath += ".webp"; uint64 itemIndex = 0;
-	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Webp;
+	if (packReader.getItemIndex(imagePath, itemIndex))
+		fileType = ImageFile::Webp;
 	imagePath.replace_extension(".exr");
-	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Exr;
+	if (packReader.getItemIndex(imagePath, itemIndex))
+		fileType = ImageFile::Exr;
 	imagePath.replace_extension(".png");
-	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Png;
+	if (packReader.getItemIndex(imagePath, itemIndex))
+		fileType = ImageFile::Png;
 	imagePath.replace_extension(".jpg");
-	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Jpg;
+	if (packReader.getItemIndex(imagePath, itemIndex))
+		fileType = ImageFile::Jpg;
 	imagePath.replace_extension(".jpeg");
-	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Jpg;
+	if (packReader.getItemIndex(imagePath, itemIndex))
+		fileType = ImageFile::Jpg;
 	imagePath.replace_extension(".hdr");
-	if (packReader.getItemIndex(imagePath, itemIndex)) fileType = ImageFile::Hdr;
+	if (packReader.getItemIndex(imagePath, itemIndex))
+		fileType = ImageFile::Hdr;
 
 	if (fileType == ImageFile::Count)
 	{
@@ -461,7 +489,8 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	#if GARDEN_DEBUG
 	auto logSystem = getManager()->tryGet<LogSystem>();
-	if (logSystem) logSystem->trace("Loaded image. (" + path.generic_string() + ")");
+	if (logSystem)
+		logSystem->trace("Loaded image. (" + path.generic_string() + ")");
 	#endif
 }
 
@@ -553,7 +582,10 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			equiPixels = floatData.data();
 			format = Image::Format::SfloatR32G32B32A32;
 		}
-		else equiPixels = (float4*)equiData.data();
+		else
+		{
+			equiPixels = (float4*)equiData.data();
+		}
 
 		auto invDim = 1.0f / cubemapSize;
 		auto equiSizeMinus1 = equiSize - 1;
@@ -739,7 +771,8 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 		pixels.resize(imageSize.x * imageSize.y * sizeof(Color));
 		auto decodeResult = WebPDecodeRGBAInto(data, dataSize,
 			pixels.data(), pixels.size(), (int)(imageSize.x * sizeof(Color)));
-		if (!decodeResult) throw runtime_error("Invalid image data.");
+		if (!decodeResult)
+			throw runtime_error("Invalid image data.");
 	}
 	else if (fileType == ImageFile::Exr)
 	{
@@ -774,7 +807,8 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 	{
 		auto pixelData = (uint8*)stbi_load_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
-		if (!pixelData) throw runtime_error("Invalid image data.");
+		if (!pixelData)
+			throw runtime_error("Invalid image data.");
 		pixels.resize(imageSize.x * imageSize.y * sizeof(Color));
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
@@ -783,7 +817,8 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 	{
 		auto pixelData = (uint8*)stbi_loadf_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
-		if (!pixelData) throw runtime_error("Invalid image data.");
+		if (!pixelData)
+			throw runtime_error("Invalid image data.");
 		pixels.resize(imageSize.x * imageSize.y * sizeof(float4));
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
@@ -863,7 +898,10 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 					}
 				}
 			}
-			else memcpy(item.staging.getMap(), pixels.data(), bufferBinarySize);
+			else
+			{
+				memcpy(item.staging.getMap(), pixels.data(), bufferBinarySize);
+			}
 			item.staging.flush();
 
 			delete data;
@@ -914,7 +952,10 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 				}
 			}
 		}
-		else memcpy(stagingView->getMap(), pixels.data(), bufferBinarySize);
+		else
+		{
+			memcpy(stagingView->getMap(), pixels.data(), bufferBinarySize);
+		}
 		stagingView->flush();
 
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
@@ -987,6 +1028,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() << "(.frag):" << e.what() << "\n"; // TODO: get info which stage throw.
+
 			if (logSystem)
 			{
 				logSystem->error("Failed to compile graphics shaders. ("
@@ -1012,6 +1054,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 
 	try
 	{
+		#error pass cachesPath
 		Compiler::loadGraphicsShaders(data);
 	}
 	catch (const exception& e)
@@ -1048,7 +1091,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		maxBindlessCount, useAsync, version, framebuffer, subpassIndex);
 
 	auto renderPass = FramebufferExt::getRenderPass(framebufferView);
-	if (renderPass) GraphicsAPI::renderPasses.at(renderPass)++;
+	if (renderPass)
+		GraphicsAPI::renderPasses.at(renderPass)++;
 
 	vector<Image::Format> colorFormats;
 	if (subpasses.empty())
@@ -1211,6 +1255,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() << ":" << e.what() << "\n";
+
 			if (logSystem)
 			{
 				logSystem->error("Failed to compile compute shader. ("
@@ -1359,7 +1404,8 @@ void ResourceSystem::loadScene(const fs::path& path)
 		for (auto system : systems)
 		{
 			auto serializeSystem = dynamic_cast<ISerializeSystem*>(system);
-			if (!serializeSystem) continue;
+			if (!serializeSystem)
+				continue;
 			hasAnyValue |= serializeSystem->deserialize(confReader, index++, entity);
 		}
 
@@ -1373,20 +1419,23 @@ void ResourceSystem::loadScene(const fs::path& path)
 	for (auto system : systems)
 	{
 		auto serializeSystem = dynamic_cast<ISerializeSystem*>(system);
-		if (!serializeSystem) continue;
+		if (!serializeSystem)
+			continue;
 		serializeSystem->postDeserialize(confReader);
 	}
 
 	#if GARDEN_DEBUG
 	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem) logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
+	if (logSystem)
+		logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
 	#endif
 }
 void ResourceSystem::storeScene(const fs::path& path)
 {
 	auto scenesPath = GARDEN_APP_RESOURCES_PATH / "scenes";
 	auto directoryPath = scenesPath / path.parent_path();
-	if (!fs::exists(directoryPath)) fs::create_directories(directoryPath);
+	if (!fs::exists(directoryPath))
+		fs::create_directories(directoryPath);
 
 	auto filePath = scenesPath / path; filePath += ".scene";
 	conf::Writer confWriter(filePath);
@@ -1406,13 +1455,17 @@ void ResourceSystem::storeScene(const fs::path& path)
 		auto& components = entity.getComponents();
 
 		if (components.empty() || components.find(
-			typeid(DoNotDestroyComponent)) != components.end()) continue;
+			typeid(DoNotDestroyComponent)) != components.end())
+		{
+			continue;
+		}
 
 		confWriter.writeNewLine();
 		for (auto& pair : components)
 		{
 			auto serializeSystem = dynamic_cast<ISerializeSystem*>(pair.second.first);
-			if (!serializeSystem) continue;
+			if (!serializeSystem)
+				continue;
 			serializeSystem->serialize(confWriter, index++, pair.second.second);
 		}
 	}
@@ -1421,13 +1474,15 @@ void ResourceSystem::storeScene(const fs::path& path)
 	for (auto system : systems)
 	{
 		auto serializeSystem = dynamic_cast<ISerializeSystem*>(system);
-		if (!serializeSystem) continue;
+		if (!serializeSystem)
+			continue;
 		serializeSystem->postSerialize(confWriter);
 	}
 
 	#if GARDEN_DEBUG
 	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem) logSystem->trace("Stored scene. (" + path.generic_string() + ")");
+	if (logSystem) 
+		logSystem->trace("Stored scene. (" + path.generic_string() + ")");
 	#endif
 }
 void ResourceSystem::clearScene()
@@ -1441,18 +1496,19 @@ void ResourceSystem::clearScene()
 	{
 		auto entity = &entityData[i];
 		auto entityID = entities.getID(entity);
-
-		if (entity->getComponents().empty() ||
-			manager->has<DoNotDestroyComponent>(entityID)) continue;
+		if (entity->getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
+			continue;
 
 		auto transformComponent = manager->tryGet<TransformComponent>(entityID);
-		if (transformComponent) transformComponent->setParent({});
+		if (transformComponent)
+			transformComponent->setParent({});
 		manager->destroy(entityID);
 	}
 
 	#if GARDEN_DEBUG
 	auto logSystem = getManager()->tryGet<LogSystem>();
-	if (logSystem) logSystem->trace("Cleaned scene.");
+	if (logSystem)
+		logSystem->trace("Cleaned scene.");
 	#endif
 }
 
@@ -1529,7 +1585,8 @@ float3 Model::Node::getPosition() const noexcept
 	auto node = (cgltf_node*)data;
 	if (!node->has_translation)
 	{
-		if (!node->has_matrix) return float3(0.0f);
+		if (!node->has_matrix)
+			return float3(0.0f);
 		auto matrix = node->matrix;
 		return float3(-matrix[12], matrix[13], matrix[14]);
 	}
@@ -1542,7 +1599,8 @@ float3 Model::Node::getScale() const noexcept
 	auto node = (cgltf_node*)data;
 	if (!node->has_scale)
 	{
-		if (!node->has_matrix) return float3(1.0f);
+		if (!node->has_matrix)
+			return float3(1.0f);
 		auto matrix = node->matrix;
 		auto model = float4x4(
 			matrix[0], matrix[4], matrix[8], matrix[12],
@@ -1560,7 +1618,8 @@ quat Model::Node::getRotation() const noexcept
 	auto node = (cgltf_node*)data;
 	if (!node->has_rotation)
 	{
-		if (!node->has_matrix) return quat::identity;
+		if (!node->has_matrix)
+			return quat::identity;
 		auto matrix = node->matrix;
 		auto model = float4x4(
 			matrix[0], matrix[4], matrix[8], matrix[12],
@@ -1650,7 +1709,8 @@ Model::Attribute Model::Primitive::getAttribute(Attribute::Type type) const noex
 
 	for (uint32 i = 0; i < count; i++)
 	{
-		if (attributes[i].type != (cgltf_attribute_type)type) continue;
+		if (attributes[i].type != (cgltf_attribute_type)type)
+			continue;
 		return Model::Attribute(&attributes[i]);
 	}
 
@@ -1665,7 +1725,8 @@ int32 Model::Primitive::getAttributeIndex(Attribute::Type type) const noexcept
 
 	for (int32 i = 0; i < count; i++)
 	{
-		if (attributes[i].type == (cgltf_attribute_type)type) return i;
+		if (attributes[i].type == (cgltf_attribute_type)type)
+			return i;
 	}
 
 	return -1;
@@ -1696,9 +1757,11 @@ psize Model::Primitive::getVertexCount(
 	for (psize i = 0; i < (psize)attributes.size(); i++)
 	{
 		auto attributeIndex = getAttributeIndex(attributes[i]);
-		if (attributeIndex < 0) continue;
+		if (attributeIndex < 0)
+			continue;
 		auto count = getAttribute(attributeIndex).getAccessor().getCount();
-		if (count > vertexCount) vertexCount = count;
+		if (count > vertexCount)
+			vertexCount = count;
 	}
 	return vertexCount;
 }
@@ -1719,7 +1782,8 @@ void Model::Primitive::copyVertices(const vector<Attribute::Type>& attributes,
 
 	GARDEN_ASSERT((count == 0 && offset == 0) ||
 		(count + offset <= vertexCount));
-	if (count == 0) count = vertexCount;
+	if (count == 0)
+		count = vertexCount;
 
 	auto binaryStride = getBinaryStride(attributes);
 	psize binaryOffset = 0;
@@ -1830,7 +1894,8 @@ const uint8* Model::Accessor::getBuffer() const noexcept
 
 	if (bufferView->data)
 		return (const uint8*)bufferView->data + accessor->offset;
-	if (!bufferView->buffer->data) return nullptr;
+	if (!bufferView->buffer->data)
+		return nullptr;
 
 	return (const uint8*)bufferView->buffer->data +
 		bufferView->offset + accessor->offset;
@@ -1852,7 +1917,8 @@ void Model::Accessor::copy(uint8* destination, psize count, psize offset) const 
 	auto stride = getStride();
 	auto binaryStride = getBinaryStride();
 	auto source = getBuffer() + offset * stride;
-	if (count == 0) count = getCount();
+	if (count == 0)
+		count = getCount();
 
 	if (binaryStride == stride)
 	{
@@ -1880,7 +1946,8 @@ void Model::Accessor::copy(uint8* destination,
 	auto stride = getStride();
 	auto binaryStride = getBinaryStride();
 	auto source = getBuffer() + offset * stride;
-	if (count == 0) count = getCount();
+	if (count == 0)
+		count = getCount();
 
 	if (sourceComponentType == ComponentType::R8U)
 	{
@@ -1890,7 +1957,8 @@ void Model::Accessor::copy(uint8* destination,
 			if (binaryStride == stride)
 			{
 				auto src = (uint8*)source;
-				for (psize i = 0; i < count; i++) dst[i] = (uint16)src[i];
+				for (psize i = 0; i < count; i++)
+					dst[i] = (uint16)src[i];
 			}
 			else
 			{
@@ -1904,7 +1972,8 @@ void Model::Accessor::copy(uint8* destination,
 			if (binaryStride == stride)
 			{
 				auto src = (uint8*)source;
-				for (psize i = 0; i < count; i++) dst[i] = (uint32)src[i];
+				for (psize i = 0; i < count; i++)
+					dst[i] = (uint32)src[i];
 			}
 			else
 			{
@@ -2029,9 +2098,11 @@ string_view Model::Texture::getPath() const noexcept
 	auto texture = (cgltf_texture_view*)data;
 	GARDEN_ASSERT(texture->texture);
 	GARDEN_ASSERT(texture->texture->image);
-	if (!texture->texture->image->uri) return "";
+	if (!texture->texture->image->uri)
+		return "";
 	auto length = strlen(texture->texture->image->uri);
-	if (length <= 4) return "";
+	if (length <= 4)
+		return "";
 	return string_view(texture->texture->image->uri, length - 4);
 }
 const uint8* Model::Texture::getBuffer() const noexcept
@@ -2041,9 +2112,12 @@ const uint8* Model::Texture::getBuffer() const noexcept
 	GARDEN_ASSERT(texture->texture);
 	GARDEN_ASSERT(texture->texture->image);
 	auto bufferView = texture->texture->image->buffer_view;
-	if (!bufferView) return nullptr;
-	if (bufferView->data) return (const uint8*)bufferView->data;
-	if (!bufferView->buffer->data) return nullptr;
+	if (!bufferView)
+		return nullptr;
+	if (bufferView->data)
+		return (const uint8*)bufferView->data;
+	if (!bufferView->buffer->data)
+		return nullptr;
 	return (const uint8*)bufferView->buffer->data + bufferView->offset;
 }
 psize Model::Texture::getBufferSize() const noexcept
@@ -2053,9 +2127,12 @@ psize Model::Texture::getBufferSize() const noexcept
 	GARDEN_ASSERT(texture->texture);
 	GARDEN_ASSERT(texture->texture->image);
 	auto bufferView = texture->texture->image->buffer_view;
-	if (!bufferView) return 0;
-	if (bufferView->data) return bufferView->size;
-	if (!bufferView->buffer->data) return 0;
+	if (!bufferView)
+		return 0;
+	if (bufferView->data)
+		return bufferView->size;
+	if (!bufferView->buffer->data)
+		return 0;
 	return bufferView->buffer->size;
 }
 
@@ -2086,9 +2163,11 @@ shared_ptr<Model> ResourceSystem::loadModel(const fs::path& path)
 	// TODO: Use custom compressed garden model format. Load them from the pack.
 
 	auto modelPath = fs::path("models") / path; modelPath += ".glb";
-	if (getResourceFilePath(modelPath, glbPath)) hasGlbFile = 1;
+	if (getResourceFilePath(modelPath, glbPath))
+		hasGlbFile = 1;
 	modelPath.replace_extension(".gltf");
-	if (getResourceFilePath(modelPath, gltfPath)) hasGltfFile = 1;
+	if (getResourceFilePath(modelPath, gltfPath))
+		hasGltfFile = 1;
 
 	if (hasGlbFile + hasGltfFile != 1)
 	{
@@ -2128,14 +2207,16 @@ shared_ptr<Model> ResourceSystem::loadModel(const fs::path& path)
 	}
 
 	auto logSystem = getManager()->tryGet<LogSystem>();
-	if (logSystem) logSystem->trace("Loaded model. (" + path.generic_string() + ")");
+	if (logSystem)
+		logSystem->trace("Loaded model. (" + path.generic_string() + ")");
 
 	filePath.remove_filename();
 	auto relativePath = path.parent_path();
 
 	auto model = make_shared<Model>(cgltfData,
 		std::move(relativePath), std::move(filePath));
-	if (hasGlbFile) model->data = std::move(dataBuffer);
+	if (hasGlbFile)
+		model->data = std::move(dataBuffer);
 	return model;
 }
 void ResourceSystem::loadModelBuffers(shared_ptr<Model> model)

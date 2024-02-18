@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/defines.hpp" // TODO: tmp
-#undef GARDEN_EDITOR // TODO: tmp
-#define GARDEN_EDITOR 0 // TODO: tmp
-
 #include "garden/main.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/thread.hpp"
@@ -23,13 +19,17 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/transform.hpp"
+#include "platformer/defines.hpp"
 
 using namespace ecsm;
 using namespace garden;
+using namespace platformer;
 
 void entryPoint()
 {
+
 	auto manager = new Manager();
+	createAppSystem(manager);
 	manager->createSystem<DoNotDestroySystem>();
 	manager->createSystem<BakedTransformSystem>();
 	manager->createSystem<SettingsSystem>();

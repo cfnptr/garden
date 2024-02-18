@@ -7,9 +7,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>${GARDEN_APP_NAME}</string>
 	<key>CFBundleExecutable</key>
-	<string>Client</string>
+	<string>${GARDEN_APP_FILE_NAME}</string>
 	<key>CFBundleIconFile</key>
-	<string>${GARDEN_APP_NAME}.icns</string>
+	<string>${GARDEN_APP_NAME_LOWERCASE}.icns</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>${GARDEN_APP_VERSION}</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2022-2024 Nikita Fediuchin. All rights reserved.</string>
+	<string>Copyright © ${GARDEN_APP_COPYRIGHT}</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>NSHighResolutionCapable</key>

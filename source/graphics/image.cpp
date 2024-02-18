@@ -116,14 +116,18 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 		allocationCreateInfo.priority = 1.0f;
 	}
-	else allocationCreateInfo.priority = 0.5f;
+	else
+	{
+		allocationCreateInfo.priority = 0.5f;
+	}
 
 	VkImage instance;
 	VmaAllocation allocation;
 
 	auto result = vmaCreateImage(Vulkan::memoryAllocator, &imageInfo,
 		&allocationCreateInfo, &instance, &allocation, nullptr);
-	if (result != VK_SUCCESS) throw runtime_error("Failed to allocate image.");
+	if (result != VK_SUCCESS)
+		throw runtime_error("Failed to allocate image.");
 
 	this->instance = instance;
 	this->allocation = allocation;
@@ -167,7 +171,8 @@ Image::Image(void* instance, Format format, Bind bind,
 }
 bool Image::destroy()
 {
-	if (!instance || readyLock > 0) return false;
+	if (!instance || readyLock > 0)
+		return false;
 
 	if (GraphicsAPI::isRunning)
 		GraphicsAPI::imageViewPool.destroy(defaultView);
@@ -212,7 +217,10 @@ ID<ImageView> Image::getDefaultView()
 void Image::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
-	if (!Vulkan::hasDebugUtils || !instance) return;
+
+	if (!Vulkan::hasDebugUtils || !instance)
+		return;
+
 	vk::DebugUtilsObjectNameInfoEXT nameInfo(
 		vk::ObjectType::eImage, (uint64)instance, name.c_str());
 	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
@@ -260,7 +268,10 @@ void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
-	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.image); }
+	{
+		readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+	}
 }
 void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 {
@@ -280,7 +291,10 @@ void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
-	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.image); }
+	{
+		readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+	}
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
@@ -300,7 +314,10 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
-	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.image); }
+	{
+		readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -361,7 +378,8 @@ void Image::copy(ID<Image> source, ID<Image> destination,
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		srcView->readyLock++; dstView->readyLock++;
+		srcView->readyLock++;
+		dstView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(source);
 		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
@@ -421,7 +439,8 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		bufferView->readyLock++; imageView->readyLock++;
+		bufferView->readyLock++;
+		imageView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(source);
 		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
@@ -481,7 +500,8 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		imageView->readyLock++; bufferView->readyLock++;
+		imageView->readyLock++;
+		bufferView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(source);
 		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
@@ -552,7 +572,8 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		srcView->readyLock++; dstView->readyLock++;
+		srcView->readyLock++;
+		dstView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(source);
 		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}
@@ -584,11 +605,13 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 }
 bool ImageView::destroy()
 {
-	if (!instance || readyLock > 0) return false;
+	if (!instance || readyLock > 0)
+		return false;
 
 	if (GraphicsAPI::isRunning)
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
-	else Vulkan::device.destroyImageView((VkImageView)instance);
+	else
+		Vulkan::device.destroyImageView((VkImageView)instance);
 
 	instance = nullptr;
 	return true;
@@ -599,7 +622,10 @@ bool ImageView::destroy()
 void ImageView::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
-	if (!Vulkan::hasDebugUtils) return;
+
+	if (!Vulkan::hasDebugUtils)
+		return;
+	
 	vk::DebugUtilsObjectNameInfoEXT nameInfo(
 		vk::ObjectType::eImageView, (uint64)instance, name.c_str());
 	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);

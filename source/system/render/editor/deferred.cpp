@@ -144,8 +144,7 @@ void DeferredEditor::render()
 	auto graphicsSystem = system->getGraphicsSystem();
 	if (showWindow)
 	{
-		if (ImGui::Begin("G-Buffer Visualizer", &showWindow,
-			ImGuiWindowFlags_AlwaysAutoResize))
+		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			const auto modes =
 				"Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0"
@@ -327,7 +326,8 @@ void DeferredEditor::recreateSwapchain(const IRenderSystem::SwapchainChanges& ch
 
 void DeferredEditor::onBarTool()
 {
-	if (ImGui::MenuItem("G-Buffer Visualizer")) showWindow = true;
+	if (ImGui::MenuItem("G-Buffer Visualizer"))
+		showWindow = true;
 }
 
 ID<Framebuffer> DeferredEditor::getFramebuffer()

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common graphics pipeline functions.
+ */
 
 #pragma once
-#include "math/matrix.hpp"
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/descriptor-set.hpp"
+#include "math/matrix.hpp"
 
 #include <thread>
 
@@ -29,6 +32,13 @@ using namespace math;
 using namespace ecsm;
 class PipelineExt;
 
+/**
+ * @brief Rendering stages container.
+ * 
+ * @details
+ * Pipeline is a fundamental concept representing the entire state of the graphics or compute operations. 
+ * It encapsulates all the stages of processing that the data will go through, from input to output.
+ */
 class Pipeline : public Resource
 {
 public:
@@ -214,6 +224,8 @@ protected:
 	bool useAsync = false;
 	bool cacheLoaded = false;
 	bool bindless = false;
+
+	// Use GraphicsSystem to create, destroy and access pipelines.
 
 	Pipeline() = default;
 	Pipeline(CreateData& createData, bool useAsync);

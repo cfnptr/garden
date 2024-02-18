@@ -15,8 +15,9 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "garden/system/editor/transform.hpp"
+#include "math/angles.hpp"
 
-#if 0
+#if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
 
 using namespace garden;
@@ -41,7 +42,8 @@ void TransformEditor::onDestroy(ID<Entity> entity)
 	auto editorSystem = manager->tryGet<EditorRenderSystem>();
 	if (editorSystem)
 	{
-		if (editorSystem->selectedEntity == entity) editorSystem->selectedEntity = {};
+		if (editorSystem->selectedEntity == entity)
+			editorSystem->selectedEntity = {};
 	}
 }
 
@@ -116,7 +118,8 @@ void TransformEditor::onEntityInspector(ID<Entity> entity)
 			if (ImGui::Button("Select Parent"))
 				editorSystem->selectedEntity = transformComponent->getParent(); 
 			ImGui::SameLine();
-			if (ImGui::Button("Remove Parent")) transformComponent->setParent({});
+			if (ImGui::Button("Remove Parent"))
+				transformComponent->setParent({});
 		}
 
 		ImGui::Spacing();

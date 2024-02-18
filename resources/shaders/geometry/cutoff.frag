@@ -57,7 +57,9 @@ uniform set1 sampler2D
 void main()
 {
 	float4 color = texture(baseColorMap, fs.texCoords) * pc.baseColor;
-	if (color.a < pc.alphaCutoff) discard;
+	if (color.a < pc.alphaCutoff)
+		discard;
+		
 	float4 orm = texture(ormMap, fs.texCoords);
 	fb.gBuffer0 = encodeGBuffer0(color.rgb, orm.b * pc.metallic); 
 	fb.gBuffer1 = encodeGBuffer1(fs.normal, pc.reflectance);

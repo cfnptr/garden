@@ -22,7 +22,7 @@ using namespace math;
 using namespace garden::graphics;
 
 #if GARDEN_DEBUG
-void DebugLabel::begin(const string& name, const Color& color)
+void DebugLabel::begin(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
@@ -41,7 +41,7 @@ void DebugLabel::end()
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
-void DebugLabel::insert(const string& name, const Color& color)
+void DebugLabel::insert(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);

@@ -14,6 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief Common user input functions.
  */
 
 #pragma once
@@ -80,7 +81,9 @@ enum class CursorType : uint8
 	Default = 0, Ibeam = 1, Crosshair = 2, Hand = 3, Hresize = 4, Vresize = 5, Count = 6,
 };
 
-//**********************************************************************************************************************
+/***********************************************************************************************************************
+ * @brief All defined keyboard buttons array. (GLFW)
+ */
 static const vector<KeyboardButton> allKeyboardButtons =
 {
 	KeyboardButton::Space, KeyboardButton::Apostrophe, KeyboardButton::Comma,
@@ -115,6 +118,13 @@ static const vector<KeyboardButton> allKeyboardButtons =
 };
 
 /***********************************************************************************************************************
+ * @brief Handles input from user.
+ * 
+ * @details
+ * The input system is responsible for detecting user actions (e.g., key presses, mouse movements, 
+ * touch gestures) and translating these into variables or events within a game or application.
+ * 
+ * Registers events: Input, FileDrop.
  */
 class InputSystem final : public System
 {
@@ -126,7 +136,14 @@ class InputSystem final : public System
 	CursorMode cursorMode = CursorMode::Default;
 	const fs::path* currentFileDropPath = nullptr;
 
+	/**
+	 * @brief Creates a new input system instance.
+	 * @param[in,out] manager manager instance
+	 */
 	InputSystem(Manager* manager);
+	/**
+	 * @brief Destroys input system instance.
+	 */
 	~InputSystem() final;
 
 	void preInit();
@@ -135,24 +152,85 @@ class InputSystem final : public System
 	static void onFileDrop(void* window, int count, const char** paths);
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Returns time since some start point in the past. (in seconds)
+	 * @details You can use it to implement time based events or delays.
+	 */
 	double getTime() const noexcept { return time; }
+	/**
+	 * @brief Returns time elapsed between two previous frames. (in seconds)
+	 * 
+	 * @details
+	 * This value is crucial for ensuring that animations, physics calculations, 
+	 * and game logic run smoothly and consistently, regardless of the frame rate.
+	 */
 	double getDeltaTime() const noexcept { return deltaTime; }
+
+	/**
+	 * @brief Returns current cursor position in the window. (in units)
+	 * @details Useful for implementing FPS controller.
+	 */
 	float2 getCursorPosition() const noexcept { return cursorPosition; }
+
+	/**
+	 * @brief Returns current dropped file path. 
+	 * @note Use it on "FileDrop" event.
+	 */
 	const fs::path& getCurrentFileDropPath() const noexcept { return *currentFileDropPath; }
 
+	/**
+	 * @brief Returns true if keyboard button has been clicked. (On key release)
+	 * @param button target keyboard button
+	 */
 	bool isKeyboardClicked(KeyboardButton button) const;
+	/**
+	 * @brief Returns true if mouse button has been clicked. (On key release)
+	 * @param button target mouse button
+	 */
 	bool isMouseClicked(MouseButton button) const;
 
+	/**
+	 * @brief Returns true if keyboard button is in pressed state.
+	 * @param button target keyboard button
+	 */
 	bool isKeyboardPressed(KeyboardButton button) const;
+	/**
+	 * @brief Returns true if mouse button is in pressed state.
+	 * @param button target keyboard button
+	 */
 	bool isMousePressed(MouseButton button) const;
 
+	/**
+	 * @brief Returns current mouse cursor mode.
+	 * @details Useful for hiding mouse cursor.
+	 */
 	CursorMode getCursorMode() const noexcept { return cursorMode; }
+	/**
+	 * @brief Sets mouse cursor mode.
+	 * @param mode target cursor mode
+	 */
 	void setCursorMode(CursorMode mode);
 };
 
+/**
+ * @brief Converts time in seconds to milliseconds.
+ * @param time target time in seconds
+ */
 static double timeToMilliseconds(double time) noexcept { return time * 1000.0; }
-static double timeToDays(double time) noexcept { return time / 86400.0; }
+/**
+ * @brief Converts time in seconds to minutes.
+ * @param time target time in seconds
+ */
 static double timeToMinutes(double time) noexcept { return time / 60.0; }
+/**
+ * @brief Converts time in seconds to hours.
+ * @param time target time in seconds
+ */
 static double timeToHours(double time) noexcept { return time / 3600.0; }
+/**
+ * @brief Converts time in seconds to days.
+ * @param time target time in seconds
+ */
+static double timeToDays(double time) noexcept { return time / 86400.0; }
 
 } // namespace garden

@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "garden/system/log.hpp"
+#include "garden/system/app-info.hpp"
 #include "garden/file.hpp"
-#include "garden/simd.hpp"
-#include "garden/os.hpp"
 
 #include "mpmt/thread.hpp"
 #include "mpio/os.hpp"
@@ -29,30 +28,23 @@ LogSystem* LogSystem::instance;
 #endif
 
 //**********************************************************************************************************************
-static void logSystemInfo(LogSystem* logSystem)
+LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : System(manager)
 {
-	logSystem->info("Started logging system. (UTC+0)");
-	logSystem->info(GARDEN_APP_NAME_STRING " version: " GARDEN_VERSION_STRING);
-	logSystem->info("OS: " GARDEN_OS_NAME);
-	logSystem->info("SIMDs: " + string(GARDEN_SIMD_STRING));
-	logSystem->info("CPU: " + string(OS::getCpuName()));
-	logSystem->info("Thread count: " + to_string(thread::hardware_concurrency()));
-	logSystem->info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
-	logSystem->info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
-}
+	auto appInfoSystem = manager->get<AppInfoSystem>();
 
-LogSystem::LogSystem(Manager* manager, LogLevel level) : System(manager)
-{
-	#if GARDEN_OS_LINUX
-	auto appName = GARDEN_APP_NAME_LOWERCASE_STRING;
-	#else
-	auto appName = GARDEN_APP_NAME_STRING;
-	#endif
-
-	this->logger = logy::Logger(appName, level, GARDEN_DEBUG ? true : false);
+	this->logger = logy::Logger(appInfoSystem->getAppDataName(),
+		level, GARDEN_DEBUG ? true : false, rotationTime);
 
 	mpmt::Thread::setName("MAIN");
-	logSystemInfo(this);
+	info("Started logging system. (UTC+0)");
+	info(appInfoSystem->getName() + " [v" + appInfoSystem->getVersion().toString3() + "]");
+	info(GARDEN_NAME_STRING " Engine [v" GARDEN_VERSION_STRING "]");
+	info("OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
+	info("SIMDs: " + string(GARDEN_SIMD_STRING));
+	info("CPU: " + string(OS::getCpuName()));
+	info("Thread count: " + to_string(thread::hardware_concurrency()));
+	info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
+	info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
 
 	#if GARDEN_DEBUG
 	instance = this;

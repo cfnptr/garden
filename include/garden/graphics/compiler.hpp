@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/*******************************************************************************************************************
+ * @file
+ * @brief Common shader compiler functions.
+ */
 
 #pragma once
 #include "garden/system/log.hpp"
@@ -31,24 +34,53 @@ namespace garden::graphics
 
 using namespace std;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Wrapper around GLSL shader compiler.
+ * 
+ * @details
+ * Shader compiler is a specialized software tool that converts shader code written in a high-level shading 
+ * language (such as GLSL for OpenGL and Vulkan) into a lower-level or machine-specific format that can be 
+ * executed directly by the GPU. Shaders are programs that run on the GPU to perform various tasks related to 
+ * rendering, such as calculating vertex positions, generating textures, or determining pixel colors. 
+ * They are an integral part of modern graphics and compute pipelines, enabling detailed control over the 
+ * visual appearance of 3D scenes and the execution of parallel computations.
+ */
 class Compiler final
 {
 public:
+	/**
+	 * @brief Graphics pipeline shader data.
+	 */
 	struct GraphicsData : public GraphicsPipeline::GraphicsCreateData
 	{
+		fs::path cachesPath;
 		#ifndef GSL_COMPILER
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
 		#endif
 	};
+	/**
+	 * @brief Compute pipeline shader data.
+	 */
 	struct ComputeData : public ComputePipeline::ComputeCreateData
 	{
+		fs::path cachesPath;
 		#ifndef GSL_COMPILER
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
 		#endif
 	};
+	
+	/**
+	 * @brief Loads graphics pipeline shader data.
+	 * @param[in,out] data target shader data container
+	 */
+	static void loadGraphicsShaders(GraphicsData& data);
+	/**
+	 * @brief Loads compute pipeline shader data.
+	 * @param[in,out] data target shader data container
+	 */
+	static void loadComputeShader(ComputeData& data);
 
 	#if GARDEN_DEBUG || defined(GSL_COMPILER)
 	static bool compileGraphicsShaders(
@@ -58,9 +90,6 @@ public:
 		const fs::path& inputPath, const fs::path& outputPath,
 		const vector<fs::path>& includePaths, ComputeData& data);
 	#endif
-	
-	static void loadGraphicsShaders(GraphicsData& data);
-	static void loadComputeShader(ComputeData& data);
 };
 
 } // namespace garden::graphics

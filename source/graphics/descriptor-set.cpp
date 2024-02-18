@@ -58,12 +58,11 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 	
 	if (setCount > 1)
 	{
-		this->instance = malloc(setCount * sizeof(void*));
-		if (!this->instance) abort();
+		auto descriptorSets = malloc<vk::DescriptorSet>(setCount);
+		this->instance = descriptorSets;
 		descriptorSetLayouts.assign(setCount, descriptorSetLayout);
 		allocateInfo.pSetLayouts = descriptorSetLayouts.data();
-		auto allocateResult = Vulkan::device.allocateDescriptorSets(
-			&allocateInfo, (vk::DescriptorSet*)this->instance);
+		auto allocateResult = Vulkan::device.allocateDescriptorSets(&allocateInfo, descriptorSets);
 		vk::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 	}
 	else
@@ -80,7 +79,8 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 //--------------------------------------------------------------------------------------------------
 bool DescriptorSet::destroy()
 {
-	if (!instance || readyLock > 0) return false;
+	if (!instance || readyLock > 0)
+		return false;
 
 	if (GraphicsAPI::isRunning)
 	{
@@ -107,14 +107,14 @@ bool DescriptorSet::destroy()
 		}
 		else
 		{
-			auto count = (uint32)uniforms.begin()->second.resourceSets.size();
-			if (count > 1) free(instance);
+			if (uniforms.begin()->second.resourceSets.size() > 1)
+				free(instance);
 		}
 	}
 	else
 	{
-		auto count = (uint32)uniforms.begin()->second.resourceSets.size();
-		if (count > 1) free(instance);
+		if (uniforms.begin()->second.resourceSets.size() > 1)
+			free(instance);
 	}
 
 	instance = nullptr;
@@ -165,7 +165,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 		{
 			for (auto& resourceArray : pair.second.resourceSets)
 			{
-				for (auto resource : resourceArray) GARDEN_ASSERT(resource);
+				for (auto resource : resourceArray)
+					GARDEN_ASSERT(resource);
 			}
 		}
 	}
@@ -205,8 +206,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			Vulkan::device.freeDescriptorSets(descriptorPool ?
 				descriptorPool : Vulkan::descriptorPool,
 				oldSetCount, (vk::DescriptorSet*)this->instance);
-			this->instance = realloc(this->instance, newSetCount * sizeof(void*));
-			if (!this->instance) abort();
+			this->instance = realloc<vk::DescriptorSet>(
+				(vk::DescriptorSet*)this->instance, newSetCount);
 
 			descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
 			allocateInfo.pSetLayouts = descriptorSetLayouts.data();
@@ -238,7 +239,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 
 	for	(auto& pair : *pipelineUniforms)
 	{
-		if (pair.second.descriptorSetIndex != index) continue;
+		if (pair.second.descriptorSetIndex != index)
+			continue;
 
 		#if GARDEN_DEBUG
 		if (uniforms.find(pair.first) == uniforms.end())
@@ -279,7 +281,9 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 
 				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
-					if (!resourceArray[j]) continue;
+					if (!resourceArray[j])
+						continue;
+
 					auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[j]));
 			
 					#if GARDEN_DEBUG
@@ -306,7 +310,9 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 					resourceCount++;
 				}
 				
-				if (resourceCount == 0) continue;
+				if (resourceCount == 0)
+					continue;
+
 				writeDescriptorSet.dstSet = instances[i];
 				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
 				writeDescriptorSet.pImageInfo = &descriptorImageInfos[(uint32)(
@@ -338,7 +344,9 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 
 				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
-					if (!resourceArray[j]) continue;
+					if (!resourceArray[j])
+						continue;
+
 					auto buffer = GraphicsAPI::bufferPool.get(ID<Buffer>(resourceArray[j]));
 
 					#if GARDEN_DEBUG
@@ -358,7 +366,9 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 					resourceCount++;
 				}
 				
-				if (resourceCount == 0) continue;
+				if (resourceCount == 0)
+					continue;
+
 				writeDescriptorSet.dstSet = instances[i];
 				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
 				writeDescriptorSet.pBufferInfo = &descriptorBufferInfos[(uint32)(
@@ -436,7 +446,9 @@ void DescriptorSet::updateUniform(const string& name,
 		auto& resourceArray = uniform.resourceSets[0];
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
-			if (!resourceArray[i]) continue;
+			if (!resourceArray[i])
+				continue;
+
 			auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[i]));
 			
 			#if GARDEN_DEBUG
@@ -468,7 +480,9 @@ void DescriptorSet::updateUniform(const string& name,
 		auto& resourceArray = uniform.resourceSets[0];
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
-			if (!resourceArray[i]) continue;
+			if (!resourceArray[i])
+				continue;
+
 			auto buffer = GraphicsAPI::bufferPool.get(ID<Buffer>(resourceArray[0]));
 
 			#if GARDEN_DEBUG
@@ -509,7 +523,9 @@ void DescriptorSet::updateUniform(const string& name,
 void DescriptorSet::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
-	if (!Vulkan::hasDebugUtils) return;
+
+	if (!Vulkan::hasDebugUtils)
+		return;
 
 	vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSet, 0);
 	auto setCount = (uint32)uniforms.begin()->second.resourceSets.size();
@@ -534,4 +550,4 @@ void DescriptorSet::setDebugName(const string& name)
 }
 #endif
 
-// TODO: track and log total used sampler/buffer/etc in the game to adjust pool size.
+// TODO: track and log total used sampler/buffer/etc in the application to adjust pool size.

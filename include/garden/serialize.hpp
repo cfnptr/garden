@@ -14,6 +14,12 @@
 
 /**********************************************************************************************************************
  * @file
+ * @brief Data serialization functions.
+ * 
+ * @details
+ * Data serialization is the process of converting structured data, such as objects or data structures, 
+ * into a format that can be easily stored, transmitted, or reconstructed later. This serialized data 
+ * can then be saved to a file, sent over a network, or otherwise persisted.
  */
 
 #pragma once
@@ -27,6 +33,9 @@ using namespace std;
 using namespace math;
 using namespace ecsm;
 
+/**
+ * @brief Base serializer interface.
+ */
 class ISerializer
 {
 public:
@@ -61,6 +70,10 @@ public:
 	virtual void write(const string& name, const float3x3& value, uint8 precision = 0) = 0;
 	virtual void write(const string& name, const float4x4& value, uint8 precision = 0) = 0;
 };
+
+/**
+ * @brief Base deserializer interface.
+ */
 class IDeserializer
 {
 public:
@@ -96,6 +109,9 @@ public:
 	virtual void read(const string& name, float4x4& value) = 0;
 };
 
+/**
+ * @brief Base serializable interface.
+ */
 class ISerializable
 {
 protected:

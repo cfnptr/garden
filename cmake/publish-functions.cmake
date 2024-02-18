@@ -1,4 +1,3 @@
-#---------------------------------------------------------------------------------------------------
 # Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#---------------------------------------------------------------------------------------------------
 
+#***********************************************************************************************************************
 function(stripExecutable STRIP_EXE_NAME)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 		add_custom_command(TARGET ${STRIP_EXE_NAME} POST_BUILD VERBATIM
@@ -29,15 +28,15 @@ function(stripExecutable STRIP_EXE_NAME)
 	endif()
 endfunction()
 
-#---------------------------------------------------------------------------------------------------
-macro(collectPackShaders PACK_CACHES_DIR PACK_RESOURCES_DIR 
-	IS_RELEASE_EDITOR PACK_SHADERS PACK_RESOURCES)
-
+#***********************************************************************************************************************
+macro(collectPackShaders PACK_CACHES_DIR PACK_RESOURCES_DIR
+	IS_RELEASE_EDITOR IS_RELEASE_DEBUGGING PACK_SHADERS PACK_RESOURCES)
 	file(GLOB_RECURSE PACK_SHADER_PATHS ${${PACK_RESOURCES_DIR}}/shaders/*.vert
 		${${PACK_RESOURCES_DIR}}/shaders/*.frag ${${PACK_RESOURCES_DIR}}/shaders/*.comp)
 	
 	foreach(SHADER ${PACK_SHADER_PATHS})
-		if(SHADER MATCHES "debug" OR (NOT ${IS_RELEASE_EDITOR} AND SHADER MATCHES "editor"))
+		if((NOT ${IS_RELEASE_EDITOR} AND SHADER MATCHES "editor") OR
+			(NOT ${IS_RELEASE_DEBUGGING} AND SHADER MATCHES "debug"))
 			continue()
 		endif()
 
@@ -54,17 +53,17 @@ macro(collectPackShaders PACK_CACHES_DIR PACK_RESOURCES_DIR
 	endforeach()
 endmacro()
 
-#---------------------------------------------------------------------------------------------------
-macro(collectPackEqui2cubes PACK_CACHES_DIR PACK_RESOURCES_DIR 
-	IS_RELEASE_EDITOR PACK_EQUI2CUBES PACK_RESOURCES)
-
+#***********************************************************************************************************************
+macro(collectPackEqui2cubes PACK_CACHES_DIR PACK_RESOURCES_DIR
+	IS_RELEASE_EDITOR IS_RELEASE_DEBUGGING PACK_EQUI2CUBES PACK_RESOURCES)
 	file(GLOB_RECURSE PACK_EQUI2CUBE_PATHS
 		${${PACK_RESOURCES_DIR}}/images/*.exr ${${PACK_RESOURCES_DIR}}/images/*.hdr
 		${${PACK_RESOURCES_DIR}}/models/*.exr ${${PACK_RESOURCES_DIR}}/models/*.hdr)
 
 	foreach(EQUI2CUBE ${PACK_EQUI2CUBE_PATHS})
-		if(NOT EQUI2CUBE MATCHES "cubemap" OR EQUI2CUBE MATCHES "debug" OR
-			(NOT ${IS_RELEASE_EDITOR} AND EQUI2CUBE MATCHES "editor"))
+		if(NOT EQUI2CUBE MATCHES "cubemap" OR
+			(NOT ${IS_RELEASE_EDITOR} AND EQUI2CUBE MATCHES "editor") OR
+			(NOT ${IS_RELEASE_DEBUGGING} AND EQUI2CUBE MATCHES "debug"))
 			continue()
 		endif()
 
@@ -86,15 +85,16 @@ macro(collectPackEqui2cubes PACK_CACHES_DIR PACK_RESOURCES_DIR
 	endforeach()
 endmacro()
 
-#---------------------------------------------------------------------------------------------------
-macro(collectPackResources PACK_RESOURCES_DIR IS_RELEASE_EDITOR PACK_RESOURCES)
+#***********************************************************************************************************************
+macro(collectPackResources PACK_RESOURCES_DIR IS_RELEASE_EDITOR IS_RELEASE_DEBUGGING PACK_RESOURCES)
 	file(GLOB_RECURSE PACK_ANY_RESOURCE_PATHS
 		${${PACK_RESOURCES_DIR}}/images/*.webp ${${PACK_RESOURCES_DIR}}/images/*.png
 		${${PACK_RESOURCES_DIR}}/images/*.jpg ${${PACK_RESOURCES_DIR}}/fonts/*.ttf)
 
 	foreach(ANY_RESOURCE ${PACK_ANY_RESOURCE_PATHS})
-		if(ANY_RESOURCE MATCHES "cubemap" OR ANY_RESOURCE MATCHES "debug" OR
-			(${IS_RELEASE_EDITOR} AND ANY_RESOURCE MATCHES "editor"))
+		if(ANY_RESOURCE MATCHES "cubemap" OR 
+			(NOT ${IS_RELEASE_EDITOR} AND ANY_RESOURCE MATCHES "editor") OR
+			(NOT ${IS_RELEASE_DEBUGGING} AND ANY_RESOURCE MATCHES "debug"))
 			continue()
 		endif()
 
@@ -104,28 +104,29 @@ macro(collectPackResources PACK_RESOURCES_DIR IS_RELEASE_EDITOR PACK_RESOURCES)
 	endforeach()
 endmacro()
 
-#---------------------------------------------------------------------------------------------------
-function(packResources PACK_EXE_NAME PACK_CACHES_DIR
-	PACK_APP_RES_DIR PACK_GARDEN_RES_DIR IS_RELEASE_EDITOR)
-
+#***********************************************************************************************************************
+function(packResources PACK_EXE_NAME PACK_CACHES_DIR PACK_APP_RES_DIR
+	PACK_GARDEN_RES_DIR IS_RELEASE_EDITOR IS_RELEASE_DEBUGGING)
 	set(PACK_APP_RES_PATHS)
 
 	set(PACK_GARDEN_SHADERS)
 	set(PACK_APP_SHADERS)
-	collectPackShaders(PACK_CACHES_DIR PACK_GARDEN_RES_DIR
-		IS_RELEASE_EDITOR PACK_GARDEN_SHADERS PACK_APP_RES_PATHS)
-	collectPackShaders(PACK_CACHES_DIR PACK_APP_RES_DIR
-		IS_RELEASE_EDITOR PACK_APP_SHADERS PACK_APP_RES_PATHS)
+
+	collectPackShaders(PACK_CACHES_DIR PACK_GARDEN_RES_DIR IS_RELEASE_EDITOR
+		IS_RELEASE_DEBUGGING PACK_GARDEN_SHADERS PACK_APP_RES_PATHS)
+	collectPackShaders(PACK_CACHES_DIR PACK_APP_RES_DIR IS_RELEASE_EDITOR
+		IS_RELEASE_DEBUGGING PACK_APP_SHADERS PACK_APP_RES_PATHS)
 
 	set(PACK_GARDEN_EQUI2CUBES)
 	set(PACK_APP_EQUI2CUBES)
-	collectPackEqui2cubes(PACK_CACHES_DIR PACK_GARDEN_RES_DIR
-		IS_RELEASE_EDITOR PACK_GARDEN_EQUI2CUBES PACK_APP_RES_PATHS)
-	collectPackEqui2cubes(PACK_CACHES_DIR PACK_APP_RES_DIR
-		IS_RELEASE_EDITOR PACK_APP_EQUI2CUBES PACK_APP_RES_PATHS)
 
-	collectPackResources(PACK_GARDEN_RES_DIR IS_RELEASE_EDITOR PACK_APP_RES_PATHS)
-	collectPackResources(PACK_APP_RES_DIR IS_RELEASE_EDITOR PACK_APP_RES_PATHS)
+	collectPackEqui2cubes(PACK_CACHES_DIR PACK_GARDEN_RES_DIR IS_RELEASE_EDITOR
+		IS_RELEASE_DEBUGGING PACK_GARDEN_EQUI2CUBES PACK_APP_RES_PATHS)
+	collectPackEqui2cubes(PACK_CACHES_DIR PACK_APP_RES_DIR IS_RELEASE_EDITOR
+		IS_RELEASE_DEBUGGINGR PACK_APP_EQUI2CUBES PACK_APP_RES_PATHS)
+
+	collectPackResources(PACK_GARDEN_RES_DIR IS_RELEASE_EDITOR IS_RELEASE_DEBUGGINGR PACK_APP_RES_PATHS)
+	collectPackResources(PACK_APP_RES_DIR IS_RELEASE_EDITOR IS_RELEASE_DEBUGGINGR PACK_APP_RES_PATHS)
 	
 	add_custom_command(TARGET ${PACK_EXE_NAME} POST_BUILD VERBATIM
 		COMMAND ${CMAKE_COMMAND} -E echo "Compiling garden shaders..."

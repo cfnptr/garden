@@ -72,9 +72,8 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUs
 }
 
 //--------------------------------------------------------------------------------------------------
-Buffer::Buffer(Bind bind, Access access, Usage usage,
-	Strategy strategy, uint64 size, uint64 version) :
-	Memory(size, access, usage, strategy, version)
+Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size,
+	uint64 version) : Memory(size, access, usage, strategy, version)
 {
 	GARDEN_ASSERT(size > 0);
 
@@ -89,19 +88,21 @@ Buffer::Buffer(Bind bind, Access access, Usage usage,
 	allocationCreateInfo.flags = toVmaMemoryAccess(access) | toVmaMemoryStrategy(strategy);
 	allocationCreateInfo.usage = toVmaMemoryUsage(usage);
 	allocationCreateInfo.priority = 0.5f; // TODO: expose this RAM offload priority?
-	if (access != Access::None) allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+	if (access != Access::None)
+		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
 	// TODO: VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT?
 
 	VkBuffer instance; VmaAllocation allocation;
 	auto result = vmaCreateBuffer(Vulkan::memoryAllocator,
 		&bufferInfo, &allocationCreateInfo, &instance, &allocation, nullptr);
-	if (result != VK_SUCCESS) throw runtime_error("Failed to allocate GPU buffer.");
+	if (result != VK_SUCCESS)
+		throw runtime_error("Failed to allocate GPU buffer.");
 	this->instance = instance; this->allocation = allocation;
 
 	VmaAllocationInfo allocationInfo = {};
 	vmaGetAllocationInfo(Vulkan::memoryAllocator, allocation, &allocationInfo);
-
 	if (access != Access::None && !allocationInfo.pMappedData)
 		throw runtime_error("Failed to map GPU memory.");
 
@@ -112,7 +113,8 @@ Buffer::Buffer(Bind bind, Access access, Usage usage,
 //--------------------------------------------------------------------------------------------------
 bool Buffer::destroy()
 {
-	if (!instance || readyLock > 0) return false;
+	if (!instance || readyLock > 0)
+		return false;
 
 	if (GraphicsAPI::isRunning)
 	{
@@ -132,7 +134,9 @@ bool Buffer::destroy()
 //--------------------------------------------------------------------------------------------------
 bool Buffer::isMappable() const
 {
-	if (map) return true;
+	if (map)
+		return true;
+
 	VkMemoryPropertyFlags memoryPropertyFlags;
 	vmaGetAllocationMemoryProperties(Vulkan::memoryAllocator,
 		(VmaAllocation)allocation, &memoryPropertyFlags);
@@ -145,7 +149,8 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 	GARDEN_ASSERT(isMappable());
 	auto result = vmaInvalidateAllocation(Vulkan::memoryAllocator,
 		(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
-	if (result != VK_SUCCESS) throw runtime_error("Failed to invalidate GPU memory.");
+	if (result != VK_SUCCESS)
+		throw runtime_error("Failed to invalidate GPU memory.");
 }
 void Buffer::flush(uint64 size, uint64 offset)
 {
@@ -154,9 +159,10 @@ void Buffer::flush(uint64 size, uint64 offset)
 	GARDEN_ASSERT(isMappable());
 	auto result = vmaFlushAllocation(Vulkan::memoryAllocator,
 		(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
-	if (result != VK_SUCCESS) throw runtime_error("Failed to flush GPU memory.");
+	if (result != VK_SUCCESS)
+		throw runtime_error("Failed to flush GPU memory.");
 }
-void Buffer::setData(const void* data, uint64 size, uint64 offset)
+void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(data);
@@ -173,7 +179,8 @@ void Buffer::setData(const void* data, uint64 size, uint64 offset)
 		uint8* map;
 		auto result = vmaMapMemory(Vulkan::memoryAllocator,
 			(VmaAllocation)allocation, (void**)&map);
-		if (result != VK_SUCCESS) throw runtime_error("Failed to map GPU memory.");
+		if (result != VK_SUCCESS)
+			throw runtime_error("Failed to map GPU memory.");
 		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
 		flush(size, offset);
 		vmaUnmapMemory(Vulkan::memoryAllocator, (VmaAllocation)allocation);
@@ -185,7 +192,10 @@ void Buffer::setData(const void* data, uint64 size, uint64 offset)
 void Buffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
-	if (!Vulkan::hasDebugUtils || !instance) return;
+
+	if (!Vulkan::hasDebugUtils || !instance)
+		return;
+
 	vk::DebugUtilsObjectNameInfoEXT nameInfo(
 		vk::ObjectType::eBuffer, (uint64)instance, name.c_str());
 	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
@@ -210,7 +220,10 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
-	{ readyLock++; GraphicsAPI::currentCommandBuffer->addLockResource(command.buffer); }
+	{
+		readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(command.buffer);
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -261,7 +274,8 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination,
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		srcView->readyLock++; dstView->readyLock++;
+		srcView->readyLock++;
+		dstView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(source);
 		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
 	}

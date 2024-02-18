@@ -79,14 +79,18 @@ float raySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR)
 	float b = 2.0f * dot(rd, s0r0);
 	float c = dot(s0r0, s0r0) - (sR * sR);
 	float delta = b * b - 4.0f * a * c;
-	if (delta < 0.0f || a == 0.0f) return -1.0f;
+	if (delta < 0.0f || a == 0.0f)
+		return -1.0f;
 
 	float sol0 = (-b - sqrt(delta)) / (2.0f * a);
 	float sol1 = (-b + sqrt(delta)) / (2.0f * a);
-	if (sol0 < 0.0f && sol1 < 0.0f) return -1.0f;
+	if (sol0 < 0.0f && sol1 < 0.0f)
+		return -1.0f;
 
-	if (sol0 < 0.0f) return max(0.0f, sol1);
-	else if (sol1 < 0.0f) return max(0.0f, sol0);
+	if (sol0 < 0.0f)
+		return max(0.0f, sol1);
+	else if (sol1 < 0.0f)
+		return max(0.0f, sol0);
 	return max(0.0f, min(sol0, sol1));
 }
 
@@ -244,11 +248,15 @@ SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worl
 			tMax = 0.0f; // No intersection with earth nor atmosphere: stop right away  
 			return result;
 		}
-		else tMax = tTop;
+		else
+		{
+			tMax = tTop;
+		}
 	}
 	else
 	{
-		if (tTop > 0.0f) tMax = min(tTop, tBottom);
+		if (tTop > 0.0f)
+			tMax = min(tTop, tBottom);
 	}
 
 	if (depthBufferValue >= 0.0f)
@@ -262,7 +270,8 @@ SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worl
 			// Apply earth offset to go back to origin as top of earth mode. 
 			float tDepth = length(fepthBufferWorldPos.xyz -
 				(worldPos + float3(0.0f, 0.0f, -atmosphere.bottomRadius)));
-			if (tDepth < tMax) tMax = tDepth;
+			if (tDepth < tMax)
+				tMax = tDepth;
 		}
 	}
 	tMax = min(tMax, tMaxMax);
@@ -314,8 +323,10 @@ SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worl
 			t0 = t0 * t0; t1 = t1 * t1;
 			// Make t0 and t1 world space distances.
 			t0 = tMaxFloor * t0;
-			if (t1 > 1.0f) t1 = tMax;
-			else t1 = tMaxFloor * t1;
+			if (t1 > 1.0f)
+				t1 = tMax;
+			else
+				t1 = tMaxFloor * t1;
 			t = t0 + (t1 - t0) * sampleSegmentT;
 			dt = t1 - t0;
 		}
@@ -346,7 +357,10 @@ SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worl
 			phaseTimesScattering = medium.scatteringMie * miePhaseValue +
 				medium.scatteringRay * rayleighPhaseValue;
 		}
-		else phaseTimesScattering = medium.scattering * uniformPhase;
+		else
+		{
+			phaseTimesScattering = medium.scattering * uniformPhase;
+		}
 
 		// Earth shadow 
 		float tEarth = raySphereIntersectNearest(p, sunDir, 

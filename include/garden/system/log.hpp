@@ -14,6 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief Common message logging functions.
  */
 
 #pragma once
@@ -30,16 +31,26 @@ using namespace ecsm;
  * @brief Message logging system.
  * 
  * @details
- * A logging system records events, actions, and status messages that occur within a software application, system, or 
- * network. These logs provide a detailed record of activities and help developers, system administrators, and 
- * support teams diagnose and troubleshoot issues, monitor performance, and ensure the security of the system.
+ * A logging system records events, actions, and status messages that occur within a software application.
+ * These logs provide a detailed record of activities and help developers, system administrators, and support 
+ * teams diagnose and troubleshoot issues, monitor performance, and ensure the security of the system.
  */
 class LogSystem final : public System
 {
 private:
 	logy::Logger logger;
 
-	LogSystem(Manager* manager, LogLevel level = ALL_LOG_LEVEL);
+	/**
+	 * @brief Creates a new log system instance.
+	 * 
+	 * @param[in,out] manager manager instance
+	 * @param level message logging level (log if <= level)
+	 * @param rotationTime delay between log file rotation (0.0 = disabled)
+	 */
+	LogSystem(Manager* manager, LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0);
+	/**
+	 * @brief Destroy log system instance.
+	 */
 	~LogSystem() final;
 	
 	friend class ecsm::Manager;
@@ -49,24 +60,66 @@ public:
 	 * @brief Writes message to the log.
 	 * 
 	 * @param level logging level
-	 * @param message target message
+	 * @param[in] message target logging message
 	 */
 	void log(LogLevel level, const string& message) noexcept;
 
 	/**
-	 * @brief Writes message to the log.
-	 * 
-	 * @param level logging level
-	 * @param message target message
+	 * @brief Writes trace message to the log. (MT-Safe)
+	 * @param[in] message target logging message
 	 */
 	void trace(const string& message) noexcept  { log(TRACE_LOG_LEVEL, message); }
+	/**
+	 * @brief Writes debug message to the log. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
 	void debug(const string& message) noexcept  { log(DEBUG_LOG_LEVEL, message); }
+	/**
+	 * @brief Writes information message to the log. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
 	void info(const string& message) noexcept  { log(INFO_LOG_LEVEL, message); }
+	/**
+	 * @brief Writes warning message to the log. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
 	void warn(const string& message) noexcept  { log(WARN_LOG_LEVEL, message); }
+	/**
+	 * @brief Writes error message to the log. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
 	void error(const string& message) noexcept  { log(ERROR_LOG_LEVEL, message); }
+	/**
+	 * @brief Writes fatal message to the log. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
 	void fatal(const string& message) noexcept { log(FATAL_LOG_LEVEL, message); }
 
+	/**
+	 * @brief Returns current logger logging level. (MT-Safe)
+	 * @details All messages above the current logging level will be skipped and not logged.
+	 */
+	LogLevel getLevel() const noexcept { return logger.getLevel(); }
+	/**
+	 * @brief Sets current logger logging level. (MT-Safe)
+	 * @details All messages above the current logging level will be skipped and not logged.
+	 */
+	void setLevel(LogLevel level) noexcept { logger.setLevel(level); }
+
+	/**
+	 * @brief Returns current logger rotation delay time in seconds. (MT-Safe)
+	 * 
+	 * @details
+	 * After the time expires, the current log file will be closed and 
+	 * compressed, a new file stream for the log file will be created.
+	 */
+	double getRotationTime() const noexcept { return logger.getRotationTime(); }
+
 	#if GARDEN_DEBUG
+	/**
+	 * @brief Logging system instance. (Debug Only)
+	 * @details You can use it without having the manager instance, for debugging.
+	 */
 	static LogSystem* instance;
 	#endif
 };

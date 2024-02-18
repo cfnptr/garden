@@ -97,9 +97,12 @@ void AutoExposureRenderSystem::initialize()
 	auto manager = getManager();
 	deferredSystem = manager->get<DeferredRenderSystem>();
 
-	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(getGraphicsSystem());
-	if (!histogramPipeline) histogramPipeline = createHistogramPipeline();
-	if (!averagePipeline) averagePipeline = createAveragePipeline();
+	if (!histogramBuffer)
+		histogramBuffer = createHistogramBuffer(getGraphicsSystem());
+	if (!histogramPipeline)
+		histogramPipeline = createHistogramPipeline();
+	if (!averagePipeline)
+		averagePipeline = createAveragePipeline();
 
 	#if GARDEN_EDITOR
 	editor = new AutoExposureEditor(this);
@@ -123,7 +126,8 @@ void AutoExposureRenderSystem::render()
 	auto graphicsSystem = getGraphicsSystem();
 	auto histogramPipelineView = graphicsSystem->get(histogramPipeline);
 	auto averagePipelineView = graphicsSystem->get(averagePipeline);
-	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady()) return;
+	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady())
+		return;
 
 	if (!histogramDescriptorSet)
 	{
@@ -199,18 +203,21 @@ void AutoExposureRenderSystem::recreateSwapchain(const SwapchainChanges& changes
 
 ID<ComputePipeline> AutoExposureRenderSystem::getHistogramPipeline()
 {
-	if (!histogramPipeline) histogramPipeline = createHistogramPipeline();
+	if (!histogramPipeline)
+		histogramPipeline = createHistogramPipeline();
 	return histogramPipeline;
 }
 ID<ComputePipeline> AutoExposureRenderSystem::getAveragePipeline()
 {
-	if (!averagePipeline) averagePipeline = createAveragePipeline();
+	if (!averagePipeline)
+		averagePipeline = createAveragePipeline();
 	return averagePipeline;
 }
 
 ID<Buffer> AutoExposureRenderSystem::getHistogramBuffer()
 {
-	if (!histogramBuffer) histogramBuffer = createHistogramBuffer(getGraphicsSystem());
+	if (!histogramBuffer)
+		histogramBuffer = createHistogramBuffer(getGraphicsSystem());
 	return histogramBuffer;
 }
 */

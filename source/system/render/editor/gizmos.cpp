@@ -174,17 +174,22 @@ void GizmosEditor::preSwapchainRender()
 
 	if (!selectedEntity || !frontPipelineView->isReady() ||
 		!backPipelineView->isReady() || !fullCubeView->isReady() ||
-		!fullArrowView->isReady() || !graphicsSystem->camera) return;
+		!fullArrowView->isReady() || !graphicsSystem->camera)
+	{
+		return;
+	}
 
 	auto transform = manager->tryGet<TransformComponent>(selectedEntity);
-	if (!transform || transform->hasBaked()) return;
+	if (!transform || transform->hasBaked())
+		return;
 
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto model = transform->calcModel();
 	setTranslation(model, getTranslation(model) - cameraPosition);
 	auto translation = getTranslation(model);
-	if (translation == float3(0.0f)) return;
+	if (translation == float3(0.0f))
+		return;
 
 	auto windowSize = graphicsSystem->getWindowSize();
 	auto cursorPosition = graphicsSystem->getCursorPosition();
@@ -200,8 +205,7 @@ void GizmosEditor::preSwapchainRender()
 	addArrowMeshes(gizmosMeshes, model, fullCubeVertices, fullArrowVertices);
 	// TODO: scale and rotation gizmos.
 	
-	if (!ImGui::GetIO().WantCaptureMouse &&
-		graphicsSystem->getCursorMode() == CursorMode::Default)
+	if (!ImGui::GetIO().WantCaptureMouse && graphicsSystem->getCursorMode() == CursorMode::Default)
 	{
 		auto uvPosition = (cursorPosition + 0.5f) / windowSize;
 		auto globalDirection = (float3)(cameraConstants.viewProjInv *
@@ -215,7 +219,8 @@ void GizmosEditor::preSwapchainRender()
 			auto localDirection = float3x3(modelInverse) * globalDirection;
 			auto ray = Ray((float3)localOrigin, (float3)localDirection);
 			auto points = raycast2(Aabb::one, ray);
-			if (!isIntersected(points)) continue;
+			if (!isIntersected(points))
+				continue;
 			
 			if (points.x < newDistance)
 			{

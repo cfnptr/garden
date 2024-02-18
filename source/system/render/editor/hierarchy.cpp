@@ -92,7 +92,10 @@ static void updateHierarchyClick(Manager* manager, TransformComponent* transform
 				if (!transform->hasAncestor(entity))
 					entityTransform->setParent(transform->getEntity());
 			}	
-			else entityTransform->setParent({});
+			else
+			{
+				entityTransform->setParent({});
+			}
 		}
 		ImGui::EndDragDropTarget();
 	}
@@ -108,8 +111,10 @@ static void renderHierarchyEntity(Manager* manager,
 	TransformComponent* transform, ID<Entity> selectedEntity)
 {
 	auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
-	if (transform->getEntity() == selectedEntity) flags |= ImGuiTreeNodeFlags_Selected;
-	if (transform->getChildCount() == 0) flags |= ImGuiTreeNodeFlags_Leaf;
+	if (transform->getEntity() == selectedEntity)
+		flags |= ImGuiTreeNodeFlags_Selected;
+	if (transform->getChildCount() == 0)
+		flags |= ImGuiTreeNodeFlags_Leaf;
 	
 	if (ImGui::TreeNodeEx(transform->name.c_str(), flags))
 	{
@@ -121,7 +126,10 @@ static void renderHierarchyEntity(Manager* manager,
 		}
 		ImGui::TreePop();
 	}
-	else updateHierarchyClick(manager, transform);
+	else
+	{
+		updateHierarchyClick(manager, transform);
+	}
 }
 static bool findCaseInsensitive(const string& haystack, const string& needle)
 {
@@ -138,8 +146,7 @@ void HierarchyEditor::render()
 {
 	if (showWindow)
 	{
-		if (ImGui::Begin("Entity Hierarchy", &showWindow,
-			ImGuiWindowFlags_NoFocusOnAppearing))
+		if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 		{
 			auto manager = system->getManager();
 			auto transformSystem = manager->get<TransformSystem>();
@@ -159,7 +166,8 @@ void HierarchyEditor::render()
 				for (uint32 i = 0; i < componentOccupancy; i++)
 				{
 					auto transform = &componentData[i];
-					if (!transform->getEntity() || transform->getParent()) continue;
+					if (!transform->getEntity() || transform->getParent())
+						continue;
 					renderHierarchyEntity(manager, transform, system->selectedEntity);
 				}
 			}
@@ -168,7 +176,8 @@ void HierarchyEditor::render()
 				for (uint32 i = 0; i < componentOccupancy; i++)
 				{
 					auto transform = &componentData[i];
-					if (!transform->getEntity()) continue;
+					if (!transform->getEntity())
+						continue;
 
 					if (hierarchyCaseSensitive)
 					{
@@ -201,6 +210,7 @@ void HierarchyEditor::render()
 
 void HierarchyEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Entity Hierarchy")) showWindow = true;
+	if (ImGui::MenuItem("Entity Hierarchy"))
+		showWindow = true;
 }
 #endif

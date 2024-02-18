@@ -121,13 +121,17 @@ void SsaoRenderSystem::initialize()
 	auto graphicsSystem = getGraphicsSystem();
 
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
-	if (settingsSystem) settingsSystem->getBool("useSSAO", isEnabled);
+	if (settingsSystem)
+		settingsSystem->getBool("useSSAO", isEnabled);
 
 	if (isEnabled)
 	{
-		if (!sampleBuffer) sampleBuffer = createSampleBuffer(graphicsSystem, sampleCount);
-		if (!noiseTexture) noiseTexture = createNoiseTexture(graphicsSystem);
-		if (!pipeline) pipeline = createPipeline(manager, sampleCount);
+		if (!sampleBuffer)
+			sampleBuffer = createSampleBuffer(graphicsSystem, sampleCount);
+		if (!noiseTexture)
+			noiseTexture = createNoiseTexture(graphicsSystem);
+		if (!pipeline)
+			pipeline = createPipeline(manager, sampleCount);
 	}
 
 	#if GARDEN_EDITOR
@@ -150,16 +154,21 @@ void SsaoRenderSystem::render()
 }
 void SsaoRenderSystem::preAoRender()
 {
-	if (!isEnabled) return;
+	if (!isEnabled)
+		return;
 
 	auto graphicsSystem = getGraphicsSystem();
-	if (!sampleBuffer) sampleBuffer = createSampleBuffer(graphicsSystem, sampleCount);
-	if (!noiseTexture) noiseTexture = createNoiseTexture(graphicsSystem);
-	if (!pipeline) pipeline = createPipeline(getManager(), sampleCount);
+	if (!sampleBuffer)
+		sampleBuffer = createSampleBuffer(graphicsSystem, sampleCount);
+	if (!noiseTexture)
+		noiseTexture = createNoiseTexture(graphicsSystem);
+	if (!pipeline)
+		pipeline = createPipeline(getManager(), sampleCount);
 }
 bool SsaoRenderSystem::aoRender()
 {
-	if (!isEnabled || intensity == 0.0f) return false;
+	if (!isEnabled || intensity == 0.0f)
+		return false;
 	
 	auto graphicsSystem = getGraphicsSystem();
 	auto pipelineView = graphicsSystem->get(pipeline);
@@ -167,7 +176,10 @@ bool SsaoRenderSystem::aoRender()
 	auto noiseTextureView = graphicsSystem->get(noiseTexture);
 
 	if (!pipelineView->isReady() || !sampleBufferView->isReady() ||
-		!noiseTextureView->isReady()) return false;
+		!noiseTextureView->isReady())
+	{
+		return false;
+	}
 
 	if (!descriptorSet)
 	{
@@ -228,9 +240,12 @@ void SsaoRenderSystem::recreateSwapchain(const SwapchainChanges& changes)
 
 void SsaoRenderSystem::setConsts(uint32 sampleCount)
 {
-	if (this->sampleCount == sampleCount) return;
+	if (this->sampleCount == sampleCount)
+		return;
 	this->sampleCount = sampleCount;
-	if (!pipeline) return;
+
+	if (!pipeline)
+		return;
 
 	auto graphicsSystem = getGraphicsSystem();
 	graphicsSystem->destroy(descriptorSet);
@@ -248,17 +263,20 @@ void SsaoRenderSystem::setConsts(uint32 sampleCount)
 
 ID<Buffer> SsaoRenderSystem::getSampleBuffer()
 {
-	if (!sampleBuffer) sampleBuffer = createSampleBuffer(getGraphicsSystem(), sampleCount);
+	if (!sampleBuffer)
+		sampleBuffer = createSampleBuffer(getGraphicsSystem(), sampleCount);
 	return sampleBuffer;
 }
 ID<Image> SsaoRenderSystem::getNoiseTexture()
 {
-	if (!noiseTexture) noiseTexture = createNoiseTexture(getGraphicsSystem());
+	if (!noiseTexture)
+		noiseTexture = createNoiseTexture(getGraphicsSystem());
 	return noiseTexture;
 }
 ID<GraphicsPipeline> SsaoRenderSystem::getPipeline()
 {
-	if (!pipeline) pipeline = createPipeline(getManager(), sampleCount);
+	if (!pipeline)
+		pipeline = createPipeline(getManager(), sampleCount);
 	return pipeline;
 }
 */

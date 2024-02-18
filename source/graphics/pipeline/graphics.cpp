@@ -148,10 +148,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 	Pipeline(createData, useAsync)
 {
 	if (createData.variantCount > 1)
-	{
-		this->instance = malloc(sizeof(void*) * createData.variantCount);
-		if (!this->instance) abort();
-	}
+		this->instance = malloc<vk::Pipeline>(createData.variantCount);
 
 	vector<ShaderStage> stages; vector<vector<uint8>> code;
 	if (!createData.vertexCode.empty())
@@ -242,7 +239,10 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		
 		pipelineInfo.pNext = &dynamicRenderingInfo;
 	}
-	else pipelineInfo.renderPass = (VkRenderPass)createData.renderPass;
+	else
+	{
+		pipelineInfo.renderPass = (VkRenderPass)createData.renderPass;
+	}
 
 	auto& stateOverrides = createData.stateOverrides;
 	for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
@@ -357,8 +357,13 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
 		if (createData.variantCount > 1)
+		{
 			((void**)this->instance)[variantIndex] = result.value;
-		else this->instance = result.value;
+		}
+		else
+		{
+			this->instance = result.value;
+		}
 	}
 
 	for (auto& info : specializationInfos)
@@ -423,7 +428,10 @@ void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
 		taskIndex = 0;
 		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
 	}
-	else taskCount = taskIndex + 1;
+	else
+	{
+		taskCount = taskIndex + 1;
+	}
 
 	// TODO: support custom depth range.
 	vk::Viewport vkViewport(viewport.x, viewport.y,
@@ -474,7 +482,10 @@ void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
 		taskIndex = 0;
 		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
 	}
-	else taskCount = taskIndex + 1;
+	else
+	{
+		taskCount = taskIndex + 1;
+	}
 
 	vk::Rect2D vkScissor({ scissor.x, scissor.y },
 		{ (uint32)scissor.z, (uint32)scissor.w });
@@ -525,7 +536,10 @@ void GraphicsPipeline::setViewportScissorAsync(
 		taskIndex = 0;
 		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
 	}
-	else taskCount = taskIndex + 1;
+	else
+	{
+		taskCount = taskIndex + 1;
+	}
 
 	// TODO: support custom depth range.
 	vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
@@ -611,7 +625,10 @@ void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 			GARDEN_ASSERT(vertexBufferView->instance); // is ready
 			instance = (VkBuffer)vertexBufferView->instance;
 		}
-		else instance = VK_NULL_HANDLE;
+		else
+		{
+			instance = VK_NULL_HANDLE;
+		}
 		
 		const vk::DeviceSize size = 0;
 		secondaryCommandBuffer.bindVertexBuffers(0, 1, (vk::Buffer*)&instance, &size);
@@ -679,7 +696,8 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		vertexBufferView->readyLock++; indexBufferView->readyLock++;
+		vertexBufferView->readyLock++;
+		indexBufferView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
 		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
 	}
@@ -743,7 +761,8 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 	{
-		vertexBufferView->readyLock++; indexBufferView->readyLock++;
+		vertexBufferView->readyLock++;
+		indexBufferView->readyLock++;
 		GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
 		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
 	}

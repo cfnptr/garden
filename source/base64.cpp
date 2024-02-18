@@ -6,7 +6,7 @@
  * See README for more details.
  */
 
-#include "garden/file-base64.hpp"
+#include "garden/base64.hpp"
 
 #include <cstdlib>
 #include <cstring>

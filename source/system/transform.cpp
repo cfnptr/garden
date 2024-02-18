@@ -38,7 +38,8 @@ bool TransformComponent::destroy()
 
 		for (uint32 i = 0; i < parentChildCount; i++)
 		{
-			if (parentChilds[i] != entity) continue;
+			if (parentChilds[i] != entity)
+				continue;
 			for (uint32 j = i + 1; j < parentChildCount; j++)
 				parentChilds[j - 1] = parentChilds[j];
 			parentTransform->childCount--;
@@ -83,7 +84,8 @@ float4x4 TransformComponent::calcModel() const noexcept
 void TransformComponent::setParent(ID<Entity> parent)
 {
 	GARDEN_ASSERT(parent != entity);
-	if (this->parent == parent) return;
+	if (this->parent == parent)
+		return;
 
 	#if GARDEN_DEBUG
 	if (parent)
@@ -101,7 +103,8 @@ void TransformComponent::setParent(ID<Entity> parent)
 
 		for (uint32 i = 0; i < parentChildCount; i++)
 		{
-			if (parentChilds[i] != entity) continue;
+			if (parentChilds[i] != entity)
+				continue;
 			for (uint32 j = i + 1; j < parentChildCount; j++)
 				parentChilds[j - 1] = parentChilds[j];
 			parentTransform->childCount--;
@@ -121,16 +124,13 @@ REMOVED_FROM_PARENT:
 			if (parentTransform->childs)
 			{
 				auto newCapacity = parentTransform->childCapacity * 2;
-				auto newChilds = (ID<Entity>*)realloc(
-					parentTransform->childs, newCapacity * sizeof(ID<Entity>));
-				if (!newChilds) abort();
+				auto newChilds = realloc<ID<Entity>>(parentTransform->childs, newCapacity);
 				parentTransform->childs = newChilds;
 				parentTransform->childCapacity = newCapacity;
 			}
 			else
 			{
-				auto childs = (ID<Entity>*)malloc(sizeof(ID<Entity>));
-				if (!childs) abort();
+				auto childs = malloc<ID<Entity>>(1);
 				parentTransform->childs = childs;
 				parentTransform->childCapacity = 1;
 			}
@@ -148,7 +148,8 @@ void TransformComponent::addChild(ID<Entity> child)
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
 	auto childTransform = manager->get<TransformComponent>(child);
-	if (childTransform->parent == entity) return;
+	if (childTransform->parent == entity)
+		return;
 
 	#if GARDEN_DEBUG
 	auto parentTransform = manager->get<TransformComponent>(parent);
@@ -164,7 +165,8 @@ void TransformComponent::addChild(ID<Entity> child)
 
 		for (uint32 i = 0; i < parentChildCount; i++)
 		{
-			if (parentChilds[i] != entity) continue;
+			if (parentChilds[i] != entity)
+				continue;
 			for (uint32 j = i + 1; j < parentChildCount; j++)
 				parentChilds[j - 1] = parentChilds[j];
 			parentTransform->childCount--;
@@ -181,16 +183,13 @@ REMOVED_FROM_PARENT:
 		if (childs)
 		{
 			auto newCapacity = childCapacity * 2;
-			auto newChilds = (ID<Entity>*)realloc(
-				childs, newCapacity * sizeof(ID<Entity>));
-			if (!newChilds) abort();
+			auto newChilds = realloc<ID<Entity>>(childs, newCapacity);
 			childs = newChilds;
 			childCapacity = newCapacity;
 		}
 		else
 		{
-			childs = (ID<Entity>*)malloc(sizeof(ID<Entity>));
-			if (!childs) abort();
+			childs = malloc<ID<Entity>>(1);
 			childCapacity = 1;
 		}
 	}
@@ -208,7 +207,8 @@ void TransformComponent::removeChild(ID<Entity> child)
 	auto childTransform = manager->get<TransformComponent>(child);
 	for (uint32 i = 0; i < childCount; i++)
 	{
-		if (childs[i] != entity) continue;
+		if (childs[i] != entity)
+			continue;
 		for (uint32 j = i + 1; j < childCount; j++)
 			childs[j - 1] = childs[j];
 		childCount--;
@@ -238,7 +238,8 @@ bool TransformComponent::hasChild(ID<Entity> child) const noexcept
 	GARDEN_ASSERT(child != entity);
 	for (uint32 i = 0; i < childCount; i++)
 	{
-		if (childs[i] == child) return true;
+		if (childs[i] == child)
+			return true;
 	}
 	return false;
 }
@@ -248,7 +249,8 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 	while (nextParent)
 	{
 		auto nextTransform = manager->get<TransformComponent>(nextParent);
-		if (ancestor == nextTransform->entity) return true;
+		if (ancestor == nextTransform->entity)
+			return true;
 		nextParent = nextTransform->parent;
 	}
 	return false;
@@ -257,11 +259,14 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 //**********************************************************************************************************************
 static bool hasBakedTransform(Manager* manager, ID<Entity> entity)
 {
-	if (manager->has<BakedTransformComponent>(entity)) return true;
+	if (manager->has<BakedTransformComponent>(entity))
+		return true;
+
 	auto transformComponent = manager->get<TransformComponent>(entity);
 	for (uint32 i = 0; i < transformComponent->getChildCount(); i++)
 	{
-		if (hasBakedTransform(manager, transformComponent->getChilds()[i])) return true;
+		if (hasBakedTransform(manager, transformComponent->getChilds()[i]))
+			return true;
 	}
 	return false;
 }
@@ -273,14 +278,14 @@ bool TransformComponent::hasBaked() const noexcept
 //**********************************************************************************************************************
 TransformSystem::TransformSystem(Manager* manager) : System(manager)
 {
-	#if 0
+	#if GARDEN_EDITOR
 	SUBSCRIBE_TO_EVENT("Init", TransformSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", TransformSystem::deinit);
 	#endif
 }
 TransformSystem::~TransformSystem()
 {
-	#if 0
+	#if GARDEN_EDITOR
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
@@ -296,7 +301,7 @@ TransformSystem::~TransformSystem()
 	components.clear(false);
 }
 
-#if 0
+#if GARDEN_EDITOR
 void TransformSystem::init()
 {
 	editor = new TransformEditor(this);
@@ -317,14 +322,14 @@ ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 	auto component = components.create();
 	auto componentView = components.get(component);
 	componentView->manager = getManager();
-	#if 0 && (GARDEN_DEBUG || GARDEN_EDITOR)
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	componentView->name = "Entity " + to_string(*entity);
 	#endif
 	return ID<Component>(component);
 }
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
-	#if 0
+	#if GARDEN_EDITOR
 	auto component = components.get(ID<TransformComponent>(instance));
 	((TransformEditor*)editor)->onDestroy(component->entity);
 	#endif
@@ -358,7 +363,8 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 //**********************************************************************************************************************
 void TransformSystem::destroyRecursive(Manager* manager, ID<Entity> entity)
 {
-	if (manager->has<DoNotDestroyComponent>(entity)) return;
+	if (manager->has<DoNotDestroyComponent>(entity))
+		return;
 	auto transformComponent = manager->get<TransformComponent>(entity);
 	for (uint32 i = 0; i < transformComponent->childCount; i++)
 		destroyRecursive(manager, transformComponent->childs[i]);

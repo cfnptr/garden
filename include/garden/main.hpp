@@ -18,20 +18,40 @@
  */
 
 #pragma once
-#include "ecsm.hpp"
 #include "garden/defines.hpp"
+#include "ecsm.hpp"
+
 
 #if GARDEN_OS_WINDOWS && !GARDEN_DEBUG
 #define NOMINMAX
 #include <windows.h>
+
+/**
+ * @brief Defines application main function. (Entry point)
+ */
 #define GARDEN_MAIN int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
+/**
+ * @brief Shows an OS error message with target C string.
+ * @param[in] cstr target error message C string
+ */
 #define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(NULL, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
 #else
+/**
+ * @brief Declares application main function.
+ */
 #define GARDEN_MAIN int main(int argc, char *argv[])
+/**
+ * @brief Shows an OS error message with target C string.
+ * @param[in] cstr target error message C string
+ */
 #define GARDEN_MESSAGE_ERROR(cstr)
 #endif
 
 #if GARDEN_DEBUG
+/**
+ * @brief Declares application main function. (Entry point)
+ * @param[in] entryPoint program entry point callback.
+ */
 #define GARDEN_DECLARE_MAIN(entryPoint) \
 GARDEN_MAIN                             \
 {                                       \
@@ -39,6 +59,10 @@ GARDEN_MAIN                             \
 	return EXIT_SUCCESS;                \
 }
 #else
+/**
+ * @brief Declares application main function. (Entry point)
+ * @param[in] entryPoint program entry point callback.
+ */
 #define GARDEN_DECLARE_MAIN(entryPoint) \
 GARDEN_MAIN                             \
 {                                       \

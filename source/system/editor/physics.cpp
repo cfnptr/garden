@@ -59,8 +59,10 @@ void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 			auto boolValue = rigidBodyComponent->isSleeping();
 			if (ImGui::Checkbox("Sleeping", &boolValue))
 			{
-				if (boolValue) rigidBodyComponent->putToSleep();
-				else rigidBodyComponent->wakeUp();
+				if (boolValue)
+					rigidBodyComponent->putToSleep();
+				else
+					rigidBodyComponent->wakeUp();
 			}
 
 			auto floatValue = rigidBodyComponent->getMass();
@@ -80,11 +82,15 @@ void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 				auto float3Value = rigidBodyComponent->getCenterOfMass();
 				if (ImGui::DragFloat3("Center Of Mass",
 					(float*)&float3Value, 0.01f, 0.0f, FLT_MAX))
+				{
 					rigidBodyComponent->setCenterOfMass(float3Value);
+				}
 				float3Value = rigidBodyComponent->getInertiaTensor();
 				if (ImGui::DragFloat3("Inertia Tensor",
 					(float*)&float3Value, 0.01f, 0.0f, FLT_MAX))
+				{
 					rigidBodyComponent->setInertiaTensor(float3Value);
+				}
 				if (ImGui::Button("Calculate Mass and Inertia", ImVec2(-FLT_MIN, 0.0f)))
 					rigidBodyComponent->calcMassAndInertia();
 

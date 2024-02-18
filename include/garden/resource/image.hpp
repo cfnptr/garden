@@ -21,12 +21,14 @@
 namespace garden
 {
 
+/**
+ * @brief Image file format types.
+ */
 enum class ImageFileType : uint8
 {
 	Webp, Exr, Png, Jpg, Hdr, Count
 };
 
-//--------------------------------------------------------------------------------------------------
 static ImageFileType toImageFile(string_view name)
 {
 	if (name == "webp") return ImageFileType::Webp;
