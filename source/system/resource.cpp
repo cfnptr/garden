@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
 #include "garden/system/resource.hpp"
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/compiler.hpp"
@@ -30,26 +29,12 @@
 #if GARDEN_DEBUG
 #include "ImfRgbaFile.h"
 #include "webp/encode.h"
-
-#define CGLTF_IMPLEMENTATION
-#include "cgltf.h"
 #endif
 
 using namespace garden;
 using namespace math::ibl;
 
-static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath)
-{
-	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
-	auto appPath = GARDEN_APP_RESOURCES_PATH / resourcePath;
-	auto hasEngineFile = fs::exists(enginePath), hasAppFile = fs::exists(appPath);
-	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
-		return false;
-	filePath = hasEngineFile ? enginePath : appPath;
-	return true;
-}
-
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 namespace
 {
 	struct ImageLoadData final
@@ -86,6 +71,8 @@ namespace
 		ID<ComputePipeline> instance = {};
 		bool useAsync = false;
 	};
+
+	/* TODO: refactor
 	struct GeneralBufferLoadData final
 	{
 		uint64 version = 0;
@@ -96,8 +83,7 @@ namespace
 		Buffer::Access access = {};
 		Buffer::Strategy strategy = {};
 
-		GeneralBufferLoadData(ModelData::Accessor _accessor) :
-			accessor(_accessor) { }
+		GeneralBufferLoadData(ModelData::Accessor _accessor) : accessor(_accessor) { }
 	};
 	struct VertexBufferLoadData final
 	{
@@ -110,13 +96,24 @@ namespace
 		Buffer::Access access = {};
 		Buffer::Strategy strategy = {};
 
-		VertexBufferLoadData(ModelData::Primitive _primitive) :
-			primitive(_primitive) { }
+		VertexBufferLoadData(ModelData::Primitive _primitive) : primitive(_primitive) { }
 	};
+	*/
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ResourceSystem* ResourceSystem::instance = nullptr;
+
+static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath)
+{
+	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
+	auto appPath = GARDEN_APP_RESOURCES_PATH / resourcePath;
+	auto hasEngineFile = fs::exists(enginePath), hasAppFile = fs::exists(appPath);
+	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
+		return false;
+	filePath = hasEngineFile ? enginePath : appPath;
+	return true;
+}
 
 ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 {
@@ -137,7 +134,7 @@ ResourceSystem::~ResourceSystem()
 		UNSUBSCRIBE_FROM_EVENT("PostDeinit", ResourceSystem::postDeinit);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ResourceSystem::postDeinit()
 {
 	while (imageQueue.size() > 0)
@@ -166,14 +163,12 @@ void ResourceSystem::postDeinit()
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void ResourceSystem::input()
+//**********************************************************************************************************************
+void ResourceSystem::dequeuePipelines()
 {
 	#if GARDEN_DEBUG
 	auto logSystem = getManager()->tryGet<LogSystem>();
 	#endif
-
-	queueLocker.lock();
 
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
 	auto graphicsOccupancy = GraphicsAPI::graphicsPipelinePool.getOccupancy();
@@ -249,15 +244,26 @@ void ResourceSystem::input()
 		}
 		computeQueue.pop();
 	}
+}
 
-	graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+//**********************************************************************************************************************
+void ResourceSystem::dequeueBuffers()
+{
+	GraphicsSystem* graphicsSystem = nullptr;
+	auto hasNewResources = !bufferQueue.empty() || !imageQueue.empty();
+
+	if (hasNewResources)
+	{
+		graphicsSystem = getManager()->get<GraphicsSystem>();
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+	}
 
 	{
 		SET_GPU_DEBUG_LABEL("Buffers Transfer", Color::transparent);
 		while (bufferQueue.size() > 0)
 		{
 			auto& item = bufferQueue.front();
-			if (*item.instance <= GraphicsAPI::bufferPool.getOccupancy()) // getOccupancy() required.
+			if (*item.instance <= GraphicsAPI::bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
 			{
 				auto& buffer = GraphicsAPI::bufferPool.getData()[*item.instance - 1];
 				if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
@@ -296,7 +302,6 @@ void ResourceSystem::input()
 
 	auto images = GraphicsAPI::imagePool.getData();
 	auto imageOccupancy = GraphicsAPI::imagePool.getOccupancy();
-
 	{
 		SET_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
 		while (imageQueue.size() > 0)
@@ -339,11 +344,20 @@ void ResourceSystem::input()
 		}
 	}
 
-	graphicsSystem->stopRecording();
+	if (hasNewResources)
+		graphicsSystem->stopRecording();
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::input()
+{
+	queueLocker.lock();
+	dequeuePipelines();
+	dequeueBuffers();
 	queueLocker.unlock();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 namespace
 {
 	class ExrMemoryStream final : public Imf::IStream
@@ -379,6 +393,7 @@ namespace
 	};
 }
 
+//**********************************************************************************************************************
 void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	int2& size, Image::Format& format, int32 threadIndex) const
 {
@@ -495,7 +510,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static void writeExrImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
 {
 	vector<Imf::Rgba> halfPixels(data.size());
@@ -516,17 +531,19 @@ static void writeExrImageData(const fs::path& filePath, int32 size, const vector
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back,
 	vector<uint8>& front, int2& size, Image::Format& format, int32 threadIndex) const
 {
 	GARDEN_ASSERT(!path.empty());
 	vector<uint8> equiData; int2 equiSize;
+	auto threadSystem = getManager()->tryGet<ThreadSystem>();
 
 	#if GARDEN_DEBUG
 	auto filePath = GARDEN_CACHES_PATH / "images" / path;
 	auto cacheFilePath = filePath.generic_string();
+	
 	// TODO: also check for data timestamp against original.
 	if (!fs::exists(cacheFilePath + "-nx.exr") || !fs::exists(cacheFilePath + "-px.exr") ||
 		!fs::exists(cacheFilePath + "-ny.exr") || !fs::exists(cacheFilePath + "-py.exr") ||
@@ -536,15 +553,9 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
-		{
-			throw runtime_error("Invalid equi cubemap size. ("
-				"path: " + path.generic_string() + ")");
-		}
+			throw runtime_error("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
 		if (cubemapSize % 32 != 0)
-		{
-			throw runtime_error("Invalid cubemap size. ("
-				"path: " + path.generic_string() + ")");
-		}
+			throw runtime_error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 		
 		vector<float4> floatData; const float4* equiPixels;
 		if (format == Image::Format::SrgbR8G8B8A8)
@@ -562,8 +573,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 					for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 					{
 						auto srcColor = srcData[i].toNormFloat4();
-						dstData[i] = float4(pow((float3)srcColor, 
-							float3(2.2f)), srcColor.w);
+						dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
 					}
 				}),
 				(uint32)floatData.size());
@@ -574,8 +584,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 				for (uint32 i = 0; i < (uint32)floatData.size(); i++)
 				{
 					auto srcColor = srcData[i].toNormFloat4();
-					dstData[i] = float4(pow((float3)srcColor,
-						float3(2.2f)), srcColor.w);
+					dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
 				}
 			}
 
@@ -649,18 +658,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			{
 				switch (task.getTaskIndex())
 				{
-					case 0: writeExrImageData(cacheFilePath +
-						"-nx.exr", cubemapSize, left); break;
-					case 1: writeExrImageData(cacheFilePath +
-						"-px.exr", cubemapSize, right); break;
-					case 2: writeExrImageData(cacheFilePath +
-						"-ny.exr", cubemapSize, bottom); break;
-					case 3: writeExrImageData(cacheFilePath +
-						"-py.exr", cubemapSize, top); break;
-					case 4: writeExrImageData(cacheFilePath +
-						"-nz.exr", cubemapSize, back); break;
-					case 5: writeExrImageData(cacheFilePath +
-						"-pz.exr", cubemapSize, front); break;
+					case 0: writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left); break;
+					case 1: writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right); break;
+					case 2: writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom); break;
+					case 3: writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top); break;
+					case 4: writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back); break;
+					case 5: writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front); break;
 					default: abort();
 				}
 			}), 6);
@@ -678,10 +681,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 		auto logSystem = getManager()->tryGet<LogSystem>();
 		if (logSystem)
-		{
-			logSystem->trace("Converted spherical cubemap. (" +
-				path.generic_string() + ")");
-		}
+			logSystem->trace("Converted spherical cubemap. (" + path.generic_string() + ")");
 		return;
 	}
 	#endif
@@ -731,28 +731,24 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
-		throw runtime_error("Invalid cubemap size. ("
-			"path: " + path.generic_string() + ")");
+		throw runtime_error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		throw runtime_error("Invalid cubemap side size. ("
-			"path: " + path.generic_string() + ")");
+		throw runtime_error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		throw runtime_error("Invalid cubemap side size. ("
-			"path: " + path.generic_string() + ")");
+		throw runtime_error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
-		throw runtime_error("Invalid cubemap format. ("
-			"path: " + path.generic_string() + ")");
+		throw runtime_error("Invalid cubemap format. (path: " + path.generic_string() + ")");
 	}
 	#endif
 
@@ -760,19 +756,19 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	format = leftFormat;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile fileType,
 	vector<uint8>& pixels, int2& imageSize, Image::Format& format)
 {
 	if (fileType == ImageFile::Webp)
 	{
 		if (!WebPGetInfo(data, dataSize, &imageSize.x, &imageSize.y))
-			throw runtime_error("Invalid image data.");
+			throw runtime_error("Invalid WebP image data.");
 		pixels.resize(imageSize.x * imageSize.y * sizeof(Color));
 		auto decodeResult = WebPDecodeRGBAInto(data, dataSize,
 			pixels.data(), pixels.size(), (int)(imageSize.x * sizeof(Color)));
 		if (!decodeResult)
-			throw runtime_error("Invalid image data.");
+			throw runtime_error("Invalid WebP image data.");
 	}
 	else if (fileType == ImageFile::Exr)
 	{
@@ -808,7 +804,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 		auto pixelData = (uint8*)stbi_load_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
 		if (!pixelData)
-			throw runtime_error("Invalid image data.");
+			throw runtime_error("Invalid PNG/JPG image data.");
 		pixels.resize(imageSize.x * imageSize.y * sizeof(Color));
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
@@ -818,22 +814,19 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 		auto pixelData = (uint8*)stbi_loadf_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
 		if (!pixelData)
-			throw runtime_error("Invalid image data.");
+			throw runtime_error("Invalid HDR image data.");
 		pixels.resize(imageSize.x * imageSize.y * sizeof(float4));
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
 	}
 	else abort();
 
-	format =
-		fileType == ImageFile::Webp ||
-		fileType == ImageFile::Png ||
-		fileType == ImageFile::Jpg ?
-		Image::Format::SrgbR8G8B8A8 :
-		Image::Format::SfloatR32G32B32A32;
+	format = 
+		fileType == ImageFile::Webp || fileType == ImageFile::Png || fileType == ImageFile::Jpg ?
+		Image::Format::SrgbR8G8B8A8 : Image::Format::SfloatR32G32B32A32;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount,
 	uint8 downscaleCount, Image::Strategy strategy, bool linearData, bool loadAsync)
 {
@@ -967,7 +960,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 	return image;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data)
 {
 	#if GARDEN_DEBUG
@@ -1001,7 +994,6 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 			GARDEN_RESOURCES_PATH / "shaders",
 			GARDEN_APP_RESOURCES_PATH / "shaders"
 		};
-		bool compileResult = false;
 
 		fs::path inputPath, outputPath;
 		if (hasVertexShader)
@@ -1017,6 +1009,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 
 		auto logSystem = manager->tryGet<LogSystem>();
 
+		auto compileResult = false;
 		try
 		{
 			auto dataPath = data.path; data.path = dataPath.filename();
@@ -1024,30 +1017,20 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 				inputPath, outputPath, includePaths, data);
 			data.path = dataPath;
 		}
-		catch(const exception& e)
+		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() << "(.frag):" << e.what() << "\n"; // TODO: get info which stage throw.
-
 			if (logSystem)
-			{
-				logSystem->error("Failed to compile graphics shaders. ("
-					"name: " + data.path.generic_string() + ")");
-			}
+				logSystem->error("Failed to compile graphics shaders. (name: " + data.path.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
-		{
-			throw runtime_error("Shader files does not exist. ("
-				"path: " + data.path.generic_string() + ")");
-		}
-
+			throw runtime_error("Shader files does not exist. (path: " + data.path.generic_string() + ")");
 		if (logSystem)
-		{
-			logSystem->trace("Compiled graphics shaders. (" +
-				data.path.generic_string() + ")");
-		}
+			logSystem->trace("Compiled graphics shaders. (" + data.path.generic_string() + ")");
+
 		return true;
 	}
 	#endif
@@ -1072,7 +1055,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	ID<Framebuffer> framebuffer, bool useAsync, bool loadAsync, uint8 subpassIndex,
 	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConst>& specConsts,
@@ -1080,6 +1063,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(framebuffer);
+
 	auto& framebufferView = **GraphicsAPI::framebufferPool.get(framebuffer);
 	auto& subpasses = framebufferView.getSubpasses();
 
@@ -1208,21 +1192,19 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		#if GARDEN_DEBUG
 		auto logSystem = getManager()->tryGet<LogSystem>();
 		if (logSystem)
-		{
-			logSystem->trace("Loaded graphics pipeline. (" + 
-				path.generic_string() + ")");
-		}
+			logSystem->trace("Loaded graphics pipeline. (" +  path.generic_string() + ")");
 		#endif
 	}
 
 	return pipeline;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 {
 	#if GARDEN_DEBUG
 	auto computePath = "shaders" / data.path; computePath += ".comp";
+
 	fs::path computeInputPath;
 	if (!getResourceFilePath(computePath, computeInputPath))
 		throw runtime_error("Compute shader file does not exist, or it is ambiguous.");
@@ -1240,10 +1222,10 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 			GARDEN_RESOURCES_PATH / "shaders",
 			GARDEN_APP_RESOURCES_PATH / "shaders"
 		};
-		bool compileResult = false;
 
 		auto logSystem = manager->tryGet<LogSystem>();
 
+		auto compileResult = false;
 		try
 		{
 			auto dataPath = data.path; data.path = dataPath.filename();
@@ -1251,30 +1233,20 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 				computeOutputPath.parent_path(), includePaths, data);
 			data.path = dataPath;
 		}
-		catch(const exception& e)
+		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() << ":" << e.what() << "\n";
-
 			if (logSystem)
-			{
-				logSystem->error("Failed to compile compute shader. ("
-					"name: " + data.path.generic_string() + ")");
-			}
+				logSystem->error("Failed to compile compute shader. (name: " + data.path.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
-		{
-			throw runtime_error("Shader file does not exist. ("
-				"path: " + data.path.generic_string() + ")");
-		}
-		
+			throw runtime_error("Shader file does not exist. (path: " + data.path.generic_string() + ")");
 		if (logSystem)
-		{
-			logSystem->trace("Compiled compute shader. (" +
-				data.path.generic_string() + ")");
-		}
+			logSystem->trace("Compiled compute shader. (" + data.path.generic_string() + ")");
+
 		return true;
 	}
 	#endif
@@ -1298,7 +1270,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	bool useAsync, bool loadAsync, uint32 maxBindlessCount,
 	const map<string, GraphicsPipeline::SpecConst>& specConsts)
@@ -1306,8 +1278,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	GARDEN_ASSERT(!path.empty());
 
 	auto version = GraphicsAPI::computePipelineVersion++;
-	auto pipeline = GraphicsAPI::computePipelinePool.create(
-		path, maxBindlessCount, useAsync, version);
+	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsync, version);
 
 	if (loadAsync && threadSystem)
 	{
@@ -1374,17 +1345,14 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		#if GARDEN_DEBUG
 		auto logSystem = getManager()->tryGet<LogSystem>();
 		if (logSystem)
-		{
-			logSystem->trace("Loaded compute pipeline. (" +
-				path.generic_string() + ")");
-		}
+			logSystem->trace("Loaded compute pipeline. (" + path.generic_string() + ")");
 		#endif
 	}
 
 	return pipeline;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void ResourceSystem::loadScene(const fs::path& path)
 {
 	fs::path scenePath, filePath = "scenes" / path; filePath += ".scene";
@@ -1430,6 +1398,8 @@ void ResourceSystem::loadScene(const fs::path& path)
 		logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
 	#endif
 }
+
+//**********************************************************************************************************************
 void ResourceSystem::storeScene(const fs::path& path)
 {
 	auto scenesPath = GARDEN_APP_RESOURCES_PATH / "scenes";
@@ -1512,746 +1482,8 @@ void ResourceSystem::clearScene()
 	#endif
 }
 
-#if GARDEN_DEBUG
 //--------------------------------------------------------------------------------------------------
-Model::~Model()
-{
-	cgltf_free((cgltf_data*)instance);
-}
-uint32 Model::getSceneCount() const noexcept
-{
-	GARDEN_ASSERT(instance);
-	auto cgltf = (cgltf_data*)instance;
-	return (uint32)cgltf->scenes_count;
-}
-Model::Scene Model::getScene(uint32 index) const noexcept
-{
-	GARDEN_ASSERT(instance);
-	auto cgltf = (cgltf_data*)instance;
-	GARDEN_ASSERT(index < cgltf->scenes_count);
-	return Scene(&cgltf->scenes[index]);
-}
-
-//--------------------------------------------------------------------------------------------------
-string_view Model::Scene::getName() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto scene = (cgltf_scene*)data;
-	return scene->name ? scene->name : "";
-}
-uint32 Model::Scene::getNodeCount() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto scene = (cgltf_scene*)data;
-	return (uint32)scene->nodes_count;
-}
-Model::Node Model::Scene::getNode(uint32 index) const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto scene = (cgltf_scene*)data;
-	GARDEN_ASSERT(index < scene->nodes_count);
-	return Node(scene->nodes[index]);
-}
-
-//--------------------------------------------------------------------------------------------------
-string_view Model::Node::getName() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return node->name ? node->name : "";
-}
-Model::Node Model::Node::getParent() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return Node(node->parent);
-}
-uint32 Model::Node::getChildrenCount() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return (uint32)node->children_count;
-}
-Model::Node Model::Node::getChildren(uint32 index) const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	GARDEN_ASSERT(index < node->children_count);
-	return Node(node->children[index]);
-}
-float3 Model::Node::getPosition() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	if (!node->has_translation)
-	{
-		if (!node->has_matrix)
-			return float3(0.0f);
-		auto matrix = node->matrix;
-		return float3(-matrix[12], matrix[13], matrix[14]);
-	}
-	auto position = node->translation;
-	return float3(-position[0], position[1], position[2]);
-}
-float3 Model::Node::getScale() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	if (!node->has_scale)
-	{
-		if (!node->has_matrix)
-			return float3(1.0f);
-		auto matrix = node->matrix;
-		auto model = float4x4(
-			matrix[0], matrix[4], matrix[8], matrix[12],
-			matrix[1], matrix[5], matrix[9], matrix[13],
-			matrix[2], matrix[6], matrix[10], matrix[14],
-			matrix[3], matrix[7], matrix[11], matrix[15]);
-		return extractScale(model);
-	}
-	auto scale = node->scale;
-	return float3(scale[0], scale[1], scale[2]);
-}
-quat Model::Node::getRotation() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	if (!node->has_rotation)
-	{
-		if (!node->has_matrix)
-			return quat::identity;
-		auto matrix = node->matrix;
-		auto model = float4x4(
-			matrix[0], matrix[4], matrix[8], matrix[12],
-			matrix[1], matrix[5], matrix[9], matrix[13],
-			matrix[2], matrix[6], matrix[10], matrix[14],
-			matrix[3], matrix[7], matrix[11], matrix[15]);
-		auto rotation = extractQuat(model);
-		rotation.y = -rotation.y; rotation.z = -rotation.z;
-		return rotation;
-	}
-	auto rotation = node->rotation;
-	return quat(rotation[0], -rotation[1], -rotation[2], rotation[3]);
-}
-bool Model::Node::hashMesh() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return node->mesh;
-}
-Model::Mesh Model::Node::getMesh() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return Mesh(node->mesh); // TODO: gpu instancing
-}
-bool Model::Node::hasCamera() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return node->camera;
-}
-bool Model::Node::hasLight() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto node = (cgltf_node*)data;
-	return node->light;
-}
-
-//--------------------------------------------------------------------------------------------------
-string_view Model::Mesh::getName() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto mesh = (cgltf_mesh*)data;
-	return mesh->name ? mesh->name : "";
-}
-psize Model::Mesh::getPrimitiveCount() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto mesh = (cgltf_mesh*)data;
-	return (psize)mesh->primitives_count;
-}
-Model::Primitive Model::Mesh::getPrimitive(psize index) const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto mesh = (cgltf_mesh*)data;
-	GARDEN_ASSERT(index < mesh->primitives_count);
-	return Primitive(&mesh->primitives[index]);
-}
-
-//--------------------------------------------------------------------------------------------------
-Model::Primitive::Type Model::Primitive::getType() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	return (Type)primitive->type;
-}
-uint32 Model::Primitive::getAttributeCount() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	return (uint32)primitive->attributes_count;
-}
-Model::Attribute Model::Primitive::getAttribute(int32 index) const noexcept
-{
-	GARDEN_ASSERT(data);
-	GARDEN_ASSERT(index >= 0);
-	auto primitive = (cgltf_primitive*)data;
-	GARDEN_ASSERT(index < primitive->attributes_count);
-	return Attribute(&primitive->attributes[index]);
-}
-Model::Attribute Model::Primitive::getAttribute(Attribute::Type type) const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	auto attributes = primitive->attributes;
-	auto count = (uint32)primitive->attributes_count;
-
-	for (uint32 i = 0; i < count; i++)
-	{
-		if (attributes[i].type != (cgltf_attribute_type)type)
-			continue;
-		return Model::Attribute(&attributes[i]);
-	}
-
-	abort();
-}
-int32 Model::Primitive::getAttributeIndex(Attribute::Type type) const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	auto attributes = primitive->attributes;
-	auto count = (int32)primitive->attributes_count;
-
-	for (int32 i = 0; i < count; i++)
-	{
-		if (attributes[i].type == (cgltf_attribute_type)type)
-			return i;
-	}
-
-	return -1;
-}
-Model::Accessor Model::Primitive::getIndices() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	return Accessor(primitive->indices);
-}
-bool Model::Primitive::hasMaterial() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	return primitive->material && primitive->material->has_pbr_metallic_roughness;
-}
-Model::Material Model::Primitive::getMaterial() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto primitive = (cgltf_primitive*)data;
-	return Material(primitive->material);
-}
-psize Model::Primitive::getVertexCount(
-	const vector<Attribute::Type>& attributes) const noexcept
-{
-	GARDEN_ASSERT(data);
-	psize vertexCount = 0;
-	for (psize i = 0; i < (psize)attributes.size(); i++)
-	{
-		auto attributeIndex = getAttributeIndex(attributes[i]);
-		if (attributeIndex < 0)
-			continue;
-		auto count = getAttribute(attributeIndex).getAccessor().getCount();
-		if (count > vertexCount)
-			vertexCount = count;
-	}
-	return vertexCount;
-}
-psize Model::Primitive::getBinaryStride(
-	const vector<Attribute::Type>& attributes) noexcept
-{
-	GARDEN_ASSERT(!attributes.empty());
-	psize stride = 0;
-	for (uint32 i = 0; i < (uint32)attributes.size(); i++)
-		stride += toBinarySize(attributes[i]);
-	return stride;
-}
-void Model::Primitive::copyVertices(const vector<Attribute::Type>& attributes,
-	uint8* _destination, psize count, psize offset) const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto vertexCount = getVertexCount(attributes);
-
-	GARDEN_ASSERT((count == 0 && offset == 0) ||
-		(count + offset <= vertexCount));
-	if (count == 0)
-		count = vertexCount;
-
-	auto binaryStride = getBinaryStride(attributes);
-	psize binaryOffset = 0;
-
-	for (uint32 i = 0; i < (uint32)attributes.size(); i++)
-	{
-		auto attributeType = attributes[i];
-		auto attributeIndex = getAttributeIndex(attributeType);
-		auto binarySize = toBinarySize(attributeType);
-		auto destination = _destination + binaryOffset;
-
-		if (attributeIndex >= 0 && attributeType != Attribute::Type::Tangent)
-		{
-			auto accessor = getAttribute(attributeIndex).getAccessor();
-			auto sourceStride = accessor.getStride();
-			auto sourceCount = std::min(accessor.getCount(), count);
-			auto source = accessor.getBuffer() + offset * sourceStride;
-			
-			for (psize j = 0; j < sourceCount; j++)
-			{
-				memcpy(destination + j * binaryStride,
-					source + j * sourceStride, binarySize);
-			}
-
-			if (attributeType == Attribute::Type::Position ||
-				attributeType == Attribute::Type::Normal) // TODO: joints?
-			{
-				for (psize j = 0; j < sourceCount; j++)
-				{
-					auto value = *(const float*)(destination + j * binaryStride);
-					*(float*)(destination + j * binaryStride) = -value;
-				}
-			}
-
-			for (psize j = sourceCount; j < vertexCount; j++)
-				memset(destination + j * binaryStride, 0, binarySize);
-		}
-		else
-		{
-			for (psize j = 0; j < count; j++)
-				memset(destination + j * binaryStride, 0, binarySize);
-		}
-
-		binaryOffset += binarySize;
-	}
-}
-
-//--------------------------------------------------------------------------------------------------
-Model::Attribute::Type Model::Attribute::getType() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto attribute = (cgltf_attribute*)data;
-	return (Type)attribute->type;
-}
-Model::Accessor Model::Attribute::getAccessor() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto attribute = (cgltf_attribute*)data;
-	return Accessor(attribute->data);
-}
-
-//--------------------------------------------------------------------------------------------------
-Model::Accessor::ComponentType Model::Accessor::getComponentType() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	return (ComponentType)accessor->component_type;
-}
-Model::Accessor::ValueType Model::Accessor::getValueType() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	return (ValueType)accessor->type;
-}
-Aabb Model::Accessor::getAabb() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	auto min = accessor->min, max = accessor->max;
-	return Aabb(float3(-max[0], min[1], min[2]),
-		float3(-min[0], max[1], max[2]));
-}
-bool Model::Accessor::hasAabb() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	return accessor->has_min && accessor->has_max;
-}
-psize Model::Accessor::getCount() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	return (psize)accessor->count;
-}
-psize Model::Accessor::getStride() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	return (psize)accessor->stride;
-}
-const uint8* Model::Accessor::getBuffer() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto accessor = (cgltf_accessor*)data;
-	GARDEN_ASSERT(!accessor->is_sparse); // TODO: support sparse.
-	GARDEN_ASSERT(accessor->buffer_view);
-	auto bufferView = accessor->buffer_view;
-
-	if (bufferView->data)
-		return (const uint8*)bufferView->data + accessor->offset;
-	if (!bufferView->buffer->data)
-		return nullptr;
-
-	return (const uint8*)bufferView->buffer->data +
-		bufferView->offset + accessor->offset;
-}
-psize Model::Accessor::getBinaryStride() const noexcept
-{
-	return toComponentCount(getValueType()) *
-		toBinarySize(getComponentType());
-}
-
-//--------------------------------------------------------------------------------------------------
-void Model::Accessor::copy(uint8* destination, psize count, psize offset) const noexcept
-{
-	GARDEN_ASSERT(data);
-	GARDEN_ASSERT(destination);
-	GARDEN_ASSERT(count + offset < getCount() ||
-		(count == 0 && offset == 0));
-
-	auto stride = getStride();
-	auto binaryStride = getBinaryStride();
-	auto source = getBuffer() + offset * stride;
-	if (count == 0)
-		count = getCount();
-
-	if (binaryStride == stride)
-	{
-		memcpy(destination, source, count * binaryStride);
-	}
-	else
-	{
-		for (psize i = 0; i < count; i++)
-			memcpy(destination + i * binaryStride, source + i * stride, binaryStride);
-	}
-}
-
-void Model::Accessor::copy(uint8* destination,
-	ComponentType componentType, psize count, psize offset) const noexcept
-{
-	auto sourceComponentType = getComponentType();
-	if (componentType == sourceComponentType)
-	{
-		copy(destination, count, offset);
-		return;
-	}
-	
-	// TODO: Take into account variable type.
-
-	auto stride = getStride();
-	auto binaryStride = getBinaryStride();
-	auto source = getBuffer() + offset * stride;
-	if (count == 0)
-		count = getCount();
-
-	if (sourceComponentType == ComponentType::R8U)
-	{
-		if (componentType == ComponentType::R16U)
-		{
-			auto dst = (uint16*)destination;
-			if (binaryStride == stride)
-			{
-				auto src = (uint8*)source;
-				for (psize i = 0; i < count; i++)
-					dst[i] = (uint16)src[i];
-			}
-			else
-			{
-				for (psize i = 0; i < count; i++)
-					dst[i] = (uint16)*((uint8*)(source + i * stride));
-			}
-		}
-		else if (componentType == ComponentType::R32U)
-		{
-			auto dst = (uint32*)destination;
-			if (binaryStride == stride)
-			{
-				auto src = (uint8*)source;
-				for (psize i = 0; i < count; i++)
-					dst[i] = (uint32)src[i];
-			}
-			else
-			{
-				for (psize i = 0; i < count; i++)
-					dst[i] = (uint32)*((uint8*)(source + i * stride));
-			}
-		}
-		else abort(); // TODO:
-	}
-	else abort(); // TODO:
-}
-
-//--------------------------------------------------------------------------------------------------
-string_view Model::Material::getName() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->name ? material->name : "";
-}
-bool Model::Material::isUnlit() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->unlit;
-}
-bool Model::Material::isDoubleSided() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->double_sided;
-}
-Model::Material::AlphaMode Model::Material::getAlphaMode() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return (AlphaMode)material->alpha_mode;
-}
-float Model::Material::getAlphaCutoff() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->alpha_cutoff;
-}
-float3 Model::Material::getEmissiveFactor() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	auto factor = material->emissive_factor;
-	auto result = float3(factor[0], factor[1], factor[2]);
-	if (material->has_emissive_strength)
-		result *= material->emissive_strength.emissive_strength;
-	return result;
-}
-bool Model::Material::hasBaseColorTexture() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->pbr_metallic_roughness.base_color_texture.texture;
-}
-Model::Texture Model::Material::getBaseColorTexture() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	GARDEN_ASSERT(material->pbr_metallic_roughness.base_color_texture.texture);
-	return Texture(&material->pbr_metallic_roughness.base_color_texture);
-}
-float4 Model::Material::getBaseColorFactor() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	auto factor = material->pbr_metallic_roughness.base_color_factor;
-	return float4(factor[0], factor[1], factor[2], factor[3]);
-}
-bool Model::Material::hasOrmTexture() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->pbr_metallic_roughness.metallic_roughness_texture.texture;
-}
-Model::Texture Model::Material::getOrmTexture() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return Texture(&material->pbr_metallic_roughness.metallic_roughness_texture);
-}
-float Model::Material::getMetallicFactor() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->pbr_metallic_roughness.metallic_factor;
-}
-float Model::Material::getRoughnessFactor() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->pbr_metallic_roughness.roughness_factor;
-}
-bool Model::Material::hasNormalTexture() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return material->normal_texture.texture;
-}
-Model::Texture Model::Material::getNormalTexture() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto material = (cgltf_material*)data;
-	return Texture(&material->normal_texture);
-}
-
-//--------------------------------------------------------------------------------------------------
-string_view Model::Texture::getName() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto texture = (cgltf_texture_view*)data;
-	GARDEN_ASSERT(texture->texture);
-	return texture->texture->name ? texture->texture->name : "";
-}
-string_view Model::Texture::getPath() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto texture = (cgltf_texture_view*)data;
-	GARDEN_ASSERT(texture->texture);
-	GARDEN_ASSERT(texture->texture->image);
-	if (!texture->texture->image->uri)
-		return "";
-	auto length = strlen(texture->texture->image->uri);
-	if (length <= 4)
-		return "";
-	return string_view(texture->texture->image->uri, length - 4);
-}
-const uint8* Model::Texture::getBuffer() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto texture = (cgltf_texture_view*)data;
-	GARDEN_ASSERT(texture->texture);
-	GARDEN_ASSERT(texture->texture->image);
-	auto bufferView = texture->texture->image->buffer_view;
-	if (!bufferView)
-		return nullptr;
-	if (bufferView->data)
-		return (const uint8*)bufferView->data;
-	if (!bufferView->buffer->data)
-		return nullptr;
-	return (const uint8*)bufferView->buffer->data + bufferView->offset;
-}
-psize Model::Texture::getBufferSize() const noexcept
-{
-	GARDEN_ASSERT(data);
-	auto texture = (cgltf_texture_view*)data;
-	GARDEN_ASSERT(texture->texture);
-	GARDEN_ASSERT(texture->texture->image);
-	auto bufferView = texture->texture->image->buffer_view;
-	if (!bufferView)
-		return 0;
-	if (bufferView->data)
-		return bufferView->size;
-	if (!bufferView->buffer->data)
-		return 0;
-	return bufferView->buffer->size;
-}
-
-//--------------------------------------------------------------------------------------------------
-static string_view cgltfToString(cgltf_result result)
-{
-	switch (result)
-	{
-		case cgltf_result_data_too_short: return "Data too short";
-		case cgltf_result_unknown_format: return "Unknown format";
-		case cgltf_result_invalid_json: return "Invalid JSON";
-		case cgltf_result_invalid_gltf: return "Invalid glTF";
-		case cgltf_result_invalid_options: return "Invalid options";
-		case cgltf_result_file_not_found: return "File not found";
-		case cgltf_result_io_error: return "IO error";
-		case cgltf_result_out_of_memory: return "Out of memory";
-		case cgltf_result_legacy_gltf: return "Legacy glTF";
-		default: abort();
-	}
-}
-
-//--------------------------------------------------------------------------------------------------
-shared_ptr<Model> ResourceSystem::loadModel(const fs::path& path)
-{
-	GARDEN_ASSERT(!path.empty());
-	fs::path glbPath, gltfPath;
-	int32 hasGlbFile = 0, hasGltfFile = 0;
-	// TODO: Use custom compressed garden model format. Load them from the pack.
-
-	auto modelPath = fs::path("models") / path; modelPath += ".glb";
-	if (getResourceFilePath(modelPath, glbPath))
-		hasGlbFile = 1;
-	modelPath.replace_extension(".gltf");
-	if (getResourceFilePath(modelPath, gltfPath))
-		hasGltfFile = 1;
-
-	if (hasGlbFile + hasGltfFile != 1)
-	{
-		throw runtime_error("Model file does not exist, or it is ambiguous. ("
-			"path: " + path.generic_string() + ")");
-	}
-
-	cgltf_options options;
-	memset(&options, 0, sizeof(cgltf_options));
-	fs::path filePath;
-
-	if (hasGlbFile)
-	{
-		filePath = std::move(glbPath);
-		options.type = cgltf_file_type_glb;
-	}
-	else if (hasGltfFile)
-	{
-		filePath = std::move(gltfPath);
-		options.type = cgltf_file_type_gltf;
-	}
-	else abort();
-
-	vector<uint8> dataBuffer;
-	loadBinaryFile(filePath, dataBuffer);
-	auto itemData = dataBuffer.data();
-	auto itemSize = (uint32)dataBuffer.size();
-	
-	cgltf_data* cgltfData = nullptr;
-	auto result = cgltf_parse(&options, itemData, itemSize, &cgltfData);
-
-	if (result != cgltf_result_success)
-	{
-		throw runtime_error("Failed to load model. ("
-			"name: " + path.generic_string() + ", "
-			"error: " + string(cgltfToString(result)) + ")");
-	}
-
-	auto logSystem = getManager()->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->trace("Loaded model. (" + path.generic_string() + ")");
-
-	filePath.remove_filename();
-	auto relativePath = path.parent_path();
-
-	auto model = make_shared<Model>(cgltfData,
-		std::move(relativePath), std::move(filePath));
-	if (hasGlbFile)
-		model->data = std::move(dataBuffer);
-	return model;
-}
-void ResourceSystem::loadModelBuffers(shared_ptr<Model> model)
-{
-	GARDEN_ASSERT(model);
-	GARDEN_ASSERT(model->instance);
-	model->buffersLocker.lock();
-
-	if (model->isBuffersLoaded)
-	{
-		model->buffersLocker.unlock();
-		return;
-	}
-
-	auto cgltf = (cgltf_data*)model->instance;
-	cgltf_options options;
-	memset(&options, 0, sizeof(cgltf_options));
-
-	auto pathString = model->absolutePath.generic_string();
-	auto result = cgltf_load_buffers(&options, cgltf, pathString.c_str());
-
-	if (result != cgltf_result_success)
-	{
-		model->buffersLocker.unlock();
-
-		throw runtime_error("Failed to load model buffers. ("
-			"path: " + model->relativePath.generic_string() + ", "
-			"error: " + string(cgltfToString(result)) + ")");
-	}
-
-	model->isBuffersLoaded = true;
-	model->buffersLocker.unlock();
-}
-
-//--------------------------------------------------------------------------------------------------
+/* TODO: refactor
 Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor accessor,
 	Buffer::Bind bind, Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)
 {
@@ -2325,7 +1557,7 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 	return buffer;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Primitive primitive,
 	Buffer::Bind bind, const vector<Model::Attribute::Type>& attributes,
 	Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)
@@ -2411,5 +1643,4 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 
 	return buffer;
 }
-#endif
 */

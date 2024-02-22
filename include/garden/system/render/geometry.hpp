@@ -97,7 +97,7 @@ protected:
 		uint8& index, GeometryRenderComponent* geometryComponent) { }
 	void destroyResources(GeometryRenderComponent* geometryComponent);
 
-	friend class GeometryEditor;
+	friend class GeometryEditorSystem;
 public:
 	ID<GraphicsPipeline> getPipeline();
 
@@ -147,7 +147,7 @@ protected:
 	virtual ID<GraphicsPipeline> createPipeline() = 0;
 	void destroyResources(GeometryShadowRenderComponent* geometryShadowComponent);
 
-	friend class GeometryEditor;
+	friend class GeometryEditorSystem;
 public:
 	ID<GraphicsPipeline> getPipeline();
 };

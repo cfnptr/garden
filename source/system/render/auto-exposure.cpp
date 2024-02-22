@@ -16,10 +16,13 @@
 
 /*
 #include "garden/system/render/auto-exposure.hpp"
-#include "garden/system/render/editor/auto-exposure.hpp"
 #include "garden/system/render/tone-mapping.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/auto-exposure.hpp"
+#endif
 
 using namespace garden;
 

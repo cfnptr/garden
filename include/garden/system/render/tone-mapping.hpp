@@ -62,7 +62,7 @@ private:
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class ToneMappingEditor;
+	friend class ToneMappingEditorSystem;
 public:
 	float exposureCoeff = 1.0f;
 	float ditherIntensity = (0.5f / 255.0f); // r8g8b8

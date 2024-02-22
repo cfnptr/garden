@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,25 +11,32 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/hierarchy.hpp"
+#include "garden/editor/system/render/hierarchy.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
+#include "garden/system/transform.hpp"
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-HierarchyEditor::HierarchyEditor(EditorRenderSystem* system)
+//**********************************************************************************************************************
+HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager,
+	EditorRenderSystem* system) : EditorSystem(manager, system)
 {
-	auto manager = system->getManager();
 	if (manager->has<TransformSystem>())
-		system->registerBarTool([this]() { onBarTool(); });
-	this->system = system;
+		SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
+}
+HierarchyEditorSystem::~HierarchyEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		TRY_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static void updateHierarchyClick(Manager* manager, TransformComponent* transform)
 {
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -42,8 +48,7 @@ static void updateHierarchyClick(Manager* manager, TransformComponent* transform
 
 		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && graphicsSystem->camera)
 		{
-			auto cameraTransform = manager->get<TransformComponent>(
-				graphicsSystem->camera);
+			auto cameraTransform = manager->get<TransformComponent>(graphicsSystem->camera);
 			auto model = transform->calcModel();
 			auto offset = float3(0.0f, 0.0f, -2.0f) * cameraTransform->rotation;
 			cameraTransform->position = getTranslation(model) + offset;
@@ -107,8 +112,9 @@ static void updateHierarchyClick(Manager* manager, TransformComponent* transform
 		ImGui::EndDragDropSource();
 	}
 }
-static void renderHierarchyEntity(Manager* manager,
-	TransformComponent* transform, ID<Entity> selectedEntity)
+
+//**********************************************************************************************************************
+static void renderHierarchyEntity(Manager* manager, TransformComponent* transform, ID<Entity> selectedEntity)
 {
 	auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
 	if (transform->getEntity() == selectedEntity)
@@ -141,14 +147,14 @@ static bool findCaseInsensitive(const string& haystack, const string& needle)
 	return (it != haystack.end() );
 }
 
-//--------------------------------------------------------------------------------------------------
-void HierarchyEditor::render()
+//**********************************************************************************************************************
+void HierarchyEditorSystem::renderEditor()
 {
 	if (showWindow)
 	{
 		if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 		{
-			auto manager = system->getManager();
+			auto manager = getManager();
 			auto transformSystem = manager->get<TransformSystem>();
 			auto& components = transformSystem->getComponents();
 			auto componentData = (TransformComponent*)components.getData();
@@ -158,9 +164,7 @@ void HierarchyEditor::render()
 			ImGui::Checkbox("Aa", &hierarchyCaseSensitive);
 			ImGui::Separator();
 
-			ImGui::PushStyleColor(ImGuiCol_Header,
-				ImGui::GetStyle().Colors[ImGuiCol_Button]);
-
+			ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 			if (hierarchySearch.empty())
 			{
 				for (uint32 i = 0; i < componentOccupancy; i++)
@@ -190,10 +194,10 @@ void HierarchyEditor::render()
 							continue;
 					}
 
-					auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow |
-						ImGuiTreeNodeFlags_Leaf);
+					auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Leaf);
 					if (transform->getEntity() == system->selectedEntity)
 						flags |= ImGuiTreeNodeFlags_Selected;
+					
 					if (ImGui::TreeNodeEx(transform->name.c_str(), flags))
 					{
 						updateHierarchyClick(manager, transform);
@@ -208,7 +212,8 @@ void HierarchyEditor::render()
 	}
 }
 
-void HierarchyEditor::onBarTool()
+//**********************************************************************************************************************
+void HierarchyEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("Entity Hierarchy"))
 		showWindow = true;

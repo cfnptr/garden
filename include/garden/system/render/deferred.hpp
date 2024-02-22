@@ -89,7 +89,7 @@ class DeferredRenderSystem final : public System, public IRenderSystem
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class DeferredEditor;
+	friend class DeferredEditorSystem;
 public:
 	bool runSwapchainPass = true;
 

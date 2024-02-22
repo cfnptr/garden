@@ -16,8 +16,11 @@
 
 /*
 #include "garden/system/render/deferred.hpp"
-#include "garden/system/render/editor/deferred.hpp"
 #include "garden/system/settings.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/deferred.hpp"
+#endif
 
 using namespace garden;
 

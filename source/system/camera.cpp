@@ -13,10 +13,14 @@
 // limitations under the License.
 
 #include "garden/system/camera.hpp"
-#include "garden/system/editor/camera.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/camera.hpp"
+#endif
 
 using namespace garden;
 
+//**********************************************************************************************************************
 float4x4 CameraComponent::calcProjection() const noexcept
 {
 	if (type == Type::Perspective)
@@ -33,32 +37,16 @@ float4x4 CameraComponent::calcProjection() const noexcept
 CameraSystem::CameraSystem(Manager* manager) : System(manager)
 {
 	#if GARDEN_EDITOR
-	SUBSCRIBE_TO_EVENT("Init", CameraSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", CameraSystem::deinit);
+	if (manager->has<EditorRenderSystem>())
+		manager->createSystem<CameraEditorSystem>(this);
 	#endif
 }
 CameraSystem::~CameraSystem()
 {
 	#if GARDEN_EDITOR
-	auto manager = getManager();
-	if (manager->isRunning())
-	{
-		UNSUBSCRIBE_FROM_EVENT("Init", TransformSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformSystem::deinit);
-	}
+	getManager()->tryDestroySystem<CameraEditorSystem>();
 	#endif
 }
-
-#if GARDEN_EDITOR
-void CameraSystem::init()
-{
-	editor = new CameraEditor(this);
-}
-void CameraSystem::deinit()
-{
-	delete (CameraEditor*)editor;
-}
-#endif
 
 //**********************************************************************************************************************
 type_index CameraSystem::getComponentType() const

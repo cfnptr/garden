@@ -14,20 +14,22 @@
 
 #include "garden/system/graphics.hpp"
 #include "garden/system/log.hpp"
-#include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
-#include "garden/system/transform.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/system/camera.hpp"
+#include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
-#include "garden/graphics/primitive.hpp"
-#include "garden/system/settings.hpp"
-#include "garden/system/render/deferred.hpp"
+#include "garden/resource/primitive.hpp"
 #include "mpio/os.hpp"
 
+#if GARDEN_DEBUG
+#include "garden/editor/system/graphics.hpp"
+#endif
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
 #endif
@@ -40,7 +42,7 @@
 
 using namespace mpio;
 using namespace garden;
-using namespace garden::graphics::primitive;
+using namespace garden::primitive;
 
 #if GARDEN_EDITOR
 //**********************************************************************************************************************
@@ -181,10 +183,16 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 	manager->registerEventAfter("Render", "Update");
 	manager->registerEventAfter("Present", "Render");
 	manager->registerEvent("SwapchainRecreate");
+
 	SUBSCRIBE_TO_EVENT("PreInit", GraphicsSystem::preInit);
 	SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
+
+	#if GARDEN_EDITOR
+	if (manager->has<EditorRenderSystem>())
+		manager->createSystem<GraphicsEditorSystem>(this);
+	#endif
 
 	auto appInfoSystem = manager->get<AppInfoSystem>();
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
@@ -218,10 +226,15 @@ GraphicsSystem::~GraphicsSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
+		#if GARDEN_EDITOR
+		manager->tryDestroySystem<GraphicsEditorSystem>();
+		#endif
+
 		UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
 		UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
+
 		manager->unregisterEvent("Render");
 		manager->unregisterEvent("Present");
 		manager->unregisterEvent("SwapchainRecreate");

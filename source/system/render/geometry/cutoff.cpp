@@ -18,7 +18,6 @@
 
 /*
 #include "garden/system/render/geometry/cutoff.hpp"
-#include "garden/system/render/editor/geometry.hpp"
 #include "garden/system/render/editor.hpp"
 #include "garden/system/resource.hpp"
 

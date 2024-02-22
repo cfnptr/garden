@@ -21,13 +21,16 @@
 #include "garden/system/transform.hpp"
 #include "platformer/defines.hpp"
 
+#if GARDEN_EDITOR
+#include "garden/system/render/editor.hpp"
+#endif
+
 using namespace ecsm;
 using namespace garden;
 using namespace platformer;
 
 void entryPoint()
 {
-
 	auto manager = new Manager();
 	createAppSystem(manager);
 	manager->createSystem<DoNotDestroySystem>();
@@ -39,6 +42,9 @@ void entryPoint()
 	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ThreadSystem>();
+	#if GARDEN_EDITOR
+	manager->createSystem<EditorRenderSystem>();
+	#endif
 	manager->initialize();
 	
 	auto graphicsSystem = manager->get<GraphicsSystem>();

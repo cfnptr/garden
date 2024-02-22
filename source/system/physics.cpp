@@ -16,12 +16,14 @@
 
 /*
 #include "garden/system/physics.hpp"
-#include "garden/system/editor/physics.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/log.hpp"
-
 #include "PxConfig.h"
 #include "PxPhysicsAPI.h"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/physics.hpp"
+#endif
 
 #define SCRATCH_BUFFER_SIZE 65536
 

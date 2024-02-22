@@ -14,17 +14,17 @@
 
 #pragma once
 #include "garden/system/camera.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-class CameraEditor final
+class CameraEditorSystem final : public EditorSystem<CameraSystem>
 {
-	CameraSystem* system = nullptr;
-	CameraEditor(CameraSystem* system);
+	CameraEditorSystem(Manager* manager, CameraSystem* system);
 	void onEntityInspector(ID<Entity> entity);
-	friend class CameraSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

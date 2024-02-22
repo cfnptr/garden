@@ -14,16 +14,16 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/tone-mapping.hpp"
+#include "garden/editor/system/render/ssao.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/settings.hpp"
 
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
-ToneMappingEditor::ToneMappingEditor(ToneMappingRenderSystem* system)
+SsaoEditor::SsaoEditor(SsaoRenderSystem* system)
 {
 	auto manager = system->getManager();
 	auto editorSystem = manager->get<EditorRenderSystem>();
@@ -32,43 +32,34 @@ ToneMappingEditor::ToneMappingEditor(ToneMappingRenderSystem* system)
 }
 
 //--------------------------------------------------------------------------------------------------
-static float exposureValue = 1.0f;
-
-void ToneMappingEditor::render()
+void SsaoEditor::render()
 {
 	if (!showWindow)
 		return;
 
-	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("SSAO (Ambient Occlusion)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		const auto toneMapperTypes = "ACES\0Uchimura\0\0";
-		if (ImGui::Combo("Tone Mapper", toneMapperType, toneMapperTypes))
-			system->setConsts(system->useBloomBuffer, (ToneMapper)toneMapperType);
-
-		ImGui::DragFloat("Exposure Coefficient",
-			&system->exposureCoeff, 0.01f, 0.0f, FLT_MAX);
-		ImGui::SliderFloat("Dither Intensity", &system->ditherIntensity, 0.0f, 1.0f);
-
-		auto lightingSystem = system->getManager()->get<LightingRenderSystem>();
-		ImGui::ColorEdit4("Shadow Color", (float*)&lightingSystem->shadowColor, 
-			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
-
-		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
+		if (ImGui::Checkbox("Enabled", &system->isEnabled))
 		{
-			ImGui::DragFloat("Value", &exposureValue, 0.01f);
-			if (ImGui::Button("Set Exposure"))
-				system->setExposure(exposureValue);
-			ImGui::SameLine();
-			if (ImGui::Button("Set Luminance"))
-				system->setLuminance(exposureValue);
+			auto settingsSystem = system->getManager()->tryGet<SettingsSystem>();
+			if (settingsSystem)
+				settingsSystem->setBool("useSSAO", system->isEnabled);
 		}
+
+		ImGui::DragFloat("Radius", &system->radius, 0.01f, 0.0f, FLT_MAX);
+		ImGui::SliderFloat("Bias", &system->bias, 0.0f, 1.0f);
+		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
+
+		int sampleCount = system->sampleCount;
+		if (ImGui::InputInt("Sample Count", &sampleCount))
+			system->setConsts(std::abs(sampleCount));
 	}
 	ImGui::End();
 }
 
-void ToneMappingEditor::onBarTool()
+void SsaoEditor::onBarTool()
 {
-	if (ImGui::MenuItem("Tone Mapping"))
+	if (ImGui::MenuItem("SSAO (Ambient Occlusion)"))
 		showWindow = true;
 }
 #endif

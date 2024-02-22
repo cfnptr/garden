@@ -111,13 +111,6 @@ class CameraSystem final : public System, public ISerializable
 {
 	LinearPool<CameraComponent, false> components;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-
-	void init();
-	void deinit();
-	#endif
-
 	/**
 	 * @brief Creates a new camera system instance.
 	 * @param[in,out] manager manager instance
@@ -138,7 +131,6 @@ class CameraSystem final : public System, public ISerializable
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity) final;
 
 	friend class ecsm::Manager;
-	friend class CameraEditor;
 };
 
 } // namespace garden

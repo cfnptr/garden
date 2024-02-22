@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/editor.hpp"
+#include "garden/system/render/mesh.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
@@ -21,19 +21,25 @@ namespace garden
 
 using namespace garden;
 using namespace garden::graphics;
+class SelectorEditorSystem;
 
-class ResourceEditor final
+class GizmosEditor final
 {
-	EditorRenderSystem* system = nullptr;
-	bool showWindow = false;
+	MeshRenderSystem* system = nullptr;
+	ID<GraphicsPipeline> frontGizmosPipeline = {};
+	ID<GraphicsPipeline> backGizmosPipeline = {};
+	ID<Buffer> fullArrowVertices = {};
+	float2 lastCursorPos = float2(0.0f);
+	uint32 dragMode = 0;
 
-	ResourceEditor(EditorRenderSystem* system);
+	GizmosEditor(MeshRenderSystem* system);
+	void preSwapchainRender();
 	
-	void render();
-	void onBarTool();
-
-	friend class EditorRenderSystem;
+	friend class SelectorEditorSystem;
+	friend class MeshRenderSystem;
 };
 
 } // namespace garden
 #endif
+
+

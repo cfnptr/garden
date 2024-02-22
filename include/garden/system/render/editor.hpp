@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Editor GUI render functions.
+ */
+
 #pragma once
 #include "garden/system/graphics.hpp"
 
@@ -29,95 +34,94 @@ using namespace ecsm;
 using namespace garden;
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
-class EditorRenderSystem final : public System, public IRenderSystem
+/**
+ * @brief Base editor system class.
+ * @tparam T type of the target system (ex. GraphicsSystem)
+ */
+template<class T>
+class EditorSystem : public System
 {
-	vector<function<void()>> barTools;
-	vector<function<void()>> barCreates;
-	vector<function<void()>> barFiles;
+protected:
+	T* system = nullptr;
+
+	/**
+	 * @brief Creates a new editor system instance.
+	 * 
+	 * @param[in] manager valid manager instance
+	 * @param[in] system valid target system instance
+	 */
+	EditorSystem(Manager* manager, T* system) : System(manager)
+	{
+		this->system = system;
+	}
+};
+
+/***********************************************************************************************************************
+ * @brief Editor GUI rendering system.
+ * 
+ * @details
+ * Editor is the suite of tools and interfaces provided by a game engine for creating and editing digital content, 
+ * including video games and interactive media. It encompasses tools for building scenes, managing digital assets like 
+ * models and textures, scripting behavior, testing the game within the editor, and designing user interfaces.
+ * 
+ * Registers events: RenderEditor, EditorBarTool.
+ */
+class EditorRenderSystem final : public System
+{
 	map<type_index, function<void(ID<Entity>)>> entityInspectors;
-	float* cpuFpsBuffer = nullptr;
-	float* gpuFpsBuffer = nullptr;
-	float* cpuSortedBuffer = nullptr;
-	float* gpuSortedBuffer = nullptr;
 	void* hierarchyEditor = nullptr;
 	void* resourceEditor = nullptr;
 	string scenePath = "unnamed";
-	int renderScaleType = 2;
 	bool demoWindow = false;
 	bool aboutWindow = false;
 	bool optionsWindow = false;
-	bool performanceStatistics = false;
-	bool memoryStatistics = false;
 	bool newScene = false;
 	bool exportScene = false;
 
+	/**
+	 * @brief Creates a new editor render system instance.
+	 * @param[in,out] manager manager instance
+	 */
+	EditorRenderSystem(Manager* manager);
+	/**
+	 * @brief Destroys editor render system instance.
+	 */
 	~EditorRenderSystem();
-	void initialize() final;
-	void terminate() final;
-	void render() final;
 
 	void showMainMenuBar();
 	void showAboutWindow();
 	void showOptionsWindow();
-	void showPerformanceStatistics();
-	void showMemoryStatistics();
 	void showEntityInspector();
 	void showNewScene();
 	void showExportScene();
 
+	void renderEditor();
+
 	friend class ecsm::Manager;
-	friend class HierarchyEditor;
+	friend class HierarchyEditorSystem;
 public:
-	uint32 opaqueDrawCount = 0, opaqueTotalCount = 0,
-		translucentDrawCount = 0, translucentTotalCount = 0;
 	Aabb selectedEntityAabb;
 	ID<Entity> selectedEntity;
 
-	void registerBarFile(function<void()> onBarFile) {
-		barFiles.push_back(onBarFile); }
-	void registerBarTool(function<void()> onBarTool) {
-		barTools.push_back(onBarTool); }
-	void registerBarCreate(function<void()> onBarCreate) {
-		barCreates.push_back(onBarCreate); }
-
-	void registerEntityInspector(type_index componentType,
-		function<void(ID<Entity>)> onComponent)
+	template<typename T = Component>
+	void registerEntityInspector(function<void(ID<Entity>)> onComponent)
 	{
-		auto result = entityInspectors.emplace(componentType, onComponent).second;
-		#if GARDEN_DEBUG
-		if (!result)
+		if (!entityInspectors.emplace(typeid(T), onComponent).second)
 		{
 			throw runtime_error("This component type is already registered. ("
-				"name: " + string(componentType.name()) + ")");
+				"name: " + string(typeid(T).name()) + ")");
 		}
-		#endif
+	}
+	template<typename T = Component>
+	void unregisterEntityInspector(function<void(ID<Entity>)> onComponent)
+	{
+		if (entityInspectors.erase(typeid(T)) == 0)
+		{
+			throw runtime_error("This component type is not registered. ("
+				"name: " + string(typeid(T).name()) + ")");
+		}
 	}
 };
-
-//--------------------------------------------------------------------------------------------------
-static string toBinarySizeString(uint64 size)
-{
-	if (size > (uint64)(1024 * 1024 * 1024))
-	{
-		auto floatSize = (double)size / (double)(1024 * 1024 * 1024);
-		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " GB";
-	}
-	if (size > (uint64)(1024 * 1024))
-	{
-		auto floatSize = (double)size / (double)(1024 * 1024);
-		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " MB";
-	}
-	if (size > (uint64)(1024))
-	{
-		auto floatSize = (double)size / (double)(1024);
-		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " KB";
-	}
-	return to_string(size) + " B";
-}
 
 } // namespace garden
 #endif

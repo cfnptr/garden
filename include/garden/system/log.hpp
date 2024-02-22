@@ -39,6 +39,7 @@ class LogSystem final : public System
 {
 private:
 	logy::Logger logger;
+	static LogSystem* instance;
 
 	/**
 	 * @brief Creates a new log system instance.
@@ -54,7 +55,6 @@ private:
 	~LogSystem() final;
 	
 	friend class ecsm::Manager;
-	friend class LogEditor;
 public:
 	/**
 	 * @brief Writes message to the log.
@@ -115,13 +115,15 @@ public:
 	 */
 	double getRotationTime() const noexcept { return logger.getRotationTime(); }
 
-	#if GARDEN_DEBUG
 	/**
-	 * @brief Logging system instance. (Debug Only)
-	 * @details You can use it without having the manager instance, for debugging.
+	 * @brief Returns logging system instance.
+	 * @warning Do not use it if you have several logging system instances.
 	 */
-	static LogSystem* instance;
-	#endif
+	static LogSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // Log system is not created
+		return instance;
+	}
 };
 
 } // namespace garden

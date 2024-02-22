@@ -16,9 +16,12 @@
 
 /*
 #include "garden/system/render/shadow-mapping.hpp"
-#include "garden/system/render/editor/shadow-mapping.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/shadow-mapping.hpp"
+#endif
 
 #include <cfloat>
 

@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/deferred.hpp"
+#include "garden/editor/system/render/deferred.hpp"
 #include "garden/system/render/lighting.hpp"
 
 #if GARDEN_EDITOR

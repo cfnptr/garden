@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -324,20 +324,18 @@ bool Swapchain::acquireNextImage()
 		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 
 	auto& buffer = buffers[bufferIndex];
-	auto secondaryCommandPools = buffer.secondaryCommandPools.data();
-
 	if (useThreading)
 	{
-		threadPool->addTasks(ThreadPool::Task([secondaryCommandPools](const ThreadPool::Task& task)
+		threadPool->addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
-			Vulkan::device.resetCommandPool(secondaryCommandPools[task.getTaskIndex()]);
+			Vulkan::device.resetCommandPool(buffer.secondaryCommandPools[task.getTaskIndex()]);
 		}),
 		(uint32)buffer.secondaryCommandPools.size());
 		threadPool->wait();
 	}
 	else
 	{
-		Vulkan::device.resetCommandPool(secondaryCommandPools[0]);
+		Vulkan::device.resetCommandPool(buffer.secondaryCommandPools[0]);
 	}
 
 	buffer.secondaryCommandBufferIndex = 0;
@@ -475,10 +473,9 @@ void Swapchain::beginSecondaryCommandBuffers(
 		inheritanceInfo.pNext = &inheritanceRenderingInfo;
 	}
 
-	auto beingInfoPtr = &beginInfo;
-	threadPool->addTasks(ThreadPool::Task([beingInfoPtr](const ThreadPool::Task& task)
+	threadPool->addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
 	{
-		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(*beingInfoPtr);
+		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(beginInfo);
 	}),
 	(uint32)Vulkan::secondaryCommandBuffers.size());
 	threadPool->wait();

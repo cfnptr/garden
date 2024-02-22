@@ -137,13 +137,6 @@ public:
 private:
 	TransformComponents components;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-
-	void init();
-	void deinit();
-	#endif
-
 	/**
 	 * @brief Creates a new transform system instance.
 	 * @param[in,out] manager manager instance
@@ -166,7 +159,6 @@ private:
 	static void destroyRecursive(Manager* manager, ID<Entity> entity);
 
 	friend class ecsm::Manager;
-	friend class TransformEditor;
 public:
 	/**
 	 * @brief Returns transform component pool.
