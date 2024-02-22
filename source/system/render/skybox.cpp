@@ -16,9 +16,12 @@
 
 /*
 #include "garden/system/render/skybox.hpp"
-#include "garden/system/render/editor/skybox.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/skybox.hpp"
+#endif
 
 using namespace garden;
 

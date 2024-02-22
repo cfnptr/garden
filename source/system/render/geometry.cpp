@@ -21,9 +21,12 @@
 #include "garden/system/render/geometry/translucent.hpp"
 #include "garden/system/render/geometry/opaque.hpp"
 #include "garden/system/render/geometry/cutoff.hpp"
-#include "garden/system/render/editor/geometry.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/geometry.hpp"
+#endif
 
 using namespace garden;
 

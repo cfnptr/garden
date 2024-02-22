@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ namespace
 
 		bool isMemoryMapped() const final { return true; }
 
-		bool read(char c[/*n*/], int n)
+		bool read(char c[], int n)
 		{
 			if (n + offset > size)
 				throw range_error("out of memory range");

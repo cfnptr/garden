@@ -1,5 +1,4 @@
-//--------------------------------------------------------------------------------------------------
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +11,29 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-#include "garden/system/editor/log.hpp"
-
-#if GARDEN_EDITOR
+#pragma once
 #include "garden/system/render/editor.hpp"
 
-// TODO:
+#if GARDEN_EDITOR
+namespace garden
+{
+
+class HierarchyEditorSystem final : public EditorSystem<EditorRenderSystem>
+{
+	EditorRenderSystem* system = nullptr;
+	string hierarchySearch;
+	bool hierarchyCaseSensitive = false;
+	bool showWindow = false;
+
+	HierarchyEditorSystem(Manager* manager, EditorRenderSystem* system);
+	~HierarchyEditorSystem() final;
+
+	void renderEditor();
+	void editorBarTool();
+
+	friend class ecsm::Manager;
+};
+
+} // namespace garden
 #endif

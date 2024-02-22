@@ -13,29 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include "garden/system/log.hpp"
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-using namespace garden;
-using namespace garden::graphics;
-
-class HierarchyEditor final
-{
-	EditorRenderSystem* system = nullptr;
-	string hierarchySearch;
-	bool hierarchyCaseSensitive = false;
-	bool showWindow = false;
-
-	HierarchyEditor(EditorRenderSystem* system);
-
-	void render();
-	void onBarTool();
-
-	friend class EditorRenderSystem;
-};
+// TODO:
 
 } // namespace garden
 #endif

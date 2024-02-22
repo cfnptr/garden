@@ -16,8 +16,11 @@
 
 /*
 #include "garden/system/render/tone-mapping.hpp"
-#include "garden/system/render/editor/tone-mapping.hpp"
 #include "garden/system/resource.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/tone-mapping.hpp"
+#endif
 
 using namespace garden;
 

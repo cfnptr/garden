@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/gizmos.hpp"
+#include "garden/editor/system/render/gizmos.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"

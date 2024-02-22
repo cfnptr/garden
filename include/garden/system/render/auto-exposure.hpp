@@ -55,7 +55,7 @@ class AutoExposureRenderSystem final : public System, public IRenderSystem
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class AutoExposureEditor;
+	friend class AutoExposureEditorSystem;
 public:
 	float minLogLum = -8.0f;
 	float maxLogLum = 4.0f;

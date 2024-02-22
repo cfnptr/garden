@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/graphics/vulkan.hpp"
-#include "garden/graphics/primitive.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/hash.hpp"
 #include "mpio/directory.hpp"
@@ -42,7 +41,6 @@ using namespace std;
 using namespace mpio;
 using namespace garden;
 using namespace garden::graphics;
-using namespace garden::graphics::primitive;
 
 #if GARDEN_DEBUG
 //*********************************************************************************************************************

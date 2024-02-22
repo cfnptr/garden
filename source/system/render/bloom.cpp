@@ -18,9 +18,12 @@
 #include "garden/system/render/bloom.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/tone-mapping.hpp"
-#include "garden/system/render/editor/bloom.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/bloom.hpp"
+#endif
 
 using namespace garden;
 

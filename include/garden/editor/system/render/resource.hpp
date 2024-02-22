@@ -13,26 +13,23 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/transform.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-class TransformEditor final
+class ResourceEditorSystem final : public EditorSystem<EditorRenderSystem>
 {
-	TransformSystem* system = nullptr;
-	float3 oldEulerAngles = float3(0.0f);
-	float3 newEulerAngles = float3(0.0f);
-	quat oldRotation = quat::identity;
-	ID<Entity> selectedEntity = {};
+	bool showWindow = false;
 
-	TransformEditor(TransformSystem* system);
+	ResourceEditorSystem(Manager* manager, EditorRenderSystem* system);
+	~ResourceEditorSystem() final;
 	
-	void onDestroy(ID<Entity> entity);
-	void onEntityInspector(ID<Entity> entity);
+	void renderEditor();
+	void editorBarTool();
 
-	friend class TransformSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

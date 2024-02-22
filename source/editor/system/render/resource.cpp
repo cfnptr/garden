@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,24 +11,36 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/resource.hpp"
+// TODO: refactor resource editor
+
+#include "garden/editor/system/render/resource.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
+#include "garden/file.hpp"
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-ResourceEditor::ResourceEditor(EditorRenderSystem* system)
+//**********************************************************************************************************************
+ResourceEditorSystem::ResourceEditorSystem(Manager* manager,
+	EditorRenderSystem* system) : EditorSystem(manager, system)
 {
-	system->registerBarTool([this]() { onBarTool(); });
-	this->system = system;
+	SUBSCRIBE_TO_EVENT("RenderEditor", ResourceEditorSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("EditorBarTool", ResourceEditorSystem::editorBarTool);
+}
+ResourceEditorSystem::~ResourceEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("RenderEditor", ResourceEditorSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", ResourceEditorSystem::editorBarTool);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void ResourceEditor::render()
+//**********************************************************************************************************************
+void ResourceEditorSystem::renderEditor()
 {
 	if (showWindow)
 	{
@@ -225,7 +236,8 @@ void ResourceEditor::render()
 	}
 }
 
-void ResourceEditor::onBarTool()
+//**********************************************************************************************************************
+void ResourceEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("Resource Viewer"))
 		showWindow = true;

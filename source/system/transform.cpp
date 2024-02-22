@@ -15,9 +15,10 @@
 // TODO: use stacks instead of recursion, potentially unsafe!
 
 #include "garden/system/transform.hpp"
-#include "garden/system/editor/transform.hpp"
-#include "garden/defines.hpp"
 
+#if GARDEN_EDITOR
+#include "garden/editor/system/transform.hpp"
+#endif
 #if GARDEN_DEBUG
 #include "garden/system/log.hpp"
 #endif
@@ -279,19 +280,14 @@ bool TransformComponent::hasBaked() const noexcept
 TransformSystem::TransformSystem(Manager* manager) : System(manager)
 {
 	#if GARDEN_EDITOR
-	SUBSCRIBE_TO_EVENT("Init", TransformSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", TransformSystem::deinit);
+	if (manager->has<EditorRenderSystem>())
+		manager->createSystem<TransformEditorSystem>(this);
 	#endif
 }
 TransformSystem::~TransformSystem()
 {
 	#if GARDEN_EDITOR
-	auto manager = getManager();
-	if (manager->isRunning())
-	{
-		UNSUBSCRIBE_FROM_EVENT("Init", TransformSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformSystem::deinit);
-	}
+	getManager()->tryDestroySystem<TransformEditorSystem>();
 	#endif
 
 	auto componentData = components.getData();
@@ -300,17 +296,6 @@ TransformSystem::~TransformSystem()
 		free(componentData[i].childs);
 	components.clear(false);
 }
-
-#if GARDEN_EDITOR
-void TransformSystem::init()
-{
-	editor = new TransformEditor(this);
-}
-void TransformSystem::deinit()
-{
-	delete (TransformEditor*)editor;
-}
-#endif
 
 //**********************************************************************************************************************
 type_index TransformSystem::getComponentType() const
@@ -330,8 +315,11 @@ ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
 	#if GARDEN_EDITOR
+	static TransformEditorSystem* transformEditor = nullptr;
+	if (!transformEditor)
+		transformEditor = getManager()->get<TransformEditorSystem>();
 	auto component = components.get(ID<TransformComponent>(instance));
-	((TransformEditor*)editor)->onDestroy(component->entity);
+	transformEditor->onEntityDestroy(component->entity);
 	#endif
 
 	components.destroy(ID<TransformComponent>(instance));

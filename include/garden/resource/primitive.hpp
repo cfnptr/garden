@@ -16,7 +16,7 @@
 #include "math/vector.hpp"
 #include <array>
 
-namespace garden::graphics::primitive
+namespace garden::primitive
 {
 
 using namespace std;
@@ -170,4 +170,4 @@ static const array<float3, 36> fullCubeVert =
 	float3( 0.5f,  0.5f,  0.5f),
 };
 
-} // namespace garden::graphics::primitive
+} // namespace garden::primitive

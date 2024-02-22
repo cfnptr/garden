@@ -1,5 +1,4 @@
-//--------------------------------------------------------------------------------------------------
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-#include "garden/system/editor/transform.hpp"
+#include "garden/editor/system/transform.hpp"
 #include "math/angles.hpp"
 
 #if GARDEN_EDITOR
@@ -22,35 +20,28 @@
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-TransformEditor::TransformEditor(TransformSystem* system)
+//**********************************************************************************************************************
+TransformEditorSystem::TransformEditorSystem(Manager* manager, TransformSystem* system) : EditorSystem(manager, system)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->tryGet<EditorRenderSystem>();
-	if (editorSystem)
+	auto editorSystem = getManager()->get<EditorRenderSystem>();
+	editorSystem->registerEntityInspector<TransformComponent>([this](ID<Entity> entity)
 	{
-		editorSystem->registerEntityInspector(typeid(TransformComponent),
-			[this](ID<Entity> entity) { onEntityInspector(entity); });
-	}
-	this->system = system;
+		onEntityInspector(entity);
+	});
 }
 
-//--------------------------------------------------------------------------------------------------
-void TransformEditor::onDestroy(ID<Entity> entity)
+//**********************************************************************************************************************
+void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->tryGet<EditorRenderSystem>();
-	if (editorSystem)
-	{
-		if (editorSystem->selectedEntity == entity)
-			editorSystem->selectedEntity = {};
-	}
+	auto editorSystem = getManager()->get<EditorRenderSystem>();
+	if (editorSystem->selectedEntity == entity)
+		editorSystem->selectedEntity = {};
 }
 
-//--------------------------------------------------------------------------------------------------
-void TransformEditor::onEntityInspector(ID<Entity> entity)
+//**********************************************************************************************************************
+void TransformEditorSystem::onEntityInspector(ID<Entity> entity)
 {
-	auto manager = system->getManager();
+	auto manager = getManager();
 	auto editorSystem = manager->get<EditorRenderSystem>();
 	ImGui::PushID("TransformComponent");
 
@@ -68,13 +59,11 @@ void TransformEditor::onEntityInspector(ID<Entity> entity)
 			ImGui::EndTooltip();
 		}
 
-		ImGui::DragFloat3("Scale", (float*)&transformComponent->scale,
-			0.01f, 0.0001f, FLT_MAX);
+		ImGui::DragFloat3("Scale", (float*)&transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
 		if (ImGui::BeginItemTooltip())
 		{
 			auto scale = extractScale(transformComponent->calcModel());
-			ImGui::Text("Scale of the entity\nGlobal: %.3f, %.3f, %.3f",
-				scale.x, scale.y, scale.z);
+			ImGui::Text("Scale of the entity\nGlobal: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
 			ImGui::EndTooltip();
 		}
 
@@ -87,10 +76,8 @@ void TransformEditor::onEntityInspector(ID<Entity> entity)
 		if (ImGui::BeginItemTooltip())
 		{
 			auto rotation = radians(newEulerAngles);
-			auto global = degrees(extractQuat(extractRotation(
-				transformComponent->calcModel())).toEulerAngles());
-			ImGui::Text("Rotation in degrees\nRadians: "
-				"%.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
+			auto global = degrees(extractQuat(extractRotation(transformComponent->calcModel())).toEulerAngles());
+			ImGui::Text("Rotation in degrees\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
 				rotation.x, rotation.y, rotation.z, global.x, global.y, global.z);
 			ImGui::EndTooltip();
 		}
@@ -102,15 +89,13 @@ void TransformEditor::onEntityInspector(ID<Entity> entity)
 		
 		if (transformComponent->getParent())
 		{
-			auto parentTransform = manager->get<TransformComponent>(
-				transformComponent->getParent());
+			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
 			ImGui::Text("Parent: %d (%s) | Childs: %d", *transformComponent->getParent(),
 				parentTransform->name.c_str(), transformComponent->getChildCount());
 		}
 		else
 		{
-			ImGui::Text("Parent: null | Childs: %d",
-				transformComponent->getChildCount());
+			ImGui::Text("Parent: null | Childs: %d", transformComponent->getChildCount());
 		}
 
 		if (transformComponent->getParent())
@@ -129,10 +114,8 @@ void TransformEditor::onEntityInspector(ID<Entity> entity)
 	{
 		if (editorSystem->selectedEntity)
 		{
-			auto transformComponent = manager->get<TransformComponent>(
-				editorSystem->selectedEntity);
-			oldEulerAngles = newEulerAngles = degrees(
-				transformComponent->rotation.toEulerAngles());
+			auto transformComponent = manager->get<TransformComponent>(editorSystem->selectedEntity);
+			oldEulerAngles = newEulerAngles = degrees(transformComponent->rotation.toEulerAngles());
 			oldRotation = transformComponent->rotation;
 		}
 
@@ -142,12 +125,10 @@ void TransformEditor::onEntityInspector(ID<Entity> entity)
 	{
 		if (editorSystem->selectedEntity)
 		{
-			auto transformComponent = manager->get<TransformComponent>(
-				editorSystem->selectedEntity);
+			auto transformComponent = manager->get<TransformComponent>(editorSystem->selectedEntity);
 			if (oldRotation != transformComponent->rotation)
 			{
-				oldEulerAngles = newEulerAngles = degrees(
-					transformComponent->rotation.toEulerAngles());
+				oldEulerAngles = newEulerAngles = degrees(transformComponent->rotation.toEulerAngles());
 				oldRotation = transformComponent->rotation;
 			}
 		}

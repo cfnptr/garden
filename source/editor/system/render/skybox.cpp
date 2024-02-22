@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/lighting.hpp"
+#include "garden/editor/system/render/skybox.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
@@ -22,34 +22,34 @@
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
-LightingEditor::LightingEditor(LightingRenderSystem* system)
+SkyboxEditor::SkyboxEditor(SkyboxRenderSystem* system)
 {
 	auto manager = system->getManager();
 	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(typeid(LightingRenderComponent),
+	editorSystem->registerEntityInspector(typeid(SkyboxRenderComponent),
 		[this](ID<Entity> entity) { onEntityInspector(entity); });
 	this->system = system;
 }
 
 //--------------------------------------------------------------------------------------------------
-void LightingEditor::onEntityInspector(ID<Entity> entity)
+void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 {
-	ImGui::PushID("LightingRenderComponent");
-	if (ImGui::CollapsingHeader("Lighting Render"))
+	ImGui::PushID("SkyboxRenderComponent");
+	if (ImGui::CollapsingHeader("Skybox Render"))
 	{
 		auto manager = system->getManager();
 		auto graphicsSystem = system->getGraphicsSystem();
-		auto lightingComponent = manager->get<LightingRenderComponent>(entity);
+		auto skyboxComponent = manager->get<SkyboxRenderComponent>(entity);
 
-		if (lightingComponent->cubemap)
+		if (skyboxComponent->cubemap)
 		{
-			auto imageView = graphicsSystem->get(lightingComponent->cubemap);
+			auto imageView = graphicsSystem->get(skyboxComponent->cubemap);
 			auto stringOffset = imageView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto image = to_string(*lightingComponent->cubemap) + " (" +
+			auto image = to_string(*skyboxComponent->cubemap) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Cubemap", &image, ImGuiInputTextFlags_ReadOnly);
 		}
@@ -58,51 +58,15 @@ void LightingEditor::onEntityInspector(ID<Entity> entity)
 			ImGui::Text("Cubemap: null");
 		}
 
-		if (lightingComponent->sh)
+		if (skyboxComponent->descriptorSet)
 		{
-			auto bufferView = graphicsSystem->get(lightingComponent->sh);
-			auto stringOffset = bufferView->getDebugName().find_last_of('.');
-			if (stringOffset == string::npos)
-				stringOffset = 0;
-			else
-				stringOffset++;
-			auto buffer = to_string(*lightingComponent->sh) + " (" +
-				string(bufferView->getDebugName().c_str() + stringOffset) + ")";
-			ImGui::InputText("SH", &buffer, ImGuiInputTextFlags_ReadOnly);
-		}
-		else
-		{
-			ImGui::Text("SH: null");
-		}
-
-		if (lightingComponent->specular)
-		{
-			auto imageView = graphicsSystem->get(lightingComponent->specular);
-			auto stringOffset = imageView->getDebugName().find_last_of('.');
-			if (stringOffset == string::npos)
-				stringOffset = 0;
-			else
-				stringOffset++;
-			ImGui::Text("Specular: %d (%s)", *lightingComponent->specular,
-				imageView->getDebugName().c_str() + stringOffset);
-			auto image = to_string(*lightingComponent->specular) + " (" +
-				string(imageView->getDebugName().c_str() + stringOffset) + ")";
-			ImGui::InputText("Specular", &image, ImGuiInputTextFlags_ReadOnly);
-		}
-		else
-		{
-			ImGui::Text("Cubemap: null");
-		}
-
-		if (lightingComponent->descriptorSet)
-		{
-			auto descriptorSetView = graphicsSystem->get(lightingComponent->descriptorSet);
+			auto descriptorSetView = graphicsSystem->get(skyboxComponent->descriptorSet);
 			auto stringOffset = descriptorSetView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto descriptorSet = to_string(*lightingComponent->descriptorSet) + " (" +
+			auto descriptorSet = to_string(*skyboxComponent->descriptorSet) + " (" +
 				string(descriptorSetView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Descriptor Set", &descriptorSet, ImGuiInputTextFlags_ReadOnly);
 		}
@@ -110,7 +74,6 @@ void LightingEditor::onEntityInspector(ID<Entity> entity)
 		{
 			ImGui::Text("Descriptor Set: null");
 		}
-		
 		ImGui::Spacing();
 	}
 	ImGui::PopID();

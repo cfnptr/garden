@@ -23,11 +23,9 @@
 using namespace mpio;
 using namespace garden;
 
-#if GARDEN_DEBUG
-LogSystem* LogSystem::instance;
-#endif
-
 //**********************************************************************************************************************
+LogSystem* LogSystem::instance = nullptr;
+
 LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : System(manager)
 {
 	auto appInfoSystem = manager->get<AppInfoSystem>();
@@ -46,9 +44,7 @@ LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : Sy
 	info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
 	info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
 
-	#if GARDEN_DEBUG
 	instance = this;
-	#endif
 }
 LogSystem::~LogSystem()
 {

@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/auto-exposure.hpp"
+#include "garden/editor/system/render/auto-exposure.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"

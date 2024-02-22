@@ -51,7 +51,7 @@ private:
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class SsaoEditor;
+	friend class SsaoEditorSystem;
 public:
 	float radius = 0.5f;
 	float bias = 0.025f;
