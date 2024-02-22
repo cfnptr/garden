@@ -16,10 +16,13 @@
 
 /*
 #include "garden/system/render/ssao.hpp"
-#include "garden/system/render/editor/ssao.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
 #include <random>
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/ssao.hpp"
+#endif
 
 #define NOISE_SIZE 4
 

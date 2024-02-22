@@ -136,8 +136,8 @@ private:
 	void preSwapchainRender() final;
 
 	friend class ecsm::Manager;
-	friend class GizmosEditor;
-	friend class SelectorEditor;
+	friend class GizmosEditorSystem;
+	friend class SelectorEditorSystem;
 public:
 	bool isDrawAsync() const noexcept { return isAsync; }
 

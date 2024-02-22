@@ -128,7 +128,7 @@ class LightingRenderSystem final : public System,
 	void disposeComponents() final;
 
 	friend class ecsm::Manager;
-	friend class LightingEditor;
+	friend class LightingEditorSystem;
 public:
 	float4 shadowColor = float4(1.0f);
 

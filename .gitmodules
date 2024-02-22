@@ -22,9 +22,6 @@
 [submodule "libraries/stb"]
 	path = libraries/stb
 	url = https://github.com/nothings/stb
-[submodule "libraries/cgltf"]
-	path = libraries/cgltf
-	url = https://github.com/jkuhlmann/cgltf
 [submodule "libraries/webp"]
 	path = libraries/webp
 	url = https://github.com/webmproject/libwebp

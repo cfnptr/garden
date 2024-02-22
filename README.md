@@ -118,6 +118,11 @@ If you want, you can freely disable it and compile for any other architecture, i
 
 Use building [instructions](BUILDING.md) to install all required tools and libraries.
 
+## Build examples
+
+1. Run ```git clone --progress --recursive https://github.com/cfnptr/garden``` using **Terminal**
+2. Open garden directory using **IDE** or use [build.sh](build.sh) script
+
 ### CMake options
 
 | Name                     | Description                                      | Default value |
@@ -130,15 +135,19 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ### CMake variables
 
-| Name                      | Description                            | Default value      |
-|---------------------------|----------------------------------------|--------------------|
-| GARDEN_APP_NAME           | Garden application name                | `GardenApp`        |
-| GARDEN_APP_NAME_LOWERCASE | Garden application lowercase name      | `gardenapp`        |
-| GARDEN_APP_VERSION_MAJOR  | Garden application major version       | `1`                |
-| GARDEN_APP_VERSION_MINOR  | Garden application minor version       | `0`                |
-| GARDEN_APP_VERSION_PATCH  | Garden application patch version       | `0`                |
-| GARDEN_APP_RESOURCES_DIR  | Garden application resources directory | `garden/resources` |
-| GARDEN_APP_CACHES_DIR     | Garden application caches directory    | `garden/.caches`   |
+| Name                      | Description                               | Default value                      |
+|---------------------------|-------------------------------------------|------------------------------------|
+| GARDEN_APP_NAME           | Garden application name                   | `Garden App`                       |
+| GARDEN_APP_NAME_LOWERCASE | Garden application lowercase name         | `garden-app`                       |
+| GARDEN_APP_FILE_NAME      | Garden application file name (executable) | `Garden App`                       |
+| GARDEN_APP_DESCRIPTION    | Garden application description            | `Made using Garden engine.`        |
+| GARDEN_APP_CREATOR        | Garden application creator (company)      | `Garden`                           |
+| GARDEN_APP_COPYRIGHT      | Garden application copyright (license)    | `20XX {name} All rights reserved.` |
+| GARDEN_APP_VERSION_MAJOR  | Garden application major version          | `1`                                |
+| GARDEN_APP_VERSION_MINOR  | Garden application minor version          | `0`                                |
+| GARDEN_APP_VERSION_PATCH  | Garden application patch version          | `0`                                |
+| GARDEN_APP_RESOURCES_DIR  | Garden application resources directory    | `garden/resources/default`         |
+| GARDEN_APP_CACHES_DIR     | Garden application caches directory       | `garden/.caches`                   |
 
 ## Garden Shading Language (GSL)
 
@@ -147,7 +156,6 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 
 ## Third-party
 
-* [cgltf](https://github.com/jkuhlmann/cgltf) (MIT license)
 * [Conf](https://github.com/cfnptr/conf) (Apache-2.0 license)
 * [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
@@ -155,6 +163,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [GLFW](https://github.com/glfw/glfw) (Zlib license)
 * [Imath](https://github.com/AcademySoftwareFoundation/Imath) (BSD-3-Clause license)
 * [ImGui](https://github.com/ocornut/imgui) (MIT license)
+* [JSON](https://github.com/nlohmann/json) (MIT license)
 * [Logy](https://github.com/cfnptr/logy) (Apache-2.0 license)
 * [Math](https://github.com/cfnptr/math) (Apache-2.0 license)
 * [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)

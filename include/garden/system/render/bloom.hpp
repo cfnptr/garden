@@ -56,7 +56,7 @@ class BloomRenderSystem final : public System,
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class BloomEditor;
+	friend class BloomEditorSystem;
 public:
 	float intensity = 0.004f;
 	float threshold = 0.0f;

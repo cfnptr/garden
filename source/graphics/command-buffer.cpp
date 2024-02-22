@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,16 +110,11 @@ static const uint32 writeAccessMask =
 	VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
 	VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
 
-static bool isSameState(
-	const CommandBuffer::ImageState& oldState,
-	const CommandBuffer::ImageState& newState)
+static bool isSameState(const CommandBuffer::ImageState& oldState, const CommandBuffer::ImageState& newState)
 {
-	return !(oldState.layout != newState.layout ||
-		(oldState.access & writeAccessMask));
+	return !(oldState.layout != newState.layout || (oldState.access & writeAccessMask));
 }
-static bool isSameState(
-	const CommandBuffer::BufferState& oldState,
-	const CommandBuffer::BufferState& newState)
+static bool isSameState(const CommandBuffer::BufferState& oldState, const CommandBuffer::BufferState& newState)
 {
 	return !(oldState.access & writeAccessMask);
 }

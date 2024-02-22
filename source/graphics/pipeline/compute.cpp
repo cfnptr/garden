@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// Copyright 2022-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,9 @@
 
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/vulkan.hpp"
-#include "garden/graphics/primitive.hpp"
 
 using namespace std;
 using namespace garden::graphics;
-using namespace garden::graphics::primitive;
 
 //--------------------------------------------------------------------------------------------------
 ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :

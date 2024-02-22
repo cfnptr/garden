@@ -14,12 +14,12 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/selector.hpp"
+#include "garden/editor/system/render/selector.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
 #include "garden/system/render/deferred.hpp"
-#include "garden/system/render/editor/gizmos.hpp"
+#include "garden/editor/system/render/gizmos.hpp"
 
 using namespace garden;
 

@@ -16,10 +16,13 @@
 
 /*
 #include "garden/system/render/lighting.hpp"
-#include "garden/system/render/editor/lighting.hpp"
 #include "garden/system/resource.hpp"
 #include "math/brdf.hpp"
 #include "math/sh.hpp"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/lighting.hpp"
+#endif
 
 #define SPECULAR_SAMPLE_COUNT 1024
 

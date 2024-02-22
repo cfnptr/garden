@@ -19,6 +19,8 @@
 namespace garden
 {
 
+// TODO: refactor
+
 class PhysicsEditor final
 {
 	PhysicsSystem* system = nullptr;

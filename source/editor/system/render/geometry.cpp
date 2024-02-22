@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/system/render/editor/geometry.hpp"
+#include "garden/editor/system/render/geometry.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"

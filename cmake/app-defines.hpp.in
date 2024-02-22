@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 
 #pragma once
-#include "garden/system/app.hpp"
+#include "garden/system/app-info.hpp"
 
 //**********************************************************************************************************************
 namespace @GARDEN_APP_NAME_LOWERCASE@
@@ -30,7 +30,8 @@ const string appCopyright = "@GARDEN_APP_COPYRIGHT@";
 const uint8 appVersionMajor = @GARDEN_APP_VERSION_MAJOR@;
 const uint8 appVersionMinor = @GARDEN_APP_VERSION_MINOR@;
 const uint8 appVersionPatch = @GARDEN_APP_VERSION_PATCH@;
-const string appVersion = "@GARDEN_APP_VERSION@";
+const Version appVersion = Version(@GARDEN_APP_VERSION_MAJOR@, @GARDEN_APP_VERSION_MINOR@, @GARDEN_APP_VERSION_PATCH@);
+const string appVersionString = "@GARDEN_APP_VERSION@";
 
 #if GARDEN_DEBUG
 const fs::path appCachesPath = fs::path("@GARDEN_APP_CACHES_DIR@");
@@ -39,9 +40,8 @@ const fs::path appResourcesPath = fs::path("@GARDEN_APP_RESOURCES_DIR@");
 
 static void createAppSystem(Manager* manager)
 {
-	manager->createSystem<AppSystem>(manager, appName,
-		appNameLowercase, appDescription, appCreator, appCopyright,
-		appVersionMajor, appVersionMinor, appVersionPatch, appVersion
+	manager->createSystem<AppInfoSystem>(appName, appNameLowercase,
+		appDescription, appCreator, appCopyright, appVersion
 		#if GARDEN_DEBUG
 		, appCachesPath, appResourcesPath
 		#endif

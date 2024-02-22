@@ -16,11 +16,14 @@
 
 /*
 #include "garden/system/render/mesh.hpp"
-#include "garden/system/render/editor/selector.hpp"
-#include "garden/system/render/editor/gizmos.hpp"
 #include "garden/system/render/editor.hpp"// TODO: remove this include
 #include "garden/system/render/deferred.hpp"
 #include "mpmt/atomic.h"
+
+#if GARDEN_EDITOR
+#include "garden/editor/system/render/selector.hpp"
+#include "garden/editor/system/render/gizmos.hpp"
+#endif
 
 using namespace garden;
 
