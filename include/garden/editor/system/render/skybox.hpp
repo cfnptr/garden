@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class SkyboxEditor final
 {
-	SkyboxRenderSystem* system = nullptr;
 	SkyboxEditor(SkyboxRenderSystem* system);
 	void onEntityInspector(ID<Entity> entity);
 	friend class SkyboxRenderSystem;

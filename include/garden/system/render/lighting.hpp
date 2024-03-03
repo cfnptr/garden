@@ -48,7 +48,6 @@ struct LightingRenderComponent final : public Component
 //--------------------------------------------------------------------------------------------------
 class IShadowRenderSystem
 {
-	LightingRenderSystem* lightingSystem = nullptr;
 protected:
 	virtual void preShadowRender() { }
 	virtual bool shadowRender() = 0;
@@ -68,7 +67,6 @@ public:
 };
 class IAoRenderSystem
 {
-	LightingRenderSystem* lightingSystem = nullptr;
 protected:
 	virtual void preAoRender() { }
 	virtual bool aoRender() = 0;

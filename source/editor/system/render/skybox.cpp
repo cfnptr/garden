@@ -24,9 +24,7 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 SkyboxEditor::SkyboxEditor(SkyboxRenderSystem* system)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(typeid(SkyboxRenderComponent),
+	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(SkyboxRenderComponent),
 		[this](ID<Entity> entity) { onEntityInspector(entity); });
 	this->system = system;
 }

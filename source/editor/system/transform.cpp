@@ -17,14 +17,14 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
+#include "imgui_internal.h"
 
 using namespace garden;
 
 //**********************************************************************************************************************
 TransformEditorSystem::TransformEditorSystem(Manager* manager, TransformSystem* system) : EditorSystem(manager, system)
 {
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector<TransformComponent>([this](ID<Entity> entity)
+	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>([this](ID<Entity> entity)
 	{
 		onEntityInspector(entity);
 	});
@@ -33,16 +33,23 @@ TransformEditorSystem::TransformEditorSystem(Manager* manager, TransformSystem* 
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	if (editorSystem->selectedEntity == entity)
-		editorSystem->selectedEntity = {};
+	if (EditorRenderSystem::getInstance()->selectedEntity == entity)
+		EditorRenderSystem::getInstance()->selectedEntity = {};
+
+	auto payload = ImGui::GetDragDropPayload();
+	if (payload)
+	{
+		auto payloadEntity = *(const ID<Entity>*)(payload->Data);
+		if (payloadEntity == entity)
+			ImGui::ClearDragDrop();
+	}
 }
 
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity)
 {
 	auto manager = getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	ImGui::PushID("TransformComponent");
 
 	if (ImGui::CollapsingHeader("Transform"))

@@ -115,8 +115,7 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), progressInfo.c_str());
 
 		ImGui::SeparatorText("Frames Per Second");
-		auto inputSystem = getManager()->get<InputSystem>();
-		auto deltaTime = (float)inputSystem->getDeltaTime();
+		auto deltaTime = (float)InputSystem::getInstance()->getDeltaTime();
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 
@@ -224,6 +223,9 @@ void GraphicsEditorSystem::showMemoryStatistics()
 //**********************************************************************************************************************
 void GraphicsEditorSystem::renderEditor()
 {
+	if (!GraphicsSystem::getInstance()->canRender())
+		return;
+
 	if (performanceStatistics)
 		showPerformanceStatistics();
 	if (memoryStatistics)

@@ -17,6 +17,7 @@
 #include "garden/system/thread.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
+#include "garden/system/resource.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/transform.hpp"
 #include "platformer/defines.hpp"
@@ -34,11 +35,12 @@ void entryPoint()
 	auto manager = new Manager();
 	createAppSystem(manager);
 	manager->createSystem<DoNotDestroySystem>();
-	manager->createSystem<BakedTransformSystem>();
-	manager->createSystem<SettingsSystem>();
 	manager->createSystem<LogSystem>();
+	manager->createSystem<SettingsSystem>();
+	manager->createSystem<ResourceSystem>();
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
+	manager->createSystem<BakedTransformSystem>();
 	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ThreadSystem>();
@@ -47,8 +49,7 @@ void entryPoint()
 	#endif
 	manager->initialize();
 	
-	auto graphicsSystem = manager->get<GraphicsSystem>();
-	graphicsSystem->setWindowTitle("Platformer");
+	GraphicsSystem::getInstance()->setWindowTitle("Platformer");
 
 	manager->start();
 	delete manager;

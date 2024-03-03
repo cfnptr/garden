@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /***********************************************************************************************************************
- * @file
+ * @file Application resource loading functions. (images, models, shaders, pipelines, scenes)
  */
 
 #pragma once
@@ -31,8 +31,6 @@ namespace garden
 using namespace math;
 using namespace ecsm;
 using namespace garden::graphics;
-
-class ResourceSystem;
 
 /***********************************************************************************************************************
  * @brief 
@@ -63,16 +61,20 @@ protected:
 		Buffer staging;
 		ID<Image> instance = {};
 	};
-
-	#if !GARDEN_DEBUG
-	pack::Reader packReader;
-	#endif
 	
 	queue<GraphicsQueueItem> graphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> computeQueue;
 	queue<BufferQueueItem> bufferQueue;
 	queue<ImageQueueItem> imageQueue;
 	mutex queueLocker;
+
+	#if GARDEN_DEBUG
+	fs::path appResourcesPath;
+	fs::path appCachesPath;
+	Version appVersion;
+	#else
+	pack::Reader packReader;
+	#endif
 
 	static ResourceSystem* instance;
 
@@ -89,6 +91,7 @@ protected:
 	void dequeuePipelines();
 	void dequeueBuffers();
 
+	void preInit();
 	void postDeinit();
 	void input();
 	
@@ -174,11 +177,11 @@ public:
 
 	/**
 	 * @brief Returns resource system instance.
-	 * @warning Do not use it if you have several logging system instances.
+	 * @warning Do not use it if you have several resource system instances.
 	 */
 	static ResourceSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Resource system is not created
+		GARDEN_ASSERT(instance); // Resource system is not created.
 		return instance;
 	}
 };

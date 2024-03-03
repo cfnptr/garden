@@ -68,30 +68,30 @@ View<Component> CameraSystem::getComponent(ID<Component> instance)
 void CameraSystem::disposeComponents() { components.dispose(); }
 
 //**********************************************************************************************************************
-void CameraSystem::serialize(ISerializer& serializer, ID<Entity> entity)
+void CameraSystem::serialize(ISerializer& serializer, ID<Component> component)
 {
 	auto manager = getManager();
-	auto cameraComponent = manager->get<CameraComponent>(entity);
+	auto cameraComponent = components.get(ID<CameraComponent>(component));
 
 	if (cameraComponent->type == CameraComponent::Type::Perspective)
 	{
 		serializer.write("type", "perspective");
-		serializer.write("fieldOfView", cameraComponent->p.perspective.fieldOfView, 3);
-		serializer.write("aspectRatio", cameraComponent->p.perspective.aspectRatio, 6);
-		serializer.write("nearPlane", cameraComponent->p.perspective.nearPlane, 3);
+		serializer.write("fieldOfView", cameraComponent->p.perspective.fieldOfView);
+		serializer.write("aspectRatio", cameraComponent->p.perspective.aspectRatio);
+		serializer.write("nearPlane", cameraComponent->p.perspective.nearPlane);
 	}
 	else
 	{
 		serializer.write("type", "orthographic");
-		serializer.write("width", cameraComponent->p.orthographic.width, 6);
-		serializer.write("height", cameraComponent->p.orthographic.height, 6);
-		serializer.write("depth", cameraComponent->p.orthographic.depth, 6);
+		serializer.write("width", cameraComponent->p.orthographic.width);
+		serializer.write("height", cameraComponent->p.orthographic.height);
+		serializer.write("depth", cameraComponent->p.orthographic.depth);
 	}
 }
-void CameraSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity)
+void CameraSystem::deserialize(IDeserializer& deserializer, ID<Component> component)
 {
 	auto manager = getManager();
-	auto cameraComponent = manager->get<CameraComponent>(entity);
+	auto cameraComponent = components.get(ID<CameraComponent>(component));
 
 	string type;
 	deserializer.read("type", type);

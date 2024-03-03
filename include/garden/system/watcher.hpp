@@ -32,7 +32,6 @@ class WatcherSystem final : public System
 public:
 	using OnChange = function<void(const string&)>;
 private:
-	LogSystem* logSystem = nullptr;
 	void* instance = nullptr;
 	vector<string> changedFiles;
 	map<string, vector<OnChange>> listeners;

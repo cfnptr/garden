@@ -19,9 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
-
 #include <vector>
-#include <fstream>
 
 namespace garden
 {
@@ -29,59 +27,44 @@ namespace garden
 using namespace std;
 using namespace math;
 
-/**
- * @brief Loads binary data from the file.
- * 
- * @param[in] filePath target file path
- * @param[out] data binary data buffer
- * 
- * @throw runtime_error if failed to load file data.
- */
-static void loadBinaryFile(const fs::path& filePath, vector<uint8>& data)
+class File final
 {
-	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
-	inputStream.exceptions(ios::failbit | ios::badbit);
+public:
+	/**
+	 * @brief Loads binary data from the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[out] data binary data buffer
+	 * 
+	 * @throw runtime_error if failed to load file data.
+	 */
+	static void loadBinary(const fs::path& filePath, vector<uint8>& data);
+	/**
+	 * @brief Loads binary data from the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[out] data binary data buffer
+	 * 
+	 * @return True on success, otherwise false.
+	 */
+	static bool tryLoadBinary(const fs::path& filePath, vector<uint8>& data);
 
-	if (!inputStream.is_open())
-		throw runtime_error("Failed to open binary file. (path: " + filePath.generic_string() + ")");
-
-	auto fileSize = (psize)inputStream.tellg();
-	if (fileSize == 0)
-		throw runtime_error("No binary file data. (path: " + filePath.generic_string() + ")");
-
-	inputStream.seekg(0, ios::beg);
-	data.resize(fileSize);
-
-	if (!inputStream.read((char*)data.data(), fileSize))
-		throw runtime_error("Failed to read binary file. (path: " + filePath.generic_string() + ")");
-}
+	#if GARDEN_DEBUG
+	/******************************************************************************************************************
+	 * @brief Returns resource file path in the system. (Debug Only)
+	 * @details The resource is searched inside the engine resources folder and the application resources folder.
+	 * 
+	 * @param[in] appResourcesPath application resources directory path
+	 * @param[in] resourcePath target resource path
+	 * @param[out] filePath reference to the found resource file path
+	 * 
+	 * @return True if resource is found, false if not found or file is ambiguous.
+	 */
+	static bool tryGetResourcePath(const fs::path& appResourcesPath, const fs::path& resourcePath, fs::path& filePath);
+	#endif
+};
 
 /**
- * @brief Loads binary data from the file.
- * 
- * @param[in] filePath target file path
- * @param[out] data binary data buffer
- * 
- * @return True on success, otherwise false.
- */
-static bool tryLoadBinaryFile(const fs::path& filePath, vector<uint8>& data)
-{
-	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
-	if (!inputStream.is_open())
-		return false;
-
-	auto fileSize = (psize)inputStream.tellg();
-	if (fileSize == 0)
-		return false;
-
-	inputStream.seekg(0, ios::beg);
-	data.resize(fileSize);
-	if (!inputStream.read((char*)data.data(), fileSize))
-		return false;
-	return true;
-}
-
-/**********************************************************************************************************************
  * @brief Converts binary size to the string representation. (KB, MB, GB)
  * @param size target binary size
  */

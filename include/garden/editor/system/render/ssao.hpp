@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class SsaoEditor final
 {
-	SsaoRenderSystem* system = nullptr;
 	bool showWindow = false;
 
 	SsaoEditor(SsaoRenderSystem* system);

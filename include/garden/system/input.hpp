@@ -136,6 +136,8 @@ class InputSystem final : public System
 	CursorMode cursorMode = CursorMode::Default;
 	const fs::path* currentFileDropPath = nullptr;
 
+	static InputSystem* instance;
+
 	/**
 	 * @brief Creates a new input system instance.
 	 * @param[in,out] manager manager instance
@@ -210,6 +212,16 @@ public:
 	 * @param mode target cursor mode
 	 */
 	void setCursorMode(CursorMode mode);
+
+	/**
+	 * @brief Returns input system instance.
+	 * @warning Do not use it if you have several input system instances.
+	 */
+	static InputSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // Input system is not created.
+		return instance;
+	}
 };
 
 /**

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/file.hpp"
@@ -37,7 +35,7 @@ using namespace garden::graphics;
 using namespace math::ibl;
 
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
-//--------------------------------------------------------------------------------------------------
+//******************************************************************************************************************
 namespace
 {
 	class ExrMemoryStream final : public Imf::IStream
@@ -73,7 +71,7 @@ namespace
 	};
 }
 
-//--------------------------------------------------------------------------------------------------
+//******************************************************************************************************************
 // x = 1.0 / (Pi * 2), y =  1.0 / Pi
 static const float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
 
@@ -82,8 +80,7 @@ static float2 toSphericalMapUV(const float3& v)
     auto st = float2(atan2(v.x, v.z), asin(-v.y));
     return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
 }
-static float4 filterCubeMap(float2 coords,
-	const float4* pixels, int2 sizeMinus1, int32 sizeX)
+static float4 filterCubeMap(float2 coords, const float4* pixels, int2 sizeMinus1, int32 sizeX)
 {
 	auto coords0 = int2((int32)coords.x, (int32)coords.y);
 	coords0 = clamp(coords0, int2(0), sizeMinus1);
@@ -110,7 +107,7 @@ void Equi2Cube::convert(const int3& coords, int32 cubemapSize, int2 equiSize,
 		uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
 }
 
-//--------------------------------------------------------------------------------------------------
+//******************************************************************************************************************
 static void writeExrImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
 {
 	vector<Imf::Rgba> halfPixels(data.size());
@@ -134,13 +131,12 @@ static void writeExrImageData(const fs::path& filePath, int32 size, const vector
 	outputFile.writePixels(size);
 }
 
-//--------------------------------------------------------------------------------------------------
-bool Equi2Cube::convertImage(const fs::path& filePath,
-	const fs::path& inputPath, const fs::path& outputPath)
+//******************************************************************************************************************
+bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {	
 	GARDEN_ASSERT(!filePath.empty());
 	vector<uint8> dataBuffer, equiData; int2 equiSize;
-	if (!tryLoadBinaryFile(inputPath / filePath, dataBuffer))
+	if (!File::tryLoadBinary(inputPath / filePath, dataBuffer))
 		return false;
 
 	auto extension = filePath.extension();
@@ -178,10 +174,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath,
 		auto pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &equiSize.x, &equiSize.y, nullptr, 4);
 		if (!pixels)
-		{
-			throw runtime_error("Invalid image data.("
-				"path: " + filePath.generic_string() + ")");
-		}
+			throw runtime_error("Invalid image data.(path: " + filePath.generic_string() + ")");
 		equiData.resize(equiSize.x * equiSize.y * sizeof(float4));
 		memcpy(equiData.data(), pixels, equiData.size());
 		stbi_image_free(pixels);
@@ -194,10 +187,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath,
 
 	auto cubemapSize = equiSize.x / 4;
 	if (equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
-	{
-		throw runtime_error("Image is not a cubemap. (path: "
-			+ filePath.generic_string() + ")");
-	}
+		throw runtime_error("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
 
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1;
@@ -240,7 +230,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath,
 #endif
 
 #ifdef EQUI2CUBE
-//--------------------------------------------------------------------------------------------------
+//******************************************************************************************************************
 int main(int argc, char *argv[])
 {
 	if (argc < 2)
@@ -258,7 +248,7 @@ int main(int argc, char *argv[])
 		auto arg = argv[i];
 		if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
 		{
-			cout << "(C) 2022-2023 Nikita Fediuchin. All rights reserved.\n"
+			cout << "(C) 2022-" GARDEN_CURRENT_YEAR " Nikita Fediuchin. All rights reserved.\n"
 				"equi2cube - Equirectangular to cubemap image converter.\n"
 				"\n"
 				"Usage: equi2cube [options] name...\n"

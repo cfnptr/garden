@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #include "garden/system/resource.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/app-info.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/compiler.hpp"
 #include "garden/graphics/api.hpp"
+#include "garden/json/serializer.hpp"
+#include "garden/json/deserializer.hpp"
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
@@ -23,8 +28,10 @@
 #include "ImfHeader.h"
 #include "ImfInputFile.h"
 #include "ImfFrameBuffer.h"
-#include "stb_image.h"
 #include "webp/decode.h"
+#include "stb_image.h"
+
+#include <fstream>
 
 #if GARDEN_DEBUG
 #include "ImfRgbaFile.h"
@@ -51,7 +58,9 @@ namespace
 	struct GraphicsPipelineLoadData final
 	{
 		uint64 version = 0;
-		fs::path path;
+		fs::path shaderPath;
+		fs::path resourcesPath;
+		fs::path cachesPath;
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
 		map<string, GraphicsPipeline::SpecConst> specConsts;
@@ -65,7 +74,9 @@ namespace
 	struct ComputePipelineLoadData final
 	{
 		uint64 version = 0;
-		fs::path path;
+		fs::path shaderPath;
+		fs::path resourcesPath;
+		fs::path cachesPath;
 		map<string, GraphicsPipeline::SpecConst> specConsts;
 		uint32 maxBindlessCount = 0;
 		ID<ComputePipeline> instance = {};
@@ -104,37 +115,41 @@ namespace
 //**********************************************************************************************************************
 ResourceSystem* ResourceSystem::instance = nullptr;
 
-static bool getResourceFilePath(const fs::path& resourcePath, fs::path& filePath)
-{
-	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
-	auto appPath = GARDEN_APP_RESOURCES_PATH / resourcePath;
-	auto hasEngineFile = fs::exists(enginePath), hasAppFile = fs::exists(appPath);
-	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
-		return false;
-	filePath = hasEngineFile ? enginePath : appPath;
-	return true;
-}
-
 ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 {
-	if (!instance)
-		instance = this;
+	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
 
+	SUBSCRIBE_TO_EVENT("PreInit", ResourceSystem::preInit);
 	SUBSCRIBE_TO_EVENT("PostDeinit", ResourceSystem::postDeinit);
-	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input); // TODO: move this to preinit.
 
-	#if !GARDEN_DEBUG
+	#if GARDEN_DEBUG
+	auto appInfoSystem = manager->get<AppInfoSystem>();
+	appResourcesPath = appInfoSystem->getResourcesPath();
+	appCachesPath = appInfoSystem->getCachesPath();
+	appVersion = appInfoSystem->getVersion();
+	#else
 	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
 	#endif
+
+	instance = this;
 }
 ResourceSystem::~ResourceSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", ResourceSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PostDeinit", ResourceSystem::postDeinit);
+		TRY_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
+	}
 }
 
 //**********************************************************************************************************************
+void ResourceSystem::preInit()
+{
+	auto manager = getManager();
+	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
+}
 void ResourceSystem::postDeinit()
 {
 	while (imageQueue.size() > 0)
@@ -167,7 +182,10 @@ void ResourceSystem::postDeinit()
 void ResourceSystem::dequeuePipelines()
 {
 	#if GARDEN_DEBUG
-	auto logSystem = getManager()->tryGet<LogSystem>();
+	auto hasNewResources = !graphicsQueue.empty() || !computeQueue.empty();
+	LogSystem* logSystem = nullptr;
+	if (hasNewResources)
+		logSystem = getManager()->tryGet<LogSystem>();
 	#endif
 
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
@@ -184,10 +202,7 @@ void ResourceSystem::dequeuePipelines()
 				GraphicsPipelineExt::moveInternalObjects(item.pipeline, pipeline);
 				#if GARDEN_DEBUG
 				if (logSystem)
-				{
-					logSystem->trace("Loaded graphics pipeline. (" +
-						pipeline.getPath().generic_string() + ")");
-				}
+					logSystem->trace("Loaded graphics pipeline. (" + pipeline.getPath().generic_string() + ")");
 				#endif
 			}
 			else
@@ -229,10 +244,7 @@ void ResourceSystem::dequeuePipelines()
 				ComputePipelineExt::moveInternalObjects(item.pipeline, pipeline);
 				#if GARDEN_DEBUG
 				if (logSystem)
-				{
-					logSystem->trace("Loaded compute pipeline. (" +
-						pipeline.getPath().generic_string() + ")");
-				}
+					logSystem->trace("Loaded compute pipeline. (" + pipeline.getPath().generic_string() + ")");
 				#endif
 			}
 			else
@@ -249,103 +261,105 @@ void ResourceSystem::dequeuePipelines()
 //**********************************************************************************************************************
 void ResourceSystem::dequeueBuffers()
 {
-	GraphicsSystem* graphicsSystem = nullptr;
 	auto hasNewResources = !bufferQueue.empty() || !imageQueue.empty();
-
 	if (hasNewResources)
 	{
-		graphicsSystem = getManager()->get<GraphicsSystem>();
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-	}
+		GraphicsSystem::getInstance()->startRecording(CommandBufferType::TransferOnly);
+		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer", Color::transparent);
+	}	
 
+	while (bufferQueue.size() > 0)
 	{
-		SET_GPU_DEBUG_LABEL("Buffers Transfer", Color::transparent);
-		while (bufferQueue.size() > 0)
+		auto& item = bufferQueue.front();
+		if (*item.instance <= GraphicsAPI::bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
 		{
-			auto& item = bufferQueue.front();
-			if (*item.instance <= GraphicsAPI::bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
+			auto& buffer = GraphicsAPI::bufferPool.getData()[*item.instance - 1];
+			if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
 			{
-				auto& buffer = GraphicsAPI::bufferPool.getData()[*item.instance - 1];
-				if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
-				{
-					BufferExt::moveInternalObjects(item.buffer, buffer);
-					#if GARDEN_DEBUG || GARDEN_EDITOR
-					buffer.setDebugName(buffer.getDebugName());
-					#endif
-				}
-				else
-				{
-					GraphicsAPI::isRunning = false;
-					BufferExt::destroy(item.buffer);
-					GraphicsAPI::isRunning = true;
-				}
-			
-				auto staging = GraphicsAPI::bufferPool.create(
-					Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
-					"buffer.staging.loaded" + to_string(*staging));
-				auto stagingView = GraphicsAPI::bufferPool.get(staging);
-				BufferExt::moveInternalObjects(item.staging, **stagingView);
-				Buffer::copy(staging, item.instance);
-				GraphicsAPI::bufferPool.destroy(staging);
+				BufferExt::moveInternalObjects(item.buffer, buffer);
+				#if GARDEN_DEBUG || GARDEN_EDITOR
+				buffer.setDebugName(buffer.getDebugName());
+				#endif
 			}
 			else
 			{
 				GraphicsAPI::isRunning = false;
-				BufferExt::destroy(item.staging);
+				BufferExt::destroy(item.buffer);
 				GraphicsAPI::isRunning = true;
 			}
-			bufferQueue.pop();
+			
+			auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
+			SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
+				"buffer.staging.loaded" + to_string(*staging));
+
+			auto stagingView = GraphicsAPI::bufferPool.get(staging);
+			BufferExt::moveInternalObjects(item.staging, **stagingView);
+			Buffer::copy(staging, item.instance);
+			GraphicsAPI::bufferPool.destroy(staging);
 		}
+		else
+		{
+			GraphicsAPI::isRunning = false;
+			BufferExt::destroy(item.staging);
+			GraphicsAPI::isRunning = true;
+		}
+		bufferQueue.pop();
+	}
+
+	if (hasNewResources)
+	{
+		END_GPU_DEBUG_LABEL();
+		BEGIN_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
 	}
 
 	auto images = GraphicsAPI::imagePool.getData();
 	auto imageOccupancy = GraphicsAPI::imagePool.getOccupancy();
-	{
-		SET_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
-		while (imageQueue.size() > 0)
-		{
-			auto& item = imageQueue.front();
-			if (*item.instance <= imageOccupancy)
-			{
-				auto& image = images[*item.instance - 1];
-				if (MemoryExt::getVersion(image) == MemoryExt::getVersion(item.image))
-				{
-					ImageExt::moveInternalObjects(item.image, image);
-					#if GARDEN_DEBUG || GARDEN_EDITOR
-					image.setDebugName(image.getDebugName());
-					#endif
-				}
-				else
-				{
-					GraphicsAPI::isRunning = false;
-					ImageExt::destroy(item.image);
-					GraphicsAPI::isRunning = true;
-				}
 
-				auto staging = GraphicsAPI::bufferPool.create(
-					Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
-					"buffer.staging.imageLoaded" + to_string(*staging));
-				auto stagingView = GraphicsAPI::bufferPool.get(staging);
-				BufferExt::moveInternalObjects(item.staging, **stagingView);
-				Image::copy(staging, item.instance);
-				GraphicsAPI::bufferPool.destroy(staging);
+	while (imageQueue.size() > 0)
+	{
+		auto& item = imageQueue.front();
+		if (*item.instance <= imageOccupancy)
+		{
+			auto& image = images[*item.instance - 1];
+			if (MemoryExt::getVersion(image) == MemoryExt::getVersion(item.image))
+			{
+				ImageExt::moveInternalObjects(item.image, image);
+				#if GARDEN_DEBUG || GARDEN_EDITOR
+				image.setDebugName(image.getDebugName());
+				#endif
 			}
 			else
 			{
 				GraphicsAPI::isRunning = false;
-				BufferExt::destroy(item.staging);
+				ImageExt::destroy(item.image);
 				GraphicsAPI::isRunning = true;
 			}
-			imageQueue.pop();
+
+			auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
+			SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
+				"buffer.staging.imageLoaded" + to_string(*staging));
+
+			auto stagingView = GraphicsAPI::bufferPool.get(staging);
+			BufferExt::moveInternalObjects(item.staging, **stagingView);
+			Image::copy(staging, item.instance);
+			GraphicsAPI::bufferPool.destroy(staging);
 		}
+		else
+		{
+			GraphicsAPI::isRunning = false;
+			BufferExt::destroy(item.staging);
+			GraphicsAPI::isRunning = true;
+		}
+		imageQueue.pop();
 	}
 
 	if (hasNewResources)
-		graphicsSystem->stopRecording();
+	{
+		END_GPU_DEBUG_LABEL();
+		GraphicsSystem::getInstance()->stopRecording();
+	}
 }
 
 //**********************************************************************************************************************
@@ -409,55 +423,78 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		threadIndex++;
 
 	#if GARDEN_DEBUG
-	auto filePath = GARDEN_CACHES_PATH / imagePath; filePath += ".exr";
+	auto filePath = appCachesPath / imagePath; filePath += ".exr";
 	fileCount += fs::exists(filePath) ? 1 : 0;
 
 	if (fileCount == 0)
 	{
 		imagePath += ".webp";
-		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFileType::Webp; }
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileCount++; fileType = ImageFileType::Webp;
+		}
 		imagePath.replace_extension(".exr");
-		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFileType::Exr; }
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileCount++; fileType = ImageFileType::Exr;
+		}
 		imagePath.replace_extension(".png");
-		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFileType::Png; }
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileCount++; fileType = ImageFileType::Png;
+		}
 		imagePath.replace_extension(".jpg");
-		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFileType::Jpg; }
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileCount++; fileType = ImageFileType::Jpg;
+		}
 		imagePath.replace_extension(".jpeg");
-		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFileType::Jpg; }
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileCount++; fileType = ImageFileType::Jpg;
+		}
 		imagePath.replace_extension(".hdr");
-		if (getResourceFilePath(imagePath, filePath))
-		{ fileCount++; fileType = ImageFileType::Hdr; }
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileCount++; fileType = ImageFileType::Hdr;
+		}
 		
 		if (fileCount > 1)
 		{
-			throw runtime_error("Ambiguous image file extension. ("
-				"name: " + path.generic_string() + ")");
+			throw runtime_error("Ambiguous image file extension. (name: " + path.generic_string() + ")");
 		}
 		else if (fileCount == 0)
 		{
 			imagePath = fs::path("models") / path; imagePath += ".webp";
-			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFileType::Webp; }
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileCount++; fileType = ImageFileType::Webp;
+			}
 			imagePath.replace_extension(".exr");
-			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFileType::Exr; }
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileCount++; fileType = ImageFileType::Exr;
+			}
 			imagePath.replace_extension(".png");
-			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFileType::Png; }
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileCount++; fileType = ImageFileType::Png;
+			}
 			imagePath.replace_extension(".jpg");
-			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFileType::Jpg; }
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileCount++; fileType = ImageFileType::Jpg;
+			}
 			imagePath.replace_extension(".jpeg");
-			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFileType::Jpg; }
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileCount++; fileType = ImageFileType::Jpg;
+			}
 			imagePath.replace_extension(".hdr");
-			if (getResourceFilePath(imagePath, filePath))
-			{ fileCount++; fileType = ImageFileType::Hdr; }
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileCount++; fileType = ImageFileType::Hdr;
+			}
 
 			if (fileCount != 1)
 			{
@@ -471,7 +508,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		fileType = ImageFileType::Exr;
 	}
 
-	loadBinaryFile(filePath, dataBuffer);
+	File::loadBinary(filePath, dataBuffer);
 	#else
 	imagePath += ".webp"; uint64 itemIndex = 0;
 	if (packReader.getItemIndex(imagePath, itemIndex))
@@ -493,10 +530,8 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		fileType = ImageFile::Hdr;
 
 	if (fileType == ImageFile::Count)
-	{
-		throw runtime_error("Image does not exist. ("
-			"path: " + path.generic_string() + ")");
-	}
+		throw runtime_error("Image does not exist. (path: " + path.generic_string() + ")");
+
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#endif
 
@@ -541,7 +576,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	auto threadSystem = getManager()->tryGet<ThreadSystem>();
 
 	#if GARDEN_DEBUG
-	auto filePath = GARDEN_CACHES_PATH / "images" / path;
+	auto filePath = appCachesPath / "images" / path;
 	auto cacheFilePath = filePath.generic_string();
 	
 	// TODO: also check for data timestamp against original.
@@ -697,18 +732,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			auto filePath = path.generic_string();
 			switch (task.getTaskIndex())
 			{
-			case 0: loadImageData(filePath + "-nx", left,
-				leftSize, leftFormat, task.getThreadIndex()); break;
-			case 1: loadImageData(filePath + "-px", right,
-				rightSize, rightFormat, task.getThreadIndex()); break;
-			case 2: loadImageData(filePath + "-ny", bottom,
-				bottomSize, bottomFormat, task.getThreadIndex()); break;
-			case 3: loadImageData(filePath + "-py", top,
-				topSize, topFormat, task.getThreadIndex()); break;
-			case 4: loadImageData(filePath + "-nz", back,
-				backSize, backFormat, task.getThreadIndex()); break;
-			case 5: loadImageData(filePath + "-pz", front,
-				frontSize, frontFormat, task.getThreadIndex()); break;
+			case 0: loadImageData(filePath + "-nx", left, leftSize, leftFormat, task.getThreadIndex()); break;
+			case 1: loadImageData(filePath + "-px", right, rightSize, rightFormat, task.getThreadIndex()); break;
+			case 2: loadImageData(filePath + "-ny", bottom, bottomSize, bottomFormat, task.getThreadIndex()); break;
+			case 3: loadImageData(filePath + "-py", top, topSize, topFormat, task.getThreadIndex()); break;
+			case 4: loadImageData(filePath + "-nz", back, backSize, backFormat, task.getThreadIndex()); break;
+			case 5: loadImageData(filePath + "-pz", front, frontSize, frontFormat, task.getThreadIndex()); break;
 			default: abort();
 			}
 		}), 6);
@@ -757,10 +786,10 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile fileType,
+void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
 	vector<uint8>& pixels, int2& imageSize, Image::Format& format)
 {
-	if (fileType == ImageFile::Webp)
+	if (fileType == ImageFileType::Webp)
 	{
 		if (!WebPGetInfo(data, dataSize, &imageSize.x, &imageSize.y))
 			throw runtime_error("Invalid WebP image data.");
@@ -770,7 +799,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 		if (!decodeResult)
 			throw runtime_error("Invalid WebP image data.");
 	}
-	else if (fileType == ImageFile::Exr)
+	else if (fileType == ImageFileType::Exr)
 	{
 		ExrMemoryStream memoryStream(data, (uint64)dataSize);
 		Imf::InputFile inputFile(memoryStream, 1);
@@ -799,7 +828,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 			pixelData[i] = min(pixel, float4(65504.0f));
 		}
 	}
-	else if (fileType == ImageFile::Png || fileType == ImageFile::Jpg)
+	else if (fileType == ImageFileType::Png || fileType == ImageFileType::Jpg)
 	{
 		auto pixelData = (uint8*)stbi_load_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
@@ -809,7 +838,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
 	}
-	else if (fileType == ImageFile::Hdr)
+	else if (fileType == ImageFileType::Hdr)
 	{
 		auto pixelData = (uint8*)stbi_loadf_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
@@ -821,8 +850,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFile 
 	}
 	else abort();
 
-	format = 
-		fileType == ImageFile::Webp || fileType == ImageFile::Png || fileType == ImageFile::Jpg ?
+	format = fileType == ImageFileType::Webp || fileType == ImageFileType::Png || fileType == ImageFileType::Jpg ?
 		Image::Format::SrgbR8G8B8A8 : Image::Format::SfloatR32G32B32A32;
 }
 
@@ -835,8 +863,13 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 
 	auto version = GraphicsAPI::imageVersion++;
 	auto image = GraphicsAPI::imagePool.create(bind, strategy, version);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.loaded" + to_string(*image));
 
+	#if GARDEN_DEBUG
+	auto resource = GraphicsAPI::imagePool.get(image);
+	resource->setDebugName("image.loaded" + to_string(*image));
+	#endif
+
+	auto threadSystem = getManager()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ImageLoadData();
@@ -850,9 +883,8 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 		data->linearData = linearData;
 
 		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
+		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
-			auto data = (ImageLoadData*)task.getArgument();
 			// TODO: store also image size and preallocate required memory.
 			vector<uint8> pixels; int2 size; Image::Format format;
 			loadImageData(data->path, pixels, size, format, task.getThreadIndex());
@@ -870,9 +902,8 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 
 			ImageQueueItem item =
 			{
-				ImageExt::create(targetSize.x == 1 ? Image::Type::Texture1D :
-					Image::Type::Texture2D, format, data->bind, data->strategy,
-					int3(targetSize, 1), mipCount, 1, data->version),
+				ImageExt::create(targetSize.x == 1 ? Image::Type::Texture1D : Image::Type::Texture2D,
+					format, data->bind, data->strategy, int3(targetSize, 1), mipCount, 1, data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 					Buffer::Usage::Auto, Buffer::Strategy::Speed, bufferBinarySize, 0),
 				data->instance,
@@ -885,9 +916,8 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 				{
 					for (int32 x = 0; x < targetSize.x; x++)
 					{
-						memcpy(mapData + (y * targetSize.x + x) * formatBinarySize,
-							pixelData + (y * size.x + x) * multiplier *
-							formatBinarySize, formatBinarySize);
+						memcpy(mapData + (y * targetSize.x + x) * formatBinarySize, pixelData + 
+							(y * size.x + x) * multiplier * formatBinarySize, formatBinarySize);
 					}
 				}
 			}
@@ -901,7 +931,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 			queueLocker.lock();
 			imageQueue.push(std::move(item));
 			queueLocker.unlock();
-		}, data));
+		}));
 	}
 	else
 	{
@@ -916,17 +946,14 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 		auto bufferBinarySize = formatBinarySize * targetSize.x * targetSize.y;
 		auto mipCount = maxMipCount == 0 ? calcMipCount(targetSize) :
 			std::min(maxMipCount, calcMipCount(targetSize));
-		auto imageInstance = ImageExt::create(
-			targetSize.x == 1 ? Image::Type::Texture1D :
-			Image::Type::Texture2D, format, bind, strategy,
-			int3(targetSize, 1), mipCount, 1, 0);
+		auto imageInstance = ImageExt::create(targetSize.x == 1 ? Image::Type::Texture1D :
+			Image::Type::Texture2D, format, bind, strategy, int3(targetSize, 1), mipCount, 1, 0);
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
-		auto staging = GraphicsAPI::bufferPool.create(
-			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 			Buffer::Usage::Auto, Buffer::Strategy::Speed, bufferBinarySize, 0);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging,
+		SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
 			"buffer.staging.imageLoaded" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 
@@ -939,9 +966,8 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 			{
 				for (int32 x = 0; x < targetSize.x; x++)
 				{
-					memcpy(mapData + (y * targetSize.x + x) * formatBinarySize,
-						pixelData + (y * size.x + x) * multiplier *
-						formatBinarySize, formatBinarySize);
+					memcpy(mapData + (y * targetSize.x + x) * formatBinarySize, pixelData + 
+						(y * size.x + x) * multiplier * formatBinarySize, formatBinarySize);
 				}
 			}
 		}
@@ -951,9 +977,9 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 		}
 		stagingView->flush();
 
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		GraphicsSystem::getInstance()->startRecording(CommandBufferType::TransferOnly);
 		Image::copy(staging, image);
-		graphicsSystem->stopRecording();
+		GraphicsSystem::getInstance()->stopRecording();
 		GraphicsAPI::bufferPool.destroy(staging);
 	}
 
@@ -964,24 +990,24 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data)
 {
 	#if GARDEN_DEBUG
-	auto vertexPath = "shaders" / data.path; vertexPath += ".vert";
-	auto fragmentPath = "shaders" / data.path; fragmentPath += ".frag";
-	auto headerPath = "shaders" / data.path; headerPath += ".gslh";
+	auto vertexPath = "shaders" / data.shaderPath; vertexPath += ".vert";
+	auto fragmentPath = "shaders" / data.shaderPath; fragmentPath += ".frag";
+	auto headerPath = "shaders" / data.shaderPath; headerPath += ".gslh";
 
 	fs::path vertexInputPath, fragmentInputPath;
-	auto hasVertexShader = getResourceFilePath(vertexPath, vertexInputPath);
-	auto hasFragmentShader = getResourceFilePath(fragmentPath, fragmentInputPath);
+	auto hasVertexShader = File::tryGetResourcePath(data.resourcesPath, vertexPath, vertexInputPath);
+	auto hasFragmentShader = File::tryGetResourcePath(data.resourcesPath, fragmentPath, fragmentInputPath);
 
 	if (!hasVertexShader && !hasFragmentShader)
 	{
 		throw runtime_error("Graphics shader file does not exist or it is ambiguous. ("
-			"path: " + data.path.generic_string() + ")");
+			"path: " + data.shaderPath.generic_string() + ")");
 	}
 
 	vertexPath += ".spv"; fragmentPath += ".spv";
-	auto vertexOutputPath = GARDEN_CACHES_PATH / vertexPath;
-	auto fragmentOutputPath = GARDEN_CACHES_PATH / fragmentPath;
-	auto headerFilePath = GARDEN_CACHES_PATH / headerPath;
+	auto vertexOutputPath = data.cachesPath / vertexPath;
+	auto fragmentOutputPath = data.cachesPath / fragmentPath;
+	auto headerFilePath = data.cachesPath / headerPath;
 	
 	if (!fs::exists(headerFilePath) ||
 		(hasVertexShader && (!fs::exists(vertexOutputPath) ||
@@ -992,7 +1018,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 		const vector<fs::path> includePaths =
 		{
 			GARDEN_RESOURCES_PATH / "shaders",
-			GARDEN_APP_RESOURCES_PATH / "shaders"
+			data.resourcesPath / "shaders"
 		};
 
 		fs::path inputPath, outputPath;
@@ -1012,24 +1038,26 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 		auto compileResult = false;
 		try
 		{
-			auto dataPath = data.path; data.path = dataPath.filename();
-			compileResult = Compiler::compileGraphicsShaders(
-				inputPath, outputPath, includePaths, data);
-			data.path = dataPath;
+			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
+			compileResult = Compiler::compileGraphicsShaders(inputPath, outputPath, includePaths, data);
+			data.shaderPath = dataPath;
 		}
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() << "(.frag):" << e.what() << "\n"; // TODO: get info which stage throw.
 			if (logSystem)
-				logSystem->error("Failed to compile graphics shaders. (name: " + data.path.generic_string() + ")");
+			{
+				logSystem->error("Failed to compile graphics shaders. ("
+					"name: " + data.shaderPath.generic_string() + ")");
+			}
 			return false;
 		}
 		
 		if (!compileResult)
-			throw runtime_error("Shader files does not exist. (path: " + data.path.generic_string() + ")");
+			throw runtime_error("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
 		if (logSystem)
-			logSystem->trace("Compiled graphics shaders. (" + data.path.generic_string() + ")");
+			logSystem->trace("Compiled graphics shaders. (" + data.shaderPath.generic_string() + ")");
 
 		return true;
 	}
@@ -1037,7 +1065,6 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 
 	try
 	{
-		#error pass cachesPath
 		Compiler::loadGraphicsShaders(data);
 	}
 	catch (const exception& e)
@@ -1046,7 +1073,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 		if (logSystem)
 		{
 			logSystem->error("Failed to load graphics shaders. ("
-				"name: " + data.path.generic_string() + ", "
+				"name: " + data.shaderPath.generic_string() + ", "
 				"error: " + string(e.what()) + ")");
 		}
 		return false;
@@ -1109,10 +1136,13 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		depthStencilFormat = attachment->getFormat();
 	}
 
+	auto threadSystem = getManager()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new GraphicsPipelineLoadData();
-		data->path = path;
+		data->shaderPath = path;
+		data->resourcesPath = appResourcesPath;
+		data->cachesPath = appCachesPath;
 		data->version = version;
 		data->renderPass = renderPass;
 		data->subpassIndex = subpassIndex;
@@ -1126,11 +1156,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->useAsync = useAsync;
 		
 		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
+		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
-			auto data = (GraphicsPipelineLoadData*)task.getArgument();
 			Compiler::GraphicsData pipelineData;
-			pipelineData.path = std::move(data->path);
+			pipelineData.shaderPath = std::move(data->shaderPath);
+			pipelineData.resourcesPath = std::move(data->resourcesPath);
+			pipelineData.cachesPath = std::move(data->cachesPath);
 			pipelineData.specConsts = std::move(data->specConsts);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
@@ -1162,13 +1193,15 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			queueLocker.lock();
 			graphicsQueue.push(std::move(item));
 			queueLocker.unlock();
-		}, data));
+		}));
 	}
 	else
 	{
 		vector<uint8> vertexCode, fragmentCode;
 		Compiler::GraphicsData pipelineData;
-		pipelineData.path = path;
+		pipelineData.shaderPath = path;
+		pipelineData.resourcesPath = appResourcesPath;
+		pipelineData.cachesPath = appCachesPath;
 		pipelineData.specConsts = specConsts;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
@@ -1203,16 +1236,16 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 {
 	#if GARDEN_DEBUG
-	auto computePath = "shaders" / data.path; computePath += ".comp";
+	auto computePath = "shaders" / data.shaderPath; computePath += ".comp";
 
 	fs::path computeInputPath;
-	if (!getResourceFilePath(computePath, computeInputPath))
+	if (!File::tryGetResourcePath(data.resourcesPath, computePath, computeInputPath))
 		throw runtime_error("Compute shader file does not exist, or it is ambiguous.");
 
-	auto headerPath = "shaders" / data.path;
+	auto headerPath = "shaders" / data.shaderPath;
 	computePath += ".spv"; headerPath += ".gslh";
-	auto computeOutputPath = GARDEN_CACHES_PATH / computePath;
-	auto headerFilePath = GARDEN_CACHES_PATH / headerPath;
+	auto computeOutputPath = data.cachesPath / computePath;
+	auto headerFilePath = data.cachesPath / headerPath;
 	
 	if (!fs::exists(headerFilePath) || !fs::exists(computeOutputPath) ||
 		fs::last_write_time(computeInputPath) > fs::last_write_time(computeOutputPath))
@@ -1220,7 +1253,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 		const vector<fs::path> includePaths =
 		{
 			GARDEN_RESOURCES_PATH / "shaders",
-			GARDEN_APP_RESOURCES_PATH / "shaders"
+			data.resourcesPath / "shaders"
 		};
 
 		auto logSystem = manager->tryGet<LogSystem>();
@@ -1228,24 +1261,27 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 		auto compileResult = false;
 		try
 		{
-			auto dataPath = data.path; data.path = dataPath.filename();
+			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
 			compileResult = Compiler::compileComputeShader(computeInputPath.parent_path(),
 				computeOutputPath.parent_path(), includePaths, data);
-			data.path = dataPath;
+			data.shaderPath = dataPath;
 		}
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() << ":" << e.what() << "\n";
 			if (logSystem)
-				logSystem->error("Failed to compile compute shader. (name: " + data.path.generic_string() + ")");
+			{
+				logSystem->error("Failed to compile compute shader. ("
+					"name: " + data.shaderPath.generic_string() + ")");
+			}
 			return false;
 		}
 		
 		if (!compileResult)
-			throw runtime_error("Shader file does not exist. (path: " + data.path.generic_string() + ")");
+			throw runtime_error("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
 		if (logSystem)
-			logSystem->trace("Compiled compute shader. (" + data.path.generic_string() + ")");
+			logSystem->trace("Compiled compute shader. (" + data.shaderPath.generic_string() + ")");
 
 		return true;
 	}
@@ -1261,7 +1297,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 		if (logSystem)
 		{
 			logSystem->error("Failed to load compute shader. ("
-				"name: " + data.path.generic_string() + ", "
+				"name: " + data.shaderPath.generic_string() + ", "
 				"error: " + string(e.what()) + ")");
 		}
 		return false;
@@ -1280,22 +1316,26 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	auto version = GraphicsAPI::computePipelineVersion++;
 	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsync, version);
 
+	auto threadSystem = getManager()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ComputePipelineLoadData();
 		data->version = version;
-		data->path = path;
+		data->shaderPath = path;
+		data->resourcesPath = appResourcesPath;
+		data->cachesPath = appCachesPath;
 		data->specConsts = specConsts;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
 		data->useAsync = useAsync;
 
 		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
+		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
-			auto data = (ComputePipelineLoadData*)task.getArgument();
 			Compiler::ComputeData pipelineData;
-			pipelineData.path = std::move(data->path);
+			pipelineData.shaderPath = std::move(data->shaderPath);
+			pipelineData.resourcesPath = std::move(data->resourcesPath);
+			pipelineData.cachesPath = std::move(data->cachesPath);
 			pipelineData.specConsts = std::move(data->specConsts);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
@@ -1321,12 +1361,14 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			queueLocker.lock();
 			computeQueue.push(std::move(item));
 			queueLocker.unlock();
-		}, data));
+		}));
 	}
 	else
 	{
 		Compiler::ComputeData pipelineData;
-		pipelineData.path = path;
+		pipelineData.shaderPath = path;
+		pipelineData.resourcesPath = appResourcesPath;
+		pipelineData.cachesPath = appCachesPath;
 		pipelineData.specConsts = specConsts;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
@@ -1355,10 +1397,14 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 //**********************************************************************************************************************
 void ResourceSystem::loadScene(const fs::path& path)
 {
+	/*
 	fs::path scenePath, filePath = "scenes" / path; filePath += ".scene";
-	if (!getResourceFilePath(filePath, scenePath))
+	if (!tryGetResourceFilePath(appResourcesPath, filePath, scenePath))
 		throw runtime_error("Scene file does not exist. (path: " + path.generic_string() + ")");
-	conf::Reader confReader(scenePath);
+
+	ifstream fileStream(path);
+	json scene = json::parse(fileStream);
+	fileStream.close();
 
 	auto manager = getManager();
 	auto& systems = manager->getSystems();
@@ -1397,21 +1443,21 @@ void ResourceSystem::loadScene(const fs::path& path)
 	if (logSystem)
 		logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
 	#endif
+	*/
 }
 
 //**********************************************************************************************************************
 void ResourceSystem::storeScene(const fs::path& path)
 {
-	auto scenesPath = GARDEN_APP_RESOURCES_PATH / "scenes";
+	auto scenesPath = appResourcesPath / "scenes";
 	auto directoryPath = scenesPath / path.parent_path();
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
 
 	auto filePath = scenesPath / path; filePath += ".scene";
-	conf::Writer confWriter(filePath);
-
-	confWriter.writeComment(GARDEN_APP_NAME_STRING
-		" Scene (" GARDEN_APP_VERSION_STRING ")");
+	JsonSerializer serializer(filePath);
+	serializer.write("version", appVersion.toString3());
+	serializer.beginChild("entities");
 	
 	auto manager = getManager();
 	auto& entities = manager->getEntities();
@@ -1424,30 +1470,42 @@ void ResourceSystem::storeScene(const fs::path& path)
 		auto& entity = entityData[i];
 		auto& components = entity.getComponents();
 
-		if (components.empty() || components.find(
-			typeid(DoNotDestroyComponent)) != components.end())
-		{
+		if (components.empty() || components.find(typeid(DoNotDestroyComponent)) != components.end())
 			continue;
-		}
 
-		confWriter.writeNewLine();
+		serializer.beginArrayElement();
+
+		#if GARDEN_DEBUG | GARDEN_EDITOR
+		if (components.find(typeid(TransformComponent)) != components.end())
+		{
+			auto transformComponent = manager->get<TransformComponent>(entities.getID(&entity));
+			if (!transformComponent->name.empty())
+				serializer.write("name", transformComponent->name);
+		}
+		#endif
+
+		serializer.beginChild("components");
 		for (auto& pair : components)
 		{
-			auto serializeSystem = dynamic_cast<ISerializeSystem*>(pair.second.first);
-			if (!serializeSystem)
+			auto system = pair.second.first;
+			auto componentName = system->getComponentName();
+			auto serializeSystem = dynamic_cast<ISerializable*>(system);
+
+			if (componentName.empty() || !serializeSystem)
 				continue;
-			serializeSystem->serialize(confWriter, index++, pair.second.second);
+			
+			serializer.beginArrayElement();
+			serializer.beginChild(componentName);
+			serializeSystem->serialize(serializer, pair.second.second);
+			serializer.endChild();
+			serializer.endArrayElement();
 		}
+		serializer.endChild();
+
+		serializer.endArrayElement();
 	}
 
-	auto& systems = manager->getSystems();
-	for (auto system : systems)
-	{
-		auto serializeSystem = dynamic_cast<ISerializeSystem*>(system);
-		if (!serializeSystem)
-			continue;
-		serializeSystem->postSerialize(confWriter);
-	}
+	serializer.endChild();
 
 	#if GARDEN_DEBUG
 	auto logSystem = manager->tryGet<LogSystem>();

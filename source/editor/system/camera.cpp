@@ -21,8 +21,7 @@ using namespace garden;
 
 CameraEditorSystem::CameraEditorSystem(Manager* manager, CameraSystem* system) : EditorSystem(manager, system)
 {
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector<CameraComponent>([this](ID<Entity> entity)
+	EditorRenderSystem::getInstance()->registerEntityInspector<CameraComponent>([this](ID<Entity> entity)
 	{
 		onEntityInspector(entity);
 	});

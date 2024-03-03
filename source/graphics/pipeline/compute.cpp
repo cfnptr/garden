@@ -27,10 +27,10 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 	this->localSize = createData.localSize;
 
 	auto _code = vector<vector<uint8>>(1); _code[0] = std::move(createData.code);
-	auto shaders = createShaders(_code, createData.path);
+	auto shaders = createShaders(_code, createData.shaderPath);
 
 	vk::SpecializationInfo specializationInfo;
-	fillSpecConsts(createData.path, ShaderStage::Compute, createData.variantCount,
+	fillSpecConsts(createData.shaderPath, ShaderStage::Compute, createData.variantCount,
 		&specializationInfo, createData.specConsts, createData.specConstData);
 
 	vk::PipelineShaderStageCreateInfo stageInfo({},

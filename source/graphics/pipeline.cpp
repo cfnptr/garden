@@ -313,7 +313,7 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 	if (createData.maxBindlessCount > 0 && !Vulkan::hasDescriptorIndexing)
 	{
 		throw runtime_error("Bindless descriptors are not supported on this GPU. ("
-			"pipeline: )" + createData.path.generic_string() + ")");
+			"pipeline: )" + createData.shaderPath.generic_string() + ")");
 	}
 
 	this->uniforms = std::move(createData.uniforms);
@@ -323,8 +323,8 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 	this->variantCount = createData.variantCount;
 
 	map<string, void*> immutableSamplers;
-	this->samplers = createPipelineSamplers(
-		createData.samplerStates, immutableSamplers, createData.path);
+	this->samplers = createPipelineSamplers(createData.samplerStates,
+		immutableSamplers, createData.shaderPath);
 
 	if (createData.descriptorSetCount > 0)
 	{
@@ -333,10 +333,10 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 	}
 
 	createDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms,
-		immutableSamplers, createData.path, createData.maxBindlessCount, bindless);
+		immutableSamplers, createData.shaderPath, createData.maxBindlessCount, bindless);
 
 	this->pipelineLayout = createPipelineLayout(pushConstantsSize,
-		createData.pushConstantsStages, descriptorSetLayouts, createData.path);
+		createData.pushConstantsStages, descriptorSetLayouts, createData.shaderPath);
 	
 	if (pushConstantsSize > 0)
 	{

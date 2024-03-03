@@ -24,9 +24,7 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 PhysicsEditor::PhysicsEditor(PhysicsSystem* system)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(typeid(RigidBodyComponent),
+	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(RigidBodyComponent),
 		[this](ID<Entity> entity) { onEntityInspector(entity); });
 	this->system = system;
 }

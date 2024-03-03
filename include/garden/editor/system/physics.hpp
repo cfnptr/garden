@@ -23,7 +23,6 @@ namespace garden
 
 class PhysicsEditor final
 {
-	PhysicsSystem* system = nullptr;
 	PhysicsEditor(PhysicsSystem* system);
 	void onEntityInspector(ID<Entity> entity);
 	friend class PhysicsSystem;

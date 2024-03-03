@@ -56,8 +56,7 @@ void TranslucentRenderSystem::initialize()
 	GeometryRenderSystem::initialize();
 
 	#if GARDEN_EDITOR
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(typeid(TranslucentRenderComponent),
+	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(TranslucentRenderComponent),
 	[this](ID<Entity> entity)
 	{
 		onTranslucentEntityInspector(getManager(),

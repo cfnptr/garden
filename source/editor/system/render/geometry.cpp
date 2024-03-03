@@ -144,9 +144,7 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 		geometryComponent->indexCount, geometryComponent->indexOffset);
 	ImGui::Text("Triangle Count: %d", geometryComponent->indexCount / 3);
 
-	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->selectedEntityAabb = geometryComponent->aabb;
+	EditorRenderSystem::getInstance()->selectedEntityAabb = geometryComponent->aabb;
 }
 
 //--------------------------------------------------------------------------------------------------
