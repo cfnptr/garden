@@ -24,9 +24,7 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 LightingEditor::LightingEditor(LightingRenderSystem* system)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(typeid(LightingRenderComponent),
+	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(LightingRenderComponent),
 		[this](ID<Entity> entity) { onEntityInspector(entity); });
 	this->system = system;
 }

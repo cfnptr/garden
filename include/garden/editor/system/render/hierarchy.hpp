@@ -21,7 +21,6 @@ namespace garden
 
 class HierarchyEditorSystem final : public EditorSystem<EditorRenderSystem>
 {
-	EditorRenderSystem* system = nullptr;
 	string hierarchySearch;
 	bool hierarchyCaseSensitive = false;
 	bool showWindow = false;

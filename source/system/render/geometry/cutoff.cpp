@@ -57,8 +57,7 @@ void CutoffRenderSystem::initialize()
 	GeometryRenderSystem::initialize();
 
 	#if GARDEN_EDITOR
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(typeid(CutoffRenderComponent),
+	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(CutoffRenderComponent),
 	[this](ID<Entity> entity)
 	{
 		onCutoffEntityInspector(getManager(),

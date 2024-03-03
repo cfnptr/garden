@@ -161,7 +161,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		code.push_back(std::move(createData.fragmentCode));
 	}
 
-	auto shaders = createShaders(code, createData.path);
+	auto shaders = createShaders(code, createData.shaderPath);
 	vector<vk::PipelineShaderStageCreateInfo> stageInfos(stages.size());
 	vk::PipelineShaderStageCreateInfo stageInfo;
 	stageInfo.pName = "main";
@@ -172,7 +172,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		auto stage = stages[i];
 		auto specializationInfo = &specializationInfos[i];
 
-		fillSpecConsts(createData.path, stage, createData.variantCount,
+		fillSpecConsts(createData.shaderPath, stage, createData.variantCount,
 			specializationInfo, createData.specConsts, createData.specConstData);
 
 		stageInfo.stage = toVkShaderStage(stage);

@@ -66,9 +66,7 @@ static map<string, DescriptorSet::Uniform> getLimitsUniforms(
 //--------------------------------------------------------------------------------------------------
 AutoExposureEditor::AutoExposureEditor(AutoExposureRenderSystem* system)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerBarTool([this]() { onBarTool(); });
+	EditorRenderSystem::getInstance()->registerBarTool([this]() { onBarTool(); });
 	this->system = system;
 }
 AutoExposureEditor::~AutoExposureEditor()

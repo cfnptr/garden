@@ -25,9 +25,7 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 ToneMappingEditor::ToneMappingEditor(ToneMappingRenderSystem* system)
 {
-	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
-	editorSystem->registerBarTool([this]() { onBarTool(); });
+	EditorRenderSystem::getInstance()->registerBarTool([this]() { onBarTool(); });
 	this->system = system;
 }
 

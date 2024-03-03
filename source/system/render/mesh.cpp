@@ -30,9 +30,6 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 void MeshRenderSystem::initialize()
 {
-	auto manager = getManager();
-	transformSystem = manager->get<TransformSystem>();
-	threadSystem = manager->get<ThreadSystem>();
 
 	#if GARDEN_EDITOR
 	selectorEditor = new SelectorEditor(this);
@@ -94,10 +91,6 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 
 	Plane frustumPlanes[FRUSTUM_PLANE_COUNT];
 	extractFrustumPlanes(viewProj, frustumPlanes);
-
-	#if GARDEN_EDITOR
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	#endif
 
 	// 1. Cull and prepare items 
 	for (auto& subsystem : subsystems)
@@ -164,7 +157,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			opaqueBuffer), componentPool.getOccupancy());
 
 			#if GARDEN_EDITOR
-			editorSystem->opaqueTotalCount += componentCount;
+			EditorRenderSystem::getInstance()->opaqueTotalCount += componentCount;
 			#endif	
 		}
 		else if (renderType == translucentType)
@@ -220,7 +213,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			translucentBuffer), componentPool.getOccupancy());
 
 			#if GARDEN_EDITOR
-			editorSystem->translucentTotalCount += componentCount;
+			EditorRenderSystem::getInstance()->translucentTotalCount += componentCount;
 			#endif	
 		}
 	}		
@@ -249,7 +242,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		opaqueBuffer));
 
 		#if GARDEN_EDITOR
-		editorSystem->opaqueDrawCount += (uint32)opaqueBuffer->drawCount;
+		EditorRenderSystem::getInstance()->opaqueDrawCount += (uint32)opaqueBuffer->drawCount;
 		#endif	
 	}
 
@@ -268,7 +261,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		translucentItems.data()));
 
 		#if GARDEN_EDITOR
-		editorSystem->translucentDrawCount += (uint32)translucentIndex;
+		EditorRenderSystem::getInstance()->translucentDrawCount += (uint32)translucentIndex;
 		#endif
 	}
 
@@ -411,7 +404,7 @@ void MeshRenderSystem::render()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
 	#if GARDEN_EDITOR
-	auto editorSystem = manager->get<EditorRenderSystem>();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	editorSystem->opaqueDrawCount = editorSystem->opaqueTotalCount =
 		editorSystem->translucentDrawCount = editorSystem->translucentTotalCount = 0;
 	#endif

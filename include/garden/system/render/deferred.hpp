@@ -40,7 +40,6 @@ enum class MeshRenderType : uint8
 //--------------------------------------------------------------------------------------------------
 class IDeferredRenderSystem
 {
-	DeferredRenderSystem* deferredSystem = nullptr;
 protected:
 	virtual void deferredRender() { }
 	virtual void preHdrRender() { }

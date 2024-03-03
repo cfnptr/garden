@@ -25,7 +25,6 @@ class SelectorEditorSystem;
 
 class GizmosEditor final
 {
-	MeshRenderSystem* system = nullptr;
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
 	ID<GraphicsPipeline> backGizmosPipeline = {};
 	ID<Buffer> fullArrowVertices = {};

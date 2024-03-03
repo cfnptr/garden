@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class BloomEditor final
 {
-	BloomRenderSystem* system = nullptr;
 	ID<GraphicsPipeline> thresholdPipeline = {};
 	ID<DescriptorSet> thresholdDescriptorSet = {};
 	bool visualizeThreshold = false;

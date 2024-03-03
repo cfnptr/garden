@@ -38,7 +38,6 @@ using namespace garden::graphics;
 // AE - Automatic Exposure aka Eye Light Adaptation
 class AutoExposureRenderSystem final : public System, public IRenderSystem
 {
-	DeferredRenderSystem* deferredSystem = nullptr;
 	ID<ComputePipeline> histogramPipeline = {};
 	ID<ComputePipeline> averagePipeline = {};
 	ID<DescriptorSet> histogramDescriptorSet = {};

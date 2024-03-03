@@ -55,8 +55,7 @@ void OpaqueRenderSystem::initialize()
 	GeometryRenderSystem::initialize();
 
 	#if GARDEN_EDITOR
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(
+	EditorRenderSystem::getInstance()->registerEntityInspector(
 		typeid(OpaqueRenderComponent), [this](ID<Entity> entity)
 		{ onOpaqueEntityInspector(entity, getManager(), (GeometryEditor*)editor); });
 	#endif
@@ -114,8 +113,7 @@ void OpaqueShadowRenderSystem::initialize()
 	GeometryShadowRenderSystem::initialize();
 
 	#if GARDEN_EDITOR
-	auto editorSystem = getManager()->get<EditorRenderSystem>();
-	editorSystem->registerEntityInspector(
+	EditorRenderSystem::getInstance()->registerEntityInspector(
 		typeid(OpaqueShadowRenderComponent), [this](ID<Entity> entity)
 		{
 			onOpaqueShadowEntityInspector(entity,

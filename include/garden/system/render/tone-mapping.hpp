@@ -42,7 +42,6 @@ public:
 		float exposure = 0.0f;
 	};
 private:
-	BloomRenderSystem* bloomSystem = nullptr;
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	ID<Buffer> luminanceBuffer = {};
