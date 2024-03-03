@@ -19,15 +19,15 @@ string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
 endif()
-if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-	message("CMAKE_BUILD_TYPE is either not declared or is null")
+if(NOT CMAKE_BUILD_TYPE MATCHES "Debug|Release|RelWithDebInfo|MinSizeRel")
+	message("CMAKE_BUILD_TYPE is not declared. Possibly missing CMakeSettings.json file.")
 endif()
 
 if(TARGET garden)
 	return()
 endif()
 
-project(Garden VERSION 0.1.0 LANGUAGES CXX
+project(Garden VERSION 0.0.1 LANGUAGES CXX
 	DESCRIPTION "An open source cross platform game engine \
 		written in C++ with Vulkan API rendering backend."
 	HOMEPAGE_URL "https://github.com/cfnptr/garden")
@@ -145,8 +145,8 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan xxHash::xxhash ecsm math-static
-	conf-static pack-static logy-static voxy glfw webp FastNoise OpenEXR)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm 
+	math-static conf-static pack-static logy-static voxy  glfw webp FastNoise OpenEXR)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -176,6 +176,9 @@ add_subdirectory(libraries/logy)
 
 set(VOXY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/voxy)
+
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/json)
 
 set(XXHASH_BUILD_XXHSUM OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/xxhash/cmake_unofficial)

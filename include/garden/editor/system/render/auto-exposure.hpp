@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class AutoExposureEditor final
 {
-	AutoExposureRenderSystem* system = nullptr;
 	ID<Buffer> readbackBuffer = {};
 	ID<GraphicsPipeline> limitsPipeline = {};
 	ID<DescriptorSet> limitsDescriptorSet = {};

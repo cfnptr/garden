@@ -78,6 +78,8 @@ class EditorRenderSystem final : public System
 	bool newScene = false;
 	bool exportScene = false;
 
+	static EditorRenderSystem* instance;
+
 	/**
 	 * @brief Creates a new editor render system instance.
 	 * @param[in,out] manager manager instance
@@ -95,7 +97,9 @@ class EditorRenderSystem final : public System
 	void showNewScene();
 	void showExportScene();
 
+	void preInit();
 	void renderEditor();
+	void postDeinit();
 
 	friend class ecsm::Manager;
 	friend class HierarchyEditorSystem;
@@ -120,6 +124,16 @@ public:
 			throw runtime_error("This component type is not registered. ("
 				"name: " + string(typeid(T).name()) + ")");
 		}
+	}
+
+	/**
+	 * @brief Returns editor render system instance.
+	 * @warning Do not use it if you have several editor render system instances.
+	 */
+	static EditorRenderSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // Editor render system is not created.
+		return instance;
 	}
 };
 

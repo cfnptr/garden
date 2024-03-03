@@ -173,6 +173,8 @@ void GraphicsSystem::recreateImGui()
 #endif
 
 //**********************************************************************************************************************
+GraphicsSystem* GraphicsSystem::instance = nullptr;
+
 GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscreen,
 	bool useVsync, bool useTripleBuffering, bool useThreading) : System(manager)
 {
@@ -220,6 +222,8 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 			"buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
+
+	instance = this;
 }
 GraphicsSystem::~GraphicsSystem()
 {

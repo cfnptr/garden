@@ -76,6 +76,8 @@ private:
 	ID<GraphicsPipeline> aabbPipeline;
 	#endif
 
+	static GraphicsSystem* instance;
+
 	/**
 	 * @brief Creates a new graphics system instance.
 	 * 
@@ -154,6 +156,11 @@ public:
 	 */
 	int2 getWindowSize() const noexcept { return windowSize; }
 
+	/**
+	 * @brief Returns true if frame can be rendered on current tick.
+	 * @details In some cases we can't render to the window. (ex. it may be hidden) 
+	 */
+	bool canRender() const noexcept { return isFramebufferSizeValid; }
 	/**
 	 * @brief Use multithreaded command buffer recording.
 	 * @warning Be careful when writing asynchronous code!
@@ -570,6 +577,16 @@ public:
 	 * @param instance target descriptor set instance
 	 */
 	View<DescriptorSet> get(ID<DescriptorSet> instance) const;
+
+	/**
+	 * @brief Returns graphics system instance.
+	 * @warning Do not use it if you have several graphics system instances.
+	 */
+	static GraphicsSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // Graphics system is not created.
+		return instance;
+	}
 	
 	//******************************************************************************************************************
 	// Render commands

@@ -37,6 +37,8 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
+EditorRenderSystem* EditorRenderSystem::instance = nullptr;
+
 EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 {
 	manager->registerEventBefore("RenderEditor", "Present");
@@ -44,20 +46,20 @@ EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
 
+	SUBSCRIBE_TO_EVENT("PreInit", EditorRenderSystem::preInit);
 	SUBSCRIBE_TO_EVENT("RenderEditor", EditorRenderSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
 
-	manager->createSystem<ResourceEditorSystem>(this);
-	manager->createSystem<HierarchyEditorSystem>(this);
+	instance = this;
 }
 EditorRenderSystem::~EditorRenderSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		manager->destroySystem<ResourceEditorSystem>();
-		manager->destroySystem<HierarchyEditorSystem>();
-
+		UNSUBSCRIBE_FROM_EVENT("PreInit", EditorRenderSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("RenderEditor", EditorRenderSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
 
 		manager->unregisterEvent("RenderEditor");
 		manager->unregisterEvent("EditorBarFile");
@@ -69,9 +71,7 @@ EditorRenderSystem::~EditorRenderSystem()
 //**********************************************************************************************************************
 void EditorRenderSystem::showMainMenuBar()
 {
-	auto manager = getManager();
-	auto inputSystem = manager->get<InputSystem>();
-	if (inputSystem->getCursorMode() == CursorMode::Locked)
+	if (InputSystem::getInstance()->getCursorMode() == CursorMode::Locked)
 		return;
 
 	ImGui::BeginMainMenuBar();
@@ -88,7 +88,7 @@ void EditorRenderSystem::showMainMenuBar()
 		ImGui::EndMenu();
 	}
 
-	
+	auto manager = getManager();
 	if (ImGui::BeginMenu("File"))
 	{
 		auto hasTransformSystem = manager->has<TransformSystem>();
@@ -164,12 +164,31 @@ void EditorRenderSystem::showMainMenuBar()
 //**********************************************************************************************************************
 void EditorRenderSystem::showAboutWindow()
 {
-	if (ImGui::Begin("About Garden", &aboutWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("About", &aboutWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::Text("Creator: Nikita Fediuchin");
-		ImGui::Text("Version: " GARDEN_VERSION_STRING);
+		auto engineVersion = string(GARDEN_VERSION_STRING);
+		if (GARDEN_VERSION_MAJOR == 0 && GARDEN_VERSION_MINOR == 0)
+			engineVersion += " (Alpha)";
+		else if (GARDEN_VERSION_MAJOR == 0)
+			engineVersion += " (Beta)";
 
-		if (ImGui::CollapsingHeader("PC"))
+		ImGui::SeparatorText(GARDEN_NAME_STRING " Engine");
+		ImGui::Text("Version: %s", engineVersion.c_str());
+		ImGui::Text("Creator: Nikita Fediuchin");
+
+		auto appInfoSystem = getManager()->tryGet<AppInfoSystem>();
+		if (appInfoSystem)
+		{
+			auto appVersion = appInfoSystem->getVersion().toString3();
+			ImGui::SeparatorText("Application");
+			ImGui::Text("Name: %s", appInfoSystem->getName().c_str());
+			ImGui::Text("Version: %s", appVersion.c_str());
+			ImGui::Text("Creator: %s", appInfoSystem->getCreator().c_str());
+		}
+
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader("System Info"))
 		{
 			ImGui::Text("OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
 			ImGui::Text("SIMDs: %s", GARDEN_SIMD_STRING);
@@ -213,7 +232,7 @@ void EditorRenderSystem::showOptionsWindow()
 	if (ImGui::Begin("Options", &optionsWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto manager = getManager();
-		auto graphicsSystem = manager->get<GraphicsSystem>();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 
 		if (ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync))
 		{
@@ -274,24 +293,27 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::Spacing();
 		*/
 
-		auto appInfoSystem = manager->get<AppInfoSystem>();
-		auto cachePath = Directory::getAppDataPath(appInfoSystem->getAppDataName()) / "caches";
-		int fileCount = 0; uint64 binarySize = 0;
-		if (fs::exists(cachePath))
-			getFileInfo(cachePath, fileCount, binarySize);
-		auto sizeString = toBinarySizeString(binarySize);
-		ImGui::Text("Application cache: %d files, %s", fileCount, sizeString.c_str());
+		auto appInfoSystem = manager->tryGet<AppInfoSystem>();
+		if (appInfoSystem)
+		{
+			auto cachePath = Directory::getAppDataPath(appInfoSystem->getAppDataName()) / "caches";
+			int fileCount = 0; uint64 binarySize = 0;
+			if (fs::exists(cachePath))
+				getFileInfo(cachePath, fileCount, binarySize);
+			auto sizeString = toBinarySizeString(binarySize);
+			ImGui::Text("Application cache: %d files, %s", fileCount, sizeString.c_str());
 
-		fileCount = 0; binarySize = 0;
-		if (fs::exists(appInfoSystem->getCachesPath()))
-			getFileInfo(appInfoSystem->getCachesPath(), fileCount, binarySize);
-		sizeString = toBinarySizeString(binarySize);
-		ImGui::Text("Project cache: %d files, %s", fileCount, sizeString.c_str());
+			fileCount = 0; binarySize = 0;
+			if (fs::exists(appInfoSystem->getCachesPath()))
+				getFileInfo(appInfoSystem->getCachesPath(), fileCount, binarySize);
+			sizeString = toBinarySizeString(binarySize);
+			ImGui::Text("Project cache: %d files, %s", fileCount, sizeString.c_str());
 
-		if (ImGui::Button("Clear application cache", ImVec2(-FLT_MIN, 0.0f)))
-			fs::remove_all(cachePath);
-		if (ImGui::Button("Clear project cache", ImVec2(-FLT_MIN, 0.0f)))
-			fs::remove_all(appInfoSystem->getCachesPath());
+			if (ImGui::Button("Clear application cache", ImVec2(-FLT_MIN, 0.0f)))
+				fs::remove_all(cachePath);
+			if (ImGui::Button("Clear project cache", ImVec2(-FLT_MIN, 0.0f)))
+				fs::remove_all(appInfoSystem->getCachesPath());
+		}
 	}
 	ImGui::End();
 }
@@ -317,8 +339,7 @@ void EditorRenderSystem::showEntityInspector()
 			{
 				if (manager->has<TransformComponent>(selectedEntity))
 				{
-					auto transformSystem = manager->get<TransformSystem>();
-					transformSystem->destroyRecursive(selectedEntity);
+					TransformSystem::getInstance()->destroyRecursive(selectedEntity);
 				}
 				else
 				{
@@ -385,8 +406,27 @@ void EditorRenderSystem::showExportScene()
 }
 
 //**********************************************************************************************************************
+void EditorRenderSystem::preInit()
+{
+	auto manager = getManager();
+	manager->createSystem<ResourceEditorSystem>(this);
+	manager->createSystem<HierarchyEditorSystem>(this);
+}
+void EditorRenderSystem::postDeinit()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		manager->destroySystem<ResourceEditorSystem>();
+		manager->destroySystem<HierarchyEditorSystem>();
+	}
+}
+
 void EditorRenderSystem::renderEditor()
 {
+	if (!GraphicsSystem::getInstance()->canRender())
+		return;
+
 	showMainMenuBar();
 
 	if (demoWindow)

@@ -12,31 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "garden/system/render/geometry.hpp"
-
-#if GARDEN_EDITOR
-namespace garden
-{
+#include "garden/json/deserializer.hpp"
 
 using namespace garden;
-using namespace garden::graphics;
 
-class GeometryEditor final
-{
-	GeometryEditor(GeometryRenderSystem* system);
-	friend class GeometryRenderSystem;
-public:
-	void renderInfo(GeometryRenderComponent* geometryComponent, float* alphaCutoff);
-};
-
-class GeometryShadowEditor final
-{
-	GeometryShadowEditor(GeometryShadowRenderSystem* system);
-	friend class GeometryShadowRenderSystem;
-public:
-	void renderInfo(GeometryShadowRenderComponent* geometryShadowComponent);
-};
-
-} // namespace garden
-#endif

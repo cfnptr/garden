@@ -161,10 +161,9 @@ void GizmosEditor::preSwapchainRender()
 {
 	auto manager = system->getManager();
 	auto graphicsSystem = system->getGraphicsSystem();
-	auto editorSystem = manager->get<EditorRenderSystem>();
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
-	auto selectedEntity = editorSystem->selectedEntity;
+	auto selectedEntity = EditorRenderSystem::getInstance()->selectedEntity;
 	auto fullCubeVertices = graphicsSystem->getFullCubeVertices();
 	auto fullCubeView = graphicsSystem->get(fullCubeVertices);
 	auto fullArrowView = graphicsSystem->get(fullArrowVertices);

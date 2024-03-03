@@ -37,7 +37,7 @@ void SelectorEditor::preSwapchainRender()
 		return;
 
 	auto manager = system->getManager();
-	auto editorSystem = manager->get<EditorRenderSystem>();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
@@ -66,7 +66,7 @@ void SelectorEditor::preSwapchainRender()
 		auto globalDirection = (float3)(cameraConstants.viewProjInv *
 			float4(uvPosition * 2.0f - 1.0f, 0.0f, 1.0f));
 		auto& subsystems = manager->getSubsystems<MeshRenderSystem>();
-		auto& transformComponents = manager->get<TransformSystem>()->getComponents();
+		auto& transformComponents = TransformSystem::getInstance()->getComponents();
 
 		float newDistance = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;

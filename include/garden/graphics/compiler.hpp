@@ -54,6 +54,7 @@ public:
 	struct GraphicsData : public GraphicsPipeline::GraphicsCreateData
 	{
 		fs::path cachesPath;
+		fs::path resourcesPath;
 		#ifndef GSL_COMPILER
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
@@ -65,6 +66,7 @@ public:
 	struct ComputeData : public ComputePipeline::ComputeCreateData
 	{
 		fs::path cachesPath;
+		fs::path resourcesPath;
 		#ifndef GSL_COMPILER
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
@@ -83,11 +85,32 @@ public:
 	static void loadComputeShader(ComputeData& data);
 
 	#if GARDEN_DEBUG || defined(GSL_COMPILER)
-	static bool compileGraphicsShaders(
-		const fs::path& inputPath, const fs::path& outputPath,
+	/**
+	 * @brief Compiles graphics shaders. (.vert, .frag)
+	 * 
+	 * @param inputPath target shaders input directory path
+	 * @param outputPath compiled shaders output directory path
+	 * @param includePaths include shaders directory paths
+	 * @param[in,out] data input and compiled shaders data
+	 * 
+	 * @return True on success and writes processed data, otherwise false if shaders not found.
+	 * @throw CompileError on shaders compilation or syntax error.
+	 */
+	static bool compileGraphicsShaders(const fs::path& inputPath, const fs::path& outputPath,
 		const vector<fs::path>& includePaths, GraphicsData& data);
-	static bool compileComputeShader(
-		const fs::path& inputPath, const fs::path& outputPath,
+
+	/**
+	 * @brief Compiles compute shader. (.comp)
+	 * 
+	 * @param inputPath target shader input directory path
+	 * @param outputPath compiled shader output directory path
+	 * @param includePaths include shaders directory paths
+	 * @param[in,out] data input and compiled shader data
+	 * 
+	 * @return True on success and writes processed data, otherwise false if shader not found.
+	 * @throw CompileError on shader compilation or syntax error.
+	 */
+	static bool compileComputeShader(const fs::path& inputPath, const fs::path& outputPath,
 		const vector<fs::path>& includePaths, ComputeData& data);
 	#endif
 };

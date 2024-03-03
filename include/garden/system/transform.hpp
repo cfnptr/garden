@@ -136,6 +136,7 @@ public:
 	using TransformComponents = LinearPool<TransformComponent>;
 private:
 	TransformComponents components;
+	static TransformSystem* instance;
 
 	/**
 	 * @brief Creates a new transform system instance.
@@ -147,28 +148,45 @@ private:
 	 */
 	~TransformSystem() final;
 
+	#if GARDEN_EDITOR
+	void preInit();
+	void postDeinit();
+	#endif
+
+	string_view getComponentName() const final;
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
-
-	void serialize(ISerializer& serializer, ID<Entity> entity) final;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity) final;
+	
+	void serialize(ISerializer& serializer, ID<Component> component) final;
+	void deserialize(IDeserializer& deserializer, ID<Component> component) final;
 	
 	static void destroyRecursive(Manager* manager, ID<Entity> entity);
-
+	
 	friend class ecsm::Manager;
 public:
 	/**
 	 * @brief Returns transform component pool.
 	 */
 	const TransformComponents& getComponents() const noexcept { return components; }
+
 	/**
 	 * @brief Destroys the entity and all it descendants.
 	 * @param entity target entity
 	 */
 	void destroyRecursive(ID<Entity> entity);
+
+	/**
+	 * @brief Returns transform system instance.
+	 * @warning Do not use it if you have several transform system instances.
+	 */
+	static TransformSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // Transform system is not created.
+		return instance;
+	}
 };
 
 /***********************************************************************************************************************

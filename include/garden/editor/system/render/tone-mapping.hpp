@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class ToneMappingEditor final
 {
-	ToneMappingRenderSystem* system = nullptr;
 	int toneMapperType = 0;
 	bool showWindow = false;
 

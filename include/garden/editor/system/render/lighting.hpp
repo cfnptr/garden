@@ -24,7 +24,7 @@ using namespace garden::graphics;
 
 class LightingEditor final
 {
-	LightingRenderSystem* system = nullptr;
+
 	LightingEditor(LightingRenderSystem* system);
 	void onEntityInspector(ID<Entity> entity);
 	friend class LightingRenderSystem;

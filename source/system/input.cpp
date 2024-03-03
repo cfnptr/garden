@@ -69,10 +69,13 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 	*/
 	#endif
 
-	auto inputSystem = manager->get<InputSystem>();
+	auto inputSystem = InputSystem::getInstance();
 	for (int i = 0; i < count; i++)
 		inputSystem->fileDropPaths.push_back(paths[i]);
 }
+
+//**********************************************************************************************************************
+InputSystem* InputSystem::instance = nullptr;
 
 InputSystem::InputSystem(Manager* manager) : System(manager)
 {
@@ -85,6 +88,8 @@ InputSystem::InputSystem(Manager* manager) : System(manager)
 		lastKeyboardButtons.emplace(make_pair(button, false));
 	for (int i = 0; i < (int)MouseButton::Count; i++)
 		lastMouseButtons.emplace(make_pair((MouseButton)i, false));
+
+	instance = this;
 }
 InputSystem::~InputSystem()
 {

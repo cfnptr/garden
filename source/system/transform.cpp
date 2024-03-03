@@ -277,17 +277,26 @@ bool TransformComponent::hasBaked() const noexcept
 }
 
 //**********************************************************************************************************************
+TransformSystem* TransformSystem::instance = nullptr;
+
 TransformSystem::TransformSystem(Manager* manager) : System(manager)
 {
 	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<TransformEditorSystem>(this);
+	SUBSCRIBE_TO_EVENT("PreInit", TransformSystem::preInit);
+	SUBSCRIBE_TO_EVENT("PostDeinit", TransformSystem::postDeinit);
 	#endif
+
+	instance = this;
 }
 TransformSystem::~TransformSystem()
 {
 	#if GARDEN_EDITOR
-	getManager()->tryDestroySystem<TransformEditorSystem>();
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", TransformSystem::preInit);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", TransformSystem::postDeinit);
+	}
 	#endif
 
 	auto componentData = components.getData();
@@ -297,7 +306,24 @@ TransformSystem::~TransformSystem()
 	components.clear(false);
 }
 
+#if GARDEN_EDITOR
+void TransformSystem::preInit()
+{
+	auto manager = getManager();
+	if (manager->has<EditorRenderSystem>())
+		manager->createSystem<TransformEditorSystem>(this);
+}
+void TransformSystem::postDeinit()
+{
+	getManager()->tryDestroySystem<TransformEditorSystem>();
+}
+#endif
+
 //**********************************************************************************************************************
+string_view TransformSystem::getComponentName() const
+{
+	return "Transform";
+}
 type_index TransformSystem::getComponentType() const
 {
 	return typeid(TransformComponent);
@@ -307,9 +333,6 @@ ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 	auto component = components.create();
 	auto componentView = components.get(component);
 	componentView->manager = getManager();
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	componentView->name = "Entity " + to_string(*entity);
-	#endif
 	return ID<Component>(component);
 }
 void TransformSystem::destroyComponent(ID<Component> instance)
@@ -331,18 +354,18 @@ View<Component> TransformSystem::getComponent(ID<Component> instance)
 void TransformSystem::disposeComponents() { components.dispose(); }
 
 //**********************************************************************************************************************
-void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity)
+void TransformSystem::serialize(ISerializer& serializer, ID<Component> component)
 {
 	auto manager = getManager();
-	auto transformComponent = manager->get<TransformComponent>(entity);
-	serializer.write("position", transformComponent->position, 4);
-	serializer.write("rotation", transformComponent->rotation, 6);
-	serializer.write("scale", transformComponent->scale, 6);
+	auto transformComponent = components.get(ID<TransformComponent>(component));
+	serializer.write("position", transformComponent->position);
+	serializer.write("rotation", transformComponent->rotation);
+	serializer.write("scale", transformComponent->scale);
 }
-void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity)
+void TransformSystem::deserialize(IDeserializer& deserializer, ID<Component> component)
 {
 	auto manager = getManager();
-	auto transformComponent = manager->get<TransformComponent>(entity);
+	auto transformComponent = components.get(ID<TransformComponent>(component));
 	deserializer.read("position", transformComponent->position);
 	deserializer.read("rotation", transformComponent->rotation);
 	deserializer.read("scale", transformComponent->scale);

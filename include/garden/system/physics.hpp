@@ -70,7 +70,6 @@ public:
 		Cube, Sphere, Plane, Capsule, Custom, Count,
 	};
 private:
-	PhysicsSystem* physicsSystem = nullptr;
 	void* instance = nullptr;
 	ID<Material> material = {};
 	Type type = {};
@@ -130,7 +129,6 @@ public:
 		Count
 	};
 private:
-	PhysicsSystem* physicsSystem = nullptr;
 	void* instance = nullptr;
 	uint16 _alignment = 0;
 	bool staticBody = false;
@@ -223,8 +221,6 @@ public:
 		ID<Shape> otherShape = {};
 		bool isEntered = false;
 	};
-private:
-	PhysicsSystem* physicsSystem = nullptr;
 protected:
 	virtual void preSimulate() { }
 	virtual void simulate(double deltaTime) { }
@@ -252,7 +248,6 @@ class PhysicsSystem final : public System
 	LinearPool<RigidBodyComponent> components;
 	LinearPool<Material> materials;
 	LinearPool<Shape> shapes;
-	void* graphicsSystem = nullptr;
 	void* data = nullptr;
 	void* foundation = nullptr;
 	void* instance = nullptr;

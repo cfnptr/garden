@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class ShadowMappingEditor final
 {
-	ShadowMappingRenderSystem* system = nullptr;
 	ID<GraphicsPipeline> cascadesPipeline = {};
 	ID<DescriptorSet> cascadesDescriptorSet = {};
 	bool visualizeCascades = false;

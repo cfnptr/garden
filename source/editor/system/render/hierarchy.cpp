@@ -25,31 +25,36 @@ HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager,
 	EditorRenderSystem* system) : EditorSystem(manager, system)
 {
 	if (manager->has<TransformSystem>())
+	{
+		SUBSCRIBE_TO_EVENT("RenderEditor", HierarchyEditorSystem::renderEditor);
 		SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
+	}
 }
 HierarchyEditorSystem::~HierarchyEditorSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
+		TRY_UNSUBSCRIBE_FROM_EVENT("RenderEditor", HierarchyEditorSystem::renderEditor);
 		TRY_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
-static void updateHierarchyClick(Manager* manager, TransformComponent* transform)
+static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 {
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
-		auto graphicsSystem = manager->get<GraphicsSystem>();
-		auto editorSystem = manager->get<EditorRenderSystem>();
-		editorSystem->selectedEntity = transform->getEntity();
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto editorSystem = EditorRenderSystem::getInstance();
+		editorSystem->selectedEntity = renderEntity;
 		editorSystem->selectedEntityAabb = Aabb();
 
 		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && graphicsSystem->camera)
 		{
+			auto transformTransform = manager->get<TransformComponent>(renderEntity);
 			auto cameraTransform = manager->get<TransformComponent>(graphicsSystem->camera);
-			auto model = transform->calcModel();
+			auto model = transformTransform->calcModel();
 			auto offset = float3(0.0f, 0.0f, -2.0f) * cameraTransform->rotation;
 			cameraTransform->position = getTranslation(model) + offset;
 		}
@@ -61,26 +66,21 @@ static void updateHierarchyClick(Manager* manager, TransformComponent* transform
 		{
 			auto entity = manager->createEntity();
 			auto newTransform = manager->add<TransformComponent>(entity);
-			newTransform->setParent(transform->getEntity());
+			newTransform->setParent(renderEntity);
 		}
 
-		if (!manager->has<DoNotDestroyComponent>(transform->getEntity()))
+		if (!manager->has<DoNotDestroyComponent>(renderEntity))
 		{
 			if (ImGui::MenuItem("Destroy Entity"))
-				manager->destroy(transform->getEntity());
-
+				manager->destroy(renderEntity);
 			if (ImGui::MenuItem("Destroy Entities"))
-			{
-				auto transformSystem = manager->get<TransformSystem>();
-				transformSystem->destroyRecursive(transform->getEntity());
-			}
+				TransformSystem::getInstance()->destroyRecursive(renderEntity);
 		}
 		
 		ImGui::EndPopup();
 	}
 
 	// TODO: scroll window when dragging.
-	// allow to drop on empty window space.
 	// allow to drop between elements.
 	// On selecting entity in scene open hierarchy view to it.
 
@@ -90,12 +90,12 @@ static void updateHierarchyClick(Manager* manager, TransformComponent* transform
 		if (payload)
 		{
 			auto entity = *(const ID<Entity>*)(payload->Data);
-			// TODO: detect if entity is destroyed. Or clear payload on destroy.
 			auto entityTransform = manager->get<TransformComponent>(entity);
-			if (transform)
+			if (renderEntity)
 			{
-				if (!transform->hasAncestor(entity))
-					entityTransform->setParent(transform->getEntity());
+				auto renderTransform = manager->get<TransformComponent>(renderEntity);
+				if (!renderTransform->hasAncestor(entity))
+					entityTransform->setParent(renderEntity);
 			}	
 			else
 			{
@@ -104,112 +104,166 @@ static void updateHierarchyClick(Manager* manager, TransformComponent* transform
 		}
 		ImGui::EndDragDropTarget();
 	}
-	if (transform && !transform->hasBaked() && ImGui::BeginDragDropSource())
+	if (renderEntity)
 	{
-		auto entity = transform->getEntity();
-		ImGui::SetDragDropPayload("Entity", &entity, sizeof(ID<Entity>));
-		ImGui::Text("%s", transform->name.c_str());
-		ImGui::EndDragDropSource();
+		auto renderTransform = manager->get<TransformComponent>(renderEntity);
+		if (!renderTransform->hasBaked() && ImGui::BeginDragDropSource())
+		{
+			ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
+			if (renderTransform->name.empty())
+			{
+				auto name = "Entity " + to_string(*renderEntity);
+				ImGui::Text("%s", name.c_str());
+			}
+			else
+			{
+				ImGui::Text("%s", renderTransform->name.c_str());
+			}
+			ImGui::EndDragDropSource();
+		}
 	}
 }
 
 //**********************************************************************************************************************
-static void renderHierarchyEntity(Manager* manager, TransformComponent* transform, ID<Entity> selectedEntity)
+static void renderHierarchyEntity(Manager* manager, ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
-	auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
+	auto transform = manager->get<TransformComponent>(renderEntity);
+	auto name = transform->name.empty() ? "Entity " + to_string(*renderEntity) : transform->name;
+	
+	auto flags = (int)(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
 	if (transform->getEntity() == selectedEntity)
 		flags |= ImGuiTreeNodeFlags_Selected;
 	if (transform->getChildCount() == 0)
 		flags |= ImGuiTreeNodeFlags_Leaf;
 	
-	if (ImGui::TreeNodeEx(transform->name.c_str(), flags))
+	if (ImGui::TreeNodeEx(name.c_str(), flags))
 	{
-		updateHierarchyClick(manager, transform);
+		updateHierarchyClick(manager, renderEntity);
+
+		transform = manager->get<TransformComponent>(renderEntity); // Do not optimize!!!
 		for (uint32 i = 0; i < transform->getChildCount(); i++)
 		{
-			renderHierarchyEntity(manager, *manager->get<TransformComponent>(
-				transform->getChilds()[i]), selectedEntity);
+			renderHierarchyEntity(manager, transform->getChilds()[i], selectedEntity);
+			transform = manager->get<TransformComponent>(renderEntity); // Do not optimize!!!
 		}
 		ImGui::TreePop();
 	}
 	else
 	{
-		updateHierarchyClick(manager, transform);
+		updateHierarchyClick(manager, renderEntity);
 	}
 }
 static bool findCaseInsensitive(const string& haystack, const string& needle)
 {
-	auto it = search(haystack.begin(), haystack.end(),
-		needle.begin(), needle.end(), [](char a, char b)
+	auto it = search(haystack.begin(), haystack.end(), needle.begin(), needle.end(), [](char a, char b)
 	{
 		return toupper(a) == toupper(b);
 	});
-	return (it != haystack.end() );
+	return (it != haystack.end());
 }
 
 //**********************************************************************************************************************
 void HierarchyEditorSystem::renderEditor()
 {
-	if (showWindow)
+	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
+		return;
+
+	if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
-		if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
+		auto manager = getManager();
+		if (ImGui::BeginPopupContextWindow(nullptr,
+			ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 		{
-			auto manager = getManager();
-			auto transformSystem = manager->get<TransformSystem>();
-			auto& components = transformSystem->getComponents();
-			auto componentData = (TransformComponent*)components.getData();
-			auto componentOccupancy = components.getOccupancy();
-		
-			ImGui::InputText("Search", &hierarchySearch); ImGui::SameLine();
-			ImGui::Checkbox("Aa", &hierarchyCaseSensitive);
-			ImGui::Separator();
-
-			ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-			if (hierarchySearch.empty())
+			if (ImGui::MenuItem("Create Entity"))
 			{
-				for (uint32 i = 0; i < componentOccupancy; i++)
-				{
-					auto transform = &componentData[i];
-					if (!transform->getEntity() || transform->getParent())
-						continue;
-					renderHierarchyEntity(manager, transform, system->selectedEntity);
-				}
+				auto entity = manager->createEntity();
+				manager->add<TransformComponent>(entity);
 			}
-			else
-			{
-				for (uint32 i = 0; i < componentOccupancy; i++)
-				{
-					auto transform = &componentData[i];
-					if (!transform->getEntity())
-						continue;
-
-					if (hierarchyCaseSensitive)
-					{
-						if (transform->name.find(hierarchySearch) == string::npos)
-							continue;
-					}
-					else
-					{
-						if (!findCaseInsensitive(transform->name, hierarchySearch))
-							continue;
-					}
-
-					auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Leaf);
-					if (transform->getEntity() == system->selectedEntity)
-						flags |= ImGuiTreeNodeFlags_Selected;
-					
-					if (ImGui::TreeNodeEx(transform->name.c_str(), flags))
-					{
-						updateHierarchyClick(manager, transform);
-						ImGui::TreePop();
-					}
-				}
-			}
-
-			ImGui::PopStyleColor();
+			ImGui::EndPopup();
 		}
-		ImGui::End();
+
+		auto cursorPos = ImGui::GetCursorScreenPos();
+		ImGui::Dummy(ImGui::GetWindowSize());
+		ImGui::SetCursorScreenPos(cursorPos);
+		// TODO: fix dummy offset when window is scrolled.
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			auto mousePos = ImGui::GetMousePos();
+			auto containerPos = ImGui::GetItemRectMin();
+			auto containerSize = ImGui::GetItemRectSize();
+			const auto hotZoneHeight = 20.0f, scrollSpeed = 5.0f;
+
+			if (mousePos.y - containerPos.y < hotZoneHeight)
+    			ImGui::SetScrollY(ImGui::GetScrollY() - scrollSpeed);
+			if ((containerPos.y + containerSize.y) - mousePos.y < hotZoneHeight)
+    			ImGui::SetScrollY(ImGui::GetScrollY() + scrollSpeed);
+			// TODO: fix auto-scroll when dragon dropping
+
+			auto payload = ImGui::AcceptDragDropPayload("Entity");
+			if (payload)
+			{
+				auto entity = *(const ID<Entity>*)(payload->Data);
+				auto entityTransform = manager->get<TransformComponent>(entity);
+				entityTransform->setParent({});
+			}
+			ImGui::EndDragDropTarget();
+		}
+		
+		ImGui::InputText("Search", &hierarchySearch); ImGui::SameLine();
+		ImGui::Checkbox("Aa", &hierarchyCaseSensitive);
+		ImGui::Separator();
+
+		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+
+		auto& components = TransformSystem::getInstance()->getComponents();
+		if (hierarchySearch.empty())
+		{
+			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
+			{
+				auto transform = &((TransformComponent*)components.getData())[i];
+				if (!transform->getEntity() || transform->getParent())
+					continue;
+				renderHierarchyEntity(manager, transform->getEntity(), system->selectedEntity);
+			}
+		}
+		else
+		{
+			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
+			{
+				auto transform = &((TransformComponent*)components.getData())[i];
+				if (!transform->getEntity())
+					continue;
+
+				auto name = transform->name.empty() ? 
+					"Entity " + to_string(*transform->getEntity()) : transform->name;
+
+				if (hierarchyCaseSensitive)
+				{
+					if (name.find(hierarchySearch) == string::npos)
+						continue;
+				}
+				else
+				{
+					if (!findCaseInsensitive(name, hierarchySearch))
+						continue;
+				}
+
+				auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Leaf);
+				if (transform->getEntity() == system->selectedEntity)
+					flags |= ImGuiTreeNodeFlags_Selected;
+					
+				if (ImGui::TreeNodeEx(name.c_str(), flags))
+				{
+					updateHierarchyClick(manager, transform->getEntity());
+					ImGui::TreePop();
+				}
+			}
+		}
+
+		ImGui::PopStyleColor();
 	}
+	ImGui::End();
 }
 
 //**********************************************************************************************************************

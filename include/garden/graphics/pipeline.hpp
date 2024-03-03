@@ -194,7 +194,7 @@ public:
 
 	struct CreateData
 	{
-		fs::path path;
+		fs::path shaderPath;
 		map<string, SamplerState> samplerStates;
 		map<string, Uniform> uniforms;
 		map<string, SpecConst> specConsts;

@@ -31,7 +31,6 @@ class DeferredEditor final
 		Shadow, AmbientOcclusion, AmbientOcclusionD, Count
 	};
 
-	DeferredRenderSystem* system = nullptr;
 	ID<Framebuffer> editorFramebuffer = {};
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};

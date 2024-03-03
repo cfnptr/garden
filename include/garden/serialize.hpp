@@ -39,36 +39,38 @@ using namespace ecsm;
 class ISerializer
 {
 public:
-	virtual ~ISerializer() = 0;
+	virtual ~ISerializer() { }
 
-	virtual void beginChild(const string& name) = 0;
+	virtual void beginChild(string_view name) = 0;
 	virtual void endChild() = 0;
 
-	virtual void beginArray(const string& name) = 0;
-	virtual void endArray() = 0;
+	virtual void beginArrayElement() = 0;
+	virtual void endArrayElement() = 0;
 
-	virtual void write(const string& name, int64 value) = 0;
-	virtual void write(const string& name, uint64 value) = 0;
-	virtual void write(const string& name, int32 value) = 0;
-	virtual void write(const string& name, uint32 value) = 0;
-	virtual void write(const string& name, int16 value) = 0;
-	virtual void write(const string& name, uint16 value) = 0;
-	virtual void write(const string& name, int8 value) = 0;
-	virtual void write(const string& name, uint8 value) = 0;
-	virtual void write(const string& name, bool value) = 0;
-	virtual void write(const string& name, float value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, double value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, string_view value) = 0;
-	virtual void write(const string& name, int2 value) = 0;
-	virtual void write(const string& name, const int3& value) = 0;
-	virtual void write(const string& name, const int4& value) = 0;
-	virtual void write(const string& name, float2 value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, const float3& value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, const float4& value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, const quat& value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, const float2x2& value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, const float3x3& value, uint8 precision = 0) = 0;
-	virtual void write(const string& name, const float4x4& value, uint8 precision = 0) = 0;
+	virtual void write(string_view name, int64 value) = 0;
+	virtual void write(string_view name, uint64 value) = 0;
+	virtual void write(string_view name, int32 value) = 0;
+	virtual void write(string_view name, uint32 value) = 0;
+	virtual void write(string_view name, int16 value) = 0;
+	virtual void write(string_view name, uint16 value) = 0;
+	virtual void write(string_view name, int8 value) = 0;
+	virtual void write(string_view name, uint8 value) = 0;
+	virtual void write(string_view name, bool value) = 0;
+	virtual void write(string_view name, float value) = 0;
+	virtual void write(string_view name, double value) = 0;
+	virtual void write(string_view name, string_view value) = 0;
+	virtual void write(string_view name, int2 value) = 0;
+	virtual void write(string_view name, const int3& value) = 0;
+	virtual void write(string_view name, const int4& value) = 0;
+	virtual void write(string_view name, float2 value) = 0;
+	virtual void write(string_view name, const float3& value) = 0;
+	virtual void write(string_view name, const float4& value) = 0;
+	virtual void write(string_view name, const quat& value) = 0;
+	virtual void write(string_view name, const float2x2& value) = 0;
+	virtual void write(string_view name, const float3x3& value) = 0;
+	virtual void write(string_view name, const float4x4& value) = 0;
+
+	// TODO: write array of values.
 };
 
 /**
@@ -77,36 +79,38 @@ public:
 class IDeserializer
 {
 public:
-	virtual ~IDeserializer() = 0;
+	virtual ~IDeserializer() { }
 
-	virtual bool beginChild(const string& name) = 0;
+	virtual bool beginChild(string_view name) = 0;
 	virtual void endChild() = 0;
 
-	virtual bool beginArray(const string& name) = 0;
+	virtual bool beginArray(string_view name) = 0;
 	virtual void endArray() = 0;
 
-	virtual void read(const string& name, int64& value) = 0;
-	virtual void read(const string& name, uint64& value) = 0;
-	virtual void read(const string& name, int32& value) = 0;
-	virtual void read(const string& name, uint32& value) = 0;
-	virtual void read(const string& name, int16& value) = 0;
-	virtual void read(const string& name, uint16& value) = 0;
-	virtual void read(const string& name, int8& value) = 0;
-	virtual void read(const string& name, uint8& value) = 0;
-	virtual void read(const string& name, bool& value) = 0;
-	virtual void read(const string& name, float& value) = 0;
-	virtual void read(const string& name, double& value) = 0;
-	virtual void read(const string& name, string& value) = 0;
-	virtual void read(const string& name, int2& value) = 0;
-	virtual void read(const string& name, int3& value) = 0;
-	virtual void read(const string& name, int4& value) = 0;
-	virtual void read(const string& name, float2& value) = 0;
-	virtual void read(const string& name, float3& value) = 0;
-	virtual void read(const string& name, float4& value) = 0;
-	virtual void read(const string& name, quat& value) = 0;
-	virtual void read(const string& name, float2x2& value) = 0;
-	virtual void read(const string& name, float3x3& value) = 0;
-	virtual void read(const string& name, float4x4& value) = 0;
+	virtual void read(string_view name, int64& value) = 0;
+	virtual void read(string_view name, uint64& value) = 0;
+	virtual void read(string_view name, int32& value) = 0;
+	virtual void read(string_view name, uint32& value) = 0;
+	virtual void read(string_view name, int16& value) = 0;
+	virtual void read(string_view name, uint16& value) = 0;
+	virtual void read(string_view name, int8& value) = 0;
+	virtual void read(string_view name, uint8& value) = 0;
+	virtual void read(string_view name, bool& value) = 0;
+	virtual void read(string_view name, float& value) = 0;
+	virtual void read(string_view name, double& value) = 0;
+	virtual void read(string_view name, string& value) = 0;
+	virtual void read(string_view name, int2& value) = 0;
+	virtual void read(string_view name, int3& value) = 0;
+	virtual void read(string_view name, int4& value) = 0;
+	virtual void read(string_view name, float2& value) = 0;
+	virtual void read(string_view name, float3& value) = 0;
+	virtual void read(string_view name, float4& value) = 0;
+	virtual void read(string_view name, quat& value) = 0;
+	virtual void read(string_view name, float2x2& value) = 0;
+	virtual void read(string_view name, float3x3& value) = 0;
+	virtual void read(string_view name, float4x4& value) = 0;
+
+	// TODO: read array of values.
 };
 
 /**
@@ -114,9 +118,9 @@ public:
  */
 class ISerializable
 {
-protected:
-	virtual void serialize(ISerializer& serializer, ID<Entity> entity) = 0;
-	virtual void deserialize(IDeserializer& deserializer, ID<Entity> entity) = 0;
+public:
+	virtual void serialize(ISerializer& serializer, ID<Component> component) = 0;
+	virtual void deserialize(IDeserializer& deserializer, ID<Component> component) = 0;
 };
 
 } // namespace garden

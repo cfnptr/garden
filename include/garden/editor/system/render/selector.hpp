@@ -24,7 +24,6 @@ using namespace garden::graphics;
 
 class SelectorEditor final
 {
-	MeshRenderSystem* system = nullptr;
 	bool isSkipped = false;
 
 	SelectorEditor(MeshRenderSystem* system);
