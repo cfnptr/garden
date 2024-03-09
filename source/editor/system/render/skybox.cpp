@@ -17,8 +17,6 @@
 #include "garden/editor/system/render/skybox.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
-
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
@@ -32,7 +30,6 @@ SkyboxEditor::SkyboxEditor(SkyboxRenderSystem* system)
 //--------------------------------------------------------------------------------------------------
 void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 {
-	ImGui::PushID("SkyboxRenderComponent");
 	if (ImGui::CollapsingHeader("Skybox Render"))
 	{
 		auto manager = system->getManager();
@@ -72,8 +69,6 @@ void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 		{
 			ImGui::Text("Descriptor Set: null");
 		}
-		ImGui::Spacing();
 	}
-	ImGui::PopID();
 }
 #endif

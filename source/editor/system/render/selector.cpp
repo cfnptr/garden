@@ -17,7 +17,6 @@
 #include "garden/editor/system/render/selector.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/editor/system/render/gizmos.hpp"
 

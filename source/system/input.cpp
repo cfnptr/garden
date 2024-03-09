@@ -89,6 +89,7 @@ InputSystem::InputSystem(Manager* manager) : System(manager)
 	for (int i = 0; i < (int)MouseButton::Count; i++)
 		lastMouseButtons.emplace(make_pair((MouseButton)i, false));
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 InputSystem::~InputSystem()

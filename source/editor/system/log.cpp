@@ -17,7 +17,5 @@
 #include "garden/editor/system/log.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
-
 // TODO:
 #endif

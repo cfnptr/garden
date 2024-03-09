@@ -33,7 +33,6 @@ static void onTranslucentEntityInspector(Manager* manager,
 	{
 		auto geometryComponent = manager->get<TranslucentRenderComponent>(entity);
 		editor->renderInfo(*geometryComponent, nullptr);
-		ImGui::Spacing();
 	}
 }
 #endif

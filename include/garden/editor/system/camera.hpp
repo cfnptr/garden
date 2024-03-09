@@ -23,7 +23,7 @@ namespace garden
 class CameraEditorSystem final : public EditorSystem<CameraSystem>
 {
 	CameraEditorSystem(Manager* manager, CameraSystem* system);
-	void onEntityInspector(ID<Entity> entity);
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
 };
 

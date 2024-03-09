@@ -104,16 +104,18 @@ void GraphicsSystem::initializeImGui()
 	init_info.Device = Vulkan::device;
 	init_info.QueueFamily = Vulkan::graphicsQueueFamilyIndex;
 	init_info.Queue = Vulkan::frameQueue;
-	init_info.PipelineCache = ImGuiData::pipelineCache;
 	init_info.DescriptorPool = Vulkan::descriptorPool;
-	init_info.Subpass = 0;
+	init_info.RenderPass = ImGuiData::renderPass;
 	init_info.MinImageCount = 2;
 	init_info.ImageCount = (uint32)ImGuiData::framebuffers.size();
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.PipelineCache = ImGuiData::pipelineCache;
+	init_info.Subpass = 0;
+	init_info.UseDynamicRendering = false; // TODO: use it instead of render pass hack.
 	init_info.Allocator = nullptr;
-	init_info.CheckVkResultFn = imGuiCheckVkResult; 
-	// TODO: use init_info.UseDynamicRendering instead of render pass hack.
-	ImGui_ImplVulkan_Init(&init_info, ImGuiData::renderPass);
+	init_info.CheckVkResultFn = imGuiCheckVkResult;
+	init_info.MinAllocationSize = 1024 * 1024;
+	ImGui_ImplVulkan_Init(&init_info);
 
 	auto pixelRatioXY = (float2)framebufferSize / windowSize;
 	auto pixelRatio = std::max(pixelRatioXY.x, pixelRatioXY.y);
@@ -223,6 +225,7 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 GraphicsSystem::~GraphicsSystem()

@@ -149,6 +149,13 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_APP_RESOURCES_DIR  | Garden application resources directory    | `garden/resources/default`         |
 | GARDEN_APP_CACHES_DIR     | Garden application caches directory       | `garden/.caches`                   |
 
+### CMake targets
+
+| Name   | Description            | Windows | macOS  | Linux |
+|--------|------------------------|---------|--------|-------|
+| garden | Static Garden library  | `.lib`  | `.a`   | `.a`  |
+| {name} | Application executable | `.exe`  | `.app` |       |
+
 ## Garden Shading Language (GSL)
 
 Documentation with all GLSL changes is located [here](docs/gsl.md).

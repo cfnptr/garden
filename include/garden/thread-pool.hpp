@@ -50,7 +50,10 @@ public:
 	 */
 	class Task final
 	{
-		std::function<void(const Task& task)> function;
+	public:
+		using OnTask = std::function<void(const Task& task)>;
+	private:
+		OnTask function;
 		uint32 threadIndex = 0;
 		uint32 taskIndex = 0;
 		uint32 itemOffset = 0;
@@ -62,7 +65,7 @@ public:
 		 * @param[in] function target function that should be executed by a thread
 		 * @warning You should manually synchronize data access and prevent race conditions!
 		 */
-		Task(const std::function<void(const Task& task)>& function) noexcept
+		Task(const OnTask& function) noexcept
 		{
 			this->function = function;
 		}
@@ -71,7 +74,7 @@ public:
 		 * @brief Returns function that should be executed by a thread
 		 * @details This function is mainly useful for debugging purposes.
 		 */
-		std::function<void(const Task& task)> getFunction() const noexcept { return function; }
+		OnTask getFunction() const noexcept { return function; }
 
 		/**
 		 * @brief Returns current thread index in the pool.

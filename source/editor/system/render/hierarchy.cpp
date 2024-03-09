@@ -15,10 +15,11 @@
 #include "garden/editor/system/render/hierarchy.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/system/transform.hpp"
 
 using namespace garden;
+
+// TODO: render lines for the hierarchy entities, for better visual.
 
 //**********************************************************************************************************************
 HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager,
@@ -45,12 +46,12 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 {
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto editorSystem = EditorRenderSystem::getInstance();
 		editorSystem->selectedEntity = renderEntity;
 		editorSystem->selectedEntityAabb = Aabb();
 
-		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && graphicsSystem->camera)
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		if (graphicsSystem->camera && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 		{
 			auto transformTransform = manager->get<TransformComponent>(renderEntity);
 			auto cameraTransform = manager->get<TransformComponent>(graphicsSystem->camera);
@@ -67,6 +68,7 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 			auto entity = manager->createEntity();
 			auto newTransform = manager->add<TransformComponent>(entity);
 			newTransform->setParent(renderEntity);
+			ImGui::SetNextItemOpen(true);
 		}
 
 		if (!manager->has<DoNotDestroyComponent>(renderEntity))
@@ -89,7 +91,7 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 		auto payload = ImGui::AcceptDragDropPayload("Entity");
 		if (payload)
 		{
-			auto entity = *(const ID<Entity>*)(payload->Data);
+			auto entity = *((const ID<Entity>*)payload->Data);
 			auto entityTransform = manager->get<TransformComponent>(entity);
 			if (renderEntity)
 			{
@@ -171,8 +173,7 @@ void HierarchyEditorSystem::renderEditor()
 	if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		auto manager = getManager();
-		if (ImGui::BeginPopupContextWindow(nullptr,
-			ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 		{
 			if (ImGui::MenuItem("Create Entity"))
 			{
@@ -183,27 +184,28 @@ void HierarchyEditorSystem::renderEditor()
 		}
 
 		auto cursorPos = ImGui::GetCursorScreenPos();
-		ImGui::Dummy(ImGui::GetWindowSize());
+		auto regionAvail = ImGui::GetContentRegionAvail();
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetScrollY());
+		ImGui::Dummy(regionAvail);
 		ImGui::SetCursorScreenPos(cursorPos);
-		// TODO: fix dummy offset when window is scrolled.
 
 		if (ImGui::BeginDragDropTarget())
 		{
 			auto mousePos = ImGui::GetMousePos();
 			auto containerPos = ImGui::GetItemRectMin();
 			auto containerSize = ImGui::GetItemRectSize();
-			const auto hotZoneHeight = 20.0f, scrollSpeed = 5.0f;
+			const auto hotZoneHeight = 12.0f, scrollSpeed = 1.0f;
 
 			if (mousePos.y - containerPos.y < hotZoneHeight)
     			ImGui::SetScrollY(ImGui::GetScrollY() - scrollSpeed);
 			if ((containerPos.y + containerSize.y) - mousePos.y < hotZoneHeight)
     			ImGui::SetScrollY(ImGui::GetScrollY() + scrollSpeed);
-			// TODO: fix auto-scroll when dragon dropping
+			// TODO: adjust speed based on cursor to edge distance?
 
 			auto payload = ImGui::AcceptDragDropPayload("Entity");
 			if (payload)
 			{
-				auto entity = *(const ID<Entity>*)(payload->Data);
+				auto entity = *((const ID<Entity>*)payload->Data);
 				auto entityTransform = manager->get<TransformComponent>(entity);
 				entityTransform->setParent({});
 			}
@@ -258,6 +260,42 @@ void HierarchyEditorSystem::renderEditor()
 					updateHierarchyClick(manager, transform->getEntity());
 					ImGui::TreePop();
 				}
+			}
+		}
+
+		auto& entities = manager->getEntities();
+		auto entityData = entities.getData();
+		auto entityOccupancy = entities.getOccupancy();
+		auto hasSeparator = false;
+
+		for (uint32 i = 0; i < entityOccupancy; i++) // Entities without transform component
+		{
+			auto entity = &entityData[i];
+			auto& components = entity->getComponents();
+
+			if (components.empty() || components.find(typeid(TransformComponent)) != components.end())
+				continue;
+
+			if (!hasSeparator)
+			{
+				ImGui::Separator();
+				hasSeparator = true;
+			}
+			
+			auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Leaf);
+			if (entities.getID(entity) == system->selectedEntity)
+				flags |= ImGuiTreeNodeFlags_Selected;
+			auto name = "Entity " + to_string(*entities.getID(entity));
+
+			if (ImGui::TreeNodeEx(name.c_str(), flags))
+			{
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				{
+					auto editorSystem = EditorRenderSystem::getInstance();
+					editorSystem->selectedEntity = entities.getID(entity);
+					editorSystem->selectedEntityAabb = Aabb();
+				}
+				ImGui::TreePop();
 			}
 		}
 

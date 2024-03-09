@@ -50,6 +50,7 @@ EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 	SUBSCRIBE_TO_EVENT("RenderEditor", EditorRenderSystem::renderEditor);
 	SUBSCRIBE_TO_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 EditorRenderSystem::~EditorRenderSystem()
@@ -142,22 +143,29 @@ void EditorRenderSystem::showMainMenuBar()
 		}
 		ImGui::EndMenu();
 	}
+	
+	auto stats = "[S: " + to_string((uint32)manager->getSystems().size()) +
+		" | E: " + to_string(manager->getEntities().getCount());
 
 	auto threadSystem = manager->tryGet<ThreadSystem>();
-
-	uint32 taskCount = 0;
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getBackgroundPool();
-		taskCount = threadPool.getPendingTaskCount();
+		stats += " | T: " + to_string(threadPool.getPendingTaskCount());
 	}
-	
-	auto stats = "[S: " + to_string((uint32)manager->getSystems().size()) +
-		" | E: " + to_string(manager->getEntities().getCount()) +
-		" | T: " + to_string(taskCount) + "]";
+
+	stats += "]";
+
 	auto textSize = ImGui::CalcTextSize(stats.c_str());
 	ImGui::SameLine(ImGui::GetWindowWidth() - (textSize.x + 16.0f));
 	ImGui::Text("%s", stats.c_str());
+
+	if (ImGui::BeginItemTooltip())
+	{
+		ImGui::Text("S = Systems, E = Entities, T = Tasks");
+		ImGui::EndTooltip();
+	}
+
 	ImGui::EndMainMenuBar();
 }
 
@@ -322,20 +330,53 @@ void EditorRenderSystem::showOptionsWindow()
 void EditorRenderSystem::showEntityInspector()
 {
 	auto showEntityInspector = true;
-	if (ImGui::Begin("Entity Inspector", &showEntityInspector,
-		ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		auto manager = getManager();
-		ImGui::Text("ID: %d | Components: %d ", *selectedEntity, manager->getComponentCount(selectedEntity));
+		auto entity = manager->getEntities().get(selectedEntity);
+		auto& components = entity->getComponents();
 
-		if (!manager->has<DoNotDestroyComponent>(selectedEntity))
+		if (ImGui::BeginItemTooltip())
 		{
-			ImGui::SameLine();
-			auto cursorPos = ImGui::GetCursorPos();
-			cursorPos.y -= 4.0f;
-			ImGui::SetCursorPos(cursorPos);
+			ImGui::Text("Runtime ID: %d, Components: %d", *selectedEntity, (uint32)components.size());
+			ImGui::EndTooltip();
+		}
+		
+		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+		{
+			auto& componentTypes = manager->getComponentTypes();
+			if (ImGui::BeginMenu("Add Component", !componentTypes.empty()))
+			{
+				uint32 itemCount = 0;
+				for (auto& componentType : componentTypes)
+				{
+					if (componentType.second->getComponentName().empty())
+						continue;
+					itemCount++;
+					if (manager->has(selectedEntity, componentType.first))
+						continue;
+					if (ImGui::MenuItem(componentType.second->getComponentName().c_str()))
+						manager->add(selectedEntity, componentType.first);
+				}
 
-			if (ImGui::Button("Destroy"))
+				if (ImGui::BeginMenu("Others", itemCount != componentTypes.size()))
+				{
+					for (auto& componentType : componentTypes)
+					{
+						if (!componentType.second->getComponentName().empty() ||
+							manager->has(selectedEntity, componentType.first))
+						{
+							continue;
+						}
+						auto componentName = typeToString(componentType.first);
+						if (ImGui::MenuItem(componentName.c_str()))
+							manager->add(selectedEntity, componentType.first);
+					}
+					ImGui::EndMenu();
+				}
+				ImGui::EndMenu();
+			}
+			if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
 			{
 				if (manager->has<TransformComponent>(selectedEntity))
 				{
@@ -346,15 +387,53 @@ void EditorRenderSystem::showEntityInspector()
 					manager->destroy(selectedEntity);
 					selectedEntity = {};
 				}
+
+				ImGui::EndPopup();
 				ImGui::End();
 				return;
 			}
+			ImGui::EndPopup();
 		}
 
-		for (auto& pair : entityInspectors)
+		for (auto& component : components)
 		{
-			if (manager->has(selectedEntity, pair.first))
-				pair.second(selectedEntity);
+			auto system = component.second.first;
+			auto result = entityInspectors.find(component.first);
+			if (result != entityInspectors.end())
+			{
+				auto componentName = system->getComponentName().empty() ?
+					typeToString(system->getComponentType()) : system->getComponentName();
+				ImGui::PushID(componentName.c_str());
+				auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
+				
+				if (ImGui::BeginPopupContextItem(nullptr,
+					ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+				{
+					if (ImGui::MenuItem("Remove Component"))
+					{
+						manager->remove(selectedEntity, component.first);
+						ImGui::EndPopup();
+						ImGui::PopID();
+						continue; // FIXME: destroy entity components deferred way.
+					}
+					ImGui::EndPopup();
+				}
+
+				result->second(selectedEntity, isOpened);
+				if (isOpened)
+					ImGui::Spacing();
+				ImGui::PopID();
+			}
+		}
+		for (auto& component : components)
+		{
+			auto system = component.second.first;
+			if (entityInspectors.find(component.first) == entityInspectors.end())
+			{
+				auto componentName = system->getComponentName().empty() ?
+					typeToString(system->getComponentType()) : system->getComponentName();
+				ImGui::CollapsingHeader(componentName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
+			}
 		}
 	}
 	ImGui::End();

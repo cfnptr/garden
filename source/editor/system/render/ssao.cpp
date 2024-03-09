@@ -17,7 +17,6 @@
 #include "garden/editor/system/render/ssao.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/system/settings.hpp"
 
 using namespace garden;

@@ -17,7 +17,6 @@
 #include "garden/editor/system/render/gizmos.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 
@@ -133,9 +132,9 @@ static void renderGizmosArrows(GraphicsSystem* graphicsSystem,
 	float renderScale, const float4& viewportScissor,
 	const float4x4& viewProj, bool sortAscend)
 {
-	function<bool(const GizmosMesh& a, const GizmosMesh& b)> ascending =
+	std::function<bool(const GizmosMesh& a, const GizmosMesh& b)> ascending =
 		[](const GizmosMesh& a, const GizmosMesh& b) { return a.distance < b.distance; };
-	function<bool(const GizmosMesh& a, const GizmosMesh& b)> descending =
+	std::function<bool(const GizmosMesh& a, const GizmosMesh& b)> descending =
 		[](const GizmosMesh& a, const GizmosMesh& b) { return a.distance > b.distance; };
 	sort(gizmosMeshes.begin(), gizmosMeshes.end(), sortAscend ? ascending : descending);
 

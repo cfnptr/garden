@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/defines.hpp"
 #include "garden/serialize.hpp"
 #include "math/angles.hpp"
 
@@ -121,6 +122,12 @@ class CameraSystem final : public System, public ISerializable
 	 */
 	~CameraSystem() final;
 
+	#if GARDEN_EDITOR
+	void preInit();
+	void postDeinit();
+	#endif
+
+	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
