@@ -17,8 +17,6 @@
 #include "garden/editor/system/render/geometry.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
-
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------

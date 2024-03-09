@@ -17,7 +17,6 @@
 #include "garden/editor/system/render/resource.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/file.hpp"
 
 using namespace garden;

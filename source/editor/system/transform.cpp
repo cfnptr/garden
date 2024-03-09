@@ -16,7 +16,6 @@
 #include "math/angles.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "imgui_internal.h"
 
 using namespace garden;
@@ -24,9 +23,10 @@ using namespace garden;
 //**********************************************************************************************************************
 TransformEditorSystem::TransformEditorSystem(Manager* manager, TransformSystem* system) : EditorSystem(manager, system)
 {
-	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>([this](ID<Entity> entity)
+	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>(
+	[this](ID<Entity> entity, bool isOpened)
 	{
-		onEntityInspector(entity);
+		onEntityInspector(entity, isOpened);
 	});
 }
 
@@ -39,20 +39,19 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 	auto payload = ImGui::GetDragDropPayload();
 	if (payload)
 	{
-		auto payloadEntity = *(const ID<Entity>*)(payload->Data);
+		auto payloadEntity = *((const ID<Entity>*)payload->Data);
 		if (payloadEntity == entity)
 			ImGui::ClearDragDrop();
 	}
 }
 
 //**********************************************************************************************************************
-void TransformEditorSystem::onEntityInspector(ID<Entity> entity)
+void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	auto manager = getManager();
 	auto editorSystem = EditorRenderSystem::getInstance();
-	ImGui::PushID("TransformComponent");
 
-	if (ImGui::CollapsingHeader("Transform"))
+	if (isOpened)
 	{
 		auto transformComponent = manager->get<TransformComponent>(entity);
 		ImGui::BeginDisabled(manager->has<BakedTransformComponent>(entity));
@@ -113,8 +112,6 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity)
 			if (ImGui::Button("Remove Parent"))
 				transformComponent->setParent({});
 		}
-
-		ImGui::Spacing();
 	}
 
 	if (editorSystem->selectedEntity != selectedEntity)
@@ -140,7 +137,5 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity)
 			}
 		}
 	}
-
-	ImGui::PopID();
 }
 #endif

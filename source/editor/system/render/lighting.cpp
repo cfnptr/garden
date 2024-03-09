@@ -17,8 +17,6 @@
 #include "garden/editor/system/render/lighting.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
-
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
@@ -32,7 +30,6 @@ LightingEditor::LightingEditor(LightingRenderSystem* system)
 //--------------------------------------------------------------------------------------------------
 void LightingEditor::onEntityInspector(ID<Entity> entity)
 {
-	ImGui::PushID("LightingRenderComponent");
 	if (ImGui::CollapsingHeader("Lighting Render"))
 	{
 		auto manager = system->getManager();
@@ -108,9 +105,6 @@ void LightingEditor::onEntityInspector(ID<Entity> entity)
 		{
 			ImGui::Text("Descriptor Set: null");
 		}
-		
-		ImGui::Spacing();
 	}
-	ImGui::PopID();
 }
 #endif

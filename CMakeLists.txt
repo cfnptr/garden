@@ -145,7 +145,7 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm 
+set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static 
 	math-static conf-static pack-static logy-static voxy  glfw webp FastNoise OpenEXR)
 set(GARDEN_LINK_DIRS)
 
@@ -155,6 +155,7 @@ endif()
 
 find_package(Vulkan REQUIRED)
 
+set(ECSM_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(ECSM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/ecsm)
 

@@ -17,8 +17,6 @@
 #include "garden/editor/system/physics.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
-
 using namespace garden;
 
 //--------------------------------------------------------------------------------------------------
@@ -32,7 +30,6 @@ PhysicsEditor::PhysicsEditor(PhysicsSystem* system)
 //--------------------------------------------------------------------------------------------------
 void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 {
-	ImGui::PushID("RigidBodyComponent");
 	if (ImGui::CollapsingHeader("Rigid Body"))
 	{
 		auto manager = system->getManager();
@@ -122,9 +119,6 @@ void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 				// TODO: show shapes.
 			}
 		}
-		
-		ImGui::Spacing();
 	}
-	ImGui::PopID();
 }
 #endif

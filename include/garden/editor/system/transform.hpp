@@ -30,7 +30,7 @@ class TransformEditorSystem final : public EditorSystem<TransformSystem>
 	TransformEditorSystem(Manager* manager, TransformSystem* system);
 	
 	void onEntityDestroy(ID<Entity> entity);
-	void onEntityInspector(ID<Entity> entity);
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
 
 	friend class ecsm::Manager;
 	friend class TransformSystem;
