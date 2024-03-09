@@ -68,7 +68,10 @@ protected:
  */
 class EditorRenderSystem final : public System
 {
-	map<type_index, function<void(ID<Entity>)>> entityInspectors;
+public:
+	using OnComponent = std::function<void(ID<Entity> entity, bool isOpened)>;
+private:
+	map<type_index, OnComponent> entityInspectors;
 	void* hierarchyEditor = nullptr;
 	void* resourceEditor = nullptr;
 	string scenePath = "unnamed";
@@ -108,21 +111,21 @@ public:
 	ID<Entity> selectedEntity;
 
 	template<typename T = Component>
-	void registerEntityInspector(function<void(ID<Entity>)> onComponent)
+	void registerEntityInspector(OnComponent onComponent)
 	{
 		if (!entityInspectors.emplace(typeid(T), onComponent).second)
 		{
 			throw runtime_error("This component type is already registered. ("
-				"name: " + string(typeid(T).name()) + ")");
+				"name: " + typeToString<T>() + ")");
 		}
 	}
 	template<typename T = Component>
-	void unregisterEntityInspector(function<void(ID<Entity>)> onComponent)
+	void unregisterEntityInspector(OnComponent onComponent)
 	{
 		if (entityInspectors.erase(typeid(T)) == 0)
 		{
 			throw runtime_error("This component type is not registered. ("
-				"name: " + string(typeid(T).name()) + ")");
+				"name: " + typeToString<T>() + ")");
 		}
 	}
 

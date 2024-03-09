@@ -131,6 +131,7 @@ ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
 	#endif
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 ResourceSystem::~ResourceSystem()

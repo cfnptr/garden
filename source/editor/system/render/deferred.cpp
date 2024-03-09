@@ -18,7 +18,6 @@
 #include "garden/system/render/lighting.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/system/resource.hpp"
 
 using namespace garden;

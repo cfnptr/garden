@@ -17,7 +17,6 @@
 #include "garden/editor/system/render/bloom.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
 

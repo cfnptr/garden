@@ -30,7 +30,7 @@ using namespace ecsm;
 class WatcherSystem final : public System
 {
 public:
-	using OnChange = function<void(const string&)>;
+	using OnChange = std::function<void(const string& path)>;
 private:
 	void* instance = nullptr;
 	vector<string> changedFiles;

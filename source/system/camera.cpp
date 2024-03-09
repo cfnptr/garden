@@ -37,18 +37,41 @@ float4x4 CameraComponent::calcProjection() const noexcept
 CameraSystem::CameraSystem(Manager* manager) : System(manager)
 {
 	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<CameraEditorSystem>(this);
+	SUBSCRIBE_TO_EVENT("PreInit", CameraSystem::preInit);
+	SUBSCRIBE_TO_EVENT("PostDeinit", CameraSystem::postDeinit);
 	#endif
 }
 CameraSystem::~CameraSystem()
 {
 	#if GARDEN_EDITOR
-	getManager()->tryDestroySystem<CameraEditorSystem>();
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", CameraSystem::preInit);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", CameraSystem::postDeinit);
+	}
 	#endif
 }
 
+#if GARDEN_EDITOR
+void CameraSystem::preInit()
+{
+	auto manager = getManager();
+	if (manager->has<EditorRenderSystem>())
+		manager->createSystem<CameraEditorSystem>(this);
+}
+void CameraSystem::postDeinit()
+{
+	getManager()->tryDestroySystem<CameraEditorSystem>();
+}
+#endif
+
 //**********************************************************************************************************************
+const string& CameraSystem::getComponentName() const
+{
+	static const string name = "Camera";
+	return name;
+}
 type_index CameraSystem::getComponentType() const
 {
 	return typeid(CameraComponent);

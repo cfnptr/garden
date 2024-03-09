@@ -286,6 +286,7 @@ TransformSystem::TransformSystem(Manager* manager) : System(manager)
 	SUBSCRIBE_TO_EVENT("PostDeinit", TransformSystem::postDeinit);
 	#endif
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 TransformSystem::~TransformSystem()
@@ -320,9 +321,10 @@ void TransformSystem::postDeinit()
 #endif
 
 //**********************************************************************************************************************
-string_view TransformSystem::getComponentName() const
+const string& TransformSystem::getComponentName() const
 {
-	return "Transform";
+	static const string name = "Transform";
+	return name;
 }
 type_index TransformSystem::getComponentType() const
 {
@@ -392,3 +394,29 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 	transformComponent->childCount = 0;
 	manager->destroy(transformComponent->entity);
 }
+
+//**********************************************************************************************************************
+BakedTransformSystem::BakedTransformSystem(Manager* manager) : System(manager) { }
+
+const string& BakedTransformSystem::getComponentName() const
+{
+	static const string name = "Baked Transform";
+	return name;
+}
+type_index BakedTransformSystem::getComponentType() const
+{
+	return typeid(BakedTransformComponent);
+}
+ID<Component> BakedTransformSystem::createComponent(ID<Entity> entity)
+{
+	return ID<Component>(components.create());
+}
+void BakedTransformSystem::destroyComponent(ID<Component> instance)
+{
+	components.destroy(ID<BakedTransformComponent>(instance));
+}
+View<Component> BakedTransformSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<BakedTransformComponent>(instance)));
+}
+void BakedTransformSystem::disposeComponents() { components.dispose(); }

@@ -33,7 +33,6 @@ static void onOpaqueEntityInspector(ID<Entity> entity,
 	{
 		auto geometryComponent = manager->get<OpaqueRenderComponent>(entity);
 		editor->renderInfo(*geometryComponent, nullptr);
-		ImGui::Spacing();
 	}
 }
 
@@ -45,7 +44,6 @@ static void onOpaqueShadowEntityInspector(ID<Entity> entity,
 	{
 		auto geometryComponent = manager->get<OpaqueShadowRenderComponent>(entity);
 		editor->renderInfo(*geometryComponent);
-		ImGui::Spacing();
 	}
 }
 #endif

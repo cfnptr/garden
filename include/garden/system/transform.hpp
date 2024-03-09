@@ -153,7 +153,7 @@ private:
 	void postDeinit();
 	#endif
 
-	string_view getComponentName() const final;
+	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
@@ -206,15 +206,14 @@ protected:
 	 * @brief Creates a new baked transform system instance.
 	 * @param[in,out] manager manager instance
 	 */
-	BakedTransformSystem(Manager* manager) : System(manager) { }
+	BakedTransformSystem(Manager* manager);
 
-	type_index getComponentType() const override { return typeid(BakedTransformComponent); }
-	ID<Component> createComponent(ID<Entity> entity) override { return ID<Component>(components.create()); }
-	void destroyComponent(ID<Component> instance) override {
-		components.destroy(ID<BakedTransformComponent>(instance)); }
-	View<Component> getComponent(ID<Component> instance) override {
-		return View<Component>(components.get(ID<BakedTransformComponent>(instance))); }
-	void disposeComponents() override { components.dispose(); }
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	ID<Component> createComponent(ID<Entity> entity) final;
+	void destroyComponent(ID<Component> instance) final;
+	View<Component> getComponent(ID<Component> instance) final;
+	void disposeComponents() final;
 
 	friend class ecsm::Manager;
 };

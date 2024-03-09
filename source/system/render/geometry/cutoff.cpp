@@ -46,7 +46,6 @@ static void onCutoffEntityInspector(Manager* manager,
 	{
 		auto geometryComponent = manager->get<CutoffRenderComponent>(entity);
 		editor->renderInfo(*geometryComponent, &geometryComponent->alphaCutoff);
-		ImGui::Spacing();
 	}
 }
 #endif
