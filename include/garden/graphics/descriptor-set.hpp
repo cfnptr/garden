@@ -101,8 +101,12 @@ public:
 	uint8 getIndex() const noexcept { return index; }
 	const map<string, Uniform>& getUniforms() const noexcept { return uniforms; }
 	
-	uint32 getSetCount() const noexcept {
-		return (uint32)uniforms.begin()->second.resourceSets.size(); }
+	uint32 getSetCount() const noexcept
+	{
+		if (uniforms.empty())
+			return 0;
+		return (uint32)uniforms.begin()->second.resourceSets.size();
+	}
 
 	void recreate(map<string, Uniform>&& uniforms);
 	// TODO: void copy(ID<DescriptorSet> descriptorSet);

@@ -23,8 +23,8 @@
 #include "garden/system/transform.hpp"
 #include "garden/system/render/fxaa.hpp"
 #include "garden/system/render/deferred.hpp" // TODO: remove?
-#include "garden/editor/system/render/resource.hpp"
-#include "garden/editor/system/render/hierarchy.hpp"
+#include "garden/editor/system/ecs.hpp"
+#include "garden/editor/system/hierarchy.hpp"
 
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/imgui-impl.hpp"
@@ -144,8 +144,7 @@ void EditorRenderSystem::showMainMenuBar()
 		ImGui::EndMenu();
 	}
 	
-	auto stats = "[S: " + to_string((uint32)manager->getSystems().size()) +
-		" | E: " + to_string(manager->getEntities().getCount());
+	auto stats = "[E: " + to_string(manager->getEntities().getCount());
 
 	auto threadSystem = manager->tryGet<ThreadSystem>();
 	if (threadSystem)
@@ -162,7 +161,7 @@ void EditorRenderSystem::showMainMenuBar()
 
 	if (ImGui::BeginItemTooltip())
 	{
-		ImGui::Text("S = Systems, E = Entities, T = Tasks");
+		ImGui::Text("E = Entities, T = Tasks");
 		ImGui::EndTooltip();
 	}
 
@@ -211,6 +210,13 @@ void EditorRenderSystem::showAboutWindow()
 				to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
 				to_string(VK_API_VERSION_PATCH(apiVersion));
 			ImGui::Text("Vulkan API: %s", apiString.c_str());
+
+			auto graphicsSystem = getManager()->tryGet<GraphicsSystem>();
+			if (graphicsSystem)
+			{
+				auto framebufferSize = graphicsSystem->getFramebufferSize();
+				ImGui::Text("Framebuffer size: %ldx%ld", framebufferSize.x, framebufferSize.y);
+			}
 		}
 	}
 	ImGui::End();
@@ -329,6 +335,8 @@ void EditorRenderSystem::showOptionsWindow()
 //**********************************************************************************************************************
 void EditorRenderSystem::showEntityInspector()
 {
+	ImGui::SetNextWindowSize(ImVec2(320, 180), ImGuiCond_FirstUseEver);
+
 	auto showEntityInspector = true;
 	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
@@ -338,7 +346,7 @@ void EditorRenderSystem::showEntityInspector()
 
 		if (ImGui::BeginItemTooltip())
 		{
-			ImGui::Text("Runtime ID: %d, Components: %d", *selectedEntity, (uint32)components.size());
+			ImGui::Text("Runtime ID: %lu, Components: %lu", *selectedEntity, (uint32)components.size());
 			ImGui::EndTooltip();
 		}
 		
@@ -411,10 +419,13 @@ void EditorRenderSystem::showEntityInspector()
 				{
 					if (ImGui::MenuItem("Remove Component"))
 					{
+						auto selected = selectedEntity; // Do not optimize, required for transforms.
 						manager->remove(selectedEntity, component.first);
+						if (manager->getComponentCount(selected))
+							manager->destroy(selected);
 						ImGui::EndPopup();
 						ImGui::PopID();
-						continue; // FIXME: destroy entity components deferred way.
+						continue;
 					}
 					ImGui::EndPopup();
 				}
@@ -488,16 +499,16 @@ void EditorRenderSystem::showExportScene()
 void EditorRenderSystem::preInit()
 {
 	auto manager = getManager();
-	manager->createSystem<ResourceEditorSystem>(this);
 	manager->createSystem<HierarchyEditorSystem>(this);
+	manager->createSystem<EcsEditorSystem>(this);
 }
 void EditorRenderSystem::postDeinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		manager->destroySystem<ResourceEditorSystem>();
 		manager->destroySystem<HierarchyEditorSystem>();
+		manager->destroySystem<EcsEditorSystem>();
 	}
 }
 

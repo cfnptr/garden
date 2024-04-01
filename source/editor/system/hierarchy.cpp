@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/editor/system/render/hierarchy.hpp"
+#include "garden/editor/system/hierarchy.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/transform.hpp"
@@ -53,9 +53,9 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 		auto graphicsSystem = GraphicsSystem::getInstance();
 		if (graphicsSystem->camera && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 		{
-			auto transformTransform = manager->get<TransformComponent>(renderEntity);
+			auto entityTransform = manager->get<TransformComponent>(renderEntity);
 			auto cameraTransform = manager->get<TransformComponent>(graphicsSystem->camera);
-			auto model = transformTransform->calcModel();
+			auto model = entityTransform->calcModel();
 			auto offset = float3(0.0f, 0.0f, -2.0f) * cameraTransform->rotation;
 			cameraTransform->position = getTranslation(model) + offset;
 		}
@@ -77,6 +77,13 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 				manager->destroy(renderEntity);
 			if (ImGui::MenuItem("Destroy Entities"))
 				TransformSystem::getInstance()->destroyRecursive(renderEntity);
+		}
+
+		if (ImGui::MenuItem("Copy Name"))
+		{
+			auto transform = manager->get<TransformComponent>(renderEntity);
+			auto name = transform->name.empty() ? "Entity " + to_string(*renderEntity) : transform->name;
+			ImGui::SetClipboardText(name.c_str());
 		}
 		
 		ImGui::EndPopup();
@@ -155,20 +162,14 @@ static void renderHierarchyEntity(Manager* manager, ID<Entity> renderEntity, ID<
 		updateHierarchyClick(manager, renderEntity);
 	}
 }
-static bool findCaseInsensitive(const string& haystack, const string& needle)
-{
-	auto it = search(haystack.begin(), haystack.end(), needle.begin(), needle.end(), [](char a, char b)
-	{
-		return toupper(a) == toupper(b);
-	});
-	return (it != haystack.end());
-}
 
 //**********************************************************************************************************************
 void HierarchyEditorSystem::renderEditor()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;
+
+	ImGui::SetNextWindowSize(ImVec2(320, 120), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
@@ -213,7 +214,7 @@ void HierarchyEditorSystem::renderEditor()
 		}
 		
 		ImGui::InputText("Search", &hierarchySearch); ImGui::SameLine();
-		ImGui::Checkbox("Aa", &hierarchyCaseSensitive);
+		ImGui::Checkbox("Aa", &searchCaseSensitive);
 		ImGui::Separator();
 
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -239,15 +240,9 @@ void HierarchyEditorSystem::renderEditor()
 
 				auto name = transform->name.empty() ? 
 					"Entity " + to_string(*transform->getEntity()) : transform->name;
-
-				if (hierarchyCaseSensitive)
+				if (!hierarchySearch.empty())
 				{
-					if (name.find(hierarchySearch) == string::npos)
-						continue;
-				}
-				else
-				{
-					if (!findCaseInsensitive(name, hierarchySearch))
+					if (!find(name, hierarchySearch, searchCaseSensitive))
 						continue;
 				}
 

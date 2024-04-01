@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/transform.hpp"
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/transform.hpp"
+
 namespace garden
 {
 

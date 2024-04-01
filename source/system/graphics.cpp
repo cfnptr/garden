@@ -27,10 +27,11 @@
 #include "garden/resource/primitive.hpp"
 #include "mpio/os.hpp"
 
-#if GARDEN_DEBUG
-#include "garden/editor/system/graphics.hpp"
-#endif
 #if GARDEN_EDITOR
+#include "garden/editor/system/graphics.hpp"
+#include "garden/editor/system/gpu-resource.hpp"
+#endif
+#if GARDEN_DEBUG
 #include "garden/system/resource.hpp"
 #endif
 
@@ -193,11 +194,6 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
-	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<GraphicsEditorSystem>(this);
-	#endif
-
 	auto appInfoSystem = manager->get<AppInfoSystem>();
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
 		windowSize, isFullscreen, useVsync, useTripleBuffering, useThreading);
@@ -233,10 +229,6 @@ GraphicsSystem::~GraphicsSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		#if GARDEN_EDITOR
-		manager->tryDestroySystem<GraphicsEditorSystem>();
-		#endif
-
 		UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
@@ -260,6 +252,14 @@ void GraphicsSystem::preInit()
 	GARDEN_ASSERT(manager->has<InputSystem>());
 	SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 
+	#if GARDEN_EDITOR
+	if (manager->has<EditorRenderSystem>())
+	{
+		manager->createSystem<GraphicsEditorSystem>(this);
+		manager->createSystem<GpuResourceEditorSystem>(this);
+	}
+	#endif
+
 	auto threadSystem = manager->tryGet<ThreadSystem>();
 	if (threadSystem)
 		Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
@@ -274,6 +274,8 @@ void GraphicsSystem::preInit()
 			to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 			to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
 			to_string(VK_API_VERSION_PATCH(apiVersion)));
+		logSystem->info("Framebuffer size: " +
+			to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
 	}
 
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
@@ -290,7 +292,14 @@ void GraphicsSystem::preDeinit()
 
 	auto manager = getManager();
 	if (manager->isRunning())
+	{
 		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
+
+		#if GARDEN_EDITOR
+		manager->tryDestroySystem<GraphicsEditorSystem>();
+		manager->tryDestroySystem<GpuResourceEditorSystem>();
+		#endif
+	}
 }
 
 //**********************************************************************************************************************

@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-#include "garden/editor/system/render/selector.hpp"
+#include "garden/editor/system/mesh-selector.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/deferred.hpp"

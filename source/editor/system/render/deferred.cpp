@@ -63,7 +63,7 @@ static ID<Framebuffer> createEditorFramebuffer(DeferredRenderSystem* deferredSys
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> shadowPlaceholder = {};
+static ID<Image> shadowPlaceholder = {}; // TODO: move to class.
 
 static map<string, DescriptorSet::Uniform> getBufferUniforms(
 	Manager* manager, GraphicsSystem* graphicsSystem,

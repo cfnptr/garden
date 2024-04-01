@@ -53,6 +53,11 @@ private:
 	 * @brief Destroy log system instance.
 	 */
 	~LogSystem() final;
+
+	#if GARDEN_EDITOR
+	void preInit();
+	void postDeinit();
+	#endif
 	
 	friend class ecsm::Manager;
 public:
@@ -114,6 +119,11 @@ public:
 	 * compressed, a new file stream for the log file will be created.
 	 */
 	double getRotationTime() const noexcept { return logger.getRotationTime(); }
+	/**
+	 * @brief Returns internal Logy logger instance. (MT-Safe)
+	 * @details You can use it to get other logger information.
+	 */
+	const logy::Logger& getInternal() const noexcept { return logger; }
 
 	/**
 	 * @brief Returns logging system instance.

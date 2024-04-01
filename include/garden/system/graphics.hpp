@@ -171,7 +171,7 @@ public:
 	 * @brief Returns current swapchain changes.
 	 * @details Use it on "SwapchainRecreate" event.
 	 */
-	const SwapchainChanges& getSwapchainChanges() const noexcept { swapchainChanges; }
+	const SwapchainChanges& getSwapchainChanges() const noexcept { return swapchainChanges; }
 
 	/**
 	 * @brief Does GPU support dynamic rendering feature.

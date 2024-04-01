@@ -67,7 +67,7 @@ public:
 		uint8 arraySize = 0;
 		bool readAccess = true;
 		bool writeAccess = true;
-		uint8 _alignment = 0; // should be algined.
+		uint8 _alignment = 0; // should be aligned.
 	};
 	struct DescriptorData final
 	{
@@ -99,7 +99,7 @@ public:
 		float mipLodBias = 0.0f;
 		float minLod = 0.0f, maxLod = INFINITY;
 		BorderColor borderColor = BorderColor::FloatTransparentBlack;
-		uint8 _alignment0 = 0; uint16 _alignment1 = 0; // should be algined.
+		uint8 _alignment0 = 0; uint16 _alignment1 = 0; // should be aligned.
 		SamplerState() : anisoFiltering(0), comparing(0), unnormCoords(0), _unused(0) { }
 	};
 

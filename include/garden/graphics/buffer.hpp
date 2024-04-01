@@ -307,7 +307,7 @@ static string toStringList(Buffer::Bind bufferBind)
 	if (hasAnyFlag(bufferBind, Buffer::Bind::Index)) list += "Index | ";
 	if (hasAnyFlag(bufferBind, Buffer::Bind::Uniform)) list += "Uniform | ";
 	if (hasAnyFlag(bufferBind, Buffer::Bind::Storage)) list += "Storage | ";
-	list.resize(list.length() - 3);
+	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }
 
