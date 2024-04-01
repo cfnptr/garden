@@ -115,12 +115,39 @@ enum class CommandBufferType : uint8
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
 
 /***********************************************************************************************************************
+ * @brief Pipeline type name strings.
+ */
+static const string_view pipelineTypeNames[(psize)PipelineType::Count] =
+{
+	"Graphics", "Compute"
+};
+/**
  * @brief Sampler filter name strings.
  */
 static const string_view samplerFilterNames[(psize)SamplerFilter::Count] =
 {
 	"Nearest", "Linear"
 };
+
+/**
+ * @brief Returns pipeline type.
+ * @param pipelineType target pipeline type name
+ */
+static PipelineType toPipelineType(string_view pipelineType)
+{
+	if (pipelineType == "graphics") return PipelineType::Graphics;
+	if (pipelineType == "compute") return PipelineType::Compute;
+	throw runtime_error("Unknown pipeline type. (" + string(pipelineType) + ")");
+}
+/**
+ * @brief Returns pipeline type name string.
+ * @param pipelineType target pipeline type
+ */
+static string_view toString(PipelineType pipelineType)
+{
+	GARDEN_ASSERT((uint8)pipelineType < (uint8)PipelineType::Count);
+	return pipelineTypeNames[(psize)pipelineType];
+}
 
 /**
  * @brief Returns sampler filter type.
@@ -133,8 +160,8 @@ static SamplerFilter toSamplerFilter(string_view samplerFilter)
 	throw runtime_error("Unknown sampler filter type. (" + string(samplerFilter) + ")");
 }
 /**
- * @brief Returns shader stage name string.
- * @param samplerFilter target shader stage type
+ * @brief Returns sampler filter name string.
+ * @param samplerFilter target sampler filter type
  */
 static string_view toString(SamplerFilter samplerFilter)
 {
@@ -165,7 +192,7 @@ static string toStringList(ShaderStage shaderStage)
 	if (hasAnyFlag(shaderStage, ShaderStage::Vertex)) list += "Vertex | ";
 	if (hasAnyFlag(shaderStage, ShaderStage::Fragment)) list += "Fragment | ";
 	if (hasAnyFlag(shaderStage, ShaderStage::Compute)) list += "Compute | ";
-	list.resize(list.length() - 3);
+	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }
 

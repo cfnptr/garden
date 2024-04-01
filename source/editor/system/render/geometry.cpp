@@ -65,7 +65,7 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Vertex Buffer: %d (%s)", *geometryComponent->vertexBuffer,
+		ImGui::Text("Vertex Buffer: %lu (%s)", *geometryComponent->vertexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
 	else
@@ -81,7 +81,7 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Index Buffer: %d (%s)", *geometryComponent->indexBuffer,
+		ImGui::Text("Index Buffer: %lu (%s)", *geometryComponent->indexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
 	else
@@ -97,7 +97,7 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Base Color Map: %d (%s)", *geometryComponent->baseColorMap,
+		ImGui::Text("Base Color Map: %lu (%s)", *geometryComponent->baseColorMap,
 			imageView->getDebugName().c_str() + stringOffset);
 	}
 	else
@@ -113,7 +113,7 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Occlusion/Roughness/Metallic Map: %d (%s)",
+		ImGui::Text("Occlusion/Roughness/Metallic Map: %lu (%s)",
 			*geometryComponent->ormMap,
 			imageView->getDebugName().c_str() + stringOffset);
 	}
@@ -130,7 +130,7 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Descriptor Set: %d (%s)", *geometryComponent->descriptorSet,
+		ImGui::Text("Descriptor Set: %lu (%s)", *geometryComponent->descriptorSet,
 			descriptorSetView->getDebugName().c_str() + stringOffset);
 	}
 	else
@@ -138,9 +138,9 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 		ImGui::Text("Descriptor Set: null");
 	}
 		
-	ImGui::Text("Index Count: %d, Offset: %d",
+	ImGui::Text("Index Count: %lu, Offset: %lu",
 		geometryComponent->indexCount, geometryComponent->indexOffset);
-	ImGui::Text("Triangle Count: %d", geometryComponent->indexCount / 3);
+	ImGui::Text("Triangle Count: %lu", geometryComponent->indexCount / 3);
 
 	EditorRenderSystem::getInstance()->selectedEntityAabb = geometryComponent->aabb;
 }
@@ -176,7 +176,7 @@ void GeometryShadowEditor::renderInfo(GeometryShadowRenderComponent* geometrySha
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Vertex Buffer: %d (%s)", *geometryShadowComponent->vertexBuffer,
+		ImGui::Text("Vertex Buffer: %lu (%s)", *geometryShadowComponent->vertexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
 	else
@@ -192,7 +192,7 @@ void GeometryShadowEditor::renderInfo(GeometryShadowRenderComponent* geometrySha
 			stringOffset = 0;
 		else
 			stringOffset++;
-		ImGui::Text("Index Buffer: %d (%s)", *geometryShadowComponent->indexBuffer,
+		ImGui::Text("Index Buffer: %lu (%s)", *geometryShadowComponent->indexBuffer,
 			bufferView->getDebugName().c_str() + stringOffset);
 	}
 	else
@@ -200,8 +200,8 @@ void GeometryShadowEditor::renderInfo(GeometryShadowRenderComponent* geometrySha
 		ImGui::Text("Index Buffer: null");
 	}
 		
-	ImGui::Text("Index Count: %d, Offset: %d",
+	ImGui::Text("Index Count: %lu, Offset: %lu",
 		geometryShadowComponent->indexCount, geometryShadowComponent->indexOffset);
-	ImGui::Text("Triangle Count: %d", geometryShadowComponent->indexCount / 3);
+	ImGui::Text("Triangle Count: %lu", geometryShadowComponent->indexCount / 3);
 }
 #endif

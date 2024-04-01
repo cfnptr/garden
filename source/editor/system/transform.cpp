@@ -54,11 +54,14 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (isOpened)
 	{
 		auto transformComponent = manager->get<TransformComponent>(entity);
-		ImGui::BeginDisabled(manager->has<BakedTransformComponent>(entity));
+		auto isBaked = manager->has<BakedTransformComponent>(entity);
+		ImGui::BeginDisabled(isBaked);
 
 		ImGui::DragFloat3("Position", (float*)&transformComponent->position, 0.01f);
 		if (ImGui::BeginItemTooltip())
 		{
+			if (isBaked)
+				ImGui::Text("Disabled due to BakedTransformComponent!");
 			auto translation = getTranslation(transformComponent->calcModel());
 			ImGui::Text("Position of the entity\nGlobal: %.1f, %.1f, %.1f",
 				translation.x, translation.y, translation.z);
@@ -68,6 +71,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::DragFloat3("Scale", (float*)&transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
 		if (ImGui::BeginItemTooltip())
 		{
+			if (isBaked)
+				ImGui::Text("Disabled due to BakedTransformComponent!");
 			auto scale = extractScale(transformComponent->calcModel());
 			ImGui::Text("Scale of the entity\nGlobal: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
 			ImGui::EndTooltip();
@@ -81,6 +86,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		}
 		if (ImGui::BeginItemTooltip())
 		{
+			if (isBaked)
+				ImGui::Text("Disabled due to BakedTransformComponent!");
 			auto rotation = radians(newEulerAngles);
 			auto global = degrees(extractQuat(extractRotation(transformComponent->calcModel())).toEulerAngles());
 			ImGui::Text("Rotation in degrees\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
@@ -96,12 +103,12 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (transformComponent->getParent())
 		{
 			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
-			ImGui::Text("Parent: %d (%s) | Childs: %d", *transformComponent->getParent(),
+			ImGui::Text("Parent: %lu (%s) | Childs: %lu", *transformComponent->getParent(),
 				parentTransform->name.c_str(), transformComponent->getChildCount());
 		}
 		else
 		{
-			ImGui::Text("Parent: null | Childs: %d", transformComponent->getChildCount());
+			ImGui::Text("Parent: null | Childs: %lu", transformComponent->getChildCount());
 		}
 
 		if (transformComponent->getParent())

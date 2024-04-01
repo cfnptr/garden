@@ -112,7 +112,7 @@ public:
 /**
  * @brief Memory access name strings.
  */
-static const string_view memoryAccessNames[(psize)Memory::Usage::Count] =
+static const string_view memoryAccessNames[(psize)Memory::Access::Count] =
 {
 	"None", "SequentialWrite", "RandomReadWrite"
 };
@@ -122,6 +122,13 @@ static const string_view memoryAccessNames[(psize)Memory::Usage::Count] =
 static const string_view memoryUsageNames[(psize)Memory::Usage::Count] =
 {
 	"Auto", "PreferGPU", "PreferCPU"
+};
+/**
+ * @brief Memory strategy name strings.
+ */
+static const string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
+{
+	"Default", "Size", "Speed"
 };
 
 /**
@@ -141,6 +148,15 @@ static string_view toString(Memory::Usage memoryUsage)
 {
 	GARDEN_ASSERT((uint8)memoryUsage < (uint8)Memory::Usage::Count);
 	return memoryUsageNames[(psize)memoryUsage];
+}
+/**
+ * @brief Returns memory strategy name string.
+ * @param memoryStrategy target memory strategy type
+ */
+static string_view toString(Memory::Strategy memoryStrategy)
+{
+	GARDEN_ASSERT((uint8)memoryStrategy < (uint8)Memory::Strategy::Count);
+	return memoryStrategyNames[(psize)memoryStrategy];
 }
 
 /***********************************************************************************************************************

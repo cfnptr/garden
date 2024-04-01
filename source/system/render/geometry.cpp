@@ -510,7 +510,7 @@ static void loadNodeRecursive(NodeLoadData& loadData, Model::Node node, ID<Entit
 				Model::Attribute::Type::Position, 
 				Model::Attribute::Type::Normal,
 				Model::Attribute::Type::TexCoord,
-			};
+			}; // TODO: do not use static like that
 
 			// TODO: detect shared buffers and reuse them. Some sort of hash map.
 			auto vertexBuffer = ResourceSystem::getInstance()->loadVertexBuffer(

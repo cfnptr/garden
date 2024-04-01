@@ -152,12 +152,12 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	instanceVersionMajor = VK_API_VERSION_MAJOR(installedVersion);
 	instanceVersionMinor = VK_API_VERSION_MINOR(installedVersion);
-	// versionMinor = 2; // TODO: debugging
+	// instanceVersionMinor = 2; // TODO: debugging
 
 	#if GARDEN_OS_MACOS
 	// TODO: remove after MoltenVK 1.3 support on mac.
-	if (versionMinor >= 3)
-		versionMinor = 2;
+	if (instanceVersionMinor >= 3)
+		instanceVersionMinor = 2;
 	#endif
 
 	auto vkEngineVersion = VK_MAKE_API_VERSION(0,

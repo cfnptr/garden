@@ -137,14 +137,14 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 			updateHistogram("GPU", gpuFpsBuffer, gpuSortedBuffer, (float)difference);
 		}
 
-		ImGui::SeparatorText("Device Information");
-		ImGui::Text("Queue Index Graphics: %d, Transfer: %d, Compute: %d",
+		ImGui::SeparatorText("GPU Information");
+		ImGui::Text("Queue Index Graphics: %lu, Transfer: %lu, Compute: %lu",
 			Vulkan::graphicsQueueFamilyIndex,
 			Vulkan::transferQueueFamilyIndex,
 			Vulkan::computeQueueFamilyIndex);
 		auto isIntegrated = !GraphicsAPI::isDeviceIntegrated;
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
-		ImGui::Text("Swapchain Size: %d", (int)Vulkan::swapchain.getBufferCount());
+		ImGui::Text("Swapchain Size: %lu", (int)Vulkan::swapchain.getBufferCount());
 		
 		GraphicsAPI::recordGpuTime = true;
 	}

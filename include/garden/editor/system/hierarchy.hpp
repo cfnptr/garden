@@ -19,13 +19,15 @@
 namespace garden
 {
 
-class ResourceEditorSystem final : public EditorSystem<EditorRenderSystem>
+class HierarchyEditorSystem final : public EditorSystem<EditorRenderSystem>
 {
+	string hierarchySearch;
+	bool searchCaseSensitive = false;
 	bool showWindow = false;
 
-	ResourceEditorSystem(Manager* manager, EditorRenderSystem* system);
-	~ResourceEditorSystem() final;
-	
+	HierarchyEditorSystem(Manager* manager, EditorRenderSystem* system);
+	~HierarchyEditorSystem() final;
+
 	void renderEditor();
 	void editorBarTool();
 

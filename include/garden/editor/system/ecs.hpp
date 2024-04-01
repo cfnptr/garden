@@ -13,25 +13,23 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/mesh.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-using namespace garden;
-using namespace garden::graphics;
-
-class SelectorEditor final
+class EcsEditorSystem final : public EditorSystem<EditorRenderSystem>
 {
-	bool isSkipped = false;
+	bool showWindow = false;
 
-	SelectorEditor(MeshRenderSystem* system);
-	void preSwapchainRender();
-	
-	friend class MeshRenderSystem;
-public:
-	void skipUpdate() { isSkipped = true; }
+	EcsEditorSystem(Manager* manager, EditorRenderSystem* system);
+	~EcsEditorSystem() final;
+
+	void renderEditor();
+	void editorBarTool();
+
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

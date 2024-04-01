@@ -13,25 +13,25 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/editor.hpp"
+#include "garden/system/render/mesh.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-class HierarchyEditorSystem final : public EditorSystem<EditorRenderSystem>
+using namespace garden;
+using namespace garden::graphics;
+
+class MeshSelectorEditor final
 {
-	string hierarchySearch;
-	bool hierarchyCaseSensitive = false;
-	bool showWindow = false;
+	bool isSkipped = false;
 
-	HierarchyEditorSystem(Manager* manager, EditorRenderSystem* system);
-	~HierarchyEditorSystem() final;
-
-	void renderEditor();
-	void editorBarTool();
-
-	friend class ecsm::Manager;
+	MeshSelectorEditor(MeshRenderSystem* system);
+	void preSwapchainRender();
+	
+	friend class MeshRenderSystem;
+public:
+	void skipUpdate() { isSkipped = true; }
 };
 
 } // namespace garden

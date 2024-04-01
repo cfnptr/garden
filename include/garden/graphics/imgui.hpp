@@ -48,4 +48,24 @@ bool Combo(const char* label, T& currentItem, const char* items)
 }
 
 }; // ImGui
+
+namespace garden
+{
+
+static bool findCaseInsensitive(const string& haystack, const string& needle)
+{
+	auto it = search(haystack.begin(), haystack.end(), needle.begin(), needle.end(), [](char a, char b)
+	{
+		return toupper(a) == toupper(b);
+	});
+	return (it != haystack.end());
+}
+static bool find(const string& haystack, const string& needle, bool caseSensitive)
+{
+	if (caseSensitive)
+		return haystack.find(needle) != string::npos;
+	return findCaseInsensitive(haystack, needle);
+}
+
+}; // garden
 #endif

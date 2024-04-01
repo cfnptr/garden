@@ -78,7 +78,7 @@ void LightingEditor::onEntityInspector(ID<Entity> entity)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			ImGui::Text("Specular: %d (%s)", *lightingComponent->specular,
+			ImGui::Text("Specular: %lu (%s)", *lightingComponent->specular,
 				imageView->getDebugName().c_str() + stringOffset);
 			auto image = to_string(*lightingComponent->specular) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";

@@ -514,7 +514,7 @@ static string toStringList(Image::Bind imageBind)
 	if (hasAnyFlag(imageBind, Image::Bind::DepthStencilAttachment)) list += "DepthStencilAttachment | ";
 	if (hasAnyFlag(imageBind, Image::Bind::InputAttachment)) list += "InputAttachment | ";
 	if (hasAnyFlag(imageBind, Image::Bind::Fullscreen)) list += "Fullscreen | ";
-	list.resize(list.length() - 3);
+	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }
 

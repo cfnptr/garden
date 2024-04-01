@@ -16,6 +16,10 @@
 #include "garden/system/app-info.hpp"
 #include "garden/file.hpp"
 
+#if GARDEN_EDITOR
+#include "garden/editor/system/log.hpp"
+#endif
+
 #include "mpmt/thread.hpp"
 #include "mpio/os.hpp"
 #include <thread>
@@ -28,6 +32,11 @@ LogSystem* LogSystem::instance = nullptr;
 
 LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : System(manager)
 {
+	#if GARDEN_EDITOR
+	SUBSCRIBE_TO_EVENT("PreInit", LogSystem::preInit);
+	SUBSCRIBE_TO_EVENT("PostDeinit", LogSystem::postDeinit);
+	#endif
+
 	auto appInfoSystem = manager->get<AppInfoSystem>();
 
 	this->logger = logy::Logger(appInfoSystem->getAppDataName(),
@@ -48,10 +57,39 @@ LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : Sy
 }
 LogSystem::~LogSystem()
 {
-	info("Stopped logging system.");
+	#if GARDEN_EDITOR
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", LogSystem::preInit);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", LogSystem::postDeinit);
+	}
+	#endif
+
+	logger.log(INFO_LOG_LEVEL, "Stopped logging system.");
 }
+
+#if GARDEN_EDITOR
+//**********************************************************************************************************************
+void LogSystem::preInit()
+{
+	auto manager = getManager();
+	if (manager->has<EditorRenderSystem>())
+		manager->createSystem<LogEditorSystem>(this);
+}
+void LogSystem::postDeinit()
+{
+	getManager()->tryDestroySystem<LogEditorSystem>();
+}
+#endif
 
 void LogSystem::log(LogLevel level, const string& message) noexcept
 {
 	logger.log(level, "%.*s", message.length(), message.c_str());
+
+	#if GARDEN_EDITOR
+	auto logEditorSystem = getManager()->tryGet<LogEditorSystem>();
+	if (logEditorSystem)
+		logEditorSystem->log(level, message);
+	#endif
 }

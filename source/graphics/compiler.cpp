@@ -34,9 +34,9 @@ using namespace garden::graphics;
 
 //******************************************************************************************************************
 static const uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
-static const string_view graphicsGslMagic = "GSLG";
-static const string_view computeGslMagic = "GSLC";
-#define GSL_MAGIC_SIZE 4
+
+const string_view Compiler::graphicsGslMagic = "GSLG";
+const string_view Compiler::computeGslMagic = "GSLC";
 
 namespace
 {

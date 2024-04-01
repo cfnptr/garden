@@ -13,14 +13,41 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/log.hpp"
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/log.hpp"
+
 namespace garden
 {
 
-// TODO:
+class LogEditorSystem final : public EditorSystem<LogSystem>
+{
+	string logSearch;
+	string textBuffer, logLine;
+	stringstream logBuffer;
+	mutex bufferMutex;
+	bool showWindow = false;
+	bool searchCaseSensitive = false;
+	bool includeFatal = true;
+	bool includeError = true;
+	bool includeWarn = true;
+	bool includeInfo = true;
+	bool includeDebug = true;
+	bool includeTrace = true;
+	bool includeAll = true;
+	bool isDirty = true;
+
+	LogEditorSystem(Manager* manager, LogSystem* system);
+	~LogEditorSystem() final;
+
+	void renderEditor();
+	void editorBarTool();
+
+	friend class ecsm::Manager;
+public:
+	void log(LogLevel level, const string& message);
+};
 
 } // namespace garden
 #endif

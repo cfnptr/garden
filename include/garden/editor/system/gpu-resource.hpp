@@ -16,15 +16,22 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/camera.hpp"
-
 namespace garden
 {
 
-class CameraEditorSystem final : public EditorSystem<CameraSystem>
+class GpuResourceEditorSystem final : public EditorSystem<GraphicsSystem>
 {
-	CameraEditorSystem(Manager* manager, CameraSystem* system);
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	string resourceSearch;
+	uint32 selectedItem = 0;
+	bool showWindow = false;
+	bool searchCaseSensitive = false;
+	
+	GpuResourceEditorSystem(Manager* manager, GraphicsSystem* system);
+	~GpuResourceEditorSystem() final;
+	
+	void renderEditor();
+	void editorBarTool();
+
 	friend class ecsm::Manager;
 };
 

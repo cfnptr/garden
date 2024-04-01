@@ -29,7 +29,7 @@ ToneMappingEditor::ToneMappingEditor(ToneMappingRenderSystem* system)
 }
 
 //--------------------------------------------------------------------------------------------------
-static float exposureValue = 1.0f;
+static float exposureValue = 1.0f; // TODO: move to class.
 
 void ToneMappingEditor::render()
 {
