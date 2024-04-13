@@ -25,22 +25,22 @@
 
 float3 encodeNormalOct(float3 normal)
 {
-    float3 encoded;
-    normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
-    encoded.y = normal.y *  0.5f + 0.5f;
-    encoded.x = normal.x *  0.5f + encoded.y;
-    encoded.y = normal.x * -0.5f + encoded.y;
-    encoded.z = clamp(normal.z * FLOAT32_MAX, 0.0f, 1.0f);
-    return encoded;
+	float3 encoded;
+	normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+	encoded.y = normal.y *  0.5f + 0.5f;
+	encoded.x = normal.x *  0.5f + encoded.y;
+	encoded.y = normal.x * -0.5f + encoded.y;
+	encoded.z = clamp(normal.z * FLOAT32_MAX, 0.0f, 1.0f);
+	return encoded;
 }
 float3 decodeNormalOct(float3 encoded)
 {
-    float3 normal;
-    normal.x = (encoded.x - encoded.y);
-    normal.y = (encoded.x + encoded.y) - 1.0f;
-    normal.z = encoded.z * 2.0f - 1.0f;
-    normal.z = normal.z * (1.0f - abs(normal.x) - abs(normal.y));
-    return normalize(normal);
+	float3 normal;
+	normal.x = (encoded.x - encoded.y);
+	normal.y = (encoded.x + encoded.y) - 1.0f;
+	normal.z = encoded.z * 2.0f - 1.0f;
+	normal.z = normal.z * (1.0f - abs(normal.x) - abs(normal.y));
+	return normalize(normal);
 }
 
 //--------------------------------------------------------------------------------------------------

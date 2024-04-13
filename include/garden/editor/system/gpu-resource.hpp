@@ -29,7 +29,7 @@ class GpuResourceEditorSystem final : public EditorSystem<GraphicsSystem>
 	GpuResourceEditorSystem(Manager* manager, GraphicsSystem* system);
 	~GpuResourceEditorSystem() final;
 	
-	void renderEditor();
+	void editorRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

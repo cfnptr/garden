@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -20,9 +18,9 @@
 using namespace std;
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
-ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
-	Pipeline(createData, useAsync)
+//*********************************************************************************************************************
+ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecording) :
+	Pipeline(createData, asyncRecording)
 {
 	this->localSize = createData.localSize;
 
@@ -31,7 +29,7 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 
 	vk::SpecializationInfo specializationInfo;
 	fillSpecConsts(createData.shaderPath, ShaderStage::Compute, createData.variantCount,
-		&specializationInfo, createData.specConsts, createData.specConstData);
+		&specializationInfo, createData.specConsts, createData.specConstValues);
 
 	vk::PipelineShaderStageCreateInfo stageInfo({},
 		toVkShaderStage(ShaderStage::Compute), (VkShaderModule)shaders[0], "main",
@@ -61,7 +59,7 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool useAsync) :
 	destroyShaders(shaders);
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
 {
 	GARDEN_ASSERT(count > 0);
@@ -75,7 +73,6 @@ void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
 	#endif
 
 	DispatchCommand command;
-	command.groupCount = isGlobalCount ?
-		(int3)ceil((float3)count / (float3)localSize) : count;
+	command.groupCount = isGlobalCount ? (int3)ceil((float3)count / (float3)localSize) : count;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }

@@ -41,13 +41,13 @@ EditorRenderSystem* EditorRenderSystem::instance = nullptr;
 
 EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 {
-	manager->registerEventBefore("RenderEditor", "Present");
+	manager->registerEventBefore("EditorRender", "Present");
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
 
 	SUBSCRIBE_TO_EVENT("PreInit", EditorRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("RenderEditor", EditorRenderSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("EditorRender", EditorRenderSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
@@ -59,10 +59,10 @@ EditorRenderSystem::~EditorRenderSystem()
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("PreInit", EditorRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("RenderEditor", EditorRenderSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", EditorRenderSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
 
-		manager->unregisterEvent("RenderEditor");
+		manager->unregisterEvent("EditorRender");
 		manager->unregisterEvent("EditorBarFile");
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
@@ -215,7 +215,7 @@ void EditorRenderSystem::showAboutWindow()
 			if (graphicsSystem)
 			{
 				auto framebufferSize = graphicsSystem->getFramebufferSize();
-				ImGui::Text("Framebuffer size: %ldx%ld", framebufferSize.x, framebufferSize.y);
+				ImGui::Text("Framebuffer size: %ldx%ld", (long)framebufferSize.x, (long)framebufferSize.y);
 			}
 		}
 	}
@@ -346,7 +346,8 @@ void EditorRenderSystem::showEntityInspector()
 
 		if (ImGui::BeginItemTooltip())
 		{
-			ImGui::Text("Runtime ID: %lu, Components: %lu", *selectedEntity, (uint32)components.size());
+			ImGui::Text("Runtime ID: %lu, Components: %lu",
+				(unsigned long)*selectedEntity, (unsigned long)components.size());
 			ImGui::EndTooltip();
 		}
 		
@@ -421,12 +422,14 @@ void EditorRenderSystem::showEntityInspector()
 					{
 						auto selected = selectedEntity; // Do not optimize, required for transforms.
 						manager->remove(selectedEntity, component.first);
-						if (manager->getComponentCount(selected))
+						if (manager->getComponentCount(selected) == 0)
 							manager->destroy(selected);
 						ImGui::EndPopup();
 						ImGui::PopID();
 						continue;
 					}
+					if (ImGui::MenuItem("Copy Name"))
+						ImGui::SetClipboardText(componentName.c_str());
 					ImGui::EndPopup();
 				}
 
@@ -444,6 +447,23 @@ void EditorRenderSystem::showEntityInspector()
 				auto componentName = system->getComponentName().empty() ?
 					typeToString(system->getComponentType()) : system->getComponentName();
 				ImGui::CollapsingHeader(componentName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
+
+				if (ImGui::BeginPopupContextItem(nullptr,
+					ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+				{
+					if (ImGui::MenuItem("Remove Component"))
+					{
+						auto selected = selectedEntity; // Do not optimize, required for transforms.
+						manager->remove(selectedEntity, component.first);
+						if (manager->getComponentCount(selected) == 0)
+							manager->destroy(selected);
+						ImGui::EndPopup();
+						continue;
+					}
+					if (ImGui::MenuItem("Copy Name"))
+						ImGui::SetClipboardText(componentName.c_str());
+					ImGui::EndPopup();
+				}
 			}
 		}
 	}
@@ -512,7 +532,7 @@ void EditorRenderSystem::postDeinit()
 	}
 }
 
-void EditorRenderSystem::renderEditor()
+void EditorRenderSystem::editorRender()
 {
 	if (!GraphicsSystem::getInstance()->canRender())
 		return;

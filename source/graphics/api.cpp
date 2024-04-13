@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -22,7 +20,7 @@ using namespace garden::graphics;
 
 string GraphicsAPI::appDataName;
 Version GraphicsAPI::appVersion;
-void* GraphicsAPI::hashState = nullptr;
+Hash128::State GraphicsAPI::hashState = nullptr;
 void* GraphicsAPI::window = nullptr;
 LinearPool<Buffer> GraphicsAPI::bufferPool;
 LinearPool<Image> GraphicsAPI::imagePool;
@@ -51,7 +49,7 @@ uint8 GraphicsAPI::flushDestroyIndex = 1;
 bool GraphicsAPI::recordGpuTime = false;
 #endif
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void GraphicsAPI::destroyResource(DestroyResourceType type, void* data0, void* data1, uint32 count)
 {
 	DestroyResource destroyResource;

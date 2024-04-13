@@ -28,7 +28,7 @@ class HierarchyEditorSystem final : public EditorSystem<EditorRenderSystem>
 	HierarchyEditorSystem(Manager* manager, EditorRenderSystem* system);
 	~HierarchyEditorSystem() final;
 
-	void renderEditor();
+	void editorRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

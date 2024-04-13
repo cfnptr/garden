@@ -36,11 +36,15 @@ class ComputePipelineExt;
  * that don't involve the fixed-function stages of the graphics pipeline. It consists of a single stage:
  * 
  * Compute Shader: Executes a compute operation, which can perform a wide range of tasks, including physics simulations, 
- * post-processing effects, and any computation that doesn't require the graphics pipeline's specific stages.
+ * post-processing effects and any computation that doesn't require the graphics pipeline's specific stages.
  */
 class ComputePipeline final : public Pipeline
 {
 public:
+	/**
+	 * @brief Compute pipeline create data container.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 */
 	struct ComputeCreateData : public CreateData
 	{
 		uint8 _alignment0 = 0;
@@ -52,44 +56,80 @@ private:
 	uint8 _alignment = 0;
 	int3 localSize = int3(0);
 
-	// Use GraphicsSystem to create, destroy and access compute pipelines.
+	// Note: Use GraphicsSystem to create, destroy and access compute pipelines.
 
 	ComputePipeline() = default;
-	ComputePipeline(const fs::path& path,
-		uint32 maxBindlessCount, bool useAsync, uint64 pipelineVersion) :
-		Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsync, pipelineVersion) { }
-	ComputePipeline(ComputeCreateData& createData, bool useAsync);
+	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
+		Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
+	ComputePipeline(ComputeCreateData& createData, bool useAsyncRecording);
 
 	friend class CommandBuffer;
 	friend class ComputePipelineExt;
 	friend class LinearPool<ComputePipeline>;
 public:
+	/**
+	 * @brief Returns shader local work group size.
+	 * @details It is also available in the shader: gl.workGroupSize
+	 */
 	const int3& getLocalSize() const noexcept { return localSize; }
 
-//--------------------------------------------------------------------------------------------------
-// Render commands
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
+	// Render commands
+	//******************************************************************************************************************
 
+	/**
+	 * @brief Executes compute shader with specified work group size.
+	 * 
+	 * @param[in] count work group size
+	 * @param isGlobalCount is work group size in global space
+	 * 
+	 * @details
+	 * Work group size determines the size and organization of work items within work groups 
+	 * that execute on the GPU. This concept is essential for optimizing the performance and 
+	 * efficiency of compute tasks on graphics processing units (GPUs).
+	 * 
+	 * gl.localInvocationIndex = gl.localInvocationID.z * gl.workGroupSize.x * gl.workGroupSize.y +
+     *     gl.localInvocationID.y * gl.workGroupSize.x + gl.localInvocationID.x;
+	 * gl.globalInvocationID = gl.workGroupID * gl.workGroupSize + gl.localInvocationID;
+	 */
 	void dispatch(const int3& count, bool isGlobalCount = true);
 };
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief Compute pipeline resource extension mechanism.
+ * @warning Use only if you know what you are doing!
+ */
 class ComputePipelineExt final
 {
 public:
-	static int3& getLocalSize(ComputePipeline& pipeline)
-		noexcept { return pipeline.localSize; }
+	/**
+	 * @brief Returns shader local work group size.
+	 * @warning In most cases you should use @ref ComputePipeline functions.
+	 * @param[in] buffer target buffer instance
+	 */
+	static int3& getLocalSize(ComputePipeline& pipeline) noexcept { return pipeline.localSize; }
 
-	static ComputePipeline create(
-		ComputePipeline::ComputeCreateData& createData, bool useAsync)
+	/**
+	 * @brief Creates a new compute pipeline data.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * 
+	 * @param[in,out] createData target compute pipeline create data
+	 * @param useAsyncRecording use multithreaded render commands recording
+	 */
+	static ComputePipeline create(ComputePipeline::ComputeCreateData& createData, bool useAsyncRecording)
 	{
-		return ComputePipeline(createData, useAsync);
+		return ComputePipeline(createData, useAsyncRecording);
 	}
-	static void moveInternalObjects(ComputePipeline& source,
-		ComputePipeline& destination) noexcept
+	/**
+	 * @brief Moves internal compute pipeline objects.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * 
+	 * @param[in,out] source source compute pipeline instance
+	 * @param[in,out] destination destination compute pipeline instance
+	 */
+	static void moveInternalObjects(ComputePipeline& source, ComputePipeline& destination) noexcept
 	{
-		ComputePipelineExt::getLocalSize(destination) =
-			ComputePipelineExt::getLocalSize(source);
+		ComputePipelineExt::getLocalSize(destination) = ComputePipelineExt::getLocalSize(source);
 		PipelineExt::moveInternalObjects(source, destination);
 	}
 };

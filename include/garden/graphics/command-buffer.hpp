@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common graphics command buffer functions.
+ * @brief Graphics command buffer functions.
  */
 
 #pragma once
@@ -27,14 +27,9 @@ namespace garden::graphics
 using namespace std;
 class CommandBuffer;
 
-/**
- * @brief Base command buffer command structure.
- */
+//**********************************************************************************************************************
 struct Command
 {
-	/**
-	 * @brief Command buffer command type.
-	 */
 	enum class Type : uint8
 	{
 		Unknown, BeginRenderPass, NextSubpass, Execute, EndRenderPass, ClearAttachments,
@@ -56,10 +51,12 @@ public:
 	friend class CommandBuffer;
 	Command(Type type) noexcept { this->type = type; }
 };
+
+//**********************************************************************************************************************
 struct BeginRenderPassCommandBase : public Command
 {
 	uint8 clearColorCount = 0;
-	uint8 recordAsync = false;
+	uint8 asyncRecording = false;
 	uint8 _alignment = 0;
 	ID<Framebuffer> framebuffer = {};
 	float clearDepth = 0.0f;
@@ -73,7 +70,7 @@ struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 };
 struct NextSubpassCommand final : public Command
 {
-	uint8 recordAsync = false;
+	uint8 asyncRecording = false;
 	uint16 _alignment = 0;
 	NextSubpassCommand() noexcept : Command(Type::NextSubpass) { }
 };
@@ -93,6 +90,8 @@ struct EndRenderPassCommand final : public Command
 	uint16 _alignment1 = 0;
 	EndRenderPassCommand() noexcept : Command(Type::EndRenderPass) { }
 };
+
+//**********************************************************************************************************************
 struct ClearAttachmentsCommandBase : public Command
 {
 	uint8 attachmentCount = 0;
@@ -116,15 +115,17 @@ struct BindPipelineCommand final : public Command
 };
 struct BindDescriptorSetsCommandBase : public Command
 {
-	uint8 isAsync = false;
-	uint8 descriptorDataSize = 0;
+	uint8 asyncRecording = false;
+	uint8 rangeCount = 0;
 	uint8 _alignment = 0;
 	BindDescriptorSetsCommandBase() noexcept : Command(Type::BindDescriptorSets) { }
 };
 struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 {
-	const Pipeline::DescriptorData* descriptorData = nullptr;
+	const DescriptorSet::Range* descriptorSetRange = nullptr;
 };
+
+//**********************************************************************************************************************
 struct PushConstantsCommandBase : public Command
 {
 	uint8 _alignment = 0;
@@ -158,9 +159,11 @@ struct SetViewportScissorCommand final : public Command
 	float4 viewportScissor = float4(0.0f);
 	SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
+
+//**********************************************************************************************************************
 struct DrawCommand final : public Command
 {
-	uint8 isAsync = false;
+	uint8 asyncRecording = false;
 	uint16 _alignment = 0;
 	uint32 vertexCount = 0;
 	uint32 instanceCount = 0;
@@ -172,7 +175,7 @@ struct DrawCommand final : public Command
 struct DrawIndexedCommand final : public Command
 {
 	GraphicsPipeline::Index indexType = {};
-	uint8 isAsync = false;
+	uint8 asyncRecording = false;
 	uint8 _alignment = 0;
 	uint32 indexCount = 0;
 	uint32 instanceCount = 0;
@@ -190,6 +193,8 @@ struct DispatchCommand final : public Command
 	int3 groupCount = int3(0);
 	DispatchCommand() noexcept : Command(Type::Dispatch) { }
 };
+
+//**********************************************************************************************************************
 struct FillBufferCommand final : public Command
 {
 	uint8 _alignment0 = 0;
@@ -213,6 +218,8 @@ struct CopyBufferCommand final : public CopyBufferCommandBase
 {
 	const Buffer::CopyRegion* regions = nullptr;
 };
+
+//**********************************************************************************************************************
 struct ClearImageCommandBase : public Command
 {
 	uint8 clearType = 0;
@@ -267,6 +274,7 @@ struct BlitImageCommand final : public BlitImageCommandBase
 };
 
 #if GARDEN_DEBUG
+//**********************************************************************************************************************
 struct BeginLabelCommandBase : public Command
 {
 	uint8 _alignment0 = 0;
@@ -356,8 +364,8 @@ private:
 
 	Command* allocateCommand(uint32 size);
 
-	void addDescriptorSetBarriers(const Pipeline::DescriptorData* descriptorData,
-		uint32 descriptorDataSize, uint32& oldStage, uint32& newStage);
+	void addDescriptorSetBarriers(const DescriptorSet::Range* descriptorSetRange,
+		uint32 rangeCount, uint32& oldStage, uint32& newStage);
 	void processPipelineBarriers(uint32 oldStage, uint32 newStage);
 
 	void processCommand(const BeginRenderPassCommand& command);
@@ -390,7 +398,7 @@ private:
 	void flushLockedResources(vector<LockResource>& lockedResources);
 	friend class Vulkan;
 public:
-//--------------------------------------------------------------------------------------------------
+	//******************************************************************************************************************
 	mutex commandMutex;
 
 	void initialize(CommandBufferType type);

@@ -21,7 +21,7 @@ using namespace garden;
 //**********************************************************************************************************************
 EcsEditorSystem::EcsEditorSystem(Manager* manager, EditorRenderSystem* system) : EditorSystem(manager, system)
 {
-	SUBSCRIBE_TO_EVENT("RenderEditor", EcsEditorSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("EditorRender", EcsEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 }
 EcsEditorSystem::~EcsEditorSystem()
@@ -29,7 +29,7 @@ EcsEditorSystem::~EcsEditorSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("RenderEditor", EcsEditorSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", EcsEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 	}
 }
@@ -145,7 +145,7 @@ static void renderRegisteredComponents(Manager* manager)
 }
 
 //**********************************************************************************************************************
-void EcsEditorSystem::renderEditor()
+void EcsEditorSystem::editorRender()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;

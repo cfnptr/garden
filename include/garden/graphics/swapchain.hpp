@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+// TODO: add documentation and make generic Swapchain class.
 
 #pragma once
 #include "garden/thread-pool.hpp"
@@ -56,7 +56,7 @@ private:
 	vector<Buffer> buffers;
 	ThreadPool* threadPool = nullptr;
 	uint32 frameIndex = 0, bufferIndex = 0;
-	bool useVsync = false, useTripleBuffering = false, useThreading = false;
+	bool vsync = false, tripleBuffering = false, useThreading = false;
 
 	Swapchain() = default;
 	Swapchain(int2 framebufferSize, bool useVsync,
@@ -71,8 +71,8 @@ public:
 	uint32 getCurrentBufferIndex() const noexcept { return bufferIndex; }
 	uint32 getCurrentFrameIndex() const noexcept { return frameIndex; }
 	int2 getFramebufferSize() const noexcept { return framebufferSize; }
-	bool isUseVsync() const noexcept { return useVsync; }
-	bool isUseTripleBuffering() const noexcept { return useTripleBuffering; }
+	bool useVsync() const noexcept { return vsync; }
+	bool useTripleBuffering() const noexcept { return tripleBuffering; }
 
 	void setThreadPool(ThreadPool& threadPool);
 	void recreate(int2 framebufferSize, bool useVsync, bool useTripleBuffering);
@@ -80,9 +80,8 @@ public:
 	void submit();
 	bool present();
 
-	void beginSecondaryCommandBuffers(
-		void* framebuffer, void* renderPass, uint8 subpassIndex,
-		const vector<Framebuffer::OutputAttachment>& colorAttachments,
+	void beginSecondaryCommandBuffers(void* framebuffer, void* renderPass,
+		uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
 		Framebuffer::OutputAttachment depthStencilAttachment, const string& name);
 	void endSecondaryCommandBuffers();
 };

@@ -18,12 +18,15 @@
  */
 
 #pragma once
+#include "garden/hash.hpp"
 #include "garden/graphics/command-buffer.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
 namespace garden::graphics
 {
+
+using namespace garden;
 
 /**
  * @brief Minimal DLSS output size
@@ -50,17 +53,11 @@ const int32 minFramebufferSize = 32;
 class GraphicsAPI final
 {
 public:
-	/**
-	 * @brief GPU object type to destroy.
-	 */
 	enum class DestroyResourceType : uint32
 	{
 		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
 		Sampler, Framebuffer, ImageView, Image, Buffer, Count
 	};
-	/**
-	 * @brief GPU object to destroy.
-	 */
 	struct DestroyResource final
 	{
 		void* data0 = nullptr;
@@ -71,7 +68,7 @@ public:
 
 	static string appDataName;
 	static Version appVersion;
-	static void* hashState;
+	static Hash128::State hashState;
 	static void* window;
 	static LinearPool<Buffer> bufferPool;
 	static LinearPool<Image> imagePool;
@@ -100,14 +97,6 @@ public:
 	static bool recordGpuTime;
 	#endif
 
-	/**
-	 * @brief Adds GPU objects to the destroy queue.
-	 * 
-	 * @param type target resource type
-	 * @param data0 GPU object 0
-	 * @param data1 GPU object 1 or nullptr
-	 * @param count GPU object count
-	 */
 	static void destroyResource(DestroyResourceType type,
 		void* data0, void* data1 = nullptr, uint32 count = 0);
 };

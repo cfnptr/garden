@@ -23,7 +23,7 @@ using namespace garden;
 GraphicsEditorSystem::GraphicsEditorSystem(Manager* manager,
 	GraphicsSystem* graphicsSystem) : EditorSystem(manager, graphicsSystem)
 {
-	SUBSCRIBE_TO_EVENT("RenderEditor", GraphicsEditorSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
 GraphicsEditorSystem::~GraphicsEditorSystem()
@@ -31,7 +31,7 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("RenderEditor", GraphicsEditorSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
 	}
 
 	delete[] gpuSortedBuffer;
@@ -139,12 +139,12 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 
 		ImGui::SeparatorText("GPU Information");
 		ImGui::Text("Queue Index Graphics: %lu, Transfer: %lu, Compute: %lu",
-			Vulkan::graphicsQueueFamilyIndex,
-			Vulkan::transferQueueFamilyIndex,
-			Vulkan::computeQueueFamilyIndex);
+			(unsigned long)Vulkan::graphicsQueueFamilyIndex,
+			(unsigned long)Vulkan::transferQueueFamilyIndex,
+			(unsigned long)Vulkan::computeQueueFamilyIndex);
 		auto isIntegrated = !GraphicsAPI::isDeviceIntegrated;
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
-		ImGui::Text("Swapchain Size: %lu", (int)Vulkan::swapchain.getBufferCount());
+		ImGui::Text("Swapchain Size: %lu", (unsigned long)Vulkan::swapchain.getBufferCount());
 		
 		GraphicsAPI::recordGpuTime = true;
 	}
@@ -220,7 +220,7 @@ void GraphicsEditorSystem::showMemoryStatistics()
 }
 
 //**********************************************************************************************************************
-void GraphicsEditorSystem::renderEditor()
+void GraphicsEditorSystem::editorRender()
 {
 	if (!GraphicsSystem::getInstance()->canRender())
 		return;

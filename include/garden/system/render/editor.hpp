@@ -64,7 +64,7 @@ protected:
  * including video games and interactive media. It encompasses tools for building scenes, managing digital assets like 
  * models and textures, scripting behavior, testing the game within the editor, and designing user interfaces.
  * 
- * Registers events: RenderEditor, EditorBarTool.
+ * Registers events: EditorRender, EditorBarTool.
  */
 class EditorRenderSystem final : public System
 {
@@ -101,7 +101,7 @@ private:
 	void showExportScene();
 
 	void preInit();
-	void renderEditor();
+	void editorRender();
 	void postDeinit();
 
 	friend class ecsm::Manager;

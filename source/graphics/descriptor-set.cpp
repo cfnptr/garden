@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/descriptor-set.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -21,6 +19,7 @@
 using namespace std;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 
 DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
@@ -35,18 +34,14 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 
 	if (pipelineType == PipelineType::Graphics)
 	{
-		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
-			ID<GraphicsPipeline>(pipeline));
-		descriptorSetLayout = (VkDescriptorSetLayout)
-			pipelineView->descriptorSetLayouts[index];
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline));
+		descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
 		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
 	}
 	else if (pipelineType == PipelineType::Compute)
 	{
-		auto pipelineView = GraphicsAPI::computePipelinePool.get(
-			ID<ComputePipeline>(pipeline));
-		descriptorSetLayout = (VkDescriptorSetLayout)
-			pipelineView->descriptorSetLayouts[index];
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(pipeline));
+		descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
 		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
 	}
 	else abort();
@@ -76,7 +71,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 	recreate(std::move(uniforms));
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 bool DescriptorSet::destroy()
 {
 	if (!instance || readyLock > 0)
@@ -87,22 +82,19 @@ bool DescriptorSet::destroy()
 		bool isBindless;
 		if (pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
-				ID<GraphicsPipeline>(this->pipeline));
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(this->pipeline));
 			isBindless = pipelineView->descriptorPools[index];
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = GraphicsAPI::computePipelinePool.get(
-				ID<ComputePipeline>(this->pipeline));
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(this->pipeline));
 			isBindless = pipelineView->descriptorPools[index];
 		}
 		else abort();
 		
 		if (!isBindless)
 		{
-			GraphicsAPI::destroyResource(
-				GraphicsAPI::DestroyResourceType::DescriptorSet,
+			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSet,
 				instance, nullptr, uniforms.begin()->second.resourceSets.size() - 1);
 		}
 		else
@@ -121,31 +113,28 @@ bool DescriptorSet::destroy()
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::WriteDescriptorSet> writeDescriptorSets;
 static vector<vk::DescriptorImageInfo> descriptorImageInfos;
 static vector<vk::DescriptorBufferInfo> descriptorBufferInfos;
 
 void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 {
-	GARDEN_ASSERT(this->uniforms.size() == 0 ||
-		uniforms.size() == this->uniforms.size());
+	GARDEN_ASSERT(this->uniforms.size() == 0 || uniforms.size() == this->uniforms.size());
 
 	vk::DescriptorPool descriptorPool; uint32 maxBindlessCount = 0;
 	const map<string, Pipeline::Uniform>* pipelineUniforms = nullptr;
 
 	if (pipelineType == PipelineType::Graphics)
 	{
-		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
-			ID<GraphicsPipeline>(this->pipeline));
+		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(this->pipeline));
 		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
 		maxBindlessCount = pipelineView->maxBindlessCount;
 		pipelineUniforms = &pipelineView->uniforms;
 	}
 	else if (pipelineType == PipelineType::Compute)
 	{
-		auto pipelineView = GraphicsAPI::computePipelinePool.get(
-			ID<ComputePipeline>(this->pipeline));
+		auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(this->pipeline));
 		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
 		maxBindlessCount = pipelineView->maxBindlessCount;
 		pipelineUniforms = &pipelineView->uniforms;
@@ -182,17 +171,13 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 		vk::DescriptorSetLayout descriptorSetLayout;
 		if (pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
-				ID<GraphicsPipeline>(pipeline));
-			descriptorSetLayout = (VkDescriptorSetLayout)
-				pipelineView->descriptorSetLayouts[index];
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline));
+			descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
 		}
 		else if (pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = GraphicsAPI::computePipelinePool.get(
-				ID<ComputePipeline>(pipeline));
-			descriptorSetLayout = (VkDescriptorSetLayout)
-				pipelineView->descriptorSetLayouts[index];
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(pipeline));
+			descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
 		}
 		else abort();
 
@@ -204,10 +189,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 		if (oldSetCount > 1)
 		{
 			Vulkan::device.freeDescriptorSets(descriptorPool ?
-				descriptorPool : Vulkan::descriptorPool,
-				oldSetCount, (vk::DescriptorSet*)this->instance);
-			this->instance = realloc<vk::DescriptorSet>(
-				(vk::DescriptorSet*)this->instance, newSetCount);
+				descriptorPool : Vulkan::descriptorPool, oldSetCount, (vk::DescriptorSet*)this->instance);
+			this->instance = realloc<vk::DescriptorSet>((vk::DescriptorSet*)this->instance, newSetCount);
 
 			descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
 			allocateInfo.pSetLayouts = descriptorSetLayouts.data();
@@ -218,8 +201,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 		else
 		{
 			Vulkan::device.freeDescriptorSets(descriptorPool ?
-				descriptorPool : Vulkan::descriptorPool,
-				1, (vk::DescriptorSet*)&this->instance);
+				descriptorPool : Vulkan::descriptorPool, 1, (vk::DescriptorSet*)&this->instance);
 
 			allocateInfo.pSetLayouts = &descriptorSetLayout;
 			auto allocateResult = Vulkan::device.allocateDescriptorSets(
@@ -300,8 +282,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 					}
 					else
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(),
-							Image::Bind::InputAttachment));
+						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
 					}
 					#endif
 
@@ -320,8 +301,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 				writeDescriptorSets.push_back(writeDescriptorSet);
 			}
 		}
-		else if (uniformType == GslUniformType::UniformBuffer ||
-			uniformType == GslUniformType::StorageBuffer)
+		else if (uniformType == GslUniformType::UniformBuffer || uniformType == GslUniformType::StorageBuffer)
 		{
 			GARDEN_ASSERT(dsUniform.type == typeid(Buffer));
 			writeDescriptorSet.pImageInfo = nullptr;
@@ -391,9 +371,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 	this->uniforms = std::move(uniforms);
 }
 
-//--------------------------------------------------------------------------------------------------
-void DescriptorSet::updateUniform(const string& name,
-	const Uniform& uniform, uint32 elementOffset)
+//**********************************************************************************************************************
+void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, uint32 elementOffset)
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(uniform.resourceSets.size() == 1);
@@ -419,8 +398,7 @@ void DescriptorSet::updateUniform(const string& name,
 	}
 	else abort();
 
-	GARDEN_ASSERT(uniform.resourceSets[0].size() +
-		elementOffset <= maxBindlessCount);
+	GARDEN_ASSERT(uniform.resourceSets[0].size() + elementOffset <= maxBindlessCount);
 
 	#if GARDEN_DEBUG
 	if (pipelineUniforms->find(name) == pipelineUniforms->end())
@@ -439,9 +417,8 @@ void DescriptorSet::updateUniform(const string& name,
 		GARDEN_ASSERT(uniform.type == typeid(ImageView));
 		writeDescriptorSet.pBufferInfo = nullptr;
 
-		vk::DescriptorImageInfo imageInfo(
-			VK_NULL_HANDLE, VK_NULL_HANDLE, isImageType(uniformType) ?
-			vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
+		vk::DescriptorImageInfo imageInfo(VK_NULL_HANDLE, VK_NULL_HANDLE,
+			isImageType(uniformType) ? vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		auto& resourceArray = uniform.resourceSets[0];
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
@@ -471,8 +448,7 @@ void DescriptorSet::updateUniform(const string& name,
 		writeDescriptorSet.pImageInfo = &descriptorImageInfos[(uint32)(
 			descriptorImageInfos.size() - resourceArray.size())];
 	}
-	else if (uniformType == GslUniformType::UniformBuffer ||
-		uniformType == GslUniformType::StorageBuffer)
+	else if (uniformType == GslUniformType::UniformBuffer || uniformType == GslUniformType::StorageBuffer)
 	{
 		GARDEN_ASSERT(uniform.type == typeid(Buffer));
 		writeDescriptorSet.pImageInfo = nullptr;
@@ -519,7 +495,7 @@ void DescriptorSet::updateUniform(const string& name,
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void DescriptorSet::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);

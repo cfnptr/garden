@@ -31,7 +31,7 @@ class GraphicsEditorSystem final : public EditorSystem<GraphicsSystem>
 	GraphicsEditorSystem(Manager* manager, GraphicsSystem* graphicsSystem);
 	~GraphicsEditorSystem() final;
 
-	void renderEditor();
+	void editorRender();
 	void editorBarTool();
 
 	void showPerformanceStatistics();

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -20,6 +18,7 @@
 using namespace std;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static vk::ImageType toVkImageType(Image::Type imageType)
 {
 	switch (imageType)
@@ -79,7 +78,7 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::BufferImageCopy> bufferImageCopies;
 
 Image::Image(Type type, Format format, Bind bind, Strategy strategy,
@@ -154,7 +153,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 		layout = (uint32)vk::ImageLayout::eUndefined;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 Image::Image(void* instance, Format format, Bind bind,
 	Strategy strategy, int2 size, uint64 version) : Memory(toBinarySize(format) * size.x * size.y,
 		Access::None, Usage::Auto, strategy, version), layouts(1)
@@ -180,22 +179,16 @@ bool Image::destroy()
 	if (!this->swapchain)
 	{
 		if (GraphicsAPI::isRunning)
-		{
-			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Image,
-				instance, allocation);
-		}
+			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Image, instance, allocation);
 		else
-		{
-			vmaDestroyImage(Vulkan::memoryAllocator,
-				(VkImage)instance, (VmaAllocation)allocation);
-		}
+			vmaDestroyImage(Vulkan::memoryAllocator, (VkImage)instance, (VmaAllocation)allocation);
 	}
 
 	instance = nullptr;
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<ImageView> Image::getDefaultView()
 {
 	if (!defaultView)
@@ -213,7 +206,6 @@ ID<ImageView> Image::getDefaultView()
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
 void Image::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
@@ -227,7 +219,6 @@ void Image::setDebugName(const string& name)
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
 void Image::generateMips(SamplerFilter filter)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -249,7 +240,7 @@ void Image::generateMips(SamplerFilter filter)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
@@ -320,9 +311,8 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void Image::copy(ID<Image> source, ID<Image> destination,
-	const CopyImageRegion* regions, uint32 count)
+//**********************************************************************************************************************
+void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -335,7 +325,7 @@ void Image::copy(ID<Image> source, ID<Image> destination,
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-    auto dstView = GraphicsAPI::imagePool.get(destination);
+	auto dstView = GraphicsAPI::imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 	GARDEN_ASSERT(toBinarySize(srcView->format) == toBinarySize(dstView->format));
@@ -385,9 +375,8 @@ void Image::copy(ID<Image> source, ID<Image> destination,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void Image::copy(ID<Buffer> source, ID<Image> destination,
-	const CopyBufferRegion* regions, uint32 count)
+//**********************************************************************************************************************
+void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -400,7 +389,7 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 	GARDEN_ASSERT(bufferView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(bufferView->bind, Buffer::Bind::TransferSrc));
 	
-    auto imageView = GraphicsAPI::imagePool.get(destination);
+	auto imageView = GraphicsAPI::imagePool.get(destination);
 	GARDEN_ASSERT(imageView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(imageView->bind, Bind::TransferDst));
 	
@@ -411,8 +400,7 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 		GARDEN_ASSERT(region.imageOffset >= 0);
 		GARDEN_ASSERT(region.imageExtent >= 0);
 		GARDEN_ASSERT(region.imageLayerCount >= 0);
-		GARDEN_ASSERT(region.imageBaseLayer +
-			region.imageLayerCount <= imageView->layerCount);
+		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->layerCount);
 		GARDEN_ASSERT(region.imageMipLevel <= imageView->mipCount);
 
 		if (region.imageExtent == 0)
@@ -446,9 +434,8 @@ void Image::copy(ID<Buffer> source, ID<Image> destination,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void Image::copy(ID<Image> source, ID<Buffer> destination,
-	const CopyBufferRegion* regions, uint32 count)
+//**********************************************************************************************************************
+void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -460,7 +447,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 	auto imageView = GraphicsAPI::imagePool.get(source);
 	GARDEN_ASSERT(imageView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(imageView->bind, Bind::TransferSrc));
-    
+
 	auto bufferView = GraphicsAPI::bufferPool.get(destination);
 	GARDEN_ASSERT(bufferView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(bufferView->bind, Buffer::Bind::TransferDst));
@@ -472,8 +459,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 		GARDEN_ASSERT(region.imageOffset >= 0);
 		GARDEN_ASSERT(region.imageExtent >= 0);
 		GARDEN_ASSERT(region.imageLayerCount >= 0);
-		GARDEN_ASSERT(region.imageBaseLayer +
-			region.imageLayerCount <= imageView->layerCount);
+		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->layerCount);
 		GARDEN_ASSERT(region.imageMipLevel <= imageView->mipCount);
 
 		if (region.imageExtent == 0)
@@ -507,9 +493,8 @@ void Image::copy(ID<Image> source, ID<Buffer> destination,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void Image::blit(ID<Image> source, ID<Image> destination,
-	const BlitRegion* regions, uint32 count, SamplerFilter filter)
+//**********************************************************************************************************************
+void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regions, uint32 count, SamplerFilter filter)
 {
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -579,7 +564,7 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	Image::Format format, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
@@ -618,7 +603,6 @@ bool ImageView::destroy()
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
 void ImageView::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);

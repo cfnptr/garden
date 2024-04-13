@@ -37,6 +37,7 @@ enum class ImageFileType : uint8
 /**
  * @brief Returns image file type.
  * @param name target file type name
+ * @throw runtime_error on unknown image file type.
  */
 static ImageFileType toImageFileType(string_view name)
 {

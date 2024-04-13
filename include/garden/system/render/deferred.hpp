@@ -74,13 +74,13 @@ class DeferredRenderSystem final : public System, public IRenderSystem
 	ID<Framebuffer> toneMappingFramebuffer = {};
 	int2 framebufferSize = int2(0);
 	float renderScale = 1.0f;
-	bool isAsync = false;
+	bool asyncRecording = false;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
 	#endif
 
-	DeferredRenderSystem(bool _isAsync) : isAsync(_isAsync) { }
+	DeferredRenderSystem(bool asyncRecording) : asyncRecording(asyncRecording) { }
 
 	void initialize() final;
 	void terminate() final;
@@ -93,7 +93,7 @@ public:
 	bool runSwapchainPass = true;
 
 	int2 getFramebufferSize() const noexcept { return framebufferSize; }
-	bool isRenderAsync() const noexcept { return isAsync; }
+	bool useAsyncRecording() const noexcept { return asyncRecording; }
 	float getRenderScale() const noexcept { return renderScale; }
 	void setRenderScale(float renderScale);
 

@@ -75,6 +75,7 @@ public:
 	static bool hasPageableMemory;
 	static bool hasDynamicRendering;
 	static bool hasDescriptorIndexing;
+
 	#if GARDEN_DEBUG
 	static vk::DebugUtilsMessengerEXT debugMessenger;
 	static bool hasDebugUtils;
@@ -82,15 +83,17 @@ public:
 
 	// TODO: move rest to api.hpp and make these calls universal.
 
-	static void initialize(const string& appName,
-		const string& appDataName, Version appVersion, int2 windowSize,
-		bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading);
+	static void initialize(const string& appName, const string& appDataName, Version appVersion,
+		int2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading);
 	static void terminate();
 	static void updateDestroyBuffer();
 };
 
-//--------------------------------------------------------------------------------------------------
-static vk::Format toVkFormat(Image::Format formatType)
+/***********************************************************************************************************************
+ * @brief Returns Vulkan format type from the image data format.
+ * @param formatType target image data format type
+ */
+static vk::Format toVkFormat(Image::Format formatType) noexcept
 {
 	switch (formatType)
 	{
@@ -116,7 +119,11 @@ static vk::Format toVkFormat(Image::Format formatType)
 	default: abort();
 	}
 }
-static Image::Format toImageFormat(vk::Format formatType)
+/**
+ * @brief Returns image data format type from the Vulkan format.
+ * @param formatType target Vulkan format type
+ */
+static Image::Format toImageFormat(vk::Format formatType) noexcept
 {
 	switch (formatType)
 	{
@@ -143,8 +150,13 @@ static Image::Format toImageFormat(vk::Format formatType)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::Format toVkFormat(GslDataType type, GslDataFormat format)
+/***********************************************************************************************************************
+ * @brief Returns Vulkan format type from the GSL data type and format.
+ * 
+ * @param type GSL data type
+ * @param format GSL data format
+ */
+static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 {
 	auto componentCount = toComponentCount(type);
 
@@ -206,8 +218,11 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::CompareOp toVkCompareOp(Pipeline::CompareOperation compareOperation)
+/***********************************************************************************************************************
+ * @brief Returns Vulkan comparison operator from the pipeline compare operation.
+ * @param compareOperation target pipeline compare operation type
+ */
+static vk::CompareOp toVkCompareOp(Pipeline::CompareOperation compareOperation) noexcept
 {
 	switch (compareOperation)
 	{
@@ -223,8 +238,11 @@ static vk::CompareOp toVkCompareOp(Pipeline::CompareOperation compareOperation)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::ShaderStageFlagBits toVkShaderStage(ShaderStage shaderStage)
+/**
+ * @brief Returns Vulkan shader stage flag bits from the shader stage.
+ * @param shaderStage target shader stage
+ */
+static vk::ShaderStageFlagBits toVkShaderStage(ShaderStage shaderStage) noexcept
 {
 	if (hasOneFlag(shaderStage, ShaderStage::Vertex))
 		return vk::ShaderStageFlagBits::eVertex;
@@ -234,7 +252,11 @@ static vk::ShaderStageFlagBits toVkShaderStage(ShaderStage shaderStage)
 		return vk::ShaderStageFlagBits::eCompute;
 	abort();
 }
-static vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage)
+/**
+ * @brief Returns Vulkan shader stage flags from the shader stage.
+ * @param shaderStage target shader stage
+ */
+static vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage) noexcept
 {
 	vk::ShaderStageFlags flags;
 	if (hasAnyFlag(shaderStage, ShaderStage::Vertex))
@@ -245,7 +267,11 @@ static vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage)
 		flags |= vk::ShaderStageFlagBits::eCompute;
 	return flags;
 }
-static vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage)
+/**
+ * @brief Returns Vulkan pipeline stage flags from the shader stage.
+ * @param shaderStage target shader stage
+ */
+static vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage) noexcept
 {
 	vk::PipelineStageFlags flags;
 	if (hasAnyFlag(shaderStage, ShaderStage::Vertex))
@@ -257,8 +283,11 @@ static vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage)
 	return flags;
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType)
+/***********************************************************************************************************************
+ * @brief Returns Vulkan pipeline bind point from the rendering pipeline type.
+ * @param pipelineType target rendering pipeline type
+ */
+static vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType) noexcept
 {
 	switch (pipelineType)
 	{
@@ -268,8 +297,11 @@ static vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFormat)
+/**
+ * @brief Returns Vulkan image aspect flags from the image data format.
+ * @param imageFormat target image data format
+ */
+static vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFormat) noexcept
 {
 	if (isFormatColor(imageFormat)) return vk::ImageAspectFlagBits::eColor;
 	if (isFormatDepthOnly(imageFormat)) return vk::ImageAspectFlagBits::eDepth;
@@ -277,8 +309,11 @@ static vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFormat)
 	return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType)
+/***********************************************************************************************************************
+ * @brief Returns Vulkan descriptor type from the GSL uniform type.
+ * @param uniformType target GSL uniform type
+ */
+static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcept
 {
 	switch (uniformType)
 	{
@@ -335,8 +370,11 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::IndexType toVkIndexType(GraphicsPipeline::Index indexType)
+/***********************************************************************************************************************
+ * @brief Returns Vulkan index type from the graphics pipeline index type.
+ * @param indexType target graphics pipeline index type
+ */
+static vk::IndexType toVkIndexType(GraphicsPipeline::Index indexType) noexcept
 {
 	switch (indexType)
 	{

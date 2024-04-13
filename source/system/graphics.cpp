@@ -149,12 +149,12 @@ void GraphicsSystem::initializeImGui()
 void GraphicsSystem::terminateImGui()
 {
 	ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
 	for (auto framebuffer : ImGuiData::framebuffers)
 		Vulkan::device.destroyFramebuffer(framebuffer);
 	Vulkan::device.destroyRenderPass(ImGuiData::renderPass);
 	Vulkan::device.destroyPipelineCache(ImGuiData::pipelineCache);
-    ImGui::DestroyContext();
+	ImGui::DestroyContext();
 }
 void GraphicsSystem::recreateImGui()
 {
@@ -179,11 +179,11 @@ void GraphicsSystem::recreateImGui()
 GraphicsSystem* GraphicsSystem::instance = nullptr;
 
 GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscreen,
-	bool useVsync, bool useTripleBuffering, bool useThreading) : System(manager)
+	bool useVsync, bool useTripleBuffering, bool useAsyncRecording) : System(manager)
 {
 	this->useVsync = useVsync;
 	this->useTripleBuffering = useTripleBuffering;
-	this->useThreading = useThreading;
+	this->asyncRecording = useAsyncRecording;
 
 	manager->registerEventAfter("Render", "Update");
 	manager->registerEventAfter("Present", "Render");
@@ -196,7 +196,7 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 
 	auto appInfoSystem = manager->get<AppInfoSystem>();
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
-		windowSize, isFullscreen, useVsync, useTripleBuffering, useThreading);
+		windowSize, isFullscreen, useVsync, useTripleBuffering, asyncRecording);
 
 	auto window = (GLFWwindow*)GraphicsAPI::window;
 	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
@@ -229,6 +229,8 @@ GraphicsSystem::~GraphicsSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
+		// Note: constants buffers and other resources will destroyed by terminating graphics API.
+		
 		UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
@@ -453,10 +455,9 @@ void GraphicsSystem::input()
 }
 void GraphicsSystem::update()
 {
-
 	swapchainChanges.framebufferSize = framebufferSize != Vulkan::swapchain.getFramebufferSize();
-	swapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.isUseTripleBuffering();
-	swapchainChanges.vsyncState = useVsync != Vulkan::swapchain.isUseVsync();
+	swapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.useTripleBuffering();
+	swapchainChanges.vsyncState = useVsync != Vulkan::swapchain.useVsync();
 
 	if (forceRecreateSwapchain)
 	{
@@ -662,9 +663,35 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 	return normalMapTexture;
 }
 
+//**********************************************************************************************************************
 void GraphicsSystem::setWindowTitle(const string& title)
 {
 	glfwSetWindowTitle((GLFWwindow*)GraphicsAPI::window, title.c_str());
+}
+
+void GraphicsSystem::setWindowIcon(const vector<string>& paths)
+{
+	#if GARDEN_OS_WINDOWS
+	vector<vector<uint8>> imageData(paths.size());
+	vector<GLFWimage> images(paths.size());
+	auto resourceSystem = ResourceSystem::getInstance();
+
+	for (psize i = 0; i < paths.size(); i++)
+	{
+		int2 size; Image::Format format;
+		resourceSystem->loadImageData(paths[i], imageData[i], size, format);
+
+		GLFWimage image;
+		image.width = size.x;
+		image.height = size.y;
+		image.pixels = imageData[i].data();
+		images[i] = image;
+	}
+ 
+	glfwSetWindowIcon((GLFWwindow*)GraphicsAPI::window, images.size(), images.data());
+	#else
+	throw runtime_error("Window icons are not supported on this platform.");
+	#endif
 }
 
 //**********************************************************************************************************************

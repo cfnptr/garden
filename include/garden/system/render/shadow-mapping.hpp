@@ -48,13 +48,13 @@ private:
 	ID<DescriptorSet> descriptorSet = {};
 	float3 farPlanes = float3(0.0f);
 	int32 shadowMapSize = 2048;
-	bool isAsync = false;
+	bool asyncRecording = false;
 
 	#if GARDEN_EDITOR
 	void* editor = nullptr;
 	#endif
 
-	ShadowMappingRenderSystem(bool _isAsync) : isAsync(_isAsync) { }
+	ShadowMappingRenderSystem(bool asyncRecording) : asyncRecording(asyncRecording) { }
 
 	void initialize() final;
 	void terminate() final;

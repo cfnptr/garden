@@ -41,7 +41,7 @@ class LogEditorSystem final : public EditorSystem<LogSystem>
 	LogEditorSystem(Manager* manager, LogSystem* system);
 	~LogEditorSystem() final;
 
-	void renderEditor();
+	void editorRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

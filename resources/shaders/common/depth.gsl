@@ -26,12 +26,12 @@ float3 calcWorldPosition(float depth, float2 texCoords, float4x4 viewProjInv)
 
 float3 calcViewDirection(float3 worldPosition)
 {
-    return normalize(-worldPosition);
+	return normalize(-worldPosition);
 }
 float3 calcViewDirection(float depth, float2 texCoords, float4x4 viewProjInv)
 {
-    float3 worldPosition = calcWorldPosition(depth, texCoords, viewProjInv);
-    return calcViewDirection(worldPosition);
+	float3 worldPosition = calcWorldPosition(depth, texCoords, viewProjInv);
+	return calcViewDirection(worldPosition);
 }
 
 #endif // DEPTH_GSL

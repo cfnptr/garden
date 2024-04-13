@@ -67,7 +67,7 @@ private:
 	ID<ImageView> normalMapTexture = {};
 	CameraConstants currentCameraConstants = {};
 	double beginSleepClock = 0.0;
-	bool useThreading = false;
+	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
 	SwapchainChanges swapchainChanges;
@@ -86,12 +86,12 @@ private:
 	 * @param isFullscreen create a fullscreen window
 	 * @param useVsync use vertical synchronization (V-Sync)
 	 * @param useTripleBuffering use swapchain triple buffering
-	 * @param useThreading use multithreaded command recording
+	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
 	GraphicsSystem(Manager* manager,
 		int2 windowSize = int2(defaultWindowWidth, defaultWindowHeight),
 		bool isFullscreen = !GARDEN_DEBUG, bool useVsync = true,
-		bool useTripleBuffering = true, bool useThreading = true);
+		bool useTripleBuffering = true, bool useAsyncRecording = true);
 	/**
 	 * @brief Destroys graphics system instance.
 	 */
@@ -165,7 +165,7 @@ public:
 	 * @brief Use multithreaded command buffer recording.
 	 * @warning Be careful when writing asynchronous code!
 	 */
-	bool isUseThreading() const noexcept { return useThreading; }
+	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
 	/**
 	 * @brief Returns current swapchain changes.
@@ -226,6 +226,11 @@ public:
 	 * @param title target title string
 	 */
 	void setWindowTitle(const string& title);
+	/**
+	 * @brief Sets window icon image.
+	 * @param paths target icon paths
+	 */
+	void setWindowIcon(const vector<string>& paths);
 
 	/**
 	 * @brief Returns current swapchain framebuffer.

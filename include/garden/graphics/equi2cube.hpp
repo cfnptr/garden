@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common equirectangular image to cubemap conversion functions.
+ */
 
 #pragma once
 #include "garden/defines.hpp"
@@ -24,7 +27,9 @@ namespace garden::graphics
 using namespace std;
 using namespace math;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Equirectangular image to cubemap converter. 
+ */
 class Equi2Cube final
 {
 public:
@@ -32,8 +37,16 @@ public:
 		int2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim);
 
 	#if GARDEN_DEBUG || defined(EQUI2CUBE)
-	static bool convertImage(const fs::path& filePath,
-		const fs::path& inputPath, const fs::path& outputPath);
+	/**
+	 * @brief Converts input equirectangular image to cubemap. 
+	 * 
+	 * @param filePath target image to convert path
+	 * @param inputPath input image directory path
+	 * @param outputPath input images directory path
+	 * 
+	 * @return Returns true on success and writes cubemap images, otherwise false.
+	 */
+	static bool convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath);
 	#endif
 };
 

@@ -14,7 +14,6 @@
 
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/glfw.hpp"
-#include "garden/hash.hpp"
 #include "mpio/directory.hpp"
 
 #if GARDEN_OS_WINDOWS
@@ -114,9 +113,9 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	cout << "VULKAN::" << severity << ": " << callbackData->pMessage << "\n";
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		return VK_FALSE; // Breakpoint
+		return VK_FALSE; // Debugging breakpoint
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		return VK_FALSE; // Breakpoint
+		return VK_FALSE; // Debugging breakpoint
 	return VK_FALSE;
 }
 #endif
@@ -252,7 +251,7 @@ static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance, bool& isD
 		{
 			auto properties = devices[i].getProperties();
 
-            uint32 score;
+			uint32 score;
 			switch (properties.deviceType)
 			{
 			case vk::PhysicalDeviceType::eDiscreteGpu: score = 100000; break;
@@ -294,11 +293,9 @@ static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
 }
 
 //*********************************************************************************************************************
-static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice,
-	vk::SurfaceKHR surface, uint32& graphicsQueueFamilyIndex,
-	uint32& transferQueueFamilyIndex, uint32& computeQueueFamilyIndex,
-	uint32& graphicsQueueMaxCount, uint32& transferQueueMaxCount,
-	uint32& computeQueueMaxCount)
+static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface,
+	uint32& graphicsQueueFamilyIndex, uint32& transferQueueFamilyIndex, uint32& computeQueueFamilyIndex,
+	uint32& graphicsQueueMaxCount, uint32& transferQueueMaxCount, uint32& computeQueueMaxCount)
 {
 	uint32 graphicsIndex = UINT32_MAX, transferIndex = UINT32_MAX, computeIndex = UINT32_MAX;
 	auto properties = physicalDevice.getQueueFamilyProperties();
@@ -631,9 +628,8 @@ static void updateVkDynamicLoader(uint32 versionMajor, uint32 versionMinor,
 }
 
 //*********************************************************************************************************************
-static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVersion,
-	vk::Instance instance, vk::PhysicalDevice physicalDevice, vk::Device device,
-	bool hasMemoryBudget, bool hasMemoryPriority)
+static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVersion, vk::Instance instance,
+	vk::PhysicalDevice physicalDevice, vk::Device device, bool hasMemoryBudget, bool hasMemoryPriority)
 {
 	VmaAllocatorCreateInfo allocatorInfo = {};
 	allocatorInfo.vulkanApiVersion = VK_MAKE_API_VERSION(0, majorVersion, minorVersion, 0);
@@ -702,7 +698,7 @@ namespace
 		uint32							dataSize;
 		Hash128							dataHash;
 		uint32	 						driverVersion;
-    	uint32	 						driverABI;
+		uint32	 						driverABI;
 		VkPipelineCacheHeaderVersionOne	cache;
 	};
 }
@@ -726,12 +722,6 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 
 			if (inputStream.read((char*)fileData.data(), fileSize))
 			{
-				auto hashState = (XXH3_state_t*)_hashState;
-				if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
-				if (XXH3_128bits_update(hashState, fileData.data() + cacheHeaderSize,
-					(psize)fileSize - cacheHeaderSize) == XXH_ERROR) abort();
-				auto hashResult = XXH3_128bits_digest(hashState);
-
 				PipelineCacheHeader targetHeader;
 				memcpy(targetHeader.magic, "GSLC", 4);
 				targetHeader.engineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
@@ -739,7 +729,8 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 				targetHeader.appVersion = VK_MAKE_API_VERSION(0,
 					appVersion.major, appVersion.minor, appVersion.patch);
 				targetHeader.dataSize = (uint32)(fileSize - cacheHeaderSize);
-				targetHeader.dataHash = Hash128(hashResult.low64, hashResult.high64);
+				targetHeader.dataHash = Hash128(fileData.data() + cacheHeaderSize,
+					(psize)fileSize - cacheHeaderSize, GraphicsAPI::hashState);
 				targetHeader.driverVersion = deviceProperties.properties.driverVersion;
 				targetHeader.driverABI = sizeof(void*);
 				targetHeader.cache.headerSize = sizeof(VkPipelineCacheHeaderVersionOne);
@@ -785,12 +776,7 @@ static void destroyPipelineCache(const string& appDataName, Version appVersion,
 			outputStream.write((const char*)&vkAppVersion, sizeof(uint32));
 			auto dataSize = (uint32)cacheData.size();
 			outputStream.write((const char*)&dataSize, sizeof(uint32));
-			auto hashState = (XXH3_state_t*)GraphicsAPI::hashState;
-			if (XXH3_128bits_reset(hashState) == XXH_ERROR) abort();
-			if (XXH3_128bits_update(hashState, cacheData.data(),
-				cacheData.size()) == XXH_ERROR) abort();
-			auto hashResult = XXH3_128bits_digest(hashState);
-			auto hash = Hash128(hashResult.low64, hashResult.high64);
+			auto hash = Hash128(cacheData.data(), cacheData.size(), GraphicsAPI::hashState);
 			outputStream.write((const char*)&hash, sizeof(Hash128));
 			outputStream.write((const char*)
 				&deviceProperties.properties.driverVersion, sizeof(uint32));
@@ -811,7 +797,7 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	GraphicsAPI::appDataName = appDataName;
 	GraphicsAPI::appVersion = appVersion;
 	GraphicsAPI::isRunning = true;
-	GraphicsAPI::hashState = XXH3_createState();
+	GraphicsAPI::hashState = Hash128::createState();
 	GraphicsAPI::graphicsPipelineVersion = 1;
 	GraphicsAPI::computePipelineVersion = 1;
 	GraphicsAPI::bufferVersion = 1;
@@ -955,7 +941,7 @@ void Vulkan::terminate()
 
 	instance.destroy();
 	glfwTerminate();
-	XXH3_freeState((XXH3_state_t*)GraphicsAPI::hashState);
+	Hash128::destroyState(GraphicsAPI::hashState);
 }
 
 //*********************************************************************************************************************

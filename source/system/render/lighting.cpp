@@ -61,7 +61,7 @@ namespace
 //--------------------------------------------------------------------------------------------------
 static uint32 factorial(uint32 x)
 {
-    return x == 0 ? 1 : x * factorial(x - 1);
+	return x == 0 ? 1 : x * factorial(x - 1);
 }
 static double factorial(int32 n, int32 d)
 {
@@ -136,20 +136,20 @@ static void computeKi()
 //--------------------------------------------------------------------------------------------------
 static float pow5(float x)
 {
-    float x2 = x * x;
-    return x2 * x2 * x;
+	float x2 = x * x;
+	return x2 * x2 * x;
 }
 static float log4(float x)
 {
-    return log2(x) * 0.5f;
+	return log2(x) * 0.5f;
 }
 
 static float smithGGXCorrelated(float nov, float nol, float a)
 {
 	auto a2 = a * a;
 	auto lambdaV = nol * sqrt((nov - nov * a2) * nov + a2);
-    auto lambdaL = nov * sqrt((nol - nol * a2) * nol + a2);
-    return 0.5f / (lambdaV + lambdaL);
+	auto lambdaL = nov * sqrt((nol - nol * a2) * nol + a2);
+	return 0.5f / (lambdaV + lambdaL);
 }
 static float2 dfvMultiscatter(uint32 x, uint32 y)
 {
@@ -186,9 +186,9 @@ static float2 dfvMultiscatter(uint32 x, uint32 y)
 
 static float mipToLinearRoughness(uint8 lodCount, uint8 mip)
 {
-    const auto a = 2.0f, b = -1.0f;
+	const auto a = 2.0f, b = -1.0f;
 	auto lod = clamp((float)mip / (lodCount - 1), 0.0f, 1.0f);
-    auto perceptualRoughness = clamp((sqrt(
+	auto perceptualRoughness = clamp((sqrt(
 		a * a + 4.0f * b * lod) - a) / (2.0f * b), 0.0f, 1.0f);
 	return perceptualRoughness * perceptualRoughness;
 }

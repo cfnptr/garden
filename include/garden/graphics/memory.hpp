@@ -73,7 +73,7 @@ protected:
 	Usage usage = {};
 	Strategy strategy = {};
 
-	// Use GraphicsSystem to create, destroy and access memory resources.
+	// Note: Use GraphicsSystem to create, destroy and access memory resources.
 
 	Memory() = default;
 	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version)
@@ -117,14 +117,14 @@ static const string_view memoryAccessNames[(psize)Memory::Access::Count] =
 	"None", "SequentialWrite", "RandomReadWrite"
 };
 /**
- * @brief Memory usage name strings.
+ * @brief Memory preferred usage name strings.
  */
 static const string_view memoryUsageNames[(psize)Memory::Usage::Count] =
 {
 	"Auto", "PreferGPU", "PreferCPU"
 };
 /**
- * @brief Memory strategy name strings.
+ * @brief Memory allocation strategy name strings.
  */
 static const string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
 {
@@ -135,25 +135,25 @@ static const string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
  * @brief Returns memory access name string.
  * @param memoryAccess target memory access type
  */
-static string_view toString(Memory::Access memoryAccess)
+static string_view toString(Memory::Access memoryAccess) noexcept
 {
 	GARDEN_ASSERT((uint8)memoryAccess < (uint8)Memory::Access::Count);
 	return memoryAccessNames[(psize)memoryAccess];
 }
 /**
- * @brief Returns memory usage name string.
- * @param memoryUsage target memory usage type
+ * @brief Returns memory preferred usage name string.
+ * @param memoryUsage target memory preferred usage type
  */
-static string_view toString(Memory::Usage memoryUsage)
+static string_view toString(Memory::Usage memoryUsage) noexcept
 {
 	GARDEN_ASSERT((uint8)memoryUsage < (uint8)Memory::Usage::Count);
 	return memoryUsageNames[(psize)memoryUsage];
 }
 /**
- * @brief Returns memory strategy name string.
- * @param memoryStrategy target memory strategy type
+ * @brief Returns memory allocation strategy name string.
+ * @param memoryStrategy target memory allocation strategy type
  */
-static string_view toString(Memory::Strategy memoryStrategy)
+static string_view toString(Memory::Strategy memoryStrategy) noexcept
 {
 	GARDEN_ASSERT((uint8)memoryStrategy < (uint8)Memory::Strategy::Count);
 	return memoryStrategyNames[(psize)memoryStrategy];

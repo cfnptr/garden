@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/buffer.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -20,6 +18,7 @@
 using namespace std;
 using namespace garden::graphics;
 
+//*********************************************************************************************************************
 static vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind)
 {
 	vk::BufferUsageFlags flags;
@@ -71,7 +70,7 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUs
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size,
 	uint64 version) : Memory(size, access, usage, strategy, version)
 {
@@ -110,28 +109,22 @@ Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 
 	this->bind = bind;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 bool Buffer::destroy()
 {
 	if (!instance || readyLock > 0)
 		return false;
 
 	if (GraphicsAPI::isRunning)
-	{
-		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Buffer,
-			instance, allocation);
-	}
+		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
 	else
-	{
-		vmaDestroyBuffer(Vulkan::memoryAllocator,
-			(VkBuffer)instance, (VmaAllocation)allocation);
-	}
+		vmaDestroyBuffer(Vulkan::memoryAllocator, (VkBuffer)instance, (VmaAllocation)allocation);
 
 	instance = nullptr;
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 bool Buffer::isMappable() const
 {
 	if (map)
@@ -188,7 +181,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void Buffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
@@ -202,7 +195,7 @@ void Buffer::setDebugName(const string& name)
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -226,9 +219,8 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void Buffer::copy(ID<Buffer> source, ID<Buffer> destination,
-	const CopyRegion* regions, uint32 count)
+//*********************************************************************************************************************
+void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);

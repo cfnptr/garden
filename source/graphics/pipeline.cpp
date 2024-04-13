@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/pipeline.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -23,6 +21,7 @@ using namespace std;
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static vk::Filter toVkFilter(SamplerFilter filterType)
 {
 	switch (filterType)
@@ -57,25 +56,18 @@ static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor)
 {
 	switch (borderColor)
 	{
-		case Pipeline::BorderColor::FloatTransparentBlack:
-			return vk::BorderColor::eFloatTransparentBlack;
-		case Pipeline::BorderColor::IntTransparentBlack:
-			return vk::BorderColor::eIntTransparentBlack;
-		case Pipeline::BorderColor::FloatOpaqueBlack:
-			return vk::BorderColor::eFloatOpaqueBlack;
-		case Pipeline::BorderColor::IntOpaqueBlack:
-			return vk::BorderColor::eIntOpaqueBlack;
-		case Pipeline::BorderColor::FloatOpaqueWhite:
-			return vk::BorderColor::eFloatOpaqueWhite;
-		case Pipeline::BorderColor::IntOpaqueWhite:
-			return vk::BorderColor::eIntOpaqueWhite;
+		case Pipeline::BorderColor::FloatTransparentBlack: return vk::BorderColor::eFloatTransparentBlack;
+		case Pipeline::BorderColor::IntTransparentBlack: return vk::BorderColor::eIntTransparentBlack;
+		case Pipeline::BorderColor::FloatOpaqueBlack: return vk::BorderColor::eFloatOpaqueBlack;
+		case Pipeline::BorderColor::IntOpaqueBlack: return vk::BorderColor::eIntOpaqueBlack;
+		case Pipeline::BorderColor::FloatOpaqueWhite: return vk::BorderColor::eFloatOpaqueWhite;
+		case Pipeline::BorderColor::IntOpaqueWhite: return vk::BorderColor::eIntOpaqueWhite;
 		default: abort();
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vector<void*> createPipelineSamplers(
-	const map<string, Pipeline::SamplerState>& samplerStates, 
+//**********************************************************************************************************************
+static vector<void*> createPipelineSamplers(const map<string, Pipeline::SamplerState>& samplerStates, 
 	map<string, void*>& immutableSamplers, const fs::path& pipelinePath)
 {
 	vector<void*> samplers(samplerStates.size());
@@ -89,7 +81,7 @@ static vector<void*> createPipelineSamplers(
 			toVkSamplerMipmamMode(state.mipmapFilter), toVkSamplerAddressMode(state.wrapX),
 			toVkSamplerAddressMode(state.wrapY), toVkSamplerAddressMode(state.wrapZ),
 			state.mipLodBias, state.anisoFiltering, state.maxAnisotropy,
-			state.comparing, toVkCompareOp(state.compareOperation), state.minLod,
+			state.comparison, toVkCompareOp(state.compareOperation), state.minLod,
 			state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod,
 			toVkBorderColor(state.borderColor), state.unnormCoords);
 		auto sampler = Vulkan::device.createSampler(samplerInfo);
@@ -110,11 +102,10 @@ static vector<void*> createPipelineSamplers(
 	return samplers;
 }
 
-//--------------------------------------------------------------------------------------------------
-static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
-	vector<void*>& descriptorPools, const map<string, Pipeline::Uniform>& uniforms,
-	const map<string, void*>& immutableSamplers, const fs::path& pipelinePath,
-	uint32 maxBindlessCount, bool& bindless)
+//**********************************************************************************************************************
+static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
+	const map<string, Pipeline::Uniform>& uniforms, const map<string, void*>& immutableSamplers,
+	const fs::path& pipelinePath, uint32 maxBindlessCount, bool& bindless)
 {
 	bindless = false;
 
@@ -154,11 +145,7 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 			if (uniform.arraySize > 0)
 			{
 				if (isSamplerType(uniform.type))
-				{
-					descriptorSetBinding.pImmutableSamplers =
-						(vk::Sampler*)&immutableSamplers.at(pair.first);
-				}
-
+					descriptorSetBinding.pImmutableSamplers = (vk::Sampler*)&immutableSamplers.at(pair.first);
 				descriptorSetBinding.descriptorCount = uniform.arraySize;
 			}
 			else
@@ -204,8 +191,7 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 			GARDEN_ASSERT(maxBindlessCount > 0);
 			descriptorSetFlagsInfo.bindingCount = bindingIndex;
 			descriptorSetFlagsInfo.pBindingFlags = descriptorBindingFlags.data();
-			descriptorSetLayoutInfo.flags =
-				vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
+			descriptorSetLayoutInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 			descriptorSetLayoutInfo.pNext = &descriptorSetFlagsInfo;
 	
 			uint32 maxSetCount = 0;
@@ -240,8 +226,7 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 			#endif
 		}
 
-		descriptorSetLayouts[i] = Vulkan::device.createDescriptorSetLayout(
-			descriptorSetLayoutInfo);
+		descriptorSetLayouts[i] = Vulkan::device.createDescriptorSetLayout(descriptorSetLayoutInfo);
 
 		samplerArrays.clear();
 		bindless = isBindless;
@@ -249,8 +234,7 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 		#if GARDEN_DEBUG
 		if (Vulkan::hasDebugUtils)
 		{
-			auto name = "descriptorSetLayout." +
-				pipelinePath.generic_string() + to_string(i);
+			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
 				(uint64)descriptorSetLayouts[i], name.c_str());
 			Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
@@ -259,28 +243,18 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts,
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static vk::PipelineLayout createPipelineLayout(
-	uint16 pushConstantsSize, ShaderStage pushConstantsStages,
+//**********************************************************************************************************************
+static vk::PipelineLayout createPipelineLayout(uint16 pushConstantsSize, ShaderStage pushConstantsStages,
 	const vector<void*>& descriptorSetLayouts, const fs::path& pipelinePath)
 {
 	vector<vk::PushConstantRange> pushConstantRanges;
 
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Vertex))
-	{
-		pushConstantRanges.push_back(vk::PushConstantRange(
-			vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize));
-	}
+		pushConstantRanges.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize));
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Fragment))
-	{
-		pushConstantRanges.push_back(vk::PushConstantRange(
-			vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize));
-	}
+		pushConstantRanges.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize));
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Compute))
-	{
-		pushConstantRanges.push_back(vk::PushConstantRange(
-			vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize));
-	}
+		pushConstantRanges.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize));
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
 		(uint32)pushConstantRanges.size(), pushConstantRanges.data());
@@ -288,8 +262,7 @@ static vk::PipelineLayout createPipelineLayout(
 	if (descriptorSetLayouts.size() > 0)
 	{
 		pipelineLayoutInfo.setLayoutCount = (uint32)descriptorSetLayouts.size();
-		pipelineLayoutInfo.pSetLayouts =
-			(const vk::DescriptorSetLayout*)descriptorSetLayouts.data();
+		pipelineLayoutInfo.pSetLayouts = (const vk::DescriptorSetLayout*)descriptorSetLayouts.data();
 	}
 
 	auto layout = Vulkan::device.createPipelineLayout(pipelineLayoutInfo);
@@ -307,8 +280,8 @@ static vk::PipelineLayout createPipelineLayout(
 	return layout;
 }
 
-//--------------------------------------------------------------------------------------------------
-Pipeline::Pipeline(CreateData& createData, bool useAsync)
+//**********************************************************************************************************************
+Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 {
 	if (createData.maxBindlessCount > 0 && !Vulkan::hasDescriptorIndexing)
 	{
@@ -340,12 +313,12 @@ Pipeline::Pipeline(CreateData& createData, bool useAsync)
 	
 	if (pushConstantsSize > 0)
 	{
-		auto mult = useAsync ? thread::hardware_concurrency() : 1;
+		auto mult = asyncRecording ? thread::hardware_concurrency() : 1;
 		pushConstantsBuffer.resize(pushConstantsSize * mult);
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 bool Pipeline::destroy()
 {
 	if (!instance || readyLock > 0)
@@ -408,9 +381,8 @@ bool Pipeline::destroy()
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
-vector<void*> Pipeline::createShaders(
-	const vector<vector<uint8>>& code, const fs::path& pipelinePath)
+//**********************************************************************************************************************
+vector<void*> Pipeline::createShaders(const vector<vector<uint8>>& code, const fs::path& pipelinePath)
 {
 	vector<void*> shaders(code.size());
 
@@ -441,10 +413,9 @@ void Pipeline::destroyShaders(const vector<void*>& shaders)
 		Vulkan::device.destroyShaderModule((VkShaderModule)shader);
 }
 
-//--------------------------------------------------------------------------------------------------
-void Pipeline::fillSpecConsts(
-	const fs::path& path, ShaderStage shaderStage, uint8 variantCount, void* specInfo,
-	const map<string, SpecConst>& specConsts, const map<string, SpecConstData>& specConstData)
+//**********************************************************************************************************************
+void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uint8 variantCount, void* specInfo,
+	const map<string, SpecConst>& specConsts, const map<string, SpecConstValue>& specConstValues)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
 	uint32 dataSize = 0, entryCount = 0;
@@ -455,7 +426,7 @@ void Pipeline::fillSpecConsts(
 		entryCount = 1;
 	}
 
-	for (auto& pair : specConstData)
+	for (auto& pair : specConsts)
 	{
 		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
 			continue;
@@ -479,13 +450,13 @@ void Pipeline::fillSpecConsts(
 		itemIndex = 1; dataOffset = sizeof(uint32);
 	}
 
-	for (auto& pair : specConstData)
+	for (auto& pair : specConsts)
 	{
 		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
 			continue;
 
 		#if GARDEN_DEBUG
-		if (specConsts.find(pair.first) == specConsts.end())
+		if (specConstValues.find(pair.first) == specConstValues.end())
 		{
 			throw runtime_error("Missing required pipeline spec const. ("
 				"specConst: " + pair.first + ","
@@ -493,7 +464,7 @@ void Pipeline::fillSpecConsts(
 		}
 		#endif
 
-		auto& value = specConsts.at(pair.first);
+		auto& value = specConstValues.at(pair.first);
 		GARDEN_ASSERT(value.constBase.type == pair.second.dataType);
 		vk::SpecializationMapEntry entry(pair.second.index,
 			dataOffset, toBinarySize(pair.second.dataType));
@@ -508,13 +479,12 @@ void Pipeline::fillSpecConsts(
 	info->pData = data;
 }
 
-//--------------------------------------------------------------------------------------------------
-void Pipeline::updateDescriptorsLock(
-	const DescriptorData* descriptorData, uint8 descriptorDataSize)
+//**********************************************************************************************************************
+void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
 {
-	for (uint8 i = 0; i < descriptorDataSize; i++)
+	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptorSet = descriptorData[i].set;
+		auto descriptorSet = descriptorSetRange[i].set;
 		auto dsView = GraphicsAPI::descriptorSetPool.get(descriptorSet);
 
 		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
@@ -552,8 +522,7 @@ void Pipeline::updateDescriptorsLock(
 						if (!resource)
 							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
 
-						auto imageViewView = GraphicsAPI::imageViewPool.get(
-							ID<ImageView>(resource));
+						auto imageViewView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resource));
 						auto imageView = GraphicsAPI::imagePool.get(imageViewView->image);
 
 						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
@@ -590,7 +559,7 @@ void Pipeline::updateDescriptorsLock(
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Pipeline::bind(uint8 variant)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -601,9 +570,7 @@ void Pipeline::bind(uint8 variant)
 	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.
-			getID((GraphicsPipeline*)this));
-
+		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID((GraphicsPipeline*)this));
 		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 		{
 			readyLock++;
@@ -612,9 +579,7 @@ void Pipeline::bind(uint8 variant)
 	}
 	else if (type == PipelineType::Compute)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.
-			getID((ComputePipeline*)this));
-
+		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID((ComputePipeline*)this));
 		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 		{
 			readyLock++;
@@ -629,9 +594,11 @@ void Pipeline::bind(uint8 variant)
 	command.pipeline = pipeline;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
+
+//**********************************************************************************************************************
 void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 {
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(variant < variantCount);
 	GARDEN_ASSERT(taskIndex < 0 || taskIndex < thread::hardware_concurrency());
@@ -652,9 +619,7 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.
-			getID((GraphicsPipeline*)this));
-
+		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID((GraphicsPipeline*)this));
 		GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 		{
@@ -665,9 +630,7 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 	}
 	else if (type == PipelineType::Compute)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.
-			getID((ComputePipeline*)this));
-
+		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID((ComputePipeline*)this));
 		GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
 		{
@@ -684,32 +647,29 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 		if (pipeline != Framebuffer::currentPipelines[taskIndex] ||
 			type != Framebuffer::currentPipelineTypes[taskIndex])
 		{
-			vk::Pipeline pipeline = variantCount > 1 ?
-				((VkPipeline*)instance)[variant] : (VkPipeline)instance;
+			vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[variant] : (VkPipeline)instance;
 			Vulkan::secondaryCommandBuffers[taskIndex].bindPipeline(bindPoint, pipeline);
 		}
 		taskIndex++;
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void Pipeline::bindDescriptorSets(
-	const DescriptorData* descriptorData, uint8 descriptorDataSize)
+//**********************************************************************************************************************
+void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
 {
-	GARDEN_ASSERT(descriptorDataSize > 0);
-	GARDEN_ASSERT(descriptorData);
+	GARDEN_ASSERT(rangeCount > 0);
+	GARDEN_ASSERT(descriptorSetRange);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	
 	#if GARDEN_DEBUG
-	for (uint8 i = 0; i < descriptorDataSize; i++)
+	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorData[i];
+		auto descriptor = descriptorSetRange[i];
 		GARDEN_ASSERT(descriptor.set);
 		auto descriptorSetView = GraphicsAPI::descriptorSetPool.get(descriptor.set);
-		GARDEN_ASSERT(descriptor.offset + descriptor.count <=
-			descriptorSetView->getSetCount());
+		GARDEN_ASSERT(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount());
 		
 		auto pipelineType = descriptorSetView->pipelineType;
 		if (pipelineType == PipelineType::Graphics)
@@ -727,34 +687,32 @@ void Pipeline::bindDescriptorSets(
 	#endif
 	
 	BindDescriptorSetsCommand command;
-	command.descriptorDataSize = descriptorDataSize;
-	command.descriptorData = descriptorData;
+	command.rangeCount = rangeCount;
+	command.descriptorSetRange = descriptorSetRange;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	updateDescriptorsLock(descriptorData, descriptorDataSize);
+	updateDescriptorsLock(descriptorSetRange, rangeCount);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static thread_local vector<vk::DescriptorSet> descriptorSets;
 
-void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
-	uint8 descriptorDataSize, int32 taskIndex)
+void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 taskIndex)
 {
-	GARDEN_ASSERT(descriptorData);
-	GARDEN_ASSERT(descriptorDataSize > 0);
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(descriptorSetRange);
+	GARDEN_ASSERT(rangeCount > 0);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(taskIndex < 0 || taskIndex < thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
-	for (uint8 i = 0; i < descriptorDataSize; i++)
+	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorData[i];
+		auto descriptor = descriptorSetRange[i];
 		GARDEN_ASSERT(descriptor.set);
 		auto descriptorSetView = GraphicsAPI::descriptorSetPool.get(descriptor.set);
-		GARDEN_ASSERT(descriptor.offset + descriptor.count <=
-			descriptorSetView->getSetCount());
+		GARDEN_ASSERT(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount());
 		
 		auto instance = (vk::DescriptorSet*)descriptorSetView->instance;
 		if (descriptorSetView->getSetCount() > 1)
@@ -798,25 +756,24 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorData* descriptorData,
 	auto bindPoint = toVkPipelineBindPoint(type);
 	while (taskIndex < taskCount)
 	{
-		Vulkan::secondaryCommandBuffers[taskIndex++].bindDescriptorSets(
-			bindPoint, (VkPipelineLayout)pipelineLayout, 0,
-			(uint32)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+		Vulkan::secondaryCommandBuffers[taskIndex++].bindDescriptorSets(bindPoint, (VkPipelineLayout)pipelineLayout,
+			0, (uint32)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 	}
 
 	BindDescriptorSetsCommand command;
-	command.isAsync = true;
-	command.descriptorDataSize = descriptorDataSize;
-	command.descriptorData = descriptorData;
+	command.asyncRecording = true;
+	command.rangeCount = rangeCount;
+	command.descriptorSetRange = descriptorSetRange;
 
 	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	updateDescriptorsLock(descriptorData, descriptorDataSize);
+	updateDescriptorsLock(descriptorSetRange, rangeCount);
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 
 	descriptorSets.clear();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Pipeline::pushConstants()
 {
 	GARDEN_ASSERT(pushConstantsSize > 0);
@@ -834,7 +791,7 @@ void Pipeline::pushConstants()
 void Pipeline::pushConstantsAsync(int32 taskIndex)
 {
 	GARDEN_ASSERT(pushConstantsSize > 0);
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(taskIndex >= 0);
 	GARDEN_ASSERT(taskIndex < thread::hardware_concurrency());

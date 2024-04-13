@@ -69,7 +69,7 @@ namespace
 		uint32 maxBindlessCount = 0;
 		Image::Format depthStencilFormat = {};
 		uint8 subpassIndex = 0;
-		bool useAsync = false;
+		bool useAsyncRecording = false;
 	};
 	struct ComputePipelineLoadData final
 	{
@@ -80,7 +80,7 @@ namespace
 		map<string, GraphicsPipeline::SpecConst> specConsts;
 		uint32 maxBindlessCount = 0;
 		ID<ComputePipeline> instance = {};
-		bool useAsync = false;
+		bool useAsyncRecording = false;
 	};
 
 	/* TODO: refactor
@@ -409,6 +409,29 @@ namespace
 }
 
 //**********************************************************************************************************************
+static void loadMissingImage(vector<uint8>& data, int2& size, Image::Format& format)
+{
+	data.resize(sizeof(Color) * 16);
+	auto pixels = (Color*)data.data();
+	pixels[0] = Color::magenta; pixels[1] = Color::black;    pixels[2] = Color::magenta;  pixels[3] = Color::black;
+	pixels[4] = Color::black;   pixels[5] = Color::magenta;  pixels[6] = Color::black;    pixels[7] = Color::magenta;
+	pixels[8] = Color::magenta; pixels[9] = Color::black;    pixels[10] = Color::magenta; pixels[11] = Color::black;
+	pixels[12] = Color::black;  pixels[13] = Color::magenta; pixels[14] = Color::black;   pixels[15] = Color::magenta;
+	size = int2(4, 4);
+	format = Image::Format::SrgbR8G8B8A8;
+} 
+static void loadMissingImage(vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom,
+	vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, int2& size, Image::Format& format)
+{
+	loadMissingImage(left, size, format);
+	loadMissingImage(right, size, format);
+	loadMissingImage(bottom, size, format);
+	loadMissingImage(top, size, format);
+	loadMissingImage(back, size, format);
+	loadMissingImage(front, size, format);
+} 
+
+//**********************************************************************************************************************
 void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	int2& size, Image::Format& format, int32 threadIndex) const
 {
@@ -462,7 +485,11 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		
 		if (fileCount > 1)
 		{
-			throw runtime_error("Ambiguous image file extension. (name: " + path.generic_string() + ")");
+			auto logSystem = getManager()->tryGet<LogSystem>();
+			if (logSystem)
+				logSystem->error("Ambiguous image file extension. (path: " + path.generic_string() + ")");
+			loadMissingImage(data, size, format);
+			return;
 		}
 		else if (fileCount == 0)
 		{
@@ -499,8 +526,14 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 			if (fileCount != 1)
 			{
-				throw runtime_error("Image file does not exist, or it is ambiguous. ("
-					"path: " + path.generic_string() + ")");
+				auto logSystem = getManager()->tryGet<LogSystem>();
+				if (logSystem)
+				{
+					logSystem->error("Image file does not exist, or it is ambiguous. ("
+						"path: " + path.generic_string() + ")");
+				}
+				loadMissingImage(data, size, format);
+				return;
 			}
 		}
 	}
@@ -531,7 +564,13 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		fileType = ImageFile::Hdr;
 
 	if (fileType == ImageFile::Count)
-		throw runtime_error("Image does not exist. (path: " + path.generic_string() + ")");
+	{
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Image does not exist. (path: " + path.generic_string() + ")");
+		loadMissingImage(data, size, format);
+		return;
+	}
 
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#endif
@@ -589,9 +628,21 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
-			throw runtime_error("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
+		{
+			auto logSystem = getManager()->tryGet<LogSystem>();
+			if (logSystem)
+				logSystem->error("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
+			loadMissingImage(left, right, bottom, top, back, front, size, format);
+			return;
+		}
 		if (cubemapSize % 32 != 0)
-			throw runtime_error("Invalid cubemap size. (path: " + path.generic_string() + ")");
+		{
+			auto logSystem = getManager()->tryGet<LogSystem>();
+			if (logSystem)
+				logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
+			loadMissingImage(left, right, bottom, top, back, front, size, format);
+			return;
+		}
 		
 		vector<float4> floatData; const float4* equiPixels;
 		if (format == Image::Format::SrgbR8G8B8A8)
@@ -761,24 +812,24 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
-		throw runtime_error("Invalid cubemap size. (path: " + path.generic_string() + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		throw runtime_error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
-	}
-	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
-		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
-		backSize.x != backSize.y || frontSize.x != frontSize.y)
-	{
-		throw runtime_error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
-		throw runtime_error("Invalid cubemap format. (path: " + path.generic_string() + ")");
+		auto logSystem = getManager()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Invalid cubemap format. (path: " + path.generic_string() + ")");
 	}
 	#endif
 
@@ -793,7 +844,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 	if (fileType == ImageFileType::Webp)
 	{
 		if (!WebPGetInfo(data, dataSize, &imageSize.x, &imageSize.y))
-			throw runtime_error("Invalid WebP image data.");
+			throw runtime_error("Invalid WebP image info.");
 		pixels.resize(imageSize.x * imageSize.y * sizeof(Color));
 		auto decodeResult = WebPDecodeRGBAInto(data, dataSize,
 			pixels.data(), pixels.size(), (int)(imageSize.x * sizeof(Color)));
@@ -1085,7 +1136,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
-	ID<Framebuffer> framebuffer, bool useAsync, bool loadAsync, uint8 subpassIndex,
+	ID<Framebuffer> framebuffer, bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
 	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConst>& specConsts,
 	const map<uint8, GraphicsPipeline::State>& stateOverrides)
 {
@@ -1100,7 +1151,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 
 	auto version = GraphicsAPI::graphicsPipelineVersion++;
 	auto pipeline = GraphicsAPI::graphicsPipelinePool.create(path,
-		maxBindlessCount, useAsync, version, framebuffer, subpassIndex);
+		maxBindlessCount, useAsyncRecording, version, framebuffer, subpassIndex);
 
 	auto renderPass = FramebufferExt::getRenderPass(framebufferView);
 	if (renderPass)
@@ -1154,7 +1205,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->maxBindlessCount = maxBindlessCount;
 		data->depthStencilFormat = depthStencilFormat;
 		data->subpassIndex = subpassIndex;
-		data->useAsync = useAsync;
+		data->useAsyncRecording = useAsyncRecording;
 		
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
@@ -1186,7 +1237,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			GraphicsQueueItem item =
 			{
 				data->renderPass,
-				GraphicsPipelineExt::create(pipelineData, data->useAsync),
+				GraphicsPipelineExt::create(pipelineData, data->useAsyncRecording),
 				data->instance
 			};
 
@@ -1219,7 +1270,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 
 		if (!loadOrCompileGraphics(getManager(), pipelineData)) abort();
 			
-		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsync);
+		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 
@@ -1309,13 +1360,13 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 
 //**********************************************************************************************************************
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
-	bool useAsync, bool loadAsync, uint32 maxBindlessCount,
+	bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount,
 	const map<string, GraphicsPipeline::SpecConst>& specConsts)
 {
 	GARDEN_ASSERT(!path.empty());
 
 	auto version = GraphicsAPI::computePipelineVersion++;
-	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsync, version);
+	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
 	auto threadSystem = getManager()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
@@ -1328,7 +1379,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		data->specConsts = specConsts;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
-		data->useAsync = useAsync;
+		data->useAsyncRecording = useAsyncRecording;
 
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
@@ -1354,7 +1405,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 
 			ComputeQueueItem item = 
 			{
-				ComputePipelineExt::create(pipelineData, data->useAsync),
+				ComputePipelineExt::create(pipelineData, data->useAsyncRecording),
 				data->instance
 			};
 
@@ -1381,7 +1432,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		
 		if (!loadOrCompileCompute(getManager(), pipelineData)) abort();
 
-		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsync);
+		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 

@@ -15,23 +15,11 @@
 /**********************************************************************************************************************
  * @file
  * @brief Common hashing functions.
- * 
- * @details
- * Hash is a function that converts an input (or 'key') into a fixed-size set of bytes. 
- * This output set is typically of a fixed length, regardless of the size of the input.
  */
 
 #pragma once
 #include "garden/defines.hpp"
-#include "garden/base64.hpp"
 #include <cstring>
-
-#define XXH_INLINE_ALL
-#define XXH_STATIC_LINKING_ONLY
-#if GARDEN_DEBUG
-#define XXH_DEBUGLEVEL 1
-#endif
-#include "xxhash.h"
 
 namespace garden
 {
@@ -40,15 +28,55 @@ using namespace std;
 using namespace math;
 
 /**
- * @brief An 128bit hash container.
+ * @brief An 128bit hash container. (non-cryptographic)
+ * 
+ * @details
+ * Hash is a function that converts an input (or 'key') into a fixed-size set of bytes. 
+ * This output set has a fixed length, regardless of the size of the input.
  */
 struct Hash128
 {
+	typedef void* State;
+
 	uint64 low64 = 0;
 	uint64 high64 = 0;
 
-	Hash128(uint64 low64 = 0, uint64 high64 = 0) noexcept {
-		this->low64 = low64; this->high64 = high64; }
+	/**
+	 * @brief Creates a new hash container from a low and high parts. (non-cryptographic)
+	 */
+	Hash128(uint64 low64 = 0, uint64 high64 = 0) noexcept
+	{
+		this->low64 = low64; this->high64 = high64;
+	}
+	/**
+	 * @brief Creates a new hash of the binary data. (non-cryptographic)
+	 * 
+	 * @param[in] data target binary data to hash
+	 * @param size data buffer size in bytes
+	 * @param[in] state hash state (or null)
+	 */
+	Hash128(const void* data, psize size, State state = nullptr);
+
+	/**
+	 * @brief Creates a new hash of the vector data. (non-cryptographic)
+	 * 
+	 * @param[in] data target data to hash
+	 * @param[in] state hash state (or null)
+	 * @tparam T vector data type 
+	 */
+	template<typename T>
+	Hash128(const vector<T>& data, State state = nullptr) :
+		Hash128(data.data(), data.size() * sizeof(T), state) { }
+	/**
+	 * @brief Creates a new hash of the array data. (non-cryptographic)
+	 * 
+	 * @param[in] data target data to hash
+	 * @param[in] state hash state (or null)
+	 */
+	template<typename T, psize S>
+	Hash128(const array<T, S>& data, State state = nullptr) :
+		Hash128(data.data(), data.size() * sizeof(T), state) { }
+
 	bool operator==(const Hash128& h) const noexcept { 
 		return low64 == h.low64 && high64 == h.high64; }
 	bool operator!=(const Hash128& h) const noexcept {
@@ -60,18 +88,21 @@ struct Hash128
 	 * @brief Returns Base64 encoded hash string.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */
-	string toString() const noexcept
-	{
-		psize length = 0;
-		auto base64 = base64_encode((const uint8*)this, sizeof(Hash128), &length);
-		string value((char*)base64, length - 1);
-		free(base64);
-  		return value;
-	}
+	string toString() const;
 
-	
+	/**
+	 * @brief Allocates a new hash state. (non-cryptographic)
+	 * @details You can reuse the same state to improve hashing speed.
+	 * @return The new hash state instance.
+	 */
+	static State createState();
+	/**
+	 * @brief Deallocates hash state.
+	 * @param[in] state target hash state
+	 */
+	static void destroyState(State state);
+
+	// TODO: add sequential data hashing using state.
 };
-
-
 
 } // namespace garden
