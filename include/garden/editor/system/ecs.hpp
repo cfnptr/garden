@@ -26,7 +26,7 @@ class EcsEditorSystem final : public EditorSystem<EditorRenderSystem>
 	EcsEditorSystem(Manager* manager, EditorRenderSystem* system);
 	~EcsEditorSystem() final;
 
-	void renderEditor();
+	void editorRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

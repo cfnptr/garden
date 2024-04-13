@@ -98,7 +98,7 @@ uniform sampler2D
     filter = nearest;
 } samplerName;
 
-uniform samplerCube someSampler;
+uniform set1 samplerCube someSampler;
 ```
 
 * filter [ nearest | linear ] - Specify the texture minifying and magnification function. (nearest)
@@ -111,7 +111,7 @@ uniform samplerCube someSampler;
 * wrapZ [TYPE] - Specify the wrap parameter for texture coordinate Z. (clampToEdge)
 * borderColor [ floatTransparentBlack | intTransparentBlack | floatOpaqueBlack | 
 	intOpaqueBlack | floatOpaqueWhite | intOpaqueWhite ] - Specify the border clamp color. (floatTransparentBlack)
-* comparing [ on | off ] - Enable or disable comparison against a reference value during lookups. (off)
+* comparison [ on | off ] - Enable or disable comparison against a reference value during lookups. (off)
 * anisoFiltering [ on | off ] - Enable or disable texel anisotropic filtering. (off)
 * unnormCoords [ on | off ] - Controls whether to use unnormalized texel coordinates to address texels of the image. (off)
 * compareOperation [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -

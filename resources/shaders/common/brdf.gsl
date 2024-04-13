@@ -34,8 +34,8 @@ float smithGGXCorrelated(float nov, float nol, float a)
 {
 	float a2 = a * a;
 	float lambdaV = nol * sqrt((nov - a2 * nov) * nov + a2);
-    float lambdaL = nov * sqrt((nol - a2 * nol) * nol + a2);
-    return 0.5f / (lambdaV + lambdaL);
+	float lambdaL = nov * sqrt((nol - a2 * nol) * nol + a2);
+	return 0.5f / (lambdaV + lambdaL);
 }
 float schlick(float voh, float f0, float f90)
 {
@@ -52,22 +52,22 @@ float lambert()
 
 float2 hammersley(uint32 index, float invSampleCount)
 {
-    const float tof = 0.5f / float(0x80000000U);
-    uint32 bits = index;
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float2(float(index) * invSampleCount, float(bits) * tof);
+	const float tof = 0.5f / float(0x80000000U);
+	uint32 bits = index;
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float2(float(index) * invSampleCount, float(bits) * tof);
 }
 float3 importanceSamplingNdfDggx(float2 u, float a)
 {
 	float a2 = a * a; float phi = 2.0f * M_PI * u.x;
-    float cosTheta2 = (1.0f - u.y) / (1.0f + (a2 - 1.0f) * u.y);
-    float cosTheta = sqrt(cosTheta2);
-    float sinTheta = sqrt(1.0f - cosTheta2);
-    return float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+	float cosTheta2 = (1.0f - u.y) / (1.0f + (a2 - 1.0f) * u.y);
+	float cosTheta = sqrt(cosTheta2);
+	float sinTheta = sqrt(1.0f - cosTheta2);
+	return float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
 float computeDielectricF0(float reflectance)
@@ -101,15 +101,15 @@ float3 computeEnergyCompensation(sampler2D dfgLUT, float nov, float roughness, f
 
 float specularAoLagarde(float nov, float visibility, float linearRoughness)
 {
-    return clamp(pow(nov + visibility, exp2(-16.0f *
+	return clamp(pow(nov + visibility, exp2(-16.0f *
 		linearRoughness - 1.0f)) - 1.0f + visibility, 0.0f, 1.0f);
 }
 float3 gtaoMultiBounce(float visibility, float3 albedo)
 {
-    float3 a =  2.0404f * albedo - 0.3324f;
-    float3 b = -4.7951f * albedo + 0.6417f;
-    float3 c =  2.7552f * albedo + 0.6903f;
-    return max(float3(visibility), ((visibility * a + b) * visibility + c) * visibility);
+	float3 a =  2.0404f * albedo - 0.3324f;
+	float3 b = -4.7951f * albedo + 0.6417f;
+	float3 c =  2.7552f * albedo + 0.6903f;
+	return max(float3(visibility), ((visibility * a + b) * visibility + c) * visibility);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -131,17 +131,17 @@ float3 diffuseLobe(float3 baseColor, float metallic)
 float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float roughness)
 {
 	float lod = (textureQueryLevels(iblSpecular) - 1) * roughness * (2.0f - roughness);
-    return textureLod(iblSpecular, r, lod).rgb;
+	return textureLod(iblSpecular, r, lod).rgb;
 }
 float3 diffuseIrradiance(float3 normal, const float4 iblSH[SH_COEF_COUNT])
 {
 	return max(iblSH[0].xyz +
 		iblSH[1].xyz * (normal.y) + iblSH[2].xyz * (normal.z) + iblSH[3].xyz * (normal.x) +
-        iblSH[4].xyz * (normal.y * normal.x) +
+		iblSH[4].xyz * (normal.y * normal.x) +
 		iblSH[5].xyz * (normal.y * normal.z) +
-        iblSH[6].xyz * (3.0f * normal.z * normal.z - 1.0f) +
+		iblSH[6].xyz * (3.0f * normal.z * normal.z - 1.0f) +
 		iblSH[7].xyz * (normal.z * normal.x) +
-        iblSH[8].xyz * (normal.x * normal.x - normal.y * normal.y), 0.0f);
+		iblSH[8].xyz * (normal.x * normal.x - normal.y * normal.y), 0.0f);
 }
 
 #endif // BRDF_GSL

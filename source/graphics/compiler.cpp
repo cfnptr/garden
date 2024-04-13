@@ -610,7 +610,7 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 				lineData.isWrapY = 1;
 			else if (lineData.word == "wrapZ")
 				lineData.isWrapZ = 1;
-			else if (lineData.word == "comparing")
+			else if (lineData.word == "comparison")
 				lineData.isComparing = 1;
 			else if (lineData.word == "compareOperation")
 				lineData.isCompareOperation = 1;
@@ -688,7 +688,7 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 		}
 		else if (lineData.isComparing)
 		{
-			fileData.samplerState.comparing = toBoolState(name, fileData.lineIndex);
+			fileData.samplerState.comparison = toBoolState(name, fileData.lineIndex);
 			lineData.isComparing = 0;
 		}
 		else if (lineData.isCompareOperation)
@@ -1079,7 +1079,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 
 //******************************************************************************************************************
 static void onSpecConst(FileData& fileData, LineData& lineData,
-	map<string, Pipeline::SpecConstData>& specConsts, ShaderStage shaderStage)
+	map<string, Pipeline::SpecConst>& specConsts, ShaderStage shaderStage)
 {
 	if (lineData.isSpecConst == 1)
 	{
@@ -1112,7 +1112,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		auto result = specConsts.find(lineData.word);
 		if (result == specConsts.end())
 		{
-			Pipeline::SpecConstData data;
+			Pipeline::SpecConst data;
 			data.shaderStages = shaderStage;
 			data.dataType = lineData.dataType;
 			data.index = fileData.specConstIndex++;
@@ -1487,7 +1487,7 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 			}
 			else if (lineData.isSpecConst)
 			{
-				onSpecConst(fileData, lineData, data.specConstData, shaderStage);
+				onSpecConst(fileData, lineData, data.specConsts, shaderStage);
 				overrideOutput = true;
 			}
 			else if (lineData.isFeature)
@@ -1722,7 +1722,7 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 			}
 			else if (lineData.isSpecConst)
 			{
-				onSpecConst(fileData, lineData, data.specConstData, shaderStage);
+				onSpecConst(fileData, lineData, data.specConsts, shaderStage);
 				overrideOutput = true;
 			}
 			else if (lineData.isFeature)
@@ -1893,7 +1893,7 @@ bool Compiler::compileGraphicsShaders(const fs::path& inputPath,
 	values.descriptorSetCount = data.descriptorSetCount;
 	values.variantCount = data.variantCount;
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.specConstCount = (uint8)data.specConstData.size();
+	values.specConstCount = (uint8)data.specConsts.size();
 	values.vertexAttributeCount = (uint8)data.vertexAttributes.size();
 	values.blendStateCount = (uint8)data.blendStates.size();
 	values.pushConstantsStages = data.pushConstantsStages;
@@ -1917,7 +1917,7 @@ bool Compiler::compileGraphicsShaders(const fs::path& inputPath,
 	
 	writeGslHeaderArray(headerStream, data.uniforms);
 	writeGslHeaderArray(headerStream, data.samplerStates);
-	writeGslHeaderArray(headerStream, data.specConstData);
+	writeGslHeaderArray(headerStream, data.specConsts);
 	return true;
 }
 
@@ -2043,7 +2043,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 			}
 			else if (lineData.isSpecConst)
 			{
-				onSpecConst(fileData, lineData, data.specConstData, shaderStage);
+				onSpecConst(fileData, lineData, data.specConsts, shaderStage);
 				overrideOutput = true;
 			}
 			else if (lineData.isFeature)
@@ -2129,7 +2129,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 	values.descriptorSetCount = data.descriptorSetCount;
 	values.variantCount = data.variantCount;
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.specConstCount = (uint8)data.specConstData.size();
+	values.specConstCount = (uint8)data.specConsts.size();
 	values.localSize = data.localSize;
 	
 	ofstream headerStream;
@@ -2137,7 +2137,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 	writeGslHeaderValues(headerFilePath, computeGslMagic, headerStream, values);
 	writeGslHeaderArray(headerStream, data.uniforms);
 	writeGslHeaderArray(headerStream, data.samplerStates);
-	writeGslHeaderArray(headerStream, data.specConstData);
+	writeGslHeaderArray(headerStream, data.specConsts);
 	headerStream.close();
 
 	outputFilePath += ".spv";
@@ -2230,12 +2230,9 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
 	}
 
-	readGslHeaderArray(shaderData, dataSize, dataOffset,
-		values.uniformCount, data.uniforms);
-	readGslHeaderArray(shaderData, dataSize, dataOffset,
-		values.samplerStateCount, data.samplerStates);
-	readGslHeaderArray(shaderData, dataSize, dataOffset,
-		values.specConstCount, data.specConstData);
+	readGslHeaderArray(shaderData, dataSize, dataOffset, values.uniformCount, data.uniforms);
+	readGslHeaderArray(shaderData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray(shaderData, dataSize, dataOffset, values.specConstCount, data.specConsts);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2279,12 +2276,9 @@ void Compiler::loadComputeShader(ComputeData& data)
 	auto shaderData = dataBuffer.data(); auto dataSize = (uint32)dataBuffer.size();
 	readGslHeaderValues(shaderData, dataSize, dataOffset, computeGslMagic, values);
 
-	readGslHeaderArray(shaderData, dataSize, dataOffset,
-		values.uniformCount, data.uniforms);
-	readGslHeaderArray(shaderData, dataSize, dataOffset,
-		values.samplerStateCount, data.samplerStates);
-	readGslHeaderArray(shaderData, dataSize, dataOffset,
-		values.specConstCount, data.specConstData);
+	readGslHeaderArray(shaderData, dataSize, dataOffset, values.uniformCount, data.uniforms);
+	readGslHeaderArray(shaderData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray(shaderData, dataSize, dataOffset, values.specConstCount, data.specConsts);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;

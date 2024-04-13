@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/command-buffer.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -21,28 +19,28 @@
 using namespace std;
 using namespace garden::graphics;
 
+// TODO: separate big functions into smaller ones.
+
+//**********************************************************************************************************************
 static vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
 static vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
 
 static vk::CommandBuffer createVkCommandBuffer(
 	vk::Device device, vk::CommandPool commandPool)
 {
-	vk::CommandBufferAllocateInfo commandBufferInfo(
-		commandPool, vk::CommandBufferLevel::ePrimary, 1);
+	vk::CommandBufferAllocateInfo commandBufferInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1);
 	vk::CommandBuffer commandBuffer;
-	auto allocateResult = device.allocateCommandBuffers(
-		&commandBufferInfo, &commandBuffer);
+	auto allocateResult = device.allocateCommandBuffers(&commandBufferInfo, &commandBuffer);
 	vk::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 	return commandBuffer;
 }
 static vk::Fence createVkFence(vk::Device device, bool isSignaled = false)
 {
-	vk::FenceCreateInfo fenceInfo(
-		isSignaled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags());
+	vk::FenceCreateInfo fenceInfo(isSignaled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags());
 	return device.createFence(fenceInfo);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::initialize(CommandBufferType type)
 {
 	switch (type)
@@ -63,12 +61,9 @@ void CommandBuffer::initialize(CommandBufferType type)
 		const char* name = nullptr;
 		switch (type)
 		{
-		case CommandBufferType::Graphics:
-			name = "commandBuffer.graphics"; break;
-		case CommandBufferType::TransferOnly:
-			name = "commandBuffer.transferOnly"; break;
-		case CommandBufferType::ComputeOnly:
-			name = "commandBuffer.computeOnly"; break;
+		case CommandBufferType::Graphics: name = "commandBuffer.graphics"; break;
+		case CommandBufferType::TransferOnly: name = "commandBuffer.transferOnly"; break;
+		case CommandBufferType::ComputeOnly: name = "commandBuffer.computeOnly"; break;
 		case CommandBufferType::Frame: break;
 		default: abort();
 		}
@@ -99,7 +94,7 @@ void CommandBuffer::terminate()
 	free(data);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static const uint32 writeAccessMask =
 	VK_ACCESS_SHADER_WRITE_BIT |
 	VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
@@ -119,16 +114,15 @@ static bool isSameState(const CommandBuffer::BufferState& oldState, const Comman
 	return !(oldState.access & writeAccessMask);
 }
 
-//--------------------------------------------------------------------------------------------------
-CommandBuffer::ImageState& CommandBuffer::getImageState(
-	ID<Image> image, uint32 mip, uint32 layer)
+//**********************************************************************************************************************
+CommandBuffer::ImageState& CommandBuffer::getImageState(ID<Image> image, uint32 mip, uint32 layer)
 {
 	ImageSubresource imageSubresource;
 	imageSubresource.image = image;
 	imageSubresource.mip = mip;
 	imageSubresource.layer = layer;
-	auto searchResult = imageStates.find(imageSubresource); 
 
+	auto searchResult = imageStates.find(imageSubresource); 
 	if (searchResult != imageStates.end())
 	{
 		return searchResult->second;
@@ -138,8 +132,7 @@ CommandBuffer::ImageState& CommandBuffer::getImageState(
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageState newImageState;
 		newImageState.access = (uint32)VK_ACCESS_NONE;
-		newImageState.layout = imageView->layouts[
-			mip * imageView->layerCount + layer];
+		newImageState.layout = imageView->layouts[mip * imageView->layerCount + layer];
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eNone;
 		auto addResult = imageStates.emplace(imageSubresource, newImageState);
 		return addResult.first->second;
@@ -149,7 +142,6 @@ CommandBuffer::ImageState& CommandBuffer::getImageState(
 CommandBuffer::BufferState& CommandBuffer::getBufferState(ID<Buffer> buffer)
 {
 	auto searchResult = bufferStates.find(buffer); 
-
 	if (searchResult != bufferStates.end())
 	{
 		return searchResult->second;
@@ -164,7 +156,7 @@ CommandBuffer::BufferState& CommandBuffer::getBufferState(ID<Buffer> buffer)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 Command* CommandBuffer::allocateCommand(uint32 size)
 {
 	if (this->size + size > capacity)
@@ -180,16 +172,15 @@ Command* CommandBuffer::allocateCommand(uint32 size)
 
 // also add to the shaders noncoherent tag to skip sync if different buffer or image parts.
 
-//--------------------------------------------------------------------------------------------------
-void CommandBuffer::addDescriptorSetBarriers(
-	const Pipeline::DescriptorData* descriptorData,
-	uint32 descriptorDataSize, uint32& oldStage, uint32& newStage)
+//**********************************************************************************************************************
+void CommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descriptorSetRange,
+	uint32 rangeCount, uint32& oldStage, uint32& newStage)
 {
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 
-	for (uint8 i = 0; i < descriptorDataSize; i++)
+	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorData[i];
+		auto descriptor = descriptorSetRange[i];
 		auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptor.set);
 		auto& descriptorSetUniforms = descriptorSet->uniforms;
 		auto pipelineType = descriptorSet->pipelineType;
@@ -245,8 +236,7 @@ void CommandBuffer::addDescriptorSetBarriers(
 						if (!resourceArray[k])
 							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
 
-						auto imageView = GraphicsAPI::imageViewPool.get(
-							ID<ImageView>(resourceArray[k]));
+						auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[k]));
 						auto instance = imageView->image;
 						auto image = GraphicsAPI::imagePool.get(instance);
 						auto imageInstance = (VkImage)image->instance;
@@ -269,13 +259,10 @@ void CommandBuffer::addDescriptorSetBarriers(
 									// TODO: we can transfer only required for rendering mips and layers,
 									//		 instead of all image data like this.
 									vk::ImageMemoryBarrier imageMemoryBarrier(
-										vk::AccessFlags(oldImageState.access),
-										vk::AccessFlags(newImageState.access),
-										(vk::ImageLayout)oldImageState.layout,
-										(vk::ImageLayout)newImageState.layout,
+										vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+										(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 										VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-										imageInstance, vk::ImageSubresourceRange(
-											imageAspectFlags, mip, 1, layer, 1));
+										imageInstance, vk::ImageSubresourceRange(imageAspectFlags, mip, 1, layer, 1));
 									imageMemoryBarriers.push_back(imageMemoryBarrier);
 								}
 								oldImageState = newImageState;
@@ -284,8 +271,7 @@ void CommandBuffer::addDescriptorSetBarriers(
 					}
 				}
 			}
-			else if (uniform.type == GslUniformType::UniformBuffer ||
-				uniform.type == GslUniformType::StorageBuffer)
+			else if (uniform.type == GslUniformType::UniformBuffer || uniform.type == GslUniformType::StorageBuffer)
 			{
 				BufferState newBufferState;
 				newBufferState.stage = (uint32)toVkPipelineStages(uniform.shaderStages);
@@ -316,8 +302,7 @@ void CommandBuffer::addDescriptorSetBarriers(
 						{
 							auto bufferView = GraphicsAPI::bufferPool.get(buffer);
 							vk::BufferMemoryBarrier bufferMemoryBarrier(
-								vk::AccessFlags(oldBufferState.access),
-								vk::AccessFlags(newBufferState.access),
+								vk::AccessFlags(oldBufferState.access), vk::AccessFlags(newBufferState.access),
 								VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 								(VkBuffer)bufferView->instance, 0, bufferView->binarySize);
 							// TODO: we can specify only required buffer range.
@@ -334,7 +319,7 @@ void CommandBuffer::addDescriptorSetBarriers(
 	newStage |= newPipelineStage;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 {
 	if (imageMemoryBarriers.empty() && bufferMemoryBarriers.empty())
@@ -348,8 +333,9 @@ void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 		oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
 
 	// TODO: combine overlapping barriers.
-	commandBuffer.pipelineBarrier( // TODO: use dependency flags
-		oldPipelineStage, newPipelineStage, {}, 0, nullptr,
+	// TODO: use dependency flags
+
+	commandBuffer.pipelineBarrier(oldPipelineStage, newPipelineStage, {}, 0, nullptr,
 		(uint32)bufferMemoryBarriers.size(), bufferMemoryBarriers.data(),
 		(uint32)imageMemoryBarriers.size(), imageMemoryBarriers.data());
 
@@ -357,7 +343,7 @@ void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 	bufferMemoryBarriers.clear();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lockedResources)
 {
 	for (auto& pair : lockedResources)
@@ -391,7 +377,7 @@ void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lo
 	lockedResources.clear();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::submit()
 {
 	auto swapchainBuffer = (Swapchain::Buffer*)&Vulkan::swapchain.getCurrentBuffer();
@@ -399,8 +385,7 @@ void CommandBuffer::submit()
 
 	if (type == CommandBufferType::Frame)
 	{
-		instance = commandBuffer = vk::CommandBuffer((VkCommandBuffer)
-			swapchainBuffer->primaryCommandBuffer);
+		instance = commandBuffer = vk::CommandBuffer((VkCommandBuffer)swapchainBuffer->primaryCommandBuffer);
 	}
 	else
 	{
@@ -442,8 +427,7 @@ void CommandBuffer::submit()
 	if (type == CommandBufferType::Frame && GraphicsAPI::recordGpuTime)
 	{
 		commandBuffer.resetQueryPool(swapchainBuffer->queryPool, 0, 2);
-		commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe,
-			swapchainBuffer->queryPool, 0);
+		commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, swapchainBuffer->queryPool, 0);
 		swapchainBuffer->isPoolClean = true;
 		// TODO: record transfer and compute command buffer perf.
 	}
@@ -516,9 +500,7 @@ void CommandBuffer::submit()
 
 	if (type == CommandBufferType::Frame)
 	{
-		vk::Image swapchainImage((VkImage)GraphicsAPI::imagePool.get(
-			swapchainBuffer->colorImage)->instance);
-
+		vk::Image swapchainImage((VkImage)GraphicsAPI::imagePool.get(swapchainBuffer->colorImage)->instance);
 		if (!hasAnyCommand)
 		{
 			vk::ImageMemoryBarrier imageMemoryBarrier(
@@ -527,10 +509,8 @@ void CommandBuffer::submit()
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 				swapchainImage, vk::ImageSubresourceRange(
 					vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-			commandBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTopOfPipe,
-				vk::PipelineStageFlagBits::eTransfer,
-				{}, {}, {}, imageMemoryBarrier);
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+				vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, imageMemoryBarrier);
 			array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 			commandBuffer.clearColorImage(swapchainImage,
 				vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(clearColor),
@@ -558,13 +538,10 @@ void CommandBuffer::submit()
 				if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
 					oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldImageState.access),
-					vk::AccessFlags(newImageState.access),
-					(vk::ImageLayout)oldImageState.layout,
-					(vk::ImageLayout)newImageState.layout,
+					vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-					swapchainImage, vk::ImageSubresourceRange(
-						vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+					swapchainImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
 				commandBuffer.pipelineBarrier(oldPipelineStage,
 					vk::PipelineStageFlags(newImageState.stage),
 					{}, {}, {}, imageMemoryBarrier);
@@ -576,10 +553,9 @@ void CommandBuffer::submit()
 			auto framebufferSize = Vulkan::swapchain.getFramebufferSize();
 			auto extent = vk::Extent2D((uint32)framebufferSize.x, (uint32)framebufferSize.y);
 			vk::RenderPassBeginInfo beginInfo(ImGuiData::renderPass,
-				ImGuiData::framebuffers[Vulkan::swapchain.getCurrentBufferIndex()],
-				vk::Rect2D({}, extent));
+				ImGuiData::framebuffers[Vulkan::swapchain.getCurrentBufferIndex()], vk::Rect2D({}, extent));
 			commandBuffer.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
-    		ImGui_ImplVulkan_RenderDrawData(drawData, (VkCommandBuffer)commandBuffer);
+			ImGui_ImplVulkan_RenderDrawData(drawData, (VkCommandBuffer)commandBuffer);
 			commandBuffer.endRenderPass();
 		}
 		#endif
@@ -593,24 +569,17 @@ void CommandBuffer::submit()
 		newImageState.layout = (uint32)vk::ImageLayout::ePresentSrcKHR;
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eBottomOfPipe;
 		vk::ImageMemoryBarrier imageMemoryBarrier(
-			vk::AccessFlags(oldImageState.access),
-			vk::AccessFlags(newImageState.access),
-			(vk::ImageLayout)oldImageState.layout,
-			(vk::ImageLayout)newImageState.layout,
+			vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+			(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-			swapchainImage, vk::ImageSubresourceRange(
-				vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+			swapchainImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
 		commandBuffer.pipelineBarrier(oldPipelineStage,
-			vk::PipelineStageFlags(newImageState.stage),
-			{}, {}, {}, imageMemoryBarrier);
+			vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
 		oldImageState = newImageState;
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (GraphicsAPI::recordGpuTime)
-		{
-			commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
-				swapchainBuffer->queryPool, 1);
-		}
+			commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, swapchainBuffer->queryPool, 1);
 		#endif
 	}
 
@@ -632,8 +601,7 @@ void CommandBuffer::submit()
 	{
 		auto imageState = pair.first;
 		auto image = GraphicsAPI::imagePool.get(imageState.image);
-		image->layouts[imageState.mip * image->layerCount +
-			imageState.layer] = pair.second.layout;
+		image->layouts[imageState.mip * image->layerCount + imageState.layer] = pair.second.layout;
 	}
 
 	imageStates.clear();
@@ -643,7 +611,7 @@ void CommandBuffer::submit()
 	isRunning = true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
 static vector<vk::ClearValue> clearValues;
 
@@ -668,8 +636,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	{
 		auto colorAttachment = colorAttachments[i];
 		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
-		auto& oldImageState = getImageState(imageView->image,
-			imageView->baseMip, imageView->baseLayer);
+		auto& oldImageState = getImageState(imageView->image, imageView->baseMip, imageView->baseLayer);
 		oldPipelineStage |= oldImageState.stage;
 
 		ImageState newImageState;
@@ -682,13 +649,10 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		{
 			auto image = GraphicsAPI::imagePool.get(imageView->image);
 			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlags(oldImageState.access),
-				vk::AccessFlags(newImageState.access),
-				(vk::ImageLayout)oldImageState.layout,
-				(vk::ImageLayout)newImageState.layout,
-				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				(VkImage)image->instance, vk::ImageSubresourceRange(
-					vk::ImageAspectFlagBits::eColor,
+				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
+				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, (VkImage)image->instance,
+				vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor,
 					imageView->baseMip, imageView->mipCount,
 					imageView->baseLayer, imageView->layerCount));
 			imageMemoryBarriers.push_back(imageMemoryBarrier);
@@ -718,10 +682,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				loadOperation = vk::AttachmentLoadOp::eDontCare;
 			}
 
-			colorAttachmentInfos[i] = vk::RenderingAttachmentInfo(
-				(VkImageView)imageView->instance,
-				vk::ImageLayout::eColorAttachmentOptimal,
-				{}, VK_NULL_HANDLE, vk::ImageLayout::eUndefined,
+			colorAttachmentInfos[i] = vk::RenderingAttachmentInfo((VkImageView)imageView->instance,
+				vk::ImageLayout::eColorAttachmentOptimal, {}, VK_NULL_HANDLE, vk::ImageLayout::eUndefined,
 				loadOperation, vk::AttachmentStoreOp::eStore, clearValue);
 			// TODO: some how utilize write discarding? (eDontCare)
 		}
@@ -744,8 +706,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	{
 		auto depthStencilAttachment = framebuffer->depthStencilAttachment;
 		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
-		auto& oldImageState = getImageState(imageView->image,
-			imageView->baseMip, imageView->baseLayer);
+		auto& oldImageState = getImageState(imageView->image, imageView->baseMip, imageView->baseLayer);
 		oldPipelineStage |= oldImageState.stage;
 
 		ImageState newImageState;
@@ -754,8 +715,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eEarlyFragmentTests;
 		newPipelineStage |= newImageState.stage;
 
-		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eDepth |
-			vk::ImageAspectFlagBits::eStencil;
+		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
 		auto imageFormat = imageView->format;
 
 		if (!isFormatStencilOnly(imageFormat))
@@ -768,8 +728,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				if (depthStencilAttachment.clear) // TODO: support separated depth/stencil clear?
 				{
 					depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-					depthAttachmentInfo.clearValue =
-						vk::ClearValue(vk::ClearDepthStencilValue(
+					depthAttachmentInfo.clearValue = vk::ClearValue(vk::ClearDepthStencilValue(
 						command.clearDepth, command.clearStencil));
 				}
 				else if (depthStencilAttachment.load)
@@ -802,8 +761,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				if (depthStencilAttachment.clear)
 				{
 					stencilAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-					stencilAttachmentInfo.clearValue =
-						vk::ClearValue(vk::ClearDepthStencilValue(
+					stencilAttachmentInfo.clearValue = vk::ClearValue(vk::ClearDepthStencilValue(
 						command.clearDepth, command.clearStencil));
 				}
 				else if (depthStencilAttachment.load)
@@ -816,8 +774,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				}
 
 				stencilAttachmentInfo.imageView = (VkImageView)imageView->instance;
-				stencilAttachmentInfo.imageLayout =
-					vk::ImageLayout::eStencilAttachmentOptimal;
+				stencilAttachmentInfo.imageLayout = vk::ImageLayout::eStencilAttachmentOptimal;
 				stencilAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
 				stencilAttachmentInfoPtr = &stencilAttachmentInfo;
 			}
@@ -832,10 +789,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		{
 			auto image = GraphicsAPI::imagePool.get(imageView->image);
 			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlags(oldImageState.access),
-				vk::AccessFlags(newImageState.access),
-				(vk::ImageLayout)oldImageState.layout,
-				(vk::ImageLayout)newImageState.layout,
+				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 				(VkImage)image->instance, vk::ImageSubresourceRange(
 					aspectFlags, imageView->baseMip, imageView->mipCount,
@@ -862,12 +817,10 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		{
 			auto& bindDescriptorSetsCommand =
 				*(const BindDescriptorSetsCommand*)subCommand;
-			auto descriptorData = (const Pipeline::DescriptorData*)(
+			auto descriptorSetRange = (const DescriptorSet::Range*)(
 				(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
-			auto descriptorDataSize = bindDescriptorSetsCommand.descriptorDataSize;
-
-			addDescriptorSetBarriers(descriptorData, descriptorDataSize,
-				oldPipelineStage, newPipelineStage);
+			addDescriptorSetBarriers(descriptorSetRange,
+				bindDescriptorSetsCommand.rangeCount, oldPipelineStage, newPipelineStage);
 		}
 		else if (commandType == Command::Type::Draw)
 		{
@@ -884,8 +837,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			{
 				auto bufferView = GraphicsAPI::bufferPool.get(drawCommand.vertexBuffer);
 				vk::BufferMemoryBarrier bufferMemoryBarrier(
-					vk::AccessFlags(oldBufferState.access),
-					vk::AccessFlags(newBufferState.access),
+					vk::AccessFlags(oldBufferState.access), vk::AccessFlags(newBufferState.access),
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkBuffer)bufferView->instance, 0, bufferView->binarySize);
 				// TODO: we can specify only required buffer range.
@@ -908,8 +860,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			{
 				auto bufferView = GraphicsAPI::bufferPool.get(drawIndexedCommand.vertexBuffer);
 				vk::BufferMemoryBarrier bufferMemoryBarrier(
-					vk::AccessFlags(oldVertexBufferState.access),
-					vk::AccessFlags(newBufferState.access),
+					vk::AccessFlags(oldVertexBufferState.access), vk::AccessFlags(newBufferState.access),
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkBuffer)bufferView->instance, 0, bufferView->binarySize);
 				// TODO: we can specify only required buffer range.
@@ -928,8 +879,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			{
 				auto bufferView = GraphicsAPI::bufferPool.get(drawIndexedCommand.vertexBuffer);
 				vk::BufferMemoryBarrier bufferMemoryBarrier(
-					vk::AccessFlags(oldIndexBufferState.access),
-					vk::AccessFlags(newBufferState.access),
+					vk::AccessFlags(oldIndexBufferState.access), vk::AccessFlags(newBufferState.access),
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkBuffer)bufferView->instance, 0, bufferView->binarySize);
 				// TODO: we can specify only required buffer range.
@@ -950,7 +900,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 	if (noSubpass)
 	{
-		vk::RenderingInfo renderingInfo(command.recordAsync ?
+		vk::RenderingInfo renderingInfo(command.asyncRecording ?
 			vk::RenderingFlagBits::eContentsSecondaryCommandBuffers : vk::RenderingFlags(),
 			rect, 1, 0, colorAttachmentCount, colorAttachmentInfos.data(),
 			depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
@@ -963,7 +913,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	{
 		vk::RenderPassBeginInfo beginInfo((VkRenderPass)framebuffer->renderPass,
 			(VkFramebuffer)framebuffer->instance, rect, clearValues);
-		commandBuffer.beginRenderPass(beginInfo, command.recordAsync ?
+		commandBuffer.beginRenderPass(beginInfo, command.asyncRecording ?
 			vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
 		clearValues.clear();
 
@@ -973,8 +923,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		{
 			auto colorAttachment = colorAttachments[i];
 			auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
-			auto& imageState = getImageState(imageView->image,
-				imageView->baseMip, imageView->baseLayer);
+			auto& imageState = getImageState(imageView->image, imageView->baseMip, imageView->baseLayer);
 			imageState.layout = (uint32)vk::ImageLayout::eGeneral;
 
 			auto isLastInput = false;
@@ -1001,10 +950,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			}
 			else
 			{
-				imageState.access = (uint32)
-					vk::AccessFlagBits::eColorAttachmentWrite;
-				imageState.stage = (uint32)
-					vk::PipelineStageFlagBits::eColorAttachmentOutput;
+				imageState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
+				imageState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
 			}
 		}
 
@@ -1012,8 +959,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		{
 			auto depthStencilAttachment = framebuffer->depthStencilAttachment;
 			auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
-			auto& imageState = getImageState(imageView->image,
-				imageView->baseMip, imageView->baseLayer);
+			auto& imageState = getImageState(imageView->image, imageView->baseMip, imageView->baseLayer);
 			imageState.layout = (uint32)vk::ImageLayout::eGeneral;
 
 			auto isLastInput = false;
@@ -1040,36 +986,33 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			}
 			else
 			{
-				imageState.access = (uint32)
-					vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-				imageState.stage = (uint32)
-					vk::PipelineStageFlagBits::eEarlyFragmentTests;
+				imageState.access = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+				imageState.stage = (uint32)vk::PipelineStageFlagBits::eEarlyFragmentTests;
 			}
 		}
 	}
 
-	if (!command.recordAsync)
+	if (!command.asyncRecording)
 	{
 		Framebuffer::currentPipelines[0] = {}; Framebuffer::currentPipelineTypes[0] = {};
 		Framebuffer::currentVertexBuffers[0] = Framebuffer::currentIndexBuffers[0] = {};
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const NextSubpassCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-	commandBuffer.nextSubpass(command.recordAsync ?
+	commandBuffer.nextSubpass(command.asyncRecording ?
 		vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
 
-	if (!command.recordAsync)
+	if (!command.asyncRecording)
 	{
 		Framebuffer::currentPipelines[0] = {}; Framebuffer::currentPipelineTypes[0] = {};
 		Framebuffer::currentVertexBuffers[0] = Framebuffer::currentIndexBuffers[0] = {};
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const ExecuteCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1077,7 +1020,6 @@ void CommandBuffer::processCommand(const ExecuteCommand& command)
 		((const uint8*)&command + sizeof(ExecuteCommandBase)));
 }
 
-//--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const EndRenderPassCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1094,7 +1036,7 @@ void CommandBuffer::processCommand(const EndRenderPassCommand& command)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::ClearAttachment> clearAttachments;
 static vector<vk::ClearRect> clearAttachmentsRects;
 
@@ -1184,7 +1126,7 @@ void CommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		command.regionCount, clearAttachmentsRects.data());
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const BindPipelineCommand& command)
 {	
 	if (command.pipeline != Framebuffer::currentPipelines[0] ||
@@ -1216,22 +1158,22 @@ void CommandBuffer::processCommand(const BindPipelineCommand& command)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::DescriptorSet> descriptorSets;
 
 void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 {
-	if (command.isAsync)
+	if (command.asyncRecording)
 		return;
 
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 
-	auto descriptorData = (const Pipeline::DescriptorData*)(
+	auto descriptorSetRange = (const DescriptorSet::Range*)(
 		(const uint8*)&command + sizeof(BindDescriptorSetsCommandBase));
 
-	for (uint8 i = 0; i < command.descriptorDataSize; i++)
+	for (uint8 i = 0; i < command.rangeCount; i++)
 	{
-		auto descriptor = descriptorData[i];
+		auto descriptor = descriptorSetRange[i];
 		auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptor.set);
 		auto instance = (vk::DescriptorSet*)descriptorSet->instance;
 
@@ -1244,7 +1186,7 @@ void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 		else descriptorSets.push_back((VkDescriptorSet)instance);
 	}
 
-	auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptorData[0].set);
+	auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptorSetRange[0].set);
 	auto pipelineType = descriptorSet->pipelineType;
 	vk::PipelineBindPoint bindPoint; vk::PipelineLayout pipelineLayout;
 
@@ -1269,7 +1211,7 @@ void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 	descriptorSets.clear();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const PushConstantsCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1279,7 +1221,6 @@ void CommandBuffer::processCommand(const PushConstantsCommand& command)
 		(const uint8*)&command + sizeof(PushConstantsCommandBase));
 }
 
-//--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const SetViewportCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1288,7 +1229,6 @@ void CommandBuffer::processCommand(const SetViewportCommand& command)
 	commandBuffer.setViewport(0, 1, &viewport); // TODO: multiple viewports
 }
 
-//--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const SetScissorCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1297,7 +1237,6 @@ void CommandBuffer::processCommand(const SetScissorCommand& command)
 	commandBuffer.setScissor(0, 1, &scissor); // TODO: multiple scissors
 }
 
-//--------------------------------------------------------------------------------------------------
 void CommandBuffer::processCommand(const SetViewportScissorCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1310,10 +1249,10 @@ void CommandBuffer::processCommand(const SetViewportScissorCommand& command)
 	commandBuffer.setScissor(0, 1, &scissor);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const DrawCommand& command)
 {
-	if (command.isAsync)
+	if (command.asyncRecording)
 		return;
 
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1333,10 +1272,10 @@ void CommandBuffer::processCommand(const DrawCommand& command)
 		command.vertexOffset, command.instanceOffset);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const DrawIndexedCommand& command)
 {
-	if (command.isAsync)
+	if (command.asyncRecording)
 		return;
 
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1364,7 +1303,7 @@ void CommandBuffer::processCommand(const DrawIndexedCommand& command)
 		command.indexOffset, command.vertexOffset, command.instanceOffset);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const DispatchCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
@@ -1390,14 +1329,11 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 		if (commandType != Command::Type::BindDescriptorSets)
 			continue;
 
-		auto& bindDescriptorSetsCommand =
-			*(const BindDescriptorSetsCommand*)subCommand;
-		auto descriptorData = (const Pipeline::DescriptorData*)(
+		auto& bindDescriptorSetsCommand = *(const BindDescriptorSetsCommand*)subCommand;
+		auto descriptorSetRange = (const DescriptorSet::Range*)(
 			(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
-		auto descriptorDataSize = bindDescriptorSetsCommand.descriptorDataSize;
-
-		addDescriptorSetBarriers(descriptorData, descriptorDataSize,
-			oldPipelineStage, newPipelineStage);
+		addDescriptorSetBarriers(descriptorSetRange,
+			bindDescriptorSetsCommand.rangeCount, oldPipelineStage, newPipelineStage);
 	}
 
 	processPipelineBarriers(oldPipelineStage, newPipelineStage);
@@ -1406,14 +1342,12 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 		(uint32)command.groupCount.y, (uint32)command.groupCount.z);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const FillBufferCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto buffer = GraphicsAPI::bufferPool.get(command.buffer);
-
-	uint32 oldPipelineStage = 0, newPipelineStage = 
-		(uint32)vk::PipelineStageFlagBits::eTransfer;
+	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
 
 	BufferState newBufferState;
 	newBufferState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
@@ -1440,7 +1374,7 @@ void CommandBuffer::processCommand(const FillBufferCommand& command)
 		command.size == 0 ? VK_WHOLE_SIZE : command.size, command.data);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::BufferCopy> bufferCopies;
 
 void CommandBuffer::processCommand(const CopyBufferCommand& command)
@@ -1448,14 +1382,11 @@ void CommandBuffer::processCommand(const CopyBufferCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto srcBuffer = GraphicsAPI::bufferPool.get(command.source);
 	auto dstBuffer = GraphicsAPI::bufferPool.get(command.destination);
+	auto regions = (const Buffer::CopyRegion*)((const uint8*)&command + sizeof(CopyBufferCommandBase));
+	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
 
-	auto regions = (const Buffer::CopyRegion*)(
-		(const uint8*)&command + sizeof(CopyBufferCommandBase));
 	if (bufferCopies.size() < command.regionCount)
 		bufferCopies.resize(command.regionCount);
-
-	uint32 oldPipelineStage = 0, newPipelineStage = 
-		(uint32)vk::PipelineStageFlagBits::eTransfer;
 
 	BufferState newSrcBufferState;
 	newSrcBufferState.access = (uint32)vk::AccessFlagBits::eTransferRead;
@@ -1477,8 +1408,7 @@ void CommandBuffer::processCommand(const CopyBufferCommand& command)
 		if (!isSameState(oldSrcBufferState, newSrcBufferState))
 		{
 			vk::BufferMemoryBarrier bufferMemoryBarrier(
-				vk::AccessFlags(oldSrcBufferState.access),
-				vk::AccessFlags(newSrcBufferState.access),
+				vk::AccessFlags(oldSrcBufferState.access), vk::AccessFlags(newSrcBufferState.access),
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 				(VkBuffer)srcBuffer->instance, 0, srcBuffer->binarySize);
 			bufferMemoryBarriers.push_back(bufferMemoryBarrier);
@@ -1491,8 +1421,7 @@ void CommandBuffer::processCommand(const CopyBufferCommand& command)
 		if (!isSameState(oldDstBufferState, newDstBufferState))
 		{
 			vk::BufferMemoryBarrier bufferMemoryBarrier(
-				vk::AccessFlags(oldDstBufferState.access),
-				vk::AccessFlags(newDstBufferState.access),
+				vk::AccessFlags(oldDstBufferState.access), vk::AccessFlags(newDstBufferState.access),
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 				(VkBuffer)dstBuffer->instance, 0, dstBuffer->binarySize);
 			bufferMemoryBarriers.push_back(bufferMemoryBarrier);
@@ -1507,22 +1436,19 @@ void CommandBuffer::processCommand(const CopyBufferCommand& command)
 		(VkBuffer)dstBuffer->instance, command.regionCount, bufferCopies.data());
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::ImageSubresourceRange> imageClears;
 
 void CommandBuffer::processCommand(const ClearImageCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto image = GraphicsAPI::imagePool.get(command.image);
+	auto regions = (const Image::ClearRegion*)((const uint8*)&command + sizeof(ClearImageCommandBase));
+	auto srcAspectFlags = toVkImageAspectFlags(image->format);
+	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
 
-	auto regions = (const Image::ClearRegion*)(
-		(const uint8*)&command + sizeof(ClearImageCommandBase));
 	if (imageClears.size() < command.regionCount)
 		imageClears.resize(command.regionCount);
-
-	auto srcAspectFlags = toVkImageAspectFlags(image->format);
-	uint32 oldPipelineStage = 0, newPipelineStage = 
-		(uint32)vk::PipelineStageFlagBits::eTransfer;
 
 	ImageState newImageState;
 	newImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
@@ -1550,10 +1476,8 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 				if (!isSameState(oldImageState, newImageState))
 				{
 					vk::ImageMemoryBarrier imageMemoryBarrier(
-						vk::AccessFlags(oldImageState.access),
-						vk::AccessFlags(newImageState.access),
-						(vk::ImageLayout)oldImageState.layout,
-						(vk::ImageLayout)newImageState.layout,
+						vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+						(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 						VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 						(VkImage)image->instance, vk::ImageSubresourceRange(
 							srcAspectFlags, region.baseMip + mip, 1,
@@ -1575,6 +1499,7 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 		else if (command.clearType == 2)
 			memcpy(clearValue.int32.data(), &command.color, sizeof(int32) * 4);
 		else abort();
+
 		commandBuffer.clearColorImage(
 			(VkImage)image->instance, vk::ImageLayout::eTransferDstOptimal,
 			&clearValue, command.regionCount, imageClears.data());
@@ -1590,7 +1515,7 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::ImageCopy> imageCopies;
 
 void CommandBuffer::processCommand(const CopyImageCommand& command)
@@ -1598,16 +1523,13 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto srcImage = GraphicsAPI::imagePool.get(command.source);
 	auto dstImage = GraphicsAPI::imagePool.get(command.destination);
-
-	auto regions = (const Image::CopyImageRegion*)(
-		(const uint8*)&command + sizeof(CopyImageCommandBase));
-	if (imageCopies.size() < command.regionCount)
-		imageCopies.resize(command.regionCount);
-
+	auto regions = (const Image::CopyImageRegion*)((const uint8*)&command + sizeof(CopyImageCommandBase));
 	auto srcAspectFlags = toVkImageAspectFlags(srcImage->format);
 	auto dstAspectFlags = toVkImageAspectFlags(dstImage->format);
-	uint32 oldPipelineStage = 0, newPipelineStage = 
-		(uint32)vk::PipelineStageFlagBits::eTransfer;
+	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+
+	if (imageCopies.size() < command.regionCount)
+		imageCopies.resize(command.regionCount);
 
 	ImageState newSrcImageState;
 	newSrcImageState.access = (uint32)vk::AccessFlagBits::eTransferRead;
@@ -1622,31 +1544,25 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 	for (uint32 i = 0; i < command.regionCount; i++)
 	{
 		auto region = regions[i];
-		vk::ImageSubresourceLayers srcSubresource(srcAspectFlags,
-			region.srcMipLevel, region.srcBaseLayer);
-		vk::ImageSubresourceLayers dstSubresource(dstAspectFlags,
-			region.dstMipLevel, region.dstBaseLayer);
+		vk::ImageSubresourceLayers srcSubresource(srcAspectFlags, region.srcMipLevel, region.srcBaseLayer);
+		vk::ImageSubresourceLayers dstSubresource(dstAspectFlags, region.dstMipLevel, region.dstBaseLayer);
 		srcSubresource.layerCount = dstSubresource.layerCount =
 			region.layerCount == 0 ? srcImage->layerCount : region.layerCount;
-		vk::Offset3D srcOffset(region.srcOffset.x,
-			region.srcOffset.y, region.srcOffset.z);
-		vk::Offset3D dstOffset(region.dstOffset.x,
-			region.dstOffset.y, region.dstOffset.z);
+		vk::Offset3D srcOffset(region.srcOffset.x, region.srcOffset.y, region.srcOffset.z);
+		vk::Offset3D dstOffset(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
 		vk::Extent3D extent;
+
 		if (region.extent == 0)
 		{
 			auto mipImageSize = calcSizeAtMip(srcImage->size, region.srcMipLevel);
-			extent = vk::Extent3D((uint32)mipImageSize.x,
-				(uint32)mipImageSize.y, (uint32)mipImageSize.z);
+			extent = vk::Extent3D((uint32)mipImageSize.x, (uint32)mipImageSize.y, (uint32)mipImageSize.z);
 		}
 		else
 		{
-			extent = vk::Extent3D((uint32)region.extent.x,
-				(uint32)region.extent.y, (uint32)region.extent.z);
+			extent = vk::Extent3D((uint32)region.extent.x, (uint32)region.extent.y, (uint32)region.extent.z);
 		}
 
-		imageCopies[i] = vk::ImageCopy(srcSubresource, srcOffset,
-			dstSubresource, dstOffset, extent);
+		imageCopies[i] = vk::ImageCopy(srcSubresource, srcOffset, dstSubresource, dstOffset, extent);
 
 		// TODO: possilby somehow combine these barriers?
 		for (uint32 j = 0; j < srcSubresource.layerCount; j++)
@@ -1658,10 +1574,8 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 			if (!isSameState(oldSrcImageState, newSrcImageState))
 			{
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldSrcImageState.access),
-					vk::AccessFlags(newSrcImageState.access),
-					(vk::ImageLayout)oldSrcImageState.layout,
-					(vk::ImageLayout)newSrcImageState.layout,
+					vk::AccessFlags(oldSrcImageState.access), vk::AccessFlags(newSrcImageState.access),
+					(vk::ImageLayout)oldSrcImageState.layout, (vk::ImageLayout)newSrcImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)srcImage->instance, vk::ImageSubresourceRange(
 						srcAspectFlags, region.srcMipLevel, 1,
@@ -1677,10 +1591,8 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 			if (!isSameState(oldDstImageState, newDstImageState))
 			{
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldDstImageState.access),
-					vk::AccessFlags(newDstImageState.access),
-					(vk::ImageLayout)oldDstImageState.layout,
-					(vk::ImageLayout)newDstImageState.layout,
+					vk::AccessFlags(oldDstImageState.access), vk::AccessFlags(newDstImageState.access),
+					(vk::ImageLayout)oldDstImageState.layout, (vk::ImageLayout)newDstImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)dstImage->instance, vk::ImageSubresourceRange(
 						dstAspectFlags, region.dstMipLevel, 1,
@@ -1699,7 +1611,7 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 		command.regionCount, imageCopies.data());
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::BufferImageCopy> bufferImageCopies;
 
 void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
@@ -1707,41 +1619,33 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto buffer = GraphicsAPI::bufferPool.get(command.buffer);
 	auto image = GraphicsAPI::imagePool.get(command.image);
+	auto regions = (const Image::CopyBufferRegion*)((const uint8*)&command + sizeof(CopyBufferImageCommandBase));
+	auto dstAspectFlags = toVkImageAspectFlags(image->format);
+	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
 
-	auto regions = (const Image::CopyBufferRegion*)(
-		(const uint8*)&command + sizeof(CopyBufferImageCommandBase));
 	if (bufferImageCopies.size() < command.regionCount)
 		bufferImageCopies.resize(command.regionCount);
 
-	auto dstAspectFlags = toVkImageAspectFlags(image->format);
-	uint32 oldPipelineStage = 0, newPipelineStage = 
-		(uint32)vk::PipelineStageFlagBits::eTransfer;
-
 	BufferState newBufferState;
 	newBufferState.access = command.toBuffer ?
-		(uint32)vk::AccessFlagBits::eTransferWrite :
-		(uint32)vk::AccessFlagBits::eTransferRead;
+		(uint32)vk::AccessFlagBits::eTransferWrite : (uint32)vk::AccessFlagBits::eTransferRead;
 	newBufferState.stage = newPipelineStage;
 
 	ImageState newImageState;
 	newImageState.access = command.toBuffer ?
-		(uint32)vk::AccessFlagBits::eTransferRead :
-		(uint32)vk::AccessFlagBits::eTransferWrite;
+		(uint32)vk::AccessFlagBits::eTransferRead : (uint32)vk::AccessFlagBits::eTransferWrite;
 	newImageState.layout = command.toBuffer ?
-		(uint32)vk::ImageLayout::eTransferSrcOptimal :
-		(uint32)vk::ImageLayout::eTransferDstOptimal;
+		(uint32)vk::ImageLayout::eTransferSrcOptimal : (uint32)vk::ImageLayout::eTransferDstOptimal;
 	newImageState.stage = newPipelineStage;
 
 	for (uint32 i = 0; i < command.regionCount; i++)
 	{
 		auto region = regions[i];
-		vk::ImageSubresourceLayers imageSubresource(
-			dstAspectFlags, region.imageMipLevel, region.imageBaseLayer);
-		imageSubresource.layerCount = region.imageLayerCount == 0 ?
-			image->layerCount : region.imageLayerCount;
-		vk::Offset3D dstOffset(region.imageOffset.x,
-			region.imageOffset.y, region.imageOffset.z);
+		vk::ImageSubresourceLayers imageSubresource(dstAspectFlags, region.imageMipLevel, region.imageBaseLayer);
+		imageSubresource.layerCount = region.imageLayerCount == 0 ? image->layerCount : region.imageLayerCount;
+		vk::Offset3D dstOffset(region.imageOffset.x, region.imageOffset.y, region.imageOffset.z);
 		vk::Extent3D dstExtent;
+		
 		if (region.imageExtent == 0)
 		{
 			auto mipImageSize = calcSizeAtMip(image->size, region.imageMipLevel);
@@ -1764,8 +1668,7 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		if (!isSameState(oldBufferState, newBufferState))
 		{
 			vk::BufferMemoryBarrier bufferMemoryBarrier(
-				vk::AccessFlags(oldBufferState.access),
-				vk::AccessFlags(newBufferState.access),
+				vk::AccessFlags(oldBufferState.access), vk::AccessFlags(newBufferState.access),
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 				(VkBuffer)buffer->instance, 0, buffer->binarySize);
 			bufferMemoryBarriers.push_back(bufferMemoryBarrier);
@@ -1781,10 +1684,8 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 			if (!isSameState(oldImageState, newImageState))
 			{
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldImageState.access),
-					vk::AccessFlags(newImageState.access),
-					(vk::ImageLayout)oldImageState.layout,
-					(vk::ImageLayout)newImageState.layout,
+					vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)image->instance, vk::ImageSubresourceRange(
 						dstAspectFlags, region.imageMipLevel, 1,
@@ -1811,7 +1712,7 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static vector<vk::ImageBlit> imageBlits;
 
 void CommandBuffer::processCommand(const BlitImageCommand& command)
@@ -1819,16 +1720,13 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto srcImage = GraphicsAPI::imagePool.get(command.source);
 	auto dstImage = GraphicsAPI::imagePool.get(command.destination);
-
-	auto regions = (const Image::BlitRegion*)(
-		(const uint8*)&command + sizeof(BlitImageCommandBase));
-	if (imageBlits.size() < command.regionCount)
-		imageBlits.resize(command.regionCount);
-
+	auto regions = (const Image::BlitRegion*)( (const uint8*)&command + sizeof(BlitImageCommandBase));
 	auto srcAspectFlags = toVkImageAspectFlags(srcImage->format);
 	auto dstAspectFlags = toVkImageAspectFlags(dstImage->format);
-	uint32 oldPipelineStage = 0, newPipelineStage = 
-		(uint32)vk::PipelineStageFlagBits::eTransfer;
+	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+
+	if (imageBlits.size() < command.regionCount)
+		imageBlits.resize(command.regionCount);
 
 	ImageState newSrcImageState;
 	newSrcImageState.access = (uint32)vk::AccessFlagBits::eTransferRead;
@@ -1843,18 +1741,15 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 	for (uint32 i = 0; i < command.regionCount; i++)
 	{
 		auto region = regions[i];
-		vk::ImageSubresourceLayers srcSubresource(
-			srcAspectFlags, region.srcMipLevel, region.srcBaseLayer);
-		vk::ImageSubresourceLayers dstSubresource(
-			dstAspectFlags, region.dstMipLevel, region.dstBaseLayer);
+		vk::ImageSubresourceLayers srcSubresource(srcAspectFlags, region.srcMipLevel, region.srcBaseLayer);
+		vk::ImageSubresourceLayers dstSubresource(dstAspectFlags, region.dstMipLevel, region.dstBaseLayer);
 		srcSubresource.layerCount = dstSubresource.layerCount =
 			region.layerCount == 0 ? srcImage->layerCount : region.layerCount;
 		array<vk::Offset3D, 2> srcBounds;
-		srcBounds[0] = vk::Offset3D(region.srcOffset.x, 
-			region.srcOffset.y, region.srcOffset.z);
+		srcBounds[0] = vk::Offset3D(region.srcOffset.x, region.srcOffset.y, region.srcOffset.z);
 		array<vk::Offset3D, 2> dstBounds;
-		dstBounds[0] = vk::Offset3D(region.dstOffset.x,
-			region.dstOffset.y, region.dstOffset.z);
+		dstBounds[0] = vk::Offset3D(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
+
 		if (region.srcExtent == 0)
 		{
 			auto mipImageSize = calcSizeAtMip(srcImage->size, region.srcMipLevel);
@@ -1862,8 +1757,7 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 		}
 		else
 		{
-			srcBounds[1] = vk::Offset3D(region.srcExtent.x, 
-				region.srcExtent.y, region.srcExtent.z);
+			srcBounds[1] = vk::Offset3D(region.srcExtent.x, region.srcExtent.y, region.srcExtent.z);
 		}
 		if (region.dstExtent == 0)
 		{
@@ -1872,12 +1766,10 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 		}
 		else
 		{
-			dstBounds[1] = vk::Offset3D(region.dstExtent.x, 
-				region.dstExtent.y, region.dstExtent.z);
+			dstBounds[1] = vk::Offset3D(region.dstExtent.x, region.dstExtent.y, region.dstExtent.z);
 		}
 
-		imageBlits[i] = vk::ImageBlit(srcSubresource, srcBounds,
-			dstSubresource, dstBounds);
+		imageBlits[i] = vk::ImageBlit(srcSubresource, srcBounds, dstSubresource, dstBounds);
 
 		// TODO: possilby somehow combine these barriers?
 		for (uint32 j = 0; j < srcSubresource.layerCount; j++)
@@ -1889,10 +1781,8 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 			if (!isSameState(oldSrcImageState, newSrcImageState))
 			{
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldSrcImageState.access),
-					vk::AccessFlags(newSrcImageState.access),
-					(vk::ImageLayout)oldSrcImageState.layout,
-					(vk::ImageLayout)newSrcImageState.layout,
+					vk::AccessFlags(oldSrcImageState.access), vk::AccessFlags(newSrcImageState.access),
+					(vk::ImageLayout)oldSrcImageState.layout, (vk::ImageLayout)newSrcImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)srcImage->instance, vk::ImageSubresourceRange(
 						srcAspectFlags, region.srcMipLevel, 1,
@@ -1908,10 +1798,8 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 			if (!isSameState(oldDstImageState, newDstImageState))
 			{
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldDstImageState.access),
-					vk::AccessFlags(newDstImageState.access),
-					(vk::ImageLayout)oldDstImageState.layout,
-					(vk::ImageLayout)newDstImageState.layout,
+					vk::AccessFlags(oldDstImageState.access), vk::AccessFlags(newDstImageState.access),
+					(vk::ImageLayout)oldDstImageState.layout, (vk::ImageLayout)newDstImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)dstImage->instance, vk::ImageSubresourceRange(
 						dstAspectFlags, region.dstMipLevel, 1,
@@ -1931,14 +1819,13 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::processCommand(const BeginLabelCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
 	auto floatColor = command.color.toNormFloat4();
-	array<float, 4> values = { floatColor.x, floatColor.y,
-		floatColor.z, floatColor.w };
+	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
 	commandBuffer.beginDebugUtilsLabelEXT(debugLabel, Vulkan::dynamicLoader);
 }
@@ -1952,27 +1839,26 @@ void CommandBuffer::processCommand(const InsertLabelCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
 	auto floatColor = command.color.toNormFloat4();
-	array<float, 4> values = { floatColor.x, floatColor.y,
-		floatColor.z, floatColor.w };
+	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
 	commandBuffer.beginDebugUtilsLabelEXT(debugLabel, Vulkan::dynamicLoader);
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const BeginRenderPassCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)(sizeof(BeginRenderPassCommandBase) +
-		command.clearColorCount * sizeof(float4));
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+	auto commandSize = (uint32)(sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(float4));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BeginRenderPassCommandBase));
+
 	if (command.clearColorCount > 0)
 	{
 		memcpy((uint8*)allocation + sizeof(BeginRenderPassCommandBase),
 			command.clearColors, command.clearColorCount * sizeof(float4));
 	}
+
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
@@ -2017,12 +1903,12 @@ void CommandBuffer::addCommand(const EndRenderPassCommand& command)
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
 }
+
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const ClearAttachmentsCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
-	auto attachmentsSize = command.attachmentCount *
-		sizeof(Framebuffer::ClearAttachment);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+	auto attachmentsSize = command.attachmentCount * sizeof(Framebuffer::ClearAttachment);
 	auto commandSize = (uint32)(sizeof(ClearAttachmentsCommandBase) +
 		attachmentsSize + command.regionCount * sizeof(Framebuffer::ClearRegion));
 	auto allocation = allocateCommand(commandSize);
@@ -2054,11 +1940,11 @@ void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 		type == CommandBufferType::Graphics ||
 		type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)(sizeof(BindDescriptorSetsCommandBase) + 
-		command.descriptorDataSize * sizeof(Pipeline::DescriptorData));
+		command.rangeCount * sizeof(DescriptorSet::Range));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BindDescriptorSetsCommandBase));
 	memcpy((uint8*)allocation + sizeof(BindDescriptorSetsCommandBase),
-		command.descriptorData, command.descriptorDataSize * sizeof(Pipeline::DescriptorData));
+		command.descriptorSetRange, command.rangeCount * sizeof(DescriptorSet::Range));
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
@@ -2078,10 +1964,11 @@ void CommandBuffer::addCommand(const PushConstantsCommand& command)
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
 }
+
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const SetViewportCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(SetViewportCommand);
 	auto allocation = (SetViewportCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2091,8 +1978,7 @@ void CommandBuffer::addCommand(const SetViewportCommand& command)
 }
 void CommandBuffer::addCommand(const SetScissorCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(SetScissorCommand);
 	auto allocation = (SetScissorCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2102,8 +1988,7 @@ void CommandBuffer::addCommand(const SetScissorCommand& command)
 }
 void CommandBuffer::addCommand(const SetViewportScissorCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(SetViewportScissorCommand);
 	auto allocation = (SetViewportScissorCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2113,8 +1998,7 @@ void CommandBuffer::addCommand(const SetViewportScissorCommand& command)
 }
 void CommandBuffer::addCommand(const DrawCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(DrawCommand);
 	auto allocation = (DrawCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2124,8 +2008,7 @@ void CommandBuffer::addCommand(const DrawCommand& command)
 }
 void CommandBuffer::addCommand(const DrawIndexedCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(DrawIndexedCommand);
 	auto allocation = (DrawIndexedCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2146,6 +2029,8 @@ void CommandBuffer::addCommand(const DispatchCommand& command)
 	lastSize = commandSize;
 	hasAnyCommand = true;
 }
+
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const FillBufferCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
@@ -2177,6 +2062,8 @@ void CommandBuffer::addCommand(const CopyBufferCommand& command)
 	lastSize = commandSize;
 	hasAnyCommand = true;
 }
+
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const ClearImageCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
@@ -2244,6 +2131,7 @@ void CommandBuffer::addCommand(const BlitImageCommand& command)
 }
 
 #if GARDEN_DEBUG
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const BeginLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;

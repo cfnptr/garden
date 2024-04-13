@@ -65,8 +65,8 @@ void main()
 		CacheItem item = cache.items[i];
 		float3 l = r * item.l.xyz;
 		float3 c0 = textureLod(cubemap, l, item.nolMip.y).rgb;
-        li += c0 * item.nolMip.x;
-    }
+		li += c0 * item.nolMip.x;
+	}
 
 	imageStore(specular, int3(gl.globalInvocationID), float4(li, 1.0f));
 }

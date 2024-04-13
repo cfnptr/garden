@@ -18,8 +18,8 @@
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/graphics.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/render/forward.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
@@ -29,6 +29,20 @@
 using namespace ecsm;
 using namespace garden;
 using namespace platformer;
+
+static void loadWindowData()
+{
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	graphicsSystem->setWindowTitle("Platformer");
+
+	#if GARDEN_OS_WINDOWS
+	graphicsSystem->setWindowIcon(
+	{
+		"windows/icon96x96", "windows/icon64x64",
+		"windows/icon32x32", "windows/icon16x16"
+	});
+	#endif
+}
 
 void entryPoint()
 {
@@ -43,14 +57,13 @@ void entryPoint()
 	manager->createSystem<BakedTransformSystem>();
 	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();
+	manager->createSystem<ForwardRenderSystem>();
 	manager->createSystem<ThreadSystem>();
 	#if GARDEN_EDITOR
 	manager->createSystem<EditorRenderSystem>();
 	#endif
 	manager->initialize();
-	
-	GraphicsSystem::getInstance()->setWindowTitle("Platformer");
-
+	loadWindowData();
 	manager->start();
 	delete manager;
 }

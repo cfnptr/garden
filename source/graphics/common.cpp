@@ -20,6 +20,7 @@ using namespace math;
 using namespace garden::graphics;
 
 #if GARDEN_DEBUG
+//**********************************************************************************************************************
 void DebugLabel::begin(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());

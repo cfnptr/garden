@@ -74,7 +74,8 @@ public:
 	};
 
 	/**
-	 * @brief Buffer memory copy region.
+	 * @brief Buffer memory copy region description.
+	 * @details See the @ref Buffer::copy().
 	 */
 	struct CopyRegion final
 	{
@@ -86,7 +87,7 @@ private:
 	Bind bind = {};
 	uint8* map = nullptr;
 	
-	// Use GraphicsSystem to create, destroy and access buffers.
+	// Note: Use GraphicsSystem to create, destroy and access buffers.
 
 	Buffer() = default;
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size, uint64 version);
@@ -127,7 +128,7 @@ public:
 	bool isMappable() const;
 	/**
 	 * @brief Invalidates buffer memory.
-	 * @note Always invalidate buffer memory before reading!
+	 * @warning Always invalidate buffer memory before reading!
 	 * 
 	 * @param size memory region size (0 = full buffer size)
 	 * @param offset memory region offset
@@ -135,7 +136,7 @@ public:
 	void invalidate(uint64 size = 0, uint64 offset = 0);
 	/**
 	 * @brief Flushes buffer memory.
-	 * @note Always flush buffer memory before using it for rendering!
+	 * @warning Always flush buffer memory before using it for rendering!
 	 * 
 	 * @param size memory region size (0 = full buffer size)
 	 * @param offset memory region offset
@@ -208,7 +209,7 @@ public:
 	//******************************************************************************************************************
 
 	/**
-	 * @brief Fills buffer with 4 byte data.
+	 * @brief Fills buffer with 4 byte data. (clears)
 	 * 
 	 * @details
 	 * The size must be either a multiple of 4, or 0 to fill the range from offset to the end of the buffer. If 0 size 
@@ -221,18 +222,19 @@ public:
 	void fill(uint32 value, uint64 size = 0, uint64 offset = 0);
 
 	/**
-	 * @brief Copies data from the source buffer to the destination.
-	 * @todo Add support of self copying if regions not overlapping.
+	 * @brief Copies data regions from the source buffer to the destination.
+	 * @details Fundamental operation used to copy data from one buffer to another within the GPU's memory.
 	 * 
 	 * @param source source buffer
 	 * @param destination destination buffer
 	 * @param[in] regions target memory regions
-	 * @param count memory region count
+	 * @param count region array size
 	 */
 	static void copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* regions, uint32 count);
 
 	/**
-	 * @brief Copies data from the source buffer to the destination.
+	 * @brief Copies data regions from the source buffer to the destination.
+	 * @details See the @ref Buffer::copy().
 	 * 
 	 * @tparam N array size
 	 * @param source source buffer
@@ -243,7 +245,8 @@ public:
 	static void copy(ID<Buffer> source, ID<Buffer> destination, const array<CopyRegion, N>& regions)
 	{ copy(source, destination, regions.data(), (uint32)N); }
 	/**
-	 * @brief Copies data from the source buffer to the destination.
+	 * @brief Copies data regions from the source buffer to the destination.
+	 * @details See the @ref Buffer::copy().
 	 * 
 	 * @param source source buffer
 	 * @param destination destination buffer
@@ -252,7 +255,8 @@ public:
 	static void copy(ID<Buffer> source, ID<Buffer> destination, const vector<CopyRegion>& regions)
 	{ copy(source, destination, regions.data(), (uint32)regions.size()); }
 	/**
-	 * @brief Copies data from the source buffer to the destination.
+	 * @brief Copies data region from the source buffer to the destination.
+	 * @details See the @ref Buffer::copy().
 	 * 
 	 * @param source source buffer
 	 * @param destination destination buffer
@@ -262,6 +266,7 @@ public:
 	{ copy(source, destination, &region, 1); }
 	/**
 	 * @brief Copies all data from the source buffer to the destination.
+	 * @details See the @ref Buffer::copy().
 	 * @note Source and destination buffer sizes should be the same.
 	 * 
 	 * @param source source buffer
@@ -269,6 +274,8 @@ public:
 	 */
 	static void copy(ID<Buffer> source, ID<Buffer> destination)
 	{ CopyRegion region; copy(source, destination, &region, 1); }
+
+	// TODO: Add support of self copying if regions not overlapping.
 };
 
 /**
@@ -284,14 +291,13 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Bind)
  */
 static string_view toString(Buffer::Bind bufferBind)
 {
-	if (hasOneFlag(bufferBind, Buffer::Bind::None)) return "None";
 	if (hasOneFlag(bufferBind, Buffer::Bind::TransferSrc)) return "TransferSrc";
 	if (hasOneFlag(bufferBind, Buffer::Bind::TransferDst)) return "TransferDst";
 	if (hasOneFlag(bufferBind, Buffer::Bind::Vertex)) return "Vertex";
 	if (hasOneFlag(bufferBind, Buffer::Bind::Index)) return "Index";
 	if (hasOneFlag(bufferBind, Buffer::Bind::Uniform)) return "Uniform";
 	if (hasOneFlag(bufferBind, Buffer::Bind::Storage)) return "Storage";
-	throw runtime_error("Unknown buffer bind type. (" + to_string((int)bufferBind) + ")");
+	return "None";
 }
 /**
  * @brief Returns buffer bind name string list.
@@ -320,13 +326,13 @@ class BufferExt final
 public:
 	/**
 	 * @brief Returns buffer bind type.
-	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * @warning In most cases you should use @ref Buffer functions.
 	 * @param[in] buffer target buffer instance
 	 */
 	static Buffer::Bind& getBind(Buffer& buffer) noexcept { return buffer.bind; }
 	/**
 	 * @brief Returns buffer memory map.
-	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * @warning In most cases you should use @ref Buffer functions.
 	 * @param[in] buffer target buffer instance
 	 */
 	static uint8*& getMap(Buffer& buffer) noexcept { return buffer.map; }

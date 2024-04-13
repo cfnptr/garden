@@ -77,8 +77,8 @@ static const float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790
 
 static float2 toSphericalMapUV(const float3& v)
 {
-    auto st = float2(atan2(v.x, v.z), asin(-v.y));
-    return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
+	auto st = float2(atan2(v.x, v.z), asin(-v.y));
+	return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
 }
 static float4 filterCubeMap(float2 coords, const float4* pixels, int2 sizeMinus1, int32 sizeX)
 {

@@ -75,11 +75,9 @@ static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& cap
 	{
 		return vk::Extent2D(
 			clamp((uint32)framebufferSize.x,
-				capabilities.minImageExtent.width,
-				capabilities.maxImageExtent.width),
+				capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
 			clamp((uint32)framebufferSize.y,
-				capabilities.minImageExtent.height,
-				capabilities.maxImageExtent.height));
+				capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
 	}
 	return capabilities.currentExtent;
 }
@@ -263,8 +261,8 @@ Swapchain::Swapchain(int2 framebufferSize, bool useVsync, bool useTripleBufferin
 		Vulkan::graphicsQueueFamilyIndex, framebufferSize, useThreading);
 
 	this->framebufferSize = framebufferSize;
-	this->useVsync = useVsync;
-	this->useTripleBuffering = useTripleBuffering;
+	this->vsync = useVsync;
+	this->tripleBuffering = useTripleBuffering;
 	this->useThreading = useThreading;
 }
 void Swapchain::destroy()
@@ -301,8 +299,8 @@ void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuff
 		Vulkan::graphicsQueueFamilyIndex, framebufferSize, useThreading);
 
 	this->framebufferSize = framebufferSize;
-	this->useVsync = useVsync;
-	this->useTripleBuffering = useTripleBuffering;
+	this->vsync = useVsync;
+	this->tripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
 	this->frameIndex = 0;
 }
@@ -310,8 +308,8 @@ void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuff
 //*********************************************************************************************************************
 bool Swapchain::acquireNextImage()
 {
-	auto fence = fences[frameIndex]; // Note: emergency 10 seconds timeout.
-	auto waitResult = Vulkan::device.waitForFences(1, &fence, VK_FALSE, 10000000000);
+	auto fence = fences[frameIndex]; 
+	auto waitResult = Vulkan::device.waitForFences(1, &fence, VK_FALSE, 10000000000); // Note: emergency 10 seconds timeout.
 	vk::resultCheck(waitResult, "vk::Device::waitForFences");
 	Vulkan::device.resetFences(fence);
 
@@ -347,18 +345,14 @@ bool Swapchain::acquireNextImage()
 void Swapchain::submit()
 {
 	auto& buffer = buffers[bufferIndex];
-	vk::PipelineStageFlags pipelineStage =
-		vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	vk::SubmitInfo submitInfo(
-		1, &imageAcquiredSemaphores[frameIndex],
-		&pipelineStage, 1, &buffer.primaryCommandBuffer,
-		1, &drawCompleteSemaphores[frameIndex]);
+	vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	vk::SubmitInfo submitInfo(1, &imageAcquiredSemaphores[frameIndex], &pipelineStage, 
+		1, &buffer.primaryCommandBuffer, 1, &drawCompleteSemaphores[frameIndex]);
 	Vulkan::frameQueue.submit(submitInfo, fences[frameIndex]);
 }
 bool Swapchain::present()
 {
-	vk::PresentInfoKHR presentInfo(
-		1, &drawCompleteSemaphores[frameIndex], 1, &instance, &bufferIndex);
+	vk::PresentInfoKHR presentInfo(1, &drawCompleteSemaphores[frameIndex], 1, &instance, &bufferIndex);
 	auto result = Vulkan::frameQueue.presentKHR(&presentInfo); // & is required here.
 
 	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
@@ -373,8 +367,7 @@ bool Swapchain::present()
 //*********************************************************************************************************************
 static vector<vk::Format> colorAttachmentFormats;
 
-void Swapchain::beginSecondaryCommandBuffers(
-	void* framebuffer, void* renderPass, uint8 subpassIndex,
+void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass, uint8 subpassIndex,
 	const vector<Framebuffer::OutputAttachment>& colorAttachments,
 	Framebuffer::OutputAttachment depthStencilAttachment, const string& name)
 {
@@ -392,19 +385,15 @@ void Swapchain::beginSecondaryCommandBuffers(
 	}
 	else
 	{
-		buffer.secondaryCommandBuffers.resize(
-			buffer.secondaryCommandBufferIndex + commandBufferCount);
-		auto secondaryCommandBuffers =
-			buffer.secondaryCommandBuffers.data() + buffer.secondaryCommandBufferIndex;
-		vk::CommandBufferAllocateInfo allocateInfo(
-			VK_NULL_HANDLE, vk::CommandBufferLevel::eSecondary, 1);
+		buffer.secondaryCommandBuffers.resize(buffer.secondaryCommandBufferIndex + commandBufferCount);
+		auto secondaryCommandBuffers = buffer.secondaryCommandBuffers.data() + buffer.secondaryCommandBufferIndex;
+		vk::CommandBufferAllocateInfo allocateInfo(VK_NULL_HANDLE, vk::CommandBufferLevel::eSecondary, 1);
 		
 		for (uint32 i = 0; i < commandBufferCount; i++)
 		{
 			allocateInfo.commandPool = secondaryCommandPools[i];
 			vk::CommandBuffer commandBuffer;
-			auto allocateResult = Vulkan::device.allocateCommandBuffers(
-				&allocateInfo, &commandBuffer);
+			auto allocateResult = Vulkan::device.allocateCommandBuffers(&allocateInfo, &commandBuffer);
 			vk::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 			secondaryCommandBuffers[i] = commandBuffer;
 			Vulkan::secondaryCommandBuffers[i] = commandBuffer;
@@ -460,8 +449,7 @@ void Swapchain::beginSecondaryCommandBuffers(
 			}
 			else
 			{
-				inheritanceRenderingInfo.depthAttachmentFormat =
-					inheritanceRenderingInfo.stencilAttachmentFormat =
+				inheritanceRenderingInfo.depthAttachmentFormat = inheritanceRenderingInfo.stencilAttachmentFormat =
 					toVkFormat(imageView->getFormat());
 			}
 		}

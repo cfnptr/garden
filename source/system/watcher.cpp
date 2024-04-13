@@ -44,7 +44,7 @@ static void onChange(ConstFSEventStreamRef streamRef,
 	locker.lock();
 	for (psize i = 0; i < numEvents; i++)
 	{
-        if (eventFlags[i] & (kFSEventStreamEventFlagItemModified |
+		if (eventFlags[i] & (kFSEventStreamEventFlagItemModified |
 			kFSEventStreamEventFlagItemIsFile))
 		{
 			changedFiles.push_back(string(paths[i]));
@@ -64,18 +64,18 @@ void WatcherSystem::initialize()
 	auto pathsToWatch = CFArrayCreate(nullptr, (const void**)&pathToWatch, 1, nullptr);
 
 	FSEventStreamContext context;
-    context.version = 0;
-    context.info = this;
-    context.retain = NULL;
-    context.release = NULL;
-    context.copyDescription = NULL;
+	context.version = 0;
+	context.info = this;
+	context.retain = NULL;
+	context.release = NULL;
+	context.copyDescription = NULL;
 
 	auto stream = FSEventStreamCreate(NULL, &onChange, &context, pathsToWatch,
-        kFSEventStreamEventIdSinceNow, 1.0, kFSEventStreamCreateFlagFileEvents);
+		kFSEventStreamEventIdSinceNow, 1.0, kFSEventStreamCreateFlagFileEvents);
 	this->instance = stream;
 
 	dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-    FSEventStreamSetDispatchQueue(stream, queue);
+	FSEventStreamSetDispatchQueue(stream, queue);
 	FSEventStreamStart(stream);
 	CFRelease(pathsToWatch);
 	CFRelease(pathToWatch);

@@ -19,13 +19,12 @@
 #if GARDEN_EDITOR
 
 using namespace mpio;
-using namespace mpmt;
 using namespace garden;
 
 //**********************************************************************************************************************
 LogEditorSystem::LogEditorSystem(Manager* manager, LogSystem* system) : EditorSystem(manager, system)
 {
-	SUBSCRIBE_TO_EVENT("RenderEditor", LogEditorSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
 LogEditorSystem::~LogEditorSystem()
@@ -33,7 +32,7 @@ LogEditorSystem::~LogEditorSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("RenderEditor", LogEditorSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 	}
 }
@@ -70,7 +69,7 @@ static void updateTextBuffer(string& textBuffer,
 }
 
 //**********************************************************************************************************************
-void LogEditorSystem::renderEditor()
+void LogEditorSystem::editorRender()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;
@@ -157,7 +156,7 @@ void LogEditorSystem::log(LogLevel level, const string& message)
 		timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec, milliseconds);
 
 	char threadName[16];
-	Thread::getName(threadName, 16);
+	mpmt::Thread::getName(threadName, 16);
 
 	logBuffer << "[" << formattedTime << "] " << "[" << threadName << 
 		"] [" << logLevelToString(level) << "]: " << message << "\n";

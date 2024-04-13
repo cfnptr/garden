@@ -27,7 +27,7 @@ HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager,
 {
 	if (manager->has<TransformSystem>())
 	{
-		SUBSCRIBE_TO_EVENT("RenderEditor", HierarchyEditorSystem::renderEditor);
+		SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
 		SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}
 }
@@ -36,7 +36,7 @@ HierarchyEditorSystem::~HierarchyEditorSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		TRY_UNSUBSCRIBE_FROM_EVENT("RenderEditor", HierarchyEditorSystem::renderEditor);
+		TRY_UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
 		TRY_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}
 }
@@ -164,7 +164,7 @@ static void renderHierarchyEntity(Manager* manager, ID<Entity> renderEntity, ID<
 }
 
 //**********************************************************************************************************************
-void HierarchyEditorSystem::renderEditor()
+void HierarchyEditorSystem::editorRender()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;
@@ -198,9 +198,9 @@ void HierarchyEditorSystem::renderEditor()
 			const auto hotZoneHeight = 12.0f, scrollSpeed = 1.0f;
 
 			if (mousePos.y - containerPos.y < hotZoneHeight)
-    			ImGui::SetScrollY(ImGui::GetScrollY() - scrollSpeed);
+				ImGui::SetScrollY(ImGui::GetScrollY() - scrollSpeed);
 			if ((containerPos.y + containerSize.y) - mousePos.y < hotZoneHeight)
-    			ImGui::SetScrollY(ImGui::GetScrollY() + scrollSpeed);
+				ImGui::SetScrollY(ImGui::GetScrollY() + scrollSpeed);
 			// TODO: adjust speed based on cursor to edge distance?
 
 			auto payload = ImGui::AcceptDragDropPayload("Entity");

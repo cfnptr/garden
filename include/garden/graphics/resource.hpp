@@ -54,7 +54,7 @@ protected:
 	string debugName = UNNAMED_RESOURCE;
 	#endif
 
-	// Use GraphicsSystem to create, destroy and access graphics resources.
+	// Note: Use GraphicsSystem to create, destroy and access graphics resources.
 
 	Resource() = default;
 	virtual bool destroy() = 0;

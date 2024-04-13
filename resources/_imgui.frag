@@ -4,6 +4,6 @@ layout(set=0, binding=0) uniform sampler2D sTexture;
 layout(location = 0) in struct { vec4 Color; vec2 UV; } In;
 void main()
 {
-    fColor = In.Color * texture(sTexture, In.UV.st);
-    fColor = pow(fColor, vec4(2.2)); // Use sRGB framebuffer
+	fColor = In.Color * texture(sTexture, In.UV.st);
+	fColor = pow(fColor, vec4(2.2)); // Use sRGB framebuffer
 }

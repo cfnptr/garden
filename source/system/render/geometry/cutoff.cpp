@@ -14,7 +14,7 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-// TODO: refactor this code.
+// TODO: refactor this code. and rename to cutout
 
 /*
 #include "garden/system/render/geometry/cutoff.hpp"

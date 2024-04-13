@@ -26,7 +26,7 @@ using namespace garden;
 GpuResourceEditorSystem::GpuResourceEditorSystem(Manager* manager,
 	GraphicsSystem* system) : EditorSystem(manager, system)
 {
-	SUBSCRIBE_TO_EVENT("RenderEditor", GpuResourceEditorSystem::renderEditor);
+	SUBSCRIBE_TO_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 }
 GpuResourceEditorSystem::~GpuResourceEditorSystem()
@@ -34,7 +34,7 @@ GpuResourceEditorSystem::~GpuResourceEditorSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("RenderEditor", GpuResourceEditorSystem::renderEditor);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 	}
 }
@@ -43,7 +43,7 @@ GpuResourceEditorSystem::~GpuResourceEditorSystem()
 static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem, string& resourceSearch,
 	bool& searchCaseSensitive, Resource* items, psize itemSize, string& debugName, const char* resourceName)
 {
-	ImGui::TextWrapped("%lu/%lu (count/occupancy)", count, occupancy);
+	ImGui::TextWrapped("%lu/%lu (count/occupancy)", (unsigned long)count, (unsigned long)occupancy);
 	ImGui::BeginChild("##itemList", ImVec2(256, -(ImGui::GetFrameHeightWithSpacing() + 4)),
 		ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -135,7 +135,7 @@ static void renderBuffers(uint32& selectedItem, string& resourceSearch, bool& se
 
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(bufferName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", selectedItem + 1);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Bind types: { %s }", toStringList(buffer.getBind()).c_str());
 	renderMemoryDetails(allocationInfo, memoryType, memoryHeap, buffer);
 	ImGui::Checkbox("Mappable", &isMappable);
@@ -161,13 +161,14 @@ static void renderImages(uint32& selectedItem, string& resourceSearch, bool& sea
 
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(imageName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", selectedItem + 1);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(image.getFormat()).data());
 	ImGui::TextWrapped("Bind types: { %s }", toStringList(image.getBind()).c_str());
-	ImGui::TextWrapped("Image size: %ldx%ldx%ld", image.getSize().x, image.getSize().y, image.getSize().z);
-	ImGui::TextWrapped("Layer count: %lu", image.getLayerCount());
-	ImGui::TextWrapped("Mip count: %lu", (uint32)image.getMipCount());
+	ImGui::TextWrapped("Image size: %ldx%ldx%ld", (long)image.getSize().x,
+		(long)image.getSize().y, (long)image.getSize().z);
+	ImGui::TextWrapped("Layer count: %lu", (unsigned long)image.getLayerCount());
+	ImGui::TextWrapped("Mip count: %lu", (unsigned long)image.getMipCount());
 	renderMemoryDetails(allocationInfo, memoryType, memoryHeap, image);
 	ImGui::Checkbox("Swachain", &isSwapchain);
 	ImGui::EndChild();
@@ -196,14 +197,14 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch, bool&
 
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(imageViewName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", selectedItem + 1);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Image: %s", imageName.c_str());
 	ImGui::TextWrapped("Image type: %s", toString(imageView.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(imageView.getFormat()).data());
-	ImGui::TextWrapped("Base layer: %lu", imageView.getBaseLayer());
-	ImGui::TextWrapped("Layer count: %lu", imageView.getLayerCount());
-	ImGui::TextWrapped("Base mip: %lu", (uint32)imageView.getBaseMip());
-	ImGui::TextWrapped("Mip count: %lu", (uint32)imageView.getMipCount());
+	ImGui::TextWrapped("Base layer: %lu", (unsigned long)imageView.getBaseLayer());
+	ImGui::TextWrapped("Layer count: %lu", (unsigned long)imageView.getLayerCount());
+	ImGui::TextWrapped("Base mip: %lu", (unsigned long)imageView.getBaseMip());
+	ImGui::TextWrapped("Mip count: %lu", (unsigned long)imageView.getMipCount());
 	ImGui::Checkbox("Default", &isDefault);
 	ImGui::EndChild();
 	renderSearch(resourceSearch, searchCaseSensitive);
@@ -222,12 +223,14 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch, boo
 	auto& framebuffer = framebuffers[selectedItem];
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(framebufferName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", *GraphicsAPI::framebufferPool.getID(&framebuffer));
-	ImGui::TextWrapped("Size: %ldx%ld", framebuffer.getSize().x, framebuffer.getSize().y);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)*GraphicsAPI::framebufferPool.getID(&framebuffer));
+	ImGui::TextWrapped("Size: %ldx%ld", (long)framebuffer.getSize().x, (long)framebuffer.getSize().y);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Color attachments"))
 	{
+		ImGui::Indent();
+
 		auto& colorAttachments = framebuffer.getColorAttachments();
 		for (psize i = 0; i < colorAttachments.size(); i++)
 		{
@@ -247,11 +250,15 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch, boo
 
 		if (colorAttachments.empty())
 			ImGui::TextDisabled("None");
+		
+		ImGui::Unindent();
 		ImGui::Spacing();
 	}
 
 	if (ImGui::CollapsingHeader("Depth / Stencil attachment"))
 	{
+		ImGui::Indent();
+
 		auto depthStencilAttachment = framebuffer.getDepthStencilAttachment();
 		if (depthStencilAttachment.imageView)
 		{
@@ -270,24 +277,30 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch, boo
 		{
 			ImGui::TextDisabled("None");
 		}
+
+		ImGui::Unindent();
 		ImGui::Spacing();
 	}
 
 	if (ImGui::CollapsingHeader("Subpasses"))
 	{
+		ImGui::Indent();
+
 		auto& subpasses = framebuffer.getSubpasses();
 		for (psize i = 0; i < subpasses.size(); i++)
 		{
 			auto& subpass = subpasses[i];
 			ImGui::SeparatorText(to_string(i).c_str());
 			ImGui::TextWrapped("Pipeline type: %s", toString(subpass.pipelineType).data());
-			ImGui::TextWrapped("Input attachment count: %lu", (uint32)subpass.inputAttachments.size());
-			ImGui::TextWrapped("Output attachment count: %lu", (uint32)subpass.outputAttachments.size());
+			ImGui::TextWrapped("Input attachment count: %lu", (unsigned long)subpass.inputAttachments.size());
+			ImGui::TextWrapped("Output attachment count: %lu", (unsigned long)subpass.outputAttachments.size());
 			// TODO: render input and output attachment list.
 		}
 
 		if (subpasses.empty())
 			ImGui::TextDisabled("None");
+		
+		ImGui::Unindent();
 		ImGui::Spacing();
 	}
 
@@ -328,21 +341,26 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch, b
 
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(descriptorSetName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", selectedItem + 1);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Pipeline: %s", pipelineName.c_str());
 	ImGui::TextWrapped("Pipeline type: %s", toString(descriptorSet.getPipelineType()).data());
-	ImGui::TextWrapped("Index: %lu", (uint32)descriptorSet.getIndex());
-	ImGui::TextWrapped("Set count: %lu", descriptorSet.getSetCount());
+	ImGui::TextWrapped("Index: %lu", (unsigned long)descriptorSet.getIndex());
+	ImGui::TextWrapped("Set count: %lu", (unsigned long)descriptorSet.getSetCount());
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Uniforms"))
 	{
+		ImGui::Indent();
+
 		auto& uniforms = descriptorSet.getUniforms();
 		for (auto& pair : uniforms)
 			ImGui::TextWrapped("%s", pair.first.c_str());
 		// TODO: render resource sets.
 		if (uniforms.empty())
 			ImGui::TextDisabled("None");
+
+		ImGui::Unindent();
+		ImGui::Spacing();
 	}
 
 	ImGui::EndChild();
@@ -352,18 +370,20 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch, b
 //**********************************************************************************************************************
 static void renderPipelineDetails(const Pipeline& pipeline)
 {
-	bool isUseAsync = pipeline.isUseAsync();
+	bool useAsyncRecording = pipeline.useAsyncRecording();
 	bool isBindless = pipeline.isBindless();
-	ImGui::TextWrapped("Path: %s", pipeline.getPath().c_str());
-	ImGui::TextWrapped("Variant count: %lu", (uint32)pipeline.getVariantCount());
-	ImGui::TextWrapped("Push constants size: %lu", (uint32)pipeline.getPushConstantsSize());
-	ImGui::TextWrapped("Max bindless count: %lu", pipeline.getMaxBindlessCount());
-	ImGui::Checkbox("Use async", &isUseAsync);
+	ImGui::TextWrapped("Path: %s", pipeline.getPath().generic_string().c_str());
+	ImGui::TextWrapped("Variant count: %lu", (unsigned long)pipeline.getVariantCount());
+	ImGui::TextWrapped("Push constants size: %lu", (unsigned long)pipeline.getPushConstantsSize());
+	ImGui::TextWrapped("Max bindless count: %lu", (unsigned long)pipeline.getMaxBindlessCount());
+	ImGui::Checkbox("Async recording", &useAsyncRecording);
 	ImGui::Checkbox("Bindless", &isBindless);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Uniforms"))
 	{
+		ImGui::Indent();
+
 		auto& uniforms = pipeline.getUniforms();
 		for (auto& pair : uniforms)
 		{
@@ -373,15 +393,18 @@ static void renderPipelineDetails(const Pipeline& pipeline)
 			ImGui::SeparatorText(pair.first.c_str());
 			ImGui::TextWrapped("Type: %s", toString(uniform.type).data());
 			ImGui::TextWrapped("Shader stages: %s", toStringList(uniform.shaderStages).data());
-			ImGui::TextWrapped("Binding index: %lu", (uint32)uniform.bindingIndex);
-			ImGui::TextWrapped("Descriptor set index: %lu", (uint32)uniform.descriptorSetIndex);
-			ImGui::TextWrapped("Array size: %lu", (uint32)uniform.arraySize);
+			ImGui::TextWrapped("Binding index: %lu", (unsigned long)uniform.bindingIndex);
+			ImGui::TextWrapped("Descriptor set index: %lu", (unsigned long)uniform.descriptorSetIndex);
+			ImGui::TextWrapped("Array size: %lu", (unsigned long)uniform.arraySize);
 			ImGui::Checkbox("Read access", &readAccess);
 			ImGui::Checkbox("Write access", &writeAccess);
 		}
 
 		if (uniforms.empty())
 			ImGui::TextDisabled("None");
+
+		ImGui::Unindent();
+		ImGui::Spacing();
 	}
 }
 
@@ -406,9 +429,9 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& resourceSearch
 
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(graphicsPipelineName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", selectedItem + 1);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Framebuffer: %s", framebufferName.c_str());
-	ImGui::TextWrapped("Subpass index: %lu", (uint32)graphicsPipeline.getSubpassIndex());
+	ImGui::TextWrapped("Subpass index: %lu", (unsigned long)graphicsPipeline.getSubpassIndex());
 	renderPipelineDetails(graphicsPipeline);
 	ImGui::EndChild();
 	renderSearch(resourceSearch, searchCaseSensitive);
@@ -427,16 +450,16 @@ static void renderComputePipelines(uint32& selectedItem, string& resourceSearch,
 	auto& computePipeline = computePipelines[selectedItem];
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));
 	ImGui::SeparatorText(computePipelineName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", selectedItem + 1);
-	ImGui::TextWrapped("Local size: %ldx%ldx%ld", computePipeline.getLocalSize().x,
-		computePipeline.getLocalSize().y, computePipeline.getLocalSize().z);
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Local size: %ldx%ldx%ld", (long)computePipeline.getLocalSize().x,
+		(long)computePipeline.getLocalSize().y, (long)computePipeline.getLocalSize().z);
 	renderPipelineDetails(computePipeline);
 	ImGui::EndChild();
 	renderSearch(resourceSearch, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
-void GpuResourceEditorSystem::renderEditor()
+void GpuResourceEditorSystem::editorRender()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;

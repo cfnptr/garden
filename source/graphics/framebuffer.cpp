@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/framebuffer.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -44,17 +42,14 @@ bool Framebuffer::isCurrentRenderPassAsync() noexcept
 	return !Vulkan::secondaryCommandBuffers.empty();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 {
 	auto subpassCount = (uint32)subpasses.size();
 	uint32 referenceCount = 0, referenceOffset = 0;
 
 	for	(auto& subpass : subpasses)
-	{
-		referenceCount += (uint32)(subpass.inputAttachments.size() +
-			subpass.outputAttachments.size());
-	}
+		referenceCount += (uint32)(subpass.inputAttachments.size() + subpass.outputAttachments.size());
 
 	map<ID<ImageView>, ImageViewState> imageViewStates;
 	vector<vk::AttachmentDescription> attachmentDescriptions;
@@ -70,11 +65,9 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 		auto& outputAttachments = subpass.outputAttachments;
 		
 		vk::SubpassDescription subpassDescription;
-		subpassDescription.pipelineBindPoint =
-			toVkPipelineBindPoint(subpass.pipelineType);
+		subpassDescription.pipelineBindPoint = toVkPipelineBindPoint(subpass.pipelineType);
 		subpassDescription.inputAttachmentCount = (uint32)inputAttachments.size();
-		subpassDescription.pInputAttachments =
-			attachmentReferences.data() + referenceOffset;
+		subpassDescription.pInputAttachments = attachmentReferences.data() + referenceOffset;
 		subpassDescription.colorAttachmentCount = (uint32)outputAttachments.size();
 		subpassDescription.pColorAttachments =
 			attachmentReferences.data() + referenceOffset + inputAttachments.size();
@@ -113,8 +106,7 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 			auto result = imageViewStates.find(outputAttachment.imageView);
 
 			auto imageLayout = isImageFormatColor ?
-				vk::ImageLayout::eColorAttachmentOptimal :
-				vk::ImageLayout::eDepthStencilAttachmentOptimal;
+				vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
 			if (result != imageViewStates.end())
 			{
@@ -144,8 +136,7 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 				if (!isImageFormatColor)
 				{
 					subpassDescription.colorAttachmentCount--;
-					subpassDescription.pDepthStencilAttachment =
-						&attachmentReferences[j + referenceOffset];
+					subpassDescription.pDepthStencilAttachment = &attachmentReferences[j + referenceOffset];
 				}
 
 				// TODO: check if clear/load/store are the same as in first declaration.
@@ -219,40 +210,34 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 				{
 					if (outputAttachment.clear) // TODO: support separated depth/stencil clear?
 					{
-						attachmentDescription.loadOp =
-							attachmentDescription.stencilLoadOp =
+						attachmentDescription.loadOp = attachmentDescription.stencilLoadOp =
 							vk::AttachmentLoadOp::eClear;
 					}
 					else if (outputAttachment.load)
 					{
-						attachmentDescription.loadOp =
-							attachmentDescription.stencilLoadOp =
+						attachmentDescription.loadOp = attachmentDescription.stencilLoadOp =
 							vk::AttachmentLoadOp::eLoad;
 					}
 					else
 					{
-						attachmentDescription.loadOp =
-							attachmentDescription.stencilLoadOp =
+						attachmentDescription.loadOp = attachmentDescription.stencilLoadOp =
 							vk::AttachmentLoadOp::eDontCare;
 					}
 
 					if (outputAttachment.store)
 					{
-						attachmentDescription.storeOp =
-							attachmentDescription.stencilStoreOp = 
+						attachmentDescription.storeOp = attachmentDescription.stencilStoreOp =
 							vk::AttachmentStoreOp::eStore;
 					}
 					else
 					{
-						attachmentDescription.storeOp =
-							attachmentDescription.stencilStoreOp = 
+						attachmentDescription.storeOp = attachmentDescription.stencilStoreOp =
 							vk::AttachmentStoreOp::eDontCare;
 					}
 				}
 
 				subpassDescription.colorAttachmentCount--;
-				subpassDescription.pDepthStencilAttachment =
-					&attachmentReferences[j + referenceOffset];
+				subpassDescription.pDepthStencilAttachment = &attachmentReferences[j + referenceOffset];
 				
 				if (!this->depthStencilAttachment.imageView)
 				{
@@ -260,8 +245,7 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 				}
 				else
 				{
-					GARDEN_ASSERT(outputAttachment.imageView ==
-						this->depthStencilAttachment.imageView);
+					GARDEN_ASSERT(outputAttachment.imageView == this->depthStencilAttachment.imageView);
 				}
 			}
 
@@ -270,17 +254,13 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 
 			if (isImageFormatColor)
 			{
-				imageViewState.stage = (uint32)
-					vk::PipelineStageFlagBits::eColorAttachmentOutput;
-				imageViewState.access = (uint32)
-					vk::AccessFlagBits::eColorAttachmentWrite;
+				imageViewState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
+				imageViewState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
 			}
 			else
 			{
-				imageViewState.stage = (uint32)
-					vk::PipelineStageFlagBits::eLateFragmentTests;
-				imageViewState.access = (uint32)
-					vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+				imageViewState.stage = (uint32)vk::PipelineStageFlagBits::eLateFragmentTests;
+				imageViewState.access = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 			}
 			
 			imageViewStates.emplace(outputAttachment.imageView, imageViewState);
@@ -294,10 +274,8 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 		{
 			// TODO: check if there is no redundant dependencies in complex render passes.
 			vk::SubpassDependency subpassDependency(i - 1, i,
-				vk::PipelineStageFlags(oldDependencyStage),
-				vk::PipelineStageFlags(newDependencyStage),
-				vk::AccessFlags(oldDependencyAccess),
-				vk::AccessFlags(newDependencyAccess),
+				vk::PipelineStageFlags(oldDependencyStage), vk::PipelineStageFlags(newDependencyStage),
+				vk::AccessFlags(oldDependencyAccess), vk::AccessFlags(newDependencyAccess),
 				vk::DependencyFlagBits::eByRegion);
 			subpassDependencies[i - 1] = subpassDependency;
 		}
@@ -312,25 +290,17 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 		auto lastDependency = subpassDependencies.rbegin();
 		if (!colorAttachments.empty())
 		{
-			firstDependency->srcStageMask |=
-				vk::PipelineStageFlagBits::eColorAttachmentOutput;
-			firstDependency->srcAccessMask |=
-				vk::AccessFlagBits::eColorAttachmentRead;
-			lastDependency->dstStageMask |=
-				vk::PipelineStageFlagBits::eColorAttachmentOutput;
-			lastDependency->dstAccessMask |=
-				vk::AccessFlagBits::eColorAttachmentWrite;
+			firstDependency->srcStageMask |= vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			firstDependency->srcAccessMask |= vk::AccessFlagBits::eColorAttachmentRead;
+			lastDependency->dstStageMask |= vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			lastDependency->dstAccessMask |= vk::AccessFlagBits::eColorAttachmentWrite;
 		}
 		if (depthStencilAttachment.imageView)
 		{
-			firstDependency->srcStageMask |=
-				vk::PipelineStageFlagBits::eEarlyFragmentTests;
-			firstDependency->srcAccessMask |=
-				vk::AccessFlagBits::eDepthStencilAttachmentRead;
-			lastDependency->dstStageMask |=
-				vk::PipelineStageFlagBits::eLateFragmentTests;
-			lastDependency->dstAccessMask |=
-				vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+			firstDependency->srcStageMask |= vk::PipelineStageFlagBits::eEarlyFragmentTests;
+			firstDependency->srcAccessMask |= vk::AccessFlagBits::eDepthStencilAttachmentRead;
+			lastDependency->dstStageMask |= vk::PipelineStageFlagBits::eLateFragmentTests;
+			lastDependency->dstAccessMask |= vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 		}
 	}
 
@@ -349,12 +319,15 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 	this->size = size;
 	this->isSwapchain = false;
 }
+
+//**********************************************************************************************************************
 Framebuffer::Framebuffer(int2 size, vector<OutputAttachment>&& colorAttachments,
 	OutputAttachment depthStencilAttachment)
 {
 	if (!Vulkan::hasDynamicRendering) // TODO: handle this case and use subpass framebuffer.
 		throw runtime_error("Dynamic rendering is not supported on this GPU.");
 
+	this->instance = (void*)1;
 	this->colorAttachments = std::move(colorAttachments);
 	this->depthStencilAttachment = depthStencilAttachment;
 	this->size = size;
@@ -362,7 +335,7 @@ Framebuffer::Framebuffer(int2 size, vector<OutputAttachment>&& colorAttachments,
 }
 bool Framebuffer::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || readyLock > 0 || subpasses.empty())
 		return !colorAttachments.empty() || depthStencilAttachment.imageView;
 
 	if (GraphicsAPI::isRunning)
@@ -383,8 +356,7 @@ bool Framebuffer::destroy()
 			}
 		}
 
-		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
-			instance, destroyRenderPass);
+		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer, instance, destroyRenderPass);
 	}
 	else
 	{
@@ -396,7 +368,7 @@ bool Framebuffer::destroy()
 	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Framebuffer::update(int2 size, const OutputAttachment* colorAttachments,
 	uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment)
 {
@@ -434,7 +406,7 @@ void Framebuffer::update(int2 size, const OutputAttachment* colorAttachments,
 	this->size = size;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Framebuffer::update(int2 size, vector<OutputAttachment>&& colorAttachments,
 	OutputAttachment depthStencilAttachment)
 {
@@ -467,6 +439,8 @@ void Framebuffer::update(int2 size, vector<OutputAttachment>&& colorAttachments,
 	this->depthStencilAttachment = depthStencilAttachment;
 	this->size = size;
 }
+
+//**********************************************************************************************************************
 void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 {
 	GARDEN_ASSERT(size > 0);
@@ -501,8 +475,7 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 			#if GARDEN_DEBUG
 			auto imageView = GraphicsAPI::imageViewPool.get(newInputAttachment);
 			auto image = GraphicsAPI::imagePool.get(imageView->image);
-			GARDEN_ASSERT(size == calcSizeAtMip(
-				(int2)image->getSize(), imageView->baseMip));
+			GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->baseMip));
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
 			auto result = attachments.find(newInputAttachment);
 			GARDEN_ASSERT(result != attachments.end());
@@ -530,21 +503,18 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 
 			if (isFormatColor(newImageView->format))
 			{
-				GARDEN_ASSERT(hasAnyFlag(newImage->getBind(),
-					Image::Bind::ColorAttachment));
+				GARDEN_ASSERT(hasAnyFlag(newImage->getBind(), Image::Bind::ColorAttachment));
 				auto index = colorAttachmentIndex++;
 				this->colorAttachments[index].imageView = newOutputAttachment;
 			}
 			else
 			{
-				GARDEN_ASSERT(hasAnyFlag(newImage->getBind(),
-					Image::Bind::DepthStencilAttachment));
+				GARDEN_ASSERT(hasAnyFlag(newImage->getBind(), Image::Bind::DepthStencilAttachment));
 				GARDEN_ASSERT(!this->depthStencilAttachment.imageView);
 				this->depthStencilAttachment.imageView = newOutputAttachment;
 			}
 
-			imageViews[imageViewIndex++] = vk::ImageView(
-				(VkImageView)newImageView->instance);
+			imageViews[imageViewIndex++] = vk::ImageView((VkImageView)newImageView->instance);
 			attachments.emplace(newOutputAttachment);
 		}
 	}
@@ -559,16 +529,15 @@ void Framebuffer::recreate(int2 size, const vector<SubpassImages>& subpasses)
 }
 
 #if GARDEN_DEBUG
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Framebuffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (!instance || !Vulkan::hasDebugUtils)
+	if (!Vulkan::hasDebugUtils || !instance || subpasses.empty())
 		return;
 
-	vk::DebugUtilsObjectNameInfoEXT nameInfo(
-		vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());
+	vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());
 	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
 	nameInfo.objectType = vk::ObjectType::eRenderPass;
 	nameInfo.objectHandle = (uint64)renderPass;
@@ -576,9 +545,9 @@ void Framebuffer::setDebugName(const string& name)
 }
 #endif
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCount,
-	float clearDepth, uint32 clearStencil, const int4& region, bool recordAsync)
+	float clearDepth, uint32 clearStencil, const int4& region, bool asyncRecording)
 {
 	GARDEN_ASSERT(!currentFramebuffer);
 	GARDEN_ASSERT(clearColorCount == colorAttachments.size());
@@ -592,7 +561,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	#endif
 	currentSubpassIndex = 0;
 
-	if (recordAsync)
+	if (asyncRecording)
 	{
 		#if GARDEN_DEBUG
 		auto name = debugName;
@@ -600,9 +569,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 		auto name = "";
 		#endif
 		
-		Vulkan::swapchain.beginSecondaryCommandBuffers(
-			instance, renderPass, currentSubpassIndex,
-			colorAttachments, depthStencilAttachment, name);
+		Vulkan::swapchain.beginSecondaryCommandBuffers(subpasses.empty() ? nullptr : instance,
+			renderPass, currentSubpassIndex, colorAttachments, depthStencilAttachment, name);
 			
 		for (uint32 i = 0; i < (uint32)Vulkan::secondaryCommandBuffers.size(); i++)
 		{
@@ -613,7 +581,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 
 	BeginRenderPassCommand command;
 	command.clearColorCount = clearColorCount;
-	command.recordAsync = recordAsync;
+	command.asyncRecording = asyncRecording;
 	command.framebuffer = GraphicsAPI::framebufferPool.getID(this);
 	command.clearDepth = clearDepth;
 	command.clearStencil = clearStencil;
@@ -627,7 +595,9 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 		GraphicsAPI::currentCommandBuffer->addLockResource(command.framebuffer);
 	}
 }
-void Framebuffer::nextSubpass(bool recordAsync)
+
+//**********************************************************************************************************************
+void Framebuffer::nextSubpass(bool asyncRecording)
 {
 	GARDEN_ASSERT(currentFramebuffer == GraphicsAPI::framebufferPool.getID(this));
 	GARDEN_ASSERT(currentSubpassIndex + 1 < subpasses.size());
@@ -636,7 +606,7 @@ void Framebuffer::nextSubpass(bool recordAsync)
 	if (!Vulkan::secondaryCommandBuffers.empty())
 		Vulkan::swapchain.endSecondaryCommandBuffers();
 		
-	if (recordAsync)
+	if (asyncRecording)
 	{
 		#if GARDEN_DEBUG
 		auto name = debugName;
@@ -644,15 +614,14 @@ void Framebuffer::nextSubpass(bool recordAsync)
 		auto name = "";
 		#endif
 
-		Vulkan::swapchain.beginSecondaryCommandBuffers(
-			instance, renderPass, currentSubpassIndex + 1,
-			colorAttachments, depthStencilAttachment, name);
+		Vulkan::swapchain.beginSecondaryCommandBuffers(subpasses.empty() ? nullptr : instance,
+			renderPass, currentSubpassIndex + 1, colorAttachments, depthStencilAttachment, name);
 		for (uint32 i = 0; i < (uint32)Vulkan::secondaryCommandBuffers.size(); i++)
 			currentVertexBuffers[i] = currentIndexBuffers[i] = {};
 	}
 
 	NextSubpassCommand command;
-	command.recordAsync = recordAsync;
+	command.asyncRecording = asyncRecording;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 	currentSubpassIndex++;
 }
@@ -672,7 +641,7 @@ void Framebuffer::endRenderPass()
 	#endif
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	uint8 attachmentCount, const ClearRegion* regions, uint32 regionCount)
 {

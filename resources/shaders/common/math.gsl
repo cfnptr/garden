@@ -64,7 +64,7 @@
 // C++ atan2 implementation.
 float atan2(float y, float x)
 {
-    return abs(x) > abs(y) ? atan(y, x) : M_PI_2 - atan(x, y);
+	return abs(x) > abs(y) ? atan(y, x) : M_PI_2 - atan(x, y);
 }
 
 #endif // MATH_GSL

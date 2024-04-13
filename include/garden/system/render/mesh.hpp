@@ -113,14 +113,14 @@ private:
 	volatile int64 translucentIndex;
 	uint32 opaqueBufferCount = 0;
 	uint32 translucentBufferCount = 0;
-	bool isAsync = false;
+	bool asyncRecording = false;
 
 	#if GARDEN_EDITOR
 	void* selectorEditor = nullptr;
 	void* gizmosEditor = nullptr;
 	#endif
 
-	MeshRenderSystem(bool _isAsync) : isAsync(_isAsync) { }
+	MeshRenderSystem(bool asyncRecording) : asyncRecording(asyncRecording) { }
 
 	void prepareItems(const float4x4& viewProj, const float3& cameraPosition,
 		const vector<Manager::SubsystemData>& subsystems, MeshRenderType opaqueType,
@@ -139,7 +139,7 @@ private:
 	friend class GizmosEditorSystem;
 	friend class SelectorEditorSystem;
 public:
-	bool isDrawAsync() const noexcept { return isAsync; }
+	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
 	#if GARDEN_EDITOR
 	void* getSelectorEditor() noexcept { return selectorEditor; }

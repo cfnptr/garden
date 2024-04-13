@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/vulkan.hpp"
@@ -20,23 +18,19 @@
 using namespace std;
 using namespace garden::graphics;
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology)
 {
 	switch (topology)
 	{
-	case GraphicsPipeline::Topology::TriangleList:
-		return vk::PrimitiveTopology::eTriangleList;
-	case GraphicsPipeline::Topology::TriangleStrip:
-		return vk::PrimitiveTopology::eTriangleStrip;
+	case GraphicsPipeline::Topology::TriangleList: return vk::PrimitiveTopology::eTriangleList;
+	case GraphicsPipeline::Topology::TriangleStrip: return vk::PrimitiveTopology::eTriangleStrip;
 	case GraphicsPipeline::Topology::LineList: return vk::PrimitiveTopology::eLineList;
 	case GraphicsPipeline::Topology::LineStrip: return vk::PrimitiveTopology::eLineStrip;
 	case GraphicsPipeline::Topology::PointList: return vk::PrimitiveTopology::ePointList;
 	default: abort();;
 	}
 }
-
-//--------------------------------------------------------------------------------------------------
 static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon)
 {
 	switch (polygon)
@@ -47,33 +41,27 @@ static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon)
 	default: abort();
 	}
 }
-
-//--------------------------------------------------------------------------------------------------
 static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace)
 {
 	switch (cullFace)
 	{
 	case GraphicsPipeline::CullFace::Front: return vk::CullModeFlagBits::eFront;
 	case GraphicsPipeline::CullFace::Back: return vk::CullModeFlagBits::eBack;
-	case GraphicsPipeline::CullFace::FrontAndBack:
-		return vk::CullModeFlagBits::eFrontAndBack;
+	case GraphicsPipeline::CullFace::FrontAndBack: return vk::CullModeFlagBits::eFrontAndBack;
 	default: abort();
 	}
 }
-
-//--------------------------------------------------------------------------------------------------
 static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace)
 {
 	switch (frontFace)
 	{
 	case GraphicsPipeline::FrontFace::Clockwise: return vk::FrontFace::eClockwise;
-	case GraphicsPipeline::FrontFace::CounterClockwise:
-		return vk::FrontFace::eCounterClockwise;
+	case GraphicsPipeline::FrontFace::CounterClockwise: return vk::FrontFace::eCounterClockwise;
 	default: abort();
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor)
 {
 	switch (blendFactor)
@@ -81,53 +69,37 @@ static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor
 	case GraphicsPipeline::BlendFactor::Zero: return vk::BlendFactor::eZero;
 	case GraphicsPipeline::BlendFactor::One: return vk::BlendFactor::eOne;
 	case GraphicsPipeline::BlendFactor::SrcColor: return vk::BlendFactor::eSrcColor;
-	case GraphicsPipeline::BlendFactor::OneMinusSrcColor:
-		return vk::BlendFactor::eOneMinusSrcColor;
+	case GraphicsPipeline::BlendFactor::OneMinusSrcColor: return vk::BlendFactor::eOneMinusSrcColor;
 	case GraphicsPipeline::BlendFactor::DstColor: return vk::BlendFactor::eDstColor;
-	case GraphicsPipeline::BlendFactor::OneMinusDstColor:
-		return vk::BlendFactor::eOneMinusDstColor;
+	case GraphicsPipeline::BlendFactor::OneMinusDstColor: return vk::BlendFactor::eOneMinusDstColor;
 	case GraphicsPipeline::BlendFactor::SrcAlpha: return vk::BlendFactor::eSrcAlpha;
-	case GraphicsPipeline::BlendFactor::OneMinusSrcAlpha:
-		return vk::BlendFactor::eOneMinusSrcAlpha;
+	case GraphicsPipeline::BlendFactor::OneMinusSrcAlpha: return vk::BlendFactor::eOneMinusSrcAlpha;
 	case GraphicsPipeline::BlendFactor::DstAlpha: return vk::BlendFactor::eDstAlpha;
-	case GraphicsPipeline::BlendFactor::OneMinusDstAlpha:
-		return vk::BlendFactor::eOneMinusDstAlpha;
-	case GraphicsPipeline::BlendFactor::ConstColor:
-		return vk::BlendFactor::eConstantColor;
-	case GraphicsPipeline::BlendFactor::OneMinusConstColor:
-		return vk::BlendFactor::eOneMinusConstantColor;
-	case GraphicsPipeline::BlendFactor::ConstAlpha:
-		return vk::BlendFactor::eConstantAlpha;
-	case GraphicsPipeline::BlendFactor::OneMinusConstAlpha:
-		return vk::BlendFactor::eOneMinusConstantAlpha;
+	case GraphicsPipeline::BlendFactor::OneMinusDstAlpha: return vk::BlendFactor::eOneMinusDstAlpha;
+	case GraphicsPipeline::BlendFactor::ConstColor: return vk::BlendFactor::eConstantColor;
+	case GraphicsPipeline::BlendFactor::OneMinusConstColor: return vk::BlendFactor::eOneMinusConstantColor;
+	case GraphicsPipeline::BlendFactor::ConstAlpha: return vk::BlendFactor::eConstantAlpha;
+	case GraphicsPipeline::BlendFactor::OneMinusConstAlpha: return vk::BlendFactor::eOneMinusConstantAlpha;
 	case GraphicsPipeline::BlendFactor::Src1Color: return vk::BlendFactor::eSrc1Color;
-	case GraphicsPipeline::BlendFactor::OneMinusSrc1Color:
-		return vk::BlendFactor::eOneMinusSrc1Color;
+	case GraphicsPipeline::BlendFactor::OneMinusSrc1Color: return vk::BlendFactor::eOneMinusSrc1Color;
 	case GraphicsPipeline::BlendFactor::Src1Alpha: return vk::BlendFactor::eSrc1Alpha;
-	case GraphicsPipeline::BlendFactor::SrcAlphaSaturate:
-		return vk::BlendFactor::eSrcAlphaSaturate;
+	case GraphicsPipeline::BlendFactor::SrcAlphaSaturate: return vk::BlendFactor::eSrcAlphaSaturate;
 	default: abort();
 	}
 }
-
-//--------------------------------------------------------------------------------------------------
 static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOperation blendOperation)
 {
 	switch (blendOperation)
 	{
 	case GraphicsPipeline::BlendOperation::Add: return vk::BlendOp::eAdd;
 	case GraphicsPipeline::BlendOperation::Subtract: return vk::BlendOp::eSubtract;
-	case GraphicsPipeline::BlendOperation::ReverseSubtract:
-		return vk::BlendOp::eReverseSubtract;
+	case GraphicsPipeline::BlendOperation::ReverseSubtract: return vk::BlendOp::eReverseSubtract;
 	case GraphicsPipeline::BlendOperation::Minimum: return vk::BlendOp::eMin;
 	case GraphicsPipeline::BlendOperation::Maximum: return vk::BlendOp::eMax;
 	default: abort();
 	}
 }
-
-//--------------------------------------------------------------------------------------------------
-static vk::ColorComponentFlags toVkColorComponents(
-	GraphicsPipeline::ColorComponent colorComponents)
+static vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorComponent colorComponents)
 {
 	vk::ColorComponentFlags result;
 	if (hasAnyFlag(colorComponents, GraphicsPipeline::ColorComponent::R))
@@ -141,9 +113,9 @@ static vk::ColorComponentFlags toVkColorComponents(
 	return result;
 }
 
-//--------------------------------------------------------------------------------------------------
-GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync) :
-	Pipeline(createData, useAsync)
+//*********************************************************************************************************************
+GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRecording) :
+	Pipeline(createData, asyncRecording)
 {
 	if (createData.variantCount > 1)
 		this->instance = malloc<vk::Pipeline>(createData.variantCount);
@@ -173,20 +145,17 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		auto specializationInfo = &specializationInfos[i];
 
 		fillSpecConsts(createData.shaderPath, stage, createData.variantCount,
-			specializationInfo, createData.specConsts, createData.specConstData);
+			specializationInfo, createData.specConsts, createData.specConstValues);
 
 		stageInfo.stage = toVkShaderStage(stage);
 		stageInfo.module = (VkShaderModule)shaders[i];
-		stageInfo.pSpecializationInfo =
-			specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr;
+		stageInfo.pSpecializationInfo = specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr;
 		stageInfos[i] = stageInfo;
 	}
 
-	vk::GraphicsPipelineCreateInfo pipelineInfo({},
-		(uint32)stageInfos.size(), stageInfos.data(), nullptr,
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr, nullptr, (VkPipelineLayout)pipelineLayout,
-		nullptr, createData.subpassIndex, nullptr, -1);
+	vk::GraphicsPipelineCreateInfo pipelineInfo({}, (uint32)stageInfos.size(), stageInfos.data(),
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		(VkPipelineLayout)pipelineLayout, nullptr, createData.subpassIndex, nullptr, -1);
 
 	vk::PipelineRenderingCreateInfoKHR dynamicRenderingInfo;
 	vector<vk::Format> dynamicColorFormats;
@@ -202,31 +171,26 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 			for (uint32 i = 0; i < (uint32)colorFormats.size(); i++)
 				dynamicColorFormats[i] = toVkFormat(colorFormats[i]);
 
-			dynamicRenderingInfo.colorAttachmentCount =
-				(uint32)dynamicColorFormats.size();
-			dynamicRenderingInfo.pColorAttachmentFormats =
-				dynamicColorFormats.data();
+			dynamicRenderingInfo.colorAttachmentCount = (uint32)dynamicColorFormats.size();
+			dynamicRenderingInfo.pColorAttachmentFormats = dynamicColorFormats.data();
 		}
 
 		if (createData.depthStencilFormat != Image::Format::Undefined)
 		{
 			if (isFormatDepthOnly(createData.depthStencilFormat))
 			{
-				dynamicRenderingInfo.depthAttachmentFormat =
-					toVkFormat(createData.depthStencilFormat);
+				dynamicRenderingInfo.depthAttachmentFormat = toVkFormat(createData.depthStencilFormat);
 				dynamicRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
 			}
 			else if (isFormatStencilOnly(createData.depthStencilFormat))
 			{
-				dynamicRenderingInfo.stencilAttachmentFormat = 
-					toVkFormat(createData.depthStencilFormat);
+				dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
 				dynamicRenderingInfo.depthAttachmentFormat = vk::Format::eUndefined;
 			}
 			else
 			{
 				dynamicRenderingInfo.depthAttachmentFormat = 
-					dynamicRenderingInfo.stencilAttachmentFormat =
-					toVkFormat(createData.depthStencilFormat);
+					dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
 			}
 		}
 		else
@@ -251,8 +215,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 
 		vk::VertexInputBindingDescription bindingDescription;
 		vk::PipelineVertexInputStateCreateInfo inputInfo;
-		vector<vk::VertexInputAttributeDescription> inputAttributes(
-			createData.vertexAttributes.size());
+		vector<vk::VertexInputAttributeDescription> inputAttributes(createData.vertexAttributes.size());
 
 		if (!createData.vertexAttributes.empty())
 		{
@@ -284,14 +247,12 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		viewportInfo.scissorCount = 1;
 
 		vk::PipelineRasterizationStateCreateInfo rasterizationInfo({},
-			pipelineState.depthClamping, pipelineState.discarding,
-			toVkPolygonMode(pipelineState.polygon), pipelineState.faceCulling ?
-			toVkCullMode(pipelineState.cullFace) : vk::CullModeFlagBits::eNone,
-			toVkFrontFace(pipelineState.frontFace), pipelineState.depthBiasing,
-			pipelineState.depthBiasConstant, pipelineState.depthBiasClamp,
-			pipelineState.depthBiasSlope, 1.0f);
-		vk::PipelineMultisampleStateCreateInfo multisampleInfo(
-			{}, vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
+			pipelineState.depthClamping, pipelineState.discarding, toVkPolygonMode(pipelineState.polygon),
+			pipelineState.faceCulling ? toVkCullMode(pipelineState.cullFace) : vk::CullModeFlagBits::eNone,
+			toVkFrontFace(pipelineState.frontFace), pipelineState.depthBiasing, pipelineState.depthBiasConstant,
+			pipelineState.depthBiasClamp, pipelineState.depthBiasSlope, 1.0f);
+		vk::PipelineMultisampleStateCreateInfo multisampleInfo({},
+			vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
 
 		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
 		if (createData.depthStencilFormat != Image::Format::Undefined)
@@ -304,30 +265,27 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 			// TODO: stencil testing, depth boundsTesting
 		}
 
-		array<float, 4> blendConstant = {
-			pipelineState.blendConstant.x, pipelineState.blendConstant.y,
-			pipelineState.blendConstant.z, pipelineState.blendConstant.w };
-		vector<vk::PipelineColorBlendAttachmentState>
-			blendAttachments(createData.blendStates.size());
-
 		auto blendStates = createData.blendStates.data();
+		vector<vk::PipelineColorBlendAttachmentState> blendAttachments(createData.blendStates.size());
+
 		for (uint32 i = 0; i < (uint32)blendAttachments.size(); i++)
 		{
 			auto blendState = blendStates[i];
-			blendAttachments[i] = vk::PipelineColorBlendAttachmentState(
-				blendState.blending,
-				toVkBlendFactor(blendState.srcColorFactor),
-				toVkBlendFactor(blendState.dstColorFactor),
-				toVkBlendOp(blendState.colorOperation),
-				toVkBlendFactor(blendState.srcAlphaFactor),
-				toVkBlendFactor(blendState.dstAlphaFactor),
-				toVkBlendOp(blendState.alphaOperation),
+			blendAttachments[i] = vk::PipelineColorBlendAttachmentState(blendState.blending,
+				toVkBlendFactor(blendState.srcColorFactor), toVkBlendFactor(blendState.dstColorFactor),
+				toVkBlendOp(blendState.colorOperation), toVkBlendFactor(blendState.srcAlphaFactor),
+				toVkBlendFactor(blendState.dstAlphaFactor), toVkBlendOp(blendState.alphaOperation),
 				toVkColorComponents(blendState.colorMask));
 		}
 
-		vk::PipelineColorBlendStateCreateInfo blendInfo({},
-			VK_FALSE, {}, (uint32)blendAttachments.size(),
-			blendAttachments.data(), blendConstant); // TODO: logical operations
+		array<float, 4> blendConstant =
+		{
+			pipelineState.blendConstant.x, pipelineState.blendConstant.y,
+			pipelineState.blendConstant.z, pipelineState.blendConstant.w
+		};
+
+		vk::PipelineColorBlendStateCreateInfo blendInfo({}, VK_FALSE, {},
+			(uint32)blendAttachments.size(), blendAttachments.data(), blendConstant); // TODO: logical operations
 		
 		// TODO: pass dynamic states as argument.
 		// Also allow to specify static viewport and scissor.
@@ -355,13 +313,9 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 		resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
 		if (createData.variantCount > 1)
-		{
 			((void**)this->instance)[variantIndex] = result.value;
-		}
 		else
-		{
 			this->instance = result.value;
-		}
 	}
 
 	for (auto& info : specializationInfos)
@@ -373,7 +327,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool useAsync
 	destroyShaders(shaders);
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 {
 	GARDEN_ASSERT(framebuffer);
@@ -384,7 +338,6 @@ void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 	this->framebuffer = framebuffer;
 }
 
-//--------------------------------------------------------------------------------------------------
 void GraphicsPipeline::setViewport(const float4& viewport)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -406,7 +359,7 @@ void GraphicsPipeline::setViewport(const float4& viewport)
 }
 void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
 {
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(Framebuffer::getCurrent());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
@@ -431,15 +384,12 @@ void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
 		taskCount = taskIndex + 1;
 	}
 
-	// TODO: support custom depth range.
-	vk::Viewport vkViewport(viewport.x, viewport.y,
-		viewport.z, viewport.w, 0.0f, 1.0f);
-
+	vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
 	while (taskIndex < taskCount)
 		Vulkan::secondaryCommandBuffers[taskIndex++].setViewport(0, 1, &vkViewport);
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void GraphicsPipeline::setScissor(const int4& scissor)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -460,7 +410,7 @@ void GraphicsPipeline::setScissor(const int4& scissor)
 }
 void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
 {
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(Framebuffer::getCurrent());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
@@ -485,14 +435,12 @@ void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
 		taskCount = taskIndex + 1;
 	}
 
-	vk::Rect2D vkScissor({ scissor.x, scissor.y },
-		{ (uint32)scissor.z, (uint32)scissor.w });
-
+	vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
 	while (taskIndex < taskCount)
 		Vulkan::secondaryCommandBuffers[taskIndex++].setScissor(0, 1, &vkScissor);
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -511,10 +459,9 @@ void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
 	command.viewportScissor = viewportScissor;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setViewportScissorAsync(
-	const float4& viewportScissor, int32 taskIndex)
+void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, int32 taskIndex)
 {
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(Framebuffer::getCurrent());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
@@ -539,9 +486,8 @@ void GraphicsPipeline::setViewportScissorAsync(
 		taskCount = taskIndex + 1;
 	}
 
-	// TODO: support custom depth range.
 	vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
-		viewportScissor.z, viewportScissor.w, 0.0f, 1.0f);
+		viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
 	vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
 		{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
 
@@ -553,10 +499,9 @@ void GraphicsPipeline::setViewportScissorAsync(
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-// TODO: support multiple buffer binding.
+//*********************************************************************************************************************
 void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
-	uint32 instanceCount, uint32 vertexOffset, uint32 instanceOffset)
+	uint32 instanceCount, uint32 vertexOffset, uint32 instanceOffset) // TODO: support multiple buffer binding.
 {
 	GARDEN_ASSERT(vertexCount > 0);
 	GARDEN_ASSERT(instanceCount > 0);
@@ -591,12 +536,14 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 		}
 	}
 }
+
+//*********************************************************************************************************************
 void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	uint32 vertexCount, uint32 instanceCount, uint32 vertexOffset, uint32 instanceOffset)
 {
 	GARDEN_ASSERT(vertexCount > 0);
 	GARDEN_ASSERT(instanceCount > 0);
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(taskIndex >= 0);
 	GARDEN_ASSERT(taskIndex < Vulkan::secondaryCommandBuffers.size());
@@ -637,7 +584,7 @@ void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	Vulkan::secondaryCommandStates[taskIndex] = true;
 
 	DrawCommand command;
-	command.isAsync = true;
+	command.asyncRecording = true;
 	command.vertexBuffer = vertexBuffer;
 
 	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
@@ -653,10 +600,9 @@ void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 
-//--------------------------------------------------------------------------------------------------
-void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer,
-	Index indexType, uint32 indexCount, uint32 instanceCount,
-	uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
+//*********************************************************************************************************************
+void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer, Index indexType,
+	uint32 indexCount, uint32 instanceCount, uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
 {
 	GARDEN_ASSERT(vertexBuffer);
 	GARDEN_ASSERT(indexBuffer);
@@ -674,8 +620,7 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 		throw runtime_error("Current render pass is asynchronous.");
 	GARDEN_ASSERT(vertexBufferView->instance); // is ready
 	GARDEN_ASSERT(indexBufferView->instance); // is ready
-	GARDEN_ASSERT(indexCount + indexOffset <=
-		indexBufferView->getBinarySize() / toBinarySize(indexType));
+	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
 	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
 	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
 	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
@@ -700,6 +645,8 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
 	}
 }
+
+//*********************************************************************************************************************
 void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	ID<Buffer> indexBuffer, Index indexType, uint32 indexCount, uint32 instanceCount,
 	uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
@@ -708,7 +655,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 	GARDEN_ASSERT(indexBuffer);
 	GARDEN_ASSERT(indexCount > 0);
 	GARDEN_ASSERT(instanceCount > 0);
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(taskIndex >= 0);
 	GARDEN_ASSERT(taskIndex < Vulkan::secondaryCommandBuffers.size());
@@ -723,8 +670,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 		throw runtime_error("Current render pass is not async.");
 	GARDEN_ASSERT(vertexBufferView->instance); // is ready
 	GARDEN_ASSERT(indexBufferView->instance); // is ready
-	GARDEN_ASSERT(indexCount + indexOffset <=
-		indexBufferView->getBinarySize() / toBinarySize(indexType));
+	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
 	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
 	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
 	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
@@ -735,8 +681,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 
 	if (vertexBuffer != Framebuffer::currentVertexBuffers[taskIndex])
 	{
-		secondaryCommandBuffer.bindVertexBuffers(0, 1,
-			(vk::Buffer*)&vertexBufferView->instance, &size);
+		secondaryCommandBuffer.bindVertexBuffers(0, 1, (vk::Buffer*)&vertexBufferView->instance, &size);
 		Framebuffer::currentVertexBuffers[taskIndex] = vertexBuffer;
 	}
 	if (indexBuffer != Framebuffer::currentIndexBuffers[taskIndex])
@@ -746,12 +691,11 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 		Framebuffer::currentIndexBuffers[taskIndex] = indexBuffer;
 	}
 
-	secondaryCommandBuffer.drawIndexed(indexCount, instanceCount,
-		indexOffset, vertexOffset, instanceOffset);
+	secondaryCommandBuffer.drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
 	Vulkan::secondaryCommandStates[taskIndex] = true;
 
 	DrawIndexedCommand command;
-	command.isAsync = true;
+	command.asyncRecording = true;
 	command.vertexBuffer = vertexBuffer;
 	command.indexBuffer = indexBuffer;
 
@@ -767,7 +711,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 
-//--------------------------------------------------------------------------------------------------
+//*********************************************************************************************************************
 void GraphicsPipeline::drawFullscreen()
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -790,7 +734,7 @@ void GraphicsPipeline::drawFullscreen()
 void GraphicsPipeline::drawFullscreenAsync(int32 taskIndex)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(useAsync);
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(taskIndex >= 0);
 	GARDEN_ASSERT(taskIndex < Vulkan::secondaryCommandBuffers.size());
 	GARDEN_ASSERT(Framebuffer::getCurrent());

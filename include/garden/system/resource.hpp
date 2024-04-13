@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /***********************************************************************************************************************
- * @file Application resource loading functions. (images, models, shaders, pipelines, scenes)
+ * @file Application resource loading functions. (images, models, shaders, pipelines, scenes, sounds, etc.)
  */
 
 #pragma once
@@ -33,7 +33,11 @@ using namespace ecsm;
 using namespace garden::graphics;
 
 /***********************************************************************************************************************
- * @brief 
+ * @brief Game or application resource loader. (images, models, shader, scenes, sounds, etc.)
+ * 
+ * @details
+ * Manages the process of loading, and also the organization of various game assets or resources such as 
+ * images or textures, models, shaders, audio or sound files, scenes and other data that games need to run. 
  */
 class ResourceSystem : public System
 {
@@ -86,7 +90,7 @@ protected:
 	/**
 	 * @brief Destroys resource system instance.
 	 */
-	~ResourceSystem() final;
+	~ResourceSystem() override;
 
 	void dequeuePipelines();
 	void dequeueBuffers();
@@ -98,59 +102,105 @@ protected:
 	friend class ecsm::Manager;
 public:
 	/*******************************************************************************************************************
-	 * @brief 
+	 * @brief Loads image data (pixels) from the resource pack.
+	 * 
+	 * @param[in] path target image path
+	 * @param[out] data image pixel data container
+	 * @param[out] size loaded image size in pixels
+	 * @param[out] format loaded image data format
+	 * @param taskIndex index of the thread pool task (-1 = all threads)
 	 */
 	void loadImageData(const fs::path& path, vector<uint8>& data,
 		int2& size, Image::Format& format, int32 taskIndex = -1) const;
 
 	/**
-	 * @brief 
+	 * @brief Loads cubemap image data (pixels) the resource pack.
+	 * 
+	 * @param[in] path target cubemap image path
+	 * @param[out] left left cubemap image pixel data container
+	 * @param[out] right right cubemap image pixel data container
+	 * @param[out] bottom bottom cubemap image pixel data container
+	 * @param[out] top top cubemap image pixel data container
+	 * @param[out] back back cubemap image pixel data container
+	 * @param[out] front front cubemap image pixel data container
+	 * @param[out] size loaded cubemap image size in pixels
+	 * @param[out] format loaded cubemap image data format
+	 * @param taskIndex index of the thread pool task (-1 = all threads)
 	 */
-	void loadCubemapData(const fs::path& path, vector<uint8>& left,
-		vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top,
-		vector<uint8>& back, vector<uint8>& front, int2& size,
-		Image::Format& format, int32 taskIndex = -1) const;
+	void loadCubemapData(const fs::path& path, vector<uint8>& left, vector<uint8>& right,
+		vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front,
+		int2& size, Image::Format& format, int32 taskIndex = -1) const;
 	
 	/**
-	 * @brief 
+	 * @brief Loads image data (pixels) from the memory file.
+	 * 
+	 * @param[in] data image data file
+	 * @param dataSize image data file size in bytes
+	 * @param fileType image data file type
+	 * @param[out] pixels image pixel data container
+	 * @param[out] imageSize loaded image size in pixels
+	 * @param[out] format loaded image data format
 	 */
 	static void loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
 		vector<uint8>& pixels, int2& imageSize, Image::Format& format);
 
 	/**
-	 * @brief 
+	 * @brief Loads image from the resource pack.
+	 * 
+	 * @param[in] path target image path
+	 * @param bind image bind type
+	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
+	 * @param downscaleCount downscaling iteration count (0 = no downsacling)
+	 * @param strategy image memory allocation strategy
+	 * @param linearData is image data color space linear
+	 * @param loadAsync load image asynchronously without blocking
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Bind bind,
-		uint8 maxMipCount = 0, uint8 downscaleCount = 0,
-		Image::Strategy strategy = Buffer::Strategy::Default,
-		bool linearData = false, bool loadAsync = true);
+	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 0, uint8 downscaleCount = 0,
+		Image::Strategy strategy = Buffer::Strategy::Default, bool linearData = false, bool loadAsync = true);
 
-	/**
-	 * @brief 
+	/*******************************************************************************************************************
+	 * @brief Loads graphics pipeline from the resource pack shaders.
+	 * 
+	 * @param[in] path target graphics pipeline path
+	 * @param framebuffer parent pipeline framebuffer
+	 * @param useAsyncRecording can be used for multithreaded commands recording
+	 * @param loadAsync load pipeline asynchronously without blocking
+	 * @param subpassIndex framebuffer subpass index
+	 * @param maxBindlessCount maximum bindless descriptor count
+	 * @param[in] specConsts specialization constants array or empty
+	 * @param[in] stateOverrides pipeline state override array or empty
 	 */
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
-		ID<Framebuffer> framebuffer, bool useAsync = false, bool loadAsync = true,
-		uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
+		ID<Framebuffer> framebuffer, bool useAsyncRecording = false,
+		bool loadAsync = true, uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
 		const map<string, GraphicsPipeline::SpecConst>& specConsts = {},
 		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
 	
 	/**
-	 * @brief 
+	 * @brief Loads compute pipeline from the resource pack shaders.
+	 * 
+	 * @param path target compute pipeline path
+	 * @param useAsyncRecording can be used for multithreaded commands recording
+	 * @param loadAsync load pipeline asynchronously without blocking
+	 * @param maxBindlessCount maximum bindless descriptor count
+	 * @param specConsts specialization constants array or empty
 	 */
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
-		bool useAsync = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
+		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
 		const map<string, GraphicsPipeline::SpecConst>& specConsts = {});
 
-	/**
-	 * @brief 
+	/*******************************************************************************************************************
+	 * @brief Loads scene from the resource pack.
+	 * @param[in] path target scene parh
 	 */
 	void loadScene(const fs::path& path);
 	/**
-	 * @brief 
+	 * @brief Stores curent scene to the scene directory.
+	 * @param[in] path target scene parh
 	 */
 	void storeScene(const fs::path& path);
 	/**
-	 * @brief 
+	 * @brief Destroys all current scene entities.
 	 */
 	void clearScene();
 

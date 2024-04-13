@@ -131,7 +131,8 @@ static const string_view samplerFilterNames[(psize)SamplerFilter::Count] =
 
 /**
  * @brief Returns pipeline type.
- * @param pipelineType target pipeline type name
+ * @param pipelineType target pipeline type name (camelCase)
+ * @throw runtime_error on unknown pipeline type.
  */
 static PipelineType toPipelineType(string_view pipelineType)
 {
@@ -143,7 +144,7 @@ static PipelineType toPipelineType(string_view pipelineType)
  * @brief Returns pipeline type name string.
  * @param pipelineType target pipeline type
  */
-static string_view toString(PipelineType pipelineType)
+static string_view toString(PipelineType pipelineType) noexcept
 {
 	GARDEN_ASSERT((uint8)pipelineType < (uint8)PipelineType::Count);
 	return pipelineTypeNames[(psize)pipelineType];
@@ -151,7 +152,8 @@ static string_view toString(PipelineType pipelineType)
 
 /**
  * @brief Returns sampler filter type.
- * @param samplerFilter target sampler filter name
+ * @param samplerFilter target sampler filter name (camelCase)
+ * @throw runtime_error on unknown sampler filter type.
  */
 static SamplerFilter toSamplerFilter(string_view samplerFilter)
 {
@@ -163,7 +165,7 @@ static SamplerFilter toSamplerFilter(string_view samplerFilter)
  * @brief Returns sampler filter name string.
  * @param samplerFilter target sampler filter type
  */
-static string_view toString(SamplerFilter samplerFilter)
+static string_view toString(SamplerFilter samplerFilter) noexcept
 {
 	GARDEN_ASSERT((uint8)samplerFilter < (uint8)SamplerFilter::Count);
 	return samplerFilterNames[(psize)samplerFilter];
@@ -173,19 +175,18 @@ static string_view toString(SamplerFilter samplerFilter)
  * @brief Returns shader stage name string.
  * @param samplerFilter target shader stage type
  */
-static string_view toString(ShaderStage shaderStage)
+static string_view toString(ShaderStage shaderStage) noexcept
 {
-	if (hasOneFlag(shaderStage, ShaderStage::None)) return "None";
 	if (hasOneFlag(shaderStage, ShaderStage::Vertex)) return "Vertex";
 	if (hasOneFlag(shaderStage, ShaderStage::Fragment)) return "Fragment";
 	if (hasOneFlag(shaderStage, ShaderStage::Compute)) return "Compute";
-	throw runtime_error("Unknown shader stage type. (" + to_string((int)shaderStage) + ")");
+	return "None";
 }
 /**
  * @brief Returns shader stage name list string.
  * @param samplerFilter target shader stage type
  */
-static string toStringList(ShaderStage shaderStage)
+static string toStringList(ShaderStage shaderStage) noexcept
 {
 	string list;
 	if (hasAnyFlag(shaderStage, ShaderStage::None)) list += "None | ";

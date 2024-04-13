@@ -103,12 +103,12 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (transformComponent->getParent())
 		{
 			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
-			ImGui::Text("Parent: %lu (%s) | Childs: %lu", *transformComponent->getParent(),
-				parentTransform->name.c_str(), transformComponent->getChildCount());
+			ImGui::Text("Parent: %lu (%s) | Childs: %lu", (unsigned long)*transformComponent->getParent(),
+				parentTransform->name.c_str(), (unsigned long)transformComponent->getChildCount());
 		}
 		else
 		{
-			ImGui::Text("Parent: null | Childs: %lu", transformComponent->getChildCount());
+			ImGui::Text("Parent: null | Childs: %lu", (unsigned long)transformComponent->getChildCount());
 		}
 
 		if (transformComponent->getParent())
