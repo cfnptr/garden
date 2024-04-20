@@ -25,19 +25,16 @@ using namespace garden;
 HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager,
 	EditorRenderSystem* system) : EditorSystem(manager, system)
 {
-	if (manager->has<TransformSystem>())
-	{
-		SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
-		SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
-	}
+	SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 }
 HierarchyEditorSystem::~HierarchyEditorSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		TRY_UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
-		TRY_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}
 }
 
@@ -166,7 +163,7 @@ static void renderHierarchyEntity(Manager* manager, ID<Entity> renderEntity, ID<
 //**********************************************************************************************************************
 void HierarchyEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
+	if (!showWindow || !GraphicsSystem::getInstance()->canRender() || !getManager()->has<TransformSystem>())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320, 120), ImGuiCond_FirstUseEver);

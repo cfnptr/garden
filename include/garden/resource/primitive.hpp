@@ -28,11 +28,20 @@ static const array<float2, 4> oneSquareVert2D =
 	float2(-0.5f, -0.5f), float2(-0.5f,  0.5f),
 	float2( 0.5f,  0.5f), float2( 0.5f, -0.5f)
 };
-// TODO: uv
+static const array<float2, 8> oneSquareVertUv2D =
+{
+	float2(-0.5f, -0.5f), float2(0.0f, 0.0f), float2(-0.5f,  0.5f), float2(0.0f, 1.0f),
+	float2( 0.5f,  0.5f), float2(1.0f, 1.0f), float2( 0.5f, -0.5f), float2(1.0f, 0.0f)
+};
 static const array<float3, 4> oneSquareVert3D =
 {
 	float3(-0.5f, -0.5f, 0.0f), float3(-0.5f,  0.5f, 0.0f),
 	float3( 0.5f,  0.5f, 0.0f), float3( 0.5f, -0.5f, 0.0f)
+};
+static const array<float, 20> oneSquareVertUv3D =
+{
+	-0.5f, -0.5f, 0.0f,  0.0f, 0.0f,  -0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+	 0.5f,  0.5f, 0.0f,  1.0f, 1.0f,   0.5f, -0.5f, 0.0f,  1.0f, 0.0f
 };
 
 static const array<float2, 4> twoSquareVert2D =
@@ -50,8 +59,43 @@ static const array<float3, 4> twoSquareVert3D =
 	float3(-1.0f, -1.0f, 0.0f), float3(-1.0f,  1.0f, 0.0f),
 	float3( 1.0f,  1.0f, 0.0f), float3( 1.0f, -1.0f, 0.0f)
 };
+static const array<float, 20> twoSquareVertUv3D =
+{
+	-1.0f, -1.0f, 0.0f,  0.0f, 0.0f,  -1.0f,  1.0f, 0.0f,  0.0f, 1.0f,
+	 1.0f,  1.0f, 0.0f,  1.0f, 1.0f,   1.0f, -1.0f, 0.0f,  1.0f, 0.0f
+};
 
 static const array<uint16, 6> squareInd16 = { 0, 1, 2, 0, 2, 3 };
+
+//**********************************************************************************************************************
+static const array<float2, 6> fullSquareVert2D =
+{
+	float2(-0.5f, -0.5f), float2(-0.5f,  0.5f), float2( 0.5f,  0.5f),
+	float2(-0.5f, -0.5f), float2( 0.5f,  0.5f), float2( 0.5f, -0.5f)
+};
+static const array<float2, 12> fullSquareVertUv2D =
+{
+	float2(-0.5f, -0.5f), float2(0.0f, 0.0f),
+	float2(-0.5f,  0.5f), float2(0.0f, 1.0f),
+	float2( 0.5f,  0.5f), float2(1.0f, 1.0f),
+	float2(-0.5f, -0.5f), float2(0.0f, 0.0f),
+	float2( 0.5f,  0.5f), float2(1.0f, 1.0f),
+	float2( 0.5f, -0.5f), float2(1.0f, 0.0f)
+};
+static const array<float3, 6> fullSquareVert3D =
+{
+	float3(-0.5f, -0.5f, 0.0f), float3(-0.5f,  0.5f, 0.0f), float3( 0.5f,  0.5f, 0.0f),
+	float3(-0.5f, -0.5f, 0.0f), float3( 0.5f,  0.5f, 0.0f), float3( 0.5f, -0.5f, 0.0f)
+};
+static const array<float, 30> fullSquareVertUv3D =
+{
+	-0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
+	-0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+	 0.5f,  0.5f, 0.0f,  1.0f, 1.0f,
+	-0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
+	 0.5f,  0.5f, 0.0f,  1.0f, 1.0f,
+	 0.5f, -0.5f, 0.0f,  1.0f, 0.0f
+};
 
 //**********************************************************************************************************************
 static const array<float3, 24> oneCubeVert =
@@ -94,6 +138,8 @@ static const array<float3, 24> twoCubeVert =
 	float3( 1.0f, -1.0f,  1.0f), float3( 1.0f,  1.0f,  1.0f),
 	float3(-1.0f,  1.0f,  1.0f), float3(-1.0f, -1.0f,  1.0f)
 };
+
+//**********************************************************************************************************************
 static const array<float3, 48> oneCubeVertNorm =
 {
 	float3(-0.5f, -0.5f,  0.5f), float3::left, float3(-0.5f,  0.5f,  0.5f), float3::left,
@@ -113,6 +159,26 @@ static const array<float3, 48> oneCubeVertNorm =
 
 	float3( 0.5f, -0.5f,  0.5f), float3::front, float3( 0.5f,  0.5f, 0.5f), float3::front,
 	float3(-0.5f,  0.5f,  0.5f), float3::front, float3(-0.5f, -0.5f, 0.5f), float3::front
+};
+static const array<float3, 48> twoCubeVertNorm =
+{
+	float3(-1.0f, -1.0f,  1.0f), float3::left, float3(-1.0f,  1.0f,  1.0f), float3::left,
+	float3(-1.0f,  1.0f, -1.0f), float3::left, float3(-1.0f, -1.0f, -1.0f), float3::left,
+
+	float3( 1.0f, -1.0f, -1.0f), float3::right, float3( 1.0f,  1.0f, -1.0f), float3::right,
+	float3( 1.0f,  1.0f,  1.0f), float3::right, float3( 1.0f, -1.0f,  1.0f), float3::right,
+
+	float3(-1.0f, -1.0f,  1.0f), float3::bottom, float3(-1.0f, -1.0f, -1.0f), float3::bottom,
+	float3( 1.0f, -1.0f, -1.0f), float3::bottom, float3( 1.0f, -1.0f,  1.0f), float3::bottom,
+
+	float3(-1.0f,  1.0f, -1.0f), float3::top, float3(-1.0f,  1.0f,  1.0f), float3::top,
+	float3( 1.0f,  1.0f,  1.0f), float3::top, float3( 1.0f,  1.0f, -1.0f), float3::top,
+
+	float3(-1.0f, -1.0f, -1.0f), float3::back, float3(-1.0f,  1.0f, -1.0f), float3::back,
+	float3( 1.0f,  1.0f, -1.0f), float3::back, float3( 1.0f, -1.0f, -1.0f), float3::back,
+
+	float3( 1.0f, -1.0f,  1.0f), float3::front, float3( 1.0f,  1.0f,  1.0f), float3::front,
+	float3(-1.0f,  1.0f,  1.0f), float3::front, float3(-1.0f, -1.0f,  1.0f), float3::front
 };
 // TODO: uv
 

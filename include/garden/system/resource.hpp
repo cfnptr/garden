@@ -173,7 +173,7 @@ public:
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
 		ID<Framebuffer> framebuffer, bool useAsyncRecording = false,
 		bool loadAsync = true, uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
-		const map<string, GraphicsPipeline::SpecConst>& specConsts = {},
+		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
 		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
 	
 	/**
@@ -187,7 +187,7 @@ public:
 	 */
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const map<string, GraphicsPipeline::SpecConst>& specConsts = {});
+		const map<string, Pipeline::SpecConstValue>& specConstValues = {});
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
@@ -227,11 +227,11 @@ public:
 
 	/**
 	 * @brief Returns resource system instance.
-	 * @warning Do not use it if you have several resource system instances.
+	 * @warning Do not use it if you have several managers.
 	 */
 	static ResourceSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Resource system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };

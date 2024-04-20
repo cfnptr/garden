@@ -115,23 +115,21 @@ void ShadowMappingEditor::render()
 			if (!cascadesDescriptorSet)
 			{
 				auto uniforms = getCascadesUniforms(
-					system->getManager(), graphicsSystem);
+					getManager(), graphicsSystem);
 				cascadesDescriptorSet = graphicsSystem->createDescriptorSet(
 					cascadesPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, cascadesDescriptorSet,
 					"descriptorSet.shadow-mapping.editor.cascades");
 			}
 
-			auto framebufferView = graphicsSystem->get(
-				graphicsSystem->getSwapchainFramebuffer());
-			auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 
 			SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
 			framebufferView->beginRenderPass(float4(0.0f));
 			pipelineView->bind();
-			pipelineView->setViewportScissor(float4(float2(0),
-				graphicsSystem->getFramebufferSize()));
+			pipelineView->setViewportScissor();
 			pipelineView->bindDescriptorSet(cascadesDescriptorSet);
 			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 			pushConstants->farPlanes = float4(

@@ -29,6 +29,7 @@ class TransformEditorSystem final : public EditorSystem<TransformSystem>
 	ID<Entity> selectedEntity = {};
 
 	TransformEditorSystem(Manager* manager, TransformSystem* system);
+	~TransformEditorSystem() final;
 	
 	void onEntityDestroy(ID<Entity> entity);
 	void onEntityInspector(ID<Entity> entity, bool isOpened);

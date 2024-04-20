@@ -12,33 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "garden/system/render/mesh.hpp"
+#include "sprite/common.gsl"
 
-#if GARDEN_EDITOR
-namespace garden
+in float2 vs.position : f32;
+in float2 vs.texCoords : f32;
+
+out float2 fs.texCoords;
+
+uniform pushConstants
 {
+	float4 colorFactor;
+	uint32 instanceIndex;
+	float cutoff;
+} pc;
 
-using namespace garden;
-using namespace garden::graphics;
-class SelectorEditorSystem;
-
-class GizmosEditor final
+buffer readonly Instance
 {
-	ID<GraphicsPipeline> frontGizmosPipeline = {};
-	ID<GraphicsPipeline> backGizmosPipeline = {};
-	ID<Buffer> fullArrowVertices = {};
-	float2 lastCursorPos = float2(0.0f);
-	uint32 dragMode = 0;
+	InstanceData data[];
+} instance;
 
-	GizmosEditor(MeshRenderSystem* system);
-	void preSwapchainRender();
-	
-	friend class SelectorEditorSystem;
-	friend class MeshRenderSystem;
-};
-
-} // namespace garden
-#endif
-
-
+void main()
+{
+	gl.position = instance.data[pc.instanceIndex].mvp * float4(vs.position, 0.0f, 1.0f);
+	fs.texCoords = vs.texCoords;
+}

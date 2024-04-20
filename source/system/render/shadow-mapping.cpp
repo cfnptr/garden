@@ -243,7 +243,7 @@ bool ShadowMappingRenderSystem::prepareShadowRender(uint32 passIndex,
 		return false;
 
 	auto cameraComponent = getManager()->get<CameraComponent>(camera);
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	
 	auto nearPlane = cameraComponent->p.perspective.nearPlane;
 	auto farPlane = nearPlane + this->farPlane * splitCoefs[passIndex];
@@ -330,17 +330,13 @@ bool ShadowMappingRenderSystem::shadowRender()
 	}
 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	dataBufferView->flush();
 
-	auto framebuffer = getLightingSystem()->getShadowFramebuffers()[0];
-	auto framebufferView = graphicsSystem->get(framebuffer);
-
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
 	pipelineView->bind();
-	pipelineView->setViewportScissor(float4(
-		float2(0.0f), framebufferView->getSize()));
+	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->farNearPlanes = float4(

@@ -16,18 +16,23 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/camera.hpp"
+#include "garden/system/render/mesh.hpp"
 
 namespace garden
 {
 
-class CameraEditorSystem final : public EditorSystem<CameraSystem>
+class MeshSelectorEditorSystem final : public EditorSystem<MeshRenderSystem>
 {
-	CameraEditorSystem(Manager* manager, CameraSystem* system);
-	~CameraEditorSystem() final;
+	bool isSkipped = false;
 
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	MeshSelectorEditorSystem(Manager* manager, MeshRenderSystem* system);
+	~MeshSelectorEditorSystem() final;
+
+	void editorRender();
+	
 	friend class ecsm::Manager;
+public:
+	void skipUpdate() { isSkipped = true; }
 };
 
 } // namespace garden

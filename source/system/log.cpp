@@ -79,7 +79,9 @@ void LogSystem::preInit()
 }
 void LogSystem::postDeinit()
 {
-	getManager()->tryDestroySystem<LogEditorSystem>();
+	auto manager = getManager();
+	if (manager->isRunning())
+		manager->tryDestroySystem<LogEditorSystem>();
 }
 #endif
 

@@ -41,63 +41,70 @@ const float defaultAspectRatio = (16.0f / 9.0f);
 using namespace math;
 using namespace ecsm;
 
+/**
+ * @brief Camera projection type.
+ */
+enum class ProjectionType : uint8
+{
+	Perspective, Orthographic, Count,
+};
+
+/**
+ * @brief Perspective camera projection properties.
+ * 
+ * @details
+ * Method used to simulate the way the human eye perceives the world, creating a sense of depth in a scene. This 
+ * projection technique helps in rendering a three-dimensional scene onto a two-dimensional display by mimicking 
+ * the way objects appear to the eye, with objects appearing smaller as they are further away from the viewer.
+ */
+struct PerspectiveProjection final
+{
+	float fieldOfView = radians(defaultFieldOfView);
+	float aspectRatio = defaultAspectRatio;
+	float nearPlane = defaultHmdDepth;
+};
+/**
+ * @brief Orthographic camera projection properties.
+ * 
+ * @details
+ * Method used to render three-dimensional objects in two dimensions without the depth distortion that comes with 
+ * perspective projection. In orthographic projection, the size of objects remains constant regardless of their 
+ * distance from the camera, which means there is no perspective foreshortening or vanishing points.
+ */
+struct OrthographicProjection final
+{
+	float2 width = float2(-1.0f, 1.0f);
+	float2 height = float2(-1.0f, 1.0f);
+	float2 depth = float2(-1.0f, 1.0f);
+};
+	
+/**
+ * @brief Camera perspective/orthographic projection properties.
+ * @details See the @ref CameraComponent::Perspective and @ref CameraComponent::Orthographic.
+ */
+union CameraProjection final
+{
+	PerspectiveProjection perspective;   /**< Perspective camera projection properties. */
+	OrthographicProjection orthographic; /**< Orthographic camera projection properties. */
+	CameraProjection() : perspective() { }
+};
+
 /***********************************************************************************************************************
  * @brief Contains information about camera projection properties.
  */
 struct CameraComponent final : public Component
 {
-	/**
-	 * @brief Camera projection type.
-	 */
-	enum class Type : uint8
-	{
-		Perspective, Orthographic, Count,
-	};
-	/**
-	 * @brief Perspective camera projection properties.
-	 */
-	struct Perspective final
-	{
-		float fieldOfView = radians(defaultFieldOfView);
-		float aspectRatio = defaultAspectRatio;
-		float nearPlane = defaultHmdDepth;
-	};
-	/**
-	 * @brief Orthographic camera projection properties.
-	 */
-	struct Orthographic final
-	{
-		float2 width = float2(-1.0f, 1.0f);
-		float2 height = float2(-1.0f, 1.0f);
-		float2 depth = float2(-1.0f, 1.0f);
-	};
-	/**
-	 * @brief Camera perspective / orthographic properties.
-	 */
-	union Projection final
-	{
-		Perspective perspective;
-		Orthographic orthographic;
-		Projection() : perspective() { }
-	};
-
-	/**
-	 * @brief Camera perspective / orthographic properties.
-	 */
-	Projection p = {};
-	/**
-	 * @brief Camera projection type.
-	 */
-	Type type = Type::Perspective;
+	CameraProjection p = {};                           /**< Camera perspective/orthographic projection properties. */
+	ProjectionType type = ProjectionType::Perspective; /**< Camera projection type. */
 private:
 	uint8_t _alignment0 = 0;
 	uint16_t _alignment1 = 0;
-public:
+
 	friend class CameraSystem;
 	friend class LinearPool<CameraComponent, false>;
-
+public:
 	/**
-	 * @brief Calculate camera projection matrix.
+	 * @brief Calculates camera projection matrix.
 	 * @details See the @ref calcPerspProjInfRevZ().
 	 */
 	float4x4 calcProjection() const noexcept;

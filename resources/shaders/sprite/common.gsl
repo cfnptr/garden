@@ -12,23 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "garden/system/render/editor.hpp"
+#ifndef SPRITE_GSL
+#define SPRITE_GSL
 
-#if GARDEN_EDITOR
-#include "garden/system/camera.hpp"
-
-namespace garden
+struct InstanceData
 {
-
-class CameraEditorSystem final : public EditorSystem<CameraSystem>
-{
-	CameraEditorSystem(Manager* manager, CameraSystem* system);
-	~CameraEditorSystem() final;
-
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
-	friend class ecsm::Manager;
+	float4x4 mvp;
 };
 
-} // namespace garden
-#endif
+#endif // SPRITE_GSL

@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 using namespace garden;
 
+//**********************************************************************************************************************
 CameraEditorSystem::CameraEditorSystem(Manager* manager, CameraSystem* system) : EditorSystem(manager, system)
 {
 	EditorRenderSystem::getInstance()->registerEntityInspector<CameraComponent>(
@@ -24,6 +25,11 @@ CameraEditorSystem::CameraEditorSystem(Manager* manager, CameraSystem* system) :
 	{
 		onEntityInspector(entity, isOpened);
 	});
+}
+CameraEditorSystem::~CameraEditorSystem()
+{
+	if (getManager()->isRunning())
+		EditorRenderSystem::getInstance()->unregisterEntityInspector<CameraComponent>();
 }
 
 //**********************************************************************************************************************
@@ -33,7 +39,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		return;
 
 	auto cameraComponent = getManager()->get<CameraComponent>(entity);
-	if (cameraComponent->type == CameraComponent::Type::Perspective)
+	if (cameraComponent->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraComponent->p.perspective.fieldOfView);
 		if (ImGui::DragFloat("Filed Of View", &fov, 0.1f, 0.0f, FLT_MAX))
@@ -41,7 +47,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::DragFloat("Aspect Ratio", &cameraComponent->p.perspective.aspectRatio, 0.01f, 0.0f, FLT_MAX);
 		ImGui::DragFloat("Near Plane", &cameraComponent->p.perspective.nearPlane, 0.01f, 0.0f, FLT_MAX);
 	}
-	else if (cameraComponent->type == CameraComponent::Type::Orthographic)
+	else if (cameraComponent->type == ProjectionType::Orthographic)
 	{
 		ImGui::DragFloat2("Width", (float*)&cameraComponent->p.orthographic.width, 0.1f);
 		ImGui::DragFloat2("Height", (float*)&cameraComponent->p.orthographic.height, 0.1f);
@@ -52,10 +58,10 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto types = "Perspective\0Orthographic\00";
 	if (ImGui::Combo("Type", cameraComponent->type, types))
 	{
-		if (cameraComponent->type == CameraComponent::Type::Perspective)
-			cameraComponent->p.perspective = CameraComponent::Perspective();
-		else if (cameraComponent->type == CameraComponent::Type::Orthographic)
-			cameraComponent->p.orthographic = CameraComponent::Orthographic();
+		if (cameraComponent->type == ProjectionType::Perspective)
+			cameraComponent->p.perspective = PerspectiveProjection();
+		else if (cameraComponent->type == ProjectionType::Orthographic)
+			cameraComponent->p.orthographic = OrthographicProjection();
 		else abort();
 	}
 }

@@ -22,7 +22,6 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/render/fxaa.hpp"
-#include "garden/system/render/deferred.hpp" // TODO: remove?
 #include "garden/editor/system/ecs.hpp"
 #include "garden/editor/system/hierarchy.hpp"
 
@@ -67,6 +66,9 @@ EditorRenderSystem::~EditorRenderSystem()
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
 	}
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
 
 //**********************************************************************************************************************
@@ -286,9 +288,8 @@ void EditorRenderSystem::showOptionsWindow()
 		else if (renderScale <= 1.5f) renderScaleType = 3;
 		else renderScaleType = 4;
 
-		/* TODO: fix
 		const auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";
-		if (deferredSystem && ImGui::Combo("Render Scale", renderScaleType, renderScaleTypes))
+		if (ImGui::Combo("Render Scale", renderScaleType, renderScaleTypes))
 		{
 			switch (renderScaleType)
 			{
@@ -300,12 +301,11 @@ void EditorRenderSystem::showOptionsWindow()
 			default: abort();
 			}
 			
-			deferredSystem->setRenderScale(renderScale);
+			graphicsSystem->setRenderScale(renderScale);
 			if (settingsSystem)
 				settingsSystem->setFloat("renderScale", renderScale);
 		}
 		ImGui::Spacing();
-		*/
 
 		auto appInfoSystem = manager->tryGet<AppInfoSystem>();
 		if (appInfoSystem)

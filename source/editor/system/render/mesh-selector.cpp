@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,67 +11,65 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-#include "garden/editor/system/mesh-selector.hpp"
+#include "garden/editor/system/render/mesh-selector.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/deferred.hpp"
-#include "garden/editor/system/render/gizmos.hpp"
+#include "garden/editor/system/render/gizmos.hpp" // TODO: remove?
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-SelectorEditor::SelectorEditor(MeshRenderSystem* system)
+//**********************************************************************************************************************
+MeshSelectorEditorSystem::MeshSelectorEditorSystem(Manager* manager,
+	MeshRenderSystem* system) : EditorSystem(manager, system)
 {
-	this->system = system;
+	SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+}
+MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
 }
 
-//--------------------------------------------------------------------------------------------------
-void SelectorEditor::preSwapchainRender()
+//**********************************************************************************************************************
+void MeshSelectorEditorSystem::editorRender()
 {
-	auto graphicsSystem = system->getGraphicsSystem();
-	if (!graphicsSystem->camera)
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	if (!graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
-	auto manager = system->getManager();
+	auto manager = getManager();
+	auto inputSystem = InputSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
-	auto gizmosEditor = (GizmosEditor*)system->gizmosEditor;
 
 	auto updateSelector = true;
-	if (!ImGui::GetIO().WantCaptureMouse &&
-		graphicsSystem->getCursorMode() == CursorMode::Default &&
-		graphicsSystem->isMouseButtonPressed(MouseButton::Left) &&
-		!gizmosEditor->lastLmbState)
+	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Default &&
+		inputSystem->isMouseClicked(MouseButton::Left))
 	{
-		lastLmbState = true;
 		updateSelector = false;
-	}
-	else
-	{
-		if (!lastLmbState) updateSelector = false;
-		lastLmbState = false;
 	}
 
 	if (updateSelector && !isSkipped)
 	{
 		auto windowSize = graphicsSystem->getWindowSize();
-		auto cursorPosition = graphicsSystem->getCursorPosition();
+		auto cursorPosition = inputSystem->getCursorPosition();
 		auto uvPosition = (cursorPosition + 0.5f) / windowSize;
 		auto globalDirection = (float3)(cameraConstants.viewProjInv *
 			float4(uvPosition * 2.0f - 1.0f, 0.0f, 1.0f));
-		auto& subsystems = manager->getSubsystems<MeshRenderSystem>();
 		auto& transformComponents = TransformSystem::getInstance()->getComponents();
+		auto& systems = manager->getSystems();
 
 		float newDistance = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;
-		for (auto subsystem : subsystems)
+		for (const auto& pair : systems)
 		{
-			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(subsystem.system);
-			GARDEN_ASSERT(meshSystem);
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
+			if (!meshSystem)
+				continue;
 			
 			auto& componentPool = meshSystem->getMeshComponentPool();
 			auto componentSize = meshSystem->getMeshComponentSize();
@@ -126,9 +123,7 @@ void SelectorEditor::preSwapchainRender()
 		auto transform = manager->tryGet<TransformComponent>(selectedEntity);
 		if (transform)
 		{
-			auto deferredSystem = manager->get<DeferredRenderSystem>();
-			auto framebufferView = graphicsSystem->get(
-				deferredSystem->getEditorFramebuffer());
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			auto model = transform->calcModel();
 			setTranslation(model, getTranslation(model) - cameraPosition);
 

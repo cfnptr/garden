@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/render/deferred.hpp"
 #include "garden/system/render/lighting.hpp"
@@ -42,40 +40,19 @@ namespace
 	};
 }
 
-//--------------------------------------------------------------------------------------------------
-static ID<Framebuffer> createEditorFramebuffer(DeferredRenderSystem* deferredSystem)
+//**********************************************************************************************************************
+static map<string, DescriptorSet::Uniform> getBufferUniforms(Manager* manager,
+	ID<Framebuffer> gFramebuffer, ID<Framebuffer> hdrFramebuffer, ID<Image>& shadowPlaceholder)
 {
-	auto graphicsSystem = deferredSystem->getGraphicsSystem();
-	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{
-		Framebuffer::OutputAttachment(
-			ldrFramebufferView->getColorAttachments()[0].imageView, false, true, true)
-	};
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		gFramebufferView->getDepthStencilAttachment().imageView, false, true, true);
-	auto framebuffer = graphicsSystem->createFramebuffer(
-		deferredSystem->getFramebufferSize(),
-		std::move(colorAttachments), depthStencilAttachment);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer, "framebuffer.deferred.editor");
-	return framebuffer;
-}
-
-//--------------------------------------------------------------------------------------------------
-static ID<Image> shadowPlaceholder = {}; // TODO: move to class.
-
-static map<string, DescriptorSet::Uniform> getBufferUniforms(
-	Manager* manager, GraphicsSystem* graphicsSystem,
-	ID<Framebuffer> gFramebuffer, ID<Framebuffer> hdrFramebuffer)
-{
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto gFramebufferView = graphicsSystem->get(gFramebuffer);
 	auto hdrFramebufferView = graphicsSystem->get(hdrFramebuffer);
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
+	
 	auto lightingSystem = manager->tryGet<LightingRenderSystem>();
-
 	ID<ImageView> shadowBuffer0, aoBuffer0, aoBuffer1;
+
 	if (lightingSystem)
 	{
 		shadowBuffer0 = lightingSystem->getShadowImageViews()[0];
@@ -88,8 +65,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(
 		{
 			shadowPlaceholder = graphicsSystem->createImage(Image::Format::UnormR8,
 				Image::Bind::Sampled, { { nullptr } }, int2(1), Image::Strategy::Size);
-			SET_RESOURCE_DEBUG_NAME(graphicsSystem, shadowPlaceholder,
-				"image.shadowPlaceholder");
+			SET_RESOURCE_DEBUG_NAME(graphicsSystem, shadowPlaceholder, "image.shadowPlaceholder");
 		}
 		auto imageView = graphicsSystem->get(shadowPlaceholder);
 		shadowBuffer0 = aoBuffer0 = aoBuffer1 = imageView->getDefaultView();
@@ -100,8 +76,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(
 		{ "gBuffer0", DescriptorSet::Uniform(colorAttachments[0].imageView) },
 		{ "gBuffer1", DescriptorSet::Uniform(colorAttachments[1].imageView) },
 		{ "gBuffer2", DescriptorSet::Uniform(colorAttachments[2].imageView) },
-		{ "hdrBuffer", DescriptorSet::Uniform(
-			hdrFramebufferView->getColorAttachments()[0].imageView) },
+		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
 		{ "shadowBuffer0", DescriptorSet::Uniform(shadowBuffer0) },
 		{ "aoBuffer0", DescriptorSet::Uniform(aoBuffer0) },
@@ -110,43 +85,44 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(
 	return uniforms;
 }
 
-//--------------------------------------------------------------------------------------------------
-DeferredEditor::DeferredEditor(DeferredRenderSystem* system)
-{
-	EditorRenderSystem::getInstance()->registerBarTool([this]() { onBarTool(); });
-	this->system = system;
-}
+//**********************************************************************************************************************
+ID<Image> DeferredRenderEditorSystem::shadowPlaceholder = {};
 
-//--------------------------------------------------------------------------------------------------
-void DeferredEditor::prepare()
+DeferredRenderEditorSystem::DeferredRenderEditorSystem(Manager* manager, 
+	DeferredRenderSystem* system) : EditorSystem(manager, system)
 {
-	if (editorFramebuffer && system->renderScale == 1.0f)
+	SUBSCRIBE_TO_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
+	SUBSCRIBE_TO_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
+	SUBSCRIBE_TO_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
+}
+DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
 	{
-		auto graphicsSystem = system->getGraphicsSystem();
-		auto ldrFramebufferView = graphicsSystem->get(system->getLdrFramebuffer());
-		Framebuffer::OutputAttachment colorAttachment(
-			ldrFramebufferView->getColorAttachments()[0].imageView, false, true, true);
-		auto gFramebufferView = graphicsSystem->get(system->getGFramebuffer());
-		Framebuffer::OutputAttachment depthStencilAttachment(
-			gFramebufferView->getDepthStencilAttachment().imageView, false, true, true);
-		auto framebufferView = graphicsSystem->get(editorFramebuffer);
-		framebufferView->update(system->getFramebufferSize(),
-			&colorAttachment, 1, depthStencilAttachment);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
+		UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
+		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
 	}
+	
+	shadowPlaceholder = {};
 }
 
-//--------------------------------------------------------------------------------------------------
-void DeferredEditor::render()
+//**********************************************************************************************************************
+void DeferredRenderEditorSystem::editorRender()
 {
-	auto graphicsSystem = system->getGraphicsSystem();
+	if (!GraphicsSystem::getInstance()->canRender())
+		return;
+
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (showWindow)
 	{
 		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			const auto modes =
-				"Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0"
-				"Emissive\0Normal\0World Position\0Depth\0Lighting\0"
-				"Shadow\0Ambient Occlusion\0Ambient Occlusion (D)\0\0";
+			const auto modes = "Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0Emissive\0Normal\0"
+				"World Position\0Depth\0Lighting\0Shadow\0Ambient Occlusion\0Ambient Occlusion (D)\0\0";
 			ImGui::Combo("Draw Mode", drawMode, modes);
 
 			if (drawMode == DrawMode::Lighting)
@@ -194,24 +170,21 @@ void DeferredEditor::render()
 		auto pipelineView = graphicsSystem->get(bufferPipeline);
 		if (pipelineView->isReady() && graphicsSystem->camera)
 		{
-			// Note: we are doing this to get latest buffers. (suboptimal)
+			// TODO: we are doing this to get latest buffers. (suboptimal)
 			graphicsSystem->destroy(bufferDescriptorSet);
-			auto uniforms = getBufferUniforms(system->getManager(),
-				graphicsSystem, system->gFramebuffer, system->hdrFramebuffer);
-			bufferDescriptorSet = graphicsSystem->createDescriptorSet(
-				bufferPipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(graphicsSystem, bufferDescriptorSet,
-				"descriptorSet.deferred.editor.buffer");
+			auto uniforms = getBufferUniforms(getManager(), system->getGFramebuffer(),
+				system->getHdrFramebuffer(), shadowPlaceholder);
+			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(graphicsSystem, bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
 
-			auto framebufferView = graphicsSystem->get(
-				graphicsSystem->getSwapchainFramebuffer());
-			auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 			SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
+			graphicsSystem->startRecording(CommandBufferType::Frame);
 			framebufferView->beginRenderPass(float4(0.0f));
 			pipelineView->bind();
-			pipelineView->setViewportScissor(float4(float2(0),
-				graphicsSystem->getFramebufferSize()));
+			pipelineView->setViewportScissor();
 			pipelineView->bindDescriptorSet(bufferDescriptorSet);
 			auto pushConstants = pipelineView->getPushConstants<BufferPC>();
 			pushConstants->viewProjInv = cameraConstants.viewProjInv;
@@ -222,115 +195,75 @@ void DeferredEditor::render()
 			pipelineView->pushConstants();
 			pipelineView->drawFullscreen();
 			framebufferView->endRenderPass();
+			graphicsSystem->stopRecording();
 		}
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void DeferredEditor::deferredRender()
+//**********************************************************************************************************************
+void DeferredRenderEditorSystem::deferredRender()
 {
-	if (drawMode == DrawMode::Lighting)
+	if (drawMode != DrawMode::Lighting)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	if (!lightingPipeline)
 	{
-		auto graphicsSystem = system->getGraphicsSystem();
-		if (!lightingPipeline)
+		lightingPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline("editor/pbr-lighting", 
+			system->getGFramebuffer(), system->useAsyncRecording(), true);
+	}
+
+	auto pipelineView = graphicsSystem->get(lightingPipeline);
+	if (pipelineView->isReady())
+	{
+		SET_GPU_DEBUG_LABEL("Lighting Visualizer", Color::transparent);
+
+		if (system->useAsyncRecording())
 		{
-			lightingPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
-				"editor/pbr-lighting", system->getGFramebuffer(),
-				system->isRenderAsync(), true);
+			pipelineView->bindAsync(0, 0);
+			pipelineView->setViewportScissorAsync(float4(0.0f), 0);
+			auto pushConstants = pipelineView->getPushConstantsAsync<LightingPC>(0);
+			pushConstants->baseColor = baseColorOverride;
+			pushConstants->emissive = emissiveOverride;
+			pushConstants->metallic = metallicOverride;
+			pushConstants->roughness = roughnessOverride;
+			pushConstants->reflectance = reflectanceOverride;
+			pipelineView->pushConstantsAsync(0);
+			pipelineView->drawFullscreenAsync(0);
+			// TODO: also support translucent overrides.
 		}
-
-		auto pipelineView = graphicsSystem->get(lightingPipeline);
-		if (pipelineView->isReady())
+		else
 		{
-			SET_GPU_DEBUG_LABEL("Lighting Visualizer", Color::transparent);
-
-			if (system->isRenderAsync())
-			{
-				pipelineView->bindAsync(0, 0);
-				pipelineView->setViewportScissorAsync(
-					float4(float2(0), system->getFramebufferSize()), 0);
-				auto pushConstants = pipelineView->getPushConstantsAsync<LightingPC>(0);
-				pushConstants->baseColor = baseColorOverride;
-				pushConstants->emissive = emissiveOverride;
-				pushConstants->metallic = metallicOverride;
-				pushConstants->roughness = roughnessOverride;
-				pushConstants->reflectance = reflectanceOverride;
-				pipelineView->pushConstantsAsync(0);
-				pipelineView->drawFullscreenAsync(0);
-				// TODO: also support translucent overrides.
-			}
-			else
-			{
-				pipelineView->bind();
-				pipelineView->setViewportScissor(
-					float4(float2(0), system->getFramebufferSize()));
-				auto pushConstants = pipelineView->getPushConstants<LightingPC>();
-				pushConstants->baseColor = baseColorOverride;
-				pushConstants->emissive = emissiveOverride;
-				pushConstants->metallic = metallicOverride;
-				pushConstants->roughness = roughnessOverride;
-				pushConstants->reflectance = reflectanceOverride;
-				pipelineView->pushConstants();
-				pipelineView->drawFullscreen();
-			}
+			pipelineView->bind();
+			pipelineView->setViewportScissor();
+			auto pushConstants = pipelineView->getPushConstants<LightingPC>();
+			pushConstants->baseColor = baseColorOverride;
+			pushConstants->emissive = emissiveOverride;
+			pushConstants->metallic = metallicOverride;
+			pushConstants->roughness = roughnessOverride;
+			pushConstants->reflectance = reflectanceOverride;
+			pipelineView->pushConstants();
+			pipelineView->drawFullscreen();
 		}
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void DeferredEditor::recreateSwapchain(const IRenderSystem::SwapchainChanges& changes)
+//**********************************************************************************************************************
+void DeferredRenderEditorSystem::gBufferRecreate()
 {
-	if (changes.framebufferSize)
+	if (bufferDescriptorSet)
 	{
-		auto graphicsSystem = system->getGraphicsSystem();
-
-		if (editorFramebuffer)
-		{
-			auto gFramebufferView = graphicsSystem->get(system->getGFramebuffer());
-			Framebuffer::OutputAttachment colorAttachment({}, false, true, true);
-			Framebuffer::OutputAttachment depthStencilAttachment(
-				gFramebufferView->getDepthStencilAttachment().imageView, false, true, true);
-
-			if (system->renderScale == 1.0f)
-			{
-				auto swapchainView = graphicsSystem->get(
-					graphicsSystem->getSwapchainFramebuffer());
-				colorAttachment.imageView =
-					swapchainView->getColorAttachments()[0].imageView;
-			}
-			else
-			{
-				auto ldrFramebufferView = graphicsSystem->get(
-					system->getLdrFramebuffer());
-				colorAttachment.imageView =
-					ldrFramebufferView->getColorAttachments()[0].imageView;
-			}
-
-			auto framebufferView = graphicsSystem->get(editorFramebuffer);
-			framebufferView->update(system->getFramebufferSize(),
-				&colorAttachment, 1, depthStencilAttachment);
-		}
-
-		if (bufferDescriptorSet)
-		{
-			auto descriptorSetView = graphicsSystem->get(bufferDescriptorSet);
-			auto uniforms = getBufferUniforms(system->getManager(),
-				graphicsSystem, system->gFramebuffer, system->hdrFramebuffer);
-			descriptorSetView->recreate(std::move(uniforms));
-		}
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto descriptorSetView = graphicsSystem->get(bufferDescriptorSet);
+		auto uniforms = getBufferUniforms(getManager(), system->getGFramebuffer(),
+			system->getHdrFramebuffer(), shadowPlaceholder);
+		descriptorSetView->recreate(std::move(uniforms));
 	}
 }
 
-void DeferredEditor::onBarTool()
+void DeferredRenderEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("G-Buffer Visualizer"))
 		showWindow = true;
-}
-
-ID<Framebuffer> DeferredEditor::getFramebuffer()
-{
-	if (!editorFramebuffer)
-		editorFramebuffer = createEditorFramebuffer(system);
-	return editorFramebuffer;
 }
 #endif

@@ -207,16 +207,12 @@ bool SsaoRenderSystem::aoRender()
 		0.0f, 0.0f, 0.0f, 1.0f
 	);
 
-	auto framebufferView = graphicsSystem->get(
-		getLightingSystem()->getAoFramebuffers()[0]);
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("SSAO", Color::transparent);
 	pipelineView->bind();
-	pipelineView->setViewportScissor(float4(
-		float2(0), framebufferView->getSize()));
-	pipelineView->bindDescriptorSet(descriptorSet,
-		graphicsSystem->getSwapchainIndex());
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->uvToView = cameraConstants.projInverse * uvToNDC;
 	pushConstants->uvToView[0][3] = radius;

@@ -21,9 +21,7 @@
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
-
 class TranslucentRenderSystem;
 
 struct TranslucentRenderComponent final : public GeometryRenderComponent

@@ -88,13 +88,13 @@ void SkyboxRenderSystem::hdrRender()
 	}
 
 	auto deferredSystem = getDeferredSystem();
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
 	if (deferredSystem->isRenderAsync())
 	{
 		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4(float2(0),
+		pipelineView->setViewportScissorAsync(float4(float2(0.0f),
 			getDeferredSystem()->getFramebufferSize()), 0);
 		pipelineView->bindDescriptorSetAsync(component->descriptorSet, 0, 0);
 		auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(0);
@@ -105,8 +105,7 @@ void SkyboxRenderSystem::hdrRender()
 	else
 	{
 		pipelineView->bind();
-		pipelineView->setViewportScissor(float4(float2(0),
-			getDeferredSystem()->getFramebufferSize()));
+		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(component->descriptorSet);
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 		pushConstants->viewProj = cameraConstants.viewProj;

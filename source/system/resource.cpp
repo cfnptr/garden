@@ -63,7 +63,7 @@ namespace
 		fs::path cachesPath;
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
-		map<string, GraphicsPipeline::SpecConst> specConsts;
+		map<string, Pipeline::SpecConstValue> specConstValues;
 		map<uint8, GraphicsPipeline::State> stateOverrides;
 		ID<GraphicsPipeline> instance = {};
 		uint32 maxBindlessCount = 0;
@@ -77,7 +77,7 @@ namespace
 		fs::path shaderPath;
 		fs::path resourcesPath;
 		fs::path cachesPath;
-		map<string, GraphicsPipeline::SpecConst> specConsts;
+		map<string, Pipeline::SpecConstValue> specConstValues;
 		uint32 maxBindlessCount = 0;
 		ID<ComputePipeline> instance = {};
 		bool useAsyncRecording = false;
@@ -143,6 +143,9 @@ ResourceSystem::~ResourceSystem()
 		UNSUBSCRIBE_FROM_EVENT("PostDeinit", ResourceSystem::postDeinit);
 		TRY_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 	}
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
 
 //**********************************************************************************************************************
@@ -177,6 +180,10 @@ void ResourceSystem::postDeinit()
 		PipelineExt::destroy(graphicsQueue.front().pipeline);
 		graphicsQueue.pop();
 	}
+
+	auto manager = getManager();
+	if (manager->isRunning())
+		UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 }
 
 //**********************************************************************************************************************
@@ -1137,7 +1144,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	ID<Framebuffer> framebuffer, bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
-	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConst>& specConsts,
+	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConstValue>& specConstValues,
 	const map<uint8, GraphicsPipeline::State>& stateOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -1199,7 +1206,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->renderPass = renderPass;
 		data->subpassIndex = subpassIndex;
 		data->colorFormats = std::move(colorFormats);
-		data->specConsts = specConsts;
+		data->specConstValues = specConstValues;
 		data->stateOverrides = stateOverrides;
 		data->instance = pipeline;
 		data->maxBindlessCount = maxBindlessCount;
@@ -1214,7 +1221,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.resourcesPath = std::move(data->resourcesPath);
 			pipelineData.cachesPath = std::move(data->cachesPath);
-			pipelineData.specConsts = std::move(data->specConsts);
+			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			pipelineData.colorFormats = std::move(data->colorFormats);
@@ -1254,7 +1261,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.shaderPath = path;
 		pipelineData.resourcesPath = appResourcesPath;
 		pipelineData.cachesPath = appCachesPath;
-		pipelineData.specConsts = specConsts;
+		pipelineData.specConstValues = specConstValues;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
@@ -1361,7 +1368,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 //**********************************************************************************************************************
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount,
-	const map<string, GraphicsPipeline::SpecConst>& specConsts)
+	const map<string, Pipeline::SpecConstValue>& specConstValues)
 {
 	GARDEN_ASSERT(!path.empty());
 
@@ -1376,7 +1383,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		data->shaderPath = path;
 		data->resourcesPath = appResourcesPath;
 		data->cachesPath = appCachesPath;
-		data->specConsts = specConsts;
+		data->specConstValues = specConstValues;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
 		data->useAsyncRecording = useAsyncRecording;
@@ -1388,7 +1395,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.resourcesPath = std::move(data->resourcesPath);
 			pipelineData.cachesPath = std::move(data->cachesPath);
-			pipelineData.specConsts = std::move(data->specConsts);
+			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 
@@ -1421,7 +1428,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		pipelineData.shaderPath = path;
 		pipelineData.resourcesPath = appResourcesPath;
 		pipelineData.cachesPath = appCachesPath;
-		pipelineData.specConsts = specConsts;
+		pipelineData.specConstValues = specConstValues;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 

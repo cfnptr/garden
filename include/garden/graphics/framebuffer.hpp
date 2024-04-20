@@ -216,11 +216,12 @@ private:
 	Framebuffer(int2 size, vector<Subpass>&& subpasses);
 	Framebuffer(int2 size, vector<OutputAttachment>&& colorAttachments,
 		OutputAttachment depthStencilAttachment);
-	Framebuffer(int2 size, ID<ImageView> swapchainImage)
+	Framebuffer(int2 size, ID<ImageView> swapchainImage, ID<ImageView> depthBuffer)
 	{
 		this->instance = (void*)1;
-		this->colorAttachments.push_back(
-			OutputAttachment(swapchainImage, false, true, true));
+		this->colorAttachments.push_back(OutputAttachment(swapchainImage, false, true, true));
+		if (depthBuffer)
+			this->depthStencilAttachment = OutputAttachment(depthBuffer, false, true, true);
 		this->size = size;
 		this->isSwapchain = true;
 	}

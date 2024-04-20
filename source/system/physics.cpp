@@ -103,7 +103,7 @@ public:
 
 	void onTrigger(PxTriggerPair* pairs, PxU32 count) final
 	{
-		auto manager = physicsSystem->getManager();
+		auto manager = getManager();
 		auto& subsystems = manager->getSubsystems<PhysicsSystem>();
 
 		for (auto subsystem : subsystems)
@@ -313,7 +313,7 @@ void RigidBodyComponent::setStatic(bool isStatic)
 		instance->release();
 	}
 
-	auto manager = physicsSystem->getManager();
+	auto manager = getManager();
 	auto transformComponent = manager->get<TransformComponent>(entity);
 	auto position = transformComponent->position;
 	auto rotation = transformComponent->rotation;

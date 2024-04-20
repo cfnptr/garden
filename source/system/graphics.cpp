@@ -20,7 +20,6 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
-#include "garden/system/render/deferred.hpp"
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
@@ -175,11 +174,20 @@ void GraphicsSystem::recreateImGui()
 }
 #endif
 
+static ID<ImageView> createDepthStencilBuffer(GraphicsSystem* graphicsSystem, int2 size, Image::Format format)
+{
+	auto depthImage = graphicsSystem->createImage(format, Image::Bind::Fullscreen |
+		Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, depthImage, "image.depthBuffer");
+	auto imageView = GraphicsAPI::imagePool.get(depthImage);
+	return imageView->getDefaultView();
+}
+
 //**********************************************************************************************************************
 GraphicsSystem* GraphicsSystem::instance = nullptr;
 
-GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscreen,
-	bool useVsync, bool useTripleBuffering, bool useAsyncRecording) : System(manager)
+GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, Image::Format depthStencilFormat,
+	bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useAsyncRecording) : System(manager)
 {
 	this->useVsync = useVsync;
 	this->useTripleBuffering = useTripleBuffering;
@@ -202,10 +210,13 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, bool isFullscr
 	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
 	glfwGetWindowSize(window, &this->windowSize.x, &this->windowSize.y);
 
+	if (depthStencilFormat != Image::Format::Undefined)
+		depthStencilBuffer = createDepthStencilBuffer(this, framebufferSize, depthStencilFormat);
+
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 	swapchainFramebuffer = GraphicsAPI::framebufferPool.create(
-		framebufferSize, swapchainImage->getDefaultView());
+		framebufferSize, swapchainImage->getDefaultView(), depthStencilBuffer);
 	SET_THIS_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
@@ -245,6 +256,9 @@ GraphicsSystem::~GraphicsSystem()
 	terminateImGui();
 	#endif
 	Vulkan::terminate();
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
 
 //**********************************************************************************************************************
@@ -253,14 +267,6 @@ void GraphicsSystem::preInit()
 	auto manager = getManager();
 	GARDEN_ASSERT(manager->has<InputSystem>());
 	SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
-
-	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-	{
-		manager->createSystem<GraphicsEditorSystem>(this);
-		manager->createSystem<GpuResourceEditorSystem>(this);
-	}
-	#endif
 
 	auto threadSystem = manager->tryGet<ThreadSystem>();
 	if (threadSystem)
@@ -282,10 +288,22 @@ void GraphicsSystem::preInit()
 
 	auto settingsSystem = manager->tryGet<SettingsSystem>();
 	if (settingsSystem)
+	{
 		settingsSystem->getBool("useVsync", useVsync);
+		settingsSystem->getInt("frameRate", frameRate);
+		settingsSystem->getFloat("renderScale", renderScale);
+	}
 
 	#if GARDEN_EDITOR
 	initializeImGui();
+	#endif
+
+	#if GARDEN_EDITOR
+	if (manager->has<EditorRenderSystem>())
+	{
+		manager->createSystem<GraphicsEditorSystem>(this);
+		manager->createSystem<GpuResourceEditorSystem>(this);
+	}
 	#endif
 }
 void GraphicsSystem::preDeinit()
@@ -295,12 +313,23 @@ void GraphicsSystem::preDeinit()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
-
 		#if GARDEN_EDITOR
-		manager->tryDestroySystem<GraphicsEditorSystem>();
-		manager->tryDestroySystem<GpuResourceEditorSystem>();
+		if (manager->has<EditorRenderSystem>())
+		{
+			manager->destroySystem<GraphicsEditorSystem>();
+			manager->destroySystem<GpuResourceEditorSystem>();
+		}
 		#endif
+
+		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
+	}
+
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem)
+	{
+		settingsSystem->setBool("useVsync", useVsync);
+		settingsSystem->setInt("frameRate", frameRate);
+		settingsSystem->setFloat("renderScale", renderScale);
 	}
 }
 
@@ -366,18 +395,20 @@ static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
 }
 
 //**********************************************************************************************************************
-static void updateCurrentFrambuffer(ID<Framebuffer> swapchainFramebuffer, int2 framebufferSize)
+static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
+	ID<ImageView> depthStencilBuffer, int2 framebufferSize)
 {
 	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
 	auto colorImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
-	FramebufferExt::getColorAttachments(framebuffer)[0].imageView = colorImage->getDefaultView();
 	FramebufferExt::getSize(framebuffer) = framebufferSize;
+	FramebufferExt::getColorAttachments(framebuffer)[0].imageView = colorImage->getDefaultView();
+	FramebufferExt::getDepthStencilAttachment(framebuffer).imageView = depthStencilBuffer;
 }
 
 //**********************************************************************************************************************
 static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
-	ID<Entity> directionalLight, int2 framebufferSize, CameraConstants& cameraConstants)
+	ID<Entity> directionalLight, int2 scaledFramebufferSize, CameraConstants& cameraConstants)
 {
 	auto transformComponent = manager->tryGet<TransformComponent>(camera);
 	if (transformComponent)
@@ -395,7 +426,8 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
 	auto cameraComponent = manager->tryGet<CameraComponent>(camera);
 	if (cameraComponent)
 	{
-		cameraComponent->p.perspective.aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+		cameraComponent->p.perspective.aspectRatio =
+			(float)scaledFramebufferSize.x / (float)scaledFramebufferSize.y;
 		cameraConstants.projection = cameraComponent->calcProjection();
 		cameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
 	}
@@ -405,26 +437,10 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
 		cameraConstants.nearPlane = defaultHmdDepth;
 	}
 
-	// TODO:
-	/*
-	auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
-	if (deferredSystem)
-	{
-		auto frameSize = deferredSystem->getFramebufferSize();
-		cameraConstants.frameSize = frameSize;
-		cameraConstants.frameSizeInv = 1.0f / (float2)frameSize;
-	}
-	else
-	{
-		cameraConstants.frameSize = cameraConstants.frameSizeInv = 1.0f;
-	}
-	*/
-
 	cameraConstants.viewProj = cameraConstants.projection * cameraConstants.view;
 	cameraConstants.viewInverse = inverse(cameraConstants.view);
 	cameraConstants.projInverse = inverse(cameraConstants.projection);
 	cameraConstants.viewProjInv = inverse(cameraConstants.viewProj);
-	cameraConstants.frameSizeInv2 = cameraConstants.frameSizeInv * 2.0f;
 	auto viewDir = cameraConstants.view * float4(float3::front, 1.0f);
 	cameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
 
@@ -445,6 +461,10 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
 	{
 		cameraConstants.lightDir = float4(float3::bottom, 0.0f);
 	}
+
+	cameraConstants.frameSize = scaledFramebufferSize;
+	cameraConstants.frameSizeInv = 1.0f / (float2)scaledFramebufferSize;
+	cameraConstants.frameSizeInv2 = cameraConstants.frameSizeInv * 2.0f;
 }
 
 //**********************************************************************************************************************
@@ -455,20 +475,20 @@ void GraphicsSystem::input()
 }
 void GraphicsSystem::update()
 {
-	swapchainChanges.framebufferSize = framebufferSize != Vulkan::swapchain.getFramebufferSize();
-	swapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.useTripleBuffering();
-	swapchainChanges.vsyncState = useVsync != Vulkan::swapchain.useVsync();
+	SwapchainChanges newSwapchainChanges;
+	newSwapchainChanges.framebufferSize = framebufferSize != Vulkan::swapchain.getFramebufferSize();
+	newSwapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.useTripleBuffering();
+	newSwapchainChanges.vsyncState = useVsync != Vulkan::swapchain.useVsync();
+
+	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
+		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState);
 
 	if (forceRecreateSwapchain)
 	{
-		swapchainChanges.framebufferSize |= this->swapchainChanges.framebufferSize;
-		swapchainChanges.bufferCount |= this->swapchainChanges.bufferCount;
-		swapchainChanges.vsyncState |= this->swapchainChanges.vsyncState;
-		forceRecreateSwapchain = false;
+		swapchainChanges.framebufferSize |= newSwapchainChanges.framebufferSize;
+		swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
+		swapchainChanges.vsyncState |= newSwapchainChanges.vsyncState;
 	}
-
-	auto swapchainRecreated = isFramebufferSizeValid && (swapchainChanges.framebufferSize ||
-		swapchainChanges.bufferCount || swapchainChanges.vsyncState);
 	
 	auto manager = getManager();
 	auto logSystem = manager->tryGet<LogSystem>();
@@ -477,10 +497,16 @@ void GraphicsSystem::update()
 	{
 		Vulkan::swapchain.recreate(framebufferSize, useVsync, useTripleBuffering);
 
-		if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
+		if (depthStencilBuffer)
 		{
-			recreateCameraBuffers(this, cameraConstantsBuffers);
-			swapchainChanges.bufferCount = true;
+			auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
+			auto depthStencilImageView = GraphicsAPI::imagePool.get(depthStencilBufferView->getImage());
+			if (framebufferSize != (int2)depthStencilImageView->getSize())
+			{
+				auto format = depthStencilBufferView->getFormat();
+				destroy(depthStencilBufferView->getImage());
+				depthStencilBuffer = createDepthStencilBuffer(this, framebufferSize, format);
+			}
 		}
 
 		#if GARDEN_EDITOR
@@ -494,6 +520,12 @@ void GraphicsSystem::update()
 		}
 	}
 
+	if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
+	{
+		recreateCameraBuffers(this, cameraConstantsBuffers);
+		swapchainChanges.bufferCount = true;
+	}
+
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
@@ -503,15 +535,19 @@ void GraphicsSystem::update()
 		}
 	}
 
-	updateCurrentFrambuffer(swapchainFramebuffer, framebufferSize);
+	updateCurrentFramebuffer(swapchainFramebuffer, depthStencilBuffer, framebufferSize);
 	
-	if (swapchainRecreated)
+	if (swapchainRecreated || forceRecreateSwapchain)
+	{
 		manager->runEvent("SwapchainRecreate");
+		swapchainChanges = {};
+		forceRecreateSwapchain = false;
+	}
 
 	if (camera)
 	{
 		prepareCameraConstants(manager, camera, directionalLight,
-			framebufferSize, currentCameraConstants);
+			getScaledFramebufferSize(), currentCameraConstants);
 		auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
 		auto cameraBuffer = GraphicsAPI::bufferPool.get(
 			cameraConstantsBuffers[swapchainBufferIndex][0]);
@@ -580,6 +616,22 @@ void GraphicsSystem::present()
 }
 
 //**********************************************************************************************************************
+void GraphicsSystem::setRenderScale(float renderScale)
+{
+	if (renderScale == this->renderScale)
+		return;
+
+	this->renderScale = renderScale;
+
+	SwapchainChanges swapchainChanges;
+	swapchainChanges.framebufferSize = true;
+	recreateSwapchain(swapchainChanges);
+}
+int2 GraphicsSystem::getScaledFramebufferSize() const noexcept
+{
+	return max((int2)(float2(framebufferSize) * renderScale), int2(1));
+}
+
 bool GraphicsSystem::hasDynamicRendering() const noexcept
 {
 	return Vulkan::hasDynamicRendering;
@@ -588,6 +640,7 @@ bool GraphicsSystem::hasDescriptorIndexing() const noexcept
 {
 	return Vulkan::hasDescriptorIndexing;
 }
+
 uint32 GraphicsSystem::getSwapchainSize() const noexcept
 {
 	return (uint32)Vulkan::swapchain.getBufferCount();
@@ -598,6 +651,16 @@ uint32 GraphicsSystem::getSwapchainIndex() const noexcept
 }
 
 //**********************************************************************************************************************
+ID<Buffer> GraphicsSystem::getFullSquareVertices()
+{
+	if (!fullSquareVertices)
+	{
+		fullSquareVertices = createBuffer(Buffer::Bind::Vertex |
+			Buffer::Bind::TransferDst, Buffer::Access::None, fullSquareVert2D);
+		SET_THIS_RESOURCE_DEBUG_NAME(fullSquareVertices, "buffer.vertex.fullSquare");
+	}
+	return fullSquareVertices;
+}
 ID<Buffer> GraphicsSystem::getFullCubeVertices()
 {
 	if (!fullCubeVertices)
@@ -606,9 +669,9 @@ ID<Buffer> GraphicsSystem::getFullCubeVertices()
 			Buffer::Bind::TransferDst, Buffer::Access::None, fullCubeVert);
 		SET_THIS_RESOURCE_DEBUG_NAME(fullCubeVertices, "buffer.vertex.fullCube");
 	}
-
 	return fullCubeVertices;
 }
+
 
 ID<ImageView> GraphicsSystem::getEmptyTexture()
 {
@@ -620,7 +683,6 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = get(texture)->getDefaultView();
 	}
-
 	return emptyTexture;
 }
 ID<ImageView> GraphicsSystem::getWhiteTexture()
@@ -633,7 +695,6 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = get(texture)->getDefaultView();
 	}
-
 	return whiteTexture;
 }
 ID<ImageView> GraphicsSystem::getGreenTexture()
@@ -646,7 +707,6 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = get(texture)->getDefaultView();
 	}
-
 	return greenTexture;
 }
 ID<ImageView> GraphicsSystem::getNormalMapTexture()
@@ -659,7 +719,6 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = get(texture)->getDefaultView();
 	}
-
 	return normalMapTexture;
 }
 
@@ -698,7 +757,9 @@ void GraphicsSystem::setWindowIcon(const vector<string>& paths)
 void GraphicsSystem::recreateSwapchain(const SwapchainChanges& changes)
 {
 	GARDEN_ASSERT(changes.framebufferSize || changes.bufferCount || changes.vsyncState);
-	swapchainChanges = changes;
+	swapchainChanges.framebufferSize |= changes.framebufferSize;
+	swapchainChanges.bufferCount |= changes.bufferCount;
+	swapchainChanges.vsyncState |= changes.vsyncState;
 	forceRecreateSwapchain = true;
 }
 
@@ -1231,23 +1292,19 @@ void GraphicsSystem::stopRecording()
 //**********************************************************************************************************************
 void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 {
-	// TODO:
-	/*
-	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
 	if (!aabbPipeline)
 	{
 		aabbPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
-			"editor/aabb-lines", deferredSystem->getEditorFramebuffer(), false, false);
+			"editor/aabb-lines", swapchainFramebuffer, false, false);
 	}
 
 	auto pipelineView = get(aabbPipeline);
 	pipelineView->bind();
-	pipelineView->setViewportScissor(float4(float2(0), deferredSystem->getFramebufferSize()));
+	pipelineView->setViewportScissor();
 	auto pushConstants = pipelineView->getPushConstants<AabbPC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;
 	pipelineView->pushConstants();
 	pipelineView->draw({}, 24);
-	*/
 }
 #endif

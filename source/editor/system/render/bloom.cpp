@@ -63,7 +63,7 @@ void BloomEditor::render()
 
 		if (ImGui::Checkbox("Enabled", &system->isEnabled))
 		{
-			auto settingsSystem = system->getManager()->tryGet<SettingsSystem>();
+			auto settingsSystem = getManager()->tryGet<SettingsSystem>();
 			if (settingsSystem)
 				settingsSystem->setBool("useBloom", system->isEnabled);
 		}
@@ -117,16 +117,14 @@ void BloomEditor::render()
 					"descriptorSet.bloom.editor.threshold");
 			}
 
-			auto framebufferView = graphicsSystem->get(
-				graphicsSystem->getSwapchainFramebuffer());
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 
 			{
 				SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
 				framebufferView->beginRenderPass(float4(0.0f));
 				pipelineView->bind();
-				pipelineView->setViewportScissor(float4(float2(0),
-					graphicsSystem->getFramebufferSize()));
+				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(thresholdDescriptorSet);
 				auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 				pushConstants->threshold = system->threshold;

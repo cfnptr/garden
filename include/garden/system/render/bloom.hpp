@@ -20,12 +20,11 @@
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
-#define MAX_BLOOM_MIP_COUNT 6
+#define MAX_BLOOM_MIP_COUNT 6 // TODO: use constant
 
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 
 //--------------------------------------------------------------------------------------------------
@@ -56,7 +55,6 @@ class BloomRenderSystem final : public System,
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class BloomEditorSystem;
 public:
 	float intensity = 0.004f;
 	float threshold = 0.0f;

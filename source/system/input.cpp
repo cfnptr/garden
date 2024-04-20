@@ -102,6 +102,9 @@ InputSystem::~InputSystem()
 		manager->unregisterEvent("Input");
 		manager->unregisterEvent("FileDrop");
 	}
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
 
 //**********************************************************************************************************************

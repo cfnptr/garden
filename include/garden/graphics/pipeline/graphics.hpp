@@ -348,7 +348,7 @@ public:
 	 * This command is used in conjunction with the viewport setting to further restrict rendering to a specific 
 	 * region of the screen, enabling more precise control over where graphics are drawn.
 	 */
-	void setScissor(const int4& scissor);
+	void setScissor(const int4& scissor = int4(0));
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setScissor()
@@ -356,14 +356,14 @@ public:
 	 * @param[in] scissor target scissor value (xy = offset, zw = extent)
 	 * @param taskIndex index of the thread pool task (-1 = all threads)
 	 */
-	void setScissorAsync(const int4& scissor, int32 taskIndex = -1);
+	void setScissorAsync(const int4& scissor = int4(0), int32 taskIndex = -1);
 
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions.
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
 	 * @param[in] viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 */
-	void setViewportScissor(const float4& viewportScissor);
+	void setViewportScissor(const float4& viewportScissor = float4(0.0f));
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
@@ -371,7 +371,7 @@ public:
 	 * @param[in] viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 * @param taskIndex index of the thread pool task (-1 = all threads)
 	 */
-	void setViewportScissorAsync(const float4& viewportScissor, int32 taskIndex = -1);
+	void setViewportScissorAsync(const float4& viewportScissor = float4(0.0f), int32 taskIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Renders primitives to the framebuffer.

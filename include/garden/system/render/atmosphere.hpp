@@ -44,7 +44,6 @@
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 
 enum class Gas : uint8

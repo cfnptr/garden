@@ -29,6 +29,11 @@ TransformEditorSystem::TransformEditorSystem(Manager* manager, TransformSystem* 
 		onEntityInspector(entity, isOpened);
 	});
 }
+TransformEditorSystem::~TransformEditorSystem()
+{
+	if (getManager()->isRunning())
+		EditorRenderSystem::getInstance()->unregisterEntityInspector<TransformComponent>();
+}
 
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)

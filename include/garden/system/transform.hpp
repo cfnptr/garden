@@ -32,11 +32,11 @@ using namespace ecsm;
  */
 struct TransformComponent final : public Component
 {
-	float3 position = float3(0.0f);
-	float3 scale = float3(1.0f);
-	quat rotation = quat::identity;
+	float3 position = float3(0.0f); /**< Object position in the 3D space relative to the parent. */
+	float3 scale = float3(1.0f);    /**< Object scale in the 3D space relative to the parent. */
+	quat rotation = quat::identity; /**< Object rotation in the 3D space relative to the parent. */
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	string name;
+	string name;                    /**< Object debug name. (Debug and editor only) */
 	#endif
 private:
 	ID<Entity> parent = {};
@@ -180,11 +180,11 @@ public:
 
 	/**
 	 * @brief Returns transform system instance.
-	 * @warning Do not use it if you have several transform system instances.
+	 * @warning Do not use it if you have several managers.
 	 */
 	static TransformSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Transform system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };

@@ -23,7 +23,6 @@
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 
 class GeometryRenderSystem;
@@ -96,8 +95,6 @@ protected:
 	virtual void appendDescriptorData(Pipeline::DescriptorData* data,
 		uint8& index, GeometryRenderComponent* geometryComponent) { }
 	void destroyResources(GeometryRenderComponent* geometryComponent);
-
-	friend class GeometryEditorSystem;
 public:
 	ID<GraphicsPipeline> getPipeline();
 
@@ -146,8 +143,6 @@ protected:
 
 	virtual ID<GraphicsPipeline> createPipeline() = 0;
 	void destroyResources(GeometryShadowRenderComponent* geometryShadowComponent);
-
-	friend class GeometryEditorSystem;
 public:
 	ID<GraphicsPipeline> getPipeline();
 };

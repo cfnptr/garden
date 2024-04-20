@@ -46,7 +46,7 @@ void ToneMappingEditor::render()
 			&system->exposureCoeff, 0.01f, 0.0f, FLT_MAX);
 		ImGui::SliderFloat("Dither Intensity", &system->ditherIntensity, 0.0f, 1.0f);
 
-		auto lightingSystem = system->getManager()->get<LightingRenderSystem>();
+		auto lightingSystem = getManager()->get<LightingRenderSystem>();
 		ImGui::ColorEdit4("Shadow Color", (float*)&lightingSystem->shadowColor, 
 			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 

@@ -21,7 +21,6 @@ namespace garden
 
 using namespace math;
 using namespace ecsm;
-using namespace garden;
 //using namespace garden::physics;
 
 /***********************************************************************************************************************

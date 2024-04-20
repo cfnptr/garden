@@ -41,7 +41,7 @@ struct SwapchainChanges final
 };
 
 /**
- * @brief Responsible for graphics rendering and GPU resource managing.
+ * @brief Graphics GPU resource manager.
  * 
  * @details
  * The system manages the resources of the GPU, which includes allocating and deallocating memory for 
@@ -59,14 +59,17 @@ private:
 	ConstantsBuffer cameraConstantsBuffers;
 	int2 framebufferSize = int2(0), windowSize = int2(0);
 	uint64 frameIndex = 0, tickIndex = 0;
-	ID<Framebuffer> swapchainFramebuffer = {};
+	ID<Buffer> fullSquareVertices = {};
 	ID<Buffer> fullCubeVertices = {};
 	ID<ImageView> emptyTexture = {};
 	ID<ImageView> whiteTexture = {};
 	ID<ImageView> greenTexture = {};
 	ID<ImageView> normalMapTexture = {};
+	ID<ImageView> depthStencilBuffer = {};
+	ID<Framebuffer> swapchainFramebuffer = {};
 	CameraConstants currentCameraConstants = {};
 	double beginSleepClock = 0.0;
+	float renderScale = 1.0f;
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
@@ -83,15 +86,15 @@ private:
 	 * 
 	 * @param[in,out] manager manager instance
 	 * @param windowSize target OS window size (in units)
+	 * @param depthStencilFormat depth/stencil buffer image format (Undefined = no buffer)
 	 * @param isFullscreen create a fullscreen window
 	 * @param useVsync use vertical synchronization (V-Sync)
 	 * @param useTripleBuffering use swapchain triple buffering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	GraphicsSystem(Manager* manager,
-		int2 windowSize = int2(defaultWindowWidth, defaultWindowHeight),
-		bool isFullscreen = !GARDEN_DEBUG, bool useVsync = true,
-		bool useTripleBuffering = true, bool useAsyncRecording = true);
+	GraphicsSystem(Manager* manager, int2 windowSize = defaultWindowSize, 
+		Image::Format depthStencilFormat = Image::Format::SfloatD32, bool isFullscreen = !GARDEN_DEBUG,
+		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true);
 	/**
 	 * @brief Destroys graphics system instance.
 	 */
@@ -135,6 +138,22 @@ public:
 	bool useTripleBuffering = false;
 
 	/**
+	 * @brief Returns frame render scale.
+	 * @details Useful for scaling forward/deferred framebuffer.
+	 */
+	float getRenderScale() const noexcept { return renderScale; }
+	/**
+	 * @brief Sets frame render scale.
+	 * @note It signals swapchain size change.
+	 */
+	void setRenderScale(float renderScale);
+	/**
+	 * @brief Returns scaled by render scale framebuffer size
+	 * @details Useful for scaling forward/deferred framebuffer.
+	 */
+	int2 getScaledFramebufferSize() const noexcept;
+
+	/**
 	 * @brief Returns current frame index since the application launch.
 	 * @details It does not count frames when the window is minimized.
 	 */
@@ -147,7 +166,7 @@ public:
 
 	/**
 	 * @brief Returns current framebuffer size in pixels.
-	 * @details It can change when window or swachain is resized.
+	 * @details It can change when window or swapchain is resized.
 	 */
 	int2 getFramebufferSize() const noexcept { return framebufferSize; }
 	/**
@@ -201,6 +220,12 @@ public:
 	 */
 	ID<Buffer> getFullCubeVertices();
 	/**
+	 * @brief Returns full square vertex buffer.
+	 * @details Allocates if it is not created yet.
+	 */
+	ID<Buffer> getFullSquareVertices();
+
+	/**
 	 * @brief Returns empty texture image view. (0, 0, 0, 0)
 	 * @details Allocates if it is not created yet.
 	 */
@@ -220,6 +245,11 @@ public:
 	 * @details Allocates if it is not created yet.
 	 */
 	ID<ImageView> getNormalMapTexture();
+	/**
+	 * @brief Returns depth/stencil buffer image view.
+	 * @details It is created if depthBufferFormat is not Undefined during system initialization.
+	 */
+	ID<ImageView> getDepthStencilBuffer() const noexcept { return depthStencilBuffer; }
 
 	/**
 	 * @brief Sets window title. (UTF-8)
@@ -585,11 +615,11 @@ public:
 
 	/**
 	 * @brief Returns graphics system instance.
-	 * @warning Do not use it if you have several graphics system instances.
+	 * @warning Do not use it if you have several managers.
 	 */
 	static GraphicsSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Graphics system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 	

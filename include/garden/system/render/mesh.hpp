@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,42 +11,62 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common mesh rendering functions.
+ */
 
 #pragma once
-#include "garden/system/render/deferred.hpp"
+#include "garden/system/thread.hpp"
+#include "garden/system/graphics.hpp"
+#include "garden/system/transform.hpp"
 #include "math/aabb.hpp"
+
 #include <utility>
 
-/*
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 class MeshRenderSystem;
 class IMeshRenderSystem;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Mesh render types.
+ */
+enum class MeshRenderType : uint8
+{
+	Opaque, Translucent, OpaqueShadow, TranslucentShadow, Count
+};
+
+/***********************************************************************************************************************
+ * @brief General mesh rendering data container.
+ */
 struct MeshRenderComponent : public Component
 {
 protected:
 	ID<TransformComponent> transform = {};
 	friend class MeshRenderSystem;
 public:
-	Aabb aabb = Aabb::one;
-	bool isEnabled = true;
+	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
+	bool isEnabled = true; /**< Is mesh should be rendered. */
 
+	/**
+	 * @brief Returns mesh entity transform component.
+	 * @details Transform component is required to render the mesh.
+	 */
 	ID<TransformComponent> getTransform() const noexcept { return transform; }
 };
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Mesh render system interface.
+ */
 class IMeshRenderSystem
 {
 protected:
 	virtual bool isDrawReady() = 0;
-	virtual void prepareDraw(const float4x4& viewProj,
-		ID<Framebuffer> framebuffer, uint32 drawCount) { }
+	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount) { }
 	// WARNING: can be called from multiple threads asynchronously.
 	virtual void beginDraw(int32 taskIndex) { }
 	// WARNING: can be called from multiple threads asynchronously.
@@ -55,31 +74,32 @@ protected:
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
 	// WARNING: can be called from multiple threads asynchronously.
 	virtual void endDraw(uint32 drawCount, int32 taskIndex) { }
-	virtual void finalizeDraw(const float4x4& viewProj,
-		ID<Framebuffer> framebuffer, uint32 drawCount) { }
+	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount) { }
+
 	friend class MeshRenderSystem;
 public:
 	virtual MeshRenderType getMeshRenderType() const = 0;
 	virtual const LinearPool<MeshRenderComponent>& getMeshComponentPool() const = 0;
 	virtual psize getMeshComponentSize() const = 0;
 };
-
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Mesh shadow render system interface.
+ */
 class IShadowMeshRenderSystem
 {
 protected:
 	virtual uint32 getShadowPassCount() = 0;
-	virtual bool prepareShadowRender(uint32 passIndex, float4x4& viewProj,
-		float3& cameraOffset, ID<Framebuffer>& framebuffer) = 0;
+	virtual bool prepareShadowRender(uint32 passIndex, float4x4& viewProj, float3& cameraOffset) = 0;
 	virtual void beginShadowRender(uint32 passIndex, MeshRenderType renderType) = 0;
 	virtual void endShadowRender(uint32 passIndex, MeshRenderType renderType) = 0;
 	friend class MeshRenderSystem;
 };
 
-//--------------------------------------------------------------------------------------------------
-class MeshRenderSystem final : public System, public IRenderSystem, public IDeferredRenderSystem
+/***********************************************************************************************************************
+ * @brief General mesh rendering system.
+ */
+class MeshRenderSystem final : public System
 {
-public:
 	struct RenderItem
 	{
 		MeshRenderComponent* meshRender = nullptr;
@@ -102,56 +122,50 @@ public:
 		IMeshRenderSystem* meshSystem = nullptr;
 		volatile int64 drawCount;
 	};
-private:
-	TransformSystem* transformSystem = nullptr;
+
 	ThreadSystem* threadSystem = nullptr;
-	vector<IShadowMeshRenderSystem*> shadowSystems;
 	vector<OpaqueBuffer> opaqueBuffers;
 	vector<TranslucentBuffer> translucentBuffers;
 	vector<TranslucentItem> translucentItems;
 	vector<uint32> translucentIndices;
+	vector<IMeshRenderSystem*> meshSystems;
 	volatile int64 translucentIndex;
 	uint32 opaqueBufferCount = 0;
 	uint32 translucentBufferCount = 0;
 	bool asyncRecording = false;
 
-	#if GARDEN_EDITOR
-	void* selectorEditor = nullptr;
-	void* gizmosEditor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new mesh rendering system instance.
+	 * 
+	 * @param[in,out] manager manager instance
+	 * @param useAsyncRecording use multithreaded render commands recording
+	 */
+	MeshRenderSystem(Manager* manager, bool useAsyncRecording = true);
+	/**
+	 * @brief Destroys mesh rendering system instance.
+	 */
+	~MeshRenderSystem() final;
 
-	MeshRenderSystem(bool asyncRecording) : asyncRecording(asyncRecording) { }
+	void prepareSystems();
+	void prepareItems(const float4x4& viewProj, const float3& cameraOffset,
+		uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType);
+	void renderOpaque(const float4x4& viewProj);
+	void renderTranslucent(const float4x4& viewProj);
+	void renderShadows();
 
-	void prepareItems(const float4x4& viewProj, const float3& cameraPosition,
-		const vector<Manager::SubsystemData>& subsystems, MeshRenderType opaqueType,
-		MeshRenderType translucentType, uint8 frustumPlaneCount, const float3& cameraOffset);
-	void renderOpaqueItems(const float4x4& viewProj, ID<Framebuffer> framebuffer);
-	void renderTranslucentItems(const float4x4& viewProj, ID<Framebuffer> framebuffer);
-
-	void initialize() final;
-	void terminate() final;
-	void render() final;
-	void deferredRender() final;
-	void hdrRender() final;
-	void preSwapchainRender() final;
+	void preInit();
+	void postDeinit();
+	void preForwardRender();
+	void forwardRender();
+	void preDeferredRender();
+	void deferredRender();
+	void hdrRender();
 
 	friend class ecsm::Manager;
 	friend class GizmosEditorSystem;
 	friend class SelectorEditorSystem;
 public:
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
-
-	#if GARDEN_EDITOR
-	void* getSelectorEditor() noexcept { return selectorEditor; }
-	void* getGizmosEditor() noexcept { return gizmosEditor; }
-	#endif
-
-	void registerShadowSystem(IShadowMeshRenderSystem* system)
-	{
-		GARDEN_ASSERT(system);
-		shadowSystems.push_back(system);
-	}
 };
 
 } // namespace garden
-*/

@@ -32,7 +32,7 @@ void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 {
 	if (ImGui::CollapsingHeader("Skybox Render"))
 	{
-		auto manager = system->getManager();
+		auto manager = getManager();
 		auto graphicsSystem = system->getGraphicsSystem();
 		auto skyboxComponent = manager->get<SkyboxRenderComponent>(entity);
 

@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/deferred.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/deferred.hpp"
+
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 
-class DeferredEditor final
+class DeferredRenderEditorSystem final : public EditorSystem<DeferredRenderSystem>
 {
 	enum class DrawMode : uint8
 	{
@@ -31,7 +32,6 @@ class DeferredEditor final
 		Shadow, AmbientOcclusion, AmbientOcclusionD, Count
 	};
 
-	ID<Framebuffer> editorFramebuffer = {};
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
@@ -46,16 +46,17 @@ class DeferredEditor final
 	bool showChannelB = true;
 	bool showWindow = false;
 
-	DeferredEditor(DeferredRenderSystem* system);
+	static ID<Image> shadowPlaceholder;
 
-	void prepare();
-	void render();
+	DeferredRenderEditorSystem(Manager* manager, DeferredRenderSystem* system);
+	~DeferredRenderEditorSystem() final;
+
+	void editorRender();
 	void deferredRender();
-	void recreateSwapchain(const IRenderSystem::SwapchainChanges& changes);
-	void onBarTool();
+	void gBufferRecreate();
+	void editorBarTool();
 	
-	ID<Framebuffer> getFramebuffer();
-	friend class DeferredRenderSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

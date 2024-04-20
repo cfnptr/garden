@@ -13,26 +13,37 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/mesh.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/mesh.hpp"
+
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
+class MeshSelectorEditorSystem;
 
-class MeshSelectorEditor final
+class GizmosRenderEditorSystem final : public EditorSystem<MeshRenderSystem>
 {
-	bool isSkipped = false;
+	ID<GraphicsPipeline> frontGizmosPipeline = {};
+	ID<GraphicsPipeline> backGizmosPipeline = {};
+	ID<Buffer> fullArrowVertices = {};
+	float2 lastCursorPos = float2(0.0f);
+	uint32 dragMode = 0;
 
-	MeshSelectorEditor(MeshRenderSystem* system);
-	void preSwapchainRender();
+	GizmosRenderEditorSystem(Manager* manager, MeshRenderSystem* system);
+	~GizmosRenderEditorSystem() final;
+
+	void preInit();
+	void postDeinit();
+	void editorRender();
 	
-	friend class MeshRenderSystem;
-public:
-	void skipUpdate() { isSkipped = true; }
+	friend class ecsm::Manager;
+	friend class MeshSelectorEditorSystem;
 };
 
 } // namespace garden
 #endif
+
+

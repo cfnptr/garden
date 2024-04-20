@@ -21,7 +21,6 @@
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 class SkyboxRenderSystem;
 

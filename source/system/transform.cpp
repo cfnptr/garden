@@ -305,6 +305,9 @@ TransformSystem::~TransformSystem()
 	for (uint32 i = 0; i < componentOccupancy; i++)
 		free(componentData[i].childs);
 	components.clear(false);
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
 
 #if GARDEN_EDITOR
@@ -316,7 +319,9 @@ void TransformSystem::preInit()
 }
 void TransformSystem::postDeinit()
 {
-	getManager()->tryDestroySystem<TransformEditorSystem>();
+	auto manager = getManager();
+	if (manager->isRunning())
+		manager->tryDestroySystem<TransformEditorSystem>();
 }
 #endif
 

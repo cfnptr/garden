@@ -13,21 +13,24 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/lighting.hpp"
+
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 
-class LightingEditor final
+class LightingRenderEditorSystem final : public EditorSystem<LightingRenderSystem>
 {
+	LightingRenderEditorSystem(Manager* manager, LightingRenderSystem* system);
+	~LightingRenderEditorSystem() final;
+	
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
 
-	LightingEditor(LightingRenderSystem* system);
-	void onEntityInspector(ID<Entity> entity);
-	friend class LightingRenderSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden
