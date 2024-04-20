@@ -31,7 +31,6 @@ namespace garden
 {
 
 using namespace ecsm;
-using namespace garden;
 using namespace garden::graphics;
 
 /**
@@ -64,7 +63,7 @@ protected:
  * including video games and interactive media. It encompasses tools for building scenes, managing digital assets like 
  * models and textures, scripting behavior, testing the game within the editor, and designing user interfaces.
  * 
- * Registers events: EditorRender, EditorBarTool.
+ * Registers events: EditorRender, EditorBarFile, EditorBarCreate, EditorBarTool.
  */
 class EditorRenderSystem final : public System
 {
@@ -120,7 +119,7 @@ public:
 		}
 	}
 	template<typename T = Component>
-	void unregisterEntityInspector(OnComponent onComponent)
+	void unregisterEntityInspector()
 	{
 		if (entityInspectors.erase(typeid(T)) == 0)
 		{
@@ -131,11 +130,11 @@ public:
 
 	/**
 	 * @brief Returns editor render system instance.
-	 * @warning Do not use it if you have several editor render system instances.
+	 * @warning Do not use it if you have several managers.
 	 */
 	static EditorRenderSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Editor render system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };

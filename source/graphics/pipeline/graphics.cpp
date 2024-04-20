@@ -163,7 +163,8 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 	if (!createData.renderPass)
 	{
 		auto& colorFormats = createData.colorFormats;
-		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size());
+		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size()); 
+		// Different shader output and framebuffer attachment count.
 
 		if (!colorFormats.empty())
 		{
@@ -354,7 +355,15 @@ void GraphicsPipeline::setViewport(const float4& viewport)
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
 	SetViewportCommand command;
-	command.viewport = viewport;
+	if (viewport == float4(0.0f))
+	{
+		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		command.viewport = float4(float2(0.0f), framebufferView->getSize());
+	}
+	else
+	{
+		command.viewport = viewport;
+	}
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
@@ -385,6 +394,15 @@ void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
 	}
 
 	vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
+
+	if (viewport == float4(0.0f))
+	{
+		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		auto framebufferSize = framebufferView->getSize();
+		vkViewport.width = framebufferSize.x;
+		vkViewport.height = framebufferSize.y;
+	}
+
 	while (taskIndex < taskCount)
 		Vulkan::secondaryCommandBuffers[taskIndex++].setViewport(0, 1, &vkViewport);
 }
@@ -405,7 +423,15 @@ void GraphicsPipeline::setScissor(const int4& scissor)
 	#endif
 
 	SetScissorCommand command;
-	command.scissor = scissor;
+	if (scissor == int4(0))
+	{
+		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		command.scissor = int4(int2(0), framebufferView->getSize());
+	}
+	else
+	{
+		command.scissor = scissor;
+	}
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
@@ -436,6 +462,15 @@ void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
 	}
 
 	vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
+
+	if (scissor == int4(0))
+	{
+		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		auto framebufferSize = framebufferView->getSize();
+		vkScissor.extent.width = (uint32)framebufferSize.x;
+		vkScissor.extent.height = (uint32)framebufferSize.y;
+	}
+
 	while (taskIndex < taskCount)
 		Vulkan::secondaryCommandBuffers[taskIndex++].setScissor(0, 1, &vkScissor);
 }
@@ -456,7 +491,15 @@ void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
 	#endif
 
 	SetViewportScissorCommand command;
-	command.viewportScissor = viewportScissor;
+	if (viewportScissor == float4(0.0f))
+	{
+		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		command.viewportScissor = float4(float2(0.0f), framebufferView->getSize());
+	}
+	else
+	{
+		command.viewportScissor = viewportScissor;
+	}
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, int32 taskIndex)
@@ -490,6 +533,16 @@ void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, in
 		viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
 	vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
 		{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
+
+	if (viewportScissor == float4(0.0f))
+	{
+		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		auto framebufferSize = framebufferView->getSize();
+		vkViewport.width = framebufferSize.x;
+		vkViewport.height = framebufferSize.y;
+		vkScissor.extent.width = (uint32)framebufferSize.x;
+		vkScissor.extent.height = (uint32)framebufferSize.y;
+	}
 
 	while (taskIndex < taskCount)
 	{

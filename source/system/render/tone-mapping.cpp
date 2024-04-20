@@ -150,8 +150,7 @@ void ToneMappingRenderSystem::ldrRender()
 
 	SET_GPU_DEBUG_LABEL("Tone Mapping", Color::transparent);
 	pipelineView->bind();
-	pipelineView->setViewportScissor(float4(float2(0),
-		getDeferredSystem()->getFramebufferSize()));
+	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->frameIndex = (uint32)graphicsSystem->getFrameIndex();

@@ -32,7 +32,7 @@ void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 {
 	if (ImGui::CollapsingHeader("Rigid Body"))
 	{
-		auto manager = system->getManager();
+		auto manager = getManager();
 		auto rigidBodyComponent = manager->get<RigidBodyComponent>(entity);
 
 		auto isStatic = rigidBodyComponent->isStatic();

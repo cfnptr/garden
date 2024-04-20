@@ -23,33 +23,31 @@
 namespace garden
 {
 
-using namespace garden;
 using namespace garden::graphics;
 
 /**
  * @brief Forward rendering system.
+ * 
+ * @details
+ * 
+ * Registers events: PreForwardRender, ForwardRender, PreSwapchainRender, ColorBufferRecreate.
  */
 class ForwardRenderSystem final : public System
 {
 	ID<Image> colorBuffer = {};
 	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> framebuffer = {};
-	int2 framebufferSize = int2(0);
-	float renderScale = 1.0f;
 	bool asyncRecording = false;
 	bool hdrColorBuffer = false;
-	bool stencilBuffer = false;
 
 	/**
 	 * @brief Creates a new forward rendering system instance.
 	 * 
 	 * @param[in,out] manager manager instance
-	 * @param asyncRecording use multithreaded render commands recording
+	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param useHdrColorBuffer create color buffer with extended color range
-	 * @param useStencilBuffer create stencil buffer along with depth buffer
 	 */
-	ForwardRenderSystem(Manager* manager, bool asyncRecording = true,
-		bool useHdrColorBuffer = false, bool useStencilBuffer = false);
+	ForwardRenderSystem(Manager* manager, bool useAsyncRecording = true, bool useHdrColorBuffer = false);
 	/**
 	 * @brief Destroys forward rendering system instance.
 	 */
@@ -61,17 +59,12 @@ class ForwardRenderSystem final : public System
 	void swapchainRecreate();
 
 	friend class ecsm::Manager;
-	friend class DeferredEditorSystem;
 public:
 	bool isEnabled = true;
 	bool runSwapchainPass = true;
 
-	int2 getFramebufferSize() const noexcept { return framebufferSize; }
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
-	bool useHdrColorBuffer() const noexcept { return stencilBuffer; }
-	bool useStencilBuffer() const noexcept { return stencilBuffer; }
-	float getRenderScale() const noexcept { return renderScale; }
-	void setRenderScale(float renderScale);
+	bool useHdrColorBuffer() const noexcept { return hdrColorBuffer; }
 
 	ID<Image> getColorBuffer();
 	ID<Image> getDepthStencilBuffer();

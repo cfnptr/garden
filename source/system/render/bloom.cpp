@@ -272,7 +272,7 @@ void BloomRenderSystem::preLdrRender()
 		SET_GPU_DEBUG_LABEL("Downsample", Color::transparent);
 		framebufferView->beginRenderPass(float4(0.0f));
 		downsample0PipelineView->bind();
-		downsample0PipelineView->setViewportScissor(float4(float2(0), sizeBuffer[1]));
+		downsample0PipelineView->setViewportScissor(float4(float2(0), sizeBuffer[1])); // TODO: try to use default float(0.0f) constructor and maybe remove sizeBuffer?
 		downsample0PipelineView->bindDescriptorSet(descriptorSets[0]);
 		auto pushConstants = downsample0PipelineView->getPushConstants<PushConstants>();
 		pushConstants->threshold = threshold;

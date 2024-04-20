@@ -12,23 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "garden/system/render/editor.hpp"
-
-#if GARDEN_EDITOR
-#include "garden/system/camera.hpp"
-
-namespace garden
+pipelineState
 {
+	depthTesting = on;
+	depthWriting = on;
+}
 
-class CameraEditorSystem final : public EditorSystem<CameraSystem>
+in float2 fs.texCoords;
+out float4 fb.color;
+
+uniform pushConstants
 {
-	CameraEditorSystem(Manager* manager, CameraSystem* system);
-	~CameraEditorSystem() final;
+	float4 colorFactor;
+	uint32 instanceIndex;
+	float alphaCutoff;
+} pc;
 
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
-	friend class ecsm::Manager;
-};
+uniform set1 sampler2D
+{
+	filter = linear;
+	wrap = repeat;
+} colorMap;
 
-} // namespace garden
-#endif
+void main()
+{
+	float4 color = texture(colorMap, fs.texCoords) * pc.colorFactor;
+	if (color.a < pc.alphaCutoff)
+		discard;
+	fb.color = color; 
+}

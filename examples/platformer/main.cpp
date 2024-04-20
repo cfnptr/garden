@@ -14,12 +14,11 @@
 
 #include "garden/main.hpp"
 #include "garden/system/log.hpp"
-#include "garden/system/thread.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/transform.hpp"
 #include "garden/system/render/forward.hpp"
+#include "garden/system/render/sprite/cutout.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
@@ -58,6 +57,8 @@ void entryPoint()
 	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ForwardRenderSystem>();
+	manager->createSystem<MeshRenderSystem>();
+	manager->createSystem<CutoutSpriteSystem>();
 	manager->createSystem<ThreadSystem>();
 	#if GARDEN_EDITOR
 	manager->createSystem<EditorRenderSystem>();

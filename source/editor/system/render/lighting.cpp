@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,31 +11,37 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/render/lighting.hpp"
 
 #if GARDEN_EDITOR
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-LightingEditor::LightingEditor(LightingRenderSystem* system)
+//**********************************************************************************************************************
+LightingRenderEditorSystem::LightingRenderEditorSystem(Manager* manager,
+	LightingRenderSystem* system) : EditorSystem(manager, system)
 {
-	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(LightingRenderComponent),
-		[this](ID<Entity> entity) { onEntityInspector(entity); });
-	this->system = system;
+	EditorRenderSystem::getInstance()->registerEntityInspector<LightingRenderComponent>(
+	[this](ID<Entity> entity, bool isOpened)
+	{
+		onEntityInspector(entity, isOpened);
+	});
+}
+LightingRenderEditorSystem::~LightingRenderEditorSystem()
+{
+	EditorRenderSystem::getInstance()->unregisterEntityInspector<LightingRenderComponent>();
 }
 
-//--------------------------------------------------------------------------------------------------
-void LightingEditor::onEntityInspector(ID<Entity> entity)
+//**********************************************************************************************************************
+void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	if (ImGui::CollapsingHeader("Lighting Render"))
+	if (isOpened)
 	{
-		auto manager = system->getManager();
-		auto graphicsSystem = system->getGraphicsSystem();
+		auto manager = getManager();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto lightingComponent = manager->get<LightingRenderComponent>(entity);
 
-		if (lightingComponent->cubemap)
+		if (lightingComponent->cubemap) // TODO: use common resource name gui shower.
 		{
 			auto imageView = graphicsSystem->get(lightingComponent->cubemap);
 			auto stringOffset = imageView->getDebugName().find_last_of('.');
@@ -78,7 +83,7 @@ void LightingEditor::onEntityInspector(ID<Entity> entity)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			ImGui::Text("Specular: %lu (%s)", *lightingComponent->specular,
+			ImGui::Text("Specular: %lu (%s)", (unsigned long)*lightingComponent->specular,
 				imageView->getDebugName().c_str() + stringOffset);
 			auto image = to_string(*lightingComponent->specular) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";

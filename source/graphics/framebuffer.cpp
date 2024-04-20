@@ -556,9 +556,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	GARDEN_ASSERT(region.y + region.w <= size.y);
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 	
-	#if GARDEN_DEBUG
 	currentFramebuffer = GraphicsAPI::framebufferPool.getID(this);
-	#endif
 	currentSubpassIndex = 0;
 
 	if (asyncRecording)
@@ -636,9 +634,8 @@ void Framebuffer::endRenderPass()
 	EndRenderPassCommand command;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 
-	#if GARDEN_DEBUG
+	currentSubpassIndex = 0;
 	currentFramebuffer = {};
-	#endif
 }
 
 //**********************************************************************************************************************

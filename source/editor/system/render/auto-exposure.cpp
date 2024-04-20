@@ -81,7 +81,7 @@ void AutoExposureEditor::render()
 
 	if (ImGui::Begin("Automatic Exposure", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto manager = system->getManager();
+		auto manager = getManager();
 		auto graphicsSystem = system->getGraphicsSystem();
 
 		if (!readbackBuffer)
@@ -173,21 +173,19 @@ void AutoExposureEditor::render()
 		{
 			if (!limitsDescriptorSet)
 			{
-				auto uniforms = getLimitsUniforms(system->getManager(), graphicsSystem);
+				auto uniforms = getLimitsUniforms(getManager(), graphicsSystem);
 				limitsDescriptorSet = graphicsSystem->createDescriptorSet(
 					limitsPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, limitsDescriptorSet,
 					"descriptorSet.auto-exposure.editor.limits");
 			}
 
-			auto framebufferView = graphicsSystem->get(
-				graphicsSystem->getSwapchainFramebuffer());
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 
 			SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
 			framebufferView->beginRenderPass(float4(0.0f));
 			pipelineView->bind();
-			pipelineView->setViewportScissor(float4(float2(0),
-				graphicsSystem->getFramebufferSize()));
+			pipelineView->setViewportScissor();
 			pipelineView->bindDescriptorSet(limitsDescriptorSet);
 			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 			pushConstants->minLum = std::exp2(system->minLogLum);
@@ -211,7 +209,7 @@ void AutoExposureEditor::recreateSwapchain(const IRenderSystem::SwapchainChanges
 
 	if (changes.framebufferSize && limitsDescriptorSet)
 	{
-		auto uniforms = getLimitsUniforms(system->getManager(), graphicsSystem);
+		auto uniforms = getLimitsUniforms(getManager(), graphicsSystem);
 		auto limitsDescriptorSetView = graphicsSystem->get(limitsDescriptorSet);
 		limitsDescriptorSetView->recreate(std::move(uniforms));
 	}

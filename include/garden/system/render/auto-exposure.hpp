@@ -29,9 +29,8 @@
 namespace garden
 {
 
-#define AE_HISTOGRAM_SIZE 256
+#define AE_HISTOGRAM_SIZE 256 // TODO: use const variable instead of define.
 
-using namespace garden;
 using namespace garden::graphics;
 
 //--------------------------------------------------------------------------------------------------
@@ -54,7 +53,6 @@ class AutoExposureRenderSystem final : public System, public IRenderSystem
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 
 	friend class ecsm::Manager;
-	friend class AutoExposureEditorSystem;
 public:
 	float minLogLum = -8.0f;
 	float maxLogLum = 4.0f;

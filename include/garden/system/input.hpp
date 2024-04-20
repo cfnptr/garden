@@ -30,6 +30,7 @@ using namespace math;
 
 const int32 defaultWindowWidth = 1280;
 const int32 defaultWindowHeight = 720;
+const int2 defaultWindowSize = int2(defaultWindowWidth, defaultWindowHeight);
 
 /***********************************************************************************************************************
  * @brief Keyboard button key codes. (GLFW)
@@ -215,11 +216,11 @@ public:
 
 	/**
 	 * @brief Returns input system instance.
-	 * @warning Do not use it if you have several input system instances.
+	 * @warning Do not use it if you have several managers.
 	 */
 	static InputSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Input system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };

@@ -23,7 +23,7 @@ using namespace garden;
 //**********************************************************************************************************************
 float4x4 CameraComponent::calcProjection() const noexcept
 {
-	if (type == Type::Perspective)
+	if (type == ProjectionType::Perspective)
 	{
 		return calcPerspProjInfRevZ(p.perspective.fieldOfView,
 			p.perspective.aspectRatio, p.perspective.nearPlane);
@@ -62,7 +62,9 @@ void CameraSystem::preInit()
 }
 void CameraSystem::postDeinit()
 {
-	getManager()->tryDestroySystem<CameraEditorSystem>();
+	auto manager = getManager();
+	if (manager->isRunning())
+		manager->tryDestroySystem<CameraEditorSystem>();
 }
 #endif
 
@@ -96,7 +98,7 @@ void CameraSystem::serialize(ISerializer& serializer, ID<Component> component)
 	auto manager = getManager();
 	auto cameraComponent = components.get(ID<CameraComponent>(component));
 
-	if (cameraComponent->type == CameraComponent::Type::Perspective)
+	if (cameraComponent->type == ProjectionType::Perspective)
 	{
 		serializer.write("type", "perspective");
 		serializer.write("fieldOfView", cameraComponent->p.perspective.fieldOfView);

@@ -50,7 +50,7 @@ private:
 	 */
 	LogSystem(Manager* manager, LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0);
 	/**
-	 * @brief Destroy log system instance.
+	 * @brief Destroys log system instance.
 	 */
 	~LogSystem() final;
 

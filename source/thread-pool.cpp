@@ -15,7 +15,6 @@
 #include "garden/thread-pool.hpp"
 #include "garden/defines.hpp"
 #include "mpmt/thread.hpp"
-#include <cmath>
 
 using namespace garden;
 

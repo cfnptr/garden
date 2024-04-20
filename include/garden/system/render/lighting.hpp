@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
-/*
 namespace garden
 {
 
 // TODO: I have failed to find good denoiser for shadows. Research this field.
-#define SHADOW_BUFFER_COUNT 1
-#define AO_BUFFER_COUNT 2
 
-using namespace garden;
+const uint8 shadowBufferCount = 1;
+const uint8 aoBufferCount = 2;
+
 using namespace garden::graphics;
 class LightingRenderSystem;
 
@@ -36,7 +33,9 @@ class LightingRenderSystem;
 // return sqrt(f0 / 0.16);
 //}
 
-//--------------------------------------------------------------------------------------------------
+/***********************************************************************************************************************
+ * @brief PBR lighting rendering data container.
+ */
 struct LightingRenderComponent final : public Component
 {
 	Ref<Image> cubemap = {};
@@ -45,79 +44,70 @@ struct LightingRenderComponent final : public Component
 	Ref<DescriptorSet> descriptorSet = {};
 };
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Shadow rendering system interface.
+ */
 class IShadowRenderSystem
 {
 protected:
 	virtual void preShadowRender() { }
 	virtual bool shadowRender() = 0;
-
 	friend class LightingRenderSystem;
-public:
-	LightingRenderSystem* getLightingSystem() noexcept
-	{
-		GARDEN_ASSERT(lightingSystem);
-		return lightingSystem;
-	}
-	const LightingRenderSystem* getLightingSystem() const noexcept
-	{
-		GARDEN_ASSERT(lightingSystem);
-		return lightingSystem;
-	}
 };
+/**
+ * @brief Ambient occlusion rendering system interface.
+ */
 class IAoRenderSystem
 {
 protected:
 	virtual void preAoRender() { }
 	virtual bool aoRender() = 0;
-
 	friend class LightingRenderSystem;
-public:
-	LightingRenderSystem* getLightingSystem() noexcept
-	{
-		GARDEN_ASSERT(lightingSystem);
-		return lightingSystem;
-	}
-	const LightingRenderSystem* getLightingSystem() const noexcept
-	{
-		GARDEN_ASSERT(lightingSystem);
-		return lightingSystem;
-	}
 };
 
 // TODO: allow to disable shadow or ao buffers.
 
-//--------------------------------------------------------------------------------------------------
-class LightingRenderSystem final : public System,
-	public IRenderSystem, public IDeferredRenderSystem
+/***********************************************************************************************************************
+ * @brief PBR lighting rendering system.
+ */
+class LightingRenderSystem final : public System
 {
+	DeferredRenderSystem* deferredSystem = nullptr;
 	LinearPool<LightingRenderComponent, false> components;
+	vector<IShadowRenderSystem*> shadowSystems;
+	vector<IAoRenderSystem*> aoSystems;
 	ID<Image> dfgLUT = {};
 	ID<Image> shadowBuffer = {};
 	ID<Image> aoBuffer = {};
-	ID<ImageView> shadowImageViews[SHADOW_BUFFER_COUNT] = {};
-	ID<ImageView> aoImageViews[AO_BUFFER_COUNT] = {};
-	ID<Framebuffer> shadowFramebuffers[SHADOW_BUFFER_COUNT] = {};
-	ID<Framebuffer> aoFramebuffers[AO_BUFFER_COUNT] = {};
+	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
+	ID<ImageView> aoImageViews[aoBufferCount] = {};
+	ID<Framebuffer> shadowFramebuffers[shadowBufferCount] = {};
+	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
 	ID<GraphicsPipeline> aoDenoisePipeline = {};
 	ID<DescriptorSet> lightingDescriptorSet = {};
 	ID<DescriptorSet> aoDenoiseDescriptorSet = {};
-	bool useShadowBuffer = false;
-	bool useAoBuffer = false;
-	uint16 _alignment = 0;
+	bool hasShadowBuffer = false;
+	bool hasAoBuffer = false;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new lighting rendering system instance.
+	 * @param[in,out] manager manager instance
+	 * @param useShadowBuffer use shadow buffer for rendering
+	 * @param useAoBuffer use ambient occlusion buffer for rendering
+	 */
+	LightingRenderSystem(Manager* manager, bool useShadowBuffer = false, bool useAoBuffer = false);
+	/**
+	 * @brief Destroys lighting rendering system instance.
+	 */
+	~LightingRenderSystem() final;
 
-	void initialize() final;
-	void terminate() final;
-
-	void preHdrRender() final;
-	void hdrRender() final;
-	void recreateSwapchain(const SwapchainChanges& changes) final;
+	void preInit();
+	void postDeinit();
+	void preHdrRender();
+	void hdrRender();
+	void gBufferRecreate();
 
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
@@ -126,12 +116,11 @@ class LightingRenderSystem final : public System,
 	void disposeComponents() final;
 
 	friend class ecsm::Manager;
-	friend class LightingEditorSystem;
 public:
 	float4 shadowColor = float4(1.0f);
 
-	bool getUseShadowBuffer() const noexcept { return useShadowBuffer; }
-	bool getUseAoBuffer() const noexcept { return useAoBuffer; }
+	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
+	bool useAoBuffer() const noexcept { return hasAoBuffer; }
 	void setConsts(bool useShadowBuffer, bool useAoBuffer);
 
 	ID<GraphicsPipeline> getLightingPipeline();
@@ -147,11 +136,9 @@ public:
 	const ID<ImageView>* getShadowImageViews();
 	const ID<ImageView>* getAoImageViews();
 
-	void loadCubemap(const fs::path& path,
-		Ref<Image>& cubemap, Ref<Buffer>& sh, Ref<Image>& specular,
-		Memory::Strategy strategy = Memory::Strategy::Size);
+	void loadCubemap(const fs::path& path, Ref<Image>& cubemap, Ref<Buffer>& sh,
+		Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size);
 	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular);
 };
 
 } // namespace garden
-*/

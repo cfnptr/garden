@@ -255,7 +255,7 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch, boo
 		ImGui::Spacing();
 	}
 
-	if (ImGui::CollapsingHeader("Depth / Stencil attachment"))
+	if (ImGui::CollapsingHeader("Depth/Stencil attachment"))
 	{
 		ImGui::Indent();
 
@@ -265,7 +265,7 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch, boo
 			auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 			auto viewName = imageView->getDebugName().empty() ? "Image View " +
 				to_string(*depthStencilAttachment.imageView) : imageView->getDebugName();
-			ImGui::Text("%s", viewName.c_str()); ImGui::SameLine();
+			ImGui::Text("%s", viewName.c_str());
 			auto value = depthStencilAttachment.clear;
 			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
 			value = depthStencilAttachment.load;
@@ -374,7 +374,7 @@ static void renderPipelineDetails(const Pipeline& pipeline)
 	bool isBindless = pipeline.isBindless();
 	ImGui::TextWrapped("Path: %s", pipeline.getPath().generic_string().c_str());
 	ImGui::TextWrapped("Variant count: %lu", (unsigned long)pipeline.getVariantCount());
-	ImGui::TextWrapped("Push constants size: %lu", (unsigned long)pipeline.getPushConstantsSize());
+	ImGui::TextWrapped("Push constants size: %s", toBinarySizeString(pipeline.getPushConstantsSize()).c_str());
 	ImGui::TextWrapped("Max bindless count: %lu", (unsigned long)pipeline.getMaxBindlessCount());
 	ImGui::Checkbox("Async recording", &useAsyncRecording);
 	ImGui::Checkbox("Bindless", &isBindless);
@@ -423,8 +423,8 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& resourceSearch
 	if (graphicsPipeline.getFramebuffer())
 	{
 		auto framebuffer = GraphicsAPI::framebufferPool.get(graphicsPipeline.getFramebuffer());
-		framebufferName = graphicsPipeline.getDebugName().empty() ? "Framebuffer " +
-			to_string(*graphicsPipeline.getFramebuffer()) : graphicsPipeline.getDebugName();
+		framebufferName = framebuffer->getDebugName().empty() ? "Framebuffer " +
+			to_string(*graphicsPipeline.getFramebuffer()) : framebuffer->getDebugName();
 	}
 
 	ImGui::BeginChild("##itemView", ImVec2(0, -(ImGui::GetFrameHeightWithSpacing() + 4)));

@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,93 +11,77 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-/*
+/***********************************************************************************************************************
+ * @file
+ * @brief Deferred rendering functions.
+ * 
+ * @details
+ * 
+ * G-Buffer structure:
+ * 0. SrgbR8G8B8A8     (Base Color, Metallic)
+ * 1. UnormR10G10B10A2 (Encoded Normal, Reflectance)
+ * 2. UnormR8G8B8A8    (Emissive, Roughness)
+ */
+
 #pragma once
 #include "garden/system/graphics.hpp"
 
 namespace garden
 {
 
-// G-Buffer structure.
-// 0) SrgbR8G8B8A8 (Base Color, Metallic)
-// 1) UnormR10G10B10A2 (Encoded Normal, Reflectance)
-// 2) UnormR8G8B8A8 (Emissive, Roughness)
-#define G_BUFFER_COUNT 3
+/**
+ * @brief Deferred rendering buffer count.
+ */
+const uint8 gBufferCount = 3;
 
-using namespace garden;
 using namespace garden::graphics;
 class DeferredRenderSystem;
 
-//--------------------------------------------------------------------------------------------------
-enum class MeshRenderType : uint8
+/***********************************************************************************************************************
+ * @brief Deferred rendering system.
+ * 
+ * @details
+ * 
+ * Registers events: PreDeferredRender, DeferredRender, PreHdrRender, HdrRender,
+ *   PreLdrRender, LdrRender, PreSwapchainRender, GBufferRecreate.
+ */
+class DeferredRenderSystem final : public System
 {
-	Opaque, Translucent, OpaqueShadow, TranslucentShadow, Count
-};
-
-//--------------------------------------------------------------------------------------------------
-class IDeferredRenderSystem
-{
-protected:
-	virtual void deferredRender() { }
-	virtual void preHdrRender() { }
-	virtual void hdrRender() { }
-	virtual void preLdrRender() { }
-	virtual void ldrRender() { }
-	virtual void preSwapchainRender() { }
-	friend class DeferredRenderSystem;
-public:
-	DeferredRenderSystem* getDeferredSystem() noexcept
-	{
-		GARDEN_ASSERT(deferredSystem);
-		return deferredSystem;
-	}
-	const DeferredRenderSystem* getDeferredSystem() const noexcept
-	{
-		GARDEN_ASSERT(deferredSystem);
-		return deferredSystem;
-	}
-};
-
-//--------------------------------------------------------------------------------------------------
-class DeferredRenderSystem final : public System, public IRenderSystem
-{
-	ID<Image> gBuffers[G_BUFFER_COUNT] = {};
-	ID<Image> depthBuffer = {};
+	ID<Image> gBuffers[gBufferCount] = {};
 	ID<Image> hdrBuffer = {};
 	ID<Image> ldrBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
 	ID<Framebuffer> toneMappingFramebuffer = {};
-	int2 framebufferSize = int2(0);
-	float renderScale = 1.0f;
 	bool asyncRecording = false;
+	static DeferredRenderSystem* instance;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new deferred rendering system instance.
+	 * @param[in,out] manager manager instance
+	 * @param useAsyncRecording use multithreaded render commands recording
+	 */
+	DeferredRenderSystem(Manager* manager, bool useAsyncRecording = true);
+	/**
+	 * @brief Destroys deferred rendering system instance.
+	 */
+	~DeferredRenderSystem() final;
 
-	DeferredRenderSystem(bool asyncRecording) : asyncRecording(asyncRecording) { }
-
-	void initialize() final;
-	void terminate() final;
-	void render() final;
-	void recreateSwapchain(const SwapchainChanges& changes) final;
+	void preInit();
+	void postDeinit();
+	void render();
+	void swapchainRecreate();
 
 	friend class ecsm::Manager;
-	friend class DeferredEditorSystem;
 public:
+	bool isEnabled = true;
 	bool runSwapchainPass = true;
 
-	int2 getFramebufferSize() const noexcept { return framebufferSize; }
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
-	float getRenderScale() const noexcept { return renderScale; }
-	void setRenderScale(float renderScale);
 
 	ID<Image>* getGBuffers();
-	ID<Image> getDepthBuffer();
 	ID<Image> getHdrBuffer();
 	ID<Image> getLdrBuffer();
 
@@ -106,10 +89,15 @@ public:
 	ID<Framebuffer> getHdrFramebuffer();
 	ID<Framebuffer> getLdrFramebuffer();
 
-	#if GARDEN_EDITOR
-	ID<Framebuffer> getEditorFramebuffer();
-	#endif
+	/**
+	 * @brief Returns deferred render system instance.
+	 * @warning Do not use it if you have several managers.
+	 */
+	static DeferredRenderSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // System is not created.
+		return instance;
+	}
 };
 
 } // namespace garden
-*/

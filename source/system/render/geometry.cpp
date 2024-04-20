@@ -214,13 +214,13 @@ void GeometryRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	instance.model = model;
 	instance.mvp = viewProj * model;
 
-	Pipeline::DescriptorData descriptorData[8]; uint8 descriptorCount = 0;
+	Pipeline::DescriptorData descriptorSetRange[8]; uint8 descriptorCount = 0;
 	// TODO: can we bind base descriptor set once at the beginDraw?
-	descriptorData[descriptorCount++] = Pipeline::DescriptorData(
+	descriptorSetRange[descriptorCount++] = Pipeline::DescriptorData(
 		baseDescriptorSet, 1, swapchainIndex);
-	descriptorData[descriptorCount++] = Pipeline::DescriptorData(descriptorSet);
-	appendDescriptorData(descriptorData, descriptorCount, geometryComponent);
-	pipelineView->bindDescriptorSetsAsync(descriptorData, descriptorCount, taskIndex);
+	descriptorSetRange[descriptorCount++] = Pipeline::DescriptorData(descriptorSet);
+	appendDescriptorData(descriptorSetRange, descriptorCount, geometryComponent);
+	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorCount, taskIndex);
 
 	auto pushConstants = pipelineView->getPushConstantsAsync<GeometryPC>(taskIndex);
 	pushConstants->baseColor = geometryComponent->baseColorFactor;

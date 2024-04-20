@@ -44,8 +44,7 @@ class ThreadSystem final : public System
 	 * @brief Creates a new thread system instance.
 	 * @param[in,out] manager manager instance
 	 */
-	ThreadSystem(Manager* manager) : System(manager),
-		backgroundPool(true, "BG"), foregroundPool(false, "FG")
+	ThreadSystem(Manager* manager) : System(manager), backgroundPool(true, "BG"), foregroundPool(false, "FG")
 	{
 		mpmt::Thread::setForegroundPriority();
 		SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);

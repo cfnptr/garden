@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,57 +11,132 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-/*
 #include "garden/system/render/mesh.hpp"
-#include "garden/system/render/editor.hpp"// TODO: remove this include
+#include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "mpmt/atomic.h"
 
 #if GARDEN_EDITOR
-#include "garden/editor/system/render/selector.hpp"
+#include "garden/editor/system/graphics.hpp"
+#include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/editor/system/render/gizmos.hpp"
 #endif
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-void MeshRenderSystem::initialize()
+//**********************************************************************************************************************
+MeshRenderSystem::MeshRenderSystem(Manager* manager, bool useAsyncRecording) : System(manager)
 {
+	this->asyncRecording = useAsyncRecording;
+
+	SUBSCRIBE_TO_EVENT("PreInit", MeshRenderSystem::preInit);
+	SUBSCRIBE_TO_EVENT("PostDeinit", MeshRenderSystem::postDeinit);
+	
+}
+MeshRenderSystem::~MeshRenderSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", MeshRenderSystem::preInit);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", MeshRenderSystem::postDeinit);
+	}
+}
+
+//**********************************************************************************************************************
+void MeshRenderSystem::preInit()
+{
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<ForwardRenderSystem>() || manager->has<DeferredRenderSystem>());
+
+	if (manager->has<ForwardRenderSystem>())
+	{
+		SUBSCRIBE_TO_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
+		SUBSCRIBE_TO_EVENT("ForwardRender", MeshRenderSystem::forwardRender);
+	}
+	if (manager->has<DeferredRenderSystem>())
+	{
+		SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
+		SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
+		SUBSCRIBE_TO_EVENT("HdrRender", MeshRenderSystem::hdrRender);
+	}
 
 	#if GARDEN_EDITOR
-	selectorEditor = new SelectorEditor(this);
-	gizmosEditor = new GizmosEditor(this);
+	if (manager->has<EditorRenderSystem>())
+	{
+		manager->createSystem<MeshSelectorEditorSystem>(this);
+		manager->createSystem<GizmosRenderEditorSystem>(this);
+	}
 	#endif
 }
-void MeshRenderSystem::terminate()
+void MeshRenderSystem::postDeinit()
 {
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		#if GARDEN_EDITOR
+		if (manager->has<EditorRenderSystem>())
+		{
+			manager->destroySystem<MeshSelectorEditorSystem>();
+			manager->destroySystem<GizmosRenderEditorSystem>();
+		}
+		#endif
+
+		if (manager->has<ForwardRenderSystem>())
+		{
+			UNSUBSCRIBE_FROM_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
+			UNSUBSCRIBE_FROM_EVENT("ForwardRender", MeshRenderSystem::forwardRender);
+		}
+		if (manager->has<DeferredRenderSystem>())
+		{
+			UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
+			UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
+			UNSUBSCRIBE_FROM_EVENT("HdrRender", MeshRenderSystem::hdrRender);
+		}
+	}
+}
+
+//**********************************************************************************************************************
+void MeshRenderSystem::prepareSystems()
+{
+	auto manager = getManager();
+	const auto& systems = manager->getSystems();
+	meshSystems.clear();
+
+	for (const auto& pair : systems)
+	{
+		auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
+		if (meshSystem)
+			meshSystems.push_back(meshSystem);
+	}
+
+	threadSystem = manager->tryGet<ThreadSystem>();
+
 	#if GARDEN_EDITOR
-	delete (GizmosEditor*)gizmosEditor;
-	delete (SelectorEditor*)selectorEditor;
+	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
+	if (graphicsEditorSystem)
+	{
+		graphicsEditorSystem->opaqueDrawCount = graphicsEditorSystem->opaqueTotalCount =
+			graphicsEditorSystem->translucentDrawCount = graphicsEditorSystem->translucentTotalCount = 0;
+	}
 	#endif
 }
 
-// TODO: Refactor code. Make big functions smaller.
-// TODO: We are iterating over shadow and non shadow subsystems. This is suboptimal.
-
-//--------------------------------------------------------------------------------------------------
-void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& cameraPosition,
-	const vector<Manager::SubsystemData>& subsystems, MeshRenderType opaqueType,
-	MeshRenderType translucentType, uint8 frustumPlaneCount, const float3& cameraOffset)
+//**********************************************************************************************************************
+void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& cameraOffset, 
+	uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType)
 {
 	uint32 translucentMaxCount = 0;
 	opaqueBufferCount = translucentBufferCount = 0;
 
-	for (auto& subsystem : subsystems)
+	for (auto meshSystem : meshSystems)
 	{
-		auto meshSystem = dynamic_cast<IMeshRenderSystem*>(subsystem.system);
-		GARDEN_ASSERT(meshSystem);
-		
 		auto renderType = meshSystem->getMeshRenderType();
 		if (renderType == opaqueType)
+		{
 			opaqueBufferCount++;
+		}
 		else if (renderType == translucentType)
 		{
 			auto& componentPool = meshSystem->getMeshComponentPool();
@@ -81,6 +155,12 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		translucentIndices.resize(translucentMaxCount);
 	translucentIndex = 0;
 
+	auto manager = getManager();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
+	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto& transformData = transformSystem->getComponents();
 	auto& threadPool = threadSystem->getForegroundPool();	
 	auto opaqueBufferData = opaqueBuffers.data();
@@ -89,13 +169,12 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	auto translucentIndexData = translucentIndices.data();
 	uint32 opaqueBufferIndex = 0, translucentBufferIndex = 0;
 
-	Plane frustumPlanes[FRUSTUM_PLANE_COUNT];
+	Plane frustumPlanes[frustumPlaneCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
 
 	// 1. Cull and prepare items 
-	for (auto& subsystem : subsystems)
+	for (auto meshSystem : meshSystems)
 	{
-		auto meshSystem = dynamic_cast<IMeshRenderSystem*>(subsystem.system);
 		auto& componentPool = meshSystem->getMeshComponentPool();
 		auto componentCount = componentPool.getCount();
 		auto renderType = meshSystem->getMeshRenderType();
@@ -105,6 +184,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			auto opaqueBuffer = &opaqueBufferData[opaqueBufferIndex++];
 			opaqueBuffer->meshSystem = meshSystem;
 			opaqueBuffer->drawCount = 0;
+
 			if (componentCount == 0 || !meshSystem->isDrawReady())
 				continue;
 
@@ -115,7 +195,6 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
-				auto opaqueBuffer = (OpaqueBuffer*)task.getArgument();
 				auto meshSystem = opaqueBuffer->meshSystem;
 				auto& componentPool = meshSystem->getMeshComponentPool();
 				auto componentSize = meshSystem->getMeshComponentSize();
@@ -128,8 +207,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
-					auto meshRender = (MeshRenderComponent*)(
-						componentData + i * componentSize);
+					auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
 					if (!meshRender->entity || !meshRender->isEnabled)
 						continue;
 
@@ -147,17 +225,17 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 					renderItem.meshRender = meshRender;
 					renderItem.model = model;
 					renderItem.distance2 = hasCameraOffset ?
-						length2(getTranslation(model) - cameraOffset) :
-						length2(getTranslation(model));
+						length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
 					auto index = atomicFetchAdd64(drawCount, 1);
 					items[index] = renderItem;
 					indices[index] = index;
 				}
-			},
-			opaqueBuffer), componentPool.getOccupancy());
+			}),
+			componentPool.getOccupancy());
 
 			#if GARDEN_EDITOR
-			EditorRenderSystem::getInstance()->opaqueTotalCount += componentCount;
+			if (graphicsEditorSystem)
+				graphicsEditorSystem->opaqueTotalCount += componentCount;
 			#endif	
 		}
 		else if (renderType == translucentType)
@@ -166,12 +244,12 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			auto translucentBuffer = &translucentBufferData[bufferIndex];
 			translucentBuffer->meshSystem = meshSystem;
 			translucentBuffer->drawCount = 0;
+
 			if (componentCount == 0 || !meshSystem->isDrawReady())
 				continue;
 
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
-				auto translucentBuffer = (TranslucentBuffer*)task.getArgument();
 				auto meshSystem = translucentBuffer->meshSystem;
 				auto& componentPool = meshSystem->getMeshComponentPool();
 				auto componentSize = meshSystem->getMeshComponentSize();
@@ -182,8 +260,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 					
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
-					auto meshRender = (MeshRenderComponent*)(
-						componentData + i * componentSize);
+					auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
 					if (!meshRender->entity || !meshRender->isEnabled)
 						continue;
 
@@ -191,29 +268,26 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 					auto model = transform->calcModel();
 					setTranslation(model, getTranslation(model) - cameraPosition);
 
-					if (isBehindFrustum(meshRender->aabb, model,
-						frustumPlanes, frustumPlaneCount))
-					{
+					if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
 						continue;
-					}
 		
 					TranslucentItem translucentItem;
 					translucentItem.meshRender = meshRender;
 					translucentItem.model = model;
 					translucentItem.distance2 = hasCameraOffset ?
-						length2(getTranslation(model) - cameraOffset) :
-						length2(getTranslation(model));
+						length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
 					translucentItem.bufferIndex = bufferIndex;
 					auto index = atomicFetchAdd64(&translucentIndex, 1);
 					translucentItemData[index] = translucentItem;
 					translucentIndexData[index] = index;
 					atomicFetchAdd64(drawCount, 1);
 				}
-			},
-			translucentBuffer), componentPool.getOccupancy());
+			}),
+			componentPool.getOccupancy());
 
 			#if GARDEN_EDITOR
-			EditorRenderSystem::getInstance()->translucentTotalCount += componentCount;
+			if (graphicsEditorSystem)
+				graphicsEditorSystem->translucentTotalCount += componentCount;
 			#endif	
 		}
 	}		
@@ -227,50 +301,48 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		if (opaqueBuffer->drawCount == 0)
 			continue;
 
-		threadPool.addTask(ThreadPool::Task([](const ThreadPool::Task& task)
+		threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
-			auto opaqueBuffer = (OpaqueBuffer*)task.getArgument();
 			auto items = opaqueBuffer->items.data();
 			auto& indices = opaqueBuffer->indices;
-			std::sort(indices.begin(), indices.begin() +
+			std::sort(indices.begin(), indices.begin() + 
 				opaqueBuffer->drawCount, [&](uint32 a, uint32 b)
 			{
 				auto& ra = items[a]; auto& rb = items[b];
 				return ra.distance2 < rb.distance2;
 			});
-		},
-		opaqueBuffer));
+		}));
 
 		#if GARDEN_EDITOR
-		EditorRenderSystem::getInstance()->opaqueDrawCount += (uint32)opaqueBuffer->drawCount;
+		if (graphicsEditorSystem)
+			graphicsEditorSystem->opaqueDrawCount += (uint32)opaqueBuffer->drawCount;
 		#endif	
 	}
 
 	if (translucentIndex > 0)
 	{
+		auto translucentItemData = translucentItems.data();
 		threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
-			auto items = (TranslucentItem*)task.getArgument();
-			std::sort(translucentIndices.begin(), translucentIndices.begin() +
+			std::sort(translucentIndices.begin(), translucentIndices.begin() + 
 				translucentIndex, [&](uint32 a, uint32 b)
 			{
-				auto& ra = items[a]; auto& rb = items[b];
+				auto& ra = translucentItemData[a]; auto& rb = translucentItemData[b];
 				return ra.distance2 > rb.distance2;
 			});
-		},
-		translucentItems.data()));
+		}));
 
 		#if GARDEN_EDITOR
-		EditorRenderSystem::getInstance()->translucentDrawCount += (uint32)translucentIndex;
+		if (graphicsEditorSystem)
+			graphicsEditorSystem->translucentDrawCount += (uint32)translucentIndex;
 		#endif
 	}
 
 	threadPool.wait();
 }
 
-//--------------------------------------------------------------------------------------------------
-void MeshRenderSystem::renderOpaqueItems(
-	const float4x4& viewProj, ID<Framebuffer> framebuffer)
+//**********************************************************************************************************************
+void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 {
 	auto& threadPool = threadSystem->getForegroundPool();
 	for (uint32 i = 0; i < opaqueBufferCount; i++)
@@ -281,13 +353,12 @@ void MeshRenderSystem::renderOpaqueItems(
 			continue;
 
 		auto meshSystem = opaqueBuffer->meshSystem;
-		meshSystem->prepareDraw(viewProj, framebuffer, drawCount);
+		meshSystem->prepareDraw(viewProj, drawCount);
 
-		if (isAsync)
+		if (asyncRecording && threadSystem)
 		{
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
-				auto opaqueBuffer = (OpaqueBuffer*)task.getArgument();
 				auto meshSystem = opaqueBuffer->meshSystem;
 				auto itemCount = task.getItemCount();
 				auto items = opaqueBuffer->items.data();
@@ -302,8 +373,8 @@ void MeshRenderSystem::renderOpaqueItems(
 					meshSystem->draw(item.meshRender, viewProj, item.model, j, taskIndex);
 				}
 				meshSystem->endDraw(taskCount, taskIndex);
-			},
-			opaqueBuffer), drawCount);
+			}),
+			drawCount);
 			threadPool.wait(); // Required
 		}
 		else
@@ -320,13 +391,12 @@ void MeshRenderSystem::renderOpaqueItems(
 			meshSystem->endDraw(drawCount, -1);
 		}
 
-		meshSystem->finalizeDraw(viewProj, framebuffer, drawCount);
+		meshSystem->finalizeDraw(viewProj, drawCount);
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void MeshRenderSystem::renderTranslucentItems(
-	const float4x4& viewProj, ID<Framebuffer> framebuffer)
+//**********************************************************************************************************************
+void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 {
 	auto drawCount = (uint32)translucentIndex;
 	if (drawCount == 0)
@@ -336,11 +406,12 @@ void MeshRenderSystem::renderTranslucentItems(
 	{
 		auto translucentBuffer = &translucentBuffers[i];
 		auto bufferDrawCount = (uint32)translucentBuffer->drawCount;
+
 		if (bufferDrawCount == 0)
 			continue;
 
 		auto meshSystem = translucentBuffer->meshSystem;
-		meshSystem->prepareDraw(viewProj, framebuffer, bufferDrawCount);
+		meshSystem->prepareDraw(viewProj, bufferDrawCount);
 		translucentBuffer->drawCount = 0;
 	}
 
@@ -353,7 +424,7 @@ void MeshRenderSystem::renderTranslucentItems(
 	meshSystem->beginDraw(-1);
 
 	// TODO: maybe we can somehow multithread this, without loosing ordering?
-	// Opaque approach is not applicable here unfortunatly.
+	// Opaque approach is not applicable here unfortunately.
 
 	uint32 currentDrawCount = 0;
 	for (uint32 i = 0; i < drawCount; i++)
@@ -386,93 +457,100 @@ void MeshRenderSystem::renderTranslucentItems(
 			continue;
 
 		auto meshSystem = translucentBuffer->meshSystem;
-		meshSystem->finalizeDraw(viewProj, framebuffer, drawCount);
+		meshSystem->finalizeDraw(viewProj, drawCount);
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void MeshRenderSystem::render()
+//**********************************************************************************************************************
+void MeshRenderSystem::renderShadows()
 {
-	auto graphicsSystem = getGraphicsSystem();
-	if (!graphicsSystem->camera)
-		return;
-
 	auto manager = getManager();
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	auto cameraPosition = (float3)cameraConstants.cameraPos;
-	auto& subsystems = manager->getSubsystems<MeshRenderSystem>();
+	const auto& systems = manager->getSystems();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+
 	graphicsSystem->startRecording(CommandBufferType::Frame);
-
-	#if GARDEN_EDITOR
-	auto editorSystem = EditorRenderSystem::getInstance();
-	editorSystem->opaqueDrawCount = editorSystem->opaqueTotalCount =
-		editorSystem->translucentDrawCount = editorSystem->translucentTotalCount = 0;
-	#endif
-
 	{
-		SET_GPU_DEBUG_LABEL("Shadow Buffering", Color::transparent);
-		for (auto shadowSystem : shadowSystems)
+		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+		for (const auto& pair : systems)
 		{
-			auto passCount = shadowSystem->getShadowPassCount();
+			auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(pair.second);
+			if (!shadowSystem)
+				continue;
 
+			auto passCount = shadowSystem->getShadowPassCount();
 			for (uint32 i = 0; i < passCount; i++)
 			{
-				float4x4 viewProj; float3 cameraOffset; ID<Framebuffer> framebuffer;
-				if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset, framebuffer))
+				float4x4 viewProj; float3 cameraOffset;
+				if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 					continue;
 
-				prepareItems(viewProj, cameraPosition, subsystems,
-					MeshRenderType::OpaqueShadow, MeshRenderType::TranslucentShadow,
-					FRUSTUM_PLANE_COUNT, cameraOffset);
+				prepareItems(viewProj, cameraOffset, frustumPlaneCount,
+					MeshRenderType::OpaqueShadow, MeshRenderType::TranslucentShadow);
 
 				shadowSystem->beginShadowRender(i, MeshRenderType::OpaqueShadow);
-				renderOpaqueItems(viewProj, framebuffer);
+				renderOpaque(viewProj);
 				shadowSystem->endShadowRender(i, MeshRenderType::OpaqueShadow);
 
 				shadowSystem->beginShadowRender(i, MeshRenderType::TranslucentShadow);
-				renderTranslucentItems(viewProj, framebuffer);
+				renderTranslucent(viewProj);
 				shadowSystem->endShadowRender(i, MeshRenderType::TranslucentShadow);
 			}
 		}
 	}
-
 	graphicsSystem->stopRecording();
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
+void MeshRenderSystem::preForwardRender()
+{
+	if (!GraphicsSystem::getInstance()->camera)
+		return;
+
+	prepareSystems();
+	renderShadows();
+}
+
+void MeshRenderSystem::forwardRender()
+{
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	if (!graphicsSystem->camera)
+		return;
+
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
+		MeshRenderType::Opaque, MeshRenderType::Translucent);
+	renderOpaque(cameraConstants.viewProj);
+	renderTranslucent(cameraConstants.viewProj);
+}
+
+//**********************************************************************************************************************
+void MeshRenderSystem::preDeferredRender()
+{
+	if (!GraphicsSystem::getInstance()->camera)
+		return;
+
+	prepareSystems();
+	renderShadows();
+}
+
 void MeshRenderSystem::deferredRender()
 {
-	auto graphicsSystem = getGraphicsSystem();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!graphicsSystem->camera)
 		return;
 
-	auto manager = getManager();
-	auto& subsystems = manager->getSubsystems<MeshRenderSystem>();
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	
-	prepareItems(cameraConstants.viewProj, (float3)cameraConstants.cameraPos,
-		subsystems, MeshRenderType::Opaque, MeshRenderType::Translucent,
-		FRUSTUM_PLANE_COUNT - 2, float3(0.0f));
-	renderOpaqueItems(cameraConstants.viewProj, getDeferredSystem()->getGFramebuffer());
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
+		MeshRenderType::Opaque, MeshRenderType::Translucent);
+	renderOpaque(cameraConstants.viewProj);
 }
 
-//--------------------------------------------------------------------------------------------------
 void MeshRenderSystem::hdrRender()
 {
-	auto graphicsSystem = getGraphicsSystem();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!graphicsSystem->camera)
 		return;
 
-	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	renderTranslucentItems(cameraConstants.viewProj, getDeferredSystem()->getGFramebuffer());
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	renderTranslucent(cameraConstants.viewProj);
 }
-
-//--------------------------------------------------------------------------------------------------
-void MeshRenderSystem::preSwapchainRender()
-{
-	#if GARDEN_EDITOR
-	((GizmosEditor*)gizmosEditor)->preSwapchainRender();
-	((SelectorEditor*)selectorEditor)->preSwapchainRender();
-	#endif
-}
-*/

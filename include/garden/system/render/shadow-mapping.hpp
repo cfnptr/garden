@@ -24,9 +24,8 @@
 namespace garden
 {
 
-#define SHADOW_MAP_CASCADE_COUNT 3
+#define SHADOW_MAP_CASCADE_COUNT 3 // TODO: use const variable instead
 
-using namespace garden;
 using namespace garden::graphics;
 
 //--------------------------------------------------------------------------------------------------
@@ -68,7 +67,6 @@ private:
 	void recreateSwapchain(const SwapchainChanges& changes) final;
 	
 	friend class ecsm::Manager;
-	friend class ShadowMappingEditorSystem;
 public:
 	float3 splitCoefs = float3(0.05f, 0.2f, 0.75f); // 100% in sum
 	float intensity = 0.75f;

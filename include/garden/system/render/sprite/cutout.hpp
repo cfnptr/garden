@@ -12,29 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: refactor this code.
-
-/*
 #pragma once
-#include "garden/system/render/geometry.hpp"
+#include "garden/system/render/sprite.hpp"
 
 namespace garden
 {
 
 using namespace garden::graphics;
-class CutoffRenderSystem;
+class CutoutSpriteSystem;
 
-struct CutoffRenderComponent final : public GeometryRenderComponent
+struct CutoutSpriteComponent final : public SpriteRenderComponent
 {
 	float alphaCutoff = 0.0f;
-	friend class CutoffRenderSystem;
+	friend class CutoutSpriteSystem;
 };
 
-class CutoffRenderSystem final : public GeometryRenderSystem
+class CutoutSpriteSystem final : public SpriteRenderSystem
 {
-	LinearPool<CutoffRenderComponent, false> components;
+	LinearPool<CutoutSpriteComponent, false> components;
+	bool deferredBuffer = false;
 
-	void initialize() final;
+	/**
+	 * @brief Creates a new cutout sprite rendering system instance.
+	 * @param[in,out] manager manager instance
+	 * @param useDeferredBuffer use deferred or forward framebuffer
+	 */
+	CutoutSpriteSystem(Manager* manager, bool useDeferredBuffer = false);
 
 	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) final;
@@ -53,4 +56,3 @@ class CutoffRenderSystem final : public GeometryRenderSystem
 };
 
 } // namespace garden
-*/
