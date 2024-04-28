@@ -153,8 +153,8 @@ class MeshRenderSystem final : public System
 	void renderTranslucent(const float4x4& viewProj);
 	void renderShadows();
 
-	void preInit();
-	void postDeinit();
+	void init();
+	void deinit();
 	void preForwardRender();
 	void forwardRender();
 	void preDeferredRender();

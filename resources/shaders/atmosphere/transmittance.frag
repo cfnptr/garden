@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
-//--------------------------------------------------------------------------------------------------
 
 // TODO: spec const int32?
 #define RAY_MARCH_MIN_SPP 4
@@ -76,7 +74,7 @@ AtmosphereParameters getAtmosphereParameters()
 	return parameters;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void main()
 {
 	AtmosphereParameters atmosphere = getAtmosphereParameters();

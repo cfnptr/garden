@@ -15,17 +15,34 @@
 #include "garden/editor/system/render/mesh-selector.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/editor/system/render/gizmos.hpp" // TODO: remove?
+#include "garden/system/render/mesh.hpp"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-MeshSelectorEditorSystem::MeshSelectorEditorSystem(Manager* manager,
-	MeshRenderSystem* system) : EditorSystem(manager, system)
+MeshSelectorEditorSystem::MeshSelectorEditorSystem(Manager* manager) : System(manager)
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 }
 MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
+	}
+}
+
+void MeshSelectorEditorSystem::init()
+{
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	
+	SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+}
+void MeshSelectorEditorSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())

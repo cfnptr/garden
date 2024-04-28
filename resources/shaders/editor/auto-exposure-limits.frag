@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "common/tone-mapping.gsl"
 
@@ -38,13 +36,15 @@ uniform pushConstants
 	float maxLum;
 } pc;
 
-//--------------------------------------------------------------------------------------------------
 void main()
 {
 	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
 	float lum = rgbToLum(hdrColor);
 
-	if (lum < pc.minLum) fb.color = float4(0.0f, 0.0f, 0.8f, 0.4f);
-	else if (lum > pc.maxLum) fb.color = float4(0.8f, 0.0f, 0.0f, 0.6f);
-	else discard;
+	if (lum < pc.minLum)
+		fb.color = float4(0.0f, 0.0f, 0.8f, 0.4f);
+	else if (lum > pc.maxLum)
+		fb.color = float4(0.8f, 0.0f, 0.0f, 0.6f);
+	else
+		discard;
 }

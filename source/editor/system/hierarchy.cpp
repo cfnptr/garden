@@ -22,13 +22,30 @@ using namespace garden;
 // TODO: render lines for the hierarchy entities, for better visual.
 
 //**********************************************************************************************************************
-HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager,
-	EditorRenderSystem* system) : EditorSystem(manager, system)
+HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager) : System(manager)
 {
+	SUBSCRIBE_TO_EVENT("Init", HierarchyEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", HierarchyEditorSystem::deinit);
+}
+HierarchyEditorSystem::~HierarchyEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", HierarchyEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", HierarchyEditorSystem::deinit);
+	}
+}
+
+void HierarchyEditorSystem::init()
+{
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	
 	SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 }
-HierarchyEditorSystem::~HierarchyEditorSystem()
+void HierarchyEditorSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
@@ -166,7 +183,7 @@ void HierarchyEditorSystem::editorRender()
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender() || !getManager()->has<TransformSystem>())
 		return;
 
-	ImGui::SetNextWindowSize(ImVec2(320, 120), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(320.0f, 120.0f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
@@ -216,7 +233,9 @@ void HierarchyEditorSystem::editorRender()
 
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
+		auto editorSystem = EditorRenderSystem::getInstance();
 		auto& components = TransformSystem::getInstance()->getComponents();
+
 		if (hierarchySearch.empty())
 		{
 			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
@@ -224,7 +243,7 @@ void HierarchyEditorSystem::editorRender()
 				auto transform = &((TransformComponent*)components.getData())[i];
 				if (!transform->getEntity() || transform->getParent())
 					continue;
-				renderHierarchyEntity(manager, transform->getEntity(), system->selectedEntity);
+				renderHierarchyEntity(manager, transform->getEntity(), editorSystem->selectedEntity);
 			}
 		}
 		else
@@ -243,8 +262,8 @@ void HierarchyEditorSystem::editorRender()
 						continue;
 				}
 
-				auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Leaf);
-				if (transform->getEntity() == system->selectedEntity)
+				auto flags = (int)ImGuiTreeNodeFlags_Leaf;
+				if (transform->getEntity() == editorSystem->selectedEntity)
 					flags |= ImGuiTreeNodeFlags_Selected;
 					
 				if (ImGui::TreeNodeEx(name.c_str(), flags))
@@ -274,8 +293,8 @@ void HierarchyEditorSystem::editorRender()
 				hasSeparator = true;
 			}
 			
-			auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Leaf);
-			if (entities.getID(entity) == system->selectedEntity)
+			auto flags = (int)ImGuiTreeNodeFlags_Leaf;
+			if (entities.getID(entity) == editorSystem->selectedEntity)
 				flags |= ImGuiTreeNodeFlags_Selected;
 			auto name = "Entity " + to_string(*entities.getID(entity));
 
@@ -283,7 +302,6 @@ void HierarchyEditorSystem::editorRender()
 			{
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{
-					auto editorSystem = EditorRenderSystem::getInstance();
 					editorSystem->selectedEntity = entities.getID(entity);
 					editorSystem->selectedEntityAabb = Aabb();
 				}

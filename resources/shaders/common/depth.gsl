@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #ifndef DEPTH_GSL
 #define DEPTH_GSL
@@ -22,6 +20,14 @@ float3 calcWorldPosition(float depth, float2 texCoords, float4x4 viewProjInv)
 	float2 ndc = texCoords * 2.0f - 1.0f;
 	float4 position = viewProjInv * float4(ndc, depth, 1.0f);
 	return position.xyz / position.w; // It also divides by zero, handle if needed.
+}
+float3 calcWorldPositionSafe(float depth, float2 texCoords, float4x4 viewProjInv)
+{
+	float2 ndc = texCoords * 2.0f - 1.0f;
+	float4 position = viewProjInv * float4(ndc, depth, 1.0f);
+	if (position.w != 0.0f)
+		position.xyz /= position.w
+	return position.xyz;
 }
 
 float3 calcViewDirection(float3 worldPosition)

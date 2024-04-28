@@ -16,17 +16,18 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/lighting.hpp"
-
 namespace garden
 {
 
 using namespace garden::graphics;
 
-class LightingRenderEditorSystem final : public EditorSystem<LightingRenderSystem>
+class LightingRenderEditorSystem final : public System
 {
-	LightingRenderEditorSystem(Manager* manager, LightingRenderSystem* system);
+	LightingRenderEditorSystem(Manager* manager);
 	~LightingRenderEditorSystem() final;
+
+	void init();
+	void deinit();
 	
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 

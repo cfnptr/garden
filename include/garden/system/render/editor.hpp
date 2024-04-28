@@ -33,28 +33,6 @@ namespace garden
 using namespace ecsm;
 using namespace garden::graphics;
 
-/**
- * @brief Base editor system class.
- * @tparam T type of the target system (ex. GraphicsSystem)
- */
-template<class T>
-class EditorSystem : public System
-{
-protected:
-	T* system = nullptr;
-
-	/**
-	 * @brief Creates a new editor system instance.
-	 * 
-	 * @param[in] manager valid manager instance
-	 * @param[in] system valid target system instance
-	 */
-	EditorSystem(Manager* manager, T* system) : System(manager)
-	{
-		this->system = system;
-	}
-};
-
 /***********************************************************************************************************************
  * @brief Editor GUI rendering system.
  * 
@@ -99,10 +77,10 @@ private:
 	void showNewScene();
 	void showExportScene();
 
-	void preInit();
+	void init();
+	void deinit();
 	void editorRender();
-	void postDeinit();
-
+	
 	friend class ecsm::Manager;
 	friend class HierarchyEditorSystem;
 public:

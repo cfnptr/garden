@@ -16,14 +16,12 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/deferred.hpp"
-
 namespace garden
 {
 
 using namespace garden::graphics;
 
-class DeferredRenderEditorSystem final : public EditorSystem<DeferredRenderSystem>
+class DeferredRenderEditorSystem final : public System
 {
 	enum class DrawMode : uint8
 	{
@@ -48,9 +46,11 @@ class DeferredRenderEditorSystem final : public EditorSystem<DeferredRenderSyste
 
 	static ID<Image> shadowPlaceholder;
 
-	DeferredRenderEditorSystem(Manager* manager, DeferredRenderSystem* system);
+	DeferredRenderEditorSystem(Manager* manager);
 	~DeferredRenderEditorSystem() final;
 
+	void init();
+	void deinit();
 	void editorRender();
 	void deferredRender();
 	void gBufferRecreate();

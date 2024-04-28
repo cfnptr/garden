@@ -123,16 +123,7 @@ class CameraSystem final : public System, public ISerializable
 	 * @brief Creates a new camera system instance.
 	 * @param[in,out] manager manager instance
 	 */
-	CameraSystem(Manager* manager);
-	/**
-	 * @brief Destroys camera system instance.
-	 */
-	~CameraSystem() final;
-
-	#if GARDEN_EDITOR
-	void preInit();
-	void postDeinit();
-	#endif
+	CameraSystem(Manager* manager) : System(manager) { }
 
 	const string& getComponentName() const final;
 	type_index getComponentType() const final;

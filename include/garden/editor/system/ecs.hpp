@@ -19,13 +19,15 @@
 namespace garden
 {
 
-class EcsEditorSystem final : public EditorSystem<EditorRenderSystem>
+class EcsEditorSystem final : public System
 {
 	bool showWindow = false;
 
-	EcsEditorSystem(Manager* manager, EditorRenderSystem* system);
+	EcsEditorSystem(Manager* manager);
 	~EcsEditorSystem() final;
 
+	void init();
+	void deinit();
 	void editorRender();
 	void editorBarTool();
 

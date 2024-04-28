@@ -13,26 +13,43 @@
 // limitations under the License.
 
 #include "garden/editor/system/transform.hpp"
-#include "math/angles.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/transform.hpp"
+#include "math/angles.hpp"
+
 #include "imgui_internal.h"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-TransformEditorSystem::TransformEditorSystem(Manager* manager, TransformSystem* system) : EditorSystem(manager, system)
+TransformEditorSystem::TransformEditorSystem(Manager* manager) : System(manager)
 {
+	SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
+}
+TransformEditorSystem::~TransformEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
+	}
+}
+
+void TransformEditorSystem::init()
+{
+	GARDEN_ASSERT(getManager()->has<EditorRenderSystem>());
 	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	});
 }
-TransformEditorSystem::~TransformEditorSystem()
+void TransformEditorSystem::deinit()
 {
-	if (getManager()->isRunning())
-		EditorRenderSystem::getInstance()->unregisterEntityInspector<TransformComponent>();
+	EditorRenderSystem::getInstance()->unregisterEntityInspector<TransformComponent>();
 }
 
 //**********************************************************************************************************************
@@ -56,9 +73,25 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto manager = getManager();
 	auto editorSystem = EditorRenderSystem::getInstance();
 
+	auto transformComponent = manager->get<TransformComponent>(entity);
+	if (ImGui::BeginItemTooltip())
+	{
+		if (transformComponent->getParent())
+		{
+			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
+			ImGui::Text("Parent: %lu %s", (unsigned long)*transformComponent->getParent(),
+				parentTransform->name.empty() ? "" : ("(" + parentTransform->name + ")").c_str());
+		}
+		else
+		{
+			ImGui::Text("Parent: null");
+		}
+		ImGui::Text("Children count: %lu", (unsigned long)transformComponent->getChildCount());
+		ImGui::EndTooltip();
+	}
+
 	if (isOpened)
 	{
-		auto transformComponent = manager->get<TransformComponent>(entity);
 		auto isBaked = manager->has<BakedTransformComponent>(entity);
 		ImGui::BeginDisabled(isBaked);
 
@@ -103,26 +136,10 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndDisabled();
 		
 		ImGui::InputText("Name", &transformComponent->name);
-		ImGui::Spacing(); ImGui::Separator();
-		
-		if (transformComponent->getParent())
+		if (ImGui::BeginItemTooltip())
 		{
-			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
-			ImGui::Text("Parent: %lu (%s) | Childs: %lu", (unsigned long)*transformComponent->getParent(),
-				parentTransform->name.c_str(), (unsigned long)transformComponent->getChildCount());
-		}
-		else
-		{
-			ImGui::Text("Parent: null | Childs: %lu", (unsigned long)transformComponent->getChildCount());
-		}
-
-		if (transformComponent->getParent())
-		{
-			if (ImGui::Button("Select Parent"))
-				editorSystem->selectedEntity = transformComponent->getParent(); 
-			ImGui::SameLine();
-			if (ImGui::Button("Remove Parent"))
-				transformComponent->setParent({});
+			ImGui::Text("Entity debug only name");
+			ImGui::EndTooltip();
 		}
 	}
 

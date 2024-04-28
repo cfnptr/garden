@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "common/pbr.gsl"
 #include "common/depth.gsl"
@@ -69,7 +67,7 @@ uniform set2 IblData
 } data;
 // TODO: support multiple specular/sh buffer count.
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void main()
 {
 	float4 baseColor = texture(baseColorMap, fs.texCoords) * pc.baseColor;
@@ -80,8 +78,7 @@ void main()
 	pbrMaterial.metallic = orm.b * pc.metallic;
     pbrMaterial.roughness = orm.g * pc.roughness;
 	pbrMaterial.reflectance = pc.reflectance;
-	pbrMaterial.viewDirection = calcViewDirection(
-		gl.fragCoord.z, fs.texCoords, cc.viewProjInv);
+	pbrMaterial.viewDirection = calcViewDirection(gl.fragCoord.z, fs.texCoords, cc.viewProjInv);
 	pbrMaterial.normal = normalize(fs.normal);
 	pbrMaterial.shadow = 1.0f;
 	// TODO: shadow value and shadow color.

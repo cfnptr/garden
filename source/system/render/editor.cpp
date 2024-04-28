@@ -22,8 +22,6 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/render/fxaa.hpp"
-#include "garden/editor/system/ecs.hpp"
-#include "garden/editor/system/hierarchy.hpp"
 
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/imgui-impl.hpp"
@@ -40,14 +38,12 @@ EditorRenderSystem* EditorRenderSystem::instance = nullptr;
 
 EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 {
-	manager->registerEventBefore("EditorRender", "Present");
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
 
-	SUBSCRIBE_TO_EVENT("PreInit", EditorRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("EditorRender", EditorRenderSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Init", EditorRenderSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", EditorRenderSystem::deinit);
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
@@ -57,11 +53,9 @@ EditorRenderSystem::~EditorRenderSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", EditorRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", EditorRenderSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", EditorRenderSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", EditorRenderSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", EditorRenderSystem::deinit);
 
-		manager->unregisterEvent("EditorRender");
 		manager->unregisterEvent("EditorBarFile");
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
@@ -335,7 +329,7 @@ void EditorRenderSystem::showOptionsWindow()
 //**********************************************************************************************************************
 void EditorRenderSystem::showEntityInspector()
 {
-	ImGui::SetNextWindowSize(ImVec2(320, 180), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(320.0f, 180.0f), ImGuiCond_FirstUseEver);
 
 	auto showEntityInspector = true;
 	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
@@ -516,19 +510,19 @@ void EditorRenderSystem::showExportScene()
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::preInit()
+void EditorRenderSystem::init()
 {
 	auto manager = getManager();
-	manager->createSystem<HierarchyEditorSystem>(this);
-	manager->createSystem<EcsEditorSystem>(this);
+	manager->registerEventBefore("EditorRender", "Present");
+	SUBSCRIBE_TO_EVENT("EditorRender", EditorRenderSystem::editorRender);
 }
-void EditorRenderSystem::postDeinit()
+void EditorRenderSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		manager->destroySystem<HierarchyEditorSystem>();
-		manager->destroySystem<EcsEditorSystem>();
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", EditorRenderSystem::editorRender);
+		manager->unregisterEvent("EditorRender");
 	}
 }
 

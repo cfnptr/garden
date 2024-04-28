@@ -53,11 +53,6 @@ private:
 	 * @brief Destroys log system instance.
 	 */
 	~LogSystem() final;
-
-	#if GARDEN_EDITOR
-	void preInit();
-	void postDeinit();
-	#endif
 	
 	friend class ecsm::Manager;
 public:

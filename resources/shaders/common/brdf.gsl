@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Bidirectional Reflectance Distribution Function
 // Based on this: https://google.github.io/filament/Filament.html
-//--------------------------------------------------------------------------------------------------
 
 #ifndef BRDF_GSL
 #define BRDF_GSL
@@ -50,6 +48,7 @@ float lambert()
 	return 1.0f / M_PI;
 }
 
+//**********************************************************************************************************************
 float2 hammersley(uint32 index, float invSampleCount)
 {
 	const float tof = 0.5f / float(0x80000000U);
@@ -101,8 +100,7 @@ float3 computeEnergyCompensation(sampler2D dfgLUT, float nov, float roughness, f
 
 float specularAoLagarde(float nov, float visibility, float linearRoughness)
 {
-	return clamp(pow(nov + visibility, exp2(-16.0f *
-		linearRoughness - 1.0f)) - 1.0f + visibility, 0.0f, 1.0f);
+	return clamp(pow(nov + visibility, exp2(-16.0f * linearRoughness - 1.0f)) - 1.0f + visibility, 0.0f, 1.0f);
 }
 float3 gtaoMultiBounce(float visibility, float3 albedo)
 {
@@ -112,9 +110,8 @@ float3 gtaoMultiBounce(float visibility, float3 albedo)
 	return max(float3(visibility), ((visibility * a + b) * visibility + c) * visibility);
 }
 
-//--------------------------------------------------------------------------------------------------
-float3 specularLobe(float noh, float nov,
-	float nol, float loh, float3 f0, float roughness)
+//**********************************************************************************************************************
+float3 specularLobe(float noh, float nov, float nol, float loh, float3 f0, float roughness)
 {
 	float linearRoughness = roughness * roughness;
 	float distribution = ggx(noh, linearRoughness);

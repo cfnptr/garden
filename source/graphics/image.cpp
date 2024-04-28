@@ -543,7 +543,7 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 			GARDEN_ASSERT(region.dstExtent + region.dstOffset <= mipImageSize);
 		}
 
-		// TODO: take into account foramt texel size.
+		// TODO: take into account format texel size.
 	}
 	#endif
 

@@ -19,15 +19,29 @@
 namespace garden
 {
 
-class CameraEditorSystem final : public System
+class GpuResourceEditorSystem final : public System
 {
-	CameraEditorSystem(Manager* manager);
-	~CameraEditorSystem() final;
+public:
+	enum class TabType : uint8
+	{
+		None, Buffers, Images, ImageViews, Framebuffers, DescriptorSets,
+		GraphicsPipelines, ComputePipelines, Count
+	};
+private:
+	string resourceSearch;
+	uint32 selectedItem = 0;
+	bool showWindow = false;
+	bool searchCaseSensitive = false;
+	TabType openNextTab = TabType::None;
+
+	GpuResourceEditorSystem(Manager* manager);
+	~GpuResourceEditorSystem() final;
 
 	void init();
 	void deinit();
+	void editorRender();
+	void editorBarTool();
 
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
 };
 

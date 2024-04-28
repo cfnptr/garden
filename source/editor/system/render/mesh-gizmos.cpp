@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/editor/system/render/gizmos.hpp"
+#include "garden/editor/system/render/mesh-gizmos.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/mesh.hpp"
 #include "garden/system/resource.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;
+
+// TODO: change winding order, and use better quad layout
 
 static const array<float3, 18> fullArrowVert =
 {
@@ -66,21 +69,30 @@ namespace
 }
 
 //**********************************************************************************************************************
-GizmosRenderEditorSystem::GizmosRenderEditorSystem(
-	Manager* manager, MeshRenderSystem* system) : EditorSystem(manager, system)
+MeshGizmosEditorSystem::MeshGizmosEditorSystem(Manager* manager) : System(manager)
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", GizmosRenderEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
+	
 }
-GizmosRenderEditorSystem::~GizmosRenderEditorSystem()
+MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", GizmosRenderEditorSystem::editorRender);
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
+	}
 }
 
 //**********************************************************************************************************************
-void GizmosRenderEditorSystem::preInit()
+void MeshGizmosEditorSystem::init()
 {
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	
+	SUBSCRIBE_TO_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
+
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto resourceSystem = ResourceSystem::getInstance();
 	auto swapchainFramebuffer = graphicsSystem->getSwapchainFramebuffer();
@@ -92,7 +104,7 @@ void GizmosRenderEditorSystem::preInit()
 		Buffer::Access::None, fullArrowVert, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, fullArrowVertices, "buffer.vertex.gizmos.arrow");
 }
-void GizmosRenderEditorSystem::postDeinit()
+void MeshGizmosEditorSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
@@ -101,6 +113,8 @@ void GizmosRenderEditorSystem::postDeinit()
 		graphicsSystem->destroy(fullArrowVertices);
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
+
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
 	}
 }
 
@@ -168,7 +182,7 @@ static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
 }
 
 //**********************************************************************************************************************
-void GizmosRenderEditorSystem::editorRender()
+void MeshGizmosEditorSystem::editorRender()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto selectedEntity = EditorRenderSystem::getInstance()->selectedEntity;

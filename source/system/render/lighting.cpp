@@ -19,10 +19,6 @@
 #include "math/brdf.hpp"
 #include "math/sh.hpp"
 
-#if GARDEN_EDITOR
-#include "garden/editor/system/render/lighting.hpp"
-#endif
-
 #define SPECULAR_SAMPLE_COUNT 1024
 
 using namespace garden;
@@ -410,21 +406,21 @@ LightingRenderSystem::LightingRenderSystem(Manager* manager, bool useShadowBuffe
 	this->hasShadowBuffer = useShadowBuffer;
 	this->hasAoBuffer = useAoBuffer;
 
-	SUBSCRIBE_TO_EVENT("PreInit", LightingRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", LightingRenderSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Init", LightingRenderSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderSystem::deinit);
 }
 LightingRenderSystem::~LightingRenderSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", LightingRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", LightingRenderSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderSystem::deinit);
 	}
 }
 
 //**********************************************************************************************************************
-void LightingRenderSystem::preInit()
+void LightingRenderSystem::init()
 {
 	auto manager = getManager();
 	GARDEN_ASSERT(manager->has<DeferredRenderSystem>());
@@ -457,18 +453,9 @@ void LightingRenderSystem::preInit()
 		lightingPipeline = createLightingPipeline(manager, hasShadowBuffer, hasAoBuffer);
 	if (!iblSpecularPipeline)
 		iblSpecularPipeline = createIblSpecularPipeline();
-
-	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<LightingRenderEditorSystem>(this);
-	#endif
 }
-void LightingRenderSystem::postDeinit()
+void LightingRenderSystem::deinit()
 {
-	#if GARDEN_EDITOR
-	getManager()->tryDestroySystem<LightingRenderEditorSystem>();
-	#endif
-
 	auto manager = getManager();
 	if (manager->isRunning())
 	{

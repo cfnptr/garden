@@ -26,10 +26,6 @@
 #include "garden/resource/primitive.hpp"
 #include "mpio/os.hpp"
 
-#if GARDEN_EDITOR
-#include "garden/editor/system/graphics.hpp"
-#include "garden/editor/system/gpu-resource.hpp"
-#endif
 #if GARDEN_DEBUG
 #include "garden/system/resource.hpp"
 #endif
@@ -241,7 +237,7 @@ GraphicsSystem::~GraphicsSystem()
 	if (manager->isRunning())
 	{
 		// Note: constants buffers and other resources will destroyed by terminating graphics API.
-		
+
 		UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
@@ -297,14 +293,6 @@ void GraphicsSystem::preInit()
 	#if GARDEN_EDITOR
 	initializeImGui();
 	#endif
-
-	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-	{
-		manager->createSystem<GraphicsEditorSystem>(this);
-		manager->createSystem<GpuResourceEditorSystem>(this);
-	}
-	#endif
 }
 void GraphicsSystem::preDeinit()
 {
@@ -313,14 +301,6 @@ void GraphicsSystem::preDeinit()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		#if GARDEN_EDITOR
-		if (manager->has<EditorRenderSystem>())
-		{
-			manager->destroySystem<GraphicsEditorSystem>();
-			manager->destroySystem<GpuResourceEditorSystem>();
-		}
-		#endif
-
 		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
 	}
 
@@ -483,12 +463,9 @@ void GraphicsSystem::update()
 	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
 		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState);
 
-	if (forceRecreateSwapchain)
-	{
-		swapchainChanges.framebufferSize |= newSwapchainChanges.framebufferSize;
-		swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
-		swapchainChanges.vsyncState |= newSwapchainChanges.vsyncState;
-	}
+	swapchainChanges.framebufferSize |= newSwapchainChanges.framebufferSize;
+	swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
+	swapchainChanges.vsyncState |= newSwapchainChanges.vsyncState;
 	
 	auto manager = getManager();
 	auto logSystem = manager->tryGet<LogSystem>();

@@ -22,12 +22,30 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
-LogEditorSystem::LogEditorSystem(Manager* manager, LogSystem* system) : EditorSystem(manager, system)
+LogEditorSystem::LogEditorSystem(Manager* manager) : System(manager)
 {
+	SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
+}
+LogEditorSystem::~LogEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
+	}
+}
+
+void LogEditorSystem::init()
+{
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	
 	SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
-LogEditorSystem::~LogEditorSystem()
+void LogEditorSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
@@ -74,7 +92,7 @@ void LogEditorSystem::editorRender()
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;
 
-	ImGui::SetNextWindowSize(ImVec2(560, 180), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(560.0f, 180.0f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin("Log Viewer", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
@@ -112,7 +130,7 @@ void LogEditorSystem::editorRender()
 		}
 
 		ImGui::InputTextMultiline("##log", &textBuffer,
-			ImVec2(-1, -(ImGui::GetFrameHeightWithSpacing() + 4)), ImGuiInputTextFlags_ReadOnly);
+			ImVec2(-1.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)), ImGuiInputTextFlags_ReadOnly);
 		ImGui::Spacing();
 
 		isDirty |= ImGui::InputText("Search", &logSearch); ImGui::SameLine();

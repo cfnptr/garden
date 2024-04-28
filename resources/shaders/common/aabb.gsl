@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Axis Aligned Bounding Box
-//--------------------------------------------------------------------------------------------------
 
 #ifndef AABB_GSL
 #define AABB_GSL
@@ -27,7 +25,7 @@ struct Aabb
 	float3 max;
 };
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 float2 raycast2(Aabb aabb, Ray ray)
 {
 	float3 directionInv = 1.0f / ray.direction;
@@ -48,7 +46,6 @@ float2 raycast2I(Aabb aabb, Ray ray)
 	return float2(tMin, tMax);
 }
 
-//--------------------------------------------------------------------------------------------------
 float raycast1(Aabb aabb, Ray ray)
 {
 	float3 directionInv = 1.0f / ray.direction;
@@ -65,14 +62,13 @@ float raycast1I(Aabb aabb, Ray ray)
 	return max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 bool isIntersected(float2 hitPoints)
 {
 	// If tMax < 0.0f, ray is intersecting AABB, but whole AABB is behing us.
 	return hitPoints.x <= hitPoints.y && hitPoints.y >= 0.0f;
 }
 
-//--------------------------------------------------------------------------------------------------
 bool raycast(Aabb aabb, Ray ray)
 {
 	return isIntersected(raycast2(aabb, ray));

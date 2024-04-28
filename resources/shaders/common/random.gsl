@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Random Number Generators.
 // Usefull link: https://www.shadertoy.com/view/XlGcRh
-//--------------------------------------------------------------------------------------------------
 
 #ifndef RANDOM_GSL
 #define RANDOM_GSL
 
-//--------------------------------------------------------------------------------------------------
 // Inigo Quilez - Integer Hash
+
 uint32 iqint(uint32 n)
 {
 	n = (n << 13u) ^ n;
@@ -45,7 +43,7 @@ uint32 iqint(float f) { return iqint(floatBitsToUint(f)); }
 uint32 iqint(float2 f) { return iqint(floatBitsToUint(f)); }
 uint3 iqint(float3 f) { return iqint(floatBitsToUint(f)); }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 // https://www.pcg-random.org/
 uint32 pcg(uint32 v)
 {
@@ -93,7 +91,6 @@ uint4 pcg(float4 f) { return pcg(floatBitsToUint(f)); }
 
 // TODO: other random number generators. Simplex...
 
-//--------------------------------------------------------------------------------------------------
 float toFloat(uint32 hash) { return hash * (1.0f / float(0xffffffffu)); }
 float2 toFloat(uint2 hash) { return hash * (1.0f / float(0xffffffffu)); }
 float3 toFloat(uint3 hash) { return hash * (1.0f / float(0xffffffffu)); }

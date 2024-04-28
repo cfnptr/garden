@@ -15,10 +15,6 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 
-#if GARDEN_EDITOR
-#include "garden/editor/system/render/deferred.hpp"
-#endif
-
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -145,8 +141,8 @@ DeferredRenderSystem::DeferredRenderSystem(Manager* manager, bool useAsyncRecord
 	manager->tryRegisterEvent("PreSwapchainRender"); // Note: can be shared with forward system.
 	manager->registerEvent("GBufferRecreate");
 
-	SUBSCRIBE_TO_EVENT("PreInit", DeferredRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", DeferredRenderSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Init", DeferredRenderSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", DeferredRenderSystem::deinit);
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
@@ -156,8 +152,8 @@ DeferredRenderSystem::~DeferredRenderSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", DeferredRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", DeferredRenderSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderSystem::deinit);
 
 		manager->unregisterEvent("PreDeferredRender");
 		manager->unregisterEvent("DeferredRender");
@@ -174,7 +170,7 @@ DeferredRenderSystem::~DeferredRenderSystem()
 }
 
 //**********************************************************************************************************************
-void DeferredRenderSystem::preInit()
+void DeferredRenderSystem::init()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	GARDEN_ASSERT(asyncRecording == graphicsSystem->useAsyncRecording());
@@ -196,21 +192,12 @@ void DeferredRenderSystem::preInit()
 		hdrFramebuffer = createHdrFramebuffer(hdrBuffer);
 	if (!ldrFramebuffer)
 		ldrFramebuffer = createLdrFramebuffer(ldrBuffer);
-
-	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<DeferredRenderEditorSystem>(this);
-	#endif
 }
-void DeferredRenderSystem::postDeinit()
+void DeferredRenderSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		#if GARDEN_EDITOR
-		manager->tryDestroySystem<DeferredRenderEditorSystem>();
-		#endif
-
 		auto graphicsSystem = GraphicsSystem::getInstance();
 		graphicsSystem->destroy(ldrFramebuffer);
 		graphicsSystem->destroy(hdrFramebuffer);

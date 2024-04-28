@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "common/random.gsl"
 #include "common/color-space.gsl"
@@ -54,7 +52,7 @@ uniform sampler2D
 in float2 fs.texCoords;
 out float4 fb.ldr;
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void main()
 {
 	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
@@ -73,13 +71,9 @@ void main()
 
 	float3 tonemappedColor;
 	if (TONE_MAPPER == ACES_TONE_MAPPER)
-	{
 		tonemappedColor = aces(hdrColor);
-	}
 	else
-	{
 		tonemappedColor = uchimura(hdrColor);
-	}
 
 	float3 ldrColor = gammaCorrectionPrecise(tonemappedColor); // TODO: set precise or not via spec const?
 

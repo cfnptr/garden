@@ -21,7 +21,7 @@
 namespace garden
 {
 
-class LogEditorSystem final : public EditorSystem<LogSystem>
+class LogEditorSystem final : public System
 {
 	string logSearch;
 	string textBuffer, logLine;
@@ -38,9 +38,11 @@ class LogEditorSystem final : public EditorSystem<LogSystem>
 	bool includeAll = true;
 	bool isDirty = true;
 
-	LogEditorSystem(Manager* manager, LogSystem* system);
+	LogEditorSystem(Manager* manager);
 	~LogEditorSystem() final;
 
+	void init();
+	void deinit();
 	void editorRender();
 	void editorBarTool();
 

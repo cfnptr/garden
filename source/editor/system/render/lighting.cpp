@@ -15,19 +15,36 @@
 #include "garden/editor/system/render/lighting.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/lighting.hpp"
+
 using namespace garden;
 
 //**********************************************************************************************************************
-LightingRenderEditorSystem::LightingRenderEditorSystem(Manager* manager,
-	LightingRenderSystem* system) : EditorSystem(manager, system)
+LightingRenderEditorSystem::LightingRenderEditorSystem(Manager* manager) : System(manager)
 {
+	SUBSCRIBE_TO_EVENT("Init", LightingRenderEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderEditorSystem::deinit);
+}
+LightingRenderEditorSystem::~LightingRenderEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderEditorSystem::deinit);
+	}
+}
+
+void LightingRenderEditorSystem::init()
+{
+	GARDEN_ASSERT(getManager()->has<EditorRenderSystem>());
 	EditorRenderSystem::getInstance()->registerEntityInspector<LightingRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	});
 }
-LightingRenderEditorSystem::~LightingRenderEditorSystem()
+void LightingRenderEditorSystem::deinit()
 {
 	EditorRenderSystem::getInstance()->unregisterEntityInspector<LightingRenderComponent>();
 }

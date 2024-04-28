@@ -69,8 +69,8 @@ class DeferredRenderSystem final : public System
 	 */
 	~DeferredRenderSystem() final;
 
-	void preInit();
-	void postDeinit();
+	void init();
+	void deinit();
 	void render();
 	void swapchainRecreate();
 

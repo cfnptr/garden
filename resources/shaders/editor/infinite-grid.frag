@@ -12,25 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sprite/common.gsl"
-
-out float2 fs.texCoords;
-
-uniform pushConstants
+pipelineState
 {
-	float4 colorFactor;
-	uint32 instanceIndex;
-	float cutoff;
-} pc;
 
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
+}
+
+out float4 fb.color;
 
 void main()
 {
-	float4 position = float4(quadVertices[gl.vertexIndex], 0.0f, 1.0f);
-	gl.position = instance.data[pc.instanceIndex].mvp * position;
-	fs.texCoords = quadTexCoords[gl.vertexIndex];
+	fb.color = float4(1.0f, 0.0f, 0.0f, 1.0f);
 }

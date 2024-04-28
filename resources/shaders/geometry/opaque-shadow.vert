@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 in float3 vs.position : f32;
 #attributeOffset 20
@@ -29,7 +27,6 @@ uniform pushConstants
 	float4x4 mvp;
 } pc;
 
-//--------------------------------------------------------------------------------------------------
 void main()
 {
 	gl.position = pc.mvp * float4(vs.position, 1.0f);

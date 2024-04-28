@@ -73,16 +73,16 @@ ForwardRenderSystem::ForwardRenderSystem(Manager* manager,
 	manager->tryRegisterEvent("PreSwapchainRender"); // Note: can be shared with deferred system.
 	manager->registerEvent("ColorBufferRecreate");
 
-	SUBSCRIBE_TO_EVENT("PreInit", ForwardRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", ForwardRenderSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Init", ForwardRenderSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", ForwardRenderSystem::deinit);
 }
 ForwardRenderSystem::~ForwardRenderSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", ForwardRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", ForwardRenderSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", ForwardRenderSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", ForwardRenderSystem::deinit);
 		
 		manager->unregisterEvent("PreForwardRender");
 		manager->unregisterEvent("ForwardRender");
@@ -92,7 +92,7 @@ ForwardRenderSystem::~ForwardRenderSystem()
 }
 
 //**********************************************************************************************************************
-void ForwardRenderSystem::preInit()
+void ForwardRenderSystem::init()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	GARDEN_ASSERT(asyncRecording == graphicsSystem->useAsyncRecording());
@@ -113,7 +113,7 @@ void ForwardRenderSystem::preInit()
 	if (!framebuffer)
 		framebuffer = createFramebuffer(colorBuffer, depthStencilBuffer);
 }
-void ForwardRenderSystem::postDeinit()
+void ForwardRenderSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())

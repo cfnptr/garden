@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #ifndef GBUFFER_GSL
 #define GBUFFER_GSL
 
 #include "math.gsl"
 
-//--------------------------------------------------------------------------------------------------
 // Signed Octahedron Normal Encoding (R10G10B10A2)
 // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
 
@@ -43,7 +40,7 @@ float3 decodeNormalOct(float3 encoded)
 	return normalize(normal);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 float4 encodeGBuffer0(float3 baseColor, float metallic)
 {
 	return float4(baseColor.r, baseColor.g, baseColor.b, metallic);
@@ -60,8 +57,7 @@ float4 encodeGBuffer2(float3 emissive, float roughness)
 
 float3 decodeBaseColor(float4 gData0) { return gData0.rgb; }
 float decodeMetallic(float4 gData0) { return gData0.a; }
-float3 decodeNormal(float4 gData1)
-{ return decodeNormalOct(float3(gData1.x, gData1.y, gData1.w)); }
+float3 decodeNormal(float4 gData1) { return decodeNormalOct(float3(gData1.x, gData1.y, gData1.w)); }
 float decodeRoughness(float4 gData2) { return gData2.a; }
 float3 decodeEmissive(float4 gData2) { return gData2.rgb * 25.5f; }
 float decodeReflectance(float4 gData1) { return gData1.z; }

@@ -19,8 +19,6 @@
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/graphics.hpp"
-#include "garden/editor/system/render/mesh-selector.hpp"
-#include "garden/editor/system/render/gizmos.hpp"
 #endif
 
 using namespace garden;
@@ -30,22 +28,21 @@ MeshRenderSystem::MeshRenderSystem(Manager* manager, bool useAsyncRecording) : S
 {
 	this->asyncRecording = useAsyncRecording;
 
-	SUBSCRIBE_TO_EVENT("PreInit", MeshRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", MeshRenderSystem::postDeinit);
-	
+	SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
 }
 MeshRenderSystem::~MeshRenderSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", MeshRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", MeshRenderSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", MeshRenderSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", MeshRenderSystem::deinit);
 	}
 }
 
 //**********************************************************************************************************************
-void MeshRenderSystem::preInit()
+void MeshRenderSystem::init()
 {
 	auto manager = getManager();
 	GARDEN_ASSERT(manager->has<ForwardRenderSystem>() || manager->has<DeferredRenderSystem>());
@@ -61,28 +58,12 @@ void MeshRenderSystem::preInit()
 		SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 		SUBSCRIBE_TO_EVENT("HdrRender", MeshRenderSystem::hdrRender);
 	}
-
-	#if GARDEN_EDITOR
-	if (manager->has<EditorRenderSystem>())
-	{
-		manager->createSystem<MeshSelectorEditorSystem>(this);
-		manager->createSystem<GizmosRenderEditorSystem>(this);
-	}
-	#endif
 }
-void MeshRenderSystem::postDeinit()
+void MeshRenderSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		#if GARDEN_EDITOR
-		if (manager->has<EditorRenderSystem>())
-		{
-			manager->destroySystem<MeshSelectorEditorSystem>();
-			manager->destroySystem<GizmosRenderEditorSystem>();
-		}
-		#endif
-
 		if (manager->has<ForwardRenderSystem>())
 		{
 			UNSUBSCRIBE_FROM_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
@@ -169,7 +150,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	auto translucentIndexData = translucentIndices.data();
 	uint32 opaqueBufferIndex = 0, translucentBufferIndex = 0;
 
-	Plane frustumPlanes[frustumPlaneCount];
+	Plane frustumPlanes[::frustumPlaneCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
 
 	// 1. Cull and prepare items 
@@ -464,40 +445,34 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 //**********************************************************************************************************************
 void MeshRenderSystem::renderShadows()
 {
-	auto manager = getManager();
-	const auto& systems = manager->getSystems();
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 
-	graphicsSystem->startRecording(CommandBufferType::Frame);
+	const auto& systems = getManager()->getSystems();
+	for (const auto& pair : systems)
 	{
-		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
-		for (const auto& pair : systems)
+		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(pair.second);
+		if (!shadowSystem)
+			continue;
+
+		auto passCount = shadowSystem->getShadowPassCount();
+		for (uint32 i = 0; i < passCount; i++)
 		{
-			auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(pair.second);
-			if (!shadowSystem)
+			float4x4 viewProj; float3 cameraOffset;
+			if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 				continue;
 
-			auto passCount = shadowSystem->getShadowPassCount();
-			for (uint32 i = 0; i < passCount; i++)
-			{
-				float4x4 viewProj; float3 cameraOffset;
-				if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
-					continue;
+			prepareItems(viewProj, cameraOffset, frustumPlaneCount,
+				MeshRenderType::OpaqueShadow, MeshRenderType::TranslucentShadow);
 
-				prepareItems(viewProj, cameraOffset, frustumPlaneCount,
-					MeshRenderType::OpaqueShadow, MeshRenderType::TranslucentShadow);
+			shadowSystem->beginShadowRender(i, MeshRenderType::OpaqueShadow);
+			renderOpaque(viewProj);
+			shadowSystem->endShadowRender(i, MeshRenderType::OpaqueShadow);
 
-				shadowSystem->beginShadowRender(i, MeshRenderType::OpaqueShadow);
-				renderOpaque(viewProj);
-				shadowSystem->endShadowRender(i, MeshRenderType::OpaqueShadow);
-
-				shadowSystem->beginShadowRender(i, MeshRenderType::TranslucentShadow);
-				renderTranslucent(viewProj);
-				shadowSystem->endShadowRender(i, MeshRenderType::TranslucentShadow);
-			}
+			shadowSystem->beginShadowRender(i, MeshRenderType::TranslucentShadow);
+			renderTranslucent(viewProj);
+			shadowSystem->endShadowRender(i, MeshRenderType::TranslucentShadow);
 		}
 	}
-	graphicsSystem->stopRecording();
 }
 
 //**********************************************************************************************************************

@@ -103,8 +103,8 @@ class LightingRenderSystem final : public System
 	 */
 	~LightingRenderSystem() final;
 
-	void preInit();
-	void postDeinit();
+	void init();
+	void deinit();
 	void preHdrRender();
 	void hdrRender();
 	void gBufferRecreate();
