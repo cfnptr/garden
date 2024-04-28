@@ -19,7 +19,7 @@
 namespace garden
 {
 
-class GraphicsEditorSystem final : public EditorSystem<GraphicsSystem>
+class GraphicsEditorSystem final : public System
 {
 	float* cpuFpsBuffer = nullptr;
 	float* gpuFpsBuffer = nullptr;
@@ -28,9 +28,11 @@ class GraphicsEditorSystem final : public EditorSystem<GraphicsSystem>
 	bool performanceStatistics = false;
 	bool memoryStatistics = false;
 
-	GraphicsEditorSystem(Manager* manager, GraphicsSystem* graphicsSystem);
+	GraphicsEditorSystem(Manager* manager);
 	~GraphicsEditorSystem() final;
 
+	void init();
+	void deinit();
 	void editorRender();
 	void editorBarTool();
 

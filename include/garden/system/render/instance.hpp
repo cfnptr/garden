@@ -44,8 +44,8 @@ protected:
 	 */
 	~InstanceRenderSystem() override;
 
-	virtual void preInit();
-	virtual void postDeinit();
+	virtual void init();
+	virtual void deinit();
 	virtual void swapchainRecreate();
 	
 	bool isDrawReady() override;

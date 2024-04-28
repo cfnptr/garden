@@ -391,8 +391,8 @@ void CommandBuffer::submit()
 	{
 		if (isRunning)
 		{
-			// TODO: this approach involves stall bubles.
-			// buffer can be bussy at the frame start and became free at middle,
+			// TODO: this approach involves stall bubbles.
+			// buffer can be busy at the frame start and became free at middle,
 			// when we are vsync locked already. Suboptimal.
 
 			vk::Fence fence((VkFence)this->fence);
@@ -1464,7 +1464,7 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 		imageClears[i] = vk::ImageSubresourceRange(srcAspectFlags,
 			region.baseMip, mipCount, region.baseLayer, layerCount);
 
-		// TODO: possilby somehow combine these barriers?
+		// TODO: possibly somehow combine these barriers?
 		for (uint32 mip = 0; mip < mipCount; mip++)
 		{
 			for (uint32 layer = 0; layer < layerCount; layer++)
@@ -1564,7 +1564,7 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 
 		imageCopies[i] = vk::ImageCopy(srcSubresource, srcOffset, dstSubresource, dstOffset, extent);
 
-		// TODO: possilby somehow combine these barriers?
+		// TODO: possibly somehow combine these barriers?
 		for (uint32 j = 0; j < srcSubresource.layerCount; j++)
 		{
 			auto& oldSrcImageState = getImageState(command.source, 
@@ -1771,7 +1771,7 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 
 		imageBlits[i] = vk::ImageBlit(srcSubresource, srcBounds, dstSubresource, dstBounds);
 
-		// TODO: possilby somehow combine these barriers?
+		// TODO: possibly somehow combine these barriers?
 		for (uint32 j = 0; j < srcSubresource.layerCount; j++)
 		{
 			auto& oldSrcImageState = getImageState(command.source, 

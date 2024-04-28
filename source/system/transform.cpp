@@ -281,25 +281,11 @@ TransformSystem* TransformSystem::instance = nullptr;
 
 TransformSystem::TransformSystem(Manager* manager) : System(manager)
 {
-	#if GARDEN_EDITOR
-	SUBSCRIBE_TO_EVENT("PreInit", TransformSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", TransformSystem::postDeinit);
-	#endif
-
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 TransformSystem::~TransformSystem()
 {
-	#if GARDEN_EDITOR
-	auto manager = getManager();
-	if (manager->isRunning())
-	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", TransformSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", TransformSystem::postDeinit);
-	}
-	#endif
-
 	auto componentData = components.getData();
 	auto componentOccupancy = components.getOccupancy();
 	for (uint32 i = 0; i < componentOccupancy; i++)
@@ -309,21 +295,6 @@ TransformSystem::~TransformSystem()
 	GARDEN_ASSERT(instance); // More than one system instance detected.
 	instance = nullptr;
 }
-
-#if GARDEN_EDITOR
-void TransformSystem::preInit()
-{
-	auto manager = getManager();
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<TransformEditorSystem>(this);
-}
-void TransformSystem::postDeinit()
-{
-	auto manager = getManager();
-	if (manager->isRunning())
-		manager->tryDestroySystem<TransformEditorSystem>();
-}
-#endif
 
 //**********************************************************************************************************************
 const string& TransformSystem::getComponentName() const

@@ -14,10 +14,6 @@
 
 #include "garden/system/camera.hpp"
 
-#if GARDEN_EDITOR
-#include "garden/editor/system/camera.hpp"
-#endif
-
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -32,41 +28,6 @@ float4x4 CameraComponent::calcProjection() const noexcept
 	return calcOrthoProj(p.orthographic.width,
 		p.orthographic.height, p.orthographic.depth);
 }
-
-//**********************************************************************************************************************
-CameraSystem::CameraSystem(Manager* manager) : System(manager)
-{
-	#if GARDEN_EDITOR
-	SUBSCRIBE_TO_EVENT("PreInit", CameraSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", CameraSystem::postDeinit);
-	#endif
-}
-CameraSystem::~CameraSystem()
-{
-	#if GARDEN_EDITOR
-	auto manager = getManager();
-	if (manager->isRunning())
-	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", CameraSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", CameraSystem::postDeinit);
-	}
-	#endif
-}
-
-#if GARDEN_EDITOR
-void CameraSystem::preInit()
-{
-	auto manager = getManager();
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<CameraEditorSystem>(this);
-}
-void CameraSystem::postDeinit()
-{
-	auto manager = getManager();
-	if (manager->isRunning())
-		manager->tryDestroySystem<CameraEditorSystem>();
-}
-#endif
 
 //**********************************************************************************************************************
 const string& CameraSystem::getComponentName() const

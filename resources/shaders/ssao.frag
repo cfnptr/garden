@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Based on this: https://lettier.github.io/3d-game-shaders-for-beginners/ssao.html
-//--------------------------------------------------------------------------------------------------
 
 #include "common/gbuffer.gsl"
 #include "common/constants.gsl"
@@ -52,7 +50,7 @@ uniform pushConstants
 	float4x4 viewToUv;
 } pc;
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void main()
 {
 	float depth = texture(depthBuffer, fs.texCoords).x;

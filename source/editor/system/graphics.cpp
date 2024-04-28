@@ -20,24 +20,42 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-GraphicsEditorSystem::GraphicsEditorSystem(Manager* manager,
-	GraphicsSystem* graphicsSystem) : EditorSystem(manager, graphicsSystem)
+GraphicsEditorSystem::GraphicsEditorSystem(Manager* manager) : System(manager)
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
+	SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
 }
 GraphicsEditorSystem::~GraphicsEditorSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
 	}
 
 	delete[] gpuSortedBuffer;
 	delete[] cpuSortedBuffer;
 	delete[] gpuFpsBuffer;
 	delete[] cpuFpsBuffer;
+}
+
+void GraphicsEditorSystem::init()
+{
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	
+	SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
+}
+void GraphicsEditorSystem::deinit()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
+	}
 }
 
 //**********************************************************************************************************************

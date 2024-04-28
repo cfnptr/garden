@@ -19,12 +19,30 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-EcsEditorSystem::EcsEditorSystem(Manager* manager, EditorRenderSystem* system) : EditorSystem(manager, system)
+EcsEditorSystem::EcsEditorSystem(Manager* manager) : System(manager)
 {
+	SUBSCRIBE_TO_EVENT("Init", EcsEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", EcsEditorSystem::deinit);
+}
+EcsEditorSystem::~EcsEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", EcsEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", EcsEditorSystem::deinit);
+	}
+}
+
+void EcsEditorSystem::init()
+{
+	auto manager = getManager();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	
 	SUBSCRIBE_TO_EVENT("EditorRender", EcsEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 }
-EcsEditorSystem::~EcsEditorSystem()
+void EcsEditorSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
@@ -52,8 +70,7 @@ static void renderOrderedEvents(Manager* manager)
 			for (const auto& subscriber : subscribers)
 			{
 				auto name = typeToString(subscriber.target_type());
-				if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf))
-					ImGui::TreePop();
+				ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 			}
 			ImGui::TreePop();
 		}
@@ -98,8 +115,7 @@ static void renderUnorderedEvents(Manager* manager)
 			for (auto& subscriber : subscribers)
 			{
 				auto name = typeToString(subscriber.target_type());
-				if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf))
-					ImGui::TreePop();
+				ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 			}
 			ImGui::TreePop();
 		}
@@ -118,8 +134,7 @@ static void renderRegisteredSystems(Manager* manager)
 	for (const auto& pair : systems)
 	{
 		auto name = typeToString(pair.first);
-		if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf))
-			ImGui::TreePop();
+		ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 	}
 
 	ImGui::PopStyleColor();
@@ -136,8 +151,7 @@ static void renderRegisteredComponents(Manager* manager)
 		auto name = pair.second->getComponentName();
 		if (name.empty())
 			name = typeToString(pair.first);
-		if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf))
-			ImGui::TreePop();
+		ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 	}
 
 	ImGui::PopStyleColor();

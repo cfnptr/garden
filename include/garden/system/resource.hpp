@@ -95,8 +95,8 @@ protected:
 	void dequeuePipelines();
 	void dequeueBuffers();
 
-	void preInit();
-	void postDeinit();
+	void init();
+	void deinit();
 	void input();
 	
 	friend class ecsm::Manager;

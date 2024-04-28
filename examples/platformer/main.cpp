@@ -17,12 +17,22 @@
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/2d-controller.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/editor.hpp"
+#include "garden/editor/system/log.hpp"
+#include "garden/editor/system/ecs.hpp"
+#include "garden/editor/system/camera.hpp"
+#include "garden/editor/system/graphics.hpp"
+#include "garden/editor/system/transform.hpp"
+#include "garden/editor/system/hierarchy.hpp"
+#include "garden/editor/system/render/mesh-gizmos.hpp"
+#include "garden/editor/system/render/mesh-selector.hpp"
+#include "garden/editor/system/render/gpu-resource.hpp"
+#include "garden/editor/system/render/infinite-grid.hpp"
 #endif
 
 using namespace ecsm;
@@ -59,10 +69,24 @@ void entryPoint()
 	manager->createSystem<ForwardRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
 	manager->createSystem<CutoutSpriteSystem>();
+	manager->createSystem<Controller2DSystem>();
 	manager->createSystem<ThreadSystem>();
+
 	#if GARDEN_EDITOR
 	manager->createSystem<EditorRenderSystem>();
+	manager->createSystem<HierarchyEditorSystem>();
+	manager->createSystem<EcsEditorSystem>();
+	manager->createSystem<LogEditorSystem>();
+	manager->createSystem<TransformEditorSystem>();
+	manager->createSystem<CameraEditorSystem>();
+	manager->createSystem<GraphicsEditorSystem>();
+	manager->createSystem<GpuResourceEditorSystem>();
+	manager->createSystem<InfiniteGridEditorSystem>();
+	manager->createSystem<MeshSelectorEditorSystem>();
+	manager->createSystem<MeshGizmosEditorSystem>();
+	// manager->createSystem<LightingRenderEditorSystem>();
 	#endif
+
 	manager->initialize();
 	loadWindowData();
 	manager->start();

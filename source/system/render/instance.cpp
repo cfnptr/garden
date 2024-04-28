@@ -43,21 +43,20 @@ static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 //**********************************************************************************************************************
 InstanceRenderSystem::InstanceRenderSystem(Manager* manager) : System(manager)
 {
-	SUBSCRIBE_TO_EVENT("PreInit", InstanceRenderSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", InstanceRenderSystem::postDeinit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", InstanceRenderSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", InstanceRenderSystem::deinit);
 }
 InstanceRenderSystem::~InstanceRenderSystem()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", InstanceRenderSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", InstanceRenderSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", InstanceRenderSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", InstanceRenderSystem::deinit);
 	}
 }
 
-void InstanceRenderSystem::preInit()
+void InstanceRenderSystem::init()
 {
 	auto manager = getManager();
 	SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::swapchainRecreate);
@@ -67,7 +66,7 @@ void InstanceRenderSystem::preInit()
 
 	createInstanceBuffers(getInstanceDataSize() * 16, instanceBuffers);
 }
-void InstanceRenderSystem::postDeinit()
+void InstanceRenderSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())

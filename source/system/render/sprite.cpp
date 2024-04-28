@@ -60,7 +60,7 @@ void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	pipelineView->pushConstantsAsync(taskIndex);
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	pipelineView->drawAsync(taskIndex, graphicsSystem->getFullSquareVertices(), 6);
+	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 
 //**********************************************************************************************************************

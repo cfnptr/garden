@@ -119,8 +119,8 @@ ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
 
-	SUBSCRIBE_TO_EVENT("PreInit", ResourceSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", ResourceSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
 	#if GARDEN_DEBUG
 	auto appInfoSystem = manager->get<AppInfoSystem>();
@@ -139,8 +139,8 @@ ResourceSystem::~ResourceSystem()
 	auto manager = getManager();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", ResourceSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", ResourceSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
 		TRY_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 	}
 
@@ -149,12 +149,12 @@ ResourceSystem::~ResourceSystem()
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::preInit()
+void ResourceSystem::init()
 {
 	auto manager = getManager();
 	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
 }
-void ResourceSystem::postDeinit()
+void ResourceSystem::deinit()
 {
 	while (imageQueue.size() > 0)
 	{

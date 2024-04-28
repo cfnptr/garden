@@ -148,11 +148,6 @@ private:
 	 */
 	~TransformSystem() final;
 
-	#if GARDEN_EDITOR
-	void preInit();
-	void postDeinit();
-	#endif
-
 	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;

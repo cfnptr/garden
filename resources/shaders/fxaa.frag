@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Based on this: https://github.com/kosua20/Rendu/blob/master/resources/common/shaders/screens/fxaa.frag
-//--------------------------------------------------------------------------------------------------
 
 #include "common/tone-mapping.gsl"
 
@@ -50,7 +48,7 @@ uniform sampler2D
 
 // TODO: try to calc luma using compute and store it to the hdr buffer .a, could be faster.
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 // Performs FXAA post-process anti-aliasing as described in the Nvidia
 // FXAA white paper and the associated shader code.
 void main()
@@ -99,11 +97,9 @@ void main()
 	
 	// Compute an estimation of the gradient along the horizontal and vertical axis.
 	float edgeHorizontal = abs(-2.0f * lumaLeft + lumaLeftCorners) +
-		abs(-2.0f * lumaCenter + lumaDownUp) * 2.0f +
-		abs(-2.0f * lumaRight + lumaRightCorners);
+		abs(-2.0f * lumaCenter + lumaDownUp) * 2.0f + abs(-2.0f * lumaRight + lumaRightCorners);
 	float edgeVertical = abs(-2.0f * lumaUp + lumaUpCorners) +
-		abs(-2.0f * lumaCenter + lumaLeftRight) * 2.0f +
-		abs(-2.0f * lumaDown + lumaDownCorners);
+		abs(-2.0f * lumaCenter + lumaLeftRight) * 2.0f + abs(-2.0f * lumaDown + lumaDownCorners);
 	
 	// Is the local edge horizontal or vertical ?
 	bool isHorizontal = edgeHorizontal >= edgeVertical;

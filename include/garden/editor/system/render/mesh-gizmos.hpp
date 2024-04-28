@@ -16,15 +16,12 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/mesh.hpp"
-
 namespace garden
 {
 
 using namespace garden::graphics;
-class MeshSelectorEditorSystem;
 
-class GizmosRenderEditorSystem final : public EditorSystem<MeshRenderSystem>
+class MeshGizmosEditorSystem final : public System
 {
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
 	ID<GraphicsPipeline> backGizmosPipeline = {};
@@ -32,15 +29,14 @@ class GizmosRenderEditorSystem final : public EditorSystem<MeshRenderSystem>
 	float2 lastCursorPos = float2(0.0f);
 	uint32 dragMode = 0;
 
-	GizmosRenderEditorSystem(Manager* manager, MeshRenderSystem* system);
-	~GizmosRenderEditorSystem() final;
+	MeshGizmosEditorSystem(Manager* manager);
+	~MeshGizmosEditorSystem() final;
 
-	void preInit();
-	void postDeinit();
+	void init();
+	void deinit();
 	void editorRender();
 	
 	friend class ecsm::Manager;
-	friend class MeshSelectorEditorSystem;
 };
 
 } // namespace garden

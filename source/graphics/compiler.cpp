@@ -56,13 +56,13 @@ namespace
 		ShaderStage pushConstantsStages = {};
 		uint16 vertexAttributesSize = 0;
 		GraphicsPipeline::State pipelineState;
-		// should be algined.
+		// should be aligned.
 	};
 	struct ComputeGslValues final : public GslValues
 	{
-		uint8 _alignmnet = 0;
+		uint8 _alignment = 0;
 		int3 localSize = int3(0);
-		// should be algined.
+		// should be aligned.
 	};
 }
 

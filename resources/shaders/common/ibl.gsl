@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Image Based Lighting
-//--------------------------------------------------------------------------------------------------
 
 #ifndef IBL_GSL
 #define IBL_GSL
@@ -22,7 +20,6 @@
 #define SH_BAND_COUNT 3
 #define SH_COEF_COUNT 9 // 3 * 3
 
-//--------------------------------------------------------------------------------------------------
 float2 coordsToST(uint2 coords, float invDim)
 {
 	return fma(1.0f - (coords + 0.5f) * invDim, float2(2.0f), float2(-1.0f));

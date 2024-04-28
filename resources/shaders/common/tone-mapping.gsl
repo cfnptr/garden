@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #ifndef TONE_MAPPING_GSL
 #define TONE_MAPPING_GSL
@@ -20,7 +18,6 @@
 #define DEFAULT_GAMMA 2.2f
 #define LUM_TO_EXP 9.6f
 
-//--------------------------------------------------------------------------------------------------
 float3 gammaCorrection(float3 color, float invGamma)
 {
 	return pow(color, float3(invGamma));
@@ -36,7 +33,6 @@ float3 gammaCorrectionPrecise(float3 color)
 	return mix(hi, lo, float3(lessThanEqual(color, float3(0.0031308f))));
 }
 
-//--------------------------------------------------------------------------------------------------
 float rgbToLum(float3 rgb)
 {
 	return dot(rgb, float3(0.2126f, 0.7152f, 0.0722f));
@@ -46,7 +42,6 @@ float rgbToLuma(float3 rgb)
 	return rgbToLum(gammaCorrection(rgb));
 }
 
-//--------------------------------------------------------------------------------------------------
 // Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
 float3 aces(float3 x)
 {
@@ -54,7 +49,7 @@ float3 aces(float3 x)
 	return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0f, 1.0f);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 // Uchimura 2017, "HDR theory and practice"
 float3 uchimura(float3 x, float p, float a, float m, float l, float c, float b)
 {

@@ -19,19 +19,17 @@
 namespace garden
 {
 
-class GpuResourceEditorSystem final : public EditorSystem<GraphicsSystem>
+class InfiniteGridEditorSystem final : public System
 {
-	string resourceSearch;
-	uint32 selectedItem = 0;
-	bool showWindow = false;
-	bool searchCaseSensitive = false;
-	
-	GpuResourceEditorSystem(Manager* manager, GraphicsSystem* system);
-	~GpuResourceEditorSystem() final;
-	
-	void editorRender();
-	void editorBarTool();
+	ID<GraphicsPipeline> pipeline;
 
+	InfiniteGridEditorSystem(Manager* manager);
+	~InfiniteGridEditorSystem() final;
+
+	void init();
+	void deinit();
+	void editorRender();
+	
 	friend class ecsm::Manager;
 };
 

@@ -99,14 +99,14 @@ static map<string, DescriptorSet::Uniform> getUniforms(Manager* manager,
 	auto deferredSystem = manager->get<DeferredRenderSystem>();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
-	auto depthStencilAttahcment = gFramebufferView->getDepthStencilAttachment();
+	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
 		{ "gBuffer1", DescriptorSet::Uniform(
 			colorAttachments[0].imageView, 1, swapchainSize) },
 		{ "depthBuffer", DescriptorSet::Uniform(
-			depthStencilAttahcment.imageView, 1, swapchainSize) },
+			depthStencilAttachment.imageView, 1, swapchainSize) },
 		{ "samples", DescriptorSet::Uniform(
 			sampleBuffer, 1, swapchainSize) },
 		{ "noise", DescriptorSet::Uniform(

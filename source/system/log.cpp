@@ -32,11 +32,6 @@ LogSystem* LogSystem::instance = nullptr;
 
 LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : System(manager)
 {
-	#if GARDEN_EDITOR
-	SUBSCRIBE_TO_EVENT("PreInit", LogSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", LogSystem::postDeinit);
-	#endif
-
 	auto appInfoSystem = manager->get<AppInfoSystem>();
 
 	this->logger = logy::Logger(appInfoSystem->getAppDataName(),
@@ -53,37 +48,16 @@ LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : Sy
 	info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
 	info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
 LogSystem::~LogSystem()
 {
-	#if GARDEN_EDITOR
-	auto manager = getManager();
-	if (manager->isRunning())
-	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", LogSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", LogSystem::postDeinit);
-	}
-	#endif
-
 	logger.log(INFO_LOG_LEVEL, "Stopped logging system.");
-}
 
-#if GARDEN_EDITOR
-//**********************************************************************************************************************
-void LogSystem::preInit()
-{
-	auto manager = getManager();
-	if (manager->has<EditorRenderSystem>())
-		manager->createSystem<LogEditorSystem>(this);
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
-void LogSystem::postDeinit()
-{
-	auto manager = getManager();
-	if (manager->isRunning())
-		manager->tryDestroySystem<LogEditorSystem>();
-}
-#endif
 
 void LogSystem::log(LogLevel level, const string& message) noexcept
 {

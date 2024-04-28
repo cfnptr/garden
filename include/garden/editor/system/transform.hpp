@@ -16,21 +16,22 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/transform.hpp"
-
 namespace garden
 {
 
-class TransformEditorSystem final : public EditorSystem<TransformSystem>
+class TransformEditorSystem final : public System
 {
 	float3 oldEulerAngles = float3(0.0f);
 	float3 newEulerAngles = float3(0.0f);
 	quat oldRotation = quat::identity;
 	ID<Entity> selectedEntity = {};
 
-	TransformEditorSystem(Manager* manager, TransformSystem* system);
+	TransformEditorSystem(Manager* manager);
 	~TransformEditorSystem() final;
 	
+	void init();
+	void deinit();
+
 	void onEntityDestroy(ID<Entity> entity);
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 

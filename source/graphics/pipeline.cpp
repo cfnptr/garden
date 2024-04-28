@@ -31,7 +31,7 @@ static vk::Filter toVkFilter(SamplerFilter filterType)
 	default: abort();
 	}
 }
-static vk::SamplerMipmapMode toVkSamplerMipmamMode(SamplerFilter filterType)
+static vk::SamplerMipmapMode toVkSamplerMipmapMode(SamplerFilter filterType)
 {
 	switch (filterType)
 	{
@@ -78,7 +78,7 @@ static vector<void*> createPipelineSamplers(const map<string, Pipeline::SamplerS
 		auto state = it->second;
 		vk::SamplerCreateInfo samplerInfo({},
 			toVkFilter(state.magFilter), toVkFilter(state.minFilter),
-			toVkSamplerMipmamMode(state.mipmapFilter), toVkSamplerAddressMode(state.wrapX),
+			toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.wrapX),
 			toVkSamplerAddressMode(state.wrapY), toVkSamplerAddressMode(state.wrapZ),
 			state.mipLodBias, state.anisoFiltering, state.maxAnisotropy,
 			state.comparison, toVkCompareOp(state.compareOperation), state.minLod,

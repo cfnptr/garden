@@ -15,21 +15,38 @@
 #include "garden/editor/system/camera.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/camera.hpp"
+
 using namespace garden;
 
 //**********************************************************************************************************************
-CameraEditorSystem::CameraEditorSystem(Manager* manager, CameraSystem* system) : EditorSystem(manager, system)
+CameraEditorSystem::CameraEditorSystem(Manager* manager) : System(manager)
 {
+	SUBSCRIBE_TO_EVENT("Init", CameraEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", CameraEditorSystem::deinit);
+}
+CameraEditorSystem::~CameraEditorSystem()
+{
+	auto manager = getManager();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("Init", CameraEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", CameraEditorSystem::deinit);
+	}
+}
+
+void CameraEditorSystem::init()
+{
+	GARDEN_ASSERT(getManager()->has<EditorRenderSystem>());
 	EditorRenderSystem::getInstance()->registerEntityInspector<CameraComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	});
 }
-CameraEditorSystem::~CameraEditorSystem()
+void CameraEditorSystem::deinit()
 {
-	if (getManager()->isRunning())
-		EditorRenderSystem::getInstance()->unregisterEntityInspector<CameraComponent>();
+	EditorRenderSystem::getInstance()->unregisterEntityInspector<CameraComponent>();
 }
 
 //**********************************************************************************************************************

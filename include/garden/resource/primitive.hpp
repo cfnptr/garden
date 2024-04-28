@@ -22,6 +22,10 @@ namespace garden::primitive
 using namespace std;
 using namespace math;
 
+// TODO: BETTER FOR GPU VERTEX CACHING! Change to this vertex format (for counter clockwise culling)
+// float2(-0.5f, -0.5f), float2( 0.5f, -0.5f), float2(-0.5f,  0.5f),
+// float2(-0.5f,  0.5f), float2( 0.5f, -0.5f), float2( 0.5f,  0.5f) 
+
 //**********************************************************************************************************************
 static const array<float2, 4> oneSquareVert2D =
 {

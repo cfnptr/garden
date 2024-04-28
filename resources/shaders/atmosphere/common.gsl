@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
-//--------------------------------------------------------------------------------------------------
 
 #ifndef ATMOSPHERE_GSL
 #define ATMOSPHERE_GSL
@@ -34,7 +32,7 @@
 
 #define PLANET_RADIUS_OFFSET 0.01f
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 struct AtmosphereParameters
 {
 	// Radius of the planet (center to ground)
@@ -71,7 +69,7 @@ struct AtmosphereParameters
 	float3 groundAlbedo;
 };
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 float raySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR)
 {
 	float a = dot(rd, rd);
@@ -114,14 +112,13 @@ float3 getMultipleScattering(AtmosphereParameters atmosphere,
 	return MultiScatTexture.SampleLevel(samplerLinearClamp, uv, 0).rgb;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 void uvToLutTransmittanceParams(AtmosphereParameters atmosphere,
 	out float viewHeight, out float viewZenithCosAngle, float2 uv)
 {
 	float xMu = uv.x, xR = uv.y;
 
-	float h = sqrt(atmosphere.topRadius * atmosphere.topRadius -
-		atmosphere.bottomRadius * atmosphere.bottomRadius);
+	float h = sqrt(atmosphere.topRadius * atmosphere.topRadius - atmosphere.bottomRadius * atmosphere.bottomRadius);
 	float rho = h * xR;
 	viewHeight = sqrt(rho * rho + atmosphere.bottomRadius * atmosphere.bottomRadius);
 
@@ -149,7 +146,7 @@ void lutTransmittanceParamsToUv(AtmosphereParameters atmosphere,
 	uv = float2(xMu, xR);
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 struct MediumSampleRGB
 {
 	float3 scattering;
@@ -187,10 +184,8 @@ MediumSampleRGB sampleMediumRGB(float3 worldPos, AtmosphereParameters atmosphere
 	float densityRay = exp(atmosphere.rayleighDensityExpScale * viewHeight);
 
 	float densityOzo = clamp(viewHeight < atmosphere.absorptionDensity0LayerWidth ?
-		atmosphere.absorptionDensity0LinearTerm * viewHeight +
-			atmosphere.absorptionDensity0ConstantTerm :
-		atmosphere.absorptionDensity1LinearTerm * viewHeight +
-			atmosphere.absorptionDensity1ConstantTerm, 0.0f, 1.0f);
+		atmosphere.absorptionDensity0LinearTerm * viewHeight + atmosphere.absorptionDensity0ConstantTerm :
+		atmosphere.absorptionDensity1LinearTerm * viewHeight + atmosphere.absorptionDensity1ConstantTerm, 0.0f, 1.0f);
 
 	MediumSampleRGB s;
 	s.scatteringMie = densityMie * atmosphere.mieScattering;
@@ -213,7 +208,7 @@ MediumSampleRGB sampleMediumRGB(float3 worldPos, AtmosphereParameters atmosphere
 	return s;
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 struct SingleScatteringResult
 {
 	float3 l;					 // Scattered light (luminance)
@@ -226,10 +221,9 @@ struct SingleScatteringResult
 
 // TODO: pass - gSkyInvViewProjMat
 
-SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos,
-	float3 worldDir, float3 sunDir, AtmosphereParameters atmosphere, bool ground,
-	float sampleCountIni, float depthBufferValue, bool variableSampleCount, bool mieRayPhase,
-	float tMaxMax = 9000000.0f)
+SingleScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, float3 worldDir, float3 sunDir,
+	AtmosphereParameters atmosphere, bool ground, float sampleCountIni, float depthBufferValue,
+	bool variableSampleCount, bool mieRayPhase, float tMaxMax = 9000000.0f)
 {
 	SingleScatteringResult result = SingleScatteringResult(float3(0.0f),
 		float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f));

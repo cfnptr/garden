@@ -16,18 +16,18 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/mesh.hpp"
-
 namespace garden
 {
 
-class MeshSelectorEditorSystem final : public EditorSystem<MeshRenderSystem>
+class MeshSelectorEditorSystem final : public System
 {
 	bool isSkipped = false;
 
-	MeshSelectorEditorSystem(Manager* manager, MeshRenderSystem* system);
+	MeshSelectorEditorSystem(Manager* manager);
 	~MeshSelectorEditorSystem() final;
 
+	void init();
+	void deinit();
 	void editorRender();
 	
 	friend class ecsm::Manager;
