@@ -57,7 +57,7 @@ uniform set2 samplerCube
 	filter = linear;
 } specular;
 
-uniform CameraConstants 
+uniform CameraConstants
 {
 	CAMERA_CONSTANTS
 } cc;

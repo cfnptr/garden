@@ -529,7 +529,7 @@ static void onShaderPushConstants(FileData& fileData, LineData& lineData, uint16
 	{
 		pushConstantsSize += (uint16)toBinarySize(lineData.dataType);
 		fileData.isPushConstants = 2;
-		if (pushConstantsSize > GARDEN_MAX_PUSH_CONSTANTS_SIZE)
+		if (pushConstantsSize > maxPushConstantsSize)
 			throw CompileError("out of max push constants size", fileData.lineIndex);
 	}
 }
@@ -2152,11 +2152,11 @@ template<typename T>
 static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
-	if (dataOffset + GSL_MAGIC_SIZE + sizeof(gslHeader) > dataSize)
+	if (dataOffset + gslMagicSize + sizeof(gslHeader) > dataSize)
 		throw runtime_error("Invalid GSL header size.");
-	if (memcmp(data + dataOffset, gslMagic.data(), GSL_MAGIC_SIZE) != 0)
+	if (memcmp(data + dataOffset, gslMagic.data(), gslMagicSize) != 0)
 		throw runtime_error("Invalid GSL header magic value.");
-	dataOffset += GSL_MAGIC_SIZE;
+	dataOffset += gslMagicSize;
 	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
 		throw runtime_error("Invalid GSL header version or endianness.");
 	dataOffset += sizeof(gslHeader);

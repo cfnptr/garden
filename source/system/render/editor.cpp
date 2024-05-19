@@ -21,7 +21,6 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
-#include "garden/system/render/fxaa.hpp"
 
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/imgui-impl.hpp"
@@ -41,6 +40,7 @@ EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
+	manager->registerEvent("EditorSettings");
 
 	SUBSCRIBE_TO_EVENT("Init", EditorRenderSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", EditorRenderSystem::deinit);
@@ -59,6 +59,7 @@ EditorRenderSystem::~EditorRenderSystem()
 		manager->unregisterEvent("EditorBarFile");
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
+		manager->unregisterEvent("EditorSettings");
 	}
 
 	GARDEN_ASSERT(instance); // More than one system instance detected.
@@ -239,14 +240,14 @@ static void getFileInfo(const fs::path& path, int& fileCount, uint64& binarySize
 }
 void EditorRenderSystem::showOptionsWindow()
 {
-	if (ImGui::Begin("Options", &optionsWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Options", &optionsWindow))
 	{
 		auto manager = getManager();
 		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto settingsSystem = manager->tryGet<SettingsSystem>();
 
 		if (ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync))
 		{
-			auto settingsSystem = manager->tryGet<SettingsSystem>();
 			if (settingsSystem)
 				settingsSystem->setBool("useVsync", graphicsSystem->useVsync);
 		}
@@ -254,8 +255,7 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
-		auto settingsSystem = manager->tryGet<SettingsSystem>();
-		/* TODO: fix
+		/* TODO: move to the fxaa editor
 		auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
 		auto fxaaSystem = manager->tryGet<FxaaRenderSystem>();
 
@@ -299,13 +299,24 @@ void EditorRenderSystem::showOptionsWindow()
 			if (settingsSystem)
 				settingsSystem->setFloat("renderScale", renderScale);
 		}
+
+		auto frameRate = (int)graphicsSystem->frameRate;
+		if (ImGui::DragInt("Frame Rate", &frameRate, 1, 1, UINT16_MAX))
+		{
+			graphicsSystem->frameRate = (uint16)frameRate;
+			if (settingsSystem)
+				settingsSystem->setInt("frameRate", frameRate);
+		}
 		ImGui::Spacing();
 
 		auto appInfoSystem = manager->tryGet<AppInfoSystem>();
-		if (appInfoSystem)
+		if (appInfoSystem && ImGui::CollapsingHeader("Storage"))
 		{
-			auto cachePath = Directory::getAppDataPath(appInfoSystem->getAppDataName()) / "caches";
+			ImGui::Indent();
+			auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
+			auto cachePath = appDataPath / "caches";
 			int fileCount = 0; uint64 binarySize = 0;
+
 			if (fs::exists(cachePath))
 				getFileInfo(cachePath, fileCount, binarySize);
 			auto sizeString = toBinarySizeString(binarySize);
@@ -321,7 +332,13 @@ void EditorRenderSystem::showOptionsWindow()
 				fs::remove_all(cachePath);
 			if (ImGui::Button("Clear project cache", ImVec2(-FLT_MIN, 0.0f)))
 				fs::remove_all(appInfoSystem->getCachesPath());
+			if (ImGui::Button("Delete settings file", ImVec2(-FLT_MIN, 0.0f)))
+				fs::remove(appDataPath / "settings.txt");
+			ImGui::Unindent();
+			ImGui::Spacing();
 		}
+
+		manager->runEvent("EditorSettings");
 	}
 	ImGui::End();
 }
@@ -408,7 +425,7 @@ void EditorRenderSystem::showEntityInspector()
 					typeToString(system->getComponentType()) : system->getComponentName();
 				ImGui::PushID(componentName.c_str());
 				auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
-				
+
 				if (ImGui::BeginPopupContextItem(nullptr,
 					ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 				{
@@ -427,7 +444,10 @@ void EditorRenderSystem::showEntityInspector()
 					ImGui::EndPopup();
 				}
 
+				ImGui::Indent();
 				result->second(selectedEntity, isOpened);
+				ImGui::Unindent();
+
 				if (isOpened)
 					ImGui::Spacing();
 				ImGui::PopID();
@@ -473,7 +493,11 @@ void EditorRenderSystem::showNewScene()
 	if (!ImGui::IsPopupOpen("Create a new scene?"))
 		ImGui::OpenPopup("Create a new scene?");
 
-	if (ImGui::BeginPopupModal("Create a new scene?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	auto size = ImVec2(ImGui::GetIO().DisplaySize.x / 2.0f, ImGui::GetIO().DisplaySize.y / 2.0f);
+	ImGui::SetNextWindowPos(size, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+	if (ImGui::BeginPopupModal("Create a new scene?", nullptr,
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::Text("All unsaved scene changes will be lost.");
 		ImGui::Spacing();
@@ -494,7 +518,6 @@ void EditorRenderSystem::showNewScene()
 	}
 }
 
-//**********************************************************************************************************************
 void EditorRenderSystem::showExportScene()
 {
 	if (ImGui::Begin("Scene Exporter", &exportScene,
@@ -507,6 +530,23 @@ void EditorRenderSystem::showExportScene()
 		ImGui::EndDisabled();
 	}
 	ImGui::End();
+}
+
+//**********************************************************************************************************************
+void EditorRenderSystem::showFileSelector()
+{
+	if (!ImGui::IsPopupOpen("File Selector"))
+		ImGui::OpenPopup("File Selector");
+
+	auto size = ImVec2(ImGui::GetIO().DisplaySize.x / 2.0f, ImGui::GetIO().DisplaySize.y / 2.0f);
+	ImGui::SetNextWindowPos(size, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+	if (ImGui::BeginPopupModal("File Selector", nullptr, ImGuiWindowFlags_NoMove)) // TODO:
+	{
+		if (ImGui::Button("Select"))
+			onFileSelect("");
+		ImGui::EndPopup();
+	}
 }
 
 //**********************************************************************************************************************
@@ -545,5 +585,16 @@ void EditorRenderSystem::editorRender()
 		showExportScene();
 	if (selectedEntity)
 		showEntityInspector();
+	if (!fileSelectDirectory.empty())
+		showFileSelector();
+}
+
+//**********************************************************************************************************************
+void EditorRenderSystem::openFileSelector(const std::function<void(const fs::path&)>& onSelect, 
+	const fs::path& directory, const vector<string>& extensions)
+{
+	auto appInfoSystem = AppInfoSystem::getInstance();
+	fileSelectDirectory = directory.empty() ? appInfoSystem->getResourcesPath() : directory;
+	onFileSelect = onSelect;
 }
 #endif

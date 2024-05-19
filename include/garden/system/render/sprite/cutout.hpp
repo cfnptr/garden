@@ -42,6 +42,7 @@ class CutoutSpriteSystem final : public SpriteRenderSystem
 	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) final;
 
+	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;

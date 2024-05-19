@@ -46,6 +46,8 @@ private:
 	fs::path resourcesPath;
 	#endif
 
+	inline static AppInfoSystem* instance = nullptr;
+
 	/*******************************************************************************************************************
 	 * @brief Creates a new app info system instance.
 	 * 
@@ -75,6 +77,17 @@ private:
 		this->cachesPath = cachesPath;
 		this->resourcesPath = resourcesPath;
 		#endif
+
+		GARDEN_ASSERT(!instance); // More than one system instance detected.
+		instance = this;
+	}
+	/**
+	 * @brief Destroy app info system instance.
+	 */
+	AppInfoSystem::~AppInfoSystem()
+	{
+		GARDEN_ASSERT(instance); // More than one system instance detected.
+		instance = nullptr;
 	}
 	
 	friend class ecsm::Manager;
@@ -135,6 +148,16 @@ public:
 	 */
 	const fs::path& getResourcesPath() const noexcept { return resourcesPath; }
 	#endif
+
+	/**
+	 * @brief Returns app info system instance.
+	 * @warning Do not use it if you have several managers.
+	 */
+	static AppInfoSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // System is not created.
+		return instance;
+	}
 };
 
 } // namespace garden

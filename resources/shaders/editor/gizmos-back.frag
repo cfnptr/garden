@@ -17,7 +17,6 @@ pipelineState
 	frontFace = clockwise;
 }
 
-in float4 fs.color;
 out float4 fb.color;
 
 uniform pushConstants
@@ -31,5 +30,5 @@ void main()
 {
 	float2 fragCoord = floor(gl.fragCoord.xy * pc.renderScale);
 	bool isEven = mod(fragCoord.x + fragCoord.y, 2.0f) == 0.0f;
-	fb.color = isEven ? fs.color * 0.5f : fs.color * 0.25f;
+	fb.color = isEven ? pc.color * 0.5f : pc.color * 0.25f;
 }

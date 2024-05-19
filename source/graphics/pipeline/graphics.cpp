@@ -28,7 +28,7 @@ static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology to
 	case GraphicsPipeline::Topology::LineList: return vk::PrimitiveTopology::eLineList;
 	case GraphicsPipeline::Topology::LineStrip: return vk::PrimitiveTopology::eLineStrip;
 	case GraphicsPipeline::Topology::PointList: return vk::PrimitiveTopology::ePointList;
-	default: abort();;
+	default: abort();
 	}
 }
 static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon)

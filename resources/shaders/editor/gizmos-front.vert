@@ -13,7 +13,6 @@
 // limitations under the License.
 
 in float3 vs.position : f32;
-out float4 fs.color;
 
 uniform pushConstants
 {
@@ -25,5 +24,4 @@ uniform pushConstants
 void main()
 {
 	gl.position = pc.mvp * float4(vs.position, 1.0f);
-	fs.color = pc.color;
 }

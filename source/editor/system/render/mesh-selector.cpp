@@ -15,6 +15,7 @@
 #include "garden/editor/system/render/mesh-selector.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/settings.hpp"
 #include "garden/system/render/mesh.hpp"
 
 using namespace garden;
@@ -41,19 +42,27 @@ void MeshSelectorEditorSystem::init()
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
+
+	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	if (settingsSystem)
+		settingsSystem->getColor("meshSelectorColor", aabbColor);
 }
 void MeshSelectorEditorSystem::deinit()
 {
 	auto manager = getManager();
 	if (manager->isRunning())
+	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
+	}
 }
 
 //**********************************************************************************************************************
 void MeshSelectorEditorSystem::editorRender()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	if (!graphicsSystem->canRender() || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
 	auto manager = getManager();
@@ -63,25 +72,25 @@ void MeshSelectorEditorSystem::editorRender()
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 
-	auto updateSelector = true;
-	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Default &&
-		inputSystem->isMouseClicked(MouseButton::Left))
-	{
-		updateSelector = false;
-	}
+	auto updateSelector = !ImGui::GetIO().WantCaptureMouse && !lastDragging &&
+		inputSystem->getCursorMode() == CursorMode::Default && inputSystem->isMouseReleased(MouseButton::Left);
+	lastDragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
 
 	if (updateSelector && !isSkipped)
 	{
 		auto windowSize = graphicsSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
-		auto uvPosition = (cursorPosition + 0.5f) / windowSize;
-		auto globalDirection = (float3)(cameraConstants.viewProjInv *
-			float4(uvPosition * 2.0f - 1.0f, 0.0f, 1.0f));
+		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
+		auto globalDirection = cameraConstants.viewProjInv * float4(ndcPosition, 0.0001f, 1.0f);
+		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
+		globalDirection = float4((float3)globalDirection / globalDirection.w, globalDirection.w);
+		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
 		auto& transformComponents = TransformSystem::getInstance()->getComponents();
 		auto& systems = manager->getSystems();
 
-		float newDistance = FLT_MAX;
+		auto newDist2 = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;
+
 		for (const auto& pair : systems)
 		{
 			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
@@ -105,17 +114,18 @@ void MeshSelectorEditorSystem::editorRender()
 				auto model = transform->calcModel();
 				setTranslation(model, getTranslation(model) - cameraPosition);
 				auto modelInverse = inverse(model);
-				auto localOrigin = modelInverse * float4(0.0f, 0.0f, 0.0f, 1.0f);
-				auto localDirection = float3x3(modelInverse) * globalDirection;
+				auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
+				auto localDirection = modelInverse * float4((float3)globalDirection, 1.0f);
 				auto ray = Ray((float3)localOrigin, (float3)localDirection);
 				auto points = raycast2(meshRender->aabb, ray);
 				if (points.x < 0.0f || !isIntersected(points))
 					continue;
 			
-				if (points.x < newDistance && entity != selectedEntity)
+				auto dist2 = distance2((float3)globalOrigin, getTranslation(model));
+				if (dist2 < newDist2 && entity != selectedEntity)
 				{
 					newSelected = entity;
-					newDistance = points.x;
+					newDist2 = dist2;
 					newAabb = meshRender->aabb;
 				}
 			}
@@ -144,14 +154,38 @@ void MeshSelectorEditorSystem::editorRender()
 			auto model = transform->calcModel();
 			setTranslation(model, getTranslation(model) - cameraPosition);
 
-			SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
-			framebufferView->beginRenderPass(float4(0.0f));
-			auto mvp = cameraConstants.viewProj * model *
-				translate(editorSystem->selectedEntityAabb.getPosition()) *
-				scale(editorSystem->selectedEntityAabb.getSize());
-			graphicsSystem->drawAabb(mvp);
-			framebufferView->endRenderPass();
+			graphicsSystem->startRecording(CommandBufferType::Frame);
+			{
+				SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
+				framebufferView->beginRenderPass(float4(0.0f));
+				auto mvp = cameraConstants.viewProj * model *
+					translate(editorSystem->selectedEntityAabb.getPosition()) *
+					scale(editorSystem->selectedEntityAabb.getSize());
+				graphicsSystem->drawAabb(mvp, (float4)aabbColor);
+				framebufferView->endRenderPass();
+			}
+			graphicsSystem->stopRecording();
 		}
+	}
+}
+
+//**********************************************************************************************************************
+void MeshSelectorEditorSystem::editorSettings()
+{
+	if (ImGui::CollapsingHeader("Mesh Selector"))
+	{
+		auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+		ImGui::Indent();
+		ImGui::Checkbox("Enabled", &isEnabled);
+
+		if (ImGui::ColorEdit4("AABB Color", aabbColor))
+		{
+			if (settingsSystem)
+				settingsSystem->setColor("meshSelectorColor", aabbColor);
+		}
+
+		ImGui::Unindent();
+		ImGui::Spacing();
 	}
 }
 #endif

@@ -25,8 +25,6 @@
 #include "ecsm.hpp"
 #include "math/aabb.hpp"
 
-#define DATA_SAMPLE_BUFFER_SIZE 512
-
 namespace garden
 {
 
@@ -49,9 +47,9 @@ public:
 	using OnComponent = std::function<void(ID<Entity> entity, bool isOpened)>;
 private:
 	map<type_index, OnComponent> entityInspectors;
-	void* hierarchyEditor = nullptr;
-	void* resourceEditor = nullptr;
 	string scenePath = "unnamed";
+	fs::path fileSelectDirectory;
+	std::function<void(const fs::path)> onFileSelect;
 	bool demoWindow = false;
 	bool aboutWindow = false;
 	bool optionsWindow = false;
@@ -76,6 +74,7 @@ private:
 	void showEntityInspector();
 	void showNewScene();
 	void showExportScene();
+	void showFileSelector();
 
 	void init();
 	void deinit();
@@ -105,6 +104,14 @@ public:
 				"name: " + typeToString<T>() + ")");
 		}
 	}
+	template<typename T = Component>
+	bool tryUnregisterEntityInspector()
+	{
+		return entityInspectors.erase(typeid(T)) != 0;
+	}
+
+	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
+		const fs::path& directory = {}, const vector<string>& extensions = {});
 
 	/**
 	 * @brief Returns editor render system instance.

@@ -28,6 +28,7 @@
 #define WAVELENGTH_R 680 // Higher than peak 580
 #define WAVELENGTH_G 550
 #define WAVELENGTH_B 440
+// TODO: use const instead and put inside namespace
 
 #define EARTH_RADIUS 6371.0 // km - volumetric mean radius
 #define EARTH_ATMOSPHERE_HEIGHT 100.0 // km - karman line

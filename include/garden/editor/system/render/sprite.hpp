@@ -19,28 +19,19 @@
 namespace garden
 {
 
-class InfiniteGridEditorSystem final : public System
-{
-	ID<GraphicsPipeline> pipeline;
-	ID<DescriptorSet> descriptorSet;
+using namespace garden::graphics;
 
-	InfiniteGridEditorSystem(Manager* manager);
-	~InfiniteGridEditorSystem() final;
+class SpriteRenderEditorSystem final : public System
+{
+	SpriteRenderEditorSystem(Manager* manager);
+	~SpriteRenderEditorSystem() final;
 
 	void init();
 	void deinit();
-	void editorRender();
-	void swapchainRecreate();
-	void editorSettings();
-	
+
+	void onCutoutEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
-public:
-	Color gridColor = Color("101010FF");
-	Color axisColorX = Color("FF1010FF");
-	Color axisColorY = Color("1010FFFF");
-	float gridScale = 1.0f;
-	bool isHorizontal = true;
-	bool isEnabled = true;
 };
 
 } // namespace garden

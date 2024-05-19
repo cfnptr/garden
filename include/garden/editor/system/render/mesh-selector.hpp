@@ -21,6 +21,7 @@ namespace garden
 
 class MeshSelectorEditorSystem final : public System
 {
+	bool lastDragging = false;
 	bool isSkipped = false;
 
 	MeshSelectorEditorSystem(Manager* manager);
@@ -29,9 +30,13 @@ class MeshSelectorEditorSystem final : public System
 	void init();
 	void deinit();
 	void editorRender();
+	void editorSettings();
 	
 	friend class ecsm::Manager;
 public:
+	Color aabbColor = Color::white;
+	bool isEnabled = true;
+
 	void skipUpdate() { isSkipped = true; }
 };
 

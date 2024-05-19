@@ -19,6 +19,8 @@
 namespace garden
 {
 
+const psize sampleBufferSize = 512;
+
 class GraphicsEditorSystem final : public System
 {
 	float* cpuFpsBuffer = nullptr;

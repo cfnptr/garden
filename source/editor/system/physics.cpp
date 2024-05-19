@@ -26,6 +26,7 @@ PhysicsEditor::PhysicsEditor(PhysicsSystem* system)
 		[this](ID<Entity> entity) { onEntityInspector(entity); });
 	this->system = system;
 }
+// TODO: unregister inspector
 
 //--------------------------------------------------------------------------------------------------
 void PhysicsEditor::onEntityInspector(ID<Entity> entity)

@@ -26,7 +26,6 @@ class MeshGizmosEditorSystem final : public System
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
 	ID<GraphicsPipeline> backGizmosPipeline = {};
 	ID<Buffer> fullArrowVertices = {};
-	float2 lastCursorPos = float2(0.0f);
 	uint32 dragMode = 0;
 
 	MeshGizmosEditorSystem(Manager* manager);
@@ -35,8 +34,16 @@ class MeshGizmosEditorSystem final : public System
 	void init();
 	void deinit();
 	void editorRender();
+	void editorSettings();
 	
 	friend class ecsm::Manager;
+public:
+	Color handleColor = Color("F0F0F0FF");
+	Color axisColorX = Color("FF1010FF");
+	Color axisColorY = Color("10FF10FF");
+	Color axisColorZ = Color("1010FFFF");
+	float highlighFactor = 5.0f;
+	bool isEnabled = true;
 };
 
 } // namespace garden

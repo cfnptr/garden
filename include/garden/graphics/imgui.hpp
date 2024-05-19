@@ -21,6 +21,7 @@
 #include "garden/defines.hpp"
 
 #if GARDEN_EDITOR
+#include "math/color.hpp"
 #include "garden/graphics/vulkan.hpp"
 
 #define IMGUI_ENABLE_FREETYPE
@@ -29,6 +30,8 @@
 
 namespace ImGui
 {
+
+using namespace math;
 
 /**
  * @brief Enum class combo box. 
@@ -39,11 +42,26 @@ namespace ImGui
  * @param[in] items all available item list
  */
 template<typename T = int>
-bool Combo(const char* label, T& currentItem, const char* items)
+static bool Combo(const char* label, T& currentItem, const char* items)
 {
 	auto item = (int)currentItem;
 	auto result = ImGui::Combo(label, &item, items);
 	currentItem = (T)item;
+	return result;
+}
+
+static bool ColorEdit4(const char* label, Color& color, ImGuiColorEditFlags flags = 0)
+{
+	auto floatColor = (float4)color;
+	auto result = ImGui::ColorEdit4(label, (float*)&floatColor, flags);
+	color = (Color)floatColor;
+	return result;
+}
+static bool ColorEdit3(const char* label, Color& color, ImGuiColorEditFlags flags = 0)
+{
+	auto floatColor = (float3)color;
+	auto result = ImGui::ColorEdit3(label, (float*)&floatColor, flags);
+	color = (Color)floatColor;
 	return result;
 }
 

@@ -245,7 +245,7 @@ static void destroyVkSwapchainBuffers(vk::Device device,
 //*********************************************************************************************************************
 Swapchain::Swapchain(int2 framebufferSize, bool useVsync, bool useTripleBuffering, bool useThreading)
 {
-	for (uint8 i = 0; i < GARDEN_FRAME_LAG; i++)
+	for (uint8 i = 0; i < frameLag; i++)
 	{
 		fences[i] = createVkFence(Vulkan::device, true);
 		imageAcquiredSemaphores[i] = createVkSemaphore(Vulkan::device);
@@ -270,7 +270,7 @@ void Swapchain::destroy()
 	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, buffers);
 	Vulkan::device.destroySwapchainKHR(instance);
 
-	for (uint8 i = 0; i < GARDEN_FRAME_LAG; i++)
+	for (uint8 i = 0; i < frameLag; i++)
 	{
 		Vulkan::device.destroySemaphore(drawCompleteSemaphores[i]);
 		Vulkan::device.destroySemaphore(imageAcquiredSemaphores[i]);
@@ -360,7 +360,7 @@ bool Swapchain::present()
 	else if (result != vk::Result::eSuccess)
 		throw runtime_error("Failed to present image. (error: " + vk::to_string(result) + ")");
 
-	frameIndex = (frameIndex + 1) % GARDEN_FRAME_LAG;
+	frameIndex = (frameIndex + 1) % frameLag;
 	return true;
 }
 

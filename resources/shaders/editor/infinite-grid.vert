@@ -12,10 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "common/depth.gsl"
+#include "common/constants.gsl"
 #include "common/fullscreen.gsl"
+
+uniform CameraConstants
+{
+	CAMERA_CONSTANTS
+} cc;
+
+out float3 fs.nearPoint;
+out float3 fs.farPoint;
 
 void main()
 {
 	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	fs.nearPoint = calcWorldPosition(1.0f, texCoords, cc.viewProjInv) + cc.cameraPos.xyz;
+    fs.farPoint = calcWorldPosition(0.0001f, texCoords, cc.viewProjInv) + cc.cameraPos.xyz;
 	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
 }

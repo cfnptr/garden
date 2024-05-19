@@ -12,14 +12,75 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "common/depth.gsl"
+#include "common/constants.gsl"
+
 pipelineState
 {
-
+	depthTesting = on;
+	depthWriting = on;
+	faceCulling = off;
+	blending0 = on;
 }
+
+uniform pushConstants
+{
+	float4 gridColor;
+	float4 axisColorX;
+	float4 axisColorY;
+	float gridScale;
+	bool isHorizontal;
+} pc;
+
+uniform CameraConstants
+{
+	CAMERA_CONSTANTS
+} cc;
+
+in float3 fs.nearPoint;
+in float3 fs.farPoint;
 
 out float4 fb.color;
 
+//**********************************************************************************************************************
+float4 grid(float3 fragPos, float3 gridColor, float3 axisColorX, float3 axisColorY, float gridScale, bool isHorizontal)
+{
+	float2 coords = (isHorizontal ? fragPos.xz : fragPos.xy) * gridScale;
+	float2 derivative = fwidth(coords);
+	float2 grid = abs(fract(coords - 0.5f) - 0.5f) / derivative;
+	float line = min(grid.x, grid.y);
+	float2 derMin = min(derivative, float2(1.0f));
+	float4 color = vec4(gridColor, 1.0f - min(line, 1.0f));
+	float scale = 1.0f / gridScale;
+
+	if (fragPos.x > -scale * derMin.x && fragPos.x < scale * derMin.x)
+		color.rgb = axisColorX;
+
+	if (isHorizontal)
+	{
+		if (fragPos.z > -scale * derMin.y && fragPos.z < scale * derMin.y)
+			color.rgb = axisColorY;
+	}
+	else
+	{
+		if (fragPos.y > -scale * derMin.y && fragPos.y < scale * derMin.y)
+			color.rgb = axisColorY;
+	}
+	return color;
+}
+
 void main()
 {
-	fb.color = float4(1.0f, 0.0f, 0.0f, 1.0f);
+	float t = pc.isHorizontal ? -fs.nearPoint.y / (fs.farPoint.y - fs.nearPoint.y) : 
+		-fs.nearPoint.z / (fs.farPoint.z - fs.nearPoint.z);
+	if (t <= 0.0f)
+		discard;
+
+	float3 fragPos = t * (fs.farPoint - fs.nearPoint) + fs.nearPoint;
+	fb.color = grid(fragPos, pc.gridColor.rgb, pc.axisColorX.rgb,
+		pc.axisColorY.rgb, pc.gridScale, pc.isHorizontal);
+	if (fb.color.a == 0.0f)
+		discard;
+
+	gl.fragDepth = calcDepth(fragPos - cc.cameraPos.xyz, cc.viewProj);
 }

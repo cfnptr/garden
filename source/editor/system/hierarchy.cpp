@@ -85,13 +85,12 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 			ImGui::SetNextItemOpen(true);
 		}
 
-		if (!manager->has<DoNotDestroyComponent>(renderEntity))
-		{
-			if (ImGui::MenuItem("Destroy Entity"))
-				manager->destroy(renderEntity);
-			if (ImGui::MenuItem("Destroy Entities"))
-				TransformSystem::getInstance()->destroyRecursive(renderEntity);
-		}
+		ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(renderEntity));
+		if (ImGui::MenuItem("Destroy Entity"))
+			manager->destroy(renderEntity);
+		if (ImGui::MenuItem("Destroy Entities"))
+			TransformSystem::getInstance()->destroyRecursive(renderEntity);
+		ImGui::EndDisabled();
 
 		if (ImGui::MenuItem("Copy Name"))
 		{

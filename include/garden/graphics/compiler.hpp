@@ -35,7 +35,7 @@ namespace garden::graphics
 /**
  * @brief Compiled shader file magic number size in bytes.
  */
-#define GSL_MAGIC_SIZE 4
+const psize gslMagicSize = 4;
 
 using namespace std;
 

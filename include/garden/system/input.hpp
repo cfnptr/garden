@@ -129,10 +129,12 @@ static const vector<KeyboardButton> allKeyboardButtons =
  */
 class InputSystem final : public System
 {
-	map<KeyboardButton, bool> lastKeyboardButtons;
-	map<MouseButton, bool> lastMouseButtons;
+	vector<bool> lastKeyboardStates;
+	vector<bool> lastMouseStates;
 	vector<fs::path> fileDropPaths;
 	float2 cursorPosition = float2(0.0f);
+	float2 cursorDelta = float2(0.0f);
+	float2 mouseScroll = float2(0.0f);
 	double time = 0.0, deltaTime = 0.0;
 	CursorMode cursorMode = CursorMode::Default;
 	const fs::path* currentFileDropPath = nullptr;
@@ -153,6 +155,8 @@ class InputSystem final : public System
 	void input();
 
 	static void onFileDrop(void* window, int count, const char** paths);
+	static void onMouseScroll(void* window, double offsetX, double offsetY);
+
 	friend class ecsm::Manager;
 public:
 	/**
@@ -171,9 +175,20 @@ public:
 
 	/**
 	 * @brief Returns current cursor position in the window. (in units)
-	 * @details Useful for implementing FPS controller.
+	 * @details Useful for implementing FPS controller, inventory.
 	 */
 	float2 getCursorPosition() const noexcept { return cursorPosition; }
+	/**
+	 * @brief Returns current cursor delta position in the window. (in units)
+	 * @details Useful for implementing FPS controller, inventory.
+	 */
+	float2 getCursorDelta() const noexcept { return cursorDelta; }
+
+	/**
+	 * @brief Returns current mouse delta scroll. (in units)
+	 * @details Useful for implementing FPS controller, inventory.
+	 */
+	float2 getMouseScroll() const noexcept { return mouseScroll; }
 
 	/**
 	 * @brief Returns current dropped file path. 
@@ -182,26 +197,37 @@ public:
 	const fs::path& getCurrentFileDropPath() const noexcept { return *currentFileDropPath; }
 
 	/**
-	 * @brief Returns true if keyboard button has been clicked. (On key release)
+	 * @brief Returns true if keyboard button has been pressed.
 	 * @param button target keyboard button
 	 */
-	bool isKeyboardClicked(KeyboardButton button) const;
+	bool isKeyboardPressed(KeyboardButton button) const noexcept;
 	/**
-	 * @brief Returns true if mouse button has been clicked. (On key release)
+	 * @brief Returns true if keyboard button has been released.
+	 * @param button target keyboard button
+	 */
+	bool isKeyboardReleased(KeyboardButton button) const noexcept;
+
+	/**
+	 * @brief Returns true if mouse button has been pressed.
 	 * @param button target mouse button
 	 */
-	bool isMouseClicked(MouseButton button) const;
+	bool isMousePressed(MouseButton button) const noexcept;
+	/**
+	 * @brief Returns true if mouse button has been released.
+	 * @param button target mouse button
+	 */
+	bool isMouseReleased(MouseButton button) const noexcept;
 
 	/**
 	 * @brief Returns true if keyboard button is in pressed state.
 	 * @param button target keyboard button
 	 */
-	bool isKeyboardPressed(KeyboardButton button) const;
+	bool getKeyboardState(KeyboardButton button) const noexcept;
 	/**
 	 * @brief Returns true if mouse button is in pressed state.
 	 * @param button target keyboard button
 	 */
-	bool isMousePressed(MouseButton button) const;
+	bool getMouseState(MouseButton button) const noexcept;
 
 	/**
 	 * @brief Returns current mouse cursor mode.
@@ -212,7 +238,7 @@ public:
 	 * @brief Sets mouse cursor mode.
 	 * @param mode target cursor mode
 	 */
-	void setCursorMode(CursorMode mode);
+	void setCursorMode(CursorMode mode) noexcept;
 
 	/**
 	 * @brief Returns input system instance.

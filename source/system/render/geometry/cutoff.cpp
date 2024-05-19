@@ -64,6 +64,7 @@ void CutoffRenderSystem::initialize()
 	});
 	#endif
 }
+// TODO: unregister inspector
 
 void CutoffRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)

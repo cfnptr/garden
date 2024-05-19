@@ -32,8 +32,7 @@ LogSystem* LogSystem::instance = nullptr;
 
 LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : System(manager)
 {
-	auto appInfoSystem = manager->get<AppInfoSystem>();
-
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	this->logger = logy::Logger(appInfoSystem->getAppDataName(),
 		level, GARDEN_DEBUG ? true : false, rotationTime);
 

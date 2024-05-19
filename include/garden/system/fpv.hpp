@@ -29,7 +29,6 @@ using namespace ecsm;
 /*
 class FpvSystem final : public System // , public IPhysicsSystem
 {
-	float2 lastCursorPosition = float2(0.0f);
 	float2 rotation = float2(0.0f);
 	float3 velocity = float3(0.0f);
 	// ID<Material> material = {};

@@ -46,7 +46,7 @@ pipelineState
 
 ### Depth
 
-* deptTesting [ on | off ] - If enabled, do depth comparisons and update the depth buffer. (off)
+* depthTesting [ on | off ] - If enabled, do depth comparisons and update the depth buffer. (off)
 * depthWriting [ on | off ] - Enable or disable writing into the depth buffer. (off)
 * depthClamping [ on | off ] - Controls whether to clamp the fragment’s depth values. (off)
 * depthBiasing [ on | off ] - Controls whether to bias fragment depth values. (off)
@@ -65,7 +65,7 @@ pipelineState
 ### Blending
 
 * colorMaskX [ all | none | r | rg | rb | rgba | ... ] - Enable and disable writing of framebuffer color components. (all)
-* blendingX [ on | off]- If enabled, blend the computed fragment color values with the values in the color buffers. (off)
+* blendingX [ on | off] - If enabled, blend the computed fragment color values with the values in the color buffers. (off)
 * blendOperationX [ add | sub | revSub | min | max ] - Specify the RGB color and alpha blend equation. (add)
 * colorOperationX [ add | sub | revSub | min | max ] - Specify the RGB color blend equation. (add)
 * alphaOperationX [ add | sub | revSub | min | max ] - Specify the alpha blend equation. (add)

@@ -342,7 +342,7 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 
 	ImGui::Spacing();
 
-	if (ImGui::Button("Select Parent Image", ImVec2(-FLT_MIN, 0.0f)))
+	if (ImGui::Button("Select parent image", ImVec2(-FLT_MIN, 0.0f)))
 	{
 		openNextTab = GpuResourceEditorSystem::TabType::Images;
 		selectedItem = *imageView.getImage() - 1;
@@ -400,7 +400,7 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 			ImGui::Checkbox("Store", &value); ImGui::SameLine();
 
 			ImGui::PushID(viewName.c_str());
-			if (ImGui::Button("Select Image View")) 
+			if (ImGui::Button("Select image view")) 
 			{
 				openNextTab = GpuResourceEditorSystem::TabType::ImageViews;
 				selectedItem = *attachment.imageView - 1;
@@ -434,7 +434,7 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 			ImGui::Checkbox("Store", &value); ImGui::SameLine();
 
 			ImGui::PushID(viewName.c_str());
-			if (ImGui::Button("Select Image View"))
+			if (ImGui::Button("Select image view"))
 			{
 				openNextTab = GpuResourceEditorSystem::TabType::ImageViews;
 				selectedItem = *depthStencilAttachment.imageView - 1;
@@ -544,7 +544,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 
 	ImGui::Spacing();
 
-	if (ImGui::Button("Select Parent Pipeline", ImVec2(-FLT_MIN, 0.0f)))
+	if (ImGui::Button("Select parent pipeline", ImVec2(-FLT_MIN, 0.0f)))
 	{
 		if (descriptorSet.getPipelineType() == PipelineType::Graphics)
 			openNextTab = GpuResourceEditorSystem::TabType::GraphicsPipelines;

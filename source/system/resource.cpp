@@ -123,7 +123,7 @@ ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 	SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
 	#if GARDEN_DEBUG
-	auto appInfoSystem = manager->get<AppInfoSystem>();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
 	appVersion = appInfoSystem->getVersion();
@@ -666,7 +666,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 					auto itemCount = task.getItemCount();
 					for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 					{
-						auto srcColor = srcData[i].toNormFloat4();
+						auto srcColor = (float4)srcData[i];
 						dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
 					}
 				}),
@@ -677,7 +677,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			{
 				for (uint32 i = 0; i < (uint32)floatData.size(); i++)
 				{
-					auto srcColor = srcData[i].toNormFloat4();
+					auto srcColor = (float4)srcData[i];
 					dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
 				}
 			}

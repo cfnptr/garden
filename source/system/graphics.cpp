@@ -198,7 +198,7 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, Image::Format 
 	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
-	auto appInfoSystem = manager->get<AppInfoSystem>();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
 		windowSize, isFullscreen, useVsync, useTripleBuffering, asyncRecording);
 
@@ -303,14 +303,6 @@ void GraphicsSystem::preDeinit()
 	{
 		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
 	}
-
-	auto settingsSystem = manager->tryGet<SettingsSystem>();
-	if (settingsSystem)
-	{
-		settingsSystem->setBool("useVsync", useVsync);
-		settingsSystem->setInt("frameRate", frameRate);
-		settingsSystem->setFloat("renderScale", renderScale);
-	}
 }
 
 //**********************************************************************************************************************
@@ -406,8 +398,6 @@ static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
 	auto cameraComponent = manager->tryGet<CameraComponent>(camera);
 	if (cameraComponent)
 	{
-		cameraComponent->p.perspective.aspectRatio =
-			(float)scaledFramebufferSize.x / (float)scaledFramebufferSize.y;
 		cameraConstants.projection = cameraComponent->calcProjection();
 		cameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
 	}
