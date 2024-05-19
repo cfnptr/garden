@@ -26,8 +26,27 @@ float3 calcWorldPositionSafe(float depth, float2 texCoords, float4x4 viewProjInv
 	float2 ndc = texCoords * 2.0f - 1.0f;
 	float4 position = viewProjInv * float4(ndc, depth, 1.0f);
 	if (position.w != 0.0f)
-		position.xyz /= position.w
+		position.xyz /= position.w;
 	return position.xyz;
+}
+
+float calcDepth(float3 worldPos, float4x4 viewProj)
+{
+	float4 clipPos = viewProj * float4(worldPos, 1.0f);
+	return clipPos.z / clipPos.w;
+}
+float calcDepthSafe(float3 worldPos, float4x4 viewProj)
+{
+	float4 position = viewProj * float4(worldPos, 1.0f);
+	if (position.w != 0.0f)
+		position.z /= position.w;
+	return position.z;
+}
+
+// Infinite Reversed Z Perspective Projection
+float calcPerspLinearDepth(float depth, float nearPlane)
+{
+	return nearPlane / depth; // TODO: check if works correctly
 }
 
 float3 calcViewDirection(float3 worldPosition)

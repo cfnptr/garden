@@ -51,9 +51,8 @@ SettingsSystem::~SettingsSystem()
 //**********************************************************************************************************************
 void SettingsSystem::preInit()
 {
-	auto manager = getManager();
-	auto appInfoSystem = manager->get<AppInfoSystem>();
-	auto logSystem = manager->tryGet<LogSystem>();
+	auto appInfoSystem = AppInfoSystem::getInstance();
+	auto logSystem = getManager()->tryGet<LogSystem>();
 
 	try
 	{
@@ -70,9 +69,8 @@ void SettingsSystem::preInit()
 }
 void SettingsSystem::postDeinit()
 {
-	auto manager = getManager();
-	auto appInfoSystem = manager->get<AppInfoSystem>();
-	auto logSystem = manager->tryGet<LogSystem>();
+	auto appInfoSystem = AppInfoSystem::getInstance();
+	auto logSystem = getManager()->tryGet<LogSystem>();
 
 	try
 	{
@@ -83,6 +81,7 @@ void SettingsSystem::postDeinit()
 			" Settings (v" + appInfoSystem->getVersion().toString3() + ")");
 		confWriter.writeNewLine();
 
+		string hex;
 		for (auto& pair : items)
 		{
 			switch (pair.second.type)
@@ -91,6 +90,10 @@ void SettingsSystem::postDeinit()
 			case Type::Float: confWriter.write(pair.first, *((double*)&pair.second.data)); break;
 			case Type::Bool: confWriter.write(pair.first, *((bool*)&pair.second.data)); break;
 			case Type::String: confWriter.write(pair.first, *((const char*)&pair.second.data)); break;
+			case Type::Color:
+				hex = Color((uint32)pair.second.data).toHex();
+				confWriter.write(pair.first, hex);
+				break;
 			default: abort();
 			}
 		}
@@ -175,6 +178,26 @@ void SettingsSystem::getString(const string& name, string& value)
 	value = string(*((const char**)&searchResult->second.data));
 }
 
+void SettingsSystem::getColor(const string& name, Color& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto searchResult = items.find(name);
+	if (searchResult == items.end())
+	{
+		if (confReader)
+		{
+			string_view stringView;
+			auto result = ((conf::Reader*)confReader)->get(name, stringView);
+			if (result)
+				value = Color(string(stringView));
+		}
+		items.emplace(name, Item(Type::Color, (uint32)value));
+		return;
+	}
+	GARDEN_ASSERT(searchResult->second.type == Type::Color);
+	value = Color((uint32)searchResult->second.data);
+}
+
 //**********************************************************************************************************************
 void SettingsSystem::setInt(const string& name, int64 value)
 {
@@ -232,4 +255,17 @@ void SettingsSystem::setString(const string& name, string_view value)
 	GARDEN_ASSERT(searchResult->second.type == Type::String);
 	delete *((char**)&searchResult->second.data);
 	*((char**)&searchResult->second.data) = instance;
+}
+
+void SettingsSystem::setColor(const string& name, Color value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto searchResult = items.find(name);
+	if (searchResult == items.end())
+	{
+		items.emplace(name, Item(Type::Color, (uint32)value));
+		return;
+	}
+	GARDEN_ASSERT(searchResult->second.type == Type::Color);
+	searchResult->second.data = (uint32)value;
 }

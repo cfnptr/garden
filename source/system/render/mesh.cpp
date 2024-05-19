@@ -478,11 +478,16 @@ void MeshRenderSystem::renderShadows()
 //**********************************************************************************************************************
 void MeshRenderSystem::preForwardRender()
 {
-	if (!GraphicsSystem::getInstance()->camera)
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	if (!graphicsSystem->camera)
 		return;
 
 	prepareSystems();
 	renderShadows();
+
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
+		MeshRenderType::Opaque, MeshRenderType::Translucent);
 }
 
 void MeshRenderSystem::forwardRender()
@@ -492,8 +497,6 @@ void MeshRenderSystem::forwardRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
-		MeshRenderType::Opaque, MeshRenderType::Translucent);
 	renderOpaque(cameraConstants.viewProj);
 	renderTranslucent(cameraConstants.viewProj);
 }
@@ -501,11 +504,16 @@ void MeshRenderSystem::forwardRender()
 //**********************************************************************************************************************
 void MeshRenderSystem::preDeferredRender()
 {
-	if (!GraphicsSystem::getInstance()->camera)
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	if (!graphicsSystem->camera)
 		return;
 
 	prepareSystems();
 	renderShadows();
+
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
+		MeshRenderType::Opaque, MeshRenderType::Translucent);
 }
 
 void MeshRenderSystem::deferredRender()
@@ -515,8 +523,6 @@ void MeshRenderSystem::deferredRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
-		MeshRenderType::Opaque, MeshRenderType::Translucent);
 	renderOpaque(cameraConstants.viewProj);
 }
 

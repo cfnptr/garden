@@ -49,9 +49,9 @@ public:
 	};
 private:
 	int2 framebufferSize = int2(0);
-	vk::Fence fences[GARDEN_FRAME_LAG];
-	vk::Semaphore imageAcquiredSemaphores[GARDEN_FRAME_LAG];
-	vk::Semaphore drawCompleteSemaphores[GARDEN_FRAME_LAG];
+	vk::Fence fences[frameLag];
+	vk::Semaphore imageAcquiredSemaphores[frameLag];
+	vk::Semaphore drawCompleteSemaphores[frameLag];
 	vk::SwapchainKHR instance = {};
 	vector<Buffer> buffers;
 	ThreadPool* threadPool = nullptr;

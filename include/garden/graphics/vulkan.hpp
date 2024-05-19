@@ -24,11 +24,21 @@
 namespace garden::graphics
 {
 
+#ifndef VK_DS_POOL_COMBINED_SAMPLER_COUNT
 #define VK_DS_POOL_COMBINED_SAMPLER_COUNT 128
+#endif
+#ifndef VK_DS_POOL_STORAGE_IMAGE_COUNT
 #define VK_DS_POOL_STORAGE_IMAGE_COUNT 128
+#endif
+#ifndef VK_DS_POOL_UNIFORM_BUFFER_COUNT
 #define VK_DS_POOL_UNIFORM_BUFFER_COUNT 128
+#endif
+#ifndef VK_DS_POOL_STORAGE_BUFFER_COUNT
 #define VK_DS_POOL_STORAGE_BUFFER_COUNT 128
+#endif
+#ifndef VK_DS_POOL_INPUT_ATTACHMENT_COUNT
 #define VK_DS_POOL_INPUT_ATTACHMENT_COUNT 128
+#endif
 
 /**
  * @brief Low-level cross-platform graphics API.

@@ -23,6 +23,7 @@ namespace
 {
 	struct PushConstants final
 	{
+		float4 colorFactor;
 		uint32 instanceIndex;
 		float alphaCutoff;
 	};
@@ -39,11 +40,20 @@ void CutoutSpriteSystem::draw(MeshRenderComponent* meshRenderComponent,
 {
 	auto cutoutRenderComponent = (CutoutSpriteComponent*)meshRenderComponent;
 	auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(taskIndex);
+	pushConstants->colorFactor = cutoutRenderComponent->colorFactor;
+	pushConstants->instanceIndex = drawIndex;
 	pushConstants->alphaCutoff = cutoutRenderComponent->alphaCutoff;
+	pipelineView->pushConstantsAsync(taskIndex);
+
 	SpriteRenderSystem::draw(meshRenderComponent, viewProj, model, drawIndex, taskIndex);
 }
 
 //**********************************************************************************************************************
+const string& CutoutSpriteSystem::getComponentName() const
+{
+	static const string name = "Cutout Sprite";
+	return name;
+}
 type_index CutoutSpriteSystem::getComponentType() const
 {
 	return typeid(CutoutSpriteComponent);

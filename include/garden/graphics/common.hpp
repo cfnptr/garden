@@ -28,11 +28,11 @@ namespace garden::graphics
 /**
  * @brief Optimal sync primitive count.
  */
-#define GARDEN_FRAME_LAG 2
+const int frameLag = 2;
 /**
  * @brief Nvidia architecture maximum binary size.
  */
-#define GARDEN_MAX_PUSH_CONSTANTS_SIZE 128
+const psize maxPushConstantsSize = 128;
 
 using namespace std;
 using namespace math;

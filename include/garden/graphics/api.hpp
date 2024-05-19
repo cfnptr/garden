@@ -81,7 +81,7 @@ public:
 	static uint64 computePipelineVersion;
 	static uint64 bufferVersion;
 	static uint64 imageVersion;
-	static vector<DestroyResource> destroyBuffers[GARDEN_FRAME_LAG + 1];
+	static vector<DestroyResource> destroyBuffers[frameLag + 1];
 	static map<void*, uint64> renderPasses;
 	static CommandBuffer frameCommandBuffer;
 	static CommandBuffer graphicsCommandBuffer;

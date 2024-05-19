@@ -29,6 +29,10 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	Ref<Image> colorMap = {};
 	Ref<DescriptorSet> descriptorSet = {};
 	float4 colorFactor = float4(1.0f);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	string path;
+	#endif
 };
 
 /***********************************************************************************************************************

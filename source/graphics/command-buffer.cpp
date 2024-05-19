@@ -1824,7 +1824,7 @@ void CommandBuffer::processCommand(const BeginLabelCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
-	auto floatColor = command.color.toNormFloat4();
+	auto floatColor = (float4)command.color;
 	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
 	commandBuffer.beginDebugUtilsLabelEXT(debugLabel, Vulkan::dynamicLoader);
@@ -1838,7 +1838,7 @@ void CommandBuffer::processCommand(const InsertLabelCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
-	auto floatColor = command.color.toNormFloat4();
+	auto floatColor = (float4)command.color;
 	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
 	commandBuffer.beginDebugUtilsLabelEXT(debugLabel, Vulkan::dynamicLoader);

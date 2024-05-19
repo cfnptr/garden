@@ -20,10 +20,15 @@ pipelineState
 	faceCulling = off;
 }
 
-in float4 fs.color;
+uniform pushConstants
+{
+	float4x4 mvp;
+	float4 color;
+} pc;
+
 out float4 fb.color;
 
 void main()
 {
-	fb.color = fs.color;
+	fb.color = pc.color;
 }

@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
+#include "math/vector.hpp"
 #include "ecsm.hpp"
 
 namespace garden
@@ -32,6 +33,7 @@ using namespace ecsm;
 class Controller2DSystem final : public System
 {
 	ID<Entity> camera = {};
+	bool isDragging = false;
 
 	/**
 	 * @brief Creates a new 2D view controller system instance.
@@ -46,8 +48,11 @@ class Controller2DSystem final : public System
 	void init();
 	void deinit();
 	void update();
+	void swapchainRecreate();
 
 	friend class ecsm::Manager;
+public:
+	float scrollSensitivity = 1.0f;
 };
 
 } // namespace garden

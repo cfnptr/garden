@@ -17,15 +17,6 @@
 
 using namespace garden;
 
-namespace
-{
-	struct PushConstants final
-	{
-		float4 colorFactor;
-		uint32 instanceIndex;
-	};
-}
-
 // TODO: add bindless support
 
 //**********************************************************************************************************************
@@ -54,11 +45,6 @@ void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	setDescriptorSetRange(meshRenderComponent, descriptorSetRange, descriptorSetCount, 8);
 	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
 
-	auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(taskIndex);
-	pushConstants->colorFactor = spriteRenderComponent->colorFactor;
-	pushConstants->instanceIndex = drawIndex;
-	pipelineView->pushConstantsAsync(taskIndex);
-
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	pipelineView->drawAsync(taskIndex, {}, 6);
 }
@@ -83,7 +69,7 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 }
 void SpriteRenderSystem::destroyResources(SpriteRenderComponent* spriteComponent)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();;
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (spriteComponent->colorMap.getRefCount() == 1)
 		graphicsSystem->destroy(spriteComponent->colorMap);
 	if (spriteComponent->descriptorSet.getRefCount() == 1)

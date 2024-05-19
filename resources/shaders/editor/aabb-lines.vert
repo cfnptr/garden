@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-out float4 fs.color;
-
 uniform pushConstants
 {
 	float4x4 mvp;
@@ -42,5 +40,4 @@ void main()
 {
 	float3 vertex = aabbLines[gl.vertexIndex];
 	gl.position = pc.mvp * float4(vertex, 1.0f);
-	fs.color = pc.color;
 }

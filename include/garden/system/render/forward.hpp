@@ -37,6 +37,7 @@ class ForwardRenderSystem final : public System
 	ID<Image> colorBuffer = {};
 	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> framebuffer = {};
+	bool clearColorBuffer = false;
 	bool asyncRecording = false;
 	bool hdrColorBuffer = false;
 
@@ -44,10 +45,12 @@ class ForwardRenderSystem final : public System
 	 * @brief Creates a new forward rendering system instance.
 	 * 
 	 * @param[in,out] manager manager instance
+	 * @param useAsyncRecording clear color buffer before render pass
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param useHdrColorBuffer create color buffer with extended color range
 	 */
-	ForwardRenderSystem(Manager* manager, bool useAsyncRecording = true, bool useHdrColorBuffer = false);
+	ForwardRenderSystem(Manager* manager, bool clearColorBuffer = GARDEN_EDITOR,
+		bool useAsyncRecording = true, bool useHdrColorBuffer = false);
 	/**
 	 * @brief Destroys forward rendering system instance.
 	 */

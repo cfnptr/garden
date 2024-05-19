@@ -905,7 +905,7 @@ void Vulkan::terminate()
 	GraphicsAPI::graphicsCommandBuffer.terminate();
 	GraphicsAPI::frameCommandBuffer.terminate();
 
-	for (int i = 0; i < GARDEN_FRAME_LAG + 1; i++)
+	for (int i = 0; i < frameLag + 1; i++)
 		Vulkan::updateDestroyBuffer();
 	swapchain.destroy();
 
@@ -948,8 +948,8 @@ void Vulkan::terminate()
 void Vulkan::updateDestroyBuffer()
 {
 	auto& destroyBuffer = GraphicsAPI::destroyBuffers[GraphicsAPI::flushDestroyIndex];
-	GraphicsAPI::flushDestroyIndex = (GraphicsAPI::flushDestroyIndex + 1) % (GARDEN_FRAME_LAG + 1);
-	GraphicsAPI::fillDestroyIndex = (GraphicsAPI::fillDestroyIndex + 1) % (GARDEN_FRAME_LAG + 1);
+	GraphicsAPI::flushDestroyIndex = (GraphicsAPI::flushDestroyIndex + 1) % (frameLag + 1);
+	GraphicsAPI::fillDestroyIndex = (GraphicsAPI::fillDestroyIndex + 1) % (frameLag + 1);
 
 	if (destroyBuffer.empty())
 		return;

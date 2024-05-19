@@ -63,6 +63,7 @@ void TranslucentRenderSystem::initialize()
 	});
 	#endif
 }
+// TODO: unregister inspector
 bool TranslucentRenderSystem::isDrawReady()
 {
 	auto manager = getManager();

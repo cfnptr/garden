@@ -29,6 +29,7 @@
 #include "garden/editor/system/graphics.hpp"
 #include "garden/editor/system/transform.hpp"
 #include "garden/editor/system/hierarchy.hpp"
+#include "garden/editor/system/render/sprite.hpp"
 #include "garden/editor/system/render/mesh-gizmos.hpp"
 #include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/editor/system/render/gpu-resource.hpp"
@@ -85,6 +86,7 @@ void entryPoint()
 	manager->createSystem<MeshSelectorEditorSystem>();
 	manager->createSystem<MeshGizmosEditorSystem>();
 	// manager->createSystem<LightingRenderEditorSystem>();
+	manager->createSystem<SpriteRenderEditorSystem>();
 	#endif
 
 	manager->initialize();

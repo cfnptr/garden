@@ -74,20 +74,22 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 		inputSystem->fileDropPaths.push_back(paths[i]);
 }
 
+void InputSystem::onMouseScroll(void* window, double offsetX, double offsetY)
+{
+	auto inputSystem = InputSystem::getInstance();
+	inputSystem->mouseScroll += float2((float)offsetX, (float)offsetY);
+}
+
 //**********************************************************************************************************************
 InputSystem* InputSystem::instance = nullptr;
 
-InputSystem::InputSystem(Manager* manager) : System(manager)
+InputSystem::InputSystem(Manager* manager) : System(manager),
+	lastKeyboardStates((psize)KeyboardButton::Last + 1, false), lastMouseStates((psize)MouseButton::Last + 1, false)
 {
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEvent("FileDrop");
 	SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
 	SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
-
-	for (auto button : allKeyboardButtons)
-		lastKeyboardButtons.emplace(make_pair(button, false));
-	for (int i = 0; i < (int)MouseButton::Count; i++)
-		lastMouseButtons.emplace(make_pair((MouseButton)i, false));
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
@@ -125,7 +127,7 @@ static void updateFileDrops(Manager* manager, vector<fs::path>& fileDropPaths, c
 }
 static void updateWindowMode(InputSystem* inputSystem)
 {
-	if (inputSystem->isKeyboardClicked(KeyboardButton::F11))
+	if (inputSystem->isKeyboardPressed(KeyboardButton::F11))
 	{
 		auto primaryMonitor = glfwGetPrimaryMonitor();
 		auto videoMode = glfwGetVideoMode(primaryMonitor);
@@ -154,6 +156,7 @@ void InputSystem::preInit()
 	auto window = (GLFWwindow*)GraphicsAPI::window;
 	glfwSetWindowUserPointer(window, getManager());
 	glfwSetDropCallback(window, (GLFWdropfun)onFileDrop);
+	glfwSetScrollCallback(window, (GLFWscrollfun)onMouseScroll);
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos(window, &x, &y);
@@ -163,14 +166,19 @@ void InputSystem::input()
 {
 	auto manager = getManager();
 	auto window = (GLFWwindow*)GraphicsAPI::window;
+	mouseScroll = float2(0.0f);
+	
+	for (psize i = 0; i < allKeyboardButtons.size(); i++)
+	{
+		auto button = (int)allKeyboardButtons[i];
+		lastKeyboardStates[button] = glfwGetKey(window, button);
+	}
 
-	for (auto i = lastKeyboardButtons.begin(); i != lastKeyboardButtons.end(); i++)
-		i->second = glfwGetKey(window, (int)i->first) == GLFW_PRESS;
-	for (auto i = lastMouseButtons.begin(); i != lastMouseButtons.end(); i++)
-		i->second = glfwGetMouseButton(window, (int)i->first) == GLFW_PRESS;
+	for (int i = 0; i < (int)MouseButton::Count; i++)
+		lastMouseStates[i] = glfwGetMouseButton(window, i);
 
 	glfwPollEvents();
-	
+
 	if (glfwWindowShouldClose(window))
 	{
 		// TODO: add modal if user sure want to exit.
@@ -186,37 +194,55 @@ void InputSystem::input()
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos(window, &x, &y);
-	cursorPosition = float2((float)x, (float)y);
+	auto newPosition = float2((float)x, (float)y);
+	cursorDelta = newPosition - cursorPosition;
+	cursorPosition = newPosition;
 
 	updateFileDrops(manager, fileDropPaths, currentFileDropPath);
 	updateWindowMode(this);
 }
 
 //**********************************************************************************************************************
-bool InputSystem::isKeyboardClicked(KeyboardButton button) const
+bool InputSystem::isKeyboardPressed(KeyboardButton button) const noexcept
 {
-	return lastKeyboardButtons.at(button) &&
-		glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_RELEASE;
+	GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
+	return !lastKeyboardStates[(psize)button] &&
+		glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button);
 }
-bool InputSystem::isMouseClicked(MouseButton button) const
+bool InputSystem::isKeyboardReleased(KeyboardButton button) const noexcept
 {
-	return lastMouseButtons.at(button) &&
-		glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_RELEASE;
-}
-
-bool InputSystem::isKeyboardPressed(KeyboardButton button) const
-{
-	return glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_PRESS;
-}
-bool InputSystem::isMousePressed(MouseButton button) const
-{
-	return glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button) == GLFW_PRESS;
+	GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
+	return lastKeyboardStates[(psize)button] &&
+		!glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button);
 }
 
-void InputSystem::setCursorMode(CursorMode mode)
+bool InputSystem::isMousePressed(MouseButton button) const noexcept
+{
+	GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
+	return !lastMouseStates[(psize)button] &&
+		glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button);
+}
+bool InputSystem::isMouseReleased(MouseButton button) const noexcept
+{
+	GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
+	return lastMouseStates[(psize)button] &&
+		!glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button);
+}
+
+bool InputSystem::getKeyboardState(KeyboardButton button) const noexcept
+{
+	return glfwGetKey((GLFWwindow*)GraphicsAPI::window, (int)button);
+}
+bool InputSystem::getMouseState(MouseButton button) const noexcept
+{
+	return glfwGetMouseButton((GLFWwindow*)GraphicsAPI::window, (int)button);
+}
+
+void InputSystem::setCursorMode(CursorMode mode) noexcept
 {
 	if (cursorMode == mode)
 		return;
+
 	cursorMode = mode;
 	glfwSetInputMode((GLFWwindow*)GraphicsAPI::window, GLFW_CURSOR, (int)mode);
 }

@@ -18,7 +18,9 @@
  */
 
 #pragma once
+#include "math/color.hpp"
 #include "garden/defines.hpp"
+
 #include "ecsm.hpp"
 
 namespace garden
@@ -35,7 +37,7 @@ class SettingsSystem final : public System
 {
 	enum class Type : uint32
 	{
-		Int, Float, Bool, String, Count
+		Int, Float, Bool, String, Color, Count
 	};
 
 	struct Item final
@@ -93,6 +95,13 @@ public:
 	 * @return Setting value if exists, otherwise adds and returns initial value.
 	 */
 	void getString(const string& name, string& value);
+	/**
+	 * @brief Returns settings color value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
+	void getColor(const string& name, Color& value);
 
 	/**
 	 * @brief Returns settings integer value. (int32)
@@ -181,6 +190,43 @@ public:
 	}
 
 	/**
+	 * @brief Returns settings color value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
+	void getColor(const string& name, float4& value)
+	{
+		auto colorValue = (Color)value;
+		getColor(name, colorValue);
+		value = (float4)colorValue;
+	}
+	/**
+	 * @brief Returns settings color value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
+	void getColor(const string& name, float3& value)
+	{
+		auto colorValue = (Color)value;
+		getColor(name, colorValue);
+		value = (float3)colorValue;
+	}
+	/**
+	 * @brief Returns settings color value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
+	void getColor(const string& name, float2& value)
+	{
+		auto colorValue = (Color)value;
+		getColor(name, colorValue);
+		value = (float2)colorValue;
+	}
+
+	/**
 	 * @brief Sets settings integer value. (int64)
 	 * @param[in] name target setting name
 	 * @param value setting value
@@ -204,6 +250,12 @@ public:
 	 * @param value setting value
 	 */
 	void setString(const string& name, string_view value);
+	/**
+	 * @brief Sets settings color value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
+	void setColor(const string& name, Color value);
 
 	/**
 	 * @brief Sets settings integer value. (int32)
@@ -241,12 +293,32 @@ public:
 	 * @param value setting value
 	 */
 	void setInt(const string& name, uint8 value) { setInt(name, (int64)value); }
+
 	/**
 	 * @brief Sets settings integer value. (float)
 	 * @param[in] name target setting name
 	 * @param value setting value
 	 */
 	void setFloat(const string& name, float value) { setFloat(name, (double)value); }
+
+	/**
+	 * @brief Sets settings color value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
+	void setColor(const string& name, const float4& value) { setColor(name, (Color)value); }
+	/**
+	 * @brief Sets settings color value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
+	void setColor(const string& name, const float3& value) { setColor(name, (Color)value); }
+	/**
+	 * @brief Sets settings color value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
+	void setColor(const string& name, float2 value) { setColor(name, (Color)value); }
 };
 
 } // namespace garden

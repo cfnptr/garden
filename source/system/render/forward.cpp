@@ -44,14 +44,14 @@ static ID<Image> createDepthStencilBuffer()
 	return image;
 }
 
-static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthStencilBuffer)
+static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthStencilBuffer, bool clearColorBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto colorBufferView = graphicsSystem->get(colorBuffer);
 	auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(colorBufferView->getDefaultView(), false, false, true), };
+	{ Framebuffer::OutputAttachment(colorBufferView->getDefaultView(), clearColorBuffer, false, true), };
 	Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, true, false, true);
 	if (depthStencilBuffer)
 		depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
@@ -62,9 +62,10 @@ static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthS
 }
 
 //**********************************************************************************************************************
-ForwardRenderSystem::ForwardRenderSystem(Manager* manager,
+ForwardRenderSystem::ForwardRenderSystem(Manager* manager, bool clearColorBuffer,
 	bool useAsyncRecording, bool useHdrColorBuffer) : System(manager)
 {
+	this->clearColorBuffer = clearColorBuffer;
 	this->asyncRecording = useAsyncRecording;
 	this->hdrColorBuffer = useHdrColorBuffer;
 
@@ -111,7 +112,7 @@ void ForwardRenderSystem::init()
 	}
 
 	if (!framebuffer)
-		framebuffer = createFramebuffer(colorBuffer, depthStencilBuffer);
+		framebuffer = createFramebuffer(colorBuffer, depthStencilBuffer, clearColorBuffer);
 }
 void ForwardRenderSystem::deinit()
 {
@@ -242,6 +243,6 @@ ID<Image> ForwardRenderSystem::getDepthStencilBuffer()
 ID<Framebuffer> ForwardRenderSystem::getFramebuffer()
 {
 	if (!framebuffer)
-		framebuffer = createFramebuffer(getColorBuffer(), getDepthStencilBuffer());
+		framebuffer = createFramebuffer(getColorBuffer(), getDepthStencilBuffer(), clearColorBuffer);
 	return framebuffer;
 }

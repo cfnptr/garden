@@ -26,6 +26,7 @@ SkyboxEditor::SkyboxEditor(SkyboxRenderSystem* system)
 		[this](ID<Entity> entity) { onEntityInspector(entity); });
 	this->system = system;
 }
+// TODO: unregister inspector
 
 //--------------------------------------------------------------------------------------------------
 void SkyboxEditor::onEntityInspector(ID<Entity> entity)

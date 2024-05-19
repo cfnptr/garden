@@ -27,6 +27,7 @@ namespace garden
 
 using namespace math;
 
+// TODO: use const instead
 #define MODEL_VERTEX_SIZE (sizeof(float3) * 2 + sizeof(float2))
 #define MODEL_POSITION_OFFSET 0
 #define MODEL_NORMAL_OFFSET sizeof(float3)

@@ -25,7 +25,7 @@ float4x4 CameraComponent::calcProjection() const noexcept
 			p.perspective.aspectRatio, p.perspective.nearPlane);
 	}
 	
-	return calcOrthoProj(p.orthographic.width,
+	return calcOrthoProjRevZ(p.orthographic.width,
 		p.orthographic.height, p.orthographic.depth);
 }
 

@@ -96,6 +96,12 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::BeginDisabled(isBaked);
 
 		ImGui::DragFloat3("Position", (float*)&transformComponent->position, 0.01f);
+		if (ImGui::BeginPopupContextItem("position"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+				transformComponent->position = float3(0.0f);
+			ImGui::EndPopup();
+		}
 		if (ImGui::BeginItemTooltip())
 		{
 			if (isBaked)
@@ -107,6 +113,12 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		}
 
 		ImGui::DragFloat3("Scale", (float*)&transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
+		if (ImGui::BeginPopupContextItem("scale"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+				transformComponent->scale = float3(1.0f);
+			ImGui::EndPopup();
+		}
 		if (ImGui::BeginItemTooltip())
 		{
 			if (isBaked)
@@ -122,6 +134,12 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			transformComponent->rotation *= quat(radians(difference));
 			oldEulerAngles = newEulerAngles;
 		}
+		if (ImGui::BeginPopupContextItem("rotation"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+				transformComponent->rotation = quat::identity;
+			ImGui::EndPopup();
+		}
 		if (ImGui::BeginItemTooltip())
 		{
 			if (isBaked)
@@ -136,6 +154,16 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndDisabled();
 		
 		ImGui::InputText("Name", &transformComponent->name);
+		if (ImGui::BeginPopupContextItem("name"))
+		{
+			if (ImGui::MenuItem("Copy Name"))
+				ImGui::SetClipboardText(transformComponent->name.c_str());
+			if (ImGui::MenuItem("Paste Name"))
+				transformComponent->name = ImGui::GetClipboardText();
+			if (ImGui::MenuItem("Clear Name"))
+				transformComponent->name = "";
+			ImGui::EndPopup();
+		}
 		if (ImGui::BeginItemTooltip())
 		{
 			ImGui::Text("Entity debug only name");
