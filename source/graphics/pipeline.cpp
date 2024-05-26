@@ -68,14 +68,18 @@ static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor)
 
 //**********************************************************************************************************************
 static vector<void*> createPipelineSamplers(const map<string, Pipeline::SamplerState>& samplerStates, 
-	map<string, void*>& immutableSamplers, const fs::path& pipelinePath)
+	map<string, void*>& immutableSamplers, const fs::path& pipelinePath,
+	const map<string, Pipeline::SamplerState>& samplerStateOverrides)
 {
 	vector<void*> samplers(samplerStates.size());
 	uint32 i = 0;
 
 	for (auto it = samplerStates.begin(); it != samplerStates.end(); it++, i++)
 	{
-		auto state = it->second;
+		auto samplerStateSearch = samplerStateOverrides.find(it->first);
+		auto state = samplerStateSearch == samplerStateOverrides.end() ?
+			it->second : samplerStateSearch->second;
+
 		vk::SamplerCreateInfo samplerInfo({},
 			toVkFilter(state.magFilter), toVkFilter(state.minFilter),
 			toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.wrapX),
@@ -297,7 +301,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 
 	map<string, void*> immutableSamplers;
 	this->samplers = createPipelineSamplers(createData.samplerStates,
-		immutableSamplers, createData.shaderPath);
+		immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
 
 	if (createData.descriptorSetCount > 0)
 	{

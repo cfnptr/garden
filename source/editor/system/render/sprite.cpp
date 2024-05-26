@@ -21,14 +21,15 @@
 
 using namespace garden;
 
-SpriteRenderEditorSystem::SpriteRenderEditorSystem(Manager* manager) : System(manager)
+SpriteRenderEditorSystem::SpriteRenderEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", SpriteRenderEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
 }
 SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", SpriteRenderEditorSystem::init);
@@ -38,7 +39,7 @@ SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
 
 void SpriteRenderEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 
 	auto editorSystem = EditorRenderSystem::getInstance();
@@ -53,8 +54,7 @@ void SpriteRenderEditorSystem::init()
 }
 void SpriteRenderEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::getInstance();
-	editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
+	EditorRenderSystem::getInstance()->tryUnregisterEntityInspector<CutoutSpriteComponent>();
 }
 
 //**********************************************************************************************************************
@@ -63,15 +63,36 @@ static void renderSpriteComponent(SpriteRenderComponent* spriteComponent)
 	ImGui::InputText("Path", &spriteComponent->path, ImGuiInputTextFlags_ReadOnly); ImGui::SameLine();
 	if (ImGui::Button("Select"))
 	{
+		auto entity = spriteComponent->getEntity();
+		auto appInfoSystem = AppInfoSystem::getInstance();
 		auto editorSystem = EditorRenderSystem::getInstance();
-		static const vector<string> extensions = { "webp", "png", "jpg", "jpeg", "exr", "hdr" };
-		editorSystem->openFileSelector([&](const fs::path& selectedFile)
+		static const set<string> extensions = { ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr" };
+
+		editorSystem->openFileSelector([entity](const fs::path& selectedFile)
 		{
-			GraphicsSystem::getInstance()->destroy(spriteComponent->colorMap);
-			spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(
-				selectedFile, Image::Bind::TransferDst | Image::Bind::Sampled);
+			if (EditorRenderSystem::getInstance()->selectedEntity == entity)
+			{
+				auto manager = Manager::getInstance();
+				auto path = selectedFile;
+				path.replace_extension();
+
+				auto cutoutComponent = manager->tryGet<CutoutSpriteComponent>(entity);
+				if (cutoutComponent)
+				{
+					auto graphicsSystem = GraphicsSystem::getInstance();
+					if (cutoutComponent->colorMap.getRefCount() == 1)
+						graphicsSystem->destroy(cutoutComponent->colorMap);
+					if (cutoutComponent->descriptorSet.getRefCount() == 1)
+						graphicsSystem->destroy(cutoutComponent->descriptorSet);
+
+					cutoutComponent->path = path.generic_string();
+					cutoutComponent->colorMap = ResourceSystem::getInstance()->loadImage(
+						path, Image::Bind::TransferDst | Image::Bind::Sampled);
+					cutoutComponent->descriptorSet = {};
+				}
+			}
 		},
-		{}, extensions);
+		appInfoSystem->getResourcesPath() / "images", extensions);
 	}
 
 	auto& aabb = spriteComponent->aabb;
@@ -85,8 +106,7 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 {
 	if (isOpened)
 	{
-		auto manager = getManager();
-		auto cutoutComponent = manager->get<CutoutSpriteComponent>(entity);
+		auto cutoutComponent = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
 		renderSpriteComponent(*cutoutComponent);
 		ImGui::SliderFloat("Alpha Cutoff", &cutoutComponent->alphaCutoff, 0.0f, 1.0f);
 	}

@@ -23,7 +23,7 @@ class EcsEditorSystem final : public System
 {
 	bool showWindow = false;
 
-	EcsEditorSystem(Manager* manager);
+	EcsEditorSystem();
 	~EcsEditorSystem() final;
 
 	void init();

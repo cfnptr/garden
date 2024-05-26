@@ -27,7 +27,6 @@ using namespace garden;
 //**********************************************************************************************************************
 void FpvSystem::initialize()
 {
-	auto manager = getManager();
 	lastJumpTime = graphicsSystem->getTime();
 }
 void FpvSystem::update()
@@ -65,7 +64,7 @@ void FpvSystem::update()
 		lastTabState = false;
 	}
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto camera = graphicsSystem->camera;
 	auto transformComponent = manager->get<TransformComponent>(camera);
 	// auto hasRigidBody = manager->has<RigidBodyComponent>(camera);
@@ -204,9 +203,8 @@ void FpvSystem::update()
 //--------------------------------------------------------------------------------------------------
 void FpvSystem::onTrigger(const TriggerData& data)
 {
-	auto manager = getManager();
 	if (graphicsSystem->camera != data.triggerEntity ||
-		!manager->has<RigidBodyComponent>(graphicsSystem->camera))
+		!Manager::getInstance()->has<RigidBodyComponent>(graphicsSystem->camera))
 	{
 		return;
 	}
@@ -218,10 +216,10 @@ void FpvSystem::onTrigger(const TriggerData& data)
 }
 void FpvSystem::postSimulate()
 {
-	auto manager = getManager();
 	if (!graphicsSystem->camera)
 		return;
 
+	auto manager = Manager::getInstance();
 	auto camera = graphicsSystem->camera; quat rotation;
 	auto rigidBodyComponent = manager->tryGet<RigidBodyComponent>(camera);
 	if (!rigidBodyComponent)

@@ -24,16 +24,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-MeshRenderSystem::MeshRenderSystem(Manager* manager, bool useAsyncRecording) : System(manager)
+MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording)
 {
 	this->asyncRecording = useAsyncRecording;
 
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
 }
 MeshRenderSystem::~MeshRenderSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", MeshRenderSystem::init);
@@ -44,7 +45,7 @@ MeshRenderSystem::~MeshRenderSystem()
 //**********************************************************************************************************************
 void MeshRenderSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<ForwardRenderSystem>() || manager->has<DeferredRenderSystem>());
 
 	if (manager->has<ForwardRenderSystem>())
@@ -61,7 +62,7 @@ void MeshRenderSystem::init()
 }
 void MeshRenderSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		if (manager->has<ForwardRenderSystem>())
@@ -81,7 +82,7 @@ void MeshRenderSystem::deinit()
 //**********************************************************************************************************************
 void MeshRenderSystem::prepareSystems()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	const auto& systems = manager->getSystems();
 	meshSystems.clear();
 
@@ -136,10 +137,9 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		translucentIndices.resize(translucentMaxCount);
 	translucentIndex = 0;
 
-	auto manager = getManager();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto transformSystem = TransformSystem::getInstance();
-	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
+	auto graphicsEditorSystem = Manager::getInstance()->tryGet<GraphicsEditorSystem>();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto& transformData = transformSystem->getComponents();
@@ -447,7 +447,7 @@ void MeshRenderSystem::renderShadows()
 {
 	SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 
-	const auto& systems = getManager()->getSystems();
+	const auto& systems = Manager::getInstance()->getSystems();
 	for (const auto& pair : systems)
 	{
 		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(pair.second);

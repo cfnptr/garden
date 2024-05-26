@@ -60,10 +60,9 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 }
 
 //--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getHistogramUniforms(
-	Manager* manager, GraphicsSystem* graphicsSystem, ID<Buffer> histogramBuffer)
+static map<string, DescriptorSet::Uniform> getHistogramUniforms(ID<Buffer> histogramBuffer)
 {
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -73,8 +72,7 @@ static map<string, DescriptorSet::Uniform> getHistogramUniforms(
 	};
 	return uniforms;
 }
-static map<string, DescriptorSet::Uniform> getAverageUniforms(
-	Manager* manager, ID<Buffer> histogramBuffer)
+static map<string, DescriptorSet::Uniform> getAverageUniforms(ID<Buffer> histogramBuffer)
 {
 	auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
 	map<string, DescriptorSet::Uniform> uniforms =
@@ -97,8 +95,7 @@ static ID<ComputePipeline> createAveragePipeline()
 //--------------------------------------------------------------------------------------------------
 void AutoExposureRenderSystem::initialize()
 {
-	auto manager = getManager();
-	deferredSystem = manager->get<DeferredRenderSystem>();
+	deferredSystem = Manager::getInstance()->get<DeferredRenderSystem>();
 
 	if (!histogramBuffer)
 		histogramBuffer = createHistogramBuffer(getGraphicsSystem());
@@ -134,15 +131,13 @@ void AutoExposureRenderSystem::render()
 
 	if (!histogramDescriptorSet)
 	{
-		auto manager = getManager();
-		auto uniforms = getHistogramUniforms(
-			manager, graphicsSystem, histogramBuffer);
+		auto uniforms = getHistogramUniforms(histogramBuffer);
 		histogramDescriptorSet = graphicsSystem->createDescriptorSet(
 			histogramPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, histogramDescriptorSet,
 			"descriptorSet.auto-exposure.histogram");
 		
-		uniforms = getAverageUniforms(manager, histogramBuffer);
+		uniforms = getAverageUniforms(histogramBuffer);
 		averageDescriptorSet = graphicsSystem->createDescriptorSet(
 			averagePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, averageDescriptorSet,
@@ -195,7 +190,7 @@ void AutoExposureRenderSystem::recreateSwapchain(const SwapchainChanges& changes
 	{
 		auto graphicsSystem = getGraphicsSystem();
 		auto descriptorSetView = graphicsSystem->get(histogramDescriptorSet);
-		auto uniforms = getHistogramUniforms(getManager(), graphicsSystem, histogramBuffer);
+		auto uniforms = getHistogramUniforms(histogramBuffer);
 		descriptorSetView->recreate(std::move(uniforms));
 	}
 

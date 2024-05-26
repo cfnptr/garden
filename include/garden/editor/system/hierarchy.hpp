@@ -25,7 +25,7 @@ class HierarchyEditorSystem final : public System
 	bool searchCaseSensitive = false;
 	bool showWindow = false;
 
-	HierarchyEditorSystem(Manager* manager);
+	HierarchyEditorSystem();
 	~HierarchyEditorSystem() final;
 
 	void init();

@@ -26,8 +26,7 @@ using namespace garden;
 
 #if GARDEN_EDITOR
 //--------------------------------------------------------------------------------------------------
-static void onOpaqueEntityInspector(ID<Entity> entity,
-	Manager* manager, GeometryEditor* editor)
+static void onOpaqueEntityInspector(ID<Entity> entity, GeometryEditor* editor)
 {
 	if (ImGui::CollapsingHeader("Opaque Render"))
 	{
@@ -37,8 +36,7 @@ static void onOpaqueEntityInspector(ID<Entity> entity,
 }
 
 //--------------------------------------------------------------------------------------------------
-static void onOpaqueShadowEntityInspector(ID<Entity> entity,
-	Manager* manager, GeometryShadowEditor* editor)
+static void onOpaqueShadowEntityInspector(ID<Entity> entity, GeometryShadowEditor* editor)
 {
 	if (ImGui::CollapsingHeader("Opaque Shadow Render"))
 	{
@@ -100,9 +98,8 @@ psize OpaqueRenderSystem::getMeshComponentSize() const
 }
 ID<GraphicsPipeline> OpaqueRenderSystem::createPipeline()
 {
-	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"geometry/opaque", deferredSystem->getGFramebuffer(), true, true);
+		"geometry/opaque", DeferredRenderSystem::getInstance()->getGFramebuffer(), true, true);
 }
 
 //--------------------------------------------------------------------------------------------------

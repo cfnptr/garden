@@ -24,7 +24,7 @@ class InfiniteGridEditorSystem final : public System
 	ID<GraphicsPipeline> pipeline;
 	ID<DescriptorSet> descriptorSet;
 
-	InfiniteGridEditorSystem(Manager* manager);
+	InfiniteGridEditorSystem();
 	~InfiniteGridEditorSystem() final;
 
 	void init();

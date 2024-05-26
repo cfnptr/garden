@@ -128,10 +128,11 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 //**********************************************************************************************************************
 DeferredRenderSystem* DeferredRenderSystem::instance = nullptr;
 
-DeferredRenderSystem::DeferredRenderSystem(Manager* manager, bool useAsyncRecording) : System(manager)
+DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording)
 {
 	this->asyncRecording = useAsyncRecording;
 
+	auto manager = Manager::getInstance();
 	manager->registerEvent("PreDeferredRender");
 	manager->registerEvent("DeferredRender");
 	manager->registerEvent("PreHdrRender");
@@ -149,7 +150,7 @@ DeferredRenderSystem::DeferredRenderSystem(Manager* manager, bool useAsyncRecord
 }
 DeferredRenderSystem::~DeferredRenderSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderSystem::init);
@@ -172,10 +173,9 @@ DeferredRenderSystem::~DeferredRenderSystem()
 //**********************************************************************************************************************
 void DeferredRenderSystem::init()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	GARDEN_ASSERT(asyncRecording == graphicsSystem->useAsyncRecording());
+	GARDEN_ASSERT(asyncRecording == GraphicsSystem::getInstance()->useAsyncRecording());
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Render", DeferredRenderSystem::render);
 	SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 
@@ -195,7 +195,7 @@ void DeferredRenderSystem::init()
 }
 void DeferredRenderSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		auto graphicsSystem = GraphicsSystem::getInstance();
@@ -218,8 +218,10 @@ void DeferredRenderSystem::render()
 	if (!isEnabled || !GraphicsSystem::getInstance()->canRender())
 		return;
 	
+	auto manager = Manager::getInstance();
+
 	#if GARDEN_DEBUG
-	auto forwardSystem = getManager()->tryGet<ForwardRenderSystem>();
+	auto forwardSystem = manager->tryGet<ForwardRenderSystem>();
 	if (forwardSystem)
 	{
 		// Can not use deferred and forward render system at the same time.
@@ -227,7 +229,6 @@ void DeferredRenderSystem::render()
 	}
 	#endif
 
-	auto manager = getManager();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
@@ -333,7 +334,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		depthStencilAttachment.load = false;
 		framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
 
-		getManager()->runEvent("GBufferRecreate");
+		Manager::getInstance()->runEvent("GBufferRecreate");
 	}
 }
 

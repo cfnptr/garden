@@ -46,7 +46,7 @@ class DeferredRenderEditorSystem final : public System
 
 	static ID<Image> shadowPlaceholder;
 
-	DeferredRenderEditorSystem(Manager* manager);
+	DeferredRenderEditorSystem();
 	~DeferredRenderEditorSystem() final;
 
 	void init();

@@ -20,14 +20,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-LightingRenderEditorSystem::LightingRenderEditorSystem(Manager* manager) : System(manager)
+LightingRenderEditorSystem::LightingRenderEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", LightingRenderEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderEditorSystem::deinit);
 }
 LightingRenderEditorSystem::~LightingRenderEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderEditorSystem::init);
@@ -37,7 +38,7 @@ LightingRenderEditorSystem::~LightingRenderEditorSystem()
 
 void LightingRenderEditorSystem::init()
 {
-	GARDEN_ASSERT(getManager()->has<EditorRenderSystem>());
+	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
 	EditorRenderSystem::getInstance()->registerEntityInspector<LightingRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
@@ -54,7 +55,7 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 {
 	if (isOpened)
 	{
-		auto manager = getManager();
+		auto manager = Manager::getInstance();
 		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto lightingComponent = manager->get<LightingRenderComponent>(entity);
 

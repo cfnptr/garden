@@ -298,12 +298,11 @@ static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 }
 
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getLightingUniforms(Manager* manager, ID<Image> dfgLUT,
+static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 	ID<ImageView> shadowImageViews[shadowBufferCount], ID<ImageView> aoImageViews[aoBufferCount])
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 
@@ -338,9 +337,9 @@ static map<string, DescriptorSet::Uniform> getAoDenoiseUniforms(
 	return uniforms;
 }
 
-static ID<GraphicsPipeline> createLightingPipeline(Manager* manager, bool useShadowBuffer, bool useAoBuffer)
+static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool useAoBuffer)
 {
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	map<string, Pipeline::SpecConstValue> specConstValues =
 	{
 		{ "USE_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
@@ -361,12 +360,12 @@ static ID<GraphicsPipeline> createAoDenoisePipeline(const ID<Framebuffer> aoFram
 }
 
 //**********************************************************************************************************************
-static ID<Image> createDfgLUT(Manager* manager)
+static ID<Image> createDfgLUT()
 {
 	auto pixels = malloc<float2>(iblDfgSize * iblDfgSize);
 
 	// TODO: check if release build DFG image looks the same as debug.
-	auto threadSystem = manager->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
@@ -401,17 +400,18 @@ static ID<Image> createDfgLUT(Manager* manager)
 }
 
 //**********************************************************************************************************************
-LightingRenderSystem::LightingRenderSystem(Manager* manager, bool useShadowBuffer, bool useAoBuffer) : System(manager)
+LightingRenderSystem::LightingRenderSystem(bool useShadowBuffer, bool useAoBuffer)
 {
 	this->hasShadowBuffer = useShadowBuffer;
 	this->hasAoBuffer = useAoBuffer;
 
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", LightingRenderSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderSystem::deinit);
 }
 LightingRenderSystem::~LightingRenderSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderSystem::init);
@@ -422,7 +422,7 @@ LightingRenderSystem::~LightingRenderSystem()
 //**********************************************************************************************************************
 void LightingRenderSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<DeferredRenderSystem>());
 
 	SUBSCRIBE_TO_EVENT("PreHdrRender", LightingRenderSystem::preHdrRender);
@@ -430,7 +430,7 @@ void LightingRenderSystem::init()
 	SUBSCRIBE_TO_EVENT("GBufferRecreate", LightingRenderSystem::gBufferRecreate);
 
 	if (!dfgLUT)
-		dfgLUT = createDfgLUT(manager);
+		dfgLUT = createDfgLUT();
 
 	if (hasShadowBuffer)
 	{
@@ -450,13 +450,13 @@ void LightingRenderSystem::init()
 	}	
 
 	if (!lightingPipeline)
-		lightingPipeline = createLightingPipeline(manager, hasShadowBuffer, hasAoBuffer);
+		lightingPipeline = createLightingPipeline(hasShadowBuffer, hasAoBuffer);
 	if (!iblSpecularPipeline)
 		iblSpecularPipeline = createIblSpecularPipeline();
 }
 void LightingRenderSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		auto graphicsSystem = GraphicsSystem::getInstance();
@@ -481,13 +481,13 @@ void LightingRenderSystem::preHdrRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	deferredSystem = manager->get<DeferredRenderSystem>();
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	if (pipelineView->isReady() && !lightingDescriptorSet)
 	{
-		auto uniforms = getLightingUniforms(manager, dfgLUT, shadowImageViews, aoImageViews);
+		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
 		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, lightingDescriptorSet, "descriptorSet.lighting.base");
 	}
@@ -589,14 +589,13 @@ void LightingRenderSystem::preHdrRender()
 //**********************************************************************************************************************
 void LightingRenderSystem::hdrRender()
 {
-	auto manager = getManager();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	auto dfgLutView = graphicsSystem->get(dfgLUT);
 	if (!graphicsSystem->camera || !pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
 		return;
 
-	auto lightingComponent = manager->tryGet<LightingRenderComponent>(graphicsSystem->camera);
+	auto lightingComponent = Manager::getInstance()->tryGet<LightingRenderComponent>(graphicsSystem->camera);
 	if (!lightingComponent || !lightingComponent->cubemap || !lightingComponent->sh || !lightingComponent->specular)
 		return;
 
@@ -690,7 +689,7 @@ void LightingRenderSystem::gBufferRecreate()
 	if (lightingDescriptorSet)
 	{
 		auto descriptorSetView = graphicsSystem->get(lightingDescriptorSet);
-		auto uniforms = getLightingUniforms(getManager(), dfgLUT, shadowImageViews, aoImageViews);
+		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
 		descriptorSetView->recreate(std::move(uniforms));
 	}
 	if (aoDenoiseDescriptorSet)
@@ -708,7 +707,7 @@ type_index LightingRenderSystem::getComponentType() const
 }
 ID<Component> LightingRenderSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<CameraComponent>(entity));
+	GARDEN_ASSERT(Manager::getInstance()->has<CameraComponent>(entity));
 	return ID<Component>(components.create());
 }
 void LightingRenderSystem::destroyComponent(ID<Component> instance)
@@ -783,14 +782,14 @@ void LightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	}
 
 	graphicsSystem->destroy(lightingPipeline);
-	lightingPipeline = createLightingPipeline(getManager(), useShadowBuffer, useAoBuffer);
+	lightingPipeline = createLightingPipeline(useShadowBuffer, useAoBuffer);
 }
 
 //**********************************************************************************************************************
 ID<GraphicsPipeline> LightingRenderSystem::getLightingPipeline()
 {
 	if (!lightingPipeline)
-		lightingPipeline = createLightingPipeline(getManager(), hasShadowBuffer, hasAoBuffer);
+		lightingPipeline = createLightingPipeline(hasShadowBuffer, hasAoBuffer);
 	return lightingPipeline;
 }
 ID<ComputePipeline> LightingRenderSystem::getIblSpecularPipeline()
@@ -823,7 +822,7 @@ const ID<Framebuffer>* LightingRenderSystem::getAoFramebuffers()
 ID<Image> LightingRenderSystem::getDfgLUT()
 {
 	if (!dfgLUT)
-		dfgLUT = createDfgLUT(getManager());
+		dfgLUT = createDfgLUT();
 	return dfgLUT;
 }
 ID<Image> LightingRenderSystem::getShadowBuffer()
@@ -1069,7 +1068,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: rewrite with tryGet. Propagate to generateIblSH and generateIblSpecular.
-	auto threadSystem = getManager()->get<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->get<ThreadSystem>();
 	auto& threadPool = threadSystem->getForegroundPool();
 
 	vector<uint8> left, right, bottom, top, back, front;

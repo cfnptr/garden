@@ -35,8 +35,9 @@ using namespace garden;
 //**********************************************************************************************************************
 EditorRenderSystem* EditorRenderSystem::instance = nullptr;
 
-EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
+EditorRenderSystem::EditorRenderSystem()
 {
+	auto manager = Manager::getInstance();
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
@@ -50,7 +51,7 @@ EditorRenderSystem::EditorRenderSystem(Manager* manager) : System(manager)
 }
 EditorRenderSystem::~EditorRenderSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", EditorRenderSystem::init);
@@ -86,7 +87,7 @@ void EditorRenderSystem::showMainMenuBar()
 		ImGui::EndMenu();
 	}
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (ImGui::BeginMenu("File"))
 	{
 		auto hasTransformSystem = manager->has<TransformSystem>();
@@ -180,7 +181,7 @@ void EditorRenderSystem::showAboutWindow()
 		ImGui::Text("Version: %s", engineVersion.c_str());
 		ImGui::Text("Creator: Nikita Fediuchin");
 
-		auto appInfoSystem = getManager()->tryGet<AppInfoSystem>();
+		auto appInfoSystem = Manager::getInstance()->tryGet<AppInfoSystem>();
 		if (appInfoSystem)
 		{
 			auto appVersion = appInfoSystem->getVersion().toString3();
@@ -208,7 +209,7 @@ void EditorRenderSystem::showAboutWindow()
 				to_string(VK_API_VERSION_PATCH(apiVersion));
 			ImGui::Text("Vulkan API: %s", apiString.c_str());
 
-			auto graphicsSystem = getManager()->tryGet<GraphicsSystem>();
+			auto graphicsSystem = Manager::getInstance()->tryGet<GraphicsSystem>();
 			if (graphicsSystem)
 			{
 				auto framebufferSize = graphicsSystem->getFramebufferSize();
@@ -242,7 +243,7 @@ void EditorRenderSystem::showOptionsWindow()
 {
 	if (ImGui::Begin("Options", &optionsWindow))
 	{
-		auto manager = getManager();
+		auto manager = Manager::getInstance();
 		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto settingsSystem = manager->tryGet<SettingsSystem>();
 
@@ -351,7 +352,7 @@ void EditorRenderSystem::showEntityInspector()
 	auto showEntityInspector = true;
 	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
-		auto manager = getManager();
+		auto manager = Manager::getInstance();
 		auto entity = manager->getEntities().get(selectedEntity);
 		auto& components = entity->getComponents();
 
@@ -400,7 +401,7 @@ void EditorRenderSystem::showEntityInspector()
 			{
 				if (manager->has<TransformComponent>(selectedEntity))
 				{
-					TransformSystem::getInstance()->destroyRecursive(selectedEntity);
+					TransformSystem::destroyRecursive(selectedEntity);
 				}
 				else
 				{
@@ -533,6 +534,52 @@ void EditorRenderSystem::showExportScene()
 }
 
 //**********************************************************************************************************************
+static bool isHasDirectories(const fs::path& path)
+{
+	auto dirIterator = fs::directory_iterator(path);
+	for (const auto& entry : dirIterator)
+	{
+		if (entry.is_directory())
+			return true;
+	}
+	return false;
+}
+static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
+{
+	auto dirIterator = fs::directory_iterator(path);
+	for (const auto& entry : dirIterator)
+	{
+		if (!entry.is_directory())
+			continue;
+
+		auto hasDirectories = isHasDirectories(entry.path());
+		auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
+		if (!hasDirectories)
+			flags |= (int)ImGuiTreeNodeFlags_Leaf;
+		if (selectedEntry == entry.path())
+			flags |= (int)ImGuiTreeNodeFlags_Selected;
+
+		auto filename = entry.path().filename().generic_string();
+		if (ImGui::TreeNodeEx(filename.c_str(), flags))
+		{
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				selectedEntry = entry.path();
+
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem("Copy Name"))
+					ImGui::SetClipboardText(filename.c_str());
+				ImGui::EndPopup();
+			}
+
+			if (hasDirectories)
+				renderDirectory(entry.path(), selectedEntry); // TODO: use stack instead of recursion here!
+			ImGui::TreePop();
+		}
+	}
+}
+
+//**********************************************************************************************************************
 void EditorRenderSystem::showFileSelector()
 {
 	if (!ImGui::IsPopupOpen("File Selector"))
@@ -541,10 +588,118 @@ void EditorRenderSystem::showFileSelector()
 	auto size = ImVec2(ImGui::GetIO().DisplaySize.x / 2.0f, ImGui::GetIO().DisplaySize.y / 2.0f);
 	ImGui::SetNextWindowPos(size, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
-	if (ImGui::BeginPopupModal("File Selector", nullptr, ImGuiWindowFlags_NoMove)) // TODO:
+	if (ImGui::BeginPopupModal("File Selector", nullptr, ImGuiWindowFlags_NoMove))
 	{
+		ImGui::BeginChild("##itemList", ImVec2(256.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)),
+			ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
+		
+		if (fs::exists(fileSelectDirectory) && fs::is_directory(fileSelectDirectory))
+		{
+			ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+			renderDirectory(fileSelectDirectory, selectedEntry);
+			ImGui::PopStyleColor();
+		}
+
+		ImGui::EndChild();
+		ImGui::SameLine();
+
+		ImGui::BeginChild("##itemView", ImVec2(0.0f,
+			-(ImGui::GetFrameHeightWithSpacing() + 4.0f)), ImGuiChildFlags_Border);
+
+		if (fs::exists(selectedEntry) && fs::is_directory(selectedEntry))
+		{
+			ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+			auto dirIterator = fs::directory_iterator(selectedEntry);
+
+			psize longestFilename = 0;
+			for (const auto& entry : dirIterator)
+			{
+				if (entry.is_directory() || fileExtensions.find(
+					entry.path().extension().generic_string()) == fileExtensions.end())
+				{
+					continue;
+				}
+
+				auto lenght = entry.path().filename().generic_string().length();
+				if (lenght > longestFilename)
+					longestFilename = lenght;
+			}
+			
+			if (longestFilename > 0)
+			{
+				longestFilename += 4;
+				dirIterator = fs::directory_iterator(selectedEntry);
+				for (const auto& entry : dirIterator)
+				{
+					if (entry.is_directory() || fileExtensions.find(
+						entry.path().extension().generic_string()) == fileExtensions.end())
+					{
+						continue;
+					}
+
+					auto filename = entry.path().filename().generic_string();
+					if (!entry.is_directory())
+					{
+						filename += string(longestFilename - filename.length(), ' ');
+						filename += toBinarySizeString(entry.file_size()); // TODO: Also render last modify date and file type.
+					}
+
+					auto flags = (int)ImGuiTreeNodeFlags_Leaf;
+					if (selectedFile == entry.path())
+						flags |= (int)ImGuiTreeNodeFlags_Selected;
+
+					if (ImGui::TreeNodeEx(filename.c_str(), flags))
+					{
+						if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+							selectedFile = entry.path();
+						if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+							ImGui::IsItemHovered() && fs::is_directory(entry.path()))
+						{
+							selectedEntry = entry.path();
+						}
+						if (ImGui::BeginPopupContextItem())
+						{
+							if (ImGui::MenuItem("Copy Name"))
+								ImGui::SetClipboardText(filename.c_str());
+							// TODO: open in file explorer (cross-platform solution).
+							ImGui::EndPopup();
+						}
+						ImGui::TreePop();
+					}
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled("No suitable files.");
+			}
+			ImGui::PopStyleColor();
+		}
+
+		ImGui::EndChild();
+		ImGui::Spacing();
+
+		auto filePath = selectedFile.generic_string();
+		ImGui::SetNextItemWidth(std::max(ImGui::GetWindowWidth() - 190.0f, 128.0f));
+		ImGui::InputText("File", &filePath, ImGuiInputTextFlags_ReadOnly);
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!fs::exists(selectedFile) || fs::is_directory(selectedFile));
 		if (ImGui::Button("Select"))
-			onFileSelect("");
+		{
+			auto dir = fileSelectDirectory.generic_string() + "/";
+			auto path = selectedFile.generic_string();
+			auto it = path.find(dir);
+			if (it != std::string::npos)
+				path.erase(it, dir.length());
+			onFileSelect(path);
+			fileSelectDirectory = "";
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+			fileSelectDirectory = "";
+
 		ImGui::EndPopup();
 	}
 }
@@ -552,13 +707,13 @@ void EditorRenderSystem::showFileSelector()
 //**********************************************************************************************************************
 void EditorRenderSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	manager->registerEventBefore("EditorRender", "Present");
 	SUBSCRIBE_TO_EVENT("EditorRender", EditorRenderSystem::editorRender);
 }
 void EditorRenderSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", EditorRenderSystem::editorRender);
@@ -591,10 +746,11 @@ void EditorRenderSystem::editorRender()
 
 //**********************************************************************************************************************
 void EditorRenderSystem::openFileSelector(const std::function<void(const fs::path&)>& onSelect, 
-	const fs::path& directory, const vector<string>& extensions)
+	const fs::path& directory, const set<string>& extensions)
 {
 	auto appInfoSystem = AppInfoSystem::getInstance();
 	fileSelectDirectory = directory.empty() ? appInfoSystem->getResourcesPath() : directory;
+	fileExtensions = extensions;
 	onFileSelect = onSelect;
 }
 #endif

@@ -71,15 +71,16 @@ namespace
 }
 
 //**********************************************************************************************************************
-MeshGizmosEditorSystem::MeshGizmosEditorSystem(Manager* manager) : System(manager)
+MeshGizmosEditorSystem::MeshGizmosEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 	
 }
 MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
@@ -90,7 +91,7 @@ MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
@@ -119,7 +120,7 @@ void MeshGizmosEditorSystem::init()
 }
 void MeshGizmosEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		auto graphicsSystem = GraphicsSystem::getInstance();
@@ -211,7 +212,7 @@ void MeshGizmosEditorSystem::editorRender()
 	if (!inputSystem->getMouseState(MouseButton::Left))
 		dragMode = 0;
 	
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto transform = manager->tryGet<TransformComponent>(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
@@ -334,7 +335,7 @@ void MeshGizmosEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Mesh Gizmos"))
 	{
-		auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+		auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled);
 

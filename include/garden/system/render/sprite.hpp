@@ -46,18 +46,18 @@ public:
 		float4x4 mvp = float4x4(0.0f);
 	};
 protected:
-	/**
-	 * @brief Creates a new sprite rendering system instance.
-	 * @param[in,out] manager manager instance
-	 */
-	SpriteRenderSystem(Manager* manager) : InstanceRenderSystem(manager) { }
-	
+	void init() override;
+	void deinit() override;
+
+	virtual void imageLoaded();
+
 	bool isDrawReady() override;
 	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	void setDescriptorSetRange(MeshRenderComponent* meshRenderComponent,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
+	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
 	void destroyResources(SpriteRenderComponent* spriteComponent);
 public:

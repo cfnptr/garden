@@ -37,7 +37,9 @@ using namespace garden::graphics;
  * 
  * @details
  * Manages the process of loading, and also the organization of various game assets or resources such as 
- * images or textures, models, shaders, audio or sound files, scenes and other data that games need to run. 
+ * images or textures, models, shaders, audio or sound files, scenes and other data that games need to run.
+ * 
+ * Registers events: ImageLoaded, BufferLoaded.
  */
 class ResourceSystem : public System
 {
@@ -71,6 +73,8 @@ protected:
 	queue<BufferQueueItem> bufferQueue;
 	queue<ImageQueueItem> imageQueue;
 	mutex queueLocker;
+	ID<Buffer> loadedBuffer = {};
+	ID<Image> loadedImage = {};
 
 	#if GARDEN_DEBUG
 	fs::path appResourcesPath;
@@ -84,16 +88,15 @@ protected:
 
 	/**
 	 * @brief Creates a new resource system instance.
-	 * @param manager valid manager instance
 	 */
-	ResourceSystem(Manager* manager);
+	ResourceSystem();
 	/**
 	 * @brief Destroys resource system instance.
 	 */
 	~ResourceSystem() override;
 
 	void dequeuePipelines();
-	void dequeueBuffers();
+	void dequeueBuffersAndImages();
 
 	void init();
 	void deinit();
@@ -158,6 +161,12 @@ public:
 	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 0, uint8 downscaleCount = 0,
 		Image::Strategy strategy = Buffer::Strategy::Default, bool linearData = false, bool loadAsync = true);
 
+	/**
+	 * @brief Returns current loaded image isntance.
+	 * @details Useful inside "ImageLoaded" event.
+	 */
+	ID<Image> getLoadedImage() const noexcept { return loadedImage; }
+
 	/*******************************************************************************************************************
 	 * @brief Loads graphics pipeline from the resource pack shaders.
 	 * 
@@ -168,26 +177,49 @@ public:
 	 * @param subpassIndex framebuffer subpass index
 	 * @param maxBindlessCount maximum bindless descriptor count
 	 * @param[in] specConsts specialization constants array or empty
+	 * @param[in] samplerStateOverrides sampler state override array or empty
 	 * @param[in] stateOverrides pipeline state override array or empty
 	 */
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
 		ID<Framebuffer> framebuffer, bool useAsyncRecording = false,
 		bool loadAsync = true, uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
 		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
+		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {},
 		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
 	
 	/**
 	 * @brief Loads compute pipeline from the resource pack shaders.
 	 * 
-	 * @param path target compute pipeline path
+	 * @param[in] path target compute pipeline path
 	 * @param useAsyncRecording can be used for multithreaded commands recording
 	 * @param loadAsync load pipeline asynchronously without blocking
 	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param specConsts specialization constants array or empty
+	 * @param[in] specConsts specialization constants array or empty
+	 * @param[in] samplerStateOverrides sampler state override array or empty
 	 */
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const map<string, Pipeline::SpecConstValue>& specConstValues = {});
+		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
+		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {});
+
+	/* TODO: refactor
+	shared_ptr<Model> loadModel(const fs::path& path);
+	void loadModelBuffers(shared_ptr<Model> model);
+
+	Ref<Buffer> loadBuffer(shared_ptr<Model> model, ModelData::Accessor accessor,
+		Buffer::Bind bind, Buffer::Access access = Buffer::Access::None,
+		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true); // TODO: offset, count?
+	Ref<Buffer> loadVertexBuffer(shared_ptr<Model> model, ModelData::Primitive primitive,
+		Buffer::Bind bind, const vector<ModelData::Attribute::Type>& attributes,
+		Buffer::Access access = Buffer::Access::None,
+		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true);
+	*/
+
+	/**
+	 * @brief Returns current loaded buffer isntance.
+	 * @details Useful inside "BufferLoaded" event.
+	 */
+	ID<Buffer> getLoadedBuffer() const noexcept { return loadedBuffer; }
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
@@ -204,20 +236,7 @@ public:
 	 */
 	void clearScene();
 
-	#if GARDEN_DEBUG
-	/* TODO: refactor
-	shared_ptr<Model> loadModel(const fs::path& path);
-	void loadModelBuffers(shared_ptr<Model> model);
-
-	Ref<Buffer> loadBuffer(shared_ptr<Model> model, ModelData::Accessor accessor,
-		Buffer::Bind bind, Buffer::Access access = Buffer::Access::None,
-		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true); // TODO: offset, count?
-	Ref<Buffer> loadVertexBuffer(shared_ptr<Model> model, ModelData::Primitive primitive,
-		Buffer::Bind bind, const vector<ModelData::Attribute::Type>& attributes,
-		Buffer::Access access = Buffer::Access::None,
-		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true);
-	*/
-	#else
+	#if !GARDEN_DEBUG
 	/**
 	 * @brief Returns pack reader instance.
 	 * @warning Use with caution, background task are using it at runtime.
@@ -227,7 +246,6 @@ public:
 
 	/**
 	 * @brief Returns resource system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static ResourceSystem* getInstance() noexcept
 	{

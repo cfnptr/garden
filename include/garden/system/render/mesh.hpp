@@ -136,11 +136,9 @@ class MeshRenderSystem final : public System
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.
-	 * 
-	 * @param[in,out] manager manager instance
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	MeshRenderSystem(Manager* manager, bool useAsyncRecording = true);
+	MeshRenderSystem(bool useAsyncRecording = true);
 	/**
 	 * @brief Destroys mesh rendering system instance.
 	 */

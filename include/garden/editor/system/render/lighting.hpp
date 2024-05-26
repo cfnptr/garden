@@ -23,7 +23,7 @@ using namespace garden::graphics;
 
 class LightingRenderEditorSystem final : public System
 {
-	LightingRenderEditorSystem(Manager* manager);
+	LightingRenderEditorSystem();
 	~LightingRenderEditorSystem() final;
 
 	void init();

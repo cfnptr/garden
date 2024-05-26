@@ -37,9 +37,8 @@ class Controller2DSystem final : public System
 
 	/**
 	 * @brief Creates a new 2D view controller system instance.
-	 * @param[in,out] manager manager instance
 	 */
-	Controller2DSystem(Manager* manager);
+	Controller2DSystem();
 	/**
 	 * @brief Destroys 2D view controller system instance.
 	 */

@@ -53,9 +53,8 @@ class SettingsSystem final : public System
 
 	/**
 	 * @brief Creates a new settings system instance.
-	 * @param[in,out] manager manager instance
 	 */
-	SettingsSystem(Manager* manager);
+	SettingsSystem();
 	/**
 	 * @brief Destroys settings system instance.
 	 */

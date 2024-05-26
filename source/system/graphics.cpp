@@ -182,13 +182,14 @@ static ID<ImageView> createDepthStencilBuffer(GraphicsSystem* graphicsSystem, in
 //**********************************************************************************************************************
 GraphicsSystem* GraphicsSystem::instance = nullptr;
 
-GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, Image::Format depthStencilFormat,
-	bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useAsyncRecording) : System(manager)
+GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat,
+	bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useAsyncRecording)
 {
 	this->useVsync = useVsync;
 	this->useTripleBuffering = useTripleBuffering;
 	this->asyncRecording = useAsyncRecording;
 
+	auto manager = Manager::getInstance();
 	manager->registerEventAfter("Render", "Update");
 	manager->registerEventAfter("Present", "Render");
 	manager->registerEvent("SwapchainRecreate");
@@ -233,7 +234,7 @@ GraphicsSystem::GraphicsSystem(Manager* manager, int2 windowSize, Image::Format 
 }
 GraphicsSystem::~GraphicsSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		// Note: constants buffers and other resources will destroyed by terminating graphics API.
@@ -260,7 +261,7 @@ GraphicsSystem::~GraphicsSystem()
 //**********************************************************************************************************************
 void GraphicsSystem::preInit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<InputSystem>());
 	SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 
@@ -298,7 +299,7 @@ void GraphicsSystem::preDeinit()
 {
 	Vulkan::device.waitIdle();
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
@@ -311,10 +312,11 @@ static float4x4 calcView(const TransformComponent* transform)
 	return rotate(normalize(transform->rotation)) * translate(
 		scale(transform->scale), -transform->position);
 }
-static float4x4 calcRelativeView(Manager* manager, const TransformComponent* transform)
+static float4x4 calcRelativeView(const TransformComponent* transform)
 {
 	auto view = calcView(transform);
 	auto nextParent = transform->getParent();
+	auto manager = Manager::getInstance();
 
 	while (nextParent)
 	{
@@ -379,13 +381,14 @@ static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 }
 
 //**********************************************************************************************************************
-static void prepareCameraConstants(Manager* manager, ID<Entity> camera,
-	ID<Entity> directionalLight, int2 scaledFramebufferSize, CameraConstants& cameraConstants)
+static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLight,
+	int2 scaledFramebufferSize, CameraConstants& cameraConstants)
 {
+	auto manager = Manager::getInstance();
 	auto transformComponent = manager->tryGet<TransformComponent>(camera);
 	if (transformComponent)
 	{
-		cameraConstants.view = calcRelativeView(manager, *transformComponent);
+		cameraConstants.view = calcRelativeView(*transformComponent);
 		setTranslation(cameraConstants.view, float3(0.0f));
 		cameraConstants.cameraPos = float4(transformComponent->position, 0.0f);
 	}
@@ -457,7 +460,7 @@ void GraphicsSystem::update()
 	swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
 	swapchainChanges.vsyncState |= newSwapchainChanges.vsyncState;
 	
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto logSystem = manager->tryGet<LogSystem>();
 
 	if (swapchainRecreated)
@@ -513,7 +516,7 @@ void GraphicsSystem::update()
 
 	if (camera)
 	{
-		prepareCameraConstants(manager, camera, directionalLight,
+		prepareCameraConstants(camera, directionalLight,
 			getScaledFramebufferSize(), currentCameraConstants);
 		auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
 		auto cameraBuffer = GraphicsAPI::bufferPool.get(
@@ -562,7 +565,7 @@ void GraphicsSystem::present()
 	{
 		if (!Vulkan::swapchain.present())
 		{
-			auto logSystem = getManager()->tryGet<LogSystem>();
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->warn("Out fo date or suboptimal swapchain.");
 		}

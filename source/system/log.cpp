@@ -30,7 +30,7 @@ using namespace garden;
 //**********************************************************************************************************************
 LogSystem* LogSystem::instance = nullptr;
 
-LogSystem::LogSystem(Manager* manager, LogLevel level, double rotationTime) : System(manager)
+LogSystem::LogSystem(LogLevel level, double rotationTime)
 {
 	auto appInfoSystem = AppInfoSystem::getInstance();
 	this->logger = logy::Logger(appInfoSystem->getAppDataName(),
@@ -63,7 +63,7 @@ void LogSystem::log(LogLevel level, const string& message) noexcept
 	logger.log(level, "%.*s", message.length(), message.c_str());
 
 	#if GARDEN_EDITOR
-	auto logEditorSystem = getManager()->tryGet<LogEditorSystem>();
+	auto logEditorSystem = Manager::getInstance()->tryGet<LogEditorSystem>();
 	if (logEditorSystem)
 		logEditorSystem->log(level, message);
 	#endif

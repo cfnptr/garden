@@ -21,14 +21,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-MeshSelectorEditorSystem::MeshSelectorEditorSystem(Manager* manager) : System(manager)
+MeshSelectorEditorSystem::MeshSelectorEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 }
 MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
@@ -38,7 +39,7 @@ MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 
 void MeshSelectorEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
@@ -50,7 +51,7 @@ void MeshSelectorEditorSystem::init()
 }
 void MeshSelectorEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
@@ -65,7 +66,7 @@ void MeshSelectorEditorSystem::editorRender()
 	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto inputSystem = InputSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
@@ -174,7 +175,7 @@ void MeshSelectorEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Mesh Selector"))
 	{
-		auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+		auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled);
 

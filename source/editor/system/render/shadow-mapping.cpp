@@ -30,10 +30,9 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getCascadesUniforms(
-	Manager* manager, GraphicsSystem* graphicsSystem)
+static map<string, DescriptorSet::Uniform> getCascadesUniforms()
 {
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());		
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -114,8 +113,7 @@ void ShadowMappingEditor::render()
 		{
 			if (!cascadesDescriptorSet)
 			{
-				auto uniforms = getCascadesUniforms(
-					getManager(), graphicsSystem);
+				auto uniforms = getCascadesUniforms();
 				cascadesDescriptorSet = graphicsSystem->createDescriptorSet(
 					cascadesPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, cascadesDescriptorSet,

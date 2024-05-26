@@ -93,11 +93,11 @@ class LightingRenderSystem final : public System
 
 	/**
 	 * @brief Creates a new lighting rendering system instance.
-	 * @param[in,out] manager manager instance
+	 * 
 	 * @param useShadowBuffer use shadow buffer for rendering
 	 * @param useAoBuffer use ambient occlusion buffer for rendering
 	 */
-	LightingRenderSystem(Manager* manager, bool useShadowBuffer = false, bool useAoBuffer = false);
+	LightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false);
 	/**
 	 * @brief Destroys lighting rendering system instance.
 	 */

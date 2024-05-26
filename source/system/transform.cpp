@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: use stacks instead of recursion, potentially unsafe!
-
 #include "garden/system/transform.hpp"
 
 #if GARDEN_EDITOR
@@ -30,6 +28,7 @@ using namespace garden;
 bool TransformComponent::destroy()
 {
 	GARDEN_ASSERT(entity);
+	auto manager = Manager::getInstance();
 
 	if (parent)
 	{
@@ -68,6 +67,7 @@ REMOVED_FROM_PARENT:
 //**********************************************************************************************************************
 float4x4 TransformComponent::calcModel() const noexcept
 {
+	auto manager = Manager::getInstance();
 	auto model = ::calcModel(position, rotation, this->scale);
 
 	auto nextParent = parent;
@@ -91,14 +91,14 @@ void TransformComponent::setParent(ID<Entity> parent)
 	#if GARDEN_DEBUG
 	if (parent)
 	{
-		auto parentTransform = manager->get<TransformComponent>(parent);
+		auto parentTransform = Manager::getInstance()->get<TransformComponent>(parent);
 		GARDEN_ASSERT(!parentTransform->hasAncestor(entity));
 	}
 	#endif
 
 	if (this->parent)
 	{
-		auto parentTransform = manager->get<TransformComponent>(this->parent);
+		auto parentTransform = Manager::getInstance()->get<TransformComponent>(this->parent);
 		auto parentChildCount = parentTransform->childCount;
 		auto parentChilds = parentTransform->childs;
 
@@ -119,7 +119,7 @@ REMOVED_FROM_PARENT:
 
 	if (parent)
 	{
-		auto parentTransform = manager->get<TransformComponent>(parent);
+		auto parentTransform = Manager::getInstance()->get<TransformComponent>(parent);
 		if (parentTransform->childCount == parentTransform->childCapacity)
 		{
 			if (parentTransform->childs)
@@ -148,6 +148,8 @@ void TransformComponent::addChild(ID<Entity> child)
 {
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
+	auto manager = Manager::getInstance();
+
 	auto childTransform = manager->get<TransformComponent>(child);
 	if (childTransform->parent == entity)
 		return;
@@ -159,8 +161,7 @@ void TransformComponent::addChild(ID<Entity> child)
 
 	if (childTransform->parent)
 	{
-		auto parentTransform = manager->get<TransformComponent>(
-			childTransform->parent);
+		auto parentTransform = manager->get<TransformComponent>(childTransform->parent);
 		auto parentChildCount = parentTransform->childCount;
 		auto parentChilds = parentTransform->childs;
 
@@ -205,7 +206,7 @@ void TransformComponent::removeChild(ID<Entity> child)
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
 
-	auto childTransform = manager->get<TransformComponent>(child);
+	auto childTransform = Manager::getInstance()->get<TransformComponent>(child);
 	for (uint32 i = 0; i < childCount; i++)
 	{
 		if (childs[i] != entity)
@@ -226,6 +227,7 @@ void TransformComponent::removeChild(uint32 index)
 }
 void TransformComponent::removeAllChilds()
 {
+	auto manager = Manager::getInstance();
 	for (uint32 i = 0; i < childCount; i++)
 	{
 		auto childTransform = manager->get<TransformComponent>(childs[i]);
@@ -246,6 +248,7 @@ bool TransformComponent::hasChild(ID<Entity> child) const noexcept
 }
 bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 {
+	auto manager = Manager::getInstance();
 	auto nextParent = parent;
 	while (nextParent)
 	{
@@ -258,28 +261,38 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 }
 
 //**********************************************************************************************************************
-static bool hasBakedTransform(Manager* manager, ID<Entity> entity)
-{
-	if (manager->has<BakedTransformComponent>(entity))
-		return true;
-
-	auto transformComponent = manager->get<TransformComponent>(entity);
-	for (uint32 i = 0; i < transformComponent->getChildCount(); i++)
-	{
-		if (hasBakedTransform(manager, transformComponent->getChilds()[i]))
-			return true;
-	}
-	return false;
-}
 bool TransformComponent::hasBaked() const noexcept
 {
-	return hasBakedTransform(manager, entity);
+	static vector<ID<Entity>> transformStack;
+	transformStack.push_back(entity);
+
+	auto manager = Manager::getInstance();
+	while (!transformStack.empty())
+	{
+		auto transform = transformStack.back();
+		transformStack.pop_back();
+
+		if (manager->has<BakedTransformComponent>(transform))
+		{
+			transformStack.clear();
+			return true;
+		}
+
+		auto transformComponent = manager->get<TransformComponent>(transform);
+		auto childCount = transformComponent->getChildCount();
+		auto childs = transformComponent->getChilds();
+		
+		for (uint32 i = 0; i < childCount; i++)
+			transformStack.push_back(childs[i]);
+	}
+
+	return false;
 }
 
 //**********************************************************************************************************************
 TransformSystem* TransformSystem::instance = nullptr;
 
-TransformSystem::TransformSystem(Manager* manager) : System(manager)
+TransformSystem::TransformSystem()
 {
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
@@ -310,19 +323,14 @@ ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 {
 	auto component = components.create();
 	auto componentView = components.get(component);
-	componentView->manager = getManager();
 	return ID<Component>(component);
 }
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
 	#if GARDEN_EDITOR
-	static TransformEditorSystem* transformEditor = nullptr;
-	if (!transformEditor)
-		transformEditor = getManager()->get<TransformEditorSystem>();
 	auto component = components.get(ID<TransformComponent>(instance));
-	transformEditor->onEntityDestroy(component->entity);
+	TransformEditorSystem::getInstance()->onEntityDestroy(component->entity);
 	#endif
-
 	components.destroy(ID<TransformComponent>(instance));
 }
 View<Component> TransformSystem::getComponent(ID<Component> instance)
@@ -334,7 +342,6 @@ void TransformSystem::disposeComponents() { components.dispose(); }
 //**********************************************************************************************************************
 void TransformSystem::serialize(ISerializer& serializer, ID<Component> component)
 {
-	auto manager = getManager();
 	auto transformComponent = components.get(ID<TransformComponent>(component));
 	serializer.write("position", transformComponent->position);
 	serializer.write("rotation", transformComponent->rotation);
@@ -342,7 +349,6 @@ void TransformSystem::serialize(ISerializer& serializer, ID<Component> component
 }
 void TransformSystem::deserialize(IDeserializer& deserializer, ID<Component> component)
 {
-	auto manager = getManager();
 	auto transformComponent = components.get(ID<TransformComponent>(component));
 	deserializer.read("position", transformComponent->position);
 	deserializer.read("rotation", transformComponent->rotation);
@@ -350,30 +356,46 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Component> com
 }
 
 //**********************************************************************************************************************
-void TransformSystem::destroyRecursive(Manager* manager, ID<Entity> entity)
-{
-	if (manager->has<DoNotDestroyComponent>(entity))
-		return;
-	auto transformComponent = manager->get<TransformComponent>(entity);
-	for (uint32 i = 0; i < transformComponent->childCount; i++)
-		destroyRecursive(manager, transformComponent->childs[i]);
-	transformComponent->childCount = 0;
-	transformComponent->parent = {};
-	manager->destroy(transformComponent->entity);
-}
 void TransformSystem::destroyRecursive(ID<Entity> entity)
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
+	if (manager->has<DoNotDestroyComponent>(entity))
+		return;
+
 	auto transformComponent = manager->get<TransformComponent>(entity);
-	for (uint32 i = 0; i < transformComponent->getChildCount(); i++)
-		destroyRecursive(manager, transformComponent->childs[i]);
 	transformComponent->childCount = 0;
-	manager->destroy(transformComponent->entity);
+
+	static vector<ID<Entity>> transformStack;
+	auto childCount = transformComponent->childCount;
+	auto childs = transformComponent->childs;
+
+	for (uint32 i = 0; i < childCount; i++)
+		transformStack.push_back(childs[i]);
+
+	while (!transformStack.empty())
+	{
+		auto transform = transformStack.back();
+		transformStack.pop_back();
+
+		if (manager->has<DoNotDestroyComponent>(transform))
+			continue;
+
+		transformComponent = manager->get<TransformComponent>(transform);
+		childCount = transformComponent->childCount;
+		childs = transformComponent->childs;
+
+		for (uint32 i = 0; i < transformComponent->childCount; i++)
+			transformStack.push_back(childs[i]);
+
+		transformComponent->childCount = 0;
+		transformComponent->parent = {};
+		manager->destroy(transform);
+	}
+	
+	manager->destroy(entity);
 }
 
 //**********************************************************************************************************************
-BakedTransformSystem::BakedTransformSystem(Manager* manager) : System(manager) { }
-
 const string& BakedTransformSystem::getComponentName() const
 {
 	static const string name = "Baked Transform";

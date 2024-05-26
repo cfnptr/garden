@@ -101,7 +101,7 @@ static void createFramebuffers(
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createPipeline(Manager* manager)
+static ID<GraphicsPipeline> createPipeline()
 {
 	auto lightingSystem = manager->get<LightingRenderSystem>();
 	lightingSystem->setConsts(true, lightingSystem->getUseAoBuffer());
@@ -111,13 +111,11 @@ static ID<GraphicsPipeline> createPipeline(Manager* manager)
 
 //--------------------------------------------------------------------------------------------------
 static map<string, DescriptorSet::Uniform> getUniforms(
-	Manager* manager, GraphicsSystem* graphicsSystem, ID<Image> shadowMap,
-	const vector<vector<ID<Buffer>>>& dataBuffers)
+	ID<Image> shadowMap, const vector<vector<ID<Buffer>>>& dataBuffers)
 {
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto shadowMapView = graphicsSystem->get(shadowMap);
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
-	auto gFramebuffer = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
 	auto& colorAttachments = gFramebuffer->getColorAttachments();
 	auto depthStencilAttachment = gFramebuffer->getDepthStencilAttachment();
 	

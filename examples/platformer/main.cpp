@@ -57,7 +57,7 @@ static void loadWindowData()
 void entryPoint()
 {
 	auto manager = new Manager();
-	createAppSystem(manager);
+	createAppSystem();
 	manager->createSystem<DoNotDestroySystem>();
 	manager->createSystem<LogSystem>();
 	manager->createSystem<SettingsSystem>();
@@ -69,7 +69,7 @@ void entryPoint()
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ForwardRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
-	manager->createSystem<CutoutSpriteSystem>();
+	manager->createSystem<CutoutSpriteSystem>(false, false);
 	manager->createSystem<Controller2DSystem>();
 	manager->createSystem<ThreadSystem>();
 

@@ -46,12 +46,12 @@ static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 }
 
 //--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getLimitsUniforms(
-	Manager* manager, GraphicsSystem* graphicsSystem)
+static map<string, DescriptorSet::Uniform> getLimitsUniforms()
 {
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
+	auto manager = Manager::getInstance();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	auto toneMappingSystem = manager->get<ToneMappingRenderSystem>();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto hdrFramebufferView = GraphicsSystem::getInstance()->get(deferredSystem->getHdrFramebuffer());
 				
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -81,7 +81,7 @@ void AutoExposureEditor::render()
 
 	if (ImGui::Begin("Automatic Exposure", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto manager = getManager();
+		auto manager = Manager::getInstance();
 		auto graphicsSystem = system->getGraphicsSystem();
 
 		if (!readbackBuffer)
@@ -173,7 +173,7 @@ void AutoExposureEditor::render()
 		{
 			if (!limitsDescriptorSet)
 			{
-				auto uniforms = getLimitsUniforms(getManager(), graphicsSystem);
+				auto uniforms = getLimitsUniforms();
 				limitsDescriptorSet = graphicsSystem->createDescriptorSet(
 					limitsPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(graphicsSystem, limitsDescriptorSet,
@@ -209,7 +209,7 @@ void AutoExposureEditor::recreateSwapchain(const IRenderSystem::SwapchainChanges
 
 	if (changes.framebufferSize && limitsDescriptorSet)
 	{
-		auto uniforms = getLimitsUniforms(getManager(), graphicsSystem);
+		auto uniforms = getLimitsUniforms();
 		auto limitsDescriptorSetView = graphicsSystem->get(limitsDescriptorSet);
 		limitsDescriptorSetView->recreate(std::move(uniforms));
 	}

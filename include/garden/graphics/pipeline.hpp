@@ -227,6 +227,7 @@ public:
 		map<string, Uniform> uniforms;
 		map<string, SpecConst> specConsts;
 		map<string, SpecConstValue> specConstValues;
+		map<string, SamplerState> samplerStateOverrides;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
 		uint16 pushConstantsSize = 0;
