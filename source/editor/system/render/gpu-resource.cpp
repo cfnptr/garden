@@ -23,14 +23,15 @@ using namespace garden;
 //       maybe iterate command buffers and detect where it used? Also we can iterate command buffers to detect invalid sync.
 
 //**********************************************************************************************************************
-GpuResourceEditorSystem::GpuResourceEditorSystem(Manager* manager) : System(manager)
+GpuResourceEditorSystem::GpuResourceEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", GpuResourceEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", GpuResourceEditorSystem::deinit);
 }
 GpuResourceEditorSystem::~GpuResourceEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", GpuResourceEditorSystem::init);
@@ -40,7 +41,7 @@ GpuResourceEditorSystem::~GpuResourceEditorSystem()
 
 void GpuResourceEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 
 	SUBSCRIBE_TO_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
@@ -48,7 +49,7 @@ void GpuResourceEditorSystem::init()
 }
 void GpuResourceEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);

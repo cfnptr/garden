@@ -14,7 +14,7 @@ BEGIN
         BLOCK "040904E4"
         BEGIN
             VALUE "CompanyName",      "@GARDEN_APP_CREATOR@"
-            VALUE "FileDescription",  "@GARDEN_APP_DESCRIPTION@"
+            VALUE "FileDescription",  "@GARDEN_APP_NAME@"
             VALUE "FileVersion",      "v@GARDEN_APP_VERSION@"
             VALUE "InternalName",     "@GARDEN_APP_NAME@"
             VALUE "LegalCopyright",   "@GARDEN_APP_COPYRIGHT@"

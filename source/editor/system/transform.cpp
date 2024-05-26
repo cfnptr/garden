@@ -23,24 +23,33 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-TransformEditorSystem::TransformEditorSystem(Manager* manager) : System(manager)
+TransformEditorSystem* TransformEditorSystem::instance = nullptr;
+
+TransformEditorSystem::TransformEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
+
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
+	instance = this;
 }
 TransformEditorSystem::~TransformEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
 	}
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
 }
 
 void TransformEditorSystem::init()
 {
-	GARDEN_ASSERT(getManager()->has<EditorRenderSystem>());
+	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
 	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
@@ -70,7 +79,7 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
 
 	auto transformComponent = manager->get<TransformComponent>(entity);

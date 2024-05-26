@@ -24,15 +24,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Controller2DSystem::Controller2DSystem(Manager* manager) : System(manager)
+Controller2DSystem::Controller2DSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", Controller2DSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", Controller2DSystem::deinit);
 	SUBSCRIBE_TO_EVENT("Update", Controller2DSystem::update);
 }
 Controller2DSystem::~Controller2DSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", Controller2DSystem::init);
@@ -43,7 +44,7 @@ Controller2DSystem::~Controller2DSystem()
 
 void Controller2DSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<TransformSystem>());
 	GARDEN_ASSERT(manager->has<CameraSystem>());
 	GARDEN_ASSERT(manager->has<GraphicsSystem>());
@@ -81,11 +82,10 @@ void Controller2DSystem::init()
 }
 void Controller2DSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
-		graphicsSystem->camera = {};
+		GraphicsSystem::getInstance()->camera = {};
 		manager->destroy(camera);
 
 		UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
@@ -101,12 +101,11 @@ void Controller2DSystem::update()
 
 	if (inputSystem->getMouseState(MouseButton::Right))
 	{
-		auto manager = getManager();
-		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto manager = Manager::getInstance();
 		auto cameraComponent = manager->get<CameraComponent>(camera);
 		auto transformComponent = manager->get<TransformComponent>(camera);
 		auto cursorDelta = inputSystem->getCursorDelta();
-		auto windowSize = (float2)graphicsSystem->getWindowSize();
+		auto windowSize = (float2)GraphicsSystem::getInstance()->getWindowSize();
 		auto othoSize = float2(
 			cameraComponent->p.orthographic.width.y - cameraComponent->p.orthographic.width.x,
 			cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x);
@@ -120,10 +119,9 @@ void Controller2DSystem::update()
 	{
 		mouseScroll *= scrollSensitivity * 0.5f;
 
-		auto manager = getManager();
-		auto graphicsSystem = GraphicsSystem::getInstance();
-		auto framebufferSize = graphicsSystem->getFramebufferSize();
-		auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+		auto manager = Manager::getInstance();
+		auto framebufferSize = (float2)GraphicsSystem::getInstance()->getFramebufferSize();
+		auto aspectRatio = framebufferSize.x / framebufferSize.y;
 		auto cameraComponent = manager->get<CameraComponent>(camera);
 		cameraComponent->p.orthographic.height.x += mouseScroll.y;
 		cameraComponent->p.orthographic.height.y -= mouseScroll.y;
@@ -144,7 +142,7 @@ void Controller2DSystem::swapchainRecreate()
 	{
 		auto framebufferSize = graphicsSystem->getFramebufferSize();
 		auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
-		auto cameraComponent = getManager()->get<CameraComponent>(camera);
+		auto cameraComponent = Manager::getInstance()->get<CameraComponent>(camera);
 		cameraComponent->p.orthographic.width = cameraComponent->p.orthographic.height * aspectRatio;
 	}
 }

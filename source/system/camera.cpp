@@ -56,9 +56,7 @@ void CameraSystem::disposeComponents() { components.dispose(); }
 //**********************************************************************************************************************
 void CameraSystem::serialize(ISerializer& serializer, ID<Component> component)
 {
-	auto manager = getManager();
 	auto cameraComponent = components.get(ID<CameraComponent>(component));
-
 	if (cameraComponent->type == ProjectionType::Perspective)
 	{
 		serializer.write("type", "perspective");
@@ -76,7 +74,6 @@ void CameraSystem::serialize(ISerializer& serializer, ID<Component> component)
 }
 void CameraSystem::deserialize(IDeserializer& deserializer, ID<Component> component)
 {
-	auto manager = getManager();
 	auto cameraComponent = components.get(ID<CameraComponent>(component));
 
 	string type;

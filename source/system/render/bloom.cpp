@@ -98,8 +98,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<ImageView> srcTexture)
 	return uniforms;
 }
 
-static void createBloomDescriptorSets(Manager* manager, GraphicsSystem* graphicsSystem,
-	DeferredRenderSystem* deferredSystem, ID<Image> bloomBuffer,
+static void createBloomDescriptorSets(ID<Image> bloomBuffer,
 	ID<GraphicsPipeline> downsample0Pipeline, ID<GraphicsPipeline> downsamplePipeline,
 	ID<GraphicsPipeline> upsamplePipeline, const vector<ID<ImageView>>& imageViews,
 	vector<ID<DescriptorSet>>& descriptorSets)
@@ -135,7 +134,7 @@ static void createBloomDescriptorSets(Manager* manager, GraphicsSystem* graphics
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createDownsample0Pipeline(Manager* manager,
+static ID<GraphicsPipeline> createDownsample0Pipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
 	map<string, Pipeline::SpecConst> specConsts =
@@ -164,8 +163,7 @@ static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 //--------------------------------------------------------------------------------------------------
 void BloomRenderSystem::initialize()
 {
-	auto manager = getManager();
-	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
 	if (settingsSystem)
 		settingsSystem->getBool("useBloom", isEnabled);
 
@@ -187,7 +185,7 @@ void BloomRenderSystem::initialize()
 
 		if (!downsample0Pipeline)
 		{
-			downsample0Pipeline = createDownsample0Pipeline(manager,
+			downsample0Pipeline = createDownsample0Pipeline(
 				framebuffers[0], useThreshold, useAntiFlickering);
 		}
 		if (!downsamplePipeline)
@@ -241,7 +239,7 @@ void BloomRenderSystem::preLdrRender()
 
 	if (!downsample0Pipeline)
 	{
-		downsample0Pipeline = createDownsample0Pipeline(getManager(),
+		downsample0Pipeline = createDownsample0Pipeline(
 			framebuffers[0], useThreshold, useAntiFlickering);
 	}
 	if (!downsamplePipeline)
@@ -258,10 +256,8 @@ void BloomRenderSystem::preLdrRender()
 
 	if (descriptorSets.empty())
 	{
-		createBloomDescriptorSets(
-			getManager(), graphicsSystem, getDeferredSystem(),
-			bloomBuffer, downsample0Pipeline, downsamplePipeline,
-			upsamplePipeline, imageViews, descriptorSets);
+		createBloomDescriptorSets(bloomBuffer, downsample0Pipeline,
+			downsamplePipeline, upsamplePipeline, imageViews, descriptorSets);
 	}
 	
 	auto mipCount = (uint8)imageViews.size();
@@ -376,7 +372,7 @@ void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
 	descriptorSets.clear();
 	graphicsSystem->destroy(downsample0Pipeline);
 
-	downsample0Pipeline = createDownsample0Pipeline(getManager(),
+	downsample0Pipeline = createDownsample0Pipeline(
 		getFramebuffers()[0], useThreshold, useAntiFlickering);
 }
 
@@ -385,7 +381,7 @@ ID<GraphicsPipeline> BloomRenderSystem::getDownsample0Pipeline()
 {
 	if (!downsample0Pipeline)
 	{
-		downsample0Pipeline = createDownsample0Pipeline(getManager(),
+		downsample0Pipeline = createDownsample0Pipeline(
 			getFramebuffers()[0], useThreshold, useAntiFlickering);
 	}
 	return downsample0Pipeline;

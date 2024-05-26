@@ -43,7 +43,6 @@ private:
 	uint32 childCount = 0;
 	uint32 childCapacity = 0;
 	ID<Entity>* childs = nullptr;
-	Manager* manager = nullptr;
 
 	/**
 	 * @brief Destroys childs array memory block, if allocated. 
@@ -140,9 +139,8 @@ private:
 
 	/**
 	 * @brief Creates a new transform system instance.
-	 * @param[in,out] manager manager instance
 	 */
-	TransformSystem(Manager* manager);
+	TransformSystem();
 	/**
 	 * @brief Destroy transform system instance.
 	 */
@@ -158,8 +156,6 @@ private:
 	void serialize(ISerializer& serializer, ID<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Component> component) final;
 	
-	static void destroyRecursive(Manager* manager, ID<Entity> entity);
-	
 	friend class ecsm::Manager;
 public:
 	/**
@@ -171,11 +167,10 @@ public:
 	 * @brief Destroys the entity and all it descendants.
 	 * @param entity target entity
 	 */
-	void destroyRecursive(ID<Entity> entity);
+	static void destroyRecursive(ID<Entity> entity);
 
 	/**
 	 * @brief Returns transform system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static TransformSystem* getInstance() noexcept
 	{
@@ -196,12 +191,6 @@ class BakedTransformSystem final : public System
 {
 protected:
 	LinearPool<BakedTransformComponent, false> components;
-
-	/**
-	 * @brief Creates a new baked transform system instance.
-	 * @param[in,out] manager manager instance
-	 */
-	BakedTransformSystem(Manager* manager);
 
 	const string& getComponentName() const final;
 	type_index getComponentType() const final;

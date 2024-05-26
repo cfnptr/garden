@@ -20,14 +20,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-CameraEditorSystem::CameraEditorSystem(Manager* manager) : System(manager)
+CameraEditorSystem::CameraEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", CameraEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", CameraEditorSystem::deinit);
 }
 CameraEditorSystem::~CameraEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", CameraEditorSystem::init);
@@ -37,7 +38,7 @@ CameraEditorSystem::~CameraEditorSystem()
 
 void CameraEditorSystem::init()
 {
-	GARDEN_ASSERT(getManager()->has<EditorRenderSystem>());
+	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
 	EditorRenderSystem::getInstance()->registerEntityInspector<CameraComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
@@ -55,7 +56,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto cameraComponent = getManager()->get<CameraComponent>(entity);
+	auto cameraComponent = Manager::getInstance()->get<CameraComponent>(entity);
 	if (cameraComponent->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraComponent->p.perspective.fieldOfView);

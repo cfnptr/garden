@@ -34,7 +34,7 @@ private:
 	bool searchCaseSensitive = false;
 	TabType openNextTab = TabType::None;
 
-	GpuResourceEditorSystem(Manager* manager);
+	GpuResourceEditorSystem();
 	~GpuResourceEditorSystem() final;
 
 	void init();

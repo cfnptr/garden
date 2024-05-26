@@ -36,9 +36,8 @@ protected:
 
 	/**
 	 * @brief Creates a new instance rendering system instance.
-	 * @param[in,out] manager manager instance
 	 */
-	InstanceRenderSystem(Manager* manager);
+	InstanceRenderSystem();
 	/**
 	 * @brief Destroys instance rendering system instance.
 	 */

@@ -44,11 +44,10 @@ private:
 	/**
 	 * @brief Creates a new log system instance.
 	 * 
-	 * @param[in,out] manager manager instance
 	 * @param level message logging level (log if <= level)
 	 * @param rotationTime delay between log file rotation (0.0 = disabled)
 	 */
-	LogSystem(Manager* manager, LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0);
+	LogSystem(LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0);
 	/**
 	 * @brief Destroys log system instance.
 	 */

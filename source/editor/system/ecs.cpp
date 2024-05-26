@@ -19,14 +19,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-EcsEditorSystem::EcsEditorSystem(Manager* manager) : System(manager)
+EcsEditorSystem::EcsEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", EcsEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", EcsEditorSystem::deinit);
 }
 EcsEditorSystem::~EcsEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", EcsEditorSystem::init);
@@ -36,7 +37,7 @@ EcsEditorSystem::~EcsEditorSystem()
 
 void EcsEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", EcsEditorSystem::editorRender);
@@ -44,7 +45,7 @@ void EcsEditorSystem::init()
 }
 void EcsEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", EcsEditorSystem::editorRender);
@@ -53,11 +54,11 @@ void EcsEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void renderOrderedEvents(Manager* manager)
+static void renderOrderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& orderedEvents = manager->getOrderedEvents();
+	const auto& orderedEvents = Manager::getInstance()->getOrderedEvents();
 	for (auto orderedEvent : orderedEvents)
 	{
 		auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
@@ -81,10 +82,11 @@ static void renderOrderedEvents(Manager* manager)
 }
 
 //**********************************************************************************************************************
-static void renderUnorderedEvents(Manager* manager)
+static void renderUnorderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
+	auto manager = Manager::getInstance();
 	const auto& events = manager->getEvents();
 	const auto& orderedEvents = manager->getOrderedEvents();
 
@@ -126,11 +128,11 @@ static void renderUnorderedEvents(Manager* manager)
 }
 
 //**********************************************************************************************************************
-static void renderRegisteredSystems(Manager* manager)
+static void renderRegisteredSystems()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& systems = manager->getSystems();
+	const auto& systems = Manager::getInstance()->getSystems();
 	for (const auto& pair : systems)
 	{
 		auto name = typeToString(pair.first);
@@ -141,11 +143,11 @@ static void renderRegisteredSystems(Manager* manager)
 	ImGui::Spacing();
 }
 
-static void renderRegisteredComponents(Manager* manager)
+static void renderRegisteredComponents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& componentTypes = manager->getComponentTypes();
+	const auto& componentTypes = Manager::getInstance()->getComponentTypes();
 	for (const auto& pair : componentTypes)
 	{
 		auto name = pair.second->getComponentName();
@@ -166,16 +168,14 @@ void EcsEditorSystem::editorRender()
 
 	if (ImGui::Begin("ECS Viewer", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
-		auto manager = getManager();
-
 		if (ImGui::CollapsingHeader("Ordered Events"))
-			renderOrderedEvents(manager);
+			renderOrderedEvents();
 		if (ImGui::CollapsingHeader("Unordered Events"))
-			renderUnorderedEvents(manager);
+			renderUnorderedEvents();
 		if (ImGui::CollapsingHeader("Registered Systems"))
-			renderRegisteredSystems(manager);
+			renderRegisteredSystems();
 		if (ImGui::CollapsingHeader("Registered Components"))
-			renderRegisteredComponents(manager);
+			renderRegisteredComponents();
 	}
 	ImGui::End();
 }

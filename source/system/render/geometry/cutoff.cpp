@@ -39,8 +39,7 @@ namespace
 
 #if GARDEN_EDITOR
 //--------------------------------------------------------------------------------------------------
-static void onCutoffEntityInspector(Manager* manager,
-	ID<Entity> entity, GeometryEditor* editor)
+static void onCutoffEntityInspector(ID<Entity> entity, GeometryEditor* editor)
 {
 	if (ImGui::CollapsingHeader("Cutoff Render"))
 	{
@@ -116,8 +115,7 @@ psize CutoffRenderSystem::getMeshComponentSize() const
 }
 ID<GraphicsPipeline> CutoffRenderSystem::createPipeline()
 {
-	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"geometry/cutoff", deferredSystem->getGFramebuffer(), true, true);
+		"geometry/cutoff", DeferredRenderSystem::getInstance()->getGFramebuffer(), true, true);
 }
 */

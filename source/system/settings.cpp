@@ -25,14 +25,15 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
-SettingsSystem::SettingsSystem(Manager* manager) : System(manager)
+SettingsSystem::SettingsSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
 	SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
 }
 SettingsSystem::~SettingsSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
@@ -52,7 +53,7 @@ SettingsSystem::~SettingsSystem()
 void SettingsSystem::preInit()
 {
 	auto appInfoSystem = AppInfoSystem::getInstance();
-	auto logSystem = getManager()->tryGet<LogSystem>();
+	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 
 	try
 	{
@@ -70,7 +71,7 @@ void SettingsSystem::preInit()
 void SettingsSystem::postDeinit()
 {
 	auto appInfoSystem = AppInfoSystem::getInstance();
-	auto logSystem = getManager()->tryGet<LogSystem>();
+	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 
 	try
 	{
@@ -188,7 +189,7 @@ void SettingsSystem::getColor(const string& name, Color& value)
 		{
 			string_view stringView;
 			auto result = ((conf::Reader*)confReader)->get(name, stringView);
-			if (result)
+			if (result && (stringView.length() == 8 || stringView.length() == 6))
 				value = Color(string(stringView));
 		}
 		items.emplace(name, Item(Type::Color, (uint32)value));

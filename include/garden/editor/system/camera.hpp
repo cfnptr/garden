@@ -21,7 +21,7 @@ namespace garden
 
 class CameraEditorSystem final : public System
 {
-	CameraEditorSystem(Manager* manager);
+	CameraEditorSystem();
 	~CameraEditorSystem() final;
 
 	void init();

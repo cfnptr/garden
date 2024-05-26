@@ -30,9 +30,10 @@ namespace
 }
 
 //**********************************************************************************************************************
-CutoutSpriteSystem::CutoutSpriteSystem(Manager* manager, bool useDeferredBuffer) : SpriteRenderSystem(manager)
+CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter)
 {
 	this->deferredBuffer = useDeferredBuffer;
+	this->linearFilter = useLinearFilter;
 }
 
 void CutoutSpriteSystem::draw(MeshRenderComponent* meshRenderComponent,
@@ -60,10 +61,10 @@ type_index CutoutSpriteSystem::getComponentType() const
 }
 ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
+	GARDEN_ASSERT(Manager::getInstance()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
-	component->transform = getManager()->getID<TransformComponent>(entity);
+	component->transform = Manager::getInstance()->getID<TransformComponent>(entity);
 	return ID<Component>(instance);
 }
 void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
@@ -95,16 +96,19 @@ ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
 {
 	ID<Framebuffer> framebuffer;
 	if (deferredBuffer)
-	{
-		auto deferredSystem = getManager()->get<DeferredRenderSystem>();
-		framebuffer = deferredSystem->getGFramebuffer();
-	}
+		framebuffer = DeferredRenderSystem::getInstance()->getGFramebuffer();
 	else
+		framebuffer = ForwardRenderSystem::getInstance()->getFramebuffer();
+
+	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
+	if (!linearFilter)
 	{
-		auto deferredSystem = getManager()->get<ForwardRenderSystem>();
-		framebuffer = deferredSystem->getFramebuffer();
+		GraphicsPipeline::SamplerState samplerState;
+		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
+			GraphicsPipeline::SamplerWrap::Repeat;
+		samplerStateOverrides.emplace("colorMap", samplerState);
 	}
-	
-	return ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"sprite/cutout", framebuffer, true, true);
+
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("sprite/cutout",
+		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
 }

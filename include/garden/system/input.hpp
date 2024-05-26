@@ -143,9 +143,8 @@ class InputSystem final : public System
 
 	/**
 	 * @brief Creates a new input system instance.
-	 * @param[in,out] manager manager instance
 	 */
-	InputSystem(Manager* manager);
+	InputSystem();
 	/**
 	 * @brief Destroys input system instance.
 	 */
@@ -242,7 +241,6 @@ public:
 
 	/**
 	 * @brief Returns input system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static InputSystem* getInstance() noexcept
 	{

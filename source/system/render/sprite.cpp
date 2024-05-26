@@ -19,6 +19,54 @@ using namespace garden;
 
 // TODO: add bindless support
 
+void SpriteRenderSystem::init()
+{
+	InstanceRenderSystem::init();
+
+	auto manager = Manager::getInstance();
+	SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+}
+void SpriteRenderSystem::deinit()
+{
+	InstanceRenderSystem::deinit();
+
+	auto manager = Manager::getInstance();
+	if (manager->isRunning())
+		UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+}
+
+//**********************************************************************************************************************
+void SpriteRenderSystem::imageLoaded()
+{
+	auto image = ResourceSystem::getInstance()->getLoadedImage();
+	auto& componentPool = getMeshComponentPool();
+	auto componentSize = getMeshComponentSize();
+	auto componentData = (uint8*)componentPool.getData();
+	auto componentOccupnacy = componentPool.getOccupancy();
+	Ref<DescriptorSet> sharedDescriptorSet = {};
+
+	for (uint32 i = 0; i < componentOccupnacy; i++)
+	{
+		auto spriteRender = (SpriteRenderComponent*)(componentData + i * componentSize);
+		if (spriteRender->colorMap != image)
+			continue;
+
+		if (sharedDescriptorSet)
+		{
+			spriteRender->descriptorSet = sharedDescriptorSet;
+			continue;
+		}
+		
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto imageView = graphicsSystem->get(image);
+		auto uniforms = getSpriteUniforms(imageView->getDefaultView());
+		sharedDescriptorSet = graphicsSystem->createDescriptorSet(getPipeline(), std::move(uniforms), 1);
+		spriteRender->descriptorSet = sharedDescriptorSet;
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, sharedDescriptorSet,
+			"descriptorSet.sprite." + to_string(i + 1));
+	}
+}
+
 //**********************************************************************************************************************
 bool SpriteRenderSystem::isDrawReady()
 {
@@ -44,8 +92,6 @@ void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	DescriptorSet::Range descriptorSetRange[8]; uint8 descriptorSetCount = 0;
 	setDescriptorSetRange(meshRenderComponent, descriptorSetRange, descriptorSetCount, 8);
 	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
-
-	auto graphicsSystem = GraphicsSystem::getInstance();
 	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 
@@ -60,13 +106,20 @@ void SpriteRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderCo
 	range[index++] = DescriptorSet::Range(spriteRenderComponent->descriptorSet ?
 		(ID<DescriptorSet>)spriteRenderComponent->descriptorSet : defaultDescriptorSet);
 }
+
+map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colorMap)
+{
+	map<string, DescriptorSet::Uniform> spriteUniforms =
+	{ { "colorMap", DescriptorSet::Uniform(colorMap) }, };
+	return spriteUniforms;
+}
 map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
 	map<string, DescriptorSet::Uniform> defaultUniforms =
-	{ { "colorMap", DescriptorSet::Uniform(graphicsSystem->getWhiteTexture()) }, };
+	{ { "colorMap", DescriptorSet::Uniform(GraphicsSystem::getInstance()->getWhiteTexture()) }, };
 	return defaultUniforms;
 }
+
 void SpriteRenderSystem::destroyResources(SpriteRenderComponent* spriteComponent)
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();

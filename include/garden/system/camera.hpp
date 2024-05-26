@@ -119,12 +119,6 @@ class CameraSystem final : public System, public ISerializable
 {
 	LinearPool<CameraComponent, false> components;
 
-	/**
-	 * @brief Creates a new camera system instance.
-	 * @param[in,out] manager manager instance
-	 */
-	CameraSystem(Manager* manager) : System(manager) { }
-
 	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;

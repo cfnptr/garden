@@ -30,10 +30,9 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createPipeline(Manager* manager, GraphicsSystem* graphicsSystem)
+static ID<GraphicsPipeline> createPipeline()
 {
-	auto deferredSystem = manager->get<DeferredRenderSystem>();
-	deferredSystem->runSwapchainPass = false;
+	DeferredRenderSystem::getInstance();->runSwapchainPass = false;
 
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"fxaa", graphicsSystem->getSwapchainFramebuffer());
@@ -56,15 +55,14 @@ static map<string, DescriptorSet::Uniform> getUniforms(
 //--------------------------------------------------------------------------------------------------
 void FxaaRenderSystem::initialize()
 {
-	auto manager = getManager();
-	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
 	if (settingsSystem)
 		settingsSystem->getBool("useFXAA", isEnabled);
 
 	if (isEnabled)
 	{
 		if (!pipeline)
-			pipeline = createPipeline(manager, getGraphicsSystem());
+			pipeline = createPipeline(getGraphicsSystem());
 	}
 }
 

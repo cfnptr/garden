@@ -22,14 +22,15 @@ using namespace garden;
 // TODO: render lines for the hierarchy entities, for better visual.
 
 //**********************************************************************************************************************
-HierarchyEditorSystem::HierarchyEditorSystem(Manager* manager) : System(manager)
+HierarchyEditorSystem::HierarchyEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", HierarchyEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", HierarchyEditorSystem::deinit);
 }
 HierarchyEditorSystem::~HierarchyEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", HierarchyEditorSystem::init);
@@ -39,7 +40,7 @@ HierarchyEditorSystem::~HierarchyEditorSystem()
 
 void HierarchyEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
@@ -47,7 +48,7 @@ void HierarchyEditorSystem::init()
 }
 void HierarchyEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
@@ -56,8 +57,9 @@ void HierarchyEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
+static void updateHierarchyClick(ID<Entity> renderEntity)
 {
+	auto manager = Manager::getInstance();
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
 		auto editorSystem = EditorRenderSystem::getInstance();
@@ -89,7 +91,7 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 		if (ImGui::MenuItem("Destroy Entity"))
 			manager->destroy(renderEntity);
 		if (ImGui::MenuItem("Destroy Entities"))
-			TransformSystem::getInstance()->destroyRecursive(renderEntity);
+			TransformSystem::destroyRecursive(renderEntity);
 		ImGui::EndDisabled();
 
 		if (ImGui::MenuItem("Copy Name"))
@@ -102,7 +104,7 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 		ImGui::EndPopup();
 	}
 
-	// TODO: scroll window when dragging.
+	// TODO:
 	// allow to drop between elements.
 	// On selecting entity in scene open hierarchy view to it.
 
@@ -147,9 +149,9 @@ static void updateHierarchyClick(Manager* manager, ID<Entity> renderEntity)
 }
 
 //**********************************************************************************************************************
-static void renderHierarchyEntity(Manager* manager, ID<Entity> renderEntity, ID<Entity> selectedEntity)
+static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
-	auto transform = manager->get<TransformComponent>(renderEntity);
+	auto transform = Manager::getInstance()->get<TransformComponent>(renderEntity);
 	auto name = transform->name.empty() ? "Entity " + to_string(*renderEntity) : transform->name;
 	
 	auto flags = (int)(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
@@ -160,33 +162,33 @@ static void renderHierarchyEntity(Manager* manager, ID<Entity> renderEntity, ID<
 	
 	if (ImGui::TreeNodeEx(name.c_str(), flags))
 	{
-		updateHierarchyClick(manager, renderEntity);
+		updateHierarchyClick(renderEntity);
 
-		transform = manager->get<TransformComponent>(renderEntity); // Do not optimize!!!
+		transform = Manager::getInstance()->get<TransformComponent>(renderEntity); // Do not optimize!!!
 		for (uint32 i = 0; i < transform->getChildCount(); i++)
 		{
-			renderHierarchyEntity(manager, transform->getChilds()[i], selectedEntity);
-			transform = manager->get<TransformComponent>(renderEntity); // Do not optimize!!!
+			renderHierarchyEntity(transform->getChilds()[i], selectedEntity); // TODO: use stack instead of recursion!
+			transform = Manager::getInstance()->get<TransformComponent>(renderEntity); // Do not optimize!!!
 		}
 		ImGui::TreePop();
 	}
 	else
 	{
-		updateHierarchyClick(manager, renderEntity);
+		updateHierarchyClick(renderEntity);
 	}
 }
 
 //**********************************************************************************************************************
 void HierarchyEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::getInstance()->canRender() || !getManager()->has<TransformSystem>())
+	auto manager = Manager::getInstance();
+	if (!showWindow || !GraphicsSystem::getInstance()->canRender() || !manager->has<TransformSystem>())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 120.0f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
-		auto manager = getManager();
 		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 		{
 			if (ImGui::MenuItem("Create Entity"))
@@ -242,7 +244,7 @@ void HierarchyEditorSystem::editorRender()
 				auto transform = &((TransformComponent*)components.getData())[i];
 				if (!transform->getEntity() || transform->getParent())
 					continue;
-				renderHierarchyEntity(manager, transform->getEntity(), editorSystem->selectedEntity);
+				renderHierarchyEntity(transform->getEntity(), editorSystem->selectedEntity);
 			}
 		}
 		else
@@ -267,7 +269,7 @@ void HierarchyEditorSystem::editorRender()
 					
 				if (ImGui::TreeNodeEx(name.c_str(), flags))
 				{
-					updateHierarchyClick(manager, transform->getEntity());
+					updateHierarchyClick(transform->getEntity());
 					ImGui::TreePop();
 				}
 			}

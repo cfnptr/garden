@@ -22,14 +22,15 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
-LogEditorSystem::LogEditorSystem(Manager* manager) : System(manager)
+LogEditorSystem::LogEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
 }
 LogEditorSystem::~LogEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
@@ -39,7 +40,7 @@ LogEditorSystem::~LogEditorSystem()
 
 void LogEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
@@ -47,7 +48,7 @@ void LogEditorSystem::init()
 }
 void LogEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);

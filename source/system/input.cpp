@@ -23,7 +23,7 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
-	auto manager = (Manager*)glfwGetWindowUserPointer((GLFWwindow*)window);
+	auto manager = Manager::getInstance();
 	auto logSystem = manager->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->info("Dropped " + to_string(count) + " items on a window.");
@@ -83,9 +83,10 @@ void InputSystem::onMouseScroll(void* window, double offsetX, double offsetY)
 //**********************************************************************************************************************
 InputSystem* InputSystem::instance = nullptr;
 
-InputSystem::InputSystem(Manager* manager) : System(manager),
-	lastKeyboardStates((psize)KeyboardButton::Last + 1, false), lastMouseStates((psize)MouseButton::Last + 1, false)
+InputSystem::InputSystem() : lastKeyboardStates((psize)KeyboardButton::Last + 1, false),
+	lastMouseStates((psize)MouseButton::Last + 1, false)
 {
+	auto manager = Manager::getInstance();
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEvent("FileDrop");
 	SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
@@ -96,7 +97,7 @@ InputSystem::InputSystem(Manager* manager) : System(manager),
 }
 InputSystem::~InputSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
@@ -110,11 +111,11 @@ InputSystem::~InputSystem()
 }
 
 //**********************************************************************************************************************
-static void updateFileDrops(Manager* manager, vector<fs::path>& fileDropPaths, const fs::path*& currentFileDropPath)
+static void updateFileDrops(vector<fs::path>& fileDropPaths, const fs::path*& currentFileDropPath)
 {
 	if (!fileDropPaths.empty())
 	{
-		auto& subscribers = manager->getEventSubscribers("FileDrop");
+		auto& subscribers = Manager::getInstance()->getEventSubscribers("FileDrop");
 		for (const auto& path : fileDropPaths)
 		{
 			currentFileDropPath = &path;
@@ -154,7 +155,6 @@ static void updateWindowMode(InputSystem* inputSystem)
 void InputSystem::preInit()
 {
 	auto window = (GLFWwindow*)GraphicsAPI::window;
-	glfwSetWindowUserPointer(window, getManager());
 	glfwSetDropCallback(window, (GLFWdropfun)onFileDrop);
 	glfwSetScrollCallback(window, (GLFWscrollfun)onMouseScroll);
 
@@ -164,7 +164,6 @@ void InputSystem::preInit()
 }
 void InputSystem::input()
 {
-	auto manager = getManager();
 	auto window = (GLFWwindow*)GraphicsAPI::window;
 	mouseScroll = float2(0.0f);
 	
@@ -184,7 +183,7 @@ void InputSystem::input()
 		// TODO: add modal if user sure want to exit.
 		// And also allow to force quit or wait for running threads.
 		glfwHideWindow(window);
-		manager->stop();
+		Manager::getInstance()->stop();
 		return;
 	}
 
@@ -198,7 +197,7 @@ void InputSystem::input()
 	cursorDelta = newPosition - cursorPosition;
 	cursorPosition = newPosition;
 
-	updateFileDrops(manager, fileDropPaths, currentFileDropPath);
+	updateFileDrops(fileDropPaths, currentFileDropPath);
 	updateWindowMode(this);
 }
 

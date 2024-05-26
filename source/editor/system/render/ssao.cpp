@@ -38,7 +38,7 @@ void SsaoEditor::render()
 	{
 		if (ImGui::Checkbox("Enabled", &system->isEnabled))
 		{
-			auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+			auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
 			if (settingsSystem)
 				settingsSystem->setBool("useSSAO", system->isEnabled);
 		}

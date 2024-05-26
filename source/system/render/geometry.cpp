@@ -369,7 +369,6 @@ namespace
 	{
 		map<string, Ref<Image>> textures; // TODO: share between other models too?
 		shared_ptr<Model> model;
-		Manager* manager = nullptr;
 	};
 }
 

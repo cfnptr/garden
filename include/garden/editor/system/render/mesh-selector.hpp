@@ -24,7 +24,7 @@ class MeshSelectorEditorSystem final : public System
 	bool lastDragging = false;
 	bool isSkipped = false;
 
-	MeshSelectorEditorSystem(Manager* manager);
+	MeshSelectorEditorSystem();
 	~MeshSelectorEditorSystem() final;
 
 	void init();

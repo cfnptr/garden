@@ -30,7 +30,7 @@ class GraphicsEditorSystem final : public System
 	bool performanceStatistics = false;
 	bool memoryStatistics = false;
 
-	GraphicsEditorSystem(Manager* manager);
+	GraphicsEditorSystem();
 	~GraphicsEditorSystem() final;
 
 	void init();

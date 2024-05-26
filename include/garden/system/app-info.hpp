@@ -51,7 +51,6 @@ private:
 	/*******************************************************************************************************************
 	 * @brief Creates a new app info system instance.
 	 * 
-	 * @param[in,out] manager manager instance
 	 * @param[in] name application name
 	 * @param[in] nameLowercase application lowercase name
 	 * @param[in] description application description
@@ -59,12 +58,12 @@ private:
 	 * @param[in] copyright application copyright (license)
 	 * @param version application version
 	 */
-	AppInfoSystem(Manager* manager, const string& name, const string& nameLowercase,
-		const string& description, const string& creator, const string& copyright, Version version
+	AppInfoSystem(const string& name, const string& nameLowercase, const string& description,
+		const string& creator, const string& copyright, Version version
 		#if GARDEN_DEBUG
 		, fs::path cachesPath, fs::path resourcesPath
 		#endif
-		) : System(manager)
+		)
 	{
 		this->name = name;
 		this->nameLowercase = nameLowercase;
@@ -151,7 +150,6 @@ public:
 
 	/**
 	 * @brief Returns app info system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static AppInfoSystem* getInstance() noexcept
 	{

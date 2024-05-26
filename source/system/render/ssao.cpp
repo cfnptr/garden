@@ -83,7 +83,7 @@ static ID<Image> createNoiseTexture(GraphicsSystem* graphicsSystem)
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createPipeline(Manager* manager, uint32 sampleCount)
+static ID<GraphicsPipeline> createPipeline(uint32 sampleCount)
 {
 	map<string, Pipeline::SpecConst> specConsts =
 	{ { "SAMPLE_COUNT", Pipeline::SpecConst(sampleCount) } };
@@ -92,12 +92,11 @@ static ID<GraphicsPipeline> createPipeline(Manager* manager, uint32 sampleCount)
 	return ResourceSystem::getInstance()->loadGraphicsPipeline("ssao",
 		lightingSystem->getAoFramebuffers()[0], false, true, 0, 0, specConsts);
 }
-static map<string, DescriptorSet::Uniform> getUniforms(Manager* manager,
-	GraphicsSystem* graphicsSystem, ID<Buffer> sampleBuffer, ID<Image> noiseTexture)
+static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> sampleBuffer, ID<Image> noiseTexture)
 {
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto deferredSystem = manager->get<DeferredRenderSystem>();
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
 	auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 

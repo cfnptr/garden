@@ -49,6 +49,9 @@ private:
 	map<type_index, OnComponent> entityInspectors;
 	string scenePath = "unnamed";
 	fs::path fileSelectDirectory;
+	fs::path selectedEntry;
+	fs::path selectedFile;
+	set<string> fileExtensions;
 	std::function<void(const fs::path)> onFileSelect;
 	bool demoWindow = false;
 	bool aboutWindow = false;
@@ -60,9 +63,8 @@ private:
 
 	/**
 	 * @brief Creates a new editor render system instance.
-	 * @param[in,out] manager manager instance
 	 */
-	EditorRenderSystem(Manager* manager);
+	EditorRenderSystem();
 	/**
 	 * @brief Destroys editor render system instance.
 	 */
@@ -111,11 +113,10 @@ public:
 	}
 
 	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
-		const fs::path& directory = {}, const vector<string>& extensions = {});
+		const fs::path& directory = {}, const set<string>& extensions = {});
 
 	/**
 	 * @brief Returns editor render system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static EditorRenderSystem* getInstance() noexcept
 	{

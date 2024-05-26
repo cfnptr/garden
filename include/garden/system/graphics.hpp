@@ -84,7 +84,6 @@ private:
 	/**
 	 * @brief Creates a new graphics system instance.
 	 * 
-	 * @param[in,out] manager manager instance
 	 * @param windowSize target OS window size (in units)
 	 * @param depthStencilFormat depth/stencil buffer image format (Undefined = no buffer)
 	 * @param isFullscreen create a fullscreen window
@@ -92,7 +91,7 @@ private:
 	 * @param useTripleBuffering use swapchain triple buffering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	GraphicsSystem(Manager* manager, int2 windowSize = defaultWindowSize, 
+	GraphicsSystem(int2 windowSize = defaultWindowSize, 
 		Image::Format depthStencilFormat = Image::Format::SfloatD32, bool isFullscreen = !GARDEN_DEBUG,
 		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true);
 	/**
@@ -615,7 +614,6 @@ public:
 
 	/**
 	 * @brief Returns graphics system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static GraphicsSystem* getInstance() noexcept
 	{

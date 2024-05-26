@@ -87,7 +87,7 @@ void SkyboxRenderSystem::hdrRender()
 		component->descriptorSet = descriptorSet;
 	}
 
-	auto deferredSystem = getDeferredSystem();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
@@ -143,9 +143,8 @@ void SkyboxRenderSystem::disposeComponents() { components.dispose(); }
 //--------------------------------------------------------------------------------------------------
 ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()
 {
-	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
 	if (!pipeline)
-		pipeline = createPipeline(deferredSystem);
+		pipeline = createPipeline();
 	return pipeline;
 }
 

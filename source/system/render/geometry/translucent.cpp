@@ -26,8 +26,7 @@ using namespace garden;
 
 #if GARDEN_EDITOR
 //--------------------------------------------------------------------------------------------------
-static void onTranslucentEntityInspector(Manager* manager,
-	ID<Entity> entity, GeometryEditor* editor)
+static void onTranslucentEntityInspector(ID<Entity> entity, GeometryEditor* editor)
 {
 	if (ImGui::CollapsingHeader("Translucent Render"))
 	{
@@ -164,8 +163,7 @@ void TranslucentRenderSystem::appendDescriptorData(Pipeline::DescriptorData* dat
 }
 ID<GraphicsPipeline> TranslucentRenderSystem::createPipeline()
 {
-	auto deferredSystem = getManager()->get<DeferredRenderSystem>();
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"geometry/translucent", deferredSystem->getHdrFramebuffer(), true);
+		"geometry/translucent", DeferredRenderSystem::getInstance()->getHdrFramebuffer(), true);
 }
 */

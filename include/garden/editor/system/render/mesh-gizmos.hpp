@@ -28,7 +28,7 @@ class MeshGizmosEditorSystem final : public System
 	ID<Buffer> fullArrowVertices = {};
 	uint32 dragMode = 0;
 
-	MeshGizmosEditorSystem(Manager* manager);
+	MeshGizmosEditorSystem();
 	~MeshGizmosEditorSystem() final;
 
 	void init();

@@ -23,7 +23,7 @@ class CutoutSpriteSystem;
 
 struct CutoutSpriteComponent final : public SpriteRenderComponent
 {
-	float alphaCutoff = 0.0f;
+	float alphaCutoff = 0.5f;
 	friend class CutoutSpriteSystem;
 };
 
@@ -31,13 +31,15 @@ class CutoutSpriteSystem final : public SpriteRenderSystem
 {
 	LinearPool<CutoutSpriteComponent, false> components;
 	bool deferredBuffer = false;
+	bool linearFilter = false;
 
 	/**
 	 * @brief Creates a new cutout sprite rendering system instance.
-	 * @param[in,out] manager manager instance
+	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
+	 * @param useLinearFilter use linear filtering for texture
 	 */
-	CutoutSpriteSystem(Manager* manager, bool useDeferredBuffer = false);
+	CutoutSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
 
 	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) final;

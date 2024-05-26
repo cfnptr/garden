@@ -23,7 +23,7 @@ using namespace garden::graphics;
 
 class SpriteRenderEditorSystem final : public System
 {
-	SpriteRenderEditorSystem(Manager* manager);
+	SpriteRenderEditorSystem();
 	~SpriteRenderEditorSystem() final;
 
 	void init();

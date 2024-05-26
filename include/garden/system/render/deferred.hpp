@@ -56,14 +56,14 @@ class DeferredRenderSystem final : public System
 	ID<Framebuffer> ldrFramebuffer = {};
 	ID<Framebuffer> toneMappingFramebuffer = {};
 	bool asyncRecording = false;
+
 	static DeferredRenderSystem* instance;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
-	 * @param[in,out] manager manager instance
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	DeferredRenderSystem(Manager* manager, bool useAsyncRecording = true);
+	DeferredRenderSystem(bool useAsyncRecording = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
 	 */
@@ -91,7 +91,6 @@ public:
 
 	/**
 	 * @brief Returns deferred render system instance.
-	 * @warning Do not use it if you have several managers.
 	 */
 	static DeferredRenderSystem* getInstance() noexcept
 	{

@@ -20,14 +20,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-GraphicsEditorSystem::GraphicsEditorSystem(Manager* manager) : System(manager)
+GraphicsEditorSystem::GraphicsEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
 }
 GraphicsEditorSystem::~GraphicsEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
@@ -42,7 +43,7 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 
 void GraphicsEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	
 	SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
@@ -50,7 +51,7 @@ void GraphicsEditorSystem::init()
 }
 void GraphicsEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);

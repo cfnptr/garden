@@ -42,16 +42,16 @@ namespace
 }
 
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getBufferUniforms(Manager* manager,
-	ID<Framebuffer> gFramebuffer, ID<Framebuffer> hdrFramebuffer, ID<Image>& shadowPlaceholder)
+static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Framebuffer> gFramebuffer,
+	ID<Framebuffer> hdrFramebuffer, ID<Image>& shadowPlaceholder)
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto gFramebufferView = graphicsSystem->get(gFramebuffer);
 	auto hdrFramebufferView = graphicsSystem->get(hdrFramebuffer);
-	auto& colorAttachments = gFramebufferView->getColorAttachments();
-	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
+	const auto& colorAttachments = gFramebufferView->getColorAttachments();
+	const auto& depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 	
-	auto lightingSystem = manager->tryGet<LightingRenderSystem>();
+	auto lightingSystem = Manager::getInstance()->tryGet<LightingRenderSystem>();
 	ID<ImageView> shadowBuffer0, aoBuffer0, aoBuffer1;
 
 	if (lightingSystem)
@@ -89,14 +89,15 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(Manager* manager,
 //**********************************************************************************************************************
 ID<Image> DeferredRenderEditorSystem::shadowPlaceholder = {};
 
-DeferredRenderEditorSystem::DeferredRenderEditorSystem(Manager* manager) : System(manager)
+DeferredRenderEditorSystem::DeferredRenderEditorSystem()
 {
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", DeferredRenderEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", DeferredRenderEditorSystem::deinit);
 }
 DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderEditorSystem::init);
@@ -108,7 +109,7 @@ DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
 
 void DeferredRenderEditorSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	GARDEN_ASSERT(manager->has<DeferredRenderSystem>());
 
@@ -119,7 +120,7 @@ void DeferredRenderEditorSystem::init()
 }
 void DeferredRenderEditorSystem::deinit()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
@@ -194,7 +195,7 @@ void DeferredRenderEditorSystem::editorRender()
 			// TODO: we are doing this to get latest buffers. (suboptimal)
 			auto deferredSystem = DeferredRenderSystem::getInstance();
 			graphicsSystem->destroy(bufferDescriptorSet);
-			auto uniforms = getBufferUniforms(getManager(), deferredSystem->getGFramebuffer(),
+			auto uniforms = getBufferUniforms(deferredSystem->getGFramebuffer(),
 				deferredSystem->getHdrFramebuffer(), shadowPlaceholder);
 			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
 			SET_RESOURCE_DEBUG_NAME(graphicsSystem, bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
@@ -228,7 +229,6 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (drawMode != DrawMode::Lighting)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!lightingPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::getInstance();
@@ -236,7 +236,7 @@ void DeferredRenderEditorSystem::deferredRender()
 			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true);
 	}
 
-	auto pipelineView = graphicsSystem->get(lightingPipeline);
+	auto pipelineView = GraphicsSystem::getInstance()->get(lightingPipeline);
 	if (pipelineView->isReady())
 	{
 		SET_GPU_DEBUG_LABEL("Lighting Visualizer", Color::transparent);
@@ -276,10 +276,9 @@ void DeferredRenderEditorSystem::gBufferRecreate()
 {
 	if (bufferDescriptorSet)
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto deferredSystem = DeferredRenderSystem::getInstance();
-		auto descriptorSetView = graphicsSystem->get(bufferDescriptorSet);
-		auto uniforms = getBufferUniforms(getManager(), deferredSystem->getGFramebuffer(),
+		auto descriptorSetView = GraphicsSystem::getInstance()->get(bufferDescriptorSet);
+		auto uniforms = getBufferUniforms(deferredSystem->getGFramebuffer(),
 			deferredSystem->getHdrFramebuffer(), shadowPlaceholder);
 		descriptorSetView->recreate(std::move(uniforms));
 	}

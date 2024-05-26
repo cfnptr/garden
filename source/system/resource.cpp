@@ -55,30 +55,28 @@ namespace
 		uint8 downscaleCount = 0;
 		bool linearData = false;
 	};
-	struct GraphicsPipelineLoadData final
+	struct PipelineLoadData
 	{
 		uint64 version = 0;
 		fs::path shaderPath;
 		fs::path resourcesPath;
 		fs::path cachesPath;
+		map<string, Pipeline::SpecConstValue> specConstValues;
+		map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
+		uint32 maxBindlessCount = 0;
+	};
+	struct GraphicsPipelineLoadData final : public PipelineLoadData
+	{
+		Image::Format depthStencilFormat = {};
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
-		map<string, Pipeline::SpecConstValue> specConstValues;
 		map<uint8, GraphicsPipeline::State> stateOverrides;
 		ID<GraphicsPipeline> instance = {};
-		uint32 maxBindlessCount = 0;
-		Image::Format depthStencilFormat = {};
 		uint8 subpassIndex = 0;
 		bool useAsyncRecording = false;
 	};
-	struct ComputePipelineLoadData final
+	struct ComputePipelineLoadData final : public PipelineLoadData
 	{
-		uint64 version = 0;
-		fs::path shaderPath;
-		fs::path resourcesPath;
-		fs::path cachesPath;
-		map<string, Pipeline::SpecConstValue> specConstValues;
-		uint32 maxBindlessCount = 0;
 		ID<ComputePipeline> instance = {};
 		bool useAsyncRecording = false;
 	};
@@ -115,9 +113,13 @@ namespace
 //**********************************************************************************************************************
 ResourceSystem* ResourceSystem::instance = nullptr;
 
-ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
+ResourceSystem::ResourceSystem()
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
+
+	auto manager = Manager::getInstance();
+	manager->registerEvent("ImageLoaded");
+	manager->registerEvent("BufferLoaded");
 
 	SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
@@ -136,12 +138,14 @@ ResourceSystem::ResourceSystem(Manager* manager) : System(manager)
 }
 ResourceSystem::~ResourceSystem()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
-		TRY_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
+
+		manager->unregisterEvent("ImageLoaded");
+		manager->unregisterEvent("BufferLoaded");
 	}
 
 	GARDEN_ASSERT(instance); // More than one system instance detected.
@@ -151,7 +155,7 @@ ResourceSystem::~ResourceSystem()
 //**********************************************************************************************************************
 void ResourceSystem::init()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
 }
 void ResourceSystem::deinit()
@@ -181,7 +185,7 @@ void ResourceSystem::deinit()
 		graphicsQueue.pop();
 	}
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 		UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 }
@@ -193,7 +197,7 @@ void ResourceSystem::dequeuePipelines()
 	auto hasNewResources = !graphicsQueue.empty() || !computeQueue.empty();
 	LogSystem* logSystem = nullptr;
 	if (hasNewResources)
-		logSystem = getManager()->tryGet<LogSystem>();
+		logSystem = Manager::getInstance()->tryGet<LogSystem>();
 	#endif
 
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
@@ -267,12 +271,15 @@ void ResourceSystem::dequeuePipelines()
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::dequeueBuffers()
+void ResourceSystem::dequeueBuffersAndImages()
 {
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+
 	auto hasNewResources = !bufferQueue.empty() || !imageQueue.empty();
 	if (hasNewResources)
 	{
-		GraphicsSystem::getInstance()->startRecording(CommandBufferType::TransferOnly);
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer", Color::transparent);
 	}	
 
@@ -298,13 +305,15 @@ void ResourceSystem::dequeueBuffers()
 			
 			auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
 				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
-			SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
-				"buffer.staging.loaded" + to_string(*staging));
+			SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging, "buffer.staging.loaded" + to_string(*staging));
 
 			auto stagingView = GraphicsAPI::bufferPool.get(staging);
 			BufferExt::moveInternalObjects(item.staging, **stagingView);
 			Buffer::copy(staging, item.instance);
 			GraphicsAPI::bufferPool.destroy(staging);
+
+			loadedBuffer = item.instance;
+			manager->runEvent("BufferLoaded");
 		}
 		else
 		{
@@ -336,6 +345,18 @@ void ResourceSystem::dequeueBuffers()
 				#if GARDEN_DEBUG || GARDEN_EDITOR
 				image.setDebugName(image.getDebugName());
 				#endif
+
+				auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+					Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
+				SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging, "buffer.staging.imageLoaded" + to_string(*staging));
+
+				auto stagingView = GraphicsAPI::bufferPool.get(staging);
+				BufferExt::moveInternalObjects(item.staging, **stagingView);
+				Image::copy(staging, item.instance);
+				GraphicsAPI::bufferPool.destroy(staging);
+
+				loadedImage = item.instance;
+				manager->runEvent("ImageLoaded");
 			}
 			else
 			{
@@ -343,16 +364,6 @@ void ResourceSystem::dequeueBuffers()
 				ImageExt::destroy(item.image);
 				GraphicsAPI::isRunning = true;
 			}
-
-			auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
-				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
-			SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
-				"buffer.staging.imageLoaded" + to_string(*staging));
-
-			auto stagingView = GraphicsAPI::bufferPool.get(staging);
-			BufferExt::moveInternalObjects(item.staging, **stagingView);
-			Image::copy(staging, item.instance);
-			GraphicsAPI::bufferPool.destroy(staging);
 		}
 		else
 		{
@@ -366,7 +377,10 @@ void ResourceSystem::dequeueBuffers()
 	if (hasNewResources)
 	{
 		END_GPU_DEBUG_LABEL();
-		GraphicsSystem::getInstance()->stopRecording();
+		graphicsSystem->stopRecording();
+
+		loadedBuffer = {};
+		loadedImage = {};
 	}
 }
 
@@ -375,7 +389,7 @@ void ResourceSystem::input()
 {
 	queueLocker.lock();
 	dequeuePipelines();
-	dequeueBuffers();
+	dequeueBuffersAndImages();
 	queueLocker.unlock();
 }
 
@@ -492,7 +506,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		
 		if (fileCount > 1)
 		{
-			auto logSystem = getManager()->tryGet<LogSystem>();
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->error("Ambiguous image file extension. (path: " + path.generic_string() + ")");
 			loadMissingImage(data, size, format);
@@ -533,11 +547,13 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 			if (fileCount != 1)
 			{
-				auto logSystem = getManager()->tryGet<LogSystem>();
+				auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 				if (logSystem)
 				{
-					logSystem->error("Image file does not exist, or it is ambiguous. ("
-						"path: " + path.generic_string() + ")");
+					if (fileCount == 0)
+						logSystem->error("Image file does not exist. (path: " + path.generic_string() + ")");
+					else
+						logSystem->error("Image file is ambiguous. (path: " + path.generic_string() + ")");
 				}
 				loadMissingImage(data, size, format);
 				return;
@@ -572,7 +588,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	if (fileType == ImageFile::Count)
 	{
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Image does not exist. (path: " + path.generic_string() + ")");
 		loadMissingImage(data, size, format);
@@ -585,7 +601,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, data, size, format);
 
 	#if GARDEN_DEBUG
-	auto logSystem = getManager()->tryGet<LogSystem>();
+	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace("Loaded image. (" + path.generic_string() + ")");
 	#endif
@@ -620,7 +636,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 {
 	GARDEN_ASSERT(!path.empty());
 	vector<uint8> equiData; int2 equiSize;
-	auto threadSystem = getManager()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
 
 	#if GARDEN_DEBUG
 	auto filePath = appCachesPath / "images" / path;
@@ -636,7 +652,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
 		{
-			auto logSystem = getManager()->tryGet<LogSystem>();
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->error("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
 			loadMissingImage(left, right, bottom, top, back, front, size, format);
@@ -644,7 +660,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 		if (cubemapSize % 32 != 0)
 		{
-			auto logSystem = getManager()->tryGet<LogSystem>();
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 			loadMissingImage(left, right, bottom, top, back, front, size, format);
@@ -773,7 +789,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
 		}
 
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->trace("Converted spherical cubemap. (" + path.generic_string() + ")");
 		return;
@@ -819,7 +835,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 	}
@@ -827,14 +843,14 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Invalid cubemap format. (path: " + path.generic_string() + ")");
 	}
@@ -928,7 +944,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 	resource->setDebugName("image.loaded" + to_string(*image));
 	#endif
 
-	auto threadSystem = getManager()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ImageLoadData();
@@ -1046,7 +1062,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 }
 
 //**********************************************************************************************************************
-static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data)
+static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 {
 	#if GARDEN_DEBUG
 	auto vertexPath = "shaders" / data.shaderPath; vertexPath += ".vert";
@@ -1092,7 +1108,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 			outputPath = fragmentOutputPath.parent_path();
 		}
 
-		auto logSystem = manager->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 
 		auto compileResult = false;
 		try
@@ -1128,7 +1144,7 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = manager->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 		{
 			logSystem->error("Failed to load graphics shaders. ("
@@ -1145,10 +1161,13 @@ static bool loadOrCompileGraphics(Manager* manager, Compiler::GraphicsData& data
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	ID<Framebuffer> framebuffer, bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
 	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConstValue>& specConstValues,
+	const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides,
 	const map<uint8, GraphicsPipeline::State>& stateOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(framebuffer);
+
+	// TODO: validate specConstValues, stateOverrides and samplerStateOverrides
 
 	auto& framebufferView = **GraphicsAPI::framebufferPool.get(framebuffer);
 	auto& subpasses = framebufferView.getSubpasses();
@@ -1195,7 +1214,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		depthStencilFormat = attachment->getFormat();
 	}
 
-	auto threadSystem = getManager()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new GraphicsPipelineLoadData();
@@ -1207,6 +1226,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->subpassIndex = subpassIndex;
 		data->colorFormats = std::move(colorFormats);
 		data->specConstValues = specConstValues;
+		data->samplerStateOverrides = samplerStateOverrides;
 		data->stateOverrides = stateOverrides;
 		data->instance = pipeline;
 		data->maxBindlessCount = maxBindlessCount;
@@ -1222,6 +1242,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.resourcesPath = std::move(data->resourcesPath);
 			pipelineData.cachesPath = std::move(data->cachesPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
+			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			pipelineData.colorFormats = std::move(data->colorFormats);
@@ -1235,7 +1256,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.threadIndex = task.getThreadIndex();
 			#endif
 
-			if (!loadOrCompileGraphics(getManager(), pipelineData))
+			if (!loadOrCompileGraphics(pipelineData))
 			{
 				delete data;
 				return;
@@ -1262,6 +1283,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.resourcesPath = appResourcesPath;
 		pipelineData.cachesPath = appCachesPath;
 		pipelineData.specConstValues = specConstValues;
+		pipelineData.samplerStateOverrides = samplerStateOverrides;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
@@ -1275,14 +1297,14 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.threadIndex = -1;
 		#endif
 
-		if (!loadOrCompileGraphics(getManager(), pipelineData)) abort();
+		if (!loadOrCompileGraphics(pipelineData)) abort();
 			
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->trace("Loaded graphics pipeline. (" +  path.generic_string() + ")");
 		#endif
@@ -1292,7 +1314,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
+static bool loadOrCompileCompute(Compiler::ComputeData& data)
 {
 	#if GARDEN_DEBUG
 	auto computePath = "shaders" / data.shaderPath; computePath += ".comp";
@@ -1315,7 +1337,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 			data.resourcesPath / "shaders"
 		};
 
-		auto logSystem = manager->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 
 		auto compileResult = false;
 		try
@@ -1352,7 +1374,7 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = manager->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 		{
 			logSystem->error("Failed to load compute shader. ("
@@ -1368,14 +1390,16 @@ static bool loadOrCompileCompute(Manager* manager, Compiler::ComputeData& data)
 //**********************************************************************************************************************
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount,
-	const map<string, Pipeline::SpecConstValue>& specConstValues)
+	const map<string, Pipeline::SpecConstValue>& specConstValues,
+	const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
+	// TODO: validate specConstValues and samplerStateOverrides
 
 	auto version = GraphicsAPI::computePipelineVersion++;
 	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
-	auto threadSystem = getManager()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ComputePipelineLoadData();
@@ -1384,6 +1408,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		data->resourcesPath = appResourcesPath;
 		data->cachesPath = appCachesPath;
 		data->specConstValues = specConstValues;
+		data->samplerStateOverrides = samplerStateOverrides;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
 		data->useAsyncRecording = useAsyncRecording;
@@ -1396,6 +1421,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			pipelineData.resourcesPath = std::move(data->resourcesPath);
 			pipelineData.cachesPath = std::move(data->cachesPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
+			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 
@@ -1404,7 +1430,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			pipelineData.threadIndex = task.getThreadIndex();
 			#endif
 			
-			if (!loadOrCompileCompute(getManager(), pipelineData))
+			if (!loadOrCompileCompute(pipelineData))
 			{
 				delete data;
 				return;
@@ -1429,6 +1455,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		pipelineData.resourcesPath = appResourcesPath;
 		pipelineData.cachesPath = appCachesPath;
 		pipelineData.specConstValues = specConstValues;
+		pipelineData.samplerStateOverrides = samplerStateOverrides;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 
@@ -1437,14 +1464,14 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		pipelineData.threadIndex = -1;
 		#endif
 		
-		if (!loadOrCompileCompute(getManager(), pipelineData)) abort();
+		if (!loadOrCompileCompute(pipelineData)) abort();
 
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
-		auto logSystem = getManager()->tryGet<LogSystem>();
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->trace("Loaded compute pipeline. (" + path.generic_string() + ")");
 		#endif
@@ -1465,7 +1492,7 @@ void ResourceSystem::loadScene(const fs::path& path)
 	json scene = json::parse(fileStream);
 	fileStream.close();
 
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto& systems = manager->getSystems();
 	uint32 index = 0;
 
@@ -1518,7 +1545,7 @@ void ResourceSystem::storeScene(const fs::path& path)
 	serializer.write("version", appVersion.toString3());
 	serializer.beginChild("entities");
 	
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -1574,7 +1601,7 @@ void ResourceSystem::storeScene(const fs::path& path)
 }
 void ResourceSystem::clearScene()
 {
-	auto manager = getManager();
+	auto manager = Manager::getInstance();
 	auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -1593,7 +1620,7 @@ void ResourceSystem::clearScene()
 	}
 
 	#if GARDEN_DEBUG
-	auto logSystem = getManager()->tryGet<LogSystem>();
+	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace("Cleaned scene.");
 	#endif

@@ -38,7 +38,7 @@ class LogEditorSystem final : public System
 	bool includeAll = true;
 	bool isDirty = true;
 
-	LogEditorSystem(Manager* manager);
+	LogEditorSystem();
 	~LogEditorSystem() final;
 
 	void init();
