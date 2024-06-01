@@ -28,6 +28,12 @@ float4x4 CameraComponent::calcProjection() const noexcept
 	return calcOrthoProjRevZ(p.orthographic.width,
 		p.orthographic.height, p.orthographic.depth);
 }
+float CameraComponent::getNearPlane() const noexcept
+{
+	if (type == ProjectionType::Perspective)
+		return p.perspective.nearPlane;
+	return p.orthographic.depth.x;
+}
 
 //**********************************************************************************************************************
 const string& CameraSystem::getComponentName() const

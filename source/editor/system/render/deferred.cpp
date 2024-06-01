@@ -145,13 +145,13 @@ void DeferredRenderEditorSystem::editorRender()
 		{
 			const auto modes = "Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0Emissive\0Normal\0"
 				"World Position\0Depth\0Lighting\0Shadow\0Ambient Occlusion\0Ambient Occlusion (D)\0\0";
-			ImGui::Combo("Draw Mode", drawMode, modes);
+			ImGui::Combo("Draw Mode", &drawMode, modes);
 
 			if (drawMode == DrawMode::Lighting)
 			{
 				ImGui::SeparatorText("Overrides");
-				ImGui::ColorEdit3("Base Color", (float*)&baseColorOverride);
-				ImGui::ColorEdit3("Emissive", (float*)&emissiveOverride,
+				ImGui::ColorEdit3("Base Color", &baseColorOverride);
+				ImGui::ColorEdit3("Emissive", &emissiveOverride,
 					ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 				ImGui::SliderFloat("Metallic", &metallicOverride, 0.0f, 1.0f);
 				ImGui::SliderFloat("Roughness", &roughnessOverride, 0.0f, 1.0f);

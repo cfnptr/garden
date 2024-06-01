@@ -301,7 +301,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 				writeDescriptorSets.push_back(writeDescriptorSet);
 			}
 		}
-		else if (uniformType == GslUniformType::UniformBuffer || uniformType == GslUniformType::StorageBuffer)
+		else if (isBufferType(uniformType))
 		{
 			GARDEN_ASSERT(dsUniform.type == typeid(Buffer));
 			writeDescriptorSet.pImageInfo = nullptr;
@@ -448,7 +448,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 		writeDescriptorSet.pImageInfo = &descriptorImageInfos[(uint32)(
 			descriptorImageInfos.size() - resourceArray.size())];
 	}
-	else if (uniformType == GslUniformType::UniformBuffer || uniformType == GslUniformType::StorageBuffer)
+	else if (isBufferType(uniformType))
 	{
 		GARDEN_ASSERT(uniform.type == typeid(Buffer));
 		writeDescriptorSet.pImageInfo = nullptr;

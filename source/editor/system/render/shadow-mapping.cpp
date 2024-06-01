@@ -73,7 +73,7 @@ void ShadowMappingEditor::render()
 
 		ImGui::DragFloat("Z-Axis Offset Coefficient", &system->zCoeff, 0.01f);
 		ImGui::SliderFloat3("Cascade Split Coefficients",
-			(float*)&system->splitCoefs, 0.0f, 1.0f);
+			&system->splitCoefs, 0.0f, 1.0f);
 
 		ImGui::Checkbox("Visualize Cascades", &visualizeCascades);
 		if (ImGui::BeginItemTooltip())

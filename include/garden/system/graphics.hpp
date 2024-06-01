@@ -76,6 +76,7 @@ private:
 	SwapchainChanges swapchainChanges;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
+	ID<GraphicsPipeline> linePipeline;
 	ID<GraphicsPipeline> aabbPipeline;
 	#endif
 
@@ -643,7 +644,18 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
+	 * @brief Draws line wireframe. (Debug Only)
+	 * 
+	 * @param[in] mvp line model view projection matrix
+	 * @param[in] startPoint line beginning point
+	 * @param[in] endPoint line ending point
+	 * @param[in] color line wireframe color
+	 */
+	void drawLine(const float4x4& mvp, const float3& startPoint,
+		const float3& endPoint, const float4& color = float4(1.0f));
+	/**
 	 * @brief Draws axis aligned bounding box wireframe. (Debug Only)
+	 * 
 	 * @param[in] mvp box model view projection matrix
 	 * @param[in] color box wireframe color
 	 */

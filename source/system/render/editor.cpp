@@ -15,16 +15,16 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/file.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
-
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/imgui-impl.hpp"
-#include "garden/file.hpp"
+#include "garden/editor/system/render/gpu-resource.hpp"
 
 #include "mpio/os.hpp"
 #include "mpio/directory.hpp"
@@ -151,6 +151,11 @@ void EditorRenderSystem::showMainMenuBar()
 		stats += " | T: " + to_string(threadPool.getPendingTaskCount());
 	}
 
+	static double lastFps = 0.0;
+	auto fps = 1.0 / InputSystem::getInstance()->getDeltaTime();
+	stats += " | FPS: " + to_string((int32)((lastFps + fps) * 0.5));
+	lastFps = fps;
+
 	stats += "]";
 
 	auto textSize = ImGui::CalcTextSize(stats.c_str());
@@ -159,7 +164,7 @@ void EditorRenderSystem::showMainMenuBar()
 
 	if (ImGui::BeginItemTooltip())
 	{
-		ImGui::Text("E = Entities, T = Tasks");
+		ImGui::Text("E = Entities, T = Tasks, FPS = Frames Per Second");
 		ImGui::EndTooltip();
 	}
 
@@ -284,7 +289,7 @@ void EditorRenderSystem::showOptionsWindow()
 		else renderScaleType = 4;
 
 		const auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";
-		if (ImGui::Combo("Render Scale", renderScaleType, renderScaleTypes))
+		if (ImGui::Combo("Render Scale", &renderScaleType, renderScaleTypes))
 		{
 			switch (renderScaleType)
 			{
@@ -347,7 +352,7 @@ void EditorRenderSystem::showOptionsWindow()
 //**********************************************************************************************************************
 void EditorRenderSystem::showEntityInspector()
 {
-	ImGui::SetNextWindowSize(ImVec2(320.0f, 180.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(384.0f, 256.0f), ImGuiCond_FirstUseEver);
 
 	auto showEntityInspector = true;
 	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
@@ -587,6 +592,7 @@ void EditorRenderSystem::showFileSelector()
 
 	auto size = ImVec2(ImGui::GetIO().DisplaySize.x / 2.0f, ImGui::GetIO().DisplaySize.y / 2.0f);
 	ImGui::SetNextWindowPos(size, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(ImVec2(640.0f, 320.0f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::BeginPopupModal("File Selector", nullptr, ImGuiWindowFlags_NoMove))
 	{
@@ -752,5 +758,121 @@ void EditorRenderSystem::openFileSelector(const std::function<void(const fs::pat
 	fileSelectDirectory = directory.empty() ? appInfoSystem->getResourcesPath() : directory;
 	fileExtensions = extensions;
 	onFileSelect = onSelect;
+}
+
+void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image,
+	Ref<DescriptorSet>& descriptorSet, ID<Entity> entity)
+{
+	ImGui::InputText("Path", &path, ImGuiInputTextFlags_ReadOnly);
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();
+		ImGui::BeginDisabled(!gpuResourceSystem || !image);
+		if (ImGui::MenuItem("Show Resource"))
+			gpuResourceSystem->openTab(image);
+		ImGui::EndDisabled();
+		ImGui::EndPopup();
+	}
+	ImGui::SameLine();
+
+	if (ImGui::Button(" + "))
+	{	
+		auto appInfoSystem = AppInfoSystem::getInstance();
+		static const set<string> extensions = { ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr" };
+
+		auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
+		openFileSelector([_path, _image, _descriptorSet, entity](const fs::path& selectedFile)
+		{
+			if (EditorRenderSystem::getInstance()->selectedEntity == entity)
+			{
+				auto manager = Manager::getInstance();
+				auto path = selectedFile;
+				path.replace_extension();
+
+				auto graphicsSystem = GraphicsSystem::getInstance();
+				if (_image->getRefCount() == 1)
+					graphicsSystem->destroy(*_image);
+				if (_descriptorSet->getRefCount() == 1)
+					graphicsSystem->destroy(*_descriptorSet);
+
+				*_path = path.generic_string();
+				*_image = ResourceSystem::getInstance()->loadImage(
+					path, Image::Bind::TransferDst | Image::Bind::Sampled, 1);
+				*_descriptorSet = {};
+			}
+		},
+		appInfoSystem->getResourcesPath() / "images", extensions);
+	}
+}
+
+//**********************************************************************************************************************
+static void drawResource(const Resource* resource, const char* label,
+	ID<Resource> instance, GpuResourceEditorSystem::TabType tabType)
+{
+	string buffereViewName;
+	if (resource)
+	{
+		buffereViewName = resource->getDebugName().empty() ?
+			to_string(*instance) : resource->getDebugName();
+	}
+
+	ImGui::InputText(label, &buffereViewName, ImGuiInputTextFlags_ReadOnly);
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();
+		ImGui::BeginDisabled(!gpuResourceSystem || !resource);
+		if (ImGui::MenuItem("Show Resource"))
+			gpuResourceSystem->openTab(instance, tabType);
+		ImGui::EndDisabled();
+		ImGui::EndPopup();
+	}
+}
+void EditorRenderSystem::drawResource(ID<Buffer> buffer)
+{
+	auto bufferView = buffer ? GraphicsAPI::bufferPool.get(buffer) : View<Buffer>();
+	::drawResource(*bufferView, "Buffer", ID<Resource>(buffer),
+		GpuResourceEditorSystem::TabType::Buffers);
+}
+void EditorRenderSystem::drawResource(ID<Image> image)
+{
+	auto imageView = image ? GraphicsAPI::imagePool.get(image) : View<Image>();
+	::drawResource(*imageView, "Image", ID<Resource>(image),
+		GpuResourceEditorSystem::TabType::Images);
+}
+void EditorRenderSystem::drawResource(ID<ImageView> imageView)
+{
+	auto imageViewView = imageView ? GraphicsAPI::imageViewPool.get(imageView) : View<ImageView>();
+	::drawResource(*imageViewView, "Image View", ID<Resource>(imageView),
+		GpuResourceEditorSystem::TabType::ImageViews);
+}
+void EditorRenderSystem::drawResource(ID<Framebuffer> framebuffer)
+{
+	auto framebufferView = framebuffer ?
+		GraphicsAPI::framebufferPool.get(framebuffer) : View<Framebuffer>();
+	::drawResource(*framebufferView, "Framebuffer", ID<Resource>(framebuffer),
+		GpuResourceEditorSystem::TabType::Framebuffers);
+}
+void EditorRenderSystem::drawResource(ID<DescriptorSet> descriptorSet)
+{
+	auto descriptorSetView = descriptorSet ?
+		GraphicsAPI::descriptorSetPool.get(descriptorSet) : View<DescriptorSet>();
+	::drawResource(*descriptorSetView, "Descriptor Set", ID<Resource>(descriptorSet),
+		GpuResourceEditorSystem::TabType::DescriptorSets);
+}
+void EditorRenderSystem::drawResource(ID<GraphicsPipeline> graphicsPipeline)
+{
+	auto graphicsPipelineView = graphicsPipeline ? 
+		GraphicsAPI::graphicsPipelinePool.get(graphicsPipeline) : View<GraphicsPipeline>();
+	::drawResource(*graphicsPipelineView, "Graphics Pipeline", ID<Resource>(graphicsPipeline),
+		GpuResourceEditorSystem::TabType::GraphicsPipelines);
+}
+void EditorRenderSystem::drawResource(ID<ComputePipeline> computePipeline)
+{
+	auto computePipelineView = computePipeline ?
+		GraphicsAPI::computePipelinePool.get(computePipeline) : View<ComputePipeline>();
+	::drawResource(*computePipelineView, "Compute Pipeline", ID<Resource>(computePipeline),
+		GpuResourceEditorSystem::TabType::ComputePipelines);
 }
 #endif

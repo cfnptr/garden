@@ -108,6 +108,11 @@ public:
 	 * @details See the @ref calcPerspProjInfRevZ().
 	 */
 	float4x4 calcProjection() const noexcept;
+	/**
+	 * @brief Returns camera projection matrix near plane.
+	 * @details Handles projection type inside.
+	 */
+	float getNearPlane() const noexcept;
 
 	// TODO: add perspective/ortho morphing.
 };

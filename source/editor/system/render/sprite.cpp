@@ -15,7 +15,6 @@
 #include "garden/editor/system/render/sprite.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/app-info.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 
@@ -60,46 +59,28 @@ void SpriteRenderEditorSystem::deinit()
 //**********************************************************************************************************************
 static void renderSpriteComponent(SpriteRenderComponent* spriteComponent)
 {
-	ImGui::InputText("Path", &spriteComponent->path, ImGuiInputTextFlags_ReadOnly); ImGui::SameLine();
-	if (ImGui::Button("Select"))
+	auto manager = Manager::getInstance();
+	auto entity = spriteComponent->getEntity();
+	string* path = nullptr; Ref<Image>* colorMap = nullptr; Ref<DescriptorSet>* descriptorSet = nullptr;
+
+	auto cutoutComponent = manager->tryGet<CutoutSpriteComponent>(entity);
+	if (cutoutComponent)
 	{
-		auto entity = spriteComponent->getEntity();
-		auto appInfoSystem = AppInfoSystem::getInstance();
-		auto editorSystem = EditorRenderSystem::getInstance();
-		static const set<string> extensions = { ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr" };
-
-		editorSystem->openFileSelector([entity](const fs::path& selectedFile)
-		{
-			if (EditorRenderSystem::getInstance()->selectedEntity == entity)
-			{
-				auto manager = Manager::getInstance();
-				auto path = selectedFile;
-				path.replace_extension();
-
-				auto cutoutComponent = manager->tryGet<CutoutSpriteComponent>(entity);
-				if (cutoutComponent)
-				{
-					auto graphicsSystem = GraphicsSystem::getInstance();
-					if (cutoutComponent->colorMap.getRefCount() == 1)
-						graphicsSystem->destroy(cutoutComponent->colorMap);
-					if (cutoutComponent->descriptorSet.getRefCount() == 1)
-						graphicsSystem->destroy(cutoutComponent->descriptorSet);
-
-					cutoutComponent->path = path.generic_string();
-					cutoutComponent->colorMap = ResourceSystem::getInstance()->loadImage(
-						path, Image::Bind::TransferDst | Image::Bind::Sampled);
-					cutoutComponent->descriptorSet = {};
-				}
-			}
-		},
-		appInfoSystem->getResourcesPath() / "images", extensions);
+		path = &cutoutComponent->path;
+		colorMap = &cutoutComponent->colorMap;
+		descriptorSet = &cutoutComponent->descriptorSet;
 	}
+
+	auto editorSystem = EditorRenderSystem::getInstance();
+	if (path)
+		editorSystem->drawImageSelector(*path, *colorMap, *descriptorSet, entity);
+	editorSystem->drawResource(descriptorSet ? *descriptorSet : Ref<DescriptorSet>());
 
 	auto& aabb = spriteComponent->aabb;
 	ImGui::Checkbox("Enabled", &spriteComponent->isEnabled);
-	ImGui::DragFloat3("Min AABB", (float*)&aabb.getMin(), 0.01f);
-	ImGui::DragFloat3("Max AABB", (float*)&aabb.getMax(), 0.01f);
-	ImGui::SliderFloat4("Color Factor", (float*)&spriteComponent->colorFactor, 0.0f, 1.0f);
+	ImGui::DragFloat3("Min AABB", (float3*)&aabb.getMin(), 0.01f);
+	ImGui::DragFloat3("Max AABB", (float3*)&aabb.getMax(), 0.01f);
+	ImGui::SliderFloat4("Color Factor", &spriteComponent->colorFactor, 0.0f, 1.0f);
 }
 
 void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)

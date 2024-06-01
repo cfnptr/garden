@@ -63,7 +63,7 @@ void SpriteRenderSystem::imageLoaded()
 		sharedDescriptorSet = graphicsSystem->createDescriptorSet(getPipeline(), std::move(uniforms), 1);
 		spriteRender->descriptorSet = sharedDescriptorSet;
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, sharedDescriptorSet,
-			"descriptorSet.sprite." + to_string(i + 1));
+			"descriptorSet." + spriteRender->path + to_string(i + 1));
 	}
 }
 

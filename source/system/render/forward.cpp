@@ -112,13 +112,8 @@ void ForwardRenderSystem::init()
 
 	if (!colorBuffer)
 		colorBuffer = createColorBuffer(hdrColorBuffer);
-
-	if (!depthStencilBuffer)
-	{
-		if (graphicsSystem->getRenderScale() != 1.0f)
-			depthStencilBuffer = createDepthStencilBuffer();
-	}
-
+	if (!depthStencilBuffer && graphicsSystem->getRenderScale() != 1.0f)
+		depthStencilBuffer = createDepthStencilBuffer();
 	if (!framebuffer)
 		framebuffer = createFramebuffer(colorBuffer, depthStencilBuffer, clearColorBuffer);
 }
@@ -221,9 +216,10 @@ void ForwardRenderSystem::swapchainRecreate()
 		auto framebufferView = graphicsSystem->get(framebuffer);
 		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 		auto colorBufferView = graphicsSystem->get(colorBuffer);
-		Framebuffer::OutputAttachment colorAttachment(colorBufferView->getDefaultView(), false, true, true);
+		Framebuffer::OutputAttachment colorAttachment(
+			colorBufferView->getDefaultView(), clearColorBuffer, false, true);
 		auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
-		Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, false, true, true);
+		Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, true, false, true);
 		if (depthStencilBuffer)
 			depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 		framebufferView->update(framebufferSize, &colorAttachment, 1, depthStencilAttachment);

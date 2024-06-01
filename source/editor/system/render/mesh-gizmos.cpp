@@ -251,17 +251,17 @@ void MeshGizmosEditorSystem::editorRender()
 	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Default)
 	{
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
+		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
 		auto globalDirection = cameraConstants.viewProjInv * float4(ndcPosition, 0.0001f, 1.0f);
-		auto globalOrigin =	cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
-		globalDirection = float4((float3)globalDirection / globalDirection.w, globalDirection.w);
 		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
-
+		globalDirection = float4((float3)globalDirection / globalDirection.w - (float3)globalOrigin, globalDirection.w);
+		
 		float newDist2 = FLT_MAX; uint32 meshIndex = 0;
 		for (uint32 i = 0; i < 4; i++)
 		{
 			auto modelInverse = inverse(gizmosMeshes[i].model);
 			auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
-			auto localDirection = modelInverse * float4((float3)globalDirection, 1.0f);
+			auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
 			auto ray = Ray((float3)localOrigin, (float3)localDirection);
 			if (!raycast(Aabb::two, ray))
 				continue;
@@ -339,22 +339,22 @@ void MeshGizmosEditorSystem::editorSettings()
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled);
 
-		if (ImGui::ColorEdit4("Handle Color", handleColor))
+		if (ImGui::ColorEdit4("Handle Color", &handleColor))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("meshGizmosColor", handleColor);
 		}
-		if (ImGui::ColorEdit4("X-Axis Color", axisColorX))
+		if (ImGui::ColorEdit4("X-Axis Color", &axisColorX))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("meshGizmosColorX", axisColorX);
 		}
-		if (ImGui::ColorEdit4("Y-Axis Color", axisColorY))
+		if (ImGui::ColorEdit4("Y-Axis Color", &axisColorY))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("meshGizmosColorY", axisColorY);
 		}
-		if (ImGui::ColorEdit4("Z-Axis Color", axisColorZ))
+		if (ImGui::ColorEdit4("Z-Axis Color", &axisColorZ))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("meshGizmosColorZ", axisColorZ);

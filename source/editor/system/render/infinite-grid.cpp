@@ -134,7 +134,7 @@ void InfiniteGridEditorSystem::editorRender()
 	graphicsSystem->stopRecording();
 }
 
-void InfiniteGridEditorSystem::swapchainRecreate()
+void InfiniteGridEditorSystem ::swapchainRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
@@ -161,18 +161,18 @@ void InfiniteGridEditorSystem::editorSettings()
 			if (settingsSystem)
 				settingsSystem->setFloat("infGridScale", gridScale);
 		}
-		if (ImGui::ColorEdit4("Grid Color", gridColor))
+		if (ImGui::ColorEdit4("Grid Color", &gridColor))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("infGridColor", gridColor);
 		}
-		if (ImGui::ColorEdit4("X-Axis Color", axisColorX))
+		if (ImGui::ColorEdit4("X-Axis Color", &axisColorX))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("infGridColorX", axisColorX);
 		}
 		auto axisName = isHorizontal ? "Z-Axis Color" : "Y-Axis Color";
-		if (ImGui::ColorEdit4(axisName, axisColorY))
+		if (ImGui::ColorEdit4(axisName, &axisColorY))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("infGridColorY", axisColorY);

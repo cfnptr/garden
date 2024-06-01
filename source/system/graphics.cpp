@@ -44,6 +44,13 @@ using namespace garden::primitive;
 //**********************************************************************************************************************
 namespace
 {
+	struct LinePC
+	{
+		float4x4 mvp;
+		float4 color;
+		float4 startPoint;
+		float4 endPoint;
+	};
 	struct AabbPC
 	{
 		float4x4 mvp;
@@ -73,7 +80,7 @@ void GraphicsSystem::initializeImGui()
 
 	// Hack for the ImGui render pass creation.
 	auto imGuiFramebuffer = createFramebuffer(framebufferSize, std::move(subpasses));
-	auto& framebuffer = **get(imGuiFramebuffer);
+	auto& framebuffer = **GraphicsAPI::framebufferPool.get(imGuiFramebuffer);
 	ImGuiData::renderPass = (VkRenderPass)FramebufferExt::getRenderPass(framebuffer);
 	Vulkan::device.destroyFramebuffer(vk::Framebuffer((VkFramebuffer)ResourceExt::getInstance(framebuffer)));
 	ResourceExt::getInstance(framebuffer) = nullptr;
@@ -86,8 +93,8 @@ void GraphicsSystem::initializeImGui()
 
 	for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
 	{
-		auto colorImage = get(Vulkan::swapchain.getBuffers()[i].colorImage);
-		auto& imageView = **get(colorImage->getDefaultView());
+		auto colorImage = GraphicsAPI::imagePool.get(Vulkan::swapchain.getBuffers()[i].colorImage);
+		auto& imageView = **GraphicsAPI::imageViewPool.get(colorImage->getDefaultView());
 		framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(imageView);
 		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
 	}
@@ -162,8 +169,8 @@ void GraphicsSystem::recreateImGui()
 
 	for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
 	{
-		auto colorImage = get(Vulkan::swapchain.getBuffers()[i].colorImage);
-		auto& imageView = **get(colorImage->getDefaultView());
+		auto colorImage = GraphicsAPI::imagePool.get(Vulkan::swapchain.getBuffers()[i].colorImage);
+		auto& imageView = **GraphicsAPI::imageViewPool.get(colorImage->getDefaultView());
 		framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(imageView);
 		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
 	}
@@ -172,8 +179,8 @@ void GraphicsSystem::recreateImGui()
 
 static ID<ImageView> createDepthStencilBuffer(GraphicsSystem* graphicsSystem, int2 size, Image::Format format)
 {
-	auto depthImage = graphicsSystem->createImage(format, Image::Bind::Fullscreen |
-		Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
+	auto depthImage = graphicsSystem->createImage(format, Image::Bind::TransferDst | 
+		Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, depthImage, "image.depthBuffer");
 	auto imageView = GraphicsAPI::imagePool.get(depthImage);
 	return imageView->getDefaultView();
@@ -402,7 +409,7 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	if (cameraComponent)
 	{
 		cameraConstants.projection = cameraComponent->calcProjection();
-		cameraConstants.nearPlane = cameraComponent->p.perspective.nearPlane;
+		cameraConstants.nearPlane = cameraComponent->getNearPlane();
 	}
 	else
 	{
@@ -532,6 +539,14 @@ void GraphicsSystem::update()
 		ImGui::NewFrame();
 		#endif
 	}
+
+	if (renderScale != 1.0f) // TODO: make this optional
+	{
+		startRecording(CommandBufferType::Frame);
+		auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
+		GraphicsAPI::imagePool.get(depthStencilBufferView->getImage())->clear(0.0f, 0x00);
+		stopRecording();
+	}
 }
 void GraphicsSystem::present()
 {
@@ -651,7 +666,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
-		emptyTexture = get(texture)->getDefaultView();
+		emptyTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return emptyTexture;
 }
@@ -663,7 +678,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
-		whiteTexture = get(texture)->getDefaultView();
+		whiteTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return whiteTexture;
 }
@@ -675,7 +690,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
-		greenTexture = get(texture)->getDefaultView();
+		greenTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return greenTexture;
 }
@@ -687,7 +702,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
 		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
-		normalMapTexture = get(texture)->getDefaultView();
+		normalMapTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return normalMapTexture;
 }
@@ -1260,6 +1275,26 @@ void GraphicsSystem::stopRecording()
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
+void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
+	const float3& endPoint, const float4& color)
+{
+	if (!linePipeline)
+	{
+		linePipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/wireframe-line", swapchainFramebuffer, false, false);
+	}
+
+	auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(linePipeline);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	auto pushConstants = pipelineView->getPushConstants<LinePC>();
+	pushConstants->mvp = mvp;
+	pushConstants->color = color;
+	pushConstants->startPoint = float4(startPoint, 1.0f);
+	pushConstants->endPoint = float4(endPoint, 1.0f);
+	pipelineView->pushConstants();
+	pipelineView->draw({}, 24);
+}
 void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 {
 	if (!aabbPipeline)
@@ -1268,7 +1303,7 @@ void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 			"editor/aabb-lines", swapchainFramebuffer, false, false);
 	}
 
-	auto pipelineView = get(aabbPipeline);
+	auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(aabbPipeline);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	auto pushConstants = pipelineView->getPushConstants<AabbPC>();

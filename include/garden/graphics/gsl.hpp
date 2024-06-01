@@ -539,5 +539,14 @@ static bool isImageType(GslUniformType uniformType) noexcept
 	return (uint8)GslUniformType::Image1D <= (uint8)uniformType &&
 		(uint8)uniformType <= (uint8)GslUniformType::Uimage2DArray;
 }
+/**
+ * @brief Returns true if GSL uniform type is buffer, otherwise false.
+ * @param uniformType target GSL uniform type
+ */
+static bool isBufferType(GslUniformType uniformType) noexcept
+{
+	return uniformType == GslUniformType::UniformBuffer ||
+		uniformType == GslUniformType::StorageBuffer;
+}
 
 } // namespace garden::graphics

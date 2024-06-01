@@ -42,26 +42,165 @@ using namespace math;
  * @param[in] items all available item list
  */
 template<typename T = int>
-static bool Combo(const char* label, T& currentItem, const char* items)
+static bool Combo(const char* label, T* currentItem, const char* items)
 {
-	auto item = (int)currentItem;
+	GARDEN_ASSERT(currentItem);
+	auto item = (int)*currentItem;
 	auto result = ImGui::Combo(label, &item, items);
-	currentItem = (T)item;
+	*currentItem = (T)item;
 	return result;
 }
 
-static bool ColorEdit4(const char* label, Color& color, ImGuiColorEditFlags flags = 0)
+static bool SliderFloat4(const char* label, float4* value, float min,
+	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
-	auto floatColor = (float4)color;
-	auto result = ImGui::ColorEdit4(label, (float*)&floatColor, flags);
-	color = (Color)floatColor;
+	return ImGui::SliderFloat4(label, (float*)value, min, max, format, flags);
+}
+static bool SliderFloat3(const char* label, float4* value, float min,
+	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderFloat3(label, (float*)value, min, max, format, flags);
+}
+static bool SliderFloat3(const char* label, float3* value, float min,
+	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderFloat3(label, (float*)value, min, max, format, flags);
+}
+static bool SliderFloat2(const char* label, float4* value, float min,
+	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderFloat2(label, (float*)value, min, max, format, flags);
+}
+static bool SliderFloat2(const char* label, float3* value, float min,
+	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderFloat2(label, (float*)value, min, max, format, flags);
+}
+static bool SliderFloat2(const char* label, float2* value, float min,
+	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderFloat2(label, (float*)value, min, max, format, flags);
+}
+
+static bool DragFloat4(const char* label, float4* value, float speed = 1.0f, float min = 0.0f,
+	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragFloat4(label, (float*)value, speed, min, max, format, flags);
+}
+static bool DragFloat3(const char* label, float4* value, float speed = 1.0f, float min = 0.0f,
+	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragFloat4(label, (float*)value, speed, min, max, format, flags);
+}
+static bool DragFloat3(const char* label, float3* value, float speed = 1.0f, float min = 0.0f,
+	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragFloat3(label, (float*)value, speed, min, max, format, flags);
+}
+static bool DragFloat2(const char* label, float4* value, float speed = 1.0f, float min = 0.0f,
+	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragFloat2(label, (float*)value, speed, min, max, format, flags);
+}
+static bool DragFloat2(const char* label, float3* value, float speed = 1.0f, float min = 0.0f,
+	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragFloat2(label, (float*)value, speed, min, max, format, flags);
+}
+static bool DragFloat2(const char* label, float2* value, float speed = 1.0f, float min = 0.0f,
+	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragFloat2(label, (float*)value, speed, min, max, format, flags);
+}
+
+static bool SliderInt4(const char* label, int4* value, int min,
+	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderInt4(label, (int*)value, min, max, format, flags);
+}
+static bool SliderInt3(const char* label, int4* value, int min,
+	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderInt3(label, (int*)value, min, max, format, flags);
+}
+static bool SliderInt3(const char* label, int3* value, int min,
+	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderInt3(label, (int*)value, min, max, format, flags);
+}
+static bool SliderInt2(const char* label, int4* value, int min,
+	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderInt2(label, (int*)value, min, max, format, flags);
+}
+static bool SliderInt2(const char* label, int3* value, int min,
+	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderInt2(label, (int*)value, min, max, format, flags);
+}
+static bool SliderInt2(const char* label, int2* value, int min,
+	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::SliderInt2(label, (int*)value, min, max, format, flags);
+}
+
+static bool DragInt4(const char* label, int4* value, float speed = 1.0f, int min = 0,
+	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragInt4(label, (int*)value, speed, min, max, format, flags);
+}
+static bool DragInt3(const char* label, int4* value, float speed = 1.0f, int min = 0,
+	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragInt4(label, (int*)value, speed, min, max, format, flags);
+}
+static bool DragInt3(const char* label, int3* value, float speed = 1.0f, int min = 0,
+	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragInt3(label, (int*)value, speed, min, max, format, flags);
+}
+static bool DragInt2(const char* label, int4* value, float speed = 1.0f, int min = 0,
+	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragInt2(label, (int*)value, speed, min, max, format, flags);
+}
+static bool DragInt2(const char* label, int3* value, float speed = 1.0f, int min = 0,
+	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragInt2(label, (int*)value, speed, min, max, format, flags);
+}
+static bool DragInt2(const char* label, int2* value, float speed = 1.0f, int min = 0,
+	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
+{
+	return ImGui::DragInt2(label, (int*)value, speed, min, max, format, flags);
+}
+
+static bool ColorEdit4(const char* label, float4* color, ImGuiColorEditFlags flags = 0)
+{
+	return ImGui::ColorEdit4(label, (float*)color, flags);
+}
+static bool ColorEdit3(const char* label, float4* color, ImGuiColorEditFlags flags = 0)
+{
+	return ImGui::ColorEdit3(label, (float*)color, flags);
+}
+static bool ColorEdit3(const char* label, float3* color, ImGuiColorEditFlags flags = 0)
+{
+	return ImGui::ColorEdit3(label, (float*)color, flags);
+}
+static bool ColorEdit4(const char* label, Color* color, ImGuiColorEditFlags flags = 0)
+{
+	GARDEN_ASSERT(color);
+	auto floatColor = (float4)*color;
+	auto result = ColorEdit4(label, &floatColor, flags);
+	*color = (Color)floatColor;
 	return result;
 }
-static bool ColorEdit3(const char* label, Color& color, ImGuiColorEditFlags flags = 0)
+static bool ColorEdit3(const char* label, Color* color, ImGuiColorEditFlags flags = 0)
 {
-	auto floatColor = (float3)color;
-	auto result = ImGui::ColorEdit3(label, (float*)&floatColor, flags);
-	color = (Color)floatColor;
+	GARDEN_ASSERT(color);
+	auto floatColor = (float3)*color;
+	auto result = ColorEdit3(label, &floatColor, flags);
+	*color = (Color)floatColor;
 	return result;
 }
 
