@@ -539,8 +539,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 					}
 				}
 			}
-			else if (uniformType == GslUniformType::UniformBuffer ||
-				uniformType == GslUniformType::StorageBuffer)
+			else if (isBufferType(uniformType))
 			{
 				for (auto& resourceArray : dsUniform.second.resourceSets)
 				{

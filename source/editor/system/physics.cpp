@@ -77,13 +77,13 @@ void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 			{
 				auto float3Value = rigidBodyComponent->getCenterOfMass();
 				if (ImGui::DragFloat3("Center Of Mass",
-					(float*)&float3Value, 0.01f, 0.0f, FLT_MAX))
+					&float3Value, 0.01f, 0.0f, FLT_MAX))
 				{
 					rigidBodyComponent->setCenterOfMass(float3Value);
 				}
 				float3Value = rigidBodyComponent->getInertiaTensor();
 				if (ImGui::DragFloat3("Inertia Tensor",
-					(float*)&float3Value, 0.01f, 0.0f, FLT_MAX))
+					&float3Value, 0.01f, 0.0f, FLT_MAX))
 				{
 					rigidBodyComponent->setInertiaTensor(float3Value);
 				}
@@ -107,11 +107,11 @@ void PhysicsEditor::onEntityInspector(ID<Entity> entity)
 				ImGui::SeparatorText("Velocity");
 				float3Value = rigidBodyComponent->getLinearVelocity();
 				if (ImGui::DragFloat3("Linear",
-					(float*)&float3Value, 0.01f, 0.0f, FLT_MAX))
+					&float3Value, 0.01f, 0.0f, FLT_MAX))
 					rigidBodyComponent->setLinearVelocity(float3Value);
 				float3Value = rigidBodyComponent->getAngularVelocity();
 				if (ImGui::DragFloat3("Angular",
-					(float*)&float3Value, 0.01f, 0.0f, FLT_MAX))
+					&float3Value, 0.01f, 0.0f, FLT_MAX))
 					rigidBodyComponent->setAngularVelocity(float3Value);
 			}
 

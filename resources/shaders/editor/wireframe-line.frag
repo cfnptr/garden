@@ -12,22 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/depth.gsl"
-#include "common/constants.gsl"
-#include "common/fullscreen.gsl"
-
-uniform CameraConstants
+pipelineState
 {
-	CAMERA_CONSTANTS
-} cc;
+	topology = lineList;
+	depthTesting = on;
+	depthWriting = on;
+	faceCulling = off;
+}
 
-out float3 fs.nearPoint;
-out float3 fs.farPoint;
+uniform pushConstants
+{
+	float4x4 mvp;
+	float4 color;
+	float4 startPoint;
+	float4 endPoint;
+} pc;
+
+out float4 fb.color;
 
 void main()
 {
-	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
-	fs.nearPoint = calcWorldPosition(1.0f, texCoords, cc.viewProjInv) + cc.cameraPos.xyz;
-    fs.farPoint = calcWorldPosition(0.0001f, texCoords, cc.viewProjInv) + cc.cameraPos.xyz; // 0.001 is for inf far plane
-	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
+	fb.color = pc.color;
 }

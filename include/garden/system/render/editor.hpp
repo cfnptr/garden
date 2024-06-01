@@ -114,6 +114,16 @@ public:
 
 	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
 		const fs::path& directory = {}, const set<string>& extensions = {});
+	void drawImageSelector(string& path, Ref<Image>& image,
+		Ref<DescriptorSet>& descriptorSet, ID<Entity> entity);
+
+	void drawResource(ID<Buffer> buffer);
+	void drawResource(ID<Image> image);
+	void drawResource(ID<ImageView> imageView);
+	void drawResource(ID<Framebuffer> framebuffer);
+	void drawResource(ID<DescriptorSet> descriptorSet);
+	void drawResource(ID<GraphicsPipeline> graphicsPipeline);
+	void drawResource(ID<ComputePipeline> computePipeline);
 
 	/**
 	 * @brief Returns editor render system instance.

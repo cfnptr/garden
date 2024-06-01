@@ -34,18 +34,18 @@ void GeometryEditor::renderInfo(GeometryRenderComponent* geometryComponent,
 	ImGui::Checkbox("Enabled", &geometryComponent->isEnabled);
 	
 	auto& aabb = geometryComponent->aabb;
-	ImGui::DragFloat3("Min AABB", (float*)&aabb.getMin(), 0.01f);
-	ImGui::DragFloat3("Max AABB", (float*)&aabb.getMax(), 0.01f);
+	ImGui::DragFloat3("Min AABB", &aabb.getMin(), 0.01f);
+	ImGui::DragFloat3("Max AABB", &aabb.getMax(), 0.01f);
 	ImGui::SliderFloat4("Base Color Factor",
-		(float*)&geometryComponent->baseColorFactor, 0.0f, 1.0f);
+		&geometryComponent->baseColorFactor, 0.0f, 1.0f);
 	ImGui::SliderFloat3("Emissive Factor",
-		(float*)&geometryComponent->emissiveFactor, 0.0f, 1.0f);
+		&geometryComponent->emissiveFactor, 0.0f, 1.0f);
 	ImGui::SliderFloat("Metallic Factor",
-		(float*)&geometryComponent->metallicFactor, 0.0f, 1.0f);
+		&geometryComponent->metallicFactor, 0.0f, 1.0f);
 	ImGui::SliderFloat("Roughness Factor",
-		(float*)&geometryComponent->roughnessFactor, 0.0f, 1.0f);
+		&geometryComponent->roughnessFactor, 0.0f, 1.0f);
 	ImGui::SliderFloat("Reflectance Factor",
-		(float*)&geometryComponent->reflectanceFactor, 0.0f, 1.0f);
+		&geometryComponent->reflectanceFactor, 0.0f, 1.0f);
 	if (alphaCutoff)
 		ImGui::SliderFloat("Alpha Cutoff", alphaCutoff, 0.0f, 1.0f);
 	ImGui::Spacing(); ImGui::Separator();
@@ -158,8 +158,8 @@ void GeometryShadowEditor::renderInfo(GeometryShadowRenderComponent* geometrySha
 	auto& aabb = geometryShadowComponent->aabb;
 
 	ImGui::Checkbox("Enabled", &geometryShadowComponent->isEnabled);
-	ImGui::DragFloat3("Min AABB", (float*)&aabb.getMin(), 0.01f);
-	ImGui::DragFloat3("Max AABB", (float*)&aabb.getMax(), 0.01f);
+	ImGui::DragFloat3("Min AABB", &aabb.getMin(), 0.01f);
+	ImGui::DragFloat3("Max AABB", &aabb.getMax(), 0.01f);
 	ImGui::Spacing(); ImGui::Separator();
 
 	if (aabb.getMin().x > aabb.getMax().x || aabb.getMin().y > aabb.getMax().y ||

@@ -941,7 +941,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path& path, Image::Bind bind, uin
 
 	#if GARDEN_DEBUG
 	auto resource = GraphicsAPI::imagePool.get(image);
-	resource->setDebugName("image.loaded" + to_string(*image));
+	resource->setDebugName("image." + path.generic_string());
 	#endif
 
 	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
@@ -1637,7 +1637,7 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 	auto version = GraphicsAPI::bufferVersion++;
 	auto buffer = GraphicsAPI::bufferPool.create(bind,
 		access, Buffer::Usage::PreferGPU, strategy, version);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.loaded" + to_string(*buffer));
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.loaded" + to_string(*buffer)); // TODO: use model path for this buffer
 
 	if (loadAsync && threadSystem)
 	{
@@ -1719,7 +1719,7 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 	auto version = GraphicsAPI::bufferVersion++;
 	auto buffer = GraphicsAPI::bufferPool.create(bind,
 		access, Buffer::Usage::PreferGPU, strategy, version);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.vertex.loaded" + to_string(*buffer));
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.vertex.loaded" + to_string(*buffer)); // TODO: use model path
 
 	if (loadAsync && threadSystem)
 	{

@@ -166,6 +166,8 @@ void EcsEditorSystem::editorRender()
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;
 
+	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);
+
 	if (ImGui::Begin("ECS Viewer", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		if (ImGui::CollapsingHeader("Ordered Events"))

@@ -271,7 +271,7 @@ void CommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descrip
 					}
 				}
 			}
-			else if (uniform.type == GslUniformType::UniformBuffer || uniform.type == GslUniformType::StorageBuffer)
+			else if (isBufferType(uniform.type))
 			{
 				BufferState newBufferState;
 				newBufferState.stage = (uint32)toVkPipelineStages(uniform.shaderStages);

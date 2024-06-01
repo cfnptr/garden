@@ -258,8 +258,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		if (lineData.word == "}") 
 			fileData.isUniform = 8;
 
-		if (fileData.uniformType == GslUniformType::UniformBuffer ||
-			fileData.uniformType == GslUniformType::StorageBuffer)
+		if (isBufferType(fileData.uniformType))
 		{
 			if (lineData.isNewLine)
 				fileData.outputStream << "\n";

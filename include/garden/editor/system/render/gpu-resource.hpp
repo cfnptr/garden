@@ -43,6 +43,23 @@ private:
 	void editorBarTool();
 
 	friend class ecsm::Manager;
+public:
+	void openTab(ID<Resource> resource, TabType type) noexcept;
+
+	void openTab(ID<Buffer> buffer) noexcept
+	{ openTab(ID<Resource>(buffer), TabType::Buffers); }
+	void openTab(ID<Image> image) noexcept
+	{ openTab(ID<Resource>(image), TabType::Images); }
+	void openTab(ID<ImageView> imageView) noexcept
+	{ openTab(ID<Resource>(imageView), TabType::ImageViews); }
+	void openTab(ID<Framebuffer> framebuffer) noexcept
+	{ openTab(ID<Resource>(framebuffer), TabType::Framebuffers); }
+	void openTab(ID<DescriptorSet> descriptrSet) noexcept
+	{ openTab(ID<Resource>(descriptrSet), TabType::DescriptorSets); }
+	void openTab(ID<GraphicsPipeline> graphicsPipeline) noexcept
+	{ openTab(ID<Resource>(graphicsPipeline), TabType::GraphicsPipelines); }
+	void openTab(ID<ComputePipeline> computePipeline) noexcept
+	{ openTab(ID<Resource>(computePipeline), TabType::ComputePipelines); }
 };
 
 } // namespace garden

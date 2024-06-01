@@ -116,6 +116,8 @@ public:
 	void loadImageData(const fs::path& path, vector<uint8>& data,
 		int2& size, Image::Format& format, int32 taskIndex = -1) const;
 
+	// TODO: rethink default args because current variant creates empty mips, and this produces visual bugs.
+
 	/**
 	 * @brief Loads cubemap image data (pixels) the resource pack.
 	 * 

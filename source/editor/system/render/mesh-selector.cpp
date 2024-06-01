@@ -79,15 +79,15 @@ void MeshSelectorEditorSystem::editorRender()
 
 	if (updateSelector && !isSkipped)
 	{
+		auto& systems = manager->getSystems();
+		auto& transformComponents = TransformSystem::getInstance()->getComponents();
 		auto windowSize = graphicsSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalDirection = cameraConstants.viewProjInv * float4(ndcPosition, 0.0001f, 1.0f);
 		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
-		globalDirection = float4((float3)globalDirection / globalDirection.w, globalDirection.w);
+		auto globalDirection = cameraConstants.viewProjInv * float4(ndcPosition, 0.0001f, 1.0f);
 		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
-		auto& transformComponents = TransformSystem::getInstance()->getComponents();
-		auto& systems = manager->getSystems();
+		globalDirection = float4((float3)globalDirection / globalDirection.w - (float3)globalOrigin, globalDirection.w);
 
 		auto newDist2 = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;
@@ -116,7 +116,7 @@ void MeshSelectorEditorSystem::editorRender()
 				setTranslation(model, getTranslation(model) - cameraPosition);
 				auto modelInverse = inverse(model);
 				auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
-				auto localDirection = modelInverse * float4((float3)globalDirection, 1.0f);
+				auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
 				auto ray = Ray((float3)localOrigin, (float3)localDirection);
 				auto points = raycast2(meshRender->aabb, ray);
 				if (points.x < 0.0f || !isIntersected(points))
@@ -179,7 +179,7 @@ void MeshSelectorEditorSystem::editorSettings()
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled);
 
-		if (ImGui::ColorEdit4("AABB Color", aabbColor))
+		if (ImGui::ColorEdit4("AABB Color", &aabbColor))
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("meshSelectorColor", aabbColor);

@@ -104,7 +104,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		auto isBaked = manager->has<BakedTransformComponent>(entity);
 		ImGui::BeginDisabled(isBaked);
 
-		ImGui::DragFloat3("Position", (float*)&transformComponent->position, 0.01f);
+		ImGui::DragFloat3("Position", &transformComponent->position, 0.01f);
 		if (ImGui::BeginPopupContextItem("position"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
@@ -121,7 +121,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::EndTooltip();
 		}
 
-		ImGui::DragFloat3("Scale", (float*)&transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
+		ImGui::DragFloat3("Scale", &transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
 		if (ImGui::BeginPopupContextItem("scale"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
@@ -137,7 +137,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::EndTooltip();
 		}
 
-		if (ImGui::DragFloat3("Rotation", (float*)&newEulerAngles, 0.3f))
+		if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f))
 		{
 			auto difference = newEulerAngles - oldEulerAngles;
 			transformComponent->rotation *= quat(radians(difference));
