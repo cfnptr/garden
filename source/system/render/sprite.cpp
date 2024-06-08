@@ -62,8 +62,7 @@ void SpriteRenderSystem::imageLoaded()
 		auto uniforms = getSpriteUniforms(imageView->getDefaultView());
 		sharedDescriptorSet = graphicsSystem->createDescriptorSet(getPipeline(), std::move(uniforms), 1);
 		spriteRender->descriptorSet = sharedDescriptorSet;
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, sharedDescriptorSet,
-			"descriptorSet." + spriteRender->path + to_string(i + 1));
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, sharedDescriptorSet, "descriptorSet." + spriteRender->path);
 	}
 }
 
@@ -128,6 +127,7 @@ void SpriteRenderSystem::destroyResources(SpriteRenderComponent* spriteComponent
 	if (spriteComponent->descriptorSet.getRefCount() == 1)
 		graphicsSystem->destroy(spriteComponent->descriptorSet);
 }
+
 uint64 SpriteRenderSystem::getInstanceDataSize()
 {
 	return sizeof(InstanceData);

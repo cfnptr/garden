@@ -116,8 +116,6 @@ public:
 	void loadImageData(const fs::path& path, vector<uint8>& data,
 		int2& size, Image::Format& format, int32 taskIndex = -1) const;
 
-	// TODO: rethink default args because current variant creates empty mips, and this produces visual bugs.
-
 	/**
 	 * @brief Loads cubemap image data (pixels) the resource pack.
 	 * 
@@ -160,7 +158,7 @@ public:
 	 * @param linearData is image data color space linear
 	 * @param loadAsync load image asynchronously without blocking
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 0, uint8 downscaleCount = 0,
+	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 1, uint8 downscaleCount = 0,
 		Image::Strategy strategy = Buffer::Strategy::Default, bool linearData = false, bool loadAsync = true);
 
 	/**
@@ -225,18 +223,23 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
-	 * @param[in] path target scene parh
+	 * 
+	 * @param[in] path target scene path
+	 * @param addRootEntity create root entity for scene
 	 */
-	void loadScene(const fs::path& path);
+	void loadScene(const fs::path& path, bool addRootEntity = true);
+	/**
+	 * @brief Destroys all current scene entities.
+	 */
+	void clearScene();
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Stores curent scene to the scene directory.
 	 * @param[in] path target scene parh
 	 */
 	void storeScene(const fs::path& path);
-	/**
-	 * @brief Destroys all current scene entities.
-	 */
-	void clearScene();
+	#endif
 
 	#if !GARDEN_DEBUG
 	/**

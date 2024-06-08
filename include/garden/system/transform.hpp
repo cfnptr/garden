@@ -135,6 +135,9 @@ public:
 	using TransformComponents = LinearPool<TransformComponent>;
 private:
 	TransformComponents components;
+	map<uint32, ID<Entity>> deserializeEntities;
+	vector<pair<ID<Entity>, uint32>> deserializeParents;
+
 	static TransformSystem* instance;
 
 	/**
@@ -153,8 +156,9 @@ private:
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	
-	void serialize(ISerializer& serializer, ID<Component> component) final;
-	void deserialize(IDeserializer& deserializer, ID<Component> component) final;
+	void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) final;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	void postDeserialize(IDeserializer& deserializer) final;
 	
 	friend class ecsm::Manager;
 public:

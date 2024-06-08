@@ -24,6 +24,7 @@
 
 #pragma once
 #include "ecsm.hpp"
+#include "math/aabb.hpp"
 #include "math/matrix.hpp"
 
 namespace garden
@@ -69,7 +70,7 @@ public:
 	virtual void write(string_view name, const float2x2& value) = 0;
 	virtual void write(string_view name, const float3x3& value) = 0;
 	virtual void write(string_view name, const float4x4& value) = 0;
-
+	virtual void write(string_view name, const Aabb& value) = 0;
 	// TODO: write array of values.
 };
 
@@ -84,8 +85,9 @@ public:
 	virtual bool beginChild(string_view name) = 0;
 	virtual void endChild() = 0;
 
-	virtual bool beginArray(string_view name) = 0;
-	virtual void endArray() = 0;
+	virtual psize getArraySize() = 0;
+	virtual bool beginArrayElement(psize index) = 0;
+	virtual void endArrayElement() = 0;
 
 	virtual void read(string_view name, int64& value) = 0;
 	virtual void read(string_view name, uint64& value) = 0;
@@ -109,7 +111,7 @@ public:
 	virtual void read(string_view name, float2x2& value) = 0;
 	virtual void read(string_view name, float3x3& value) = 0;
 	virtual void read(string_view name, float4x4& value) = 0;
-
+	virtual void read(string_view name, Aabb& value) = 0;
 	// TODO: read array of values.
 };
 
@@ -119,8 +121,37 @@ public:
 class ISerializable
 {
 public:
-	virtual void serialize(ISerializer& serializer, ID<Component> component) = 0;
-	virtual void deserialize(IDeserializer& deserializer, ID<Component> component) = 0;
+	virtual void preSerialize(ISerializer& serializer) { }
+	virtual void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) = 0;
+	virtual void postSerialize(ISerializer& serializer) { }
+
+	virtual void preDeserialize(IDeserializer& deserializer) { }
+	virtual void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) = 0;
+	virtual void postDeserialize(IDeserializer& deserializer) { }
+};
+
+/***********************************************************************************************************************
+ * @brief Component indicating that this entity should not be serialized.
+ * @details Useful in cases when we need to mark root or runtime entities.
+ */
+struct DoNotSerializeComponent : public Component { };
+
+/**
+ * @brief Handles entities that should not be serialized.
+ */
+class DoNotSerializeSystem : public System
+{
+protected:
+	LinearPool<DoNotSerializeComponent, false> components;
+
+	const string& getComponentName() const override;
+	type_index getComponentType() const override;
+	ID<Component> createComponent(ID<Entity> entity) override;
+	void destroyComponent(ID<Component> instance) override;
+	View<Component> getComponent(ID<Component> instance) override;
+	void disposeComponents() override;
+
+	friend class ecsm::Manager;
 };
 
 } // namespace garden
