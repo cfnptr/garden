@@ -340,19 +340,64 @@ View<Component> TransformSystem::getComponent(ID<Component> instance)
 void TransformSystem::disposeComponents() { components.dispose(); }
 
 //**********************************************************************************************************************
-void TransformSystem::serialize(ISerializer& serializer, ID<Component> component)
+void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component)
 {
 	auto transformComponent = components.get(ID<TransformComponent>(component));
-	serializer.write("position", transformComponent->position);
-	serializer.write("rotation", transformComponent->rotation);
-	serializer.write("scale", transformComponent->scale);
+	serializer.write("uid", *transformComponent->entity);
+
+	if (transformComponent->position != float3(0.0f))
+		serializer.write("position", transformComponent->position);
+	if (transformComponent->rotation != quat::identity)
+		serializer.write("rotation", transformComponent->rotation);
+	if (transformComponent->scale != float3(1.0f))
+		serializer.write("scale", transformComponent->scale);
+
+	auto manager = Manager::getInstance();
+	auto parent = transformComponent->parent;
+	if (parent && !manager->has<DoNotSerializeComponent>(parent))
+		serializer.write("parent", *parent);
+
+	#if GARDEN_DEBUG | GARDEN_EDITOR
+	if (!transformComponent->name.empty())
+		serializer.write("name", transformComponent->name);
+	#endif
 }
-void TransformSystem::deserialize(IDeserializer& deserializer, ID<Component> component)
+void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto transformComponent = components.get(ID<TransformComponent>(component));
+	auto transformComponent = View<TransformComponent>(component);
+
+	uint32 uid = 0;
+	deserializer.read("uid", uid);
+	deserializeEntities.emplace(uid, entity);
+	
 	deserializer.read("position", transformComponent->position);
 	deserializer.read("rotation", transformComponent->rotation);
 	deserializer.read("scale", transformComponent->scale);
+
+	uint32 parent = 0;
+	deserializer.read("parent", parent);
+	if (parent)
+		deserializeParents.emplace_back(make_pair(entity, parent));
+
+	#if GARDEN_DEBUG | GARDEN_EDITOR
+	deserializer.read("name", transformComponent->name);
+	#endif
+}
+void TransformSystem::postDeserialize(IDeserializer& deserializer)
+{
+	auto manager = Manager::getInstance();
+	for (auto pair : deserializeParents)
+	{
+		auto parent = deserializeEntities.find(pair.second);
+		if (parent == deserializeEntities.end())
+			continue;
+
+		auto transformComponent = manager->get<TransformComponent>(pair.first);
+		transformComponent->setParent(parent->second);
+	}
+
+	deserializeParents.clear();
+	deserializeEntities.clear();
 }
 
 //**********************************************************************************************************************

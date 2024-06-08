@@ -137,12 +137,11 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		translucentIndices.resize(translucentMaxCount);
 	translucentIndex = 0;
 
+	auto manager = Manager::getInstance();
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto transformSystem = TransformSystem::getInstance();
-	auto graphicsEditorSystem = Manager::getInstance()->tryGet<GraphicsEditorSystem>();
+	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
-	auto& transformData = transformSystem->getComponents();
 	auto& threadPool = threadSystem->getForegroundPool();	
 	auto opaqueBufferData = opaqueBuffers.data();
 	auto translucentBufferData = translucentBuffers.data();
@@ -192,9 +191,17 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 					if (!meshRender->entity || !meshRender->isEnabled)
 						continue;
 
-					auto transform = transformData.get(meshRender->transform);
-					auto model = transform->calcModel();
-					setTranslation(model, getTranslation(model) - cameraPosition);
+					float4x4 model;
+					auto transform = manager->tryGet<TransformComponent>(meshRender->entity);
+					if (transform)
+					{
+						model = transform->calcModel();
+						setTranslation(model, getTranslation(model) - cameraPosition);
+					}
+					else
+					{
+						model = float4x4::identity;
+					}
 
 					if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
 						continue;
@@ -245,9 +252,17 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 					if (!meshRender->entity || !meshRender->isEnabled)
 						continue;
 
-					auto transform = transformData.get(meshRender->transform);
-					auto model = transform->calcModel();
-					setTranslation(model, getTranslation(model) - cameraPosition);
+					float4x4 model;
+					auto transform = manager->tryGet<TransformComponent>(meshRender->entity);
+					if (transform)
+					{
+						model = transform->calcModel();
+						setTranslation(model, getTranslation(model) - cameraPosition);
+					}
+					else
+					{
+						model = float4x4::identity;
+					}
 
 					if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
 						continue;

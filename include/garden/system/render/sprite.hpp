@@ -26,6 +26,10 @@ class SpriteRenderSystem;
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
+private:
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+public:
 	Ref<Image> colorMap = {};
 	Ref<DescriptorSet> descriptorSet = {};
 	float4 colorFactor = float4(1.0f);
@@ -38,7 +42,7 @@ struct SpriteRenderComponent : public MeshRenderComponent
 /***********************************************************************************************************************
  * @brief Sprite mesh rendering system.
  */
-class SpriteRenderSystem : public InstanceRenderSystem
+class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable
 {
 public:
 	struct InstanceData

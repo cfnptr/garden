@@ -68,6 +68,20 @@ EditorRenderSystem::~EditorRenderSystem()
 }
 
 //**********************************************************************************************************************
+static void renderSceneSelector(EditorRenderSystem* editorSystem)
+{
+	auto appInfoSystem = AppInfoSystem::getInstance();
+	static const set<string> extensions = { ".scene" };
+	editorSystem->openFileSelector([](const fs::path& selectedFile)
+	{
+		auto path = selectedFile;
+		path.replace_extension();
+		auto resourceSystem = ResourceSystem::getInstance();
+		resourceSystem->loadScene(path);
+	},
+	appInfoSystem->getResourcesPath() / "scenes", extensions);
+}
+
 void EditorRenderSystem::showMainMenuBar()
 {
 	if (InputSystem::getInstance()->getCursorMode() == CursorMode::Locked)
@@ -97,6 +111,8 @@ void EditorRenderSystem::showMainMenuBar()
 				newScene = true;
 			if (ImGui::MenuItem("Export Scene"))
 				exportScene = true;
+			if (ImGui::MenuItem("Import Scene"))
+				renderSceneSelector(this);
 		}
 
 		const auto& subscribers = manager->getEventSubscribers("EditorBarFile");
@@ -539,6 +555,16 @@ void EditorRenderSystem::showExportScene()
 }
 
 //**********************************************************************************************************************
+static void openExplorer(const fs::path& path) // TODO: make this function public, move it to the mpio library
+{
+	#if GARDEN_OS_WINDOWS
+	std::system(("start " + path.generic_string()).c_str());
+	#elif GARDEN_OS_MACOS
+	std::system(("open " + path.generic_string()).c_str());
+	#elif GARDEN_OS_LINUX
+	std::system(("xdg-open " + path.generic_string()).c_str());
+	#endif
+}
 static bool isHasDirectories(const fs::path& path)
 {
 	auto dirIterator = fs::directory_iterator(path);
@@ -567,13 +593,15 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 		auto filename = entry.path().filename().generic_string();
 		if (ImGui::TreeNodeEx(filename.c_str(), flags))
 		{
-			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) // TODO: fix click when node is closed.
 				selectedEntry = entry.path();
 
 			if (ImGui::BeginPopupContextItem())
 			{
 				if (ImGui::MenuItem("Copy Name"))
 					ImGui::SetClipboardText(filename.c_str());
+				if (ImGui::MenuItem("Open Explorer"))
+					openExplorer(entry.path());
 				ImGui::EndPopup();
 			}
 
@@ -667,7 +695,8 @@ void EditorRenderSystem::showFileSelector()
 						{
 							if (ImGui::MenuItem("Copy Name"))
 								ImGui::SetClipboardText(filename.c_str());
-							// TODO: open in file explorer (cross-platform solution).
+							if (ImGui::MenuItem("Open Explorer"))
+								openExplorer(selectedEntry);
 							ImGui::EndPopup();
 						}
 						ImGui::TreePop();
@@ -754,8 +783,8 @@ void EditorRenderSystem::editorRender()
 void EditorRenderSystem::openFileSelector(const std::function<void(const fs::path&)>& onSelect, 
 	const fs::path& directory, const set<string>& extensions)
 {
-	auto appInfoSystem = AppInfoSystem::getInstance();
-	fileSelectDirectory = directory.empty() ? appInfoSystem->getResourcesPath() : directory;
+	fileSelectDirectory = selectedEntry = directory.empty() ?
+		AppInfoSystem::getInstance()->getResourcesPath() : directory;
 	fileExtensions = extensions;
 	onFileSelect = onSelect;
 }
@@ -798,7 +827,7 @@ void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image,
 
 				*_path = path.generic_string();
 				*_image = ResourceSystem::getInstance()->loadImage(
-					path, Image::Bind::TransferDst | Image::Bind::Sampled, 1);
+					path, Image::Bind::TransferDst | Image::Bind::Sampled);
 				*_descriptorSet = {};
 			}
 		},

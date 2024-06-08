@@ -61,11 +61,7 @@ type_index CutoutSpriteSystem::getComponentType() const
 }
 ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(Manager::getInstance()->has<TransformComponent>(entity));
-	auto instance = components.create();
-	auto component = components.get(instance);
-	component->transform = Manager::getInstance()->getID<TransformComponent>(entity);
-	return ID<Component>(instance);
+	return ID<Component>(components.create());
 }
 void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
 {
@@ -111,4 +107,36 @@ ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
 
 	return ResourceSystem::getInstance()->loadGraphicsPipeline("sprite/cutout",
 		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
+}
+
+//**********************************************************************************************************************
+void CutoutSpriteSystem::serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component)
+{
+	auto spriteComponent = components.get(ID<CutoutSpriteComponent>(component));
+	if (spriteComponent->aabb != Aabb::one)
+		serializer.write("aabb", spriteComponent->aabb);
+	if (spriteComponent->isEnabled != true)
+		serializer.write("isEnabled", spriteComponent->isEnabled);
+	if (spriteComponent->colorFactor != float4(1.0f))
+		serializer.write("colorFactor", spriteComponent->colorFactor);
+	if (spriteComponent->alphaCutoff != 0.5f)
+		serializer.write("alphaCutoff", spriteComponent->alphaCutoff);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	serializer.write("path", spriteComponent->path);
+	#endif
+}
+void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+{
+	auto spriteComponent = View<CutoutSpriteComponent>(component);
+	deserializer.read("aabb", spriteComponent->aabb);
+	deserializer.read("isEnabled", spriteComponent->isEnabled);
+	deserializer.read("colorFactor", spriteComponent->colorFactor);
+	deserializer.read("alphaCutoff", spriteComponent->alphaCutoff);
+	deserializer.read("path", spriteComponent->path);
+
+	if (spriteComponent->path.empty())
+		spriteComponent->path = "missing";
+	spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(
+		spriteComponent->path, Image::Bind::TransferDst | Image::Bind::Sampled);
 }

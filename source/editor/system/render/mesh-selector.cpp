@@ -80,7 +80,6 @@ void MeshSelectorEditorSystem::editorRender()
 	if (updateSelector && !isSkipped)
 	{
 		auto& systems = manager->getSystems();
-		auto& transformComponents = TransformSystem::getInstance()->getComponents();
 		auto windowSize = graphicsSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
@@ -105,15 +104,22 @@ void MeshSelectorEditorSystem::editorRender()
 
 			for (uint32 i = 0; i < componentOccupancy; i++)
 			{
-				auto meshRender = (const MeshRenderComponent*)(
-					componentData + i * componentSize);
-				auto entity = meshRender->getEntity();
-				if (!entity || !meshRender->isEnabled)
+				auto meshRender = (const MeshRenderComponent*)(componentData + i * componentSize);
+				if (!meshRender->getEntity() || !meshRender->isEnabled)
 					continue;
 
-				auto transform = transformComponents.get(meshRender->getTransform());
-				auto model = transform->calcModel();
-				setTranslation(model, getTranslation(model) - cameraPosition);
+				float4x4 model;
+				auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
+				if (transform)
+				{
+					model = transform->calcModel();
+					setTranslation(model, getTranslation(model) - cameraPosition);
+				}
+				else
+				{
+					model = float4x4::identity;
+				}
+
 				auto modelInverse = inverse(model);
 				auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
 				auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
@@ -123,9 +129,9 @@ void MeshSelectorEditorSystem::editorRender()
 					continue;
 			
 				auto dist2 = distance2((float3)globalOrigin, getTranslation(model));
-				if (dist2 < newDist2 && entity != selectedEntity)
+				if (dist2 < newDist2 && meshRender->getEntity() != selectedEntity)
 				{
-					newSelected = entity;
+					newSelected = meshRender->getEntity();
 					newDist2 = dist2;
 					newAabb = meshRender->aabb;
 				}

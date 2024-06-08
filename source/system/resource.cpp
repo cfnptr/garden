@@ -19,8 +19,7 @@
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/compiler.hpp"
 #include "garden/graphics/api.hpp"
-#include "garden/json/serializer.hpp"
-#include "garden/json/deserializer.hpp"
+#include "garden/json-serialize.hpp"
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
@@ -214,7 +213,7 @@ void ResourceSystem::dequeuePipelines()
 				GraphicsPipelineExt::moveInternalObjects(item.pipeline, pipeline);
 				#if GARDEN_DEBUG
 				if (logSystem)
-					logSystem->trace("Loaded graphics pipeline. (" + pipeline.getPath().generic_string() + ")");
+					logSystem->trace("Loaded graphics pipeline. (path: " + pipeline.getPath().generic_string() + ")");
 				#endif
 			}
 			else
@@ -256,7 +255,7 @@ void ResourceSystem::dequeuePipelines()
 				ComputePipelineExt::moveInternalObjects(item.pipeline, pipeline);
 				#if GARDEN_DEBUG
 				if (logSystem)
-					logSystem->trace("Loaded compute pipeline. (" + pipeline.getPath().generic_string() + ")");
+					logSystem->trace("Loaded compute pipeline. (path: " + pipeline.getPath().generic_string() + ")");
 				#endif
 			}
 			else
@@ -603,7 +602,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	#if GARDEN_DEBUG
 	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 	if (logSystem)
-		logSystem->trace("Loaded image. (" + path.generic_string() + ")");
+		logSystem->trace("Loaded image. (path: " + path.generic_string() + ")");
 	#endif
 }
 
@@ -791,7 +790,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
-			logSystem->trace("Converted spherical cubemap. (" + path.generic_string() + ")");
+			logSystem->trace("Converted spherical cubemap. (path: " + path.generic_string() + ")");
 		return;
 	}
 	#endif
@@ -1132,7 +1131,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 		if (!compileResult)
 			throw runtime_error("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
 		if (logSystem)
-			logSystem->trace("Compiled graphics shaders. (" + data.shaderPath.generic_string() + ")");
+			logSystem->trace("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
 
 		return true;
 	}
@@ -1306,7 +1305,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		#if GARDEN_DEBUG
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
-			logSystem->trace("Loaded graphics pipeline. (" +  path.generic_string() + ")");
+			logSystem->trace("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
 		#endif
 	}
 
@@ -1362,7 +1361,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 		if (!compileResult)
 			throw runtime_error("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
 		if (logSystem)
-			logSystem->trace("Compiled compute shader. (" + data.shaderPath.generic_string() + ")");
+			logSystem->trace("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
 
 		return true;
 	}
@@ -1473,7 +1472,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		#if GARDEN_DEBUG
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
-			logSystem->trace("Loaded compute pipeline. (" + path.generic_string() + ")");
+			logSystem->trace("Loaded compute pipeline. (path: " + path.generic_string() + ")");
 		#endif
 	}
 
@@ -1481,124 +1480,107 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadScene(const fs::path& path)
+void ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 {
-	/*
-	fs::path scenePath, filePath = "scenes" / path; filePath += ".scene";
-	if (!tryGetResourceFilePath(appResourcesPath, filePath, scenePath))
-		throw runtime_error("Scene file does not exist. (path: " + path.generic_string() + ")");
+	#if GARDEN_DEBUG
+	fs::path filePath = "scenes" / path; filePath += ".scene"; fs::path scenePath;
+	if (!File::tryGetResourcePath(appResourcesPath, filePath, scenePath))
+	{
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Scene file does not exist or ambiguous. (path: " + path.generic_string() + ")");
+		return;
+	}
 
-	ifstream fileStream(path);
-	json scene = json::parse(fileStream);
-	fileStream.close();
+	std::ifstream fileStream(scenePath);
+	if (!fileStream.is_open())
+	{
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Failed to open scene file. (path: " + path.generic_string() + ")");
+		return;
+	}
+	
+	std::stringstream buffer;
+	buffer << fileStream.rdbuf();
+	JsonDeserializer deserializer(string_view(buffer.str()));
+	#else
+	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
+	#endif
 
 	auto manager = Manager::getInstance();
 	auto& systems = manager->getSystems();
-	uint32 index = 0;
-
-	while (true)
+	for (const auto& pair : systems)
 	{
-		auto entity = manager->createEntity();
-
-		auto hasAnyValue = false;
-		for (auto system : systems)
-		{
-			auto serializeSystem = dynamic_cast<ISerializeSystem*>(system);
-			if (!serializeSystem)
-				continue;
-			hasAnyValue |= serializeSystem->deserialize(confReader, index++, entity);
-		}
-
-		if (!hasAnyValue)
-		{
-			manager->destroy(entity);
-			break;
-		}
-	}
-
-	for (auto system : systems)
-	{
-		auto serializeSystem = dynamic_cast<ISerializeSystem*>(system);
+		auto serializeSystem = dynamic_cast<ISerializable*>(pair.second);
 		if (!serializeSystem)
 			continue;
-		serializeSystem->postDeserialize(confReader);
+		serializeSystem->preDeserialize(deserializer);
+	}
+
+	ID<Entity> rootEntity = {};
+	if (addRootEntity)
+	{
+		rootEntity = manager->createEntity();
+		auto transformComponent = manager->add<TransformComponent>(rootEntity);
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		transformComponent->name = path.generic_string();
+		#endif
+		manager->add<DoNotSerializeComponent>(rootEntity);
+	}
+
+	if (deserializer.beginChild("entities"))
+	{
+		const auto& componentTypes = manager->getComponentTypes();
+		auto size = deserializer.getArraySize();
+		for (psize i = 0; i < size; i++)
+		{
+			if (!deserializer.beginArrayElement(i))
+				continue;
+
+			auto entity = manager->createEntity();
+
+			for (const auto& pair : componentTypes)
+			{
+				auto system = pair.second;
+				const auto& componentName = system->getComponentName();
+				auto serializeSystem = dynamic_cast<ISerializable*>(system);
+				if (componentName.empty() || !serializeSystem)
+					continue;
+
+				if (deserializer.beginChild(componentName))
+				{
+					auto component = manager->add(entity, pair.first);
+					if (addRootEntity && pair.first == typeid(TransformComponent))
+					{
+						auto transformComponent = View<TransformComponent>(component);
+						transformComponent->setParent(rootEntity);
+					}
+
+					serializeSystem->deserialize(deserializer, entity, component);
+					deserializer.endChild();
+				}
+			}
+			deserializer.endArrayElement();
+		}
+		deserializer.endChild();
+	}
+
+	for (const auto& pair : systems)
+	{
+		auto serializeSystem = dynamic_cast<ISerializable*>(pair.second);
+		if (!serializeSystem)
+			continue;
+		serializeSystem->postDeserialize(deserializer);
 	}
 
 	#if GARDEN_DEBUG
 	auto logSystem = manager->tryGet<LogSystem>();
 	if (logSystem)
-		logSystem->trace("Loaded scene. (" + path.generic_string() + ")");
-	#endif
-	*/
-}
-
-//**********************************************************************************************************************
-void ResourceSystem::storeScene(const fs::path& path)
-{
-	auto scenesPath = appResourcesPath / "scenes";
-	auto directoryPath = scenesPath / path.parent_path();
-	if (!fs::exists(directoryPath))
-		fs::create_directories(directoryPath);
-
-	auto filePath = scenesPath / path; filePath += ".scene";
-	JsonSerializer serializer(filePath);
-	serializer.write("version", appVersion.toString3());
-	serializer.beginChild("entities");
-	
-	auto manager = Manager::getInstance();
-	auto& entities = manager->getEntities();
-	auto entityOccupancy = entities.getOccupancy();
-	auto entityData = entities.getData();
-	uint32 index = 0;
-
-	for (uint32 i = 0; i < entityOccupancy; i++)
-	{
-		auto& entity = entityData[i];
-		auto& components = entity.getComponents();
-
-		if (components.empty() || components.find(typeid(DoNotDestroyComponent)) != components.end())
-			continue;
-
-		serializer.beginArrayElement();
-
-		#if GARDEN_DEBUG | GARDEN_EDITOR
-		if (components.find(typeid(TransformComponent)) != components.end())
-		{
-			auto transformComponent = manager->get<TransformComponent>(entities.getID(&entity));
-			if (!transformComponent->name.empty())
-				serializer.write("name", transformComponent->name);
-		}
-		#endif
-
-		serializer.beginChild("components");
-		for (auto& pair : components)
-		{
-			auto system = pair.second.first;
-			auto componentName = system->getComponentName();
-			auto serializeSystem = dynamic_cast<ISerializable*>(system);
-
-			if (componentName.empty() || !serializeSystem)
-				continue;
-			
-			serializer.beginArrayElement();
-			serializer.beginChild(componentName);
-			serializeSystem->serialize(serializer, pair.second.second);
-			serializer.endChild();
-			serializer.endArrayElement();
-		}
-		serializer.endChild();
-
-		serializer.endArrayElement();
-	}
-
-	serializer.endChild();
-
-	#if GARDEN_DEBUG
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem) 
-		logSystem->trace("Stored scene. (" + path.generic_string() + ")");
+		logSystem->trace("Loaded scene. (path: " + path.generic_string() + ")");
 	#endif
 }
+
 void ResourceSystem::clearScene()
 {
 	auto manager = Manager::getInstance();
@@ -1625,6 +1607,81 @@ void ResourceSystem::clearScene()
 		logSystem->trace("Cleaned scene.");
 	#endif
 }
+
+#if GARDEN_DEBUG || GARDEN_EDITOR
+//**********************************************************************************************************************
+void ResourceSystem::storeScene(const fs::path& path)
+{
+	auto scenesPath = appResourcesPath / "scenes";
+	auto directoryPath = scenesPath / path.parent_path();
+	if (!fs::exists(directoryPath))
+		fs::create_directories(directoryPath);
+
+	auto filePath = scenesPath / path; filePath += ".scene";
+	JsonSerializer serializer(filePath);
+
+	auto manager = Manager::getInstance();
+	auto& systems = manager->getSystems();
+	for (const auto& pair : systems)
+	{
+		auto serializeSystem = dynamic_cast<ISerializable*>(pair.second);
+		if (!serializeSystem)
+			continue;
+		serializeSystem->preSerialize(serializer);
+	}
+
+	serializer.write("version", appVersion.toString3());
+	serializer.beginChild("entities");
+	
+	auto camera = GraphicsSystem::getInstance()->camera;
+	auto& entities = manager->getEntities();
+	auto entityOccupancy = entities.getOccupancy();
+	auto entityData = entities.getData();
+
+	for (uint32 i = 0; i < entityOccupancy; i++)
+	{
+		auto& entity = entityData[i];
+		auto instance = entities.getID(&entity);
+		auto& components = entity.getComponents();
+
+		if (components.empty() || instance == camera ||
+			manager->has<DoNotSerializeComponent>(instance))
+		{
+			continue;
+		}
+
+		serializer.beginArrayElement();
+		for (auto& pair : components)
+		{
+			auto system = pair.second.first;
+			auto& componentName = system->getComponentName();
+			auto serializeSystem = dynamic_cast<ISerializable*>(system);
+
+			if (componentName.empty() || !serializeSystem)
+				continue;
+			
+			serializer.beginChild(componentName);
+			serializeSystem->serialize(serializer, instance, pair.second.second);
+			serializer.endChild();
+		}
+		serializer.endArrayElement();
+	}
+
+	serializer.endChild();
+
+	for (const auto& pair : systems)
+	{
+		auto serializeSystem = dynamic_cast<ISerializable*>(pair.second);
+		if (!serializeSystem)
+			continue;
+		serializeSystem->postSerialize(serializer);
+	}
+
+	auto logSystem = manager->tryGet<LogSystem>();
+	if (logSystem) 
+		logSystem->trace("Stored scene. (path: " + path.generic_string() + ")");
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /* TODO: refactor

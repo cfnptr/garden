@@ -131,8 +131,8 @@ class CameraSystem final : public System, public ISerializable
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void serialize(ISerializer& serializer, ID<Component> component) final;
-	void deserialize(IDeserializer& deserializer, ID<Component> component) final;
+	void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) final;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 
 	friend class ecsm::Manager;
 };

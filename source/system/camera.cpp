@@ -60,7 +60,7 @@ View<Component> CameraSystem::getComponent(ID<Component> instance)
 void CameraSystem::disposeComponents() { components.dispose(); }
 
 //**********************************************************************************************************************
-void CameraSystem::serialize(ISerializer& serializer, ID<Component> component)
+void CameraSystem::serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component)
 {
 	auto cameraComponent = components.get(ID<CameraComponent>(component));
 	if (cameraComponent->type == ProjectionType::Perspective)
@@ -78,9 +78,9 @@ void CameraSystem::serialize(ISerializer& serializer, ID<Component> component)
 		serializer.write("depth", cameraComponent->p.orthographic.depth);
 	}
 }
-void CameraSystem::deserialize(IDeserializer& deserializer, ID<Component> component)
+void CameraSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto cameraComponent = components.get(ID<CameraComponent>(component));
+	auto cameraComponent = View<CameraComponent>(component);
 
 	string type;
 	deserializer.read("type", type);

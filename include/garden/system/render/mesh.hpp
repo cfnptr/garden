@@ -45,18 +45,9 @@ enum class MeshRenderType : uint8
  */
 struct MeshRenderComponent : public Component
 {
-protected:
-	ID<TransformComponent> transform = {};
-	friend class MeshRenderSystem;
-public:
 	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
 	bool isEnabled = true; /**< Is mesh should be rendered. */
-
-	/**
-	 * @brief Returns mesh entity transform component.
-	 * @details Transform component is required to render the mesh.
-	 */
-	ID<TransformComponent> getTransform() const noexcept { return transform; }
+	friend class MeshRenderSystem;
 };
 
 /**

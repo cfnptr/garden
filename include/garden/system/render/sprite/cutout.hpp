@@ -54,6 +54,9 @@ class CutoutSpriteSystem final : public SpriteRenderSystem
 	const LinearPool<MeshRenderComponent>& getMeshComponentPool() const final;
 	psize getMeshComponentSize() const final;
 	ID<GraphicsPipeline> createPipeline() final;
+
+	void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) override;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
 	
 	friend class ecsm::Manager;
 };
