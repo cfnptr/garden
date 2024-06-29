@@ -20,7 +20,6 @@
 #include "garden/system/render/geometry/translucent.hpp"
 #include "garden/system/render/lighting.hpp"
 #include "garden/system/render/editor.hpp"
-#include "garden/system/resource.hpp"
 
 using namespace garden;
 

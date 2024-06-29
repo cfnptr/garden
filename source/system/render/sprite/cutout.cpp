@@ -23,8 +23,8 @@ namespace
 {
 	struct PushConstants final
 	{
-		float4 colorFactor;
 		uint32 instanceIndex;
+		float colorMapLayer;
 		float alphaCutoff;
 	};
 }
@@ -40,25 +40,24 @@ void CutoutSpriteSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto cutoutRenderComponent = (CutoutSpriteComponent*)meshRenderComponent;
+	CutoutInstanceData instance;
+	instance.mvp = viewProj * model;
+	instance.colorFactor = cutoutRenderComponent->colorFactor;
+	instance.sizeOffset = float4(cutoutRenderComponent->uvSize, cutoutRenderComponent->uvOffset);
+	((CutoutInstanceData*)instanceMap)[drawIndex] = instance;
+
 	auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(taskIndex);
-	pushConstants->colorFactor = cutoutRenderComponent->colorFactor;
 	pushConstants->instanceIndex = drawIndex;
 	pushConstants->alphaCutoff = cutoutRenderComponent->alphaCutoff;
 	pipelineView->pushConstantsAsync(taskIndex);
 
-	SpriteRenderSystem::draw(meshRenderComponent, viewProj, model, drawIndex, taskIndex);
+	DescriptorSet::Range descriptorSetRange[2]; uint8 descriptorSetCount = 0;
+	setDescriptorSetRange(meshRenderComponent, descriptorSetRange, descriptorSetCount, 2);
+	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
+	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 
 //**********************************************************************************************************************
-const string& CutoutSpriteSystem::getComponentName() const
-{
-	static const string name = "Cutout Sprite";
-	return name;
-}
-type_index CutoutSpriteSystem::getComponentType() const
-{
-	return typeid(CutoutSpriteComponent);
-}
 ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
 {
 	return ID<Component>(components.create());
@@ -66,26 +65,26 @@ ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
 void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
 {
 	auto component = components.get(ID<CutoutSpriteComponent>(instance));
-	destroyResources(*component);
+	tryDestroyResources(View<SpriteRenderComponent>(component));
 	components.destroy(ID<CutoutSpriteComponent>(instance));
 }
-View<Component> CutoutSpriteSystem::getComponent(ID<Component> instance)
+void CutoutSpriteSystem::copyComponent(ID<Component> source, ID<Component> destination)
 {
-	return View<Component>(components.get(ID<CutoutSpriteComponent>(instance)));
-}
-void CutoutSpriteSystem::disposeComponents() { components.dispose(); }
-
-MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
-const LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool() const
-{
-	return *((const LinearPool<MeshRenderComponent>*)&components);
-}
-psize CutoutSpriteSystem::getMeshComponentSize() const
-{
-	return sizeof(CutoutSpriteComponent);
+	const auto sourceView = components.get(ID<CutoutSpriteComponent>(source));
+	auto destinationView = components.get(ID<CutoutSpriteComponent>(destination));
+	destinationView->aabb = sourceView->aabb;
+	destinationView->isEnabled = sourceView->isEnabled;
+	destinationView->isArray = sourceView->isArray;
+	destinationView->colorMap = sourceView->colorMap;
+	destinationView->descriptorSet = sourceView->descriptorSet;
+	destinationView->colorMapLayer = sourceView->colorMapLayer;
+	destinationView->colorFactor = sourceView->colorFactor;
+	destinationView->uvSize = sourceView->uvSize;
+	destinationView->uvOffset = sourceView->uvOffset;
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	destinationView->path = sourceView->path;
+	#endif
+	destinationView->alphaCutoff = sourceView->alphaCutoff;
 }
 
 ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
@@ -110,15 +109,23 @@ ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
 }
 
 //**********************************************************************************************************************
-void CutoutSpriteSystem::serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component)
+void CutoutSpriteSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	auto spriteComponent = components.get(ID<CutoutSpriteComponent>(component));
+	auto spriteComponent = View<CutoutSpriteComponent>(component);
+	if (spriteComponent->isArray != false)
+		serializer.write("isArray", spriteComponent->isArray);
 	if (spriteComponent->aabb != Aabb::one)
 		serializer.write("aabb", spriteComponent->aabb);
 	if (spriteComponent->isEnabled != true)
 		serializer.write("isEnabled", spriteComponent->isEnabled);
+	if (spriteComponent->colorMapLayer != 0.0f)
+		serializer.write("colorMapLayer", spriteComponent->colorMapLayer);
 	if (spriteComponent->colorFactor != float4(1.0f))
 		serializer.write("colorFactor", spriteComponent->colorFactor);
+	if (spriteComponent->uvSize != float2(1.0f))
+		serializer.write("uvSize", spriteComponent->uvSize);
+	if (spriteComponent->uvOffset != float2(0.0f))
+		serializer.write("uvOffset", spriteComponent->uvOffset);
 	if (spriteComponent->alphaCutoff != 0.5f)
 		serializer.write("alphaCutoff", spriteComponent->alphaCutoff);
 
@@ -129,14 +136,102 @@ void CutoutSpriteSystem::serialize(ISerializer& serializer, ID<Entity> entity, I
 void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
 	auto spriteComponent = View<CutoutSpriteComponent>(component);
+	deserializer.read("isArray", spriteComponent->isArray);
 	deserializer.read("aabb", spriteComponent->aabb);
 	deserializer.read("isEnabled", spriteComponent->isEnabled);
+	deserializer.read("colorMapLayer", spriteComponent->colorMapLayer);
 	deserializer.read("colorFactor", spriteComponent->colorFactor);
+	deserializer.read("uvSize", spriteComponent->uvSize);
+	deserializer.read("uvOffset", spriteComponent->uvOffset);
 	deserializer.read("alphaCutoff", spriteComponent->alphaCutoff);
 	deserializer.read("path", spriteComponent->path);
 
 	if (spriteComponent->path.empty())
 		spriteComponent->path = "missing";
-	spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(
-		spriteComponent->path, Image::Bind::TransferDst | Image::Bind::Sampled);
+	auto flags = ImageLoadFlags::ArrayType;
+	if (spriteComponent->isArray)
+		flags |= ImageLoadFlags::LoadArray;
+	spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(spriteComponent->path,
+		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
+}
+
+//**********************************************************************************************************************
+void CutoutSpriteSystem::serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame)
+{
+	auto cutoutSpriteFrame = animationFrames.get(ID<CutoutSpriteFrame>(frame));
+	if (cutoutSpriteFrame->animateIsEnabled)
+		serializer.write("isEnabled", cutoutSpriteFrame->isEnabled);
+	if (cutoutSpriteFrame->animateColorFactor)
+		serializer.write("colorFactor", cutoutSpriteFrame->colorFactor);
+	if (cutoutSpriteFrame->animateUvSize)
+		serializer.write("uvSize", cutoutSpriteFrame->uvSize);
+	if (cutoutSpriteFrame->animateUvOffset)
+		serializer.write("uvOffset", cutoutSpriteFrame->uvOffset);
+	if (cutoutSpriteFrame->animateColorMapLayer)
+		serializer.write("colorMapLayer", cutoutSpriteFrame->colorMapLayer);
+	if (cutoutSpriteFrame->animateAlphaCutoff)
+		serializer.write("alphaCutoff", cutoutSpriteFrame->alphaCutoff);
+}
+ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deserializer)
+{
+	CutoutSpriteFrame cutoutSpriteFrame;
+	cutoutSpriteFrame.animateIsEnabled = deserializer.read("isEnabled", cutoutSpriteFrame.isEnabled);
+	cutoutSpriteFrame.animateColorFactor = deserializer.read("colorFactor", cutoutSpriteFrame.colorFactor);
+	cutoutSpriteFrame.animateUvSize = deserializer.read("uvSize", cutoutSpriteFrame.uvSize);
+	cutoutSpriteFrame.animateUvOffset = deserializer.read("uvOffset", cutoutSpriteFrame.uvOffset);
+	cutoutSpriteFrame.animateColorMapLayer = deserializer.read("colorMapLayer", cutoutSpriteFrame.colorMapLayer);
+	cutoutSpriteFrame.animateAlphaCutoff = deserializer.read("alphaCutoff", cutoutSpriteFrame.alphaCutoff);
+
+	if (cutoutSpriteFrame.animateIsEnabled || cutoutSpriteFrame.animateColorFactor ||
+		cutoutSpriteFrame.animateUvSize || cutoutSpriteFrame.animateUvOffset ||
+		cutoutSpriteFrame.animateColorMapLayer || cutoutSpriteFrame.animateAlphaCutoff)
+	{
+		auto frame = animationFrames.create();
+		auto frameView = animationFrames.get(frame);
+		**frameView = cutoutSpriteFrame;
+		return ID<AnimationFrame>(frame);
+	}
+
+	return {};
+}
+void CutoutSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
+{
+	animationFrames.destroy(ID<CutoutSpriteFrame>(frame));
+}
+
+//**********************************************************************************************************************
+const string& CutoutSpriteSystem::getComponentName() const
+{
+	static const string name = "Cutout Sprite";
+	return name;
+}
+type_index CutoutSpriteSystem::getComponentType() const
+{
+	return typeid(CutoutSpriteComponent);
+}
+View<Component> CutoutSpriteSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<CutoutSpriteComponent>(instance)));
+}
+void CutoutSpriteSystem::disposeComponents()
+{
+	components.dispose();
+	animationFrames.dispose();
+}
+
+MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
+}
+const LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool() const
+{
+	return *((const LinearPool<MeshRenderComponent>*)&components);
+}
+psize CutoutSpriteSystem::getMeshComponentSize() const
+{
+	return sizeof(CutoutSpriteComponent);
+}
+uint64 CutoutSpriteSystem::getInstanceDataSize()
+{
+	return sizeof(CutoutInstanceData);
 }

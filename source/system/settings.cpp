@@ -42,7 +42,7 @@ SettingsSystem::~SettingsSystem()
 
 	delete (conf::Reader*)confReader;
 
-	for (auto& pair : items)
+	for (const auto& pair : items)
 	{
 		if (pair.second.type == Type::String)
 			delete (char*)pair.second.data;
@@ -83,7 +83,7 @@ void SettingsSystem::postDeinit()
 		confWriter.writeNewLine();
 
 		string hex;
-		for (auto& pair : items)
+		for (const auto& pair : items)
 		{
 			switch (pair.second.type)
 			{

@@ -200,7 +200,7 @@ void ForwardRenderSystem::render()
 void ForwardRenderSystem::swapchainRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
 	{

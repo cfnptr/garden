@@ -37,7 +37,7 @@ static void onChange(ConstFSEventStreamRef streamRef,
 	const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[])
 {
 	auto watcherSystem = (WatcherSystem*)clientCallBackInfo;
-	auto& changedFiles = watcherSystem->getChangedFiles();
+	const auto& changedFiles = watcherSystem->getChangedFiles();
 	auto& locker = watcherSystem->getLocker();
 	auto paths = (const char**)eventPaths;
 
@@ -104,7 +104,7 @@ void WatcherSystem::update()
 	locker.lock();
 	if (!changedFiles.empty())
 	{
-		for (auto& changedFile : changedFiles)
+		for (const auto& changedFile : changedFiles)
 		{
 			#if GARDEN_DEBUG
 			if (logSystem)
@@ -118,7 +118,7 @@ void WatcherSystem::update()
 
 			if (searchResult != listeners.end())
 			{
-				for (auto& listener : searchResult->second)
+				for (const auto& listener : searchResult->second)
 					listener(changedFile);
 			}
 		}

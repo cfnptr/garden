@@ -97,7 +97,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> sampleBuffer, 
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto deferredSystem = manager->get<DeferredRenderSystem>();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
-	auto& colorAttachments = gFramebufferView->getColorAttachments();
+	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 
 	map<string, DescriptorSet::Uniform> uniforms =

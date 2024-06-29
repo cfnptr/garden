@@ -137,7 +137,7 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 
-		auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
+		const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 		uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
 
 		auto vkResult = vk::Result::eNotReady;
@@ -191,7 +191,7 @@ void GraphicsEditorSystem::showMemoryStatistics()
 			hostAllocationBytes = 0, hostBlockBytes = 0, usage = 0, budget = 0;
 		for (uint32 i = 0; i < memoryProperties->memoryHeapCount; i++)
 		{
-			auto& heapBudget = heapBudgets[i];
+			const auto& heapBudget = heapBudgets[i];
 			usage += heapBudget.usage; budget += heapBudget.budget;
 
 			if (memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)

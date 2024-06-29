@@ -43,7 +43,7 @@ namespace
 		float4 l;
 		float4 nolMip;
 
-		SpecularItem(const float3& l, float nol, float mip)
+		SpecularItem(const float3& l, float nol, float mip)  noexcept
 		{
 			this->l = float4(l, 0.0f);
 			this->nolMip = float4(nol, mip, 0.0f, 0.0f);
@@ -303,7 +303,7 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
-	auto& colorAttachments = gFramebufferView->getColorAttachments();
+	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 
 	map<string, DescriptorSet::Uniform> uniforms =
@@ -701,10 +701,6 @@ void LightingRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-type_index LightingRenderSystem::getComponentType() const
-{
-	return typeid(LightingRenderComponent);
-}
 ID<Component> LightingRenderSystem::createComponent(ID<Entity> entity)
 {
 	GARDEN_ASSERT(Manager::getInstance()->has<CameraComponent>(entity));
@@ -724,11 +720,33 @@ void LightingRenderSystem::destroyComponent(ID<Component> instance)
 		graphicsSystem->destroy(component->cubemap);
 	components.destroy(ID<LightingRenderComponent>(instance));
 }
+void LightingRenderSystem::copyComponent(ID<Component> source, ID<Component> destination)
+{
+	const auto sourceView = components.get(ID<LightingRenderComponent>(source));
+	auto destinationView = components.get(ID<LightingRenderComponent>(destination));
+	destinationView->cubemap = sourceView->cubemap;
+	destinationView->sh = sourceView->sh;
+	destinationView->specular = sourceView->specular;
+	destinationView->descriptorSet = sourceView->descriptorSet;
+}
+
+const string& LightingRenderSystem::getComponentName() const
+{
+	static const string name = "Lighting";
+	return name;
+}
+type_index LightingRenderSystem::getComponentType() const
+{
+	return typeid(LightingRenderComponent);
+}
 View<Component> LightingRenderSystem::getComponent(ID<Component> instance)
 {
 	return View<Component>(components.get(ID<LightingRenderComponent>(instance)));
 }
-void LightingRenderSystem::disposeComponents() { components.dispose(); }
+void LightingRenderSystem::disposeComponents()
+{
+	components.dispose();
+}
 
 //**********************************************************************************************************************
 void LightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
@@ -1086,18 +1104,18 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
 
-	cubemap = graphicsSystem->createImage(Image::Type::Cubemap,
+	cubemap = Ref<Image>(graphicsSystem->createImage(Image::Type::Cubemap,
 		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::TransferSrc |
-		Image::Bind::Sampled, mips, int3(size, 1), strategy, format);
+		Image::Bind::Sampled, mips, int3(size, 1), strategy, format));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);
 	cubemapView->generateMips();
 
-	sh = generateIblSH(graphicsSystem, threadPool, mips[0], cubemapSize, strategy);
+	sh = Ref<Buffer>(generateIblSH(graphicsSystem, threadPool, mips[0], cubemapSize, strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh, "buffer.sh." + path.generic_string());
 
-	specular = generateIblSpecular(graphicsSystem, threadPool, iblSpecularPipeline, cubemap, strategy);
+	specular = Ref<Image>(generateIblSpecular(graphicsSystem, threadPool, iblSpecularPipeline, cubemap, strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, specular, "image.cubemap.specular." + path.generic_string());
 	
 	graphicsSystem->stopRecording();
@@ -1115,5 +1133,6 @@ Ref<DescriptorSet> LightingRenderSystem::createDescriptorSet(ID<Buffer> sh, ID<I
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 
-	return graphicsSystem->createDescriptorSet(lightingPipeline, std::move(iblUniforms), 1);
+	auto descritptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(iblUniforms), 1);
+	return Ref<DescriptorSet>(descritptorSet);
 }

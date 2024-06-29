@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/system/graphics.hpp"
+#include "garden/system/resource.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/graphics/imgui.hpp"
@@ -114,8 +115,8 @@ public:
 
 	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
 		const fs::path& directory = {}, const set<string>& extensions = {});
-	void drawImageSelector(string& path, Ref<Image>& image,
-		Ref<DescriptorSet>& descriptorSet, ID<Entity> entity);
+	void drawImageSelector(string& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
+		ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags = {});
 
 	void drawResource(ID<Buffer> buffer);
 	void drawResource(ID<Image> image);

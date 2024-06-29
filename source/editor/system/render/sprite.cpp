@@ -57,29 +57,40 @@ void SpriteRenderEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void renderSpriteComponent(SpriteRenderComponent* spriteComponent)
+static void renderSpriteComponent(SpriteRenderComponent* spriteComponent, type_index componentType)
 {
 	auto manager = Manager::getInstance();
-	auto entity = spriteComponent->getEntity();
-	string* path = nullptr; Ref<Image>* colorMap = nullptr; Ref<DescriptorSet>* descriptorSet = nullptr;
+	auto editorSystem = EditorRenderSystem::getInstance();
+	auto flags = ImageLoadFlags::ArrayType;
+	if (spriteComponent->isArray)
+		flags |= ImageLoadFlags::LoadArray;
+	editorSystem->drawImageSelector(spriteComponent->path, spriteComponent->colorMap,
+		spriteComponent->descriptorSet, spriteComponent->getEntity(), componentType, flags);
+	editorSystem->drawResource(spriteComponent->descriptorSet);
 
-	auto cutoutComponent = manager->tryGet<CutoutSpriteComponent>(entity);
-	if (cutoutComponent)
+	ImGui::Checkbox("Enabled", &spriteComponent->isEnabled);
+
+	if (ImGui::Checkbox("Array", &spriteComponent->isArray) && !spriteComponent->path.empty())
 	{
-		path = &cutoutComponent->path;
-		colorMap = &cutoutComponent->colorMap;
-		descriptorSet = &cutoutComponent->descriptorSet;
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		if (spriteComponent->colorMap.getRefCount() == 1)
+			graphicsSystem->destroy(spriteComponent->colorMap);
+		if (spriteComponent->descriptorSet.getRefCount() == 1)
+			graphicsSystem->destroy(spriteComponent->descriptorSet);
+
+		auto flags = ImageLoadFlags::ArrayType;
+		if (spriteComponent->isArray)
+			flags |= ImageLoadFlags::LoadArray;
+		spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(spriteComponent->path, 
+			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
+		spriteComponent->descriptorSet = {};
 	}
 
-	auto editorSystem = EditorRenderSystem::getInstance();
-	if (path)
-		editorSystem->drawImageSelector(*path, *colorMap, *descriptorSet, entity);
-	editorSystem->drawResource(descriptorSet ? *descriptorSet : Ref<DescriptorSet>());
-
 	auto& aabb = spriteComponent->aabb;
-	ImGui::Checkbox("Enabled", &spriteComponent->isEnabled);
 	ImGui::DragFloat3("Min AABB", (float3*)&aabb.getMin(), 0.01f);
 	ImGui::DragFloat3("Max AABB", (float3*)&aabb.getMax(), 0.01f);
+	ImGui::DragFloat2("UV Size", &spriteComponent->uvSize, 0.01f);
+	ImGui::DragFloat2("UV Offset", &spriteComponent->uvOffset, 0.01f);
 	ImGui::SliderFloat4("Color Factor", &spriteComponent->colorFactor, 0.0f, 1.0f);
 }
 
@@ -88,7 +99,7 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 	if (isOpened)
 	{
 		auto cutoutComponent = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
-		renderSpriteComponent(*cutoutComponent);
+		renderSpriteComponent(*cutoutComponent, typeid(CutoutSpriteComponent));
 		ImGui::SliderFloat("Alpha Cutoff", &cutoutComponent->alphaCutoff, 0.0f, 1.0f);
 	}
 }

@@ -76,7 +76,7 @@ protected:
 	// Note: Use GraphicsSystem to create, destroy and access memory resources.
 
 	Memory() = default;
-	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version)
+	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version) noexcept
 	{
 		this->binarySize = binarySize;
 		this->version = version;

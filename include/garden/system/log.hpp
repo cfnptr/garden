@@ -42,14 +42,14 @@ private:
 	static LogSystem* instance;
 
 	/**
-	 * @brief Creates a new log system instance.
+	 * @brief Creates a new logging system instance.
 	 * 
 	 * @param level message logging level (log if <= level)
 	 * @param rotationTime delay between log file rotation (0.0 = disabled)
 	 */
 	LogSystem(LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0);
 	/**
-	 * @brief Destroys log system instance.
+	 * @brief Destroys logging system instance.
 	 */
 	~LogSystem() final;
 	

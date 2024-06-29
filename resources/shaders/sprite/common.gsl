@@ -15,11 +15,6 @@
 #ifndef SPRITE_GSL
 #define SPRITE_GSL
 
-struct InstanceData
-{
-	float4x4 mvp;
-};
-
 const float2 quadVertices[6] = float2[]
 (
 	float2(-0.5f, -0.5f), float2( 0.5f, -0.5f), float2(-0.5f,  0.5f),

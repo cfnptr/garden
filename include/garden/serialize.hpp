@@ -46,6 +46,18 @@ public:
 	virtual void endChild() = 0;
 
 	virtual void beginArrayElement() = 0;
+	virtual void write(int64 value) = 0;
+	virtual void write(uint64 value) = 0;
+	virtual void write(int32 value) = 0;
+	virtual void write(uint32 value) = 0;
+	virtual void write(int16 value) = 0;
+	virtual void write(uint16 value) = 0;
+	virtual void write(int8 value) = 0;
+	virtual void write(uint8 value) = 0;
+	virtual void write(bool value) = 0;
+	virtual void write(float value) = 0;
+	virtual void write(double value) = 0;
+	virtual void write(string_view value) = 0;
 	virtual void endArrayElement() = 0;
 
 	virtual void write(string_view name, int64 value) = 0;
@@ -87,31 +99,43 @@ public:
 
 	virtual psize getArraySize() = 0;
 	virtual bool beginArrayElement(psize index) = 0;
+	virtual bool read(int64& value) = 0;
+	virtual bool read(uint64& value) = 0;
+	virtual bool read(int32& value) = 0;
+	virtual bool read(uint32& value) = 0;
+	virtual bool read(int16& value) = 0;
+	virtual bool read(uint16& value) = 0;
+	virtual bool read(int8& value) = 0;
+	virtual bool read(uint8& value) = 0;
+	virtual bool read(bool& value) = 0;
+	virtual bool read(float& value) = 0;
+	virtual bool read(double& value) = 0;
+	virtual bool read(string& value) = 0;
 	virtual void endArrayElement() = 0;
 
-	virtual void read(string_view name, int64& value) = 0;
-	virtual void read(string_view name, uint64& value) = 0;
-	virtual void read(string_view name, int32& value) = 0;
-	virtual void read(string_view name, uint32& value) = 0;
-	virtual void read(string_view name, int16& value) = 0;
-	virtual void read(string_view name, uint16& value) = 0;
-	virtual void read(string_view name, int8& value) = 0;
-	virtual void read(string_view name, uint8& value) = 0;
-	virtual void read(string_view name, bool& value) = 0;
-	virtual void read(string_view name, float& value) = 0;
-	virtual void read(string_view name, double& value) = 0;
-	virtual void read(string_view name, string& value) = 0;
-	virtual void read(string_view name, int2& value) = 0;
-	virtual void read(string_view name, int3& value) = 0;
-	virtual void read(string_view name, int4& value) = 0;
-	virtual void read(string_view name, float2& value) = 0;
-	virtual void read(string_view name, float3& value) = 0;
-	virtual void read(string_view name, float4& value) = 0;
-	virtual void read(string_view name, quat& value) = 0;
-	virtual void read(string_view name, float2x2& value) = 0;
-	virtual void read(string_view name, float3x3& value) = 0;
-	virtual void read(string_view name, float4x4& value) = 0;
-	virtual void read(string_view name, Aabb& value) = 0;
+	virtual bool read(string_view name, int64& value) = 0;
+	virtual bool read(string_view name, uint64& value) = 0;
+	virtual bool read(string_view name, int32& value) = 0;
+	virtual bool read(string_view name, uint32& value) = 0;
+	virtual bool read(string_view name, int16& value) = 0;
+	virtual bool read(string_view name, uint16& value) = 0;
+	virtual bool read(string_view name, int8& value) = 0;
+	virtual bool read(string_view name, uint8& value) = 0;
+	virtual bool read(string_view name, bool& value) = 0;
+	virtual bool read(string_view name, float& value) = 0;
+	virtual bool read(string_view name, double& value) = 0;
+	virtual bool read(string_view name, string& value) = 0;
+	virtual bool read(string_view name, int2& value) = 0;
+	virtual bool read(string_view name, int3& value) = 0;
+	virtual bool read(string_view name, int4& value) = 0;
+	virtual bool read(string_view name, float2& value) = 0;
+	virtual bool read(string_view name, float3& value) = 0;
+	virtual bool read(string_view name, float4& value) = 0;
+	virtual bool read(string_view name, quat& value) = 0;
+	virtual bool read(string_view name, float2x2& value) = 0;
+	virtual bool read(string_view name, float3x3& value) = 0;
+	virtual bool read(string_view name, float4x4& value) = 0;
+	virtual bool read(string_view name, Aabb& value) = 0;
 	// TODO: read array of values.
 };
 
@@ -122,7 +146,7 @@ class ISerializable
 {
 public:
 	virtual void preSerialize(ISerializer& serializer) { }
-	virtual void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) = 0;
+	virtual void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) = 0;
 	virtual void postSerialize(ISerializer& serializer) { }
 
 	virtual void preDeserialize(IDeserializer& deserializer) { }
@@ -144,14 +168,16 @@ class DoNotSerializeSystem : public System
 protected:
 	LinearPool<DoNotSerializeComponent, false> components;
 
-	const string& getComponentName() const override;
-	type_index getComponentType() const override;
 	ID<Component> createComponent(ID<Entity> entity) override;
 	void destroyComponent(ID<Component> instance) override;
+	void copyComponent(ID<Component> source, ID<Component> destination) override;
+	
+	friend class ecsm::Manager;
+public:
+	const string& getComponentName() const override;
+	type_index getComponentType() const override;
 	View<Component> getComponent(ID<Component> instance) override;
 	void disposeComponents() override;
-
-	friend class ecsm::Manager;
 };
 
 } // namespace garden

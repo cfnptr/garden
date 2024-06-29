@@ -256,8 +256,8 @@ protected:
 
 	Pipeline() = default;
 	Pipeline(CreateData& createData, bool useAsyncRecording);
-	Pipeline(PipelineType type, const fs::path& path,
-		uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion)
+	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount,
+		bool useAsyncRecording, uint64 pipelineVersion)
 	{
 		this->pipelinePath = path;
 		this->pipelineVersion = pipelineVersion;

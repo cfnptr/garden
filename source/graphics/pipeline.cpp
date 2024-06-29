@@ -392,7 +392,7 @@ vector<void*> Pipeline::createShaders(const vector<vector<uint8>>& code, const f
 
 	for (uint8 i = 0; i < (uint8)code.size(); i++)
 	{
-		auto& shaderCode = code[i];
+		const auto& shaderCode = code[i];
 		vk::ShaderModuleCreateInfo shaderInfo({},
 	
 		(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
@@ -430,7 +430,7 @@ void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uin
 		entryCount = 1;
 	}
 
-	for (auto& pair : specConsts)
+	for (const auto& pair : specConsts)
 	{
 		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
 			continue;
@@ -454,7 +454,7 @@ void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uin
 		itemIndex = 1; dataOffset = sizeof(uint32);
 	}
 
-	for (auto& pair : specConsts)
+	for (const auto& pair : specConsts)
 	{
 		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
 			continue;
@@ -468,7 +468,7 @@ void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uin
 		}
 		#endif
 
-		auto& value = specConstValues.at(pair.first);
+		const auto& value = specConstValues.at(pair.first);
 		GARDEN_ASSERT(value.constBase.type == pair.second.dataType);
 		vk::SpecializationMapEntry entry(pair.second.index,
 			dataOffset, toBinarySize(pair.second.dataType));
@@ -510,16 +510,16 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 		}
 		else abort();
 
-		auto& dsUniforms = dsView->uniforms;
-		for (auto& dsUniform : dsUniforms)
+		const auto& dsUniforms = dsView->uniforms;
+		for (const auto& dsUniform : dsUniforms)
 		{
-			auto& pipelineUniform = pipelineUniforms->at(dsUniform.first);
+			const auto& pipelineUniform = pipelineUniforms->at(dsUniform.first);
 			auto uniformType = pipelineUniform.type;
 
 			if (isSamplerType(uniformType) || isImageType(uniformType) ||
 				uniformType == GslUniformType::SubpassInput)
 			{
-				for (auto& resourceArray : dsUniform.second.resourceSets)
+				for (const auto& resourceArray : dsUniform.second.resourceSets)
 				{
 					for (auto resource : resourceArray)
 					{
@@ -541,7 +541,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 			}
 			else if (isBufferType(uniformType))
 			{
-				for (auto& resourceArray : dsUniform.second.resourceSets)
+				for (const auto& resourceArray : dsUniform.second.resourceSets)
 				{
 					for (auto resource : resourceArray)
 					{

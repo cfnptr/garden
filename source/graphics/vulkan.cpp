@@ -189,7 +189,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	#if GARDEN_DEBUG
 	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
-	for	(auto& properties : layerProperties)
+	for	(const auto& properties : layerProperties)
 	{
 		if (strcmp(properties.layerName.data(), "VK_LAYER_KHRONOS_validation") == 0)
 		{
@@ -198,7 +198,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		}
 	}
 	hasDebugUtils = false;
-	for	(auto& properties : extensionProperties)
+	for	(const auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName.data(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
 		{
@@ -469,7 +469,7 @@ static vk::Device createVkDevice(
 	};
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
-	for (auto& properties : extensionProperties)
+	for (const auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0)
 			hasMemoryBudget = true;

@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "garden/serialize.hpp"
+#include "garden/animate.hpp"
 
 namespace garden
 {
@@ -36,7 +36,7 @@ struct TransformComponent final : public Component
 	float3 scale = float3(1.0f);    /**< Object scale in the 3D space relative to the parent. */
 	quat rotation = quat::identity; /**< Object rotation in the 3D space relative to the parent. */
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	string name;                    /**< Object debug name. (Debug and editor only) */
+	string debugName;                    /**< Object debug name. (Debug and editor only) */
 	#endif
 private:
 	ID<Entity> parent = {};
@@ -122,6 +122,19 @@ public:
 	bool hasBaked() const noexcept;
 };
 
+/**
+ * @brief Contains information about transformation animation frame.
+ */
+struct TransformFrame final : public AnimationFrame
+{
+	float3 position = float3(0.0f);
+	float3 scale = float3(1.0f);
+	quat rotation = quat::identity;
+	bool animatePosition = false;
+	bool animateScale = false;
+	bool animateRotation = false;
+};
+
 /***********************************************************************************************************************
  * @brief Handles object transformations in the 3D space.
  * 
@@ -129,14 +142,18 @@ public:
  * Fundamental aspect of the engine architecture that handles the 
  * positioning, rotation, scaling and other properties of objects within the 3D space.
  */
-class TransformSystem final : public System, public ISerializable
+class TransformSystem final : public System, public ISerializable, public IAnimatable
 {
-public:
-	using TransformComponents = LinearPool<TransformComponent>;
 private:
-	TransformComponents components;
+	using EntityParentPair = pair<ID<Entity>, uint32>;
+	using EntityDuplicatePair = pair<ID<Entity>, ID<Entity>>;
+
+	LinearPool<TransformComponent> components;
+	LinearPool<TransformFrame, false> animationFrames;
+	vector<ID<Entity>> transformStack;
+	vector<EntityDuplicatePair> entityDuplicateStack;
 	map<uint32, ID<Entity>> deserializeEntities;
-	vector<pair<ID<Entity>, uint32>> deserializeParents;
+	vector<EntityParentPair> deserializeParents;
 
 	static TransformSystem* instance;
 
@@ -149,29 +166,52 @@ private:
 	 */
 	~TransformSystem() final;
 
-	const string& getComponentName() const final;
-	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
+	void copyComponent(ID<Component> source, ID<Component> destination) final;
 	
-	void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) final;
+	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
+
+	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
+	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
+	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;
 public:
 	/**
+	 * @brief Returns specific component name of the system.
+	 */
+	const string& getComponentName() const final;
+	/**
+	 * @brief Returns specific component typeid() of the system.
+	 */
+	type_index getComponentType() const final;
+	/**
+	 * @brief Returns specific component @ref View.
+	 */
+	View<Component> getComponent(ID<Component> instance) final;
+	/**
+	 * @brief Actually destroys components.
+	 * @details Components are not destroyed immediately, only after the dispose call.
+	 */
+	void disposeComponents() final;
+	/**
 	 * @brief Returns transform component pool.
 	 */
-	const TransformComponents& getComponents() const noexcept { return components; }
+	const LinearPool<TransformComponent>& getComponents() const noexcept { return components; }
 
 	/**
 	 * @brief Destroys the entity and all it descendants.
-	 * @param entity target entity
+	 * @param entity target entity to destroy
 	 */
-	static void destroyRecursive(ID<Entity> entity);
+	void destroyRecursive(ID<Entity> entity);
+	/**
+	 * @brief Creates a duplicate of entity with all descendants.
+	 * @param entity target entity to duplicate from
+	 */
+	void duplicateRecursive(ID<Entity> entity);
 
 	/**
 	 * @brief Returns transform system instance.
@@ -196,14 +236,16 @@ class BakedTransformSystem final : public System
 protected:
 	LinearPool<BakedTransformComponent, false> components;
 
-	const string& getComponentName() const final;
-	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
+	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	
 	friend class ecsm::Manager;
+public:
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	void disposeComponents() final;
 };
 
 } // namespace garden

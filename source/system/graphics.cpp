@@ -67,7 +67,7 @@ void GraphicsSystem::initializeImGui()
 	auto pipelineCacheInfo = vk::PipelineCacheCreateInfo();
 	ImGuiData::pipelineCache = Vulkan::device.createPipelineCache(pipelineCacheInfo);
 
-	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
+	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 
 	vector<Framebuffer::Subpass> subpasses =
@@ -217,7 +217,7 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat
 	if (depthStencilFormat != Image::Format::Undefined)
 		depthStencilBuffer = createDepthStencilBuffer(this, framebufferSize, depthStencilFormat);
 
-	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
+	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 	swapchainFramebuffer = GraphicsAPI::framebufferPool.create(
 		framebufferSize, swapchainImage->getDefaultView(), depthStencilBuffer);
@@ -379,7 +379,7 @@ static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
 static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 	ID<ImageView> depthStencilBuffer, int2 framebufferSize)
 {
-	auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
+	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
 	auto colorImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 	FramebufferExt::getSize(framebuffer) = framebufferSize;
@@ -891,7 +891,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
-		auto& mipData = data[mip];
+		const auto& mipData = data[mip];
 		auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
 		for (auto layerData : mipData)
@@ -941,7 +941,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
-			auto& mipData = data[mip];
+			const auto& mipData = data[mip];
 			auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
 			for (uint32 layer = 0; layer < layerCount; layer++)
@@ -1032,34 +1032,26 @@ View<Image> GraphicsSystem::get(ID<Image> instance) const
 }
 
 //**********************************************************************************************************************
-ID<ImageView> GraphicsSystem::createImageView(
-	ID<Image> image, Image::Type type, Image::Format format,
-	uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
+ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
+	Image::Format format, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
 	GARDEN_ASSERT(image);
-	GARDEN_ASSERT(mipCount > 0);
-	GARDEN_ASSERT(layerCount > 0);
-	
-	#if GARDEN_DEBUG
+
 	auto _image = GraphicsAPI::imagePool.get(image);
 	GARDEN_ASSERT(ResourceExt::getInstance(**_image));
 	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
 
-	if (type == Image::Type::Texture1DArray || type == Image::Type::Texture2DArray)
-	{
-		GARDEN_ASSERT(layerCount > 1);
-	}
-	else
+	if (format == Image::Format::Undefined)
+		format = _image->getFormat();
+	if (mipCount == 0)
+		mipCount = _image->getMipCount();
+	if (layerCount == 0)
+		layerCount = _image->getLayerCount();
+
+	if (type != Image::Type::Texture1DArray && type != Image::Type::Texture2DArray)
 	{
 		GARDEN_ASSERT(layerCount == 1);
-	}
-	#endif
-
-	if (format == Image::Format::Undefined)
-	{
-		auto imageView = GraphicsAPI::imagePool.get(image);
-		format = imageView->getFormat();
 	}
 
 	auto imageView = GraphicsAPI::imageViewPool.create(false, image,
@@ -1123,7 +1115,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 
 	#if GARDEN_DEBUG
 	psize outputAttachmentCount = 0;
-	for (auto& subpass : subpasses)
+	for (const auto& subpass : subpasses)
 	{
 		for	(auto inputAttachment : subpass.inputAttachments)
 		{

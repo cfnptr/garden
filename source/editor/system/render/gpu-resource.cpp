@@ -217,14 +217,14 @@ static void renderImages(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto imageViews = GraphicsAPI::imageViewPool.getData();
+		const auto imageViews = GraphicsAPI::imageViewPool.getData();
 		auto occupancy = GraphicsAPI::imageViewPool.getOccupancy();
 		auto selectedImage = GraphicsAPI::imagePool.getID(&image);
 
 		auto isAny = false;
 		for (uint32 i = 0; i < occupancy; i++)
 		{
-			auto& imageView = imageViews[i];
+			const auto& imageView = imageViews[i];
 			if (imageView.getImage() != selectedImage)
 				continue;
 			
@@ -265,7 +265,7 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string imageViewName;
-	auto imageViews = GraphicsAPI::imageViewPool.getData();
+	const auto imageViews = GraphicsAPI::imageViewPool.getData();
 	renderItemList(GraphicsAPI::imageViewPool.getCount(),
 		GraphicsAPI::imageViewPool.getOccupancy(),
 		selectedItem, resourceSearch, searchCaseSensitive,
@@ -281,7 +281,7 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 		return;
 	}
 
-	auto& imageView = imageViews[selectedItem];
+	const auto& imageView = imageViews[selectedItem];
 	string imageName;
 	if (imageView.getImage())
 	{
@@ -307,15 +307,15 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto framebuffers = GraphicsAPI::framebufferPool.getData();
+		const auto framebuffers = GraphicsAPI::framebufferPool.getData();
 		auto occupancy = GraphicsAPI::framebufferPool.getOccupancy();
 		auto selectedImageView = GraphicsAPI::imageViewPool.getID(&imageView);
 
 		auto isAny = false;
 		for (uint32 i = 0; i < occupancy; i++)
 		{
-			auto& framebuffer = framebuffers[i];
-			auto& colorAttachments = framebuffer.getColorAttachments();
+			const auto& framebuffer = framebuffers[i];
+			const auto& colorAttachments = framebuffer.getColorAttachments();
 
 			auto isFound = false;
 			for (uint32 j = 0; j < colorAttachments.size(); j++)
@@ -328,7 +328,7 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 				}
 			}
 
-			auto& depthStencilAttachment = framebuffer.getDepthStencilAttachment();
+			const auto& depthStencilAttachment = framebuffer.getDepthStencilAttachment();
 			if (depthStencilAttachment.imageView == selectedImageView)
 				isFound = true;
 
@@ -398,7 +398,7 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 		return;
 	}
 
-	auto& framebuffer = framebuffers[selectedItem];
+	const auto& framebuffer = framebuffers[selectedItem];
 	ImGui::SeparatorText(framebufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)*GraphicsAPI::framebufferPool.getID(&framebuffer));
 	ImGui::TextWrapped("Size: %ldx%ld", (long)framebuffer.getSize().x, (long)framebuffer.getSize().y);
@@ -408,8 +408,8 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::Indent();
 
-		auto& colorAttachments = framebuffer.getColorAttachments();
-		for (psize i = 0; i < colorAttachments.size(); i++)
+		const auto& colorAttachments = framebuffer.getColorAttachments();
+		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
 			auto attachment = colorAttachments[i];
 			auto imageView = GraphicsAPI::imageViewPool.get(attachment.imageView);
@@ -479,10 +479,10 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::Indent();
 
-		auto& subpasses = framebuffer.getSubpasses();
-		for (psize i = 0; i < subpasses.size(); i++)
+		const auto& subpasses = framebuffer.getSubpasses();
+		for (uint32 i = 0; i < (uint32)subpasses.size(); i++)
 		{
-			auto& subpass = subpasses[i];
+			const auto& subpass = subpasses[i];
 			ImGui::SeparatorText(to_string(i).c_str());
 			ImGui::TextWrapped("Pipeline type: %s", toString(subpass.pipelineType).data());
 			ImGui::TextWrapped("Input attachment count: %lu", (unsigned long)subpass.inputAttachments.size());
@@ -523,7 +523,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 		return;
 	}
 
-	auto& descriptorSet = descriptorSets[selectedItem];
+	const auto& descriptorSet = descriptorSets[selectedItem];
 	string pipelineName; const std::map<string, Pipeline::Uniform>* uniforms;
 	if (descriptorSet.getPipeline())
 	{
@@ -558,10 +558,10 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::Indent();
 
-		auto& descriptorUniforms = descriptorSet.getUniforms();
-		for (auto& pair : descriptorUniforms)
+		const auto& descriptorUniforms = descriptorSet.getUniforms();
+		for (const auto& pair : descriptorUniforms)
 		{
-			auto uniform = uniforms->find(pair.first);
+			const auto uniform = uniforms->find(pair.first);
 			if (uniform == uniforms->end() ||
 				uniform->second.descriptorSetIndex != descriptorSet.getIndex())
 			{
@@ -571,14 +571,14 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 			ImGui::SeparatorText(pair.first.c_str());
 
 			auto type = uniform->second.type;
-			auto& resourceSets = pair.second.resourceSets;
+			const auto& resourceSets = pair.second.resourceSets;
 			if (isBufferType(type))
 			{
 				for (uint32 i = 0; i < (uint32)resourceSets.size(); i++)
 				{
 					if (ImGui::TreeNodeEx(to_string(i).c_str()))
 					{
-						auto& resourceArray = resourceSets[i];
+						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
 							auto bufferView = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
@@ -607,7 +607,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 				{
 					if (ImGui::TreeNodeEx(to_string(i).c_str()))
 					{
-						auto& resourceArray = resourceSets[i];
+						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
 							auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resource));
@@ -671,8 +671,8 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 	{
 		ImGui::Indent();
 
-		auto& uniforms = pipeline.getUniforms();
-		for (auto& pair : uniforms)
+		const auto& uniforms = pipeline.getUniforms();
+		for (const auto& pair : uniforms)
 		{
 			auto uniform = pair.second;
 			auto readAccess = uniform.readAccess;
@@ -700,13 +700,13 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto descriptorSets = GraphicsAPI::descriptorSetPool.getData();
+		const auto descriptorSets = GraphicsAPI::descriptorSetPool.getData();
 		auto occupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
 
 		auto isAny = false;
 		for (uint32 i = 0; i < occupancy; i++)
 		{
-			auto& descriptorSet = descriptorSets[i];
+			const auto& descriptorSet = descriptorSets[i];
 			if (descriptorSet.getPipelineType() != pipeline.getType() ||
 				descriptorSet.getPipeline() != instance)
 			{
@@ -764,7 +764,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& resourceSearch
 		return;
 	}
 
-	auto& graphicsPipeline = graphicsPipelines[selectedItem];
+	const auto& graphicsPipeline = graphicsPipelines[selectedItem];
 	string framebufferName;
 	if (graphicsPipeline.getFramebuffer())
 	{
@@ -806,7 +806,7 @@ static void renderComputePipelines(uint32& selectedItem, string& resourceSearch,
 		return;
 	}
 
-	auto& computePipeline = computePipelines[selectedItem];
+	const auto& computePipeline = computePipelines[selectedItem];
 	ImGui::SeparatorText(computePipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Local size: %ldx%ldx%ld", (long)computePipeline.getLocalSize().x,

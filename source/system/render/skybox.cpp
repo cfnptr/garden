@@ -138,7 +138,10 @@ View<Component> SkyboxRenderSystem::getComponent(ID<Component> instance)
 {
 	return View<Component>(components.get(ID<SkyboxRenderComponent>(instance)));
 }
-void SkyboxRenderSystem::disposeComponents() { components.dispose(); }
+void SkyboxRenderSystem::disposeComponents()
+{
+	components.dispose();
+}
 
 //--------------------------------------------------------------------------------------------------
 ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()

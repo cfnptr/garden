@@ -115,11 +115,11 @@ static void updateFileDrops(vector<fs::path>& fileDropPaths, const fs::path*& cu
 {
 	if (!fileDropPaths.empty())
 	{
-		auto& subscribers = Manager::getInstance()->getEventSubscribers("FileDrop");
+		const auto& subscribers = Manager::getInstance()->getEventSubscribers("FileDrop");
 		for (const auto& path : fileDropPaths)
 		{
 			currentFileDropPath = &path;
-			for (auto& onFileDrop : subscribers)
+			for (const auto& onFileDrop : subscribers)
 				onFileDrop();
 		}
 		currentFileDropPath = nullptr;

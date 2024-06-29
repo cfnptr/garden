@@ -28,41 +28,36 @@ void SpriteRenderSystem::init()
 }
 void SpriteRenderSystem::deinit()
 {
-	InstanceRenderSystem::deinit();
+	// TODO: somehow destroy default image view
 
 	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 		UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+
+	InstanceRenderSystem::deinit();
 }
 
 //**********************************************************************************************************************
 void SpriteRenderSystem::imageLoaded()
 {
 	auto image = ResourceSystem::getInstance()->getLoadedImage();
-	auto& componentPool = getMeshComponentPool();
+	const auto& componentPool = getMeshComponentPool();
 	auto componentSize = getMeshComponentSize();
 	auto componentData = (uint8*)componentPool.getData();
 	auto componentOccupnacy = componentPool.getOccupancy();
-	Ref<DescriptorSet> sharedDescriptorSet = {};
 
+	// TODO: suboptimal. Use tightly packed sprite arrays (add support of this to the resource system or texture atlases).
 	for (uint32 i = 0; i < componentOccupnacy; i++)
 	{
 		auto spriteRender = (SpriteRenderComponent*)(componentData + i * componentSize);
 		if (spriteRender->colorMap != image)
 			continue;
 
-		if (sharedDescriptorSet)
-		{
-			spriteRender->descriptorSet = sharedDescriptorSet;
-			continue;
-		}
-		
-		auto graphicsSystem = GraphicsSystem::getInstance();
-		auto imageView = graphicsSystem->get(image);
+		auto resourceSystem = ResourceSystem::getInstance();
+		auto imageView = GraphicsSystem::getInstance()->get(image);
 		auto uniforms = getSpriteUniforms(imageView->getDefaultView());
-		sharedDescriptorSet = graphicsSystem->createDescriptorSet(getPipeline(), std::move(uniforms), 1);
-		spriteRender->descriptorSet = sharedDescriptorSet;
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, sharedDescriptorSet, "descriptorSet." + spriteRender->path);
+		spriteRender->descriptorSet = ResourceSystem::getInstance()->createSharedDescriptorSet(
+			spriteRender->path, getPipeline(), std::move(uniforms), 1);
 	}
 }
 
@@ -84,9 +79,8 @@ void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderComponent = (SpriteRenderComponent*)meshRenderComponent;
-	auto instanceData = (InstanceData*)instanceMap;
-	auto& instance = instanceData[drawIndex];
-	instance.mvp = viewProj * model;
+	auto instance = (InstanceData*)(instanceMap + drawIndex * getInstanceDataSize());
+	instance->mvp = viewProj * model;
 
 	DescriptorSet::Range descriptorSetRange[8]; uint8 descriptorSetCount = 0;
 	setDescriptorSetRange(meshRenderComponent, descriptorSetRange, descriptorSetCount, 8);
@@ -109,26 +103,38 @@ void SpriteRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderCo
 map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colorMap)
 {
 	map<string, DescriptorSet::Uniform> spriteUniforms =
-	{ { "colorMap", DescriptorSet::Uniform(colorMap) }, };
+	{ { "colorMap", DescriptorSet::Uniform(colorMap) } };
 	return spriteUniforms;
 }
 map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 {
-	map<string, DescriptorSet::Uniform> defaultUniforms =
-	{ { "colorMap", DescriptorSet::Uniform(GraphicsSystem::getInstance()->getWhiteTexture()) }, };
-	return defaultUniforms;
-}
+	auto whiteTexture = GraphicsSystem::getInstance()->getWhiteTexture();
+	if (!defaultImageView)
+	{
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto imageView = graphicsSystem->get(whiteTexture);
+		defaultImageView = GraphicsSystem::getInstance()->createImageView(
+			imageView->getImage(), Image::Type::Texture2DArray);
+	}
 
-void SpriteRenderSystem::destroyResources(SpriteRenderComponent* spriteComponent)
-{
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	if (spriteComponent->colorMap.getRefCount() == 1)
-		graphicsSystem->destroy(spriteComponent->colorMap);
-	if (spriteComponent->descriptorSet.getRefCount() == 1)
-		graphicsSystem->destroy(spriteComponent->descriptorSet);
+	map<string, DescriptorSet::Uniform> defaultUniforms =
+	{ { "colorMap", DescriptorSet::Uniform(defaultImageView) } };
+	return defaultUniforms;
 }
 
 uint64 SpriteRenderSystem::getInstanceDataSize()
 {
 	return sizeof(InstanceData);
+}
+
+void SpriteRenderSystem::tryDestroyResources(View<SpriteRenderComponent> spriteComponent)
+{
+	GARDEN_ASSERT(spriteComponent);
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	if (spriteComponent->colorMap.getRefCount() == 1)
+		graphicsSystem->destroy(spriteComponent->colorMap);
+	if (spriteComponent->descriptorSet.getRefCount() == 1)
+		graphicsSystem->destroy(spriteComponent->descriptorSet);
+	spriteComponent->colorMap = {};
+	spriteComponent->descriptorSet = {};
 }

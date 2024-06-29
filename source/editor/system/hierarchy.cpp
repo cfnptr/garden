@@ -87,18 +87,28 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			ImGui::SetNextItemOpen(true);
 		}
 
+		ImGui::BeginDisabled(manager->has<DoNotDuplicateComponent>(renderEntity));
+		if (ImGui::MenuItem("Duplicate Entity"))
+			manager->duplicate(renderEntity);
+		if (ImGui::MenuItem("Duplicate Entities"))
+			TransformSystem::getInstance()->duplicateRecursive(renderEntity);
+		ImGui::EndDisabled();
+
+		// TODO: destroy recursive is not working.
+
 		ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(renderEntity));
 		if (ImGui::MenuItem("Destroy Entity"))
 			manager->destroy(renderEntity);
 		if (ImGui::MenuItem("Destroy Entities"))
-			TransformSystem::destroyRecursive(renderEntity);
+			TransformSystem::getInstance()->destroyRecursive(renderEntity);
 		ImGui::EndDisabled();
 
-		if (ImGui::MenuItem("Copy Name"))
+		if (ImGui::MenuItem("Copy Debug Name"))
 		{
 			auto transform = manager->get<TransformComponent>(renderEntity);
-			auto name = transform->name.empty() ? "Entity " + to_string(*renderEntity) : transform->name;
-			ImGui::SetClipboardText(name.c_str());
+			auto debugName = transform->debugName.empty() ?
+				"Entity " + to_string(*renderEntity) : transform->debugName;
+			ImGui::SetClipboardText(debugName.c_str());
 		}
 		
 		ImGui::EndPopup();
@@ -134,14 +144,14 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (!renderTransform->hasBaked() && ImGui::BeginDragDropSource())
 		{
 			ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
-			if (renderTransform->name.empty())
+			if (renderTransform->debugName.empty())
 			{
-				auto name = "Entity " + to_string(*renderEntity);
-				ImGui::Text("%s", name.c_str());
+				auto debugName = "Entity " + to_string(*renderEntity);
+				ImGui::Text("%s", debugName.c_str());
 			}
 			else
 			{
-				ImGui::Text("%s", renderTransform->name.c_str());
+				ImGui::Text("%s", renderTransform->debugName.c_str());
 			}
 			ImGui::EndDragDropSource();
 		}
@@ -152,7 +162,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
 	auto transform = Manager::getInstance()->get<TransformComponent>(renderEntity);
-	auto name = transform->name.empty() ? "Entity " + to_string(*renderEntity) : transform->name;
+	auto debugName = transform->debugName.empty() ? "Entity " + to_string(*renderEntity) : transform->debugName;
 	
 	auto flags = (int)(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
 	if (transform->getEntity() == selectedEntity)
@@ -160,7 +170,8 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 	if (transform->getChildCount() == 0)
 		flags |= ImGuiTreeNodeFlags_Leaf;
 	
-	if (ImGui::TreeNodeEx(name.c_str(), flags))
+	ImGui::PushID(to_string(*renderEntity).c_str());
+	if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 	{
 		updateHierarchyClick(renderEntity);
 
@@ -176,6 +187,7 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 	{
 		updateHierarchyClick(renderEntity);
 	}
+	ImGui::PopID();
 }
 
 //**********************************************************************************************************************
@@ -230,18 +242,18 @@ void HierarchyEditorSystem::editorRender()
 		
 		ImGui::InputText("Search", &hierarchySearch); ImGui::SameLine();
 		ImGui::Checkbox("Aa", &searchCaseSensitive);
-		ImGui::Separator();
+		ImGui::Spacing(); ImGui::Separator();
 
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
 		auto editorSystem = EditorRenderSystem::getInstance();
-		auto& components = TransformSystem::getInstance()->getComponents();
+		const auto& components = TransformSystem::getInstance()->getComponents();
 
 		if (hierarchySearch.empty())
 		{
 			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
 			{
-				auto transform = &((TransformComponent*)components.getData())[i];
+				auto transform = &((const TransformComponent*)components.getData())[i];
 				if (!transform->getEntity() || transform->getParent())
 					continue;
 				renderHierarchyEntity(transform->getEntity(), editorSystem->selectedEntity);
@@ -251,15 +263,15 @@ void HierarchyEditorSystem::editorRender()
 		{
 			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
 			{
-				auto transform = &((TransformComponent*)components.getData())[i];
+				auto transform = &((const TransformComponent*)components.getData())[i];
 				if (!transform->getEntity())
 					continue;
 
-				auto name = transform->name.empty() ? 
-					"Entity " + to_string(*transform->getEntity()) : transform->name;
+				auto debugName = transform->debugName.empty() ?
+					"Entity " + to_string(*transform->getEntity()) : transform->debugName;
 				if (!hierarchySearch.empty())
 				{
-					if (!find(name, hierarchySearch, searchCaseSensitive))
+					if (!find(debugName, hierarchySearch, searchCaseSensitive))
 						continue;
 				}
 
@@ -267,7 +279,7 @@ void HierarchyEditorSystem::editorRender()
 				if (transform->getEntity() == editorSystem->selectedEntity)
 					flags |= ImGuiTreeNodeFlags_Selected;
 					
-				if (ImGui::TreeNodeEx(name.c_str(), flags))
+				if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 				{
 					updateHierarchyClick(transform->getEntity());
 					ImGui::TreePop();
@@ -275,7 +287,7 @@ void HierarchyEditorSystem::editorRender()
 			}
 		}
 
-		auto& entities = manager->getEntities();
+		const auto& entities = manager->getEntities();
 		auto entityData = entities.getData();
 		auto entityOccupancy = entities.getOccupancy();
 		auto hasSeparator = false;
@@ -283,7 +295,7 @@ void HierarchyEditorSystem::editorRender()
 		for (uint32 i = 0; i < entityOccupancy; i++) // Entities without transform component
 		{
 			auto entity = &entityData[i];
-			auto& components = entity->getComponents();
+			const auto& components = entity->getComponents();
 
 			if (components.empty() || components.find(typeid(TransformComponent)) != components.end())
 				continue;
@@ -297,9 +309,9 @@ void HierarchyEditorSystem::editorRender()
 			auto flags = (int)ImGuiTreeNodeFlags_Leaf;
 			if (entities.getID(entity) == editorSystem->selectedEntity)
 				flags |= ImGuiTreeNodeFlags_Selected;
-			auto name = "Entity " + to_string(*entities.getID(entity));
+			auto debugName = "Entity " + to_string(*entities.getID(entity));
 
-			if (ImGui::TreeNodeEx(name.c_str(), flags))
+			if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 			{
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{

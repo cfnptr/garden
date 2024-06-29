@@ -19,7 +19,6 @@ namespace garden
 {
 
 using namespace garden::graphics;
-class SpriteRenderSystem;
 
 /***********************************************************************************************************************
  * @brief Sprite mesh rendering data container.
@@ -27,12 +26,15 @@ class SpriteRenderSystem;
 struct SpriteRenderComponent : public MeshRenderComponent
 {
 private:
-	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 public:
+	bool isArray = false;
 	Ref<Image> colorMap = {};
 	Ref<DescriptorSet> descriptorSet = {};
+	float colorMapLayer = 0.0f;
 	float4 colorFactor = float4(1.0f);
+	float2 uvSize = float2(1.0f);
+	float2 uvOffset = float2(0.0f);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	string path;
@@ -40,9 +42,26 @@ public:
 };
 
 /***********************************************************************************************************************
+ * @brief Sprite mesh animation frame container.
+ */
+struct SpriteRenderFrame : public AnimationFrame
+{
+	float4 colorFactor = float4(1.0f);
+	float2 uvSize = float2(1.0f);
+	float2 uvOffset = float2(0.0f);
+	float colorMapLayer = 0.0f;
+	bool isEnabled = true;
+	bool animateColorFactor = false;
+	bool animateUvSize = false;
+	bool animateUvOffset = false;
+	bool animateColorMapLayer = false;
+	bool animateIsEnabled = false;
+};
+
+/***********************************************************************************************************************
  * @brief Sprite mesh rendering system.
  */
-class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable
+class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable, public IAnimatable
 {
 public:
 	struct InstanceData
@@ -50,9 +69,10 @@ public:
 		float4x4 mvp = float4x4(0.0f);
 	};
 protected:
+	ID<ImageView> defaultImageView = {};
+
 	void init() override;
 	void deinit() override;
-
 	virtual void imageLoaded();
 
 	bool isDrawReady() override;
@@ -63,9 +83,9 @@ protected:
 		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
-	void destroyResources(SpriteRenderComponent* spriteComponent);
 public:
 	uint64 getInstanceDataSize() override;
+	void tryDestroyResources(View<SpriteRenderComponent> spriteComponent);
 };
 
 } // namespace garden

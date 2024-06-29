@@ -91,7 +91,7 @@ private:
 
 	Buffer() = default;
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size, uint64 version);
-	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) :
+	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
 		Memory(0, access, usage, strategy, version) { this->bind = bind; }
 	bool destroy() final;
 

@@ -19,6 +19,7 @@
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/camera.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;
@@ -186,7 +187,7 @@ static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->renderScale = 0.25f / graphicsSystem->getRenderScale();
 	
-	for (auto& mesh : gizmosMeshes)
+	for (const auto& mesh : gizmosMeshes)
 	{
 		auto bufferView = graphicsSystem->get(mesh.vertexBuffer);
 		pushConstants->mvp = viewProj * mesh.model;
@@ -240,8 +241,11 @@ void MeshGizmosEditorSystem::editorRender()
 		inputSystem->getCursorMode() == CursorMode::Default ?
 		quat::identity : extractQuat(extractRotation(model));
 	auto translation = getTranslation(model);
-	auto dist = length(translation) * 0.25f; // TODO: fix problem with model scaling near the edges in orthographics projection.
-	model = calcModel(translation, rotation, float3(dist));
+	auto modelScale = 0.25f;
+	auto cameraComponent = manager->tryGet<CameraComponent>(graphicsSystem->camera);
+	if (cameraComponent && cameraComponent->type == ProjectionType::Perspective)
+		modelScale *= length(translation);
+	model = calcModel(translation, rotation, float3(modelScale));
 
 	vector<GizmosMesh> gizmosMeshes;
 	addArrowMeshes(gizmosMeshes, model, fullCubeVertices, fullArrowVertices,

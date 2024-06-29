@@ -231,7 +231,7 @@ static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 static void destroyVkSwapchainBuffers(vk::Device device,
 	LinearPool<Image>& imagePool, const vector<Swapchain::Buffer>& buffers)
 {
-	for (auto& buffer : buffers)
+	for (const auto& buffer : buffers)
 	{
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		device.destroyQueryPool(buffer.queryPool);
@@ -344,7 +344,7 @@ bool Swapchain::acquireNextImage()
 //*********************************************************************************************************************
 void Swapchain::submit()
 {
-	auto& buffer = buffers[bufferIndex];
+	const auto& buffer = buffers[bufferIndex];
 	vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	vk::SubmitInfo submitInfo(1, &imageAcquiredSemaphores[frameIndex], &pipelineStage, 
 		1, &buffer.primaryCommandBuffer, 1, &drawCompleteSemaphores[frameIndex]);
@@ -372,7 +372,7 @@ void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass
 	Framebuffer::OutputAttachment depthStencilAttachment, const string& name)
 {
 	auto& buffer = buffers[bufferIndex];
-	auto& secondaryCommandPools = buffer.secondaryCommandPools;
+	const auto& secondaryCommandPools = buffer.secondaryCommandPools;
 	auto commandBufferCount = (uint32)secondaryCommandPools.size();
 	Vulkan::secondaryCommandBuffers.resize(commandBufferCount);
 	Vulkan::secondaryCommandStates.resize(commandBufferCount);

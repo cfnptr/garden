@@ -1299,7 +1299,7 @@ static void writeGslHeaderValues(const fs::path& filePath,
 template<typename T>
 static void writeGslHeaderArray(ofstream& headerStream, const map<string, T>& valueArray)
 {
-	for (auto& pair : valueArray)
+	for (const auto& pair : valueArray)
 	{
 		GARDEN_ASSERT(pair.first.length() <= UINT8_MAX);
 		auto length = (uint8)pair.first.length();
@@ -2180,9 +2180,9 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 		string name(nameLength, ' ');
 		memcpy(name.data(), data + dataOffset, nameLength);
 		dataOffset += nameLength;
-		auto& value = *(const T*)(data + dataOffset);
+		const auto& value = *(const T*)(data + dataOffset);
 		dataOffset += sizeof(T);
-		if (!valueArray.emplace(name, value).second)
+		if (!valueArray.emplace(std::move(name), value).second)
 			throw runtime_error("Invalid GSL header data.");
 	}
 }
