@@ -23,12 +23,23 @@ out float4 fb.color;
 
 uniform pushConstants
 {
-	float4 colorFactor;
 	uint32 instanceIndex;
+	float colorMapLayer;
 	float alphaCutoff;
 } pc;
 
-uniform set1 sampler2D
+struct InstanceData
+{
+	float4x4 mvp;
+	float4 colorFactor;
+	float4 sizeOffset;
+};
+buffer readonly Instance
+{
+	InstanceData data[];
+} instance;
+
+uniform set1 sampler2DArray
 {
 	filter = linear;
 	wrap = repeat;
@@ -36,7 +47,12 @@ uniform set1 sampler2D
 
 void main()
 {
-	float4 color = texture(colorMap, fs.texCoords) * pc.colorFactor;
+	float4 colorFactor = instance.data[pc.instanceIndex].colorFactor;
+	float2 uvSize = instance.data[pc.instanceIndex].sizeOffset.xy;
+	float2 uvOffset = instance.data[pc.instanceIndex].sizeOffset.zw;
+	float3 texCoords = float3(fs.texCoords * uvSize + uvOffset, pc.colorMapLayer);
+	float4 color = texture(colorMap, texCoords) * colorFactor;
+
 	if (color.a < pc.alphaCutoff)
 		discard;
 	fb.color = color; 

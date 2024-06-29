@@ -48,7 +48,7 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 	auto subpassCount = (uint32)subpasses.size();
 	uint32 referenceCount = 0, referenceOffset = 0;
 
-	for	(auto& subpass : subpasses)
+	for	(const auto& subpass : subpasses)
 		referenceCount += (uint32)(subpass.inputAttachments.size() + subpass.outputAttachments.size());
 
 	map<ID<ImageView>, ImageViewState> imageViewStates;
@@ -60,9 +60,9 @@ Framebuffer::Framebuffer(int2 size, vector<Subpass>&& subpasses)
 
 	for (uint32 i = 0; i < subpassCount; i++)
 	{
-		auto& subpass = subpasses[i];
-		auto& inputAttachments = subpass.inputAttachments;
-		auto& outputAttachments = subpass.outputAttachments;
+		const auto& subpass = subpasses[i];
+		const auto& inputAttachments = subpass.inputAttachments;
+		const auto& outputAttachments = subpass.outputAttachments;
 		
 		vk::SubpassDescription subpassDescription;
 		subpassDescription.pipelineBindPoint = toVkPipelineBindPoint(subpass.pipelineType);
@@ -379,7 +379,7 @@ void Framebuffer::update(int2 size, const OutputAttachment* colorAttachments,
 	#if GARDEN_DEBUG
 	for	(uint32 i = 0; i < colorAttachmentCount; i ++)
 	{
-		auto& colorAttachment = colorAttachments[i];
+		const auto& colorAttachment = colorAttachments[i];
 		GARDEN_ASSERT(colorAttachment.imageView);
 		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->format));
@@ -415,7 +415,7 @@ void Framebuffer::update(int2 size, vector<OutputAttachment>&& colorAttachments,
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 
 	#if GARDEN_DEBUG
-	for	(auto& colorAttachment : colorAttachments)
+	for	(const auto& colorAttachment : colorAttachments)
 	{
 		GARDEN_ASSERT(colorAttachment.imageView);
 		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
@@ -648,7 +648,7 @@ void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < regionCount; i++)
 	{
-		auto& region = regions[i];
+		const auto& region = regions[i];
 		GARDEN_ASSERT(region.offset >= 0);
 		GARDEN_ASSERT(region.extent >= 0);
 	}

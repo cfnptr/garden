@@ -57,7 +57,7 @@ void Controller2DSystem::init()
 	auto transformComponent = manager->add<TransformComponent>(camera);
 	transformComponent->position = float3(0.0f, 0.0f, -0.5f);
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	transformComponent->name = "Camera";
+	transformComponent->debugName = "Camera";
 	#endif
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
@@ -136,7 +136,7 @@ void Controller2DSystem::update()
 void Controller2DSystem::swapchainRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
 	{

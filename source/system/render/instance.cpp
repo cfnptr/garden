@@ -35,7 +35,7 @@ static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>&
 static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	for (auto& sets : instanceBuffers)
+	for (const auto& sets : instanceBuffers)
 		graphicsSystem->destroy(sets[0]);
 	instanceBuffers.clear();
 }
@@ -140,7 +140,7 @@ void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCou
 void InstanceRenderSystem::swapchainRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.bufferCount)
 	{

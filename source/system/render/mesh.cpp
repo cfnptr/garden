@@ -121,7 +121,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		}
 		else if (renderType == translucentType)
 		{
-			auto& componentPool = meshSystem->getMeshComponentPool();
+			const auto& componentPool = meshSystem->getMeshComponentPool();
 			translucentMaxCount += componentPool.getCount();
 			translucentBufferCount++;
 		}
@@ -155,7 +155,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	// 1. Cull and prepare items 
 	for (auto meshSystem : meshSystems)
 	{
-		auto& componentPool = meshSystem->getMeshComponentPool();
+		const auto& componentPool = meshSystem->getMeshComponentPool();
 		auto componentCount = componentPool.getCount();
 		auto renderType = meshSystem->getMeshRenderType();
 		
@@ -176,7 +176,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
 				auto meshSystem = opaqueBuffer->meshSystem;
-				auto& componentPool = meshSystem->getMeshComponentPool();
+				const auto& componentPool = meshSystem->getMeshComponentPool();
 				auto componentSize = meshSystem->getMeshComponentSize();
 				auto componentData = (uint8*)componentPool.getData();
 				auto itemCount = task.getItemCount();
@@ -188,11 +188,11 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
 					auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
-					if (!meshRender->entity || !meshRender->isEnabled)
+					if (!meshRender->getEntity() || !meshRender->isEnabled)
 						continue;
 
 					float4x4 model;
-					auto transform = manager->tryGet<TransformComponent>(meshRender->entity);
+					auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
 					if (transform)
 					{
 						model = transform->calcModel();
@@ -239,7 +239,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
 				auto meshSystem = translucentBuffer->meshSystem;
-				auto& componentPool = meshSystem->getMeshComponentPool();
+				const auto& componentPool = meshSystem->getMeshComponentPool();
 				auto componentSize = meshSystem->getMeshComponentSize();
 				auto componentData = (uint8*)componentPool.getData();
 				auto itemCount = task.getItemCount();
@@ -249,11 +249,11 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
 					auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
-					if (!meshRender->entity || !meshRender->isEnabled)
+					if (!meshRender->getEntity() || !meshRender->isEnabled)
 						continue;
 
 					float4x4 model;
-					auto transform = manager->tryGet<TransformComponent>(meshRender->entity);
+					auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
 					if (transform)
 					{
 						model = transform->calcModel();
@@ -365,7 +365,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 				meshSystem->beginDraw(taskIndex);
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
-					auto& item = items[indices[j]];
+					const auto& item = items[indices[j]];
 					meshSystem->draw(item.meshRender, viewProj, item.model, j, taskIndex);
 				}
 				meshSystem->endDraw(taskCount, taskIndex);
@@ -381,7 +381,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 			meshSystem->beginDraw(-1);
 			for (uint32 j = 0; j < drawCount; j++)
 			{
-				auto& item = items[indices[j]];
+				const auto& item = items[indices[j]];
 				meshSystem->draw(item.meshRender, viewProj, item.model, j, -1);
 			}
 			meshSystem->endDraw(drawCount, -1);
@@ -425,7 +425,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 	uint32 currentDrawCount = 0;
 	for (uint32 i = 0; i < drawCount; i++)
 	{
-		auto& item = items[indices[i]];
+		const auto& item = items[indices[i]];
 		if (currentBufferIndex != item.bufferIndex)
 		{
 			meshSystem = bufferData[currentBufferIndex].meshSystem;

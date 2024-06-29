@@ -310,15 +310,6 @@ TransformSystem::~TransformSystem()
 }
 
 //**********************************************************************************************************************
-const string& TransformSystem::getComponentName() const
-{
-	static const string name = "Transform";
-	return name;
-}
-type_index TransformSystem::getComponentType() const
-{
-	return typeid(TransformComponent);
-}
 ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 {
 	auto component = components.create();
@@ -333,16 +324,22 @@ void TransformSystem::destroyComponent(ID<Component> instance)
 	#endif
 	components.destroy(ID<TransformComponent>(instance));
 }
-View<Component> TransformSystem::getComponent(ID<Component> instance)
+void TransformSystem::copyComponent(ID<Component> source, ID<Component> destination)
 {
-	return View<Component>(components.get(ID<TransformComponent>(instance)));
+	const auto sourceView = components.get(ID<TransformComponent>(source));
+	auto destinationView = components.get(ID<TransformComponent>(destination));
+	destinationView->position = sourceView->position;
+	destinationView->scale = sourceView->scale;
+	destinationView->rotation = sourceView->rotation;
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	destinationView->debugName = sourceView->debugName;
+	#endif
 }
-void TransformSystem::disposeComponents() { components.dispose(); }
 
 //**********************************************************************************************************************
-void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component)
+void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	auto transformComponent = components.get(ID<TransformComponent>(component));
+	auto transformComponent = View<TransformComponent>(component);
 	serializer.write("uid", *transformComponent->entity);
 
 	if (transformComponent->position != float3(0.0f))
@@ -358,8 +355,8 @@ void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, ID<C
 		serializer.write("parent", *parent);
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	if (!transformComponent->name.empty())
-		serializer.write("name", transformComponent->name);
+	if (!transformComponent->debugName.empty())
+		serializer.write("debugName", transformComponent->debugName);
 	#endif
 }
 void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
@@ -368,19 +365,20 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 
 	uint32 uid = 0;
 	deserializer.read("uid", uid);
-	deserializeEntities.emplace(uid, entity);
+
+	auto result = deserializeEntities.emplace(uid, entity);
+	GARDEN_ASSERT(result.second); // Detected several entities with the same uid
 	
 	deserializer.read("position", transformComponent->position);
 	deserializer.read("rotation", transformComponent->rotation);
 	deserializer.read("scale", transformComponent->scale);
 
 	uint32 parent = 0;
-	deserializer.read("parent", parent);
-	if (parent)
+	if (deserializer.read("parent", parent))
 		deserializeParents.emplace_back(make_pair(entity, parent));
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	deserializer.read("name", transformComponent->name);
+	deserializer.read("debugName", transformComponent->debugName);
 	#endif
 }
 void TransformSystem::postDeserialize(IDeserializer& deserializer)
@@ -401,6 +399,58 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 }
 
 //**********************************************************************************************************************
+void TransformSystem::serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame)
+{
+	auto transformFrame = animationFrames.get(ID<TransformFrame>(frame));
+	if (transformFrame->animatePosition)
+		serializer.write("position", transformFrame->position);
+	if (transformFrame->animateScale)
+		serializer.write("scale", transformFrame->scale);
+	if (transformFrame->animateRotation)
+		serializer.write("rotation", transformFrame->rotation);
+}
+ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserializer)
+{
+	TransformFrame transformFrame;
+	transformFrame.animatePosition = deserializer.read("position", transformFrame.position);
+	transformFrame.animateScale = deserializer.read("scale", transformFrame.scale);
+	transformFrame.animateRotation = deserializer.read("rotation", transformFrame.rotation);
+	
+	if (transformFrame.animatePosition || transformFrame.animateScale || transformFrame.animateRotation)
+	{
+		auto frame = animationFrames.create();
+		auto frameView = animationFrames.get(frame);
+		**frameView = transformFrame;
+		return ID<AnimationFrame>(frame);
+	}
+
+	return {};
+}
+void TransformSystem::destroyAnimation(ID<AnimationFrame> frame)
+{
+	animationFrames.destroy(ID<TransformFrame>(frame));
+}
+
+//**********************************************************************************************************************
+const string& TransformSystem::getComponentName() const
+{
+	static const string name = "Transform";
+	return name;
+}
+type_index TransformSystem::getComponentType() const
+{
+	return typeid(TransformComponent);
+}
+View<Component> TransformSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<TransformComponent>(instance)));
+}
+void TransformSystem::disposeComponents()
+{
+	components.dispose();
+	animationFrames.dispose();
+}
+
 void TransformSystem::destroyRecursive(ID<Entity> entity)
 {
 	auto manager = Manager::getInstance();
@@ -408,11 +458,9 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 		return;
 
 	auto transformComponent = manager->get<TransformComponent>(entity);
-	transformComponent->childCount = 0;
-
-	static vector<ID<Entity>> transformStack;
 	auto childCount = transformComponent->childCount;
 	auto childs = transformComponent->childs;
+	transformComponent->childCount = 0;
 
 	for (uint32 i = 0; i < childCount; i++)
 		transformStack.push_back(childs[i]);
@@ -429,7 +477,7 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 		childCount = transformComponent->childCount;
 		childs = transformComponent->childs;
 
-		for (uint32 i = 0; i < transformComponent->childCount; i++)
+		for (uint32 i = 0; i < childCount; i++)
 			transformStack.push_back(childs[i]);
 
 		transformComponent->childCount = 0;
@@ -439,8 +487,55 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 	
 	manager->destroy(entity);
 }
+void TransformSystem::duplicateRecursive(ID<Entity> entity)
+{
+	auto manager = Manager::getInstance();
+	if (manager->has<DoNotDuplicateComponent>(entity))
+		return;
+
+	auto duplicate = manager->duplicate(entity);
+	auto entityComponent = manager->get<TransformComponent>(entity);
+	auto duplicateComponent = manager->get<TransformComponent>(duplicate);
+	duplicateComponent->setParent(entityComponent->getParent());
+	entityDuplicateStack.push_back(make_pair(entity, duplicate));
+
+	while (!entityDuplicateStack.empty())
+	{
+		auto pair = entityDuplicateStack.back();
+		entityDuplicateStack.pop_back();
+
+		if (manager->has<DoNotDuplicateComponent>(pair.first))
+			continue;
+
+		entityComponent = manager->get<TransformComponent>(pair.first);
+		auto childCount = entityComponent->childCount;
+		auto childs = entityComponent->childs;
+
+		for (uint32 i = 0; i < childCount; i++)
+		{
+			auto child = childs[i];
+			duplicate = manager->duplicate(child);
+			duplicateComponent = manager->get<TransformComponent>(duplicate);
+			duplicateComponent->setParent(pair.second);
+			entityDuplicateStack.push_back(make_pair(child, duplicate));
+		}
+	}
+}
 
 //**********************************************************************************************************************
+ID<Component> BakedTransformSystem::createComponent(ID<Entity> entity)
+{
+	return ID<Component>(components.create());
+}
+void BakedTransformSystem::destroyComponent(ID<Component> instance)
+{
+	components.destroy(ID<BakedTransformComponent>(instance));
+}
+void BakedTransformSystem::copyComponent(ID<Component> source, ID<Component> destination)
+{
+	return;
+}
+
 const string& BakedTransformSystem::getComponentName() const
 {
 	static const string name = "Baked Transform";
@@ -450,16 +545,11 @@ type_index BakedTransformSystem::getComponentType() const
 {
 	return typeid(BakedTransformComponent);
 }
-ID<Component> BakedTransformSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void BakedTransformSystem::destroyComponent(ID<Component> instance)
-{
-	components.destroy(ID<BakedTransformComponent>(instance));
-}
 View<Component> BakedTransformSystem::getComponent(ID<Component> instance)
 {
 	return View<Component>(components.get(ID<BakedTransformComponent>(instance)));
 }
-void BakedTransformSystem::disposeComponents() { components.dispose(); }
+void BakedTransformSystem::disposeComponents()
+{
+	components.dispose();
+}

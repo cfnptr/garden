@@ -142,17 +142,17 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 	else abort();
 
 	#if GARDEN_DEBUG
-	auto& firstUniform = uniforms.begin()->second;
+	const auto& firstUniform = uniforms.begin()->second;
 	auto setCount = firstUniform.resourceSets.size();
 
-	for (auto& pair : uniforms)
+	for (const auto& pair : uniforms)
 	{
 		GARDEN_ASSERT(!pair.first.empty());
 		GARDEN_ASSERT(setCount == pair.second.resourceSets.size());
 		
 		if (!descriptorPool)
 		{
-			for (auto& resourceArray : pair.second.resourceSets)
+			for (const auto& resourceArray : pair.second.resourceSets)
 			{
 				for (auto resource : resourceArray)
 					GARDEN_ASSERT(resource);
@@ -219,7 +219,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 	descriptorImageInfos.reserve(bufferSize);
 	descriptorBufferInfos.reserve(bufferSize);
 
-	for	(auto& pair : *pipelineUniforms)
+	for	(const auto& pair : *pipelineUniforms)
 	{
 		if (pair.second.descriptorSetIndex != index)
 			continue;
@@ -229,8 +229,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			throw runtime_error("Missing required pipeline uniform. (" + pair.first + ")");
 		#endif
 
-		auto& pipelineUniform = pair.second;
-		auto& dsUniform = uniforms.at(pair.first);
+		const auto& pipelineUniform = pair.second;
+		const auto& dsUniform = uniforms.at(pair.first);
 		auto uniformType = pipelineUniform.type;
 		writeDescriptorSet.dstBinding = (uint32)pipelineUniform.bindingIndex;
 		writeDescriptorSet.descriptorType = toVkDescriptorType(uniformType);
@@ -248,7 +248,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
 				uint32 resourceCount = 0;
-				auto& resourceArray = dsUniform.resourceSets[i];
+				const auto& resourceArray = dsUniform.resourceSets[i];
 
 				#if GARDEN_DEBUG
 				if (pipelineUniform.arraySize > 0)
@@ -309,7 +309,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
 				uint32 resourceCount = 0;
-				auto& resourceArray = dsUniform.resourceSets[i];
+				const auto& resourceArray = dsUniform.resourceSets[i];
 
 				#if GARDEN_DEBUG
 				if (pipelineUniform.arraySize > 0)
@@ -405,7 +405,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 		throw runtime_error("Missing required pipeline uniform. (" + name + ")");
 	#endif
 
-	auto& pipelineUniform = pipelineUniforms->at(name);
+	const auto& pipelineUniform = pipelineUniforms->at(name);
 	auto uniformType = pipelineUniform.type;
 
 	vk::WriteDescriptorSet writeDescriptorSet(
@@ -420,7 +420,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 		vk::DescriptorImageInfo imageInfo(VK_NULL_HANDLE, VK_NULL_HANDLE,
 			isImageType(uniformType) ? vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
 
-		auto& resourceArray = uniform.resourceSets[0];
+		const auto& resourceArray = uniform.resourceSets[0];
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
 			if (!resourceArray[i])
@@ -453,7 +453,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 		GARDEN_ASSERT(uniform.type == typeid(Buffer));
 		writeDescriptorSet.pImageInfo = nullptr;
 
-		auto& resourceArray = uniform.resourceSets[0];
+		const auto& resourceArray = uniform.resourceSets[0];
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
 			if (!resourceArray[i])

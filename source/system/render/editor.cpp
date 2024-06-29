@@ -17,9 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/file.hpp"
 #include "garden/system/thread.hpp"
-#include "garden/system/graphics.hpp"
 #include "garden/system/settings.hpp"
-#include "garden/system/resource.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/graphics/glfw.hpp"
@@ -70,16 +68,14 @@ EditorRenderSystem::~EditorRenderSystem()
 //**********************************************************************************************************************
 static void renderSceneSelector(EditorRenderSystem* editorSystem)
 {
-	auto appInfoSystem = AppInfoSystem::getInstance();
 	static const set<string> extensions = { ".scene" };
 	editorSystem->openFileSelector([](const fs::path& selectedFile)
 	{
 		auto path = selectedFile;
 		path.replace_extension();
-		auto resourceSystem = ResourceSystem::getInstance();
-		resourceSystem->loadScene(path);
+		ResourceSystem::getInstance()->loadScene(path);
 	},
-	appInfoSystem->getResourcesPath() / "scenes", extensions);
+	AppInfoSystem::getInstance()->getResourcesPath() / "scenes", extensions);
 }
 
 void EditorRenderSystem::showMainMenuBar()
@@ -245,7 +241,7 @@ void EditorRenderSystem::showAboutWindow()
 static void getFileInfo(const fs::path& path, int& fileCount, uint64& binarySize)
 {
 	auto iterator = fs::directory_iterator(path);
-	for (auto& entry : iterator)
+	for (const auto& entry : iterator)
 	{
 		if (entry.is_directory())
 		{
@@ -375,7 +371,7 @@ void EditorRenderSystem::showEntityInspector()
 	{
 		auto manager = Manager::getInstance();
 		auto entity = manager->getEntities().get(selectedEntity);
-		auto& components = entity->getComponents();
+		const auto& components = entity->getComponents();
 
 		if (ImGui::BeginItemTooltip())
 		{
@@ -386,33 +382,57 @@ void EditorRenderSystem::showEntityInspector()
 		
 		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 		{
-			auto& componentTypes = manager->getComponentTypes();
+			const auto& componentTypes = manager->getComponentTypes();
 			if (ImGui::BeginMenu("Add Component", !componentTypes.empty()))
 			{
 				uint32 itemCount = 0;
-				for (auto& componentType : componentTypes)
+				for (const auto& pair : componentTypes)
 				{
-					if (componentType.second->getComponentName().empty())
+					if (pair.second->getComponentName().empty())
 						continue;
 					itemCount++;
-					if (manager->has(selectedEntity, componentType.first))
+
+					if (entityInspectors.find(pair.first) == entityInspectors.end() ||
+						manager->has(selectedEntity, pair.first))
+					{
 						continue;
-					if (ImGui::MenuItem(componentType.second->getComponentName().c_str()))
-						manager->add(selectedEntity, componentType.first);
+					}
+
+					if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
+						manager->add(selectedEntity, pair.first);
+				}
+
+				if (ImGui::BeginMenu("Tags"))
+				{
+					for (const auto& pair : componentTypes)
+					{
+						if (pair.second->getComponentName().empty())
+							continue;
+
+						if (entityInspectors.find(pair.first) != entityInspectors.end() ||
+							manager->has(selectedEntity, pair.first))
+						{
+							continue;
+						}
+
+						if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
+							manager->add(selectedEntity, pair.first);
+					}
+					ImGui::EndMenu();
 				}
 
 				if (ImGui::BeginMenu("Others", itemCount != componentTypes.size()))
 				{
-					for (auto& componentType : componentTypes)
+					for (const auto& pair : componentTypes)
 					{
-						if (!componentType.second->getComponentName().empty() ||
-							manager->has(selectedEntity, componentType.first))
+						if (!pair.second->getComponentName().empty() ||
+							manager->has(selectedEntity, pair.first))
 						{
 							continue;
 						}
-						auto componentName = typeToString(componentType.first);
+						auto componentName = typeToString(pair.first);
 						if (ImGui::MenuItem(componentName.c_str()))
-							manager->add(selectedEntity, componentType.first);
+							manager->add(selectedEntity, pair.first);
 					}
 					ImGui::EndMenu();
 				}
@@ -422,7 +442,7 @@ void EditorRenderSystem::showEntityInspector()
 			{
 				if (manager->has<TransformComponent>(selectedEntity))
 				{
-					TransformSystem::destroyRecursive(selectedEntity);
+					TransformSystem::getInstance()->destroyRecursive(selectedEntity);
 				}
 				else
 				{
@@ -437,7 +457,7 @@ void EditorRenderSystem::showEntityInspector()
 			ImGui::EndPopup();
 		}
 
-		for (auto& component : components)
+		for (const auto& component : components)
 		{
 			auto system = component.second.first;
 			auto result = entityInspectors.find(component.first);
@@ -461,7 +481,7 @@ void EditorRenderSystem::showEntityInspector()
 						ImGui::PopID();
 						continue;
 					}
-					if (ImGui::MenuItem("Copy Name"))
+					if (ImGui::MenuItem("Copy Component Name"))
 						ImGui::SetClipboardText(componentName.c_str());
 					ImGui::EndPopup();
 				}
@@ -475,7 +495,7 @@ void EditorRenderSystem::showEntityInspector()
 				ImGui::PopID();
 			}
 		}
-		for (auto& component : components)
+		for (const auto& component : components)
 		{
 			auto system = component.second.first;
 			if (entityInspectors.find(component.first) == entityInspectors.end())
@@ -496,7 +516,7 @@ void EditorRenderSystem::showEntityInspector()
 						ImGui::EndPopup();
 						continue;
 					}
-					if (ImGui::MenuItem("Copy Name"))
+					if (ImGui::MenuItem("Copy Component Name"))
 						ImGui::SetClipboardText(componentName.c_str());
 					ImGui::EndPopup();
 				}
@@ -624,6 +644,8 @@ void EditorRenderSystem::showFileSelector()
 
 	if (ImGui::BeginPopupModal("File Selector", nullptr, ImGuiWindowFlags_NoMove))
 	{
+		ImGui::Text("%s", selectedEntry.generic_string().c_str());
+
 		ImGui::BeginChild("##itemList", ImVec2(256.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)),
 			ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
 		
@@ -789,8 +811,8 @@ void EditorRenderSystem::openFileSelector(const std::function<void(const fs::pat
 	onFileSelect = onSelect;
 }
 
-void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image,
-	Ref<DescriptorSet>& descriptorSet, ID<Entity> entity)
+void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
+	ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags)
 {
 	ImGui::InputText("Path", &path, ImGuiInputTextFlags_ReadOnly);
 
@@ -807,31 +829,32 @@ void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image,
 
 	if (ImGui::Button(" + "))
 	{	
-		auto appInfoSystem = AppInfoSystem::getInstance();
 		static const set<string> extensions = { ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr" };
-
 		auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
-		openFileSelector([_path, _image, _descriptorSet, entity](const fs::path& selectedFile)
+
+		openFileSelector([_path, _image, _descriptorSet, entity, componentType, loadFlags]
+		(const fs::path& selectedFile)
 		{
-			if (EditorRenderSystem::getInstance()->selectedEntity == entity)
+			if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
+				!Manager::getInstance()->has(entity, componentType))
 			{
-				auto manager = Manager::getInstance();
-				auto path = selectedFile;
-				path.replace_extension();
-
-				auto graphicsSystem = GraphicsSystem::getInstance();
-				if (_image->getRefCount() == 1)
-					graphicsSystem->destroy(*_image);
-				if (_descriptorSet->getRefCount() == 1)
-					graphicsSystem->destroy(*_descriptorSet);
-
-				*_path = path.generic_string();
-				*_image = ResourceSystem::getInstance()->loadImage(
-					path, Image::Bind::TransferDst | Image::Bind::Sampled);
-				*_descriptorSet = {};
+				return;
 			}
+			
+			auto graphicsSystem = GraphicsSystem::getInstance();
+			if (_image->getRefCount() == 1)
+				graphicsSystem->destroy(*_image);
+			if (_descriptorSet->getRefCount() == 1)
+				graphicsSystem->destroy(*_descriptorSet);
+
+			auto path = selectedFile;
+			path.replace_extension();
+			*_path = path.generic_string();
+			*_image = ResourceSystem::getInstance()->loadImage(path, Image::Bind::TransferDst | 
+				Image::Bind::Sampled, 1, Image::Strategy::Default, loadFlags);
+			*_descriptorSet = {};
 		},
-		appInfoSystem->getResourcesPath() / "images", extensions);
+		AppInfoSystem::getInstance()->getResourcesPath() / "images", extensions);
 	}
 }
 

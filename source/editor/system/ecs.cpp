@@ -114,7 +114,7 @@ static void renderUnorderedEvents()
 		if (ImGui::TreeNodeEx(event->name.c_str(), flags))
 		{
 			const auto& subscribers = event->subscribers;
-			for (auto& subscriber : subscribers)
+			for (const auto& subscriber : subscribers)
 			{
 				auto name = typeToString(subscriber.target_type());
 				ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);

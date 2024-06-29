@@ -203,7 +203,7 @@ private:
 	Image() = default;
 	Image(Type type, Format format, Bind bind, Strategy strategy,
 		const int3& size, uint8 mipCount, uint32 layerCount, uint64 version);
-	Image(Bind bind, Strategy strategy, uint64 version) : Memory(
+	Image(Bind bind, Strategy strategy, uint64 version) noexcept : Memory(
 		0, Access::None, Usage::Auto, strategy, version) { this->bind = bind; }
 	Image(void* instance, Format format, Bind bind, Strategy strategy, int2 size, uint64 version);
 	bool destroy() final;

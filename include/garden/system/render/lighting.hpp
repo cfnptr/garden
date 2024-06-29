@@ -109,15 +109,18 @@ class LightingRenderSystem final : public System
 	void hdrRender();
 	void gBufferRecreate();
 
-	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
+	void copyComponent(ID<Component> source, ID<Component> destination) final;
 
 	friend class ecsm::Manager;
 public:
 	float4 shadowColor = float4(1.0f);
+
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	View<Component> getComponent(ID<Component> instance) final;
+	void disposeComponents() final;
 
 	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
 	bool useAoBuffer() const noexcept { return hasAoBuffer; }

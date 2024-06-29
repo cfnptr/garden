@@ -512,14 +512,14 @@ public:
 	 * 
 	 * @param image target image instance
 	 * @param type image view dimensionality
-	 * @param format image view data format
+	 * @param format image view data format (undefined = image format)
 	 * @param baseMip image view base mip index
-	 * @param mipCount image view mip count
+	 * @param mipCount image view mip count (0 = image mip count)
 	 * @param baseLayer image view base layer index
-	 * @param layerCount image view layer count
+	 * @param layerCount image view layer count (0 = image layer count)
 	 */
 	ID<ImageView> createImageView(ID<Image> image, Image::Type type, Image::Format format = Image::Format::Undefined,
-		uint8 baseMip = 0, uint8 mipCount = 1, uint32 baseLayer = 0, uint32 layerCount = 1);
+		uint8 baseMip = 0, uint8 mipCount = 0, uint32 baseLayer = 0, uint32 layerCount = 0);
 
 	/**
 	 * @brief Destroys image view instance.

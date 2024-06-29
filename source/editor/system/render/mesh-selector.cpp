@@ -79,7 +79,7 @@ void MeshSelectorEditorSystem::editorRender()
 
 	if (updateSelector && !isSkipped)
 	{
-		auto& systems = manager->getSystems();
+		const auto& systems = manager->getSystems();
 		auto windowSize = graphicsSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
@@ -97,7 +97,7 @@ void MeshSelectorEditorSystem::editorRender()
 			if (!meshSystem)
 				continue;
 			
-			auto& componentPool = meshSystem->getMeshComponentPool();
+			const auto& componentPool = meshSystem->getMeshComponentPool();
 			auto componentSize = meshSystem->getMeshComponentSize();
 			auto componentData = (const uint8*)componentPool.getData();
 			auto componentOccupancy = componentPool.getOccupancy();

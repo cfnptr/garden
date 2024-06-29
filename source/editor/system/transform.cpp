@@ -89,7 +89,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		{
 			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
 			ImGui::Text("Parent: %lu %s", (unsigned long)*transformComponent->getParent(),
-				parentTransform->name.empty() ? "" : ("(" + parentTransform->name + ")").c_str());
+				parentTransform->debugName.empty() ? "" : ("(" + parentTransform->debugName + ")").c_str());
 		}
 		else
 		{
@@ -162,15 +162,15 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 		ImGui::EndDisabled();
 		
-		ImGui::InputText("Name", &transformComponent->name);
-		if (ImGui::BeginPopupContextItem("name"))
+		ImGui::InputText("Debug Name", &transformComponent->debugName);
+		if (ImGui::BeginPopupContextItem("debugName"))
 		{
 			if (ImGui::MenuItem("Copy Name"))
-				ImGui::SetClipboardText(transformComponent->name.c_str());
+				ImGui::SetClipboardText(transformComponent->debugName.c_str());
 			if (ImGui::MenuItem("Paste Name"))
-				transformComponent->name = ImGui::GetClipboardText();
+				transformComponent->debugName = ImGui::GetClipboardText();
 			if (ImGui::MenuItem("Clear Name"))
-				transformComponent->name = "";
+				transformComponent->debugName = "";
 			ImGui::EndPopup();
 		}
 		if (ImGui::BeginItemTooltip())

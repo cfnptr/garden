@@ -137,7 +137,7 @@ void InfiniteGridEditorSystem::editorRender()
 void InfiniteGridEditorSystem ::swapchainRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.bufferCount && descriptorSet)
 	{

@@ -116,7 +116,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto shadowMapView = graphicsSystem->get(shadowMap);
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
-	auto& colorAttachments = gFramebuffer->getColorAttachments();
+	const auto& colorAttachments = gFramebuffer->getColorAttachments();
 	auto depthStencilAttachment = gFramebuffer->getDepthStencilAttachment();
 	
 	map<string, DescriptorSet::Uniform> uniforms =

@@ -38,6 +38,18 @@ public:
 	void endChild() final;
 
 	void beginArrayElement() final;
+	void write(int64 value) final;
+	void write(uint64 value) final;
+	void write(int32 value) final;
+	void write(uint32 value) final;
+	void write(int16 value) final;
+	void write(uint16 value) final;
+	void write(int8 value) final;
+	void write(uint8 value) final;
+	void write(bool value) final;
+	void write(float value) final;
+	void write(double value) final;
+	void write(string_view value) final;
 	void endArrayElement() final;
 
 	void write(string_view name, int64 value) final;
@@ -80,31 +92,43 @@ public:
 
 	psize getArraySize() final;
 	bool beginArrayElement(psize index) final;
+	bool read(int64& value) final;
+	bool read(uint64& value) final;
+	bool read(int32& value) final;
+	bool read(uint32& value) final;
+	bool read(int16& value) final;
+	bool read(uint16& value) final;
+	bool read(int8& value) final;
+	bool read(uint8& value) final;
+	bool read(bool& value) final;
+	bool read(float& value) final;
+	bool read(double& value) final;
+	bool read(string& value) final;
 	void endArrayElement() final;
 
-	void read(string_view name, int64& value) final;
-	void read(string_view name, uint64& value) final;
-	void read(string_view name, int32& value) final;
-	void read(string_view name, uint32& value) final;
-	void read(string_view name, int16& value) final;
-	void read(string_view name, uint16& value) final;
-	void read(string_view name, int8& value) final;
-	void read(string_view name, uint8& value) final;
-	void read(string_view name, bool& value) final;
-	void read(string_view name, float& value) final;
-	void read(string_view name, double& value) final;
-	void read(string_view name, string& value) final;
-	void read(string_view name, int2& value) final;
-	void read(string_view name, int3& value) final;
-	void read(string_view name, int4& value) final;
-	void read(string_view name, float2& value) final;
-	void read(string_view name, float3& value) final;
-	void read(string_view name, float4& value) final;
-	void read(string_view name, quat& value) final;
-	void read(string_view name, float2x2& value) final;
-	void read(string_view name, float3x3& value) final;
-	void read(string_view name, float4x4& value) final;
-	void read(string_view name, Aabb& value) final;
+	bool read(string_view name, int64& value) final;
+	bool read(string_view name, uint64& value) final;
+	bool read(string_view name, int32& value) final;
+	bool read(string_view name, uint32& value) final;
+	bool read(string_view name, int16& value) final;
+	bool read(string_view name, uint16& value) final;
+	bool read(string_view name, int8& value) final;
+	bool read(string_view name, uint8& value) final;
+	bool read(string_view name, bool& value) final;
+	bool read(string_view name, float& value) final;
+	bool read(string_view name, double& value) final;
+	bool read(string_view name, string& value) final;
+	bool read(string_view name, int2& value) final;
+	bool read(string_view name, int3& value) final;
+	bool read(string_view name, int4& value) final;
+	bool read(string_view name, float2& value) final;
+	bool read(string_view name, float3& value) final;
+	bool read(string_view name, float4& value) final;
+	bool read(string_view name, quat& value) final;
+	bool read(string_view name, float2x2& value) final;
+	bool read(string_view name, float3x3& value) final;
+	bool read(string_view name, float4x4& value) final;
+	bool read(string_view name, Aabb& value) final;
 };
 
 } // namespace garden

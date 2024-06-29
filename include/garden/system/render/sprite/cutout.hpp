@@ -19,17 +19,32 @@ namespace garden
 {
 
 using namespace garden::graphics;
-class CutoutSpriteSystem;
 
 struct CutoutSpriteComponent final : public SpriteRenderComponent
 {
 	float alphaCutoff = 0.5f;
-	friend class CutoutSpriteSystem;
+};
+
+struct CutoutSpriteFrame final : public SpriteRenderFrame
+{
+private:
+	uint16 _alignment = 0;
+public:
+	float alphaCutoff = 0.5f;
+	bool animateAlphaCutoff = false;
 };
 
 class CutoutSpriteSystem final : public SpriteRenderSystem
 {
+public:
+	struct CutoutInstanceData : public InstanceData
+	{
+		float4 colorFactor = float4(0.0f);
+		float4 sizeOffset = float4(0.0f);
+	};
+private:
 	LinearPool<CutoutSpriteComponent, false> components;
+	LinearPool<CutoutSpriteFrame, false> animationFrames;
 	bool deferredBuffer = false;
 	bool linearFilter = false;
 
@@ -44,21 +59,28 @@ class CutoutSpriteSystem final : public SpriteRenderSystem
 	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) final;
 
-	const string& getComponentName() const final;
-	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
+	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	ID<GraphicsPipeline> createPipeline() final;
+
+	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
+
+	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
+	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
+	void destroyAnimation(ID<AnimationFrame> frame) final;
+	
+	friend class ecsm::Manager;
+public:
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	MeshRenderType getMeshRenderType() const final;
 	const LinearPool<MeshRenderComponent>& getMeshComponentPool() const final;
 	psize getMeshComponentSize() const final;
-	ID<GraphicsPipeline> createPipeline() final;
-
-	void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) override;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
-	
-	friend class ecsm::Manager;
+	uint64 getInstanceDataSize() final;
 };
 
 } // namespace garden

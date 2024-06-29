@@ -20,6 +20,7 @@ using namespace garden;
 //**********************************************************************************************************************
 JsonSerializer::JsonSerializer(const fs::path& filePath)
 {
+	GARDEN_ASSERT(!filePath.empty());
 	this->filePath = filePath;
 	hierarchy.emplace(&data);
 }
@@ -31,6 +32,7 @@ JsonSerializer::~JsonSerializer()
 
 void JsonSerializer::beginChild(string_view name)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	hierarchy.emplace(&object[name]);
 }
@@ -40,12 +42,77 @@ void JsonSerializer::endChild()
 	hierarchy.pop();
 }
 
+//**********************************************************************************************************************
 void JsonSerializer::beginArrayElement()
 {
 	auto& object = *hierarchy.top();
 	auto element = &object.emplace_back(json());
 	hierarchy.emplace(element);
 }
+
+void JsonSerializer::write(int64 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(uint64 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(int32 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(uint32 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(int16 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(uint16 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(int8 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(uint8 value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+
+//**********************************************************************************************************************
+void JsonSerializer::write(bool value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(float value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(double value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+void JsonSerializer::write(string_view value)
+{
+	auto& object = *hierarchy.top();
+	object = value;
+}
+
 void JsonSerializer::endArrayElement()
 {
 	GARDEN_ASSERT(hierarchy.size() > 1); // No element to end.
@@ -55,41 +122,49 @@ void JsonSerializer::endArrayElement()
 //**********************************************************************************************************************
 void JsonSerializer::write(string_view name, int64 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, uint64 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, int32 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, uint32 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, int16 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, uint16 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, int8 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, uint8 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
@@ -97,21 +172,25 @@ void JsonSerializer::write(string_view name, uint8 value)
 //**********************************************************************************************************************
 void JsonSerializer::write(string_view name, bool value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, float value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, double value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
 void JsonSerializer::write(string_view name, string_view value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = value;
 }
@@ -119,36 +198,43 @@ void JsonSerializer::write(string_view name, string_view value)
 //**********************************************************************************************************************
 void JsonSerializer::write(string_view name, int2 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y } };
 }
 void JsonSerializer::write(string_view name, const int3& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z } };
 }
 void JsonSerializer::write(string_view name, const int4& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z }, { "w", value.w } };
 }
 void JsonSerializer::write(string_view name, float2 value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y } };
 }
 void JsonSerializer::write(string_view name, const float3& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z } };
 }
 void JsonSerializer::write(string_view name, const float4& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z }, { "w", value.w } };
 }
 void JsonSerializer::write(string_view name, const quat& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z }, { "w", value.w } };
 }
@@ -156,6 +242,7 @@ void JsonSerializer::write(string_view name, const quat& value)
 //**********************************************************************************************************************
 void JsonSerializer::write(string_view name, const float2x2& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] =
 	{
@@ -165,6 +252,7 @@ void JsonSerializer::write(string_view name, const float2x2& value)
 }
 void JsonSerializer::write(string_view name, const float3x3& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] =
 	{
@@ -175,6 +263,7 @@ void JsonSerializer::write(string_view name, const float3x3& value)
 }
 void JsonSerializer::write(string_view name, const float4x4& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	object[name] =
 	{
@@ -186,6 +275,7 @@ void JsonSerializer::write(string_view name, const float4x4& value)
 }
 void JsonSerializer::write(string_view name, const Aabb& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	beginChild(name);
 	write("min", value.getMin());
 	write("max", value.getMax());
@@ -195,24 +285,27 @@ void JsonSerializer::write(string_view name, const Aabb& value)
 //**********************************************************************************************************************
 JsonDeserializer::JsonDeserializer(string_view json)
 {
+	GARDEN_ASSERT(!json.empty());
 	data = json::parse(json);
 	hierarchy.emplace(&data);
 }
 JsonDeserializer::JsonDeserializer(const vector<uint8>& bson)
 {
+	GARDEN_ASSERT(!bson.empty());
 	data = json::parse(bson);
 	hierarchy.emplace(&data);
 }
 JsonDeserializer::JsonDeserializer(const fs::path& filePath)
 {
+	GARDEN_ASSERT(!filePath.empty());
 	std::ifstream fileStream(filePath);
 	fileStream >> data;
 	hierarchy.emplace(&data);
 }
 
-//**********************************************************************************************************************
 bool JsonDeserializer::beginChild(string_view name)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_structured())
@@ -226,6 +319,7 @@ void JsonDeserializer::endChild()
 	hierarchy.pop();
 }
 
+//**********************************************************************************************************************
 psize JsonDeserializer::getArraySize()
 {
 	auto& object = *hierarchy.top();
@@ -240,6 +334,106 @@ bool JsonDeserializer::beginArrayElement(psize index)
 	hierarchy.emplace(&i);
 	return true;
 }
+
+bool JsonDeserializer::read(int64& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (int64)object;
+	return true;
+}
+bool JsonDeserializer::read(uint64& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (uint64)object;
+	return true;
+}
+bool JsonDeserializer::read(int32& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (int32)object;
+	return true;
+}
+bool JsonDeserializer::read(uint32& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (uint32)object;
+	return true;
+}
+bool JsonDeserializer::read(int16& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (int16)object;
+	return true;
+}
+bool JsonDeserializer::read(uint16& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (uint16)object;
+	return true;
+}
+bool JsonDeserializer::read(int8& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (int8)object;
+	return true;
+}
+bool JsonDeserializer::read(uint8& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_integer())
+		return false;
+	value = (uint8)object;
+	return true;
+}
+
+//**********************************************************************************************************************
+bool JsonDeserializer::read(bool& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_boolean())
+		return false;
+	value = (bool)object;
+	return true;
+}
+bool JsonDeserializer::read(float& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_float() && !object.is_number_integer())
+		return false;
+	value = (float)object;
+	return true;
+}
+bool JsonDeserializer::read(double& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_number_float() && !object.is_number_integer())
+		return false;
+	value = (double)object;
+	return true;
+}
+bool JsonDeserializer::read(string& value)
+{
+	auto& object = *hierarchy.top();
+	if (!object.is_string())
+		return false;
+	value = (string&)object;
+	return true;
+}
+
 void JsonDeserializer::endArrayElement()
 {
 	GARDEN_ASSERT(hierarchy.size() > 1); // No element to end.
@@ -247,303 +441,319 @@ void JsonDeserializer::endArrayElement()
 }
 
 //**********************************************************************************************************************
-void JsonDeserializer::read(string_view name, int64& value)
+bool JsonDeserializer::read(string_view name, int64& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (int64)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, uint64& value)
+bool JsonDeserializer::read(string_view name, uint64& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (uint64)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, int32& value)
+bool JsonDeserializer::read(string_view name, int32& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (int32)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, uint32& value)
+bool JsonDeserializer::read(string_view name, uint32& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (uint32)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, int16& value)
+bool JsonDeserializer::read(string_view name, int16& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (int16)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, uint16& value)
+bool JsonDeserializer::read(string_view name, uint16& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (uint16)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, int8& value)
+bool JsonDeserializer::read(string_view name, int8& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (int8)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, uint8& value)
+bool JsonDeserializer::read(string_view name, uint8& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_integer())
-		return;
+		return false;
 	value = (uint8)i;
+	return true;
 }
 
 //**********************************************************************************************************************
-void JsonDeserializer::read(string_view name, bool& value)
+bool JsonDeserializer::read(string_view name, bool& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_boolean())
-		return;
+		return false;
 	value = (bool)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, float& value)
+bool JsonDeserializer::read(string_view name, float& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_float())
-		return;
+		return false;
 	value = (float)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, double& value)
+bool JsonDeserializer::read(string_view name, double& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_number_float())
-		return;
+		return false;
 	value = (double)i;
+	return true;
 }
-void JsonDeserializer::read(string_view name, string& value)
+bool JsonDeserializer::read(string_view name, string& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& i = object[name];
 	if (!i.is_string())
-		return;
+		return false;
 	value = i;
+	return true;
 }
 
 //**********************************************************************************************************************
-void JsonDeserializer::read(string_view name, int2& value)
+bool JsonDeserializer::read(string_view name, int2& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_integer())
-		value.x = (int32)*i;
-	i = &a["y"];
-	if (i->is_number_integer())
-		value.y = (int32)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_integer()) value.x = (int32)*i; else result = false;
+	i = &a["y"]; if (i->is_number_integer()) value.y = (int32)*i; else result = true;
+	return result;
 }
-void JsonDeserializer::read(string_view name, int3& value)
+bool JsonDeserializer::read(string_view name, int3& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_integer())
-		value.x = (int32)*i;
-	i = &a["y"];
-	if (i->is_number_integer())
-		value.y = (int32)*i;
-	i = &a["z"];
-	if (i->is_number_integer())
-		value.z = (int32)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_integer()) value.x = (int32)*i; else result = false;
+	i = &a["y"]; if (i->is_number_integer()) value.y = (int32)*i; else result = false;
+	i = &a["z"]; if (i->is_number_integer()) value.z = (int32)*i; else result = false;
+	return result;
 }
-void JsonDeserializer::read(string_view name, int4& value)
+bool JsonDeserializer::read(string_view name, int4& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_integer())
-		value.x = (int32)*i;
-	i = &a["y"];
-	if (i->is_number_integer())
-		value.y = (int32)*i;
-	i = &a["z"];
-	if (i->is_number_integer())
-		value.z = (int32)*i;
-	i = &a["w"];
-	if (i->is_number_integer())
-		value.w = (int32)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_integer()) value.x = (int32)*i; else result = false;
+	i = &a["y"]; if (i->is_number_integer()) value.y = (int32)*i; else result = false;
+	i = &a["z"]; if (i->is_number_integer()) value.z = (int32)*i; else result = false;
+	i = &a["w"]; if (i->is_number_integer()) value.w = (int32)*i; else result = false;
+	return result;
 }
 
 //**********************************************************************************************************************
-void JsonDeserializer::read(string_view name, float2& value)
+bool JsonDeserializer::read(string_view name, float2& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_float())
-		value.x = (float)*i;
-	i = &a["y"];
-	if (i->is_number_float())
-		value.y = (float)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_float()) value.x = (float)*i; else result = false;
+	i = &a["y"]; if (i->is_number_float()) value.y = (float)*i; else result = false;
+	return result;
 }
-void JsonDeserializer::read(string_view name, float3& value)
+bool JsonDeserializer::read(string_view name, float3& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_float())
-		value.x = (float)*i;
-	i = &a["y"];
-	if (i->is_number_float())
-		value.y = (float)*i;
-	i = &a["z"];
-	if (i->is_number_float())
-		value.z = (float)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_float()) value.x = (float)*i; else result = false;
+	i = &a["y"]; if (i->is_number_float()) value.y = (float)*i; else result = false;
+	i = &a["z"]; if (i->is_number_float()) value.z = (float)*i; else result = false;
+	return result;
 }
-void JsonDeserializer::read(string_view name, float4& value)
+bool JsonDeserializer::read(string_view name, float4& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_float())
-		value.x = (float)*i;
-	i = &a["y"];
-	if (i->is_number_float())
-		value.y = (float)*i;
-	i = &a["z"];
-	if (i->is_number_float())
-		value.z = (float)*i;
-	i = &a["w"];
-	if (i->is_number_float())
-		value.w = (float)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_float()) value.x = (float)*i; else result = false;
+	i = &a["y"]; if (i->is_number_float()) value.y = (float)*i; else result = false;
+	i = &a["z"]; if (i->is_number_float()) value.z = (float)*i; else result = false;
+	i = &a["w"]; if (i->is_number_float()) value.w = (float)*i; else result = false;
+	return result;
 }
-void JsonDeserializer::read(string_view name, quat& value)
+bool JsonDeserializer::read(string_view name, quat& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["x"];
-	if (i->is_number_float())
-		value.x = (float)*i;
-	i = &a["y"];
-	if (i->is_number_float())
-		value.y = (float)*i;
-	i = &a["z"];
-	if (i->is_number_float())
-		value.z = (float)*i;
-	i = &a["w"];
-	if (i->is_number_float())
-		value.w = (float)*i;
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_float()) value.x = (float)*i; else result = false;
+	i = &a["y"]; if (i->is_number_float()) value.y = (float)*i; else result = false;
+	i = &a["z"]; if (i->is_number_float()) value.z = (float)*i; else result = false;
+	i = &a["w"]; if (i->is_number_float()) value.w = (float)*i; else result = false;
+	return result;
 }
 
 //**********************************************************************************************************************
-void JsonDeserializer::read(string_view name, float2x2& value)
+bool JsonDeserializer::read(string_view name, float2x2& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["00"]; if (i->is_number_float()) value.c0.x = (float)*i;
-	i = &a["01"]; if (i->is_number_float()) value.c0.y = (float)*i;
+	auto result = true;
+	auto i = &a["00"]; if (i->is_number_float()) value.c0.x = (float)*i; else result = false;
+	i = &a["01"]; if (i->is_number_float()) value.c0.y = (float)*i; else result = false;
 
-	i = &a["10"]; if (i->is_number_float()) value.c1.x = (float)*i;
-	i = &a["11"]; if (i->is_number_float()) value.c1.y = (float)*i;
+	i = &a["10"]; if (i->is_number_float()) value.c1.x = (float)*i; else result = false;
+	i = &a["11"]; if (i->is_number_float()) value.c1.y = (float)*i; else result = false;
+	return result;
 }
-void JsonDeserializer::read(string_view name, float3x3& value)
+bool JsonDeserializer::read(string_view name, float3x3& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["00"]; if (i->is_number_float()) value.c0.x = (float)*i;
-	i = &a["01"]; if (i->is_number_float()) value.c0.y = (float)*i;
-	i = &a["02"]; if (i->is_number_float()) value.c0.z = (float)*i;
+	auto result = true;
+	auto i = &a["00"]; if (i->is_number_float()) value.c0.x = (float)*i; else result = false;
+	i = &a["01"]; if (i->is_number_float()) value.c0.y = (float)*i; else result = false;
+	i = &a["02"]; if (i->is_number_float()) value.c0.z = (float)*i; else result = false;
 
-	i = &a["10"]; if (i->is_number_float()) value.c1.x = (float)*i;
-	i = &a["11"]; if (i->is_number_float()) value.c1.y = (float)*i;
-	i = &a["12"]; if (i->is_number_float()) value.c1.z = (float)*i;
+	i = &a["10"]; if (i->is_number_float()) value.c1.x = (float)*i; else result = false;
+	i = &a["11"]; if (i->is_number_float()) value.c1.y = (float)*i; else result = false;
+	i = &a["12"]; if (i->is_number_float()) value.c1.z = (float)*i; else result = false;
 
-	i = &a["20"]; if (i->is_number_float()) value.c2.x = (float)*i;
-	i = &a["21"]; if (i->is_number_float()) value.c2.y = (float)*i;
-	i = &a["22"]; if (i->is_number_float()) value.c2.z = (float)*i;
+	i = &a["20"]; if (i->is_number_float()) value.c2.x = (float)*i; else result = false;
+	i = &a["21"]; if (i->is_number_float()) value.c2.y = (float)*i; else result = false;
+	i = &a["22"]; if (i->is_number_float()) value.c2.z = (float)*i; else result = false;
+	return result;
 }
-void JsonDeserializer::read(string_view name, float4x4& value)
+bool JsonDeserializer::read(string_view name, float4x4& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	auto& object = *hierarchy.top();
 	auto& a = object[name];
 	if (!a.is_object())
-		return;
+		return false;
 
-	auto i = &a["00"]; if (i->is_number_float()) value.c0.x = (float)*i;
-	i = &a["01"]; if (i->is_number_float()) value.c0.y = (float)*i;
-	i = &a["02"]; if (i->is_number_float()) value.c0.z = (float)*i;
-	i = &a["03"]; if (i->is_number_float()) value.c0.w = (float)*i;
+	auto result = true;
+	auto i = &a["00"]; if (i->is_number_float()) value.c0.x = (float)*i; else result = false;
+	i = &a["01"]; if (i->is_number_float()) value.c0.y = (float)*i; else result = false;
+	i = &a["02"]; if (i->is_number_float()) value.c0.z = (float)*i; else result = false;
+	i = &a["03"]; if (i->is_number_float()) value.c0.w = (float)*i; else result = false;
 
-	i = &a["10"]; if (i->is_number_float()) value.c1.x = (float)*i;
-	i = &a["11"]; if (i->is_number_float()) value.c1.y = (float)*i;
-	i = &a["12"]; if (i->is_number_float()) value.c1.z = (float)*i;
-	i = &a["13"]; if (i->is_number_float()) value.c1.w = (float)*i;
+	i = &a["10"]; if (i->is_number_float()) value.c1.x = (float)*i; else result = false;
+	i = &a["11"]; if (i->is_number_float()) value.c1.y = (float)*i; else result = false;
+	i = &a["12"]; if (i->is_number_float()) value.c1.z = (float)*i; else result = false;
+	i = &a["13"]; if (i->is_number_float()) value.c1.w = (float)*i; else result = false;
 
-	i = &a["20"]; if (i->is_number_float()) value.c2.x = (float)*i;
-	i = &a["21"]; if (i->is_number_float()) value.c2.y = (float)*i;
-	i = &a["22"]; if (i->is_number_float()) value.c2.z = (float)*i;
-	i = &a["23"]; if (i->is_number_float()) value.c2.w = (float)*i;
+	i = &a["20"]; if (i->is_number_float()) value.c2.x = (float)*i; else result = false;
+	i = &a["21"]; if (i->is_number_float()) value.c2.y = (float)*i; else result = false;
+	i = &a["22"]; if (i->is_number_float()) value.c2.z = (float)*i; else result = false;
+	i = &a["23"]; if (i->is_number_float()) value.c2.w = (float)*i; else result = false;
 
-	i = &a["30"]; if (i->is_number_float()) value.c3.x = (float)*i;
-	i = &a["31"]; if (i->is_number_float()) value.c3.y = (float)*i;
-	i = &a["32"]; if (i->is_number_float()) value.c3.z = (float)*i;
-	i = &a["33"]; if (i->is_number_float()) value.c3.w = (float)*i;
+	i = &a["30"]; if (i->is_number_float()) value.c3.x = (float)*i; else result = false;
+	i = &a["31"]; if (i->is_number_float()) value.c3.y = (float)*i; else result = false;
+	i = &a["32"]; if (i->is_number_float()) value.c3.z = (float)*i; else result = false;
+	i = &a["33"]; if (i->is_number_float()) value.c3.w = (float)*i; else result = false;
+	return result;
 }
 
 //**********************************************************************************************************************
-void JsonDeserializer::read(string_view name, Aabb& value)
+bool JsonDeserializer::read(string_view name, Aabb& value)
 {
+	GARDEN_ASSERT(!name.empty());
 	if (beginChild(name))
 	{
 		auto min = value.getMin();
 		read("min", min);
 		auto max = value.getMin();
 		read("max", max);
-		if (min <= max)
-			value.set(min, max);
 		endChild();
+
+		if (min <= max)
+		{
+			value.set(min, max);
+			return true;
+		}
 	}
+	return false;
 }

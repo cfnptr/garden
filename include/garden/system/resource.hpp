@@ -17,6 +17,7 @@
  */
 
 #pragma once
+#include "garden/animate.hpp"
 #include "garden/resource/image.hpp"
 #include "garden/system/graphics.hpp"
 #include <queue>
@@ -31,6 +32,21 @@ namespace garden
 using namespace math;
 using namespace ecsm;
 using namespace garden::graphics;
+
+/**
+ * @brief Additional image load flags.
+ */
+enum class ImageLoadFlags : uint8
+{
+	None = 0x00,       /**< No additional image load flags. */
+	LoadSync = 0x01,   /**< Load image synchronously. (Blocking call) */
+	LoadUnique = 0x02, /**< Load as unique image, without instance sharing. */
+	LoadArray = 0x04,  /**< Load as image array. (Texture2DArray) */
+	ArrayType = 0x08,  /**< Always load with array type. (Texture2DArray) */
+	LinearData = 0x10  /**< Load image data in linear color space. */
+};
+
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
 
 /***********************************************************************************************************************
  * @brief Game or application resource loader. (images, models, shader, scenes, sounds, etc.)
@@ -63,18 +79,28 @@ protected:
 	};
 	struct ImageQueueItem
 	{
+		int2 realSize = int2(0);
 		Image image;
 		Buffer staging;
 		ID<Image> instance = {};
 	};
 	
-	queue<GraphicsQueueItem> graphicsQueue; // TODO: We can use here lock free concurrent queue.
-	queue<ComputeQueueItem> computeQueue;
-	queue<BufferQueueItem> bufferQueue;
-	queue<ImageQueueItem> imageQueue;
+	map<string, Ref<Image>> sharedImages;
+	map<string, Ref<DescriptorSet>> sharedDescriptorSets;
+	map<string, Ref<Animation>> sharedAnimations;
+	map<string, Ref<Image>>::iterator sharedImageIter;
+	map<string, Ref<DescriptorSet>>::iterator sharedDescSetIter;
+	map<string, Ref<Animation>>::iterator sharedAnimationIter;
+	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
+	queue<ComputeQueueItem> loadedComputeQueue;
+	queue<BufferQueueItem> loadedBufferQueue;
+	queue<ImageQueueItem> loadedImageQueue;
+	vector<ID<Buffer>> loadedBufferArray;
+	vector<ID<Image>> loadedImageArray;
 	mutex queueLocker;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
+	float freesPerFrame = 0.01f;
 
 	#if GARDEN_DEBUG
 	fs::path appResourcesPath;
@@ -88,8 +114,9 @@ protected:
 
 	/**
 	 * @brief Creates a new resource system instance.
+	 * @param freesPerFrame maximal unused resource frees per frame.
 	 */
-	ResourceSystem();
+	ResourceSystem(float freesPerFrame = 0.03f);
 	/**
 	 * @brief Destroys resource system instance.
 	 */
@@ -97,6 +124,10 @@ protected:
 
 	void dequeuePipelines();
 	void dequeueBuffersAndImages();
+
+	void destroyImages();
+	void destroyDescriptorSets();
+	void destroyAnimations();
 
 	void init();
 	void deinit();
@@ -106,20 +137,22 @@ protected:
 public:
 	/*******************************************************************************************************************
 	 * @brief Loads image data (pixels) from the resource pack.
+	 * @note Loads from the images directory in debug build.
 	 * 
-	 * @param[in] path target image path
+	 * @param[in] path target image resource path
 	 * @param[out] data image pixel data container
 	 * @param[out] size loaded image size in pixels
 	 * @param[out] format loaded image data format
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
 	void loadImageData(const fs::path& path, vector<uint8>& data,
-		int2& size, Image::Format& format, int32 taskIndex = -1) const;
+		int2& size, Image::Format& format, int32 threadIndex = -1) const;
 
 	/**
 	 * @brief Loads cubemap image data (pixels) the resource pack.
+	 * @note Loads from the images directory in debug build.
 	 * 
-	 * @param[in] path target cubemap image path
+	 * @param[in] path target cubemap image resource path
 	 * @param[out] left left cubemap image pixel data container
 	 * @param[out] right right cubemap image pixel data container
 	 * @param[out] bottom bottom cubemap image pixel data container
@@ -128,18 +161,18 @@ public:
 	 * @param[out] front front cubemap image pixel data container
 	 * @param[out] size loaded cubemap image size in pixels
 	 * @param[out] format loaded cubemap image data format
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
 	void loadCubemapData(const fs::path& path, vector<uint8>& left, vector<uint8>& right,
 		vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front,
-		int2& size, Image::Format& format, int32 taskIndex = -1) const;
+		int2& size, Image::Format& format, int32 threadIndex = -1) const;
 	
 	/**
 	 * @brief Loads image data (pixels) from the memory file.
 	 * 
-	 * @param[in] data image data file
-	 * @param dataSize image data file size in bytes
-	 * @param fileType image data file type
+	 * @param[in] data image file data 
+	 * @param dataSize image file data size in bytes
+	 * @param fileType image file data type
 	 * @param[out] pixels image pixel data container
 	 * @param[out] imageSize loaded image size in pixels
 	 * @param[out] format loaded image data format
@@ -147,19 +180,34 @@ public:
 	static void loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
 		vector<uint8>& pixels, int2& imageSize, Image::Format& format);
 
+	/*******************************************************************************************************************
+	 * @brief Loads image from the resource pack.
+	 * @note Loads from the images directory in debug build.
+	 *
+	 * @param[in] paths target image resource path array
+	 * @param bind image bind type (affects driver optimization)
+	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
+	 * @param strategy image memory allocation strategy
+	 * @param flags additinoal image load flags
+	 */
+	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Bind bind, uint8 maxMipCount = 1,
+		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None);
+
 	/**
 	 * @brief Loads image from the resource pack.
-	 * 
-	 * @param[in] path target image path
-	 * @param bind image bind type
+	 * @note Loads from the images directory in debug build.
+	 *
+	 * @param[in] path target image resource path
+	 * @param bind image bind type (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
-	 * @param downscaleCount downscaling iteration count (0 = no downsacling)
 	 * @param strategy image memory allocation strategy
-	 * @param linearData is image data color space linear
-	 * @param loadAsync load image asynchronously without blocking
+	 * @param flags additinoal image load flags
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 1, uint8 downscaleCount = 0,
-		Image::Strategy strategy = Buffer::Strategy::Default, bool linearData = false, bool loadAsync = true);
+	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 1,
+		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None)
+	{
+		return loadImageArray({ path }, bind, maxMipCount, strategy, flags);
+	}
 
 	/**
 	 * @brief Returns current loaded image isntance.
@@ -167,40 +215,7 @@ public:
 	 */
 	ID<Image> getLoadedImage() const noexcept { return loadedImage; }
 
-	/*******************************************************************************************************************
-	 * @brief Loads graphics pipeline from the resource pack shaders.
-	 * 
-	 * @param[in] path target graphics pipeline path
-	 * @param framebuffer parent pipeline framebuffer
-	 * @param useAsyncRecording can be used for multithreaded commands recording
-	 * @param loadAsync load pipeline asynchronously without blocking
-	 * @param subpassIndex framebuffer subpass index
-	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or empty
-	 * @param[in] samplerStateOverrides sampler state override array or empty
-	 * @param[in] stateOverrides pipeline state override array or empty
-	 */
-	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
-		ID<Framebuffer> framebuffer, bool useAsyncRecording = false,
-		bool loadAsync = true, uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
-		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
-		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {},
-		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
-	
-	/**
-	 * @brief Loads compute pipeline from the resource pack shaders.
-	 * 
-	 * @param[in] path target compute pipeline path
-	 * @param useAsyncRecording can be used for multithreaded commands recording
-	 * @param loadAsync load pipeline asynchronously without blocking
-	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or empty
-	 * @param[in] samplerStateOverrides sampler state override array or empty
-	 */
-	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
-		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
-		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {});
+	// TODO: storeImage
 
 	/* TODO: refactor
 	shared_ptr<Model> loadModel(const fs::path& path);
@@ -222,9 +237,71 @@ public:
 	ID<Buffer> getLoadedBuffer() const noexcept { return loadedBuffer; }
 
 	/*******************************************************************************************************************
-	 * @brief Loads scene from the resource pack.
+	 * @brief Create shared graphics descriptor set instance.
 	 * 
-	 * @param[in] path target scene path
+	 * @param path shared descriptor set path
+	 * @param graphicsPipeline target graphics pipeline
+	 * @param[in] uniforms shader uniform array
+	 * @param index index of descriptor set in the shader
+	 */
+	Ref<DescriptorSet> createSharedDescriptorSet(
+		const fs::path& path, ID<GraphicsPipeline> graphicsPipeline,
+		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+
+	/**
+	 * @brief Create shared graphics descriptor set instance.
+	 *
+	 * @param path shared descriptor set path
+	 * @param graphicsPipeline target graphics pipeline
+	 * @param[in] uniforms shader uniform array
+	 * @param index index of descriptor set in the shader
+	 */
+	Ref<DescriptorSet> createSharedDescriptorSet(
+		const fs::path& path, ID<ComputePipeline> computePipeline,
+		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+
+	/*******************************************************************************************************************
+	 * @brief Loads graphics pipeline from the resource pack shaders.
+	 * @note Loads from the shaders directory in debug build.
+	 * 
+	 * @param[in] path target graphics pipeline resource path
+	 * @param framebuffer parent pipeline framebuffer
+	 * @param useAsyncRecording can be used for multithreaded commands recording
+	 * @param loadAsync load pipeline asynchronously without blocking
+	 * @param subpassIndex framebuffer subpass index
+	 * @param maxBindlessCount maximum bindless descriptor count
+	 * @param[in] specConsts specialization constants array or empty
+	 * @param[in] samplerStateOverrides sampler state override array or empty
+	 * @param[in] stateOverrides pipeline state override array or empty
+	 */
+	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
+		ID<Framebuffer> framebuffer, bool useAsyncRecording = false,
+		bool loadAsync = true, uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
+		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
+		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {},
+		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
+	
+	/**
+	 * @brief Loads compute pipeline from the resource pack shaders.
+	 * @note Loads from the shaders directory in debug build.
+	 * 
+	 * @param[in] path target compute pipeline resource path
+	 * @param useAsyncRecording can be used for multithreaded commands recording
+	 * @param loadAsync load pipeline asynchronously without blocking
+	 * @param maxBindlessCount maximum bindless descriptor count
+	 * @param[in] specConsts specialization constants array or empty
+	 * @param[in] samplerStateOverrides sampler state override array or empty
+	 */
+	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
+		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
+		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
+		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {});
+
+	/*******************************************************************************************************************
+	 * @brief Loads scene from the resource pack.
+	 * @note Loads from the scenes directory in debug build.
+	 * 
+	 * @param[in] path target scene resource path
 	 * @param addRootEntity create root entity for scene
 	 */
 	void loadScene(const fs::path& path, bool addRootEntity = true);
@@ -235,10 +312,31 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Stores curent scene to the scene directory.
-	 * @param[in] path target scene parh
+	 * @brief Stores curent scene to the scenes directory.
+	 * 
+	 * @param[in] path target scene resource path
+	 * @param rootEntity custom scene root or null
 	 */
-	void storeScene(const fs::path& path);
+	void storeScene(const fs::path& path, ID<Entity> rootEntity = {});
+	#endif
+
+	/*
+	 * @brief Loads animation from the resource pack.
+	 * @note Loads from the animations directory in debug build.
+	 * 
+	 * @param[in] path target animation resource path
+	 * @param loadUnique load as unique animation, without instance sharing. 
+	 */
+	Ref<Animation> loadAnimation(const fs::path& path, bool loadUnique = false);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Stores animation to the animations directory.
+	 * 
+	 * @param[in] path target animation resource path
+	 * @param animation target animation instance
+	 */
+	void storeAnimation(const fs::path& path, ID<Animation> animation);
 	#endif
 
 	#if !GARDEN_DEBUG

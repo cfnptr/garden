@@ -16,6 +16,19 @@
 
 using namespace garden;
 
+ID<Component> DoNotSerializeSystem::createComponent(ID<Entity> entity)
+{
+	return ID<Component>(components.create());
+}
+void DoNotSerializeSystem::destroyComponent(ID<Component> instance)
+{ 
+	components.destroy(ID<DoNotSerializeComponent>(instance));
+}
+void DoNotSerializeSystem::copyComponent(ID<Component> source, ID<Component> destination)
+{
+	return;
+}
+
 const string& DoNotSerializeSystem::getComponentName() const
 {
 	static const string name = "Do Not Serialize";
@@ -25,16 +38,11 @@ type_index DoNotSerializeSystem::getComponentType() const
 {
 	return typeid(DoNotSerializeComponent);
 }
-ID<Component> DoNotSerializeSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void DoNotSerializeSystem::destroyComponent(ID<Component> instance)
-{ 
-	components.destroy(ID<DoNotSerializeComponent>(instance));
-}
 View<Component> DoNotSerializeSystem::getComponent(ID<Component> instance)
 {
 	return View<Component>(components.get(ID<DoNotSerializeComponent>(instance)));
 }
-void DoNotSerializeSystem::disposeComponents() { components.dispose(); }
+void DoNotSerializeSystem::disposeComponents()
+{
+	components.dispose();
+}

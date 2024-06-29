@@ -58,7 +58,7 @@ static ID<Image> createBloomBufferData(GraphicsSystem* graphicsSystem,
 	for (uint8 i = 0; i < mipCount; i++)
 	{
 		auto imageView = graphicsSystem->createImageView(
-			image, Image::Type::Texture2D, bufferFormat, i, 1);
+			image, Image::Type::Texture2D, bufferFormat, i, 1, 0, 1);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, imageView,
 			"imageView.bloom.buffer" + to_string(i));
 		imageViews[i] = imageView;

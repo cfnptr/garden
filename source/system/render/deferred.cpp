@@ -281,7 +281,7 @@ void DeferredRenderSystem::render()
 	{
 		SET_GPU_DEBUG_LABEL("Swapchain Pass", Color::transparent);
 		framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-		auto& colorAttachments = framebufferView->getColorAttachments();
+		const auto& colorAttachments = framebufferView->getColorAttachments();
 		auto colorImageView = graphicsSystem->get(colorAttachments[0].imageView);
 
 		if (graphicsSystem->getRenderScale() == 1.0f)
@@ -297,7 +297,7 @@ void DeferredRenderSystem::render()
 void DeferredRenderSystem::swapchainRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
 	{

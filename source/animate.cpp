@@ -12,31 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sprite/common.gsl"
+#include "garden/animate.hpp"
 
-out float2 fs.texCoords;
+using namespace garden;
 
-uniform pushConstants
+bool Animation::destroy()
 {
-	uint32 instanceIndex;
-	float colorMapLayer;
-	float alphaCutoff;
-} pc;
-
-struct InstanceData
-{
-	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
-};
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
-
-void main()
-{
-	float4 position = float4(quadVertices[gl.vertexIndex], 0.0f, 1.0f);
-	gl.position = instance.data[pc.instanceIndex].mvp * position;
-	fs.texCoords = quadTexCoords[gl.vertexIndex];
+	for (const auto& keyframe : keyframes)
+	{
+		const auto& animatables = keyframe.second;
+		for (const auto& pair : animatables)
+		{
+			auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
+			animatableSystem->destroyAnimation(pair.second);
+		}
+	}
+	return true;
 }

@@ -182,7 +182,7 @@ void CommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descrip
 	{
 		auto descriptor = descriptorSetRange[i];
 		auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptor.set);
-		auto& descriptorSetUniforms = descriptorSet->uniforms;
+		const auto& descriptorSetUniforms = descriptorSet->uniforms;
 		auto pipelineType = descriptorSet->pipelineType;
 
 		const map<string, Pipeline::Uniform>* pipelineUniforms = nullptr;
@@ -200,14 +200,14 @@ void CommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descrip
 		}
 		else abort();
 
-		for (auto& pipelineUniform : *pipelineUniforms)
+		for (const auto& pipelineUniform : *pipelineUniforms)
 		{
 			auto uniform = pipelineUniform.second;
 			if (uniform.descriptorSetIndex != i)
 				continue;
 
 			auto setCount = descriptor.offset + descriptor.count;
-			auto& descriptorSetUniform = descriptorSetUniforms.at(pipelineUniform.first);
+			const auto& descriptorSetUniform = descriptorSetUniforms.at(pipelineUniform.first);
 
 			if (isSamplerType(uniform.type) || isImageType(uniform.type))
 			{
@@ -230,7 +230,7 @@ void CommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descrip
 
 				for (uint32 j = descriptor.offset; j < setCount; j++)
 				{
-					auto& resourceArray = descriptorSetUniform.resourceSets[j];
+					const auto& resourceArray = descriptorSetUniform.resourceSets[j];
 					for (uint32 k = 0; k < (uint32)resourceArray.size(); k++)
 					{
 						if (!resourceArray[k])
@@ -290,7 +290,7 @@ void CommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descrip
 
 				for (uint32 j = descriptor.offset; j < setCount; j++)
 				{
-					auto& resourceArray = descriptorSetUniform.resourceSets[j];
+					const auto& resourceArray = descriptorSetUniform.resourceSets[j];
 					for (uint32 k = 0; k < (uint32)resourceArray.size(); k++)
 					{
 						auto buffer = ID<Buffer>(resourceArray[k]);
@@ -346,7 +346,7 @@ void CommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 //**********************************************************************************************************************
 void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lockedResources)
 {
-	for (auto& pair : lockedResources)
+	for (const auto& pair : lockedResources)
 	{
 		switch (pair.second)
 		{
@@ -619,7 +619,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto framebuffer = GraphicsAPI::framebufferPool.get(command.framebuffer);
-	auto& colorAttachments = framebuffer->colorAttachments;
+	const auto& colorAttachments = framebuffer->colorAttachments;
 	auto colorAttachmentCount = (uint32)colorAttachments.size();
 	auto commandBufferData = (const uint8*)&command;
 	auto clearColors = (const float4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
@@ -815,7 +815,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		
 		if (commandType == Command::Type::BindDescriptorSets)
 		{
-			auto& bindDescriptorSetsCommand =
+			const auto& bindDescriptorSetsCommand =
 				*(const BindDescriptorSetsCommand*)subCommand;
 			auto descriptorSetRange = (const DescriptorSet::Range*)(
 				(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
@@ -824,7 +824,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		}
 		else if (commandType == Command::Type::Draw)
 		{
-			auto& drawCommand = *(const DrawCommand*)subCommand;
+			const auto& drawCommand = *(const DrawCommand*)subCommand;
 			auto& oldBufferState = getBufferState(drawCommand.vertexBuffer);
 			oldPipelineStage |= oldBufferState.stage;
 
@@ -847,7 +847,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		}
 		else if (commandType == Command::Type::DrawIndexed)
 		{
-			auto& drawIndexedCommand = *(const DrawIndexedCommand*)subCommand;
+			const auto& drawIndexedCommand = *(const DrawIndexedCommand*)subCommand;
 			auto& oldVertexBufferState = getBufferState(drawIndexedCommand.vertexBuffer);
 			oldPipelineStage |= oldVertexBufferState.stage;
 
@@ -917,8 +917,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
 		clearValues.clear();
 
-		auto& subpasses = framebuffer->subpasses;
-
+		const auto& subpasses = framebuffer->subpasses;
 		for (uint32 i = 0; i < colorAttachmentCount; i++)
 		{
 			auto colorAttachment = colorAttachments[i];
@@ -932,7 +931,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			// TODO: cache this and do not search each frame?
 			for (auto subpass = subpasses.rbegin(); subpass != subpasses.rend(); subpass++)
 			{
-				for (auto& inputAttachment : subpass->inputAttachments)
+				for (const auto& inputAttachment : subpass->inputAttachments)
 				{
 					if (colorAttachment.imageView == inputAttachment.imageView)
 					{
@@ -968,7 +967,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			// TODO: cache this and do not search each frame?
 			for (auto subpass = subpasses.rbegin(); subpass != subpasses.rend(); subpass++)
 			{
-				for (auto& inputAttachment : subpass->inputAttachments)
+				for (const auto& inputAttachment : subpass->inputAttachments)
 				{
 					if (depthStencilAttachment.imageView == inputAttachment.imageView)
 					{
@@ -1045,7 +1044,7 @@ void CommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
 	auto framebufferView = GraphicsAPI::framebufferPool.get(command.framebuffer);
 
-	auto& colorAttachments = framebufferView->colorAttachments;
+	const auto& colorAttachments = framebufferView->colorAttachments;
 	auto attachments = (const Framebuffer::ClearAttachment*)(
 		(const uint8*)&command + sizeof(ClearAttachmentsCommandBase));
 	auto regions = (const Framebuffer::ClearRegion*)(
@@ -1329,7 +1328,7 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 		if (commandType != Command::Type::BindDescriptorSets)
 			continue;
 
-		auto& bindDescriptorSetsCommand = *(const BindDescriptorSetsCommand*)subCommand;
+		const auto& bindDescriptorSetsCommand = *(const BindDescriptorSetsCommand*)subCommand;
 		auto descriptorSetRange = (const DescriptorSet::Range*)(
 			(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
 		addDescriptorSetBarriers(descriptorSetRange,

@@ -29,8 +29,6 @@ namespace garden
 {
 
 using namespace garden::graphics;
-class MeshRenderSystem;
-class IMeshRenderSystem;
 
 /**
  * @brief Mesh render types.
@@ -47,7 +45,6 @@ struct MeshRenderComponent : public Component
 {
 	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
 	bool isEnabled = true; /**< Is mesh should be rendered. */
-	friend class MeshRenderSystem;
 };
 
 /**

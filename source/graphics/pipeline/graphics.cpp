@@ -162,7 +162,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 
 	if (!createData.renderPass)
 	{
-		auto& colorFormats = createData.colorFormats;
+		const auto& colorFormats = createData.colorFormats;
 		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size()); 
 		// Different shader output and framebuffer attachment count.
 
@@ -207,11 +207,11 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 		pipelineInfo.renderPass = (VkRenderPass)createData.renderPass;
 	}
 
-	auto& stateOverrides = createData.stateOverrides;
+	const auto& stateOverrides = createData.stateOverrides;
 	for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
 	{
 		auto stateSearch = stateOverrides.find(variantIndex);
-		auto& pipelineState = stateSearch == stateOverrides.end() ?
+		const auto& pipelineState = stateSearch == stateOverrides.end() ?
 			createData.pipelineState : stateSearch->second;
 
 		vk::VertexInputBindingDescription bindingDescription;
@@ -319,7 +319,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 			this->instance = result.value;
 	}
 
-	for (auto& info : specializationInfos)
+	for (const auto& info : specializationInfos)
 	{
 		free((void*)info.pMapEntries);
 		free((void*)info.pData);

@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "garden/serialize.hpp"
+#include "garden/animate.hpp"
 #include "math/angles.hpp"
 
 namespace garden
@@ -62,6 +62,9 @@ struct PerspectiveProjection final
 	float fieldOfView = radians(defaultFieldOfView);
 	float aspectRatio = defaultAspectRatio;
 	float nearPlane = defaultHmdDepth;
+private:
+	float _alignment0 = 0.0f;
+	float2 _alignment1 = float2(0.0f);
 };
 /**
  * @brief Orthographic camera projection properties.
@@ -117,24 +120,69 @@ public:
 	// TODO: add perspective/ortho morphing.
 };
 
+/**
+ * @brief Contains information about camera animation frame.
+ */
+struct CameraFrame final : public AnimationFrame
+{
+	struct BaseFrame final
+	{
+		ProjectionType type = ProjectionType::Perspective;
+		bool animate0 = false;
+		bool animate1 = false;
+		bool animate2 = false;
+	};
+	struct PerspectiveFrame final
+	{
+		ProjectionType type = ProjectionType::Perspective;
+		bool animateFieldOfView = false;
+		bool animateAspectRatio = false;
+		bool animateNearPlane = false;
+	};
+	struct OrthographicFrame final
+	{
+		ProjectionType type = ProjectionType::Orthographic;
+		bool animateWidth = false;
+		bool animateHeight = false;
+		bool animateDepth = false;
+	};
+	struct FrameProjection final
+	{
+		BaseFrame base;
+		PerspectiveFrame perspective;
+		OrthographicFrame orthographic;
+		FrameProjection() : perspective() { }
+	};
+
+	CameraProjection c = {};
+	FrameProjection f = {};
+};
+
 /***********************************************************************************************************************
  * @brief Handles camera projections.
  */
-class CameraSystem final : public System, public ISerializable
+class CameraSystem final : public System, public ISerializable, public IAnimatable
 {
 	LinearPool<CameraComponent, false> components;
+	LinearPool<CameraFrame, false> animationFrames;
 
-	const string& getComponentName() const final;
-	type_index getComponentType() const final;
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
-	void serialize(ISerializer& serializer, ID<Entity> entity, ID<Component> component) final;
+	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	
+	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 
+	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
+	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
+	void destroyAnimation(ID<AnimationFrame> frame) final;
+
 	friend class ecsm::Manager;
+public:
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	View<Component> getComponent(ID<Component> instance) final;
+	void disposeComponents() final;
 };
 
 } // namespace garden
