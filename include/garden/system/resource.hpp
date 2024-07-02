@@ -40,7 +40,7 @@ enum class ImageLoadFlags : uint8
 {
 	None = 0x00,       /**< No additional image load flags. */
 	LoadSync = 0x01,   /**< Load image synchronously. (Blocking call) */
-	LoadUnique = 0x02, /**< Load as unique image, without instance sharing. */
+	LoadShared = 0x02, /**< Load and share instance on second load call. */
 	LoadArray = 0x04,  /**< Load as image array. (Texture2DArray) */
 	ArrayType = 0x08,  /**< Always load with array type. (Texture2DArray) */
 	LinearData = 0x10  /**< Load image data in linear color space. */
@@ -85,12 +85,10 @@ protected:
 		ID<Image> instance = {};
 	};
 	
+	map<string, Ref<Buffer>> sharedBuffers;
 	map<string, Ref<Image>> sharedImages;
 	map<string, Ref<DescriptorSet>> sharedDescriptorSets;
 	map<string, Ref<Animation>> sharedAnimations;
-	map<string, Ref<Image>>::iterator sharedImageIter;
-	map<string, Ref<DescriptorSet>>::iterator sharedDescSetIter;
-	map<string, Ref<Animation>>::iterator sharedAnimationIter;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> loadedComputeQueue;
 	queue<BufferQueueItem> loadedBufferQueue;
@@ -100,7 +98,6 @@ protected:
 	mutex queueLocker;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
-	float freesPerFrame = 0.01f;
 
 	#if GARDEN_DEBUG
 	fs::path appResourcesPath;
@@ -114,9 +111,8 @@ protected:
 
 	/**
 	 * @brief Creates a new resource system instance.
-	 * @param freesPerFrame maximal unused resource frees per frame.
 	 */
-	ResourceSystem(float freesPerFrame = 0.03f);
+	ResourceSystem();
 	/**
 	 * @brief Destroys resource system instance.
 	 */
@@ -124,10 +120,6 @@ protected:
 
 	void dequeuePipelines();
 	void dequeueBuffersAndImages();
-
-	void destroyImages();
-	void destroyDescriptorSets();
-	void destroyAnimations();
 
 	void init();
 	void deinit();
@@ -210,6 +202,11 @@ public:
 	}
 
 	/**
+	 * @brief Destroys shared image if it's the last one.
+	 */
+	void destroyShared(const Ref<Image>& image);
+
+	/**
 	 * @brief Returns current loaded image isntance.
 	 * @details Useful inside "ImageLoaded" event.
 	 */
@@ -231,6 +228,11 @@ public:
 	*/
 
 	/**
+	 * @brief Destroys shared buffer if it's the last one.
+	 */
+	void destroyShared(const Ref<Buffer>& buffer);
+
+	/**
 	 * @brief Returns current loaded buffer isntance.
 	 * @details Useful inside "BufferLoaded" event.
 	 */
@@ -239,26 +241,31 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Create shared graphics descriptor set instance.
 	 * 
-	 * @param path shared descriptor set path
+	 * @param name shared descriptor set name
 	 * @param graphicsPipeline target graphics pipeline
 	 * @param[in] uniforms shader uniform array
 	 * @param index index of descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createSharedDescriptorSet(
-		const fs::path& path, ID<GraphicsPipeline> graphicsPipeline,
+		const string& name, ID<GraphicsPipeline> graphicsPipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
 
 	/**
 	 * @brief Create shared graphics descriptor set instance.
 	 *
-	 * @param path shared descriptor set path
+	 * @param name shared descriptor set name
 	 * @param graphicsPipeline target graphics pipeline
 	 * @param[in] uniforms shader uniform array
 	 * @param index index of descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createSharedDescriptorSet(
-		const fs::path& path, ID<ComputePipeline> computePipeline,
+		const string& name, ID<ComputePipeline> computePipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+
+	/**
+	 * @brief Destroys shared descriptor set if it's the last one.
+	 */
+	void destroyShared(const Ref<DescriptorSet>& descriptorSet);
 
 	/*******************************************************************************************************************
 	 * @brief Loads graphics pipeline from the resource pack shaders.
@@ -304,7 +311,7 @@ public:
 	 * @param[in] path target scene resource path
 	 * @param addRootEntity create root entity for scene
 	 */
-	void loadScene(const fs::path& path, bool addRootEntity = true);
+	void loadScene(const fs::path& path);
 	/**
 	 * @brief Destroys all current scene entities.
 	 */
@@ -320,14 +327,19 @@ public:
 	void storeScene(const fs::path& path, ID<Entity> rootEntity = {});
 	#endif
 
-	/*
+	/*******************************************************************************************************************
 	 * @brief Loads animation from the resource pack.
 	 * @note Loads from the animations directory in debug build.
 	 * 
 	 * @param[in] path target animation resource path
-	 * @param loadUnique load as unique animation, without instance sharing. 
+	 * @param loadShared load and share instance on second load call
 	 */
-	Ref<Animation> loadAnimation(const fs::path& path, bool loadUnique = false);
+	Ref<Animation> loadAnimation(const fs::path& path, bool loadShared = false);
+
+	/**
+	 * @brief Destroys shared animation if it's the last one.
+	 */
+	void destroyShared(const Ref<Animation>& animation);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

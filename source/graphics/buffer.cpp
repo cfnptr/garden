@@ -115,6 +115,57 @@ bool Buffer::destroy()
 	if (!instance || readyLock > 0)
 		return false;
 
+	#if GARDEN_DEBUG
+	auto bufferInstance = GraphicsAPI::bufferPool.getID(this);
+	const auto descriptorSetData = GraphicsAPI::descriptorSetPool.getData();
+	auto descriptorSetOccupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
+
+	for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+	{
+		const auto& descriptorSet = descriptorSetData[i];
+		const std::map<string, Pipeline::Uniform>* uniforms;
+		if (descriptorSet.getPipeline())
+		{
+			if (descriptorSet.getPipelineType() == PipelineType::Graphics)
+			{
+				auto pipeline = GraphicsAPI::graphicsPipelinePool.get(
+					ID<GraphicsPipeline>(descriptorSet.getPipeline()));
+				uniforms = &pipeline->getUniforms();
+			}
+			else if (descriptorSet.getPipelineType() == PipelineType::Compute)
+			{
+				auto pipeline = GraphicsAPI::computePipelinePool.get(
+					ID<ComputePipeline>(descriptorSet.getPipeline()));
+				uniforms = &pipeline->getUniforms();
+			}
+			else abort();
+		}
+
+		const auto& descriptorUniforms = descriptorSet.getUniforms();
+		for (const auto& pair : descriptorUniforms)
+		{
+			const auto uniform = uniforms->find(pair.first);
+			if (uniform == uniforms->end() || uniform->second.descriptorSetIndex != descriptorSet.getIndex() ||
+				!isBufferType(uniform->second.type))
+			{
+				continue;
+			}
+
+			const auto& resourceSets = pair.second.resourceSets;
+			for (const auto& resourceArray : resourceSets)
+			{
+				for (auto resource : resourceArray)
+				{
+					if (ID<Buffer>(resource) != bufferInstance)
+						continue;
+					throw runtime_error("Descriptor set is still using destroyed buffer. (buffer: " +
+						debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+				}
+			}
+		}
+	}
+	#endif
+
 	if (GraphicsAPI::isRunning)
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
 	else

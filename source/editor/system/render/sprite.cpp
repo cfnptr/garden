@@ -61,29 +61,47 @@ static void renderSpriteComponent(SpriteRenderComponent* spriteComponent, type_i
 {
 	auto manager = Manager::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
-	auto flags = ImageLoadFlags::ArrayType;
+	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (spriteComponent->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	editorSystem->drawImageSelector(spriteComponent->path, spriteComponent->colorMap,
 		spriteComponent->descriptorSet, spriteComponent->getEntity(), componentType, flags);
 	editorSystem->drawResource(spriteComponent->descriptorSet);
 
-	ImGui::Checkbox("Enabled", &spriteComponent->isEnabled);
+	ImGui::Checkbox("Enabled", &spriteComponent->isEnabled); ImGui::SameLine();
 
 	if (ImGui::Checkbox("Array", &spriteComponent->isArray) && !spriteComponent->path.empty())
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
-		if (spriteComponent->colorMap.getRefCount() == 1)
-			graphicsSystem->destroy(spriteComponent->colorMap);
-		if (spriteComponent->descriptorSet.getRefCount() == 1)
-			graphicsSystem->destroy(spriteComponent->descriptorSet);
+		auto resourceSystem = ResourceSystem::getInstance();
+		resourceSystem->destroyShared(spriteComponent->colorMap);
+		resourceSystem->destroyShared(spriteComponent->descriptorSet);
 
-		auto flags = ImageLoadFlags::ArrayType;
+		auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 		if (spriteComponent->isArray)
 			flags |= ImageLoadFlags::LoadArray;
-		spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(spriteComponent->path, 
+		spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(spriteComponent->path,
 			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 		spriteComponent->descriptorSet = {};
+	}
+
+	ImGui::BeginDisabled(!spriteComponent->colorMap && manager->has<TransformComponent>(spriteComponent->getEntity()));
+	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
+	{
+		auto colorMapView = GraphicsSystem::getInstance()->get(spriteComponent->colorMap);
+		auto imageSize = colorMapView->getSize();
+		auto transformComponent = manager->get<TransformComponent>(spriteComponent->getEntity());
+		if (imageSize.x > imageSize.y)
+			transformComponent->scale.x = transformComponent->scale.y * ((float)imageSize.x / imageSize.y);
+		else
+			transformComponent->scale.y = transformComponent->scale.x * ((float)imageSize.y / imageSize.x);
+	}
+	ImGui::EndDisabled();
+
+	auto maxColorMapLayer = 0.0f;
+	if (spriteComponent->colorMap)
+	{
+		auto colorMapView = GraphicsSystem::getInstance()->get(spriteComponent->colorMap);
+		maxColorMapLayer = colorMapView->getLayerCount() - 1;
 	}
 
 	auto& aabb = spriteComponent->aabb;
@@ -91,6 +109,7 @@ static void renderSpriteComponent(SpriteRenderComponent* spriteComponent, type_i
 	ImGui::DragFloat3("Max AABB", (float3*)&aabb.getMax(), 0.01f);
 	ImGui::DragFloat2("UV Size", &spriteComponent->uvSize, 0.01f);
 	ImGui::DragFloat2("UV Offset", &spriteComponent->uvOffset, 0.01f);
+	ImGui::SliderFloat("Color Layer", &spriteComponent->colorMapLayer, 0.0f, maxColorMapLayer);
 	ImGui::SliderFloat4("Color Factor", &spriteComponent->colorFactor, 0.0f, 1.0f);
 }
 

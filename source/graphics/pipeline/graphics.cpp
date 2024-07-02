@@ -311,7 +311,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 		pipelineInfo.pColorBlendState = &blendInfo;
 
 		auto result = Vulkan::device.createGraphicsPipeline(Vulkan::pipelineCache, pipelineInfo);
-		resultCheck(result.result, "vk::Device::createGraphicsPipeline");
+		vk::detail::resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
 		if (createData.variantCount > 1)
 			((void**)this->instance)[variantIndex] = result.value;

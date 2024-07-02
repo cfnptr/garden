@@ -708,16 +708,12 @@ ID<Component> LightingRenderSystem::createComponent(ID<Entity> entity)
 }
 void LightingRenderSystem::destroyComponent(ID<Component> instance)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto component = components.get(ID<LightingRenderComponent>(instance));
-	if (component->cubemap.getRefCount() == 1)
-		graphicsSystem->destroy(component->cubemap);
-	if (component->sh.getRefCount() == 1)
-		graphicsSystem->destroy(component->cubemap);
-	if (component->specular.getRefCount() == 1)
-		graphicsSystem->destroy(component->cubemap);
-	if (component->descriptorSet.getRefCount() == 1)
-		graphicsSystem->destroy(component->cubemap);
+	resourceSystem->destroyShared(component->cubemap);
+	resourceSystem->destroyShared(component->sh);
+	resourceSystem->destroyShared(component->specular);
+	resourceSystem->destroyShared(component->descriptorSet);
 	components.destroy(ID<LightingRenderComponent>(instance));
 }
 void LightingRenderSystem::copyComponent(ID<Component> source, ID<Component> destination)
@@ -869,66 +865,141 @@ const ID<ImageView>* LightingRenderSystem::getAoImageViews()
 }
 
 //**********************************************************************************************************************
-static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem, ThreadPool& threadPool,
-	const vector<const void*>& _pixels, uint32 cubemapSize, Buffer::Strategy strategy)
+static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemapSize, 
+	uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
 {
+	auto sh = shBufferData + taskIndex * shCoefCount;
+	auto invCubemapSize = cubemapSize - 1;
 	auto invDim = 1.0f / cubemapSize;
-	vector<float4> shBuffer(threadPool.getThreadCount() * shCoefCount);
-	auto faces = (const float4**)_pixels.data();
-	auto shBufferData = shBuffer.data();
+	float shb[shCoefCount];
 
-	threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+	for (uint8 face = 0; face < 6; face++)
 	{
-		auto sh = shBufferData + task.getTaskIndex() * shCoefCount;
-		auto itemCount = task.getItemCount(), itemOffset = task.getItemOffset();
-		auto invCubemapSize = cubemapSize - 1;
-		float shb[shCoefCount];
-
-		for (uint8 face = 0; face < 6; face++)
+		auto pixels = faces[face];
+		for (uint32 i = itemOffset; i < itemCount; i++)
 		{
-			auto pixels = faces[face];
-			for (uint32 i = itemOffset; i < itemCount; i++)
-			{
-				auto y = i / cubemapSize, x = i - y * cubemapSize;
-				auto st = coordsToST(int2(x, y), invDim);
-				auto dir = stToDir(st, face);
-				// TODO: check if inversion is required, or just use pixels[i].
-				auto color = pixels[(invCubemapSize - y) * cubemapSize + x];
-				color *= calcSolidAngle(st, invDim);
-				computeShBasis(dir, shb);
+			auto y = i / cubemapSize, x = i - y * cubemapSize;
+			auto st = coordsToST(int2(x, y), invDim);
+			auto dir = stToDir(st, face);
+			// TODO: check if inversion is required, or just use pixels[i].
+			auto color = pixels[(invCubemapSize - y) * cubemapSize + x];
+			color *= calcSolidAngle(st, invDim);
+			computeShBasis(dir, shb);
 
-				for (uint32 j = 0; j < shCoefCount; j++)
-					sh[j] += color * shb[j];
-			}
+			for (uint32 j = 0; j < shCoefCount; j++)
+				sh[j] += color * shb[j];
 		}
-	}),
-	cubemapSize * cubemapSize);
-	threadPool.wait();
-
-	float4 shData[shCoefCount];
-	for (uint32 i = 0; i < shCoefCount; i++)
-		shData[i] = 0.0f;
-
-	for (uint32 i = 0; i < threadPool.getThreadCount(); i++)
-	{
-		auto data = shBuffer.data() + i * shCoefCount;
-		for (uint32 j = 0; j < shCoefCount; j++)
-			shData[j] += data[j];
 	}
-
-	for (uint32 i = 0; i < shCoefCount; i++)
-		shData[i] *= ki[i];
-	
-	deringingSH(shData);
-	shaderPreprocessSH(shData);
-
-	// TODO: check if final SH is the same as debug in release build.
-	return graphicsSystem->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
-		Buffer::Access::None, shData, shCoefCount * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************
-static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadPool& threadPool,
+static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem, ThreadSystem* threadSystem,
+	const vector<const void*>& _pixels, uint32 cubemapSize, Buffer::Strategy strategy)
+{
+	auto faces = (const float4**)_pixels.data();
+	vector<float4> shBuffer;
+	float4* shBufferData;
+	uint32 bufferCount;
+
+	if (threadSystem)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		bufferCount = threadPool.getThreadCount();
+		shBuffer.resize(bufferCount * shCoefCount);
+		shBufferData = shBuffer.data();
+
+		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+		{
+			calcIblSH(shBufferData, faces, cubemapSize, task.getTaskIndex(),
+				task.getItemOffset(), task.getItemCount());
+		}),
+		cubemapSize * cubemapSize);
+		threadPool.wait();
+	}
+	else
+	{
+		bufferCount = 1;
+		shBuffer.resize(shCoefCount);
+		shBufferData = shBuffer.data();
+		calcIblSH(shBufferData, faces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
+	}
+
+	if (bufferCount > 1)
+	{
+		for (uint32 i = 1; i < bufferCount; i++)
+		{
+			auto data = shBufferData + i * shCoefCount;
+			for (uint32 j = 0; j < shCoefCount; j++)
+				shBufferData[j] += data[j];
+		}
+	}
+
+	for (uint32 i = 0; i < shCoefCount; i++)
+		shBufferData[i] *= ki[i];
+	
+	deringingSH(shBufferData);
+	shaderPreprocessSH(shBufferData);
+
+	// TODO: check if final SH is the same as debug in release build.
+	return graphicsSystem->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
+		Buffer::Access::None, shBufferData, shCoefCount * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
+}
+
+//**********************************************************************************************************************
+static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
+	uint32 cubemapSize, uint8 cubemapMipCount, uint8 specularMipCount, uint32 taskIndex)
+{
+	psize mapOffset = 0;
+	auto mipIndex = taskIndex + 1;
+	for (uint8 i = 1; i < mipIndex; i++)
+		mapOffset += calcSampleCount(i);
+	auto map = specularMap + mapOffset;
+
+	auto sampleCount = calcSampleCount(mipIndex);
+	auto invSampleCount = 1.0f / sampleCount;
+	auto roughness = mipToLinearRoughness(specularMipCount, mipIndex);
+	auto logOmegaP = log4((4.0f * (float)M_PI) / (6.0f * cubemapSize * cubemapSize));
+	float weight = 0.0f; uint32 count = 0;
+
+	for (uint32 i = 0; i < sampleCount; i++)
+	{
+		auto u = hammersley(i, invSampleCount);
+		auto h = importanceSamplingNdfDggx(u, roughness);
+		auto noh = h.z, noh2 = h.z * h.z;
+		auto nol = 2.0f * noh2 - 1.0f;
+		auto l = float3(2.0f * noh * h.x, 2.0f * noh * h.y, nol);
+
+		if (nol > 0.0f)
+		{
+			const auto k = 1.0f; // log4(4.0f);
+			auto pdf = ggx(noh, roughness) / 4.0f;
+			auto omegaS = 1.0f / (sampleCount * pdf);
+			auto level = log4(omegaS) - logOmegaP + k;
+			auto mip = clamp(level, 0.0f, (float)(cubemapMipCount - 1));
+			map[count++] = SpecularItem(l, nol, mip);
+			weight += nol;
+		}
+	}
+
+	auto invWeight = 1.0f / weight;
+	for (uint32 i = 0; i < count; i++)
+		map[i].nolMip.x *= invWeight;
+		
+	qsort(map, count, sizeof(SpecularItem), [](const void* a, const void* b)
+	{
+		auto aa = (const SpecularItem*)a; auto bb = (const SpecularItem*)b;
+		if (aa->nolMip.x < bb->nolMip.x)
+			return -1;
+		if (aa->nolMip.x > bb->nolMip.x)
+			return 1;
+		return 0;
+	});
+
+	countBufferData[taskIndex] = count;
+}
+
+//**********************************************************************************************************************
+static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadSystem* threadSystem,
 	ID<ComputePipeline> iblSpecularPipeline, ID<Image> cubemap, Memory::Strategy strategy)
 {
 	auto cubemapView = graphicsSystem->get(cubemap);
@@ -963,60 +1034,28 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadPool&
 
 	vector<uint32> countBuffer(specularMipCount - 1);
 	vector<ID<Buffer>> gpuSpecularCaches(countBuffer.size());
+	auto countBufferData = countBuffer.data();
 	auto specularMap = (SpecularItem*)cpuSpecularCacheView->getMap();
 
-	threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
+	if (threadSystem)
 	{
-		psize mapOffset = 0;
-		auto mipIndex = task.getTaskIndex() + 1;
-		for (uint8 i = 1; i < mipIndex; i++)
-			mapOffset += calcSampleCount(i);
-		auto map = specularMap + mapOffset;
-
-		auto sampleCount = calcSampleCount(mipIndex);
-		auto invSampleCount = 1.0f / sampleCount;
-		auto roughness = mipToLinearRoughness(specularMipCount, mipIndex);
-		auto logOmegaP = log4((4.0f * (float)M_PI) / (6.0f * cubemapSize * cubemapSize));
-		float weight = 0.0f; uint32 count = 0;
-
-		for (uint32 i = 0; i < sampleCount; i++)
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
-			auto u = hammersley(i, invSampleCount);
-			auto h = importanceSamplingNdfDggx(u, roughness);
-			auto noh = h.z, noh2 = h.z * h.z;
-			auto nol = 2.0f * noh2 - 1.0f;
-			auto l = float3(2.0f * noh * h.x, 2.0f * noh * h.y, nol);
-
-			if (nol > 0.0f)
-			{
-				const auto k = 1.0f; // log4(4.0f);
-				auto pdf = ggx(noh, roughness) / 4.0f;
-				auto omegaS = 1.0f / (sampleCount * pdf);
-				auto level = log4(omegaS) - logOmegaP + k;
-				auto mip = clamp(level, 0.0f, (float)(cubemapMipCount - 1));
-				map[count++] = SpecularItem(l, nol, mip);
-				weight += nol;
-			}
+			calcIblSpecular(specularMap, countBufferData, cubemapSize,
+				cubemapMipCount, specularMipCount, task.getTaskIndex());
+		}),
+		(uint32)countBuffer.size());
+		threadPool.wait();
+	}
+	else
+	{
+		for (uint32 i = 0; i < (uint32)countBuffer.size(); i++)
+		{
+			calcIblSpecular(specularMap, countBufferData, cubemapSize,
+				cubemapMipCount, specularMipCount, i);
 		}
-
-		auto invWeight = 1.0f / weight;
-		for (uint32 i = 0; i < count; i++)
-			map[i].nolMip.x *= invWeight;
-		
-		qsort(map, count, sizeof(SpecularItem), [](const void* a, const void* b)
-		{
-			auto aa = (const SpecularItem*)a; auto bb = (const SpecularItem*)b;
-			if (aa->nolMip.x < bb->nolMip.x)
-				return -1;
-			if (aa->nolMip.x > bb->nolMip.x)
-				return 1;
-			return 0;
-		});
-
-		countBuffer[task.getTaskIndex()] = count;
-	}),
-	(uint32)countBuffer.size());
-	threadPool.wait();
+	}
 
 	SET_GPU_DEBUG_LABEL("IBL Specular Generation", Color::transparent);
 	cpuSpecularCacheView->flush();
@@ -1085,10 +1124,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy)
 {
 	GARDEN_ASSERT(!path.empty());
-	// TODO: rewrite with tryGet. Propagate to generateIblSH and generateIblSpecular.
-	auto threadSystem = Manager::getInstance()->get<ThreadSystem>();
-	auto& threadPool = threadSystem->getForegroundPool();
-
+	
 	vector<uint8> left, right, bottom, top, back, front;
 	int2 size; Image::Format format;
 	ResourceSystem::getInstance()->loadCubemapData(path, left, right, bottom, top, back, front, size, format);
@@ -1112,10 +1148,11 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	auto cubemapView = graphicsSystem->get(cubemap);
 	cubemapView->generateMips();
 
-	sh = Ref<Buffer>(generateIblSH(graphicsSystem, threadPool, mips[0], cubemapSize, strategy));
+	auto threadSystem = Manager::getInstance()->get<ThreadSystem>();
+	sh = Ref<Buffer>(generateIblSH(graphicsSystem, threadSystem, mips[0], cubemapSize, strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh, "buffer.sh." + path.generic_string());
 
-	specular = Ref<Image>(generateIblSpecular(graphicsSystem, threadPool, iblSpecularPipeline, cubemap, strategy));
+	specular = Ref<Image>(generateIblSpecular(graphicsSystem, threadSystem, iblSpecularPipeline, cubemap, strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, specular, "image.cubemap.specular." + path.generic_string());
 	
 	graphicsSystem->stopRecording();

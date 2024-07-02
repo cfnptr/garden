@@ -198,7 +198,7 @@ static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 		auto& buffer = buffers[i];
 		auto allocateResult = device.allocateCommandBuffers(
 			&commandBufferInfo, &buffer.primaryCommandBuffer);
-		vk::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
+		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 		
 		#if GARDEN_DEBUG
 		if (Vulkan::hasDebugUtils)
@@ -228,8 +228,8 @@ static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 
 	return buffers;
 }
-static void destroyVkSwapchainBuffers(vk::Device device,
-	LinearPool<Image>& imagePool, const vector<Swapchain::Buffer>& buffers)
+static void destroyVkSwapchainBuffers(vk::Device device, LinearPool<Image>& imagePool, 
+	LinearPool<ImageView>& imageViewPool, const vector<Swapchain::Buffer>& buffers)
 {
 	for (const auto& buffer : buffers)
 	{
@@ -238,6 +238,9 @@ static void destroyVkSwapchainBuffers(vk::Device device,
 		#endif
 		for (auto commandPool : buffer.secondaryCommandPools)
 			device.destroyCommandPool(commandPool);
+		auto imageView = imagePool.get(buffer.colorImage);
+		if (imageView->hasDefaultView())
+			imageViewPool.destroy(imageView->getDefaultView());
 		imagePool.destroy(buffer.colorImage);
 	}
 }
@@ -267,7 +270,7 @@ Swapchain::Swapchain(int2 framebufferSize, bool useVsync, bool useTripleBufferin
 }
 void Swapchain::destroy()
 {
-	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, buffers);
+	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, GraphicsAPI::imageViewPool, buffers);
 	Vulkan::device.destroySwapchainKHR(instance);
 
 	for (uint8 i = 0; i < frameLag; i++)
@@ -289,7 +292,7 @@ void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuff
 	Vulkan::device.waitIdle();
 	vk::Format format;
 
-	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, buffers);
+	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, GraphicsAPI::imageViewPool, buffers);
 	auto newInstance = createVkSwapchain(Vulkan::physicalDevice, Vulkan::device,
 		Vulkan::surface, framebufferSize, useVsync, useTripleBuffering, instance, format);
 	Vulkan::device.destroySwapchainKHR(instance);
@@ -310,7 +313,7 @@ bool Swapchain::acquireNextImage()
 {
 	auto fence = fences[frameIndex]; 
 	auto waitResult = Vulkan::device.waitForFences(1, &fence, VK_FALSE, 10000000000); // Note: emergency 10 seconds timeout.
-	vk::resultCheck(waitResult, "vk::Device::waitForFences");
+	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
 	Vulkan::device.resetFences(fence);
 
 	auto result = Vulkan::device.acquireNextImageKHR(instance, UINT64_MAX,
@@ -394,7 +397,7 @@ void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass
 			allocateInfo.commandPool = secondaryCommandPools[i];
 			vk::CommandBuffer commandBuffer;
 			auto allocateResult = Vulkan::device.allocateCommandBuffers(&allocateInfo, &commandBuffer);
-			vk::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
+			vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 			secondaryCommandBuffers[i] = commandBuffer;
 			Vulkan::secondaryCommandBuffers[i] = commandBuffer;
 

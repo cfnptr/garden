@@ -27,11 +27,11 @@ struct CutoutSpriteComponent final : public SpriteRenderComponent
 
 struct CutoutSpriteFrame final : public SpriteRenderFrame
 {
-private:
-	uint16 _alignment = 0;
-public:
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
+private:
+	uint8 _alignment1 = 0;
+	uint16 _alignment2 = 0;
 };
 
 class CutoutSpriteSystem final : public SpriteRenderSystem
@@ -69,6 +69,7 @@ private:
 
 	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
+	void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;

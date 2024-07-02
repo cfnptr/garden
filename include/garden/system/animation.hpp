@@ -17,42 +17,69 @@
  * @brief Object animation system.
  */
 
+// TODO: add bezier curves support and also lerped transitions between different animations.
+
 #pragma once
-#include "garden/defines.hpp"
 #include "garden/animate.hpp"
+#include "garden/system/thread.hpp"
 
 namespace garden
 {
 
 using namespace ecsm;
+class AnimationSystem;
 
+//**********************************************************************************************************************
 struct AnimationComponent final : public Component
 {
+private:
 	map<string, Ref<Animation>> animations;
+public:
 	string active;
-	uint32 frame = 0;
+	float frame = 0.0f;
 	bool isPlaying = true;
 private:
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
+	friend class AnimationSystem;
+public:
+	const map<string, Ref<Animation>>& getAnimations() const noexcept { return animations; }
+
+	auto emplaceAnimation(string&& path, Ref<Animation>&& animation)
+	{
+		GARDEN_ASSERT(!path.empty());
+		GARDEN_ASSERT(animation);
+		return animations.emplace(std::move(path), std::move(animation));
+	}
+
+	psize eraseAnimation(const string& path) noexcept { return animations.erase(path); }
+	auto eraseAnimation(map<string, Ref<Animation>>::const_iterator i) noexcept { return animations.erase(i); }
+	void clearAnimations() noexcept { animations.clear(); }
 };
 
+//**********************************************************************************************************************
 class AnimationSystem final : public System, public ISerializable
 {
 private:
+	ThreadSystem* threadSystem = nullptr;
 	LinearPool<AnimationComponent, false> components;
 	LinearPool<Animation> animations;
+	bool animateAsync = false;
 
 	static AnimationSystem* instance;
 
 	/**
 	 * @brief Creates a new animation system instance.
+	 * @param useAsync multithreaded components animation
 	 */
-	AnimationSystem();
+	AnimationSystem(bool animateAsync = true);
 	/**
 	 * @brief Destroy animation system instance.
 	 */
 	~AnimationSystem() final;
+
+	void init();
+	void update();
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
@@ -63,6 +90,7 @@ private:
 	
 	friend class ecsm::Manager;
 public:
+	bool isAnimateAsync() const noexcept { return animateAsync; }
 	ID<Animation> createAnimation() { return animations.create(); }
 	View<Animation> get(ID<Animation> animation) { return animations.get(animation); }
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }

@@ -359,6 +359,10 @@ private:
 	bool hasAnyCommand = false;
 	bool isRunning = false;
 
+	#if GARDEN_DEBUG
+	uint64 frameIndex = 0;
+	#endif
+
 	ImageState& getImageState(ID<Image> image, uint32 mip, uint32 layer);
 	BufferState& getBufferState(ID<Buffer> buffer);
 
@@ -433,7 +437,7 @@ public:
 	void addCommand(const InsertLabelCommand& command);
 	#endif
 
-	void submit();
+	void submit(uint64 frameIndex);
 
 	void addLockResource(ID<Buffer> resource)
 	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Buffer)); }

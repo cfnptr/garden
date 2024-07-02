@@ -560,11 +560,11 @@ void GraphicsSystem::present()
 		}
 		stopRecording();
 		#endif
-
-		GraphicsAPI::graphicsCommandBuffer.submit();
-		GraphicsAPI::transferCommandBuffer.submit();
-		GraphicsAPI::computeCommandBuffer.submit();
-		GraphicsAPI::frameCommandBuffer.submit();
+		
+		GraphicsAPI::graphicsCommandBuffer.submit(frameIndex);
+		GraphicsAPI::transferCommandBuffer.submit(frameIndex);
+		GraphicsAPI::computeCommandBuffer.submit(frameIndex);
+		GraphicsAPI::frameCommandBuffer.submit(frameIndex);
 	}
 	
 	GraphicsAPI::descriptorSetPool.dispose();
@@ -1023,7 +1023,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 void GraphicsSystem::destroy(ID<Image> instance)
 {
 	if (instance)
-		GARDEN_ASSERT(!GraphicsAPI::imagePool.get(instance)->isSwapchain());
+	{
+		auto imageView = GraphicsAPI::imagePool.get(instance);
+		GARDEN_ASSERT(!imageView->isSwapchain());
+
+		if (imageView->hasDefaultView() && GraphicsAPI::isRunning)
+			GraphicsAPI::imageViewPool.destroy(imageView->getDefaultView());
+	}
+	
 	GraphicsAPI::imagePool.destroy(instance);
 }
 View<Image> GraphicsSystem::get(ID<Image> instance) const

@@ -48,6 +48,7 @@ void CutoutSpriteSystem::draw(MeshRenderComponent* meshRenderComponent,
 
 	auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(taskIndex);
 	pushConstants->instanceIndex = drawIndex;
+	pushConstants->colorMapLayer = cutoutRenderComponent->colorMapLayer;
 	pushConstants->alphaCutoff = cutoutRenderComponent->alphaCutoff;
 	pipelineView->pushConstantsAsync(taskIndex);
 
@@ -148,7 +149,7 @@ void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 
 	if (spriteComponent->path.empty())
 		spriteComponent->path = "missing";
-	auto flags = ImageLoadFlags::ArrayType;
+	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (spriteComponent->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(spriteComponent->path,
@@ -193,6 +194,28 @@ ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deser
 	}
 
 	return {};
+}
+
+//**********************************************************************************************************************
+void CutoutSpriteSystem::animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t)
+{
+	auto cutoutComponent = Manager::getInstance()->tryGet<CutoutSpriteComponent>(entity);
+	if (!cutoutComponent)
+		return;
+
+	auto frameA = animationFrames.get(ID<CutoutSpriteFrame>(a));
+	auto frameB = animationFrames.get(ID<CutoutSpriteFrame>(b));
+
+	if (frameA->animateColorFactor)
+		cutoutComponent->colorFactor = lerp(frameA->colorFactor, frameB->colorFactor, t);
+	if (frameA->animateUvSize)
+		cutoutComponent->uvSize = lerp(frameA->uvSize, frameB->uvSize, t);
+	if (frameA->animateUvOffset)
+		cutoutComponent->uvOffset = lerp(frameA->uvOffset, frameB->uvOffset, t);
+	if (frameA->animateColorMapLayer)
+		cutoutComponent->colorMapLayer = lerp(frameA->colorMapLayer, frameB->colorMapLayer, t);
+	if (frameA->animateIsEnabled)
+		cutoutComponent->isEnabled = (bool)round(t);
 }
 void CutoutSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
 {

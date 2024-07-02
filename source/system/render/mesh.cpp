@@ -24,9 +24,10 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording)
+MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording, bool useAsyncPreparing)
 {
 	this->asyncRecording = useAsyncRecording;
+	this->asyncPreparing = useAsyncPreparing;
 
 	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
@@ -47,6 +48,7 @@ void MeshRenderSystem::init()
 {
 	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<ForwardRenderSystem>() || manager->has<DeferredRenderSystem>());
+	threadSystem = manager->tryGet<ThreadSystem>();
 
 	if (manager->has<ForwardRenderSystem>())
 	{
@@ -93,8 +95,6 @@ void MeshRenderSystem::prepareSystems()
 			meshSystems.push_back(meshSystem);
 	}
 
-	threadSystem = manager->tryGet<ThreadSystem>();
-
 	#if GARDEN_EDITOR
 	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
 	if (graphicsEditorSystem)
@@ -103,6 +103,129 @@ void MeshRenderSystem::prepareSystems()
 			graphicsEditorSystem->translucentDrawCount = graphicsEditorSystem->translucentTotalCount = 0;
 	}
 	#endif
+}
+
+//**********************************************************************************************************************
+static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraPosition, const Plane* frustumPlanes,
+	MeshRenderSystem::OpaqueBuffer* opaqueBuffer, uint32 itemOffset, uint32 itemCount)
+{
+	auto meshSystem = opaqueBuffer->meshSystem;
+	const auto& componentPool = meshSystem->getMeshComponentPool();
+	auto componentSize = meshSystem->getMeshComponentSize();
+	auto componentData = (uint8*)componentPool.getData();
+	auto items = opaqueBuffer->items.data();
+	auto indices = opaqueBuffer->indices.data();
+	auto drawCount = &opaqueBuffer->drawCount;
+	auto hasCameraOffset = cameraOffset != float3(0.0f);
+	auto manager = Manager::getInstance();
+
+	for (uint32 i = itemOffset; i < itemCount; i++)
+	{
+		auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
+		if (!meshRender->getEntity() || !meshRender->isEnabled)
+			continue;
+
+		float4x4 model;
+		auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
+		if (transform)
+		{
+			if (!transform->isActiveWithAncestors())
+				continue;
+
+			model = transform->calcModel();
+			setTranslation(model, getTranslation(model) - cameraPosition);
+		}
+		else
+		{
+			model = float4x4::identity;
+		}
+
+		if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
+			continue;
+
+		// TODO: optimize this using SpatialDB.
+		// Or we can potentially extract BVH from the PhysX or Vulkan?
+		// TODO: we can use full scene BVH to speed up frustum culling.
+
+		MeshRenderSystem::RenderItem renderItem;
+		renderItem.meshRender = meshRender;
+		renderItem.model = model;
+		renderItem.distance2 = hasCameraOffset ?
+			length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
+		auto index = atomicFetchAdd64(drawCount, 1);
+		items[index] = renderItem;
+		indices[index] = index;
+	}
+}
+
+//**********************************************************************************************************************
+static void prepareTranslucentItems(const float3& cameraOffset, const float3& cameraPosition,
+	const Plane* frustumPlanes, MeshRenderSystem::TranslucentBuffer* translucentBuffer,
+	volatile int64* translucentIndex, uint32 bufferIndex, MeshRenderSystem::TranslucentItem* translucentItemData,
+	uint32* translucentIndexData, uint32 itemOffset, uint32 itemCount)
+{
+	auto meshSystem = translucentBuffer->meshSystem;
+	const auto& componentPool = meshSystem->getMeshComponentPool();
+	auto componentSize = meshSystem->getMeshComponentSize();
+	auto componentData = (uint8*)componentPool.getData();
+	auto drawCount = &translucentBuffer->drawCount;
+	auto hasCameraOffset = cameraOffset != float3(0.0f);
+	auto manager = Manager::getInstance();
+
+	for (uint32 i = itemOffset; i < itemCount; i++)
+	{
+		auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
+		if (!meshRender->getEntity() || !meshRender->isEnabled)
+			continue;
+
+		float4x4 model;
+		auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
+		if (transform)
+		{
+			if (!transform->isActiveWithAncestors())
+				continue;
+
+			model = transform->calcModel();
+			setTranslation(model, getTranslation(model) - cameraPosition);
+		}
+		else
+		{
+			model = float4x4::identity;
+		}
+
+		if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
+			continue;
+
+		MeshRenderSystem::TranslucentItem translucentItem;
+		translucentItem.meshRender = meshRender;
+		translucentItem.model = model;
+		translucentItem.distance2 = hasCameraOffset ?
+			length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
+		translucentItem.bufferIndex = bufferIndex;
+		auto index = atomicFetchAdd64(translucentIndex, 1);
+		translucentItemData[index] = translucentItem;
+		translucentIndexData[index] = index;
+		atomicFetchAdd64(drawCount, 1);
+	}
+}
+
+//**********************************************************************************************************************
+static void sortOpaqueIndices(const MeshRenderSystem::RenderItem* items, vector<uint32>& indices, uint32 drawCount)
+{
+	std::sort(indices.begin(), indices.begin() + drawCount, [&](uint32 a, uint32 b)
+	{
+		auto& ra = items[a]; auto& rb = items[b];
+		return ra.distance2 < rb.distance2;
+	});
+}
+static void sortTranslucenntIndices(const MeshRenderSystem::TranslucentItem* items, 
+	vector<uint32>* indices, uint32 translucentIndex)
+{
+	std::sort(indices->begin(), indices->begin() + translucentIndex, [&](uint32 a, uint32 b)
+	{
+		auto& ra = items[a]; auto& rb = items[b];
+		return ra.distance2 > rb.distance2;
+	});
 }
 
 //**********************************************************************************************************************
@@ -142,7 +265,6 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
-	auto& threadPool = threadSystem->getForegroundPool();	
 	auto opaqueBufferData = opaqueBuffers.data();
 	auto translucentBufferData = translucentBuffers.data();
 	auto translucentItemData = translucentItems.data();
@@ -151,6 +273,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 
 	Plane frustumPlanes[::frustumPlaneCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
+
+	auto isAsyncPreparing = asyncPreparing && threadSystem;
 
 	// 1. Cull and prepare items 
 	for (auto meshSystem : meshSystems)
@@ -173,53 +297,21 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			if (opaqueBuffer->indices.size() < componentCount)
 				opaqueBuffer->indices.resize(componentCount);
 			
-			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+			if (isAsyncPreparing)
 			{
-				auto meshSystem = opaqueBuffer->meshSystem;
-				const auto& componentPool = meshSystem->getMeshComponentPool();
-				auto componentSize = meshSystem->getMeshComponentSize();
-				auto componentData = (uint8*)componentPool.getData();
-				auto itemCount = task.getItemCount();
-				auto items = opaqueBuffer->items.data();
-				auto indices = opaqueBuffer->indices.data();
-				auto drawCount = &opaqueBuffer->drawCount;
-				auto hasCameraOffset = cameraOffset != float3(0.0f);
-
-				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+				auto& threadPool = threadSystem->getForegroundPool();
+				threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 				{
-					auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
-					if (!meshRender->getEntity() || !meshRender->isEnabled)
-						continue;
-
-					float4x4 model;
-					auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
-					if (transform)
-					{
-						model = transform->calcModel();
-						setTranslation(model, getTranslation(model) - cameraPosition);
-					}
-					else
-					{
-						model = float4x4::identity;
-					}
-
-					if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
-						continue;
-					// TODO: optimize this using SpatialDB.
-					// Or we can potentially extract BVH from the PhysX or Vulkan?
-					// TODO: we can use full scene BVH to speed up frustum culling.
-		
-					RenderItem renderItem;
-					renderItem.meshRender = meshRender;
-					renderItem.model = model;
-					renderItem.distance2 = hasCameraOffset ?
-						length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
-					auto index = atomicFetchAdd64(drawCount, 1);
-					items[index] = renderItem;
-					indices[index] = index;
-				}
-			}),
-			componentPool.getOccupancy());
+					prepareOpaqueItems(cameraOffset, cameraPosition, frustumPlanes,
+						opaqueBuffer, task.getItemOffset(), task.getItemCount());
+				}),
+				componentPool.getOccupancy());
+			}
+			else
+			{
+				prepareOpaqueItems(cameraOffset, cameraPosition, frustumPlanes,
+					opaqueBuffer, 0, componentPool.getOccupancy());
+			}
 
 			#if GARDEN_EDITOR
 			if (graphicsEditorSystem)
@@ -236,50 +328,23 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			if (componentCount == 0 || !meshSystem->isDrawReady())
 				continue;
 
-			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+			if (isAsyncPreparing)
 			{
-				auto meshSystem = translucentBuffer->meshSystem;
-				const auto& componentPool = meshSystem->getMeshComponentPool();
-				auto componentSize = meshSystem->getMeshComponentSize();
-				auto componentData = (uint8*)componentPool.getData();
-				auto itemCount = task.getItemCount();
-				auto drawCount = &translucentBuffer->drawCount;
-				auto hasCameraOffset = cameraOffset != float3(0.0f);
-					
-				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+				auto& threadPool = threadSystem->getForegroundPool();
+				threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 				{
-					auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
-					if (!meshRender->getEntity() || !meshRender->isEnabled)
-						continue;
-
-					float4x4 model;
-					auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
-					if (transform)
-					{
-						model = transform->calcModel();
-						setTranslation(model, getTranslation(model) - cameraPosition);
-					}
-					else
-					{
-						model = float4x4::identity;
-					}
-
-					if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
-						continue;
-		
-					TranslucentItem translucentItem;
-					translucentItem.meshRender = meshRender;
-					translucentItem.model = model;
-					translucentItem.distance2 = hasCameraOffset ?
-						length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
-					translucentItem.bufferIndex = bufferIndex;
-					auto index = atomicFetchAdd64(&translucentIndex, 1);
-					translucentItemData[index] = translucentItem;
-					translucentIndexData[index] = index;
-					atomicFetchAdd64(drawCount, 1);
-				}
-			}),
-			componentPool.getOccupancy());
+					prepareTranslucentItems(cameraOffset, cameraPosition, frustumPlanes,
+						translucentBuffer, &translucentIndex, bufferIndex, translucentItemData,
+						translucentIndexData, task.getItemOffset(), task.getItemCount());
+				}),
+				componentPool.getOccupancy());
+			}
+			else
+			{
+				prepareTranslucentItems(cameraOffset, cameraPosition, frustumPlanes,
+					translucentBuffer, &translucentIndex, bufferIndex, translucentItemData,
+					translucentIndexData, 0, componentPool.getOccupancy());
+			}
 
 			#if GARDEN_EDITOR
 			if (graphicsEditorSystem)
@@ -288,7 +353,11 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		}
 	}		
 
-	threadPool.wait();
+	if (isAsyncPreparing)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.wait();
+	}
 
 	// 2. Sort items with selected order
 	for (uint32 i = 0; i < opaqueBufferCount; i++)
@@ -297,17 +366,18 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		if (opaqueBuffer->drawCount == 0)
 			continue;
 
-		threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
+		if (isAsyncPreparing)
 		{
-			auto items = opaqueBuffer->items.data();
-			auto& indices = opaqueBuffer->indices;
-			std::sort(indices.begin(), indices.begin() + 
-				opaqueBuffer->drawCount, [&](uint32 a, uint32 b)
+			auto& threadPool = threadSystem->getForegroundPool();
+			threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
-				auto& ra = items[a]; auto& rb = items[b];
-				return ra.distance2 < rb.distance2;
-			});
-		}));
+				sortOpaqueIndices(opaqueBuffer->items.data(), opaqueBuffer->indices, opaqueBuffer->drawCount);
+			}));
+		}
+		else
+		{
+			sortOpaqueIndices(opaqueBuffer->items.data(), opaqueBuffer->indices, opaqueBuffer->drawCount);
+		}
 
 		#if GARDEN_EDITOR
 		if (graphicsEditorSystem)
@@ -318,15 +388,20 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	if (translucentIndex > 0)
 	{
 		auto translucentItemData = translucentItems.data();
-		threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
+		auto translucentIndices = &this->translucentIndices;
+
+		if (isAsyncPreparing)
 		{
-			std::sort(translucentIndices.begin(), translucentIndices.begin() + 
-				translucentIndex, [&](uint32 a, uint32 b)
+			auto& threadPool = threadSystem->getForegroundPool();
+			threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
-				auto& ra = translucentItemData[a]; auto& rb = translucentItemData[b];
-				return ra.distance2 > rb.distance2;
-			});
-		}));
+				sortTranslucenntIndices(translucentItemData, translucentIndices, translucentIndex);
+			}));
+		}
+		else
+		{
+			sortTranslucenntIndices(translucentItemData, translucentIndices, translucentIndex);
+		}
 
 		#if GARDEN_EDITOR
 		if (graphicsEditorSystem)
@@ -334,13 +409,17 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		#endif
 	}
 
-	threadPool.wait();
+	if (isAsyncPreparing)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.wait();
+	}
 }
 
 //**********************************************************************************************************************
 void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 {
-	auto& threadPool = threadSystem->getForegroundPool();
+	auto isAsyncRecording = asyncRecording && threadSystem;
 	for (uint32 i = 0; i < opaqueBufferCount; i++)
 	{
 		auto opaqueBuffer = &opaqueBuffers[i];
@@ -351,8 +430,9 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 		auto meshSystem = opaqueBuffer->meshSystem;
 		meshSystem->prepareDraw(viewProj, drawCount);
 
-		if (asyncRecording && threadSystem)
+		if (isAsyncRecording)
 		{
+			auto& threadPool = threadSystem->getForegroundPool();
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
 				auto meshSystem = opaqueBuffer->meshSystem;

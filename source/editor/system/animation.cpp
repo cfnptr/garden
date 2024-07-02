@@ -64,9 +64,9 @@ static void renderAnimationSelector(ID<Entity> entity)
 
 		auto path = selectedFile;
 		path.replace_extension();
-		auto animation = ResourceSystem::getInstance()->loadAnimation(path);
+		auto animation = ResourceSystem::getInstance()->loadAnimation(path, true);
 		if (animation)
-			animationComponent->animations.emplace(path.generic_string(), std::move(animation));
+			animationComponent->emplaceAnimation(path.generic_string(), std::move(animation));
 	},
 	AppInfoSystem::getInstance()->getResourcesPath() / "animations", extensions);
 }
@@ -79,8 +79,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto animationComponent = Manager::getInstance()->get<AnimationComponent>(entity);
 	ImGui::Checkbox("Playing", &animationComponent->isPlaying);
 	ImGui::InputText("Active", &animationComponent->active); // TODO: dropdown selector
-	auto frame = (int)animationComponent->frame;
-	ImGui::DragInt("Frame", &frame);
+	ImGui::DragFloat("Frame", &animationComponent->frame);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Animations"))
@@ -89,7 +88,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
 		auto animationSystem = AnimationSystem::getInstance();
-		auto& animations = animationComponent->animations;
+		auto& animations = animationComponent->getAnimations();
 
 		for (auto i = animations.begin(); i != animations.end(); i++)
 		{
@@ -97,7 +96,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			if (ImGui::Button(" - "))
 			{
 				animationSystem->destroy(i->second);
-				i = animations.erase(i);
+				i = animationComponent->eraseAnimation(i);
 			}
 		}
 

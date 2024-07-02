@@ -31,8 +31,16 @@ class JsonSerializer final : public ISerializer
 	stack<json*> hierarchy;
 
 public:
-	JsonSerializer(const fs::path& filePath);
+	JsonSerializer();
+	JsonSerializer(const fs::path& filePath) { setFilePath(filePath); }
 	~JsonSerializer() final;
+
+	void setFilePath(const fs::path& filePath);
+
+	JsonSerializer(const JsonSerializer&) = delete;
+	JsonSerializer(JsonSerializer&&) = delete;
+	JsonSerializer& operator=(const JsonSerializer&) = delete;
+	JsonSerializer& operator=(JsonSerializer&&) = delete;
 
 	void beginChild(string_view name) final;
 	void endChild() final;
@@ -75,6 +83,8 @@ public:
 	void write(string_view name, const float3x3& value) final;
 	void write(string_view name, const float4x4& value) final;
 	void write(string_view name, const Aabb& value) final;
+
+	string toString() const;
 };
 
 class JsonDeserializer final : public IDeserializer
@@ -83,9 +93,19 @@ class JsonDeserializer final : public IDeserializer
 	stack<json*> hierarchy;
 
 public:
-	JsonDeserializer(string_view json);
-	JsonDeserializer(const vector<uint8>& bson);
-	JsonDeserializer(const fs::path& filePath);
+	JsonDeserializer();
+	JsonDeserializer(string_view json) { load(json); }
+	JsonDeserializer(const vector<uint8>& bson) { load(bson); }
+	JsonDeserializer(const fs::path& filePath) { load(filePath); }
+
+	JsonDeserializer(const JsonDeserializer&) = delete;
+	JsonDeserializer(JsonDeserializer&&) = delete;
+	JsonDeserializer& operator=(const JsonDeserializer&) = delete;
+	JsonDeserializer& operator=(JsonDeserializer&&) = delete;
+
+	void load(string_view json);
+	void load(const vector<uint8>& bson);
+	void load(const fs::path& filePath);
 
 	bool beginChild(string_view name) final;
 	void endChild() final;

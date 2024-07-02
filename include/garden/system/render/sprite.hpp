@@ -46,16 +46,19 @@ public:
  */
 struct SpriteRenderFrame : public AnimationFrame
 {
-	float4 colorFactor = float4(1.0f);
-	float2 uvSize = float2(1.0f);
-	float2 uvOffset = float2(0.0f);
-	float colorMapLayer = 0.0f;
+private:
+	uint8 _alignment0 = 0;
+public:
 	bool isEnabled = true;
 	bool animateColorFactor = false;
 	bool animateUvSize = false;
 	bool animateUvOffset = false;
 	bool animateColorMapLayer = false;
 	bool animateIsEnabled = false;
+	float4 colorFactor = float4(1.0f);
+	float2 uvSize = float2(1.0f);
+	float2 uvOffset = float2(0.0f);
+	float colorMapLayer = 0.0f;
 };
 
 /***********************************************************************************************************************

@@ -173,8 +173,20 @@ bool Image::destroy()
 	if (!instance || readyLock > 0)
 		return false;
 
-	if (GraphicsAPI::isRunning)
-		GraphicsAPI::imageViewPool.destroy(defaultView);
+	#if GARDEN_DEBUG
+	auto imageInstance = GraphicsAPI::imagePool.getID(this);
+	const auto imageViewData = GraphicsAPI::imageViewPool.getData();
+	auto imageViewOccupancy = GraphicsAPI::imageViewPool.getOccupancy();
+
+	for (uint32 i = 0; i < imageViewOccupancy; i++)
+	{
+		const auto& imageView = imageViewData[i];
+		if (imageView.getImage() != imageInstance)
+			continue;
+		throw runtime_error("Image view is still using destroyed image. (image: " +
+			debugName + ", imageView: " + imageView.getDebugName() + ")");
+	}
+	#endif
 	
 	if (!this->swapchain)
 	{
@@ -592,6 +604,80 @@ bool ImageView::destroy()
 {
 	if (!instance || readyLock > 0)
 		return false;
+
+	#if GARDEN_DEBUG
+	auto imageViewInstance = GraphicsAPI::imageViewPool.getID(this);
+	const auto descriptorSetData = GraphicsAPI::descriptorSetPool.getData();
+	auto descriptorSetOccupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
+
+	for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+	{
+		const auto& descriptorSet = descriptorSetData[i];
+		const std::map<string, Pipeline::Uniform>* uniforms;
+		if (descriptorSet.getPipeline())
+		{
+			if (descriptorSet.getPipelineType() == PipelineType::Graphics)
+			{
+				auto pipeline = GraphicsAPI::graphicsPipelinePool.get(
+					ID<GraphicsPipeline>(descriptorSet.getPipeline()));
+				uniforms = &pipeline->getUniforms();
+			}
+			else if (descriptorSet.getPipelineType() == PipelineType::Compute)
+			{
+				auto pipeline = GraphicsAPI::computePipelinePool.get(
+					ID<ComputePipeline>(descriptorSet.getPipeline()));
+				uniforms = &pipeline->getUniforms();
+			}
+			else abort();
+		}
+
+		const auto& descriptorUniforms = descriptorSet.getUniforms();
+		for (const auto& pair : descriptorUniforms)
+		{
+			const auto uniform = uniforms->find(pair.first);
+			if (uniform == uniforms->end() || uniform->second.descriptorSetIndex != descriptorSet.getIndex() ||
+				(!isSamplerType(uniform->second.type) && !isImageType(uniform->second.type)))
+			{
+				continue;
+			}
+
+			const auto& resourceSets = pair.second.resourceSets;
+			for (const auto& resourceArray : resourceSets)
+			{
+				for (auto resource : resourceArray)
+				{
+					if (ID<ImageView>(resource) != imageViewInstance)
+						continue;
+					throw runtime_error("Descriptor set is still using destroyed image view. (imageView: " +
+						debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+				}
+			}
+		}
+	}
+
+	auto framebufferData = GraphicsAPI::framebufferPool.getData();
+	auto framebufferOccupancy = GraphicsAPI::framebufferPool.getOccupancy();
+
+	for (uint32 i = 0; i < framebufferOccupancy; i++)
+	{
+		const auto& framebuffer = framebufferData[i];
+		const auto& colorAttachments = framebuffer.getColorAttachments();
+
+		for (const auto& attachment : colorAttachments)
+		{
+			if (attachment.imageView != imageViewInstance)
+				continue;
+			throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
+				debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
+		}
+
+		if (framebuffer.getDepthStencilAttachment().imageView == imageViewInstance)
+		{
+			throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
+				debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
+		}
+	}
+	#endif
 
 	if (GraphicsAPI::isRunning)
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);

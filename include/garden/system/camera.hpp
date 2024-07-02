@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/defines.hpp"
 #include "garden/animate.hpp"
 #include "math/angles.hpp"
 
@@ -154,6 +153,10 @@ struct CameraFrame final : public AnimationFrame
 		FrameProjection() : perspective() { }
 	};
 
+private:
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+public:
 	CameraProjection c = {};
 	FrameProjection f = {};
 };
@@ -175,6 +178,7 @@ class CameraSystem final : public System, public ISerializable, public IAnimatab
 
 	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
+	void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
 
 	friend class ecsm::Manager;

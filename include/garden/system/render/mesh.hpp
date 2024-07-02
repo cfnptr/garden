@@ -88,6 +88,7 @@ protected:
  */
 class MeshRenderSystem final : public System
 {
+public:
 	struct RenderItem
 	{
 		MeshRenderComponent* meshRender = nullptr;
@@ -110,23 +111,26 @@ class MeshRenderSystem final : public System
 		IMeshRenderSystem* meshSystem = nullptr;
 		volatile int64 drawCount;
 	};
-
+private:
 	ThreadSystem* threadSystem = nullptr;
 	vector<OpaqueBuffer> opaqueBuffers;
 	vector<TranslucentBuffer> translucentBuffers;
 	vector<TranslucentItem> translucentItems;
 	vector<uint32> translucentIndices;
 	vector<IMeshRenderSystem*> meshSystems;
-	volatile int64 translucentIndex;
+	volatile int64 translucentIndex = 0;
 	uint32 opaqueBufferCount = 0;
 	uint32 translucentBufferCount = 0;
 	bool asyncRecording = false;
+	bool asyncPreparing = false;
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.
+	 * 
 	 * @param useAsyncRecording use multithreaded render commands recording
+	 * @param useAsyncPreparing use multithreaded render items preparing
 	 */
-	MeshRenderSystem(bool useAsyncRecording = true);
+	MeshRenderSystem(bool useAsyncRecording = true, bool useAsyncPreparing = true);
 	/**
 	 * @brief Destroys mesh rendering system instance.
 	 */
@@ -152,6 +156,7 @@ class MeshRenderSystem final : public System
 	friend class SelectorEditorSystem;
 public:
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
+	bool useAsyncPreparing() const noexcept { return asyncPreparing; }
 };
 
 } // namespace garden
