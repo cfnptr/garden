@@ -94,8 +94,6 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			TransformSystem::getInstance()->duplicateRecursive(renderEntity);
 		ImGui::EndDisabled();
 
-		// TODO: destroy recursive is not working.
-
 		ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(renderEntity));
 		if (ImGui::MenuItem("Destroy Entity"))
 			manager->destroy(renderEntity);
@@ -109,6 +107,12 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			auto debugName = transform->debugName.empty() ?
 				"Entity " + to_string(*renderEntity) : transform->debugName;
 			ImGui::SetClipboardText(debugName.c_str());
+		}
+		if (ImGui::MenuItem("Store as Scene"))
+		{
+			auto editorSystem = EditorRenderSystem::getInstance();
+			editorSystem->selectedEntity = renderEntity;
+			editorSystem->exportScene = true;
 		}
 		
 		ImGui::EndPopup();
@@ -141,7 +145,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 	if (renderEntity)
 	{
 		auto renderTransform = manager->get<TransformComponent>(renderEntity);
-		if (!renderTransform->hasBaked() && ImGui::BeginDragDropSource())
+		if (!renderTransform->hasBakedWithDescendants() && ImGui::BeginDragDropSource())
 		{
 			ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
 			if (renderTransform->debugName.empty())

@@ -53,11 +53,16 @@ void SpriteRenderSystem::imageLoaded()
 		if (spriteRender->colorMap != image)
 			continue;
 
-		auto resourceSystem = ResourceSystem::getInstance();
 		auto imageView = GraphicsSystem::getInstance()->get(image);
+		auto imageSize = imageView->getSize();
+		auto name = spriteRender->path; name += ";";
+		name += to_string(imageSize.x); name += ";";
+		name += to_string(imageSize.y); name += ";";
+		name += to_string((uint8)imageView->getType());
 		auto uniforms = getSpriteUniforms(imageView->getDefaultView());
+
 		spriteRender->descriptorSet = ResourceSystem::getInstance()->createSharedDescriptorSet(
-			spriteRender->path, getPipeline(), std::move(uniforms), 1);
+			name, getPipeline(), std::move(uniforms), 1);
 	}
 }
 
@@ -115,6 +120,7 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 		auto imageView = graphicsSystem->get(whiteTexture);
 		defaultImageView = GraphicsSystem::getInstance()->createImageView(
 			imageView->getImage(), Image::Type::Texture2DArray);
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, defaultImageView, "image.whiteTexture.arrayView");
 	}
 
 	map<string, DescriptorSet::Uniform> defaultUniforms =
@@ -130,11 +136,9 @@ uint64 SpriteRenderSystem::getInstanceDataSize()
 void SpriteRenderSystem::tryDestroyResources(View<SpriteRenderComponent> spriteComponent)
 {
 	GARDEN_ASSERT(spriteComponent);
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	if (spriteComponent->colorMap.getRefCount() == 1)
-		graphicsSystem->destroy(spriteComponent->colorMap);
-	if (spriteComponent->descriptorSet.getRefCount() == 1)
-		graphicsSystem->destroy(spriteComponent->descriptorSet);
+	auto resourceSystem = ResourceSystem::getInstance();
+	resourceSystem->destroyShared(spriteComponent->colorMap);
+	resourceSystem->destroyShared(spriteComponent->descriptorSet);
 	spriteComponent->colorMap = {};
 	spriteComponent->descriptorSet = {};
 }

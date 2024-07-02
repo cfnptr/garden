@@ -126,12 +126,10 @@ ID<Component> SkyboxRenderSystem::createComponent(ID<Entity> entity)
 }
 void SkyboxRenderSystem::destroyComponent(ID<Component> instance)
 {
-	auto graphicsSystem = getGraphicsSystem();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto component = components.get(ID<SkyboxRenderComponent>(instance));
-	if (component->cubemap.getRefCount() == 1)
-		graphicsSystem->destroy(component->cubemap);
-	if (component->descriptorSet.getRefCount() == 1)
-		graphicsSystem->destroy(component->descriptorSet);
+	resourceSystem->destroyShared(component->cubemap);
+	resourceSystem->destroyShared(component->descriptorSet);
 	components.destroy(ID<SkyboxRenderComponent>(instance));
 }
 View<Component> SkyboxRenderSystem::getComponent(ID<Component> instance)

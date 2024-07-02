@@ -58,7 +58,6 @@ private:
 	bool aboutWindow = false;
 	bool optionsWindow = false;
 	bool newScene = false;
-	bool exportScene = false;
 
 	static EditorRenderSystem* instance;
 
@@ -88,6 +87,8 @@ private:
 public:
 	Aabb selectedEntityAabb;
 	ID<Entity> selectedEntity;
+
+	bool exportScene = false;
 
 	template<typename T = Component>
 	void registerEntityInspector(OnComponent onComponent)

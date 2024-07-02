@@ -101,6 +101,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (isOpened)
 	{
+		ImGui::Checkbox("Active", &transformComponent->isActive);
+
 		auto isBaked = manager->has<BakedTransformComponent>(entity);
 		ImGui::BeginDisabled(isBaked);
 

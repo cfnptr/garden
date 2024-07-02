@@ -58,14 +58,14 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 		descriptorSetLayouts.assign(setCount, descriptorSetLayout);
 		allocateInfo.pSetLayouts = descriptorSetLayouts.data();
 		auto allocateResult = Vulkan::device.allocateDescriptorSets(&allocateInfo, descriptorSets);
-		vk::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 	}
 	else
 	{
 		allocateInfo.pSetLayouts = &descriptorSetLayout;
 		auto allocateResult = Vulkan::device.allocateDescriptorSets(
 			&allocateInfo, (vk::DescriptorSet*)&this->instance);
-		vk::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 	}
 	
 	recreate(std::move(uniforms));
@@ -155,7 +155,9 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			for (const auto& resourceArray : pair.second.resourceSets)
 			{
 				for (auto resource : resourceArray)
+				{
 					GARDEN_ASSERT(resource);
+				}
 			}
 		}
 	}
@@ -196,7 +198,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			allocateInfo.pSetLayouts = descriptorSetLayouts.data();
 			auto allocateResult = Vulkan::device.allocateDescriptorSets(
 				&allocateInfo, (vk::DescriptorSet*)this->instance);
-			vk::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 		}
 		else
 		{
@@ -206,7 +208,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			allocateInfo.pSetLayouts = &descriptorSetLayout;
 			auto allocateResult = Vulkan::device.allocateDescriptorSets(
 				&allocateInfo, (vk::DescriptorSet*)&this->instance);
-			vk::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 		}
 	}
 

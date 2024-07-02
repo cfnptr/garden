@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/defines.hpp"
 #include "garden/serialize.hpp"
 
 namespace garden
@@ -25,16 +26,35 @@ namespace garden
 
 using namespace ecsm;
 
+enum class AnimationFunc : uint8
+{
+	Linear, Pow, Gain, Count
+};
+
 struct AnimationFrame
 {
+	float coeff = 0.0f;
+	AnimationFunc funType = {}; // TODO: read these values in the animation system, add getAnimation function.
+
 	virtual ~AnimationFrame() { }
 };
 
 using Animatables = map<System*, ID<AnimationFrame>>;
 
+class IAnimatable
+{
+public:
+	virtual void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) = 0;
+	virtual ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) = 0;
+	virtual void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) = 0;
+	virtual void destroyAnimation(ID<AnimationFrame> frame) = 0;
+};
+
 struct Animation final
 {
-	map<uint32, Animatables> keyframes;
+private:
+	map<int32, Animatables> keyframes;
+public:
 	float frameRate = 30.0f;
 	bool loop = true;
 private:
@@ -43,14 +63,33 @@ private:
 
 	bool destroy();
 	friend class LinearPool<Animation>;
-};
-
-class IAnimatable
-{
 public:
-	virtual void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) = 0;
-	virtual ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) = 0;
-	virtual void destroyAnimation(ID<AnimationFrame> frame) = 0;
+	const map<int32, Animatables>& getKeyframes() const noexcept { return keyframes; }
+
+	auto emplaceKeyframe(int32 index, Animatables&& animatables)
+	{
+		#if GARDEN_DEBUG
+		GARDEN_ASSERT(!animatables.empty());
+		for (const auto& pair : animatables)
+		{
+			GARDEN_ASSERT(dynamic_cast<IAnimatable*>(pair.first));
+			GARDEN_ASSERT(pair.second);
+		}
+		auto firstKeyframe = keyframes.begin();
+		if (firstKeyframe != keyframes.end())
+		{
+			for (const auto& firstPair : firstKeyframe->second)
+			{
+				GARDEN_ASSERT(animatables.find(firstPair.first) != animatables.end());
+			}
+		}
+		#endif
+		return keyframes.emplace(index, std::move(animatables));
+	}
+
+	psize eraseKeyframe(int32 index) { return keyframes.erase(index); }
+	auto eraseKeyframe(map<int32, Animatables>::const_iterator i) { return keyframes.erase(i); }
+	void clearKeyframes() noexcept { keyframes.clear(); }
 };
 
 } // namespace garden

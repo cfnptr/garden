@@ -328,6 +328,27 @@ bool Pipeline::destroy()
 	if (!instance || readyLock > 0)
 		return false;
 
+	#if GARDEN_DEBUG
+	ID<Pipeline> pipelineInstance;
+	if (type == PipelineType::Graphics)
+		pipelineInstance = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID((GraphicsPipeline*)this));
+	else if (type == PipelineType::Compute)
+		pipelineInstance = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID((ComputePipeline*)this));
+	else abort();
+
+	const auto descriptorSetData = GraphicsAPI::descriptorSetPool.getData();
+	auto descriptorSetOccupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
+
+	for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+	{
+		const auto& descriptorSet = descriptorSetData[i];
+		if (descriptorSet.getPipelineType() != type || descriptorSet.getPipeline() != pipelineInstance)
+			continue;
+		throw runtime_error("Descriptor set is still using destroyed pipeline. (pipeline: " +
+			debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+	}
+	#endif
+
 	if (GraphicsAPI::isRunning)
 	{
 		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Pipeline,

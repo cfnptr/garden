@@ -200,6 +200,18 @@ REMOVED_FROM_PARENT:
 	childTransform->parent = entity;
 }
 
+bool TransformComponent::hasChild(ID<Entity> child) const noexcept
+{
+	GARDEN_ASSERT(child);
+	GARDEN_ASSERT(child != entity);
+	for (uint32 i = 0; i < childCount; i++)
+	{
+		if (childs[i] == child)
+			return true;
+	}
+	return false;
+}
+
 //**********************************************************************************************************************
 void TransformComponent::removeChild(ID<Entity> child)
 {
@@ -235,17 +247,8 @@ void TransformComponent::removeAllChilds()
 	}
 	childCount = 0;
 }
-bool TransformComponent::hasChild(ID<Entity> child) const noexcept
-{
-	GARDEN_ASSERT(child);
-	GARDEN_ASSERT(child != entity);
-	for (uint32 i = 0; i < childCount; i++)
-	{
-		if (childs[i] == child)
-			return true;
-	}
-	return false;
-}
+
+//**********************************************************************************************************************
 bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 {
 	auto manager = Manager::getInstance();
@@ -260,8 +263,25 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 	return false;
 }
 
+bool TransformComponent::isActiveWithAncestors() const noexcept
+{
+	if (!isActive)
+		return false;
+
+	auto manager = Manager::getInstance();
+	auto nextParent = parent;
+	while (nextParent)
+	{
+		auto nextTransform = manager->get<TransformComponent>(nextParent);
+		if (!nextTransform->isActive)
+			return false;
+		nextParent = nextTransform->parent;
+	}
+	return true;
+}
+
 //**********************************************************************************************************************
-bool TransformComponent::hasBaked() const noexcept
+bool TransformComponent::hasBakedWithDescendants() const noexcept
 {
 	static vector<ID<Entity>> transformStack;
 	transformStack.push_back(entity);
@@ -426,6 +446,24 @@ ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserial
 
 	return {};
 }
+
+//**********************************************************************************************************************
+void TransformSystem::animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t)
+{
+	auto transformComponent = Manager::getInstance()->tryGet<TransformComponent>(entity);
+	if (!transformComponent)
+		return;
+
+	auto frameA = animationFrames.get(ID<TransformFrame>(a));
+	auto frameB = animationFrames.get(ID<TransformFrame>(b));
+
+	if (frameA->animatePosition)
+		transformComponent->position = lerp(frameA->position, frameB->position, t);
+	if (frameA->animateScale)
+		transformComponent->scale = lerp(frameA->scale, frameB->scale, t);
+	if (frameA->animateRotation)
+		transformComponent->rotation = slerp(frameA->rotation, frameB->rotation, t);
+}
 void TransformSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
 	animationFrames.destroy(ID<TransformFrame>(frame));
@@ -532,6 +570,15 @@ void BakedTransformSystem::destroyComponent(ID<Component> instance)
 	components.destroy(ID<BakedTransformComponent>(instance));
 }
 void BakedTransformSystem::copyComponent(ID<Component> source, ID<Component> destination)
+{
+	return;
+}
+
+void BakedTransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+{
+	return;
+}
+void BakedTransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
 	return;
 }

@@ -342,15 +342,16 @@ map<string, DescriptorSet::Uniform> GeometryRenderSystem::getBaseUniforms()
 void GeometryRenderSystem::destroyResources(GeometryRenderComponent* geometryComponent)
 {
 	auto graphicsSystem = getGraphicsSystem();
-	if (geometryComponent->vertexBuffer.getRefCount() == 1)
+	// TODO: use resource system destroy shared
+	if (geometryComponent->vertexBuffer.isLastRef())
 		graphicsSystem->destroy(geometryComponent->vertexBuffer);
-	if (geometryComponent->indexBuffer.getRefCount() == 1)
+	if (geometryComponent->indexBuffer.isLastRef())
 		graphicsSystem->destroy(geometryComponent->indexBuffer);
-	if (geometryComponent->baseColorMap.getRefCount() == 1)
+	if (geometryComponent->baseColorMap.isLastRef())
 		graphicsSystem->destroy(geometryComponent->baseColorMap);
-	if (geometryComponent->ormMap.getRefCount() == 1)
+	if (geometryComponent->ormMap.isLastRef() == 1)
 		graphicsSystem->destroy(geometryComponent->ormMap);
-	if (geometryComponent->descriptorSet.getRefCount() == 1)
+	if (geometryComponent->descriptorSet.isLastRef())
 		graphicsSystem->destroy(geometryComponent->descriptorSet);
 }
 
@@ -734,9 +735,10 @@ void GeometryShadowRenderSystem::destroyResources(
 	GeometryShadowRenderComponent* geometryShadowComponent)
 {
 	auto graphicsSystem = getGraphicsSystem();
-	if (geometryShadowComponent->vertexBuffer.getRefCount() == 1)
+	// TODO: use resource system destroyShared
+	if (geometryShadowComponent->vertexBuffer.isLastRef() == 1)
 		graphicsSystem->destroy(geometryShadowComponent->vertexBuffer);
-	if (geometryShadowComponent->indexBuffer.getRefCount() == 1)
+	if (geometryShadowComponent->indexBuffer.isLastRef() == 1)
 		graphicsSystem->destroy(geometryShadowComponent->indexBuffer);
 }
 

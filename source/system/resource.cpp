@@ -112,12 +112,9 @@ namespace
 //**********************************************************************************************************************
 ResourceSystem* ResourceSystem::instance = nullptr;
 
-ResourceSystem::ResourceSystem(float freesPerFrame)
+ResourceSystem::ResourceSystem()
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
-	GARDEN_ASSERT(freesPerFrame > 0.0f && freesPerFrame <= 1.0f);
-
-	this->freesPerFrame = freesPerFrame;
 
 	auto manager = Manager::getInstance();
 	manager->registerEvent("ImageLoaded");
@@ -125,10 +122,6 @@ ResourceSystem::ResourceSystem(float freesPerFrame)
 
 	SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
-
-	sharedImageIter = sharedImages.begin();
-	sharedDescSetIter = sharedDescriptorSets.begin();
-	sharedAnimationIter = sharedAnimations.begin();
 
 	#if GARDEN_DEBUG
 	auto appInfoSystem = AppInfoSystem::getInstance();
@@ -373,9 +366,6 @@ void ResourceSystem::dequeueBuffersAndImages()
 				auto stagingView = GraphicsAPI::bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-				Image::CopyBufferRegion region = {};
-				region.bufferRowLength = item.realSize.x;
-				region.bufferImageHeight = item.realSize.y;
 				Image::copy(staging, item.instance);
 				graphicsSystem->stopRecording();
 				GraphicsAPI::bufferPool.destroy(staging);
@@ -413,89 +403,8 @@ void ResourceSystem::dequeueBuffersAndImages()
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::destroyImages()
-{
-	if (sharedImages.empty())
-		return;
-
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto count = (uint32)std::ceil((float)sharedImages.size() * freesPerFrame);
-
-	for (uint32 i = 0; i < count; i++)
-	{
-		if (sharedImageIter == sharedImages.end())
-		{
-			sharedImageIter = sharedImages.begin();
-			break;
-		}
-
-		if (sharedImageIter->second.getRefCount() > 1)
-		{
-			sharedImageIter++;
-			continue;
-		}
-
-		graphicsSystem->destroy(sharedImageIter->second);
-		sharedImageIter = sharedImages.erase(sharedImageIter);
-	}
-}
-void ResourceSystem::destroyDescriptorSets()
-{
-	if (sharedDescriptorSets.empty())
-		return;
-
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto count = (uint32)std::ceil((float)sharedDescriptorSets.size() * freesPerFrame);
-
-	for (uint32 i = 0; i < count; i++)
-	{
-		if (sharedDescSetIter == sharedDescriptorSets.end())
-		{
-			sharedDescSetIter = sharedDescriptorSets.begin();
-			break;
-		}
-
-		if (sharedDescSetIter->second.getRefCount() > 1)
-		{
-			sharedDescSetIter++;
-			continue;
-		}
-
-		graphicsSystem->destroy(sharedDescSetIter->second);
-		sharedDescSetIter = sharedDescriptorSets.erase(sharedDescSetIter);
-	}
-}
-void ResourceSystem::destroyAnimations()
-{
-	auto animationSystem = AnimationSystem::getInstance();
-	auto count = (uint32)std::ceil((float)sharedAnimations.size() * freesPerFrame);
-
-	for (uint32 i = 0; i < count; i++)
-	{
-		if (sharedAnimationIter == sharedAnimations.end())
-		{
-			sharedAnimationIter = sharedAnimations.begin();
-			break;
-		}
-
-		if (sharedAnimationIter->second.getRefCount() > 1)
-		{
-			sharedAnimationIter++;
-			continue;
-		}
-
-		animationSystem->destroy(sharedAnimationIter->second);
-		sharedAnimationIter = sharedAnimations.erase(sharedAnimationIter);
-	}
-}
-
-//**********************************************************************************************************************
 void ResourceSystem::input()
 {
-	destroyImages();
-	destroyDescriptorSets();
-	destroyAnimations();
-
 	auto manager = Manager::getInstance();
 	for (auto buffer : loadedBufferArray)
 	{
@@ -759,7 +668,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 {
 	GARDEN_ASSERT(!path.empty());
 	vector<uint8> equiData; int2 equiSize;
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 
 	#if GARDEN_DEBUG
 	auto filePath = appCachesPath / "images" / path;
@@ -1091,7 +1000,6 @@ static void calcLoadedImageDim(psize pathCount, int2 realSize,
 
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
 	{
-		int32 layerCount;
 		if (realSize.x > realSize.y)
 		{
 			layerCount = realSize.x / realSize.y;
@@ -1116,14 +1024,36 @@ static uint8 calcLoadedImageMipCount(uint8 maxMipCount, int2 imageSize) noexcept
 {
 	return maxMipCount == 0 ? calcMipCount(imageSize) : std::min(maxMipCount, calcMipCount(imageSize));
 }
-static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap) noexcept
+static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap,
+	int2 realSize, int2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
 {
 	psize mapOffset = 0;
-	for (int32 i = 0; i < (int32)pixelArrays.size(); i++)
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray) && realSize.x > realSize.y)
 	{
-		const auto& pixels = pixelArrays[i];
-		memcpy(stagingMap + mapOffset, pixels.data(), pixels.size());
-		mapOffset += pixels.size();
+		auto pixels = pixelArrays[0].data();
+		auto layerCount = realSize.x / realSize.y;
+		auto lineSize = formatBinarySize * imageSize.x;
+		int32 offsetX = 0;
+
+		for (int32 l = 0; l < layerCount; l++)
+		{
+			for (int32 y = 0; y < imageSize.y; y++)
+			{
+				auto pixelsOffset = (psize)(y * realSize.x + offsetX) * formatBinarySize;
+				memcpy(stagingMap + mapOffset, pixels + pixelsOffset, lineSize);
+				mapOffset += lineSize;
+			}
+			offsetX += imageSize.x;
+		}
+	}
+	else
+	{
+		for (int32 i = 0; i < (int32)pixelArrays.size(); i++)
+		{
+			const auto& pixels = pixelArrays[i];
+			memcpy(stagingMap + mapOffset, pixels.data(), pixels.size());
+			mapOffset += pixels.size();
+		}
 	}
 }
 
@@ -1141,21 +1071,22 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray));
 	}
 	
-	string uniqueName = hasAnyFlag(flags, ImageLoadFlags::LoadUnique) ? "unique." : "";
+	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
 
 	string path;
-	if (!hasAnyFlag(flags, ImageLoadFlags::LoadUnique))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
 	{
 		for (const auto& item : paths)
 		{
 			path += item.generic_string();
-			path += '\n';
+			path += ";";
 		}
 
-		path += to_string((uint8)bind); path += "\n";
-		path += to_string(maxMipCount); path += "\n";
-		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType)); path += "\n";
+		path += to_string((uint8)bind); path += ";";
+		path += to_string(maxMipCount); path += ";";
+		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LoadArray)); path += ";";
+		path += to_string(hasAnyFlag(flags, ImageLoadFlags::ArrayType)); path += ";";
 		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LinearData));
 
 		auto result = sharedImages.find(path);
@@ -1172,11 +1103,12 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	#if GARDEN_DEBUG
 	auto resource = GraphicsAPI::imagePool.get(image);
 	if (paths.size() > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray))
-		resource->setDebugName("imageArray." + uniqueName + paths[0].generic_string());
-	else resource->setDebugName("image." + uniqueName + paths[0].generic_string());
+		resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
+	else
+		resource->setDebugName("image." + debugName + paths[0].generic_string());
 	#endif
 
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 	if (!hasAnyFlag(flags, ImageLoadFlags::LoadSync) && threadSystem)
 	{
 		auto data = new ImageLoadData();
@@ -1198,7 +1130,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			if (hasAnyFlag(data->flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
 				format = Image::Format::UnormR8G8B8A8;
 
-			auto bufferBinarySize = toBinarySize(format) * realSize.x * realSize.y;
+			auto formatBinarySize = toBinarySize(format);
 			int2 imageSize; int32 layerCount;
 			calcLoadedImageDim(paths.size(), realSize, data->flags, imageSize, layerCount);
 			auto type = calcLoadedImageType(paths.size(), realSize.y, data->flags);
@@ -1209,12 +1141,13 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 				realSize,
 				ImageExt::create(type, format, data->bind, data->strategy, 
 					int3(imageSize, 1), mipCount, layerCount, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, Buffer::Strategy::Speed, bufferBinarySize, 0),
+				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
+					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0),
 				data->instance,
 			};
 
-			copyLoadedImageData(pixelArrays, item.staging.getMap());
+			copyLoadedImageData(pixelArrays, item.staging.getMap(),
+				realSize, imageSize, formatBinarySize, data->flags);
 			item.staging.flush();
 
 			delete data;
@@ -1231,7 +1164,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		if (hasAnyFlag(flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
 			format = Image::Format::UnormR8G8B8A8;
 
-		auto bufferBinarySize = toBinarySize(format) * realSize.x * realSize.y;
+		auto formatBinarySize = toBinarySize(format);
 		int2 imageSize; int32 layerCount;
 		calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
 		auto type = calcLoadedImageType(paths.size(), realSize.y, flags);
@@ -1243,79 +1176,123 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
 		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, Buffer::Strategy::Speed, bufferBinarySize, 0);
+			Buffer::Usage::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
 		SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
 			"buffer.staging.loadedImage" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 
-		copyLoadedImageData(pixelArrays, stagingView->getMap());
+		copyLoadedImageData(pixelArrays, stagingView->getMap(),
+			realSize, imageSize, formatBinarySize, flags);
 		stagingView->flush();
 
 		GraphicsSystem::getInstance()->startRecording(CommandBufferType::TransferOnly);
-		Image::CopyBufferRegion region = {};
-		region.bufferRowLength = realSize.x;
-		region.bufferImageHeight = realSize.y;
-		Image::copy(staging, image, region);
+		Image::copy(staging, image);
 		GraphicsSystem::getInstance()->stopRecording();
 		GraphicsAPI::bufferPool.destroy(staging);
 		loadedImageArray.push_back(image);
 	}
 
-	auto sharedImage = Ref<Image>(image);
-	if (!hasAnyFlag(flags, ImageLoadFlags::LoadUnique))
+	auto imageRef = Ref<Image>(image);
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
 	{
-		auto result = sharedImages.emplace(path, sharedImage);
+		auto result = sharedImages.emplace(path, imageRef);
 		GARDEN_ASSERT(result.second); // Corrupted shared images array.
-		sharedImageIter = sharedImages.begin();
 	}
 
-	return sharedImage;
+	return imageRef;
+}
+
+void ResourceSystem::destroyShared(const Ref<Image>& image)
+{
+	if (!image || image.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedImages.begin(); i != sharedImages.end(); i++)
+	{
+		if (i->second != image)
+			continue;
+		sharedImages.erase(i);
+		break;
+	}
+
+	GraphicsSystem::getInstance()->destroy(image);
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
+{
+	if (!buffer || buffer.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedBuffers.begin(); i != sharedBuffers.end(); i++)
+	{
+		if (i->second != buffer)
+			continue;
+		sharedBuffers.erase(i);
+		break;
+	}
+
+	GraphicsSystem::getInstance()->destroy(buffer);
 }
 
 //**********************************************************************************************************************
 Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(
-	const fs::path& path, ID<GraphicsPipeline> graphicsPipeline,
+	const string& name, ID<GraphicsPipeline> graphicsPipeline,
 	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
-	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(graphicsPipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	auto searchrResult = sharedDescriptorSets.find(path.generic_string());
+	auto searchrResult = sharedDescriptorSets.find(name);
 	if (searchrResult != sharedDescriptorSets.end())
 		return searchrResult->second;
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), index);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet." + path.generic_string());
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.shared." + name);
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
-	auto result = sharedDescriptorSets.emplace(path.generic_string(), sharedDescriptorSet);
+	auto result = sharedDescriptorSets.emplace(name, sharedDescriptorSet);
 	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
-	sharedDescSetIter = sharedDescriptorSets.begin();
 	return sharedDescriptorSet;
 }
 Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(
-	const fs::path& path, ID<ComputePipeline> computePipeline,
+	const string& name, ID<ComputePipeline> computePipeline,
 	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
-	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(computePipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	auto searchrResult = sharedDescriptorSets.find(path.generic_string());
+	auto searchrResult = sharedDescriptorSets.find(name);
 	if (searchrResult != sharedDescriptorSets.end())
 		return searchrResult->second;
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), index);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet." + path.generic_string());
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.shared." + name);
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
-	auto result = sharedDescriptorSets.emplace(path.generic_string(), sharedDescriptorSet);
+	auto result = sharedDescriptorSets.emplace(name, sharedDescriptorSet);
 	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
-	sharedDescSetIter = sharedDescriptorSets.begin();
 	return sharedDescriptorSet;
+}
+
+void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
+{
+	if (!descriptorSet || descriptorSet.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedDescriptorSets.begin(); i != sharedDescriptorSets.end(); i++)
+	{
+		if (i->second != descriptorSet)
+			continue;
+		sharedDescriptorSets.erase(i);
+		break;
+	}
+
+	GraphicsSystem::getInstance()->destroy(descriptorSet);
 }
 
 //**********************************************************************************************************************
@@ -1471,7 +1448,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		depthStencilFormat = attachment->getFormat();
 	}
 
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 	if (loadAsync && threadSystem)
 	{
 		auto data = new GraphicsPipelineLoadData();
@@ -1656,7 +1633,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	auto version = GraphicsAPI::computePipelineVersion++;
 	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ComputePipelineLoadData();
@@ -1738,7 +1715,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
+void ResourceSystem::loadScene(const fs::path& path)
 {
 	GARDEN_ASSERT(!path.empty());
 
@@ -1752,18 +1729,30 @@ void ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		return;
 	}
 
-	std::ifstream fileStream(scenePath);
-	if (!fileStream.is_open())
+	if (!fs::exists(scenePath))
 	{
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
-			logSystem->error("Failed to open scene file. (path: " + path.generic_string() + ")");
+			logSystem->error("Scene file does not exist. (path: " + path.generic_string() + ")");
 		return;
 	}
-	
-	std::stringstream buffer;
-	buffer << fileStream.rdbuf();
-	JsonDeserializer deserializer(string_view(buffer.str()));
+
+	JsonDeserializer deserializer;
+	try
+	{
+		deserializer.load(scenePath);
+	}
+	catch (exception& e)
+	{
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		if (logSystem)
+		{
+			logSystem->trace("Failed to deserialize scene. ("
+				"path: " + path.generic_string() + ", "
+				"error: " + string(e.what()) + ")");
+		}
+		return;
+	}
 	#else
 	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
 	#endif
@@ -1778,22 +1767,11 @@ void ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		serializableSystem->preDeserialize(deserializer);
 	}
 
-	ID<Entity> rootEntity = {};
-	if (addRootEntity)
-	{
-		rootEntity = manager->createEntity();
-		auto transformComponent = manager->add<TransformComponent>(rootEntity);
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		transformComponent->debugName = path.generic_string();
-		#endif
-		manager->add<DoNotSerializeComponent>(rootEntity);
-	}
-
 	if (deserializer.beginChild("entities"))
 	{
 		const auto& componentTypes = manager->getComponentTypes();
-		auto size = deserializer.getArraySize();
-		for (psize i = 0; i < size; i++)
+		auto size = (uint32)deserializer.getArraySize();
+		for (uint32 i = 0; i < size; i++)
 		{
 			if (!deserializer.beginArrayElement(i))
 				continue;
@@ -1811,12 +1789,6 @@ void ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 				if (deserializer.beginChild(componentName))
 				{
 					auto component = manager->add(entity, pair.first);
-					if (addRootEntity && pair.first == typeid(TransformComponent))
-					{
-						auto transformComponent = View<TransformComponent>(component);
-						transformComponent->setParent(rootEntity);
-					}
-
 					serializableSystem->deserialize(deserializer, entity, component);
 					deserializer.endChild();
 				}
@@ -1915,7 +1887,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 		if (rootEntity)
 		{
 			auto transformComponent = manager->tryGet<TransformComponent>(instance);
-			if (!transformComponent || !transformComponent->hasAncestor(rootEntity))
+			if (!transformComponent || (instance != rootEntity && !transformComponent->hasAncestor(rootEntity)))
 				continue;
 		}
 
@@ -1954,11 +1926,11 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 #endif
 
 //**********************************************************************************************************************
-Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadUnique)
+Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShared)
 {
 	GARDEN_ASSERT(!path.empty());
 
-	if (!loadUnique)
+	if (loadShared)
 	{
 		auto result = sharedAnimations.find(path.generic_string());
 		if (result != sharedAnimations.end())
@@ -2001,17 +1973,16 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadUniq
 	if (deserializer.beginChild("keyframes"))
 	{
 		const auto& componentTypes = Manager::getInstance()->getComponentTypes();
-		auto& keyframes = animationView->keyframes;
-		auto keyframeCount = deserializer.getArraySize();
-		for (psize i = 0; i < keyframeCount; i++)
+		auto keyframeCount = (uint32)deserializer.getArraySize();
+		for (uint32 i = 0; i < keyframeCount; i++)
 		{
 			deserializer.beginArrayElement(i);
-			uint32 frame = 0;
+			int32 frame = 0;
 			if (deserializer.read("frame", frame) && deserializer.beginChild("components"))
 			{
 				Animatables animatables;
-				auto componentCount = deserializer.getArraySize();
-				for (psize i = 0; i < componentCount; i++)
+				auto componentCount = (uint32)deserializer.getArraySize();
+				for (uint32 i = 0; i < componentCount; i++)
 				{
 					deserializer.beginArrayElement(i);
 					for (const auto& pair : componentTypes)
@@ -2024,18 +1995,18 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadUniq
 
 						if (deserializer.beginChild(componentName))
 						{
-							auto frame = animatableSystem->deserializeAnimation(deserializer);
+							auto animationFrame = animatableSystem->deserializeAnimation(deserializer);
 							deserializer.endChild();
-							if (!frame)
+							if (!animationFrame)
 								continue;
-							animatables.emplace(pair.second, frame);
+							animatables.emplace(pair.second, animationFrame);
 						}
 					}
 					deserializer.endArrayElement();
 				}
 
 				if (!animatables.empty())
-					keyframes.emplace(frame, std::move(animatables));
+					animationView->emplaceKeyframe(frame, std::move(animatables));
 				deserializer.endChild();
 			}
 			deserializer.endArrayElement();
@@ -2043,12 +2014,11 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadUniq
 		deserializer.endChild();
 	}
 
-	auto sharedAnimation = Ref<Animation>(animation);
-	if (!loadUnique)
+	auto animationRef = Ref<Animation>(animation);
+	if (loadShared)
 	{
-		auto result = sharedAnimations.emplace(path.generic_string(), sharedAnimation);
+		auto result = sharedAnimations.emplace(path.generic_string(), animationRef);
 		GARDEN_ASSERT(result.second); // Corrupted shared animations array.
-		sharedAnimationIter = sharedAnimations.begin();
 	}
 
 	#if GARDEN_DEBUG
@@ -2057,7 +2027,23 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadUniq
 		logSystem->trace("Loaded animation. (path: " + path.generic_string() + ")");
 	#endif
 
-	return sharedAnimation;
+	return animationRef;
+}
+
+void ResourceSystem::destroyShared(const Ref<Animation>& animation)
+{
+	if (!animation || animation.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedAnimations.begin(); i != sharedAnimations.end(); i++)
+	{
+		if (i->second != animation)
+			continue;
+		sharedAnimations.erase(i);
+		break;
+	}
+
+	AnimationSystem::getInstance()->destroy(animation);
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
@@ -2079,7 +2065,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	serializer.write("frameRate", animationView->frameRate);
 	serializer.write("loop", animationView->loop);
 
-	const auto& keyframes = animationView->keyframes;
+	const auto& keyframes = animationView->getKeyframes();
 	if (keyframes.empty())
 		return;
 

@@ -13,21 +13,29 @@
 // limitations under the License.
 
 #include "garden/json-serialize.hpp"
+
 #include <fstream>
+#include <sstream>
 
 using namespace garden;
 
 //**********************************************************************************************************************
-JsonSerializer::JsonSerializer(const fs::path& filePath)
+JsonSerializer::JsonSerializer()
 {
-	GARDEN_ASSERT(!filePath.empty());
-	this->filePath = filePath;
 	hierarchy.emplace(&data);
 }
 JsonSerializer::~JsonSerializer()
 {
-	std::ofstream fileStream(filePath);
-	fileStream << std::setw(1) << std::setfill('\t')  << data;
+	if (!filePath.empty())
+	{
+		std::ofstream fileStream(filePath);
+		fileStream << std::setw(1) << std::setfill('\t') << data;
+	}
+}
+
+void JsonSerializer::setFilePath(const fs::path& filePath)
+{
+	this->filePath = filePath;
 }
 
 void JsonSerializer::beginChild(string_view name)
@@ -282,24 +290,39 @@ void JsonSerializer::write(string_view name, const Aabb& value)
 	endChild();
 }
 
+string JsonSerializer::toString() const
+{
+	stringstream stringStream;
+	stringStream << std::setw(1) << std::setfill('\t') << data;
+	return stringStream.str();
+}
+
 //**********************************************************************************************************************
-JsonDeserializer::JsonDeserializer(string_view json)
+JsonDeserializer::JsonDeserializer()
+{
+	hierarchy.emplace(&data);
+}
+
+void JsonDeserializer::load(string_view json)
 {
 	GARDEN_ASSERT(!json.empty());
 	data = json::parse(json);
+	hierarchy = {};
 	hierarchy.emplace(&data);
 }
-JsonDeserializer::JsonDeserializer(const vector<uint8>& bson)
+void JsonDeserializer::load(const vector<uint8>& bson)
 {
 	GARDEN_ASSERT(!bson.empty());
 	data = json::parse(bson);
+	hierarchy = {};
 	hierarchy.emplace(&data);
 }
-JsonDeserializer::JsonDeserializer(const fs::path& filePath)
+void JsonDeserializer::load(const fs::path& filePath)
 {
 	GARDEN_ASSERT(!filePath.empty());
 	std::ifstream fileStream(filePath);
 	fileStream >> data;
+	hierarchy = {};
 	hierarchy.emplace(&data);
 }
 
@@ -430,7 +453,7 @@ bool JsonDeserializer::read(string& value)
 	auto& object = *hierarchy.top();
 	if (!object.is_string())
 		return false;
-	value = (string&)object;
+	value = (string)object;
 	return true;
 }
 

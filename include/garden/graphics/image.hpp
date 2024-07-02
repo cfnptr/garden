@@ -251,11 +251,17 @@ public:
 	 * @details Swapchain images are provided by the graphics API.
 	 */
 	bool isSwapchain() const noexcept { return swapchain; }
+
 	/**
-	 * @brief Returns image default view.
+	 * @brief Returns image default view instance.
 	 * @note Creates a new image view on a first call.
 	 */
-	ID<ImageView> getDefaultView();	
+	ID<ImageView> getDefaultView();
+	/**
+	 * @brief Returns true if image has default view instance
+	 * @note Default image view instance is created on a first getter call.
+	 */
+	bool hasDefaultView() const noexcept { return defaultView; }
 
 	#if GARDEN_DEBUG
 	/**

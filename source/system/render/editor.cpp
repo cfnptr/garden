@@ -16,6 +16,8 @@
 
 #if GARDEN_EDITOR
 #include "garden/file.hpp"
+#include "garden/json-serialize.hpp"
+#include "garden/system/log.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
@@ -362,6 +364,156 @@ void EditorRenderSystem::showOptionsWindow()
 }
 
 //**********************************************************************************************************************
+static bool renderInspectorWindowPopup(const map<type_index, 
+	EditorRenderSystem::OnComponent>&entityInspectors, ID<Entity>& selectedEntity)
+{
+	if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+	{
+		auto manager = Manager::getInstance();
+		const auto& componentTypes = manager->getComponentTypes();
+
+		if (ImGui::BeginMenu("Add Component", !componentTypes.empty()))
+		{
+			uint32 itemCount = 0;
+			for (const auto& pair : componentTypes)
+			{
+				if (pair.second->getComponentName().empty())
+					continue;
+				itemCount++;
+
+				if (entityInspectors.find(pair.first) == entityInspectors.end() ||
+					manager->has(selectedEntity, pair.first))
+				{
+					continue;
+				}
+
+				if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
+					manager->add(selectedEntity, pair.first);
+			}
+
+			if (ImGui::BeginMenu("Tags"))
+			{
+				for (const auto& pair : componentTypes)
+				{
+					if (pair.second->getComponentName().empty())
+						continue;
+
+					if (entityInspectors.find(pair.first) != entityInspectors.end() ||
+						manager->has(selectedEntity, pair.first))
+					{
+						continue;
+					}
+
+					if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
+						manager->add(selectedEntity, pair.first);
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Others", itemCount != componentTypes.size()))
+			{
+				for (const auto& pair : componentTypes)
+				{
+					if (!pair.second->getComponentName().empty() ||
+						manager->has(selectedEntity, pair.first))
+					{
+						continue;
+					}
+					auto componentName = typeToString(pair.first);
+					if (ImGui::MenuItem(componentName.c_str()))
+						manager->add(selectedEntity, pair.first);
+				}
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
+		{
+			if (manager->has<TransformComponent>(selectedEntity))
+			{
+				TransformSystem::getInstance()->destroyRecursive(selectedEntity);
+			}
+			else
+			{
+				manager->destroy(selectedEntity);
+				selectedEntity = {};
+			}
+
+			ImGui::EndPopup();
+			return false;
+		}
+		ImGui::EndPopup();
+	}
+
+	return true;
+}
+
+//**********************************************************************************************************************
+static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
+	System* system, type_index componentType, const string& componentName)
+{
+	if (ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+	{
+		if (ImGui::MenuItem("Remove Component"))
+		{
+			auto manager = Manager::getInstance();
+			auto selected = selectedEntity; // Do not optimize, required for transforms.
+			manager->remove(selectedEntity, componentType);
+			if (manager->getComponentCount(selected) == 0)
+				manager->destroy(selected);
+			ImGui::EndPopup();
+			return false;
+		}
+
+		if (ImGui::MenuItem("Copy Component Name"))
+			ImGui::SetClipboardText(componentName.c_str());
+
+		auto serializableSystem = dynamic_cast<ISerializable*>(system);
+		ImGui::BeginDisabled(!serializableSystem);
+		if (ImGui::MenuItem("Copy Component Data"))
+		{
+			auto manager = Manager::getInstance();
+			JsonSerializer jsonSerializer;
+			serializableSystem->preSerialize(jsonSerializer);
+			auto componentView = manager->get(selectedEntity, componentType);
+			serializableSystem->serialize(jsonSerializer, selectedEntity, componentView);
+			serializableSystem->postSerialize(jsonSerializer);
+			ImGui::SetClipboardText(jsonSerializer.toString().c_str());
+		}
+		if (ImGui::MenuItem("Paste Component Data"))
+		{
+			auto manager = Manager::getInstance();
+			auto stagingEntity = manager->createEntity(); // TODO: maybe add resetComponent function instead?
+			manager->add(stagingEntity, componentType);
+			try
+			{
+				JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
+				serializableSystem->preDeserialize(jsonDeserializer);
+				auto componentView = manager->get(stagingEntity, componentType);
+				serializableSystem->deserialize(jsonDeserializer, selectedEntity, componentView);
+				serializableSystem->postDeserialize(jsonDeserializer);
+				manager->copy(stagingEntity, selectedEntity, componentType);
+			}
+			catch (exception& e)
+			{
+				auto logSystem = manager->tryGet<LogSystem>();
+				if (logSystem)
+				{
+					logSystem->error("Failed to deserialize component data on paste. ("
+						"error: " + string(e.what()) + ")");
+				}
+			}
+			manager->destroy(stagingEntity);
+		}
+		ImGui::EndDisabled();
+
+		ImGui::EndPopup();
+	}
+
+	return true;
+}
+
+//**********************************************************************************************************************
 void EditorRenderSystem::showEntityInspector()
 {
 	ImGui::SetNextWindowSize(ImVec2(384.0f, 256.0f), ImGuiCond_FirstUseEver);
@@ -380,81 +532,10 @@ void EditorRenderSystem::showEntityInspector()
 			ImGui::EndTooltip();
 		}
 		
-		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+		if (!renderInspectorWindowPopup(entityInspectors, selectedEntity))
 		{
-			const auto& componentTypes = manager->getComponentTypes();
-			if (ImGui::BeginMenu("Add Component", !componentTypes.empty()))
-			{
-				uint32 itemCount = 0;
-				for (const auto& pair : componentTypes)
-				{
-					if (pair.second->getComponentName().empty())
-						continue;
-					itemCount++;
-
-					if (entityInspectors.find(pair.first) == entityInspectors.end() ||
-						manager->has(selectedEntity, pair.first))
-					{
-						continue;
-					}
-
-					if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
-						manager->add(selectedEntity, pair.first);
-				}
-
-				if (ImGui::BeginMenu("Tags"))
-				{
-					for (const auto& pair : componentTypes)
-					{
-						if (pair.second->getComponentName().empty())
-							continue;
-
-						if (entityInspectors.find(pair.first) != entityInspectors.end() ||
-							manager->has(selectedEntity, pair.first))
-						{
-							continue;
-						}
-
-						if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
-							manager->add(selectedEntity, pair.first);
-					}
-					ImGui::EndMenu();
-				}
-
-				if (ImGui::BeginMenu("Others", itemCount != componentTypes.size()))
-				{
-					for (const auto& pair : componentTypes)
-					{
-						if (!pair.second->getComponentName().empty() ||
-							manager->has(selectedEntity, pair.first))
-						{
-							continue;
-						}
-						auto componentName = typeToString(pair.first);
-						if (ImGui::MenuItem(componentName.c_str()))
-							manager->add(selectedEntity, pair.first);
-					}
-					ImGui::EndMenu();
-				}
-				ImGui::EndMenu();
-			}
-			if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
-			{
-				if (manager->has<TransformComponent>(selectedEntity))
-				{
-					TransformSystem::getInstance()->destroyRecursive(selectedEntity);
-				}
-				else
-				{
-					manager->destroy(selectedEntity);
-					selectedEntity = {};
-				}
-
-				ImGui::EndPopup();
-				ImGui::End();
-				return;
-			}
-			ImGui::EndPopup();
+			ImGui::End();
+			return;
 		}
 
 		for (const auto& component : components)
@@ -467,23 +548,11 @@ void EditorRenderSystem::showEntityInspector()
 					typeToString(system->getComponentType()) : system->getComponentName();
 				ImGui::PushID(componentName.c_str());
 				auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
-
-				if (ImGui::BeginPopupContextItem(nullptr,
-					ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+				
+				if (!renderInspectorComponentPopup(selectedEntity, system, component.first, componentName))
 				{
-					if (ImGui::MenuItem("Remove Component"))
-					{
-						auto selected = selectedEntity; // Do not optimize, required for transforms.
-						manager->remove(selectedEntity, component.first);
-						if (manager->getComponentCount(selected) == 0)
-							manager->destroy(selected);
-						ImGui::EndPopup();
-						ImGui::PopID();
-						continue;
-					}
-					if (ImGui::MenuItem("Copy Component Name"))
-						ImGui::SetClipboardText(componentName.c_str());
-					ImGui::EndPopup();
+					ImGui::PopID();
+					continue;
 				}
 
 				ImGui::Indent();
@@ -503,23 +572,9 @@ void EditorRenderSystem::showEntityInspector()
 				auto componentName = system->getComponentName().empty() ?
 					typeToString(system->getComponentType()) : system->getComponentName();
 				ImGui::CollapsingHeader(componentName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
-
-				if (ImGui::BeginPopupContextItem(nullptr,
-					ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
-				{
-					if (ImGui::MenuItem("Remove Component"))
-					{
-						auto selected = selectedEntity; // Do not optimize, required for transforms.
-						manager->remove(selectedEntity, component.first);
-						if (manager->getComponentCount(selected) == 0)
-							manager->destroy(selected);
-						ImGui::EndPopup();
-						continue;
-					}
-					if (ImGui::MenuItem("Copy Component Name"))
-						ImGui::SetClipboardText(componentName.c_str());
-					ImGui::EndPopup();
-				}
+				
+				if (!renderInspectorComponentPopup(selectedEntity, system, component.first, componentName))
+					continue;
 			}
 		}
 	}
@@ -567,8 +622,13 @@ void EditorRenderSystem::showExportScene()
 	{
 		ImGui::InputText("Path", &scenePath);
 		ImGui::BeginDisabled(scenePath.empty());
-		if (ImGui::Button("Export .scene", ImVec2(-FLT_MIN, 0.0f)))
+		if (ImGui::Button("Export full .scene", ImVec2(-FLT_MIN, 0.0f)))
 			ResourceSystem::getInstance()->storeScene(scenePath);
+		ImGui::EndDisabled();
+
+		ImGui::BeginDisabled(!selectedEntity);
+		if (ImGui::Button("Export selected .scene", ImVec2(-FLT_MIN, 0.0f)))
+			ResourceSystem::getInstance()->storeScene(scenePath, selectedEntity);
 		ImGui::EndDisabled();
 	}
 	ImGui::End();
@@ -595,6 +655,20 @@ static bool isHasDirectories(const fs::path& path)
 	}
 	return false;
 }
+static void updateDirectoryClick(const string& filename, const fs::directory_entry& entry, fs::path& selectedEntry)
+{
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		selectedEntry = entry.path();
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		if (ImGui::MenuItem("Copy Name"))
+			ImGui::SetClipboardText(filename.c_str());
+		if (ImGui::MenuItem("Open Explorer"))
+			openExplorer(entry.path());
+		ImGui::EndPopup();
+	}
+}
 static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 {
 	auto dirIterator = fs::directory_iterator(path);
@@ -611,24 +685,19 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 			flags |= (int)ImGuiTreeNodeFlags_Selected;
 
 		auto filename = entry.path().filename().generic_string();
+		ImGui::PushID(filename.c_str());
 		if (ImGui::TreeNodeEx(filename.c_str(), flags))
 		{
-			if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) // TODO: fix click when node is closed.
-				selectedEntry = entry.path();
-
-			if (ImGui::BeginPopupContextItem())
-			{
-				if (ImGui::MenuItem("Copy Name"))
-					ImGui::SetClipboardText(filename.c_str());
-				if (ImGui::MenuItem("Open Explorer"))
-					openExplorer(entry.path());
-				ImGui::EndPopup();
-			}
-
+			updateDirectoryClick(filename, entry, selectedEntry);
 			if (hasDirectories)
 				renderDirectory(entry.path(), selectedEntry); // TODO: use stack instead of recursion here!
 			ImGui::TreePop();
 		}
+		else
+		{
+			updateDirectoryClick(filename, entry, selectedEntry);
+		}
+		ImGui::PopID();
 	}
 }
 
@@ -841,16 +910,14 @@ void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image, Ref<
 				return;
 			}
 			
-			auto graphicsSystem = GraphicsSystem::getInstance();
-			if (_image->getRefCount() == 1)
-				graphicsSystem->destroy(*_image);
-			if (_descriptorSet->getRefCount() == 1)
-				graphicsSystem->destroy(*_descriptorSet);
+			auto resourceSystem = ResourceSystem::getInstance();
+			resourceSystem->destroyShared(*_image);
+			resourceSystem->destroyShared(*_descriptorSet);
 
 			auto path = selectedFile;
 			path.replace_extension();
 			*_path = path.generic_string();
-			*_image = ResourceSystem::getInstance()->loadImage(path, Image::Bind::TransferDst | 
+			*_image = resourceSystem->loadImage(path, Image::Bind::TransferDst |
 				Image::Bind::Sampled, 1, Image::Strategy::Default, loadFlags);
 			*_descriptorSet = {};
 		},

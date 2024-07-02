@@ -31,7 +31,7 @@ static vk::CommandBuffer createVkCommandBuffer(
 	vk::CommandBufferAllocateInfo commandBufferInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1);
 	vk::CommandBuffer commandBuffer;
 	auto allocateResult = device.allocateCommandBuffers(&commandBufferInfo, &commandBuffer);
-	vk::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
+	vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 	return commandBuffer;
 }
 static vk::Fence createVkFence(vk::Device device, bool isSignaled = false)
@@ -378,7 +378,7 @@ void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lo
 }
 
 //**********************************************************************************************************************
-void CommandBuffer::submit()
+void CommandBuffer::submit(uint64 frameIndex)
 {
 	auto swapchainBuffer = (Swapchain::Buffer*)&Vulkan::swapchain.getCurrentBuffer();
 	vk::CommandBuffer commandBuffer; vk::Queue queue;
@@ -424,6 +424,8 @@ void CommandBuffer::submit()
 	commandBuffer.begin(beginInfo);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
+	this->frameIndex = frameIndex;
+
 	if (type == CommandBufferType::Frame && GraphicsAPI::recordGpuTime)
 	{
 		commandBuffer.resetQueryPool(swapchainBuffer->queryPool, 0, 2);

@@ -155,6 +155,54 @@ ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserialize
 
 	return {};
 }
+
+//**********************************************************************************************************************
+void CameraSystem::animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t)
+{
+	auto cameraComponent = Manager::getInstance()->tryGet<CameraComponent>(entity);
+	if (!cameraComponent)
+		return;
+
+	auto frameA = animationFrames.get(ID<CameraFrame>(a));
+	auto frameB = animationFrames.get(ID<CameraFrame>(b));
+
+	if (frameA->f.base.type == ProjectionType::Perspective)
+	{
+		if (frameA->f.perspective.animateFieldOfView)
+		{
+			cameraComponent->p.perspective.fieldOfView = lerp(
+				frameA->c.perspective.fieldOfView, frameB->c.perspective.fieldOfView, t);
+		}
+		if (frameA->f.perspective.animateAspectRatio)
+		{
+			cameraComponent->p.perspective.aspectRatio = lerp(
+				frameA->c.perspective.aspectRatio, frameB->c.perspective.aspectRatio, t);
+		}
+		if (frameA->f.perspective.animateNearPlane)
+		{
+			cameraComponent->p.perspective.nearPlane = lerp(
+				frameA->c.perspective.nearPlane, frameB->c.perspective.nearPlane, t);
+		}
+	}
+	else
+	{
+		if (frameA->f.orthographic.animateWidth)
+		{
+			cameraComponent->p.orthographic.width = lerp(
+				frameA->c.orthographic.width, frameB->c.orthographic.width, t);
+		}
+		if (frameA->f.orthographic.animateHeight)
+		{
+			cameraComponent->p.orthographic.height = lerp(
+				frameA->c.orthographic.height, frameB->c.orthographic.height, t);
+		}
+		if (frameA->f.orthographic.animateDepth)
+		{
+			cameraComponent->p.orthographic.depth = lerp(
+				frameA->c.orthographic.depth, frameB->c.orthographic.depth, t);
+		}
+	}
+}
 void CameraSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
 	animationFrames.destroy(ID<CameraFrame>(frame));

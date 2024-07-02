@@ -61,7 +61,7 @@ static void renderOrderedEvents()
 	const auto& orderedEvents = Manager::getInstance()->getOrderedEvents();
 	for (auto orderedEvent : orderedEvents)
 	{
-		auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
+		auto flags = (int)ImGuiTreeNodeFlags_None;
 		if (orderedEvent->subscribers.empty())
 			flags |= (int)ImGuiTreeNodeFlags_Leaf;
 
@@ -107,7 +107,7 @@ static void renderUnorderedEvents()
 
 		const auto event = pair.second;
 
-		auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
+		auto flags = (int)ImGuiTreeNodeFlags_None;
 		if (event->subscribers.empty())
 			flags |= (int)ImGuiTreeNodeFlags_Leaf;
 
