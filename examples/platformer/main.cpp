@@ -17,6 +17,7 @@
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/animation.hpp"
 #include "garden/system/2d-controller.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
@@ -29,6 +30,7 @@
 #include "garden/editor/system/graphics.hpp"
 #include "garden/editor/system/transform.hpp"
 #include "garden/editor/system/hierarchy.hpp"
+#include "garden/editor/system/animation.hpp"
 #include "garden/editor/system/render/sprite.hpp"
 #include "garden/editor/system/render/mesh-gizmos.hpp"
 #include "garden/editor/system/render/mesh-selector.hpp"
@@ -59,9 +61,12 @@ void entryPoint()
 	auto manager = new Manager();
 	createAppSystem();
 	manager->createSystem<DoNotDestroySystem>();
+	manager->createSystem<DoNotDuplicateSystem>();
+	manager->createSystem<DoNotSerializeSystem>();
 	manager->createSystem<LogSystem>();
 	manager->createSystem<SettingsSystem>();
 	manager->createSystem<ResourceSystem>();
+	manager->createSystem<AnimationSystem>();
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
 	manager->createSystem<BakedTransformSystem>();
@@ -78,8 +83,9 @@ void entryPoint()
 	manager->createSystem<HierarchyEditorSystem>();
 	manager->createSystem<EcsEditorSystem>();
 	manager->createSystem<LogEditorSystem>();
-	manager->createSystem<TransformEditorSystem>();
+	manager->createSystem<AnimationEditorSystem>();
 	manager->createSystem<CameraEditorSystem>();
+	manager->createSystem<TransformEditorSystem>();
 	manager->createSystem<GraphicsEditorSystem>();
 	manager->createSystem<GpuResourceEditorSystem>();
 	manager->createSystem<InfiniteGridEditorSystem>();

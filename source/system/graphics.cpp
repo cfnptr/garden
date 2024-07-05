@@ -750,29 +750,29 @@ void GraphicsSystem::recreateSwapchain(const SwapchainChanges& changes)
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
-void GraphicsSystem::setDebugName(ID<Buffer> instance, const string& name)
+void GraphicsSystem::setDebugName(ID<Buffer> buffer, const string& name)
 {
-	auto resource = GraphicsAPI::bufferPool.get(instance);
+	auto resource = GraphicsAPI::bufferPool.get(buffer);
 	resource->setDebugName(name);
 }
-void GraphicsSystem::setDebugName(ID<Image> instance, const string& name)
+void GraphicsSystem::setDebugName(ID<Image> image, const string& name)
 {
-	auto resource = GraphicsAPI::imagePool.get(instance);
+	auto resource = GraphicsAPI::imagePool.get(image);
 	resource->setDebugName(name);
 }
-void GraphicsSystem::setDebugName(ID<ImageView> instance, const string& name)
+void GraphicsSystem::setDebugName(ID<ImageView> imageView, const string& name)
 {
-	auto resource = GraphicsAPI::imageViewPool.get(instance);
+	auto resource = GraphicsAPI::imageViewPool.get(imageView);
 	resource->setDebugName(name);
 }
-void GraphicsSystem::setDebugName(ID<Framebuffer> instance, const string& name)
+void GraphicsSystem::setDebugName(ID<Framebuffer> framebuffer, const string& name)
 {
-	auto resource = GraphicsAPI::framebufferPool.get(instance);
+	auto resource = GraphicsAPI::framebufferPool.get(framebuffer);
 	resource->setDebugName(name);
 }
-void GraphicsSystem::setDebugName(ID<DescriptorSet> instance, const string& name)
+void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string& name)
 {
-	auto resource = GraphicsAPI::descriptorSetPool.get(instance);
+	auto resource = GraphicsAPI::descriptorSetPool.get(descriptorSet);
 	resource->setDebugName(name);
 }
 #endif
@@ -825,13 +825,13 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 
 	return buffer;
 }
-void GraphicsSystem::destroy(ID<Buffer> instance)
+void GraphicsSystem::destroy(ID<Buffer> buffer)
 {
-	GraphicsAPI::bufferPool.destroy(instance);
+	GraphicsAPI::bufferPool.destroy(buffer);
 }
-View<Buffer> GraphicsSystem::get(ID<Buffer> instance) const
+View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
 {
-	return GraphicsAPI::bufferPool.get(instance);
+	return GraphicsAPI::bufferPool.get(buffer);
 }
 
 //**********************************************************************************************************************
@@ -1020,22 +1020,22 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 	return image;
 }
-void GraphicsSystem::destroy(ID<Image> instance)
+void GraphicsSystem::destroy(ID<Image> image)
 {
-	if (instance)
+	if (image)
 	{
-		auto imageView = GraphicsAPI::imagePool.get(instance);
+		auto imageView = GraphicsAPI::imagePool.get(image);
 		GARDEN_ASSERT(!imageView->isSwapchain());
 
 		if (imageView->hasDefaultView() && GraphicsAPI::isRunning)
 			GraphicsAPI::imageViewPool.destroy(imageView->getDefaultView());
 	}
 	
-	GraphicsAPI::imagePool.destroy(instance);
+	GraphicsAPI::imagePool.destroy(image);
 }
-View<Image> GraphicsSystem::get(ID<Image> instance) const
+View<Image> GraphicsSystem::get(ID<Image> image) const
 {
-	return GraphicsAPI::imagePool.get(instance);
+	return GraphicsAPI::imagePool.get(image);
 }
 
 //**********************************************************************************************************************
@@ -1066,17 +1066,17 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 	SET_THIS_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
 	return imageView;
 }
-void GraphicsSystem::destroy(ID<ImageView> instance)
+void GraphicsSystem::destroy(ID<ImageView> imageView)
 {
 	#if GARDEN_DEBUG
 	if (instance)
-		GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(instance)->isDefault());
+		GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(imageView)->isDefault());
 	#endif
-	GraphicsAPI::imageViewPool.destroy(instance);
+	GraphicsAPI::imageViewPool.destroy(imageView);
 }
-View<ImageView> GraphicsSystem::get(ID<ImageView> instance) const
+View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
 {
-	return GraphicsAPI::imageViewPool.get(instance);
+	return GraphicsAPI::imageViewPool.get(imageView);
 }
 
 //**********************************************************************************************************************
@@ -1162,36 +1162,36 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 	SET_THIS_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
-void GraphicsSystem::destroy(ID<Framebuffer> instance)
+void GraphicsSystem::destroy(ID<Framebuffer> framebuffer)
 {
 	#if GARDEN_DEBUG
 	if (instance)
-		GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(instance)->isSwapchainFramebuffer());
+		GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(framebuffer)->isSwapchainFramebuffer());
 	#endif
-	GraphicsAPI::framebufferPool.destroy(instance);
+	GraphicsAPI::framebufferPool.destroy(framebuffer);
 }
-View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> instance) const
+View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> framebuffer) const
 {
-	return GraphicsAPI::framebufferPool.get(instance);
+	return GraphicsAPI::framebufferPool.get(framebuffer);
 }
 
 //**********************************************************************************************************************
-void GraphicsSystem::destroy(ID<GraphicsPipeline> instance)
+void GraphicsSystem::destroy(ID<GraphicsPipeline> graphicsPipeline)
 {
-	GraphicsAPI::graphicsPipelinePool.destroy(instance);
+	GraphicsAPI::graphicsPipelinePool.destroy(graphicsPipeline);
 }
-View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> instance) const
+View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> graphicsPipeline) const
 {
-	return GraphicsAPI::graphicsPipelinePool.get(instance);
+	return GraphicsAPI::graphicsPipelinePool.get(graphicsPipeline);
 }
 
-void GraphicsSystem::destroy(ID<ComputePipeline> instance)
+void GraphicsSystem::destroy(ID<ComputePipeline> computePipeline)
 {
-	GraphicsAPI::computePipelinePool.destroy(instance);
+	GraphicsAPI::computePipelinePool.destroy(computePipeline);
 }
-View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> instance) const
+View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) const
 {
-	return GraphicsAPI::computePipelinePool.get(instance);
+	return GraphicsAPI::computePipelinePool.get(computePipeline);
 }
 
 //**********************************************************************************************************************
@@ -1229,13 +1229,13 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	SET_THIS_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
-void GraphicsSystem::destroy(ID<DescriptorSet> instance)
+void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)
 {
-	GraphicsAPI::descriptorSetPool.destroy(instance);
+	GraphicsAPI::descriptorSetPool.destroy(descriptorSet);
 }
-View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> instance) const
+View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const
 {
-	return GraphicsAPI::descriptorSetPool.get(instance);
+	return GraphicsAPI::descriptorSetPool.get(descriptorSet);
 }
 
 //**********************************************************************************************************************

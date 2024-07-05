@@ -890,7 +890,7 @@ void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image, Ref<
 		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();
 		ImGui::BeginDisabled(!gpuResourceSystem || !image);
 		if (ImGui::MenuItem("Show Resource"))
-			gpuResourceSystem->openTab(image);
+			gpuResourceSystem->openTab(ID<Image>(image));
 		ImGui::EndDisabled();
 		ImGui::EndPopup();
 	}

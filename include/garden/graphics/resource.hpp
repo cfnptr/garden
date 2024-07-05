@@ -66,6 +66,11 @@ public:
 	 * @details Graphics resource is loaded and transferred.
 	 */
 	bool isReady() const noexcept { return instance && readyLock < 1; }
+	/**
+	 * @brief Returns true if resource is fully loaded.
+	 * @warning This doesn't takes into account if resource is fully transferred!
+	 */
+	bool isLoaded() const noexcept { return instance; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

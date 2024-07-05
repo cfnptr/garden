@@ -24,6 +24,11 @@ JsonSerializer::JsonSerializer()
 {
 	hierarchy.emplace(&data);
 }
+JsonSerializer::JsonSerializer(const fs::path& filePath)
+{
+	hierarchy.emplace(&data);
+	setFilePath(filePath);
+}
 JsonSerializer::~JsonSerializer()
 {
 	if (!filePath.empty())

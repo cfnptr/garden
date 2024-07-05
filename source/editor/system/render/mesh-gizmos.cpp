@@ -231,8 +231,7 @@ void MeshGizmosEditorSystem::editorRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
-	auto model = transform->calcModel();
-	setTranslation(model, getTranslation(model) - cameraPosition);
+	auto model = transform->calcModel(cameraPosition);
 	
 	auto windowSize = graphicsSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();
@@ -241,10 +240,13 @@ void MeshGizmosEditorSystem::editorRender()
 		inputSystem->getCursorMode() == CursorMode::Default ?
 		quat::identity : extractQuat(extractRotation(model));
 	auto translation = getTranslation(model);
+
 	auto modelScale = 0.25f;
 	auto cameraComponent = manager->tryGet<CameraComponent>(graphicsSystem->camera);
 	if (cameraComponent && cameraComponent->type == ProjectionType::Perspective)
 		modelScale *= length(translation);
+	else
+		modelScale *= (cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x) * 0.5f;
 	model = calcModel(translation, rotation, float3(modelScale));
 
 	vector<GizmosMesh> gizmosMeshes;
@@ -300,8 +302,15 @@ void MeshGizmosEditorSystem::editorRender()
 		cursorPosition += inputSystem->getCursorDelta();
 		ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
 		auto globalNewPos = (float3)(cameraConstants.viewProjInv * float4(ndcPosition, 0.0f, 1.0f));
-		auto cursorTrans = (globalNewPos - globalLastPos); // TODO: fix non-uniform transformation in perspective projection.
 
+		if (dragMode != 1)
+		{
+			auto modelInv = (float3x3)inverse(calcModel(translation, rotation, float3(1.0f)));
+			globalLastPos = modelInv * globalLastPos;
+			globalNewPos = modelInv * globalNewPos;
+		}
+
+		auto cursorTrans = (globalNewPos - globalLastPos); 
 		switch (dragMode)
 		{
 		case 2: cursorTrans.y = cursorTrans.z = 0.0f; break;
@@ -312,8 +321,13 @@ void MeshGizmosEditorSystem::editorRender()
 		if (dragMode != 1 && !inputSystem->getKeyboardState(KeyboardButton::LeftShift) &&
 			!inputSystem->getKeyboardState(KeyboardButton::RightShift))
 		{
-			cursorTrans = (float3x3)rotate(rotation) * cursorTrans;
+			cursorTrans = (float3x3)rotate(transform->rotation) * cursorTrans;
 		}
+
+		// TODO: Fix non-uniform transformation in perspective projection,
+		//       take into account perspective distortion if possible.
+		if (cameraComponent->type == ProjectionType::Perspective)
+			cursorTrans *= length(translation);
 
 		transform->position += cursorTrans;
 

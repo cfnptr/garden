@@ -170,7 +170,7 @@ protected:
 
 	ID<Component> createComponent(ID<Entity> entity) override;
 	void destroyComponent(ID<Component> instance) override;
-	void copyComponent(ID<Component> source, ID<Component> destination) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
 	
 	friend class ecsm::Manager;
 public:

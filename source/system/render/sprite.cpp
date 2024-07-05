@@ -84,8 +84,11 @@ void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderComponent = (SpriteRenderComponent*)meshRenderComponent;
-	auto instance = (InstanceData*)(instanceMap + drawIndex * getInstanceDataSize());
-	instance->mvp = viewProj * model;
+	InstanceData instanceData;
+	instanceData.mvp = viewProj * model;
+	instanceData.colorFactor = spriteRenderComponent->colorFactor;
+	instanceData.sizeOffset = float4(spriteRenderComponent->uvSize, spriteRenderComponent->uvOffset);
+	((InstanceData*)instanceMap)[drawIndex] = instanceData;
 
 	DescriptorSet::Range descriptorSetRange[8]; uint8 descriptorSetCount = 0;
 	setDescriptorSetRange(meshRenderComponent, descriptorSetRange, descriptorSetCount, 8);
@@ -133,6 +136,7 @@ uint64 SpriteRenderSystem::getInstanceDataSize()
 	return sizeof(InstanceData);
 }
 
+//**********************************************************************************************************************
 void SpriteRenderSystem::tryDestroyResources(View<SpriteRenderComponent> spriteComponent)
 {
 	GARDEN_ASSERT(spriteComponent);
@@ -141,4 +145,89 @@ void SpriteRenderSystem::tryDestroyResources(View<SpriteRenderComponent> spriteC
 	resourceSystem->destroyShared(spriteComponent->descriptorSet);
 	spriteComponent->colorMap = {};
 	spriteComponent->descriptorSet = {};
+}
+void SpriteRenderSystem::copyComponent(View<SpriteRenderComponent> sourceComponent,
+	View<SpriteRenderComponent> destinationComponent)
+{
+	destinationComponent->aabb = sourceComponent->aabb;
+	destinationComponent->isEnabled = sourceComponent->isEnabled;
+	destinationComponent->isArray = sourceComponent->isArray;
+	destinationComponent->colorMap = sourceComponent->colorMap;
+	destinationComponent->descriptorSet = sourceComponent->descriptorSet;
+	destinationComponent->colorMapLayer = sourceComponent->colorMapLayer;
+	destinationComponent->colorFactor = sourceComponent->colorFactor;
+	destinationComponent->uvSize = sourceComponent->uvSize;
+	destinationComponent->uvOffset = sourceComponent->uvOffset;
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	destinationComponent->path = sourceComponent->path;
+	#endif
+}
+
+//**********************************************************************************************************************
+void SpriteRenderSystem::serialize(ISerializer& serializer, 
+	ID<Entity> entity, View<SpriteRenderComponent> component)
+{
+	if (component->isArray != false)
+		serializer.write("isArray", component->isArray);
+	if (component->aabb != Aabb::one)
+		serializer.write("aabb", component->aabb);
+	if (component->isEnabled != true)
+		serializer.write("isEnabled", component->isEnabled);
+	if (component->colorMapLayer != 0.0f)
+		serializer.write("colorMapLayer", component->colorMapLayer);
+	if (component->colorFactor != float4(1.0f))
+		serializer.write("colorFactor", component->colorFactor);
+	if (component->uvSize != float2(1.0f))
+		serializer.write("uvSize", component->uvSize);
+	if (component->uvOffset != float2(0.0f))
+		serializer.write("uvOffset", component->uvOffset);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	serializer.write("path", component->path);
+	#endif
+}
+void SpriteRenderSystem::deserialize(IDeserializer& deserializer, 
+	ID<Entity> entity, View<SpriteRenderComponent> component)
+{
+	deserializer.read("isArray", component->isArray);
+	deserializer.read("aabb", component->aabb);
+	deserializer.read("isEnabled", component->isEnabled);
+	deserializer.read("colorMapLayer", component->colorMapLayer);
+	deserializer.read("colorFactor", component->colorFactor);
+	deserializer.read("uvSize", component->uvSize);
+	deserializer.read("uvOffset", component->uvOffset);
+	deserializer.read("path", component->path);
+
+	if (component->path.empty())
+		component->path = "missing";
+	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
+	if (component->isArray)
+		flags |= ImageLoadFlags::LoadArray;
+	component->colorMap = ResourceSystem::getInstance()->loadImage(component->path,
+		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
+}
+
+//**********************************************************************************************************************
+void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<SpriteRenderFrame> frame)
+{
+	auto frameView = View<SpriteRenderFrame>(frame);
+	if (frameView->animateIsEnabled)
+		serializer.write("isEnabled", frameView->isEnabled);
+	if (frameView->animateColorFactor)
+		serializer.write("colorFactor", frameView->colorFactor);
+	if (frameView->animateUvSize)
+		serializer.write("uvSize", frameView->uvSize);
+	if (frameView->animateUvOffset)
+		serializer.write("uvOffset", frameView->uvOffset);
+	if (frameView->animateColorMapLayer)
+		serializer.write("colorMapLayer", frameView->colorMapLayer);
+}
+void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame)
+{
+	frame.animateIsEnabled = deserializer.read("isEnabled", frame.isEnabled);
+	frame.animateColorFactor = deserializer.read("colorFactor", frame.colorFactor);
+	frame.animateUvSize = deserializer.read("uvSize", frame.uvSize);
+	frame.animateUvOffset = deserializer.read("uvOffset", frame.uvOffset);
+	frame.animateColorMapLayer = deserializer.read("colorMapLayer", frame.colorMapLayer);
 }

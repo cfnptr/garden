@@ -24,7 +24,7 @@ void DoNotSerializeSystem::destroyComponent(ID<Component> instance)
 { 
 	components.destroy(ID<DoNotSerializeComponent>(instance));
 }
-void DoNotSerializeSystem::copyComponent(ID<Component> source, ID<Component> destination)
+void DoNotSerializeSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	return;
 }

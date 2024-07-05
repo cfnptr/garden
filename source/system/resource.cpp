@@ -1092,7 +1092,9 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto result = sharedImages.find(path);
 		if (result != sharedImages.end())
 		{
-			loadedImageArray.push_back(result->second);
+			auto imageView = GraphicsSystem::getInstance()->get(result->second);
+			if (imageView->isLoaded())
+				loadedImageArray.push_back(ID<Image>(result->second));
 			return result->second;
 		}
 	}
@@ -1175,19 +1177,19 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 			Buffer::Usage::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
-		SET_RESOURCE_DEBUG_NAME(GraphicsSystem::getInstance(), staging,
-			"buffer.staging.loadedImage" + to_string(*staging));
+		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging, "buffer.staging.loadedImage" + to_string(*staging));
 		auto stagingView = GraphicsAPI::bufferPool.get(staging);
 
 		copyLoadedImageData(pixelArrays, stagingView->getMap(),
 			realSize, imageSize, formatBinarySize, flags);
 		stagingView->flush();
 
-		GraphicsSystem::getInstance()->startRecording(CommandBufferType::TransferOnly);
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		Image::copy(staging, image);
-		GraphicsSystem::getInstance()->stopRecording();
+		graphicsSystem->stopRecording();
 		GraphicsAPI::bufferPool.destroy(staging);
 		loadedImageArray.push_back(image);
 	}
@@ -1215,7 +1217,8 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 		break;
 	}
 
-	GraphicsSystem::getInstance()->destroy(image);
+	if (image.isLastRef())
+		GraphicsSystem::getInstance()->destroy(ID<Image>(image));
 }
 
 //**********************************************************************************************************************
@@ -1232,7 +1235,8 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 		break;
 	}
 
-	GraphicsSystem::getInstance()->destroy(buffer);
+	if (buffer.isLastRef())
+		GraphicsSystem::getInstance()->destroy(ID<Buffer>(buffer));
 }
 
 //**********************************************************************************************************************
@@ -1292,7 +1296,8 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 		break;
 	}
 
-	GraphicsSystem::getInstance()->destroy(descriptorSet);
+	if (descriptorSet.isLastRef())
+		GraphicsSystem::getInstance()->destroy(ID<DescriptorSet>(descriptorSet));
 }
 
 //**********************************************************************************************************************
@@ -1996,10 +2001,26 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 						if (deserializer.beginChild(componentName))
 						{
 							auto animationFrame = animatableSystem->deserializeAnimation(deserializer);
-							deserializer.endChild();
 							if (!animationFrame)
+							{
+								deserializer.endChild();
 								continue;
+							}
+
+							auto animationFrameView = animatableSystem->getAnimation(animationFrame);
+							deserializer.read("coeff", animationFrameView->coeff);
+
+							string funcType;
+							if (deserializer.read("funcType", funcType))
+							{
+								if (funcType == "pow")
+									animationFrameView->funcType = AnimationFunc::Pow;
+								else if (funcType == "gain")
+									animationFrameView->funcType = AnimationFunc::Gain;
+							}
+
 							animatables.emplace(pair.second, animationFrame);
+							deserializer.endChild();
 						}
 					}
 					deserializer.endArrayElement();
@@ -2043,7 +2064,8 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 		break;
 	}
 
-	AnimationSystem::getInstance()->destroy(animation);
+	if (animation.isLastRef())
+		AnimationSystem::getInstance()->destroy(ID<Animation>(animation));
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
@@ -2087,13 +2109,22 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 		{
 			auto system = animatable.first;
 			const auto& componentName = system->getComponentName();
-			auto animatableSystem = dynamic_cast<IAnimatable*>(system);
-			if (componentName.empty() || !animatableSystem)
+			if (componentName.empty())
 				continue;
 
 			serializer.beginArrayElement();
-			serializer.beginChild("componentName");
-			animatableSystem->serializeAnimation(serializer, animatable.second);
+			serializer.beginChild(componentName);
+
+			auto animatableSystem = dynamic_cast<IAnimatable*>(system);
+			auto frameView = animatableSystem->getAnimation(animatable.second);
+			if (frameView->funcType == AnimationFunc::Pow)
+				serializer.write("funcType", "pow");
+			else if (frameView->funcType == AnimationFunc::Gain)
+				serializer.write("funcType", "gain");
+			serializer.write("coeff", frameView->coeff);
+			
+			animatableSystem->serializeAnimation(serializer, frameView);
+
 			serializer.endChild();
 			serializer.endArrayElement();
 		}

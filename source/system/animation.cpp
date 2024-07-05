@@ -103,7 +103,8 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 		for (const auto& pairA : animatablesA)
 		{
 			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
-			animatableSystem->animateAsync(entity, pairA.second, pairA.second, 0.0f);
+			auto frameViewA = animatableSystem->getAnimation(pairA.second);
+			animatableSystem->animateAsync(entity, frameViewA, frameViewA, 0.0f);
 		}
 	}
 	else
@@ -115,9 +116,17 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 		for (const auto& pairA : animatablesA)
 		{
 			auto animationFrameB = animatablesB.at(pairA.first);
-			auto t = gain((currentFrame - frameA) / (frameB - frameA), 1.5f);
+			auto t = (currentFrame - frameA) / (frameB - frameA);
 			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
-			animatableSystem->animateAsync(entity, pairA.second, animationFrameB, t);
+			auto frameViewA = animatableSystem->getAnimation(pairA.second);
+			auto frameViewB = animatableSystem->getAnimation(animationFrameB);
+
+			if (frameViewA->funcType == AnimationFunc::Pow)
+				t = std::pow(t, frameViewA->coeff);
+			else if (frameViewA->funcType == AnimationFunc::Gain)
+				t = gain(t, frameViewA->coeff);
+
+			animatableSystem->animateAsync(entity, frameViewA, frameViewB, t);
 		}
 	}
 
@@ -171,10 +180,10 @@ void AnimationSystem::destroyComponent(ID<Component> instance)
 	tryDestroyResources(component);
 	components.destroy(ID<AnimationComponent>(instance));
 }
-void AnimationSystem::copyComponent(ID<Component> source, ID<Component> destination)
+void AnimationSystem::copyComponent(View<Component> source, View<Component> destination)
 {
-	const auto sourceView = components.get(ID<AnimationComponent>(source));
-	auto destinationView = components.get(ID<AnimationComponent>(destination));
+	const auto sourceView = View<AnimationComponent>(source);
+	auto destinationView = View<AnimationComponent>(destination);
 	destinationView->animations = sourceView->animations;
 	destinationView->active = sourceView->active;
 	destinationView->frame = sourceView->frame;
@@ -184,8 +193,8 @@ void AnimationSystem::copyComponent(ID<Component> source, ID<Component> destinat
 //**********************************************************************************************************************
 void AnimationSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	auto animationComponent = View<AnimationComponent>(component);
-	const auto& animations = animationComponent->animations;
+	auto componentView = View<AnimationComponent>(component);
+	const auto& animations = componentView->animations;
 
 	if (!animations.empty())
 	{
@@ -199,17 +208,17 @@ void AnimationSystem::serialize(ISerializer& serializer, ID<Entity> entity, View
 		serializer.endChild();
 	}
 	
-	if (!animationComponent->active.empty())
-		serializer.write("active", animationComponent->active);
-	if (!animationComponent->frame != 0.0f)
-		serializer.write("frame", animationComponent->frame);
-	if (animationComponent->isPlaying != true)
-		serializer.write("isPlaying", animationComponent->isPlaying);
+	if (!componentView->active.empty())
+		serializer.write("active", componentView->active);
+	if (!componentView->frame != 0.0f)
+		serializer.write("frame", componentView->frame);
+	if (componentView->isPlaying != true)
+		serializer.write("isPlaying", componentView->isPlaying);
 }
 void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto animationComponent = View<AnimationComponent>(component);
-	auto& animations = animationComponent->animations;
+	auto componentView = View<AnimationComponent>(component);
+	auto& animations = componentView->animations;
 
 	if (deserializer.beginChild("animations"))
 	{
@@ -233,9 +242,9 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 		deserializer.endChild();
 	}
 
-	deserializer.read("active", animationComponent->active);
-	deserializer.read("frame", animationComponent->frame);
-	deserializer.read("isPlaying", animationComponent->isPlaying);
+	deserializer.read("active", componentView->active);
+	deserializer.read("frame", componentView->frame);
+	deserializer.read("isPlaying", componentView->isPlaying);
 }
 
 //**********************************************************************************************************************

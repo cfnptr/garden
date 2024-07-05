@@ -89,9 +89,19 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 
 		ImGui::BeginDisabled(manager->has<DoNotDuplicateComponent>(renderEntity));
 		if (ImGui::MenuItem("Duplicate Entity"))
-			manager->duplicate(renderEntity);
+		{
+			auto duplicate = manager->duplicate(renderEntity);
+			auto duplicateTransform = manager->get<TransformComponent>(duplicate);
+			auto entityTransform = manager->get<TransformComponent>(renderEntity);
+			duplicateTransform->setParent(entityTransform->getParent());
+		}
 		if (ImGui::MenuItem("Duplicate Entities"))
-			TransformSystem::getInstance()->duplicateRecursive(renderEntity);
+		{
+			auto duplicate = TransformSystem::getInstance()->duplicateRecursive(renderEntity);
+			auto duplicateTransform = manager->get<TransformComponent>(duplicate);
+			auto entityTransform = manager->get<TransformComponent>(renderEntity);
+			duplicateTransform->setParent(entityTransform->getParent());
+		}
 		ImGui::EndDisabled();
 
 		ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(renderEntity));

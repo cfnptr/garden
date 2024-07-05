@@ -32,7 +32,7 @@ class JsonSerializer final : public ISerializer
 
 public:
 	JsonSerializer();
-	JsonSerializer(const fs::path& filePath) { setFilePath(filePath); }
+	JsonSerializer(const fs::path& filePath);
 	~JsonSerializer() final;
 
 	void setFilePath(const fs::path& filePath);
