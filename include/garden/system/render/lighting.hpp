@@ -111,7 +111,7 @@ class LightingRenderSystem final : public System
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 
 	friend class ecsm::Manager;
 public:

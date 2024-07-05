@@ -607,7 +607,8 @@ void LightingRenderSystem::hdrRender()
 	
 	if (!lightingComponent->descriptorSet)
 	{
-		auto descriptorSet = createDescriptorSet(lightingComponent->sh, lightingComponent->specular);
+		auto descriptorSet = createDescriptorSet( // TODO: maybe create shared DS?
+			ID<Buffer>(lightingComponent->sh), ID<Image>(lightingComponent->specular));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
 		lightingComponent->descriptorSet = descriptorSet;
 	}
@@ -624,7 +625,7 @@ void LightingRenderSystem::hdrRender()
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	DescriptorSet::Range descriptorSetRange[2];
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDescriptorSet);
-	descriptorSetRange[1] = DescriptorSet::Range(lightingComponent->descriptorSet);
+	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(lightingComponent->descriptorSet));
 
 	if (deferredSystem->useAsyncRecording())
 	{
@@ -716,10 +717,10 @@ void LightingRenderSystem::destroyComponent(ID<Component> instance)
 	resourceSystem->destroyShared(component->descriptorSet);
 	components.destroy(ID<LightingRenderComponent>(instance));
 }
-void LightingRenderSystem::copyComponent(ID<Component> source, ID<Component> destination)
+void LightingRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {
-	const auto sourceView = components.get(ID<LightingRenderComponent>(source));
-	auto destinationView = components.get(ID<LightingRenderComponent>(destination));
+	const auto sourceView = View<LightingRenderComponent>(source);
+	auto destinationView = View<LightingRenderComponent>(destination);
 	destinationView->cubemap = sourceView->cubemap;
 	destinationView->sh = sourceView->sh;
 	destinationView->specular = sourceView->specular;
@@ -762,8 +763,10 @@ void LightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	auto lightingOccupancy = components.getOccupancy();
 	for (uint32 i = 0; i < lightingOccupancy; i++)
 	{
-		graphicsSystem->destroy(lightingComponents[i].descriptorSet);
-		lightingComponents[i].descriptorSet = {};
+		auto& lightingComponent = lightingComponents[i];
+		if (lightingComponent.descriptorSet.isLastRef())
+			graphicsSystem->destroy(ID<DescriptorSet>(lightingComponent.descriptorSet));
+		lightingComponent.descriptorSet = {};
 	}
 
 	if (this->hasShadowBuffer != useShadowBuffer)
@@ -1152,7 +1155,8 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	sh = Ref<Buffer>(generateIblSH(graphicsSystem, threadSystem, mips[0], cubemapSize, strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh, "buffer.sh." + path.generic_string());
 
-	specular = Ref<Image>(generateIblSpecular(graphicsSystem, threadSystem, iblSpecularPipeline, cubemap, strategy));
+	specular = Ref<Image>(generateIblSpecular(graphicsSystem, threadSystem, 
+		iblSpecularPipeline, ID<Image>(cubemap), strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, specular, "image.cubemap.specular." + path.generic_string());
 	
 	graphicsSystem->stopRecording();

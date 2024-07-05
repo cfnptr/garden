@@ -111,14 +111,9 @@ void MeshSelectorEditorSystem::editorRender()
 				float4x4 model;
 				auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
 				if (transform)
-				{
-					model = transform->calcModel();
-					setTranslation(model, getTranslation(model) - cameraPosition);
-				}
+					model = transform->calcModel(cameraPosition);
 				else
-				{
 					model = float4x4::identity;
-				}
 
 				auto modelInverse = inverse(model);
 				auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
@@ -158,8 +153,7 @@ void MeshSelectorEditorSystem::editorRender()
 		if (transform)
 		{
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-			auto model = transform->calcModel();
-			setTranslation(model, getTranslation(model) - cameraPosition);
+			auto model = transform->calcModel(cameraPosition);
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{

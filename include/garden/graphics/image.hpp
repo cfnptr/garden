@@ -261,7 +261,7 @@ public:
 	 * @brief Returns true if image has default view instance
 	 * @note Default image view instance is created on a first getter call.
 	 */
-	bool hasDefaultView() const noexcept { return defaultView; }
+	bool hasDefaultView() const noexcept { return (bool)defaultView; }
 
 	#if GARDEN_DEBUG
 	/**

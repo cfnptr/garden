@@ -282,38 +282,82 @@ public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/*******************************************************************************************************************
 	 * @brief Sets buffer debug name. (visible in GPU profiler)
-	 * @param instance target buffer
-	 * @param[in] name debug name
+	 * @param buffer target buffer instance
+	 * @param[in] name object debug name
 	 */
-	void setDebugName(ID<Buffer> instance, const string& name);
+	void setDebugName(ID<Buffer> buffer, const string& name);
+	/**
+	 * @brief Sets buffer debug name. (visible in GPU profiler)
+	 * @param buffer target buffer instance
+	 * @param[in] name object debug name
+	 */
+	void setDebugName(const Ref<Buffer>& buffer, const string& name) { setDebugName(ID<Buffer>(buffer), name); }
+
 	/**
 	 * @brief Sets image debug name. (visible in GPU profiler)
-	 * @param instance target image
-	 * @param[in] name debug name
+	 * @param image target image instance
+	 * @param[in] name object debug name
 	 */
-	void setDebugName(ID<Image> instance, const string& name);
+	void setDebugName(ID<Image> image, const string& name);
 	/**
 	 * @brief Sets image debug name. (visible in GPU profiler)
-	 * @param instance target image
-	 * @param[in] name debug name
+	 * @param image target image instance
+	 * @param[in] name object debug name
 	 */
-	void setDebugName(ID<ImageView> instance, const string& name);
+	void setDebugName(const Ref<Image>& image, const string& name) { setDebugName(ID<Image>(image), name); }
+
+	/**
+	 * @brief Sets image debug name. (visible in GPU profiler)
+	 * @param imageView target image view instance
+	 * @param[in] name object debug name
+	 */
+	void setDebugName(ID<ImageView> imageView, const string& name);
+	/**
+	 * @brief Sets image debug name. (visible in GPU profiler)
+	 * @param imageView target image view instance
+	 * @param[in] name object debug name
+	 */
+	void setDebugName(const Ref<ImageView>& imageView, const string& name)
+	{
+		setDebugName(ID<ImageView>(imageView), name);
+	}
+
 	/**
 	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
-	 * @param instance target framebuffer
-	 * @param[in] name debug name
+	 * @param framebuffer target framebuffer instance
+	 * @param[in] name object debug name
 	 */
-	void setDebugName(ID<Framebuffer> instance, const string& name);
+	void setDebugName(ID<Framebuffer> framebuffer, const string& name);
+	/**
+	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
+	 * @param instance target framebuffer instance
+	 * @param[in] name object debug name
+	 */
+	void setDebugName(const Ref<Framebuffer>& framebuffer, const string& name)
+	{
+		setDebugName(ID<Framebuffer>(framebuffer), name);
+	}
+
 	/**
 	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
-	 * @param instance target descriptor set
-	 * @param[in] name debug name
+	 * @param descriptorSet target descriptor set instance
+	 * @param[in] name  objectdebug name
 	 */
-	void setDebugName(ID<DescriptorSet> instance, const string& name);
+	void setDebugName(ID<DescriptorSet> descriptorSet, const string& name);
+	/**
+	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
+	 * @param descriptorSet target descriptor set instance
+	 * @param[in] name  objectdebug name
+	 */
+	void setDebugName(const Ref<DescriptorSet>& descriptorSet, const string& name)
+	{
+		setDebugName(ID<DescriptorSet>(descriptorSet), name);
+	}
+
 	/**
 	 * @brief Sets GPU resource debug name. (visible in GPU profiler)
-	 * @param resource target resource
-	 * @param[in] name debug name
+	 * @param resource target resource instance
+	 * @param[in] name object debug name
 	 */
 	#define SET_RESOURCE_DEBUG_NAME(graphicsSystem, resource, name) graphicsSystem->setDebugName(resource, name)
 	#else
@@ -411,14 +455,20 @@ public:
 
 	/**
 	 * @brief Destroys buffer instance.
-	 * @param instance target buffer instance or null
+	 * @param buffer target buffer instance or null
 	 */
-	void destroy(ID<Buffer> instance);
+	void destroy(ID<Buffer> buffer);
+
 	/**
 	 * @brief Returns buffer data accessor.
-	 * @param instance target buffer instance
+	 * @param buffer target buffer instance
 	 */
-	View<Buffer> get(ID<Buffer> instance) const;
+	View<Buffer> get(ID<Buffer> buffer) const;
+	/**
+	 * @brief Returns buffer data accessor.
+	 * @param buffer target buffer instance
+	 */
+	View<Buffer> get(const Ref<Buffer>& buffer) const { return get(ID<Buffer>(buffer)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new image (texture) instance.
@@ -498,14 +548,20 @@ public:
 	
 	/**
 	 * @brief Destroys image instance.
-	 * @param instance target image instance or null
+	 * @param image target image instance or null
 	 */
-	void destroy(ID<Image> instance);
+	void destroy(ID<Image> image);
+
 	/**
 	 * @brief Returns image data accessor.
-	 * @param instance target image instance
+	 * @param image target image instance
 	 */
-	View<Image> get(ID<Image> instance) const;
+	View<Image> get(ID<Image> image) const;
+	/**
+	 * @brief Returns image data accessor.
+	 * @param image target image instance
+	 */
+	View<Image> get(const Ref<Image>& image) const { return get(ID<Image>(image)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new image (texture) view instance.
@@ -523,14 +579,20 @@ public:
 
 	/**
 	 * @brief Destroys image view instance.
-	 * @param instance target image view instance or null
+	 * @param imageView target image view instance or null
 	 */
-	void destroy(ID<ImageView> instance);
+	void destroy(ID<ImageView> imageView);
+
 	/**
 	 * @brief Returns image view data accessor.
-	 * @param instance target image view instance
+	 * @param imageView target image view instance
 	 */
-	View<ImageView> get(ID<ImageView> instance) const;
+	View<ImageView> get(ID<ImageView> imageView) const;
+	/**
+	 * @brief Returns image view data accessor.
+	 * @param imageView target image view instance
+	 */
+	View<ImageView> get(const Ref<ImageView>& imageView) const { return get(ID<ImageView>(imageView)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new framebuffer instance.
@@ -552,36 +614,60 @@ public:
 
 	/**
 	 * @brief Destroys framebuffer instance.
-	 * @param instance target framebuffer instance or null
+	 * @param framebuffer target framebuffer instance or null
 	 */
-	void destroy(ID<Framebuffer> instance);
+	void destroy(ID<Framebuffer> framebuffer);
+
 	/**
 	 * @brief Returns framebuffer data accessor.
-	 * @param instance target framebuffer instance
+	 * @param framebuffer target framebuffer instance
 	 */
-	View<Framebuffer> get(ID<Framebuffer> instance) const;
+	View<Framebuffer> get(ID<Framebuffer> framebuffer) const;
+	/**
+	 * @brief Returns framebuffer data accessor.
+	 * @param framebuffer target framebuffer instance
+	 */
+	View<Framebuffer> get(const Ref<Framebuffer>& framebuffer) const { return get(framebuffer); }
 
 	/*******************************************************************************************************************
 	 * @brief Destroys graphics pipeline instance.
-	 * @param instance target graphics pipeline instance or null
+	 * @param graphicsPipeline target graphics pipeline instance or null
 	 */
-	void destroy(ID<GraphicsPipeline> instance);
+	void destroy(ID<GraphicsPipeline> graphicsPipeline);
+
 	/**
 	 * @brief Returns graphics pipeline data accessor.
-	 * @param instance target graphics pipeline instance
+	 * @param graphicsPipeline target graphics pipeline instance
 	 */
-	View<GraphicsPipeline> get(ID<GraphicsPipeline> instance) const;
+	View<GraphicsPipeline> get(ID<GraphicsPipeline> graphicsPipeline) const;
+	/**
+	 * @brief Returns graphics pipeline data accessor.
+	 * @param graphicsPipeline target graphics pipeline instance
+	 */
+	View<GraphicsPipeline> get(const Ref<GraphicsPipeline>& graphicsPipeline) const
+	{
+		return get(ID<GraphicsPipeline>(graphicsPipeline));
+	}
 
 	/**
 	 * @brief Destroys compute pipeline instance.
-	 * @param instance target compute pipeline instance or null
+	 * @param computePipeline target compute pipeline instance or null
 	 */
-	void destroy(ID<ComputePipeline> instance);
+	void destroy(ID<ComputePipeline> computePipeline);
+
 	/**
 	 * @brief Returns compute pipeline data accessor.
-	 * @param instance target compute pipeline instance
+	 * @param computePipeline target compute pipeline instance
 	 */
-	View<ComputePipeline> get(ID<ComputePipeline> instance) const;
+	View<ComputePipeline> get(ID<ComputePipeline> computePipeline) const;
+	/**
+	 * @brief Returns compute pipeline data accessor.
+	 * @param computePipeline target compute pipeline instance
+	 */
+	View<ComputePipeline> get(const Ref<ComputePipeline>& computePipeline) const
+	{
+		return get(ID<ComputePipeline>(computePipeline));
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Create a new graphics descriptor set instance.
@@ -604,14 +690,23 @@ public:
 
 	/**
 	 * @brief Destroys descriptor set instance.
-	 * @param instance target descriptor set instance or null
+	 * @param descriptorSet target descriptor set instance or null
 	 */
-	void destroy(ID<DescriptorSet> instance);
+	void destroy(ID<DescriptorSet> descriptorSet);
+
 	/**
 	 * @brief Returns descriptor set data accessor.
-	 * @param instance target descriptor set instance
+	 * @param descriptorSet target descriptor set instance
 	 */
-	View<DescriptorSet> get(ID<DescriptorSet> instance) const;
+	View<DescriptorSet> get(ID<DescriptorSet> descriptorSet) const;
+	/**
+	 * @brief Returns descriptor set data accessor.
+	 * @param descriptorSet target descriptor set instance
+	 */
+	View<DescriptorSet> get(const Ref<DescriptorSet>& descriptorSet) const
+	{
+		return get(ID<DescriptorSet>(descriptorSet));
+	}
 
 	/**
 	 * @brief Returns graphics system instance.

@@ -33,8 +33,8 @@ enum class AnimationFunc : uint8
 
 struct AnimationFrame
 {
-	float coeff = 0.0f;
-	AnimationFunc funType = {}; // TODO: read these values in the animation system, add getAnimation function.
+	float coeff = 1.0f;
+	AnimationFunc funcType = {};
 
 	virtual ~AnimationFrame() { }
 };
@@ -44,9 +44,10 @@ using Animatables = map<System*, ID<AnimationFrame>>;
 class IAnimatable
 {
 public:
-	virtual void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) = 0;
+	virtual void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) = 0;
 	virtual ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) = 0;
-	virtual void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) = 0;
+	virtual View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) = 0;
+	virtual void animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t) = 0;
 	virtual void destroyAnimation(ID<AnimationFrame> frame) = 0;
 };
 

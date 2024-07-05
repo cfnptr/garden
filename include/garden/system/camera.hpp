@@ -171,15 +171,16 @@ class CameraSystem final : public System, public ISerializable, public IAnimatab
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 	
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 
-	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) final;
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
+	void animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 
 	friend class ecsm::Manager;
 public:

@@ -124,6 +124,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		}
 
 		ImGui::DragFloat3("Scale", &transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
+		transformComponent->scale = max(transformComponent->scale, float3(0.0001f));
+
 		if (ImGui::BeginPopupContextItem("scale"))
 		{
 			if (ImGui::MenuItem("Reset Default"))

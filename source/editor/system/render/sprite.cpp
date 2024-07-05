@@ -87,13 +87,20 @@ static void renderSpriteComponent(SpriteRenderComponent* spriteComponent, type_i
 	ImGui::BeginDisabled(!spriteComponent->colorMap && manager->has<TransformComponent>(spriteComponent->getEntity()));
 	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
 	{
+		auto transformComponent = manager->get<TransformComponent>(spriteComponent->getEntity());
 		auto colorMapView = GraphicsSystem::getInstance()->get(spriteComponent->colorMap);
 		auto imageSize = colorMapView->getSize();
-		auto transformComponent = manager->get<TransformComponent>(spriteComponent->getEntity());
+
 		if (imageSize.x > imageSize.y)
-			transformComponent->scale.x = transformComponent->scale.y * ((float)imageSize.x / imageSize.y);
+		{
+			transformComponent->scale.x = spriteComponent->uvSize.x *
+				transformComponent->scale.y * ((float)imageSize.x / imageSize.y);
+		}
 		else
-			transformComponent->scale.y = transformComponent->scale.x * ((float)imageSize.y / imageSize.x);
+		{
+			transformComponent->scale.y = spriteComponent->uvSize.y * 
+				transformComponent->scale.x * ((float)imageSize.y / imageSize.x);
+		}
 	}
 	ImGui::EndDisabled();
 

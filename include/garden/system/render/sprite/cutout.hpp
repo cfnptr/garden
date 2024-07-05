@@ -36,13 +36,6 @@ private:
 
 class CutoutSpriteSystem final : public SpriteRenderSystem
 {
-public:
-	struct CutoutInstanceData : public InstanceData
-	{
-		float4 colorFactor = float4(0.0f);
-		float4 sizeOffset = float4(0.0f);
-	};
-private:
 	LinearPool<CutoutSpriteComponent, false> components;
 	LinearPool<CutoutSpriteFrame, false> animationFrames;
 	bool deferredBuffer = false;
@@ -61,16 +54,17 @@ private:
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 	ID<GraphicsPipeline> createPipeline() final;
 
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
 
-	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) final;
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
+	void animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	
 	friend class ecsm::Manager;
 public:
@@ -81,7 +75,6 @@ public:
 	MeshRenderType getMeshRenderType() const final;
 	const LinearPool<MeshRenderComponent>& getMeshComponentPool() const final;
 	psize getMeshComponentSize() const final;
-	uint64 getInstanceDataSize() final;
 };
 
 } // namespace garden

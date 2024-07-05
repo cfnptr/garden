@@ -127,6 +127,20 @@ public:
 	void drawResource(ID<GraphicsPipeline> graphicsPipeline);
 	void drawResource(ID<ComputePipeline> computePipeline);
 
+	void drawResource(const Ref<Buffer>& buffer) { drawResource(ID<Buffer>(buffer)); }
+	void drawResource(const Ref<Image>& image) { drawResource(ID<Image>(image)); }
+	void drawResource(const Ref<ImageView>& imageView) { drawResource(ID<ImageView>(imageView)); }
+	void drawResource(const Ref<Framebuffer>& framebuffer) { drawResource(ID<Framebuffer>(framebuffer)); }
+	void drawResource(const Ref<DescriptorSet>& descriptorSet) { drawResource(ID<DescriptorSet>(descriptorSet)); }
+	void drawResource(const Ref<GraphicsPipeline>& graphicsPipeline)
+	{
+		drawResource(ID<GraphicsPipeline>(graphicsPipeline));
+	}
+	void drawResource(const Ref<ComputePipeline>& computePipeline)
+	{
+		drawResource(ID<ComputePipeline>(computePipeline));
+	}
+
 	/**
 	 * @brief Returns editor render system instance.
 	 */

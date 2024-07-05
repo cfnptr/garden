@@ -70,6 +70,8 @@ public:
 	struct InstanceData
 	{
 		float4x4 mvp = float4x4(0.0f);
+		float4 colorFactor = float4(0.0f);
+		float4 sizeOffset = float4(0.0f);
 	};
 protected:
 	ID<ImageView> defaultImageView = {};
@@ -88,7 +90,14 @@ protected:
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
 public:
 	uint64 getInstanceDataSize() override;
-	void tryDestroyResources(View<SpriteRenderComponent> spriteComponent);
+
+	static void tryDestroyResources(View<SpriteRenderComponent> spriteComponent);
+	static void copyComponent(View<SpriteRenderComponent> sourceComponent,
+		View<SpriteRenderComponent> destinationComponent);
+	static void serialize(ISerializer& serializer, ID<Entity> entity, View<SpriteRenderComponent> component);
+	static void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<SpriteRenderComponent> component);
+	static void serializeAnimation(ISerializer& serializer, View<SpriteRenderFrame> frame);
+	static void deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame);
 };
 
 } // namespace garden

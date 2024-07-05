@@ -83,7 +83,7 @@ private:
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
@@ -100,7 +100,7 @@ public:
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void tryDestroyResources(View<AnimationComponent> animationComponent);
+	static void tryDestroyResources(View<AnimationComponent> animationComponent);
 
 	/**
 	 * @brief Returns animation system instance.

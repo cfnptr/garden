@@ -73,9 +73,11 @@ public:
 	/**
 	 * @brief Calculates entity model matrix from it position, scale and rotation.
 	 * @note It also takes into account parent and grandparents transforms.
+	 * 
+	 * @param cameraPosition rendering camera position or zero
 	 * @return Object model 4x4 float matrix.
 	 */
-	float4x4 calcModel() const noexcept;
+	float4x4 calcModel(const float3& cameraPosition = float3(0.0f)) const noexcept;
 
 	/**
 	 * @brief Sets this entity parent object.
@@ -174,16 +176,17 @@ private:
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 	
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
 
-	void serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t) final;
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
+	void animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	
 	friend class ecsm::Manager;
 public:
@@ -218,7 +221,7 @@ public:
 	 * @brief Creates a duplicate of entity with all descendants.
 	 * @param entity target entity to duplicate from
 	 */
-	void duplicateRecursive(ID<Entity> entity);
+	ID<Entity> duplicateRecursive(ID<Entity> entity);
 
 	/**
 	 * @brief Returns transform system instance.
@@ -246,7 +249,7 @@ protected:
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	View<Component> getComponent(ID<Component> instance) final;
-	void copyComponent(ID<Component> source, ID<Component> destination) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;

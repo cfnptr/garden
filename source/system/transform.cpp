@@ -65,7 +65,7 @@ REMOVED_FROM_PARENT:
 }
 
 //**********************************************************************************************************************
-float4x4 TransformComponent::calcModel() const noexcept
+float4x4 TransformComponent::calcModel(const float3& cameraPosition) const noexcept
 {
 	auto manager = Manager::getInstance();
 	auto model = ::calcModel(position, rotation, this->scale);
@@ -79,7 +79,8 @@ float4x4 TransformComponent::calcModel() const noexcept
 		model = parentModel * model;
 		nextParent = nextTransform->parent;
 	}
-		
+
+	setTranslation(model, getTranslation(model) - cameraPosition);
 	return model;
 }
 void TransformComponent::setParent(ID<Entity> parent)
@@ -344,10 +345,10 @@ void TransformSystem::destroyComponent(ID<Component> instance)
 	#endif
 	components.destroy(ID<TransformComponent>(instance));
 }
-void TransformSystem::copyComponent(ID<Component> source, ID<Component> destination)
+void TransformSystem::copyComponent(View<Component> source, View<Component> destination)
 {
-	const auto sourceView = components.get(ID<TransformComponent>(source));
-	auto destinationView = components.get(ID<TransformComponent>(destination));
+	const auto sourceView = View<TransformComponent>(source);
+	auto destinationView = View<TransformComponent>(destination);
 	destinationView->position = sourceView->position;
 	destinationView->scale = sourceView->scale;
 	destinationView->rotation = sourceView->rotation;
@@ -359,29 +360,29 @@ void TransformSystem::copyComponent(ID<Component> source, ID<Component> destinat
 //**********************************************************************************************************************
 void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	auto transformComponent = View<TransformComponent>(component);
-	serializer.write("uid", *transformComponent->entity);
+	auto componentView = View<TransformComponent>(component);
+	serializer.write("uid", *componentView->entity);
 
-	if (transformComponent->position != float3(0.0f))
-		serializer.write("position", transformComponent->position);
-	if (transformComponent->rotation != quat::identity)
-		serializer.write("rotation", transformComponent->rotation);
-	if (transformComponent->scale != float3(1.0f))
-		serializer.write("scale", transformComponent->scale);
+	if (componentView->position != float3(0.0f))
+		serializer.write("position", componentView->position);
+	if (componentView->rotation != quat::identity)
+		serializer.write("rotation", componentView->rotation);
+	if (componentView->scale != float3(1.0f))
+		serializer.write("scale", componentView->scale);
 
 	auto manager = Manager::getInstance();
-	auto parent = transformComponent->parent;
+	auto parent = componentView->parent;
 	if (parent && !manager->has<DoNotSerializeComponent>(parent))
 		serializer.write("parent", *parent);
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	if (!transformComponent->debugName.empty())
-		serializer.write("debugName", transformComponent->debugName);
+	if (!componentView->debugName.empty())
+		serializer.write("debugName", componentView->debugName);
 	#endif
 }
 void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto transformComponent = View<TransformComponent>(component);
+	auto componentView = View<TransformComponent>(component);
 
 	uint32 uid = 0;
 	deserializer.read("uid", uid);
@@ -389,16 +390,16 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	auto result = deserializeEntities.emplace(uid, entity);
 	GARDEN_ASSERT(result.second); // Detected several entities with the same uid
 	
-	deserializer.read("position", transformComponent->position);
-	deserializer.read("rotation", transformComponent->rotation);
-	deserializer.read("scale", transformComponent->scale);
+	deserializer.read("position", componentView->position);
+	deserializer.read("rotation", componentView->rotation);
+	deserializer.read("scale", componentView->scale);
 
 	uint32 parent = 0;
 	if (deserializer.read("parent", parent))
 		deserializeParents.emplace_back(make_pair(entity, parent));
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	deserializer.read("debugName", transformComponent->debugName);
+	deserializer.read("debugName", componentView->debugName);
 	#endif
 }
 void TransformSystem::postDeserialize(IDeserializer& deserializer)
@@ -419,43 +420,51 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 }
 
 //**********************************************************************************************************************
-void TransformSystem::serializeAnimation(ISerializer& serializer, ID<AnimationFrame> frame)
+void TransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	auto transformFrame = animationFrames.get(ID<TransformFrame>(frame));
-	if (transformFrame->animatePosition)
-		serializer.write("position", transformFrame->position);
-	if (transformFrame->animateScale)
-		serializer.write("scale", transformFrame->scale);
-	if (transformFrame->animateRotation)
-		serializer.write("rotation", transformFrame->rotation);
+	auto frameView = View<TransformFrame>(frame);
+	if (frameView->animatePosition)
+		serializer.write("position", frameView->position);
+	if (frameView->animateScale)
+		serializer.write("scale", frameView->scale);
+	if (frameView->animateRotation)
+		serializer.write("rotation", frameView->rotation);
 }
 ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserializer)
 {
-	TransformFrame transformFrame;
-	transformFrame.animatePosition = deserializer.read("position", transformFrame.position);
-	transformFrame.animateScale = deserializer.read("scale", transformFrame.scale);
-	transformFrame.animateRotation = deserializer.read("rotation", transformFrame.rotation);
+	TransformFrame frame;
+	frame.animatePosition = deserializer.read("position", frame.position);
+	frame.animateScale = deserializer.read("scale", frame.scale);
+	frame.animateRotation = deserializer.read("rotation", frame.rotation);
 	
-	if (transformFrame.animatePosition || transformFrame.animateScale || transformFrame.animateRotation)
+	if (frame.animatePosition || frame.animateScale || frame.animateRotation)
 	{
-		auto frame = animationFrames.create();
-		auto frameView = animationFrames.get(frame);
-		**frameView = transformFrame;
-		return ID<AnimationFrame>(frame);
+		auto instance = animationFrames.create();
+		auto frameView = animationFrames.get(instance);
+		**frameView = frame;
+		return ID<AnimationFrame>(instance);
 	}
 
 	return {};
 }
+View<AnimationFrame> TransformSystem::getAnimation(ID<AnimationFrame> frame)
+{
+	return View<AnimationFrame>(animationFrames.get(ID<TransformFrame>(frame)));
+}
+void TransformSystem::destroyAnimation(ID<AnimationFrame> frame)
+{
+	animationFrames.destroy(ID<TransformFrame>(frame));
+}
 
 //**********************************************************************************************************************
-void TransformSystem::animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<AnimationFrame> b, float t)
+void TransformSystem::animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto transformComponent = Manager::getInstance()->tryGet<TransformComponent>(entity);
 	if (!transformComponent)
 		return;
 
-	auto frameA = animationFrames.get(ID<TransformFrame>(a));
-	auto frameB = animationFrames.get(ID<TransformFrame>(b));
+	auto frameA = View<TransformFrame>(a);
+	auto frameB = View<TransformFrame>(b);
 
 	if (frameA->animatePosition)
 		transformComponent->position = lerp(frameA->position, frameB->position, t);
@@ -463,10 +472,6 @@ void TransformSystem::animateAsync(ID<Entity> entity, ID<AnimationFrame> a, ID<A
 		transformComponent->scale = lerp(frameA->scale, frameB->scale, t);
 	if (frameA->animateRotation)
 		transformComponent->rotation = slerp(frameA->rotation, frameB->rotation, t);
-}
-void TransformSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	animationFrames.destroy(ID<TransformFrame>(frame));
 }
 
 //**********************************************************************************************************************
@@ -525,17 +530,16 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 	
 	manager->destroy(entity);
 }
-void TransformSystem::duplicateRecursive(ID<Entity> entity)
+ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 {
 	auto manager = Manager::getInstance();
-	if (manager->has<DoNotDuplicateComponent>(entity))
-		return;
+	GARDEN_ASSERT(!manager->has<DoNotDuplicateComponent>(entity));
 
-	auto duplicate = manager->duplicate(entity);
+	auto entityDuplicate = manager->duplicate(entity);
 	auto entityComponent = manager->get<TransformComponent>(entity);
-	auto duplicateComponent = manager->get<TransformComponent>(duplicate);
+	auto duplicateComponent = manager->get<TransformComponent>(entityDuplicate);
 	duplicateComponent->setParent(entityComponent->getParent());
-	entityDuplicateStack.push_back(make_pair(entity, duplicate));
+	entityDuplicateStack.push_back(make_pair(entity, entityDuplicate));
 
 	while (!entityDuplicateStack.empty())
 	{
@@ -552,12 +556,14 @@ void TransformSystem::duplicateRecursive(ID<Entity> entity)
 		for (uint32 i = 0; i < childCount; i++)
 		{
 			auto child = childs[i];
-			duplicate = manager->duplicate(child);
+			auto duplicate = manager->duplicate(child);
 			duplicateComponent = manager->get<TransformComponent>(duplicate);
 			duplicateComponent->setParent(pair.second);
 			entityDuplicateStack.push_back(make_pair(child, duplicate));
 		}
 	}
+
+	return entityDuplicate;
 }
 
 //**********************************************************************************************************************
@@ -569,7 +575,7 @@ void BakedTransformSystem::destroyComponent(ID<Component> instance)
 {
 	components.destroy(ID<BakedTransformComponent>(instance));
 }
-void BakedTransformSystem::copyComponent(ID<Component> source, ID<Component> destination)
+void BakedTransformSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	return;
 }

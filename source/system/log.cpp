@@ -33,8 +33,18 @@ LogSystem* LogSystem::instance = nullptr;
 LogSystem::LogSystem(LogLevel level, double rotationTime)
 {
 	auto appInfoSystem = AppInfoSystem::getInstance();
-	this->logger = logy::Logger(appInfoSystem->getAppDataName(),
-		level, GARDEN_DEBUG ? true : false, rotationTime);
+
+	try
+	{
+		this->logger = logy::Logger(appInfoSystem->getAppDataName(),
+			level, GARDEN_DEBUG ? true : false, rotationTime);
+	}
+	catch (exception& e)
+	{
+		auto tmpPath = fs::path(std::tmpnam(nullptr));
+		this->logger = logy::Logger(appInfoSystem->getAppDataName() / tmpPath.filename(),
+			level, GARDEN_DEBUG ? true : false, rotationTime);
+	}
 
 	mpmt::Thread::setName("MAIN");
 	info("Started logging system. (UTC+0)");

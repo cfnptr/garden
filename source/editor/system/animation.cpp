@@ -87,7 +87,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::Indent();
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto animationSystem = AnimationSystem::getInstance();
+		auto resourceSystem = ResourceSystem::getInstance();
 		auto& animations = animationComponent->getAnimations();
 
 		for (auto i = animations.begin(); i != animations.end(); i++)
@@ -95,7 +95,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::InputText("Path", (string*)&i->first, ImGuiInputTextFlags_ReadOnly); ImGui::SameLine();
 			if (ImGui::Button(" - "))
 			{
-				animationSystem->destroy(i->second);
+				resourceSystem->destroyShared(i->second);
 				i = animationComponent->eraseAnimation(i);
 			}
 		}

@@ -131,9 +131,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 		{
 			if (!transform->isActiveWithAncestors())
 				continue;
-
-			model = transform->calcModel();
-			setTranslation(model, getTranslation(model) - cameraPosition);
+			model = transform->calcModel(cameraPosition);
 		}
 		else
 		{
@@ -184,9 +182,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 		{
 			if (!transform->isActiveWithAncestors())
 				continue;
-
-			model = transform->calcModel();
-			setTranslation(model, getTranslation(model) - cameraPosition);
+			model = transform->calcModel(cameraPosition);
 		}
 		else
 		{

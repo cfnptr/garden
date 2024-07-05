@@ -110,6 +110,8 @@ void Controller2DSystem::update()
 			cameraComponent->p.orthographic.width.y - cameraComponent->p.orthographic.width.x,
 			cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x);
 		auto offset = cursorDelta / (windowSize / othoSize);
+		offset = (float2x2)transformComponent->calcModel() * offset;
+
 		transformComponent->position.x -= offset.x;
 		transformComponent->position.y += offset.y;
 	}
