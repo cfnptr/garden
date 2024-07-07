@@ -29,6 +29,7 @@
 #include "ImfInputFile.h"
 #include "ImfFrameBuffer.h"
 #include "webp/decode.h"
+#include "png.h"
 #include "stb_image.h"
 
 #include <fstream>
@@ -40,6 +41,17 @@
 
 using namespace garden;
 using namespace math::ibl;
+
+static const uint8 imageFileExtCount = 9;
+static const char* imageFileExts[] =
+{
+	".webp", ".png", ".exr", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga"
+};
+static const ImageFileType imageFileTypes[] =
+{
+	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Exr, ImageFileType::Jpg, ImageFileType::Jpg,
+	ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, ImageFileType::Tga
+};
 
 //**********************************************************************************************************************
 namespace
@@ -58,19 +70,21 @@ namespace
 	{
 		uint64 version = 0;
 		fs::path shaderPath;
-		fs::path resourcesPath;
-		fs::path cachesPath;
 		map<string, Pipeline::SpecConstValue> specConstValues;
 		map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
 		uint32 maxBindlessCount = 0;
+		#if !GARDEN_PACK_RESOURCES
+		fs::path resourcesPath;
+		fs::path cachesPath;
+		#endif
 	};
 	struct GraphicsPipelineLoadData final : public PipelineLoadData
 	{
-		Image::Format depthStencilFormat = {};
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
 		map<uint8, GraphicsPipeline::State> stateOverrides;
 		ID<GraphicsPipeline> instance = {};
+		Image::Format depthStencilFormat = {};
 		uint8 subpassIndex = 0;
 		bool useAsyncRecording = false;
 	};
@@ -123,13 +137,14 @@ ResourceSystem::ResourceSystem()
 	SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES
+	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
+	#endif
+	#if GARDEN_EDITOR
 	auto appInfoSystem = AppInfoSystem::getInstance();
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
 	appVersion = appInfoSystem->getVersion();
-	#else
-	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
 	#endif
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
@@ -490,6 +505,8 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 {
 	// TODO: store images as bc compressed for polygon geometry. KTX 2.0
 	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+
 	vector<uint8> dataBuffer;
 	ImageFileType fileType = ImageFileType::Count; int32 fileCount = 0;
 	auto imagePath = fs::path("images") / path;
@@ -499,41 +516,39 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	else
 		threadIndex++;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES
+	uint64 itemIndex = 0;
+	for (uint8 i = 0; i < imageFileExtCount; i++)
+	{
+		imagePath.replace_extension(imageFileExts[i]);
+		if (packReader.getItemIndex(imagePath, itemIndex))
+			fileType = imageFileTypes[i];
+	}
+
+	if (fileType == ImageFileType::Count)
+	{
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Image does not exist. (path: " + path.generic_string() + ")");
+		loadMissingImage(data, size, format);
+		return;
+	}
+
+	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
+	#else
 	auto filePath = appCachesPath / imagePath; filePath += ".exr";
 	fileCount += fs::exists(filePath) ? 1 : 0;
 
 	if (fileCount == 0)
 	{
-		imagePath += ".webp";
-		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		for (uint8 i = 0; i < imageFileExtCount; i++)
 		{
-			fileCount++; fileType = ImageFileType::Webp;
-		}
-		imagePath.replace_extension(".exr");
-		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-		{
-			fileCount++; fileType = ImageFileType::Exr;
-		}
-		imagePath.replace_extension(".png");
-		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-		{
-			fileCount++; fileType = ImageFileType::Png;
-		}
-		imagePath.replace_extension(".jpg");
-		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-		{
-			fileCount++; fileType = ImageFileType::Jpg;
-		}
-		imagePath.replace_extension(".jpeg");
-		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-		{
-			fileCount++; fileType = ImageFileType::Jpg;
-		}
-		imagePath.replace_extension(".hdr");
-		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-		{
-			fileCount++; fileType = ImageFileType::Hdr;
+			imagePath.replace_extension(imageFileExts[i]);
+			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			{
+				fileType = imageFileTypes[i];
+				fileCount++;
+			}
 		}
 		
 		if (fileCount > 1)
@@ -546,35 +561,15 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		}
 		else if (fileCount == 0)
 		{
-			imagePath = fs::path("models") / path; imagePath += ".webp";
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+			imagePath = fs::path("models") / path;
+			for (uint8 i = 0; i < imageFileExtCount; i++)
 			{
-				fileCount++; fileType = ImageFileType::Webp;
-			}
-			imagePath.replace_extension(".exr");
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-			{
-				fileCount++; fileType = ImageFileType::Exr;
-			}
-			imagePath.replace_extension(".png");
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-			{
-				fileCount++; fileType = ImageFileType::Png;
-			}
-			imagePath.replace_extension(".jpg");
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-			{
-				fileCount++; fileType = ImageFileType::Jpg;
-			}
-			imagePath.replace_extension(".jpeg");
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-			{
-				fileCount++; fileType = ImageFileType::Jpg;
-			}
-			imagePath.replace_extension(".hdr");
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-			{
-				fileCount++; fileType = ImageFileType::Hdr;
+				imagePath.replace_extension(imageFileExts[i]);
+				if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+				{
+					fileType = imageFileTypes[i];
+					fileCount++; 
+				}
 			}
 
 			if (fileCount != 1)
@@ -598,36 +593,6 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	}
 
 	File::loadBinary(filePath, dataBuffer);
-	#else
-	imagePath += ".webp"; uint64 itemIndex = 0;
-	if (packReader.getItemIndex(imagePath, itemIndex))
-		fileType = ImageFile::Webp;
-	imagePath.replace_extension(".exr");
-	if (packReader.getItemIndex(imagePath, itemIndex))
-		fileType = ImageFile::Exr;
-	imagePath.replace_extension(".png");
-	if (packReader.getItemIndex(imagePath, itemIndex))
-		fileType = ImageFile::Png;
-	imagePath.replace_extension(".jpg");
-	if (packReader.getItemIndex(imagePath, itemIndex))
-		fileType = ImageFile::Jpg;
-	imagePath.replace_extension(".jpeg");
-	if (packReader.getItemIndex(imagePath, itemIndex))
-		fileType = ImageFile::Jpg;
-	imagePath.replace_extension(".hdr");
-	if (packReader.getItemIndex(imagePath, itemIndex))
-		fileType = ImageFile::Hdr;
-
-	if (fileType == ImageFile::Count)
-	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Image does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(data, size, format);
-		return;
-	}
-
-	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#endif
 
 	loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, data, size, format);
@@ -639,7 +604,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	#endif
 }
 
-#if GARDEN_DEBUG
+#if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
 static void writeExrImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
 {
@@ -667,10 +632,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	vector<uint8>& front, int2& size, Image::Format& format, int32 threadIndex) const
 {
 	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+
 	vector<uint8> equiData; int2 equiSize;
 	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 
-	#if GARDEN_DEBUG
+	#if !GARDEN_PACK_RESOURCES
 	auto filePath = appCachesPath / "images" / path;
 	auto cacheFilePath = filePath.generic_string();
 	
@@ -906,6 +873,22 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		if (!decodeResult)
 			throw runtime_error("Invalid WebP image data.");
 	}
+	else if (fileType == ImageFileType::Png)
+	{
+		png_image image;
+		memset(&image, 0, (sizeof image));
+		image.version = PNG_IMAGE_VERSION;
+
+		if (!png_image_begin_read_from_memory(&image, data, dataSize))
+			throw runtime_error("Invalid PNG image info.");
+
+		image.format = PNG_FORMAT_RGBA;
+		imageSize = int2(image.width, image.height);
+		pixels.resize(PNG_IMAGE_SIZE(image));
+
+		if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
+			throw runtime_error("Invalid PNG image data.");
+	}
 	else if (fileType == ImageFileType::Exr)
 	{
 		ExrMemoryStream memoryStream(data, (uint64)dataSize);
@@ -935,12 +918,13 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 			pixelData[i] = min(pixel, float4(65504.0f));
 		}
 	}
-	else if (fileType == ImageFileType::Png || fileType == ImageFileType::Jpg)
+	else if (fileType == ImageFileType::Jpg || fileType == ImageFileType::Bmp ||
+		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga)
 	{
 		auto pixelData = (uint8*)stbi_load_from_memory(data,
 			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
 		if (!pixelData)
-			throw runtime_error("Invalid PNG/JPG image data.");
+			throw runtime_error("Invalid JPG image data.");
 		pixels.resize(sizeof(Color) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
@@ -957,8 +941,15 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 	}
 	else abort();
 
-	format = fileType == ImageFileType::Webp || fileType == ImageFileType::Png || fileType == ImageFileType::Jpg ?
-		Image::Format::SrgbR8G8B8A8 : Image::Format::SfloatR32G32B32A32;
+	switch (fileType)
+	{
+	case garden::ImageFileType::Exr:
+		format = Image::Format::SfloatR32G32B32A32;
+		break;
+	default:
+		format = Image::Format::SrgbR8G8B8A8;
+		break;
+	}
 }
 
 //**********************************************************************************************************************
@@ -1303,7 +1294,7 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 //**********************************************************************************************************************
 static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 {
-	#if GARDEN_DEBUG
+	#if !GARDEN_PACK_RESOURCES
 	auto vertexPath = "shaders" / data.shaderPath; vertexPath += ".vert";
 	auto fragmentPath = "shaders" / data.shaderPath; fragmentPath += ".frag";
 	auto headerPath = "shaders" / data.shaderPath; headerPath += ".gslh";
@@ -1458,8 +1449,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	{
 		auto data = new GraphicsPipelineLoadData();
 		data->shaderPath = path;
-		data->resourcesPath = appResourcesPath;
-		data->cachesPath = appCachesPath;
 		data->version = version;
 		data->renderPass = renderPass;
 		data->subpassIndex = subpassIndex;
@@ -1472,14 +1461,16 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->depthStencilFormat = depthStencilFormat;
 		data->subpassIndex = subpassIndex;
 		data->useAsyncRecording = useAsyncRecording;
+		#if !GARDEN_PACK_RESOURCES
+		data->resourcesPath = appResourcesPath;
+		data->cachesPath = appCachesPath;
+		#endif
 		
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
 			Compiler::GraphicsData pipelineData;
 			pipelineData.shaderPath = std::move(data->shaderPath);
-			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachesPath = std::move(data->cachesPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
 			pipelineData.pipelineVersion = data->version;
@@ -1489,10 +1480,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.renderPass = data->renderPass;
 			pipelineData.subpassIndex = data->subpassIndex;
 			pipelineData.depthStencilFormat = data->depthStencilFormat;
-			
-			#if !GARDEN_DEBUG
+			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
 			pipelineData.threadIndex = task.getThreadIndex();
+			#else
+			pipelineData.resourcesPath = std::move(data->resourcesPath);
+			pipelineData.cachesPath = std::move(data->cachesPath);
 			#endif
 
 			if (!loadOrCompileGraphics(pipelineData))
@@ -1519,8 +1512,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		vector<uint8> vertexCode, fragmentCode;
 		Compiler::GraphicsData pipelineData;
 		pipelineData.shaderPath = path;
-		pipelineData.resourcesPath = appResourcesPath;
-		pipelineData.cachesPath = appCachesPath;
 		pipelineData.specConstValues = specConstValues;
 		pipelineData.samplerStateOverrides = samplerStateOverrides;
 		pipelineData.pipelineVersion = version;
@@ -1530,10 +1521,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.renderPass = renderPass;
 		pipelineData.subpassIndex = subpassIndex;
 		pipelineData.depthStencilFormat = depthStencilFormat;
-
-		#if !GARDEN_DEBUG
+		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
 		pipelineData.threadIndex = -1;
+		#else
+		pipelineData.resourcesPath = appResourcesPath;
+		pipelineData.cachesPath = appCachesPath;
 		#endif
 
 		if (!loadOrCompileGraphics(pipelineData)) abort();
@@ -1555,7 +1548,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 //**********************************************************************************************************************
 static bool loadOrCompileCompute(Compiler::ComputeData& data)
 {
-	#if GARDEN_DEBUG
+	#if !GARDEN_PACK_RESOURCES
 	auto computePath = "shaders" / data.shaderPath; computePath += ".comp";
 
 	fs::path computeInputPath;
@@ -1644,29 +1637,31 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		auto data = new ComputePipelineLoadData();
 		data->version = version;
 		data->shaderPath = path;
-		data->resourcesPath = appResourcesPath;
-		data->cachesPath = appCachesPath;
 		data->specConstValues = specConstValues;
 		data->samplerStateOverrides = samplerStateOverrides;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
 		data->useAsyncRecording = useAsyncRecording;
+		#if !GARDEN_PACK_RESOURCES
+		data->resourcesPath = appResourcesPath;
+		data->cachesPath = appCachesPath;
+		#endif
 
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
 			Compiler::ComputeData pipelineData;
 			pipelineData.shaderPath = std::move(data->shaderPath);
-			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachesPath = std::move(data->cachesPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
-
-			#if !GARDEN_DEBUG
+			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
 			pipelineData.threadIndex = task.getThreadIndex();
+			#else
+			pipelineData.resourcesPath = std::move(data->resourcesPath);
+			pipelineData.cachesPath = std::move(data->cachesPath);
 			#endif
 			
 			if (!loadOrCompileCompute(pipelineData))
@@ -1691,16 +1686,16 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	{
 		Compiler::ComputeData pipelineData;
 		pipelineData.shaderPath = path;
-		pipelineData.resourcesPath = appResourcesPath;
-		pipelineData.cachesPath = appCachesPath;
 		pipelineData.specConstValues = specConstValues;
 		pipelineData.samplerStateOverrides = samplerStateOverrides;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
-
-		#if !GARDEN_DEBUG
+		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
 		pipelineData.threadIndex = -1;
+		#else
+		pipelineData.resourcesPath = appResourcesPath;
+		pipelineData.cachesPath = appCachesPath;
 		#endif
 		
 		if (!loadOrCompileCompute(pipelineData)) abort();
@@ -1723,8 +1718,11 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 void ResourceSystem::loadScene(const fs::path& path)
 {
 	GARDEN_ASSERT(!path.empty());
+	JsonDeserializer deserializer;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES
+	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
+	#else
 	fs::path filePath = "scenes" / path; filePath += ".scene"; fs::path scenePath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, scenePath))
 	{
@@ -1742,7 +1740,6 @@ void ResourceSystem::loadScene(const fs::path& path)
 		return;
 	}
 
-	JsonDeserializer deserializer;
 	try
 	{
 		deserializer.load(scenePath);
@@ -1758,8 +1755,6 @@ void ResourceSystem::loadScene(const fs::path& path)
 		}
 		return;
 	}
-	#else
-	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
 	#endif
 
 	auto manager = Manager::getInstance();
@@ -1845,7 +1840,7 @@ void ResourceSystem::clearScene()
 	#endif
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
+#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 //**********************************************************************************************************************
 void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 {
@@ -1942,7 +1937,10 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 			return result->second;
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES
+	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
+	JsonDeserializer deserializer;
+	#else
 	fs::path filePath = "animations" / path; filePath += ".anim"; fs::path animationPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, animationPath))
 	{
@@ -1964,8 +1962,6 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	std::stringstream buffer;
 	buffer << fileStream.rdbuf();
 	JsonDeserializer deserializer(string_view(buffer.str()));
-	#else
-	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
 	#endif
 
 	auto animationSystem = AnimationSystem::getInstance();
@@ -2068,7 +2064,7 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 		AnimationSystem::getInstance()->destroy(ID<Animation>(animation));
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
+#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 //**********************************************************************************************************************
 void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animation)
 {

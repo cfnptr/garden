@@ -430,15 +430,10 @@ static bool renderInspectorWindowPopup(const map<type_index,
 		if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
 		{
 			if (manager->has<TransformComponent>(selectedEntity))
-			{
 				TransformSystem::getInstance()->destroyRecursive(selectedEntity);
-			}
 			else
-			{
 				manager->destroy(selectedEntity);
-				selectedEntity = {};
-			}
-
+			selectedEntity = {};
 			ImGui::EndPopup();
 			return false;
 		}
@@ -579,6 +574,16 @@ void EditorRenderSystem::showEntityInspector()
 		}
 	}
 	ImGui::End();
+
+	if (InputSystem::getInstance()->isKeyboardPressed(KeyboardButton::Delete) &&
+		!Manager::getInstance()->has<DoNotDestroyComponent>(selectedEntity))
+	{
+		if (Manager::getInstance()->has<TransformComponent>(selectedEntity))
+			TransformSystem::getInstance()->destroyRecursive(selectedEntity);
+		else
+			Manager::getInstance()->destroy(selectedEntity);
+		selectedEntity = {};
+	}
 
 	if (!showEntityInspector)
 		selectedEntity = {};

@@ -56,6 +56,11 @@ struct Hash128
 	 * @param[in] state hash state (or null)
 	 */
 	Hash128(const void* data, psize size, State state = nullptr);
+	/**
+	 * @brief Creates a new hash from the base64 encoded string. (non-cryptographic)
+	 * @param base64 target base64 encoded string
+	 */
+	Hash128(string_view base64);
 
 	/**
 	 * @brief Creates a new hash of the vector data. (non-cryptographic)
@@ -85,22 +90,33 @@ struct Hash128
 		return memcmp(this, &h, sizeof(uint64) * 2) < 0; }
 	
 	/**
-	 * @brief Returns Base64 encoded hash string.
+	 * @brief Returns hash Base64 encoded string.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */
-	string toString() const;
+	string toBase64() const noexcept;
+	/**
+	 * @brief Decodes hash from the Base64 string if valid.
+	 * @details See the https://en.wikipedia.org/wiki/Base64
+	 */
+	bool fromBase64(string_view base64) noexcept;
+
+	/**
+	 * @brief Generates a new random hash. (non-cryptographic)
+	 * @details It uses mt19937 generator. (pseudo-random)
+	 */
+	static Hash128 generateRandom(uint64 seed) noexcept;
 
 	/**
 	 * @brief Allocates a new hash state. (non-cryptographic)
 	 * @details You can reuse the same state to improve hashing speed.
 	 * @return The new hash state instance.
 	 */
-	static State createState();
+	static State createState() noexcept;
 	/**
 	 * @brief Deallocates hash state.
 	 * @param[in] state target hash state
 	 */
-	static void destroyState(State state);
+	static void destroyState(State state) noexcept;
 
 	// TODO: add sequential data hashing using state.
 };

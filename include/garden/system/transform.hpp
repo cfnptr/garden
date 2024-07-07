@@ -152,7 +152,6 @@ struct TransformFrame final : public AnimationFrame
  */
 class TransformSystem final : public System, public ISerializable, public IAnimatable
 {
-private:
 	using EntityParentPair = pair<ID<Entity>, uint32>;
 	using EntityDuplicatePair = pair<ID<Entity>, ID<Entity>>;
 
@@ -177,6 +176,10 @@ private:
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	View<Component> getComponent(ID<Component> instance) final;
+	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
@@ -185,28 +188,12 @@ private:
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
 	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component,
+		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
-	void animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	
 	friend class ecsm::Manager;
 public:
-	/**
-	 * @brief Returns specific component name of the system.
-	 */
-	const string& getComponentName() const final;
-	/**
-	 * @brief Returns specific component typeid() of the system.
-	 */
-	type_index getComponentType() const final;
-	/**
-	 * @brief Returns specific component @ref View.
-	 */
-	View<Component> getComponent(ID<Component> instance) final;
-	/**
-	 * @brief Actually destroys components.
-	 * @details Components are not destroyed immediately, only after the dispose call.
-	 */
-	void disposeComponents() final;
 	/**
 	 * @brief Returns transform component pool.
 	 */
@@ -250,15 +237,14 @@ protected:
 	void destroyComponent(ID<Component> instance) final;
 	View<Component> getComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
-public:
-	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	void disposeComponents() final;
 };
 
 } // namespace garden

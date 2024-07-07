@@ -13,12 +13,10 @@
 // limitations under the License.
 
 #include "garden/system/transform.hpp"
+#include "garden/system/log.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/transform.hpp"
-#endif
-#if GARDEN_DEBUG
-#include "garden/system/log.hpp"
 #endif
 
 using namespace ecsm;
@@ -333,9 +331,7 @@ TransformSystem::~TransformSystem()
 //**********************************************************************************************************************
 ID<Component> TransformSystem::createComponent(ID<Entity> entity)
 {
-	auto component = components.create();
-	auto componentView = components.get(component);
-	return ID<Component>(component);
+	return ID<Component>(components.create());
 }
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
@@ -355,6 +351,24 @@ void TransformSystem::copyComponent(View<Component> source, View<Component> dest
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	destinationView->debugName = sourceView->debugName;
 	#endif
+}
+const string& TransformSystem::getComponentName() const
+{
+	static const string name = "Transform";
+	return name;
+}
+type_index TransformSystem::getComponentType() const
+{
+	return typeid(TransformComponent);
+}
+View<Component> TransformSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<TransformComponent>(instance)));
+}
+void TransformSystem::disposeComponents()
+{
+	components.dispose();
+	animationFrames.dispose();
 }
 
 //**********************************************************************************************************************
@@ -388,7 +402,12 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	deserializer.read("uid", uid);
 
 	auto result = deserializeEntities.emplace(uid, entity);
-	GARDEN_ASSERT(result.second); // Detected several entities with the same uid
+	if (!result.second)
+	{
+		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		if (logSystem)
+			logSystem->error("Deserialized entity with already existing uid. (uid: " + to_string(uid) + ")");
+	}
 	
 	deserializer.read("position", componentView->position);
 	deserializer.read("rotation", componentView->rotation);
@@ -409,7 +428,14 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 	{
 		auto parent = deserializeEntities.find(pair.second);
 		if (parent == deserializeEntities.end())
-			continue;
+		{
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+			if (logSystem)
+			{
+				logSystem->error("Deserialized entity parent does not exist. ("
+					"parentUID: " + to_string(pair.second) + ")");
+			}
+		}
 
 		auto transformComponent = manager->get<TransformComponent>(pair.first);
 		transformComponent->setParent(parent->second);
@@ -451,49 +477,27 @@ View<AnimationFrame> TransformSystem::getAnimation(ID<AnimationFrame> frame)
 {
 	return View<AnimationFrame>(animationFrames.get(ID<TransformFrame>(frame)));
 }
+
+//**********************************************************************************************************************
+void TransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
+{
+	auto componentView = View<TransformComponent>(component);
+	auto frameA = View<TransformFrame>(a);
+	auto frameB = View<TransformFrame>(b);
+
+	if (frameA->animatePosition)
+		componentView->position = lerp(frameA->position, frameB->position, t);
+	if (frameA->animateScale)
+		componentView->scale = lerp(frameA->scale, frameB->scale, t);
+	if (frameA->animateRotation)
+		componentView->rotation = slerp(frameA->rotation, frameB->rotation, t);
+}
 void TransformSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
 	animationFrames.destroy(ID<TransformFrame>(frame));
 }
 
 //**********************************************************************************************************************
-void TransformSystem::animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t)
-{
-	auto transformComponent = Manager::getInstance()->tryGet<TransformComponent>(entity);
-	if (!transformComponent)
-		return;
-
-	auto frameA = View<TransformFrame>(a);
-	auto frameB = View<TransformFrame>(b);
-
-	if (frameA->animatePosition)
-		transformComponent->position = lerp(frameA->position, frameB->position, t);
-	if (frameA->animateScale)
-		transformComponent->scale = lerp(frameA->scale, frameB->scale, t);
-	if (frameA->animateRotation)
-		transformComponent->rotation = slerp(frameA->rotation, frameB->rotation, t);
-}
-
-//**********************************************************************************************************************
-const string& TransformSystem::getComponentName() const
-{
-	static const string name = "Transform";
-	return name;
-}
-type_index TransformSystem::getComponentType() const
-{
-	return typeid(TransformComponent);
-}
-View<Component> TransformSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<TransformComponent>(instance)));
-}
-void TransformSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
-}
-
 void TransformSystem::destroyRecursive(ID<Entity> entity)
 {
 	auto manager = Manager::getInstance();
@@ -579,16 +583,6 @@ void BakedTransformSystem::copyComponent(View<Component> source, View<Component>
 {
 	return;
 }
-
-void BakedTransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
-{
-	return;
-}
-void BakedTransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
-{
-	return;
-}
-
 const string& BakedTransformSystem::getComponentName() const
 {
 	static const string name = "Baked Transform";
@@ -605,4 +599,13 @@ View<Component> BakedTransformSystem::getComponent(ID<Component> instance)
 void BakedTransformSystem::disposeComponents()
 {
 	components.dispose();
+}
+
+void BakedTransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+{
+	return;
+}
+void BakedTransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+{
+	return;
 }

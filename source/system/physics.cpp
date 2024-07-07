@@ -87,7 +87,6 @@ public:
 
 class GardenPxSimulation final : public PxSimulationEventCallback
 {
-private:
 	PhysicsSystem* physicsSystem = nullptr;
 public:
 	GardenPxSimulation(PhysicsSystem* _physicsSystem = nullptr) :
@@ -927,10 +926,7 @@ type_index PhysicsSystem::getComponentType() const
 ID<Component> PhysicsSystem::createComponent(ID<Entity> entity)
 {
 	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
-	auto component = components.create();
-	auto componentView = components.get(component);
-	componentView->physicsSystem = this;
-	return ID<Component>(component);
+	return ID<Component>(components.create());
 }
 void PhysicsSystem::destroyComponent(ID<Component> instance)
 {

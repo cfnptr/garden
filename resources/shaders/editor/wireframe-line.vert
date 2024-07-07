@@ -22,9 +22,9 @@ uniform pushConstants
 
 void main()
 {
-	float4 lines[2];
-	lines[0] = pc.startPoint;
-	lines[1] = pc.endPoint;
+	float3 lines[2];
+	lines[0] = pc.startPoint.xyz;
+	lines[1] = pc.endPoint.xyz;
 
 	float3 vertex = lines[gl.vertexIndex];
 	gl.position = pc.mvp * float4(vertex, 1.0f);

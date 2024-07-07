@@ -51,21 +51,22 @@ void AnimationSystem::init()
 }
 
 //**********************************************************************************************************************
-static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent& component)
+static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent& animationComponent)
 {
-	auto entity = component.getEntity();
-	if (!entity || !component.isPlaying && !component.active.empty())
+	auto entity = animationComponent.getEntity();
+	if (!entity || !animationComponent.isPlaying && !animationComponent.active.empty())
 		return;
 
-	auto transformComponent = Manager::getInstance()->tryGet<TransformComponent>(entity);
+	auto manager = Manager::getInstance();
+	auto transformComponent = manager->tryGet<TransformComponent>(entity);
 	if (transformComponent)
 	{
 		if (!transformComponent->isActiveWithAncestors())
 			return;
 	}
 
-	const auto& componentAnimations = component.getAnimations();
-	auto searchResult = componentAnimations.find(component.active);
+	const auto& componentAnimations = animationComponent.getAnimations();
+	auto searchResult = componentAnimations.find(animationComponent.active);
 	if (searchResult == componentAnimations.end())
 		return;
 
@@ -74,19 +75,19 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (keyframes.empty())
 		return;
 
-	auto keyframeB = keyframes.lower_bound((int32)ceil(component.frame));
+	auto keyframeB = keyframes.lower_bound((int32)ceil(animationComponent.frame));
 	if (keyframeB == keyframes.end())
 	{
 		if (animationView->loop)
 		{
 			keyframeB--;
-			component.frame = fmod(component.frame, (float)keyframeB->first);
-			keyframeB = keyframes.lower_bound((int32)ceil(component.frame));
+			animationComponent.frame = fmod(animationComponent.frame, (float)keyframeB->first);
+			keyframeB = keyframes.lower_bound((int32)ceil(animationComponent.frame));
 			GARDEN_ASSERT(keyframeB != keyframes.end()); // Something went wrong :(
 		}
 		else
 		{
-			component.isPlaying = false;
+			animationComponent.isPlaying = false;
 			return;
 		}
 	}
@@ -104,12 +105,13 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 		{
 			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
-			animatableSystem->animateAsync(entity, frameViewA, frameViewA, 0.0f);
+			auto component = manager->get(entity, pairA.first->getComponentType());
+			animatableSystem->animateAsync(component, frameViewA, frameViewA, 0.0f);
 		}
 	}
 	else
 	{
-		auto currentFrame = component.frame;
+		auto currentFrame = animationComponent.frame;
 		auto frameA = (float)keyframeA->first;
 		auto frameB = (float)keyframeB->first;
 
@@ -126,12 +128,12 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 			else if (frameViewA->funcType == AnimationFunc::Gain)
 				t = gain(t, frameViewA->coeff);
 
-			animatableSystem->animateAsync(entity, frameViewA, frameViewB, t);
+			auto component = manager->get(entity, pairA.first->getComponentType());
+			animatableSystem->animateAsync(component, frameViewA, frameViewB, t);
 		}
 	}
 
-	auto inputSystem = InputSystem::getInstance();
-	component.frame += inputSystem->getDeltaTime() * animationView->frameRate;
+	animationComponent.frame += InputSystem::getInstance()->getDeltaTime() * animationView->frameRate;
 }
 
 //**********************************************************************************************************************
@@ -189,6 +191,24 @@ void AnimationSystem::copyComponent(View<Component> source, View<Component> dest
 	destinationView->frame = sourceView->frame;
 	destinationView->isPlaying = sourceView->isPlaying;
 }
+const string& AnimationSystem::getComponentName() const
+{
+	static const string name = "Animation";
+	return name;
+}
+type_index AnimationSystem::getComponentType() const
+{
+	return typeid(AnimationComponent);
+}
+View<Component> AnimationSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<AnimationComponent>(instance)));
+}
+void AnimationSystem::disposeComponents()
+{
+	components.dispose();
+	animations.dispose();
+}
 
 //**********************************************************************************************************************
 void AnimationSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
@@ -245,26 +265,6 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	deserializer.read("active", componentView->active);
 	deserializer.read("frame", componentView->frame);
 	deserializer.read("isPlaying", componentView->isPlaying);
-}
-
-//**********************************************************************************************************************
-const string& AnimationSystem::getComponentName() const
-{
-	static const string name = "Animation";
-	return name;
-}
-type_index AnimationSystem::getComponentType() const
-{
-	return typeid(AnimationComponent);
-}
-View<Component> AnimationSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<AnimationComponent>(instance)));
-}
-void AnimationSystem::disposeComponents()
-{
-	components.dispose();
-	animations.dispose();
 }
 
 void AnimationSystem::tryDestroyResources(View<AnimationComponent> animationComponent)

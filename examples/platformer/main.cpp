@@ -14,18 +14,22 @@
 
 #include "garden/main.hpp"
 #include "garden/system/log.hpp"
+#include "garden/system/link.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/animation.hpp"
 #include "garden/system/2d-controller.hpp"
 #include "garden/system/render/forward.hpp"
+#include "garden/system/render/sprite/opaque.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
+#include "garden/system/render/sprite/translucent.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/log.hpp"
 #include "garden/editor/system/ecs.hpp"
+#include "garden/editor/system/link.hpp"
 #include "garden/editor/system/camera.hpp"
 #include "garden/editor/system/graphics.hpp"
 #include "garden/editor/system/transform.hpp"
@@ -66,6 +70,7 @@ void entryPoint()
 	manager->createSystem<LogSystem>();
 	manager->createSystem<SettingsSystem>();
 	manager->createSystem<ResourceSystem>();
+	manager->createSystem<LinkSystem>();
 	manager->createSystem<AnimationSystem>();
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
@@ -74,7 +79,9 @@ void entryPoint()
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ForwardRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
+	manager->createSystem<OpaqueSpriteSystem>(false, false);
 	manager->createSystem<CutoutSpriteSystem>(false, false);
+	manager->createSystem<TranslucentSpriteSystem>(false, false);
 	manager->createSystem<Controller2DSystem>();
 	manager->createSystem<ThreadSystem>();
 
@@ -83,6 +90,7 @@ void entryPoint()
 	manager->createSystem<HierarchyEditorSystem>();
 	manager->createSystem<EcsEditorSystem>();
 	manager->createSystem<LogEditorSystem>();
+	manager->createSystem<LinkEditorSystem>();
 	manager->createSystem<AnimationEditorSystem>();
 	manager->createSystem<CameraEditorSystem>();
 	manager->createSystem<TransformEditorSystem>();

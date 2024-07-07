@@ -112,15 +112,14 @@ class LightingRenderSystem final : public System
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
-
-	friend class ecsm::Manager;
-public:
-	float4 shadowColor = float4(1.0f);
-
 	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
+
+	friend class ecsm::Manager;
+public:
+	float4 shadowColor = float4(1.0f);
 
 	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
 	bool useAoBuffer() const noexcept { return hasAoBuffer; }

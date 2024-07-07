@@ -60,7 +60,6 @@ public:
 //**********************************************************************************************************************
 class AnimationSystem final : public System, public ISerializable
 {
-private:
 	ThreadSystem* threadSystem = nullptr;
 	LinearPool<AnimationComponent, false> components;
 	LinearPool<Animation> animations;
@@ -84,6 +83,10 @@ private:
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	View<Component> getComponent(ID<Component> instance) final;
+	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
@@ -94,11 +97,6 @@ public:
 	ID<Animation> createAnimation() { return animations.create(); }
 	View<Animation> get(ID<Animation> animation) { return animations.get(animation); }
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }
-
-	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
 
 	static void tryDestroyResources(View<AnimationComponent> animationComponent);
 

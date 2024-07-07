@@ -28,7 +28,6 @@ using namespace garden::graphics;
 class FxaaRenderSystem final : public System,
 	public IRenderSystem, public IDeferredRenderSystem
 {
-private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 

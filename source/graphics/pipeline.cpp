@@ -625,7 +625,7 @@ void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(variant < variantCount);
-	GARDEN_ASSERT(taskIndex < 0 || taskIndex < thread::hardware_concurrency());
+	GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
@@ -719,7 +719,7 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 }
 
 //**********************************************************************************************************************
-static thread_local vector<vk::DescriptorSet> descriptorSets;
+static thread_local vector<vk::DescriptorSet> descriptorSets; // TODO: move to the Vulkan class.
 
 void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 taskIndex)
 {
@@ -727,7 +727,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 	GARDEN_ASSERT(rangeCount > 0);
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(taskIndex < 0 || taskIndex < thread::hardware_concurrency());
+	GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 
@@ -818,7 +818,7 @@ void Pipeline::pushConstantsAsync(int32 taskIndex)
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(taskIndex >= 0);
-	GARDEN_ASSERT(taskIndex < thread::hardware_concurrency());
+	GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
 	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
 

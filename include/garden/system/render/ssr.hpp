@@ -28,7 +28,6 @@ using namespace garden::graphics;
 // Screen Space Reflection
 class SsrRenderSystem final : public System, public IRenderSystem
 {
-private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 

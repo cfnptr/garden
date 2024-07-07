@@ -73,6 +73,11 @@ public:
 		float4 colorFactor = float4(0.0f);
 		float4 sizeOffset = float4(0.0f);
 	};
+	struct PushConstants
+	{
+		uint32 instanceIndex;
+		float colorMapLayer;
+	};
 protected:
 	ID<ImageView> defaultImageView = {};
 
@@ -80,24 +85,31 @@ protected:
 	void deinit() override;
 	virtual void imageLoaded();
 
+	void copyComponent(View<Component> source, View<Component> destination) override;
+
 	bool isDrawReady() override;
 	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
+	uint64 getInstanceDataSize() override;
+	virtual void setInstanceData(SpriteRenderComponent* spriteRenderComponent, InstanceData* instanceData,
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	void setDescriptorSetRange(MeshRenderComponent* meshRenderComponent,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
+	virtual void setPushConstants(SpriteRenderComponent* spriteRenderComponent, PushConstants* pushConstants, 
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
-public:
-	uint64 getInstanceDataSize() override;
 
-	static void tryDestroyResources(View<SpriteRenderComponent> spriteComponent);
-	static void copyComponent(View<SpriteRenderComponent> sourceComponent,
-		View<SpriteRenderComponent> destinationComponent);
-	static void serialize(ISerializer& serializer, ID<Entity> entity, View<SpriteRenderComponent> component);
-	static void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<SpriteRenderComponent> component);
-	static void serializeAnimation(ISerializer& serializer, View<SpriteRenderFrame> frame);
+	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
+
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
+	void animateAsync(View<Component> component,
+		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 	static void deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame);
+public:
+	static void tryDestroyResources(View<SpriteRenderComponent> spriteComponent);
 };
 
 } // namespace garden

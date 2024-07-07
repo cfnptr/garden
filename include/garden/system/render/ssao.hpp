@@ -30,7 +30,6 @@ using namespace garden::graphics;
 // Screen Space Ambient Occlusion
 class SsaoRenderSystem final : public System, public IRenderSystem, public IAoRenderSystem
 {
-private:
 	ID<Buffer> sampleBuffer = {};
 	ID<Image> noiseTexture = {};
 	ID<GraphicsPipeline> pipeline = {};
