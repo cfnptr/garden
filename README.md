@@ -53,13 +53,15 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ### CMake options
 
-| Name                     | Description                                      | Default value |
-|--------------------------|--------------------------------------------------|---------------|
-| GARDEN_BUILD_GSLC        | Build GSL shader compiler                        | `ON`          |
-| GARDEN_BUILD_EQUI2CUBE   | Build equirectangular to cubemap converter       | `ON`          |
-| GARDEN_BUILD_EXAMPLES    | Build Garden library examples                    | `ON`          |
-| GARDEN_RELEASE_EDITOR    | Build Garden editor in the release build         | `OFF`         |
-| GARDEN_RELEASE_DEBUGGING | Build Garden debugging code in the release build | `OFF`         |
+| Name                        | Description                                      | Default value |
+|-----------------------------|--------------------------------------------------|---------------|
+| GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
+| GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
+| GARDEN_BUILD_EXAMPLES       | Build Garden library examples                    | `ON`          |
+| GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
+| GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
+| GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
+| GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
 
 ### CMake variables
 
@@ -104,6 +106,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)
 * [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) (BSD-3-Clause license)
 * [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
+* [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)
 * [VMA](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)

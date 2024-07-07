@@ -726,7 +726,6 @@ void LightingRenderSystem::copyComponent(View<Component> source, View<Component>
 	destinationView->specular = sourceView->specular;
 	destinationView->descriptorSet = sourceView->descriptorSet;
 }
-
 const string& LightingRenderSystem::getComponentName() const
 {
 	static const string name = "Lighting";

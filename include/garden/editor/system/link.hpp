@@ -12,30 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sprite/common.gsl"
+#pragma once
+#include "garden/system/render/editor.hpp"
 
-out float2 fs.texCoords;
-
-uniform pushConstants
+#if GARDEN_EDITOR
+namespace garden
 {
-	uint32 instanceIndex;
-	float colorMapLayer;
-} pc;
 
-struct InstanceData
+class LinkEditorSystem final : public System
 {
-	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
+	LinkEditorSystem();
+	~LinkEditorSystem() final;
+
+	void init();
+	void deinit();
+
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	friend class ecsm::Manager;
 };
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
 
-void main()
-{
-	float4 position = float4(quadVertices[gl.vertexIndex], 0.0f, 1.0f);
-	gl.position = instance.data[pc.instanceIndex].mvp * position;
-	fs.texCoords = quadTexCoords[gl.vertexIndex];
-}
+} // namespace garden
+#endif

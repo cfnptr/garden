@@ -37,10 +37,13 @@ option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
 option(GARDEN_BUILD_EXAMPLES "Build Garden library examples." ON)
 option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
 option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
+option(GARDEN_DEBUG_PACK_RESOURCES "Pack and load resources in the debug build." OFF)
+option(GARDEN_USE_GAPI_VALIDATIONS "Use graphics API validation layers." ON)
 
 # TODO: debug only, remove.
 set(GARDEN_RELEASE_EDITOR ON)
 set(GARDEN_RELEASE_DEBUGGING ON)
+set(GARDEN_DEBUG_PACK_RESOURCES OFF)
 
 if(NOT DEFINED GARDEN_APP_NAME)
 	set(GARDEN_APP_NAME "Garden App")
@@ -84,20 +87,31 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(BUILD_SHARED_LIBS OFF)
+set(SKIP_INSTALL_ALL TRUE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	enable_language(OBJC)
 	enable_language(OBJCXX)
 endif()
 
+include(TestBigEndian)
+TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(GARDEN_DEBUG 1)
 	set(GARDEN_EDITOR 1)
+	if(GARDEN_DEBUG_PACK_RESOURCES)
+		set(GARDEN_PACK_RESOURCES 1)
+	else()
+		set(GARDEN_PACK_RESOURCES 0)
+	endif()
 else()
 	if(GARDEN_RELEASE_DEBUGGING)
 		set(GARDEN_DEBUG 1)
+		set(GARDEN_PACK_RESOURCES 0)
 	else()
 		set(GARDEN_DEBUG 0)
+		set(GARDEN_PACK_RESOURCES 1)
 	endif()
 	if(GARDEN_RELEASE_EDITOR)
 		set(GARDEN_EDITOR 1)
@@ -128,13 +142,15 @@ else()
 	set(GARDEN_RELEASE_WINDOWS 0)
 endif()
 
-include(TestBigEndian)
-TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
-
 if(IS_BIG_ENDIAN)
 	set(GARDEN_LITTLE_ENDIAN 0)
 else()
 	set(GARDEN_LITTLE_ENDIAN 1)
+endif()
+if(GARDEN_USE_GAPI_VALIDATIONS)
+	set(GARDEN_GAPI_VALIDATIONS 1)
+else()
+	set(GARDEN_GAPI_VALIDATIONS 0)
 endif()
 
 set(GARDEN_APP_VERSION "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
@@ -148,9 +164,10 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
-	libraries/ecsm/include libraries/vma/include libraries/stb)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static 
-	math-static conf-static pack-static logy-static voxy  glfw webp FastNoise OpenEXR)
+	libraries/ecsm/include libraries/vma/include libraries/stb
+	libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static math-static 
+	conf-static pack-static logy-static nets-static voxy glfw webp zlibstatic png_static FastNoise OpenEXR)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -178,6 +195,10 @@ add_subdirectory(libraries/conf)
 set(LOGY_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(LOGY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/logy)
+
+set(NETS_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(NETS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/nets)
 
 set(VOXY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/voxy)
@@ -208,9 +229,19 @@ set(WEBP_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
 set(WEBP_USE_THREAD OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/webp)
 
+set(PNG_SHARED OFF CACHE BOOL "" FORCE)
+set(PNG_FRAMEWORK OFF CACHE BOOL "" FORCE)
+set(PNG_TESTS OFF CACHE BOOL "" FORCE)
+set(PNG_TOOLS OFF CACHE BOOL "" FORCE)
+set(PNG_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+add_subdirectory(libraries/png)
+
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)
 
+set(OPENEXR_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(OPENEXR_TEST_LIBRARIES OFF CACHE BOOL "" FORCE)
+set(OPENEXR_TEST_TOOLS OFF CACHE BOOL "" FORCE)
 set(OPENEXR_INSTALL OFF CACHE BOOL "" FORCE)
 set(OPENEXR_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
 set(OPENEXR_INSTALL_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -220,7 +251,7 @@ add_subdirectory(libraries/openexr)
 #***********************************************************************************************************************
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR GARDEN_RELEASE_EDITOR)
+if(GARDEN_EDITOR)
 	file(GLOB IMGUI_SOURCES libraries/imgui/*.cpp)
 	file(GLOB IMGUI_MISC_SOURCES libraries/imgui/misc/cpp/*.cpp)
 	list(APPEND GARDEN_INCLUDE_DIRS
@@ -271,7 +302,7 @@ if(GARDEN_BUILD_EXAMPLES)
 		configure_file(examples/platformer/resources/images/platformer.ico platformer.ico COPYONLY)
 		configure_file(cmake/windows.rc.in platformer.rc)
 		list(APPEND GARDEN_APP_SOURCES ${PROJECT_BINARY_DIR}/platformer.rc)
-		if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND NOT GARDEN_RELEASE_DEBUGGING)
+		if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND NOT GARDEN_DEBUG)
 			add_executable(platformer WIN32 ${GARDEN_APP_SOURCES})
 		else()
 			add_executable(platformer ${GARDEN_APP_SOURCES})
@@ -288,9 +319,8 @@ if(GARDEN_BUILD_EXAMPLES)
 		stripExecutable(platformer)
 	endif()
 
-	if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND NOT GARDEN_RELEASE_DEBUGGING)
-		packResources(platformer ${GARDEN_APP_CACHES_DIR}
-			${GARDEN_APP_RESOURCES_DIR} ${Garden_SOURCE_DIR}/resources
-			${GARDEN_RELEASE_EDITOR} ${GARDEN_RELEASE_DEBUGGING})
+	if(GARDEN_PACK_RESOURCES)
+		packResources(platformer ${GARDEN_APP_CACHES_DIR} ${GARDEN_APP_RESOURCES_DIR}
+			${Garden_SOURCE_DIR}/resources ${GARDEN_EDITOR} ${GARDEN_DEBUG})
 	endif()
 endif()

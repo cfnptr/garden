@@ -208,7 +208,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 //**********************************************************************************************************************
 static void sortOpaqueIndices(const MeshRenderSystem::RenderItem* items, vector<uint32>& indices, uint32 drawCount)
 {
-	std::sort(indices.begin(), indices.begin() + drawCount, [&](uint32 a, uint32 b)
+	std::sort(indices.begin(), indices.begin() + drawCount, [items](uint32 a, uint32 b)
 	{
 		auto& ra = items[a]; auto& rb = items[b];
 		return ra.distance2 < rb.distance2;
@@ -217,7 +217,7 @@ static void sortOpaqueIndices(const MeshRenderSystem::RenderItem* items, vector<
 static void sortTranslucenntIndices(const MeshRenderSystem::TranslucentItem* items, 
 	vector<uint32>* indices, uint32 translucentIndex)
 {
-	std::sort(indices->begin(), indices->begin() + translucentIndex, [&](uint32 a, uint32 b)
+	std::sort(indices->begin(), indices->begin() + translucentIndex, [items](uint32 a, uint32 b)
 	{
 		auto& ra = items[a]; auto& rb = items[b];
 		return ra.distance2 > rb.distance2;
@@ -229,6 +229,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType)
 {
 	uint32 translucentMaxCount = 0;
+	translucentIndex = 0;
 	opaqueBufferCount = translucentBufferCount = 0;
 
 	for (auto meshSystem : meshSystems)
@@ -254,7 +255,6 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		translucentItems.resize(translucentMaxCount);
 	if (translucentIndices.size() < translucentMaxCount)
 		translucentIndices.resize(translucentMaxCount);
-	translucentIndex = 0;
 
 	auto manager = Manager::getInstance();
 	auto graphicsSystem = GraphicsSystem::getInstance();
@@ -266,10 +266,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	auto translucentItemData = translucentItems.data();
 	auto translucentIndexData = translucentIndices.data();
 	uint32 opaqueBufferIndex = 0, translucentBufferIndex = 0;
-
 	Plane frustumPlanes[::frustumPlaneCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
-
 	auto isAsyncPreparing = asyncPreparing && threadSystem;
 
 	// 1. Cull and prepare items 
@@ -296,7 +294,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			if (isAsyncPreparing)
 			{
 				auto& threadPool = threadSystem->getForegroundPool();
-				threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+				threadPool.addItems(ThreadPool::Task([&cameraOffset, &cameraPosition, 
+					frustumPlanes, opaqueBuffer](const ThreadPool::Task& task) // Do not optimize args!
 				{
 					prepareOpaqueItems(cameraOffset, cameraPosition, frustumPlanes,
 						opaqueBuffer, task.getItemOffset(), task.getItemCount());
@@ -327,9 +326,11 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 			if (isAsyncPreparing)
 			{
 				auto& threadPool = threadSystem->getForegroundPool();
-				threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+				threadPool.addItems(ThreadPool::Task([this, &cameraOffset, &cameraPosition, 
+					frustumPlanes, translucentBuffer, translucentItemData, translucentIndexData, 
+					bufferIndex](const ThreadPool::Task& task) // Do not optimize args!
 				{
-					prepareTranslucentItems(cameraOffset, cameraPosition, frustumPlanes,
+					prepareTranslucentItems(cameraOffset, cameraPosition, frustumPlanes, 
 						translucentBuffer, &translucentIndex, bufferIndex, translucentItemData,
 						translucentIndexData, task.getItemOffset(), task.getItemCount());
 				}),
@@ -365,7 +366,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		if (isAsyncPreparing)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
+			threadPool.addTask(ThreadPool::Task([opaqueBuffer](const ThreadPool::Task& task) // Do not optimize args!
 			{
 				sortOpaqueIndices(opaqueBuffer->items.data(), opaqueBuffer->indices, opaqueBuffer->drawCount);
 			}));
@@ -386,10 +387,12 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 		auto translucentItemData = translucentItems.data();
 		auto translucentIndices = &this->translucentIndices;
 
+		// TODO: We can use here async sorting algorythm
 		if (isAsyncPreparing)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addTask(ThreadPool::Task([&](const ThreadPool::Task& task)
+			threadPool.addTask(ThreadPool::Task([this, translucentItemData, 
+				translucentIndices](const ThreadPool::Task& task) // Do not optimize args!
 			{
 				sortTranslucenntIndices(translucentItemData, translucentIndices, translucentIndex);
 			}));
@@ -432,9 +435,9 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
 				auto meshSystem = opaqueBuffer->meshSystem;
-				auto itemCount = task.getItemCount();
 				auto items = opaqueBuffer->items.data();
 				auto indices = opaqueBuffer->indices.data();
+				auto itemCount = task.getItemCount();
 				auto taskIndex = task.getTaskIndex();
 				auto taskCount = itemCount - task.getItemOffset();
 
@@ -490,35 +493,79 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 	auto bufferData = translucentBuffers.data();
 	auto items = translucentItems.data();
 	auto indices = translucentIndices.data();
-	auto currentBufferIndex = items[indices[0]].bufferIndex;
-	auto meshSystem = bufferData[currentBufferIndex].meshSystem;
-	auto bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
-	meshSystem->beginDraw(-1);
 
-	// TODO: maybe we can somehow multithread this, without loosing ordering?
-	// Opaque approach is not applicable here unfortunately.
-
-	uint32 currentDrawCount = 0;
-	for (uint32 i = 0; i < drawCount; i++)
+	if (asyncRecording && threadSystem)
 	{
-		const auto& item = items[indices[i]];
-		if (currentBufferIndex != item.bufferIndex)
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
-			meshSystem = bufferData[currentBufferIndex].meshSystem;
-			meshSystem->endDraw(currentDrawCount, -1);
+			auto currentBufferIndex = items[indices[task.getItemOffset()]].bufferIndex;
+			auto meshSystem = bufferData[currentBufferIndex].meshSystem;
+			auto bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
+			auto itemCount = task.getItemCount();
+			auto taskIndex = task.getTaskIndex();
+			auto taskCount = itemCount - task.getItemOffset();
+			meshSystem->beginDraw(taskIndex);
 
-			currentBufferIndex = item.bufferIndex;
-			currentDrawCount = 0;
+			uint32 currentDrawCount = 0;
+			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+			{
+				const auto& item = items[indices[i]];
+				if (currentBufferIndex != item.bufferIndex)
+				{
+					meshSystem = bufferData[currentBufferIndex].meshSystem;
+					meshSystem->endDraw(currentDrawCount, taskIndex);
 
-			bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
-			meshSystem = bufferData[currentBufferIndex].meshSystem;
-			meshSystem->beginDraw(-1);
+					currentBufferIndex = item.bufferIndex;
+					currentDrawCount = 0;
+
+					bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
+					meshSystem = bufferData[currentBufferIndex].meshSystem;
+					meshSystem->beginDraw(taskIndex);
+				}
+
+				auto drawIndex = (uint32)*bufferDrawCount;
+				*bufferDrawCount = *bufferDrawCount + 1;
+				meshSystem->draw(item.meshRender, viewProj, item.model, drawIndex, taskIndex);
+				currentDrawCount++;
+			}
+
+			meshSystem->endDraw(currentDrawCount, taskIndex);
+		}),
+		drawCount);
+		threadPool.wait(); // Required
+	}
+	else
+	{
+		auto currentBufferIndex = items[indices[0]].bufferIndex;
+		auto meshSystem = bufferData[currentBufferIndex].meshSystem;
+		auto bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
+		meshSystem->beginDraw(-1);
+
+		uint32 currentDrawCount = 0;
+		for (uint32 i = 0; i < drawCount; i++)
+		{
+			const auto& item = items[indices[i]];
+			if (currentBufferIndex != item.bufferIndex)
+			{
+				meshSystem = bufferData[currentBufferIndex].meshSystem;
+				meshSystem->endDraw(currentDrawCount, -1);
+
+				currentBufferIndex = item.bufferIndex;
+				currentDrawCount = 0;
+
+				bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
+				meshSystem = bufferData[currentBufferIndex].meshSystem;
+				meshSystem->beginDraw(-1);
+			}
+
+			auto drawIndex = (uint32)*bufferDrawCount;
+			*bufferDrawCount = *bufferDrawCount + 1;
+			meshSystem->draw(item.meshRender, viewProj, item.model, drawIndex, -1);
+			currentDrawCount++;
 		}
 
-		auto drawIndex = (uint32)*bufferDrawCount;
-		*bufferDrawCount = *bufferDrawCount + 1;
-		meshSystem->draw(item.meshRender, viewProj, item.model, drawIndex, -1);
-		currentDrawCount++;
+		meshSystem->endDraw(currentDrawCount, -1);
 	}
 
 	for (uint32 i = 0; i < translucentBufferCount; i++)

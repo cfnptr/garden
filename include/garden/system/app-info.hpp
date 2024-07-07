@@ -33,7 +33,6 @@ using namespace math;
  */
 class AppInfoSystem final : public System
 {
-private:
 	string name;
 	string nameLowercase;
 	string description;

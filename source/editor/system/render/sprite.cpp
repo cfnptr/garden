@@ -16,7 +16,9 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
+#include "garden/system/render/sprite/opaque.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
+#include "garden/system/render/sprite/translucent.hpp"
 
 using namespace garden;
 
@@ -44,10 +46,20 @@ void SpriteRenderEditorSystem::init()
 	auto editorSystem = EditorRenderSystem::getInstance();
 	if (manager->has<CutoutSpriteSystem>())
 	{
+		editorSystem->registerEntityInspector<OpaqueSpriteComponent>(
+		[this](ID<Entity> entity, bool isOpened)
+		{
+			onOpaqueEntityInspector(entity, isOpened);
+		});
 		editorSystem->registerEntityInspector<CutoutSpriteComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
 			onCutoutEntityInspector(entity, isOpened);
+		});
+		editorSystem->registerEntityInspector<TranslucentSpriteComponent>(
+		[this](ID<Entity> entity, bool isOpened)
+		{
+			onTranslucentEntityInspector(entity, isOpened);
 		});
 	}
 }
@@ -120,13 +132,29 @@ static void renderSpriteComponent(SpriteRenderComponent* spriteComponent, type_i
 	ImGui::SliderFloat4("Color Factor", &spriteComponent->colorFactor, 0.0f, 1.0f);
 }
 
+void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (isOpened)
+	{
+		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
+		renderSpriteComponent(*componentView, typeid(OpaqueSpriteComponent));
+	}
+}
 void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (isOpened)
 	{
-		auto cutoutComponent = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
-		renderSpriteComponent(*cutoutComponent, typeid(CutoutSpriteComponent));
-		ImGui::SliderFloat("Alpha Cutoff", &cutoutComponent->alphaCutoff, 0.0f, 1.0f);
+		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
+		renderSpriteComponent(*componentView, typeid(CutoutSpriteComponent));
+		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
+	}
+}
+void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (isOpened)
+	{
+		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
+		renderSpriteComponent(*componentView, typeid(TranslucentSpriteComponent));
 	}
 }
 #endif

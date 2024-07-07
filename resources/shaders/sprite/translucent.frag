@@ -26,7 +26,6 @@ uniform pushConstants
 {
 	uint32 instanceIndex;
 	float colorMapLayer;
-	float alphaCutoff;
 } pc;
 
 struct InstanceData

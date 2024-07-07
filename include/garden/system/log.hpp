@@ -37,7 +37,6 @@ using namespace ecsm;
  */
 class LogSystem final : public System
 {
-private:
 	logy::Logger logger;
 	static LogSystem* instance;
 

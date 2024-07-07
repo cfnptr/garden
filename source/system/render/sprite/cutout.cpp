@@ -19,16 +19,6 @@
 
 using namespace garden;
 
-namespace
-{
-	struct PushConstants final
-	{
-		uint32 instanceIndex;
-		float colorMapLayer;
-		float alphaCutoff;
-	};
-}
-
 //**********************************************************************************************************************
 CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter)
 {
@@ -36,17 +26,14 @@ CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFil
 	this->linearFilter = useLinearFilter;
 }
 
-void CutoutSpriteSystem::draw(MeshRenderComponent* meshRenderComponent,
+void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderComponent, PushConstants* pushConstants, 
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
-	auto cutoutRenderComponent = (CutoutSpriteComponent*)meshRenderComponent;
-	auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(taskIndex);
-	pushConstants->instanceIndex = drawIndex;
-	pushConstants->colorMapLayer = cutoutRenderComponent->colorMapLayer;
-	pushConstants->alphaCutoff = cutoutRenderComponent->alphaCutoff;
-	pipelineView->pushConstantsAsync(taskIndex);
-
-	SpriteRenderSystem::draw(meshRenderComponent, viewProj, model, drawIndex, taskIndex);
+	SpriteRenderSystem::setPushConstants(spriteRenderComponent,
+		pushConstants, viewProj, model, drawIndex, taskIndex);
+	auto cutoutComponent = (CutoutSpriteComponent*)spriteRenderComponent;
+	auto cutoutPushConstants = (CutoutPushConstants*)pushConstants;
+	cutoutPushConstants->alphaCutoff = cutoutComponent->alphaCutoff;
 }
 
 //**********************************************************************************************************************
@@ -62,11 +49,42 @@ void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
 }
 void CutoutSpriteSystem::copyComponent(View<Component> source, View<Component> destination)
 {
-	SpriteRenderSystem::copyComponent(View<SpriteRenderComponent>(source),
-		View<SpriteRenderComponent>(destination));
+	SpriteRenderSystem::copyComponent(source, destination);
 	auto destinationView = View<CutoutSpriteComponent>(destination);
 	const auto sourceView = View<CutoutSpriteComponent>(source);
 	destinationView->alphaCutoff = sourceView->alphaCutoff;
+}
+const string& CutoutSpriteSystem::getComponentName() const
+{
+	static const string name = "Cutout Sprite";
+	return name;
+}
+type_index CutoutSpriteSystem::getComponentType() const
+{
+	return typeid(CutoutSpriteComponent);
+}
+View<Component> CutoutSpriteSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<CutoutSpriteComponent>(instance)));
+}
+void CutoutSpriteSystem::disposeComponents()
+{
+	components.dispose();
+	animationFrames.dispose();
+}
+
+//**********************************************************************************************************************
+MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
+}
+const LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool() const
+{
+	return *((const LinearPool<MeshRenderComponent>*)&components);
+}
+psize CutoutSpriteSystem::getMeshComponentSize() const
+{
+	return sizeof(CutoutSpriteComponent);
 }
 
 ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
@@ -93,14 +111,14 @@ ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
 //**********************************************************************************************************************
 void CutoutSpriteSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	SpriteRenderSystem::serialize(serializer, entity, View<SpriteRenderComponent>(component));
+	SpriteRenderSystem::serialize(serializer, entity, component);
 	auto componentView = View<CutoutSpriteComponent>(component);
 	if (componentView->alphaCutoff != 0.5f)
 		serializer.write("alphaCutoff", componentView->alphaCutoff);
 }
 void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	SpriteRenderSystem::deserialize(deserializer, entity, View<SpriteRenderComponent>(component));
+	SpriteRenderSystem::deserialize(deserializer, entity, component);
 	auto componentView = View<CutoutSpriteComponent>(component);
 	deserializer.read("alphaCutoff", componentView->alphaCutoff);
 }
@@ -108,7 +126,7 @@ void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 //**********************************************************************************************************************
 void CutoutSpriteSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	SpriteRenderSystem::serializeAnimation(serializer, View<SpriteRenderFrame>(frame));
+	SpriteRenderSystem::serializeAnimation(serializer, frame);
 	auto frameView = View<CutoutSpriteFrame>(frame);
 	if (frameView->animateAlphaCutoff)
 		serializer.write("alphaCutoff", frameView->alphaCutoff);
@@ -135,62 +153,17 @@ View<AnimationFrame> CutoutSpriteSystem::getAnimation(ID<AnimationFrame> frame)
 {
 	return View<AnimationFrame>(animationFrames.get(ID<CutoutSpriteFrame>(frame)));
 }
+void CutoutSpriteSystem::animateAsync(View<Component> component,
+	View<AnimationFrame> a, View<AnimationFrame> b, float t)
+{
+	SpriteRenderSystem::animateAsync(component, a, b, t);
+	auto componentView = View<CutoutSpriteComponent>(component);
+	auto frameA = View<CutoutSpriteFrame>(a);
+	auto frameB = View<CutoutSpriteFrame>(b);
+	if (frameA->animateAlphaCutoff)
+		componentView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
+}
 void CutoutSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
 	animationFrames.destroy(ID<CutoutSpriteFrame>(frame));
-}
-
-//**********************************************************************************************************************
-void CutoutSpriteSystem::animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t)
-{
-	auto cutoutComponent = Manager::getInstance()->tryGet<CutoutSpriteComponent>(entity);
-	if (!cutoutComponent)
-		return;
-
-	auto frameA = View<CutoutSpriteFrame>(a);
-	auto frameB = View<CutoutSpriteFrame>(b);
-
-	if (frameA->animateColorFactor)
-		cutoutComponent->colorFactor = lerp(frameA->colorFactor, frameB->colorFactor, t);
-	if (frameA->animateUvSize)
-		cutoutComponent->uvSize = lerp(frameA->uvSize, frameB->uvSize, t);
-	if (frameA->animateUvOffset)
-		cutoutComponent->uvOffset = lerp(frameA->uvOffset, frameB->uvOffset, t);
-	if (frameA->animateColorMapLayer)
-		cutoutComponent->colorMapLayer = lerp(frameA->colorMapLayer, frameB->colorMapLayer, t);
-	if (frameA->animateIsEnabled)
-		cutoutComponent->isEnabled = (bool)round(t);
-}
-
-//**********************************************************************************************************************
-const string& CutoutSpriteSystem::getComponentName() const
-{
-	static const string name = "Cutout Sprite";
-	return name;
-}
-type_index CutoutSpriteSystem::getComponentType() const
-{
-	return typeid(CutoutSpriteComponent);
-}
-View<Component> CutoutSpriteSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<CutoutSpriteComponent>(instance)));
-}
-void CutoutSpriteSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
-}
-
-MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
-const LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool() const
-{
-	return *((const LinearPool<MeshRenderComponent>*)&components);
-}
-psize CutoutSpriteSystem::getMeshComponentSize() const
-{
-	return sizeof(CutoutSpriteComponent);
 }

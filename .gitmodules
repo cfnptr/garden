@@ -55,3 +55,6 @@
 [submodule "examples/platformer/resources"]
 	path = examples/platformer/resources
 	url = https://github.com/cfnptr/platformer-resources
+[submodule "libraries/png"]
+	path = libraries/png
+	url = https://github.com/cfnptr/libpng

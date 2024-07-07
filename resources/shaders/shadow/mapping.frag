@@ -30,7 +30,7 @@ uniform sampler2D depthBuffer;
 
 uniform sampler2DArrayShadow
 {
-	comparing = on;
+	comparison = on;
 	filter = linear;
 	wrap = clampToBorder;
 } shadowMap;

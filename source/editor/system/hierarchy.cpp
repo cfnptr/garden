@@ -15,6 +15,7 @@
 #include "garden/editor/system/hierarchy.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/camera.hpp"
 #include "garden/system/transform.hpp"
 
 using namespace garden;
@@ -72,8 +73,14 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			auto entityTransform = manager->get<TransformComponent>(renderEntity);
 			auto cameraTransform = manager->get<TransformComponent>(graphicsSystem->camera);
 			auto model = entityTransform->calcModel();
-			auto offset = float3(0.0f, 0.0f, -2.0f) * cameraTransform->rotation;
-			cameraTransform->position = getTranslation(model) + offset;
+			cameraTransform->position = getTranslation(model);
+
+			auto cameraComponent = manager->get<CameraComponent>(graphicsSystem->camera);
+			if (cameraComponent && cameraComponent->type == ProjectionType::Perspective)
+			{
+				auto offset = float3(0.0f, 0.0f, -2.0f) * cameraTransform->rotation;
+				cameraTransform->position += offset;
+			}
 		}
 	}
 
@@ -90,13 +97,6 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		ImGui::BeginDisabled(manager->has<DoNotDuplicateComponent>(renderEntity));
 		if (ImGui::MenuItem("Duplicate Entity"))
 		{
-			auto duplicate = manager->duplicate(renderEntity);
-			auto duplicateTransform = manager->get<TransformComponent>(duplicate);
-			auto entityTransform = manager->get<TransformComponent>(renderEntity);
-			duplicateTransform->setParent(entityTransform->getParent());
-		}
-		if (ImGui::MenuItem("Duplicate Entities"))
-		{
 			auto duplicate = TransformSystem::getInstance()->duplicateRecursive(renderEntity);
 			auto duplicateTransform = manager->get<TransformComponent>(duplicate);
 			auto entityTransform = manager->get<TransformComponent>(renderEntity);
@@ -106,8 +106,6 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 
 		ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(renderEntity));
 		if (ImGui::MenuItem("Destroy Entity"))
-			manager->destroy(renderEntity);
-		if (ImGui::MenuItem("Destroy Entities"))
 			TransformSystem::getInstance()->destroyRecursive(renderEntity);
 		ImGui::EndDisabled();
 

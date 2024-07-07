@@ -50,6 +50,24 @@ void CameraSystem::copyComponent(View<Component> source, View<Component> destina
 	destinationView->p = sourceView->p;
 	destinationView->type = sourceView->type;
 }
+const string& CameraSystem::getComponentName() const
+{
+	static const string name = "Camera";
+	return name;
+}
+type_index CameraSystem::getComponentType() const
+{
+	return typeid(CameraComponent);
+}
+View<Component> CameraSystem::getComponent(ID<Component> instance)
+{
+	return View<Component>(components.get(ID<CameraComponent>(instance)));
+}
+void CameraSystem::disposeComponents()
+{
+	components.dispose();
+	animationFrames.dispose();
+}
 
 //**********************************************************************************************************************
 void CameraSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
@@ -153,18 +171,11 @@ View<AnimationFrame> CameraSystem::getAnimation(ID<AnimationFrame> frame)
 {
 	return View<AnimationFrame>(animationFrames.get(ID<CameraFrame>(frame)));
 }
-void CameraSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	animationFrames.destroy(ID<CameraFrame>(frame));
-}
 
 //**********************************************************************************************************************
-void CameraSystem::animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<AnimationFrame> b, float t)
+void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto cameraComponent = Manager::getInstance()->tryGet<CameraComponent>(entity);
-	if (!cameraComponent)
-		return;
-
+	auto componentView = View<CameraComponent>(component);
 	auto frameA = View<CameraFrame>(a);
 	auto frameB = View<CameraFrame>(b);
 
@@ -172,17 +183,17 @@ void CameraSystem::animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<
 	{
 		if (frameA->f.perspective.animateFieldOfView)
 		{
-			cameraComponent->p.perspective.fieldOfView = lerp(
+			componentView->p.perspective.fieldOfView = lerp(
 				frameA->c.perspective.fieldOfView, frameB->c.perspective.fieldOfView, t);
 		}
 		if (frameA->f.perspective.animateAspectRatio)
 		{
-			cameraComponent->p.perspective.aspectRatio = lerp(
+			componentView->p.perspective.aspectRatio = lerp(
 				frameA->c.perspective.aspectRatio, frameB->c.perspective.aspectRatio, t);
 		}
 		if (frameA->f.perspective.animateNearPlane)
 		{
-			cameraComponent->p.perspective.nearPlane = lerp(
+			componentView->p.perspective.nearPlane = lerp(
 				frameA->c.perspective.nearPlane, frameB->c.perspective.nearPlane, t);
 		}
 	}
@@ -190,38 +201,22 @@ void CameraSystem::animateAsync(ID<Entity> entity, View<AnimationFrame> a, View<
 	{
 		if (frameA->f.orthographic.animateWidth)
 		{
-			cameraComponent->p.orthographic.width = lerp(
+			componentView->p.orthographic.width = lerp(
 				frameA->c.orthographic.width, frameB->c.orthographic.width, t);
 		}
 		if (frameA->f.orthographic.animateHeight)
 		{
-			cameraComponent->p.orthographic.height = lerp(
+			componentView->p.orthographic.height = lerp(
 				frameA->c.orthographic.height, frameB->c.orthographic.height, t);
 		}
 		if (frameA->f.orthographic.animateDepth)
 		{
-			cameraComponent->p.orthographic.depth = lerp(
+			componentView->p.orthographic.depth = lerp(
 				frameA->c.orthographic.depth, frameB->c.orthographic.depth, t);
 		}
 	}
 }
-
-//**********************************************************************************************************************
-const string& CameraSystem::getComponentName() const
+void CameraSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
-	static const string name = "Camera";
-	return name;
-}
-type_index CameraSystem::getComponentType() const
-{
-	return typeid(CameraComponent);
-}
-View<Component> CameraSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<CameraComponent>(instance)));
-}
-void CameraSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
+	animationFrames.destroy(ID<CameraFrame>(frame));
 }

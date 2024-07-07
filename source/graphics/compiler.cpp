@@ -66,7 +66,7 @@ namespace
 	};
 }
 
-#if GARDEN_DEBUG || defined(GSL_COMPILER)
+#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
 //******************************************************************************************************************
 namespace
 {
@@ -2196,12 +2196,12 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	auto headerFilePath = "shaders" / data.shaderPath; headerFilePath += ".gslh";
 	vector<uint8> dataBuffer;
 	
-	#if GARDEN_DEBUG
-	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
-		throw runtime_error("Failed to open header file");
-	#elif !defined(GSL_COMPILER)
+	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 	auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1;
 	data.packReader->readItemData(headerFilePath, dataBuffer, threadIndex);
+	#else
+	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
+		throw runtime_error("Failed to open header file");
 	#endif
 
 	GraphicsGslValues values; uint32 dataOffset = 0;
@@ -2240,15 +2240,15 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	data.pipelineState = values.pipelineState;
 	data.vertexAttributesSize = values.vertexAttributesSize;
 
-	#if GARDEN_DEBUG
-	File::loadBinary(data.cachesPath / vertexFilePath, data.vertexCode);
-	File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
-	#elif !defined(GSL_COMPILER)
+	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 	uint64 itemIndex = 0;
 	if (data.packReader->getItemIndex(vertexFilePath, itemIndex))
 		data.packReader->readItemData(itemIndex, data.vertexCode, threadIndex);
 	if (data.packReader->getItemIndex(fragmentFilePath, itemIndex))
 		data.packReader->readItemData(itemIndex, data.fragmentCode, threadIndex);
+	#else
+	File::loadBinary(data.cachesPath / vertexFilePath, data.vertexCode);
+	File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
 	#endif
 
 	if (data.vertexCode.empty() && data.fragmentCode.empty())
@@ -2263,12 +2263,12 @@ void Compiler::loadComputeShader(ComputeData& data)
 	auto headerFilePath = "shaders" / data.shaderPath; headerFilePath += ".gslh";
 	vector<uint8> dataBuffer;
 
-	#if GARDEN_DEBUG
-	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
-		throw runtime_error("Failed to open header file");
-	#elif !defined(GSL_COMPILER)
+	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 	auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1;
 	data.packReader->readItemData(headerFilePath, dataBuffer, threadIndex);
+	#else
+	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
+		throw runtime_error("Failed to open header file");
 	#endif
 
 	ComputeGslValues values; uint32 dataOffset = 0; 
@@ -2287,11 +2287,11 @@ void Compiler::loadComputeShader(ComputeData& data)
 	if (data.pushConstantsSize > 0)
 		data.pushConstantsStages = ShaderStage::Compute;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+	data.packReader->readItemData(computeFilePath, data.code, threadIndex);
+	#else
 	if (!File::tryLoadBinary(data.cachesPath / computeFilePath, data.code))
 		throw runtime_error("Failed to open compute shader file");
-	#elif !defined(GSL_COMPILER)
-	data.packReader->readItemData(computeFilePath, data.code, threadIndex);
 	#endif
 }
 

@@ -22,7 +22,7 @@
 #include "garden/system/graphics.hpp"
 #include <queue>
 
-#if !GARDEN_DEBUG
+#if GARDEN_PACK_RESOURCES
 #include "pack/reader.hpp"
 #endif
 
@@ -99,12 +99,13 @@ protected:
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
 
-	#if GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES
+	pack::Reader packReader;
+	#endif
+	#if GARDEN_EDITOR
 	fs::path appResourcesPath;
 	fs::path appCachesPath;
 	Version appVersion;
-	#else
-	pack::Reader packReader;
 	#endif
 
 	static ResourceSystem* instance;

@@ -19,6 +19,7 @@ using namespace garden;
 
 // TODO: add bindless support
 
+//**********************************************************************************************************************
 void SpriteRenderSystem::init()
 {
 	InstanceRenderSystem::init();
@@ -66,6 +67,26 @@ void SpriteRenderSystem::imageLoaded()
 	}
 }
 
+void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> destination)
+{
+	auto destinationView = View<SpriteRenderComponent>(destination);
+	const auto sourceView = View<SpriteRenderComponent>(source);
+
+	destinationView->aabb = sourceView->aabb;
+	destinationView->isEnabled = sourceView->isEnabled;
+	destinationView->isArray = sourceView->isArray;
+	destinationView->colorMap = sourceView->colorMap;
+	destinationView->descriptorSet = sourceView->descriptorSet;
+	destinationView->colorMapLayer = sourceView->colorMapLayer;
+	destinationView->colorFactor = sourceView->colorFactor;
+	destinationView->uvSize = sourceView->uvSize;
+	destinationView->uvOffset = sourceView->uvOffset;
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	destinationView->path = sourceView->path;
+	#endif
+}
+
 //**********************************************************************************************************************
 bool SpriteRenderSystem::isDrawReady()
 {
@@ -84,30 +105,52 @@ void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderComponent = (SpriteRenderComponent*)meshRenderComponent;
-	InstanceData instanceData;
-	instanceData.mvp = viewProj * model;
-	instanceData.colorFactor = spriteRenderComponent->colorFactor;
-	instanceData.sizeOffset = float4(spriteRenderComponent->uvSize, spriteRenderComponent->uvOffset);
-	((InstanceData*)instanceMap)[drawIndex] = instanceData;
+	auto instanceData = (InstanceData*)(instanceMap + getInstanceDataSize() * drawIndex);
+	setInstanceData(spriteRenderComponent, instanceData, viewProj, model, drawIndex, taskIndex);
 
 	DescriptorSet::Range descriptorSetRange[8]; uint8 descriptorSetCount = 0;
 	setDescriptorSetRange(meshRenderComponent, descriptorSetRange, descriptorSetCount, 8);
 	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
+
+	auto pushConstantsSize = pipelineView->getPushConstantsSize();
+	auto pushConstants = (PushConstants*)(
+		pipelineView->getPushConstantsBuffer().data() + pushConstantsSize * taskIndex);
+	setPushConstants(spriteRenderComponent, pushConstants, viewProj, model, drawIndex, taskIndex);
+	pipelineView->pushConstantsAsync(taskIndex);
+
 	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 
 //**********************************************************************************************************************
+uint64 SpriteRenderSystem::getInstanceDataSize()
+{
+	return (uint64)sizeof(InstanceData);
+}
+void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderComponent, InstanceData* instanceData,
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
+{
+	instanceData->mvp = viewProj * model;
+	instanceData->colorFactor = spriteRenderComponent->colorFactor;
+	instanceData->sizeOffset = float4(spriteRenderComponent->uvSize, spriteRenderComponent->uvOffset);
+}
 void SpriteRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderComponent,
 	DescriptorSet::Range* range, uint8& index, uint8 capacity)
 {
 	InstanceRenderSystem::setDescriptorSetRange(meshRenderComponent, range, index, capacity);
-	GARDEN_ASSERT(index < capacity);
 
+	GARDEN_ASSERT(index < capacity);
 	auto spriteRenderComponent = (SpriteRenderComponent*)meshRenderComponent;
 	range[index++] = DescriptorSet::Range(spriteRenderComponent->descriptorSet ?
 		(ID<DescriptorSet>)spriteRenderComponent->descriptorSet : defaultDescriptorSet);
 }
+void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderComponent, PushConstants* pushConstants, 
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
+{
+	pushConstants->instanceIndex = drawIndex;
+	pushConstants->colorMapLayer = spriteRenderComponent->colorMapLayer;
+}
 
+//**********************************************************************************************************************
 map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colorMap)
 {
 	map<string, DescriptorSet::Uniform> spriteUniforms =
@@ -131,85 +174,52 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 	return defaultUniforms;
 }
 
-uint64 SpriteRenderSystem::getInstanceDataSize()
-{
-	return sizeof(InstanceData);
-}
-
 //**********************************************************************************************************************
-void SpriteRenderSystem::tryDestroyResources(View<SpriteRenderComponent> spriteComponent)
+void SpriteRenderSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	GARDEN_ASSERT(spriteComponent);
-	auto resourceSystem = ResourceSystem::getInstance();
-	resourceSystem->destroyShared(spriteComponent->colorMap);
-	resourceSystem->destroyShared(spriteComponent->descriptorSet);
-	spriteComponent->colorMap = {};
-	spriteComponent->descriptorSet = {};
-}
-void SpriteRenderSystem::copyComponent(View<SpriteRenderComponent> sourceComponent,
-	View<SpriteRenderComponent> destinationComponent)
-{
-	destinationComponent->aabb = sourceComponent->aabb;
-	destinationComponent->isEnabled = sourceComponent->isEnabled;
-	destinationComponent->isArray = sourceComponent->isArray;
-	destinationComponent->colorMap = sourceComponent->colorMap;
-	destinationComponent->descriptorSet = sourceComponent->descriptorSet;
-	destinationComponent->colorMapLayer = sourceComponent->colorMapLayer;
-	destinationComponent->colorFactor = sourceComponent->colorFactor;
-	destinationComponent->uvSize = sourceComponent->uvSize;
-	destinationComponent->uvOffset = sourceComponent->uvOffset;
+	auto componentView = View<SpriteRenderComponent>(component);
+	if (componentView->isArray != false)
+		serializer.write("isArray", componentView->isArray);
+	if (componentView->aabb != Aabb::one)
+		serializer.write("aabb", componentView->aabb);
+	if (componentView->isEnabled != true)
+		serializer.write("isEnabled", componentView->isEnabled);
+	if (componentView->colorMapLayer != 0.0f)
+		serializer.write("colorMapLayer", componentView->colorMapLayer);
+	if (componentView->colorFactor != float4(1.0f))
+		serializer.write("colorFactor", componentView->colorFactor);
+	if (componentView->uvSize != float2(1.0f))
+		serializer.write("uvSize", componentView->uvSize);
+	if (componentView->uvOffset != float2(0.0f))
+		serializer.write("uvOffset", componentView->uvOffset);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	destinationComponent->path = sourceComponent->path;
+	serializer.write("path", componentView->path);
 	#endif
 }
-
-//**********************************************************************************************************************
-void SpriteRenderSystem::serialize(ISerializer& serializer, 
-	ID<Entity> entity, View<SpriteRenderComponent> component)
+void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	if (component->isArray != false)
-		serializer.write("isArray", component->isArray);
-	if (component->aabb != Aabb::one)
-		serializer.write("aabb", component->aabb);
-	if (component->isEnabled != true)
-		serializer.write("isEnabled", component->isEnabled);
-	if (component->colorMapLayer != 0.0f)
-		serializer.write("colorMapLayer", component->colorMapLayer);
-	if (component->colorFactor != float4(1.0f))
-		serializer.write("colorFactor", component->colorFactor);
-	if (component->uvSize != float2(1.0f))
-		serializer.write("uvSize", component->uvSize);
-	if (component->uvOffset != float2(0.0f))
-		serializer.write("uvOffset", component->uvOffset);
+	auto componentView = View<SpriteRenderComponent>(component);
+	deserializer.read("isArray", componentView->isArray);
+	deserializer.read("aabb", componentView->aabb);
+	deserializer.read("isEnabled", componentView->isEnabled);
+	deserializer.read("colorMapLayer", componentView->colorMapLayer);
+	deserializer.read("colorFactor", componentView->colorFactor);
+	deserializer.read("uvSize", componentView->uvSize);
+	deserializer.read("uvOffset", componentView->uvOffset);
+	deserializer.read("path", componentView->path);
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	serializer.write("path", component->path);
-	#endif
-}
-void SpriteRenderSystem::deserialize(IDeserializer& deserializer, 
-	ID<Entity> entity, View<SpriteRenderComponent> component)
-{
-	deserializer.read("isArray", component->isArray);
-	deserializer.read("aabb", component->aabb);
-	deserializer.read("isEnabled", component->isEnabled);
-	deserializer.read("colorMapLayer", component->colorMapLayer);
-	deserializer.read("colorFactor", component->colorFactor);
-	deserializer.read("uvSize", component->uvSize);
-	deserializer.read("uvOffset", component->uvOffset);
-	deserializer.read("path", component->path);
-
-	if (component->path.empty())
-		component->path = "missing";
+	if (componentView->path.empty())
+		componentView->path = "missing";
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
-	if (component->isArray)
+	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	component->colorMap = ResourceSystem::getInstance()->loadImage(component->path,
+	componentView->colorMap = ResourceSystem::getInstance()->loadImage(componentView->path,
 		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 }
 
 //**********************************************************************************************************************
-void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<SpriteRenderFrame> frame)
+void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	auto frameView = View<SpriteRenderFrame>(frame);
 	if (frameView->animateIsEnabled)
@@ -223,6 +233,24 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Sprite
 	if (frameView->animateColorMapLayer)
 		serializer.write("colorMapLayer", frameView->colorMapLayer);
 }
+void SpriteRenderSystem::animateAsync(View<Component> component,
+	View<AnimationFrame> a, View<AnimationFrame> b, float t)
+{
+	auto componentView = View<SpriteRenderComponent>(component);
+	auto frameA = View<SpriteRenderFrame>(a);
+	auto frameB = View<SpriteRenderFrame>(b);
+
+	if (frameA->animateColorFactor)
+		componentView->colorFactor = lerp(frameA->colorFactor, frameB->colorFactor, t);
+	if (frameA->animateUvSize)
+		componentView->uvSize = lerp(frameA->uvSize, frameB->uvSize, t);
+	if (frameA->animateUvOffset)
+		componentView->uvOffset = lerp(frameA->uvOffset, frameB->uvOffset, t);
+	if (frameA->animateColorMapLayer)
+		componentView->colorMapLayer = lerp(frameA->colorMapLayer, frameB->colorMapLayer, t);
+	if (frameA->animateIsEnabled)
+		componentView->isEnabled = (bool)round(t);
+}
 void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame)
 {
 	frame.animateIsEnabled = deserializer.read("isEnabled", frame.isEnabled);
@@ -230,4 +258,14 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	frame.animateUvSize = deserializer.read("uvSize", frame.uvSize);
 	frame.animateUvOffset = deserializer.read("uvOffset", frame.uvOffset);
 	frame.animateColorMapLayer = deserializer.read("colorMapLayer", frame.colorMapLayer);
+}
+
+void SpriteRenderSystem::tryDestroyResources(View<SpriteRenderComponent> spriteComponent)
+{
+	GARDEN_ASSERT(spriteComponent);
+	auto resourceSystem = ResourceSystem::getInstance();
+	resourceSystem->destroyShared(spriteComponent->colorMap);
+	resourceSystem->destroyShared(spriteComponent->descriptorSet);
+	spriteComponent->colorMap = {};
+	spriteComponent->descriptorSet = {};
 }

@@ -20,47 +20,26 @@ namespace garden
 
 using namespace garden::graphics;
 
-struct CutoutSpriteComponent final : public SpriteRenderComponent
-{
-	float alphaCutoff = 0.5f;
-};
+struct OpaqueSpriteComponent final : public SpriteRenderComponent { };
+struct OpaqueSpriteFrame final : public SpriteRenderFrame { };
 
-struct CutoutSpriteFrame final : public SpriteRenderFrame
+class OpaqueSpriteSystem final : public SpriteRenderSystem
 {
-	float alphaCutoff = 0.5f;
-	bool animateAlphaCutoff = false;
-private:
-	uint8 _alignment1 = 0;
-	uint16 _alignment2 = 0;
-};
-
-class CutoutSpriteSystem final : public SpriteRenderSystem
-{
-public:
-	struct CutoutPushConstants final : public PushConstants
-	{
-		float alphaCutoff;
-	};
-private:
-	LinearPool<CutoutSpriteComponent, false> components;
-	LinearPool<CutoutSpriteFrame, false> animationFrames;
+	LinearPool<OpaqueSpriteComponent, false> components;
+	LinearPool<OpaqueSpriteFrame, false> animationFrames;
 	bool deferredBuffer = false;
 	bool linearFilter = false;
 
 	/**
-	 * @brief Creates a new cutout sprite rendering system instance.
+	 * @brief Creates a new opaque sprite rendering system instance.
 	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
 	 * @param useLinearFilter use linear filtering for texture
 	 */
-	CutoutSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
-
-	void setPushConstants(SpriteRenderComponent* spriteRenderComponent, PushConstants* pushConstants, 
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) final;
+	OpaqueSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
 	type_index getComponentType() const final;
 	View<Component> getComponent(ID<Component> instance) final;
@@ -71,14 +50,8 @@ private:
 	psize getMeshComponentSize() const final;
 	ID<GraphicsPipeline> createPipeline() final;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
-
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
 	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;

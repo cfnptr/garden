@@ -22,7 +22,7 @@
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
-#ifndef GSL_COMPILER
+#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 #include "pack/reader.hpp"
 #endif
 
@@ -58,9 +58,11 @@ public:
 	 */
 	struct GraphicsData : public GraphicsPipeline::GraphicsCreateData
 	{
+		#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
 		fs::path cachesPath;
 		fs::path resourcesPath;
-		#ifndef GSL_COMPILER
+		#endif
+		#if GARDEN_PACK_RESOURCES && defined(GSL_COMPILER)
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
 		#endif
@@ -70,9 +72,11 @@ public:
 	 */
 	struct ComputeData : public ComputePipeline::ComputeCreateData
 	{
+		#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
 		fs::path cachesPath;
 		fs::path resourcesPath;
-		#ifndef GSL_COMPILER
+		#endif
+		#if GARDEN_PACK_RESOURCES && defined(GSL_COMPILER)
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
 		#endif
@@ -98,7 +102,7 @@ public:
 	 */
 	static void loadComputeShader(ComputeData& data);
 
-	#if GARDEN_DEBUG || defined(GSL_COMPILER)
+	#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
 	/**
 	 * @brief Compiles graphics shaders. (.vert, .frag)
 	 * 

@@ -188,7 +188,8 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	const void* instanceInfoNext = nullptr;
 
 	#if GARDEN_DEBUG
-	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
+
+	#if GARDEN_GAPI_VALIDATIONS
 	for	(const auto& properties : layerProperties)
 	{
 		if (strcmp(properties.layerName.data(), "VK_LAYER_KHRONOS_validation") == 0)
@@ -197,6 +198,9 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 			break;
 		}
 	}
+	#endif
+
+	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
 	hasDebugUtils = false;
 	for	(const auto& properties : extensionProperties)
 	{

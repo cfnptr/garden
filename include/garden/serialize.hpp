@@ -171,13 +171,12 @@ protected:
 	ID<Component> createComponent(ID<Entity> entity) override;
 	void destroyComponent(ID<Component> instance) override;
 	void copyComponent(View<Component> source, View<Component> destination) override;
-	
-	friend class ecsm::Manager;
-public:
 	const string& getComponentName() const override;
 	type_index getComponentType() const override;
 	View<Component> getComponent(ID<Component> instance) override;
 	void disposeComponents() override;
+	
+	friend class ecsm::Manager;
 };
 
 } // namespace garden
