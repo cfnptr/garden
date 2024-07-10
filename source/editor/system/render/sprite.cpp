@@ -44,18 +44,24 @@ void SpriteRenderEditorSystem::init()
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 
 	auto editorSystem = EditorRenderSystem::getInstance();
-	if (manager->has<CutoutSpriteSystem>())
+	if (manager->has<OpaqueSpriteSystem>())
 	{
 		editorSystem->registerEntityInspector<OpaqueSpriteComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
 			onOpaqueEntityInspector(entity, isOpened);
 		});
+	}
+	if (manager->has<CutoutSpriteSystem>())
+	{
 		editorSystem->registerEntityInspector<CutoutSpriteComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
 			onCutoutEntityInspector(entity, isOpened);
 		});
+	}
+	if (manager->has<TranslucentSpriteSystem>())
+	{
 		editorSystem->registerEntityInspector<TranslucentSpriteComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
@@ -65,96 +71,118 @@ void SpriteRenderEditorSystem::init()
 }
 void SpriteRenderEditorSystem::deinit()
 {
-	EditorRenderSystem::getInstance()->tryUnregisterEntityInspector<CutoutSpriteComponent>();
+	auto editorSystem = EditorRenderSystem::getInstance();
+	editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
+	editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
+	editorSystem->tryUnregisterEntityInspector<TranslucentSpriteComponent>();
 }
 
 //**********************************************************************************************************************
-static void renderSpriteComponent(SpriteRenderComponent* spriteComponent, type_index componentType)
+void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (ImGui::BeginItemTooltip())
+	{
+		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
+		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::EndTooltip();
+	}
+	if (isOpened)
+	{
+		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
+		renderComponent(*componentView, typeid(OpaqueSpriteComponent));
+	}
+}
+void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (ImGui::BeginItemTooltip())
+	{
+		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
+		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::EndTooltip();
+	}
+	if (isOpened)
+	{
+		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
+		renderComponent(*componentView, typeid(CutoutSpriteComponent));
+		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
+	}
+}
+void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (ImGui::BeginItemTooltip())
+	{
+		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
+		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::EndTooltip();
+	}
+	if (isOpened)
+	{
+		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
+		renderComponent(*componentView, typeid(TranslucentSpriteComponent));
+	}
+}
+
+//**********************************************************************************************************************
+void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* component, type_index componentType)
 {
 	auto manager = Manager::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
-	if (spriteComponent->isArray)
+	if (component->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	editorSystem->drawImageSelector(spriteComponent->path, spriteComponent->colorMap,
-		spriteComponent->descriptorSet, spriteComponent->getEntity(), componentType, flags);
-	editorSystem->drawResource(spriteComponent->descriptorSet);
+	editorSystem->drawImageSelector(component->path, component->colorMap,
+		component->descriptorSet, component->getEntity(), componentType, flags);
+	editorSystem->drawResource(component->descriptorSet);
 
-	ImGui::Checkbox("Enabled", &spriteComponent->isEnabled); ImGui::SameLine();
+	ImGui::Checkbox("Enabled", &component->isEnabled); ImGui::SameLine();
 
-	if (ImGui::Checkbox("Array", &spriteComponent->isArray) && !spriteComponent->path.empty())
+	if (ImGui::Checkbox("Array", &component->isArray) && !component->path.empty())
 	{
 		auto resourceSystem = ResourceSystem::getInstance();
-		resourceSystem->destroyShared(spriteComponent->colorMap);
-		resourceSystem->destroyShared(spriteComponent->descriptorSet);
+		resourceSystem->destroyShared(component->colorMap);
+		resourceSystem->destroyShared(component->descriptorSet);
 
 		auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
-		if (spriteComponent->isArray)
+		if (component->isArray)
 			flags |= ImageLoadFlags::LoadArray;
-		spriteComponent->colorMap = ResourceSystem::getInstance()->loadImage(spriteComponent->path,
+		component->colorMap = ResourceSystem::getInstance()->loadImage(component->path,
 			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
-		spriteComponent->descriptorSet = {};
+		component->descriptorSet = {};
 	}
 
-	ImGui::BeginDisabled(!spriteComponent->colorMap && manager->has<TransformComponent>(spriteComponent->getEntity()));
+	ImGui::BeginDisabled(!component->colorMap && manager->has<TransformComponent>(component->getEntity()));
 	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
 	{
-		auto transformComponent = manager->get<TransformComponent>(spriteComponent->getEntity());
-		auto colorMapView = GraphicsSystem::getInstance()->get(spriteComponent->colorMap);
+		auto transformComponent = manager->get<TransformComponent>(component->getEntity());
+		auto colorMapView = GraphicsSystem::getInstance()->get(component->colorMap);
 		auto imageSize = colorMapView->getSize();
 
 		if (imageSize.x > imageSize.y)
 		{
-			transformComponent->scale.x = spriteComponent->uvSize.x *
+			transformComponent->scale.x = component->uvSize.x *
 				transformComponent->scale.y * ((float)imageSize.x / imageSize.y);
 		}
 		else
 		{
-			transformComponent->scale.y = spriteComponent->uvSize.y * 
+			transformComponent->scale.y = component->uvSize.y *
 				transformComponent->scale.x * ((float)imageSize.y / imageSize.x);
 		}
 	}
 	ImGui::EndDisabled();
 
 	auto maxColorMapLayer = 0.0f;
-	if (spriteComponent->colorMap)
+	if (component->colorMap)
 	{
-		auto colorMapView = GraphicsSystem::getInstance()->get(spriteComponent->colorMap);
+		auto colorMapView = GraphicsSystem::getInstance()->get(component->colorMap);
 		maxColorMapLayer = colorMapView->getLayerCount() - 1;
 	}
 
-	auto& aabb = spriteComponent->aabb;
+	auto& aabb = component->aabb;
 	ImGui::DragFloat3("Min AABB", (float3*)&aabb.getMin(), 0.01f);
 	ImGui::DragFloat3("Max AABB", (float3*)&aabb.getMax(), 0.01f);
-	ImGui::DragFloat2("UV Size", &spriteComponent->uvSize, 0.01f);
-	ImGui::DragFloat2("UV Offset", &spriteComponent->uvOffset, 0.01f);
-	ImGui::SliderFloat("Color Layer", &spriteComponent->colorMapLayer, 0.0f, maxColorMapLayer);
-	ImGui::SliderFloat4("Color Factor", &spriteComponent->colorFactor, 0.0f, 1.0f);
-}
-
-void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
-{
-	if (isOpened)
-	{
-		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
-		renderSpriteComponent(*componentView, typeid(OpaqueSpriteComponent));
-	}
-}
-void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
-{
-	if (isOpened)
-	{
-		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
-		renderSpriteComponent(*componentView, typeid(CutoutSpriteComponent));
-		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
-	}
-}
-void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
-{
-	if (isOpened)
-	{
-		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
-		renderSpriteComponent(*componentView, typeid(TranslucentSpriteComponent));
-	}
+	ImGui::DragFloat2("UV Size", &component->uvSize, 0.01f);
+	ImGui::DragFloat2("UV Offset", &component->uvOffset, 0.01f);
+	ImGui::SliderFloat("Color Layer", &component->colorMapLayer, 0.0f, maxColorMapLayer);
+	ImGui::SliderFloat4("Color Factor", &component->colorFactor, 0.0f, 1.0f);
 }
 #endif

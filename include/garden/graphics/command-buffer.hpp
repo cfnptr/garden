@@ -440,19 +440,19 @@ public:
 	void submit(uint64 frameIndex);
 
 	void addLockResource(ID<Buffer> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Buffer)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Buffer); }
 	void addLockResource(ID<Image> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Image)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Image); }
 	void addLockResource(ID<ImageView> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::ImageView)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ImageView); }
 	void addLockResource(ID<Framebuffer> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::Framebuffer)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Framebuffer); }
 	void addLockResource(ID<GraphicsPipeline> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::GraphicsPipeline)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::GraphicsPipeline); }
 	void addLockResource(ID<ComputePipeline> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::ComputePipeline)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ComputePipeline); }
 	void addLockResource(ID<DescriptorSet> resource)
-	{ lockingResources.push_back(make_pair(ID<Resource>(resource), ResourceType::DescriptorSet)); }
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::DescriptorSet); }
 };
 
 } // namespace garden::graphics

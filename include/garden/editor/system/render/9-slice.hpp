@@ -16,17 +16,17 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/sprite.hpp"
+#include "garden/system/render/9-slice.hpp"
 
 namespace garden
 {
 
 using namespace garden::graphics;
 
-class SpriteRenderEditorSystem final : public System
+class NineSliceRenderEditorSystem final : public System
 {
-	SpriteRenderEditorSystem();
-	~SpriteRenderEditorSystem() final;
+	NineSliceRenderEditorSystem();
+	~NineSliceRenderEditorSystem() final;
 
 	void init();
 	void deinit();
@@ -37,7 +37,7 @@ class SpriteRenderEditorSystem final : public System
 
 	friend class ecsm::Manager;
 public:
-	static void renderComponent(SpriteRenderComponent* component, type_index componentType);
+	static void renderComponent(NineSliceRenderComponent* component, type_index componentType);
 };
 
 } // namespace garden

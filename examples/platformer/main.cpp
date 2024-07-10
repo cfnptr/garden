@@ -24,6 +24,9 @@
 #include "garden/system/render/sprite/opaque.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 #include "garden/system/render/sprite/translucent.hpp"
+#include "garden/system/render/9-slice/opaque.hpp"
+// #include "garden/system/render/9-slice/cutout.hpp"
+// #include "garden/system/render/9-slice/translucent.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
@@ -36,6 +39,7 @@
 #include "garden/editor/system/hierarchy.hpp"
 #include "garden/editor/system/animation.hpp"
 #include "garden/editor/system/render/sprite.hpp"
+#include "garden/editor/system/render/9-slice.hpp"
 #include "garden/editor/system/render/mesh-gizmos.hpp"
 #include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/editor/system/render/gpu-resource.hpp"
@@ -82,6 +86,9 @@ void entryPoint()
 	manager->createSystem<OpaqueSpriteSystem>(false, false);
 	manager->createSystem<CutoutSpriteSystem>(false, false);
 	manager->createSystem<TranslucentSpriteSystem>(false, false);
+	manager->createSystem<Opaque9SliceSystem>(false, false);
+	// manager->createSystem<Cutout9SliceSystem>(false, false);
+	// manager->createSystem<Translucent9SliceSystem>(false, false);
 	manager->createSystem<Controller2DSystem>();
 	manager->createSystem<ThreadSystem>();
 
@@ -101,6 +108,7 @@ void entryPoint()
 	manager->createSystem<MeshGizmosEditorSystem>();
 	// manager->createSystem<LightingRenderEditorSystem>();
 	manager->createSystem<SpriteRenderEditorSystem>();
+	manager->createSystem<NineSliceRenderEditorSystem>();
 	#endif
 
 	manager->initialize();

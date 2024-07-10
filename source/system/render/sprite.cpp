@@ -240,6 +240,8 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 	auto frameA = View<SpriteRenderFrame>(a);
 	auto frameB = View<SpriteRenderFrame>(b);
 
+	if (frameA->animateIsEnabled)
+		componentView->isEnabled = (bool)round(t);
 	if (frameA->animateColorFactor)
 		componentView->colorFactor = lerp(frameA->colorFactor, frameB->colorFactor, t);
 	if (frameA->animateUvSize)
@@ -248,8 +250,6 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 		componentView->uvOffset = lerp(frameA->uvOffset, frameB->uvOffset, t);
 	if (frameA->animateColorMapLayer)
 		componentView->colorMapLayer = lerp(frameA->colorMapLayer, frameB->colorMapLayer, t);
-	if (frameA->animateIsEnabled)
-		componentView->isEnabled = (bool)round(t);
 }
 void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame)
 {

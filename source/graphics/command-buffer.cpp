@@ -695,7 +695,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			array<float, 4> color;
 			color[0] = clearColor.x; color[1] = clearColor.y;
 			color[2] = clearColor.z; color[3] = clearColor.w;
-			clearValues.push_back(vk::ClearValue(vk::ClearColorValue(color)));
+			clearValues.emplace_back(vk::ClearColorValue(color));
 		}
 	}
 	
@@ -749,8 +749,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			}
 			else
 			{
-				clearValues.push_back(vk::ClearValue(vk::ClearDepthStencilValue(
-					command.clearDepth, command.clearStencil)));
+				clearValues.emplace_back(vk::ClearDepthStencilValue(command.clearDepth, command.clearStencil));
 			}
 		}
 		if (!isFormatDepthOnly(imageFormat))
@@ -782,8 +781,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			}
 			else
 			{
-				clearValues.push_back(vk::ClearValue(vk::ClearDepthStencilValue(
-					command.clearDepth, command.clearStencil)));
+				clearValues.emplace_back(vk::ClearDepthStencilValue(command.clearDepth, command.clearStencil));
 			}
 		}
 

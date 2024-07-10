@@ -21,11 +21,15 @@ namespace garden
 
 class LinkEditorSystem final : public System
 {
+	bool showWindow = false;
+
 	LinkEditorSystem();
 	~LinkEditorSystem() final;
 
 	void init();
 	void deinit();
+	void editorRender();
+	void editorBarTool();
 
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;

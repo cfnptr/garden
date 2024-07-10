@@ -21,15 +21,96 @@ using namespace garden;
 //**********************************************************************************************************************
 bool LinkComponent::destroy()
 {
-	if (uuid == Hash128())
-		return true;
-
 	auto linkSystem = LinkSystem::getInstance();
-	auto result = linkSystem->linkMap.erase(uuid);
-	GARDEN_ASSERT(result == 1); // Failed to remove link, corruped memory.
+	if (uuid != Hash128())
+	{
+		auto result = linkSystem->uuidMap.erase(uuid);
+		GARDEN_ASSERT(result == 1); // Failed to remove link, corruped memory.
+	}
+	if (!tag.empty())
+	{
+		auto range = linkSystem->tagMap.equal_range(tag);
+		auto componentID = linkSystem->components.getID(this);
+		for (auto i = range.first; i != range.second; i++)
+		{
+			if (i->second != componentID)
+				continue;
+			linkSystem->tagMap.erase(i);
+			break;
+		}
+	}
 	return true;
 }
 
+void LinkComponent::regenerateUUID()
+{
+	auto linkSystem = LinkSystem::getInstance();
+	if (uuid != Hash128())
+	{
+		auto result = linkSystem->uuidMap.erase(uuid);
+		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
+	}
+
+	auto& randomDevice = linkSystem->randomDevice;
+	uint32 seed[2] { randomDevice(), randomDevice() };
+	uuid = Hash128::generateRandom(*(uint64*)(seed));
+	auto componentID = linkSystem->components.getID(this);
+	auto result = linkSystem->uuidMap.emplace(uuid, componentID);
+	GARDEN_ASSERT(result.second); // Whoops random hash collision occured. You are lucky :)
+	if (!result.second) uuid = {};
+}
+bool LinkComponent::trySetUUID(const Hash128& uuid)
+{
+	if (this->uuid == uuid)
+		return true;
+
+	if (uuid != Hash128())
+	{
+		auto linkSystem = LinkSystem::getInstance();
+		auto componentID = linkSystem->components.getID(this);
+		auto result = linkSystem->uuidMap.emplace(uuid, componentID);
+		if (!result.second)
+			return false;
+	}
+	if (this->uuid != Hash128())
+	{
+		auto linkSystem = LinkSystem::getInstance();
+		auto result = linkSystem->uuidMap.erase(this->uuid);
+		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
+	}
+
+	this->uuid = uuid;
+	return true;
+}
+void LinkComponent::setTag(const string& tag)
+{
+	if (this->tag == tag)
+		return;
+
+	auto linkSystem = LinkSystem::getInstance();
+	if (!this->tag.empty())
+	{
+		auto range = linkSystem->tagMap.equal_range(this->tag);
+		auto componentID = linkSystem->components.getID(this);
+		for (auto i = range.first; i != range.second; i++)
+		{
+			if (i->second != componentID)
+				continue;
+			linkSystem->tagMap.erase(i);
+			break;
+		}
+	}
+
+	if (!tag.empty())
+	{
+		auto componentID = linkSystem->components.getID(this);
+		linkSystem->tagMap.emplace(tag, componentID);
+	}
+
+	this->tag = tag;
+}
+
+//**********************************************************************************************************************
 LinkSystem* LinkSystem::instance = nullptr;
 
 LinkSystem::LinkSystem()
@@ -87,39 +168,52 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 {
 	auto componentView = View<LinkComponent>(component);
 
-	string uuid;
-	if (deserializer.read("uuid", uuid))
+	string value;
+	if (deserializer.read("uuid", value))
 	{
-		if (!componentView->uuid.fromBase64(uuid))
+		if (!componentView->uuid.fromBase64(value))
 		{
 			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
-				logSystem->error("Deserialized entity with invalid link uuid. (uuid: " + uuid + ")");
+				logSystem->error("Deserialized entity with invalid link uuid. (uuid: " + value + ")");
+		}
+
+		auto componentID = components.getID(*componentView);
+		auto result = uuidMap.emplace(componentView->uuid, componentID);
+
+		if (!result.second)
+		{
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+			if (logSystem)
+				logSystem->error("Deserialized entity with already existing link uuid. (uuid: " + value + ")");
+			componentView->uuid = {};
 		}
 	}
-	else
+	if (deserializer.read("tag", value))
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Deserialized entity with empty link uuid.");
+		auto componentID = components.getID(*componentView);
+		tagMap.emplace(value, componentID);
+		componentView->tag = std::move(value);
 	}
 }
 
+//**********************************************************************************************************************
 ID<Entity> LinkSystem::findEntity(const Hash128& uuid)
 {
-	auto searchResult = linkMap.find(uuid);
-	if (searchResult == linkMap.end())
+	GARDEN_ASSERT(uuid != Hash128());
+	auto searchResult = uuidMap.find(uuid);
+	if (searchResult == uuidMap.end())
 		return {};
 	auto componentView = components.get(searchResult->second);
 	return componentView->getEntity();
 }
-void LinkSystem::regenerateUUID(View<LinkComponent> component)
+void LinkSystem::findEntities(const string& tag, vector<ID<Entity>>& entities)
 {
-	GARDEN_ASSERT(component);
-	linkMap.erase(component->uuid);
-	auto time = InputSystem::getInstance()->getTime();
-	component->uuid = Hash128::generateRandom(*(uint64*)(&time));
-	auto emplaceResult = linkMap.emplace(component->uuid, component->getEntity());
-	GARDEN_ASSERT(emplaceResult.second); // Whoops random hash collision occured. You are lucky :)
-	if (!emplaceResult.second) component->uuid = {};
+	GARDEN_ASSERT(!tag.empty());
+	auto result = tagMap.equal_range(tag);
+	for (auto i = result.first; i != result.second; i++)
+	{
+		auto componentView = components.get(i->second);
+		entities.emplace_back(componentView->entity);
+	}
 }

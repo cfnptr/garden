@@ -80,11 +80,9 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	auto manager = Manager::getInstance();
-	auto editorSystem = EditorRenderSystem::getInstance();
-
-	auto transformComponent = manager->get<TransformComponent>(entity);
 	if (ImGui::BeginItemTooltip())
 	{
+		auto transformComponent = manager->get<TransformComponent>(entity);
 		if (transformComponent->getParent())
 		{
 			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
@@ -101,6 +99,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (isOpened)
 	{
+		auto transformComponent = manager->get<TransformComponent>(entity);
 		ImGui::Checkbox("Active", &transformComponent->isActive);
 
 		auto isBaked = manager->has<BakedTransformComponent>(entity);
@@ -184,6 +183,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		}
 	}
 
+	auto editorSystem = EditorRenderSystem::getInstance();
 	if (editorSystem->selectedEntity != selectedEntity)
 	{
 		if (editorSystem->selectedEntity)

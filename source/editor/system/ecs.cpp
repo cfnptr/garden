@@ -77,6 +77,13 @@ static void renderOrderedEvents()
 		}
 	}
 
+	if (orderedEvents.empty())
+	{
+		ImGui::Indent();
+		ImGui::TextDisabled("No registered ordered event");
+		ImGui::Unindent();
+	}
+
 	ImGui::PopStyleColor();
 	ImGui::Spacing();
 }
@@ -123,6 +130,13 @@ static void renderUnorderedEvents()
 		}
 	}
 
+	if (events.empty())
+	{
+		ImGui::Indent();
+		ImGui::TextDisabled("No registered event");
+		ImGui::Unindent();
+	}
+
 	ImGui::PopStyleColor();
 	ImGui::Spacing();
 }
@@ -137,6 +151,13 @@ static void renderRegisteredSystems()
 	{
 		auto name = typeToString(pair.first);
 		ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+	}
+
+	if (systems.empty())
+	{
+		ImGui::Indent();
+		ImGui::TextDisabled("No registered system");
+		ImGui::Unindent();
 	}
 
 	ImGui::PopStyleColor();
@@ -154,6 +175,13 @@ static void renderRegisteredComponents()
 		if (name.empty())
 			name = typeToString(pair.first);
 		ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+	}
+
+	if (componentTypes.empty())
+	{
+		ImGui::Indent();
+		ImGui::TextDisabled("No registered component");
+		ImGui::Unindent();
 	}
 
 	ImGui::PopStyleColor();

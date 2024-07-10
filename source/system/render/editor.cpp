@@ -676,6 +676,7 @@ static void updateDirectoryClick(const string& filename, const fs::directory_ent
 }
 static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 {
+	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 	auto dirIterator = fs::directory_iterator(path);
 	for (const auto& entry : dirIterator)
 	{
@@ -704,6 +705,7 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 		}
 		ImGui::PopID();
 	}
+	ImGui::PopStyleColor();
 }
 
 //**********************************************************************************************************************
@@ -725,9 +727,9 @@ void EditorRenderSystem::showFileSelector()
 		
 		if (fs::exists(fileSelectDirectory) && fs::is_directory(fileSelectDirectory))
 		{
-			ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+			if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				selectedEntry = fileSelectDirectory;
 			renderDirectory(fileSelectDirectory, selectedEntry);
-			ImGui::PopStyleColor();
 		}
 
 		ImGui::EndChild();

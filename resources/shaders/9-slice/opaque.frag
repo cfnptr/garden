@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/primitives.gsl"
+#include "9-slice/common.gsl"
 
-out float2 fs.texCoords;
+pipelineState
+{
+	depthTesting = on;
+	depthWriting = on;
+}
+
+in float2 fs.texCoords;
+out float4 fb.color;
 
 uniform pushConstants
 {
@@ -27,15 +34,28 @@ struct InstanceData
 	float4x4 mvp;
 	float4 colorFactor;
 	float4 sizeOffset;
+	float4 texWinBorder;
 };
 buffer readonly Instance
 {
 	InstanceData data[];
 } instance;
 
+uniform set1 sampler2DArray
+{
+	filter = linear;
+	wrap = repeat;
+} colorMap;
+
 void main()
 {
-	float4 position = float4(quadVertices[gl.vertexIndex], 0.0f, 1.0f);
-	gl.position = instance.data[pc.instanceIndex].mvp * position;
-	fs.texCoords = quadTexCoords[gl.vertexIndex];
+	float4 colorFactor = instance.data[pc.instanceIndex].colorFactor;
+	float2 uvSize = instance.data[pc.instanceIndex].sizeOffset.xy;
+	float2 uvOffset = instance.data[pc.instanceIndex].sizeOffset.zw;
+	float2 textureBorder = instance.data[pc.instanceIndex].texWinBorder.xy;
+	float2 windowBorder = instance.data[pc.instanceIndex].texWinBorder.zw;
+	float3 texCoords = float3(fs.texCoords * uvSize + uvOffset, pc.colorMapLayer);
+	texCoords.x = mapAxis(texCoords.x, textureBorder.x, windowBorder.x);
+	texCoords.y = mapAxis(texCoords.y, textureBorder.y, windowBorder.y);
+	fb.color = texture(colorMap, texCoords) * colorFactor;
 }

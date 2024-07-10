@@ -543,7 +543,7 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 	auto entityComponent = manager->get<TransformComponent>(entity);
 	auto duplicateComponent = manager->get<TransformComponent>(entityDuplicate);
 	duplicateComponent->setParent(entityComponent->getParent());
-	entityDuplicateStack.push_back(make_pair(entity, entityDuplicate));
+	entityDuplicateStack.emplace_back(entity, entityDuplicate);
 
 	while (!entityDuplicateStack.empty())
 	{
@@ -563,7 +563,7 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 			auto duplicate = manager->duplicate(child);
 			duplicateComponent = manager->get<TransformComponent>(duplicate);
 			duplicateComponent->setParent(pair.second);
-			entityDuplicateStack.push_back(make_pair(child, duplicate));
+			entityDuplicateStack.emplace_back(child, duplicate);
 		}
 	}
 
