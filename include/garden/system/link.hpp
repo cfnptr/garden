@@ -16,6 +16,7 @@
 #include "garden/serialize.hpp"
 #include "garden/hash.hpp"
 #include "ecsm.hpp"
+#include <random>
 
 namespace garden
 {
@@ -27,18 +28,26 @@ struct LinkComponent final : public Component
 {
 private:
 	Hash128 uuid = {};
+	string tag = {};
 	bool destroy();
 
 	friend class LinkSystem;
 	friend class LinearPool<LinkComponent>;
 public:
 	const Hash128& getUUID() const noexcept { return uuid; }
+	const string& getTag() const noexcept { return tag; }
+
+	void regenerateUUID();
+	bool trySetUUID(const Hash128& uuid);
+	void setTag(const string& tag);
 };
 
 class LinkSystem final : public System, public ISerializable
 {
 	LinearPool<LinkComponent> components;
-	map<Hash128, ID<LinkComponent>> linkMap;
+	map<Hash128, ID<LinkComponent>> uuidMap;
+	multimap<string, ID<LinkComponent>> tagMap;
+	random_device randomDevice;
 
 	static LinkSystem* instance;
 
@@ -65,8 +74,14 @@ class LinkSystem final : public System, public ISerializable
 	friend class ecsm::Manager;
 	friend class LinkComponent;
 public:
+	const LinearPool<LinkComponent>& getComponents() const noexcept { return components; }
+	const map<Hash128, ID<LinkComponent>>& getUuidMap() const noexcept { return uuidMap; }
+	const multimap<string, ID<LinkComponent>>& getTagMap() const noexcept { return tagMap; }
+
 	ID<Entity> findEntity(const Hash128& uuid);
-	void regenerateUUID(View<LinkComponent> component);
+
+	auto findEntities(const string& tag) { return tagMap.equal_range(tag); }
+	void findEntities(const string& tag, vector<ID<Entity>>& entities);
 
 	/**
 	 * @brief Returns link system instance.

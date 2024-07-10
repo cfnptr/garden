@@ -219,7 +219,7 @@ private:
 	Framebuffer(int2 size, ID<ImageView> swapchainImage, ID<ImageView> depthBuffer)
 	{
 		this->instance = (void*)1;
-		this->colorAttachments.push_back(OutputAttachment(swapchainImage, false, true, true));
+		this->colorAttachments.emplace_back(swapchainImage, false, true, true);
 		if (depthBuffer)
 			this->depthStencilAttachment = OutputAttachment(depthBuffer, false, true, true);
 		this->size = size;

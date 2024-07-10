@@ -254,11 +254,11 @@ static vk::PipelineLayout createPipelineLayout(uint16 pushConstantsSize, ShaderS
 	vector<vk::PushConstantRange> pushConstantRanges;
 
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Vertex))
-		pushConstantRanges.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize));
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize);
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Fragment))
-		pushConstantRanges.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize));
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize);
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Compute))
-		pushConstantRanges.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize));
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize);
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
 		(uint32)pushConstantRanges.size(), pushConstantRanges.data());

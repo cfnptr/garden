@@ -53,6 +53,14 @@ void CameraEditorSystem::deinit()
 //**********************************************************************************************************************
 void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
+	if (ImGui::BeginItemTooltip())
+	{
+		auto cameraComponent = Manager::getInstance()->get<CameraComponent>(entity);
+		ImGui::Text("Projection: ", cameraComponent->type == 
+			ProjectionType::Perspective ? "perspective" : "orthographic");
+		ImGui::EndTooltip();
+	}
+
 	if (!isOpened)
 		return;
 

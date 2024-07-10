@@ -105,8 +105,9 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 		{
 			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
-			auto component = manager->get(entity, pairA.first->getComponentType());
-			animatableSystem->animateAsync(component, frameViewA, frameViewA, 0.0f);
+			auto component = manager->tryGet(entity, pairA.first->getComponentType());
+			if (component)
+				animatableSystem->animateAsync(component, frameViewA, frameViewA, 0.0f);
 		}
 	}
 	else
@@ -128,8 +129,9 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 			else if (frameViewA->funcType == AnimationFunc::Gain)
 				t = gain(t, frameViewA->coeff);
 
-			auto component = manager->get(entity, pairA.first->getComponentType());
-			animatableSystem->animateAsync(component, frameViewA, frameViewB, t);
+			auto component = manager->tryGet(entity, pairA.first->getComponentType());
+			if (component)
+				animatableSystem->animateAsync(component, frameViewA, frameViewB, t);
 		}
 	}
 
@@ -246,7 +248,8 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 		auto arraySize = (uint32)deserializer.getArraySize();
 		for (uint32 i = 0; i < arraySize; i++)
 		{
-			deserializer.beginArrayElement(i);
+			if (!deserializer.beginArrayElement(i))
+				break;
 
 			string path;
 			deserializer.read(path);

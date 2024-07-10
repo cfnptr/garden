@@ -12,30 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/primitives.gsl"
+#ifndef _9_SLICE_GSL
+#define _9_SLICE_GSL
 
-out float2 fs.texCoords;
+#include "common/math.gsl"
 
-uniform pushConstants
+float mapAxis(float coord, float textureBorder, float windowBorder)
 {
-	uint32 instanceIndex;
-	float colorMapLayer;
-} pc;
+	if (coord < windowBorder)
+		return map(coord, 0.0f, windowBorder, 0.0f, textureBorder);
+	if (coord < 1.0f - windowBorder)
+		return map(coord,  windowBorder, 1.0f - windowBorder, textureBorder, 1.0f - textureBorder);
+	return map(coord, 1.0f - windowBorder, 1.0f, 1.0f - textureBorder, 1.0f);
+} 
 
-struct InstanceData
-{
-	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
-};
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
-
-void main()
-{
-	float4 position = float4(quadVertices[gl.vertexIndex], 0.0f, 1.0f);
-	gl.position = instance.data[pc.instanceIndex].mvp * position;
-	fs.texCoords = quadTexCoords[gl.vertexIndex];
-}
+#endif // _9_SLICE_GSL

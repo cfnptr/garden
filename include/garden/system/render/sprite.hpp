@@ -25,8 +25,8 @@ using namespace garden::graphics;
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
-private:
-	uint16 _alignment1 = 0;
+protected:
+	uint16 _alignment0 = 0;
 public:
 	bool isArray = false;
 	Ref<Image> colorMap = {};
@@ -46,15 +46,15 @@ public:
  */
 struct SpriteRenderFrame : public AnimationFrame
 {
-private:
+protected:
 	uint8 _alignment0 = 0;
 public:
 	bool isEnabled = true;
+	bool animateIsEnabled = false;
 	bool animateColorFactor = false;
 	bool animateUvSize = false;
 	bool animateUvOffset = false;
 	bool animateColorMapLayer = false;
-	bool animateIsEnabled = false;
 	float4 colorFactor = float4(1.0f);
 	float2 uvSize = float2(1.0f);
 	float2 uvOffset = float2(0.0f);

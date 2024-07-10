@@ -1769,30 +1769,63 @@ void ResourceSystem::loadScene(const fs::path& path)
 
 	if (deserializer.beginChild("entities"))
 	{
-		const auto& componentTypes = manager->getComponentTypes();
-		auto size = (uint32)deserializer.getArraySize();
-		for (uint32 i = 0; i < size; i++)
+		const auto& componentNames = manager->getComponentNames();
+		auto entityCount = (uint32)deserializer.getArraySize();
+
+		for (uint32 i = 0; i < entityCount; i++)
 		{
 			if (!deserializer.beginArrayElement(i))
-				continue;
+				break;
 
-			auto entity = manager->createEntity();
-
-			for (const auto& pair : componentTypes)
+			if (deserializer.beginChild("components"))
 			{
-				auto system = pair.second;
-				const auto& componentName = system->getComponentName();
-				auto serializableSystem = dynamic_cast<ISerializable*>(system);
-				if (componentName.empty() || !serializableSystem)
-					continue;
-
-				if (deserializer.beginChild(componentName))
+				auto componentCount = (uint32)deserializer.getArraySize();
+				if (componentCount == 0)
 				{
-					auto component = manager->add(entity, pair.first);
-					serializableSystem->deserialize(deserializer, entity, component);
 					deserializer.endChild();
+					continue;
 				}
+
+				auto entity = manager->createEntity();
+
+				for (uint32 j = 0; j < componentCount; j++)
+				{
+					if (!deserializer.beginArrayElement(j))
+						break;
+
+					string type;
+					if (!deserializer.read(".type", type))
+					{
+						deserializer.endArrayElement();
+						continue;
+					}
+
+					auto result = componentNames.find(type);
+					if (result == componentNames.end())
+					{
+						deserializer.endArrayElement();
+						continue;
+					}
+
+					auto system = result->second;
+					auto serializableSystem = dynamic_cast<ISerializable*>(system);
+					if (!serializableSystem)
+					{
+						deserializer.endArrayElement();
+						continue;
+					}
+
+					auto component = manager->add(entity, system->getComponentType());
+					serializableSystem->deserialize(deserializer, entity, component);
+					deserializer.endArrayElement();
+				}
+
+				if (manager->getComponentCount(entity) == 0)
+					manager->destroy(entity);
+
+				deserializer.endChild();
 			}
+
 			deserializer.endArrayElement();
 		}
 		deserializer.endChild();
@@ -1892,20 +1925,24 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 		}
 
 		serializer.beginArrayElement();
+		serializer.beginChild("components");
+
 		for (const auto& pair : components)
 		{
 			auto system = pair.second.first;
-			const auto& componentName = system->getComponentName();
 			auto serializableSystem = dynamic_cast<ISerializable*>(system);
-
-			if (componentName.empty() || !serializableSystem)
+			const auto& componentName = system->getComponentName();
+			if (!serializableSystem || componentName.empty())
 				continue;
 			
-			serializer.beginChild(componentName);
+			serializer.beginArrayElement();
+			serializer.write(".type", componentName);
 			auto component = system->getComponent(pair.second.second);
 			serializableSystem->serialize(serializer, instance, component);
-			serializer.endChild();
+			serializer.endArrayElement();
 		}
+
+		serializer.endChild();
 		serializer.endArrayElement();
 	}
 
@@ -1973,52 +2010,66 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 
 	if (deserializer.beginChild("keyframes"))
 	{
-		const auto& componentTypes = Manager::getInstance()->getComponentTypes();
+		const auto& componentNames = Manager::getInstance()->getComponentNames();
 		auto keyframeCount = (uint32)deserializer.getArraySize();
+
 		for (uint32 i = 0; i < keyframeCount; i++)
 		{
-			deserializer.beginArrayElement(i);
+			if (!deserializer.beginArrayElement(i))
+				break;
+
 			int32 frame = 0;
 			if (deserializer.read("frame", frame) && deserializer.beginChild("components"))
 			{
 				Animatables animatables;
 				auto componentCount = (uint32)deserializer.getArraySize();
-				for (uint32 i = 0; i < componentCount; i++)
+				for (uint32 j = 0; j < componentCount; j++)
 				{
-					deserializer.beginArrayElement(i);
-					for (const auto& pair : componentTypes)
+					if (!deserializer.beginArrayElement(j))
+						break;
+
+					string type;
+					if (!deserializer.read(".type", type))
 					{
-						auto system = pair.second;
-						const auto& componentName = system->getComponentName();
-						auto animatableSystem = dynamic_cast<IAnimatable*>(system);
-						if (componentName.empty() || !animatableSystem)
-							continue;
-
-						if (deserializer.beginChild(componentName))
-						{
-							auto animationFrame = animatableSystem->deserializeAnimation(deserializer);
-							if (!animationFrame)
-							{
-								deserializer.endChild();
-								continue;
-							}
-
-							auto animationFrameView = animatableSystem->getAnimation(animationFrame);
-							deserializer.read("coeff", animationFrameView->coeff);
-
-							string funcType;
-							if (deserializer.read("funcType", funcType))
-							{
-								if (funcType == "pow")
-									animationFrameView->funcType = AnimationFunc::Pow;
-								else if (funcType == "gain")
-									animationFrameView->funcType = AnimationFunc::Gain;
-							}
-
-							animatables.emplace(pair.second, animationFrame);
-							deserializer.endChild();
-						}
+						deserializer.endArrayElement();
+						continue;
 					}
+
+					auto result = componentNames.find(type);
+					if (result == componentNames.end())
+					{
+						deserializer.endArrayElement();
+						continue;
+					}
+
+					auto system = result->second;
+					auto animatableSystem = dynamic_cast<IAnimatable*>(system);
+					if (!animatableSystem)
+					{
+						deserializer.endArrayElement();
+						continue;
+					}
+
+					auto animationFrame = animatableSystem->deserializeAnimation(deserializer);
+					if (!animationFrame)
+					{
+						deserializer.endArrayElement();
+						continue;
+					}
+
+					auto animationFrameView = animatableSystem->getAnimation(animationFrame);
+					deserializer.read(".coeff", animationFrameView->coeff);
+
+					string funcType;
+					if (deserializer.read(".funcType", funcType))
+					{
+						if (funcType == "pow")
+							animationFrameView->funcType = AnimationFunc::Pow;
+						else if (funcType == "gain")
+							animationFrameView->funcType = AnimationFunc::Gain;
+					}
+
+					animatables.emplace(result->second, animationFrame);
 					deserializer.endArrayElement();
 				}
 
@@ -2109,19 +2160,17 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 				continue;
 
 			serializer.beginArrayElement();
-			serializer.beginChild(componentName);
+			serializer.write(".type", componentName);
 
 			auto animatableSystem = dynamic_cast<IAnimatable*>(system);
 			auto frameView = animatableSystem->getAnimation(animatable.second);
 			if (frameView->funcType == AnimationFunc::Pow)
-				serializer.write("funcType", "pow");
+				serializer.write(".funcType", "pow");
 			else if (frameView->funcType == AnimationFunc::Gain)
-				serializer.write("funcType", "gain");
-			serializer.write("coeff", frameView->coeff);
+				serializer.write(".funcType", "gain");
+			serializer.write(".coeff", frameView->coeff);
 			
 			animatableSystem->serializeAnimation(serializer, frameView);
-
-			serializer.endChild();
 			serializer.endArrayElement();
 		}
 		serializer.endChild();

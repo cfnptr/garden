@@ -343,8 +343,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 					#endif
 
 					// TODO: support part of the buffer mapping?
-					descriptorBufferInfos.push_back(vk::DescriptorBufferInfo(
-						(VkBuffer)buffer->instance, 0, buffer->binarySize));
+					descriptorBufferInfos.emplace_back((VkBuffer)buffer->instance, 0, buffer->binarySize);
 					resourceCount++;
 				}
 				
@@ -474,8 +473,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 			}
 			#endif
 
-			descriptorBufferInfos.push_back(vk::DescriptorBufferInfo(
-				(VkBuffer)buffer->instance, 0, buffer->binarySize));
+			descriptorBufferInfos.emplace_back((VkBuffer)buffer->instance, 0, buffer->binarySize);
 		}
 
 		writeDescriptorSet.pBufferInfo = &descriptorBufferInfos[(uint32)(

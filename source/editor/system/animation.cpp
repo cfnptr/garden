@@ -73,6 +73,14 @@ static void renderAnimationSelector(ID<Entity> entity)
 
 void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
+	if (ImGui::BeginItemTooltip())
+	{
+		auto animationComponent = Manager::getInstance()->get<AnimationComponent>(entity);
+		ImGui::Text("Playing: %s, Frame: %f", animationComponent->isPlaying ?
+			animationComponent->active.c_str() : "none", animationComponent->frame);
+		ImGui::EndTooltip();
+	}
+
 	if (!isOpened)
 		return;
 
