@@ -117,7 +117,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 	auto indices = opaqueBuffer->indices.data();
 	auto drawCount = &opaqueBuffer->drawCount;
 	auto hasCameraOffset = cameraOffset != float3(0.0f);
-	auto manager = Manager::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
 
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
@@ -126,7 +126,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 			continue;
 
 		float4x4 model;
-		auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
+		auto transform = transformSystem->tryGet(meshRender->getEntity());
 		if (transform)
 		{
 			if (!transform->isActiveWithAncestors())
@@ -168,7 +168,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 	auto componentData = (uint8*)componentPool.getData();
 	auto drawCount = &translucentBuffer->drawCount;
 	auto hasCameraOffset = cameraOffset != float3(0.0f);
-	auto manager = Manager::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
 
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
@@ -177,7 +177,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 			continue;
 
 		float4x4 model;
-		auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
+		auto transform = transformSystem->tryGet(meshRender->getEntity());
 		if (transform)
 		{
 			if (!transform->isActiveWithAncestors())
@@ -441,13 +441,13 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 				auto taskIndex = task.getTaskIndex();
 				auto taskCount = itemCount - task.getItemOffset();
 
-				meshSystem->beginDraw(taskIndex);
+				meshSystem->beginDrawAsync(taskIndex);
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
 					const auto& item = items[indices[j]];
-					meshSystem->draw(item.meshRender, viewProj, item.model, j, taskIndex);
+					meshSystem->drawAsync(item.meshRender, viewProj, item.model, j, taskIndex);
 				}
-				meshSystem->endDraw(taskCount, taskIndex);
+				meshSystem->endDrawAsync(taskCount, taskIndex);
 			}),
 			drawCount);
 			threadPool.wait(); // Required
@@ -457,13 +457,13 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 			auto items = opaqueBuffer->items.data();
 			auto indices = opaqueBuffer->indices.data();
 
-			meshSystem->beginDraw(-1);
+			meshSystem->beginDrawAsync(-1);
 			for (uint32 j = 0; j < drawCount; j++)
 			{
 				const auto& item = items[indices[j]];
-				meshSystem->draw(item.meshRender, viewProj, item.model, j, -1);
+				meshSystem->drawAsync(item.meshRender, viewProj, item.model, j, -1);
 			}
-			meshSystem->endDraw(drawCount, -1);
+			meshSystem->endDrawAsync(drawCount, -1);
 		}
 
 		meshSystem->finalizeDraw(viewProj, drawCount);
@@ -505,7 +505,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 			auto itemCount = task.getItemCount();
 			auto taskIndex = task.getTaskIndex();
 			auto taskCount = itemCount - task.getItemOffset();
-			meshSystem->beginDraw(taskIndex);
+			meshSystem->beginDrawAsync(taskIndex);
 
 			uint32 currentDrawCount = 0;
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -514,23 +514,23 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 				if (currentBufferIndex != item.bufferIndex)
 				{
 					meshSystem = bufferData[currentBufferIndex].meshSystem;
-					meshSystem->endDraw(currentDrawCount, taskIndex);
+					meshSystem->endDrawAsync(currentDrawCount, taskIndex);
 
 					currentBufferIndex = item.bufferIndex;
 					currentDrawCount = 0;
 
 					bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
 					meshSystem = bufferData[currentBufferIndex].meshSystem;
-					meshSystem->beginDraw(taskIndex);
+					meshSystem->beginDrawAsync(taskIndex);
 				}
 
 				auto drawIndex = (uint32)*bufferDrawCount;
 				*bufferDrawCount = *bufferDrawCount + 1;
-				meshSystem->draw(item.meshRender, viewProj, item.model, drawIndex, taskIndex);
+				meshSystem->drawAsync(item.meshRender, viewProj, item.model, drawIndex, taskIndex);
 				currentDrawCount++;
 			}
 
-			meshSystem->endDraw(currentDrawCount, taskIndex);
+			meshSystem->endDrawAsync(currentDrawCount, taskIndex);
 		}),
 		drawCount);
 		threadPool.wait(); // Required
@@ -540,7 +540,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 		auto currentBufferIndex = items[indices[0]].bufferIndex;
 		auto meshSystem = bufferData[currentBufferIndex].meshSystem;
 		auto bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
-		meshSystem->beginDraw(-1);
+		meshSystem->beginDrawAsync(-1);
 
 		uint32 currentDrawCount = 0;
 		for (uint32 i = 0; i < drawCount; i++)
@@ -549,23 +549,23 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 			if (currentBufferIndex != item.bufferIndex)
 			{
 				meshSystem = bufferData[currentBufferIndex].meshSystem;
-				meshSystem->endDraw(currentDrawCount, -1);
+				meshSystem->endDrawAsync(currentDrawCount, -1);
 
 				currentBufferIndex = item.bufferIndex;
 				currentDrawCount = 0;
 
 				bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
 				meshSystem = bufferData[currentBufferIndex].meshSystem;
-				meshSystem->beginDraw(-1);
+				meshSystem->beginDrawAsync(-1);
 			}
 
 			auto drawIndex = (uint32)*bufferDrawCount;
 			*bufferDrawCount = *bufferDrawCount + 1;
-			meshSystem->draw(item.meshRender, viewProj, item.model, drawIndex, -1);
+			meshSystem->drawAsync(item.meshRender, viewProj, item.model, drawIndex, -1);
 			currentDrawCount++;
 		}
 
-		meshSystem->endDraw(currentDrawCount, -1);
+		meshSystem->endDrawAsync(currentDrawCount, -1);
 	}
 
 	for (uint32 i = 0; i < translucentBufferCount; i++)

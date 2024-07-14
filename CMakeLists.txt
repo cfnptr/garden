@@ -167,7 +167,7 @@ set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/incl
 	libraries/ecsm/include libraries/vma/include libraries/stb
 	libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static math-static 
-	conf-static pack-static logy-static nets-static voxy glfw webp zlibstatic png_static FastNoise OpenEXR)
+	conf-static pack-static logy-static nets-static voxy glfw webp zlibstatic png_static FastNoise OpenEXR Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -247,6 +247,12 @@ set(OPENEXR_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
 set(OPENEXR_INSTALL_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/imath)
 add_subdirectory(libraries/openexr)
+
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+	set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+	set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+endif()
+add_subdirectory(libraries/jolt/Build)
 
 #***********************************************************************************************************************
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)

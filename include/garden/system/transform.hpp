@@ -211,6 +211,25 @@ public:
 	ID<Entity> duplicateRecursive(ID<Entity> entity);
 
 	/**
+	 * @brief Returns true if entity has transform component.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	bool has(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity transform component view.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<TransformComponent> get(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity transform component view if exist.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<TransformComponent> tryGet(ID<Entity> entity) const;
+
+	/**
 	 * @brief Returns transform system instance.
 	 */
 	static TransformSystem* getInstance() noexcept

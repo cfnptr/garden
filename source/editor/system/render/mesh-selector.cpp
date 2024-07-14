@@ -68,6 +68,7 @@ void MeshSelectorEditorSystem::editorRender()
 
 	auto manager = Manager::getInstance();
 	auto inputSystem = InputSystem::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
@@ -109,7 +110,7 @@ void MeshSelectorEditorSystem::editorRender()
 					continue;
 
 				float4x4 model;
-				auto transform = manager->tryGet<TransformComponent>(meshRender->getEntity());
+				auto transform = transformSystem->tryGet(meshRender->getEntity());
 				if (transform)
 					model = transform->calcModel(cameraPosition);
 				else
@@ -134,23 +135,47 @@ void MeshSelectorEditorSystem::editorRender()
 		}
 
 		if (newSelected)
-		{
 			editorSystem->selectedEntity = newSelected;
-			editorSystem->selectedEntityAabb = newAabb;
-		}
 		else
-		{
 			editorSystem->selectedEntity = {};
-		}
 	}
 
 	if (isSkipped)
 		isSkipped = false;
 
-	if (selectedEntity && editorSystem->selectedEntityAabb != Aabb())
+	if (selectedEntity)
 	{
-		auto transform = manager->tryGet<TransformComponent>(selectedEntity);
-		if (transform)
+		const auto& systems = manager->getSystems();
+		Aabb selectedEntityAabb = {};
+
+		for (const auto& pair : systems)
+		{
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
+			if (!meshSystem)
+				continue;
+
+			const auto& componentPool = meshSystem->getMeshComponentPool();
+			auto componentSize = meshSystem->getMeshComponentSize();
+			auto componentData = (const uint8*)componentPool.getData();
+			auto componentOccupancy = componentPool.getOccupancy();
+
+			auto breakOut = false;
+			for (uint32 i = 0; i < componentOccupancy; i++)
+			{
+				auto meshRender = (const MeshRenderComponent*)(componentData + i * componentSize);
+				if (selectedEntity != meshRender->getEntity())
+					continue;
+				selectedEntityAabb = meshRender->aabb;
+				breakOut = true;
+				break;
+			}
+
+			if (breakOut)
+				break;
+		}
+
+		auto transform = transformSystem->tryGet(selectedEntity);
+		if (transform && selectedEntityAabb != Aabb())
 		{
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			auto model = transform->calcModel(cameraPosition);
@@ -160,8 +185,7 @@ void MeshSelectorEditorSystem::editorRender()
 				SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
 				framebufferView->beginRenderPass(float4(0.0f));
 				auto mvp = cameraConstants.viewProj * model *
-					translate(editorSystem->selectedEntityAabb.getPosition()) *
-					scale(editorSystem->selectedEntityAabb.getSize());
+					translate(selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 				graphicsSystem->drawAabb(mvp, (float4)aabbColor);
 				framebufferView->endRenderPass();
 			}

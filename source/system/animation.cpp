@@ -57,8 +57,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (!entity || !animationComponent.isPlaying && !animationComponent.active.empty())
 		return;
 
-	auto manager = Manager::getInstance();
-	auto transformComponent = manager->tryGet<TransformComponent>(entity);
+	auto transformComponent = Manager::getInstance()->tryGet<TransformComponent>(entity);
 	if (transformComponent)
 	{
 		if (!transformComponent->isActiveWithAncestors())
@@ -96,6 +95,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (keyframeA != keyframes.begin())
 		keyframeA--;
 
+	auto manager = Manager::getInstance();
 	const auto& animatablesA = keyframeA->second;
 	const auto& animatablesB = keyframeB->second;
 

@@ -13,19 +13,22 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/physics.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-// TODO: refactor
-
-class PhysicsEditor final
+class PhysicsEditorSystem final : public System
 {
-	PhysicsEditor(PhysicsSystem* system);
-	void onEntityInspector(ID<Entity> entity);
-	friend class PhysicsSystem;
+	PhysicsEditorSystem();
+	~PhysicsEditorSystem() final;
+
+	void init();
+	void deinit();
+
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

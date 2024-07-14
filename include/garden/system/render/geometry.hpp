@@ -81,8 +81,8 @@ protected:
 	bool isDrawReady() override;
 	void prepareDraw(const float4x4& viewProj,
 		ID<Framebuffer> framebuffer, uint32 drawCount) override;
-	void beginDraw(int32 taskIndex) override;
-	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	void beginDrawAsync(int32 taskIndex) override;
+	void drawAsync(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 	void finalizeDraw(const float4x4& viewProj,
 		ID<Framebuffer> framebuffer, uint32 drawCount) override;
@@ -136,9 +136,9 @@ protected:
 	bool isDrawReady() override;
 	void prepareDraw(const float4x4& viewProj,
 		ID<Framebuffer> framebuffer, uint32 drawCount) override;
-	void beginDraw(int32 taskIndex) override;
+	void beginDrawAsync(int32 taskIndex) override;
 	
-	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	void drawAsync(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	virtual ID<GraphicsPipeline> createPipeline() = 0;

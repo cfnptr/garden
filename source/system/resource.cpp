@@ -1849,6 +1849,7 @@ void ResourceSystem::loadScene(const fs::path& path)
 void ResourceSystem::clearScene()
 {
 	auto manager = Manager::getInstance();
+	auto transformSystem = manager->tryGet<TransformSystem>();
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -1860,9 +1861,12 @@ void ResourceSystem::clearScene()
 		if (entity->getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
 			continue;
 
-		auto transformComponent = manager->tryGet<TransformComponent>(entityID);
-		if (transformComponent)
-			transformComponent->setParent({});
+		if (transformSystem)
+		{
+			auto transformComponent = transformSystem->tryGet(entityID);
+			if (transformComponent)
+				transformComponent->setParent({});
+		}
 		manager->destroy(entityID);
 	}
 
@@ -1888,6 +1892,10 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	JsonSerializer serializer(filePath);
 
 	auto manager = Manager::getInstance();
+	auto transformSystem = manager->tryGet<TransformSystem>();
+	if (!transformSystem)
+		rootEntity = {};
+
 	const auto& systems = manager->getSystems();
 	for (const auto& pair : systems)
 	{
@@ -1919,9 +1927,12 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 
 		if (rootEntity)
 		{
-			auto transformComponent = manager->tryGet<TransformComponent>(instance);
-			if (!transformComponent || (instance != rootEntity && !transformComponent->hasAncestor(rootEntity)))
+			auto transformComponent = transformSystem->tryGet(instance);
+			if (!transformComponent || (instance != rootEntity &&
+				!transformComponent->hasAncestor(rootEntity)))
+			{
 				continue;
+			}
 		}
 
 		serializer.beginArrayElement();

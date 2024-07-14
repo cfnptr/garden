@@ -66,7 +66,7 @@ void FpvSystem::update()
 
 	auto manager = Manager::getInstance();
 	auto camera = graphicsSystem->camera;
-	auto transformComponent = manager->get<TransformComponent>(camera);
+	auto transformComponent = TransformSystem::getInstance()->get(camera);
 	// auto hasRigidBody = manager->has<RigidBodyComponent>(camera);
 
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::F10) &&
@@ -225,7 +225,7 @@ void FpvSystem::postSimulate()
 	if (!rigidBodyComponent)
 		return;
 
-	auto transformComponent = manager->get<TransformComponent>(camera);
+	auto transformComponent = TransformSystem::getInstance()->get(camera);
 	rigidBodyComponent->getPose(transformComponent->position, rotation);
 }
 

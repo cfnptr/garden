@@ -103,7 +103,7 @@ void Controller2DSystem::update()
 	{
 		auto manager = Manager::getInstance();
 		auto cameraComponent = manager->get<CameraComponent>(camera);
-		auto transformComponent = manager->get<TransformComponent>(camera);
+		auto transformComponent = TransformSystem::getInstance()->get(camera);
 		auto cursorDelta = inputSystem->getCursorDelta();
 		auto windowSize = (float2)GraphicsSystem::getInstance()->getWindowSize();
 		auto othoSize = float2(

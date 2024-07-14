@@ -80,12 +80,14 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	auto manager = Manager::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
+
 	if (ImGui::BeginItemTooltip())
 	{
-		auto transformComponent = manager->get<TransformComponent>(entity);
+		auto transformComponent = transformSystem->get(entity);
 		if (transformComponent->getParent())
 		{
-			auto parentTransform = manager->get<TransformComponent>(transformComponent->getParent());
+			auto parentTransform = transformSystem->get(transformComponent->getParent());
 			ImGui::Text("Parent: %lu %s", (unsigned long)*transformComponent->getParent(),
 				parentTransform->debugName.empty() ? "" : ("(" + parentTransform->debugName + ")").c_str());
 		}
@@ -99,7 +101,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (isOpened)
 	{
-		auto transformComponent = manager->get<TransformComponent>(entity);
+		auto transformComponent = transformSystem->get(entity);
 		ImGui::Checkbox("Active", &transformComponent->isActive);
 
 		auto isBaked = manager->has<BakedTransformComponent>(entity);
@@ -188,7 +190,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (editorSystem->selectedEntity)
 		{
-			auto transformComponent = manager->get<TransformComponent>(editorSystem->selectedEntity);
+			auto transformComponent = transformSystem->get(editorSystem->selectedEntity);
 			oldEulerAngles = newEulerAngles = degrees(transformComponent->rotation.toEulerAngles());
 			oldRotation = transformComponent->rotation;
 		}
@@ -199,7 +201,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (editorSystem->selectedEntity)
 		{
-			auto transformComponent = manager->get<TransformComponent>(editorSystem->selectedEntity);
+			auto transformComponent = transformSystem->get(editorSystem->selectedEntity);
 			if (oldRotation != transformComponent->rotation)
 			{
 				oldEulerAngles = newEulerAngles = degrees(transformComponent->rotation.toEulerAngles());

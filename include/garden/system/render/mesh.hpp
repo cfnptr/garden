@@ -55,13 +55,10 @@ class IMeshRenderSystem
 protected:
 	virtual bool isDrawReady() = 0;
 	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount) { }
-	// WARNING: can be called from multiple threads asynchronously.
-	virtual void beginDraw(int32 taskIndex) { }
-	// WARNING: can be called from multiple threads asynchronously.
-	virtual void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	virtual void beginDrawAsync(int32 taskIndex) { }
+	virtual void drawAsync(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
-	// WARNING: can be called from multiple threads asynchronously.
-	virtual void endDraw(uint32 drawCount, int32 taskIndex) { }
+	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
 	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount) { }
 
 	friend class MeshRenderSystem;

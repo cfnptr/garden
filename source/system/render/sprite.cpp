@@ -101,7 +101,7 @@ bool SpriteRenderSystem::isDrawReady()
 
 	return true;
 }
-void SpriteRenderSystem::draw(MeshRenderComponent* meshRenderComponent,
+void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderComponent,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderComponent = (SpriteRenderComponent*)meshRenderComponent;

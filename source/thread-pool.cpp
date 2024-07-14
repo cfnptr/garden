@@ -104,6 +104,7 @@ uint32 ThreadPool::getPendingTaskCount()
 //**********************************************************************************************************************
 void ThreadPool::addTask(const Task& task)
 {
+	GARDEN_ASSERT(task.function);
 	mutex.lock();
 	tasks.push(task);
 	mutex.unlock();
@@ -117,6 +118,7 @@ void ThreadPool::addTasks(const vector<Task>& tasks)
 	for (uint32 i = 0; i < (uint32)tasks.size(); i++)
 	{
 		auto task = tasks[i];
+		GARDEN_ASSERT(task.function);
 		task.taskIndex = i;
 		this->tasks.push(task);
 	}
@@ -129,7 +131,9 @@ void ThreadPool::addTasks(const vector<Task>& tasks)
 }
 void ThreadPool::addTasks(const Task& task, uint32 count)
 {
+	GARDEN_ASSERT(task.function);
 	GARDEN_ASSERT(count != 0);
+
 	auto _task = task;
 	mutex.lock();
 
@@ -148,7 +152,9 @@ void ThreadPool::addTasks(const Task& task, uint32 count)
 }
 void ThreadPool::addItems(const Task& task, uint32 count)
 {
+	GARDEN_ASSERT(task.function);
 	GARDEN_ASSERT(count != 0);
+
 	auto _task = task;
 	_task.itemCount = count;
 	mutex.lock();

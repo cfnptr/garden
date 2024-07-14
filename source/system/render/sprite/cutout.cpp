@@ -141,10 +141,7 @@ ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deser
 		frame.animateUvSize || frame.animateUvOffset ||
 		frame.animateColorMapLayer || frame.animateAlphaCutoff)
 	{
-		auto instance = animationFrames.create();
-		auto frameView = animationFrames.get(instance);
-		**frameView = frame;
-		return ID<AnimationFrame>(instance);
+		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
 
 	return {};
