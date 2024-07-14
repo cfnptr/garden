@@ -53,13 +53,17 @@ public:
 	public:
 		using OnTask = std::function<void(const Task& task)>;
 	private:
-		OnTask function;
+		OnTask function = {};
 		uint32 threadIndex = 0;
 		uint32 taskIndex = 0;
 		uint32 itemOffset = 0;
 		uint32 itemCount = 0;
 		friend class ThreadPool;
 	public:
+		/**
+		 * @brief Creates empty task data.
+		 */
+		Task() = default;
 		/**
 		 * @brief Creates a new task data.
 		 * @param[in] function target function that should be executed by a thread

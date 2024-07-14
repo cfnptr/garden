@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,113 +11,106 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/physics.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/physics.hpp"
+
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-PhysicsEditor::PhysicsEditor(PhysicsSystem* system)
+//**********************************************************************************************************************
+PhysicsEditorSystem::PhysicsEditorSystem()
 {
-	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(RigidBodyComponent),
-		[this](ID<Entity> entity) { onEntityInspector(entity); });
-	this->system = system;
+	auto manager = Manager::getInstance();
+	SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
 }
-// TODO: unregister inspector
-
-//--------------------------------------------------------------------------------------------------
-void PhysicsEditor::onEntityInspector(ID<Entity> entity)
+PhysicsEditorSystem::~PhysicsEditorSystem()
 {
-	if (ImGui::CollapsingHeader("Rigid Body"))
+	auto manager = Manager::getInstance();
+	if (manager->isRunning())
 	{
-		auto manager = Manager::getInstance();
-		auto rigidBodyComponent = manager->get<RigidBodyComponent>(entity);
+		UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
+	}
+}
 
-		auto isStatic = rigidBodyComponent->isStatic();
-		if (ImGui::Checkbox("Static", &isStatic))
+void PhysicsEditorSystem::init()
+{
+	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
+	EditorRenderSystem::getInstance()->registerEntityInspector<RigidbodyComponent>(
+	[this](ID<Entity> entity, bool isOpened)
+	{
+		onEntityInspector(entity, isOpened);
+	});
+}
+void PhysicsEditorSystem::deinit()
+{
+	EditorRenderSystem::getInstance()->unregisterEntityInspector<RigidbodyComponent>();
+}
+
+//**********************************************************************************************************************
+void PhysicsEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (ImGui::BeginItemTooltip())
+	{
+		auto rigidbodyComponent = Manager::getInstance()->get<RigidbodyComponent>(entity);
+		ImGui::Text("Active: %s", rigidbodyComponent->isActive() ? "true" : "false");
+		ImGui::EndTooltip();
+	}
+
+	if (!isOpened)
+		return;
+
+	auto rigidbodyComponent = Manager::getInstance()->get<RigidbodyComponent>(entity);
+
+	auto isActive = rigidbodyComponent->isActive();
+	if (ImGui::Checkbox("Active", &isActive))
+	{
+		if (isActive && rigidbodyComponent->getShape())
+			rigidbodyComponent->activate();
+		else
+			rigidbodyComponent->deactivate();
+	}
+
+	const auto mTypes = "Static\0Kinematic\0Dynamic\00";
+	auto motionType = rigidbodyComponent->getMotionType();
+	if (ImGui::Combo("Motion Type", &motionType, mTypes))
+		rigidbodyComponent->setMotionType(motionType);
+	
+
+	auto physicsSystem = PhysicsSystem::getInstance();
+	auto shape = rigidbodyComponent->getShape();
+
+	int shapeType = 0;
+	if (shape)
+	{
+		auto shapeView = physicsSystem->get(shape);
+		switch (shapeView->getSubType())
 		{
-			rigidBodyComponent->setStatic(isStatic);
-			if (!isStatic)
-			{
-				rigidBodyComponent->setLinearDamping(0.025f);
-				rigidBodyComponent->setAngularDamping(0.05f);
-				rigidBodyComponent->setSleepThreshold(0.05f);
-				rigidBodyComponent->setSolverIterCount(8, 2);
-			}
+		case ShapeSubType::Box:
+			shapeType = 2;
+			break;
+		default:
+			shapeType = 1;
+			break;
 		}
+	}
 
-		if (!isStatic)
+	const auto sTypes = "None\0Custom\0Box\00";
+	if (ImGui::Combo("Shape", &shapeType, sTypes))
+	{
+		switch (shapeType)
 		{
-			ImGui::SameLine();
-			auto boolValue = rigidBodyComponent->isSleeping();
-			if (ImGui::Checkbox("Sleeping", &boolValue))
-			{
-				if (boolValue)
-					rigidBodyComponent->putToSleep();
-				else
-					rigidBodyComponent->wakeUp();
-			}
-
-			auto floatValue = rigidBodyComponent->getMass();
-			if (ImGui::DragFloat("Mass", &floatValue, 0.01f, 0.0f, FLT_MAX))
-				rigidBodyComponent->setMass(floatValue);
-
-			ImGui::SeparatorText("Damping Coefficient");
-			floatValue = rigidBodyComponent->getLinearDamping();
-			if (ImGui::DragFloat("Linear", &floatValue, 0.01f, 0.0f, FLT_MAX))
-				rigidBodyComponent->setLinearDamping(floatValue);
-			floatValue = rigidBodyComponent->getAngularDamping();
-			if (ImGui::DragFloat("Angular", &floatValue, 0.01f, 0.0f, FLT_MAX))
-				rigidBodyComponent->setAngularDamping(floatValue);
-
-			if (ImGui::CollapsingHeader("Advanced Settings"))
-			{
-				auto float3Value = rigidBodyComponent->getCenterOfMass();
-				if (ImGui::DragFloat3("Center Of Mass",
-					&float3Value, 0.01f, 0.0f, FLT_MAX))
-				{
-					rigidBodyComponent->setCenterOfMass(float3Value);
-				}
-				float3Value = rigidBodyComponent->getInertiaTensor();
-				if (ImGui::DragFloat3("Inertia Tensor",
-					&float3Value, 0.01f, 0.0f, FLT_MAX))
-				{
-					rigidBodyComponent->setInertiaTensor(float3Value);
-				}
-				if (ImGui::Button("Calculate Mass and Inertia", ImVec2(-FLT_MIN, 0.0f)))
-					rigidBodyComponent->calcMassAndInertia();
-
-				ImGui::Spacing();
-				floatValue = rigidBodyComponent->getSleepThreshold();
-				if (ImGui::DragFloat("Sleep Threshold", &floatValue, 0.01f, 0.0f, FLT_MAX))
-					rigidBodyComponent->setSleepThreshold(floatValue);
-				
-				ImGui::SeparatorText("Solver Iteration Count");
-				uint32 minPosition = 0, minVelocity = 0;
-				rigidBodyComponent->getSolverIterCount(minPosition, minVelocity);
-				int mp = minPosition, mv = minVelocity;
-				ImGui::InputInt("Min Position", &mp);
-				ImGui::InputInt("Min Velocity", &mv);
-				if (mp > 0 && mv > 0 && mp != minPosition && mv != minVelocity)
-					rigidBodyComponent->setSolverIterCount(mp, mv);
-
-				ImGui::SeparatorText("Velocity");
-				float3Value = rigidBodyComponent->getLinearVelocity();
-				if (ImGui::DragFloat3("Linear",
-					&float3Value, 0.01f, 0.0f, FLT_MAX))
-					rigidBodyComponent->setLinearVelocity(float3Value);
-				float3Value = rigidBodyComponent->getAngularVelocity();
-				if (ImGui::DragFloat3("Angular",
-					&float3Value, 0.01f, 0.0f, FLT_MAX))
-					rigidBodyComponent->setAngularVelocity(float3Value);
-			}
-
-			if (ImGui::CollapsingHeader("Shapes"))
-			{
-				// TODO: show shapes.
-			}
+		case 0:
+			rigidbodyComponent->setShape({});
+			break;
+		case 2:
+			rigidbodyComponent->setShape(physicsSystem->createBoxShape(float3(0.5f)));
+			break;
+		default:
+			break;
 		}
 	}
 }

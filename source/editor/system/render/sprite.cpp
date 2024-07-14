@@ -125,7 +125,6 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 //**********************************************************************************************************************
 void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* component, type_index componentType)
 {
-	auto manager = Manager::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (component->isArray)
@@ -150,10 +149,11 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* component,
 		component->descriptorSet = {};
 	}
 
-	ImGui::BeginDisabled(!component->colorMap && manager->has<TransformComponent>(component->getEntity()));
+	auto transformSystem = TransformSystem::getInstance();
+	ImGui::BeginDisabled(!component->colorMap && transformSystem->has(component->getEntity()));
 	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
 	{
-		auto transformComponent = manager->get<TransformComponent>(component->getEntity());
+		auto transformComponent = transformSystem->get(component->getEntity());
 		auto colorMapView = GraphicsSystem::getInstance()->get(component->colorMap);
 		auto imageSize = colorMapView->getSize();
 

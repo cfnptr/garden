@@ -49,7 +49,7 @@ protected:
 	
 	bool isDrawReady() override;
 	void prepareDraw(const float4x4& viewProj, uint32 drawCount) override;
-	void beginDraw(int32 taskIndex) override;
+	void beginDrawAsync(int32 taskIndex) override;
 	void finalizeDraw(const float4x4& viewProj, uint32 drawCount) override;
 
 	virtual ID<GraphicsPipeline> createPipeline() = 0;

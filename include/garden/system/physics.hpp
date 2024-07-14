@@ -14,23 +14,14 @@
 // limitations under the License.
 //--------------------------------------------------------------------------------------------------
 
-// TODO: refactor this
-
-/*
 #pragma once
-#include "garden/defines.hpp"
-#include "ecsm.hpp"
-#include "math/quaternion.hpp"
+#include "garden/animate.hpp"
 
 namespace garden
 {
 	class PhysicsSystem;
-};
-
-namespace
-{
-	class GardenPxSimulation;
-};
+	struct RigidbodyComponent;
+}
 
 namespace garden::physics
 {
@@ -38,269 +29,234 @@ namespace garden::physics
 using namespace math;
 using namespace ecsm;
 
-//--------------------------------------------------------------------------------------------------
-struct Material final : public Component
+/**
+ * @brief Motion type of a physics body.
+ */
+enum class MotionType : uint8
 {
-private:
-	void* instance = nullptr;
-
-	bool destroy();
-
-	friend class garden::PhysicsSystem;
-	friend class LinearPool<Material>;
-public:
-	void* getInstance() noexcept { return instance; }
-	
-	float getStaticFriction() const;
-	void setStaticFriction(float value);
-
-	float getDynamicFriction() const;
-	void setDynamicFriction(float value);
-
-	float getRestitution() const;
-	void setRestitution(float value);
+	Static,    /**< Non movable */
+	Kinematic, /**< Movable using velocities only, does not respond to forces */
+	Dynamic,   /**< Responds to forces as a normal physics object */
+	Count      /**< Physics body motion type count */
 };
 
-//--------------------------------------------------------------------------------------------------
-struct Shape final : public Component
+/**
+ * @brief Category of a collision volume shape.
+ */
+enum class ShapeType : uint8
 {
-public:
-	enum class Type : uint8
-	{
-		Cube, Sphere, Plane, Capsule, Custom, Count,
-	};
+	Convex,
+	Compound,
+	Decorated,
+	Mesh,
+	HeightField,
+	SoftBody,
+
+	// User defined shapes
+	User1,
+	User2,
+	User3,
+	User4,
+	Count
+};
+
+
+/**
+ * @brief Collision volume shape type
+ */
+enum class ShapeSubType : uint8
+{
+	// Convex shapes
+	Sphere,
+	Box,
+	Triangle,
+	Capsule,
+	TaperedCapsule,
+	Cylinder,
+	ConvexHull,
+
+	// Compound shapes
+	StaticCompound,
+	MutableCompound,
+
+	// Decorated shapes
+	RotatedTranslated,
+	Scaled,
+	OffsetCenterOfMass,
+
+	// Other shapes
+	Mesh,
+	HeightField,
+	SoftBody,
+
+	// User defined shapes
+	User1,
+	User2,
+	User3,
+	User4,
+	User5,
+	User6,
+	User7,
+	User8,
+
+	// User defined convex shapes
+	UserConvex1,
+	UserConvex2,
+	UserConvex3,
+	UserConvex4,
+	UserConvex5,
+	UserConvex6,
+	UserConvex7,
+	UserConvex8,
+	Count,
+};
+
+/**
+ * @brief Collision volume of a physics body.
+ */
+struct Shape final
+{
 private:
 	void* instance = nullptr;
-	ID<Material> material = {};
-	Type type = {};
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
+
+	Shape() = default;
+	Shape(void* _instance) : instance(_instance) { }
 
 	bool destroy();
 
-	void setGeometry(Shape::Type type, void* geometry);
-	friend class garden::PhysicsSystem;
+	friend class PhysicsSystem;
 	friend class LinearPool<Shape>;
+	friend struct RigidbodyComponent;
 public:
-	void* getInstance() noexcept { return instance; }
-	Type getType() const noexcept { return type; }
+	ShapeType getType() const;
+	ShapeSubType getSubType() const;
 
-	ID<Material> getMaterial() const noexcept { return material; }
-	void setMaterial(ID<Material> material);
-	
-	void getPose(float3& position, quat& rotation) const;
-	void setPose(const float3& position,
-		const quat& rotation = quat::identity);
-	
-	bool isTrigger() const;
-	void setTrigger(bool value);
-
-	void setBoxGeometry(const float3& halfSize);
-	void setSphereGeometry(float radius);
-	void setPlaneGeometry();
-	void setCapsuleGeometry(float radius, float halfHeight);
-	void setCustomGeometry(void* callbacks);
-
-	float getContactOffset() const;
-	void setContactOffset(float value);
-
-	float getRestOffset() const;
-	void setRestOffset(float value);
+	uint64 getRefCount() const;
+	bool isLastRef() const;
 };
 
-} // namespace garden::physics
+} // garden::physics
 
 namespace garden
 {
 
+using namespace math;
 using namespace ecsm;
-using namespace garden::physics;
+using namespace physics;
 
-//--------------------------------------------------------------------------------------------------
-struct RigidBodyComponent final : public Component
+struct RigidbodyComponent final : public Component
 {
-public:
-	enum class ForceType : uint8
-	{
-		Force,			// mass * length / time^2
-		Impulse, 		// mass * length / time
-		VeolcityChange,	// length / time
-		Accceleration, 	// length / time^2
-		Count
-	};
 private:
-	void* instance = nullptr;
-	uint16 _alignment = 0;
-	bool staticBody = false;
+	uint32 instance = 0;
+	ID<Shape> shape = {};
+	MotionType motionType = {};
 
 	bool destroy();
 
 	friend class PhysicsSystem;
-	friend class LinearPool<RigidBodyComponent>;
+	friend class LinearPool<RigidbodyComponent>;
 public:
-	bool updatePose = true;
+	MotionType getMotionType() const noexcept { return motionType; }
+	void setMotionType(MotionType motionType, bool activate = true);
 
-	void* getInstance() noexcept { return instance; }
+	ID<Shape> getShape() const noexcept { return shape; }
+	void setShape(ID<Shape> shape, bool activate = true);
 
-	bool isStatic() const noexcept { return staticBody; }
-	void setStatic(bool isStatic);
+	bool isActive() const;
+	void activate();
+	void deactivate();
 
-	bool isSleeping() const;
-	void putToSleep();
-	void wakeUp();
-
-	float getLinearDamping() const;
-	void setLinearDamping(float value);
-
-	float getAngularDamping() const;
-	void setAngularDamping(float value);
-
-	float3 getLinearVelocity() const;
-	void setLinearVelocity(const float3& value);
-
-	float3 getAngularVelocity() const;
-	void setAngularVelocity(const float3& value);
-
-	float getMass() const;
-	void setMass(float value);
-
-	float3 getCenterOfMass() const;
-	void setCenterOfMass(const float3& value);
-	
-	float3 getInertiaTensor() const;
-	void setInertiaTensor(const float3& value);
-
-	void calcMassAndInertia(float density = 1.0f);
-
-	float getSleepThreshold() const;
-	void setSleepThreshold(float value);
-
-	float getContactThreshold() const;
-	void setContactThreshold(float value);
-
-	void getSolverIterCount(uint32& minPosition, uint32& minVelocity) const;
-	void setSolverIterCount(uint32 minPosition, uint32 minVelocity);
-
-	void getPose(float3& position, quat& rotation) const;
-	void setPose(const float3& position,
-		const quat& rotation = quat::identity);
-
-	void attachShape(ID<Shape> shape);
-	void detachShape(ID<Shape> shape);
-
-	uint32 getShapeCount() const;
-	void getShapes(vector<ID<Shape>>& shapes);
-
-	bool getLinearLockX() const;
-	bool getLinearLockY() const;
-	bool getLinearLockZ() const;
-	void setLinearLockX(bool value);
-	void setLinearLockY(bool value);
-	void setLinearLockZ(bool value);
-
-	bool getAngularLockX() const;
-	bool getAngularLockY() const;
-	bool getAngularLockZ() const;
-	void setAngularLockX(bool value);
-	void setAngularLockY(bool value);
-	void setAngularLockZ(bool value);
-
-	void addForce(const float3& value, ForceType type = ForceType::Force);
-	void addTorque(const float3& value, ForceType type = ForceType::Force);
+	float3 getPosition() const;
+	void setPosition(const float3& position, bool activate = true);
+	quat getRotation() const;
+	void setRotation(const quat& rotation, bool activate = true);
+	void getPosAndRot(float3& position, quat& rotation) const;
+	void setPosAndRot(const float3& position, const quat& rotation, bool activate = true);
 };
 
-//--------------------------------------------------------------------------------------------------
-class IPhysicsSystem
+class PhysicsSystem final : public System, public ISerializable
 {
 public:
-	struct TriggerData
+	struct Properties final
 	{
-		ID<Entity> triggerEntity = {};
-		ID<Entity> otherEntity = {};
-		ID<Shape> triggerShape = {};
-		ID<Shape> otherShape = {};
-		bool isEntered = false;
+		uint32 tempBufferSize = 10 * 1024 * 1024; // 10mb
+		uint32 maxRigidbodies = 65536;
+		uint32 bodyMutexCount = 0; // 0 = auto
+		uint32 maxBodyPairs = 65536;
+		uint32 maxContactConstraints = 10240;
 	};
-protected:
-	virtual void preSimulate() { }
-	virtual void simulate(double deltaTime) { }
-	virtual void postSimulate() { }
-	virtual void onTrigger(const TriggerData& data) { }
-
-	friend class PhysicsSystem;
-	friend class ::GardenPxSimulation;
-public:
-	PhysicsSystem* getPhysicsSystem() noexcept
-	{
-		GARDEN_ASSERT(physicsSystem);
-		return physicsSystem;
-	}
-	const PhysicsSystem* getPhysicsSystem() const noexcept
-	{
-		GARDEN_ASSERT(physicsSystem);
-		return physicsSystem;
-	}
-};
-
-//--------------------------------------------------------------------------------------------------
-class PhysicsSystem final : public System
-{
-	LinearPool<RigidBodyComponent> components;
-	LinearPool<Material> materials;
+private:
+	LinearPool<RigidbodyComponent> components;
 	LinearPool<Shape> shapes;
-	void* data = nullptr;
-	void* foundation = nullptr;
-	void* instance = nullptr;
-	void* scene = nullptr;
-	void* ccManager = nullptr;
-	uint8* scratchBuffer = nullptr;
-	ID<Material> defaultMaterial = {};
+	void* tempAllocator = nullptr;
+	void* jobSystem = nullptr;
+	void* bpLayerInterface = nullptr;
+	void* objVsBpLayerFilter = nullptr;
+	void* objVsObjLayerFilter = nullptr;
+	void* physicsInstance = nullptr;
+	void* bodyInterface = nullptr;
+	float deltaTimeAccum = 0.0f;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	void* pvd = nullptr;
-	#endif
+	static PhysicsSystem* instance;
 
-	void initialize() final;
-	void terminate() final;
-	void update() final;
+	/**
+	 * @brief Creates a new physics system instance.
+	 * @param properties target pshysics simulation properties
+	 */
+	PhysicsSystem(const Properties& properties = {});
+	/**
+	 * @brief Destroy physics system instance.
+	 */
+	~PhysicsSystem() final;
 
-	type_index getComponentType() const final;
+	void preInit();
+	void postInit();
+	void update();
+
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
-
-	ID<Shape> createShape(Shape::Type type, ID<Material> material, void* geometry);
+	
+	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	
 	friend class ecsm::Manager;
+	friend struct RigidbodyComponent;
 public:
-	float minUpdateRate = 30.0f;
+	int32 collisionSteps = 1;
+	uint16 simulationRate = 60;
 
-	ID<Material> getDefaultMaterial()
-		const noexcept { return defaultMaterial; }
-	const LinearPool<RigidBodyComponent>& getComponents()
-		const noexcept { return components; }
-	const LinearPool<Material>& getMaterials()
-		const noexcept { return materials; }
-	const LinearPool<Shape>& getShapes()
-		const noexcept { return shapes; }
-	void* getFoundation() noexcept { return foundation; }
-	void* getInstance() noexcept { return instance; }
-	void* getScene() noexcept { return scene; }
+	/**
+	 * @brief Returns physics component pool.
+	 */
+	const LinearPool<RigidbodyComponent>& getComponents() const noexcept { return components; }
+	/**
+	 * @brief Returns physics shape pool.
+	 */
+	const LinearPool<Shape>& getShapes() const noexcept { return shapes; }
 
-	ID<Material> createMaterial(float staticFriction,
-		float dynamicFriction, float restitution);
-	View<Material> get(ID<Material> material) const;
-	void destroy(ID<Material> material);
+	ID<Shape> createBoxShape(const float3& halfExtent, float convexRadius = 0.05f);
 
-	ID<Shape> createBoxShape(ID<Material> material, const float3& halfSize);
-	ID<Shape> createSphereShape(ID<Material> material, float radius);
-	ID<Shape> createPlaneShape(ID<Material> material);
-	ID<Shape> createCapsuleShape(ID<Material> material, float radius, float halfHeight);
-	ID<Shape> createCustomShape(ID<Material> material, void* callbacks);
-	View<Shape> get(ID<Shape> shape) const;
-	void destroy(ID<Shape> shape);
+	View<Shape> get(ID<Shape> shape) const noexcept { return shapes.get(shape); }
+	void destroy(ID<Shape> shape) { shapes.destroy(shape); }
+
+	/**
+	 * @brief Improves collision detection performance. (Expensive operation!)
+	 */
+	void optimizeBroadPhase();
+
+	/**
+	 * @brief Returns physics system instance.
+	 */
+	static PhysicsSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // System is not created.
+		return instance;
+	}
 };
 
 } // namespace garden
-*/

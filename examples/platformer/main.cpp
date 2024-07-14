@@ -16,6 +16,7 @@
 #include "garden/system/log.hpp"
 #include "garden/system/link.hpp"
 #include "garden/system/camera.hpp"
+#include "garden/system/physics.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/animation.hpp"
@@ -34,6 +35,7 @@
 #include "garden/editor/system/ecs.hpp"
 #include "garden/editor/system/link.hpp"
 #include "garden/editor/system/camera.hpp"
+#include "garden/editor/system/physics.hpp"
 #include "garden/editor/system/graphics.hpp"
 #include "garden/editor/system/transform.hpp"
 #include "garden/editor/system/hierarchy.hpp"
@@ -79,6 +81,7 @@ void entryPoint()
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
 	manager->createSystem<BakedTransformSystem>();
+	manager->createSystem<PhysicsSystem>();
 	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ForwardRenderSystem>();
@@ -101,6 +104,7 @@ void entryPoint()
 	manager->createSystem<AnimationEditorSystem>();
 	manager->createSystem<CameraEditorSystem>();
 	manager->createSystem<TransformEditorSystem>();
+	manager->createSystem<PhysicsEditorSystem>();
 	manager->createSystem<GraphicsEditorSystem>();
 	manager->createSystem<GpuResourceEditorSystem>();
 	manager->createSystem<InfiniteGridEditorSystem>();

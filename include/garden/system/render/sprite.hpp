@@ -88,7 +88,7 @@ protected:
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
 	bool isDrawReady() override;
-	void draw(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	void drawAsync(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	uint64 getInstanceDataSize() override;

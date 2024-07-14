@@ -123,7 +123,7 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 	pipelineView = graphicsSystem->get(pipeline);
 	instanceMap = instanceBufferView->getMap();
 }
-void InstanceRenderSystem::beginDraw(int32 taskIndex)
+void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
 	pipelineView->setViewportScissorAsync(float4(0.0f), taskIndex);

@@ -85,7 +85,6 @@ private:
 	friend class ecsm::Manager;
 	friend class HierarchyEditorSystem;
 public:
-	Aabb selectedEntityAabb;
 	ID<Entity> selectedEntity;
 
 	bool exportScene = false;

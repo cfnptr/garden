@@ -99,10 +99,7 @@ ID<AnimationFrame> Opaque9SliceSystem::deserializeAnimation(IDeserializer& deser
 	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || frame.animateUvOffset || 
 		frame.animateColorMapLayer || frame.animateTextureBorder || frame.animateWindowBorder)
 	{
-		auto instance = animationFrames.create();
-		auto frameView = animationFrames.get(instance);
-		**frameView = frame;
-		return ID<AnimationFrame>(instance);
+		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
 
 	return {};

@@ -12,1013 +12,682 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: use Jolt physics library instead
-
-/*
 #include "garden/system/physics.hpp"
-#include "garden/system/graphics.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/thread.hpp"
+#include "garden/system/input.hpp"
 #include "garden/system/log.hpp"
-#include "PxConfig.h"
-#include "PxPhysicsAPI.h"
 
-#if GARDEN_EDITOR
-#include "garden/editor/system/physics.hpp"
-#endif
+#include <Jolt/Jolt.h>
+#include <Jolt/RegisterTypes.h>
+#include <Jolt/Core/Factory.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Core/FixedSizeFreeList.h>
+#include <Jolt/Core/JobSystemWithBarrier.h>
+#include <Jolt/Physics/PhysicsSettings.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/BodyActivationListener.h>
 
-#define SCRATCH_BUFFER_SIZE 65536
-
-using namespace physx;
+using namespace ecsm;
 using namespace garden;
 
-namespace
+//**********************************************************************************************************************
+static void TraceImpl(const char* inFMT, ...)
 {
+	va_list list;
+	va_start(list, inFMT);
+	char buffer[1024];
+	vsnprintf(buffer, sizeof(buffer), inFMT, list);
+	va_end(list);
 
-class GardenPxErrorCallback final : public PxErrorCallback
-{
-	LogSystem* logSystem = nullptr;
-public:
-	GardenPxErrorCallback(LogSystem* _logSystem = nullptr) :
-		logSystem(_logSystem) { }
-
-	void reportError(PxErrorCode::Enum code, const char* message,
-		const char* file, int line) final
-	{
-		if (!logSystem)
-			return;
-
-		LogSystem::Severity severity;
-		switch (code)
-		{
-		case PxErrorCode::eDEBUG_INFO:
-			severity = LogSystem::Severity::Debug; break;
-		case PxErrorCode::eDEBUG_WARNING:
-		case PxErrorCode::ePERF_WARNING:
-			severity = LogSystem::Severity::Warn; break;
-		case PxErrorCode::eABORT:
-			severity = LogSystem::Severity::Fatal; break;
-		default: severity = LogSystem::Severity::Error; break;
-		}
-		logSystem->log(severity, message);
-		if (severity == LogSystem::Severity::Fatal) abort();
-	}
-};
-
-class GardenPxCpuDispatcher final : public PxCpuDispatcher
-{
-	ThreadPool* threadPool = nullptr;
-public:
-	GardenPxCpuDispatcher(ThreadPool* _threadPool = nullptr) :
-		threadPool(_threadPool) { }
-
-	void submitTask(PxBaseTask& task) final
-	{
-		threadPool->addTask(ThreadPool::Task([](const ThreadPool::Task& task)
-		{
-			auto pxTask = (PxBaseTask*)task.getArgument();
-			pxTask->run(); pxTask->release();
-		}, &task));
-	}
-
-	uint32_t getWorkerCount() const final
-	{
-		return threadPool->getThreadCount();
-	}
-};
-
-class GardenPxSimulation final : public PxSimulationEventCallback
-{
-	PhysicsSystem* physicsSystem = nullptr;
-public:
-	GardenPxSimulation(PhysicsSystem* _physicsSystem = nullptr) :
-		physicsSystem(_physicsSystem) { }
-
-	void onConstraintBreak(PxConstraintInfo* constraints, PxU32 count) final { }
-	void onWake(PxActor** actors, PxU32 count) final { }
-	void onSleep(PxActor** actors, PxU32 count) final { }
-	void onContact(const PxContactPairHeader& pairHeader,
-		const PxContactPair* pairs, PxU32 nbPairs) final { }
-	void onAdvance(const PxRigidBody*const* bodyBuffer,
-		const PxTransform* poseBuffer, const PxU32 count) final { }
-
-	void onTrigger(PxTriggerPair* pairs, PxU32 count) final
-	{
-		auto manager = getManager();
-		auto& subsystems = manager->getSubsystems<PhysicsSystem>();
-
-		for (auto subsystem : subsystems)
-		{
-			auto system = dynamic_cast<IPhysicsSystem*>(subsystem.system);
-			IPhysicsSystem::TriggerData data;
-
-			for (PxU32 i = 0; i < count; i++)
-			{
-				auto& pair = pairs[i];
-
-				if (pair.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER |
-					PxTriggerPairFlag::eREMOVED_SHAPE_OTHER))
-				{
-					continue;
-				}
-				
-				*data.triggerEntity = (uint32)(psize)pair.triggerActor->userData;
-				*data.otherEntity = (uint32)(psize)pair.otherActor->userData;
-				*data.triggerShape = (uint32)(psize)pair.triggerShape->userData;
-				*data.otherShape = (uint32)(psize)pair.otherShape->userData;
-				data.isEntered = pair.status & PxPairFlag::eNOTIFY_TOUCH_FOUND;
-				system->onTrigger(data);
-			}
-		}
-	}
-};
-
-struct PhysicsData
-{
-	PxDefaultAllocator defaultAllocatorCallback;
-	GardenPxErrorCallback gardenErrorCallback;
-	GardenPxCpuDispatcher gardenCpuDispatcher;
-	GardenPxSimulation gardenSimulation;
-	PxCpuDispatcher* defaultCpuDispatcher = nullptr;
-};
-
-}
-
-//--------------------------------------------------------------------------------------------------
-bool Material::destroy()
-{
-	if (instance)
-	{
-		((PxMaterial*)instance)->release();
-		instance = nullptr;
-	}
-
-	return true;
-}
-
-//--------------------------------------------------------------------------------------------------
-float Material::getStaticFriction() const
-{
-	return ((PxMaterial*)instance)->getStaticFriction();
-}
-void Material::setStaticFriction(float value)
-{
-	((PxMaterial*)instance)->setStaticFriction(value);
-}
-
-float Material::getDynamicFriction() const
-{
-	return ((PxMaterial*)instance)->getDynamicFriction();
-}
-void Material::setDynamicFriction(float value)
-{
-	((PxMaterial*)instance)->setDynamicFriction(value);
-}
-
-float Material::getRestitution() const
-{
-	return ((PxMaterial*)instance)->getRestitution();
-}
-void Material::setRestitution(float value)
-{
-	((PxMaterial*)instance)->setRestitution(value);
-}
-
-//--------------------------------------------------------------------------------------------------
-bool Shape::destroy()
-{
-	if (instance)
-	{
-		((PxShape*)instance)->release();
-		instance = nullptr;
-	}
-
-	return true;
-}
-
-void Shape::setMaterial(ID<Material> material)
-{
-	GARDEN_ASSERT(material);
-	auto materialView = physicsSystem->getMaterials().get(material);
-	auto pxMaterial = (PxMaterial*)materialView->getInstance();
-	((PxShape*)instance)->setMaterials(&pxMaterial, 1);
-	this->material = material;
-}
-
-void Shape::getPose(float3& position, quat& rotation) const
-{
-	auto pose = ((PxShape*)instance)->getLocalPose();
-	position = float3(pose.p.x, pose.p.y, pose.p.z);
-	rotation = quat(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-}
-void Shape::setPose(const float3& position, const quat& rotation)
-{
-	((PxShape*)instance)->setLocalPose(PxTransform(position.x, position.y, position.z,
-		PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
-}
-
-bool Shape::isTrigger() const
-{
-	return ((PxShape*)instance)->getFlags() & PxShapeFlag::eTRIGGER_SHAPE;
-}
-void Shape::setTrigger(bool value)
-{
-	auto instance = (PxShape*)this->instance;
-	instance->setFlag(PxShapeFlag::eSIMULATION_SHAPE, !value);
-	instance->setFlag(PxShapeFlag::eTRIGGER_SHAPE, value);
-}
-
-//--------------------------------------------------------------------------------------------------
-void Shape::setGeometry(Shape::Type type, void* geometry)
-{
-	GARDEN_ASSERT(geometry);
-	((PxShape*)instance)->setGeometry(*((PxGeometry*)geometry));
-	this->type = type;
-}
-void Shape::setBoxGeometry(const float3& halfSize)
-{
-	auto geometry = PxBoxGeometry(halfSize.x, halfSize.y, halfSize.z);
-	setGeometry(Shape::Type::Cube, (PxGeometry*)&geometry);
-}
-void Shape::setSphereGeometry(float radius)
-{
-	auto geometry = PxSphereGeometry(radius);
-	setGeometry(Shape::Type::Sphere, (PxGeometry*)&geometry);
-}
-void Shape::setPlaneGeometry()
-{
-	auto geometry = PxPlaneGeometry();
-	setGeometry(Shape::Type::Plane, (PxGeometry*)&geometry);
-}
-void Shape::setCapsuleGeometry(float radius, float halfHeight)
-{
-	auto geometry = PxCapsuleGeometry(radius, halfHeight);
-	setGeometry(Shape::Type::Capsule, (PxGeometry*)&geometry);
-}
-void Shape::setCustomGeometry(void* callbacks)
-{
-	auto geometry = PxCustomGeometry(*((PxCustomGeometry::Callbacks*)callbacks));
-	setGeometry(Shape::Type::Custom, (PxGeometry*)&geometry);
-}
-
-//--------------------------------------------------------------------------------------------------
-float Shape::getContactOffset() const
-{
-	return ((PxShape*)instance)->getContactOffset();
-}
-void Shape::setContactOffset(float value)
-{
-	GARDEN_ASSERT(value > ((PxShape*)instance)->getRestOffset());
-	return ((PxShape*)instance)->setContactOffset(value);
-}
-
-float Shape::getRestOffset() const
-{
-	return ((PxShape*)instance)->getRestOffset();
-}
-void Shape::setRestOffset(float value)
-{
-	GARDEN_ASSERT(value < ((PxShape*)instance)->getContactOffset());
-	return ((PxShape*)instance)->setRestOffset(value);
-}
-
-//--------------------------------------------------------------------------------------------------
-bool RigidBodyComponent::destroy()
-{
-	if (instance)
-	{
-		((PxRigidActor*)instance)->release();
-		instance = nullptr;
-	}
-
-	return true;
-}
-
-//--------------------------------------------------------------------------------------------------
-void RigidBodyComponent::setStatic(bool isStatic)
-{
-	if (instance && isStatic == this->staticBody)
-		return;
-
-	auto scene = (PxScene*)physicsSystem->getScene();
-	auto physics = (PxPhysics*)physicsSystem->getInstance();
-	vector<PxShape*> shapes; PxU32 shapeCount = 0;
-
-	if (this->instance)
-	{
-		auto instance = (PxRigidActor*)this->instance;
-		shapeCount = instance->getNbShapes();
-		shapes.resize(shapeCount);
-		instance->getShapes(shapes.data(), shapeCount);
-		scene->removeActor(*instance);
-		instance->release();
-	}
-
-	auto manager = getManager();
-	auto transformComponent = manager->get<TransformComponent>(entity);
-	auto position = transformComponent->position;
-	auto rotation = transformComponent->rotation;
-	auto pxTransform = PxTransform(position.x, position.y, position.z,
-		PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
-
-	PxRigidActor* rigidBody;
-	if (isStatic)
-		rigidBody = physics->createRigidStatic(pxTransform);
-	else
-		rigidBody = physics->createRigidDynamic(pxTransform);
-	rigidBody->userData = (void*)(psize)*entity;
-
-	if (shapeCount > 0)
-	{
-		for (PxU32 i = 0; i < shapeCount; i++)
-			rigidBody->attachShape(*shapes[i]);
-	}
-
-	if (!isStatic)
-	{
-		auto dynamicBody = (PxRigidDynamic*)rigidBody;
-		PxRigidBodyExt::updateMassAndInertia(*dynamicBody, 1.0f);
-	}
-
-	#if GARDEN_DEBUG
-	rigidBody->setActorFlag(PxActorFlag::eVISUALIZATION, true);
-	#endif
-
-	this->instance = rigidBody;
-	this->staticBody = isStatic;
-	scene->addActor(*rigidBody);
-}
-
-//--------------------------------------------------------------------------------------------------
-bool RigidBodyComponent::isSleeping() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->isSleeping();
-}
-void RigidBodyComponent::putToSleep()
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->putToSleep();
-}
-void RigidBodyComponent::wakeUp()
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->wakeUp();
-}
-
-//--------------------------------------------------------------------------------------------------
-float RigidBodyComponent::getLinearDamping() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getLinearDamping();
-}
-void RigidBodyComponent::setLinearDamping(float value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setLinearDamping(value);
+	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	if (logSystem)
+		logSystem->trace(buffer);
 }
 
-float RigidBodyComponent::getAngularDamping() const
+#ifdef JPH_ENABLE_ASSERTS
+static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine)
 {
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getAngularDamping();
-}
-void RigidBodyComponent::setAngularDamping(float value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setAngularDamping(value);
-}
-
-float3 RigidBodyComponent::getLinearVelocity() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	auto value = ((PxRigidDynamic*)instance)->getLinearVelocity();
-	return float3(value.x, value.y, value.z);
-}
-void RigidBodyComponent::setLinearVelocity(const float3& value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setLinearVelocity(PxVec3(value.x, value.y, value.z));
-}
-
-float3 RigidBodyComponent::getAngularVelocity() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	auto value = ((PxRigidDynamic*)instance)->getAngularVelocity();
-	return float3(value.x, value.y, value.z);
-}
-void RigidBodyComponent::setAngularVelocity(const float3& value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setAngularVelocity(PxVec3(value.x, value.y, value.z));
-}
-
-//--------------------------------------------------------------------------------------------------
-float RigidBodyComponent::getMass() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getMass();
-}
-void RigidBodyComponent::setMass(float value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setMass(value);
-}
-
-float3 RigidBodyComponent::getCenterOfMass() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	auto pose = ((PxRigidDynamic*)instance)->getCMassLocalPose();
-	return float3(pose.p.x, pose.p.y, pose.p.z);
-}
-void RigidBodyComponent::setCenterOfMass(const float3& value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	auto instance = (PxRigidDynamic*)this->instance;
-	auto pose = instance->getCMassLocalPose();
-	pose.p = PxVec3(value.x, value.y, value.z);
-	instance->setCMassLocalPose(pose);
-}
-
-float3 RigidBodyComponent::getInertiaTensor() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	auto inertia = ((PxRigidDynamic*)instance)->getMassSpaceInertiaTensor();
-	return float3(inertia.x, inertia.y, inertia.z);
-}
-void RigidBodyComponent::setInertiaTensor(const float3& value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setMassSpaceInertiaTensor(
-		PxVec3(value.x, value.y, value.z));
-}
-
-void RigidBodyComponent::calcMassAndInertia(float density)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	PxRigidBodyExt::updateMassAndInertia(*((PxRigidDynamic*)instance), density);
-}
-
-//--------------------------------------------------------------------------------------------------
-float RigidBodyComponent::getSleepThreshold() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getAngularDamping();
-}
-void RigidBodyComponent::setSleepThreshold(float value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setSleepThreshold(value);
-}
-
-//--------------------------------------------------------------------------------------------------
-float RigidBodyComponent::getContactThreshold() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getContactReportThreshold();
-}
-void RigidBodyComponent::setContactThreshold(float value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setContactReportThreshold(value);
-}
-
-//--------------------------------------------------------------------------------------------------
-void RigidBodyComponent::getSolverIterCount(
-	uint32& minPosition, uint32& minVelocity) const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->getSolverIterationCounts(minPosition, minVelocity);
-}
-void RigidBodyComponent::setSolverIterCount(uint32 minPosition, uint32 minVelocity)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->setSolverIterationCounts(minPosition, minVelocity);
-}
-
-//--------------------------------------------------------------------------------------------------
-void RigidBodyComponent::getPose(float3& position, quat& rotation) const
-{
-	GARDEN_ASSERT(instance);
-	auto pose = ((PxRigidActor*)instance)->getGlobalPose();
-	position = float3(pose.p.x, pose.p.y, pose.p.z);
-	rotation = quat(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-}
-void RigidBodyComponent::setPose(const float3& position, const quat& rotation)
-{
-	GARDEN_ASSERT(instance);
-	((PxRigidActor*)instance)->setGlobalPose(
-		PxTransform(position.x, position.y, position.z,
-		PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
-}
-
-//--------------------------------------------------------------------------------------------------
-void RigidBodyComponent::attachShape(ID<Shape> shape)
-{
-	GARDEN_ASSERT(shape);
-	GARDEN_ASSERT(instance);
-	auto shapeView = physicsSystem->getShapes().get(shape);
-	auto pxShape = (PxShape*)shapeView->getInstance();
-	((PxRigidActor*)instance)->attachShape(*pxShape);
-}
-void RigidBodyComponent::detachShape(ID<Shape> shape)
-{
-	GARDEN_ASSERT(shape);
-	GARDEN_ASSERT(instance);
-	auto shapeView = physicsSystem->getShapes().get(shape);
-	auto pxShape = (PxShape*)shapeView->getInstance();
-	((PxRigidActor*)instance)->detachShape(*pxShape);
-}
-
-uint32 RigidBodyComponent::getShapeCount() const
-{
-	GARDEN_ASSERT(instance);
-	return ((PxRigidActor*)instance)->getNbShapes();
-}
-void RigidBodyComponent::getShapes(vector<ID<Shape>>& shapes)
-{
-	GARDEN_ASSERT(instance);
-	auto instance = (PxRigidActor*)this->instance;
-	auto shapeCount = instance->getNbShapes();
-	vector<PxShape*> _shapes(shapeCount);
-	instance->getShapes(_shapes.data(), shapeCount);
-	shapes.resize(shapeCount);
-
-	for (uint32 i = 0; i < shapeCount; i++)
-		*shapes[i] = (uint32)(psize)_shapes[i]->userData;
-}
-
-//--------------------------------------------------------------------------------------------------
-bool RigidBodyComponent::getLinearLockX() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getRigidDynamicLockFlags() &
-		PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-}
-bool RigidBodyComponent::getLinearLockY() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getRigidDynamicLockFlags() &
-		PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-}
-bool RigidBodyComponent::getLinearLockZ() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getRigidDynamicLockFlags() &
-		PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-}
-void RigidBodyComponent::setLinearLockX(bool value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->setRigidDynamicLockFlag(
-		PxRigidDynamicLockFlag::eLOCK_LINEAR_X, value);
-}
-void RigidBodyComponent::setLinearLockY(bool value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->setRigidDynamicLockFlag(
-		PxRigidDynamicLockFlag::eLOCK_LINEAR_Y, value);
-}
-void RigidBodyComponent::setLinearLockZ(bool value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->setRigidDynamicLockFlag(
-		PxRigidDynamicLockFlag::eLOCK_LINEAR_Z, value);
-}
-
-//--------------------------------------------------------------------------------------------------
-bool RigidBodyComponent::getAngularLockX() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getRigidDynamicLockFlags() &
-		PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-}
-bool RigidBodyComponent::getAngularLockY() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getRigidDynamicLockFlags() &
-		PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-}
-bool RigidBodyComponent::getAngularLockZ() const
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->getRigidDynamicLockFlags() &
-		PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-}
-void RigidBodyComponent::setAngularLockX(bool value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->setRigidDynamicLockFlag(
-		PxRigidDynamicLockFlag::eLOCK_ANGULAR_X, value);
-}
-void RigidBodyComponent::setAngularLockY(bool value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->setRigidDynamicLockFlag(
-		PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y, value);
-}
-void RigidBodyComponent::setAngularLockZ(bool value)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	return ((PxRigidDynamic*)instance)->setRigidDynamicLockFlag(
-		PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, value);
-}
-
-//--------------------------------------------------------------------------------------------------
-void RigidBodyComponent::addForce(const float3& value, ForceType type)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->addForce(PxVec3(
-		value.x, value.y, value.z), (PxForceMode::Enum)type);
-}
-void RigidBodyComponent::addTorque(const float3& value, ForceType type)
-{
-	GARDEN_ASSERT(!staticBody);
-	GARDEN_ASSERT(instance);
-	((PxRigidDynamic*)instance)->addTorque(PxVec3(
-		value.x, value.y, value.z), (PxForceMode::Enum)type);
-}
-
-//--------------------------------------------------------------------------------------------------
-static PxFilterFlags gardenSimulationFilterShader(
-	PxFilterObjectAttributes attributes0,
-	PxFilterData filterData0, 
-	PxFilterObjectAttributes attributes1,
-	PxFilterData filterData1,
-	PxPairFlags& pairFlags,
-	const void* constantBlock,
-	PxU32 constantBlockSize)
-{
-	if (PxFilterObjectIsTrigger(attributes0) || PxFilterObjectIsTrigger(attributes1))
-	{
-		pairFlags = PxPairFlag::eTRIGGER_DEFAULT;
-		return PxFilterFlags();
-	}
-
-	pairFlags = PxPairFlag::eCONTACT_DEFAULT;
-	return PxFilterFlags();
-}
-
-//--------------------------------------------------------------------------------------------------
-void PhysicsSystem::initialize()
-{
-	auto manager = getManager();
-	graphicsSystem = manager->tryGet<GraphicsSystem>();
-	auto logSystem = manager->tryGet<LogSystem>();
-	auto threadSystem = manager->tryGet<ThreadSystem>();
-
-	auto data = new PhysicsData();
-	data->gardenErrorCallback = GardenPxErrorCallback(logSystem);
-	data->gardenSimulation = GardenPxSimulation(this);
-	this->data = data;
-
-	foundation = PxCreateFoundation(PX_PHYSICS_VERSION,
-		data->defaultAllocatorCallback, data->gardenErrorCallback);
-	if (!foundation)
-		throw runtime_error("Failed to create PhysX foundation.");
-
-	#if GARDEN_DEBUG
-	auto pvd = PxCreatePvd(*(PxFoundation*)foundation);
-	this->pvd = pvd;
-
-	auto transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 	if (logSystem)
 	{
-		if (pvd->connect(*transport, PxPvdInstrumentationFlag::eALL))
-			logSystem->info("Connected to the PhysX debugger.");
-		else
-			logSystem->info("PhysX debugger is not connected.");
+		logSystem->trace(string(inFile) + ":" + to_string(inLine) + ": (" + 
+			inExpression + ") " + (inMessage != nullptr ? inMessage : ""));
 	}
-	#else
-	PxPvd* pvd = nullptr;
-	#endif
+	return true;
+};
+#endif // JPH_ENABLE_ASSERTS
 
-	auto instance = PxCreatePhysics(PX_PHYSICS_VERSION,
-		*(PxFoundation*)foundation, PxTolerancesScale(), false, pvd);
-	if (!instance)
-		throw runtime_error("Failed to create PhysX instance.");
-	this->instance = instance;
+//**********************************************************************************************************************
+// Layer that objects can be in, determines which other objects it can collide with
+// Typically you at least want to have 1 layer for moving bodies and 1 layer for static bodies, but you can have more
+// layers if you want. E.g. you could have a layer for high detail collision (which is not used by the physics 
+// simulation but only if you do collision testing).
+namespace Layers
+{
+	static constexpr JPH::ObjectLayer NON_MOVING = 0;
+	static constexpr JPH::ObjectLayer MOVING = 1;
+	static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
+};
 
-	if (!PxInitExtensions(*instance, pvd))
-	 	throw runtime_error("Failed to initialize PhysX extensions.");
+// Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
+// a layer for non-moving and moving objects to avoid having to update a tree full of static objects every frame.
+// You can have a 1-on-1 mapping between object layers and broadphase layers (like in this case) but if you have
+// many object layers you'll be creating many broad phase trees, which is not efficient. If you want to fine tune
+// your broadphase layers define JPH_TRACK_BROADPHASE_STATS and look at the stats reported on the TTY.
+namespace BroadPhaseLayers
+{
+	static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
+	static constexpr JPH::BroadPhaseLayer MOVING(1);
+	static constexpr JPH::uint NUM_LAYERS(2);
+};
 
-	PxSceneDesc sceneDesc(instance->getTolerancesScale());
-	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-	sceneDesc.filterShader = gardenSimulationFilterShader;
-	sceneDesc.solverType = PxSolverType::ePGS;
-	// sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
-	sceneDesc.simulationEventCallback = &data->gardenSimulation;
-
-	if (threadSystem)
+//**********************************************************************************************************************
+/// Class that determines if two object layers can collide
+class GardenObjectLayerPairFilter final : public JPH::ObjectLayerPairFilter
+{
+public:
+	bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const final
 	{
-		data->gardenCpuDispatcher = GardenPxCpuDispatcher(
-			&threadSystem->getForegroundPool());
-		sceneDesc.cpuDispatcher = &data->gardenCpuDispatcher;
-	}
-	else
-	{
-		data->defaultCpuDispatcher = PxDefaultCpuDispatcherCreate(
-			thread::hardware_concurrency());
-		sceneDesc.cpuDispatcher = data->defaultCpuDispatcher;
-	}
-
-	auto scene = instance->createScene(sceneDesc);
-	this->scene = scene;
-
-	#if GARDEN_DEBUG
-	if (pvd->isConnected())
-	{
-		scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
-		scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
-
-		auto pvdClient = scene->getScenePvdClient();
-		if (pvdClient)
+		switch (inObject1)
 		{
-			pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
-			pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
-			pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
+		case Layers::NON_MOVING: // Non moving only collides with moving
+			return inObject2 == Layers::MOVING; 
+		case Layers::MOVING: // Moving collides with everything
+			return true; 
+		default:
+			JPH_ASSERT(false);
+			return false;
 		}
 	}
-	#endif
+};
 
-	ccManager = PxCreateControllerManager(*scene);
-	defaultMaterial = createMaterial(0.5f, 0.5f, 0.1f);
-	scratchBuffer = malloc<uint8>(SCRATCH_BUFFER_SIZE);
-
-	auto& subsystems = manager->getSubsystems<PhysicsSystem>();
-	for (auto subsystem : subsystems)
+/// Class that determines if an object layer can collide with a broadphase layer
+class GardenObjectVsBroadPhaseLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
+{
+public:
+	bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const final
 	{
-		auto physicsSystem = dynamic_cast<IPhysicsSystem*>(subsystem.system);
-		GARDEN_ASSERT(physicsSystem);
-		physicsSystem->physicsSystem = this;
+		switch (inLayer1)
+		{
+		case Layers::NON_MOVING:
+			return inLayer2 == BroadPhaseLayers::MOVING;
+		case Layers::MOVING:
+			return true;
+		default:
+			JPH_ASSERT(false);
+			return false;
+		}
+	}
+};
+
+// This defines a mapping between object and broadphase layers.
+class GardenBroadPhaseLayerInterface final : public JPH::BroadPhaseLayerInterface
+{
+	JPH::BroadPhaseLayer mObjectToBroadPhase[Layers::NUM_LAYERS];
+public:
+	GardenBroadPhaseLayerInterface()
+	{
+		// Create a mapping table from object to broad phase layer
+		mObjectToBroadPhase[Layers::NON_MOVING] = BroadPhaseLayers::NON_MOVING;
+		mObjectToBroadPhase[Layers::MOVING] = BroadPhaseLayers::MOVING;
 	}
 
-	#if GARDEN_EDITOR
-	editor = new PhysicsEditor(this);
-	#endif
-}
-void PhysicsSystem::terminate()
+	JPH::uint GetNumBroadPhaseLayers() const final
+	{
+		return BroadPhaseLayers::NUM_LAYERS;
+	}
+	JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const final
+	{
+		JPH_ASSERT(inLayer < Layers::NUM_LAYERS);
+		return mObjectToBroadPhase[inLayer];
+	}
+
+	#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+	virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override
+	{
+		switch ((JPH::BroadPhaseLayer::Type)inLayer)
+		{
+		case (JPH::BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING:
+			return "NON_MOVING";
+		case (JPH::BroadPhaseLayer::Type)BroadPhaseLayers::MOVING:
+			return "MOVING";
+		default:
+			JPH_ASSERT(false); return "INVALID";
+		}
+	}
+	#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
+};
+
+//**********************************************************************************************************************
+class GardenJobSystem final : public JPH::JobSystemWithBarrier
 {
-	shapes.clear();
-	materials.clear();
-	components.clear();
+	ThreadPool* threadPool = nullptr;
 
-	((PxControllerManager*)ccManager)->release();
-	((PxScene*)scene)->release();
-	((PxDefaultCpuDispatcher*)((PhysicsData*)
-		data)->defaultCpuDispatcher)->release();
-	PxCloseExtensions();
-	((PxPhysics*)instance)->release();
+	/// Array of jobs (fixed size)
+	using AvailableJobs = JPH::FixedSizeFreeList<Job>;
+	AvailableJobs jobs;
+public:
+	GardenJobSystem(ThreadPool* threadPool)
+	{
+		GARDEN_ASSERT(threadPool);
+		this->threadPool = threadPool;
 
-	#if GARDEN_DEBUG
-	auto pvd = (PxPvd*)this->pvd;
-	auto transport = pvd->getTransport();
-	pvd->release();
-	transport->release();
-	#endif
+		JobSystemWithBarrier::Init(JPH::cMaxPhysicsBarriers);
+		jobs.Init(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsJobs); // Init freelist of jobs
+	}
 
-	((PxFoundation*)foundation)->release();
-	delete (PhysicsData*)data;
-	free(scratchBuffer);
+	int GetMaxConcurrency() const final
+	{
+		return (int)threadPool->getThreadCount();
+	}
 
-	#if GARDEN_EDITOR
-	delete (PhysicsEditor*)editor;
-	#endif
+	JobHandle CreateJob(const char* inName, JPH::ColorArg inColor,
+		const JobFunction& inJobFunction, JPH::uint32 inNumDependencies = 0) final
+	{
+		// Loop until we can get a job from the free list
+		JPH::uint32 index;
+		while (true)
+		{
+			index = jobs.ConstructObject(inName, inColor, this, inJobFunction, inNumDependencies);
+			if (index != AvailableJobs::cInvalidObjectIndex)
+				break;
+
+			JPH_ASSERT(false, "No jobs available!");
+			std::this_thread::sleep_for(std::chrono::microseconds(100));
+		}
+		Job* job = &jobs.Get(index);
+
+		// Construct handle to keep a reference, the job is queued below and may immediately complete
+		JobHandle handle(job);
+
+		// If there are no dependencies, queue the job now
+		if (inNumDependencies == 0)
+			QueueJob(job);
+
+		// Return the handle
+		return handle;
+	}
+
+	ThreadPool* getThreadPool() const noexcept { return threadPool; }
+protected:
+	void QueueJob(Job* inJob) final
+	{
+		// Add reference to job because we're adding the job to the queue
+		inJob->AddRef();
+
+		threadPool->addTask(ThreadPool::Task([inJob](const ThreadPool::Task& task)
+		{
+			inJob->Execute();
+			inJob->Release();
+		}));
+	}
+	void QueueJobs(Job** inJobs, JPH::uint inNumJobs) final
+	{
+		static thread_local vector<ThreadPool::Task> taskArray;
+		taskArray.resize(inNumJobs);
+
+		for (JPH::uint i = 0; i < inNumJobs; i++)
+		{
+			auto job = inJobs[i];
+
+			// Add reference to job because we're adding the job to the queue
+			job->AddRef();
+
+			taskArray[i] = ThreadPool::Task([job](const ThreadPool::Task& task)
+			{
+				job->Execute();
+				job->Release();
+			});
+		}
+
+		threadPool->addTasks(taskArray);
+	}
+	void FreeJob(Job* inJob) final
+	{
+		jobs.DestructObject(inJob);
+	}
+};
+
+
+//**********************************************************************************************************************
+class GardenContactListener final : public JPH::ContactListener
+{
+public:
+	JPH::ValidateResult OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2, 
+		JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult& inCollisionResult) final
+	{
+		// Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
+		return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
+	}
+
+	void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, 
+		const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) final
+	{
+	}
+	void OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2, 
+		const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) final
+	{
+	}
+	void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) final
+	{
+	}
+};
+
+class GardenBodyActivationListener : public JPH::BodyActivationListener
+{
+public:
+	void OnBodyActivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) final
+	{
+	}
+	void OnBodyDeactivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) final
+	{
+	}
+};
+
+//**********************************************************************************************************************
+bool Shape::destroy()
+{
+	if (!instance)
+		return true;
+
+	auto instance = (JPH::Shape*)this->instance;
+	if (instance->GetRefCount() > 1)
+		return false;
+
+	instance->Release();
+	delete instance;
+	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+ShapeType Shape::getType() const
+{
+	GARDEN_ASSERT(instance);
+	static_assert((uint32)ShapeType::User4 == (uint32)JPH::EShapeType::User4, 
+		"ShapeType does not map to the EShapeType");
+	auto instance = (JPH::Shape*)this->instance;
+	return (ShapeType)instance->GetType();
+}
+ShapeSubType Shape::getSubType() const
+{
+	GARDEN_ASSERT(instance);
+	static_assert((uint32)ShapeSubType::UserConvex8 == (uint32)JPH::EShapeSubType::UserConvex8,
+		"ShapeSubType does not map to the EShapeSubType");
+	auto instance = (JPH::Shape*)this->instance;
+	return (ShapeSubType)instance->GetSubType();
+}
+
+uint64 Shape::getRefCount() const
+{
+	GARDEN_ASSERT(instance);
+	auto instance = (JPH::Shape*)this->instance;
+	return instance->GetRefCount();
+}
+bool Shape::isLastRef() const
+{
+	GARDEN_ASSERT(instance);
+	auto instance = (JPH::Shape*)this->instance;
+	return instance->GetRefCount() == 1;
+}
+
+//**********************************************************************************************************************
+bool RigidbodyComponent::destroy()
+{
+	if (instance)
+	{
+		auto physicsSystem = PhysicsSystem::getInstance();
+		auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
+		bodyInterface->RemoveBody(JPH::BodyID(instance));
+		bodyInterface->DestroyBody(JPH::BodyID(instance));
+
+		auto shapeView = physicsSystem->get(shape);
+		if (shapeView->isLastRef())
+			physicsSystem->destroy(shape);
+
+		instance = 0;
+		shape = {};
+	}
+
+	return true;
+}
+
+void RigidbodyComponent::setMotionType(MotionType motionType, bool activate)
+{
+	if (this->motionType == motionType)
+		return;
+
+	if (instance)
+	{
+		auto physicsSystem = PhysicsSystem::getInstance();
+		auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
+		bodyInterface->SetMotionType(JPH::BodyID(instance), (JPH::EMotionType)motionType,
+			activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+		bodyInterface->SetObjectLayer(JPH::BodyID(instance),
+			motionType == MotionType::Static ? Layers::NON_MOVING : Layers::MOVING);
+	}
+
+	this->motionType = motionType;
+}
+
+//**********************************************************************************************************************
+void RigidbodyComponent::setShape(ID<Shape> shape, bool activate)
+{
+	if (this->shape == shape)
+		return;
+
+	auto physicsSystem = PhysicsSystem::getInstance();
+	auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
+
+	if (shape)
+	{
+		auto shapeView = physicsSystem->get(shape);
+		auto shapeInstance = (JPH::Shape*)shapeView->instance;
+
+		if (instance)
+		{
+			bodyInterface->SetShape(JPH::BodyID(instance), shapeInstance, true,
+				activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+		}
+		else
+		{
+			auto position = float3(0.0f); auto rotation = quat::identity;
+			auto transformView = Manager::getInstance()->tryGet<TransformComponent>(entity);
+			if (transformView)
+			{
+				position = transformView->position;
+				rotation = transformView->rotation;
+			}
+
+			JPH::BodyCreationSettings settings(shapeInstance,
+				JPH::RVec3(position.x, position.y, position.z),
+				JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+				(JPH::EMotionType)motionType, motionType == MotionType::Static ?
+				Layers::NON_MOVING : Layers::MOVING);
+			auto body = bodyInterface->CreateAndAddBody(settings, activate ?
+				JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+			instance = body.GetIndexAndSequenceNumber();
+		}
+	}
+	else if (instance)
+	{
+		bodyInterface->RemoveBody(JPH::BodyID(instance));
+		bodyInterface->DestroyBody(JPH::BodyID(instance));
+		instance = 0;
+	}
+
+	this->shape = shape;
+}
+
+//**********************************************************************************************************************
+bool RigidbodyComponent::isActive() const
+{
+	if (!instance)
+		return false;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	return bodyInterface->IsActive(JPH::BodyID(instance));
+}
+void RigidbodyComponent::activate()
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	bodyInterface->ActivateBody(JPH::BodyID(instance));
+}
+void RigidbodyComponent::deactivate()
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	bodyInterface->DeactivateBody(JPH::BodyID(instance));
+}
+
+//**********************************************************************************************************************
+float3 RigidbodyComponent::getPosition() const
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	auto position = bodyInterface->GetPosition(JPH::BodyID(instance));
+	return float3(position.GetX(), position.GetY(), position.GetZ());
+}
+void RigidbodyComponent::setPosition(const float3& position, bool activate)
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	bodyInterface->SetPosition(JPH::BodyID(instance), JPH::RVec3(position.x, position.y, position.z),
+		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+}
+
+quat RigidbodyComponent::getRotation() const
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	auto rotation = bodyInterface->GetRotation(JPH::BodyID(instance));
+	return quat(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW());
+}
+void RigidbodyComponent::setRotation(const quat& rotation, bool activate)
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	bodyInterface->SetRotation(JPH::BodyID(instance), JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+}
+
+void RigidbodyComponent::getPosAndRot(float3& position, quat& rotation) const
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	JPH::RVec3 pos; JPH::Quat rot;
+	bodyInterface->GetPositionAndRotation(JPH::BodyID(instance), pos, rot);
+	position = float3(pos.GetX(), pos.GetY(), pos.GetZ());
+	rotation = quat(rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW());
+}
+void RigidbodyComponent::setPosAndRot(const float3& position, const quat& rotation, bool activate)
+{
+	GARDEN_ASSERT(shape);
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	bodyInterface->SetPositionAndRotation(JPH::BodyID(instance), 
+		JPH::RVec3(position.x, position.y, position.z), JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+}
+
+//**********************************************************************************************************************
+PhysicsSystem* PhysicsSystem::instance = nullptr;
+
+PhysicsSystem::PhysicsSystem(const Properties& properties)
+{
+	auto manager = Manager::getInstance();
+	SUBSCRIBE_TO_EVENT("PreInit", PhysicsSystem::preInit);
+	SUBSCRIBE_TO_EVENT("PostInit", PhysicsSystem::postInit);
+	SUBSCRIBE_TO_EVENT("Update", PhysicsSystem::update);
+
+	// This needs to be done before any other Jolt function is called.
+	JPH::RegisterDefaultAllocator(); 
+
+	// Install trace and assert callbacks
+	JPH::Trace = TraceImpl;
+	JPH_IF_ENABLE_ASSERTS(JPH::AssertFailed = AssertFailedImpl;)
+
+	// Create a factory, this class is responsible for creating instances of classes 
+	// based on their name or hash and is mainly used for deserialization of saved data.
+	JPH::Factory::sInstance = new JPH::Factory();
+
+	// TODO: register custom shapes, and our own default material
+
+	// Register all physics types with the factory and install their collision handlers with the CollisionDispatch class.
+	JPH::RegisterTypes();
+
+	// We need a temp allocator for temporary allocations during the physics update.
+	auto tempAllocator = new JPH::TempAllocatorImpl(properties.tempBufferSize);
+	this->tempAllocator = tempAllocator;
+
+	// Create mapping table from object layer to broadphase layer
+	auto bpLayerInterface = new GardenBroadPhaseLayerInterface();
+	this->bpLayerInterface = bpLayerInterface;
+
+	// Create class that filters object vs broadphase layers
+	auto objVsBpLayerFilter = new GardenObjectVsBroadPhaseLayerFilter();
+	this->objVsBpLayerFilter = objVsBpLayerFilter;
+
+	// Create class that filters object vs object layers
+	auto objVsObjLayerFilter = new GardenObjectLayerPairFilter();
+	this->objVsObjLayerFilter = objVsObjLayerFilter;
+
+	auto physicsInstance = new JPH::PhysicsSystem();
+	this->physicsInstance = physicsInstance;
+
+	physicsInstance->Init(properties.maxRigidbodies, properties.bodyMutexCount, properties.maxBodyPairs,
+		properties.maxContactConstraints, *bpLayerInterface, *objVsBpLayerFilter, *objVsObjLayerFilter);
+	bodyInterface = &physicsInstance->GetBodyInterfaceNoLock(); ///< Version that does not lock the bodies, use with great care!
+
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
+	instance = this;
+}
+PhysicsSystem::~PhysicsSystem()
+{
+	components.clear();
+	shapes.clear();
+
+	delete (GardenJobSystem*)jobSystem;
+	delete (JPH::PhysicsSystem*)physicsInstance;
+	delete (GardenObjectLayerPairFilter*)objVsObjLayerFilter;
+	delete (GardenObjectVsBroadPhaseLayerFilter*)objVsBpLayerFilter;
+	delete (GardenBroadPhaseLayerInterface*)bpLayerInterface;
+	delete (JPH::TempAllocatorImpl*)tempAllocator;
+	JPH::UnregisterTypes();
+
+	// Destroy the factory
+	delete JPH::Factory::sInstance;
+	JPH::Factory::sInstance = nullptr;
+
+	auto manager = Manager::getInstance();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", PhysicsSystem::preInit);
+		UNSUBSCRIBE_FROM_EVENT("PostInit", PhysicsSystem::postInit);
+		UNSUBSCRIBE_FROM_EVENT("Update", PhysicsSystem::update);
+	}
+
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
+}	
+
+//**********************************************************************************************************************
+void PhysicsSystem::preInit()
+{
+	auto threadSystem = Manager::getInstance()->get<ThreadSystem>();
+	auto threadPool = &threadSystem->getForegroundPool();
+
+	// We need a job system that will execute physics jobs on multiple threads.
+	auto jobSystem = new GardenJobSystem(threadPool);
+	this->jobSystem = jobSystem;
+}
+void PhysicsSystem::postInit()
+{
+	optimizeBroadPhase();
+}
+
 void PhysicsSystem::update()
 {
-	auto manager = getManager();
-	auto componentData = components.getData();
-	auto componentOccupancy = components.getOccupancy();
+	auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
+	auto tempAllocator = (JPH::TempAllocator*)this->tempAllocator;
+	auto jobSystem = (GardenJobSystem*)this->jobSystem;
 
-	auto& subsystems = manager->getSubsystems<PhysicsSystem>();
-	for (auto subsystem : subsystems)
+	auto deltaTime = (float)InputSystem::getInstance()->getDeltaTime();
+	deltaTimeAccum += deltaTime;
+
+	if (deltaTimeAccum >= 1.0f / (float)(simulationRate + 1))
 	{
-		auto physicsSystem = dynamic_cast<IPhysicsSystem*>(subsystem.system);
-		physicsSystem->preSimulate();
+		physicsInstance->Update(deltaTimeAccum, collisionSteps, tempAllocator, jobSystem);
+		deltaTimeAccum = 0.0f;
 	}
 
-	for (uint32 i = 0; i < componentOccupancy; i++)
+	if (components.getCount() > 0 && Manager::getInstance()->has<TransformSystem>())
 	{
-		auto component = &componentData[i];
-		if (!component->physicsSystem)
-			continue;
+		auto jobSystem = (GardenJobSystem*)this->jobSystem;
+		auto threadPool = jobSystem->getThreadPool();
+		auto componentData = components.getData();
 
-		if (!component->instance)
-			component->setStatic(true);
-		if (component->staticBody || !component->updatePose)
-			continue;
-
-		auto transformComponent = manager->get<TransformComponent>(component->entity); // TODO: store transform ID inside component instead
-		auto position = transformComponent->position;
-		auto rotation = transformComponent->rotation;
-		auto pxTransform = PxTransform(position.x, position.y, position.z,
-			PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
-		auto rigidBody = (PxRigidActor*)component->instance;
-
-		if (!(rigidBody->getGlobalPose() == pxTransform))
-			rigidBody->setGlobalPose(pxTransform);
-	}
-
-	if (graphicsSystem)
-	{
-		auto graphicsSystem = (GraphicsSystem*)this->graphicsSystem;
-		auto deltaTime = graphicsSystem->getDeltaTime();
-		if (deltaTime == 0.0)
-			return;
-
-		auto scene = (PxScene*)this->scene;
-		auto targetDT = 1.0 / minUpdateRate;
-
-		if (deltaTime > targetDT)
+		threadPool->addItems(ThreadPool::Task([componentData](const ThreadPool::Task& task)
 		{
-			auto count = (uint32)std::ceil(deltaTime / targetDT);
-			deltaTime /= (double)count;
+			auto transformSystem = TransformSystem::getInstance();
+			auto itemCount = task.getItemCount();
 
-			for (uint32 i = 0; i < count; i ++)
+			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				for (auto subsystem : subsystems)
-				{
-					auto physicsSystem = dynamic_cast<IPhysicsSystem*>(subsystem.system);
-					physicsSystem->simulate(deltaTime);
-				}
+				auto rigidbodyComponent = &componentData[i];
+				if (!rigidbodyComponent->instance)
+					continue;
 
-				scene->simulate(deltaTime, nullptr,
-					scratchBuffer, SCRATCH_BUFFER_SIZE);
-				scene->fetchResults(true);
+				auto transformComponent = transformSystem->tryGet(rigidbodyComponent->getEntity());
+				if (!transformComponent)
+					continue;
+
+				float3 position; quat rotation;
+				rigidbodyComponent->getPosAndRot(position, rotation);
+				// TODO: interpolate based on delta time
+				transformComponent->position = position;
+				transformComponent->rotation = rotation;
 			}
-		}
-		else
-		{
-			scene->simulate(deltaTime, nullptr,
-				scratchBuffer, SCRATCH_BUFFER_SIZE);
-			scene->fetchResults(true);
-		}
-	}
-
-	// TODO: multithread this.
-	for (uint32 i = 0; i < componentOccupancy; i++)
-	{
-		auto component = &componentData[i];
-		if (!component->physicsSystem || component->staticBody ||
-			!component->updatePose)
-		{
-			continue;
-		}
-		auto transformComponent = manager->get<TransformComponent>(component->entity); // TODO: store transform ID inside component instead
-		auto rigidBody = (PxRigidActor*)component->instance;
-		auto pxTransform = rigidBody->getGlobalPose();
-		transformComponent->position = float3(
-			pxTransform.p.x, pxTransform.p.y, pxTransform.p.z);
-		transformComponent->rotation = quat(
-			pxTransform.q.x, pxTransform.q.y, pxTransform.q.z, pxTransform.q.w);
-	}
-
-	for (auto subsystem : subsystems)
-	{
-		auto physicsSystem = dynamic_cast<IPhysicsSystem*>(subsystem.system);
-		physicsSystem->postSimulate();
+		}),
+		components.getOccupancy());
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-type_index PhysicsSystem::getComponentType() const
-{
-	return typeid(RigidBodyComponent);
-}
+//**********************************************************************************************************************
 ID<Component> PhysicsSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	return ID<Component>(components.create());
 }
 void PhysicsSystem::destroyComponent(ID<Component> instance)
 {
-	components.destroy(ID<RigidBodyComponent>(instance));
+	components.destroy(ID<RigidbodyComponent>(instance));
+}
+void PhysicsSystem::copyComponent(View<Component> source, View<Component> destination)
+{
+	const auto sourceView = View<RigidbodyComponent>(source);
+	auto destinationView = View<RigidbodyComponent>(destination);
+}
+const string& PhysicsSystem::getComponentName() const
+{
+	static const string name = "Rigidbody";
+	return name;
+}
+type_index PhysicsSystem::getComponentType() const
+{
+	return typeid(RigidbodyComponent);
 }
 View<Component> PhysicsSystem::getComponent(ID<Component> instance)
 {
-	return View<Component>(components.get(ID<RigidBodyComponent>(instance)));
+	return View<Component>(components.get(ID<RigidbodyComponent>(instance)));
 }
 void PhysicsSystem::disposeComponents()
 {
 	components.dispose();
 	shapes.dispose();
-	materials.dispose();
 }
 
-//--------------------------------------------------------------------------------------------------
-ID<Material> PhysicsSystem::createMaterial(float staticFriction,
-	float dynamicFriction, float restitution)
+//**********************************************************************************************************************
+void PhysicsSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	auto component = materials.create();
-	auto componentView = materials.get(component);
-	auto physics = (PxPhysics*)this->instance;
-	auto material = physics->createMaterial(staticFriction, dynamicFriction, restitution);
-	componentView->instance = material;
-	return component;
+	auto componentView = View<RigidbodyComponent>(component);
 }
-View<Material> PhysicsSystem::get(ID<Material> material) const
+void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	return materials.get(material);
-}
-void PhysicsSystem::destroy(ID<Material> material)
-{
-	materials.destroy(material);
+	auto componentView = View<RigidbodyComponent>(component);
 }
 
-//--------------------------------------------------------------------------------------------------
-ID<Shape> PhysicsSystem::createShape(Shape::Type type,
-	ID<Material> material, void* geometry)
+//**********************************************************************************************************************
+ID<Shape> PhysicsSystem::createBoxShape(const float3& halfExtent, float convexRadius)
 {
-	GARDEN_ASSERT(material);
-	GARDEN_ASSERT(geometry);
-	auto component = shapes.create();
-	auto componentView = shapes.get(component);
-	auto physics = (PxPhysics*)this->instance;
-	auto materialView = materials.get(material);
-	auto pxMaterial = (PxMaterial*)materialView->getInstance();
-	auto shape = physics->createShape(*((PxGeometry*)geometry), *pxMaterial);
-	shape->userData = (void*)(psize)*component;
-	componentView->physicsSystem = this;
-	componentView->instance = shape;
-	componentView->material = material;
-	componentView->type = type;
-	return component;
+	auto bodyInterface = (JPH::BodyInterface*)this->bodyInterface;
+	auto boxShape = new JPH::BoxShape(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z), convexRadius);
+	boxShape->AddRef();
+	return shapes.create(boxShape);
 }
-ID<Shape> PhysicsSystem::createBoxShape(ID<Material> material, const float3& halfSize)
+
+void PhysicsSystem::optimizeBroadPhase()
 {
-	GARDEN_ASSERT(material);
-	auto geometry = PxBoxGeometry(halfSize.x, halfSize.y, halfSize.z);
-	return createShape(Shape::Type::Cube, material, (PxGeometry*)&geometry);
+	auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
+	physicsInstance->OptimizeBroadPhase();
 }
-ID<Shape> PhysicsSystem::createSphereShape(ID<Material> material, float radius)
-{
-	GARDEN_ASSERT(material);
-	auto geometry = PxSphereGeometry(radius);
-	return createShape(Shape::Type::Sphere, material, (PxGeometry*)&geometry);
-}
-ID<Shape> PhysicsSystem::createPlaneShape(ID<Material> material)
-{
-	GARDEN_ASSERT(material);
-	auto geometry = PxPlaneGeometry();
-	return createShape(Shape::Type::Plane, material, (PxGeometry*)&geometry);
-}
-ID<Shape> PhysicsSystem::createCapsuleShape(
-	ID<Material> material, float radius, float halfHeight)
-{
-	GARDEN_ASSERT(material);
-	auto geometry = PxCapsuleGeometry(radius, halfHeight);
-	return createShape(Shape::Type::Capsule, material, (PxGeometry*)&geometry);
-}
-ID<Shape> PhysicsSystem::createCustomShape(ID<Material> material, void* callbacks)
-{
-	GARDEN_ASSERT(material);
-	auto geometry = PxCustomGeometry(*((PxCustomGeometry::Callbacks*)callbacks));
-	return createShape(Shape::Type::Custom, material, (PxGeometry*)&geometry);
-}
-View<Shape> PhysicsSystem::get(ID<Shape> shape) const
-{
-	return shapes.get(shape);
-}
-void PhysicsSystem::destroy(ID<Shape> shape)
-{
-	shapes.destroy(shape);
-}
-*/

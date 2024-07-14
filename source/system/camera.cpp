@@ -158,13 +158,7 @@ ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserialize
 	}
 
 	if (frame.f.base.animate0 || frame.f.base.animate1 || frame.f.base.animate2)
-	{
-		auto instance = animationFrames.create();
-		auto frameView = animationFrames.get(instance);
-		**frameView = frame;
-		return ID<AnimationFrame>(instance);
-	}
-
+		return ID<AnimationFrame>(animationFrames.create(frame));
 	return {};
 }
 View<AnimationFrame> CameraSystem::getAnimation(ID<AnimationFrame> frame)

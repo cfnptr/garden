@@ -153,7 +153,7 @@ void GeometryRenderSystem::prepareDraw(const float4x4& viewProj,
 	instanceMap = (InstanceData*)instanceBufferView->getMap();
 	framebufferSize = framebufferView->getSize();
 }
-void GeometryRenderSystem::beginDraw(int32 taskIndex)
+void GeometryRenderSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
 	pipelineView->setViewportScissorAsync(float4(float2(0), framebufferSize), taskIndex);
@@ -289,7 +289,7 @@ void GeometryRenderSystem::render()
 			geometryComponent->descriptorSet = descriptorSet;
 
 			#if GARDEN_DEBUG
-			auto transformComponent = getManager()->get<TransformComponent>(
+			auto transformComponent = getManager()->get<TransformComponent>( // TODO: use transformSystem->get()
 				geometryComponent->entity);
 			SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
 				"descriptorSet." + transformComponent->name);
@@ -700,7 +700,7 @@ void GeometryShadowRenderSystem::prepareDraw(const float4x4& viewProj,
 	pipelineView->updateFramebuffer(framebuffer);
 	framebufferSize = framebufferView->getSize();
 }
-void GeometryShadowRenderSystem::beginDraw(int32 taskIndex)
+void GeometryShadowRenderSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
 	pipelineView->setViewportScissorAsync(float4(float2(0), framebufferSize), taskIndex);

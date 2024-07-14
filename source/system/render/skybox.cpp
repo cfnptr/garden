@@ -71,7 +71,7 @@ void SkyboxRenderSystem::hdrRender()
 	if (!camera || !pipelineView->isReady() || !fullCubeView->isReady())
 		return;
 	
-	auto component = manager->tryGet<SkyboxRenderComponent>(graphicsSystem->camera);
+	auto component = manager->tryGet<SkyboxRenderComponent>(graphicsSystem->camera); // TODO: use skyboxSystem->tryGet()
 	if (!component)
 		return;
 

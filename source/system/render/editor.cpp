@@ -784,11 +784,6 @@ void EditorRenderSystem::showFileSelector()
 					{
 						if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 							selectedFile = entry.path();
-						if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
-							ImGui::IsItemHovered() && fs::is_directory(entry.path()))
-						{
-							selectedEntry = entry.path();
-						}
 						if (ImGui::BeginPopupContextItem())
 						{
 							if (ImGui::MenuItem("Copy Name"))
@@ -905,7 +900,8 @@ void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image, Ref<
 
 	if (ImGui::Button(" + "))
 	{	
-		static const set<string> extensions = { ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr" };
+		static const set<string> extensions = 
+		{ ".webp", ".png", ".exr", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga" };
 		auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
 
 		openFileSelector([_path, _image, _descriptorSet, entity, componentType, loadFlags]

@@ -595,7 +595,7 @@ void LightingRenderSystem::hdrRender()
 	if (!graphicsSystem->camera || !pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
 		return;
 
-	auto lightingComponent = Manager::getInstance()->tryGet<LightingRenderComponent>(graphicsSystem->camera);
+	auto lightingComponent = Manager::getInstance()->tryGet<LightingRenderComponent>(graphicsSystem->camera); // TODO: use lightingSystem->tryGet()
 	if (!lightingComponent || !lightingComponent->cubemap || !lightingComponent->sh || !lightingComponent->specular)
 		return;
 

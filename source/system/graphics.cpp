@@ -323,11 +323,11 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 {
 	auto view = calcView(transform);
 	auto nextParent = transform->getParent();
-	auto manager = Manager::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
 
 	while (nextParent)
 	{
-		auto nextTransform = manager->get<TransformComponent>(nextParent);
+		auto nextTransform = transformSystem->get(nextParent);
 		auto parentModel = ::calcModel(nextTransform->position,
 			nextTransform->rotation, nextTransform->scale);
 		view = parentModel * view;
@@ -392,6 +392,7 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	int2 scaledFramebufferSize, CameraConstants& cameraConstants)
 {
 	auto manager = Manager::getInstance();
+
 	auto transformComponent = manager->tryGet<TransformComponent>(camera);
 	if (transformComponent)
 	{

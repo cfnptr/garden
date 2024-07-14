@@ -101,10 +101,7 @@ ID<AnimationFrame> TranslucentSpriteSystem::deserializeAnimation(IDeserializer& 
 	if (frame.animateIsEnabled || frame.animateColorFactor ||
 		frame.animateUvSize || frame.animateUvOffset || frame.animateColorMapLayer)
 	{
-		auto instance = animationFrames.create();
-		auto frameView = animationFrames.get(instance);
-		**frameView = frame;
-		return ID<AnimationFrame>(instance);
+		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
 
 	return {};
