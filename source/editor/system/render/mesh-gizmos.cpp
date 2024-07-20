@@ -19,6 +19,7 @@
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/physics.hpp"
 #include "garden/system/camera.hpp"
 #include "math/angles.hpp"
 
@@ -214,7 +215,7 @@ void MeshGizmosEditorSystem::editorRender()
 		dragMode = 0;
 	
 	auto manager = Manager::getInstance();
-	auto transform = TransformSystem::getInstance()->tryGet(selectedEntity);
+	auto transformView = TransformSystem::getInstance()->tryGet(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
 	auto fullCubeVertices = graphicsSystem->getFullCubeVertices();
@@ -223,7 +224,7 @@ void MeshGizmosEditorSystem::editorRender()
 
 	// TODO: check for selection freeze problem.
 
-	if (!transform || transform->hasBakedWithDescendants() || !frontPipelineView->isReady() ||
+	if (!transformView || transformView->hasBakedWithDescendants() || !frontPipelineView->isReady() ||
 		!backPipelineView->isReady() || !fullCubeView->isReady() || !fullArrowView->isReady())
 	{
 		return;
@@ -231,7 +232,7 @@ void MeshGizmosEditorSystem::editorRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
-	auto model = transform->calcModel(cameraPosition);
+	auto model = transformView->calcModel(cameraPosition);
 	
 	auto windowSize = graphicsSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();
@@ -243,13 +244,16 @@ void MeshGizmosEditorSystem::editorRender()
 
 	auto modelScale = 0.25f;
 	auto cameraComponent = manager->tryGet<CameraComponent>(graphicsSystem->camera);
-	if (cameraComponent && cameraComponent->type == ProjectionType::Perspective)
-		modelScale *= length(translation);
-	else
-		modelScale *= (cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x) * 0.5f;
+	if (cameraComponent)
+	{
+		if (cameraComponent->type == ProjectionType::Perspective)
+			modelScale *= length(translation);
+		else
+			modelScale *= (cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x) * 0.5f;
+	}
 	model = calcModel(translation, rotation, float3(modelScale));
 
-	vector<GizmosMesh> gizmosMeshes;
+	static vector<GizmosMesh> gizmosMeshes;
 	addArrowMeshes(gizmosMeshes, model, fullCubeVertices, fullArrowVertices,
 		handleColor, axisColorX, axisColorY, axisColorZ);
 	// TODO: scale and rotation gizmos.
@@ -305,7 +309,7 @@ void MeshGizmosEditorSystem::editorRender()
 
 		if (dragMode != 1)
 		{
-			auto modelInv = (float3x3)inverse(calcModel(translation, rotation, float3(1.0f)));
+			auto modelInv = (float3x3)inverse(calcModel(translation, rotation));
 			globalLastPos = modelInv * globalLastPos;
 			globalNewPos = modelInv * globalNewPos;
 		}
@@ -321,7 +325,7 @@ void MeshGizmosEditorSystem::editorRender()
 		if (dragMode != 1 && !inputSystem->getKeyboardState(KeyboardButton::LeftShift) &&
 			!inputSystem->getKeyboardState(KeyboardButton::RightShift))
 		{
-			cursorTrans = (float3x3)rotate(transform->rotation) * cursorTrans;
+			cursorTrans = (float3x3)rotate(transformView->rotation) * cursorTrans;
 		}
 
 		// TODO: Fix non-uniform transformation in perspective projection,
@@ -329,7 +333,11 @@ void MeshGizmosEditorSystem::editorRender()
 		if (cameraComponent->type == ProjectionType::Perspective)
 			cursorTrans *= length(translation);
 
-		transform->position += cursorTrans;
+		transformView->position += cursorTrans;
+
+		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
+		if (rigidbodyView)
+			rigidbodyView->setPosition(rigidbodyView->getPosition() + cursorTrans, false);
 
 		auto meshSelector = manager->tryGet<MeshSelectorEditorSystem>();
 		if (meshSelector)
@@ -346,6 +354,8 @@ void MeshGizmosEditorSystem::editorRender()
 		framebufferView->endRenderPass();
 	}
 	graphicsSystem->stopRecording();
+
+	gizmosMeshes.clear();
 }
 
 //**********************************************************************************************************************

@@ -179,13 +179,13 @@ void MeshSelectorEditorSystem::editorRender()
 		{
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			auto model = transform->calcModel(cameraPosition);
+			auto mvp = cameraConstants.viewProj * model * translate(
+				selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
 				framebufferView->beginRenderPass(float4(0.0f));
-				auto mvp = cameraConstants.viewProj * model *
-					translate(selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 				graphicsSystem->drawAabb(mvp, (float4)aabbColor);
 				framebufferView->endRenderPass();
 			}

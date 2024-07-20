@@ -20,6 +20,7 @@
 #pragma once
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+#include <mutex>
 
 namespace garden::graphics
 {

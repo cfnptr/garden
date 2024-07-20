@@ -124,7 +124,7 @@ public:
 	 */
 	static LogSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Log system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };

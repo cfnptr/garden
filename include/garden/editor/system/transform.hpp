@@ -40,6 +40,8 @@ class TransformEditorSystem final : public System
 	friend class ecsm::Manager;
 	friend class TransformSystem;
 public:
+	float inspectorPriority = -0.9f;
+
 	static TransformEditorSystem* getInstance() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.

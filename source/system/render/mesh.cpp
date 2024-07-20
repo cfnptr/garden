@@ -126,12 +126,12 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 			continue;
 
 		float4x4 model;
-		auto transform = transformSystem->tryGet(meshRender->getEntity());
-		if (transform)
+		auto transformView = transformSystem->tryGet(meshRender->getEntity());
+		if (transformView)
 		{
-			if (!transform->isActiveWithAncestors())
+			if (!transformView->isActiveWithAncestors())
 				continue;
-			model = transform->calcModel(cameraPosition);
+			model = transformView->calcModel(cameraPosition);
 		}
 		else
 		{
@@ -177,12 +177,12 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 			continue;
 
 		float4x4 model;
-		auto transform = transformSystem->tryGet(meshRender->getEntity());
-		if (transform)
+		auto transformView = transformSystem->tryGet(meshRender->getEntity());
+		if (transformView)
 		{
-			if (!transform->isActiveWithAncestors())
+			if (!transformView->isActiveWithAncestors())
 				continue;
-			model = transform->calcModel(cameraPosition);
+			model = transformView->calcModel(cameraPosition);
 		}
 		else
 		{

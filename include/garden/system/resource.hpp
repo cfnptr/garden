@@ -310,9 +310,9 @@ public:
 	 * @note Loads from the scenes directory in debug build.
 	 * 
 	 * @param[in] path target scene resource path
-	 * @param addRootEntity create root entity for scene
+	 * @param addRootEntity create root entity for a scene
 	 */
-	void loadScene(const fs::path& path);
+	ID<Entity> loadScene(const fs::path& path, bool addRootEntity = false);
 	/**
 	 * @brief Destroys all current scene entities.
 	 */

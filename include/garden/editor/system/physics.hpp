@@ -21,14 +21,24 @@ namespace garden
 
 class PhysicsEditorSystem final : public System
 {
+	float3 oldEulerAngles = float3(0.0f);
+	float3 newEulerAngles = float3(0.0f);
+	quat oldRotation = quat::identity;
+	ID<Entity> selectedEntity = {};
+
 	PhysicsEditorSystem();
 	~PhysicsEditorSystem() final;
 
 	void init();
 	void deinit();
+	void editorRender();
 
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
+public:
+	float inspectorPriority = -0.8f;
+	Color aabbColor = Color::green;
+	bool isEnabled = true;
 };
 
 } // namespace garden

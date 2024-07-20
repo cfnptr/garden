@@ -192,7 +192,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1;
 	auto equiPixels = (float4*)equiData.data();
-	auto pixelsSize = cubemapSize * cubemapSize * sizeof(float4);
+	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
 	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
 		top(pixelsSize), back(pixelsSize), front(pixelsSize);
 	auto size = int2(equiSize.x / 4, equiSize.y / 2);

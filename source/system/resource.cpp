@@ -1715,7 +1715,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadScene(const fs::path& path)
+ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 {
 	GARDEN_ASSERT(!path.empty());
 	JsonDeserializer deserializer;
@@ -1729,7 +1729,7 @@ void ResourceSystem::loadScene(const fs::path& path)
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Scene file does not exist or ambiguous. (path: " + path.generic_string() + ")");
-		return;
+		return {};
 	}
 
 	if (!fs::exists(scenePath))
@@ -1737,7 +1737,7 @@ void ResourceSystem::loadScene(const fs::path& path)
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Scene file does not exist. (path: " + path.generic_string() + ")");
-		return;
+		return {};
 	}
 
 	try
@@ -1753,11 +1753,28 @@ void ResourceSystem::loadScene(const fs::path& path)
 				"path: " + path.generic_string() + ", "
 				"error: " + string(e.what()) + ")");
 		}
-		return;
+		return {};
 	}
 	#endif
 
 	auto manager = Manager::getInstance();
+	TransformSystem* transformSystem = nullptr;
+	ID<Entity> rootEntity = {};
+
+	if (addRootEntity)
+	{
+		transformSystem = manager->tryGet<TransformSystem>();
+		if (transformSystem)
+		{
+			rootEntity = manager->createEntity();
+			manager->add<TransformComponent>(rootEntity);
+		}
+		else
+		{
+			addRootEntity = false;
+		}
+	}
+
 	const auto& systems = manager->getSystems();
 	for (const auto& pair : systems)
 	{
@@ -1821,7 +1838,18 @@ void ResourceSystem::loadScene(const fs::path& path)
 				}
 
 				if (manager->getComponentCount(entity) == 0)
+				{
 					manager->destroy(entity);
+				}
+				else
+				{
+					if (addRootEntity)
+					{
+						auto transformView = transformSystem->tryGet(entity);
+						if (transformView && !transformView->getParent())
+							transformView->setParent(rootEntity);
+					}
+				}
 
 				deserializer.endChild();
 			}
@@ -1844,6 +1872,8 @@ void ResourceSystem::loadScene(const fs::path& path)
 	if (logSystem)
 		logSystem->trace("Loaded scene. (path: " + path.generic_string() + ")");
 	#endif
+
+	return rootEntity;
 }
 
 void ResourceSystem::clearScene()
@@ -2074,9 +2104,9 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 					string funcType;
 					if (deserializer.read(".funcType", funcType))
 					{
-						if (funcType == "pow")
+						if (funcType == "Pow")
 							animationFrameView->funcType = AnimationFunc::Pow;
-						else if (funcType == "gain")
+						else if (funcType == "Gain")
 							animationFrameView->funcType = AnimationFunc::Gain;
 					}
 
@@ -2176,9 +2206,9 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 			auto animatableSystem = dynamic_cast<IAnimatable*>(system);
 			auto frameView = animatableSystem->getAnimation(animatable.second);
 			if (frameView->funcType == AnimationFunc::Pow)
-				serializer.write(".funcType", "pow");
+				serializer.write(".funcType", string_view("Pow"));
 			else if (frameView->funcType == AnimationFunc::Gain)
-				serializer.write(".funcType", "gain");
+				serializer.write(".funcType", string_view("Gain"));
 			serializer.write(".coeff", frameView->coeff);
 			
 			animatableSystem->serializeAnimation(serializer, frameView);

@@ -32,6 +32,8 @@ class LightingRenderEditorSystem final : public System
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 
 	friend class ecsm::Manager;
+public:
+	float inspectorPriority = -0.1f;
 };
 
 } // namespace garden

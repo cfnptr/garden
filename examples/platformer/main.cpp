@@ -81,6 +81,7 @@ void entryPoint()
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
 	manager->createSystem<BakedTransformSystem>();
+	// Note: for a such game better to use Box2D physics, Jolt is overkill.
 	manager->createSystem<PhysicsSystem>();
 	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();

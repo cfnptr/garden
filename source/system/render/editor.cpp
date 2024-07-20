@@ -38,9 +38,12 @@ EditorRenderSystem* EditorRenderSystem::instance = nullptr;
 EditorRenderSystem::EditorRenderSystem()
 {
 	auto manager = Manager::getInstance();
+	manager->registerEvent("EditorStart");
+	manager->registerEvent("EditorStop");
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
+	manager->registerEvent("EditorBar");
 	manager->registerEvent("EditorSettings");
 
 	SUBSCRIBE_TO_EVENT("Init", EditorRenderSystem::init);
@@ -57,10 +60,14 @@ EditorRenderSystem::~EditorRenderSystem()
 		UNSUBSCRIBE_FROM_EVENT("Init", EditorRenderSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", EditorRenderSystem::deinit);
 
+		manager->unregisterEvent("EditorStart");
+		manager->unregisterEvent("EditorStop");
 		manager->unregisterEvent("EditorBarFile");
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
+		manager->unregisterEvent("EditorBar");
 		manager->unregisterEvent("EditorSettings");
+
 	}
 
 	GARDEN_ASSERT(instance); // More than one system instance detected.
@@ -155,6 +162,48 @@ void EditorRenderSystem::showMainMenuBar()
 		}
 		ImGui::EndMenu();
 	}
+
+	{
+		const auto& subscribers = manager->getEventSubscribers("EditorBar");
+		for (const auto& onBar : subscribers)
+			onBar();
+	}
+
+	auto playText = playing ? "Stop []" : "Play |>";
+	auto textSize = ImGui::CalcTextSize(playText);
+	ImGui::SameLine(ImGui::GetWindowWidth() * 0.5f - (textSize.x * 0.5f + 12.0f));
+
+	if (playing)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyle().Colors[ImGuiCol_HeaderHovered]);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyle().Colors[ImGuiCol_Header]);
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Header]);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyle().Colors[ImGuiCol_HeaderHovered]);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyle().Colors[ImGuiCol_HeaderActive]);
+	}
+
+	if (ImGui::Button(playText))
+	{
+		if (playing)
+		{
+			const auto& subscribers = manager->getEventSubscribers("EditorStop");
+			for (const auto& onStop : subscribers)
+				onStop();
+			playing = false;
+		}
+		else
+		{
+			const auto& subscribers = manager->getEventSubscribers("EditorStart");
+			for (const auto& onStart : subscribers)
+				onStart();
+			playing = true;
+		}
+	}
+	ImGui::PopStyleColor(3);
 	
 	auto stats = "[E: " + to_string(manager->getEntities().getCount());
 
@@ -172,7 +221,7 @@ void EditorRenderSystem::showMainMenuBar()
 
 	stats += "]";
 
-	auto textSize = ImGui::CalcTextSize(stats.c_str());
+	textSize = ImGui::CalcTextSize(stats.c_str());
 	ImGui::SameLine(ImGui::GetWindowWidth() - (textSize.x + 16.0f));
 	ImGui::Text("%s", stats.c_str());
 
@@ -364,8 +413,114 @@ void EditorRenderSystem::showOptionsWindow()
 }
 
 //**********************************************************************************************************************
+namespace
+{
+	struct ComponentEntry final
+	{
+		map<string, ComponentEntry> nodes;
+		type_index componentType;
+
+		ComponentEntry(type_index _componentType) :
+			componentType(_componentType) { }
+	};
+}
+
+// TODO: replace with stack based recursion.
+static void renderWordNode(const map<string, ComponentEntry>& nodes, ID<Entity> selectedEntity)
+{
+	for (const auto& pair : nodes)
+	{
+		if (pair.second.nodes.empty())
+		{
+			if (ImGui::MenuItem(pair.first.c_str()))
+				Manager::getInstance()->add(selectedEntity, pair.second.componentType);
+		}
+		else
+		{
+			if (ImGui::BeginMenu(pair.first.c_str()))
+			{
+				renderWordNode(pair.second.nodes, selectedEntity);
+				ImGui::EndMenu();
+			}
+		}
+	}
+}
+static void renderAddComponent(const map<type_index, EditorRenderSystem::Inspector>& entityInspectors,
+	ID<Entity> selectedEntity, uint32& itemCount)
+{
+	auto manager = Manager::getInstance();
+	const auto& componentTypes = manager->getComponentTypes();
+	static map<string, ComponentEntry> wordNodes;
+
+	for (const auto& pair : componentTypes)
+	{
+		if (pair.second->getComponentName().empty())
+			continue;
+		itemCount++;
+
+		if (entityInspectors.find(pair.first) == entityInspectors.end() ||
+			manager->has(selectedEntity, pair.first))
+		{
+			continue;
+		}
+
+		auto currentNode = &wordNodes;
+		auto& componentName = pair.second->getComponentName();
+		auto lastSpace = componentName.length();
+		auto isRunning = true;
+
+		while (isRunning)
+		{
+			auto currentSpace = componentName.rfind(' ', lastSpace - 1);
+
+			psize length = 0;
+			if (currentSpace == string::npos)
+			{
+				currentSpace = (psize)-1;
+				length = lastSpace;
+				isRunning = false;
+			}
+			else if (currentSpace == 0)
+			{
+				currentSpace = 0;
+				length = lastSpace - 1;
+				isRunning = false;
+			}
+			else
+			{
+				length = lastSpace - (currentSpace + 1);
+				if (length == 0)
+				{
+					lastSpace = currentSpace;
+					continue;
+				}
+			}
+
+			auto word = string(componentName, (currentSpace + 1), length);
+
+			auto searchResult = currentNode->find(word);
+			if (searchResult == currentNode->end())
+			{
+				ComponentEntry entry(pair.first);
+				auto emplaceResult = currentNode->emplace(std::move(word), std::move(entry));
+				GARDEN_ASSERT(emplaceResult.second); // Corrupted memory
+				currentNode = &emplaceResult.first->second.nodes;
+			}
+			else
+			{
+				currentNode = &searchResult->second.nodes;
+			}
+
+			lastSpace = currentSpace;
+		}
+	}
+
+	renderWordNode(wordNodes, selectedEntity);
+	wordNodes.clear();
+}
+
 static bool renderInspectorWindowPopup(const map<type_index, 
-	EditorRenderSystem::OnComponent>&entityInspectors, ID<Entity>& selectedEntity)
+	EditorRenderSystem::Inspector>& entityInspectors, ID<Entity>& selectedEntity)
 {
 	if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 	{
@@ -375,21 +530,7 @@ static bool renderInspectorWindowPopup(const map<type_index,
 		if (ImGui::BeginMenu("Add Component", !componentTypes.empty()))
 		{
 			uint32 itemCount = 0;
-			for (const auto& pair : componentTypes)
-			{
-				if (pair.second->getComponentName().empty())
-					continue;
-				itemCount++;
-
-				if (entityInspectors.find(pair.first) == entityInspectors.end() ||
-					manager->has(selectedEntity, pair.first))
-				{
-					continue;
-				}
-
-				if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
-					manager->add(selectedEntity, pair.first);
-			}
+			renderAddComponent(entityInspectors, selectedEntity, itemCount);
 
 			if (ImGui::BeginMenu("Tags"))
 			{
@@ -429,10 +570,7 @@ static bool renderInspectorWindowPopup(const map<type_index,
 		}
 		if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
 		{
-			if (manager->has<TransformComponent>(selectedEntity))
-				TransformSystem::getInstance()->destroyRecursive(selectedEntity);
-			else
-				manager->destroy(selectedEntity);
+			TransformSystem::getInstance()->destroyRecursive(selectedEntity);
 			selectedEntity = {};
 			ImGui::EndPopup();
 			return false;
@@ -533,32 +671,40 @@ void EditorRenderSystem::showEntityInspector()
 			return;
 		}
 
+		static multimap<float, pair<System*, OnComponent>> onComponents;
 		for (const auto& component : components)
 		{
-			auto system = component.second.first;
 			auto result = entityInspectors.find(component.first);
-			if (result != entityInspectors.end())
-			{
-				auto componentName = system->getComponentName().empty() ?
-					typeToString(system->getComponentType()) : system->getComponentName();
-				ImGui::PushID(componentName.c_str());
-				auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
-				
-				if (!renderInspectorComponentPopup(selectedEntity, system, component.first, componentName))
-				{
-					ImGui::PopID();
-					continue;
-				}
-
-				ImGui::Indent();
-				result->second(selectedEntity, isOpened);
-				ImGui::Unindent();
-
-				if (isOpened)
-					ImGui::Spacing();
-				ImGui::PopID();
-			}
+			if (result == entityInspectors.end())
+				continue;
+			onComponents.emplace(result->second.priority, make_pair(
+				component.second.first, result->second.onComponent));
 		}
+		for (const auto& pair : onComponents)
+		{
+			auto system = pair.second.first;
+			auto componentName = system->getComponentName().empty() ?
+				typeToString(system->getComponentType()) : system->getComponentName();
+			ImGui::PushID(componentName.c_str());
+			auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
+				
+			if (!renderInspectorComponentPopup(selectedEntity, 
+				system, system->getComponentType(), componentName))
+			{
+				ImGui::PopID();
+				continue;
+			}
+
+			ImGui::Indent();
+			pair.second.second(selectedEntity, isOpened);
+			ImGui::Unindent();
+
+			if (isOpened)
+				ImGui::Spacing();
+			ImGui::PopID();
+		}
+		onComponents.clear();
+
 		for (const auto& component : components)
 		{
 			auto system = component.second.first;
@@ -578,10 +724,7 @@ void EditorRenderSystem::showEntityInspector()
 	if (InputSystem::getInstance()->isKeyboardPressed(KeyboardButton::Delete) &&
 		!Manager::getInstance()->has<DoNotDestroyComponent>(selectedEntity))
 	{
-		if (Manager::getInstance()->has<TransformComponent>(selectedEntity))
-			TransformSystem::getInstance()->destroyRecursive(selectedEntity);
-		else
-			Manager::getInstance()->destroy(selectedEntity);
+		TransformSystem::getInstance()->destroyRecursive(selectedEntity);
 		selectedEntity = {};
 	}
 
@@ -870,6 +1013,17 @@ void EditorRenderSystem::editorRender()
 		showEntityInspector();
 	if (!fileSelectDirectory.empty())
 		showFileSelector();
+}
+
+void EditorRenderSystem::setPlaying(bool isPlaying)
+{
+	if (this->playing == isPlaying)
+		return;
+
+	if (this->playing)
+	{
+
+	}
 }
 
 //**********************************************************************************************************************

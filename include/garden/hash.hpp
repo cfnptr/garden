@@ -88,6 +88,12 @@ struct Hash128
 		return low64 != h.low64 || high64 != h.high64; }
 	bool operator<(const Hash128& h) const noexcept { 
 		return memcmp(this, &h, sizeof(uint64) * 2) < 0; }
+
+	/**
+	 * @brief Returns true if hash is not all zeros.
+	 */
+	explicit operator bool() const noexcept { return low64 | high64; }
+
 	
 	/**
 	 * @brief Returns hash Base64 encoded string.
