@@ -18,30 +18,61 @@
 #include "ecsm.hpp"
 #include <random>
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Common objects search functions.
+ */
+
 namespace garden
 {
 
 using namespace ecsm;
 class LinkSystem;
 
+/**
+ * @brief Object universally unique identifier (UUID) and/or tag container.
+ */
 struct LinkComponent final : public Component
 {
 private:
-	Hash128 uuid = {};
-	string tag = {};
+	Hash128 uuid = {}; /**< Entity universally unique identifier (UUID) */
+	string tag = {};   /**< Entity tag (Can be used by several entities) */
+
 	bool destroy();
 
 	friend class LinkSystem;
 	friend class LinearPool<LinkComponent>;
 public:
+	/**
+	 * @brief Returns entity universally unique identifier (UUID).
+	 */
 	const Hash128& getUUID() const noexcept { return uuid; }
+	/**
+	 * @brief Returns entity tag. (Can be used by several entities)
+	 */
 	const string& getTag() const noexcept { return tag; }
 
+	/**
+	 * @brief Generates and sets a new random UUID.
+	 * @note Trying to get maximum randomness internally.
+	 */
 	void regenerateUUID();
+
+	/**
+	 * @brief Sets entity UUID if it's not yet used.
+	 * @param uuid target entity UUID
+	 */
 	bool trySetUUID(const Hash128& uuid);
+	/**
+	 * @brief Sets entity tag. (Can be used by several entities)
+	 * @param tag target entity tag
+	 */
 	void setTag(const string& tag);
 };
 
+/***********************************************************************************************************************
+ * @brief Handles fast objects search by unique identifier or tag.
+ */
 class LinkSystem final : public System, public ISerializable
 {
 	LinearPool<LinkComponent> components;
@@ -74,14 +105,54 @@ class LinkSystem final : public System, public ISerializable
 	friend class ecsm::Manager;
 	friend class LinkComponent;
 public:
+	/**
+	 * @brief Returns link component pool.
+	 */
 	const LinearPool<LinkComponent>& getComponents() const noexcept { return components; }
+	/**
+	 * @brief Returns link UUID map.
+	 */
 	const map<Hash128, ID<LinkComponent>>& getUuidMap() const noexcept { return uuidMap; }
+	/**
+	 * @brief Returns link tag map.
+	 */
 	const multimap<string, ID<LinkComponent>>& getTagMap() const noexcept { return tagMap; }
 
+	/**
+	 * @brief Returns entity by UUID if found, otherwise null.
+	 * @param[in] uuid target entity UUID
+	 */
 	ID<Entity> findEntity(const Hash128& uuid);
 
+	/**
+	 * @brief Returns entities iterator by tag if found.
+	 * @param[in] tag target entities tag
+	 */
 	auto findEntities(const string& tag) { return tagMap.equal_range(tag); }
+	/**
+	 * @brief Returns entities array by tag if found.
+	 * @param[in] tag target entities tag
+	 */
 	void findEntities(const string& tag, vector<ID<Entity>>& entities);
+
+	/**
+	 * @brief Returns true if entity has link component.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	bool has(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity link component view.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<LinkComponent> get(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity link component view if exist.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<LinkComponent> tryGet(ID<Entity> entity) const;
 
 	/**
 	 * @brief Returns link system instance.
@@ -89,7 +160,7 @@ public:
 	 */
 	static LinkSystem* getInstance() noexcept
 	{
-		GARDEN_ASSERT(instance); // Link system is not created.
+		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };

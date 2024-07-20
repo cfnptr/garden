@@ -85,7 +85,7 @@ void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, boo
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<Opaque9SliceComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -99,14 +99,21 @@ void NineSliceRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, boo
 	/*if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<Cutout9SliceComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
 		auto componentView = Manager::getInstance()->get<Cutout9SliceComponent>(entity);
 		renderSpriteComponent(*componentView, typeid(Cutout9SliceComponent));
+
 		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
+		if (ImGui::BeginPopupContextItem("alphaCutoff"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+				componentView->alphaCutoff = 0.5f;
+			ImGui::EndPopup();
+		}
 	}*/
 }
 void NineSliceRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
@@ -114,7 +121,7 @@ void NineSliceRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity
 	/*if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<Translucent9SliceComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)

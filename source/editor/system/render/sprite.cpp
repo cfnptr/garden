@@ -83,7 +83,7 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -97,14 +97,21 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
 		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
 		renderComponent(*componentView, typeid(CutoutSpriteComponent));
+
 		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
+		if (ImGui::BeginPopupContextItem("alphaCutoff"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+				componentView->alphaCutoff = 0.5f;
+			ImGui::EndPopup();
+		}
 	}
 }
 void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
@@ -112,7 +119,7 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -179,10 +186,51 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* component,
 
 	auto& aabb = component->aabb;
 	ImGui::DragFloat3("Min AABB", (float3*)&aabb.getMin(), 0.01f);
+	if (ImGui::BeginPopupContextItem("minAabb"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			aabb = Aabb::one;
+		ImGui::EndPopup();
+	}
+
 	ImGui::DragFloat3("Max AABB", (float3*)&aabb.getMax(), 0.01f);
+	if (ImGui::BeginPopupContextItem("maxAabb"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			aabb = Aabb::one;
+		ImGui::EndPopup();
+	}
+
 	ImGui::DragFloat2("UV Size", &component->uvSize, 0.01f);
+	if (ImGui::BeginPopupContextItem("uvSize"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			component->uvSize = float2(1.0f);
+		ImGui::EndPopup();
+	}
+
 	ImGui::DragFloat2("UV Offset", &component->uvOffset, 0.01f);
+	if (ImGui::BeginPopupContextItem("uvOffset"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			component->uvOffset = float2(0.0f);
+		ImGui::EndPopup();
+	}
+
 	ImGui::SliderFloat("Color Layer", &component->colorMapLayer, 0.0f, maxColorMapLayer);
+	if (ImGui::BeginPopupContextItem("colorLayer"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			component->colorMapLayer = 0.0f;
+		ImGui::EndPopup();
+	}
+
 	ImGui::SliderFloat4("Color Factor", &component->colorFactor, 0.0f, 1.0f);
+	if (ImGui::BeginPopupContextItem("colorFactor"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			component->colorFactor = float4(1.0f);
+		ImGui::EndPopup();
+	}
 }
 #endif

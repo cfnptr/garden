@@ -45,7 +45,8 @@ void AnimationEditorSystem::init()
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
-	});
+	},
+	inspectorPriority);
 }
 void AnimationEditorSystem::deinit()
 {
@@ -87,7 +88,14 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto animationComponent = Manager::getInstance()->get<AnimationComponent>(entity);
 	ImGui::Checkbox("Playing", &animationComponent->isPlaying);
 	ImGui::InputText("Active", &animationComponent->active); // TODO: dropdown selector
+
 	ImGui::DragFloat("Frame", &animationComponent->frame);
+	if (ImGui::BeginPopupContextItem("frame"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			animationComponent->frame = 0.0f;
+		ImGui::EndPopup();
+	}
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Animations"))

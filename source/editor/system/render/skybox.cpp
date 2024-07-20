@@ -23,7 +23,7 @@ using namespace garden;
 SkyboxEditor::SkyboxEditor(SkyboxRenderSystem* system)
 {
 	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(SkyboxRenderComponent),
-		[this](ID<Entity> entity) { onEntityInspector(entity); });
+		[this](ID<Entity> entity) { onEntityInspector(entity); }); // TODO: set inspectorPriority = -0.1f
 	this->system = system;
 }
 // TODO: unregister inspector

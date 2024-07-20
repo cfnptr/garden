@@ -188,6 +188,11 @@ class CameraSystem final : public System, public ISerializable, public IAnimatab
 	void destroyAnimation(ID<AnimationFrame> frame) final;
 
 	friend class ecsm::Manager;
+public:
+	/**
+	 * @brief Returns camera component pool.
+	 */
+	const LinearPool<CameraComponent, false>& getComponents() const noexcept { return components; }
 };
 
 } // namespace garden

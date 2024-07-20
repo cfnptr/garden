@@ -115,9 +115,9 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 
 		if (ImGui::MenuItem("Copy Debug Name"))
 		{
-			auto transform = transformSystem->get(renderEntity);
-			auto debugName = transform->debugName.empty() ?
-				"Entity " + to_string(*renderEntity) : transform->debugName;
+			auto transformView = transformSystem->get(renderEntity);
+			auto debugName = transformView->debugName.empty() ?
+				"Entity " + to_string(*renderEntity) : transformView->debugName;
 			ImGui::SetClipboardText(debugName.c_str());
 		}
 		if (ImGui::MenuItem("Store as Scene"))
@@ -177,13 +177,14 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 //**********************************************************************************************************************
 static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
-	auto transform = TransformSystem::getInstance()->get(renderEntity);
-	auto debugName = transform->debugName.empty() ? "Entity " + to_string(*renderEntity) : transform->debugName;
+	auto transformView = TransformSystem::getInstance()->get(renderEntity);
+	auto debugName = transformView->debugName.empty() ? 
+		"Entity " + to_string(*renderEntity) : transformView->debugName;
 	
-	auto flags = (int)(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
-	if (transform->getEntity() == selectedEntity)
+	auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow);
+	if (transformView->getEntity() == selectedEntity)
 		flags |= ImGuiTreeNodeFlags_Selected;
-	if (transform->getChildCount() == 0)
+	if (transformView->getChildCount() == 0)
 		flags |= ImGuiTreeNodeFlags_Leaf;
 	
 	ImGui::PushID(to_string(*renderEntity).c_str());
@@ -191,11 +192,11 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 	{
 		updateHierarchyClick(renderEntity);
 
-		transform = TransformSystem::getInstance()->get(renderEntity); // Do not optimize!!!
-		for (uint32 i = 0; i < transform->getChildCount(); i++)
+		transformView = TransformSystem::getInstance()->get(renderEntity); // Do not optimize!!!
+		for (uint32 i = 0; i < transformView->getChildCount(); i++)
 		{
-			renderHierarchyEntity(transform->getChilds()[i], selectedEntity); // TODO: use stack instead of recursion!
-			transform = TransformSystem::getInstance()->get(renderEntity); // Do not optimize!!!
+			renderHierarchyEntity(transformView->getChilds()[i], selectedEntity); // TODO: use stack instead of recursion!
+			transformView = TransformSystem::getInstance()->get(renderEntity); // Do not optimize!!!
 		}
 		ImGui::TreePop();
 	}

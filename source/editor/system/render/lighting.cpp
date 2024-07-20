@@ -43,7 +43,8 @@ void LightingRenderEditorSystem::init()
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
-	});
+	},
+	inspectorPriority);
 }
 void LightingRenderEditorSystem::deinit()
 {

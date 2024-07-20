@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Object animation system.
+ * @brief Object animations system.
  */
 
 // TODO: add bezier curves support and also lerped transitions between different animations.
@@ -29,22 +29,33 @@ namespace garden
 using namespace ecsm;
 class AnimationSystem;
 
-//**********************************************************************************************************************
+/***********************************************************************************************************************
+ * @brief Object animations container.
+ */
 struct AnimationComponent final : public Component
 {
 private:
 	map<string, Ref<Animation>> animations;
 public:
-	string active;
-	float frame = 0.0f;
-	bool isPlaying = true;
+	string active;         /**< Active animation path */
+	float frame = 0.0f;    /**< Current animation frame */
+	bool isPlaying = true; /**< Is animation playing */
 private:
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	friend class AnimationSystem;
 public:
+	/**
+	 * @brief Returns animations map.
+	 */
 	const map<string, Ref<Animation>>& getAnimations() const noexcept { return animations; }
 
+	/**
+	 * @brief Adds a new animation to the map.
+	 * 
+	 * @param[in] path target animation path
+	 * @param[in] animation target animation instance
+	 */
 	auto emplaceAnimation(string&& path, Ref<Animation>&& animation)
 	{
 		GARDEN_ASSERT(!path.empty());
@@ -52,12 +63,26 @@ public:
 		return animations.emplace(std::move(path), std::move(animation));
 	}
 
+	/**
+	 * @brief Removes animation from the map.
+	 * @param[in] path target animation path
+	 */
 	psize eraseAnimation(const string& path) noexcept { return animations.erase(path); }
+	/**
+	 * @brief Removes animation from the map.
+	 * @param i target animation iterator
+	 */
 	auto eraseAnimation(map<string, Ref<Animation>>::const_iterator i) noexcept { return animations.erase(i); }
+
+	/**
+	 * @brief Clears animations map.
+	 */
 	void clearAnimations() noexcept { animations.clear(); }
 };
 
-//**********************************************************************************************************************
+/***********************************************************************************************************************
+ * @brief Handles object properties animation.
+ */
 class AnimationSystem final : public System, public ISerializable
 {
 	ThreadSystem* threadSystem = nullptr;
@@ -93,11 +118,31 @@ class AnimationSystem final : public System, public ISerializable
 	
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Does system animate components asynchronously. (From multiple threads)
+	 */
 	bool isAnimateAsync() const noexcept { return animateAsync; }
+
+	/**
+	 * @brief Creates a new animation instance.
+	 * @note Expected to use the resource system to load animations.
+	 */
 	ID<Animation> createAnimation() { return animations.create(); }
+	/**
+	 * @brief Returns animation view.
+	 * @param animation target animation instance
+	 */
 	View<Animation> get(ID<Animation> animation) { return animations.get(animation); }
+	/**
+	 * @brief Destroys animation instance.
+	 * @param animation target animation instance or null
+	 */
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }
 
+	/**
+	 * @brief Destroys animation shared resources
+	 * @param animationComponent target animation component
+	 */
 	static void tryDestroyResources(View<AnimationComponent> animationComponent);
 
 	/**

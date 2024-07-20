@@ -48,7 +48,8 @@ void LinkEditorSystem::init()
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
-	});
+	},
+	inspectorPriority);
 }
 void LinkEditorSystem::deinit()
 {

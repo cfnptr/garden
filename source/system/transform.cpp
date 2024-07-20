@@ -280,7 +280,7 @@ bool TransformComponent::isActiveWithAncestors() const noexcept
 //**********************************************************************************************************************
 bool TransformComponent::hasBakedWithDescendants() const noexcept
 {
-	static vector<ID<Entity>> transformStack;
+	static thread_local vector<ID<Entity>> transformStack;
 	transformStack.push_back(entity);
 
 	auto manager = Manager::getInstance();
@@ -498,7 +498,13 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 	if (manager->has<DoNotDestroyComponent>(entity))
 		return;
 
-	auto transformComponent = get(entity);
+	auto transformComponent = tryGet(entity);
+	if (!transformComponent)
+	{
+		manager->destroy(entity);
+		return;
+	}
+
 	auto childCount = transformComponent->childCount;
 	auto childs = transformComponent->childs;
 	transformComponent->childCount = 0;

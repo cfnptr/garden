@@ -46,8 +46,17 @@ class EditorRenderSystem final : public System
 {
 public:
 	using OnComponent = std::function<void(ID<Entity> entity, bool isOpened)>;
+
+	struct Inspector final
+	{
+		OnComponent onComponent;
+		float priority = 0.0f;
+
+		Inspector(const OnComponent& _onComponent, float _priority = 0.0f) :
+			onComponent(_onComponent), priority(_priority) { }
+	};
 private:
-	map<type_index, OnComponent> entityInspectors;
+	map<type_index, Inspector> entityInspectors;
 	string scenePath = "unnamed";
 	fs::path fileSelectDirectory;
 	fs::path selectedEntry;
@@ -58,6 +67,7 @@ private:
 	bool aboutWindow = false;
 	bool optionsWindow = false;
 	bool newScene = false;
+	bool playing = false;
 
 	static EditorRenderSystem* instance;
 
@@ -90,9 +100,10 @@ public:
 	bool exportScene = false;
 
 	template<typename T = Component>
-	void registerEntityInspector(OnComponent onComponent)
+	void registerEntityInspector(OnComponent onComponent, float priority = 0.0f)
 	{
-		if (!entityInspectors.emplace(typeid(T), onComponent).second)
+		Inspector inspector(onComponent, priority);
+		if (!entityInspectors.emplace(typeid(T), std::move(inspector)).second)
 		{
 			throw runtime_error("This component type is already registered. ("
 				"name: " + typeToString<T>() + ")");
@@ -112,6 +123,9 @@ public:
 	{
 		return entityInspectors.erase(typeid(T)) != 0;
 	}
+
+	bool isPlaying() const noexcept { return playing; }
+	void setPlaying(bool isPlaying);
 
 	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
 		const fs::path& directory = {}, const set<string>& extensions = {});

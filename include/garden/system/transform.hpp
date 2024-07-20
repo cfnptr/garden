@@ -165,11 +165,11 @@ class TransformSystem final : public System, public ISerializable, public IAnima
 	static TransformSystem* instance;
 
 	/**
-	 * @brief Creates a new transform system instance.
+	 * @brief Creates a new transformer system instance.
 	 */
 	TransformSystem();
 	/**
-	 * @brief Destroy transform system instance.
+	 * @brief Destroy transformer system instance.
 	 */
 	~TransformSystem() final;
 

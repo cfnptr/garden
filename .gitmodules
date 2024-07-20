@@ -25,12 +25,18 @@
 [submodule "libraries/webp"]
 	path = libraries/webp
 	url = https://github.com/webmproject/libwebp
+[submodule "libraries/png"]
+	path = libraries/png
+	url = https://github.com/cfnptr/libpng
 [submodule "libraries/openexr"]
 	path = libraries/openexr
 	url = https://github.com/AcademySoftwareFoundation/openexr
 [submodule "libraries/imath"]
 	path = libraries/imath
 	url = https://github.com/AcademySoftwareFoundation/Imath
+[submodule "libraries/json"]
+	path = libraries/json
+	url = https://github.com/nlohmann/json
 [submodule "libraries/freetype"]
 	path = libraries/freetype
 	url = https://github.com/freetype/freetype
@@ -49,12 +55,9 @@
 [submodule "libraries/voxy"]
 	path = libraries/voxy
 	url = https://github.com/cfnptr/voxy
-[submodule "libraries/json"]
-	path = libraries/json
-	url = https://github.com/nlohmann/json
 [submodule "examples/platformer/resources"]
 	path = examples/platformer/resources
 	url = https://github.com/cfnptr/platformer-resources
-[submodule "libraries/png"]
-	path = libraries/png
-	url = https://github.com/cfnptr/libpng
+[submodule "libraries/jolt"]
+	path = libraries/jolt
+	url = https://github.com/jrouwe/JoltPhysics

@@ -75,14 +75,14 @@ void CameraSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Co
 	auto componentView = View<CameraComponent>(component);
 	if (componentView->type == ProjectionType::Perspective)
 	{
-		serializer.write("projection", "perspective");
+		serializer.write("projection", string_view("Perspective"));
 		serializer.write("fieldOfView", componentView->p.perspective.fieldOfView);
 		serializer.write("aspectRatio", componentView->p.perspective.aspectRatio);
 		serializer.write("nearPlane", componentView->p.perspective.nearPlane);
 	}
 	else
 	{
-		serializer.write("projection", "orthographic");
+		serializer.write("projection", string_view("Orthographic"));
 		serializer.write("width", componentView->p.orthographic.width);
 		serializer.write("height", componentView->p.orthographic.height);
 		serializer.write("depth", componentView->p.orthographic.depth);
@@ -117,7 +117,7 @@ void CameraSystem::serializeAnimation(ISerializer& serializer, View<AnimationFra
 	auto frameView = View<CameraFrame>(frame);
 	if (frameView->f.base.type == ProjectionType::Perspective)
 	{
-		serializer.write("projection", "perspective");
+		serializer.write("projection", string_view("Perspective"));
 		if (frameView->f.perspective.animateFieldOfView)
 			serializer.write("fieldOfView", frameView->c.perspective.fieldOfView);
 		if (frameView->f.perspective.animateAspectRatio)
@@ -127,7 +127,7 @@ void CameraSystem::serializeAnimation(ISerializer& serializer, View<AnimationFra
 	}
 	else
 	{
-		serializer.write("projection", "orthographic");
+		serializer.write("projection", string_view("Orthographic"));
 		if (frameView->f.orthographic.animateWidth)
 			serializer.write("width", frameView->c.orthographic.width);
 		if (frameView->f.orthographic.animateHeight)

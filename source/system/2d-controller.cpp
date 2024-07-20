@@ -95,13 +95,17 @@ void Controller2DSystem::deinit()
 //**********************************************************************************************************************
 void Controller2DSystem::update()
 {
+	auto manager = Manager::getInstance();
 	auto inputSystem = InputSystem::getInstance();
-	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Default)
+	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Default ||
+		!manager->has<TransformComponent>(camera) || !manager->has<CameraComponent>(camera))
+	{
 		return;
+	}
 
 	if (inputSystem->getMouseState(MouseButton::Right))
 	{
-		auto manager = Manager::getInstance();
+		
 		auto cameraComponent = manager->get<CameraComponent>(camera);
 		auto transformComponent = TransformSystem::getInstance()->get(camera);
 		auto cursorDelta = inputSystem->getCursorDelta();
