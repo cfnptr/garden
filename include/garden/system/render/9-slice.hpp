@@ -46,7 +46,7 @@ public:
 	};
 protected:
 	uint64 getInstanceDataSize() override;
-	void setInstanceData(SpriteRenderComponent* spriteRenderComponent, InstanceData* instanceData,
+	void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) override;

@@ -23,7 +23,7 @@ namespace garden
 
 class LogEditorSystem final : public System
 {
-	string logSearch;
+	string searchString;
 	string textBuffer, logLine;
 	stringstream logBuffer;
 	mutex bufferMutex;

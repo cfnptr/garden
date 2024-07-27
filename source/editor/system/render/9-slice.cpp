@@ -85,7 +85,8 @@ void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, boo
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<Opaque9SliceComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : 
+			componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -132,10 +133,10 @@ void NineSliceRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity
 }
 
 //**********************************************************************************************************************
-void NineSliceRenderEditorSystem::renderComponent(NineSliceRenderComponent* component, type_index componentType)
+void NineSliceRenderEditorSystem::renderComponent(NineSliceRenderComponent* componentView, type_index componentType)
 {
-	SpriteRenderEditorSystem::renderComponent(component, componentType);
-	ImGui::DragFloat2("Texture Border", &component->textureBorder, 0.1f);
-	ImGui::DragFloat2("Window Border", &component->windowBorder, 0.1f);
+	SpriteRenderEditorSystem::renderComponent(componentView, componentType);
+	ImGui::DragFloat2("Texture Border", &componentView->textureBorder, 0.1f);
+	ImGui::DragFloat2("Window Border", &componentView->windowBorder, 0.1f);
 }
 #endif

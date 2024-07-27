@@ -58,17 +58,17 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 	{
 		auto manager = Manager::getInstance();
 		auto graphicsSystem = GraphicsSystem::getInstance();
-		auto lightingComponent = manager->get<LightingRenderComponent>(entity);
+		auto lightingView = manager->get<LightingRenderComponent>(entity);
 
-		if (lightingComponent->cubemap) // TODO: use common resource name gui shower.
+		if (lightingView->cubemap) // TODO: use common resource name gui shower.
 		{
-			auto imageView = graphicsSystem->get(lightingComponent->cubemap);
+			auto imageView = graphicsSystem->get(lightingView->cubemap);
 			auto stringOffset = imageView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto image = to_string(*lightingComponent->cubemap) + " (" +
+			auto image = to_string(*lightingView->cubemap) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Cubemap", &image, ImGuiInputTextFlags_ReadOnly);
 		}
@@ -77,15 +77,15 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 			ImGui::Text("Cubemap: null");
 		}
 
-		if (lightingComponent->sh)
+		if (lightingView->sh)
 		{
-			auto bufferView = graphicsSystem->get(lightingComponent->sh);
+			auto bufferView = graphicsSystem->get(lightingView->sh);
 			auto stringOffset = bufferView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto buffer = to_string(*lightingComponent->sh) + " (" +
+			auto buffer = to_string(*lightingView->sh) + " (" +
 				string(bufferView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("SH", &buffer, ImGuiInputTextFlags_ReadOnly);
 		}
@@ -94,17 +94,17 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 			ImGui::Text("SH: null");
 		}
 
-		if (lightingComponent->specular)
+		if (lightingView->specular)
 		{
-			auto imageView = graphicsSystem->get(lightingComponent->specular);
+			auto imageView = graphicsSystem->get(lightingView->specular);
 			auto stringOffset = imageView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			ImGui::Text("Specular: %lu (%s)", (unsigned long)*lightingComponent->specular,
+			ImGui::Text("Specular: %lu (%s)", (unsigned long)*lightingView->specular,
 				imageView->getDebugName().c_str() + stringOffset);
-			auto image = to_string(*lightingComponent->specular) + " (" +
+			auto image = to_string(*lightingView->specular) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Specular", &image, ImGuiInputTextFlags_ReadOnly);
 		}
@@ -113,15 +113,15 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 			ImGui::Text("Cubemap: null");
 		}
 
-		if (lightingComponent->descriptorSet)
+		if (lightingView->descriptorSet)
 		{
-			auto descriptorSetView = graphicsSystem->get(lightingComponent->descriptorSet);
+			auto descriptorSetView = graphicsSystem->get(lightingView->descriptorSet);
 			auto stringOffset = descriptorSetView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto descriptorSet = to_string(*lightingComponent->descriptorSet) + " (" +
+			auto descriptorSet = to_string(*lightingView->descriptorSet) + " (" +
 				string(descriptorSetView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Descriptor Set", &descriptorSet, ImGuiInputTextFlags_ReadOnly);
 		}

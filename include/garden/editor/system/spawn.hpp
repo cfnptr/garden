@@ -12,21 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/animate.hpp"
+#pragma once
+#include "garden/system/render/editor.hpp"
 
-using namespace garden;
-
-bool Animation::destroy()
+#if GARDEN_EDITOR
+namespace garden
 {
-	for (const auto& keyframe : keyframes)
-	{
-		const auto& animatables = keyframe.second;
-		for (const auto& pair : animatables)
-		{
-			auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
-			animatableSystem->destroyAnimation(pair.second);
-		}
-	}
-	keyframes.clear();
-	return true;
-}
+
+class SpawnEditorSystem final : public System
+{
+	string searchString;
+	bool searchCaseSensitive = false;
+	bool showWindow = false;
+
+	SpawnEditorSystem();
+	~SpawnEditorSystem() final;
+
+	void init();
+	void deinit();
+	void editorRender();
+	void editorBarTool();
+
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	friend class ecsm::Manager;
+public:
+	float inspectorPriority = -0.6f;
+};
+
+} // namespace garden
+#endif

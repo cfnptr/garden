@@ -53,7 +53,7 @@ protected:
 	void finalizeDraw(const float4x4& viewProj, uint32 drawCount) override;
 
 	virtual ID<GraphicsPipeline> createPipeline() = 0;
-	virtual void setDescriptorSetRange(MeshRenderComponent* meshRenderComponent,
+	virtual void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity);
 	virtual map<string, DescriptorSet::Uniform> getBaseUniforms();
 	virtual map<string, DescriptorSet::Uniform> getDefaultUniforms() { return {}; }

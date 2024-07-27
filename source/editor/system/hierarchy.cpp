@@ -69,21 +69,21 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		editorSystem->selectedEntity = renderEntity;
 
 		auto graphicsSystem = GraphicsSystem::getInstance();
-		if (graphicsSystem->camera && graphicsSystem->camera != renderEntity &&
-			ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+			graphicsSystem->camera && graphicsSystem->camera != renderEntity)
 		{
-			auto entityTransform = transformSystem->get(renderEntity);
-			auto cameraTransform = transformSystem->get(graphicsSystem->camera);
-			auto model = entityTransform->calcModel();
-			cameraTransform->position = getTranslation(model);
+			auto entityTransformView = transformSystem->get(renderEntity);
+			auto cameraTransformView = transformSystem->get(graphicsSystem->camera);
+			auto model = entityTransformView->calcModel();
+			cameraTransformView->position = getTranslation(model);
 
-			auto cameraComponent = manager->get<CameraComponent>(graphicsSystem->camera);
-			if (cameraComponent)
+			auto cameraView = manager->get<CameraComponent>(graphicsSystem->camera);
+			if (cameraView)
 			{
-				if (cameraComponent->type == ProjectionType::Perspective)
-					cameraTransform->position += float3(0.0f, 0.0f, -2.0f) * cameraTransform->rotation;
+				if (cameraView->type == ProjectionType::Perspective)
+					cameraTransformView->position += float3(0.0f, 0.0f, -2.0f) * cameraTransformView->rotation;
 				else
-					cameraTransform->position += float3(0.0f, 0.0f, -0.5f);
+					cameraTransformView->position += float3(0.0f, 0.0f, -0.5f);
 			}
 		}
 	}
@@ -93,8 +93,8 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (ImGui::MenuItem("Create Entity"))
 		{
 			auto entity = manager->createEntity();
-			auto newTransform = manager->add<TransformComponent>(entity);
-			newTransform->setParent(renderEntity);
+			auto newTransformView = manager->add<TransformComponent>(entity);
+			newTransformView->setParent(renderEntity);
 			ImGui::SetNextItemOpen(true);
 		}
 
@@ -102,9 +102,9 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (ImGui::MenuItem("Duplicate Entity"))
 		{
 			auto duplicate = transformSystem->duplicateRecursive(renderEntity);
-			auto duplicateTransform = transformSystem->get(duplicate);
-			auto entityTransform = transformSystem->get(renderEntity);
-			duplicateTransform->setParent(entityTransform->getParent());
+			auto duplicateTransformView = transformSystem->get(duplicate);
+			auto entityTransformView = transformSystem->get(renderEntity);
+			duplicateTransformView->setParent(entityTransformView->getParent());
 		}
 		ImGui::EndDisabled();
 
@@ -140,34 +140,37 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (payload)
 		{
 			auto entity = *((const ID<Entity>*)payload->Data);
-			auto entityTransform = transformSystem->get(entity);
-			if (renderEntity)
+			auto entityTransformView = transformSystem->tryGet(entity);
+			if (entityTransformView)
 			{
-				auto renderTransform = transformSystem->get(renderEntity);
-				if (!renderTransform->hasAncestor(entity))
-					entityTransform->setParent(renderEntity);
-			}	
-			else
-			{
-				entityTransform->setParent({});
+				if (renderEntity)
+				{
+					auto renderTransformView = transformSystem->get(renderEntity);
+					if (!renderTransformView->hasAncestor(entity))
+						entityTransformView->setParent(renderEntity);
+				}
+				else
+				{
+					entityTransformView->setParent({});
+				}
 			}
 		}
 		ImGui::EndDragDropTarget();
 	}
 	if (renderEntity)
 	{
-		auto renderTransform = transformSystem->get(renderEntity);
-		if (!renderTransform->hasBakedWithDescendants() && ImGui::BeginDragDropSource())
+		auto renderTransformView = transformSystem->get(renderEntity);
+		if (!renderTransformView->hasBakedWithDescendants() && ImGui::BeginDragDropSource())
 		{
 			ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
-			if (renderTransform->debugName.empty())
+			if (renderTransformView->debugName.empty())
 			{
 				auto debugName = "Entity " + to_string(*renderEntity);
 				ImGui::Text("%s", debugName.c_str());
 			}
 			else
 			{
-				ImGui::Text("%s", renderTransform->debugName.c_str());
+				ImGui::Text("%s", renderTransformView->debugName.c_str());
 			}
 			ImGui::EndDragDropSource();
 		}
@@ -188,8 +191,14 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 		flags |= ImGuiTreeNodeFlags_Leaf;
 	
 	ImGui::PushID(to_string(*renderEntity).c_str());
+
+	if (!transformView->isActive)
+		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+
 	if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 	{
+		if (!transformView->isActive)
+			ImGui::PopStyleColor();
 		updateHierarchyClick(renderEntity);
 
 		transformView = TransformSystem::getInstance()->get(renderEntity); // Do not optimize!!!
@@ -202,6 +211,8 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 	}
 	else
 	{
+		if (!transformView->isActive)
+			ImGui::PopStyleColor();
 		updateHierarchyClick(renderEntity);
 	}
 	ImGui::PopID();
@@ -251,13 +262,14 @@ void HierarchyEditorSystem::editorRender()
 			if (payload)
 			{
 				auto entity = *((const ID<Entity>*)payload->Data);
-				auto entityTransform = TransformSystem::getInstance()->get(entity);
-				entityTransform->setParent({});
+				auto entityTransform = TransformSystem::getInstance()->tryGet(entity);
+				if (entityTransform)
+					entityTransform->setParent({});
 			}
 			ImGui::EndDragDropTarget();
 		}
 		
-		ImGui::InputText("Search", &hierarchySearch); ImGui::SameLine();
+		ImGui::InputText("Search", &searchString); ImGui::SameLine();
 		ImGui::Checkbox("Aa", &searchCaseSensitive);
 		ImGui::Spacing(); ImGui::Separator();
 
@@ -266,53 +278,49 @@ void HierarchyEditorSystem::editorRender()
 		auto editorSystem = EditorRenderSystem::getInstance();
 		const auto& components = TransformSystem::getInstance()->getComponents();
 
-		if (hierarchySearch.empty())
+		if (searchString.empty())
 		{
 			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
 			{
-				auto transform = &((const TransformComponent*)components.getData())[i];
-				if (!transform->getEntity() || transform->getParent())
+				auto transformView = &((const TransformComponent*)components.getData())[i];
+				if (!transformView->getEntity() || transformView->getParent())
 					continue;
-				renderHierarchyEntity(transform->getEntity(), editorSystem->selectedEntity);
+				renderHierarchyEntity(transformView->getEntity(), editorSystem->selectedEntity);
 			}
 		}
 		else
 		{
 			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
 			{
-				auto transform = &((const TransformComponent*)components.getData())[i];
-				if (!transform->getEntity())
+				auto transformView = &((const TransformComponent*)components.getData())[i];
+				if (!transformView->getEntity())
 					continue;
 
-				auto debugName = transform->debugName.empty() ?
-					"Entity " + to_string(*transform->getEntity()) : transform->debugName;
-				if (!hierarchySearch.empty())
-				{
-					if (!find(debugName, hierarchySearch, searchCaseSensitive))
-						continue;
-				}
+				auto debugName = transformView->debugName.empty() ?
+					"Entity " + to_string(*transformView->getEntity()) : transformView->debugName;
+				if (!find(debugName, searchString, searchCaseSensitive))
+					continue;
 
 				auto flags = (int)ImGuiTreeNodeFlags_Leaf;
-				if (transform->getEntity() == editorSystem->selectedEntity)
+				if (transformView->getEntity() == editorSystem->selectedEntity)
 					flags |= ImGuiTreeNodeFlags_Selected;
 					
 				if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 				{
-					updateHierarchyClick(transform->getEntity());
+					updateHierarchyClick(transformView->getEntity());
 					ImGui::TreePop();
 				}
 			}
 		}
 
 		const auto& entities = manager->getEntities();
-		auto entityData = entities.getData();
-		auto entityOccupancy = entities.getOccupancy();
 		auto hasSeparator = false;
 
-		for (uint32 i = 0; i < entityOccupancy; i++) // Entities without transform component
+		// Entities without transform component
+		for (uint32 i = 0; i < entities.getOccupancy(); i++)  // Do not optimize occupancy!!!
 		{
-			auto entity = &entityData[i];
-			const auto& components = entity->getComponents();
+			auto entityView = &(entities.getData()[i]);
+			const auto& components = entityView->getComponents();
 
 			if (components.empty() || components.find(typeid(TransformComponent)) != components.end())
 				continue;
@@ -324,14 +332,30 @@ void HierarchyEditorSystem::editorRender()
 			}
 			
 			auto flags = (int)ImGuiTreeNodeFlags_Leaf;
-			if (entities.getID(entity) == editorSystem->selectedEntity)
+			if (entities.getID(entityView) == editorSystem->selectedEntity)
 				flags |= ImGuiTreeNodeFlags_Selected;
-			auto debugName = "Entity " + to_string(*entities.getID(entity));
+			auto debugName = "Entity " + to_string(*entities.getID(entityView));
 
 			if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 			{
+				auto entity = entities.getID(entityView);
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-					editorSystem->selectedEntity = entities.getID(entity);
+					editorSystem->selectedEntity = entity;
+
+				if (ImGui::BeginPopupContextItem())
+				{
+					ImGui::BeginDisabled(manager->has<DoNotDuplicateComponent>(entity));
+					if (ImGui::MenuItem("Duplicate Entity"))
+						manager->duplicate(entity);
+					ImGui::EndDisabled();
+
+					ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(entity));
+					if (ImGui::MenuItem("Destroy Entity"))
+						manager->destroy(entity);
+					ImGui::EndDisabled();
+
+					ImGui::EndPopup();
+				}
 				ImGui::TreePop();
 			}
 		}

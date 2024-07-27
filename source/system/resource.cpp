@@ -1767,7 +1767,10 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		if (transformSystem)
 		{
 			rootEntity = manager->createEntity();
-			manager->add<TransformComponent>(rootEntity);
+			auto transformView = manager->add<TransformComponent>(rootEntity);
+			#if GARDEN_DEBUG || GARDEN_EDITOR
+			transformView->debugName = path.generic_string();
+			#endif
 		}
 		else
 		{
@@ -1832,8 +1835,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 						continue;
 					}
 
-					auto component = manager->add(entity, system->getComponentType());
-					serializableSystem->deserialize(deserializer, entity, component);
+					auto componentView = manager->add(entity, system->getComponentType());
+					serializableSystem->deserialize(deserializer, entity, componentView);
 					deserializer.endArrayElement();
 				}
 
@@ -1846,7 +1849,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					if (addRootEntity)
 					{
 						auto transformView = transformSystem->tryGet(entity);
-						if (transformView && !transformView->getParent())
+						if (transformView)
 							transformView->setParent(rootEntity);
 					}
 				}
@@ -1865,6 +1868,14 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		if (!serializableSystem)
 			continue;
 		serializableSystem->postDeserialize(deserializer);
+	}
+
+	if (addRootEntity)
+	{
+		// Reducing root component memory consumption after serialization completion.
+		auto transformView = manager->tryGet<TransformComponent>(rootEntity);
+		if (transformView)
+			transformView->shrinkChilds();
 	}
 
 	#if GARDEN_DEBUG
@@ -1886,16 +1897,16 @@ void ResourceSystem::clearScene()
 
 	for (uint32 i = 0; i < entityOccupancy; i++)
 	{
-		auto entity = &entityData[i];
-		auto entityID = entities.getID(entity);
-		if (entity->getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
+		auto entityView = &entityData[i];
+		auto entityID = entities.getID(entityView);
+		if (entityView->getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
 			continue;
 
 		if (transformSystem)
 		{
-			auto transformComponent = transformSystem->tryGet(entityID);
-			if (transformComponent)
-				transformComponent->setParent({});
+			auto transformView = transformSystem->tryGet(entityID);
+			if (transformView)
+				transformView->setParent({});
 		}
 		manager->destroy(entityID);
 	}
@@ -1938,6 +1949,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	serializer.write("version", appVersion.toString3());
 	serializer.beginChild("entities");
 	
+	auto dnsSystem = manager->tryGet<DoNotSerializeSystem>();
 	auto camera = GraphicsSystem::getInstance()->camera;
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
@@ -1945,24 +1957,45 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 
 	for (uint32 i = 0; i < entityOccupancy; i++)
 	{
-		const auto& entity = entityData[i];
-		auto instance = entities.getID(&entity);
-		const auto& components = entity.getComponents();
+		const auto entityView = &entityData[i];
+		auto instance = entities.getID(entityView);
+		const auto& components = entityView->getComponents();
 
-		if (components.empty() || instance == camera ||
-			manager->has<DoNotSerializeComponent>(instance))
-		{
+		if (components.empty() || instance == camera)
 			continue;
+
+		View<TransformComponent> transformView = {};
+		if (transformSystem)
+			transformView = transformSystem->tryGet(instance);
+
+		if (dnsSystem)
+		{
+			if (dnsSystem->has(instance))
+				continue;
+
+			if (transformView)
+			{
+				auto shouldSkip = false;
+				auto nextParent = transformView->getParent();
+				while (nextParent)
+				{
+					if (dnsSystem->has(nextParent))
+					{
+						shouldSkip = true;
+						break;
+					}
+					nextParent = transformSystem->get(nextParent)->getParent();
+				}
+
+				if (shouldSkip)
+					continue;
+			}
 		}
 
 		if (rootEntity)
 		{
-			auto transformComponent = transformSystem->tryGet(instance);
-			if (!transformComponent || (instance != rootEntity &&
-				!transformComponent->hasAncestor(rootEntity)))
-			{
+			if (!transformView || (instance != rootEntity && !transformView->hasAncestor(rootEntity)))
 				continue;
-			}
 		}
 
 		serializer.beginArrayElement();
@@ -1978,8 +2011,8 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 			
 			serializer.beginArrayElement();
 			serializer.write(".type", componentName);
-			auto component = system->getComponent(pair.second.second);
-			serializableSystem->serialize(serializer, instance, component);
+			auto componentView = system->getComponent(pair.second.second);
+			serializableSystem->serialize(serializer, instance, componentView);
 			serializer.endArrayElement();
 		}
 

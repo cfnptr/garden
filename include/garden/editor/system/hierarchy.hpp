@@ -21,7 +21,7 @@ namespace garden
 
 class HierarchyEditorSystem final : public System
 {
-	string hierarchySearch;
+	string searchString;
 	bool searchCaseSensitive = false;
 	bool showWindow = false;
 

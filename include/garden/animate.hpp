@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/defines.hpp"
 #include "garden/serialize.hpp"
 
 namespace garden

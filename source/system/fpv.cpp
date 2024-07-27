@@ -66,7 +66,7 @@ void FpvSystem::update()
 
 	auto manager = Manager::getInstance();
 	auto camera = graphicsSystem->camera;
-	auto transformComponent = TransformSystem::getInstance()->get(camera);
+	auto transformView = TransformSystem::getInstance()->get(camera);
 	// auto hasRigidBody = manager->has<RigidBodyComponent>(camera);
 
 	if (graphicsSystem->isKeyboardButtonPressed(KeyboardButton::F10) &&
@@ -98,19 +98,19 @@ void FpvSystem::update()
 				shapeView->setRestOffset(0.001f);
 				shapeView->setTrigger(true);
 
-				auto rigidBodyComponent = manager->add<RigidBodyComponent>(camera);
-				rigidBodyComponent->setStatic(false);
-				rigidBodyComponent->setAngularLockX(true);
-				rigidBodyComponent->setAngularLockY(true);
-				rigidBodyComponent->setAngularLockZ(true);
-				rigidBodyComponent->attachShape(capsuleShape);
-				rigidBodyComponent->attachShape(triggerShape);
-				rigidBodyComponent->setPose(transformComponent->position);
-				rigidBodyComponent->setLinearDamping(0.025f);
-				rigidBodyComponent->setSleepThreshold(0.1f);
-				rigidBodyComponent->setSolverIterCount(16, 4);
-				rigidBodyComponent->calcMassAndInertia(220.0f);
-				rigidBodyComponent->updatePose = false;
+				auto rigidBodyView = manager->add<RigidBodyComponent>(camera);
+				rigidBodyView->setStatic(false);
+				rigidBodyView->setAngularLockX(true);
+				rigidBodyView->setAngularLockY(true);
+				rigidBodyView->setAngularLockZ(true);
+				rigidBodyView->attachShape(capsuleShape);
+				rigidBodyView->attachShape(triggerShape);
+				rigidBodyView->setPose(transformView->position);
+				rigidBodyView->setLinearDamping(0.025f);
+				rigidBodyView->setSleepThreshold(0.1f);
+				rigidBodyView->setSolverIterCount(16, 4);
+				rigidBodyView->calcMassAndInertia(220.0f);
+				rigidBodyView->updatePose = false;
 				// TODO: set max terminal human velocity.
 				hasRigidBody = true;
 			}
@@ -146,7 +146,7 @@ void FpvSystem::update()
 
 	auto rotationQuat = quat(rotation.y, float3::left) *
 		quat(rotation.x, float3::bottom);
-	transformComponent->rotation = rotationQuat;
+	transformView->rotation = rotationQuat;
 
 	auto boost = graphicsSystem->isKeyboardButtonPressed(
 		KeyboardButton::LeftShift) ? moveBoost : 1.0f;
@@ -172,7 +172,7 @@ void FpvSystem::update()
 	{
 		velocity = lerp(velocity, moveDirection,
 			std::min(deltaTime * lerpMultiplier, 1.0f));
-		transformComponent->position += velocity * deltaTime;
+		transformView->position += velocity * deltaTime;
 	}
 	else
 	{
@@ -225,8 +225,8 @@ void FpvSystem::postSimulate()
 	if (!rigidBodyComponent)
 		return;
 
-	auto transformComponent = TransformSystem::getInstance()->get(camera);
-	rigidBodyComponent->getPose(transformComponent->position, rotation);
+	auto transformView = TransformSystem::getInstance()->get(camera);
+	rigidBodyComponent->getPose(transformView->position, rotation);
 }
 
 */

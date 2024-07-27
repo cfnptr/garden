@@ -40,7 +40,12 @@ AnimationEditorSystem::~AnimationEditorSystem()
 
 void AnimationEditorSystem::init()
 {
-	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
+	auto manager = Manager::getInstance();
+	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+
+	SUBSCRIBE_TO_EVENT("EditorRender", AnimationEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
+
 	EditorRenderSystem::getInstance()->registerEntityInspector<AnimationComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
@@ -51,6 +56,32 @@ void AnimationEditorSystem::init()
 void AnimationEditorSystem::deinit()
 {
 	EditorRenderSystem::getInstance()->unregisterEntityInspector<AnimationComponent>();
+
+	auto manager = Manager::getInstance();
+	if (manager->isRunning())
+	{
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", AnimationEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
+	}
+}
+
+//**********************************************************************************************************************
+void AnimationEditorSystem::editorRender()
+{
+	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
+		return;
+
+	if (ImGui::Begin("Animation Edtor", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
+	{
+		ImGui::Text("It's not implemented yet :(");
+		ImGui::Text("But you can be the one who will do it!");
+	}
+	ImGui::End();
+}
+void AnimationEditorSystem::editorBarTool()
+{
+	if (ImGui::MenuItem("Animation Editor"))
+		showWindow = true;
 }
 
 //**********************************************************************************************************************
@@ -59,15 +90,15 @@ static void renderAnimationSelector(ID<Entity> entity)
 	static const set<string> extensions = { ".anim" };
 	EditorRenderSystem::getInstance()->openFileSelector([entity](const fs::path& selectedFile)
 	{
-		auto animationComponent = Manager::getInstance()->tryGet<AnimationComponent>(entity);
-		if (!animationComponent || EditorRenderSystem::getInstance()->selectedEntity != entity)
+		auto animationView = Manager::getInstance()->tryGet<AnimationComponent>(entity);
+		if (!animationView || EditorRenderSystem::getInstance()->selectedEntity != entity)
 			return;
 
 		auto path = selectedFile;
 		path.replace_extension();
 		auto animation = ResourceSystem::getInstance()->loadAnimation(path, true);
 		if (animation)
-			animationComponent->emplaceAnimation(path.generic_string(), std::move(animation));
+			animationView->emplaceAnimation(path.generic_string(), std::move(animation));
 	},
 	AppInfoSystem::getInstance()->getResourcesPath() / "animations", extensions);
 }
@@ -76,24 +107,24 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto animationComponent = Manager::getInstance()->get<AnimationComponent>(entity);
-		ImGui::Text("Playing: %s, Frame: %f", animationComponent->isPlaying ?
-			animationComponent->active.c_str() : "none", animationComponent->frame);
+		auto animationView = Manager::getInstance()->get<AnimationComponent>(entity);
+		ImGui::Text("Playing: %s, Frame: %f", animationView->isPlaying ?
+			animationView->active.c_str() : "none", animationView->frame);
 		ImGui::EndTooltip();
 	}
 
 	if (!isOpened)
 		return;
 
-	auto animationComponent = Manager::getInstance()->get<AnimationComponent>(entity);
-	ImGui::Checkbox("Playing", &animationComponent->isPlaying);
-	ImGui::InputText("Active", &animationComponent->active); // TODO: dropdown selector
+	auto animationView = Manager::getInstance()->get<AnimationComponent>(entity);
+	ImGui::Checkbox("Playing", &animationView->isPlaying);
+	ImGui::InputText("Active", &animationView->active); // TODO: dropdown selector
 
-	ImGui::DragFloat("Frame", &animationComponent->frame);
+	ImGui::DragFloat("Frame", &animationView->frame);
 	if (ImGui::BeginPopupContextItem("frame"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			animationComponent->frame = 0.0f;
+			animationView->frame = 0.0f;
 		ImGui::EndPopup();
 	}
 	ImGui::Spacing();
@@ -104,7 +135,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
 		auto resourceSystem = ResourceSystem::getInstance();
-		auto& animations = animationComponent->getAnimations();
+		auto& animations = animationView->getAnimations();
 
 		for (auto i = animations.begin(); i != animations.end(); i++)
 		{
@@ -112,7 +143,9 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			if (ImGui::Button(" - "))
 			{
 				resourceSystem->destroyShared(i->second);
-				i = animationComponent->eraseAnimation(i);
+				i = animationView->eraseAnimation(i);
+				if (i == animations.end())
+					break;
 			}
 		}
 

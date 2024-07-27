@@ -56,7 +56,7 @@ protected:
 	virtual bool isDrawReady() = 0;
 	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount) { }
 	virtual void beginDrawAsync(int32 taskIndex) { }
-	virtual void drawAsync(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	virtual void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
 	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
 	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount) { }
@@ -88,7 +88,7 @@ class MeshRenderSystem final : public System
 public:
 	struct RenderItem
 	{
-		MeshRenderComponent* meshRender = nullptr;
+		MeshRenderComponent* meshRenderView = nullptr;
 		float4x4 model = float4x4(0.0f);
 		float distance2 = 0.0f;
 	};

@@ -327,11 +327,11 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 
 	while (nextParent)
 	{
-		auto nextTransform = transformSystem->get(nextParent);
-		auto parentModel = ::calcModel(nextTransform->position,
-			nextTransform->rotation, nextTransform->scale);
+		auto nextTransformView = transformSystem->get(nextParent);
+		auto parentModel = ::calcModel(nextTransformView->position,
+			nextTransformView->rotation, nextTransformView->scale);
 		view = parentModel * view;
-		nextParent = nextTransform->getParent();
+		nextParent = nextTransformView->getParent();
 	}
 
 	return view;
@@ -393,12 +393,12 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 {
 	auto manager = Manager::getInstance();
 
-	auto transformComponent = manager->tryGet<TransformComponent>(camera);
-	if (transformComponent)
+	auto transformView = manager->tryGet<TransformComponent>(camera);
+	if (transformView)
 	{
-		cameraConstants.view = calcRelativeView(*transformComponent);
+		cameraConstants.view = calcRelativeView(*transformView);
 		setTranslation(cameraConstants.view, float3(0.0f));
-		cameraConstants.cameraPos = float4(transformComponent->position, 0.0f);
+		cameraConstants.cameraPos = float4(transformView->position, 0.0f);
 	}
 	else
 	{
@@ -406,11 +406,11 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 		cameraConstants.cameraPos = 0.0f;
 	}
 
-	auto cameraComponent = manager->tryGet<CameraComponent>(camera);
-	if (cameraComponent)
+	auto cameraView = manager->tryGet<CameraComponent>(camera);
+	if (cameraView)
 	{
-		cameraConstants.projection = cameraComponent->calcProjection();
-		cameraConstants.nearPlane = cameraComponent->getNearPlane();
+		cameraConstants.projection = cameraView->calcProjection();
+		cameraConstants.nearPlane = cameraView->getNearPlane();
 	}
 	else
 	{
@@ -427,10 +427,10 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 
 	if (directionalLight)
 	{
-		auto lightTransform = manager->tryGet<TransformComponent>(directionalLight);
-		if (lightTransform)
+		auto lightTransformView = manager->tryGet<TransformComponent>(directionalLight);
+		if (lightTransformView)
 		{
-			auto lightDir = lightTransform->rotation * float3::front;
+			auto lightDir = lightTransformView->rotation * float3::front;
 			cameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
 		}
 		else

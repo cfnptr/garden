@@ -15,6 +15,7 @@
 #include "garden/main.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/link.hpp"
+#include "garden/system/spawn.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/physics.hpp"
 #include "garden/system/settings.hpp"
@@ -34,6 +35,7 @@
 #include "garden/editor/system/log.hpp"
 #include "garden/editor/system/ecs.hpp"
 #include "garden/editor/system/link.hpp"
+#include "garden/editor/system/spawn.hpp"
 #include "garden/editor/system/camera.hpp"
 #include "garden/editor/system/physics.hpp"
 #include "garden/editor/system/graphics.hpp"
@@ -77,13 +79,14 @@ void entryPoint()
 	manager->createSystem<SettingsSystem>();
 	manager->createSystem<ResourceSystem>();
 	manager->createSystem<LinkSystem>();
-	manager->createSystem<AnimationSystem>();
+	manager->createSystem<SpawnSystem>();
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
 	manager->createSystem<BakedTransformSystem>();
+	manager->createSystem<InputSystem>();
+	manager->createSystem<AnimationSystem>();
 	// Note: for a such game better to use Box2D physics, Jolt is overkill.
 	manager->createSystem<PhysicsSystem>();
-	manager->createSystem<InputSystem>();
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ForwardRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
@@ -102,9 +105,10 @@ void entryPoint()
 	manager->createSystem<EcsEditorSystem>();
 	manager->createSystem<LogEditorSystem>();
 	manager->createSystem<LinkEditorSystem>();
-	manager->createSystem<AnimationEditorSystem>();
+	manager->createSystem<SpawnEditorSystem>();
 	manager->createSystem<CameraEditorSystem>();
 	manager->createSystem<TransformEditorSystem>();
+	manager->createSystem<AnimationEditorSystem>();
 	manager->createSystem<PhysicsEditorSystem>();
 	manager->createSystem<GraphicsEditorSystem>();
 	manager->createSystem<GpuResourceEditorSystem>();

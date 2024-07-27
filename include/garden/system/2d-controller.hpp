@@ -19,8 +19,8 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "math/vector.hpp"
 #include "ecsm.hpp"
+#include "math/vector.hpp"
 
 namespace garden
 {

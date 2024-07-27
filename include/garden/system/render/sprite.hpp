@@ -37,7 +37,7 @@ public:
 	float2 uvOffset = float2(0.0f);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	string path;
+	fs::path path = {};
 	#endif
 };
 
@@ -88,15 +88,15 @@ protected:
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
 	bool isDrawReady() override;
-	void drawAsync(MeshRenderComponent* meshRenderComponent, const float4x4& viewProj,
+	void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	uint64 getInstanceDataSize() override;
-	virtual void setInstanceData(SpriteRenderComponent* spriteRenderComponent, InstanceData* instanceData,
+	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
-	void setDescriptorSetRange(MeshRenderComponent* meshRenderComponent,
+	void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
-	virtual void setPushConstants(SpriteRenderComponent* spriteRenderComponent, PushConstants* pushConstants, 
+	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
@@ -109,7 +109,7 @@ protected:
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 	static void deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame);
 public:
-	static void tryDestroyResources(View<SpriteRenderComponent> spriteComponent);
+	static void tryDestroyResources(View<SpriteRenderComponent> spriteRenderView);
 };
 
 } // namespace garden

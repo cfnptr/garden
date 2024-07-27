@@ -83,7 +83,8 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : 
+			componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -97,7 +98,8 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : 
+			componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -119,7 +121,7 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.c_str());
+		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -130,61 +132,61 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 }
 
 //**********************************************************************************************************************
-void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* component, type_index componentType)
+void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentView, type_index componentType)
 {
 	auto editorSystem = EditorRenderSystem::getInstance();
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
-	if (component->isArray)
+	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	editorSystem->drawImageSelector(component->path, component->colorMap,
-		component->descriptorSet, component->getEntity(), componentType, flags);
-	editorSystem->drawResource(component->descriptorSet);
+	editorSystem->drawImageSelector(componentView->path, componentView->colorMap,
+		componentView->descriptorSet, componentView->getEntity(), componentType, flags);
+	editorSystem->drawResource(componentView->descriptorSet);
 
-	ImGui::Checkbox("Enabled", &component->isEnabled); ImGui::SameLine();
+	ImGui::Checkbox("Enabled", &componentView->isEnabled); ImGui::SameLine();
 
-	if (ImGui::Checkbox("Array", &component->isArray) && !component->path.empty())
+	if (ImGui::Checkbox("Array", &componentView->isArray) && !componentView->path.empty())
 	{
 		auto resourceSystem = ResourceSystem::getInstance();
-		resourceSystem->destroyShared(component->colorMap);
-		resourceSystem->destroyShared(component->descriptorSet);
+		resourceSystem->destroyShared(componentView->colorMap);
+		resourceSystem->destroyShared(componentView->descriptorSet);
 
 		auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
-		if (component->isArray)
+		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
-		component->colorMap = ResourceSystem::getInstance()->loadImage(component->path,
+		componentView->colorMap = ResourceSystem::getInstance()->loadImage(componentView->path,
 			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
-		component->descriptorSet = {};
+		componentView->descriptorSet = {};
 	}
 
 	auto transformSystem = TransformSystem::getInstance();
-	ImGui::BeginDisabled(!component->colorMap && transformSystem->has(component->getEntity()));
+	ImGui::BeginDisabled(!componentView->colorMap && transformSystem->has(componentView->getEntity()));
 	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
 	{
-		auto transformComponent = transformSystem->get(component->getEntity());
-		auto colorMapView = GraphicsSystem::getInstance()->get(component->colorMap);
+		auto transformView = transformSystem->get(componentView->getEntity());
+		auto colorMapView = GraphicsSystem::getInstance()->get(componentView->colorMap);
 		auto imageSize = colorMapView->getSize();
 
 		if (imageSize.x > imageSize.y)
 		{
-			transformComponent->scale.x = component->uvSize.x *
-				transformComponent->scale.y * ((float)imageSize.x / imageSize.y);
+			transformView->scale.x = componentView->uvSize.x *
+				transformView->scale.y * ((float)imageSize.x / imageSize.y);
 		}
 		else
 		{
-			transformComponent->scale.y = component->uvSize.y *
-				transformComponent->scale.x * ((float)imageSize.y / imageSize.x);
+			transformView->scale.y = componentView->uvSize.y *
+				transformView->scale.x * ((float)imageSize.y / imageSize.x);
 		}
 	}
 	ImGui::EndDisabled();
 
 	auto maxColorMapLayer = 0.0f;
-	if (component->colorMap)
+	if (componentView->colorMap)
 	{
-		auto colorMapView = GraphicsSystem::getInstance()->get(component->colorMap);
+		auto colorMapView = GraphicsSystem::getInstance()->get(componentView->colorMap);
 		maxColorMapLayer = colorMapView->getLayerCount() - 1;
 	}
 
-	auto& aabb = component->aabb;
+	auto& aabb = componentView->aabb;
 	ImGui::DragFloat3("Min AABB", (float3*)&aabb.getMin(), 0.01f);
 	if (ImGui::BeginPopupContextItem("minAabb"))
 	{
@@ -201,35 +203,35 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* component,
 		ImGui::EndPopup();
 	}
 
-	ImGui::DragFloat2("UV Size", &component->uvSize, 0.01f);
+	ImGui::DragFloat2("UV Size", &componentView->uvSize, 0.01f);
 	if (ImGui::BeginPopupContextItem("uvSize"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			component->uvSize = float2(1.0f);
+			componentView->uvSize = float2(1.0f);
 		ImGui::EndPopup();
 	}
 
-	ImGui::DragFloat2("UV Offset", &component->uvOffset, 0.01f);
+	ImGui::DragFloat2("UV Offset", &componentView->uvOffset, 0.01f);
 	if (ImGui::BeginPopupContextItem("uvOffset"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			component->uvOffset = float2(0.0f);
+			componentView->uvOffset = float2(0.0f);
 		ImGui::EndPopup();
 	}
 
-	ImGui::SliderFloat("Color Layer", &component->colorMapLayer, 0.0f, maxColorMapLayer);
+	ImGui::SliderFloat("Color Map Layer", &componentView->colorMapLayer, 0.0f, maxColorMapLayer);
 	if (ImGui::BeginPopupContextItem("colorLayer"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			component->colorMapLayer = 0.0f;
+			componentView->colorMapLayer = 0.0f;
 		ImGui::EndPopup();
 	}
 
-	ImGui::SliderFloat4("Color Factor", &component->colorFactor, 0.0f, 1.0f);
+	ImGui::SliderFloat4("Color Factor", &componentView->colorFactor, 0.0f, 1.0f);
 	if (ImGui::BeginPopupContextItem("colorFactor"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			component->colorFactor = float4(1.0f);
+			componentView->colorFactor = float4(1.0f);
 		ImGui::EndPopup();
 	}
 }

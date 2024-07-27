@@ -39,9 +39,13 @@ bool LinkComponent::destroy()
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
 		GARDEN_ASSERT(result == 1); // Failed to remove link, corruped memory.
+		uuid = {};
 	}
 	if (!tag.empty())
+	{
 		eraseEntityTag(linkSystem->components, linkSystem->tagMap, this, tag);
+		tag = "";
+	}
 	return true;
 }
 
@@ -133,6 +137,11 @@ void LinkSystem::copyComponent(View<Component> source, View<Component> destinati
 	const auto sourceView = View<LinkComponent>(source);
 	auto destinationView = View<LinkComponent>(destination);
 
+	if (sourceView->uuid)
+		destinationView->regenerateUUID();
+	else
+		destinationView->uuid = {};
+
 	if (!destinationView->tag.empty())
 		eraseEntityTag(components, tagMap, *destinationView, destinationView->tag);
 
@@ -170,8 +179,15 @@ void LinkSystem::disposeComponents()
 void LinkSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
 	auto componentView = View<LinkComponent>(component);
-	auto uuid = componentView->uuid.toBase64();
-	serializer.write("uuid", uuid);
+
+	if (componentView->uuid)
+	{
+		auto uuid = componentView->uuid.toBase64();
+		serializer.write("uuid", uuid);
+	}
+
+	if (!componentView->tag.empty())
+		serializer.write("tag", componentView->tag);
 }
 void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {

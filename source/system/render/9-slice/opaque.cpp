@@ -32,8 +32,8 @@ ID<Component> Opaque9SliceSystem::createComponent(ID<Entity> entity)
 }
 void Opaque9SliceSystem::destroyComponent(ID<Component> instance)
 {
-	auto component = components.get(ID<Opaque9SliceComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(component));
+	auto componentView = components.get(ID<Opaque9SliceComponent>(instance));
+	tryDestroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<Opaque9SliceComponent>(instance));
 }
 const string& Opaque9SliceSystem::getComponentName() const

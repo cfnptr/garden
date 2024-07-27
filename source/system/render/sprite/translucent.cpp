@@ -32,8 +32,8 @@ ID<Component> TranslucentSpriteSystem::createComponent(ID<Entity> entity)
 }
 void TranslucentSpriteSystem::destroyComponent(ID<Component> instance)
 {
-	auto component = components.get(ID<TranslucentSpriteComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(component));
+	auto componentView = components.get(ID<TranslucentSpriteComponent>(instance));
+	tryDestroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<TranslucentSpriteComponent>(instance));
 }
 const string& TranslucentSpriteSystem::getComponentName() const

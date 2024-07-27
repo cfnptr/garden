@@ -34,16 +34,18 @@ class AnimationSystem;
  */
 struct AnimationComponent final : public Component
 {
-private:
-	map<string, Ref<Animation>> animations;
-public:
 	string active;         /**< Active animation path */
 	float frame = 0.0f;    /**< Current animation frame */
 	bool isPlaying = true; /**< Is animation playing */
 private:
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
+	map<string, Ref<Animation>> animations;
+
+	bool destroy();
+
 	friend class AnimationSystem;
+	friend class LinearPool<AnimationComponent>;
 public:
 	/**
 	 * @brief Returns animations map.
@@ -86,7 +88,7 @@ public:
 class AnimationSystem final : public System, public ISerializable
 {
 	ThreadSystem* threadSystem = nullptr;
-	LinearPool<AnimationComponent, false> components;
+	LinearPool<AnimationComponent> components;
 	LinearPool<Animation> animations;
 	bool animateAsync = false;
 
@@ -103,6 +105,7 @@ class AnimationSystem final : public System, public ISerializable
 	~AnimationSystem() final;
 
 	void init();
+	void postDeinit();
 	void update();
 
 	ID<Component> createComponent(ID<Entity> entity) final;
@@ -138,12 +141,6 @@ public:
 	 * @param animation target animation instance or null
 	 */
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }
-
-	/**
-	 * @brief Destroys animation shared resources
-	 * @param animationComponent target animation component
-	 */
-	static void tryDestroyResources(View<AnimationComponent> animationComponent);
 
 	/**
 	 * @brief Returns animation system instance.

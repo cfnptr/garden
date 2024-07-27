@@ -35,17 +35,17 @@ void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 	{
 		auto manager = Manager::getInstance();
 		auto graphicsSystem = system->getGraphicsSystem();
-		auto skyboxComponent = manager->get<SkyboxRenderComponent>(entity);
+		auto skyboxView = manager->get<SkyboxRenderComponent>(entity);
 
-		if (skyboxComponent->cubemap)
+		if (skyboxView->cubemap)
 		{
-			auto imageView = graphicsSystem->get(skyboxComponent->cubemap);
+			auto imageView = graphicsSystem->get(skyboxView->cubemap);
 			auto stringOffset = imageView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto image = to_string(*skyboxComponent->cubemap) + " (" +
+			auto image = to_string(*skyboxView->cubemap) + " (" +
 				string(imageView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Cubemap", &image, ImGuiInputTextFlags_ReadOnly);
 		}
@@ -54,15 +54,15 @@ void SkyboxEditor::onEntityInspector(ID<Entity> entity)
 			ImGui::Text("Cubemap: null");
 		}
 
-		if (skyboxComponent->descriptorSet)
+		if (skyboxView->descriptorSet)
 		{
-			auto descriptorSetView = graphicsSystem->get(skyboxComponent->descriptorSet);
+			auto descriptorSetView = graphicsSystem->get(skyboxView->descriptorSet);
 			auto stringOffset = descriptorSetView->getDebugName().find_last_of('.');
 			if (stringOffset == string::npos)
 				stringOffset = 0;
 			else
 				stringOffset++;
-			auto descriptorSet = to_string(*skyboxComponent->descriptorSet) + " (" +
+			auto descriptorSet = to_string(*skyboxView->descriptorSet) + " (" +
 				string(descriptorSetView->getDebugName().c_str() + stringOffset) + ")";
 			ImGui::InputText("Descriptor Set", &descriptorSet, ImGuiInputTextFlags_ReadOnly);
 		}
