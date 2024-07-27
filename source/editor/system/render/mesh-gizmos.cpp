@@ -243,13 +243,13 @@ void MeshGizmosEditorSystem::editorRender()
 	auto translation = getTranslation(model);
 
 	auto modelScale = 0.25f;
-	auto cameraComponent = manager->tryGet<CameraComponent>(graphicsSystem->camera);
-	if (cameraComponent)
+	auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
+	if (cameraView)
 	{
-		if (cameraComponent->type == ProjectionType::Perspective)
+		if (cameraView->type == ProjectionType::Perspective)
 			modelScale *= length(translation);
 		else
-			modelScale *= (cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x) * 0.5f;
+			modelScale *= (cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x) * 0.5f;
 	}
 	model = calcModel(translation, rotation, float3(modelScale));
 
@@ -330,13 +330,13 @@ void MeshGizmosEditorSystem::editorRender()
 
 		// TODO: Fix non-uniform transformation in perspective projection,
 		//       take into account perspective distortion if possible.
-		if (cameraComponent->type == ProjectionType::Perspective)
+		if (cameraView->type == ProjectionType::Perspective)
 			cursorTrans *= length(translation);
 
 		transformView->position += cursorTrans;
 
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
-		if (rigidbodyView)
+		if (rigidbodyView && rigidbodyView->getShape())
 			rigidbodyView->setPosition(rigidbodyView->getPosition() + cursorTrans, false);
 
 		auto meshSelector = manager->tryGet<MeshSelectorEditorSystem>();

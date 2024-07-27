@@ -18,6 +18,15 @@
 
 using namespace garden;
 
+bool AnimationComponent::destroy()
+{
+	auto resourceSystem = ResourceSystem::getInstance();
+	for (const auto& pair : animations)
+		resourceSystem->destroyShared(pair.second);
+	animations.clear();
+	return true;
+}
+
 //**********************************************************************************************************************
 AnimationSystem* AnimationSystem::instance = nullptr;
 
@@ -27,6 +36,7 @@ AnimationSystem::AnimationSystem(bool animateAsync)
 
 	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", AnimationSystem::init);
+	SUBSCRIBE_TO_EVENT("PostDeinit", AnimationSystem::postDeinit);
 	SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
@@ -38,6 +48,7 @@ AnimationSystem::~AnimationSystem()
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", AnimationSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", AnimationSystem::postDeinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
 	}
 
@@ -49,23 +60,27 @@ void AnimationSystem::init()
 {
 	threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
 }
+void AnimationSystem::postDeinit()
+{
+	components.clear();
+}
 
 //**********************************************************************************************************************
-static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent& animationComponent)
+static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent* animationComponent)
 {
-	auto entity = animationComponent.getEntity();
-	if (!entity || !animationComponent.isPlaying && !animationComponent.active.empty())
+	auto entity = animationComponent->getEntity();
+	if (!entity || !animationComponent->isPlaying && !animationComponent->active.empty())
 		return;
 
-	auto transformComponent = Manager::getInstance()->tryGet<TransformComponent>(entity);
-	if (transformComponent)
+	auto transformView = Manager::getInstance()->tryGet<TransformComponent>(entity);
+	if (transformView)
 	{
-		if (!transformComponent->isActiveWithAncestors())
+		if (!transformView->isActiveWithAncestors())
 			return;
 	}
 
-	const auto& componentAnimations = animationComponent.getAnimations();
-	auto searchResult = componentAnimations.find(animationComponent.active);
+	const auto& componentAnimations = animationComponent->getAnimations();
+	auto searchResult = componentAnimations.find(animationComponent->active);
 	if (searchResult == componentAnimations.end())
 		return;
 
@@ -74,19 +89,19 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (keyframes.empty())
 		return;
 
-	auto keyframeB = keyframes.lower_bound((int32)ceil(animationComponent.frame));
+	auto keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
 	if (keyframeB == keyframes.end())
 	{
 		if (animationView->loop)
 		{
 			keyframeB--;
-			animationComponent.frame = fmod(animationComponent.frame, (float)keyframeB->first);
-			keyframeB = keyframes.lower_bound((int32)ceil(animationComponent.frame));
+			animationComponent->frame = fmod(animationComponent->frame, (float)keyframeB->first);
+			keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
 			GARDEN_ASSERT(keyframeB != keyframes.end()); // Something went wrong :(
 		}
 		else
 		{
-			animationComponent.isPlaying = false;
+			animationComponent->isPlaying = false;
 			return;
 		}
 	}
@@ -105,14 +120,14 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 		{
 			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
-			auto component = manager->tryGet(entity, pairA.first->getComponentType());
-			if (component)
-				animatableSystem->animateAsync(component, frameViewA, frameViewA, 0.0f);
+			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
+			if (componentView)
+				animatableSystem->animateAsync(componentView, frameViewA, frameViewA, 0.0f);
 		}
 	}
 	else
 	{
-		auto currentFrame = animationComponent.frame;
+		auto currentFrame = animationComponent->frame;
 		auto frameA = (float)keyframeA->first;
 		auto frameB = (float)keyframeB->first;
 
@@ -129,13 +144,13 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 			else if (frameViewA->funcType == AnimationFunc::Gain)
 				t = gain(t, frameViewA->coeff);
 
-			auto component = manager->tryGet(entity, pairA.first->getComponentType());
-			if (component)
-				animatableSystem->animateAsync(component, frameViewA, frameViewB, t);
+			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
+			if (componentView)
+				animatableSystem->animateAsync(componentView, frameViewA, frameViewB, t);
 		}
 	}
 
-	animationComponent.frame += InputSystem::getInstance()->getDeltaTime() * animationView->frameRate;
+	animationComponent->frame += InputSystem::getInstance()->getDeltaTime() * animationView->frameRate;
 }
 
 //**********************************************************************************************************************
@@ -156,8 +171,8 @@ void AnimationSystem::update()
 			auto itemCount = task.getItemCount();
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				auto& component = componentData[i];
-				animateComponent(animations, component);
+				auto componentView = &componentData[i];
+				animateComponent(animations, componentView);
 			}
 		}),
 		occupancy);
@@ -167,8 +182,8 @@ void AnimationSystem::update()
 	{
 		for (uint32 i = 0; i < occupancy; i++)
 		{
-			auto& component = componentData[i];
-			animateComponent(animations, component);
+			auto componentView = &componentData[i];
+			animateComponent(animations, componentView);
 		}
 	}
 }
@@ -180,8 +195,6 @@ ID<Component> AnimationSystem::createComponent(ID<Entity> entity)
 }
 void AnimationSystem::destroyComponent(ID<Component> instance)
 {
-	auto component = components.get(ID<AnimationComponent>(instance));
-	tryDestroyResources(component);
 	components.destroy(ID<AnimationComponent>(instance));
 }
 void AnimationSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -268,14 +281,4 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	deserializer.read("active", componentView->active);
 	deserializer.read("frame", componentView->frame);
 	deserializer.read("isPlaying", componentView->isPlaying);
-}
-
-void AnimationSystem::tryDestroyResources(View<AnimationComponent> animationComponent)
-{
-	GARDEN_ASSERT(animationComponent);
-	auto resourceSystem = ResourceSystem::getInstance();
-	auto& animations = animationComponent->animations;
-	for (const auto& pair : animations)
-		resourceSystem->destroyShared(pair.second);
-	animations.clear();
 }

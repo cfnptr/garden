@@ -54,10 +54,10 @@ void Controller2DSystem::init()
 	camera = manager->createEntity();
 	manager->add<DoNotDestroyComponent>(camera);
 
-	auto transformComponent = manager->add<TransformComponent>(camera);
-	transformComponent->position = float3(0.0f, 0.0f, -0.5f);
+	auto transformView = manager->add<TransformComponent>(camera);
+	transformView->position = float3(0.0f, 0.0f, -0.5f);
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	transformComponent->debugName = "Camera";
+	transformView->debugName = "Camera";
 	#endif
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
@@ -65,19 +65,19 @@ void Controller2DSystem::init()
 	auto aspectRatio = (float)windowSize.x / (float)windowSize.y;
 	const auto defaultSize = 2.0f;
 
-	auto cameraComponent = manager->add<CameraComponent>(camera);
-	cameraComponent->type = ProjectionType::Orthographic;
-	cameraComponent->p.orthographic.depth = float2(0.0f, 1.0f);
-	cameraComponent->p.orthographic.width = float2(-defaultSize, defaultSize) * aspectRatio;
-	cameraComponent->p.orthographic.height = float2(-defaultSize, defaultSize);
+	auto cameraView = manager->add<CameraComponent>(camera);
+	cameraView->type = ProjectionType::Orthographic;
+	cameraView->p.orthographic.depth = float2(0.0f, 1.0f);
+	cameraView->p.orthographic.width = float2(-defaultSize, defaultSize) * aspectRatio;
+	cameraView->p.orthographic.height = float2(-defaultSize, defaultSize);
 
 	GARDEN_ASSERT(!graphicsSystem->camera) // Several main cameras detected!
 	graphicsSystem->camera = camera;
 
 	#if GARDEN_EDITOR
-	auto infiniteGrid = manager->tryGet<InfiniteGridEditorSystem>();
-	if (infiniteGrid)
-		infiniteGrid->isHorizontal = false;
+	auto infiniteGridSystem = manager->tryGet<InfiniteGridEditorSystem>();
+	if (infiniteGridSystem)
+		infiniteGridSystem->isHorizontal = false;
 	#endif
 }
 void Controller2DSystem::deinit()
@@ -106,18 +106,18 @@ void Controller2DSystem::update()
 	if (inputSystem->getMouseState(MouseButton::Right))
 	{
 		
-		auto cameraComponent = manager->get<CameraComponent>(camera);
-		auto transformComponent = TransformSystem::getInstance()->get(camera);
+		auto cameraView = manager->get<CameraComponent>(camera);
+		auto transformView = TransformSystem::getInstance()->get(camera);
 		auto cursorDelta = inputSystem->getCursorDelta();
 		auto windowSize = (float2)GraphicsSystem::getInstance()->getWindowSize();
 		auto othoSize = float2(
-			cameraComponent->p.orthographic.width.y - cameraComponent->p.orthographic.width.x,
-			cameraComponent->p.orthographic.height.y - cameraComponent->p.orthographic.height.x);
+			cameraView->p.orthographic.width.y - cameraView->p.orthographic.width.x,
+			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
 		auto offset = cursorDelta / (windowSize / othoSize);
-		offset = (float2x2)transformComponent->calcModel() * offset;
+		offset = (float2x2)transformView->calcModel() * offset;
 
-		transformComponent->position.x -= offset.x;
-		transformComponent->position.y += offset.y;
+		transformView->position.x -= offset.x;
+		transformView->position.y += offset.y;
 	}
 
 	auto mouseScroll = inputSystem->getMouseScroll();
@@ -128,14 +128,14 @@ void Controller2DSystem::update()
 		auto manager = Manager::getInstance();
 		auto framebufferSize = (float2)GraphicsSystem::getInstance()->getFramebufferSize();
 		auto aspectRatio = framebufferSize.x / framebufferSize.y;
-		auto cameraComponent = manager->get<CameraComponent>(camera);
-		cameraComponent->p.orthographic.height.x += mouseScroll.y;
-		cameraComponent->p.orthographic.height.y -= mouseScroll.y;
-		if (cameraComponent->p.orthographic.height.x >= 0.0f)
-			cameraComponent->p.orthographic.height.x = -0.1f;
-		if (cameraComponent->p.orthographic.height.y <= 0.0f)
-			cameraComponent->p.orthographic.height.y = 0.1f;
-		cameraComponent->p.orthographic.width = cameraComponent->p.orthographic.height * aspectRatio;
+		auto cameraView = manager->get<CameraComponent>(camera);
+		cameraView->p.orthographic.height.x += mouseScroll.y;
+		cameraView->p.orthographic.height.y -= mouseScroll.y;
+		if (cameraView->p.orthographic.height.x >= 0.0f)
+			cameraView->p.orthographic.height.x = -0.1f;
+		if (cameraView->p.orthographic.height.y <= 0.0f)
+			cameraView->p.orthographic.height.y = 0.1f;
+		cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
 	}
 }
 
@@ -148,7 +148,7 @@ void Controller2DSystem::swapchainRecreate()
 	{
 		auto framebufferSize = graphicsSystem->getFramebufferSize();
 		auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
-		auto cameraComponent = Manager::getInstance()->get<CameraComponent>(camera);
-		cameraComponent->p.orthographic.width = cameraComponent->p.orthographic.height * aspectRatio;
+		auto cameraView = Manager::getInstance()->get<CameraComponent>(camera);
+		cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
 	}
 }

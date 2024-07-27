@@ -32,8 +32,8 @@ ID<Component> OpaqueSpriteSystem::createComponent(ID<Entity> entity)
 }
 void OpaqueSpriteSystem::destroyComponent(ID<Component> instance)
 {
-	auto component = components.get(ID<OpaqueSpriteComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(component));
+	auto componentView = components.get(ID<OpaqueSpriteComponent>(instance));
+	tryDestroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<OpaqueSpriteComponent>(instance));
 }
 const string& OpaqueSpriteSystem::getComponentName() const

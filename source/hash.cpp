@@ -64,7 +64,7 @@ string Hash128::toBase64() const noexcept
 }
 bool Hash128::fromBase64(string_view base64) noexcept
 {
-	if (modp_b64_decode_len(base64.size()) != sizeof(Hash128))
+	if (base64.size() + 2 != modp_b64_encode_data_len(sizeof(Hash128)))
 		return false;
 	auto result = modp_b64_decode((char*)this, base64.data(),
 		base64.size(), ModpDecodePolicy::kForgiving);

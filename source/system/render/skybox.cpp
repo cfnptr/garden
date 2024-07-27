@@ -71,20 +71,20 @@ void SkyboxRenderSystem::hdrRender()
 	if (!camera || !pipelineView->isReady() || !fullCubeView->isReady())
 		return;
 	
-	auto component = manager->tryGet<SkyboxRenderComponent>(graphicsSystem->camera); // TODO: use skyboxSystem->tryGet()
-	if (!component)
+	auto componentView = manager->tryGet<SkyboxRenderComponent>(graphicsSystem->camera); // TODO: use skyboxSystem->tryGet()
+	if (!componentView)
 		return;
 
-	auto cubemapView = graphicsSystem->get(component->cubemap);
+	auto cubemapView = graphicsSystem->get(componentView->cubemap);
 	if (!cubemapView->isReady())
 		return;
 
-	if (!component->descriptorSet)
+	if (!componentView->descriptorSet)
 	{
-		auto descriptorSet = createDescriptorSet(component->cubemap);
+		auto descriptorSet = createDescriptorSet(componentView->cubemap);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
 			"descriptorSet.skybox" + to_string(*descriptorSet));
-		component->descriptorSet = descriptorSet;
+		componentView->descriptorSet = descriptorSet;
 	}
 
 	auto deferredSystem = DeferredRenderSystem::getInstance();
@@ -96,7 +96,7 @@ void SkyboxRenderSystem::hdrRender()
 		pipelineView->bindAsync(0, 0);
 		pipelineView->setViewportScissorAsync(float4(float2(0.0f),
 			getDeferredSystem()->getFramebufferSize()), 0);
-		pipelineView->bindDescriptorSetAsync(component->descriptorSet, 0, 0);
+		pipelineView->bindDescriptorSetAsync(componentView->descriptorSet, 0, 0);
 		auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(0);
 		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstantsAsync(0);
@@ -106,7 +106,7 @@ void SkyboxRenderSystem::hdrRender()
 	{
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(component->descriptorSet);
+		pipelineView->bindDescriptorSet(componentView->descriptorSet);
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstants();
@@ -127,9 +127,9 @@ ID<Component> SkyboxRenderSystem::createComponent(ID<Entity> entity)
 void SkyboxRenderSystem::destroyComponent(ID<Component> instance)
 {
 	auto resourceSystem = ResourceSystem::getInstance();
-	auto component = components.get(ID<SkyboxRenderComponent>(instance));
-	resourceSystem->destroyShared(component->cubemap);
-	resourceSystem->destroyShared(component->descriptorSet);
+	auto componentView = components.get(ID<SkyboxRenderComponent>(instance));
+	resourceSystem->destroyShared(componentView->cubemap);
+	resourceSystem->destroyShared(componentView->descriptorSet);
 	components.destroy(ID<SkyboxRenderComponent>(instance));
 }
 View<Component> SkyboxRenderSystem::getComponent(ID<Component> instance)

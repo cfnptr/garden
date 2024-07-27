@@ -240,17 +240,17 @@ bool ShadowMappingRenderSystem::prepareShadowRender(uint32 passIndex,
 	if (!camera || !directionalLight)
 		return false;
 
-	auto cameraComponent = getManager()->get<CameraComponent>(camera);
+	auto cameraView = getManager()->get<CameraComponent>(camera);
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	
-	auto nearPlane = cameraComponent->p.perspective.nearPlane;
+	auto nearPlane = cameraView->p.perspective.nearPlane;
 	auto farPlane = nearPlane + this->farPlane * splitCoefs[passIndex];
 	if (passIndex > 0)
 		nearPlane += this->farPlane * splitCoefs[passIndex - 1];
 	farPlanes[passIndex] = farPlane;
 
-	viewProj = calcLightViewProj(cameraComponent->p.perspective.fieldOfView,
-		cameraComponent->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff,
+	viewProj = calcLightViewProj(cameraView->p.perspective.fieldOfView,
+		cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff,
 		cameraConstants.view, (float3)cameraConstants.lightDir, cameraOffset);
 
 	// TODO: Check if the camera offset is correct.

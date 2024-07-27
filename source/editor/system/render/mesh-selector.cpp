@@ -105,14 +105,14 @@ void MeshSelectorEditorSystem::editorRender()
 
 			for (uint32 i = 0; i < componentOccupancy; i++)
 			{
-				auto meshRender = (const MeshRenderComponent*)(componentData + i * componentSize);
-				if (!meshRender->getEntity() || !meshRender->isEnabled)
+				auto meshRenderView = (const MeshRenderComponent*)(componentData + i * componentSize);
+				if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 					continue;
 
 				float4x4 model;
-				auto transform = transformSystem->tryGet(meshRender->getEntity());
-				if (transform)
-					model = transform->calcModel(cameraPosition);
+				auto transformView = transformSystem->tryGet(meshRenderView->getEntity());
+				if (transformView)
+					model = transformView->calcModel(cameraPosition);
 				else
 					model = float4x4::identity;
 
@@ -120,16 +120,16 @@ void MeshSelectorEditorSystem::editorRender()
 				auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
 				auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
 				auto ray = Ray((float3)localOrigin, (float3)localDirection);
-				auto points = raycast2(meshRender->aabb, ray);
+				auto points = raycast2(meshRenderView->aabb, ray);
 				if (points.x < 0.0f || !isIntersected(points))
 					continue;
 			
 				auto dist2 = distance2((float3)globalOrigin, getTranslation(model));
-				if (dist2 < newDist2 && meshRender->getEntity() != selectedEntity)
+				if (dist2 < newDist2 && meshRenderView->getEntity() != selectedEntity)
 				{
-					newSelected = meshRender->getEntity();
+					newSelected = meshRenderView->getEntity();
 					newDist2 = dist2;
-					newAabb = meshRender->aabb;
+					newAabb = meshRenderView->aabb;
 				}
 			}
 		}
@@ -162,10 +162,10 @@ void MeshSelectorEditorSystem::editorRender()
 			auto breakOut = false;
 			for (uint32 i = 0; i < componentOccupancy; i++)
 			{
-				auto meshRender = (const MeshRenderComponent*)(componentData + i * componentSize);
-				if (selectedEntity != meshRender->getEntity())
+				auto meshRenderView = (const MeshRenderComponent*)(componentData + i * componentSize);
+				if (selectedEntity != meshRenderView->getEntity())
 					continue;
-				selectedEntityAabb = meshRender->aabb;
+				selectedEntityAabb = meshRenderView->aabb;
 				breakOut = true;
 				break;
 			}
@@ -174,11 +174,11 @@ void MeshSelectorEditorSystem::editorRender()
 				break;
 		}
 
-		auto transform = transformSystem->tryGet(selectedEntity);
-		if (transform && selectedEntityAabb != Aabb())
+		auto transformView = transformSystem->tryGet(selectedEntity);
+		if (transformView && selectedEntityAabb != Aabb())
 		{
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-			auto model = transform->calcModel(cameraPosition);
+			auto model = transformView->calcModel(cameraPosition);
 			auto mvp = cameraConstants.viewProj * model * translate(
 				selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 

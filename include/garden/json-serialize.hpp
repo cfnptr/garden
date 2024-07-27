@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/defines.hpp"
 #include "garden/serialize.hpp"
-
 #include "nlohmann/json.hpp"
 #include <stack>
 

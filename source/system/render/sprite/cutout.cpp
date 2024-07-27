@@ -26,14 +26,14 @@ CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFil
 	this->linearFilter = useLinearFilter;
 }
 
-void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderComponent, PushConstants* pushConstants, 
+void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
-	SpriteRenderSystem::setPushConstants(spriteRenderComponent,
+	SpriteRenderSystem::setPushConstants(spriteRenderView,
 		pushConstants, viewProj, model, drawIndex, taskIndex);
-	auto cutoutComponent = (CutoutSpriteComponent*)spriteRenderComponent;
+	auto cutoutSpriteView = (CutoutSpriteComponent*)spriteRenderView;
 	auto cutoutPushConstants = (CutoutPushConstants*)pushConstants;
-	cutoutPushConstants->alphaCutoff = cutoutComponent->alphaCutoff;
+	cutoutPushConstants->alphaCutoff = cutoutSpriteView->alphaCutoff;
 }
 
 //**********************************************************************************************************************
@@ -43,8 +43,8 @@ ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
 }
 void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
 {
-	auto component = components.get(ID<CutoutSpriteComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(component));
+	auto componentView = components.get(ID<CutoutSpriteComponent>(instance));
+	tryDestroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<CutoutSpriteComponent>(instance));
 }
 void CutoutSpriteSystem::copyComponent(View<Component> source, View<Component> destination)

@@ -58,7 +58,7 @@ void GpuResourceEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem, string& resourceSearch,
+static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, Resource* items, psize itemSize, string& debugName, const char* resourceName)
 {
 	ImGui::TextWrapped("%lu/%lu (count/occupancy)", (unsigned long)count, (unsigned long)occupancy);
@@ -74,14 +74,17 @@ static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem,
 		
 		auto name = item->getDebugName().empty() ? 
 			resourceName + to_string(i + 1) : item->getDebugName();
-		if (!resourceSearch.empty())
+		if (!searchString.empty())
 		{
-			if (!find(name, resourceSearch, searchCaseSensitive))
+			if (!find(name, searchString, searchCaseSensitive))
 				continue;
 		}
 
+		ImGui::PushID(to_string(i + 1).c_str());
 		if (ImGui::Selectable(name.c_str(), selectedItem == i))
 			selectedItem = i;
+		ImGui::PopID();
+
 		if (selectedItem == i)
 			debugName = name;
 
@@ -97,11 +100,11 @@ static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem,
 	ImGui::EndChild();
 	ImGui::SameLine();
 }
-static void renderSearch(string& resourceSearch, bool& searchCaseSensitive)
+static void renderSearch(string& searchString, bool& searchCaseSensitive)
 {
 	ImGui::Spacing();
 	ImGui::SetNextItemWidth(160.0f);
-	ImGui::InputText("Search", &resourceSearch); ImGui::SameLine();
+	ImGui::InputText("Search", &searchString); ImGui::SameLine();
 	ImGui::Checkbox("Aa", &searchCaseSensitive); ImGui::SameLine();
 }
 
@@ -135,13 +138,13 @@ static void renderMemoryDetails(const VmaAllocationInfo& allocationInfo,
 }
 
 //**********************************************************************************************************************
-static void renderBuffers(uint32& selectedItem, string& resourceSearch, bool& searchCaseSensitive)
+static void renderBuffers(uint32& selectedItem, string& searchString, bool& searchCaseSensitive)
 {
 	string bufferName;
 	auto buffers = GraphicsAPI::bufferPool.getData();
 	renderItemList(GraphicsAPI::bufferPool.getCount(),
 		GraphicsAPI::bufferPool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive,
+		selectedItem, searchString, searchCaseSensitive,
 		buffers, sizeof(Buffer), bufferName, "Buffer ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -150,7 +153,7 @@ static void renderBuffers(uint32& selectedItem, string& resourceSearch, bool& se
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -170,18 +173,18 @@ static void renderBuffers(uint32& selectedItem, string& resourceSearch, bool& se
 	// TODO: using descriptor sets.
 
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
-static void renderImages(uint32& selectedItem, string& resourceSearch,
+static void renderImages(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string imageName;
 	auto images = GraphicsAPI::imagePool.getData();
 	renderItemList(GraphicsAPI::imagePool.getCount(),
 		GraphicsAPI::imagePool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive,
+		selectedItem, searchString, searchCaseSensitive,
 		images, sizeof(Image), imageName, "Image ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -190,7 +193,7 @@ static void renderImages(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -232,6 +235,7 @@ static void renderImages(uint32& selectedItem, string& resourceSearch,
 				to_string(i + 1) : imageView.getDebugName();
 			isAny = true;
 
+			ImGui::PushID(to_string(i + 1).c_str());
 			if (ImGui::TreeNodeEx(imageViewName.c_str(), ImGuiTreeNodeFlags_Leaf))
 			{
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -239,10 +243,12 @@ static void renderImages(uint32& selectedItem, string& resourceSearch,
 					openNextTab = GpuResourceEditorSystem::TabType::ImageViews;
 					selectedItem = i;
 					ImGui::TreePop();
+					ImGui::PopID();
 					break;
 				}
 				ImGui::TreePop();
 			}
+			ImGui::PopID();
 		}
 
 		if (!isAny)
@@ -257,18 +263,18 @@ static void renderImages(uint32& selectedItem, string& resourceSearch,
 	}
 
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
-static void renderImageViews(uint32& selectedItem, string& resourceSearch,
+static void renderImageViews(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string imageViewName;
 	const auto imageViews = GraphicsAPI::imageViewPool.getData();
 	renderItemList(GraphicsAPI::imageViewPool.getCount(),
 		GraphicsAPI::imageViewPool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive,
+		selectedItem, searchString, searchCaseSensitive,
 		imageViews, sizeof(ImageView), imageViewName, "Image View ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -277,7 +283,7 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -339,6 +345,7 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 				to_string(i + 1) : framebuffer.getDebugName();
 			isAny = true;
 
+			ImGui::PushID(to_string(i + 1).c_str());
 			if (ImGui::TreeNodeEx(framebufferName.c_str(), ImGuiTreeNodeFlags_Leaf))
 			{
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -346,10 +353,12 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 					openNextTab = GpuResourceEditorSystem::TabType::Framebuffers;
 					selectedItem = i;
 					ImGui::TreePop();
+					ImGui::PopID();
 					break;
 				}
 				ImGui::TreePop();
 			}
+			ImGui::PopID();
 		}
 
 		if (!isAny)
@@ -374,18 +383,18 @@ static void renderImageViews(uint32& selectedItem, string& resourceSearch,
 	}
 
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
-static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
+static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string framebufferName;
 	auto framebuffers = GraphicsAPI::framebufferPool.getData();
 	renderItemList(GraphicsAPI::framebufferPool.getCount(),
 		GraphicsAPI::framebufferPool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive, framebuffers,
+		selectedItem, searchString, searchCaseSensitive, framebuffers,
 		sizeof(Framebuffer), framebufferName, "Framebuffer ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -394,7 +403,7 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -498,18 +507,18 @@ static void renderFramebuffers(uint32& selectedItem, string& resourceSearch,
 	}
 
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
-static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
+static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string descriptorSetName;
 	auto descriptorSets = GraphicsAPI::descriptorSetPool.getData();
 	renderItemList(GraphicsAPI::descriptorSetPool.getCount(),
 		GraphicsAPI::descriptorSetPool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive, descriptorSets,
+		selectedItem, searchString, searchCaseSensitive, descriptorSets,
 		sizeof(DescriptorSet), descriptorSetName, "Descriptor Set ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -519,7 +528,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::TextWrapped("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -584,6 +593,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 							auto bufferView = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
 							auto imageViewName = bufferView->getDebugName().empty() ? "Buffer " +
 								to_string(*resource) : bufferView->getDebugName();
+							ImGui::PushID(to_string(i + 1).c_str());
 							if (ImGui::TreeNodeEx(imageViewName.c_str(), ImGuiTreeNodeFlags_Leaf))
 							{
 								if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -591,10 +601,12 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 									openNextTab = GpuResourceEditorSystem::TabType::Buffers;
 									selectedItem = *resource - 1;
 									ImGui::TreePop();
+									ImGui::PopID();
 									break;
 								}
 								ImGui::TreePop();
 							}
+							ImGui::PopID();
 						}
 						ImGui::TreePop();
 					}
@@ -613,6 +625,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 							auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resource));
 							auto imageViewName = imageView->getDebugName().empty() ? "Image View " +
 								to_string(*resource) : imageView->getDebugName();
+							ImGui::PushID(to_string(*resource).c_str());
 							if (ImGui::TreeNodeEx(imageViewName.c_str(), ImGuiTreeNodeFlags_Leaf))
 							{
 								if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -620,10 +633,12 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 									openNextTab = GpuResourceEditorSystem::TabType::ImageViews;
 									selectedItem = *resource - 1;
 									ImGui::TreePop();
+									ImGui::PopID();
 									break;
 								}
 								ImGui::TreePop();
 							}
+							ImGui::PopID();
 						}
 						ImGui::TreePop();
 					}
@@ -650,7 +665,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& resourceSearch,
 	}
 
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
@@ -717,6 +732,7 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 				to_string(i + 1) : descriptorSet.getDebugName();
 			isAny = true;
 
+			ImGui::PushID(to_string(i + 1).c_str());
 			if (ImGui::TreeNodeEx(descriptorSetName.c_str(), ImGuiTreeNodeFlags_Leaf))
 			{
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -724,10 +740,12 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 					openNextTab = GpuResourceEditorSystem::TabType::DescriptorSets;
 					selectedItem = i;
 					ImGui::TreePop();
+					ImGui::PopID();
 					break;
 				}
 				ImGui::TreePop();
 			}
+			ImGui::PopID();
 		}
 
 		if (!isAny)
@@ -743,14 +761,14 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 }
 
 //**********************************************************************************************************************
-static void renderGraphicsPipelines(uint32& selectedItem, string& resourceSearch,
+static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string graphicsPipelineName;
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
 	renderItemList(GraphicsAPI::graphicsPipelinePool.getCount(),
 		GraphicsAPI::graphicsPipelinePool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive, graphicsPipelines,
+		selectedItem, searchString, searchCaseSensitive, graphicsPipelines,
 		sizeof(GraphicsPipeline), graphicsPipelineName, "Graphics Pipeline ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -760,7 +778,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& resourceSearch
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -781,18 +799,18 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& resourceSearch
 	renderPipelineDetails(graphicsPipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
-static void renderComputePipelines(uint32& selectedItem, string& resourceSearch,
+static void renderComputePipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
 	string computePipelineName;
 	auto computePipelines = GraphicsAPI::computePipelinePool.getData();
 	renderItemList(GraphicsAPI::computePipelinePool.getCount(),
 		GraphicsAPI::computePipelinePool.getOccupancy(),
-		selectedItem, resourceSearch, searchCaseSensitive, computePipelines,
+		selectedItem, searchString, searchCaseSensitive, computePipelines,
 		sizeof(ComputePipeline), computePipelineName, "Compute Pipeline ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
@@ -802,7 +820,7 @@ static void renderComputePipelines(uint32& selectedItem, string& resourceSearch,
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
-		renderSearch(resourceSearch, searchCaseSensitive);
+		renderSearch(searchString, searchCaseSensitive);
 		return;
 	}
 
@@ -815,7 +833,7 @@ static void renderComputePipelines(uint32& selectedItem, string& resourceSearch,
 	renderPipelineDetails(computePipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();
 	ImGui::EndChild();
-	renderSearch(resourceSearch, searchCaseSensitive);
+	renderSearch(searchString, searchCaseSensitive);
 }
 
 //**********************************************************************************************************************
@@ -834,43 +852,43 @@ void GpuResourceEditorSystem::editorRender()
 			if (ImGui::BeginTabItem("Buffers", nullptr, openNextTab == 
 				TabType::Buffers ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderBuffers(selectedItem, resourceSearch, searchCaseSensitive);
+				renderBuffers(selectedItem, searchString, searchCaseSensitive);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Images", nullptr, openNextTab == 
 				TabType::Images ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderImages(selectedItem, resourceSearch, searchCaseSensitive, openNextTab);
+				renderImages(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Image Views", nullptr, openNextTab == 
 				TabType::ImageViews ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderImageViews(selectedItem, resourceSearch, searchCaseSensitive, openNextTab);
+				renderImageViews(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Framebuffers", nullptr, openNextTab == 
 				TabType::Framebuffers ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderFramebuffers(selectedItem, resourceSearch, searchCaseSensitive, openNextTab);
+				renderFramebuffers(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Descriptor Sets", nullptr, openNextTab == 
 				TabType::DescriptorSets ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderDescriptorSets(selectedItem, resourceSearch, searchCaseSensitive, openNextTab);
+				renderDescriptorSets(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Graphics Pipelines", nullptr, openNextTab == 
 				TabType::GraphicsPipelines ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderGraphicsPipelines(selectedItem, resourceSearch, searchCaseSensitive, openNextTab);
+				renderGraphicsPipelines(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Compute Pipelines", nullptr, openNextTab == 
 				TabType::ComputePipelines ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderComputePipelines(selectedItem, resourceSearch, searchCaseSensitive, openNextTab);
+				renderComputePipelines(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 

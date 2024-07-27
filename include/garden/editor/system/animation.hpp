@@ -21,11 +21,15 @@ namespace garden
 
 class AnimationEditorSystem final : public System
 {
+	bool showWindow = false;
+
 	AnimationEditorSystem();
 	~AnimationEditorSystem() final;
 
 	void init();
 	void deinit();
+	void editorRender();
+	void editorBarTool();
 
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;

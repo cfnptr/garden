@@ -16,6 +16,20 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
+DoNotSerializeSystem* DoNotSerializeSystem::instance = nullptr;
+
+DoNotSerializeSystem::DoNotSerializeSystem()
+{
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
+	instance = this;
+}
+DoNotSerializeSystem::~DoNotSerializeSystem()
+{
+	GARDEN_ASSERT(instance); // More than one system instance detected.
+	instance = nullptr;
+}
+
 ID<Component> DoNotSerializeSystem::createComponent(ID<Entity> entity)
 {
 	return ID<Component>(components.create());
@@ -45,4 +59,30 @@ View<Component> DoNotSerializeSystem::getComponent(ID<Component> instance)
 void DoNotSerializeSystem::disposeComponents()
 {
 	components.dispose();
+}
+
+//**********************************************************************************************************************
+bool DoNotSerializeSystem::has(ID<Entity> entity) const
+{
+	GARDEN_ASSERT(entity);
+	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto& entityComponents = entityView->getComponents();
+	return entityComponents.find(typeid(DoNotSerializeComponent)) != entityComponents.end();
+}
+View<DoNotSerializeComponent> DoNotSerializeSystem::get(ID<Entity> entity) const
+{
+	GARDEN_ASSERT(entity);
+	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto& pair = entityView->getComponents().at(typeid(DoNotSerializeComponent));
+	return components.get(ID<DoNotSerializeComponent>(pair.second));
+}
+View<DoNotSerializeComponent> DoNotSerializeSystem::tryGet(ID<Entity> entity) const
+{
+	GARDEN_ASSERT(entity);
+	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto& entityComponents = entityView->getComponents();
+	auto result = entityComponents.find(typeid(DoNotSerializeComponent));
+	if (result == entityComponents.end())
+		return {};
+	return components.get(ID<DoNotSerializeComponent>(result->second.second));
 }

@@ -15,6 +15,7 @@
 #include "garden/editor/system/link.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/transform.hpp"
 #include "garden/system/link.hpp"
 
 using namespace garden;
@@ -64,23 +65,36 @@ void LinkEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void renderUuidList()
+static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 {
-	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-
 	auto linkSystem = LinkSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& uuidMap = linkSystem->getUuidMap();
+	const auto& linkComponents = linkSystem->getComponents();
+
+	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
 	for (const auto& pair : uuidMap)
 	{
-		auto name = pair.first.toBase64();
-		if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen))
+		auto uuid = pair.first.toBase64();
+		if (!searchString.empty())
+		{
+			if (!find(uuid, searchString, searchCaseSensitive))
+				continue;
+		}
+
+		auto linkView = linkComponents.get(pair.second);
+		auto entity = linkView->getEntity();
+
+		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
+		if (editorSystem->selectedEntity == entity)
+			flags |= ImGuiTreeNodeFlags_Selected;
+
+		if (ImGui::TreeNodeEx(uuid.c_str(), flags))
 		{
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-			{
-				auto entity = linkSystem->findEntity(pair.first);
-				EditorRenderSystem::getInstance()->selectedEntity = entity;
-			}
+				editorSystem->selectedEntity = entity;
+			ImGui::TreePop();
 		}
 	}
 
@@ -94,16 +108,25 @@ static void renderUuidList()
 	ImGui::PopStyleColor();
 	ImGui::Spacing();
 }
-static void renderTagList()
-{
-	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
+//**********************************************************************************************************************
+static void renderTagList(const string& searchString, bool searchCaseSensitive)
+{
+	auto manager = Manager::getInstance();
 	auto linkSystem = LinkSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& tagMap = linkSystem->getTagMap();
+	const auto& linkComponents = linkSystem->getComponents();
 	map<string, uint32> uniqueTags;
 
 	for (const auto& pair : tagMap)
 	{
+		if (!searchString.empty())
+		{
+			if (!find(pair.first, searchString, searchCaseSensitive))
+				continue;
+		}
+
 		auto searchResult = uniqueTags.find(pair.first);
 		if (searchResult == uniqueTags.end())
 		{
@@ -113,10 +136,38 @@ static void renderTagList()
 		searchResult->second++;
 	}
 
+	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+
 	for (const auto& pair : uniqueTags)
 	{
-		const auto& name = pair.first + " [" + to_string(pair.second) + "]";
-		ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+		const auto& tag = pair.first + " [" + to_string(pair.second) + "]";
+		if (ImGui::TreeNodeEx(tag.c_str()))
+		{
+			auto range = tagMap.equal_range(pair.first);
+			for (auto i = range.first; i != range.second; i++)
+			{
+				auto linkView = linkComponents.get(i->second);
+				auto entity = linkView->getEntity();
+				auto transformView = manager->tryGet<TransformComponent>(entity);
+				auto name = transformView && transformView->debugName.empty() ?
+					"Entity " + to_string(*entity) : transformView->debugName;
+
+				auto flags = (int)ImGuiTreeNodeFlags_Leaf;
+				if (editorSystem->selectedEntity == entity)
+					flags |= ImGuiTreeNodeFlags_Selected;
+
+				ImGui::PushID(to_string(*entity).c_str());
+				if (ImGui::TreeNodeEx(name.c_str(), flags))
+				{
+					if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+						editorSystem->selectedEntity = entity;
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+
+			ImGui::TreePop();
+		}
 	}
 
 	if (tagMap.empty())
@@ -130,6 +181,7 @@ static void renderTagList()
 	ImGui::Spacing();
 }
 
+//**********************************************************************************************************************
 void LinkEditorSystem::editorRender()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
@@ -139,11 +191,13 @@ void LinkEditorSystem::editorRender()
 
 	if (ImGui::Begin("Link Viewer", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
-		// TODO: add UUID and tag search box, also multithread search for big entity ammount if needed.
+		ImGui::InputText("Search", &searchString); ImGui::SameLine();
+		ImGui::Checkbox("Aa", &searchCaseSensitive); ImGui::Spacing();
+
 		if (ImGui::CollapsingHeader("UUID List"))
-			renderUuidList();
+			renderUuidList(searchString, searchCaseSensitive);
 		if (ImGui::CollapsingHeader("Tag List"))
-			renderTagList();
+			renderTagList(searchString, searchCaseSensitive);
 	}
 	ImGui::End();
 }
@@ -158,34 +212,33 @@ void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto linkComponent = Manager::getInstance()->get<LinkComponent>(entity);
-		ImGui::Text("UUID: %s, Tag: %s", linkComponent->getUUID().toBase64().c_str(),
-			linkComponent->getTag().c_str());
+		auto linkView = LinkSystem::getInstance()->get(entity);
+		ImGui::Text("UUID: %s, Tag: %s", linkView->getUUID().toBase64().c_str(),
+			linkView->getTag().c_str());
 		ImGui::EndTooltip();
 	}
 
 	if (!isOpened)
 		return;
 
-	auto linkComponent = Manager::getInstance()->get<LinkComponent>(entity);
-	auto tag = linkComponent->getTag();
+	auto linkView = LinkSystem::getInstance()->get(entity);
+	auto tag = linkView->getTag();
 	if (ImGui::InputText("Tag", &tag))
-		linkComponent->setTag(tag);
+		linkView->setTag(tag);
 
-	auto uuid = linkComponent->getUUID().toBase64();
+	auto uuid = linkView->getUUID().toBase64();
 	if (ImGui::InputText("UUID", &uuid))
 	{
-		uuid.resize(22);
-		auto hash = Hash128();
+		auto hash = linkView->getUUID();
 		if (hash.fromBase64(uuid))
-			linkComponent->trySetUUID(hash);
+			linkView->trySetUUID(hash);
 	}
 	if (ImGui::BeginPopupContextItem("uuid"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			linkComponent->trySetUUID({});
+			linkView->trySetUUID({});
 		if (ImGui::MenuItem("Generate Random"))
-			linkComponent->regenerateUUID();
+			linkView->regenerateUUID();
 		ImGui::EndPopup();
 	}
 }

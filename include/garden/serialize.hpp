@@ -23,6 +23,7 @@
  */
 
 #pragma once
+#include "garden/defines.hpp"
 #include "ecsm.hpp"
 #include "math/aabb.hpp"
 #include "math/matrix.hpp"
@@ -167,6 +168,16 @@ class DoNotSerializeSystem : public System
 {
 protected:
 	LinearPool<DoNotSerializeComponent, false> components;
+	static DoNotSerializeSystem* instance;
+
+	/**
+	 * @brief Creates a new DoNotSerialize system instance.
+	 */
+	DoNotSerializeSystem();
+	/**
+	 * @brief Destroys DoNotSerialize system instance.
+	 */
+	~DoNotSerializeSystem() final;
 
 	ID<Component> createComponent(ID<Entity> entity) override;
 	void destroyComponent(ID<Component> instance) override;
@@ -177,6 +188,35 @@ protected:
 	void disposeComponents() override;
 	
 	friend class ecsm::Manager;
+public:
+	/**
+	 * @brief Returns true if entity has DoNotSerialize component.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	bool has(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity DoNotSerialize component view.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<DoNotSerializeComponent> get(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity DoNotSerialize component view if exist.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<DoNotSerializeComponent> tryGet(ID<Entity> entity) const;
+
+	/**
+	 * @brief Returns DoNotSerialize system instance.
+	 * @warning Do not use it if you have several link system instances.
+	 */
+	static DoNotSerializeSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // DoNotSerialize system is not created.
+		return instance;
+	}
 };
 
 } // namespace garden

@@ -129,7 +129,9 @@ public:
 
 	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
 		const fs::path& directory = {}, const set<string>& extensions = {});
-	void drawImageSelector(string& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
+	void drawFileSelector(fs::path& path, ID<Entity> entity, type_index componentType, 
+		const fs::path& directory, const set<string>& extensions);
+	void drawImageSelector(fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
 		ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags = {});
 
 	void drawResource(ID<Buffer> buffer);

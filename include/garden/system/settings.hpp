@@ -18,10 +18,9 @@
  */
 
 #pragma once
-#include "math/color.hpp"
 #include "garden/defines.hpp"
-
 #include "ecsm.hpp"
+#include "math/color.hpp"
 
 namespace garden
 {

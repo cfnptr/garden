@@ -299,6 +299,7 @@ bool Shape::destroy()
 		return false;
 
 	instance->Release();
+	instance = nullptr;
 	return true;
 }
 
@@ -663,31 +664,34 @@ void PhysicsSystem::updateInSimulation()
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				auto rigidbodyComponent = &componentData[i];
-				auto transformComponent = transformSystem->tryGet(rigidbodyComponent->getEntity());
-				if (!transformComponent)
+				auto rigidbodyView = &componentData[i];
+				if (!rigidbodyView->getEntity())
 					continue;
 
-				auto isActive = transformComponent->isActiveWithAncestors();
+				auto transformView = transformSystem->tryGet(rigidbodyView->getEntity());
+				if (!transformView)
+					continue;
+
+				auto isActive = transformView->isActiveWithAncestors();
 				if (isActive)
 				{
-					if (!rigidbodyComponent->inSimulation)
+					if (!rigidbodyView->inSimulation)
 					{
-						if (rigidbodyComponent->instance)
+						if (rigidbodyView->instance)
 						{
 							bodyInterface.AddBody(JPH::BodyID(
-								rigidbodyComponent->instance), JPH::EActivation::Activate);
+								rigidbodyView->instance), JPH::EActivation::Activate);
 						}
-						rigidbodyComponent->inSimulation = true;
+						rigidbodyView->inSimulation = true;
 					}
 				}
 				else
 				{
-					if (rigidbodyComponent->inSimulation)
+					if (rigidbodyView->inSimulation)
 					{
-						if (rigidbodyComponent->instance)
-							bodyInterface.RemoveBody(JPH::BodyID(rigidbodyComponent->instance));
-						rigidbodyComponent->inSimulation = false;
+						if (rigidbodyView->instance)
+							bodyInterface.RemoveBody(JPH::BodyID(rigidbodyView->instance));
+						rigidbodyView->inSimulation = false;
 					}
 				}
 			}
@@ -713,22 +717,19 @@ void PhysicsSystem::interpolateResult()
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				auto rigidbodyComponent = &componentData[i];
-				if (!rigidbodyComponent->instance ||
-					rigidbodyComponent->motionType == MotionType::Static)
-				{
+				auto rigidbodyView = &componentData[i];
+				if (!rigidbodyView->instance || rigidbodyView->motionType == MotionType::Static)
 					continue;
-				}
 
-				auto transformComponent = transformSystem->tryGet(rigidbodyComponent->getEntity());
-				if (!transformComponent)
+				auto transformView = transformSystem->tryGet(rigidbodyView->getEntity());
+				if (!transformView)
 					continue;
 
 				float3 position; quat rotation;
-				rigidbodyComponent->getPosAndRot(position, rotation);
+				rigidbodyView->getPosAndRot(position, rotation);
 				// TODO: interpolate based on delta time
-				transformComponent->position = position;
-				transformComponent->rotation = rotation;
+				transformView->position = position;
+				transformView->rotation = rotation;
 			}
 		}),
 		components.getOccupancy());
@@ -768,6 +769,14 @@ void PhysicsSystem::copyComponent(View<Component> source, View<Component> destin
 {
 	const auto sourceView = View<RigidbodyComponent>(source);
 	auto destinationView = View<RigidbodyComponent>(destination);
+	destinationView->destroy();
+	destinationView->motionType = sourceView->motionType;
+	destinationView->inSimulation = sourceView->inSimulation;
+	destinationView->setShape(sourceView->shape, true, sourceView->canBeKinematicOrDynamic());
+	float3 position; quat rotation;
+	sourceView->getPosAndRot(position, rotation);
+	destinationView->setPosAndRot(position, rotation);
+	// TODO: copy other properties
 }
 const string& PhysicsSystem::getComponentName() const
 {

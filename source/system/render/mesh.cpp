@@ -121,12 +121,12 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
-		auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
-		if (!meshRender->getEntity() || !meshRender->isEnabled)
+		auto meshRenderView = (MeshRenderComponent*)(componentData + i * componentSize);
+		if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 			continue;
 
 		float4x4 model;
-		auto transformView = transformSystem->tryGet(meshRender->getEntity());
+		auto transformView = transformSystem->tryGet(meshRenderView->getEntity());
 		if (transformView)
 		{
 			if (!transformView->isActiveWithAncestors())
@@ -138,7 +138,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 			model = float4x4::identity;
 		}
 
-		if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
+		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, frustumPlaneCount))
 			continue;
 
 		// TODO: optimize this using SpatialDB.
@@ -146,7 +146,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 		// TODO: we can use full scene BVH to speed up frustum culling.
 
 		MeshRenderSystem::RenderItem renderItem;
-		renderItem.meshRender = meshRender;
+		renderItem.meshRenderView = meshRenderView;
 		renderItem.model = model;
 		renderItem.distance2 = hasCameraOffset ?
 			length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
@@ -172,12 +172,12 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
-		auto meshRender = (MeshRenderComponent*)(componentData + i * componentSize);
-		if (!meshRender->getEntity() || !meshRender->isEnabled)
+		auto meshRenderView = (MeshRenderComponent*)(componentData + i * componentSize);
+		if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 			continue;
 
 		float4x4 model;
-		auto transformView = transformSystem->tryGet(meshRender->getEntity());
+		auto transformView = transformSystem->tryGet(meshRenderView->getEntity());
 		if (transformView)
 		{
 			if (!transformView->isActiveWithAncestors())
@@ -189,11 +189,11 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 			model = float4x4::identity;
 		}
 
-		if (isBehindFrustum(meshRender->aabb, model, frustumPlanes, frustumPlaneCount))
+		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, frustumPlaneCount))
 			continue;
 
 		MeshRenderSystem::TranslucentItem translucentItem;
-		translucentItem.meshRender = meshRender;
+		translucentItem.meshRenderView = meshRenderView;
 		translucentItem.model = model;
 		translucentItem.distance2 = hasCameraOffset ?
 			length2(getTranslation(model) - cameraOffset) : length2(getTranslation(model));
@@ -445,7 +445,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
 					const auto& item = items[indices[j]];
-					meshSystem->drawAsync(item.meshRender, viewProj, item.model, j, taskIndex);
+					meshSystem->drawAsync(item.meshRenderView, viewProj, item.model, j, taskIndex);
 				}
 				meshSystem->endDrawAsync(taskCount, taskIndex);
 			}),
@@ -461,7 +461,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 			for (uint32 j = 0; j < drawCount; j++)
 			{
 				const auto& item = items[indices[j]];
-				meshSystem->drawAsync(item.meshRender, viewProj, item.model, j, -1);
+				meshSystem->drawAsync(item.meshRenderView, viewProj, item.model, j, -1);
 			}
 			meshSystem->endDrawAsync(drawCount, -1);
 		}
@@ -526,7 +526,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 
 				auto drawIndex = (uint32)*bufferDrawCount;
 				*bufferDrawCount = *bufferDrawCount + 1;
-				meshSystem->drawAsync(item.meshRender, viewProj, item.model, drawIndex, taskIndex);
+				meshSystem->drawAsync(item.meshRenderView, viewProj, item.model, drawIndex, taskIndex);
 				currentDrawCount++;
 			}
 
@@ -561,7 +561,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 
 			auto drawIndex = (uint32)*bufferDrawCount;
 			*bufferDrawCount = *bufferDrawCount + 1;
-			meshSystem->drawAsync(item.meshRender, viewProj, item.model, drawIndex, -1);
+			meshSystem->drawAsync(item.meshRenderView, viewProj, item.model, drawIndex, -1);
 			currentDrawCount++;
 		}
 

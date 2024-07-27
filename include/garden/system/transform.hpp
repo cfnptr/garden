@@ -113,6 +113,11 @@ public:
 	 * @note It also changes parent of the children entities.
 	 */
 	void removeAllChilds();
+	/**
+	 * @brief Reduces childs array capacity to fit its size.
+	 * @details Optimizes component memory consumption. 
+	 */
+	void shrinkChilds();
 
 	/**
 	 * @brief Returns true if this entity has specified ancestor

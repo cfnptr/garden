@@ -158,7 +158,7 @@ void InstanceRenderSystem::swapchainRecreate()
 }
 
 //**********************************************************************************************************************
-void InstanceRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderComponent,
+void InstanceRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderView,
 	DescriptorSet::Range* range, uint8& index, uint8 capacity)
 {
 	GARDEN_ASSERT(index < capacity);

@@ -56,8 +56,8 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto cameraComponent = Manager::getInstance()->get<CameraComponent>(entity);
-		ImGui::Text("Projection: ", cameraComponent->type == 
+		auto cameraView = Manager::getInstance()->get<CameraComponent>(entity);
+		ImGui::Text("Projection: ", cameraView->type ==
 			ProjectionType::Perspective ? "perspective" : "orthographic");
 		ImGui::EndTooltip();
 	}
@@ -65,70 +65,70 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto cameraComponent = Manager::getInstance()->get<CameraComponent>(entity);
-	if (cameraComponent->type == ProjectionType::Perspective)
+	auto cameraView = Manager::getInstance()->get<CameraComponent>(entity);
+	if (cameraView->type == ProjectionType::Perspective)
 	{
-		float fov = degrees(cameraComponent->p.perspective.fieldOfView);
+		float fov = degrees(cameraView->p.perspective.fieldOfView);
 		if (ImGui::DragFloat("Filed Of View", &fov, 0.1f, 0.0f, FLT_MAX))
-			cameraComponent->p.perspective.fieldOfView = radians(fov);
+			cameraView->p.perspective.fieldOfView = radians(fov);
 		if (ImGui::BeginPopupContextItem("fieldOfView"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cameraComponent->p.perspective.fieldOfView = radians(defaultFieldOfView);
+				cameraView->p.perspective.fieldOfView = radians(defaultFieldOfView);
 			ImGui::EndPopup();
 		}
 
-		ImGui::DragFloat("Aspect Ratio", &cameraComponent->p.perspective.aspectRatio, 0.01f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Aspect Ratio", &cameraView->p.perspective.aspectRatio, 0.01f, 0.0f, FLT_MAX);
 		if (ImGui::BeginPopupContextItem("aspectRatio"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cameraComponent->p.perspective.aspectRatio = defaultAspectRatio;
+				cameraView->p.perspective.aspectRatio = defaultAspectRatio;
 			ImGui::EndPopup();
 		}
 
-		ImGui::DragFloat("Near Plane", &cameraComponent->p.perspective.nearPlane, 0.01f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Near Plane", &cameraView->p.perspective.nearPlane, 0.01f, 0.0f, FLT_MAX);
 		if (ImGui::BeginPopupContextItem("nearPlane"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cameraComponent->p.perspective.nearPlane = defaultHmdDepth;
+				cameraView->p.perspective.nearPlane = defaultHmdDepth;
 			ImGui::EndPopup();
 		}
 	}
-	else if (cameraComponent->type == ProjectionType::Orthographic)
+	else if (cameraView->type == ProjectionType::Orthographic)
 	{
-		ImGui::DragFloat2("Width", (float*)&cameraComponent->p.orthographic.width, 0.1f);
+		ImGui::DragFloat2("Width", (float*)&cameraView->p.orthographic.width, 0.1f);
 		if (ImGui::BeginPopupContextItem("width"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cameraComponent->p.orthographic.width = float2(-1.0f, 1.0f);
+				cameraView->p.orthographic.width = float2(-1.0f, 1.0f);
 			ImGui::EndPopup();
 		}
 
-		ImGui::DragFloat2("Height", (float*)&cameraComponent->p.orthographic.height, 0.1f);
+		ImGui::DragFloat2("Height", (float*)&cameraView->p.orthographic.height, 0.1f);
 		if (ImGui::BeginPopupContextItem("height"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cameraComponent->p.orthographic.height = float2(-1.0f, 1.0f);
+				cameraView->p.orthographic.height = float2(-1.0f, 1.0f);
 			ImGui::EndPopup();
 		}
 
-		ImGui::DragFloat2("Depth", (float*)&cameraComponent->p.orthographic.depth, 0.1f);
+		ImGui::DragFloat2("Depth", (float*)&cameraView->p.orthographic.depth, 0.1f);
 		if (ImGui::BeginPopupContextItem("depth"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cameraComponent->p.orthographic.depth = float2(-1.0f, 1.0f);
+				cameraView->p.orthographic.depth = float2(-1.0f, 1.0f);
 			ImGui::EndPopup();
 		}
 	}
 	else abort();
 
 	const auto types = "Perspective\0Orthographic\00";
-	if (ImGui::Combo("Type", &cameraComponent->type, types))
+	if (ImGui::Combo("Type", &cameraView->type, types))
 	{
-		if (cameraComponent->type == ProjectionType::Perspective)
-			cameraComponent->p.perspective = PerspectiveProjection();
-		else if (cameraComponent->type == ProjectionType::Orthographic)
-			cameraComponent->p.orthographic = OrthographicProjection();
+		if (cameraView->type == ProjectionType::Perspective)
+			cameraView->p.perspective = PerspectiveProjection();
+		else if (cameraView->type == ProjectionType::Orthographic)
+			cameraView->p.orthographic = OrthographicProjection();
 		else abort();
 	}
 }

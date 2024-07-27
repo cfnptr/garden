@@ -834,7 +834,7 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 			flags |= (int)ImGuiTreeNodeFlags_Selected;
 
 		auto filename = entry.path().filename().generic_string();
-		ImGui::PushID(filename.c_str());
+		ImGui::PushID(entry.path().generic_string().c_str());
 		if (ImGui::TreeNodeEx(filename.c_str(), flags))
 		{
 			updateDirectoryClick(filename, entry, selectedEntry);
@@ -1022,7 +1022,8 @@ void EditorRenderSystem::setPlaying(bool isPlaying)
 
 	if (this->playing)
 	{
-
+		abort();
+		// TODO:
 	}
 }
 
@@ -1036,10 +1037,39 @@ void EditorRenderSystem::openFileSelector(const std::function<void(const fs::pat
 	onFileSelect = onSelect;
 }
 
-void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
+void EditorRenderSystem::drawFileSelector(fs::path& path, ID<Entity> entity,
+	type_index componentType, const fs::path& directory, const set<string>& extensions)
+{
+	auto pathString = path.generic_string();
+	if (ImGui::InputText("Path", &pathString, ImGuiInputTextFlags_ReadOnly))
+		path = pathString;
+	ImGui::SameLine();
+
+	if (ImGui::Button(" + "))
+	{	
+		auto _path = &path;
+
+		openFileSelector([_path, entity, componentType, directory, extensions](const fs::path& selectedFile)
+		{
+			if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
+				!Manager::getInstance()->has(entity, componentType))
+			{
+				return;
+			}
+
+			auto path = selectedFile;
+			path.replace_extension();
+			*_path = path.generic_string();
+		},
+		AppInfoSystem::getInstance()->getResourcesPath() / directory, extensions);
+	}
+}
+void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
 	ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags)
 {
-	ImGui::InputText("Path", &path, ImGuiInputTextFlags_ReadOnly);
+	auto pathString = path.generic_string();
+	if (ImGui::InputText("Path", &pathString, ImGuiInputTextFlags_ReadOnly))
+		path = pathString;
 
 	if (ImGui::BeginPopupContextItem())
 	{
@@ -1058,8 +1088,7 @@ void EditorRenderSystem::drawImageSelector(string& path, Ref<Image>& image, Ref<
 		{ ".webp", ".png", ".exr", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga" };
 		auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
 
-		openFileSelector([_path, _image, _descriptorSet, entity, componentType, loadFlags]
-		(const fs::path& selectedFile)
+		openFileSelector([_path, _image, _descriptorSet, entity, componentType, loadFlags](const fs::path& selectedFile)
 		{
 			if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
 				!Manager::getInstance()->has(entity, componentType))

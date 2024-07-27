@@ -595,22 +595,22 @@ void LightingRenderSystem::hdrRender()
 	if (!graphicsSystem->camera || !pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
 		return;
 
-	auto lightingComponent = Manager::getInstance()->tryGet<LightingRenderComponent>(graphicsSystem->camera); // TODO: use lightingSystem->tryGet()
-	if (!lightingComponent || !lightingComponent->cubemap || !lightingComponent->sh || !lightingComponent->specular)
+	auto lightingView = Manager::getInstance()->tryGet<LightingRenderComponent>(graphicsSystem->camera); // TODO: use lightingSystem->tryGet()
+	if (!lightingView || !lightingView->cubemap || !lightingView->sh || !lightingView->specular)
 		return;
 
-	auto cubemapView = graphicsSystem->get(lightingComponent->cubemap);
-	auto shView = graphicsSystem->get(lightingComponent->sh);
-	auto specularView = graphicsSystem->get(lightingComponent->specular);
+	auto cubemapView = graphicsSystem->get(lightingView->cubemap);
+	auto shView = graphicsSystem->get(lightingView->sh);
+	auto specularView = graphicsSystem->get(lightingView->specular);
 	if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
 		return;
 	
-	if (!lightingComponent->descriptorSet)
+	if (!lightingView->descriptorSet)
 	{
 		auto descriptorSet = createDescriptorSet( // TODO: maybe create shared DS?
-			ID<Buffer>(lightingComponent->sh), ID<Image>(lightingComponent->specular));
+			ID<Buffer>(lightingView->sh), ID<Image>(lightingView->specular));
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
-		lightingComponent->descriptorSet = descriptorSet;
+		lightingView->descriptorSet = descriptorSet;
 	}
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
@@ -625,7 +625,7 @@ void LightingRenderSystem::hdrRender()
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	DescriptorSet::Range descriptorSetRange[2];
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDescriptorSet);
-	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(lightingComponent->descriptorSet));
+	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(lightingView->descriptorSet));
 
 	if (deferredSystem->useAsyncRecording())
 	{
@@ -710,11 +710,11 @@ ID<Component> LightingRenderSystem::createComponent(ID<Entity> entity)
 void LightingRenderSystem::destroyComponent(ID<Component> instance)
 {
 	auto resourceSystem = ResourceSystem::getInstance();
-	auto component = components.get(ID<LightingRenderComponent>(instance));
-	resourceSystem->destroyShared(component->cubemap);
-	resourceSystem->destroyShared(component->sh);
-	resourceSystem->destroyShared(component->specular);
-	resourceSystem->destroyShared(component->descriptorSet);
+	auto componentView = components.get(ID<LightingRenderComponent>(instance));
+	resourceSystem->destroyShared(componentView->cubemap);
+	resourceSystem->destroyShared(componentView->sh);
+	resourceSystem->destroyShared(componentView->specular);
+	resourceSystem->destroyShared(componentView->descriptorSet);
 	components.destroy(ID<LightingRenderComponent>(instance));
 }
 void LightingRenderSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -725,6 +725,7 @@ void LightingRenderSystem::copyComponent(View<Component> source, View<Component>
 	destinationView->sh = sourceView->sh;
 	destinationView->specular = sourceView->specular;
 	destinationView->descriptorSet = sourceView->descriptorSet;
+	// TODO: destroy destination shared resources
 }
 const string& LightingRenderSystem::getComponentName() const
 {
@@ -762,10 +763,10 @@ void LightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	auto lightingOccupancy = components.getOccupancy();
 	for (uint32 i = 0; i < lightingOccupancy; i++)
 	{
-		auto& lightingComponent = lightingComponents[i];
-		if (lightingComponent.descriptorSet.isLastRef())
-			graphicsSystem->destroy(ID<DescriptorSet>(lightingComponent.descriptorSet));
-		lightingComponent.descriptorSet = {};
+		auto lightingView = &lightingComponents[i];
+		if (lightingView->descriptorSet.isLastRef())
+			graphicsSystem->destroy(ID<DescriptorSet>(lightingView->descriptorSet));
+		lightingView->descriptorSet = {};
 	}
 
 	if (this->hasShadowBuffer != useShadowBuffer)

@@ -21,25 +21,25 @@ uint64 NineSliceRenderSystem::getInstanceDataSize()
 {
 	return (uint64)sizeof(NineSliceInstanceData);
 }
-void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderComponent, InstanceData* instanceData,
+void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
-	auto nineSliceRenderComponent = (NineSliceRenderComponent*)spriteRenderComponent;
+	auto nineSliceRenderView = (NineSliceRenderComponent*)spriteRenderView;
 	auto nineSliceInstanceData = (NineSliceInstanceData*)instanceData;
 
 	auto imageSize = float2(1.0f); // White texture size
-	if (nineSliceRenderComponent->colorMap)
+	if (nineSliceRenderView->colorMap)
 	{
-		auto imageView = GraphicsSystem::getInstance()->get(nineSliceRenderComponent->colorMap);
+		auto imageView = GraphicsSystem::getInstance()->get(nineSliceRenderView->colorMap);
 		imageSize = (float2)(int2)imageView->getSize();
 	}
 	auto scale = extractScale2(model) * imageSize;
 
-	SpriteRenderSystem::setInstanceData(spriteRenderComponent, 
+	SpriteRenderSystem::setInstanceData(spriteRenderView,
 		instanceData, viewProj, model, drawIndex, taskIndex);
 	nineSliceInstanceData->texWinBorder = float4(
-		nineSliceRenderComponent->textureBorder / imageSize,
-		nineSliceRenderComponent->windowBorder / scale);
+		nineSliceRenderView->textureBorder / imageSize,
+		nineSliceRenderView->windowBorder / scale);
 }
 
 //**********************************************************************************************************************

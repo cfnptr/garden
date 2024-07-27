@@ -85,60 +85,60 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (ImGui::BeginItemTooltip())
 	{
-		auto transformComponent = transformSystem->get(entity);
-		if (transformComponent->getParent())
+		auto transformView = transformSystem->get(entity);
+		if (transformView->getParent())
 		{
-			auto parentTransform = transformSystem->get(transformComponent->getParent());
-			ImGui::Text("Parent: %lu %s", (unsigned long)*transformComponent->getParent(),
-				parentTransform->debugName.empty() ? "" : ("(" + parentTransform->debugName + ")").c_str());
+			auto parentView = transformSystem->get(transformView->getParent());
+			ImGui::Text("Parent: %lu %s", (unsigned long)*transformView->getParent(),
+				parentView->debugName.empty() ? "" : ("(" + parentView->debugName + ")").c_str());
 		}
 		else
 		{
 			ImGui::Text("Parent: null");
 		}
-		ImGui::Text("Children count: %lu", (unsigned long)transformComponent->getChildCount());
+		ImGui::Text("Children count: %lu", (unsigned long)transformView->getChildCount());
 		ImGui::EndTooltip();
 	}
 
 	if (isOpened)
 	{
-		auto transformComponent = transformSystem->get(entity);
-		ImGui::Checkbox("Active", &transformComponent->isActive);
+		auto transformView = transformSystem->get(entity);
+		ImGui::Checkbox("Active", &transformView->isActive);
 
 		auto isBaked = manager->has<BakedTransformComponent>(entity);
 		ImGui::BeginDisabled(isBaked);
 
-		ImGui::DragFloat3("Position", &transformComponent->position, 0.01f);
+		ImGui::DragFloat3("Position", &transformView->position, 0.01f);
 		if (ImGui::BeginPopupContextItem("position"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				transformComponent->position = float3(0.0f);
+				transformView->position = float3(0.0f);
 			ImGui::EndPopup();
 		}
 		if (ImGui::BeginItemTooltip())
 		{
 			if (isBaked)
 				ImGui::Text("Disabled due to BakedTransformComponent!");
-			auto translation = getTranslation(transformComponent->calcModel());
+			auto translation = getTranslation(transformView->calcModel());
 			ImGui::Text("Position of the entity\nGlobal: %.1f, %.1f, %.1f",
 				translation.x, translation.y, translation.z);
 			ImGui::EndTooltip();
 		}
 
-		ImGui::DragFloat3("Scale", &transformComponent->scale, 0.01f, 0.0001f, FLT_MAX);
-		transformComponent->scale = max(transformComponent->scale, float3(0.0001f));
+		ImGui::DragFloat3("Scale", &transformView->scale, 0.01f, 0.0001f, FLT_MAX);
+		transformView->scale = max(transformView->scale, float3(0.0001f));
 
 		if (ImGui::BeginPopupContextItem("scale"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				transformComponent->scale = float3(1.0f);
+				transformView->scale = float3(1.0f);
 			ImGui::EndPopup();
 		}
 		if (ImGui::BeginItemTooltip())
 		{
 			if (isBaked)
 				ImGui::Text("Disabled due to BakedTransformComponent!");
-			auto scale = extractScale(transformComponent->calcModel());
+			auto scale = extractScale(transformView->calcModel());
 			ImGui::Text("Scale of the entity\nGlobal: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
 			ImGui::EndTooltip();
 		}
@@ -146,13 +146,13 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f))
 		{
 			auto difference = newEulerAngles - oldEulerAngles;
-			transformComponent->rotation *= quat(radians(difference));
+			transformView->rotation *= quat(radians(difference));
 			oldEulerAngles = newEulerAngles;
 		}
 		if (ImGui::BeginPopupContextItem("rotation"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				transformComponent->rotation = quat::identity;
+				transformView->rotation = quat::identity;
 			ImGui::EndPopup();
 		}
 		if (ImGui::BeginItemTooltip())
@@ -160,7 +160,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			if (isBaked)
 				ImGui::Text("Disabled due to BakedTransformComponent!");
 			auto rotation = radians(newEulerAngles);
-			auto global = degrees(extractQuat(extractRotation(transformComponent->calcModel())).toEulerAngles());
+			auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).toEulerAngles());
 			ImGui::Text("Rotation in degrees\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
 				rotation.x, rotation.y, rotation.z, global.x, global.y, global.z);
 			ImGui::EndTooltip();
@@ -168,15 +168,15 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 		ImGui::EndDisabled();
 		
-		ImGui::InputText("Debug Name", &transformComponent->debugName);
+		ImGui::InputText("Debug Name", &transformView->debugName);
 		if (ImGui::BeginPopupContextItem("debugName"))
 		{
 			if (ImGui::MenuItem("Copy Name"))
-				ImGui::SetClipboardText(transformComponent->debugName.c_str());
+				ImGui::SetClipboardText(transformView->debugName.c_str());
 			if (ImGui::MenuItem("Paste Name"))
-				transformComponent->debugName = ImGui::GetClipboardText();
+				transformView->debugName = ImGui::GetClipboardText();
 			if (ImGui::MenuItem("Clear Name"))
-				transformComponent->debugName = "";
+				transformView->debugName = "";
 			ImGui::EndPopup();
 		}
 		if (ImGui::BeginItemTooltip())
@@ -191,9 +191,9 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (editorSystem->selectedEntity)
 		{
-			auto transformComponent = transformSystem->get(editorSystem->selectedEntity);
-			oldEulerAngles = newEulerAngles = degrees(transformComponent->rotation.toEulerAngles());
-			oldRotation = transformComponent->rotation;
+			auto transformView = transformSystem->get(editorSystem->selectedEntity);
+			oldEulerAngles = newEulerAngles = degrees(transformView->rotation.toEulerAngles());
+			oldRotation = transformView->rotation;
 		}
 
 		selectedEntity = editorSystem->selectedEntity;
@@ -202,11 +202,11 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (editorSystem->selectedEntity)
 		{
-			auto transformComponent = transformSystem->get(editorSystem->selectedEntity);
-			if (oldRotation != transformComponent->rotation)
+			auto transformView = transformSystem->get(editorSystem->selectedEntity);
+			if (oldRotation != transformView->rotation)
 			{
-				oldEulerAngles = newEulerAngles = degrees(transformComponent->rotation.toEulerAngles());
-				oldRotation = transformComponent->rotation;
+				oldEulerAngles = newEulerAngles = degrees(transformView->rotation.toEulerAngles());
+				oldRotation = transformView->rotation;
 			}
 		}
 	}

@@ -37,7 +37,7 @@ class NineSliceRenderEditorSystem final : public System
 
 	friend class ecsm::Manager;
 public:
-	static void renderComponent(NineSliceRenderComponent* component, type_index componentType);
+	static void renderComponent(NineSliceRenderComponent* componentView, type_index componentType);
 };
 
 } // namespace garden

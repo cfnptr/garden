@@ -28,7 +28,7 @@ public:
 		GraphicsPipelines, ComputePipelines, Count
 	};
 private:
-	string resourceSearch;
+	string searchString;
 	uint32 selectedItem = 0;
 	bool showWindow = false;
 	bool searchCaseSensitive = false;

@@ -31,8 +31,9 @@ enum class SpawnMode : uint8
 
 struct SpawnComponent final : public Component
 {
-	string path = {};
-	uint32 maxCount = 0;
+	fs::path path = {};
+	Hash128 prefab = {};
+	uint32 maxCount = 1;
 	float delay = 0.0f;
 	SpawnMode mode = {};
 	bool isActive = true;
@@ -45,6 +46,36 @@ private:
 	friend class SpawnSystem;
 	friend class LinearPool<SpawnComponent>;
 public:
+	/**
+	 * @brief Returns spawned enitity array.
+	 */
+	const vector<Hash128>& getSpawnedEntities() const noexcept { return spawnedEntities; }
+	/**
+	 * @brief Returns spawned enitity count.
+	 * @note Some of the spawned entities may be already destroyed.
+	 */
+	uint32 getSpawnedCount() const noexcept { return (uint32)spawnedEntities.size(); }
+
+	/**
+	 * @brief Loads prefab entity. (Creates shared if not exist)
+	 * @details Entity is loaded by path or by provided prefab UUID.
+	 * @note If prefab entity was destroyed this call recreates it.
+	 * @return Loaded prefab entity on success, otherwise null.
+	 */
+	ID<Entity> loadPrefab();
+	/**
+	 * @brief Spawns a new prefab instance.
+	 * @note If prefab entity was destroyed this call recreates it.
+	 * 
+	 * @param count how many entity instances to spawn
+	 * @return Loaded prefab entity on success, otherwise null.
+	 */
+	void spawn(uint32 count = 1);
+
+	/**
+	 * @brief Destroys all existing spawned entites.
+	 * @note Some of the spawned entities may be already destroyed.
+	 */
 	void destroySpawned();
 };
 
@@ -64,6 +95,7 @@ class SpawnSystem final : public System, public ISerializable
 	 */
 	~SpawnSystem() final;
 
+	void postDeinit();
 	void update();
 
 	ID<Component> createComponent(ID<Entity> entity) final;
@@ -89,10 +121,105 @@ public:
 	 */
 	const map<string, Hash128>& getSharedPrefabs() const noexcept { return sharedPrefabs; }
 
+	/**
+	 * @brief Returns true if has shared prefab.
+	 * @param[in] path target shared prefab path
+	 */
 	bool hasSharedPrefab(const string& path) const { return sharedPrefabs.find(path) != sharedPrefabs.end(); }
+
+	/**
+	 * @brief Adds shared prefab to the map.
+	 * 
+	 * @param[in] path target shared prefab path
+	 * @param[in] uuid target shared prefab UUID
+	 * 
+	 * @return True if a new shared prefab was added to the map.
+	 */
 	bool tryAddSharedPrefab(const string& path, const Hash128& uuid);
+	/**
+	 * @brief Adds shared prefab to the map.
+	 *
+	 * @param[in] path target shared prefab path
+	 * @param prefab target shared prefab entity
+	 *
+	 * @return True if a new shared prefab was added to the map.
+	 */
 	bool tryAddSharedPrefab(const string& path, ID<Entity> prefab);
+	/**
+	 * @brief Adds shared prefab to the map.
+	 *
+	 * @param[in] path target shared prefab path
+	 * @param[in] uuid target shared prefab UUID
+	 */
+	void addSharedPrefab(const string& path, const Hash128& uuid)
+	{
+		auto result = tryAddSharedPrefab(path, uuid);
+		GARDEN_ASSERT(result); // Shared prefab already exist
+	}
+	/**
+	 * @brief Adds shared prefab to the map.
+	 *
+	 * @param[in] path target shared prefab path
+	 * @param prefab target shared prefab entity
+	 */
+	void addSharedPrefab(const string& path, ID<Entity> prefab)
+	{
+		auto result = tryAddSharedPrefab(path, prefab);
+		GARDEN_ASSERT(result); // Shared prefab already exist
+	}
+
+	/**
+	 * @brief Returns shared prefab UUID if exist.
+	 *
+	 * @param[in] path target shared prefab path
+	 * @param[out] uuid shared prefab UUID
+	 *
+	 * @return True if shared prefab exist.
+	 */
+	bool tryGetSharedPrefab(const string& path, Hash128& uuid);
+	/**
+	 * @brief Returns shared prefab entity if exist.
+	 *
+	 * @param[in] path target shared prefab path
+	 * @param[out] prefab shared prefab entity
+	 *
+	 * @return True if shared prefab exist.
+	 */
+	bool tryGetSharedPrefab(const string& path, ID<Entity>& prefab);
+	/**
+	 * @brief Returns shared prefab UUD and entity if exist.
+	 *
+	 * @param[in] path target shared prefab path
+	 * @param[out] uuid shared prefab UUID
+	 * @param[out] prefab shared prefab entity
+	 *
+	 * @return True if shared prefab exist.
+	 */
+	bool tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Entity>& prefab);
+
+	/**
+	 * @brief Destroys all existing shared prefab entities and clears the map.
+	 */
 	void destroySharedPrefabs();
+
+	/**
+	 * @brief Returns true if entity has spawn component.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	bool has(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity spawn component view.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<SpawnComponent> get(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity spawn component view if exist.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<SpawnComponent> tryGet(ID<Entity> entity) const;
 
 	/**
 	 * @brief Returns spawn system instance.

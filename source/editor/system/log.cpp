@@ -58,7 +58,7 @@ void LogEditorSystem::deinit()
 
 //**********************************************************************************************************************
 static void updateTextBuffer(string& textBuffer,
-	stringstream& logBuffer, string& logLine, const string& logSearch, bool searchCaseSensitive,
+	stringstream& logBuffer, string& logLine, const string& searchString, bool searchCaseSensitive,
 	bool includeFatal, bool includeError, bool includeWarn, bool includeInfo, bool includeDebug, bool includeTrace)
 {
 	textBuffer.clear();
@@ -66,9 +66,9 @@ static void updateTextBuffer(string& textBuffer,
 
 	while (getline(logBuffer, logLine)) // TODO: async search for big logs
 	{
-		if (!logSearch.empty())
+		if (!searchString.empty())
 		{
-			if (!find(logLine, logSearch, searchCaseSensitive))
+			if (!find(logLine, searchString, searchCaseSensitive))
 				continue;
 		}
 
@@ -125,7 +125,7 @@ void LogEditorSystem::editorRender()
 
 		if (isDirty)
 		{
-			updateTextBuffer(textBuffer, logBuffer, logLine, logSearch, searchCaseSensitive,
+			updateTextBuffer(textBuffer, logBuffer, logLine, searchString, searchCaseSensitive,
 				includeFatal, includeError, includeWarn, includeInfo, includeDebug, includeTrace);
 			isDirty = false;
 		}
@@ -134,7 +134,7 @@ void LogEditorSystem::editorRender()
 			ImVec2(-1.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)), ImGuiInputTextFlags_ReadOnly);
 		ImGui::Spacing();
 
-		isDirty |= ImGui::InputText("Search", &logSearch); ImGui::SameLine();
+		isDirty |= ImGui::InputText("Search", &searchString); ImGui::SameLine();
 		isDirty |= ImGui::Checkbox("Aa", &searchCaseSensitive);
 
 		bufferMutex.unlock();

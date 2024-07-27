@@ -21,6 +21,8 @@ namespace garden
 
 class LinkEditorSystem final : public System
 {
+	string searchString;
+	bool searchCaseSensitive = false;
 	bool showWindow = false;
 
 	LinkEditorSystem();
