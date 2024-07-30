@@ -588,7 +588,7 @@ bool JsonDeserializer::read(string_view name, string& value)
 	auto& i = object[name];
 	if (!i.is_string())
 		return false;
-	value = i;
+	value.assign(i);
 	return true;
 }
 

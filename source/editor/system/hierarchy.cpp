@@ -83,7 +83,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 				if (cameraView->type == ProjectionType::Perspective)
 					cameraTransformView->position += float3(0.0f, 0.0f, -2.0f) * cameraTransformView->rotation;
 				else
-					cameraTransformView->position += float3(0.0f, 0.0f, -0.5f);
+					cameraTransformView->position.z = -0.5f;
 			}
 		}
 	}
@@ -298,7 +298,7 @@ void HierarchyEditorSystem::editorRender()
 
 				auto debugName = transformView->debugName.empty() ?
 					"Entity " + to_string(*transformView->getEntity()) : transformView->debugName;
-				if (!find(debugName, searchString, searchCaseSensitive))
+				if (!find(debugName, searchString, *transformView->getEntity(), searchCaseSensitive))
 					continue;
 
 				auto flags = (int)ImGuiTreeNodeFlags_Leaf;

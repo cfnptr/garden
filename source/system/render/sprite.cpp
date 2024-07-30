@@ -72,6 +72,10 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 	auto destinationView = View<SpriteRenderComponent>(destination);
 	const auto sourceView = View<SpriteRenderComponent>(source);
 
+	auto resourceSystem = ResourceSystem::getInstance();
+	resourceSystem->destroyShared(destinationView->descriptorSet);
+	resourceSystem->destroyShared(destinationView->colorMap);
+
 	destinationView->aabb = sourceView->aabb;
 	destinationView->isEnabled = sourceView->isEnabled;
 	destinationView->isArray = sourceView->isArray;
@@ -210,14 +214,21 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 
 	string path;
 	if (deserializer.read("path", path))
+	{
+		#if GARDEN_DEBUG || GARDEN_EDITOR
 		componentView->path = path;
+		#endif
+	}
 
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (componentView->path.empty())
-		componentView->path = "missing";
+		componentView->path = path = "missing";
+	#endif
+
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	componentView->colorMap = ResourceSystem::getInstance()->loadImage(componentView->path,
+	componentView->colorMap = ResourceSystem::getInstance()->loadImage(path,
 		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 }
 

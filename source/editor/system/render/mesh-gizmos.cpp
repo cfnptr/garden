@@ -337,7 +337,18 @@ void MeshGizmosEditorSystem::editorRender()
 
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
 		if (rigidbodyView && rigidbodyView->getShape())
-			rigidbodyView->setPosition(rigidbodyView->getPosition() + cursorTrans, false);
+		{
+			// We can also move Dynamic body with moveKinematic, but no need here.
+			if (rigidbodyView->getMotionType() == MotionType::Kinematic)
+			{
+				rigidbodyView->moveKinematic(rigidbodyView->getPosition() + cursorTrans,
+					rigidbodyView->getRotation(), inputSystem->getDeltaTime());
+			}
+			else
+			{
+				rigidbodyView->setPosition(rigidbodyView->getPosition() + cursorTrans, false);
+			}
+		}
 
 		auto meshSelector = manager->tryGet<MeshSelectorEditorSystem>();
 		if (meshSelector)

@@ -101,6 +101,11 @@ struct Hash128
 	 */
 	string toBase64() const noexcept;
 	/**
+	 * @brief Returns hash Base64 encoded string.
+	 * @details See the https://en.wikipedia.org/wiki/Base64
+	 */
+	void toBase64(string& base64) const noexcept;
+	/**
 	 * @brief Decodes hash from the Base64 string if valid.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */

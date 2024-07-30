@@ -12,66 +12,66 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/editor/system/spawn.hpp"
+#include "garden/editor/system/spawner.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/link.hpp"
-#include "garden/system/spawn.hpp"
+#include "garden/system/spawner.hpp"
 #include "garden/system/app-info.hpp"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-SpawnEditorSystem::SpawnEditorSystem()
+SpawnerEditorSystem::SpawnerEditorSystem()
 {
 	auto manager = Manager::getInstance();
-	SUBSCRIBE_TO_EVENT("Init", SpawnEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", SpawnEditorSystem::deinit);
+	SUBSCRIBE_TO_EVENT("Init", SpawnerEditorSystem::init);
+	SUBSCRIBE_TO_EVENT("Deinit", SpawnerEditorSystem::deinit);
 }
-SpawnEditorSystem::~SpawnEditorSystem()
+SpawnerEditorSystem::~SpawnerEditorSystem()
 {
 	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", SpawnEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnEditorSystem::deinit);
+		UNSUBSCRIBE_FROM_EVENT("Init", SpawnerEditorSystem::init);
+		UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnerEditorSystem::deinit);
 	}
 }
 
-void SpawnEditorSystem::init()
+void SpawnerEditorSystem::init()
 {
 	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 
-	SUBSCRIBE_TO_EVENT("EditorRender", SpawnEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", SpawnEditorSystem::editorBarTool);
+	SUBSCRIBE_TO_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
+	SUBSCRIBE_TO_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 
-	EditorRenderSystem::getInstance()->registerEntityInspector<SpawnComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<SpawnerComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	},
 	inspectorPriority);
 }
-void SpawnEditorSystem::deinit()
+void SpawnerEditorSystem::deinit()
 {
-	EditorRenderSystem::getInstance()->unregisterEntityInspector<SpawnComponent>();
+	EditorRenderSystem::getInstance()->unregisterEntityInspector<SpawnerComponent>();
 
 	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnEditorSystem::editorBarTool);
+		UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
+		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
-static void renderSpawns(const string& searchString, bool searchCaseSensitive)
+static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 {
 	auto linkSystem = LinkSystem::getInstance();
-	auto spawnSystem = SpawnSystem::getInstance();
+	auto spawnerSystem = SpawnerSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
-	const auto& components = spawnSystem->getComponents();
+	const auto& components = spawnerSystem->getComponents();
 	auto occupancy = components.getOccupancy();
 	auto componentData = components.getData();
 
@@ -79,29 +79,30 @@ static void renderSpawns(const string& searchString, bool searchCaseSensitive)
 
 	for (uint32 i = 0; i < occupancy; i++)
 	{
-		auto spawnView = &componentData[i];
-		if (!spawnView->getEntity())
+		auto spawnerView = &componentData[i];
+		if (!spawnerView->getEntity())
 			continue;
 
+		auto entity = spawnerView->getEntity();
 		if (!searchString.empty())
 		{
-			if (!find(spawnView->path.generic_string(), searchString, searchCaseSensitive) &&
-				!find(spawnView->prefab.toBase64(), searchString, searchCaseSensitive))
+			if (!find(spawnerView->path.generic_string(), searchString, *entity, searchCaseSensitive) &&
+				!find(spawnerView->prefab.toBase64(), searchString, *entity, searchCaseSensitive))
 			{
 				continue;
 			}
 		}
 
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
-		if (editorSystem->selectedEntity == spawnView->getEntity())
+		if (editorSystem->selectedEntity == entity)
 			flags |= ImGuiTreeNodeFlags_Selected;
 
-		auto name = spawnView->path.empty() ? spawnView->prefab.toBase64() :
-			spawnView->path.generic_string() + " (" + spawnView->prefab.toBase64() + ")";
+		auto name = spawnerView->path.empty() ? spawnerView->prefab.toBase64() :
+			spawnerView->path.generic_string() + " (" + spawnerView->prefab.toBase64() + ")";
 		if (ImGui::TreeNodeEx(name.c_str(), flags))
 		{
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-				editorSystem->selectedEntity = spawnView->getEntity();
+				editorSystem->selectedEntity = entity;
 			ImGui::TreePop();
 		}
 	}
@@ -109,7 +110,7 @@ static void renderSpawns(const string& searchString, bool searchCaseSensitive)
 	if (components.getCount() == 0)
 	{
 		ImGui::Indent();
-		ImGui::TextDisabled("No spawns");
+		ImGui::TextDisabled("No spawners");
 		ImGui::Unindent();
 	}
 
@@ -121,9 +122,9 @@ static void renderSpawns(const string& searchString, bool searchCaseSensitive)
 static void renderSharedPrefabs(const string& searchString, bool searchCaseSensitive)
 {
 	auto linkSystem = LinkSystem::getInstance();
-	auto spawnSystem = SpawnSystem::getInstance();
+	auto spawnerSystem = SpawnerSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
-	const auto& sharedPrefabs = spawnSystem->getSharedPrefabs();
+	const auto& sharedPrefabs = spawnerSystem->getSharedPrefabs();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
@@ -168,32 +169,32 @@ static void renderSharedPrefabs(const string& searchString, bool searchCaseSensi
 }
 
 //**********************************************************************************************************************
-void SpawnEditorSystem::editorRender()
+void SpawnerEditorSystem::editorRender()
 {
 	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);
 
-	if (ImGui::Begin("Spawn Viewer", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
+	if (ImGui::Begin("Spawner Viewer", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		ImGui::InputText("Search", &searchString); ImGui::SameLine();
 		ImGui::Checkbox("Aa", &searchCaseSensitive); ImGui::Spacing();
 
-		if (ImGui::CollapsingHeader("Spawns"))
-			renderSpawns(searchString, searchCaseSensitive);
+		if (ImGui::CollapsingHeader("Spawners"))
+			renderSpawners(searchString, searchCaseSensitive);
 		if (ImGui::CollapsingHeader("Shared Prefabs"))
 			renderSharedPrefabs(searchString, searchCaseSensitive);
 		ImGui::Spacing();
 
 		if (ImGui::Button("Destroy Shared Prefabs", ImVec2(-FLT_MIN, 0.0f)))
-			SpawnSystem::getInstance()->destroySharedPrefabs();
+			SpawnerSystem::getInstance()->destroySharedPrefabs();
 	}
 	ImGui::End();
 }
-void SpawnEditorSystem::editorBarTool()
+void SpawnerEditorSystem::editorBarTool()
 {
-	if (ImGui::MenuItem("Spawn Viewer"))
+	if (ImGui::MenuItem("Spawner Viewer"))
 		showWindow = true;
 }
 
@@ -237,53 +238,53 @@ static void renderSpawnedEntities(const vector<Hash128>& spawnedEntities)
 }
 
 //**********************************************************************************************************************
-void SpawnEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
+void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto spawnView = SpawnSystem::getInstance()->get(entity);
-		ImGui::Text("Active: %s, Path: %s, Prefab: %s", spawnView->isActive ? "true" : "false",
-			spawnView->path.generic_string().c_str(), spawnView->prefab.toBase64().c_str());
+		auto spawnerView = SpawnerSystem::getInstance()->get(entity);
+		ImGui::Text("Active: %s, Path: %s, Prefab: %s", spawnerView->isActive ? "true" : "false",
+			spawnerView->path.generic_string().c_str(), spawnerView->prefab.toBase64().c_str());
 		ImGui::EndTooltip();
 	}
 
 	if (!isOpened)
 		return;
 
-	auto spawnView = SpawnSystem::getInstance()->get(entity);
-	ImGui::Checkbox("Active", &spawnView->isActive);
+	auto spawnerView = SpawnerSystem::getInstance()->get(entity);
+	ImGui::Checkbox("Active", &spawnerView->isActive);
 	
 	static const set<string> extensions = { ".scene" };
-	EditorRenderSystem::getInstance()->drawFileSelector(spawnView->path, 
-		spawnView->getEntity(), typeid(SpawnComponent), "scenes", extensions);
+	EditorRenderSystem::getInstance()->drawFileSelector(spawnerView->path,
+		spawnerView->getEntity(), typeid(SpawnerComponent), "scenes", extensions);
 	
-	auto uuid = spawnView->prefab.toBase64();
+	auto uuid = spawnerView->prefab.toBase64();
 	if (ImGui::InputText("Prefab", &uuid))
 	{
-		auto prefab = spawnView->prefab;
+		auto prefab = spawnerView->prefab;
 		if (prefab.fromBase64(uuid))
-			spawnView->prefab = prefab;
+			spawnerView->prefab = prefab;
 	}
 	if (ImGui::BeginPopupContextItem("prefab"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			spawnView->prefab = {};
+			spawnerView->prefab = {};
 		ImGui::EndPopup();
 	}
 
-	auto maxCount = (int)spawnView->maxCount;
+	auto maxCount = (int)spawnerView->maxCount;
 	if (ImGui::DragInt("Max Count", &maxCount))
-		spawnView->maxCount = (uint32)std::min(maxCount, 0);
-	ImGui::DragFloat("Delay", &spawnView->delay);
+		spawnerView->maxCount = (uint32)std::min(maxCount, 0);
+	ImGui::DragFloat("Delay", &spawnerView->delay);
 
 	const auto modes = "One Shot\00";
-	ImGui::Combo("Mode", &spawnView->mode, modes);	
+	ImGui::Combo("Mode", &spawnerView->mode, modes);
 
 	if (ImGui::CollapsingHeader("Spawned Entities"))
-		renderSpawnedEntities(spawnView->getSpawnedEntities());
+		renderSpawnedEntities(spawnerView->getSpawnedEntities());
 	ImGui::Spacing();
 
 	if (ImGui::Button("Destroy Spawned", ImVec2(-FLT_MIN, 0.0f)))
-		spawnView->destroySpawned();
+		spawnerView->destroySpawned();
 }
 #endif

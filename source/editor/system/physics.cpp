@@ -15,7 +15,6 @@
 #include "garden/editor/system/physics.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/physics.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;
@@ -99,7 +98,7 @@ void PhysicsEditorSystem::editorRender()
 }
 
 //**********************************************************************************************************************
-static void renderBoxShape(View<RigidbodyComponent> rigidbodyView)
+static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, AllowedDOF allowedDofCache)
 {
 	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shape = rigidbodyView->getShape();
@@ -132,22 +131,30 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView)
 
 	if (isChanged && halfExtent >= convexRadius && convexRadius >= 0.0f)
 	{
+		auto isSensor = rigidbodyView->isSensor();
+		rigidbodyView->setShape({});
 		physicsSystem->destroyShared(shape);
 		shape = physicsSystem->createSharedBoxShape(halfExtent, convexRadius);
-		rigidbodyView->setShape(shape);
+		rigidbodyView->setShape(shape, false, false, isSensor, allowedDofCache);
 	}
 }
+
 //**********************************************************************************************************************
-static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView)
+static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, AllowedDOF& allowedDofCached)
 {
 	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shape = rigidbodyView->getShape();
+	auto isSensor = rigidbodyView->isSensor();
 
 	ImGui::BeginDisabled(shape && !rigidbodyView->canBeKinematicOrDynamic());
 	const auto mTypes = "Static\0Kinematic\0Dynamic\00";
 	auto motionType = rigidbodyView->getMotionType();
 	if (ImGui::Combo("Motion Type", &motionType, mTypes))
+	{
+		if (motionType != MotionType::Static)
+			allowedDofCached = AllowedDOF::All;
 		rigidbodyView->setMotionType(motionType);
+	}
 	ImGui::EndDisabled();
 
 	int shapeType = 0;
@@ -171,13 +178,15 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView)
 		switch (shapeType)
 		{
 		case 0:
-			physicsSystem->destroyShared(shape);
 			rigidbodyView->setShape({});
+			physicsSystem->destroyShared(shape);
+			
 			break;
 		case 2:
+			rigidbodyView->setShape({});
 			physicsSystem->destroyShared(shape);
 			shape = physicsSystem->createSharedBoxShape(float3(0.5f));
-			rigidbodyView->setShape(shape);
+			rigidbodyView->setShape(shape, false, false, isSensor, allowedDofCached);
 			break;
 		default:
 			break;
@@ -185,7 +194,61 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView)
 	}
 
 	if (shapeType == 2)
-		renderBoxShape(rigidbodyView);
+		renderBoxShape(rigidbodyView, allowedDofCached);
+}
+
+//**********************************************************************************************************************
+static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, AllowedDOF& allowedDofCached)
+{
+	ImGui::Indent();
+	ImGui::SeparatorText("Degrees of Freedom (DOF)");
+
+	auto shape = rigidbodyView->getShape();
+	if (shape)
+		allowedDofCached = rigidbodyView->getAllowedDOF();
+	auto isAnyChanged = false;
+
+	ImGui::BeginDisabled(rigidbodyView->getMotionType() == MotionType::Static);
+	ImGui::Text("Translation:"); ImGui::SameLine();
+	ImGui::PushID("dofTranslation");
+	auto transX = hasAnyFlag(allowedDofCached, AllowedDOF::TranslationX);
+	isAnyChanged |= ImGui::Checkbox("X", &transX); ImGui::SameLine();
+	auto transY = hasAnyFlag(allowedDofCached, AllowedDOF::TranslationY);
+	isAnyChanged |= ImGui::Checkbox("Y", &transY); ImGui::SameLine();
+	auto transZ = hasAnyFlag(allowedDofCached, AllowedDOF::TranslationZ);
+	isAnyChanged |= ImGui::Checkbox("Z", &transZ);
+	ImGui::PopID();
+
+	ImGui::Text("Rotation:"); ImGui::SameLine();
+	ImGui::PushID("dofRotation");
+	auto rotX = hasAnyFlag(allowedDofCached, AllowedDOF::RotationX);
+	isAnyChanged |= ImGui::Checkbox("X", &rotX); ImGui::SameLine();
+	auto rotY = hasAnyFlag(allowedDofCached, AllowedDOF::RotationY);
+	isAnyChanged |= ImGui::Checkbox("Y", &rotY); ImGui::SameLine();
+	auto rotZ = hasAnyFlag(allowedDofCached, AllowedDOF::RotationZ);
+	isAnyChanged |= ImGui::Checkbox("Z", &rotZ);
+	ImGui::PopID();
+	ImGui::EndDisabled();
+
+	if (isAnyChanged)
+	{
+		allowedDofCached = AllowedDOF::None;
+		if (transX) allowedDofCached |= AllowedDOF::TranslationX;
+		if (transY) allowedDofCached |= AllowedDOF::TranslationY;
+		if (transZ) allowedDofCached |= AllowedDOF::TranslationZ;
+		if (rotX) allowedDofCached |= AllowedDOF::RotationX;
+		if (rotY) allowedDofCached |= AllowedDOF::RotationY;
+		if (rotZ) allowedDofCached |= AllowedDOF::RotationZ;
+
+		if (shape)
+		{
+			auto isSensor = rigidbodyView->isSensor();
+			rigidbodyView->setShape({});
+			rigidbodyView->setShape(shape, false, false, isSensor, allowedDofCached);
+		}
+	}
+
+	ImGui::Unindent();
 }
 
 //**********************************************************************************************************************
@@ -195,32 +258,49 @@ void PhysicsEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto rigidbodyView = physicsSystem->get(entity);
-		ImGui::Text("Active: %s", rigidbodyView->isActive() ? "true" : "false"); // TODO: show more info
+		ImGui::Text("Has shape: %s, Active: %s", rigidbodyView->getShape() ? "true" : "false",
+			rigidbodyView->isActive() ? "true" : "false");
+		auto motionType = rigidbodyView->getMotionType();
+		if (motionType == MotionType::Static)
+			ImGui::Text("Motion type: Static");
+		else if (motionType == MotionType::Kinematic)
+			ImGui::Text("Motion type: Kinematic");
+		else if (motionType == MotionType::Dynamic)
+			ImGui::Text("Motion type: Dynamic");
+		else ImGui::Text("Motion type: <unknown>");
 		ImGui::EndTooltip();
 	}
 
 	if (isOpened)
 	{
 		auto rigidbodyView = physicsSystem->get(entity);
+		auto shape = rigidbodyView->getShape();
 
+		ImGui::BeginDisabled(!shape || rigidbodyView->getMotionType() == MotionType::Static);
 		auto isActive = rigidbodyView->isActive();
 		if (ImGui::Checkbox("Active", &isActive))
 		{
-			if (isActive && rigidbodyView->getShape())
+			if (isActive)
 				rigidbodyView->activate();
 			else
 				rigidbodyView->deactivate();
 		}
 
-		ImGui::BeginDisabled(!rigidbodyView->getShape());
+		ImGui::SameLine();
+		auto isSensor = rigidbodyView->isSensor();
+		if (ImGui::Checkbox("Sensor", &isSensor))
+			rigidbodyView->setSensor(isSensor);
+		ImGui::EndDisabled();
+		
+		ImGui::BeginDisabled(!shape);
 		float3 position; quat rotation;
 		rigidbodyView->getPosAndRot(position, rotation);
 		if (ImGui::DragFloat3("Position", &position, 0.01f))
-			rigidbodyView->setPosition(position);
+			rigidbodyView->setPosition(position, false);
 		if (ImGui::BeginPopupContextItem("position"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				rigidbodyView->setPosition(float3(0.0f));
+				rigidbodyView->setPosition(float3(0.0f), false);
 			ImGui::EndPopup();
 		}
 
@@ -228,13 +308,13 @@ void PhysicsEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		{
 			auto difference = newEulerAngles - oldEulerAngles;
 			rotation *= quat(radians(difference));
-			rigidbodyView->setRotation(rotation);
+			rigidbodyView->setRotation(rotation, false);
 			oldEulerAngles = newEulerAngles;
 		}
 		if (ImGui::BeginPopupContextItem("rotation"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				rigidbodyView->setRotation(quat::identity);
+				rigidbodyView->setRotation(quat::identity, false);
 			ImGui::EndPopup();
 		}
 		if (ImGui::BeginItemTooltip())
@@ -246,7 +326,10 @@ void PhysicsEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		}
 		ImGui::EndDisabled();
 
-		renderShapeProperties(rigidbodyView);
+		renderShapeProperties(rigidbodyView, allowedDofCached);
+
+		if (ImGui::CollapsingHeader("Advanced Properties"))
+			renderAdvancedProperties(rigidbodyView, allowedDofCached);
 	}
 
 	auto editorSystem = EditorRenderSystem::getInstance();
@@ -262,7 +345,9 @@ void PhysicsEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 				oldRotation = rotation;
 			}
 		}
+
 		selectedEntity = editorSystem->selectedEntity;
+		allowedDofCached = AllowedDOF::All;
 	}
 	else
 	{

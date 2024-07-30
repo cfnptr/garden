@@ -63,8 +63,9 @@ void LinkComponent::regenerateUUID()
 	uuid = Hash128::generateRandom(*(uint64*)(seed));
 	auto componentID = linkSystem->components.getID(this);
 	auto result = linkSystem->uuidMap.emplace(uuid, componentID);
-	GARDEN_ASSERT(result.second); // Whoops random hash collision occured. You are lucky :)
-	if (!result.second) uuid = {};
+	
+	if (!result.second)
+		throw runtime_error("Link UUID collision occured.");
 }
 bool LinkComponent::trySetUUID(const Hash128& uuid)
 {
@@ -182,8 +183,8 @@ void LinkSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Comp
 
 	if (componentView->uuid)
 	{
-		auto uuid = componentView->uuid.toBase64();
-		serializer.write("uuid", uuid);
+		componentView->uuid.toBase64(uuidStringCache);
+		serializer.write("uuid", uuidStringCache);
 	}
 
 	if (!componentView->tag.empty())
@@ -193,14 +194,13 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 {
 	auto componentView = View<LinkComponent>(component);
 
-	string value;
-	if (deserializer.read("uuid", value))
+	if (deserializer.read("uuid", uuidStringCache))
 	{
-		if (!componentView->uuid.fromBase64(value))
+		if (!componentView->uuid.fromBase64(uuidStringCache))
 		{
 			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
-				logSystem->error("Deserialized entity with invalid link uuid. (uuid: " + value + ")");
+				logSystem->error("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
 		}
 
 		auto componentID = components.getID(*componentView);
@@ -210,15 +210,20 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 		{
 			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
-				logSystem->error("Deserialized entity with already existing link uuid. (uuid: " + value + ")");
+			{
+				logSystem->error("Deserialized entity with already "
+					"existing link uuid. (uuid: " + uuidStringCache + ")");
+			}
 			componentView->uuid = {};
 		}
 	}
-	if (deserializer.read("tag", value))
+
+	string tag;
+	if (deserializer.read("tag", tag))
 	{
 		auto componentID = components.getID(*componentView);
-		tagMap.emplace(value, componentID);
-		componentView->tag = std::move(value);
+		tagMap.emplace(tag, componentID);
+		componentView->tag = std::move(tag);
 	}
 }
 

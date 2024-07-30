@@ -27,7 +27,8 @@ using namespace math;
 using namespace ecsm;
 
 /**
- * @brief Contains information about object transformation within the 3D space.
+ * @brief Contains information about object transformation within the 3D space and nodes.
+ * @details Nodes describe ties (connections) between objects in the game world.
  */
 struct TransformComponent final : public Component
 {
@@ -45,6 +46,7 @@ private:
 	uint32 childCount = 0;
 	uint32 childCapacity = 0;
 	ID<Entity>* childs = nullptr;
+	uint64 uid = 0;
 
 	/**
 	 * @brief Destroys childs array memory block, if allocated. 
@@ -157,15 +159,19 @@ struct TransformFrame final : public AnimationFrame
  */
 class TransformSystem final : public System, public ISerializable, public IAnimatable
 {
-	using EntityParentPair = pair<ID<Entity>, uint32>;
+	using EntityParentPair = pair<ID<Entity>, uint64>;
 	using EntityDuplicatePair = pair<ID<Entity>, ID<Entity>>;
 
 	LinearPool<TransformComponent> components;
 	LinearPool<TransformFrame, false> animationFrames;
 	vector<ID<Entity>> transformStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
-	map<uint32, ID<Entity>> deserializeEntities;
-	vector<EntityParentPair> deserializeParents;
+	map<uint64, ID<Entity>> deserializedEntities;
+	vector<EntityParentPair> deserializedParents;
+	string uidStringCache;
+	#if GARDEN_DEBUG
+	set<uint64> serializedEntities;
+	#endif
 
 	static TransformSystem* instance;
 
@@ -187,6 +193,7 @@ class TransformSystem final : public System, public ISerializable, public IAnima
 	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void postSerialize(ISerializer& serializer) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
 
