@@ -27,6 +27,7 @@
 #include "ecsm.hpp"
 #include "math/aabb.hpp"
 #include "math/matrix.hpp"
+#include <random>
 
 namespace garden
 {
@@ -41,6 +42,8 @@ using namespace ecsm;
 class ISerializer
 {
 public:
+	random_device randomDevice = {};
+
 	virtual ~ISerializer() { }
 
 	virtual void beginChild(string_view name) = 0;

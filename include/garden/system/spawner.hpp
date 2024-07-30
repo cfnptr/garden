@@ -21,7 +21,7 @@ namespace garden
 {
 
 using namespace ecsm;
-class SpawnSystem;
+class SpawnerSystem;
 
 enum class SpawnMode : uint8
 {
@@ -29,7 +29,7 @@ enum class SpawnMode : uint8
 	Count
 };
 
-struct SpawnComponent final : public Component
+struct SpawnerComponent final : public Component
 {
 	fs::path path = {};
 	Hash128 prefab = {};
@@ -43,8 +43,8 @@ private:
 
 	bool destroy();
 
-	friend class SpawnSystem;
-	friend class LinearPool<SpawnComponent>;
+	friend class SpawnerSystem;
+	friend class LinearPool<SpawnerComponent>;
 public:
 	/**
 	 * @brief Returns spawned enitity array.
@@ -79,21 +79,22 @@ public:
 	void destroySpawned();
 };
 
-class SpawnSystem final : public System, public ISerializable
+class SpawnerSystem final : public System, public ISerializable
 {
-	LinearPool<SpawnComponent> components;
+	LinearPool<SpawnerComponent> components;
 	map<string, Hash128> sharedPrefabs;
+	string valueStringCache;
 
-	static SpawnSystem* instance;
+	static SpawnerSystem* instance;
 
 	/**
 	 * @brief Creates a new spawner system instance.
 	 */
-	SpawnSystem();
+	SpawnerSystem();
 	/**
 	 * @brief Destroys spawner system instance.
 	 */
-	~SpawnSystem() final;
+	~SpawnerSystem() final;
 
 	void postDeinit();
 	void update();
@@ -113,9 +114,9 @@ class SpawnSystem final : public System, public ISerializable
 	friend class LinkComponent;
 public:
 	/**
-	 * @brief Returns spawn component pool.
+	 * @brief Returns spawner component pool.
 	 */
-	const LinearPool<SpawnComponent>& getComponents() const noexcept { return components; }
+	const LinearPool<SpawnerComponent>& getComponents() const noexcept { return components; }
 	/**
 	 * @brief Returns shared prefab map.
 	 */
@@ -203,29 +204,29 @@ public:
 	void destroySharedPrefabs();
 
 	/**
-	 * @brief Returns true if entity has spawn component.
+	 * @brief Returns true if entity has spawner component.
 	 * @param entity target entity with component
 	 * @note This function is faster than the Manager one.
 	 */
 	bool has(ID<Entity> entity) const;
 	/**
-	 * @brief Returns entity spawn component view.
+	 * @brief Returns entity spawner component view.
 	 * @param entity target entity with component
 	 * @note This function is faster than the Manager one.
 	 */
-	View<SpawnComponent> get(ID<Entity> entity) const;
+	View<SpawnerComponent> get(ID<Entity> entity) const;
 	/**
-	 * @brief Returns entity spawn component view if exist.
+	 * @brief Returns entity spawner component view if exist.
 	 * @param entity target entity with component
 	 * @note This function is faster than the Manager one.
 	 */
-	View<SpawnComponent> tryGet(ID<Entity> entity) const;
+	View<SpawnerComponent> tryGet(ID<Entity> entity) const;
 
 	/**
-	 * @brief Returns spawn system instance.
+	 * @brief Returns spawner system instance.
 	 * @warning Do not use it if you have several link system instances.
 	 */
-	static SpawnSystem* getInstance() noexcept
+	static SpawnerSystem* getInstance() noexcept
 	{
 		GARDEN_ASSERT(instance); // Spawn system is not created.
 		return instance;

@@ -76,7 +76,7 @@ static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem,
 			resourceName + to_string(i + 1) : item->getDebugName();
 		if (!searchString.empty())
 		{
-			if (!find(name, searchString, searchCaseSensitive))
+			if (!find(name, searchString, i + 1, searchCaseSensitive))
 				continue;
 		}
 

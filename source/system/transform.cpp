@@ -14,6 +14,7 @@
 
 #include "garden/system/transform.hpp"
 #include "garden/system/log.hpp"
+#include "garden/base64.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/transform.hpp"
@@ -360,12 +361,16 @@ void TransformSystem::copyComponent(View<Component> source, View<Component> dest
 {
 	const auto sourceView = View<TransformComponent>(source);
 	auto destinationView = View<TransformComponent>(destination);
+	destinationView->destroy();
+
 	destinationView->position = sourceView->position;
 	destinationView->scale = sourceView->scale;
 	destinationView->rotation = sourceView->rotation;
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	destinationView->debugName = sourceView->debugName;
 	#endif
+	destinationView->isActive = sourceView->isActive;
+	destinationView->uid = 0;
 }
 const string& TransformSystem::getComponentName() const
 {
@@ -390,7 +395,23 @@ void TransformSystem::disposeComponents()
 void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
 	auto componentView = View<TransformComponent>(component);
-	serializer.write("uid", *componentView->entity);
+
+	if (!componentView->uid)
+	{
+		auto& randomDevice = serializer.randomDevice;
+		uint32 uid[2] { randomDevice(), randomDevice() };
+		componentView->uid = *(uint64*)(uid);
+		GARDEN_ASSERT(componentView->uid); // Something is wrong with the random device.
+	}
+
+	#if GARDEN_DEBUG
+	auto emplaceResult = serializedEntities.emplace(componentView->uid);
+	GARDEN_ASSERT(emplaceResult.second); // Detected several entities with the same UID.
+	#endif
+
+	encodeBase64(uidStringCache, &componentView->uid, sizeof(uint64));
+	uidStringCache.resize(uidStringCache.length() - 1);
+	serializer.write("uid", uidStringCache);
 
 	if (componentView->position != float3(0.0f))
 		serializer.write("position", componentView->position);
@@ -398,22 +419,103 @@ void TransformSystem::serialize(ISerializer& serializer, ID<Entity> entity, View
 		serializer.write("rotation", componentView->rotation);
 	if (componentView->scale != float3(1.0f))
 		serializer.write("scale", componentView->scale);
+
 	if (componentView->parent)
-		serializer.write("parent", *componentView->parent);
+	{
+		auto parentView = get(componentView->parent);
+		if (!parentView->uid)
+		{
+			auto& randomDevice = serializer.randomDevice;
+			uint32 uid[2]{ randomDevice(), randomDevice() };
+			parentView->uid = *(uint64*)(uid);
+			GARDEN_ASSERT(parentView->uid); // Something is wrong with the random device.
+		}
+		encodeBase64(uidStringCache, &parentView->uid, sizeof(uint64));
+		uidStringCache.resize(uidStringCache.length() - 1);
+		serializer.write("parent", uidStringCache);
+	}
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
 	if (!componentView->debugName.empty())
 		serializer.write("debugName", componentView->debugName);
 	#endif
 }
+void TransformSystem::postSerialize(ISerializer& serializer)
+{
+	#if GARDEN_DEBUG
+	serializedEntities.clear();
+	#endif
+}
+
 void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+{
+	auto componentView = View<TransformComponent>(component);
+
+	if (deserializer.read("uid", uidStringCache) &&
+		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
+	{
+		if (decodeBase64(&componentView->uid, uidStringCache, ModpDecodePolicy::kForgiving))
+		{
+			auto result = deserializedEntities.emplace(componentView->uid, entity);
+			if (!result.second)
+			{
+				auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+				if (logSystem)
+					logSystem->error("Deserialized entity with already existing UID. (uid: " + uidStringCache + ")");
+			}
+		}
+	}
+
+	deserializer.read("position", componentView->position);
+	deserializer.read("rotation", componentView->rotation);
+	deserializer.read("scale", componentView->scale);
+
+	if (deserializer.read("parent", uidStringCache) &&
+		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
+	{
+		uint64 parentUID = 0;
+		if (decodeBase64(&parentUID, uidStringCache, ModpDecodePolicy::kForgiving))
+			deserializedParents.emplace_back(make_pair(entity, parentUID));
+	}
+
+	#if GARDEN_DEBUG | GARDEN_EDITOR
+	deserializer.read("debugName", componentView->debugName);
+	#endif
+}
+void TransformSystem::postDeserialize(IDeserializer& deserializer)
+{
+	auto manager = Manager::getInstance();
+	for (auto pair : deserializedParents)
+	{
+		auto parent = deserializedEntities.find(pair.second);
+		if (parent == deserializedEntities.end())
+		{
+			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+			if (logSystem)
+			{
+				encodeBase64(uidStringCache, &pair.second, sizeof(uint64));
+				uidStringCache.resize(uidStringCache.length() - 1);
+				logSystem->error("Deserialized entity parent does not exist. (parentUID: " + uidStringCache + ")");
+			}
+			continue;
+		}
+
+		auto transformView = get(pair.first);
+		transformView->setParent(parent->second);
+	}
+
+	deserializedParents.clear();
+	deserializedEntities.clear();
+}
+
+/*void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
 	auto componentView = View<TransformComponent>(component);
 
 	uint32 uid = 0;
 	deserializer.read("uid", uid);
 
-	auto result = deserializeEntities.emplace(uid, entity);
+	auto result = deserializedEntities.emplace(uid, entity);
 	if (!result.second)
 	{
 		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
@@ -427,7 +529,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 
 	uint32 parent = 0;
 	if (deserializer.read("parent", parent))
-		deserializeParents.emplace_back(make_pair(entity, parent));
+		deserializedParents.emplace_back(make_pair(entity, parent));
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
 	deserializer.read("debugName", componentView->debugName);
@@ -436,10 +538,10 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 void TransformSystem::postDeserialize(IDeserializer& deserializer)
 {
 	auto manager = Manager::getInstance();
-	for (auto pair : deserializeParents)
+	for (auto pair : deserializedParents)
 	{
-		auto parent = deserializeEntities.find(pair.second);
-		if (parent == deserializeEntities.end())
+		auto parent = deserializedEntities.find(pair.second);
+		if (parent == deserializedEntities.end())
 		{
 			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
 			if (logSystem)
@@ -454,9 +556,9 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 		transformView->setParent(parent->second);
 	}
 
-	deserializeParents.clear();
-	deserializeEntities.clear();
-}
+	deserializedParents.clear();
+	deserializedEntities.clear();
+}*/
 
 //**********************************************************************************************************************
 void TransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)

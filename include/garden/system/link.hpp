@@ -16,7 +16,6 @@
 #include "garden/serialize.hpp"
 #include "garden/hash.hpp"
 #include "ecsm.hpp"
-#include <random>
 
 /***********************************************************************************************************************
  * @file
@@ -55,6 +54,7 @@ public:
 	/**
 	 * @brief Generates and sets a new random UUID.
 	 * @note Trying to get maximum randomness internally.
+	 * @throw runtime_error if UUID collision has occured
 	 */
 	void regenerateUUID();
 
@@ -78,6 +78,7 @@ class LinkSystem final : public System, public ISerializable
 	LinearPool<LinkComponent> components;
 	map<Hash128, ID<LinkComponent>> uuidMap;
 	multimap<string, ID<LinkComponent>> tagMap;
+	string uuidStringCache;
 	random_device randomDevice;
 
 	static LinkSystem* instance;

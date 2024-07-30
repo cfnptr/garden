@@ -95,14 +95,14 @@ void CameraSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, V
 	string type;
 	deserializer.read("projection", type);
 
-	if (type == "perspective")
+	if (type == "Perspective")
 	{
 		componentView->type = ProjectionType::Perspective;
 		deserializer.read("fieldOfView", componentView->p.perspective.fieldOfView);
 		deserializer.read("aspectRatio", componentView->p.perspective.aspectRatio);
 		deserializer.read("nearPlane", componentView->p.perspective.nearPlane);
 	}
-	else if (type == "orthographic")
+	else if (type == "Orthographic")
 	{
 		componentView->type = ProjectionType::Orthographic;
 		deserializer.read("width", componentView->p.orthographic.width);

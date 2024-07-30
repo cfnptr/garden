@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/system/spawn.hpp"
+#include "garden/system/spawner.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/link.hpp"
@@ -20,13 +20,13 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-bool SpawnComponent::destroy()
+bool SpawnerComponent::destroy()
 {
 	destroySpawned();
 	return true;
 }
 
-ID<Entity> SpawnComponent::loadPrefab()
+ID<Entity> SpawnerComponent::loadPrefab()
 {
 	if (prefab)
 	{
@@ -38,11 +38,11 @@ ID<Entity> SpawnComponent::loadPrefab()
 	if (path.empty())
 		return {};
 
-	auto spawnSystem = SpawnSystem::getInstance();
+	auto spawnerSystem = SpawnerSystem::getInstance();
 	ID<Entity> entity;
 
 	auto pathString = path.generic_string();
-	if (spawnSystem->tryGetSharedPrefab(pathString, prefab, entity))
+	if (spawnerSystem->tryGetSharedPrefab(pathString, prefab, entity))
 		return entity;
 
 	entity = ResourceSystem::getInstance()->loadScene(path, true);
@@ -55,13 +55,13 @@ ID<Entity> SpawnComponent::loadPrefab()
 		linkView->regenerateUUID();
 		prefab = linkView->getUUID();
 		manager->add<DoNotSerializeComponent>(entity);
-		spawnSystem->addSharedPrefab(pathString, prefab);
+		spawnerSystem->addSharedPrefab(pathString, prefab);
 	}
 	return entity;
 }
 
 //**********************************************************************************************************************
-void SpawnComponent::spawn(uint32 count)
+void SpawnerComponent::spawn(uint32 count)
 {
 	if (!count)
 		return;
@@ -102,7 +102,7 @@ void SpawnComponent::spawn(uint32 count)
 		spawnedEntities.push_back(dupLinkView->getUUID());
 	}
 }
-void SpawnComponent::destroySpawned()
+void SpawnerComponent::destroySpawned()
 {
 	auto linkSystem = LinkSystem::getInstance();
 	auto transformSystem = TransformSystem::getInstance();
@@ -115,37 +115,37 @@ void SpawnComponent::destroySpawned()
 }
 
 //**********************************************************************************************************************
-SpawnSystem* SpawnSystem::instance = nullptr;
+SpawnerSystem* SpawnerSystem::instance = nullptr;
 
-SpawnSystem::SpawnSystem()
+SpawnerSystem::SpawnerSystem()
 {
 	auto manager = Manager::getInstance();
-	SUBSCRIBE_TO_EVENT("PostDeinit", SpawnSystem::postDeinit);
-	SUBSCRIBE_TO_EVENT("Update", SpawnSystem::update);
+	SUBSCRIBE_TO_EVENT("PostDeinit", SpawnerSystem::postDeinit);
+	SUBSCRIBE_TO_EVENT("Update", SpawnerSystem::update);
 
 	GARDEN_ASSERT(!instance); // More than one system instance detected.
 	instance = this;
 }
-SpawnSystem::~SpawnSystem()
+SpawnerSystem::~SpawnerSystem()
 {
 	auto manager = Manager::getInstance();
 	if (manager->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", SpawnSystem::postDeinit);
-		UNSUBSCRIBE_FROM_EVENT("Update", SpawnSystem::update);
+		UNSUBSCRIBE_FROM_EVENT("PostDeinit", SpawnerSystem::postDeinit);
+		UNSUBSCRIBE_FROM_EVENT("Update", SpawnerSystem::update);
 	}
 
 	GARDEN_ASSERT(instance); // More than one system instance detected.
 	instance = nullptr;
 }
 
-void SpawnSystem::postDeinit()
+void SpawnerSystem::postDeinit()
 {
 	components.clear();
 }
 
 //**********************************************************************************************************************
-void SpawnSystem::update()
+void SpawnerSystem::update()
 {
 	auto manager = Manager::getInstance();
 	auto linkSystem = LinkSystem::getInstance();
@@ -176,18 +176,18 @@ void SpawnSystem::update()
 }
 
 //**********************************************************************************************************************
-ID<Component> SpawnSystem::createComponent(ID<Entity> entity)
+ID<Component> SpawnerSystem::createComponent(ID<Entity> entity)
 {
 	return ID<Component>(components.create());
 }
-void SpawnSystem::destroyComponent(ID<Component> instance)
+void SpawnerSystem::destroyComponent(ID<Component> instance)
 {
-	components.destroy(ID<SpawnComponent>(instance));
+	components.destroy(ID<SpawnerComponent>(instance));
 }
-void SpawnSystem::copyComponent(View<Component> source, View<Component> destination)
+void SpawnerSystem::copyComponent(View<Component> source, View<Component> destination)
 {
-	const auto sourceView = View<SpawnComponent>(source);
-	auto destinationView = View<SpawnComponent>(destination);
+	const auto sourceView = View<SpawnerComponent>(source);
+	auto destinationView = View<SpawnerComponent>(destination);
 	destinationView->path = sourceView->path;
 	destinationView->prefab = sourceView->prefab;
 	destinationView->maxCount = sourceView->maxCount;
@@ -195,28 +195,28 @@ void SpawnSystem::copyComponent(View<Component> source, View<Component> destinat
 	destinationView->mode = sourceView->mode;
 	destinationView->isActive = sourceView->isActive;
 }
-const string& SpawnSystem::getComponentName() const
+const string& SpawnerSystem::getComponentName() const
 {
-	static const string name = "Spawn";
+	static const string name = "Spawner";
 	return name;
 }
-type_index SpawnSystem::getComponentType() const
+type_index SpawnerSystem::getComponentType() const
 {
-	return typeid(SpawnComponent);
+	return typeid(SpawnerComponent);
 }
-View<Component> SpawnSystem::getComponent(ID<Component> instance)
+View<Component> SpawnerSystem::getComponent(ID<Component> instance)
 {
-	return View<Component>(components.get(ID<SpawnComponent>(instance)));
+	return View<Component>(components.get(ID<SpawnerComponent>(instance)));
 }
-void SpawnSystem::disposeComponents()
+void SpawnerSystem::disposeComponents()
 {
 	components.dispose();
 }
 
 //**********************************************************************************************************************
-void SpawnSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+void SpawnerSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
-	auto componentView = View<SpawnComponent>(component);
+	auto componentView = View<SpawnerComponent>(component);
 
 	if (!componentView->isActive)
 		serializer.write("isActive", false);	
@@ -227,7 +227,10 @@ void SpawnSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Com
 	{
 		auto entity = LinkSystem::getInstance()->findEntity(componentView->prefab);
 		if (entity && !Manager::getInstance()->has<DoNotSerializeComponent>(entity))
-			serializer.write("prefab", componentView->prefab.toBase64());
+		{
+			componentView->prefab.toBase64(valueStringCache);
+			serializer.write("prefab", valueStringCache);
+		}
 	}
 
 	if (componentView->maxCount != 1)
@@ -244,27 +247,26 @@ void SpawnSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Com
 		}
 	}
 }
-void SpawnSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto componentView = View<SpawnComponent>(component);
+	auto componentView = View<SpawnerComponent>(component);
 	deserializer.read("isActive", componentView->isActive);
 
-	string stringValue;
-	if (deserializer.read("path", stringValue))
-		componentView->path = stringValue;
-	if (deserializer.read("prefab", stringValue))
-		componentView->prefab.fromBase64(stringValue);
+	if (deserializer.read("path", valueStringCache))
+		componentView->path = valueStringCache;
+	if (deserializer.read("prefab", valueStringCache))
+		componentView->prefab.fromBase64(valueStringCache);
 
 	deserializer.read("maxCount", componentView->maxCount);
 	deserializer.read("delay", componentView->delay);
 
-	if (deserializer.read("mode", stringValue))
+	if (deserializer.read("mode", valueStringCache))
 	{
 	}
 }
 
 //**********************************************************************************************************************
-bool SpawnSystem::tryAddSharedPrefab(const string& path, const Hash128& uuid)
+bool SpawnerSystem::tryAddSharedPrefab(const string& path, const Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(uuid);
@@ -283,7 +285,7 @@ bool SpawnSystem::tryAddSharedPrefab(const string& path, const Hash128& uuid)
 	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory.
 	return true;
 }
-bool SpawnSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
+bool SpawnerSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(prefab);
@@ -321,7 +323,7 @@ bool SpawnSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
 }
 
 //**********************************************************************************************************************
-bool SpawnSystem::tryGetSharedPrefab(const string& path, Hash128& uuid)
+bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
@@ -333,7 +335,7 @@ bool SpawnSystem::tryGetSharedPrefab(const string& path, Hash128& uuid)
 	uuid = searchResult->second;
 	return true;
 }
-bool SpawnSystem::tryGetSharedPrefab(const string& path, ID<Entity>& prefab)
+bool SpawnerSystem::tryGetSharedPrefab(const string& path, ID<Entity>& prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
@@ -347,7 +349,7 @@ bool SpawnSystem::tryGetSharedPrefab(const string& path, ID<Entity>& prefab)
 	prefab = entity;
 	return true;
 }
-bool SpawnSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Entity>& prefab)
+bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Entity>& prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
@@ -363,7 +365,7 @@ bool SpawnSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Entit
 	return true;
 }
 
-void SpawnSystem::destroySharedPrefabs()
+void SpawnerSystem::destroySharedPrefabs()
 {
 	auto manager = Manager::getInstance();
 	auto linkSystem = LinkSystem::getInstance();
@@ -380,27 +382,27 @@ void SpawnSystem::destroySharedPrefabs()
 }
 
 //**********************************************************************************************************************
-bool SpawnSystem::has(ID<Entity> entity) const
+bool SpawnerSystem::has(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
 	const auto entityView = Manager::getInstance()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
-	return entityComponents.find(typeid(SpawnComponent)) != entityComponents.end();
+	return entityComponents.find(typeid(SpawnerComponent)) != entityComponents.end();
 }
-View<SpawnComponent> SpawnSystem::get(ID<Entity> entity) const
+View<SpawnerComponent> SpawnerSystem::get(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
 	const auto entityView = Manager::getInstance()->getEntities().get(entity);
-	const auto& pair = entityView->getComponents().at(typeid(SpawnComponent));
-	return components.get(ID<SpawnComponent>(pair.second));
+	const auto& pair = entityView->getComponents().at(typeid(SpawnerComponent));
+	return components.get(ID<SpawnerComponent>(pair.second));
 }
-View<SpawnComponent> SpawnSystem::tryGet(ID<Entity> entity) const
+View<SpawnerComponent> SpawnerSystem::tryGet(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
 	const auto entityView = Manager::getInstance()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
-	auto result = entityComponents.find(typeid(SpawnComponent));
+	auto result = entityComponents.find(typeid(SpawnerComponent));
 	if (result == entityComponents.end())
 		return {};
-	return components.get(ID<SpawnComponent>(result->second.second));
+	return components.get(ID<SpawnerComponent>(result->second.second));
 }

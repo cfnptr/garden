@@ -1079,6 +1079,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LoadArray)); path += ";";
 		path += to_string(hasAnyFlag(flags, ImageLoadFlags::ArrayType)); path += ";";
 		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LinearData));
+		// TODO: use Hash128 instead.
 
 		auto result = sharedImages.find(path);
 		if (result != sharedImages.end())
@@ -1792,6 +1793,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		const auto& componentNames = manager->getComponentNames();
 		auto entityCount = (uint32)deserializer.getArraySize();
 
+		string type;
 		for (uint32 i = 0; i < entityCount; i++)
 		{
 			if (!deserializer.beginArrayElement(i))
@@ -1813,7 +1815,6 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					if (!deserializer.beginArrayElement(j))
 						break;
 
-					string type;
 					if (!deserializer.read(".type", type))
 					{
 						deserializer.endArrayElement();

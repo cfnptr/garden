@@ -19,14 +19,14 @@
 namespace garden
 {
 
-class SpawnEditorSystem final : public System
+class SpawnerEditorSystem final : public System
 {
 	string searchString;
 	bool searchCaseSensitive = false;
 	bool showWindow = false;
 
-	SpawnEditorSystem();
-	~SpawnEditorSystem() final;
+	SpawnerEditorSystem();
+	~SpawnerEditorSystem() final;
 
 	void init();
 	void deinit();

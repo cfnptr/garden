@@ -86,17 +86,15 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto transformView = transformSystem->get(entity);
+		ImGui::Text("Active: %s", transformView->isActive ? "true" : false);
 		if (transformView->getParent())
 		{
 			auto parentView = transformSystem->get(transformView->getParent());
 			ImGui::Text("Parent: %lu %s", (unsigned long)*transformView->getParent(),
 				parentView->debugName.empty() ? "" : ("(" + parentView->debugName + ")").c_str());
 		}
-		else
-		{
-			ImGui::Text("Parent: null");
-		}
-		ImGui::Text("Children count: %lu", (unsigned long)transformView->getChildCount());
+		if (transformView->getChildCount() > 0)
+			ImGui::Text("Children count: %lu", (unsigned long)transformView->getChildCount());
 		ImGui::EndTooltip();
 	}
 

@@ -1077,6 +1077,13 @@ void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Re
 		ImGui::BeginDisabled(!gpuResourceSystem || !image);
 		if (ImGui::MenuItem("Show Resource"))
 			gpuResourceSystem->openTab(ID<Image>(image));
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			auto resourceSystem = ResourceSystem::getInstance();
+			resourceSystem->destroyShared(image);
+			resourceSystem->destroyShared(descriptorSet);
+			path = ""; image = {}; descriptorSet = {};
+		}
 		ImGui::EndDisabled();
 		ImGui::EndPopup();
 	}

@@ -56,19 +56,21 @@ Hash128::Hash128(string_view base64)
 	
 string Hash128::toBase64() const noexcept
 {
-	string output(modp_b64_encode_data_len(sizeof(Hash128)), ' ');
-	auto result = modp_b64_encode_data(output.data(), (const char*)this, sizeof(Hash128));
-	GARDEN_ASSERT(result == output.length());
-	output.resize(output.length() - 2);
-	return output;
+	string base64;
+	encodeBase64(base64, this, sizeof(Hash128));
+	base64.resize(base64.length() - 2);
+	return base64;
+}
+void Hash128::toBase64(string& base64) const noexcept
+{
+	encodeBase64(base64, this, sizeof(Hash128));
+	base64.resize(base64.length() - 2);
 }
 bool Hash128::fromBase64(string_view base64) noexcept
 {
 	if (base64.size() + 2 != modp_b64_encode_data_len(sizeof(Hash128)))
 		return false;
-	auto result = modp_b64_decode((char*)this, base64.data(),
-		base64.size(), ModpDecodePolicy::kForgiving);
-	return result != MODP_B64_ERROR;
+	return decodeBase64(this, base64, ModpDecodePolicy::kForgiving);
 }
 
 Hash128 Hash128::generateRandom(uint64 seed) noexcept

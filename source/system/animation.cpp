@@ -201,6 +201,8 @@ void AnimationSystem::copyComponent(View<Component> source, View<Component> dest
 {
 	const auto sourceView = View<AnimationComponent>(source);
 	auto destinationView = View<AnimationComponent>(destination);
+	destinationView->destroy();
+
 	destinationView->animations = sourceView->animations;
 	destinationView->active = sourceView->active;
 	destinationView->frame = sourceView->frame;
@@ -245,7 +247,7 @@ void AnimationSystem::serialize(ISerializer& serializer, ID<Entity> entity, View
 	
 	if (!componentView->active.empty())
 		serializer.write("active", componentView->active);
-	if (!componentView->frame != 0.0f)
+	if (componentView->frame != 0.0f)
 		serializer.write("frame", componentView->frame);
 	if (componentView->isPlaying != true)
 		serializer.write("isPlaying", componentView->isPlaying);

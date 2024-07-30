@@ -15,8 +15,8 @@
 #include "garden/main.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/link.hpp"
-#include "garden/system/spawn.hpp"
 #include "garden/system/camera.hpp"
+#include "garden/system/spawner.hpp"
 #include "garden/system/physics.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
@@ -35,8 +35,8 @@
 #include "garden/editor/system/log.hpp"
 #include "garden/editor/system/ecs.hpp"
 #include "garden/editor/system/link.hpp"
-#include "garden/editor/system/spawn.hpp"
 #include "garden/editor/system/camera.hpp"
+#include "garden/editor/system/spawner.hpp"
 #include "garden/editor/system/physics.hpp"
 #include "garden/editor/system/graphics.hpp"
 #include "garden/editor/system/transform.hpp"
@@ -79,7 +79,7 @@ void entryPoint()
 	manager->createSystem<SettingsSystem>();
 	manager->createSystem<ResourceSystem>();
 	manager->createSystem<LinkSystem>();
-	manager->createSystem<SpawnSystem>();
+	manager->createSystem<SpawnerSystem>();
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
 	manager->createSystem<BakedTransformSystem>();
@@ -105,7 +105,7 @@ void entryPoint()
 	manager->createSystem<EcsEditorSystem>();
 	manager->createSystem<LogEditorSystem>();
 	manager->createSystem<LinkEditorSystem>();
-	manager->createSystem<SpawnEditorSystem>();
+	manager->createSystem<SpawnerEditorSystem>();
 	manager->createSystem<CameraEditorSystem>();
 	manager->createSystem<TransformEditorSystem>();
 	manager->createSystem<AnimationEditorSystem>();

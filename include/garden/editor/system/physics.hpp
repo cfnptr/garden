@@ -16,6 +16,8 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/physics.hpp"
+
 namespace garden
 {
 
@@ -25,6 +27,7 @@ class PhysicsEditorSystem final : public System
 	float3 newEulerAngles = float3(0.0f);
 	quat oldRotation = quat::identity;
 	ID<Entity> selectedEntity = {};
+	AllowedDOF allowedDofCached = {};
 
 	PhysicsEditorSystem();
 	~PhysicsEditorSystem() final;

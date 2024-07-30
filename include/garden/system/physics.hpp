@@ -15,6 +15,7 @@
 #pragma once
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
+#include "math/flags.hpp"
 
 namespace garden
 {
@@ -40,6 +41,22 @@ enum class MotionType : uint8
 };
 
 /**
+ * @brief Which degrees of freedom physics body has. (can be used to limit simulation to 2D)
+ */
+enum class AllowedDOF : uint8
+{
+	None = 0b000000,                                   /**< No degrees of freedom are allowed. Note that this is not valid and will crash. Use a static body instead. */
+	All = 0b111111,                                    /**< All degrees of freedom are allowed */
+	TranslationX = 0b000001,                           /**< Body can move in world space X axis */
+	TranslationY = 0b000010,                           /**< Body can move in world space Y axis */
+	TranslationZ = 0b000100,                           /**< Body can move in world space Z axis */
+	RotationX = 0b001000,                              /**< Body can rotate around world space X axis  */
+	RotationY = 0b010000,                              /**< Body can rotate around world space Y axis */
+	RotationZ = 0b100000,                              /**< Body can rotate around world space Z axis */
+	Plane2D = TranslationX | TranslationY | RotationZ, /**< Body can only move in X and Y axis and rotate around Z axis */
+};
+
+/**
  * @brief Category of a collision volume shape.
  */
 enum class ShapeType : uint8
@@ -57,6 +74,19 @@ enum class ShapeType : uint8
 	User3,
 	User4,
 	Count
+};
+
+/**
+ * @brief Physics body event type.
+ */
+enum class BodyEvent : uint8
+{
+	Activated,        /**< Called whenever a body is activated */
+	Deactivated,      /**< Called whenever a body is deactivated */
+	ContactAdded,     /**< Called whenever a new contact point is detected */
+	ContactPersisted, /**< Called whenever a contact is detected that was also detected last update */
+	ContactRemoved,   /**< Called whenever a contact was detected last update but is not detected anymore */
+	Count             /**< Physics body event count */
 };
 
 /***********************************************************************************************************************
@@ -108,6 +138,8 @@ enum class ShapeSubType : uint8
 	UserConvex8,
 	Count,
 };
+
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(AllowedDOF)
 
 /***********************************************************************************************************************
  * @brief Collision volume of a physics body.
@@ -168,18 +200,38 @@ using namespace physics;
  */
 struct RigidbodyComponent final : public Component
 {
+public:
+	typedef std::function<void(ID<Entity> thisEntity, ID<Entity> otherEntity)> Callback;
+
+	struct Listener final
+	{
+		Callback callback = nullptr;
+		BodyEvent eventType = {};
+	private:
+		uint8 _alignment0 = 0;
+		uint16 _alignment1 = 0;
+	};
 private:
-	uint32 instance = 0;
+	void* instance = nullptr;
+	vector<Listener> listeners;
 	ID<Shape> shape = {};
+	float3 lastPosition = float3(0.0f);
+	quat lastRotation = quat::identity;
 	MotionType motionType = {};
+	AllowedDOF allowedDOF = {};
 	bool inSimulation = true;
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 
 	bool destroy();
 
 	friend class PhysicsSystem;
 	friend class LinearPool<RigidbodyComponent>;
 public:
+	/**
+	 * @brief Returns rigidbody events listener array,
+	 */
+	const vector<Listener>& getListeners() const noexcept { return listeners; }
+
 	/**
 	 * @brief Returns motion type of the rigidbody.
 	 */
@@ -202,18 +254,25 @@ public:
 	 * 
 	 * @details
 	 * It also creates rigidbody instance if it doesn't already exists, 
-	 * and adds it to the physics simulation if simulating set to true.
+	 * and adds it to the physics simulation if transform is active.
 	 * 
 	 * @param shape target shape instance or null
 	 * @param activate is rigidbody should be activated
 	 * @param allowDynamicOrKinematic allow to change static motion type
+	 * @param isSensor is rigidbody should trigger collision events
+	 * @param allowedDOW which degrees of freedom rigidbody has
 	 */
-	void setShape(ID<Shape> shape, bool activate = true, bool allowDynamicOrKinematic = false);
+	void setShape(ID<Shape> shape, bool activate = true, bool allowDynamicOrKinematic = false, 
+		bool isSensor = false, AllowedDOF allowedDOF = AllowedDOF::All);
 
 	/**
 	 * @brief Allow to change static motion type to the dynamic or kinematic.
 	 */
-	bool canBeKinematicOrDynamic() const;
+	bool canBeKinematicOrDynamic() const noexcept;
+	/**
+	 * @brief Returns which degrees of freedom rigidbody has.
+	 */
+	AllowedDOF getAllowedDOF() const noexcept { return allowedDOF; }
 
 	/**
 	 * @brief Is rigidbody is currently actively simulating (true) or sleeping (false).
@@ -274,6 +333,34 @@ public:
 	 * @param activate is rigidbody should be activated
 	 */
 	void setPosAndRot(const float3& position, const quat& rotation, bool activate = true);
+
+	/**
+	 * @brief Set velocity of rigidbody such that it will be positioned at position/rotation in deltaTime.
+	 * @note It will activate body if needed.
+	 *
+	 * @param[in] position target rigidbody position
+	 * @param[in] rotation target rigidbody rotation
+	 * @param deltaTime target delta time in seconds
+	 */
+	void moveKinematic(const float3& position, const quat& rotation, float deltaTime);
+
+	/**
+	 * @brief Is this rigidbody reports contacts with other rigidbodies. 
+	 * 
+	 * @details
+	 * Any detected penetrations will however not be resolved. Sensors can be used to implement triggers that 
+	 * detect when an object enters their area. The cheapest sensor has a Static motion type. This type of 
+	 * sensor will only detect active bodies entering their area. As soon as a body goes to sleep, the contact 
+	 * will be lost. Note that you can still move a Static sensor around using position and rotation setters.
+	 * If you make a sensor Dynamic or Kinematic and activate them, the sensor will be able to detect collisions 
+	 * with sleeping bodies too. An active sensor will never go to sleep automatically.
+	 */
+	bool isSensor() const;
+	/**
+	 * @brief Sets rigidbody sensor state.
+	 * @details See the @ref isSensor().
+	 */
+	void setSensor(bool isSensor);
 };
 
 class PhysicsSystem final : public System, public ISerializable
@@ -287,18 +374,32 @@ public:
 		uint32 maxBodyPairs = 65536;
 		uint32 maxContactConstraints = 10240;
 	};
+	struct Event final
+	{
+		uint32 data1 = 0;
+		uint32 data2 = 0;
+		BodyEvent eventType = {};
+	private:
+		uint8 _alignment0 = 0;
+		uint16 _alignment1 = 0;
+	};
 private:
 	LinearPool<RigidbodyComponent> components;
 	LinearPool<Shape> shapes;
 	map<Hash128, ID<Shape>> sharedBoxShapes;
+	vector<Event> bodyEvents;
 	void* tempAllocator = nullptr;
 	void* jobSystem = nullptr;
 	void* bpLayerInterface = nullptr;
 	void* objVsBpLayerFilter = nullptr;
 	void* objVsObjLayerFilter = nullptr;
 	void* physicsInstance = nullptr;
+	void* bodyListener = nullptr;
+	void* contactListener = nullptr;
 	void* bodyInterface = nullptr;
 	const void* lockInterface = nullptr;
+	mutex bodyEventLocker;
+	string valueStringCache;
 	float deltaTimeAccum = 0.0f;
 
 	static PhysicsSystem* instance;
@@ -315,10 +416,12 @@ private:
 
 	void preInit();
 	void postInit();
+	void postDeinit();
 	void simulate();
 
-	void updateInSimulation();
-	void interpolateResult();
+	void prepareSimulate();
+	void processSimulate();
+	void interpolateResult(float t);
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;

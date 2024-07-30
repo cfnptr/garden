@@ -135,5 +135,20 @@ size_t modp_b64_decode(
 #define MODP_B64_ERROR ((size_t)-1)
 #ifdef __cplusplus
 }
+
+#include <string>
+#include <string_view>
+
+static void encodeBase64(std::string& dest, const void* src, size_t len)
+{
+    dest.resize(modp_b64_encode_data_len(len));
+    modp_b64_encode_data(dest.data(), (const char*)src, len);
+}
+static bool decodeBase64(void* dest, std::string_view src, ModpDecodePolicy policy)
+{
+    return modp_b64_decode((char*)dest, src.data(), 
+        src.length(), ModpDecodePolicy::kForgiving) != MODP_B64_ERROR;
+}
+
 #endif /* __cplusplus */
 #endif /* MODP_B64 */

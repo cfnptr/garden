@@ -16,7 +16,9 @@
 
 #if GARDEN_EDITOR
 #include "garden/file.hpp"
+#include "mpio/os.hpp"
 
+using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -233,6 +235,14 @@ void GraphicsEditorSystem::showMemoryStatistics()
 		ImGui::Text("Real Usage:"); ImGui::SameLine();
 		gpuInfo = toBinarySizeString(usage) + " / " + toBinarySizeString(budget);
 		fraction = hostBlockBytes > 0 ? (double)usage / (double)budget : 0.0;
+		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+
+		ImGui::SeparatorText("OS Memory");
+		ImGui::Text("OS RAM:    "); ImGui::SameLine();
+		auto totalRamSize = OS::getTotalRamSize(), freeRamSize = OS::getFreeRamSize();
+		auto usedRamSize = totalRamSize - freeRamSize;
+		gpuInfo = toBinarySizeString(usedRamSize) + " / " + toBinarySizeString(totalRamSize);
+		fraction = totalRamSize > 0 ? (double)usedRamSize / (double)totalRamSize : 0.0;
 		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
 	}
 	ImGui::End();

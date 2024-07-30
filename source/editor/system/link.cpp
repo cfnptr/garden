@@ -77,14 +77,14 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 	for (const auto& pair : uuidMap)
 	{
 		auto uuid = pair.first.toBase64();
-		if (!searchString.empty())
-		{
-			if (!find(uuid, searchString, searchCaseSensitive))
-				continue;
-		}
-
 		auto linkView = linkComponents.get(pair.second);
 		auto entity = linkView->getEntity();
+
+		if (!searchString.empty())
+		{
+			if (!find(uuid, searchString, *entity, searchCaseSensitive))
+				continue;
+		}
 
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
 		if (editorSystem->selectedEntity == entity)
@@ -123,7 +123,8 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 	{
 		if (!searchString.empty())
 		{
-			if (!find(pair.first, searchString, searchCaseSensitive))
+			auto linkView = linkComponents.get(pair.second);
+			if (!find(pair.first, searchString, *linkView->getEntity(), searchCaseSensitive))
 				continue;
 		}
 
@@ -213,8 +214,10 @@ void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto linkView = LinkSystem::getInstance()->get(entity);
-		ImGui::Text("UUID: %s, Tag: %s", linkView->getUUID().toBase64().c_str(),
-			linkView->getTag().c_str());
+		if (linkView->getUUID())
+			ImGui::Text("UUID: %s", linkView->getUUID().toBase64().c_str());
+		if (!linkView->getTag().empty())
+			ImGui::Text("Tag: %s", linkView->getTag().c_str());
 		ImGui::EndTooltip();
 	}
 

@@ -83,8 +83,8 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : 
-			componentView->path.generic_string().c_str());
+		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
+			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -98,8 +98,8 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : 
-			componentView->path.generic_string().c_str());
+		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
+			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -121,7 +121,8 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 	if (ImGui::BeginItemTooltip())
 	{
 		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
-		ImGui::Text("Path: %s", componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
+			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)

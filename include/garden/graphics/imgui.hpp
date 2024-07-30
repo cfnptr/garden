@@ -209,7 +209,7 @@ static bool ColorEdit3(const char* label, Color* color, ImGuiColorEditFlags flag
 namespace garden
 {
 
-static bool findCaseInsensitive(const string& haystack, const string& needle)
+static bool findCaseInsensitive(const string& haystack, const string& needle) noexcept
 {
 	auto it = search(haystack.begin(), haystack.end(), needle.begin(), needle.end(), [](char a, char b)
 	{
@@ -217,11 +217,16 @@ static bool findCaseInsensitive(const string& haystack, const string& needle)
 	});
 	return (it != haystack.end());
 }
-static bool find(const string& haystack, const string& needle, bool caseSensitive)
+static bool find(const string& haystack, const string& needle, bool caseSensitive) noexcept
 {
 	if (caseSensitive)
 		return haystack.find(needle) != string::npos;
 	return findCaseInsensitive(haystack, needle);
+}
+static bool find(const string& haystack, const string& needle, uint32 id, bool caseSensitive)
+{
+	auto needleID = (uint32)strtoul(needle.c_str(), nullptr, 10);
+	return id == needleID || find(haystack, needle, caseSensitive);
 }
 
 }; // garden
