@@ -77,10 +77,12 @@ struct Hash128
 	 * 
 	 * @param[in] data target data to hash
 	 * @param[in] state hash state (or null)
+	 * @tparam T array data type 
+	 * @tparam S array element count 
 	 */
 	template<typename T, psize S>
 	Hash128(const array<T, S>& data, State state = nullptr) :
-		Hash128(data.data(), data.size() * sizeof(T), state) { }
+		Hash128(data.data(), S * sizeof(T), state) { }
 
 	bool operator==(const Hash128& h) const noexcept { 
 		return low64 == h.low64 && high64 == h.high64; }
@@ -94,8 +96,8 @@ struct Hash128
 	 */
 	explicit operator bool() const noexcept { return low64 | high64; }
 
-	
-	/**
+
+	/******************************************************************************************************************
 	 * @brief Returns hash Base64 encoded string.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */
@@ -117,19 +119,58 @@ struct Hash128
 	 */
 	static Hash128 generateRandom(uint64 seed) noexcept;
 
-	/**
+	/******************************************************************************************************************
 	 * @brief Allocates a new hash state. (non-cryptographic)
 	 * @details You can reuse the same state to improve hashing speed.
-	 * @return The new hash state instance.
 	 */
-	static State createState() noexcept;
+	static State createState();
 	/**
 	 * @brief Deallocates hash state.
 	 * @param[in] state target hash state
 	 */
 	static void destroyState(State state) noexcept;
 
-	// TODO: add sequential data hashing using state.
+	/**
+	 * @brief Resets hash state to begin a new hash session.
+	 * @param state target hash state
+	 */
+	static void resetState(State state);
+	/**
+	 * @brief Consumes a block of data to hash state.
+	 * 
+	 * @param state hash state to use
+	 * @param[in] data target binary data to hash
+	 * @param size data buffer size in bytes
+	 */
+	static void updateState(State state, const void* data, psize size);
+	/**
+	 * @brief Retrieves the finalized hash from state. (non-cryptographic)
+	 * @note This call will not change the state.
+	 * @param state target hash state
+	 */
+	static Hash128 digestState(State state) noexcept;
+
+	/**
+	 * @brief Consumes a block of vector data to hash state.
+	 *
+	 * @param state hash state to use
+	 * @param[in] data target data to hash
+	 * @tparam T vector data type
+	 */
+	template<typename T>
+	static void updateState(State state, const vector<T>& data) {
+		updateState(state, data.data(), data.size() * sizeof(T)); }
+	/**
+	 * @brief Consumes a block of array data to hash state.
+	 *
+	 * @param state hash state to use
+	 * @param[in] data target data to hash
+	 * @tparam T array data type 
+	 * @tparam S array element count 
+	 */
+	template<typename T, psize S>
+	static void updateState(State state, const array<T, S>& data) {
+		updateState(state, data.data(), S * sizeof(T)); }
 };
 
 } // namespace garden

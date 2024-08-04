@@ -117,7 +117,9 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		return;
 
 	auto animationView = Manager::getInstance()->get<AnimationComponent>(entity);
-	ImGui::Checkbox("Playing", &animationView->isPlaying);
+	ImGui::Checkbox("Playing", &animationView->isPlaying); ImGui::SameLine();
+	ImGui::Checkbox("Randomize Start", &animationView->randomizeStart);
+
 	ImGui::InputText("Active", &animationView->active); // TODO: dropdown selector
 
 	ImGui::DragFloat("Frame", &animationView->frame);

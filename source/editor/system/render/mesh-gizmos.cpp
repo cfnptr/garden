@@ -350,6 +350,10 @@ void MeshGizmosEditorSystem::editorRender()
 			}
 		}
 
+		auto characterView = manager->tryGet<CharacterComponent>(selectedEntity);
+		if (characterView && characterView->getShape())
+			characterView->setPosition(characterView->getPosition() + cursorTrans);
+
 		auto meshSelector = manager->tryGet<MeshSelectorEditorSystem>();
 		if (meshSelector)
 			meshSelector->skipUpdate();

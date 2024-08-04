@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "garden/system/spawner.hpp"
-#include "garden/system/transform.hpp"
-#include "garden/system/resource.hpp"
 #include "garden/system/link.hpp"
+#include "garden/system/physics.hpp"
+#include "garden/system/resource.hpp"
+#include "garden/system/transform.hpp"
 
 using namespace garden;
 
@@ -73,6 +74,7 @@ void SpawnerComponent::spawn(uint32 count)
 	auto manager = Manager::getInstance();
 	auto linkSystem = LinkSystem::getInstance();
 	auto transformSystem = TransformSystem::getInstance();
+	auto physicsSystem = manager->tryGet<PhysicsSystem>();
 
 	for (uint32 i = 0; i < count; i++)
 	{
@@ -91,6 +93,9 @@ void SpawnerComponent::spawn(uint32 count)
 			dupTransformView->setParent({});
 			dupTransformView->isActive = true;
 		}
+
+		if (physicsSystem)
+			physicsSystem->setWorldTransformRecursive(duplicateEntity);
 
 		auto dupLinkView = linkSystem->tryGet(duplicateEntity);
 		if (!dupLinkView)
@@ -263,6 +268,8 @@ void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 	if (deserializer.read("mode", valueStringCache))
 	{
 	}
+
+	componentView->loadPrefab();
 }
 
 //**********************************************************************************************************************

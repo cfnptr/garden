@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/transform.hpp"
+#include "garden/system/physics.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
 
@@ -70,6 +71,14 @@ float4x4 TransformComponent::calcModel(const float3& cameraPosition) const noexc
 {
 	auto transformSystem = TransformSystem::getInstance();
 	auto model = ::calcModel(position, rotation, this->scale);
+
+	// TODO: rethink this architecture, we should't access physics system from here :(
+	auto rigidbodyComponent = Manager::getInstance()->tryGet<RigidbodyComponent>(entity);
+	if (rigidbodyComponent && rigidbodyComponent->getMotionType() != MotionType::Static)
+	{
+		setTranslation(model, position - cameraPosition);
+		return model;
+	}
 
 	auto nextParent = parent;
 	while (nextParent)
@@ -296,29 +305,29 @@ bool TransformComponent::isActiveWithAncestors() const noexcept
 //**********************************************************************************************************************
 bool TransformComponent::hasBakedWithDescendants() const noexcept
 {
-	static thread_local vector<ID<Entity>> transformStack;
-	transformStack.push_back(entity);
+	static thread_local vector<ID<Entity>> entityStack;
+	entityStack.push_back(entity);
 
 	auto manager = Manager::getInstance();
 	auto transformSystem = TransformSystem::getInstance();
 
-	while (!transformStack.empty())
+	while (!entityStack.empty())
 	{
-		auto transform = transformStack.back();
-		transformStack.pop_back();
+		auto entity = entityStack.back();
+		entityStack.pop_back();
 
-		if (manager->has<BakedTransformComponent>(transform))
+		if (manager->has<BakedTransformComponent>(entity))
 		{
-			transformStack.clear();
+			entityStack.clear();
 			return true;
 		}
 
-		auto transformView = transformSystem->get(transform);
+		auto transformView = transformSystem->get(entity);
 		auto childCount = transformView->getChildCount();
 		auto childs = transformView->getChilds();
 		
 		for (uint32 i = 0; i < childCount; i++)
-			transformStack.push_back(childs[i]);
+			entityStack.push_back(childs[i]);
 	}
 
 	return false;
@@ -625,29 +634,31 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 
 	auto childCount = transformView->childCount;
 	auto childs = transformView->childs;
+	transformView->isActive = false;
 	transformView->childCount = 0;
 
 	for (uint32 i = 0; i < childCount; i++)
-		transformStack.push_back(childs[i]);
+		entityStack.push_back(childs[i]);
 
-	while (!transformStack.empty())
+	while (!entityStack.empty())
 	{
-		auto transform = transformStack.back();
-		transformStack.pop_back();
+		auto entity = entityStack.back();
+		entityStack.pop_back();
 
-		if (manager->has<DoNotDestroyComponent>(transform))
+		if (manager->has<DoNotDestroyComponent>(entity))
 			continue;
 
-		transformView = get(transform);
+		transformView = get(entity);
 		childCount = transformView->childCount;
 		childs = transformView->childs;
 
 		for (uint32 i = 0; i < childCount; i++)
-			transformStack.push_back(childs[i]);
+			entityStack.push_back(childs[i]);
 
+		transformView->isActive = false;
 		transformView->childCount = 0;
 		transformView->parent = {};
-		manager->destroy(transform);
+		manager->destroy(entity);
 	}
 	
 	manager->destroy(entity);

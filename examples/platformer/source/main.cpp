@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "platformer.hpp"
 #include "garden/main.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/link.hpp"
@@ -87,6 +88,7 @@ void entryPoint()
 	manager->createSystem<AnimationSystem>();
 	// Note: for a such game better to use Box2D physics, Jolt is overkill.
 	manager->createSystem<PhysicsSystem>();
+	manager->createSystem<CharacterSystem>();
 	manager->createSystem<GraphicsSystem>();
 	manager->createSystem<ForwardRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
@@ -97,6 +99,7 @@ void entryPoint()
 	// manager->createSystem<Cutout9SliceSystem>(false, false);
 	// manager->createSystem<Translucent9SliceSystem>(false, false);
 	manager->createSystem<Controller2DSystem>();
+	manager->createSystem<PlatformerSystem>();
 	manager->createSystem<ThreadSystem>();
 
 	#if GARDEN_EDITOR

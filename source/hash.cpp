@@ -83,12 +83,34 @@ Hash128 Hash128::generateRandom(uint64 seed) noexcept
 }
 
 //*********************************************************************************************************************
-Hash128::State Hash128::createState() noexcept
+Hash128::State Hash128::createState()
 {
-	return XXH3_createState();
+	auto state = XXH3_createState();
+	if (!state)
+		throw runtime_error("Failed to create xxHash state");
+	return state;
 }
 void Hash128::destroyState(Hash128::State state) noexcept
 {
 	GARDEN_ASSERT(state);
 	XXH3_freeState((XXH3_state_t*)state);
+}
+
+void Hash128::resetState(State state)
+{
+	GARDEN_ASSERT(state);
+	if (XXH3_128bits_reset((XXH3_state_t*)state) == XXH_ERROR)
+		throw runtime_error("Failed to reset xxHash state");
+}
+void Hash128::updateState(State state, const void* data, psize size)
+{
+	GARDEN_ASSERT(state);
+	if (XXH3_128bits_update((XXH3_state_t*)state, data, size) == XXH_ERROR)
+		throw runtime_error("Failed to update xxHash state");
+}
+Hash128 Hash128::digestState(State state) noexcept
+{
+	GARDEN_ASSERT(state);
+	auto result = XXH3_128bits_digest((XXH3_state_t*)state);
+	return Hash128(result.low64, result.high64);
 }

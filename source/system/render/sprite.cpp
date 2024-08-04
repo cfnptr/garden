@@ -182,12 +182,12 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 void SpriteRenderSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
 {
 	auto componentView = View<SpriteRenderComponent>(component);
-	if (componentView->isArray != false)
-		serializer.write("isArray", componentView->isArray);
+	if (componentView->isArray)
+		serializer.write("isArray", true);
 	if (componentView->aabb != Aabb::one)
 		serializer.write("aabb", componentView->aabb);
-	if (componentView->isEnabled != true)
-		serializer.write("isEnabled", componentView->isEnabled);
+	if (!componentView->isEnabled)
+		serializer.write("isEnabled", false);
 	if (componentView->colorMapLayer != 0.0f)
 		serializer.write("colorMapLayer", componentView->colorMapLayer);
 	if (componentView->colorFactor != float4(1.0f))
