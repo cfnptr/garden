@@ -57,7 +57,7 @@ public:
 	};
 private:
 	map<type_index, Inspector> entityInspectors;
-	string scenePath = "unnamed";
+	fs::path exportsScenePath = "unnamed";
 	fs::path fileSelectDirectory;
 	fs::path selectedEntry;
 	fs::path selectedFile;

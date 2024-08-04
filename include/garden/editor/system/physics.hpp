@@ -23,11 +23,15 @@ namespace garden
 
 class PhysicsEditorSystem final : public System
 {
-	float3 oldEulerAngles = float3(0.0f);
-	float3 newEulerAngles = float3(0.0f);
-	quat oldRotation = quat::identity;
+	float3 oldRigidbodyEulerAngles = float3(0.0f);
+	float3 newRigidbodyEulerAngles = float3(0.0f);
+	quat oldRigidbodyRotation = quat::identity;
+	float3 oldCharacterEulerAngles = float3(0.0f);
+	float3 newCharacterEulerAngles = float3(0.0f);
+	quat oldCharacterRotation = quat::identity;
 	ID<Entity> selectedEntity = {};
 	AllowedDOF allowedDofCached = {};
+	float3 characterSizeCached = float3(0.5f, 1.75f, 0.5f);
 
 	PhysicsEditorSystem();
 	~PhysicsEditorSystem() final;
@@ -36,11 +40,15 @@ class PhysicsEditorSystem final : public System
 	void deinit();
 	void editorRender();
 
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	void onRigidbodyInspector(ID<Entity> entity, bool isOpened);
+	void onCharacterInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
-	float inspectorPriority = -0.8f;
-	Color aabbColor = Color::green;
+	float rigidbodyInspectorPriority = -0.8f;
+	float characterInspectorPriority = -0.75f;
+	Color rigidbodyAabbColor = Color::green;
+	Color characterAabbColor = Color("00FF7FFF");
 	bool isEnabled = true;
 };
 

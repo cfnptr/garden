@@ -164,7 +164,7 @@ class TransformSystem final : public System, public ISerializable, public IAnima
 
 	LinearPool<TransformComponent> components;
 	LinearPool<TransformFrame, false> animationFrames;
-	vector<ID<Entity>> transformStack;
+	vector<ID<Entity>> entityStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
 	map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityParentPair> deserializedParents;

@@ -708,7 +708,7 @@ namespace
 }
 
 static vk::PipelineCache createPipelineCache(const string& appDataName, Version appVersion,
-	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, void* _hashState)
+	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, Hash128::State hashState)
 {
 	const auto cacheHeaderSize = sizeof(PipelineCacheHeader) - sizeof(VkPipelineCacheHeaderVersionOne);
 	auto path = Directory::getAppDataPath(appDataName) / "caches/shaders";
@@ -734,7 +734,7 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 					appVersion.major, appVersion.minor, appVersion.patch);
 				targetHeader.dataSize = (uint32)(fileSize - cacheHeaderSize);
 				targetHeader.dataHash = Hash128(fileData.data() + cacheHeaderSize,
-					(psize)fileSize - cacheHeaderSize, GraphicsAPI::hashState);
+					(psize)fileSize - cacheHeaderSize, hashState);
 				targetHeader.driverVersion = deviceProperties.properties.driverVersion;
 				targetHeader.driverABI = sizeof(void*);
 				targetHeader.cache.headerSize = sizeof(VkPipelineCacheHeaderVersionOne);
@@ -757,8 +757,8 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 }
 
 //*********************************************************************************************************************
-static void destroyPipelineCache(const string& appDataName, Version appVersion,
-	vk::PipelineCache pipelineCache, vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties)
+static void destroyPipelineCache(const string& appDataName, Version appVersion, vk::PipelineCache pipelineCache, 
+	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, Hash128::State hashState)
 {
 	auto cacheData = Vulkan::device.getPipelineCacheData((VkPipelineCache)pipelineCache);
 	if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
@@ -780,7 +780,7 @@ static void destroyPipelineCache(const string& appDataName, Version appVersion,
 			outputStream.write((const char*)&vkAppVersion, sizeof(uint32));
 			auto dataSize = (uint32)cacheData.size();
 			outputStream.write((const char*)&dataSize, sizeof(uint32));
-			auto hash = Hash128(cacheData.data(), cacheData.size(), GraphicsAPI::hashState);
+			auto hash = Hash128(cacheData.data(), cacheData.size(), hashState);
 			outputStream.write((const char*)&hash, sizeof(Hash128));
 			outputStream.write((const char*)
 				&deviceProperties.properties.driverVersion, sizeof(uint32));
@@ -924,8 +924,8 @@ void Vulkan::terminate()
 
 	if (device)
 	{
-		destroyPipelineCache(GraphicsAPI::appDataName,
-			GraphicsAPI::appVersion, pipelineCache, device, deviceProperties);
+		destroyPipelineCache(GraphicsAPI::appDataName, GraphicsAPI::appVersion, 
+			pipelineCache, device, deviceProperties, GraphicsAPI::hashState);
 		device.destroyDescriptorPool(descriptorPool);
 		device.destroyCommandPool(computeCommandPool);
 		device.destroyCommandPool(transferCommandPool);

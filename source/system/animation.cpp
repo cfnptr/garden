@@ -34,6 +34,9 @@ AnimationSystem::AnimationSystem(bool animateAsync)
 {
 	this->animateAsync = animateAsync;
 
+	random_device randomDevice;
+	this->randomGenerator = mt19937(randomDevice());
+
 	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", AnimationSystem::init);
 	SUBSCRIBE_TO_EVENT("PostDeinit", AnimationSystem::postDeinit);
@@ -188,6 +191,25 @@ void AnimationSystem::update()
 	}
 }
 
+static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponent> componentView)
+{
+	if (!componentView->randomizeStart || componentView->active.empty())
+		return;
+
+	const auto& animations = componentView->getAnimations();
+	auto searchResult = animations.find(componentView->active);
+	if (searchResult == animations.end())
+		return;
+
+	auto animationView = AnimationSystem::getInstance()->get(searchResult->second);
+	if (animationView->getKeyframes().empty())
+		return;
+
+	const auto& keyframe = animationView->getKeyframes().rbegin();
+	if (keyframe->first != 0)
+		componentView->frame = randomGenerator() / (randomGenerator.max() / (float)keyframe->first);
+}
+
 //**********************************************************************************************************************
 ID<Component> AnimationSystem::createComponent(ID<Entity> entity)
 {
@@ -207,6 +229,8 @@ void AnimationSystem::copyComponent(View<Component> source, View<Component> dest
 	destinationView->active = sourceView->active;
 	destinationView->frame = sourceView->frame;
 	destinationView->isPlaying = sourceView->isPlaying;
+	destinationView->randomizeStart = sourceView->randomizeStart;
+	randomizeStartFrame(randomGenerator, destinationView);
 }
 const string& AnimationSystem::getComponentName() const
 {
@@ -249,8 +273,10 @@ void AnimationSystem::serialize(ISerializer& serializer, ID<Entity> entity, View
 		serializer.write("active", componentView->active);
 	if (componentView->frame != 0.0f)
 		serializer.write("frame", componentView->frame);
-	if (componentView->isPlaying != true)
-		serializer.write("isPlaying", componentView->isPlaying);
+	if (!componentView->isPlaying)
+		serializer.write("isPlaying", false);
+	if (componentView->randomizeStart)
+		serializer.write("randomizeStart", true);
 }
 void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
@@ -283,4 +309,6 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	deserializer.read("active", componentView->active);
 	deserializer.read("frame", componentView->frame);
 	deserializer.read("isPlaying", componentView->isPlaying);
+	deserializer.read("randomizeStart", componentView->randomizeStart);
+	randomizeStartFrame(randomGenerator, componentView);
 }

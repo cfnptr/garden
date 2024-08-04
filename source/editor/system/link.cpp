@@ -211,9 +211,9 @@ void LinkEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	if (ImGui::BeginItemTooltip())
+	auto linkView = LinkSystem::getInstance()->get(entity);
+	if ((linkView->getUUID() || !linkView->getTag().empty()) && ImGui::BeginItemTooltip())
 	{
-		auto linkView = LinkSystem::getInstance()->get(entity);
 		if (linkView->getUUID())
 			ImGui::Text("UUID: %s", linkView->getUUID().toBase64().c_str());
 		if (!linkView->getTag().empty())
@@ -224,12 +224,11 @@ void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto linkView = LinkSystem::getInstance()->get(entity);
 	auto tag = linkView->getTag();
 	if (ImGui::InputText("Tag", &tag))
 		linkView->setTag(tag);
 
-	auto uuid = linkView->getUUID().toBase64();
+	auto uuid = linkView->getUUID() ? linkView->getUUID().toBase64() : "";
 	if (ImGui::InputText("UUID", &uuid))
 	{
 		auto hash = linkView->getUUID();

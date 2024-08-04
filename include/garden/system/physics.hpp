@@ -19,8 +19,10 @@
 
 namespace garden
 {
-	class PhysicsSystem;
 	struct RigidbodyComponent;
+	class PhysicsSystem;
+	struct CharacterComponent;
+	class CharacterSystem;
 }
 
 namespace garden::physics
@@ -157,6 +159,7 @@ private:
 	friend class PhysicsSystem;
 	friend class LinearPool<Shape>;
 	friend struct RigidbodyComponent;
+	friend struct CharacterComponent;
 public:
 	/**
 	 * @brief Return category of the collision volume shape.
@@ -175,6 +178,15 @@ public:
 	 * @brief Returns box shape convex radius.
 	 */
 	float getBoxConvexRadius() const;
+
+	/**
+	 * @brief Returns decorated shape inner instance.
+	 */
+	ID<Shape> getInnerShape() const;
+	/**
+	 * @brief Returns rotated/translated shape position and rotation.
+	 */
+	void getPosAndRot(float3& position, quat& rotation) const;
 
 	/**
 	 * @brief Returns current shape reference count.
@@ -205,16 +217,20 @@ public:
 
 	struct Listener final
 	{
+		type_index systemType;
 		Callback callback = nullptr;
 		BodyEvent eventType = {};
 	private:
 		uint8 _alignment0 = 0;
 		uint16 _alignment1 = 0;
+	public:
+		Listener(type_index _systemType, const Callback& _callback, BodyEvent _eventType) :
+			systemType(_systemType), callback(_callback), eventType(_eventType) { }
 	};
 private:
+	ID<Shape> shape = {};
 	void* instance = nullptr;
 	vector<Listener> listeners;
-	ID<Shape> shape = {};
 	float3 lastPosition = float3(0.0f);
 	quat lastRotation = quat::identity;
 	MotionType motionType = {};
@@ -225,12 +241,37 @@ private:
 	bool destroy();
 
 	friend class PhysicsSystem;
+	friend class CharacterComponent;
 	friend class LinearPool<RigidbodyComponent>;
 public:
 	/**
 	 * @brief Returns rigidbody events listener array,
 	 */
 	const vector<Listener>& getListeners() const noexcept { return listeners; }
+
+	/**
+	 * @brief Adds rigidbody events listener to the array.
+	 * 
+	 * @tparam T target listener system type
+	 * @param callback target event callback function
+	 * @param eventType target event type to subscribe to
+	 */
+	template<class T = System>
+	void addListener(const Callback& callback, BodyEvent eventType)
+	{
+		GARDEN_ASSERT(callback);
+		GARDEN_ASSERT((uint8)eventType < (uint8)BodyEvent::Count);
+		static_assert(is_base_of_v<System, T>, "Must be derived from the System class.");
+		listeners.emplace_back(typeid(T), callback, eventType);
+	}
+	/**
+	 * @brief Removes rigidbody events listener from the array.
+	 * @return True if listener is found and removed, otherwise false.
+	 * 
+	 * @param systemType target listener system type
+	 * @param eventType target event type to unsubscribe from
+	 */
+	bool tryRemoveListener(type_index systemType, BodyEvent eventType);
 
 	/**
 	 * @brief Returns motion type of the rigidbody.
@@ -287,10 +328,12 @@ public:
 
 	/**
 	 * @brief Wakes up rigidbody if it's sleeping.
+	 * @details See the @ref isActive()
 	 */
 	void activate();
 	/**
 	 * @brief Puts rigidbody to a sleep.
+	 * @details See the @ref isActive()
 	 */
 	void deactivate();
 
@@ -333,6 +376,14 @@ public:
 	 * @param activate is rigidbody should be activated
 	 */
 	void setPosAndRot(const float3& position, const quat& rotation, bool activate = true);
+	/**
+	 * @brief Returns true if rigidbody position and rotation differs from specified values.
+	 * @note It also checks if values are far enought to count it as changed.
+	 *
+	 * @param[in] position target rigidbody position
+	 * @param[in] rotation target rigidbody rotation
+	 */
+	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
 
 	/**
 	 * @brief Set velocity of rigidbody such that it will be positioned at position/rotation in deltaTime.
@@ -343,6 +394,11 @@ public:
 	 * @param deltaTime target delta time in seconds
 	 */
 	void moveKinematic(const float3& position, const quat& rotation, float deltaTime);
+	/**
+	 * @brief Sets rigidbody world space position and rotation from a transform.
+	 * @param activate is rigidbody should be activated
+	 */
+	void setWorldTransform(bool activate = true);
 
 	/**
 	 * @brief Is this rigidbody reports contacts with other rigidbodies. 
@@ -363,6 +419,9 @@ public:
 	void setSensor(bool isSensor);
 };
 
+/***********************************************************************************************************************
+ * @brief Provides an approximate simulation of rigid body dynamics (including collision detection).
+ */
 class PhysicsSystem final : public System, public ISerializable
 {
 public:
@@ -387,7 +446,9 @@ private:
 	LinearPool<RigidbodyComponent> components;
 	LinearPool<Shape> shapes;
 	map<Hash128, ID<Shape>> sharedBoxShapes;
+	map<Hash128, ID<Shape>> sharedRotTransShapes;
 	vector<Event> bodyEvents;
+	vector<ID<Entity>> entityStack;
 	void* tempAllocator = nullptr;
 	void* jobSystem = nullptr;
 	void* bpLayerInterface = nullptr;
@@ -398,6 +459,7 @@ private:
 	void* contactListener = nullptr;
 	void* bodyInterface = nullptr;
 	const void* lockInterface = nullptr;
+	Hash128::State hashState = nullptr;
 	mutex bodyEventLocker;
 	string valueStringCache;
 	float deltaTimeAccum = 0.0f;
@@ -416,7 +478,6 @@ private:
 
 	void preInit();
 	void postInit();
-	void postDeinit();
 	void simulate();
 
 	void prepareSimulate();
@@ -436,6 +497,8 @@ private:
 	
 	friend class ecsm::Manager;
 	friend struct RigidbodyComponent;
+	friend struct CharacterComponent;
+	friend struct CharacterSystem;
 public:
 	/**
 	 * @brief Collision step count during simulation step.
@@ -454,6 +517,14 @@ public:
 	 * @brief Returns physics shape pool.
 	 */
 	const LinearPool<Shape>& getShapes() const noexcept { return shapes; }
+	/**
+	 * @brief Returns shared box shape pool.
+	 */
+	const map<Hash128, ID<Shape>>& getSharedBoxShapes() const noexcept { return sharedBoxShapes; }
+	/**
+	 * @brief Returns shared rotated/translated shape pool.
+	 */
+	const map<Hash128, ID<Shape>>& getSharedRotTransShapes() const noexcept { return sharedRotTransShapes; }
 
 	/**
 	 * @brief Creates a new box shape instance.
@@ -474,6 +545,29 @@ public:
 	 * @param convexRadius box convex radius
 	 */
 	ID<Shape> createSharedBoxShape(const float3& halfExtent, float convexRadius = 0.05f);
+
+	/**
+	 * @brief Creates a new rotated/translated shape instance.
+	 * @details Rotates and translates an inner (child) shape.
+	 * @note It destroys inner shape if no more refs left.
+	 *
+	 * @param innerShape target inner shape instance
+	 * @param[in] position shape translation
+	 * @param[in] rotation shape rotation
+	 */
+	ID<Shape> createRotTransShape(ID<Shape> innerShape,
+		const float3& position, const quat& rotation = quat::identity);
+	/**
+	 * @brief Creates a new shared rotated/translated shape instance.
+	 * @details See the @ref createRotTransShape().
+	 * @note It destroys inner shape if no more refs left.
+	 *
+	 * @param[in] halfExtent half edge length
+	 * @param[in] position shape translation
+	 * @param[in] rotation shape rotation
+	 */
+	ID<Shape> createSharedRotTransShape(ID<Shape> innerShape, 
+		const float3& position, const quat& rotation = quat::identity);
 
 	/**
 	 * @brief Returns shape instance view.
@@ -498,6 +592,20 @@ public:
 	void optimizeBroadPhase();
 
 	/**
+	 * @brief Wakes up rigidbody if it's sleeping.
+	 * @details It also wakes up all rigidbody descendants.
+	 */
+	void activateRecursive(ID<Entity> entity);
+	/**
+	 * @brief Sets rigidbody world space position and rotation from a transform.
+	 * @details It also sets world transform for all rigidbody descendants.
+	 * 
+	 * @param entity target rigidbody enity instance
+	 * @param activate are rigidbodies should be activated
+	 */
+	void setWorldTransformRecursive(ID<Entity> entity, bool activate = true);
+
+	/**
 	 * @brief Returns true if entity has rigidbody component.
 	 * @param entity target entity with component
 	 * @note This function is faster than the Manager one.
@@ -520,6 +628,145 @@ public:
 	 * @brief Returns physics system instance.
 	 */
 	static PhysicsSystem* getInstance() noexcept
+	{
+		GARDEN_ASSERT(instance); // System is not created.
+		return instance;
+	}
+};
+
+/***********************************************************************************************************************
+ * @brief Physics character controller.
+ */
+struct CharacterComponent final : public Component
+{
+private:
+	ID<Shape> shape = {};
+	void* instance = nullptr;
+	bool inSimulation = true;
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+
+	bool destroy();
+
+	friend class CharacterSystem;
+	friend class LinearPool<CharacterComponent>;
+public:
+	/**
+	 * @brief Returns character shape instance.
+	 */
+	ID<Shape> getShape() const noexcept { return shape; }
+	/**
+	 * @brief Sets character shape instance. (Expensive operation!)
+	 *
+	 * @details
+	 * It also creates character instance if it doesn't already exists,
+	 * and adds it to the physics simulation if transform is active.
+	 *
+	 * @param shape target shape instance or null
+	 * @param maxPenetrationDepth max penetration we're willing to accept after the switch (if not FLT_MAX).
+	 */
+	void setShape(ID<Shape> shape, float maxPenetrationDepth = FLT_MAX);
+
+	/**
+	 * @brief Returns character position in the phyics simulation world.
+	 */
+	float3 getPosition() const;
+	/**
+	 * @brief Sets character position in the phyics simulation world.
+	 * @param[in] position target character position
+	 */
+	void setPosition(const float3& position);
+
+	/**
+	 * @brief Returns character rotation in the phyics simulation world.
+	 */
+	quat getRotation() const;
+	/**
+	 * @brief Sets character rotation in the phyics simulation world.
+	 * @param[in] rotation target character rotation
+	 */
+	void setRotation(const quat& rotation);
+
+	/**
+	 * @brief Returns character position and rotation in the phyics simulation world.
+	 *
+	 * @param[out] position character position
+	 * @param[out] rotation character rotation
+	 */
+	void getPosAndRot(float3& position, quat& rotation) const;
+	/**
+	 * @brief Sets character position and rotation in the phyics simulation world.
+	 *
+	 * @param[in] position target character position
+	 * @param[in] rotation target character rotation
+	 */
+	void setPosAndRot(const float3& position, const quat& rotation);
+	/**
+	 * @brief Returns true if character position and rotation differs from specified values.
+	 * @note It also checks if values are far enought to count it as changed.
+	 *
+	 * @param[in] position target character position
+	 * @param[in] rotation target character rotation
+	 */
+	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
+};
+
+/***********************************************************************************************************************
+ * @brief Provides an simulation of physics character controllers.
+ */
+class CharacterSystem final : public System, public ISerializable
+{
+	LinearPool<CharacterComponent> components;
+	void* charVsCharCollision = nullptr;
+
+	static CharacterSystem* instance;
+public:
+	/**
+	 * @brief Creates a new character system instance.
+	 */
+	CharacterSystem();
+	/**
+	 * @brief Destroy character system instance.
+	 */
+	~CharacterSystem() final;
+
+	ID<Component> createComponent(ID<Entity> entity) final;
+	void destroyComponent(ID<Component> instance) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
+	const string& getComponentName() const final;
+	type_index getComponentType() const final;
+	View<Component> getComponent(ID<Component> instance) final;
+	void disposeComponents() final;
+
+	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+
+	friend class ecsm::Manager;
+	friend class CharacterComponent;
+public:
+	/**
+	 * @brief Returns true if entity has character component.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	bool has(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity character component view.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<CharacterComponent> get(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity character component view if exist.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<CharacterComponent> tryGet(ID<Entity> entity) const;
+
+	/**
+	 * @brief Returns character system instance.
+	 */
+	static CharacterSystem* getInstance() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

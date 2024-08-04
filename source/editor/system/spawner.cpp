@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/link.hpp"
 #include "garden/system/spawner.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/app-info.hpp"
 
 using namespace garden;
@@ -71,6 +72,7 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 	auto linkSystem = LinkSystem::getInstance();
 	auto spawnerSystem = SpawnerSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
+	auto transformSystem = Manager::getInstance()->tryGet<TransformSystem>();
 	const auto& components = spawnerSystem->getComponents();
 	auto occupancy = components.getOccupancy();
 	auto componentData = components.getData();
@@ -96,9 +98,31 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
 		if (editorSystem->selectedEntity == entity)
 			flags |= ImGuiTreeNodeFlags_Selected;
-
-		auto name = spawnerView->path.empty() ? spawnerView->prefab.toBase64() :
-			spawnerView->path.generic_string() + " (" + spawnerView->prefab.toBase64() + ")";
+		
+		string name;
+		if (transformSystem && transformSystem->has(entity))
+		{
+			auto transformView = transformSystem->get(entity);
+			name = transformView->debugName.empty() ?
+				"Entity " + to_string(*entity) : transformView->debugName;
+		}
+		else
+		{
+			name = "Entity " + to_string(*entity);
+		}
+		if (!spawnerView->path.empty() || spawnerView->prefab)
+		{
+			name += " (";
+			if (!spawnerView->path.empty())
+			{
+				name += spawnerView->path.generic_string();
+				if (spawnerView->prefab)
+					name += ", ";
+			}
+			if (spawnerView->prefab)
+				name += spawnerView->prefab.toBase64();
+			name += ")";
+		}
 		if (ImGui::TreeNodeEx(name.c_str(), flags))
 		{
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -243,8 +267,9 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto spawnerView = SpawnerSystem::getInstance()->get(entity);
-		ImGui::Text("Active: %s, Path: %s, Prefab: %s", spawnerView->isActive ? "true" : "false",
-			spawnerView->path.generic_string().c_str(), spawnerView->prefab.toBase64().c_str());
+		ImGui::Text("Active: %s, Path: %s, Prefab: %s",
+			spawnerView->isActive ? "true" : "false", spawnerView->path.generic_string().c_str(),
+			spawnerView->prefab ? spawnerView->prefab.toBase64().c_str() : "");
 		ImGui::EndTooltip();
 	}
 
@@ -258,7 +283,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	EditorRenderSystem::getInstance()->drawFileSelector(spawnerView->path,
 		spawnerView->getEntity(), typeid(SpawnerComponent), "scenes", extensions);
 	
-	auto uuid = spawnerView->prefab.toBase64();
+	auto uuid = spawnerView->prefab ? spawnerView->prefab.toBase64() : "";
 	if (ImGui::InputText("Prefab", &uuid))
 	{
 		auto prefab = spawnerView->prefab;
@@ -270,6 +295,18 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (ImGui::MenuItem("Reset Default"))
 			spawnerView->prefab = {};
 		ImGui::EndPopup();
+	}
+	if (ImGui::BeginDragDropTarget())
+	{
+		auto payload = ImGui::AcceptDragDropPayload("Entity");
+		if (payload)
+		{
+			auto entity = *((const ID<Entity>*)payload->Data);
+			auto linkView = LinkSystem::getInstance()->tryGet(entity);
+			if (linkView && linkView->getUUID())
+				spawnerView->prefab = linkView->getUUID();
+		}
+		ImGui::EndDragDropTarget();
 	}
 
 	auto maxCount = (int)spawnerView->maxCount;

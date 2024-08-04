@@ -1935,7 +1935,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 
 	auto manager = Manager::getInstance();
 	auto transformSystem = manager->tryGet<TransformSystem>();
-	if (!transformSystem)
+	if (rootEntity && (!transformSystem || !manager->has<TransformComponent>(rootEntity)))
 		rootEntity = {};
 
 	const auto& systems = manager->getSystems();

@@ -118,6 +118,10 @@ public:
 	 * @brief Returns link tag map.
 	 */
 	const multimap<string, ID<LinkComponent>>& getTagMap() const noexcept { return tagMap; }
+	/**
+	 * @brief Returns link component view.
+	 */
+	View<LinkComponent> get(ID<LinkComponent> component) const noexcept { return components.get(component); }
 
 	/**
 	 * @brief Returns entity by UUID if found, otherwise null.

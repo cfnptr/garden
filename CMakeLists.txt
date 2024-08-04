@@ -301,7 +301,8 @@ if(GARDEN_BUILD_EXAMPLES)
 	set(GARDEN_APP_CREATOR "Nikita Fediuchin")
 	set(GARDEN_APP_COPYRIGHT "2022-${GARDEN_CURRENT_YEAR} Nikita Fediuchin. All rights reserved.")
 	set(GARDEN_APP_RESOURCES_DIR ${PROJECT_SOURCE_DIR}/examples/platformer/resources)
-	set(GARDEN_APP_SOURCES ${PROJECT_SOURCE_DIR}/examples/platformer/main.cpp)
+	set(GARDEN_APP_SOURCES ${PROJECT_SOURCE_DIR}/examples/platformer/source/main.cpp
+		${PROJECT_SOURCE_DIR}/examples/platformer/source/platformer.cpp)
 	configure_file(cmake/app-defines.hpp.in include/platformer/defines.hpp)
 	
 	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -314,10 +315,11 @@ if(GARDEN_BUILD_EXAMPLES)
 			add_executable(platformer ${GARDEN_APP_SOURCES})
 		endif()
 	else()
-		add_executable(platformer examples/platformer/main.cpp)
+		add_executable(platformer ${GARDEN_APP_SOURCES})
 	endif()
 
 	target_link_libraries(platformer PUBLIC garden)
+	target_include_directories(platformer PUBLIC ${PROJECT_SOURCE_DIR}/examples/platformer/include)
 	set_target_properties(platformer PROPERTIES OUTPUT_NAME ${GARDEN_APP_FILE_NAME})
 	add_dependencies(platformer packer gslc equi2cube)
 

@@ -34,12 +34,12 @@ class AnimationSystem;
  */
 struct AnimationComponent final : public Component
 {
-	string active;         /**< Active animation path */
-	float frame = 0.0f;    /**< Current animation frame */
-	bool isPlaying = true; /**< Is animation playing */
+	string active;               /**< Active animation path */
+	float frame = 0.0f;          /**< Current animation frame */
+	bool isPlaying = true;       /**< Is animation playing */
+	bool randomizeStart = false; /**< Set random frame on copy/deserialization */
 private:
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
+	uint16 _alignment = 0;
 	map<string, Ref<Animation>> animations;
 
 	bool destroy();
@@ -90,6 +90,7 @@ class AnimationSystem final : public System, public ISerializable
 	ThreadSystem* threadSystem = nullptr;
 	LinearPool<AnimationComponent> components;
 	LinearPool<Animation> animations;
+	mt19937 randomGenerator;
 	bool animateAsync = false;
 
 	static AnimationSystem* instance;
@@ -125,6 +126,14 @@ public:
 	 * @brief Does system animate components asynchronously. (From multiple threads)
 	 */
 	bool isAnimateAsync() const noexcept { return animateAsync; }
+	/**
+	 * @brief Returns animation component pool.
+	 */
+	const LinearPool<AnimationComponent>& getComponents() const noexcept { return components; }
+	/**
+	 * @brief Returns animation pool.
+	 */
+	const LinearPool<Animation>& getAnimations() const noexcept { return animations; }
 
 	/**
 	 * @brief Creates a new animation instance.
@@ -136,6 +145,11 @@ public:
 	 * @param animation target animation instance
 	 */
 	View<Animation> get(ID<Animation> animation) { return animations.get(animation); }
+	/**
+	 * @brief Returns animation view.
+	 * @param animation target animation instance
+	 */
+	View<Animation> get(const Ref<Animation>& animation) { return animations.get(animation); }
 	/**
 	 * @brief Destroys animation instance.
 	 * @param animation target animation instance or null

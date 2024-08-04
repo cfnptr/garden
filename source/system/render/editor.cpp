@@ -75,14 +75,15 @@ EditorRenderSystem::~EditorRenderSystem()
 }
 
 //**********************************************************************************************************************
-static void renderSceneSelector(EditorRenderSystem* editorSystem)
+static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path* exportScenePath)
 {
 	static const set<string> extensions = { ".scene" };
-	editorSystem->openFileSelector([](const fs::path& selectedFile)
+	editorSystem->openFileSelector([exportScenePath](const fs::path& selectedFile)
 	{
 		auto path = selectedFile;
 		path.replace_extension();
 		ResourceSystem::getInstance()->loadScene(path);
+		*exportScenePath = path;
 	},
 	AppInfoSystem::getInstance()->getResourcesPath() / "scenes", extensions);
 }
@@ -117,7 +118,7 @@ void EditorRenderSystem::showMainMenuBar()
 			if (ImGui::MenuItem("Export Scene"))
 				exportScene = true;
 			if (ImGui::MenuItem("Import Scene"))
-				renderSceneSelector(this);
+				renderSceneSelector(this, &exportsScenePath);
 		}
 
 		const auto& subscribers = manager->getEventSubscribers("EditorBarFile");
@@ -751,6 +752,7 @@ void EditorRenderSystem::showNewScene()
 		{
 			ImGui::CloseCurrentPopup(); newScene = false;
 			ResourceSystem::getInstance()->clearScene();
+			exportsScenePath = "unnamed";
 		}
 
 		ImGui::SetItemDefaultFocus(); ImGui::SameLine();
@@ -768,15 +770,27 @@ void EditorRenderSystem::showExportScene()
 	if (ImGui::Begin("Scene Exporter", &exportScene,
 		ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::InputText("Path", &scenePath);
-		ImGui::BeginDisabled(scenePath.empty());
+		auto pathString = exportsScenePath.generic_string();
+		if (ImGui::InputText("Path", &pathString))
+			exportsScenePath = pathString;
+
+		ImGui::BeginDisabled(exportsScenePath.empty());
 		if (ImGui::Button("Export full .scene", ImVec2(-FLT_MIN, 0.0f)))
-			ResourceSystem::getInstance()->storeScene(scenePath);
+			ResourceSystem::getInstance()->storeScene(exportsScenePath);
 		ImGui::EndDisabled();
 
-		ImGui::BeginDisabled(!selectedEntity);
-		if (ImGui::Button("Export selected .scene", ImVec2(-FLT_MIN, 0.0f)))
-			ResourceSystem::getInstance()->storeScene(scenePath, selectedEntity);
+		auto manager = Manager::getInstance();
+		ImGui::BeginDisabled(!selectedEntity || !manager->has<TransformComponent>(selectedEntity));
+		string exportSelectedTest = "Export selected .scene";
+		if (selectedEntity)
+		{
+			auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
+			auto debugName = transformView->debugName.empty() ?
+				"Entity " + to_string(*selectedEntity) : transformView->debugName;
+			exportSelectedTest += " (" + debugName + ")";
+		}
+		if (ImGui::Button(exportSelectedTest.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+			ResourceSystem::getInstance()->storeScene(exportsScenePath, selectedEntity);
 		ImGui::EndDisabled();
 	}
 	ImGui::End();
@@ -1043,6 +1057,16 @@ void EditorRenderSystem::drawFileSelector(fs::path& path, ID<Entity> entity,
 	auto pathString = path.generic_string();
 	if (ImGui::InputText("Path", &pathString, ImGuiInputTextFlags_ReadOnly))
 		path = pathString;
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			auto resourceSystem = ResourceSystem::getInstance();
+			path = "";
+		}
+		ImGui::EndPopup();
+	}
 	ImGui::SameLine();
 
 	if (ImGui::Button(" + "))
@@ -1077,6 +1101,7 @@ void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Re
 		ImGui::BeginDisabled(!gpuResourceSystem || !image);
 		if (ImGui::MenuItem("Show Resource"))
 			gpuResourceSystem->openTab(ID<Image>(image));
+		ImGui::EndDisabled();
 		if (ImGui::MenuItem("Reset Default"))
 		{
 			auto resourceSystem = ResourceSystem::getInstance();
@@ -1084,7 +1109,6 @@ void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Re
 			resourceSystem->destroyShared(descriptorSet);
 			path = ""; image = {}; descriptorSet = {};
 		}
-		ImGui::EndDisabled();
 		ImGui::EndPopup();
 	}
 	ImGui::SameLine();

@@ -63,7 +63,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 	auto manager = Manager::getInstance();
 	auto transformSystem = TransformSystem::getInstance();
 
-	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+	if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && ImGui::IsItemHovered(ImGuiHoveredFlags_None))
 	{
 		auto editorSystem = EditorRenderSystem::getInstance();
 		editorSystem->selectedEntity = renderEntity;
@@ -72,18 +72,21 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
 			graphicsSystem->camera && graphicsSystem->camera != renderEntity)
 		{
-			auto entityTransformView = transformSystem->get(renderEntity);
-			auto cameraTransformView = transformSystem->get(graphicsSystem->camera);
-			auto model = entityTransformView->calcModel();
-			cameraTransformView->position = getTranslation(model);
-
-			auto cameraView = manager->get<CameraComponent>(graphicsSystem->camera);
-			if (cameraView)
+			auto entityTransformView = transformSystem->tryGet(renderEntity);
+			auto cameraTransformView = transformSystem->tryGet(graphicsSystem->camera);
+			if (entityTransformView && cameraTransformView)
 			{
-				if (cameraView->type == ProjectionType::Perspective)
-					cameraTransformView->position += float3(0.0f, 0.0f, -2.0f) * cameraTransformView->rotation;
-				else
-					cameraTransformView->position.z = -0.5f;
+				auto model = entityTransformView->calcModel();
+				cameraTransformView->position = getTranslation(model);
+
+				auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
+				if (cameraView)
+				{
+					if (cameraView->type == ProjectionType::Perspective)
+						cameraTransformView->position += float3(0.0f, 0.0f, -2.0f) * cameraTransformView->rotation;
+					else
+						cameraTransformView->position.z = -0.5f;
+				}
 			}
 		}
 	}
@@ -93,26 +96,37 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (ImGui::MenuItem("Create Entity"))
 		{
 			auto entity = manager->createEntity();
-			auto newTransformView = manager->add<TransformComponent>(entity);
-			newTransformView->setParent(renderEntity);
-			ImGui::SetNextItemOpen(true);
+			if (manager->has<TransformComponent>(renderEntity))
+			{
+				auto newTransformView = manager->add<TransformComponent>(entity);
+				newTransformView->setParent(renderEntity);
+			}
 		}
 
 		ImGui::BeginDisabled(manager->has<DoNotDuplicateComponent>(renderEntity));
 		if (ImGui::MenuItem("Duplicate Entity"))
 		{
 			auto duplicate = transformSystem->duplicateRecursive(renderEntity);
-			auto duplicateTransformView = transformSystem->get(duplicate);
-			auto entityTransformView = transformSystem->get(renderEntity);
-			duplicateTransformView->setParent(entityTransformView->getParent());
+			auto entityTransformView = transformSystem->tryGet(renderEntity);
+			if (entityTransformView)
+			{
+				auto duplicateTransformView = transformSystem->get(duplicate);
+				duplicateTransformView->setParent(entityTransformView->getParent());
+			}
 		}
 		ImGui::EndDisabled();
 
 		ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(renderEntity));
 		if (ImGui::MenuItem("Destroy Entity"))
+		{
 			transformSystem->destroyRecursive(renderEntity);
+			ImGui::EndDisabled();
+			ImGui::EndPopup();
+			return;
+		}
 		ImGui::EndDisabled();
 
+		ImGui::BeginDisabled(!manager->has<TransformComponent>(renderEntity));
 		if (ImGui::MenuItem("Copy Debug Name"))
 		{
 			auto transformView = transformSystem->get(renderEntity);
@@ -126,6 +140,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			editorSystem->selectedEntity = renderEntity;
 			editorSystem->exportScene = true;
 		}
+		ImGui::EndDisabled();
 		
 		ImGui::EndPopup();
 	}
@@ -143,37 +158,27 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			auto entityTransformView = transformSystem->tryGet(entity);
 			if (entityTransformView)
 			{
-				if (renderEntity)
-				{
-					auto renderTransformView = transformSystem->get(renderEntity);
-					if (!renderTransformView->hasAncestor(entity))
-						entityTransformView->setParent(renderEntity);
-				}
-				else
-				{
-					entityTransformView->setParent({});
-				}
+				auto renderTransformView = transformSystem->tryGet(renderEntity);
+				if (renderTransformView && !renderTransformView->hasAncestor(entity))
+					entityTransformView->setParent(renderEntity);
 			}
 		}
 		ImGui::EndDragDropTarget();
 	}
-	if (renderEntity)
+	if (ImGui::BeginDragDropSource())
 	{
-		auto renderTransformView = transformSystem->get(renderEntity);
-		if (!renderTransformView->hasBakedWithDescendants() && ImGui::BeginDragDropSource())
+		ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
+		auto renderTransformView = transformSystem->tryGet(renderEntity);
+		if (renderTransformView && !renderTransformView->debugName.empty())
 		{
-			ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
-			if (renderTransformView->debugName.empty())
-			{
-				auto debugName = "Entity " + to_string(*renderEntity);
-				ImGui::Text("%s", debugName.c_str());
-			}
-			else
-			{
-				ImGui::Text("%s", renderTransformView->debugName.c_str());
-			}
-			ImGui::EndDragDropSource();
+			ImGui::Text("%s", renderTransformView->debugName.c_str());
 		}
+		else
+		{
+			auto debugName = "Entity " + to_string(*renderEntity);
+			ImGui::Text("%s", debugName.c_str());
+		}
+		ImGui::EndDragDropSource();
 	}
 }
 
@@ -338,24 +343,7 @@ void HierarchyEditorSystem::editorRender()
 
 			if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 			{
-				auto entity = entities.getID(entityView);
-				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-					editorSystem->selectedEntity = entity;
-
-				if (ImGui::BeginPopupContextItem())
-				{
-					ImGui::BeginDisabled(manager->has<DoNotDuplicateComponent>(entity));
-					if (ImGui::MenuItem("Duplicate Entity"))
-						manager->duplicate(entity);
-					ImGui::EndDisabled();
-
-					ImGui::BeginDisabled(manager->has<DoNotDestroyComponent>(entity));
-					if (ImGui::MenuItem("Destroy Entity"))
-						manager->destroy(entity);
-					ImGui::EndDisabled();
-
-					ImGui::EndPopup();
-				}
+				updateHierarchyClick(entities.getID(entityView));
 				ImGui::TreePop();
 			}
 		}
