@@ -53,6 +53,12 @@ public:
 	const map<string, Ref<Animation>>& getAnimations() const noexcept { return animations; }
 
 	/**
+	 * @brief Returns active animation loop state.
+	 * @return True if active animation is not empty and found.
+	 */
+	bool getActiveLooped(bool& isLooped) const;
+
+	/**
 	 * @brief Adds a new animation to the map.
 	 * 
 	 * @param[in] path target animation path
@@ -117,7 +123,7 @@ class AnimationSystem final : public System, public ISerializable
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
@@ -157,9 +163,28 @@ public:
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }
 
 	/**
+	 * @brief Returns true if entity has animation component.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	bool has(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity animation component view.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<AnimationComponent> get(ID<Entity> entity) const;
+	/**
+	 * @brief Returns entity animation component view if exist.
+	 * @param entity target entity with component
+	 * @note This function is faster than the Manager one.
+	 */
+	View<AnimationComponent> tryGet(ID<Entity> entity) const;
+
+	/**
 	 * @brief Returns animation system instance.
 	 */
-	static AnimationSystem* getInstance() noexcept
+	static AnimationSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

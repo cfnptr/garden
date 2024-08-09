@@ -15,7 +15,9 @@
 #include "garden/system/2d-controller.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/graphics.hpp"
+#include "garden/system/physics.hpp"
 #include "garden/system/camera.hpp"
+#include "garden/system/link.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/infinite-grid.hpp"
@@ -26,15 +28,13 @@ using namespace garden;
 //**********************************************************************************************************************
 Controller2DSystem::Controller2DSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", Controller2DSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", Controller2DSystem::deinit);
 	SUBSCRIBE_TO_EVENT("Update", Controller2DSystem::update);
 }
 Controller2DSystem::~Controller2DSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", Controller2DSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", Controller2DSystem::deinit);
@@ -44,23 +44,22 @@ Controller2DSystem::~Controller2DSystem()
 
 void Controller2DSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<TransformSystem>());
-	GARDEN_ASSERT(manager->has<CameraSystem>());
-	GARDEN_ASSERT(manager->has<GraphicsSystem>());
-
 	SUBSCRIBE_TO_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
 
+	auto manager = Manager::get();
 	camera = manager->createEntity();
 	manager->add<DoNotDestroyComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->position = float3(0.0f, 0.0f, -0.5f);
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	transformView->debugName = "Camera";
+	transformView->debugName = "MainCamera";
 	#endif
 
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto linkView = manager->add<LinkComponent>(camera);
+	linkView->setTag("MainCamera");
+
+	auto graphicsSystem = GraphicsSystem::get();
 	auto windowSize = graphicsSystem->getWindowSize();
 	auto aspectRatio = (float)windowSize.x / (float)windowSize.y;
 	const auto defaultSize = 2.0f;
@@ -82,21 +81,21 @@ void Controller2DSystem::init()
 }
 void Controller2DSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
-		GraphicsSystem::getInstance()->camera = {};
-		manager->destroy(camera);
+		GraphicsSystem::get()->camera = {};
+		Manager::get()->destroy(camera);
 
 		UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
 	}
 }
 
 //**********************************************************************************************************************
-void Controller2DSystem::update()
+static void updateCameraTransform(ID<Entity> camera, float scrollSensitivity)
 {
-	auto manager = Manager::getInstance();
-	auto inputSystem = InputSystem::getInstance();
+	auto manager = Manager::get();
+	auto inputSystem = InputSystem::get();
+
 	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Default ||
 		!manager->has<TransformComponent>(camera) || !manager->has<CameraComponent>(camera))
 	{
@@ -105,11 +104,10 @@ void Controller2DSystem::update()
 
 	if (inputSystem->getMouseState(MouseButton::Right))
 	{
-		
 		auto cameraView = manager->get<CameraComponent>(camera);
-		auto transformView = TransformSystem::getInstance()->get(camera);
+		auto transformView = TransformSystem::get()->get(camera);
 		auto cursorDelta = inputSystem->getCursorDelta();
-		auto windowSize = (float2)GraphicsSystem::getInstance()->getWindowSize();
+		auto windowSize = (float2)GraphicsSystem::get()->getWindowSize();
 		auto othoSize = float2(
 			cameraView->p.orthographic.width.y - cameraView->p.orthographic.width.x,
 			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
@@ -125,8 +123,8 @@ void Controller2DSystem::update()
 	{
 		mouseScroll *= scrollSensitivity * 0.5f;
 
-		auto manager = Manager::getInstance();
-		auto framebufferSize = (float2)GraphicsSystem::getInstance()->getFramebufferSize();
+		auto manager = Manager::get();
+		auto framebufferSize = (float2)GraphicsSystem::get()->getFramebufferSize();
 		auto aspectRatio = framebufferSize.x / framebufferSize.y;
 		auto cameraView = manager->get<CameraComponent>(camera);
 		cameraView->p.orthographic.height.x += mouseScroll.y;
@@ -139,16 +137,82 @@ void Controller2DSystem::update()
 	}
 }
 
+//**********************************************************************************************************************
+static void updateCharacterControll(const string& characterEntityTag,
+	float horizontalSpeed, float horizontalFactor, float jumpSpeed)
+{
+	#if GARDEN_EDITOR
+	auto editorSystem = Manager::get()->tryGet<EditorRenderSystem>();
+	if (editorSystem && !editorSystem->isPlaying())
+		return;
+	#endif
+
+	auto characterEntities = LinkSystem::get()->findEntities(characterEntityTag);
+	if (characterEntities.first != characterEntities.second)
+	{
+		auto inputSystem = InputSystem::get();
+		auto transformSystem = TransformSystem::get();
+		auto characterSystem = CharacterSystem::get();
+		auto deltaTime = (float)inputSystem->getDeltaTime();
+		auto gravity = PhysicsSystem::get()->getGravity();
+
+		auto horizontalVelocity = 0.0f;
+		if (inputSystem->getKeyboardState(KeyboardButton::A) ||
+			inputSystem->getKeyboardState(KeyboardButton::Left))
+		{
+			horizontalVelocity = -horizontalSpeed;
+		}
+		else if (inputSystem->getKeyboardState(KeyboardButton::D) ||
+			inputSystem->getKeyboardState(KeyboardButton::Right))
+		{
+			horizontalVelocity = horizontalSpeed;
+		}
+		auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
+
+		for (auto i = characterEntities.first; i != characterEntities.second; i++)
+		{
+			auto characterView = characterSystem->tryGet(i->second);
+			if (!characterView || !characterView->getShape())
+				continue;
+
+			auto transformView = transformSystem->get(i->second);
+			if (transformView && !transformView->isActiveWithAncestors())
+				continue;
+
+			auto position = characterView->getPosition();
+			if (position.z != 0.0f)
+				characterView->setPosition(float3(position.x, position.y, 0.0f));
+
+			auto linearVelocity = characterView->getLinearVelocity();
+			linearVelocity.x = lerpDelta(linearVelocity.x,
+				horizontalVelocity, 1.0f - horizontalFactor, deltaTime);
+			if (characterView->getGroundState() == CharacterGround::OnGround)
+				linearVelocity.y = isJumping ? jumpSpeed : 0.0f;
+			else
+				linearVelocity.y += gravity.y * deltaTime;
+
+			characterView->setLinearVelocity(linearVelocity);
+			characterView->update(deltaTime, gravity);
+		}
+	}
+}
+
+void Controller2DSystem::update()
+{
+	updateCameraTransform(camera, scrollSensitivity);
+	updateCharacterControll(characterEntityTag, horizontalSpeed, horizontalFactor, jumpSpeed);
+}
+
 void Controller2DSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
 	{
 		auto framebufferSize = graphicsSystem->getFramebufferSize();
 		auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
-		auto cameraView = Manager::getInstance()->get<CameraComponent>(camera);
+		auto cameraView = Manager::get()->get<CameraComponent>(camera);
 		cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
 	}
 }

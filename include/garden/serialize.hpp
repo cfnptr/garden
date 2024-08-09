@@ -150,7 +150,7 @@ class ISerializable
 {
 public:
 	virtual void preSerialize(ISerializer& serializer) { }
-	virtual void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) = 0;
+	virtual void serialize(ISerializer& serializer, const View<Component> component) = 0;
 	virtual void postSerialize(ISerializer& serializer) { }
 
 	virtual void preDeserialize(IDeserializer& deserializer) { }
@@ -215,7 +215,7 @@ public:
 	 * @brief Returns DoNotSerialize system instance.
 	 * @warning Do not use it if you have several link system instances.
 	 */
-	static DoNotSerializeSystem* getInstance() noexcept
+	static DoNotSerializeSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // DoNotSerialize system is not created.
 		return instance;

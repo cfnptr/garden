@@ -91,9 +91,9 @@ ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
 {
 	ID<Framebuffer> framebuffer;
 	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::getInstance()->getGFramebuffer();
+		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
 	else
-		framebuffer = ForwardRenderSystem::getInstance()->getFramebuffer();
+		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
 
 	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
 	if (!linearFilter)
@@ -104,14 +104,14 @@ ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
 		samplerStateOverrides.emplace("colorMap", samplerState);
 	}
 
-	return ResourceSystem::getInstance()->loadGraphicsPipeline("sprite/cutout",
+	return ResourceSystem::get()->loadGraphicsPipeline("sprite/cutout",
 		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
 }
 
 //**********************************************************************************************************************
-void CutoutSpriteSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+void CutoutSpriteSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	SpriteRenderSystem::serialize(serializer, entity, component);
+	SpriteRenderSystem::serialize(serializer, component);
 	auto componentView = View<CutoutSpriteComponent>(component);
 	if (componentView->alphaCutoff != 0.5f)
 		serializer.write("alphaCutoff", componentView->alphaCutoff);

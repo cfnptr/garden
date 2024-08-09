@@ -23,12 +23,31 @@ namespace platformer
 using namespace ecsm;
 using namespace garden;
 
+enum class CharacterState : uint8
+{
+	Idle, Run, Jump, Fall, Count
+};
+static const string characterStateStrings[(uint8)CharacterState::Count] =
+{
+	"CharacterIdle", "CharacterRun", "CharacterJump", "CharacterFall"
+};
+
 class PlatformerSystem final : public System
 {
+	CharacterState currentState = {};
+	bool isLastDirLeft = false;
+
 	PlatformerSystem();
 	~PlatformerSystem() final;
 
 	void init();
+	void deinit();
+	void update();
+
+	#if GARDEN_EDITOR
+	void editorStart();
+	void editorStop();
+	#endif
 	
 	void onItemSensor(ID<Entity> thisEntity, ID<Entity> otherEntity);
 	friend class ecsm::Manager;

@@ -17,6 +17,7 @@
  */
 
 #pragma once
+#include "garden/hash.hpp"
 #include "garden/animate.hpp"
 #include "garden/resource/image.hpp"
 #include "garden/system/graphics.hpp"
@@ -85,10 +86,10 @@ protected:
 		ID<Image> instance = {};
 	};
 	
-	map<string, Ref<Buffer>> sharedBuffers;
-	map<string, Ref<Image>> sharedImages;
-	map<string, Ref<DescriptorSet>> sharedDescriptorSets;
-	map<string, Ref<Animation>> sharedAnimations;
+	map<Hash128, Ref<Buffer>> sharedBuffers;
+	map<Hash128, Ref<Image>> sharedImages;
+	map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
+	map<Hash128, Ref<Animation>> sharedAnimations;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> loadedComputeQueue;
 	queue<BufferQueueItem> loadedBufferQueue;
@@ -96,6 +97,7 @@ protected:
 	vector<ID<Buffer>> loadedBufferArray;
 	vector<ID<Image>> loadedImageArray;
 	mutex queueLocker;
+	Hash128::State hashState = nullptr;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
 
@@ -161,7 +163,7 @@ public:
 		int2& size, Image::Format& format, int32 threadIndex = -1) const;
 	
 	/**
-	 * @brief Loads image data (pixels) from the memory file.
+	 * @brief Loads image data (pixels) from the memory file. (MT-Safe)
 	 * 
 	 * @param[in] data image file data 
 	 * @param dataSize image file data size in bytes
@@ -242,25 +244,25 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Create shared graphics descriptor set instance.
 	 * 
-	 * @param name shared descriptor set name
+	 * @param hash shared descriptor set hash
 	 * @param graphicsPipeline target graphics pipeline
 	 * @param[in] uniforms shader uniform array
 	 * @param index index of descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createSharedDescriptorSet(
-		const string& name, ID<GraphicsPipeline> graphicsPipeline,
+		const Hash128& hash, ID<GraphicsPipeline> graphicsPipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
 
 	/**
 	 * @brief Create shared graphics descriptor set instance.
 	 *
-	 * @param name shared descriptor set name
+	 * @param hash shared descriptor set hash
 	 * @param graphicsPipeline target graphics pipeline
 	 * @param[in] uniforms shader uniform array
 	 * @param index index of descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createSharedDescriptorSet(
-		const string& name, ID<ComputePipeline> computePipeline,
+		const Hash128& hash, ID<ComputePipeline> computePipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
 
 	/**
@@ -363,7 +365,7 @@ public:
 	/**
 	 * @brief Returns resource system instance.
 	 */
-	static ResourceSystem* getInstance() noexcept
+	static ResourceSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

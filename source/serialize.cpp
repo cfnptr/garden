@@ -65,21 +65,21 @@ void DoNotSerializeSystem::disposeComponents()
 bool DoNotSerializeSystem::has(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	return entityComponents.find(typeid(DoNotSerializeComponent)) != entityComponents.end();
 }
 View<DoNotSerializeComponent> DoNotSerializeSystem::get(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& pair = entityView->getComponents().at(typeid(DoNotSerializeComponent));
 	return components.get(ID<DoNotSerializeComponent>(pair.second));
 }
 View<DoNotSerializeComponent> DoNotSerializeSystem::tryGet(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	auto result = entityComponents.find(typeid(DoNotSerializeComponent));
 	if (result == entityComponents.end())

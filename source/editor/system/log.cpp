@@ -24,14 +24,12 @@ using namespace garden;
 //**********************************************************************************************************************
 LogEditorSystem::LogEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
 }
 LogEditorSystem::~LogEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
@@ -40,16 +38,12 @@ LogEditorSystem::~LogEditorSystem()
 
 void LogEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
-	
 	SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
 void LogEditorSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
@@ -90,7 +84,7 @@ static void updateTextBuffer(string& textBuffer,
 //**********************************************************************************************************************
 void LogEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
+	if (!showWindow || !GraphicsSystem::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(560.0f, 180.0f), ImGuiCond_FirstUseEver);

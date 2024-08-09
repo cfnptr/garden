@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Rigid body physics functions.
+ * @details See the Jolt physics docs: https://jrouwe.github.io/JoltPhysics/index.html
+ */
+
 #pragma once
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
@@ -244,7 +250,7 @@ private:
 	friend class CharacterComponent;
 	friend class LinearPool<RigidbodyComponent>;
 public:
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns rigidbody events listener array,
 	 */
 	const vector<Listener>& getListeners() const noexcept { return listeners; }
@@ -286,7 +292,7 @@ public:
 	 */
 	void setMotionType(MotionType motionType, bool activate = true);
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns rigidbody shape instance.
 	 */
 	ID<Shape> getShape() const noexcept { return shape; }
@@ -309,7 +315,7 @@ public:
 	/**
 	 * @brief Allow to change static motion type to the dynamic or kinematic.
 	 */
-	bool canBeKinematicOrDynamic() const noexcept;
+	bool canBeKinematicOrDynamic() const;
 	/**
 	 * @brief Returns which degrees of freedom rigidbody has.
 	 */
@@ -338,6 +344,24 @@ public:
 	void deactivate();
 
 	/**
+	 * @brief Is this rigidbody reports contacts with other rigidbodies.
+	 *
+	 * @details
+	 * Any detected penetrations will however not be resolved. Sensors can be used to implement triggers that
+	 * detect when an object enters their area. The cheapest sensor has a Static motion type. This type of
+	 * sensor will only detect active bodies entering their area. As soon as a rigidbody goes to sleep, the contact
+	 * will be lost. Note that you can still move a Static sensor around using position and rotation setters.
+	 * If you make a sensor Dynamic or Kinematic and activate them, the sensor will be able to detect collisions
+	 * with sleeping bodies too. An active sensor will never go to sleep automatically.
+	 */
+	bool isSensor() const;
+	/**
+	 * @brief Sets rigidbody sensor state.
+	 * @details See the @ref isSensor().
+	 */
+	void setSensor(bool isSensor);
+
+	/*******************************************************************************************************************
 	 * @brief Returns rigidbody position in the phyics simulation world.
 	 */
 	float3 getPosition() const;
@@ -385,38 +409,52 @@ public:
 	 */
 	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
 
+	/*******************************************************************************************************************
+	 * @brief Returns world space linear velocity of the center of mass. (m/s)
+	 */
+	float3 getLinearVelocity() const;
+	/**
+	 * @brief Sets world space linear velocity of the center of mass. (m/s)
+	 * @param[in] velocity target linear velocity
+	 */
+	void setLinearVelocity(const float3& velocity);
+
+	/**
+	 * @brief Returns world space angular velocity of the center of mass. (rad/s)
+	 */
+	float3 getAngularVelocity() const;
+	/**
+	 * @brief Sets world space angular velocity of the center of mass. (rad/s)
+	 * @param[in] velocity target angular velocity
+	 */
+	void setAngularVelocity(const float3& velocity);
+
+	/**
+	 * @brief Returns velocity of point (in world space, e.g. on the surface of the body) of the body. (m/s)
+	 * @param[in] point target velocity point
+	 */
+	float3 getPointVelocity(const float3& point) const;
+	/**
+	 * @brief Returns velocity of point (in center of mass space, e.g. on the surface of the body) of the body. (m/s)
+	 * @param[in] point target velocity point
+	 */
+	float3 getPointVelocityCOM(const float3& point) const;
+
 	/**
 	 * @brief Set velocity of rigidbody such that it will be positioned at position/rotation in deltaTime.
-	 * @note It will activate body if needed.
+	 * @note It will activate rigidbody if needed.
 	 *
 	 * @param[in] position target rigidbody position
 	 * @param[in] rotation target rigidbody rotation
 	 * @param deltaTime target delta time in seconds
 	 */
 	void moveKinematic(const float3& position, const quat& rotation, float deltaTime);
+
 	/**
 	 * @brief Sets rigidbody world space position and rotation from a transform.
 	 * @param activate is rigidbody should be activated
 	 */
 	void setWorldTransform(bool activate = true);
-
-	/**
-	 * @brief Is this rigidbody reports contacts with other rigidbodies. 
-	 * 
-	 * @details
-	 * Any detected penetrations will however not be resolved. Sensors can be used to implement triggers that 
-	 * detect when an object enters their area. The cheapest sensor has a Static motion type. This type of 
-	 * sensor will only detect active bodies entering their area. As soon as a body goes to sleep, the contact 
-	 * will be lost. Note that you can still move a Static sensor around using position and rotation setters.
-	 * If you make a sensor Dynamic or Kinematic and activate them, the sensor will be able to detect collisions 
-	 * with sleeping bodies too. An active sensor will never go to sleep automatically.
-	 */
-	bool isSensor() const;
-	/**
-	 * @brief Sets rigidbody sensor state.
-	 * @details See the @ref isSensor().
-	 */
-	void setSensor(bool isSensor);
 };
 
 /***********************************************************************************************************************
@@ -463,6 +501,7 @@ private:
 	mutex bodyEventLocker;
 	string valueStringCache;
 	float deltaTimeAccum = 0.0f;
+	uint32 cascadeLagCount = 0;
 
 	static PhysicsSystem* instance;
 
@@ -492,7 +531,7 @@ private:
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
@@ -508,6 +547,10 @@ public:
 	 * @brief Simulation update count per second.
 	 */
 	uint16 simulationRate = 60;
+	/**
+	 * @brief Underperforming simulation frames threshold to try recover performance.
+	 */
+	float cascadeLagThreshold = 0.1f;
 
 	/**
 	 * @brief Returns rigidbody component pool.
@@ -525,6 +568,16 @@ public:
 	 * @brief Returns shared rotated/translated shape pool.
 	 */
 	const map<Hash128, ID<Shape>>& getSharedRotTransShapes() const noexcept { return sharedRotTransShapes; }
+
+	/**
+	 * @brief Returns global gravity vector.
+	 */
+	float3 getGravity() const noexcept;
+	/**
+	 * @brief Sets global gravity vector.
+	 * @param[in] gravity target gravity vector
+	 */
+	void setGravity(const float3& gravity) const noexcept;
 
 	/**
 	 * @brief Creates a new box shape instance.
@@ -627,7 +680,7 @@ public:
 	/**
 	 * @brief Returns physics system instance.
 	 */
-	static PhysicsSystem* getInstance() noexcept
+	static PhysicsSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
@@ -635,6 +688,25 @@ public:
 };
 
 /***********************************************************************************************************************
+ * @brief State of the character ground, is he standing on ground or midair, or on steep ground.
+ */
+enum class CharacterGround : uint8
+{
+	/**< Character is on the ground and can move freely. */
+	OnGround,
+	/**< Character is on a slope that is too steep and can't climb up any further. 
+	     The caller should start applying downward velocity if sliding from the slope is desired. */
+	OnSteepGround,
+	/**< Character is touching an object, but is not supported by it and should fall. 
+	     The getGroundXXX functions will return information about the touched object. */
+	NotSupported,
+	/**< Character is in the air and is not touching anything. */
+	InAir,
+	/**< Character ground ctate count. */
+	Count,
+};
+
+/**
  * @brief Physics character controller.
  */
 struct CharacterComponent final : public Component
@@ -663,9 +735,10 @@ public:
 	 * and adds it to the physics simulation if transform is active.
 	 *
 	 * @param shape target shape instance or null
+	 * @param mass character mass (kg). Used to push down objects with gravity when the character is standing on top.
 	 * @param maxPenetrationDepth max penetration we're willing to accept after the switch (if not FLT_MAX).
 	 */
-	void setShape(ID<Shape> shape, float maxPenetrationDepth = FLT_MAX);
+	void setShape(ID<Shape> shape, float mass = 70.0f, float maxPenetrationDepth = FLT_MAX);
 
 	/**
 	 * @brief Returns character position in the phyics simulation world.
@@ -709,15 +782,104 @@ public:
 	 * @param[in] rotation target character rotation
 	 */
 	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
+
+	/**
+	 * @brief Returns character linear velocity. (m/s)
+	 */
+	float3 getLinearVelocity() const;
+	/**
+	 * @brief Sets character linear velocity. (m/s)
+	 * @param[in] velocity target linear velocity
+	 */
+	void setLinearVelocity(const float3& velocity);
+
+	/**
+	 * @brief Returns current character ground state.
+	 */
+	CharacterGround getGroundState() const;
+
+	/**
+	 * @brief Returns characater mass. (kg)
+	 */
+	float getMass() const;
+	/**
+	 * @brief Sets characater mass. (kg)
+	 * @param mass target character mass
+	 */
+	void setMass(float mass);
+	
+	/**
+	 * @brief Moves the character according to its current velocity.
+	 * 
+	 * @details
+	 * The character is similar to a kinematic rigidbody in the sense that you set the velocity and the character 
+	 * will follow unless collision is blocking the way. Note it's your own responsibility to apply gravity to the 
+	 * character velocity! Different surface materials (like ice) can be emulated by getting the ground material and 
+	 * adjusting the velocity and/or the max slope angle accordingly every frame.
+	 *
+	 * @param deltaTime time step to simulate
+	 * @param[in] gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
+	 */
+	void update(float deltaTime, const float3& gravity);
+	/**
+	 * @brief This function combines Update, StickToFloor and WalkStairs.
+	 *
+	 * @details
+	 * This function serves as an example of how these functions could be combined.
+	 * 
+	 * Before calling, call SetLinearVelocity to update the horizontal/vertical speed of the character, typically this is:
+	 *  - When on OnGround and not moving away from ground: velocity = GetGroundVelocity() + horizontal speed as 
+	 *    input by player + optional vertical jump velocity + delta time * gravity
+	 *  - Else: velocity = current vertical velocity + horizontal speed as input by player + delta time * gravity
+	 *
+	 * @param deltaTime time step to simulate
+	 * @param[in] gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
+	 */
+	void extendedUpdate();
+
+	/**
+	 * @brief Sets character world space position and rotation from a transform.
+	 */
+	void setWorldTransform();
 };
 
 /***********************************************************************************************************************
  * @brief Provides an simulation of physics character controllers.
+ * 
+ * @details
+ * Can be used to create a character controller. These are usually used to represent the player as a simple 
+ * capsule or tall box and perform collision detection while the character navigates through the world.
+ * 
+ * Character is implemented using collision detection functionality only (through NarrowPhaseQuery) and is simulated 
+ * when update() is called. Since the character is not 'added' to the world, it is not visible to rigid bodies and it 
+ * only interacts with them during the update() function by applying impulses. This does mean there can be some update 
+ * order artifacts, like the character slightly hovering above an elevator going down, because the characters moves at 
+ * a different time than the other rigid bodies. Separating it has the benefit that the update can happen at the 
+ * appropriate moment in the game code.
+ * 
+ * If you want character to have presence in the world, it is recommended to pair it with a slightly smaller Kinematic 
+ * body. After each update, move this body using moveKinematic to the new location. This ensures that standard collision 
+ * tests like ray casts are able to find the character in the world and that fast moving objects with motion quality 
+ * LinearCast will not pass through the character in 1 update. As an alternative to a Kinematic body, you can also use 
+ * a regular Dynamic body with a gravity factor of 0. Ensure that the character only collides with dynamic objects in 
+ * this case. The advantage of this approach is that the paired body doesn't have infinite mass so is less strong.
+ * 
+ * Character has the following extra functionality:
+ *   Sliding along walls
+ *   Interaction with elevators and moving platforms
+ *   Enhanced steep slope detection (standing in a funnel whose sides 
+ *     are too steep to stand on will not be considered as too steep)
+ *   Stair stepping through the extendedUpdate() call
+ *   Sticking to the ground when walking down a slope through the extendedUpdate() call
+ *   Support for specifying a local coordinate system that allows e.g. walking around in a flying space ship that is 
+ *     equipped with 'inertial dampers' (a sci-fi concept often used in games).
  */
 class CharacterSystem final : public System, public ISerializable
 {
 	LinearPool<CharacterComponent> components;
+	vector<ID<Entity>> entityStack;
 	void* charVsCharCollision = nullptr;
+	string valueStringCache;
 
 	static CharacterSystem* instance;
 public:
@@ -738,12 +900,20 @@ public:
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 
 	friend class ecsm::Manager;
 	friend class CharacterComponent;
 public:
+	/**
+	 * @brief Sets character world space position and rotation from a transform.
+	 * @details It also sets world transform for all character descendants.
+	 *
+	 * @param entity target character enity instance
+	 */
+	void setWorldTransformRecursive(ID<Entity> entity);
+
 	/**
 	 * @brief Returns true if entity has character component.
 	 * @param entity target entity with component
@@ -766,11 +936,13 @@ public:
 	/**
 	 * @brief Returns character system instance.
 	 */
-	static CharacterSystem* getInstance() noexcept
+	static CharacterSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
 	}
 };
+
+// TODO: support non virtual Jolt JPH::Character for AI characters/players.
 
 } // namespace garden

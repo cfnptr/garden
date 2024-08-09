@@ -26,14 +26,12 @@ using namespace garden;
 //**********************************************************************************************************************
 NineSliceRenderEditorSystem::NineSliceRenderEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", NineSliceRenderEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", NineSliceRenderEditorSystem::deinit);
 }
 NineSliceRenderEditorSystem::~NineSliceRenderEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", NineSliceRenderEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", NineSliceRenderEditorSystem::deinit);
@@ -42,10 +40,9 @@ NineSliceRenderEditorSystem::~NineSliceRenderEditorSystem()
 
 void NineSliceRenderEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	auto manager = Manager::get();
+	auto editorSystem = EditorRenderSystem::get();
 
-	auto editorSystem = EditorRenderSystem::getInstance();
 	if (manager->has<Opaque9SliceSystem>())
 	{
 		editorSystem->registerEntityInspector<Opaque9SliceComponent>(
@@ -73,7 +70,7 @@ void NineSliceRenderEditorSystem::init()
 }
 void NineSliceRenderEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
 	/*editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
 	editorSystem->tryUnregisterEntityInspector<Translucent9SliceComponent>();*/
@@ -84,14 +81,14 @@ void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, boo
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::getInstance()->get<Opaque9SliceComponent>(entity);
+		auto componentView = Manager::get()->get<Opaque9SliceComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::getInstance()->get<Opaque9SliceComponent>(entity);
+		auto componentView = Manager::get()->get<Opaque9SliceComponent>(entity);
 		renderComponent(*componentView, typeid(Opaque9SliceComponent));
 	}
 }

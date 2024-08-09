@@ -73,9 +73,9 @@ ID<GraphicsPipeline> Opaque9SliceSystem::createPipeline()
 {
 	ID<Framebuffer> framebuffer;
 	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::getInstance()->getGFramebuffer();
+		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
 	else
-		framebuffer = ForwardRenderSystem::getInstance()->getFramebuffer();
+		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
 
 	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
 	if (!linearFilter)
@@ -86,7 +86,7 @@ ID<GraphicsPipeline> Opaque9SliceSystem::createPipeline()
 		samplerStateOverrides.emplace("colorMap", samplerState);
 	}
 
-	return ResourceSystem::getInstance()->loadGraphicsPipeline("9-slice/opaque",
+	return ResourceSystem::get()->loadGraphicsPipeline("9-slice/opaque",
 		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
 }
 

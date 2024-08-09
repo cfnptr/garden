@@ -20,7 +20,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>& instanceBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	instanceBuffers.resize(swapchainSize);
 
@@ -34,7 +34,7 @@ static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>&
 }
 static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	for (const auto& sets : instanceBuffers)
 		graphicsSystem->destroy(sets[0]);
 	instanceBuffers.clear();
@@ -43,14 +43,12 @@ static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 //**********************************************************************************************************************
 InstanceRenderSystem::InstanceRenderSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", InstanceRenderSystem::deinit);
 }
 InstanceRenderSystem::~InstanceRenderSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", InstanceRenderSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", InstanceRenderSystem::deinit);
@@ -59,7 +57,6 @@ InstanceRenderSystem::~InstanceRenderSystem()
 
 void InstanceRenderSystem::init()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::swapchainRecreate);
 
 	if (!pipeline)
@@ -69,12 +66,10 @@ void InstanceRenderSystem::init()
 }
 void InstanceRenderSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
 		destroyInstanceBuffers(instanceBuffers);
-		graphicsSystem->destroy(pipeline);
+		GraphicsSystem::get()->destroy(pipeline);
 
 		UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InstanceRenderSystem::swapchainRecreate);
 	}
@@ -83,7 +78,7 @@ void InstanceRenderSystem::deinit()
 //**********************************************************************************************************************
 bool InstanceRenderSystem::isDrawReady()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 
 	if (!pipelineView->isReady())
@@ -106,7 +101,7 @@ bool InstanceRenderSystem::isDrawReady()
 }
 void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCount)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (graphicsSystem->get(instanceBuffers[0][0])->getBinarySize() < drawCount * getInstanceDataSize())
 	{
 		destroyInstanceBuffers(instanceBuffers);
@@ -130,7 +125,7 @@ void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 }
 void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCount)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto instanceBufferView = graphicsSystem->get(instanceBuffers[swapchainIndex][0]);
 	instanceBufferView->flush(drawCount * getInstanceDataSize());
@@ -139,7 +134,7 @@ void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCou
 //**********************************************************************************************************************
 void InstanceRenderSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.bufferCount)
@@ -162,7 +157,7 @@ void InstanceRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRender
 	DescriptorSet::Range* range, uint8& index, uint8 capacity)
 {
 	GARDEN_ASSERT(index < capacity);
-	auto swapchainIndex = GraphicsSystem::getInstance()->getSwapchainIndex();
+	auto swapchainIndex = GraphicsSystem::get()->getSwapchainIndex();
 	range[index++] = DescriptorSet::Range(baseDescriptorSet, 1, swapchainIndex);
 }
 

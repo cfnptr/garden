@@ -70,7 +70,7 @@ void CameraSystem::disposeComponents()
 }
 
 //**********************************************************************************************************************
-void CameraSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+void CameraSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto componentView = View<CameraComponent>(component);
 	if (componentView->type == ProjectionType::Perspective)

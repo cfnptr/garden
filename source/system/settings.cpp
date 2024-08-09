@@ -27,14 +27,12 @@ using namespace garden;
 //**********************************************************************************************************************
 SettingsSystem::SettingsSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
 	SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
 }
 SettingsSystem::~SettingsSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PostDeinit", SettingsSystem::postDeinit);
@@ -52,8 +50,8 @@ SettingsSystem::~SettingsSystem()
 //**********************************************************************************************************************
 void SettingsSystem::preInit()
 {
-	auto appInfoSystem = AppInfoSystem::getInstance();
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto appInfoSystem = AppInfoSystem::get();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 
 	try
 	{
@@ -70,8 +68,8 @@ void SettingsSystem::preInit()
 }
 void SettingsSystem::postDeinit()
 {
-	auto appInfoSystem = AppInfoSystem::getInstance();
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto appInfoSystem = AppInfoSystem::get();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 
 	try
 	{

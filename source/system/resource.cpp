@@ -129,8 +129,9 @@ ResourceSystem* ResourceSystem::instance = nullptr;
 ResourceSystem::ResourceSystem()
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
+	hashState = Hash128::createState();
 
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	manager->registerEvent("ImageLoaded");
 	manager->registerEvent("BufferLoaded");
 
@@ -141,7 +142,7 @@ ResourceSystem::ResourceSystem()
 	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
 	#endif
 	#if GARDEN_EDITOR
-	auto appInfoSystem = AppInfoSystem::getInstance();
+	auto appInfoSystem = AppInfoSystem::get();
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
 	appVersion = appInfoSystem->getVersion();
@@ -152,15 +153,17 @@ ResourceSystem::ResourceSystem()
 }
 ResourceSystem::~ResourceSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
 
+		auto manager = Manager::get();
 		manager->unregisterEvent("ImageLoaded");
 		manager->unregisterEvent("BufferLoaded");
 	}
+
+	Hash128::destroyState(hashState);
 
 	GARDEN_ASSERT(instance); // More than one system instance detected.
 	instance = nullptr;
@@ -169,7 +172,6 @@ ResourceSystem::~ResourceSystem()
 //**********************************************************************************************************************
 void ResourceSystem::init()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
 }
 void ResourceSystem::deinit()
@@ -199,8 +201,7 @@ void ResourceSystem::deinit()
 		loadedGraphicsQueue.pop();
 	}
 
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 		UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 }
 
@@ -211,7 +212,7 @@ void ResourceSystem::dequeuePipelines()
 	auto hasNewResources = !loadedGraphicsQueue.empty() || !loadedComputeQueue.empty();
 	LogSystem* logSystem = nullptr;
 	if (hasNewResources)
-		logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		logSystem = Manager::get()->tryGet<LogSystem>();
 	#endif
 
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
@@ -287,8 +288,8 @@ void ResourceSystem::dequeuePipelines()
 //**********************************************************************************************************************
 void ResourceSystem::dequeueBuffersAndImages()
 {
-	auto manager = Manager::getInstance();
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto manager = Manager::get();
+	auto graphicsSystem = GraphicsSystem::get();
 
 	#if GARDEN_DEBUG
 	if (!loadedBufferQueue.empty() || !loadedImageQueue.empty())
@@ -420,7 +421,7 @@ void ResourceSystem::dequeueBuffersAndImages()
 //**********************************************************************************************************************
 void ResourceSystem::input()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	for (auto buffer : loadedBufferArray)
 	{
 		loadedBuffer = buffer;
@@ -527,7 +528,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	if (fileType == ImageFileType::Count)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Image does not exist. (path: " + path.generic_string() + ")");
 		loadMissingImage(data, size, format);
@@ -553,7 +554,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		
 		if (fileCount > 1)
 		{
-			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+			auto logSystem = Manager::get()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->error("Ambiguous image file extension. (path: " + path.generic_string() + ")");
 			loadMissingImage(data, size, format);
@@ -574,7 +575,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 			if (fileCount != 1)
 			{
-				auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+				auto logSystem = Manager::get()->tryGet<LogSystem>();
 				if (logSystem)
 				{
 					if (fileCount == 0)
@@ -598,7 +599,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, data, size, format);
 
 	#if GARDEN_DEBUG
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace("Loaded image. (path: " + path.generic_string() + ")");
 	#endif
@@ -635,7 +636,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	vector<uint8> equiData; int2 equiSize;
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 
 	#if !GARDEN_PACK_RESOURCES
 	auto filePath = appCachesPath / "images" / path;
@@ -651,7 +652,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
 		{
-			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+			auto logSystem = Manager::get()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->error("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
 			loadMissingImage(left, right, bottom, top, back, front, size, format);
@@ -659,7 +660,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 		if (cubemapSize % 32 != 0)
 		{
-			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+			auto logSystem = Manager::get()->tryGet<LogSystem>();
 			if (logSystem)
 				logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 			loadMissingImage(left, right, bottom, top, back, front, size, format);
@@ -788,7 +789,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
 		}
 
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->trace("Converted spherical cubemap. (path: " + path.generic_string() + ")");
 		return;
@@ -834,7 +835,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
 	}
@@ -842,14 +843,14 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Invalid cubemap format. (path: " + path.generic_string() + ")");
 	}
@@ -1065,26 +1066,25 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
 
-	string path;
+	Hash128 hash;
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
 	{
+		Hash128::resetState(hashState);
 		for (const auto& item : paths)
 		{
-			path += item.generic_string();
-			path += ";";
+			auto path = item.generic_string();
+			Hash128::updateState(hashState, path.c_str(), path.length());
 		}
 
-		path += to_string((uint8)bind); path += ";";
-		path += to_string(maxMipCount); path += ";";
-		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LoadArray)); path += ";";
-		path += to_string(hasAnyFlag(flags, ImageLoadFlags::ArrayType)); path += ";";
-		path += to_string(hasAnyFlag(flags, ImageLoadFlags::LinearData));
-		// TODO: use Hash128 instead.
+		Hash128::updateState(hashState, &bind, sizeof(Image::Bind));
+		Hash128::updateState(hashState, &maxMipCount, sizeof(uint8));
+		Hash128::updateState(hashState, &flags, sizeof(ImageLoadFlags));
+		hash = Hash128::digestState(hashState);
 
-		auto result = sharedImages.find(path);
+		auto result = sharedImages.find(hash);
 		if (result != sharedImages.end())
 		{
-			auto imageView = GraphicsSystem::getInstance()->get(result->second);
+			auto imageView = GraphicsSystem::get()->get(result->second);
 			if (imageView->isLoaded())
 				loadedImageArray.push_back(ID<Image>(result->second));
 			return result->second;
@@ -1102,7 +1102,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		resource->setDebugName("image." + debugName + paths[0].generic_string());
 	#endif
 
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 	if (!hasAnyFlag(flags, ImageLoadFlags::LoadSync) && threadSystem)
 	{
 		auto data = new ImageLoadData();
@@ -1169,7 +1169,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
-		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto graphicsSystem = GraphicsSystem::get();
 		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 			Buffer::Usage::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
 		SET_RESOURCE_DEBUG_NAME(graphicsSystem, staging, "buffer.staging.loadedImage" + to_string(*staging));
@@ -1189,7 +1189,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	auto imageRef = Ref<Image>(image);
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
 	{
-		auto result = sharedImages.emplace(path, imageRef);
+		auto result = sharedImages.emplace(hash, imageRef);
 		GARDEN_ASSERT(result.second); // Corrupted shared images array.
 	}
 
@@ -1210,7 +1210,7 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 	}
 
 	if (image.isLastRef())
-		GraphicsSystem::getInstance()->destroy(ID<Image>(image));
+		GraphicsSystem::get()->destroy(ID<Image>(image));
 }
 
 //**********************************************************************************************************************
@@ -1228,49 +1228,47 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 	}
 
 	if (buffer.isLastRef())
-		GraphicsSystem::getInstance()->destroy(ID<Buffer>(buffer));
+		GraphicsSystem::get()->destroy(ID<Buffer>(buffer));
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(
-	const string& name, ID<GraphicsPipeline> graphicsPipeline,
-	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash, 
+	ID<GraphicsPipeline> graphicsPipeline, map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
-	GARDEN_ASSERT(!name.empty());
+	GARDEN_ASSERT(hash);
 	GARDEN_ASSERT(graphicsPipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	auto searchrResult = sharedDescriptorSets.find(name);
+	auto searchrResult = sharedDescriptorSets.find(hash);
 	if (searchrResult != sharedDescriptorSets.end())
 		return searchrResult->second;
 
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), index);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.shared." + name);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.shared." + hash.toBase64());
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
-	auto result = sharedDescriptorSets.emplace(name, sharedDescriptorSet);
+	auto result = sharedDescriptorSets.emplace(hash, sharedDescriptorSet);
 	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
 	return sharedDescriptorSet;
 }
-Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(
-	const string& name, ID<ComputePipeline> computePipeline,
-	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash, 
+	ID<ComputePipeline> computePipeline, map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
-	GARDEN_ASSERT(!name.empty());
+	GARDEN_ASSERT(hash);
 	GARDEN_ASSERT(computePipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	auto searchrResult = sharedDescriptorSets.find(name);
+	auto searchrResult = sharedDescriptorSets.find(hash);
 	if (searchrResult != sharedDescriptorSets.end())
 		return searchrResult->second;
 
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), index);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.shared." + name);
+	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.shared." + hash.toBase64());
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
-	auto result = sharedDescriptorSets.emplace(name, sharedDescriptorSet);
+	auto result = sharedDescriptorSets.emplace(hash, sharedDescriptorSet);
 	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
 	return sharedDescriptorSet;
 }
@@ -1289,7 +1287,7 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 	}
 
 	if (descriptorSet.isLastRef())
-		GraphicsSystem::getInstance()->destroy(ID<DescriptorSet>(descriptorSet));
+		GraphicsSystem::get()->destroy(ID<DescriptorSet>(descriptorSet));
 }
 
 //**********************************************************************************************************************
@@ -1339,7 +1337,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 			outputPath = fragmentOutputPath.parent_path();
 		}
 
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 
 		auto compileResult = false;
 		try
@@ -1375,7 +1373,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 		{
 			logSystem->error("Failed to load graphics shaders. ("
@@ -1445,7 +1443,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		depthStencilFormat = attachment->getFormat();
 	}
 
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 	if (loadAsync && threadSystem)
 	{
 		auto data = new GraphicsPipelineLoadData();
@@ -1537,7 +1535,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->trace("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
 		#endif
@@ -1570,7 +1568,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 			data.resourcesPath / "shaders"
 		};
 
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 
 		auto compileResult = false;
 		try
@@ -1607,7 +1605,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 		{
 			logSystem->error("Failed to load compute shader. ("
@@ -1632,7 +1630,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	auto version = GraphicsAPI::computePipelineVersion++;
 	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ComputePipelineLoadData();
@@ -1706,7 +1704,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 
 		#if GARDEN_DEBUG
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->trace("Loaded compute pipeline. (path: " + path.generic_string() + ")");
 		#endif
@@ -1727,7 +1725,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	fs::path filePath = "scenes" / path; filePath += ".scene"; fs::path scenePath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, scenePath))
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Scene file does not exist or ambiguous. (path: " + path.generic_string() + ")");
 		return {};
@@ -1735,7 +1733,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 
 	if (!fs::exists(scenePath))
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Scene file does not exist. (path: " + path.generic_string() + ")");
 		return {};
@@ -1747,7 +1745,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	catch (exception& e)
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 		{
 			logSystem->trace("Failed to deserialize scene. ("
@@ -1758,7 +1756,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	#endif
 
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	TransformSystem* transformSystem = nullptr;
 	ID<Entity> rootEntity = {};
 
@@ -1890,7 +1888,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 
 void ResourceSystem::clearScene()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	auto transformSystem = manager->tryGet<TransformSystem>();
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
@@ -1913,7 +1911,7 @@ void ResourceSystem::clearScene()
 	}
 
 	#if GARDEN_DEBUG
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto logSystem = manager->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace("Cleaned scene.");
 	#endif
@@ -1933,7 +1931,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	auto filePath = scenesPath / path; filePath += ".scene";
 	JsonSerializer serializer(filePath);
 
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	auto transformSystem = manager->tryGet<TransformSystem>();
 	if (rootEntity && (!transformSystem || !manager->has<TransformComponent>(rootEntity)))
 		rootEntity = {};
@@ -1951,7 +1949,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	serializer.beginChild("entities");
 	
 	auto dnsSystem = manager->tryGet<DoNotSerializeSystem>();
-	auto camera = GraphicsSystem::getInstance()->camera;
+	auto camera = GraphicsSystem::get()->camera;
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -2013,7 +2011,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 			serializer.beginArrayElement();
 			serializer.write(".type", componentName);
 			auto componentView = system->getComponent(pair.second.second);
-			serializableSystem->serialize(serializer, instance, componentView);
+			serializableSystem->serialize(serializer, componentView);
 			serializer.endArrayElement();
 		}
 
@@ -2042,9 +2040,15 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 {
 	GARDEN_ASSERT(!path.empty());
 
+	Hash128 hash;
 	if (loadShared)
 	{
-		auto result = sharedAnimations.find(path.generic_string());
+		auto pathString = path.generic_string();
+		Hash128::resetState(hashState);
+		Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+		hash = Hash128::digestState(hashState);
+
+		auto result = sharedAnimations.find(hash);
 		if (result != sharedAnimations.end())
 			return result->second;
 	}
@@ -2056,7 +2060,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	fs::path filePath = "animations" / path; filePath += ".anim"; fs::path animationPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, animationPath))
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Animation file does not exist or ambiguous. (path: " + path.generic_string() + ")");
 		return {};
@@ -2065,7 +2069,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	std::ifstream fileStream(animationPath);
 	if (!fileStream.is_open())
 	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
 			logSystem->error("Failed to open animation file. (path: " + path.generic_string() + ")");
 		return {};
@@ -2076,16 +2080,16 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	JsonDeserializer deserializer(string_view(buffer.str()));
 	#endif
 
-	auto animationSystem = AnimationSystem::getInstance();
+	auto animationSystem = AnimationSystem::get();
 	auto animation = animationSystem->createAnimation();
 	auto animationView = animationSystem->get(animation);
 
 	deserializer.read("frameRate", animationView->frameRate);
-	deserializer.read("loop", animationView->loop);
+	deserializer.read("isLooped", animationView->isLooped);
 
 	if (deserializer.beginChild("keyframes"))
 	{
-		const auto& componentNames = Manager::getInstance()->getComponentNames();
+		const auto& componentNames = Manager::get()->getComponentNames();
 		auto keyframeCount = (uint32)deserializer.getArraySize();
 
 		for (uint32 i = 0; i < keyframeCount; i++)
@@ -2160,12 +2164,12 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	auto animationRef = Ref<Animation>(animation);
 	if (loadShared)
 	{
-		auto result = sharedAnimations.emplace(path.generic_string(), animationRef);
+		auto result = sharedAnimations.emplace(hash, animationRef);
 		GARDEN_ASSERT(result.second); // Corrupted shared animations array.
 	}
 
 	#if GARDEN_DEBUG
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace("Loaded animation. (path: " + path.generic_string() + ")");
 	#endif
@@ -2187,7 +2191,7 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 	}
 
 	if (animation.isLastRef())
-		AnimationSystem::getInstance()->destroy(ID<Animation>(animation));
+		AnimationSystem::get()->destroy(ID<Animation>(animation));
 }
 
 #if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
@@ -2205,9 +2209,9 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	auto filePath = animationsPath / path; filePath += ".anim";
 	JsonSerializer serializer(filePath);
 
-	const auto animationView = AnimationSystem::getInstance()->get(animation);
+	const auto animationView = AnimationSystem::get()->get(animation);
 	serializer.write("frameRate", animationView->frameRate);
-	serializer.write("loop", animationView->loop);
+	serializer.write("isLooped", animationView->isLooped);
 
 	const auto& keyframes = animationView->getKeyframes();
 	if (keyframes.empty())
@@ -2254,7 +2258,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	}
 	serializer.endChild();
 
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace("Stored animation. (path: " + path.generic_string() + ")");
 }

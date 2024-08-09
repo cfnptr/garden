@@ -31,7 +31,7 @@ ID<Entity> SpawnerComponent::loadPrefab()
 {
 	if (prefab)
 	{
-		auto entity = LinkSystem::getInstance()->findEntity(prefab);
+		auto entity = LinkSystem::get()->findEntity(prefab);
 		if (entity)
 			return entity;
 	}
@@ -39,23 +39,29 @@ ID<Entity> SpawnerComponent::loadPrefab()
 	if (path.empty())
 		return {};
 
-	auto spawnerSystem = SpawnerSystem::getInstance();
+	auto spawnerSystem = SpawnerSystem::get();
 	ID<Entity> entity;
 
 	auto pathString = path.generic_string();
 	if (spawnerSystem->tryGetSharedPrefab(pathString, prefab, entity))
 		return entity;
 
-	entity = ResourceSystem::getInstance()->loadScene(path, true);
+	entity = ResourceSystem::get()->loadScene(path, true);
 	if (entity)
 	{
-		auto manager = Manager::getInstance();
-		auto transformView = TransformSystem::getInstance()->get(entity);
+		auto manager = Manager::get();
+		manager->add<DoNotSerializeComponent>(entity);
+
+		auto transformView = TransformSystem::get()->get(entity);
 		transformView->isActive = false;
+		auto prefabs = LinkSystem::get()->findEntities("Prefabs");
+		if (prefabs.first != prefabs.second)
+			transformView->setParent(prefabs.first->second);
+
 		auto linkView = manager->add<LinkComponent>(entity);
 		linkView->regenerateUUID();
 		prefab = linkView->getUUID();
-		manager->add<DoNotSerializeComponent>(entity);
+
 		spawnerSystem->addSharedPrefab(pathString, prefab);
 	}
 	return entity;
@@ -71,10 +77,11 @@ void SpawnerComponent::spawn(uint32 count)
 	if (!prefabEntity)
 		return;
 
-	auto manager = Manager::getInstance();
-	auto linkSystem = LinkSystem::getInstance();
-	auto transformSystem = TransformSystem::getInstance();
+	auto manager = Manager::get();
+	auto linkSystem = LinkSystem::get();
+	auto transformSystem = TransformSystem::get();
 	auto physicsSystem = manager->tryGet<PhysicsSystem>();
+	auto characterSystem = manager->tryGet<CharacterSystem>();
 
 	for (uint32 i = 0; i < count; i++)
 	{
@@ -83,34 +90,54 @@ void SpawnerComponent::spawn(uint32 count)
 		auto dupTransformView = transformSystem->tryGet(duplicateEntity);
 		if (dupTransformView)
 		{
-			auto thisTransformView = transformSystem->tryGet(entity);
-			if (thisTransformView)
+			if (spawnAsChild)
 			{
-				auto model = thisTransformView->calcModel();
-				extractTransform(model, dupTransformView->position,
-					dupTransformView->scale, dupTransformView->rotation);
+				if (transformSystem->has(entity))
+				{
+					dupTransformView->position = float3(0.0f);
+					dupTransformView->scale = float3(1.0f);
+					dupTransformView->rotation = float3(0.0f);
+					dupTransformView->setParent(entity);
+				}
+				else
+				{
+					dupTransformView->setParent({});
+				}
 			}
-			dupTransformView->setParent({});
+			else
+			{
+				auto thisTransformView = transformSystem->tryGet(entity);
+				if (thisTransformView)
+				{
+					auto model = thisTransformView->calcModel();
+					extractTransform(model, dupTransformView->position,
+						dupTransformView->scale, dupTransformView->rotation);
+				}
+				dupTransformView->setParent({});
+			}
+			
 			dupTransformView->isActive = true;
 		}
 
 		if (physicsSystem)
 			physicsSystem->setWorldTransformRecursive(duplicateEntity);
+		if (characterSystem)
+			characterSystem->setWorldTransformRecursive(duplicateEntity);
 
 		auto dupLinkView = linkSystem->tryGet(duplicateEntity);
 		if (!dupLinkView)
 			dupLinkView = manager->add<LinkComponent>(duplicateEntity);
 		if (!dupLinkView->getUUID())
 			dupLinkView->regenerateUUID();
-		if (!DoNotSerializeSystem::getInstance()->has(duplicateEntity))
+		if (!DoNotSerializeSystem::get()->has(duplicateEntity))
 			manager->add<DoNotSerializeComponent>(duplicateEntity);
 		spawnedEntities.push_back(dupLinkView->getUUID());
 	}
 }
 void SpawnerComponent::destroySpawned()
 {
-	auto linkSystem = LinkSystem::getInstance();
-	auto transformSystem = TransformSystem::getInstance();
+	auto linkSystem = LinkSystem::get();
+	auto transformSystem = TransformSystem::get();
 	for (const auto& uuid : spawnedEntities)
 	{
 		auto entity = linkSystem->findEntity(uuid);
@@ -124,7 +151,8 @@ SpawnerSystem* SpawnerSystem::instance = nullptr;
 
 SpawnerSystem::SpawnerSystem()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
+	SUBSCRIBE_TO_EVENT("PreInit", SpawnerSystem::preInit);
 	SUBSCRIBE_TO_EVENT("PostDeinit", SpawnerSystem::postDeinit);
 	SUBSCRIBE_TO_EVENT("Update", SpawnerSystem::update);
 
@@ -133,9 +161,10 @@ SpawnerSystem::SpawnerSystem()
 }
 SpawnerSystem::~SpawnerSystem()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	if (manager->isRunning())
 	{
+		UNSUBSCRIBE_FROM_EVENT("PreInit", SpawnerSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PostDeinit", SpawnerSystem::postDeinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", SpawnerSystem::update);
 	}
@@ -144,6 +173,20 @@ SpawnerSystem::~SpawnerSystem()
 	instance = nullptr;
 }
 
+void SpawnerSystem::preInit()
+{
+	auto manager = Manager::get();
+	auto prefabs = manager->createEntity();
+
+	auto transformView = manager->add<TransformComponent>(prefabs);
+	transformView->isActive = false;
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	transformView->debugName = "Prefabs";
+	#endif
+	
+	auto linkView = manager->add<LinkComponent>(prefabs);
+	linkView->setTag("Prefabs");
+}
 void SpawnerSystem::postDeinit()
 {
 	components.clear();
@@ -152,9 +195,9 @@ void SpawnerSystem::postDeinit()
 //**********************************************************************************************************************
 void SpawnerSystem::update()
 {
-	auto manager = Manager::getInstance();
-	auto linkSystem = LinkSystem::getInstance();
-	auto transformSystem = TransformSystem::getInstance();
+	auto manager = Manager::get();
+	auto linkSystem = LinkSystem::get();
+	auto transformSystem = TransformSystem::get();
 	auto componentData = components.getData();
 	auto occupancy = components.getOccupancy();
 
@@ -199,6 +242,7 @@ void SpawnerSystem::copyComponent(View<Component> source, View<Component> destin
 	destinationView->delay = sourceView->delay;
 	destinationView->mode = sourceView->mode;
 	destinationView->isActive = sourceView->isActive;
+	destinationView->spawnAsChild = sourceView->spawnAsChild;
 }
 const string& SpawnerSystem::getComponentName() const
 {
@@ -219,7 +263,7 @@ void SpawnerSystem::disposeComponents()
 }
 
 //**********************************************************************************************************************
-void SpawnerSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto componentView = View<SpawnerComponent>(component);
 
@@ -230,8 +274,8 @@ void SpawnerSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<C
 
 	if (componentView->prefab)
 	{
-		auto entity = LinkSystem::getInstance()->findEntity(componentView->prefab);
-		if (entity && !Manager::getInstance()->has<DoNotSerializeComponent>(entity))
+		auto entity = LinkSystem::get()->findEntity(componentView->prefab);
+		if (entity && !Manager::get()->has<DoNotSerializeComponent>(entity))
 		{
 			componentView->prefab.toBase64(valueStringCache);
 			serializer.write("prefab", valueStringCache);
@@ -242,14 +286,16 @@ void SpawnerSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<C
 		serializer.write("maxCount", componentView->maxCount);
 	if (componentView->delay != 0.0f)
 		serializer.write("delay", componentView->delay);
+	if (!componentView->spawnAsChild)
+		serializer.write("spawnAsChild", false);
 
-	if (componentView->mode != SpawnMode::OneShot)
+	switch (componentView->mode)
 	{
-		switch (componentView->mode)
-		{
-		default:
-			break;
-		}
+	case SpawnMode::Manual:
+		serializer.write("mode", string_view("Manual"));
+		break;
+	default:
+		break;
 	}
 }
 void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
@@ -264,9 +310,12 @@ void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 
 	deserializer.read("maxCount", componentView->maxCount);
 	deserializer.read("delay", componentView->delay);
+	deserializer.read("spawnAsChild", componentView->spawnAsChild);
 
 	if (deserializer.read("mode", valueStringCache))
 	{
+		if (valueStringCache == "Manual")
+			componentView->mode = SpawnMode::Manual;
 	}
 
 	componentView->loadPrefab();
@@ -277,7 +326,7 @@ bool SpawnerSystem::tryAddSharedPrefab(const string& path, const Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(uuid);
-	auto linkSystem = LinkSystem::getInstance();
+	auto linkSystem = LinkSystem::get();
 
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult != sharedPrefabs.end())
@@ -296,7 +345,7 @@ bool SpawnerSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(prefab);
-	auto linkSystem = LinkSystem::getInstance();
+	auto linkSystem = LinkSystem::get();
 
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult != sharedPrefabs.end())
@@ -313,7 +362,7 @@ bool SpawnerSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
 	}
 	else
 	{
-		linkView = Manager::getInstance()->add<LinkComponent>(prefab);
+		linkView = Manager::get()->add<LinkComponent>(prefab);
 		linkView->regenerateUUID();
 	}
 	
@@ -335,7 +384,7 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid)
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult == sharedPrefabs.end() ||
-		!LinkSystem::getInstance()->findEntity(searchResult->second))
+		!LinkSystem::get()->findEntity(searchResult->second))
 	{
 		return false;
 	}
@@ -349,7 +398,7 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, ID<Entity>& prefab)
 	if (searchResult == sharedPrefabs.end())
 		return false;
 
-	auto entity = LinkSystem::getInstance()->findEntity(searchResult->second);
+	auto entity = LinkSystem::get()->findEntity(searchResult->second);
 	if (!entity)
 		return false;
 
@@ -363,7 +412,7 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Ent
 	if (searchResult == sharedPrefabs.end())
 		return false;
 
-	auto entity = LinkSystem::getInstance()->findEntity(searchResult->second);
+	auto entity = LinkSystem::get()->findEntity(searchResult->second);
 	if (!entity)
 		return false;
 
@@ -374,9 +423,9 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Ent
 
 void SpawnerSystem::destroySharedPrefabs()
 {
-	auto manager = Manager::getInstance();
-	auto linkSystem = LinkSystem::getInstance();
-	auto transformSystem = TransformSystem::getInstance();
+	auto manager = Manager::get();
+	auto linkSystem = LinkSystem::get();
+	auto transformSystem = TransformSystem::get();
 
 	for (const auto& pair : sharedPrefabs)
 	{
@@ -392,21 +441,21 @@ void SpawnerSystem::destroySharedPrefabs()
 bool SpawnerSystem::has(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	return entityComponents.find(typeid(SpawnerComponent)) != entityComponents.end();
 }
 View<SpawnerComponent> SpawnerSystem::get(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& pair = entityView->getComponents().at(typeid(SpawnerComponent));
 	return components.get(ID<SpawnerComponent>(pair.second));
 }
 View<SpawnerComponent> SpawnerSystem::tryGet(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	auto result = entityComponents.find(typeid(SpawnerComponent));
 	if (result == entityComponents.end())

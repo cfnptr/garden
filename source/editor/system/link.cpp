@@ -23,14 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 LinkEditorSystem::LinkEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", LinkEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LinkEditorSystem::deinit);
 }
 LinkEditorSystem::~LinkEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LinkEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", LinkEditorSystem::deinit);
@@ -39,13 +37,10 @@ LinkEditorSystem::~LinkEditorSystem()
 
 void LinkEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
-
 	SUBSCRIBE_TO_EVENT("EditorRender", LinkEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 
-	EditorRenderSystem::getInstance()->registerEntityInspector<LinkComponent>(
+	EditorRenderSystem::get()->registerEntityInspector<LinkComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -54,10 +49,9 @@ void LinkEditorSystem::init()
 }
 void LinkEditorSystem::deinit()
 {
-	EditorRenderSystem::getInstance()->unregisterEntityInspector<LinkComponent>();
+	EditorRenderSystem::get()->unregisterEntityInspector<LinkComponent>();
 
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", LinkEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
@@ -67,8 +61,8 @@ void LinkEditorSystem::deinit()
 //**********************************************************************************************************************
 static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 {
-	auto linkSystem = LinkSystem::getInstance();
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto linkSystem = LinkSystem::get();
+	auto editorSystem = EditorRenderSystem::get();
 	const auto& uuidMap = linkSystem->getUuidMap();
 	const auto& linkComponents = linkSystem->getComponents();
 
@@ -77,23 +71,21 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 	for (const auto& pair : uuidMap)
 	{
 		auto uuid = pair.first.toBase64();
-		auto linkView = linkComponents.get(pair.second);
-		auto entity = linkView->getEntity();
 
 		if (!searchString.empty())
 		{
-			if (!find(uuid, searchString, *entity, searchCaseSensitive))
+			if (!find(uuid, searchString, *pair.second, searchCaseSensitive))
 				continue;
 		}
 
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
-		if (editorSystem->selectedEntity == entity)
+		if (editorSystem->selectedEntity == pair.second)
 			flags |= ImGuiTreeNodeFlags_Selected;
 
 		if (ImGui::TreeNodeEx(uuid.c_str(), flags))
 		{
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-				editorSystem->selectedEntity = entity;
+				editorSystem->selectedEntity = pair.second;
 			ImGui::TreePop();
 		}
 	}
@@ -112,9 +104,9 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 //**********************************************************************************************************************
 static void renderTagList(const string& searchString, bool searchCaseSensitive)
 {
-	auto manager = Manager::getInstance();
-	auto linkSystem = LinkSystem::getInstance();
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto manager = Manager::get();
+	auto linkSystem = LinkSystem::get();
+	auto editorSystem = EditorRenderSystem::get();
 	const auto& tagMap = linkSystem->getTagMap();
 	const auto& linkComponents = linkSystem->getComponents();
 	map<string, uint32> uniqueTags;
@@ -123,8 +115,7 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 	{
 		if (!searchString.empty())
 		{
-			auto linkView = linkComponents.get(pair.second);
-			if (!find(pair.first, searchString, *linkView->getEntity(), searchCaseSensitive))
+			if (!find(pair.first, searchString, *pair.second, searchCaseSensitive))
 				continue;
 		}
 
@@ -147,8 +138,7 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 			auto range = tagMap.equal_range(pair.first);
 			for (auto i = range.first; i != range.second; i++)
 			{
-				auto linkView = linkComponents.get(i->second);
-				auto entity = linkView->getEntity();
+				auto entity = i->second;
 				auto transformView = manager->tryGet<TransformComponent>(entity);
 				auto name = transformView && transformView->debugName.empty() ?
 					"Entity " + to_string(*entity) : transformView->debugName;
@@ -185,7 +175,7 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 //**********************************************************************************************************************
 void LinkEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
+	if (!showWindow || !GraphicsSystem::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);
@@ -211,7 +201,7 @@ void LinkEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto linkView = LinkSystem::getInstance()->get(entity);
+	auto linkView = LinkSystem::get()->get(entity);
 	if ((linkView->getUUID() || !linkView->getTag().empty()) && ImGui::BeginItemTooltip())
 	{
 		if (linkView->getUUID())

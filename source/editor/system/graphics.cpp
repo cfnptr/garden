@@ -24,14 +24,12 @@ using namespace garden;
 //**********************************************************************************************************************
 GraphicsEditorSystem::GraphicsEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
 }
 GraphicsEditorSystem::~GraphicsEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
@@ -45,16 +43,12 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 
 void GraphicsEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
-	
 	SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
 void GraphicsEditorSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
@@ -135,7 +129,7 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), progressInfo.c_str());
 
 		ImGui::SeparatorText("Frames Per Second");
-		auto deltaTime = (float)InputSystem::getInstance()->getDeltaTime();
+		auto deltaTime = (float)InputSystem::get()->getDeltaTime();
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 
@@ -238,7 +232,7 @@ void GraphicsEditorSystem::showMemoryStatistics()
 		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
 
 		ImGui::SeparatorText("OS Memory");
-		ImGui::Text("OS RAM:    "); ImGui::SameLine();
+		ImGui::Text("RAM:       "); ImGui::SameLine();
 		auto totalRamSize = OS::getTotalRamSize(), freeRamSize = OS::getFreeRamSize();
 		auto usedRamSize = totalRamSize - freeRamSize;
 		gpuInfo = toBinarySizeString(usedRamSize) + " / " + toBinarySizeString(totalRamSize);
@@ -251,7 +245,7 @@ void GraphicsEditorSystem::showMemoryStatistics()
 //**********************************************************************************************************************
 void GraphicsEditorSystem::editorRender()
 {
-	if (!GraphicsSystem::getInstance()->canRender())
+	if (!GraphicsSystem::get()->canRender())
 		return;
 
 	if (performanceStatistics)

@@ -57,7 +57,7 @@ private:
 	map<int32, Animatables> keyframes;
 public:
 	float frameRate = 30.0f;
-	bool loop = true;
+	bool isLooped = true;
 private:
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;

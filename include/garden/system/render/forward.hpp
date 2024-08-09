@@ -77,7 +77,7 @@ public:
 	/**
 	 * @brief Returns forward render system instance.
 	 */
-	static ForwardRenderSystem* getInstance() noexcept
+	static ForwardRenderSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

@@ -45,7 +45,7 @@ static void TraceImpl(const char* inFMT, ...)
 	vsnprintf(buffer, sizeof(buffer), inFMT, list);
 	va_end(list);
 
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->trace(buffer);
 }
@@ -53,7 +53,7 @@ static void TraceImpl(const char* inFMT, ...)
 #ifdef JPH_ENABLE_ASSERTS
 static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine)
 {
-	auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
+	auto logSystem = Manager::get()->tryGet<LogSystem>();
 	if (logSystem)
 	{
 		logSystem->trace(string(inFile) + ":" + to_string(inLine) + ": (" + 
@@ -314,6 +314,7 @@ public:
 	}
 };
 
+//**********************************************************************************************************************
 class GardenBodyActivationListener final : public JPH::BodyActivationListener
 {
 	PhysicsSystem* physicsSystem = nullptr;
@@ -355,6 +356,29 @@ public:
 };
 
 //**********************************************************************************************************************
+static float3 toFloat3(const JPH::Vec3& v) noexcept
+{
+	return float3(v.GetX(), v.GetY(), v.GetZ());
+}
+static quat toQuat(const JPH::Quat& q) noexcept
+{
+	return quat(q.GetX(), q.GetY(), q.GetZ(), q.GetW());
+}
+
+static JPH::Vec3 toVec3(const float3& v) noexcept
+{
+	return JPH::Vec3(v.x, v.y, v.z);
+}
+static JPH::RVec3 toRVec3(const float3& v) noexcept
+{
+	return JPH::RVec3(v.x, v.y, v.z);
+}
+static JPH::Quat toQuat(const quat& q) noexcept
+{
+	return JPH::Quat(q.x, q.y, q.z, q.w);
+}
+
+//**********************************************************************************************************************
 bool Shape::destroy()
 {
 	if (!instance)
@@ -373,7 +397,7 @@ bool Shape::destroy()
 
 	if (innerShape)
 	{
-		auto physicsSystem = PhysicsSystem::getInstance();
+		auto physicsSystem = PhysicsSystem::get();
 		auto innerView = physicsSystem->get(innerShape);
 		if (innerView->instance)
 			physicsSystem->destroyShared(innerShape);
@@ -388,7 +412,7 @@ ShapeType Shape::getType() const
 	GARDEN_ASSERT(instance);
 	static_assert((uint32)ShapeType::User4 == (uint32)JPH::EShapeType::User4, 
 		"ShapeType does not map to the EShapeType");
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	return (ShapeType)instance->GetType();
 }
 ShapeSubType Shape::getSubType() const
@@ -396,7 +420,7 @@ ShapeSubType Shape::getSubType() const
 	GARDEN_ASSERT(instance);
 	static_assert((uint32)ShapeSubType::UserConvex8 == (uint32)JPH::EShapeSubType::UserConvex8,
 		"ShapeSubType does not map to the EShapeSubType");
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	return (ShapeSubType)instance->GetSubType();
 }
 
@@ -404,18 +428,17 @@ ShapeSubType Shape::getSubType() const
 float3 Shape::getBoxHalfExtent() const
 {
 	GARDEN_ASSERT(instance);
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Box);
-	auto boxInstance = (JPH::BoxShape*)this->instance;
-	auto halfExtent = boxInstance->GetHalfExtent();
-	return float3(halfExtent.GetX(), halfExtent.GetY(), halfExtent.GetZ());
+	auto boxInstance = (const JPH::BoxShape*)this->instance;
+	return toFloat3(boxInstance->GetHalfExtent());
 }
 float Shape::getBoxConvexRadius() const
 {
 	GARDEN_ASSERT(instance);
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Box);
-	auto boxInstance = (JPH::BoxShape*)this->instance;
+	auto boxInstance = (const JPH::BoxShape*)this->instance;
 	return boxInstance->GetConvexRadius();
 }
 
@@ -423,9 +446,9 @@ float Shape::getBoxConvexRadius() const
 ID<Shape> Shape::getInnerShape() const
 {
 	GARDEN_ASSERT(instance);
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetType() == JPH::EShapeType::Decorated);
-	auto decoratedInstance = (JPH::DecoratedShape*)this->instance;
+	auto decoratedInstance = (const JPH::DecoratedShape*)this->instance;
 	auto innerInstance = decoratedInstance->GetInnerShape();
 	ID<Shape> id; *id = (uint32)innerInstance->GetUserData();
 	return id;
@@ -433,25 +456,23 @@ ID<Shape> Shape::getInnerShape() const
 void Shape::getPosAndRot(float3& position, quat& rotation) const
 {
 	GARDEN_ASSERT(instance);
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::RotatedTranslated);
-	auto decoratedInstance = (JPH::RotatedTranslatedShape*)this->instance;
-	auto pos = decoratedInstance->GetPosition();
-	auto rot = decoratedInstance->GetRotation();
-	position = float3(pos.GetX(), pos.GetY(), pos.GetZ());
-	rotation = quat(rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW());
+	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
+	position = toFloat3(rotTransInstance->GetPosition());
+	rotation = toQuat(rotTransInstance->GetRotation());
 }
 
 uint64 Shape::getRefCount() const
 {
 	GARDEN_ASSERT(instance);
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	return instance->GetRefCount();
 }
 bool Shape::isLastRef() const
 {
 	GARDEN_ASSERT(instance);
-	auto instance = (JPH::Shape*)this->instance;
+	auto instance = (const JPH::Shape*)this->instance;
 	return instance->GetRefCount() == 1;
 }
 
@@ -461,7 +482,7 @@ bool RigidbodyComponent::destroy()
 	if (instance)
 	{
 		auto body = (JPH::Body*)instance;
-		auto physicsSystem = PhysicsSystem::getInstance();
+		auto physicsSystem = PhysicsSystem::get();
 		auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
 
 		if (inSimulation)
@@ -473,8 +494,8 @@ bool RigidbodyComponent::destroy()
 		bodyInterface->DestroyBody(body->GetID());
 		physicsSystem->destroyShared(shape);
 
-		instance = nullptr;
-		shape = {};
+		this->shape = {};
+		this->instance = nullptr;
 	}
 
 	return true;
@@ -505,7 +526,7 @@ void RigidbodyComponent::setMotionType(MotionType motionType, bool activate)
 		}
 
 		auto body = (JPH::Body*)instance;
-		auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+		auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
 		bodyInterface->SetMotionType(body->GetID(), (JPH::EMotionType)motionType,
 			activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
 		bodyInterface->SetObjectLayer(body->GetID(),
@@ -523,7 +544,7 @@ void RigidbodyComponent::setShape(ID<Shape> shape, bool activate,
 		return;
 
 	auto body = (JPH::Body*)instance;
-	auto physicsSystem = PhysicsSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::get();
 	auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
 
 	if (shape)
@@ -539,18 +560,16 @@ void RigidbodyComponent::setShape(ID<Shape> shape, bool activate,
 		else
 		{
 			auto position = float3(0.0f); auto rotation = quat::identity;
-			auto transformView = Manager::getInstance()->tryGet<TransformComponent>(entity);
+			auto transformView = Manager::get()->tryGet<TransformComponent>(entity);
 			if (transformView)
 			{
 				position = this->lastPosition = transformView->position;
 				rotation = this->lastRotation = transformView->rotation;
 			}
 
-			JPH::BodyCreationSettings settings(shapeInstance,
-				JPH::RVec3(position.x, position.y, position.z),
-				JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
-				(JPH::EMotionType)motionType, motionType == MotionType::Static ?
-				Layers::NON_MOVING : Layers::MOVING);
+			JPH::BodyCreationSettings settings(shapeInstance, 
+				toRVec3(position), toQuat(rotation), (JPH::EMotionType)motionType,
+				motionType == MotionType::Static ? Layers::NON_MOVING : Layers::MOVING);
 			settings.mUserData = *entity;
 			settings.mAllowDynamicOrKinematic = allowDynamicOrKinematic;
 			settings.mAllowedDOFs = (JPH::EAllowedDOFs)allowedDOF;
@@ -585,7 +604,7 @@ void RigidbodyComponent::setShape(ID<Shape> shape, bool activate,
 }
 
 //**********************************************************************************************************************
-bool RigidbodyComponent::canBeKinematicOrDynamic() const noexcept
+bool RigidbodyComponent::canBeKinematicOrDynamic() const
 {
 	if (!shape)
 		return false;
@@ -605,7 +624,7 @@ void RigidbodyComponent::activate()
 	if (!shape || !inSimulation)
 		return;
 	auto body = (JPH::Body*)instance;
-	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
 	bodyInterface->ActivateBody(body->GetID());
 }
 void RigidbodyComponent::deactivate()
@@ -613,99 +632,10 @@ void RigidbodyComponent::deactivate()
 	if (!shape || !inSimulation)
 		return;
 	auto body = (JPH::Body*)instance;
-	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
 	bodyInterface->DeactivateBody(body->GetID());
 }
 
-//**********************************************************************************************************************
-float3 RigidbodyComponent::getPosition() const
-{
-	if (!shape)
-		return float3(0.0f);
-	auto body = (const JPH::Body*)instance;
-	auto position = body->GetPosition();
-	return float3(position.GetX(), position.GetY(), position.GetZ());
-}
-void RigidbodyComponent::setPosition(const float3& position, bool activate)
-{
-	GARDEN_ASSERT(shape);
-	auto body = (JPH::Body*)instance;
-	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
-	bodyInterface->SetPosition(body->GetID(), JPH::RVec3(position.x, position.y, position.z),
-		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
-	lastPosition = lastPosition;
-}
-
-quat RigidbodyComponent::getRotation() const
-{
-	if (!shape)
-		return quat::identity;
-	auto body = (const JPH::Body*)instance;
-	auto rotation = body->GetRotation();
-	return quat(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW());
-}
-void RigidbodyComponent::setRotation(const quat& rotation, bool activate)
-{
-	GARDEN_ASSERT(shape);
-	auto body = (JPH::Body*)instance;
-	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
-	bodyInterface->SetRotation(body->GetID(), JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
-		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
-	lastRotation = rotation;
-}
-
-void RigidbodyComponent::getPosAndRot(float3& position, quat& rotation) const
-{
-	if (!shape)
-	{
-		position = float3(0.0f);
-		rotation = quat::identity;
-		return;
-	}
-
-	auto body = (const JPH::Body*)instance;
-	auto pos = body->GetPosition();
-	auto rot = body->GetRotation();
-	position = float3(pos.GetX(), pos.GetY(), pos.GetZ());
-	rotation = quat(rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW());
-}
-void RigidbodyComponent::setPosAndRot(const float3& position, const quat& rotation, bool activate)
-{
-	GARDEN_ASSERT(shape);
-	auto body = (JPH::Body*)instance;
-	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
-	bodyInterface->SetPositionAndRotation(body->GetID(),
-		JPH::RVec3(position.x, position.y, position.z), JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
-		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
-	lastPosition = position;
-	lastRotation = rotation;
-}
-bool RigidbodyComponent::isPosAndRotChanged(const float3& position, const quat& rotation) const
-{
-	GARDEN_ASSERT(shape);
-	auto body = (const JPH::Body*)instance;
-	return !body->GetPosition().IsClose(JPH::Vec3(position.x, position.y, position.z)) ||
-		!body->GetRotation().IsClose(JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w));
-}
-
-//**********************************************************************************************************************
-void RigidbodyComponent::moveKinematic(const float3& position, const quat& rotation, float deltaTime)
-{
-	GARDEN_ASSERT(shape);
-	auto body = (JPH::Body*)instance;
-	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::getInstance()->bodyInterface;
-	bodyInterface->MoveKinematic(body->GetID(), JPH::RVec3(position.x, position.y, position.z),
-		JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w), deltaTime);
-}
-void RigidbodyComponent::setWorldTransform(bool activate)
-{
-	GARDEN_ASSERT(Manager::getInstance()->has<TransformComponent>(entity));
-	auto transformView = TransformSystem::getInstance()->get(entity);
-	auto model = transformView->calcModel();
-	setPosAndRot(getTranslation(model), extractQuat(extractRotation(model)), activate);
-}
-
-//**********************************************************************************************************************
 bool RigidbodyComponent::isSensor() const
 {
 	if (!shape)
@@ -721,14 +651,144 @@ void RigidbodyComponent::setSensor(bool isSensor)
 }
 
 //**********************************************************************************************************************
+float3 RigidbodyComponent::getPosition() const
+{
+	if (!shape)
+		return float3(0.0f);
+	auto body = (const JPH::Body*)instance;
+	return toFloat3(body->GetPosition());
+}
+void RigidbodyComponent::setPosition(const float3& position, bool activate)
+{
+	GARDEN_ASSERT(shape);
+	auto body = (JPH::Body*)instance;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
+	bodyInterface->SetPosition(body->GetID(), toVec3(position),
+		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+	lastPosition = lastPosition;
+}
+
+quat RigidbodyComponent::getRotation() const
+{
+	if (!shape)
+		return quat::identity;
+	auto body = (const JPH::Body*)instance;
+	return toQuat(body->GetRotation());
+}
+void RigidbodyComponent::setRotation(const quat& rotation, bool activate)
+{
+	GARDEN_ASSERT(shape);
+	auto body = (JPH::Body*)instance;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
+	bodyInterface->SetRotation(body->GetID(), toQuat(rotation),
+		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+	lastRotation = rotation;
+}
+
+void RigidbodyComponent::getPosAndRot(float3& position, quat& rotation) const
+{
+	if (!shape)
+	{
+		position = float3(0.0f);
+		rotation = quat::identity;
+		return;
+	}
+
+	auto body = (const JPH::Body*)instance;
+	position = toFloat3(body->GetPosition());
+	rotation = toQuat(body->GetRotation());
+}
+void RigidbodyComponent::setPosAndRot(const float3& position, const quat& rotation, bool activate)
+{
+	GARDEN_ASSERT(shape);
+	auto body = (JPH::Body*)instance;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
+	bodyInterface->SetPositionAndRotation(body->GetID(), toVec3(position), toQuat(rotation),
+		activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+	lastPosition = position;
+	lastRotation = rotation;
+}
+bool RigidbodyComponent::isPosAndRotChanged(const float3& position, const quat& rotation) const
+{
+	GARDEN_ASSERT(shape);
+	auto body = (const JPH::Body*)instance;
+	return !body->GetPosition().IsClose(toVec3(position)) || !body->GetRotation().IsClose(toQuat(rotation));
+}
+
+//**********************************************************************************************************************
+float3 RigidbodyComponent::getLinearVelocity() const
+{
+	if (!shape)
+		return float3(0.0f);
+	auto body = (const JPH::Body*)instance;
+	return toFloat3(body->GetLinearVelocity());
+}
+void RigidbodyComponent::setLinearVelocity(const float3& velocity)
+{
+	GARDEN_ASSERT(shape);
+	GARDEN_ASSERT(motionType != MotionType::Static);
+	auto body = (JPH::Body*)instance;
+	body->SetLinearVelocity(toVec3(velocity));
+}
+
+float3 RigidbodyComponent::getAngularVelocity() const
+{
+	if (!shape)
+		return float3(0.0f);
+	auto body = (const JPH::Body*)instance;
+	return toFloat3(body->GetAngularVelocity());
+}
+void RigidbodyComponent::setAngularVelocity(const float3& velocity)
+{
+	GARDEN_ASSERT(shape);
+	GARDEN_ASSERT(motionType != MotionType::Static);
+	auto body = (JPH::Body*)instance;
+	body->SetAngularVelocity(toVec3(velocity));
+}
+
+float3 RigidbodyComponent::getPointVelocity(const float3& point) const
+{
+	if (!shape)
+		return float3(0.0f);
+	auto body = (const JPH::Body*)instance;
+	return toFloat3(body->GetPointVelocity(toVec3(point)));
+}
+float3 RigidbodyComponent::getPointVelocityCOM(const float3& point) const
+{
+	if (!shape)
+		return float3(0.0f);
+	auto body = (JPH::Body*)instance;
+	return toFloat3(body->GetPointVelocityCOM(toVec3(point)));
+}
+
+void RigidbodyComponent::moveKinematic(const float3& position, const quat& rotation, float deltaTime)
+{
+	GARDEN_ASSERT(shape);
+	GARDEN_ASSERT(motionType != MotionType::Static);
+	auto body = (JPH::Body*)instance;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
+	bodyInterface->MoveKinematic(body->GetID(), toVec3(position), toQuat(rotation), deltaTime);
+}
+
+void RigidbodyComponent::setWorldTransform(bool activate)
+{
+	GARDEN_ASSERT(shape);
+	GARDEN_ASSERT(Manager::get()->has<TransformComponent>(entity));
+	auto transformView = TransformSystem::get()->get(entity);
+	auto model = transformView->calcModel();
+	setPosAndRot(getTranslation(model), extractQuat(extractRotation(model)), activate);
+}
+
+//**********************************************************************************************************************
 PhysicsSystem* PhysicsSystem::instance = nullptr;
 
 PhysicsSystem::PhysicsSystem(const Properties& properties)
 {
 	this->hashState = Hash128::createState();
 
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	manager->registerEventBefore("Simulate", "Update");
+
 	SUBSCRIBE_TO_EVENT("PreInit", PhysicsSystem::preInit);
 	SUBSCRIBE_TO_EVENT("PostInit", PhysicsSystem::postInit);
 	SUBSCRIBE_TO_EVENT("Simulate", PhysicsSystem::simulate);
@@ -808,12 +868,13 @@ PhysicsSystem::~PhysicsSystem()
 	delete JPH::Factory::sInstance;
 	JPH::Factory::sInstance = nullptr;
 
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("PreInit", PhysicsSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("PostInit", PhysicsSystem::postInit);
 		UNSUBSCRIBE_FROM_EVENT("Simulate", PhysicsSystem::simulate);
+
+		auto manager = Manager::get();
 		manager->unregisterEvent("Simulate");
 	}
 
@@ -826,7 +887,7 @@ PhysicsSystem::~PhysicsSystem()
 //**********************************************************************************************************************
 void PhysicsSystem::preInit()
 {
-	auto threadSystem = Manager::getInstance()->get<ThreadSystem>();
+	auto threadSystem = Manager::get()->get<ThreadSystem>();
 	auto threadPool = &threadSystem->getForegroundPool();
 
 	// We need a job system that will execute physics jobs on multiple threads.
@@ -841,7 +902,7 @@ void PhysicsSystem::postInit()
 //**********************************************************************************************************************
 void PhysicsSystem::prepareSimulate()
 {
-	if (components.getCount() > 0 && Manager::getInstance()->has<TransformSystem>())
+	if (components.getCount() > 0 && Manager::get()->has<TransformSystem>())
 	{
 		auto jobSystem = (GardenJobSystem*)this->jobSystem;
 		auto threadPool = jobSystem->getThreadPool();
@@ -849,18 +910,19 @@ void PhysicsSystem::prepareSimulate()
 
 		threadPool->addItems(ThreadPool::Task([componentData](const ThreadPool::Task& task)
 		{
-			auto physicsSystem = (JPH::PhysicsSystem*)PhysicsSystem::getInstance()->physicsInstance;
-			auto& bodyInterface = physicsSystem->GetBodyInterface();
-			auto transformSystem = TransformSystem::getInstance();
+			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::get()->physicsInstance;
+			auto& bodyInterface = physicsInstance->GetBodyInterface();
+			auto transformSystem = TransformSystem::get();
+			auto characterSystem = Manager::get()->tryGet<CharacterSystem>();
 			auto itemCount = task.getItemCount();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto rigidbodyView = &componentData[i];
-				if (!rigidbodyView->getEntity())
+				if (!rigidbodyView->entity)
 					continue;
 
-				auto transformView = transformSystem->tryGet(rigidbodyView->getEntity());
+				auto transformView = transformSystem->tryGet(rigidbodyView->entity);
 				if (!transformView)
 					continue;
 
@@ -890,8 +952,11 @@ void PhysicsSystem::prepareSimulate()
 					}
 				}
 
-				if (!rigidbodyView->instance || rigidbodyView->motionType == MotionType::Static)
+				if (!rigidbodyView->instance || rigidbodyView->motionType == MotionType::Static ||
+					(characterSystem && characterSystem->has(rigidbodyView->entity)))
+				{
 					continue;
+				}
 
 				float3 position; quat rotation;
 				rigidbodyView->getPosAndRot(position, rotation);
@@ -958,7 +1023,7 @@ void PhysicsSystem::processSimulate()
 //**********************************************************************************************************************
 void PhysicsSystem::interpolateResult(float t)
 {
-	if (components.getCount() > 0 && Manager::getInstance()->has<TransformSystem>())
+	if (components.getCount() > 0 && Manager::get()->has<TransformSystem>())
 	{
 		auto jobSystem = (GardenJobSystem*)this->jobSystem;
 		auto threadPool = jobSystem->getThreadPool();
@@ -966,15 +1031,20 @@ void PhysicsSystem::interpolateResult(float t)
 
 		threadPool->addItems(ThreadPool::Task([componentData, t](const ThreadPool::Task& task)
 		{
-			auto transformSystem = TransformSystem::getInstance();
+			auto characterSystem = Manager::get()->tryGet<CharacterSystem>();
+			auto transformSystem = TransformSystem::get();
 			auto itemCount = task.getItemCount();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto rigidbodyView = &componentData[i];
-				if (!rigidbodyView->instance || rigidbodyView->motionType == MotionType::Static)
+				if (!rigidbodyView->entity || rigidbodyView->motionType == MotionType::Static ||
+					(characterSystem && characterSystem->has(rigidbodyView->entity)))
+				{
 					continue;
-				auto transformView = transformSystem->tryGet(rigidbodyView->getEntity());
+				}
+
+				auto transformView = transformSystem->tryGet(rigidbodyView->entity);
 				if (!transformView)
 					continue;
 
@@ -992,7 +1062,7 @@ void PhysicsSystem::interpolateResult(float t)
 void PhysicsSystem::simulate()
 {
 	auto simDeltaTime = 1.0f / (float)(simulationRate + 1);
-	auto deltaTime = (float)InputSystem::getInstance()->getDeltaTime();
+	auto deltaTime = (float)InputSystem::get()->getDeltaTime();
 	deltaTimeAccum += deltaTime;
 
 	if (deltaTimeAccum >= simDeltaTime)
@@ -1002,12 +1072,22 @@ void PhysicsSystem::simulate()
 		auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
 		auto tempAllocator = (JPH::TempAllocator*)this->tempAllocator;
 		auto jobSystem = (GardenJobSystem*)this->jobSystem;
-
-		// TODO: Add ecape from cascade delay problem.
-		// Detect when we are underperformin target simulationRate for 10% (?) of time and skip for loop.
-
 		auto stepCount = simDeltaTime != 0.0f ? (uint32)(deltaTimeAccum / simDeltaTime) : 1;
-		deltaTimeAccum /= (float)stepCount;
+
+		if (cascadeLagCount > simulationRate * cascadeLagThreshold)
+		{
+			// Trying to recover from cascade chain lag. (snowball effect)
+			stepCount = 1;
+			cascadeLagCount = 0;
+		}
+		else
+		{
+			if (stepCount > 1)
+				cascadeLagCount++;
+			else
+				cascadeLagCount = 0;
+			deltaTimeAccum /= (float)stepCount;
+		}
 
 		for (uint32 i = 0; i < stepCount; i++)
 			physicsInstance->Update(deltaTimeAccum, collisionSteps, tempAllocator, jobSystem);
@@ -1047,6 +1127,12 @@ void PhysicsSystem::copyComponent(View<Component> source, View<Component> destin
 	sourceView->getPosAndRot(position, rotation);
 	destinationView->setPosAndRot(position, rotation);
 
+	if (sourceView->motionType != MotionType::Static)
+	{
+		destinationView->setLinearVelocity(sourceView->getLinearVelocity());
+		destinationView->setAngularVelocity(sourceView->getAngularVelocity());
+	}
+
 	destinationView->lastPosition = sourceView->lastPosition;
 	destinationView->lastRotation = sourceView->lastRotation;
 }
@@ -1070,7 +1156,43 @@ void PhysicsSystem::disposeComponents()
 }
 
 //**********************************************************************************************************************
-void PhysicsSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+static void serializeShape(ISerializer& serializer, View<Shape> shapeView, bool isInner)
+{
+	auto subType = shapeView->getSubType();
+	if (subType == ShapeSubType::Box)
+	{
+		auto halfExtent = shapeView->getBoxHalfExtent();
+		if (halfExtent != float3(0.5f))
+			serializer.write(isInner ? "innerHalfExtent" : "halfExtent", halfExtent);
+		auto convexRadius = shapeView->getBoxConvexRadius();
+		if (convexRadius != 0.05f)
+			serializer.write(isInner ? "innerConvexRadius" : "convexRadius", convexRadius);
+		serializer.write(isInner ? "innerShapeType" : "shapeType", string_view("Box"));
+	}
+}
+static void serializeDecoratedShape(ISerializer& serializer, ID<Shape> shape, const LinearPool<Shape>& shapes)
+{
+	auto shapeView = shapes.get(shape);
+	auto subType = shapeView->getSubType();
+	if (subType == ShapeSubType::RotatedTranslated)
+	{
+		float3 position; quat rotation;
+		shapeView->getPosAndRot(position, rotation);
+		if (position != float3(0.0f))
+			serializer.write("shapePosition", position);
+		if (rotation != quat::identity)
+			serializer.write("shapeRotation", rotation);
+		serializer.write("shapeType", string_view("RotatedTranslated"));
+		auto innerShape = shapeView->getInnerShape();
+		serializeShape(serializer, shapes.get(innerShape), true);
+	}
+	else
+	{
+		serializeShape(serializer, shapeView, false);
+	}
+}
+
+void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto componentView = View<RigidbodyComponent>(component);
 	
@@ -1080,8 +1202,7 @@ void PhysicsSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<C
 	else if (motionType == MotionType::Dynamic)
 		serializer.write("motionType", string_view("Dynamic"));
 
-	auto shape = componentView->shape;
-	if (shape)
+	if (componentView->shape)
 	{
 		if (componentView->isActive())
 			serializer.write("isActive", true);
@@ -1096,6 +1217,13 @@ void PhysicsSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<C
 			serializer.write("position", position);
 		if (rotation != quat::identity)
 			serializer.write("rotation", rotation);
+
+		auto velocity = componentView->getLinearVelocity();
+		if (velocity != float3(0.0f))
+			serializer.write("linearVelocity", position);
+		velocity = componentView->getAngularVelocity();
+		if (velocity != float3(0.0f))
+			serializer.write("angularVelocity", position);
 
 		if (componentView->motionType != MotionType::Static && 
 			componentView->allowedDOF != AllowedDOF::All)
@@ -1115,20 +1243,40 @@ void PhysicsSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<C
 				serializer.write("allowedDofRotZ", false);
 		}
 
-		auto shapeView = shapes.get(shape);
-		auto subType = shapeView->getSubType();
-		if (subType == ShapeSubType::Box)
-		{
-			auto halfExtent = shapeView->getBoxHalfExtent();
-			if (halfExtent != float3(0.5f))
-				serializer.write("halfExtent", halfExtent);
-			auto convexRadius = shapeView->getBoxConvexRadius();
-			if (convexRadius != 0.05f)
-				serializer.write("convexRadius", convexRadius);
-			serializer.write("shapeType", string_view("Box"));
-		}
+		serializeDecoratedShape(serializer, componentView->shape, shapes);
 	}
 }
+
+//**********************************************************************************************************************
+static ID<Shape> deserializeShape(IDeserializer& deserializer, const string& shapeType, bool isInner)
+{
+	if (shapeType == "Box")
+	{
+		float3 halfExtent(0.5f); float convexRadius = 0.05f;
+		deserializer.read(isInner ? "innerHalfExtent" : "halfExtent", halfExtent);
+		deserializer.read(isInner ? "innerConvexRadius" : "convexRadius", convexRadius);
+		return PhysicsSystem::get()->createSharedBoxShape(halfExtent, convexRadius);
+	}
+	return {};
+}
+static ID<Shape> deserializeDecoratedShape(IDeserializer& deserializer, string& valueStringCache)
+{
+	if (valueStringCache == "RotatedTranslated")
+	{
+		if (!deserializer.read("innerShapeType", valueStringCache))
+			return {};
+		auto innerShape = deserializeShape(deserializer, valueStringCache, true);
+		if (!innerShape)
+			return {};
+		auto position = float3(0.0f);
+		deserializer.read("shapePosition", position);
+		auto rotation = quat::identity;
+		deserializer.read("shapeRotation", rotation);
+		return PhysicsSystem::get()->createSharedRotTransShape(innerShape, position, rotation);
+	}
+	return deserializeShape(deserializer, valueStringCache, false);
+}
+
 void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
 	auto componentView = View<RigidbodyComponent>(component);
@@ -1143,44 +1291,60 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 
 	if (deserializer.read("shapeType", valueStringCache))
 	{
-		auto isActive = false, allowDynamicOrKinematic = false, isSensor = false;
-		deserializer.read("isActive", isActive);
-		deserializer.read("allowDynamicOrKinematic", allowDynamicOrKinematic);
-		deserializer.read("isSensor", isSensor);
-
-		auto allowedDOF = AllowedDOF::All;
-		auto allowedDofValue = true;
-		if (deserializer.read("allowedDofTransX", allowedDofValue))
-		{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationX; }
-		if (deserializer.read("allowedDofTransY", allowedDofValue))
-		{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationY; }
-		if (deserializer.read("allowedDofTransZ", allowedDofValue))
-		{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationZ; }
-		if (deserializer.read("allowedDofRotX", allowedDofValue))
-		{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationX; }
-		if (deserializer.read("allowedDofRotY", allowedDofValue))
-		{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationY; }
-		if (deserializer.read("allowedDofRotZ", allowedDofValue))
-		{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationZ; }
-
-		if (valueStringCache == "Box")
+		auto shape = deserializeDecoratedShape(deserializer, valueStringCache);
+		if (shape)
 		{
-			float3 halfExtent(0.5f); float convexRadius = 0.05f;
-			deserializer.read("halfExtent", halfExtent);
-			deserializer.read("convexRadius", convexRadius);
-			auto shape = createSharedBoxShape(halfExtent, convexRadius);
+			auto isActive = false, allowDynamicOrKinematic = false, isSensor = false;
+			deserializer.read("isActive", isActive);
+			deserializer.read("allowDynamicOrKinematic", allowDynamicOrKinematic);
+			deserializer.read("isSensor", isSensor);
+
+			auto allowedDOF = AllowedDOF::All;
+			auto allowedDofValue = true;
+			if (deserializer.read("allowedDofTransX", allowedDofValue))
+			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationX; }
+			if (deserializer.read("allowedDofTransY", allowedDofValue))
+			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationY; }
+			if (deserializer.read("allowedDofTransZ", allowedDofValue))
+			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationZ; }
+			if (deserializer.read("allowedDofRotX", allowedDofValue))
+			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationX; }
+			if (deserializer.read("allowedDofRotY", allowedDofValue))
+			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationY; }
+			if (deserializer.read("allowedDofRotZ", allowedDofValue))
+			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationZ; }
+
 			componentView->setShape(shape, isActive, allowDynamicOrKinematic, isSensor, allowedDOF);
-		}
 
-		if (componentView->getShape())
-		{
-			auto position = float3(0.0f); auto rotation = quat::identity;
+			auto position = float3(0.0f);
 			deserializer.read("position", position);
+			auto rotation = quat::identity;
 			deserializer.read("rotation", rotation);
 			if (position != float3(0.0f) || rotation != quat::identity)
 				componentView->setPosAndRot(position, rotation, isActive);
+
+			auto velocity = float3(0.0f);
+			deserializer.read("linearVelocity", velocity);
+			if (velocity != float3(0.0f))
+				componentView->setLinearVelocity(velocity);
+			velocity = float3(0.0f);
+			deserializer.read("angularVelocity", velocity);
+			if (velocity != float3(0.0f))
+				componentView->setAngularVelocity(velocity);
 		}
 	}
+}
+
+//**********************************************************************************************************************
+float3 PhysicsSystem::getGravity() const noexcept
+{
+	auto physicsInstance = (const JPH::PhysicsSystem*)this->physicsInstance;
+	return toFloat3(physicsInstance->GetGravity());
+}
+void PhysicsSystem::setGravity(const float3& gravity) const noexcept
+{
+	auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
+	physicsInstance->SetGravity(toVec3(gravity));
 }
 
 //**********************************************************************************************************************
@@ -1188,7 +1352,7 @@ ID<Shape> PhysicsSystem::createBoxShape(const float3& halfExtent, float convexRa
 {
 	GARDEN_ASSERT(halfExtent >= convexRadius);
 	GARDEN_ASSERT(convexRadius >= 0.0f);
-	auto boxShape = new JPH::BoxShape(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z), convexRadius);
+	auto boxShape = new JPH::BoxShape(toVec3(halfExtent), convexRadius);
 	boxShape->AddRef();
 	auto instance = shapes.create(boxShape);
 	boxShape->SetUserData((JPH::uint64)*instance);
@@ -1220,8 +1384,8 @@ ID<Shape> PhysicsSystem::createRotTransShape(ID<Shape> innerShape, const float3&
 {
 	GARDEN_ASSERT(innerShape);
 	auto innerView = get(innerShape);
-	auto rotTransShape = new JPH::RotatedTranslatedShape(JPH::Vec3(position.x, position.y, position.z), 
-		JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w), (JPH::Shape*)innerView->instance);
+	auto rotTransShape = new JPH::RotatedTranslatedShape(toVec3(position),
+		toQuat(rotation), (JPH::Shape*)innerView->instance);
 	rotTransShape->AddRef();
 	auto instance = shapes.create(rotTransShape);
 	rotTransShape->SetUserData((JPH::uint64)*instance);
@@ -1293,12 +1457,11 @@ void PhysicsSystem::optimizeBroadPhase()
 void PhysicsSystem::activateRecursive(ID<Entity> entity)
 {
 	GARDEN_ASSERT(entity);
-	GARDEN_ASSERT(Manager::getInstance()->has<TransformSystem>());
+	GARDEN_ASSERT(Manager::get()->has<TransformSystem>());
 
-	auto transformSystem = TransformSystem::getInstance();
+	auto transformSystem = TransformSystem::get();
 	entityStack.push_back(entity);
 
-	auto manager = Manager::getInstance();
 	while (!entityStack.empty())
 	{
 		auto entity = entityStack.back();
@@ -1323,12 +1486,11 @@ void PhysicsSystem::activateRecursive(ID<Entity> entity)
 void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 {
 	GARDEN_ASSERT(entity);
-	GARDEN_ASSERT(Manager::getInstance()->has<TransformSystem>());
+	GARDEN_ASSERT(Manager::get()->has<TransformSystem>());
 
-	auto transformSystem = TransformSystem::getInstance();
+	auto transformSystem = TransformSystem::get();
 	entityStack.push_back(entity);
 
-	auto manager = Manager::getInstance();
 	while (!entityStack.empty())
 	{
 		auto entity = entityStack.back();
@@ -1354,21 +1516,21 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 bool PhysicsSystem::has(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	return entityComponents.find(typeid(RigidbodyComponent)) != entityComponents.end();
 }
 View<RigidbodyComponent> PhysicsSystem::get(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& pair = entityView->getComponents().at(typeid(RigidbodyComponent));
 	return components.get(ID<RigidbodyComponent>(pair.second));
 }
 View<RigidbodyComponent> PhysicsSystem::tryGet(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	auto result = entityComponents.find(typeid(RigidbodyComponent));
 	if (result == entityComponents.end())
@@ -1383,51 +1545,54 @@ bool CharacterComponent::destroy()
 	{
 		auto instance = (JPH::CharacterVirtual*)this->instance;
 		auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-			CharacterSystem::getInstance()->charVsCharCollision;
+			CharacterSystem::get()->charVsCharCollision;
 		charVsCharCollision->Remove(instance);
 		delete instance;
+
+		this->shape = {};
 		this->instance = nullptr;
 	}
 	return true;
 }
 
 //**********************************************************************************************************************
-void CharacterComponent::setShape(ID<Shape> shape, float maxPenetrationDepth)
+void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrationDepth)
 {
 	if (this->shape == shape)
 		return;
 
 	if (shape)
 	{
-		auto physicsSystem = PhysicsSystem::getInstance();
+		auto physicsSystem = PhysicsSystem::get();
 		auto shapeView = physicsSystem->get(shape);
 
 		if (instance)
 		{
+			auto instance = (JPH::CharacterVirtual*)this->instance;
 			auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
 			auto tempAllocator = (JPH::TempAllocator*)physicsSystem->tempAllocator;
 			auto bpLayerFilter = physicsInstance->GetDefaultBroadPhaseLayerFilter(Layers::MOVING);
 			auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(Layers::MOVING);
-			auto instance = (JPH::CharacterVirtual*)this->instance;
+			JPH::BodyID rigidbodyID = {};
 
-			JPH::BodyID bodyID = {};
 			auto rigidbodyView = physicsSystem->tryGet(entity);
-			if (rigidbodyView)
+			if (rigidbodyView && rigidbodyView->getShape())
 			{
 				auto instance = (JPH::Body*)rigidbodyView->instance;
-				bodyID = instance->GetID();
+				rigidbodyID = instance->GetID();
 			}
 
-			JPH::IgnoreSingleBodyFilter bodyFilter(bodyID);
+			JPH::IgnoreSingleBodyFilter bodyFilter(rigidbodyID);
 			JPH::ShapeFilter shapeFilter; // TODO: add collision matrix
 
 			instance->SetShape((JPH::Shape*)shapeView->instance, maxPenetrationDepth,
 				bpLayerFilter, objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
+			instance->SetMass(mass);
 		}
 		else
 		{
 			auto position = float3(0.0f); auto rotation = quat::identity;
-			auto transformView = Manager::getInstance()->tryGet<TransformComponent>(entity);
+			auto transformView = Manager::get()->tryGet<TransformComponent>(entity);
 			if (transformView)
 			{
 				position = transformView->position;
@@ -1437,14 +1602,13 @@ void CharacterComponent::setShape(ID<Shape> shape, float maxPenetrationDepth)
 			auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
 			JPH::CharacterVirtualSettings settings;
 			settings.mShape = (JPH::Shape*)shapeView->instance;
-			auto instance = new JPH::CharacterVirtual(&settings,
-				JPH::RVec3(position.x, position.y, position.z),
-				JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
-				(JPH::uint64)*entity, physicsInstance);
+			settings.mMass = mass;
+			auto instance = new JPH::CharacterVirtual(&settings, toVec3(position),
+				toQuat(rotation), (JPH::uint64)*entity, physicsInstance);
 			this->instance = instance;
 
 			auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-				CharacterSystem::getInstance()->charVsCharCollision;
+				CharacterSystem::get()->charVsCharCollision;
 			instance->SetCharacterVsCharacterCollision(charVsCharCollision);
 
 			if (inSimulation)
@@ -1459,7 +1623,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float maxPenetrationDepth)
 			if (inSimulation)
 			{
 				auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-					CharacterSystem::getInstance()->charVsCharCollision;
+					CharacterSystem::get()->charVsCharCollision;
 				charVsCharCollision->Remove(instance);
 			}
 
@@ -1476,30 +1640,28 @@ float3 CharacterComponent::getPosition() const
 {
 	if (!shape)
 		return float3(0.0f);
-	auto instance = (JPH::CharacterVirtual*)this->instance;
-	auto position = instance->GetPosition();
-	return float3(position.GetX(), position.GetY(), position.GetZ());
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return toFloat3(instance->GetPosition());
 }
 void CharacterComponent::setPosition(const float3& position)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
-	instance->SetPosition(JPH::RVec3(position.x, position.y, position.z));
+	instance->SetPosition(toVec3(position));
 }
 
 quat CharacterComponent::getRotation() const
 {
 	if (!shape)
 		return quat::identity;
-	auto instance = (JPH::CharacterVirtual*)this->instance;
-	auto rotation = instance->GetRotation();
-	return quat(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW());
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return toQuat(instance->GetRotation());
 }
 void CharacterComponent::setRotation(const quat& rotation)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
-	instance->SetRotation(JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w));
+	instance->SetRotation(toQuat(rotation));
 }
 
 void CharacterComponent::getPosAndRot(float3& position, quat& rotation) const
@@ -1511,25 +1673,125 @@ void CharacterComponent::getPosAndRot(float3& position, quat& rotation) const
 		return;
 	}
 
-	auto instance = (JPH::CharacterVirtual*)this->instance;
-	auto pos = instance->GetPosition();
-	auto rot = instance->GetRotation();
-	position = float3(pos.GetX(), pos.GetY(), pos.GetZ());
-	rotation = quat(rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW());
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	position = toFloat3(instance->GetPosition());
+	rotation = toQuat(instance->GetRotation());
 }
 void CharacterComponent::setPosAndRot(const float3& position, const quat& rotation)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
-	instance->SetPosition(JPH::RVec3(position.x, position.y, position.z));
-	instance->SetRotation(JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w));
+	instance->SetPosition(toVec3(position));
+	instance->SetRotation(toQuat(rotation));
 }
 bool CharacterComponent::isPosAndRotChanged(const float3& position, const quat& rotation) const
 {
 	GARDEN_ASSERT(shape);
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return !instance->GetPosition().IsClose(toVec3(position)) || !instance->GetRotation().IsClose(toQuat(rotation));
+}
+
+//**********************************************************************************************************************
+float3 CharacterComponent::getLinearVelocity() const
+{
+	if (!shape)
+		return float3(0.0f);
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return toFloat3(instance->GetLinearVelocity());
+}
+void CharacterComponent::setLinearVelocity(const float3& velocity)
+{
+	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
-	return !instance->GetPosition().IsClose(JPH::Vec3(position.x, position.y, position.z)) ||
-		!instance->GetRotation().IsClose(JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w));
+	instance->SetLinearVelocity(toVec3(velocity));
+}
+
+CharacterGround CharacterComponent::getGroundState() const
+{
+	GARDEN_ASSERT(shape);
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return (CharacterGround)instance->GetGroundState();
+}
+
+float CharacterComponent::getMass() const
+{
+	if (!shape)
+		return 0.0f;
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return instance->GetMass();
+}
+void CharacterComponent::setMass(float mass)
+{
+	GARDEN_ASSERT(shape);
+	auto instance = (JPH::CharacterVirtual*)this->instance;
+	instance->SetMass(mass);
+}
+
+//**********************************************************************************************************************
+void CharacterComponent::update(float deltaTime, const float3& gravity)
+{
+	GARDEN_ASSERT(shape);
+	auto instance = (JPH::CharacterVirtual*)this->instance;
+	auto physicsSystem = PhysicsSystem::get();
+	auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
+	auto tempAllocator = (JPH::TempAllocator*)physicsSystem->tempAllocator;
+	auto bpLayerFilter = physicsInstance->GetDefaultBroadPhaseLayerFilter(Layers::MOVING);
+	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(Layers::MOVING);
+	JPH::BodyID rigidbodyID = {};
+
+	auto rigidbodyView = physicsSystem->tryGet(entity);
+	if (rigidbodyView && rigidbodyView->instance)
+	{
+		auto instance = (JPH::Body*)rigidbodyView->instance;
+		rigidbodyID = instance->GetID();
+	}
+
+	JPH::IgnoreSingleBodyFilter bodyFilter(rigidbodyID);
+	JPH::ShapeFilter shapeFilter; // TODO: add collision matrix
+
+	instance->Update(deltaTime, toVec3(gravity), bpLayerFilter, 
+		objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
+
+	auto manager = Manager::get();
+	auto transformView = manager->tryGet<TransformComponent>(entity);
+	if (transformView)
+	{
+		float3 position; quat rotation;
+		getPosAndRot(position, rotation);
+
+		if (transformView->getParent())
+		{
+			auto parentView = TransformSystem::get()->get(transformView->getParent());
+			auto model = parentView->calcModel();
+			position = (float3)(inverse(model) * float4(position, 1.0f));
+			rotation *= inverse(extractQuat(extractRotation(model)));
+		}
+
+		transformView->position = position;
+		transformView->rotation = rotation;
+	}
+
+	if (rigidbodyView && rigidbodyView->instance)
+	{
+		float3 position; quat rotation;
+		getPosAndRot(position, rotation);
+
+		if (rigidbodyView->isPosAndRotChanged(position, rotation))
+			rigidbodyView->setPosAndRot(position, rotation, true);
+	}
+}
+void CharacterComponent::extendedUpdate()
+{
+	abort(); // TODO:
+}
+
+void CharacterComponent::setWorldTransform()
+{
+	GARDEN_ASSERT(shape);
+	GARDEN_ASSERT(Manager::get()->has<TransformComponent>(entity));
+	auto transformView = TransformSystem::get()->get(entity);
+	auto model = transformView->calcModel();
+	setPosAndRot(getTranslation(model), extractQuat(extractRotation(model)));
 }
 
 //**********************************************************************************************************************
@@ -1566,6 +1828,14 @@ void CharacterSystem::copyComponent(View<Component> source, View<Component> dest
 	const auto sourceView = View<CharacterComponent>(source);
 	auto destinationView = View<CharacterComponent>(destination);
 	destinationView->destroy();
+
+	destinationView->inSimulation = sourceView->inSimulation;
+
+	destinationView->setShape(sourceView->shape, sourceView->getMass());
+	float3 position; quat rotation;
+	sourceView->getPosAndRot(position, rotation);
+	destinationView->setPosAndRot(position, rotation);
+	destinationView->setLinearVelocity(sourceView->getLinearVelocity());
 }
 const string& CharacterSystem::getComponentName() const
 {
@@ -1586,34 +1856,106 @@ void CharacterSystem::disposeComponents()
 }
 
 //**********************************************************************************************************************
-void CharacterSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+void CharacterSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto componentView = View<RigidbodyComponent>(component);
+	auto componentView = View<CharacterComponent>(component);
+
+	if (componentView->shape)
+	{
+		auto mass = componentView->getMass();
+		if (mass != 70.0f)
+			serializer.write("mass", mass);
+
+		float3 position; quat rotation;
+		componentView->getPosAndRot(position, rotation);
+		if (position != float3(0.0f))
+			serializer.write("position", position);
+		if (rotation != quat::identity)
+			serializer.write("rotation", rotation);
+
+		auto velocity = componentView->getLinearVelocity();
+		if (velocity != float3(0.0f))
+			serializer.write("linearVelocity", position);
+
+		serializeDecoratedShape(serializer, componentView->shape, PhysicsSystem::get()->shapes);
+	}
 }
 void CharacterSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto componentView = View<RigidbodyComponent>(component);
+	auto componentView = View<CharacterComponent>(component);
+
+	if (deserializer.read("shapeType", valueStringCache))
+	{
+		auto shape = deserializeDecoratedShape(deserializer, valueStringCache);
+		if (shape)
+		{
+			auto mass = 70.0f;
+			deserializer.read("mass", mass);
+			componentView->setShape(shape, mass);
+
+			auto position = float3(0.0f);
+			deserializer.read("position", position);
+			auto rotation = quat::identity;
+			deserializer.read("rotation", rotation);
+			if (position != float3(0.0f) || rotation != quat::identity)
+				componentView->setPosAndRot(position, rotation);
+
+			auto velocity = float3(0.0f);
+			deserializer.read("linearVelocity", velocity);
+			if (velocity != float3(0.0f))
+				componentView->setLinearVelocity(velocity);
+		}
+	}
 }
 
 //**********************************************************************************************************************
+void CharacterSystem::setWorldTransformRecursive(ID<Entity> entity)
+{
+	GARDEN_ASSERT(entity);
+	GARDEN_ASSERT(Manager::get()->has<TransformSystem>());
+
+	auto transformSystem = TransformSystem::get();
+	entityStack.push_back(entity);
+
+	while (!entityStack.empty())
+	{
+		auto entity = entityStack.back();
+		entityStack.pop_back();
+
+		auto characterView = tryGet(entity);
+		if (characterView && characterView->getShape())
+			characterView->setWorldTransform();
+
+		auto transformView = transformSystem->tryGet(entity);
+		if (!transformView)
+			continue;
+
+		auto childCount = transformView->getChildCount();
+		auto childs = transformView->getChilds();
+
+		for (uint32 i = 0; i < childCount; i++)
+			entityStack.push_back(childs[i]);
+	}
+}
+
 bool CharacterSystem::has(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	return entityComponents.find(typeid(CharacterComponent)) != entityComponents.end();
 }
 View<CharacterComponent> CharacterSystem::get(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& pair = entityView->getComponents().at(typeid(CharacterComponent));
 	return components.get(ID<CharacterComponent>(pair.second));
 }
 View<CharacterComponent> CharacterSystem::tryGet(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::getInstance()->getEntities().get(entity);
+	const auto entityView = Manager::get()->getEntities().get(entity);
 	const auto& entityComponents = entityView->getComponents();
 	auto result = entityComponents.find(typeid(CharacterComponent));
 	if (result == entityComponents.end())

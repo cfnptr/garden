@@ -30,7 +30,7 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	auto imageSize = float2(1.0f); // White texture size
 	if (nineSliceRenderView->colorMap)
 	{
-		auto imageView = GraphicsSystem::getInstance()->get(nineSliceRenderView->colorMap);
+		auto imageView = GraphicsSystem::get()->get(nineSliceRenderView->colorMap);
 		imageSize = (float2)(int2)imageView->getSize();
 	}
 	auto scale = extractScale2(model) * imageSize;
@@ -43,9 +43,9 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 }
 
 //**********************************************************************************************************************
-void NineSliceRenderSystem::serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component)
+void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	SpriteRenderSystem::serialize(serializer, entity, component);
+	SpriteRenderSystem::serialize(serializer, component);
 	auto componentView = View<NineSliceRenderComponent>(component);
 	if (componentView->textureBorder != float2(0.0f))
 		serializer.write("textureBorder", componentView->textureBorder);

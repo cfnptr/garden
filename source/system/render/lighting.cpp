@@ -196,7 +196,7 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 //**********************************************************************************************************************
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	Image::Mips mips(1); mips[0].assign(shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
@@ -214,7 +214,7 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 }
 static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowImageViews)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	for (uint32 i = 0; i < shadowBufferCount; i++)
 	{
 		graphicsSystem->destroy(shadowImageViews[i]);
@@ -225,7 +225,7 @@ static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowIma
 
 static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const ID<ImageView>* shadowImageViews)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	for (uint32 i = 0; i < shadowBufferCount; i++)
 	{
@@ -237,7 +237,7 @@ static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const 
 }
 static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	for (uint32 i = 0; i < shadowBufferCount; i++)
 	{
 		graphicsSystem->destroy(shadowFramebuffers[i]);
@@ -248,7 +248,7 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 //**********************************************************************************************************************
 static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	Image::Mips mips(1); mips[0].assign(aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
@@ -266,7 +266,7 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 }
 static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	for (uint32 i = 0; i < aoBufferCount; i++)
 	{
 		graphicsSystem->destroy(aoImageViews[i]);
@@ -277,7 +277,7 @@ static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 
 static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<ImageView>* aoImageViews)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	for (uint32 i = 0; i < aoBufferCount; i++)
 	{
@@ -289,7 +289,7 @@ static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<Image
 }
 static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	for (uint32 i = 0; i < aoBufferCount; i++)
 	{
 		graphicsSystem->destroy(aoFramebuffers[i]);
@@ -301,8 +301,8 @@ static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 	ID<ImageView> shadowImageViews[shadowBufferCount], ID<ImageView> aoImageViews[aoBufferCount])
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
+	auto graphicsSystem = GraphicsSystem::get();
+	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::get()->getGFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 
@@ -339,24 +339,24 @@ static map<string, DescriptorSet::Uniform> getAoDenoiseUniforms(
 
 static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool useAoBuffer)
 {
-	auto deferredSystem = DeferredRenderSystem::getInstance();
+	auto deferredSystem = DeferredRenderSystem::get();
 	map<string, Pipeline::SpecConstValue> specConstValues =
 	{
 		{ "USE_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
 		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) }
 	};
 
-	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+	return ResourceSystem::get()->loadGraphicsPipeline(
 		"pbr-lighting", deferredSystem->getHdrFramebuffer(), 
 		deferredSystem->useAsyncRecording(), false, 0, 0, specConstValues);
 }
 static ID<ComputePipeline> createIblSpecularPipeline()
 {
-	return ResourceSystem::getInstance()->loadComputePipeline("ibl-specular", false, false);
+	return ResourceSystem::get()->loadComputePipeline("ibl-specular", false, false);
 }
 static ID<GraphicsPipeline> createAoDenoisePipeline(const ID<Framebuffer> aoFramebuffers[aoBufferCount])
 {
-	return ResourceSystem::getInstance()->loadGraphicsPipeline("denoise/ao", aoFramebuffers[1]);
+	return ResourceSystem::get()->loadGraphicsPipeline("denoise/ao", aoFramebuffers[1]);
 }
 
 //**********************************************************************************************************************
@@ -365,7 +365,7 @@ static ID<Image> createDfgLUT()
 	auto pixels = malloc<float2>(iblDfgSize * iblDfgSize);
 
 	// TODO: check if release build DFG image looks the same as debug.
-	auto threadSystem = Manager::getInstance()->tryGet<ThreadSystem>();
+	auto threadSystem = Manager::get()->tryGet<ThreadSystem>();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
@@ -391,7 +391,7 @@ static ID<Image> createDfgLUT()
 		}
 	}
 	
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Bind::TransferDst |
 		Image::Bind::Sampled, { { pixels } }, int2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.lighting.dfgLUT");
@@ -405,13 +405,13 @@ LightingRenderSystem::LightingRenderSystem(bool useShadowBuffer, bool useAoBuffe
 	this->hasShadowBuffer = useShadowBuffer;
 	this->hasAoBuffer = useAoBuffer;
 
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	SUBSCRIBE_TO_EVENT("Init", LightingRenderSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderSystem::deinit);
 }
 LightingRenderSystem::~LightingRenderSystem()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	if (manager->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderSystem::init);
@@ -422,9 +422,7 @@ LightingRenderSystem::~LightingRenderSystem()
 //**********************************************************************************************************************
 void LightingRenderSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<DeferredRenderSystem>());
-
+	auto manager = Manager::get();
 	SUBSCRIBE_TO_EVENT("PreHdrRender", LightingRenderSystem::preHdrRender);
 	SUBSCRIBE_TO_EVENT("HdrRender", LightingRenderSystem::hdrRender);
 	SUBSCRIBE_TO_EVENT("GBufferRecreate", LightingRenderSystem::gBufferRecreate);
@@ -456,10 +454,10 @@ void LightingRenderSystem::init()
 }
 void LightingRenderSystem::deinit()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	if (manager->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto graphicsSystem = GraphicsSystem::get();
 		graphicsSystem->destroy(iblSpecularPipeline);
 		graphicsSystem->destroy(lightingPipeline);
 		graphicsSystem->destroy(aoDenoisePipeline);
@@ -477,11 +475,11 @@ void LightingRenderSystem::deinit()
 //**********************************************************************************************************************
 void LightingRenderSystem::preHdrRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	deferredSystem = manager->get<DeferredRenderSystem>();
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
@@ -589,13 +587,13 @@ void LightingRenderSystem::preHdrRender()
 //**********************************************************************************************************************
 void LightingRenderSystem::hdrRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	auto dfgLutView = graphicsSystem->get(dfgLUT);
 	if (!graphicsSystem->camera || !pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
 		return;
 
-	auto lightingView = Manager::getInstance()->tryGet<LightingRenderComponent>(graphicsSystem->camera); // TODO: use lightingSystem->tryGet()
+	auto lightingView = Manager::get()->tryGet<LightingRenderComponent>(graphicsSystem->camera); // TODO: use lightingSystem->tryGet()
 	if (!lightingView || !lightingView->cubemap || !lightingView->sh || !lightingView->specular)
 		return;
 
@@ -654,7 +652,7 @@ void LightingRenderSystem::hdrRender()
 //**********************************************************************************************************************
 void LightingRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 
 	if (aoBuffer)
@@ -704,12 +702,11 @@ void LightingRenderSystem::gBufferRecreate()
 //**********************************************************************************************************************
 ID<Component> LightingRenderSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(Manager::getInstance()->has<CameraComponent>(entity));
 	return ID<Component>(components.create());
 }
 void LightingRenderSystem::destroyComponent(ID<Component> instance)
 {
-	auto resourceSystem = ResourceSystem::getInstance();
+	auto resourceSystem = ResourceSystem::get();
 	auto componentView = components.get(ID<LightingRenderComponent>(instance));
 	resourceSystem->destroyShared(componentView->cubemap);
 	resourceSystem->destroyShared(componentView->sh);
@@ -755,7 +752,7 @@ void LightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	if (!lightingPipeline)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	graphicsSystem->destroy(lightingDescriptorSet);
 	lightingDescriptorSet = {};
 
@@ -1130,7 +1127,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	
 	vector<uint8> left, right, bottom, top, back, front;
 	int2 size; Image::Format format;
-	ResourceSystem::getInstance()->loadCubemapData(path, left, right, bottom, top, back, front, size, format);
+	ResourceSystem::get()->loadCubemapData(path, left, right, bottom, top, back, front, size, format);
 	auto cubemapSize = size.x;
 
 	auto mipCount = calcMipCount(cubemapSize);
@@ -1140,7 +1137,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	for (uint8 i = 1; i < mipCount; i++)
 		mips[i] = Image::Layers(6);
 
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
 
 	cubemap = Ref<Image>(graphicsSystem->createImage(Image::Type::Cubemap,
@@ -1151,7 +1148,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	auto cubemapView = graphicsSystem->get(cubemap);
 	cubemapView->generateMips();
 
-	auto threadSystem = Manager::getInstance()->get<ThreadSystem>();
+	auto threadSystem = Manager::get()->get<ThreadSystem>();
 	sh = Ref<Buffer>(generateIblSH(graphicsSystem, threadSystem, mips[0], cubemapSize, strategy));
 	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh, "buffer.sh." + path.generic_string());
 
@@ -1165,7 +1162,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 //**********************************************************************************************************************
 Ref<DescriptorSet> LightingRenderSystem::createDescriptorSet(ID<Buffer> sh, ID<Image> specular)
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	auto specularView = graphicsSystem->get(specular);
 
 	map<string, DescriptorSet::Uniform> iblUniforms =

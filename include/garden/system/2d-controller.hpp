@@ -51,7 +51,11 @@ class Controller2DSystem final : public System
 
 	friend class ecsm::Manager;
 public:
+	string characterEntityTag = "MainCharacter";
 	float scrollSensitivity = 1.0f;
+	float horizontalSpeed = 2.0f;
+	float horizontalFactor = 0.99999f;
+	float jumpSpeed = 4.0f;
 };
 
 } // namespace garden

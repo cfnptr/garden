@@ -88,6 +88,8 @@ Hash128::State Hash128::createState()
 	auto state = XXH3_createState();
 	if (!state)
 		throw runtime_error("Failed to create xxHash state");
+	if (XXH3_128bits_reset((XXH3_state_t*)state) == XXH_ERROR)
+		throw runtime_error("Failed to reset xxHash state");
 	return state;
 }
 void Hash128::destroyState(Hash128::State state) noexcept

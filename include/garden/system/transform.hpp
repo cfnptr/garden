@@ -192,7 +192,7 @@ class TransformSystem final : public System, public ISerializable, public IAnima
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void postSerialize(ISerializer& serializer) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
@@ -244,7 +244,7 @@ public:
 	/**
 	 * @brief Returns transform system instance.
 	 */
-	static TransformSystem* getInstance() noexcept
+	static TransformSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;
@@ -272,7 +272,7 @@ protected:
 	type_index getComponentType() const final;
 	void disposeComponents() final;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
