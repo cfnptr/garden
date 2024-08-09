@@ -92,7 +92,7 @@ public:
 	/**
 	 * @brief Returns deferred render system instance.
 	 */
-	static DeferredRenderSystem* getInstance() noexcept
+	static DeferredRenderSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

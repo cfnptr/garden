@@ -63,7 +63,6 @@ type_index OpaqueRenderSystem::getComponentType() const
 }
 ID<Component> OpaqueRenderSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
 	component->transform = getManager()->getID<TransformComponent>(entity);
@@ -123,7 +122,6 @@ type_index OpaqueShadowRenderSystem::getComponentType() const
 }
 ID<Component> OpaqueShadowRenderSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
 	component->transform = getManager()->getID<TransformComponent>(entity);

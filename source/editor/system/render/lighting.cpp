@@ -22,14 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 LightingRenderEditorSystem::LightingRenderEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", LightingRenderEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderEditorSystem::deinit);
 }
 LightingRenderEditorSystem::~LightingRenderEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderEditorSystem::deinit);
@@ -38,8 +36,7 @@ LightingRenderEditorSystem::~LightingRenderEditorSystem()
 
 void LightingRenderEditorSystem::init()
 {
-	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
-	EditorRenderSystem::getInstance()->registerEntityInspector<LightingRenderComponent>(
+	EditorRenderSystem::get()->registerEntityInspector<LightingRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -48,7 +45,7 @@ void LightingRenderEditorSystem::init()
 }
 void LightingRenderEditorSystem::deinit()
 {
-	EditorRenderSystem::getInstance()->unregisterEntityInspector<LightingRenderComponent>();
+	EditorRenderSystem::get()->unregisterEntityInspector<LightingRenderComponent>();
 }
 
 //**********************************************************************************************************************
@@ -56,8 +53,8 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 {
 	if (isOpened)
 	{
-		auto manager = Manager::getInstance();
-		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto manager = Manager::get();
+		auto graphicsSystem = GraphicsSystem::get();
 		auto lightingView = manager->get<LightingRenderComponent>(entity);
 
 		if (lightingView->cubemap) // TODO: use common resource name gui shower.

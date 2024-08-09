@@ -57,7 +57,7 @@ using namespace platformer;
 
 static void loadWindowData()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	graphicsSystem->setWindowTitle("Platformer");
 
 	#if GARDEN_OS_WINDOWS

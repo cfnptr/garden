@@ -711,7 +711,7 @@ public:
 	/**
 	 * @brief Returns graphics system instance.
 	 */
-	static GraphicsSystem* getInstance() noexcept
+	static GraphicsSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

@@ -26,19 +26,26 @@ class SpawnerSystem;
 enum class SpawnMode : uint8
 {
 	OneShot,
+	Manual,
 	Count
 };
 
+// TODO: add instace pool mode.
+
+/***********************************************************************************************************************
+ * @brief Contains information about objects spawn point and spawning mode.
+ */
 struct SpawnerComponent final : public Component
 {
-	fs::path path = {};
-	Hash128 prefab = {};
-	uint32 maxCount = 1;
-	float delay = 0.0f;
-	SpawnMode mode = {};
-	bool isActive = true;
+	fs::path path = {};   /**< Target prefab scene path */
+	Hash128 prefab = {};  /**< Target runtime prefab object UUID */
+	uint32 maxCount = 1;  /**< Maximal automatic object spawn count */
+	float delay = 0.0f;   /**< Delay before next object spawn (seconds) */
+	SpawnMode mode = {};  /**< Automatic object spawn mode */
+	bool isActive = true; /**< Is spawn component active */
+	bool spawnAsChild = true;  /**< Spawn object as a spawner entity child */
 private:
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 	vector<Hash128> spawnedEntities;
 
 	bool destroy();
@@ -79,6 +86,9 @@ public:
 	void destroySpawned();
 };
 
+/***********************************************************************************************************************
+ * @brief Provides spawning of pre-defined objects (prefabs) at runtime.
+ */
 class SpawnerSystem final : public System, public ISerializable
 {
 	LinearPool<SpawnerComponent> components;
@@ -96,6 +106,7 @@ class SpawnerSystem final : public System, public ISerializable
 	 */
 	~SpawnerSystem() final;
 
+	void preInit();
 	void postDeinit();
 	void update();
 
@@ -107,7 +118,7 @@ class SpawnerSystem final : public System, public ISerializable
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
@@ -226,7 +237,7 @@ public:
 	 * @brief Returns spawner system instance.
 	 * @warning Do not use it if you have several link system instances.
 	 */
-	static SpawnerSystem* getInstance() noexcept
+	static SpawnerSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // Spawn system is not created.
 		return instance;

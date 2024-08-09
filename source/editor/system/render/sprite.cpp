@@ -24,14 +24,12 @@ using namespace garden;
 
 SpriteRenderEditorSystem::SpriteRenderEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", SpriteRenderEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
 }
 SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", SpriteRenderEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
@@ -40,10 +38,9 @@ SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
 
 void SpriteRenderEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
+	auto manager = Manager::get();
+	auto editorSystem = EditorRenderSystem::get();
 
-	auto editorSystem = EditorRenderSystem::getInstance();
 	if (manager->has<OpaqueSpriteSystem>())
 	{
 		editorSystem->registerEntityInspector<OpaqueSpriteComponent>(
@@ -71,7 +68,7 @@ void SpriteRenderEditorSystem::init()
 }
 void SpriteRenderEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
 	editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
 	editorSystem->tryUnregisterEntityInspector<TranslucentSpriteComponent>();
@@ -82,14 +79,14 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
+		auto componentView = Manager::get()->get<OpaqueSpriteComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::getInstance()->get<OpaqueSpriteComponent>(entity);
+		auto componentView = Manager::get()->get<OpaqueSpriteComponent>(entity);
 		renderComponent(*componentView, typeid(OpaqueSpriteComponent));
 	}
 }
@@ -97,14 +94,14 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
+		auto componentView = Manager::get()->get<CutoutSpriteComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
+		auto componentView = Manager::get()->get<CutoutSpriteComponent>(entity);
 		renderComponent(*componentView, typeid(CutoutSpriteComponent));
 
 		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
@@ -120,14 +117,14 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
+		auto componentView = Manager::get()->get<TranslucentSpriteComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::getInstance()->get<TranslucentSpriteComponent>(entity);
+		auto componentView = Manager::get()->get<TranslucentSpriteComponent>(entity);
 		renderComponent(*componentView, typeid(TranslucentSpriteComponent));
 	}
 }
@@ -135,7 +132,7 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 //**********************************************************************************************************************
 void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentView, type_index componentType)
 {
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
@@ -147,24 +144,24 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 
 	if (ImGui::Checkbox("Array", &componentView->isArray) && !componentView->path.empty())
 	{
-		auto resourceSystem = ResourceSystem::getInstance();
+		auto resourceSystem = ResourceSystem::get();
 		resourceSystem->destroyShared(componentView->colorMap);
 		resourceSystem->destroyShared(componentView->descriptorSet);
 
 		auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
-		componentView->colorMap = ResourceSystem::getInstance()->loadImage(componentView->path,
+		componentView->colorMap = ResourceSystem::get()->loadImage(componentView->path,
 			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
 	}
 
-	auto transformSystem = TransformSystem::getInstance();
+	auto transformSystem = TransformSystem::get();
 	ImGui::BeginDisabled(!componentView->colorMap && transformSystem->has(componentView->getEntity()));
 	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
 	{
 		auto transformView = transformSystem->get(componentView->getEntity());
-		auto colorMapView = GraphicsSystem::getInstance()->get(componentView->colorMap);
+		auto colorMapView = GraphicsSystem::get()->get(componentView->colorMap);
 		auto imageSize = colorMapView->getSize();
 
 		if (imageSize.x > imageSize.y)
@@ -183,7 +180,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	auto maxColorMapLayer = 0.0f;
 	if (componentView->colorMap)
 	{
-		auto colorMapView = GraphicsSystem::getInstance()->get(componentView->colorMap);
+		auto colorMapView = GraphicsSystem::get()->get(componentView->colorMap);
 		maxColorMapLayer = colorMapView->getLayerCount() - 1;
 	}
 

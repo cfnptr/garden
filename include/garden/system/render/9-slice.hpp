@@ -49,7 +49,7 @@ protected:
 	void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) override;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;

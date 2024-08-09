@@ -80,7 +80,6 @@ type_index CutoffRenderSystem::getComponentType() const
 }
 ID<Component> CutoffRenderSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<TransformComponent>(entity));
 	auto instance = components.create();
 	auto component = components.get(instance);
 	component->transform = getManager()->getID<TransformComponent>(entity);

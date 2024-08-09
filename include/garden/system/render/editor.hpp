@@ -40,7 +40,8 @@ using namespace garden::graphics;
  * including video games and interactive media. It encompasses tools for building scenes, managing digital assets like 
  * models and textures, scripting behavior, testing the game within the editor, and designing user interfaces.
  * 
- * Registers events: EditorRender, EditorBarFile, EditorBarCreate, EditorBarTool.
+ * Registers events: EditorStart, EditorStop, EditorRender, EditorBarFile, 
+ *   EditorBarCreate, EditorBarTool, EditorBar, EditorSettings.
  */
 class EditorRenderSystem final : public System
 {
@@ -159,7 +160,7 @@ public:
 	/**
 	 * @brief Returns editor render system instance.
 	 */
-	static EditorRenderSystem* getInstance() noexcept
+	static EditorRenderSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

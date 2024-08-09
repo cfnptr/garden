@@ -122,7 +122,7 @@ public:
 	 * @brief Returns logging system instance.
 	 * @warning Do not use it if you have several logging system instances.
 	 */
-	static LogSystem* getInstance() noexcept
+	static LogSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

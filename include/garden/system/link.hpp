@@ -76,8 +76,8 @@ public:
 class LinkSystem final : public System, public ISerializable
 {
 	LinearPool<LinkComponent> components;
-	map<Hash128, ID<LinkComponent>> uuidMap;
-	multimap<string, ID<LinkComponent>> tagMap;
+	map<Hash128, ID<Entity>> uuidMap;
+	multimap<string, ID<Entity>> tagMap;
 	string uuidStringCache;
 	random_device randomDevice;
 
@@ -100,7 +100,7 @@ class LinkSystem final : public System, public ISerializable
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
@@ -113,32 +113,28 @@ public:
 	/**
 	 * @brief Returns link UUID map.
 	 */
-	const map<Hash128, ID<LinkComponent>>& getUuidMap() const noexcept { return uuidMap; }
+	const map<Hash128, ID<Entity>>& getUuidMap() const noexcept { return uuidMap; }
 	/**
 	 * @brief Returns link tag map.
 	 */
-	const multimap<string, ID<LinkComponent>>& getTagMap() const noexcept { return tagMap; }
-	/**
-	 * @brief Returns link component view.
-	 */
-	View<LinkComponent> get(ID<LinkComponent> component) const noexcept { return components.get(component); }
+	const multimap<string, ID<Entity>>& getTagMap() const noexcept { return tagMap; }
 
 	/**
 	 * @brief Returns entity by UUID if found, otherwise null.
 	 * @param[in] uuid target entity UUID
 	 */
-	ID<Entity> findEntity(const Hash128& uuid);
+	ID<Entity> findEntity(const Hash128& uuid) const;
 
 	/**
 	 * @brief Returns entities iterator by tag if found.
 	 * @param[in] tag target entities tag
 	 */
-	auto findEntities(const string& tag) { return tagMap.equal_range(tag); }
+	auto findEntities(const string& tag) const { return tagMap.equal_range(tag); }
 	/**
 	 * @brief Returns entities array by tag if found.
 	 * @param[in] tag target entities tag
 	 */
-	void findEntities(const string& tag, vector<ID<Entity>>& entities);
+	void findEntities(const string& tag, vector<ID<Entity>>& entities) const;
 
 	/**
 	 * @brief Returns true if entity has link component.
@@ -163,7 +159,7 @@ public:
 	 * @brief Returns link system instance.
 	 * @warning Do not use it if you have several link system instances.
 	 */
-	static LinkSystem* getInstance() noexcept
+	static LinkSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

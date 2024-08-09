@@ -32,7 +32,7 @@ LogSystem* LogSystem::instance = nullptr;
 
 LogSystem::LogSystem(LogLevel level, double rotationTime)
 {
-	auto appInfoSystem = AppInfoSystem::getInstance();
+	auto appInfoSystem = AppInfoSystem::get();
 
 	try
 	{
@@ -73,7 +73,7 @@ void LogSystem::log(LogLevel level, const string& message) noexcept
 	logger.log(level, "%.*s", message.length(), message.c_str());
 
 	#if GARDEN_EDITOR
-	auto logEditorSystem = Manager::getInstance()->tryGet<LogEditorSystem>();
+	auto logEditorSystem = Manager::get()->tryGet<LogEditorSystem>();
 	if (logEditorSystem)
 		logEditorSystem->log(level, message);
 	#endif

@@ -73,9 +73,9 @@ ID<GraphicsPipeline> TranslucentSpriteSystem::createPipeline()
 {
 	ID<Framebuffer> framebuffer;
 	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::getInstance()->getGFramebuffer();
+		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
 	else
-		framebuffer = ForwardRenderSystem::getInstance()->getFramebuffer();
+		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
 
 	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
 	if (!linearFilter)
@@ -86,9 +86,9 @@ ID<GraphicsPipeline> TranslucentSpriteSystem::createPipeline()
 		samplerStateOverrides.emplace("colorMap", samplerState);
 	}
 
-	// TODO: add support for overridiinf blending state, to allow custom blending functions
+	// TODO: add support for overriding blending state, to allow custom blending functions
 
-	return ResourceSystem::getInstance()->loadGraphicsPipeline("sprite/translucent",
+	return ResourceSystem::get()->loadGraphicsPipeline("sprite/translucent",
 		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
 }
 

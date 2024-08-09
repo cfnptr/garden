@@ -242,7 +242,7 @@ public:
 	/**
 	 * @brief Returns input system instance.
 	 */
-	static InputSystem* getInstance() noexcept
+	static InputSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

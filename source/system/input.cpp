@@ -23,7 +23,7 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	auto logSystem = manager->tryGet<LogSystem>();
 	if (logSystem)
 		logSystem->info("Dropped " + to_string(count) + " items on a window.");
@@ -69,15 +69,14 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 	*/
 	#endif
 
-	auto inputSystem = InputSystem::getInstance();
+	auto inputSystem = InputSystem::get();
 	for (int i = 0; i < count; i++)
 		inputSystem->fileDropPaths.push_back(paths[i]);
 }
 
 void InputSystem::onMouseScroll(void* window, double offsetX, double offsetY)
 {
-	auto inputSystem = InputSystem::getInstance();
-	inputSystem->mouseScroll += float2((float)offsetX, (float)offsetY);
+	InputSystem::get()->mouseScroll += float2((float)offsetX, (float)offsetY);
 }
 
 //**********************************************************************************************************************
@@ -86,9 +85,10 @@ InputSystem* InputSystem::instance = nullptr;
 InputSystem::InputSystem() : lastKeyboardStates((psize)KeyboardButton::Last + 1, false),
 	lastMouseStates((psize)MouseButton::Last + 1, false)
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEvent("FileDrop");
+
 	SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
 	SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
 
@@ -97,11 +97,12 @@ InputSystem::InputSystem() : lastKeyboardStates((psize)KeyboardButton::Last + 1,
 }
 InputSystem::~InputSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
 		UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
+
+		auto manager = Manager::get();
 		manager->unregisterEvent("Input");
 		manager->unregisterEvent("FileDrop");
 	}
@@ -115,7 +116,7 @@ static void updateFileDrops(vector<fs::path>& fileDropPaths, const fs::path*& cu
 {
 	if (!fileDropPaths.empty())
 	{
-		const auto& subscribers = Manager::getInstance()->getEventSubscribers("FileDrop");
+		const auto& subscribers = Manager::get()->getEventSubscribers("FileDrop");
 		for (const auto& path : fileDropPaths)
 		{
 			currentFileDropPath = &path;
@@ -183,7 +184,7 @@ void InputSystem::input()
 		// TODO: add modal if user sure want to exit.
 		// And also allow to force quit or wait for running threads.
 		glfwHideWindow(window);
-		Manager::getInstance()->stop();
+		Manager::get()->stop();
 		return;
 	}
 

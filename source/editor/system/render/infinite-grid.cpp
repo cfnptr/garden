@@ -36,21 +36,19 @@ namespace
 static map<string, DescriptorSet::Uniform> getUniforms()
 {
 	map<string, DescriptorSet::Uniform> uniforms =
-	{ { "cc", DescriptorSet::Uniform(GraphicsSystem::getInstance()->getCameraConstantsBuffers()) } };
+	{ { "cc", DescriptorSet::Uniform(GraphicsSystem::get()->getCameraConstantsBuffers()) } };
 	return uniforms;
 }
 
 //**********************************************************************************************************************
 InfiniteGridEditorSystem::InfiniteGridEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", InfiniteGridEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
 }
 InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", InfiniteGridEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
@@ -60,17 +58,14 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
-
 	SUBSCRIBE_TO_EVENT("EditorRender", InfiniteGridEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);
 	SUBSCRIBE_TO_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
 
-	auto swapchainFramebuffer = GraphicsSystem::getInstance()->getSwapchainFramebuffer();
-	pipeline = ResourceSystem::getInstance()->loadGraphicsPipeline("editor/infinite-grid", swapchainFramebuffer);
+	auto swapchainFramebuffer = GraphicsSystem::get()->getSwapchainFramebuffer();
+	pipeline = ResourceSystem::get()->loadGraphicsPipeline("editor/infinite-grid", swapchainFramebuffer);
 
-	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
 	if (settingsSystem)
 	{
 		settingsSystem->getFloat("infGridScale", gridScale);
@@ -81,10 +76,9 @@ void InfiniteGridEditorSystem::init()
 }
 void InfiniteGridEditorSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto graphicsSystem = GraphicsSystem::get();
 		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 
@@ -97,7 +91,7 @@ void InfiniteGridEditorSystem::deinit()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::editorRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 	
@@ -136,7 +130,7 @@ void InfiniteGridEditorSystem::editorRender()
 
 void InfiniteGridEditorSystem ::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.bufferCount && descriptorSet)
@@ -152,7 +146,7 @@ void InfiniteGridEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Infinite Grid"))
 	{
-		auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
+		auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled); ImGui::SameLine();
 		ImGui::Checkbox("Horizontal", &isHorizontal);

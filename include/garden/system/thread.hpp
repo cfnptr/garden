@@ -46,7 +46,6 @@ class ThreadSystem final : public System
 	ThreadSystem() : backgroundPool(true, "BG"), foregroundPool(false, "FG")
 	{
 		mpmt::Thread::setForegroundPriority();
-		auto manager = Manager::getInstance();
 		SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 	}
 	/**
@@ -54,8 +53,7 @@ class ThreadSystem final : public System
 	 */
 	~ThreadSystem() final
 	{
-		auto manager = Manager::getInstance();
-		if (manager->isRunning())
+		if (Manager::get()->isRunning())
 			UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
 	}
 		

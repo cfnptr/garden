@@ -101,7 +101,7 @@ protected:
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
 
-	void serialize(ISerializer& serializer, ID<Entity> entity, View<Component> component) override;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;

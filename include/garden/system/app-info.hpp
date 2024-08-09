@@ -150,7 +150,7 @@ public:
 	/**
 	 * @brief Returns app info system instance.
 	 */
-	static AppInfoSystem* getInstance() noexcept
+	static AppInfoSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

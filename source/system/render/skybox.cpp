@@ -121,7 +121,6 @@ type_index SkyboxRenderSystem::getComponentType() const
 }
 ID<Component> SkyboxRenderSystem::createComponent(ID<Entity> entity)
 {
-	GARDEN_ASSERT(getManager()->has<CameraComponent>(entity));
 	return ID<Component>(components.create());
 }
 void SkyboxRenderSystem::destroyComponent(ID<Component> instance)

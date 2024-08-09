@@ -29,14 +29,12 @@ MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording, bool useAsyncPreparin
 	this->asyncRecording = useAsyncRecording;
 	this->asyncPreparing = useAsyncPreparing;
 
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
 }
 MeshRenderSystem::~MeshRenderSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", MeshRenderSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", MeshRenderSystem::deinit);
@@ -46,8 +44,7 @@ MeshRenderSystem::~MeshRenderSystem()
 //**********************************************************************************************************************
 void MeshRenderSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<ForwardRenderSystem>() || manager->has<DeferredRenderSystem>());
+	auto manager = Manager::get();
 	threadSystem = manager->tryGet<ThreadSystem>();
 
 	if (manager->has<ForwardRenderSystem>())
@@ -64,9 +61,9 @@ void MeshRenderSystem::init()
 }
 void MeshRenderSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
+		auto manager = Manager::get();
 		if (manager->has<ForwardRenderSystem>())
 		{
 			UNSUBSCRIBE_FROM_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
@@ -84,7 +81,7 @@ void MeshRenderSystem::deinit()
 //**********************************************************************************************************************
 void MeshRenderSystem::prepareSystems()
 {
-	auto manager = Manager::getInstance();
+	auto manager = Manager::get();
 	const auto& systems = manager->getSystems();
 	meshSystems.clear();
 
@@ -117,7 +114,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 	auto indices = opaqueBuffer->indices.data();
 	auto drawCount = &opaqueBuffer->drawCount;
 	auto hasCameraOffset = cameraOffset != float3(0.0f);
-	auto transformSystem = TransformSystem::getInstance();
+	auto transformSystem = TransformSystem::get();
 
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
@@ -168,7 +165,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 	auto componentData = (uint8*)componentPool.getData();
 	auto drawCount = &translucentBuffer->drawCount;
 	auto hasCameraOffset = cameraOffset != float3(0.0f);
-	auto transformSystem = TransformSystem::getInstance();
+	auto transformSystem = TransformSystem::get();
 
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
@@ -256,9 +253,8 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	if (translucentIndices.size() < translucentMaxCount)
 		translucentIndices.resize(translucentMaxCount);
 
-	auto manager = Manager::getInstance();
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
+	auto manager = Manager::get();
+	auto graphicsSystem = GraphicsSystem::get();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto opaqueBufferData = opaqueBuffers.data();
@@ -269,6 +265,10 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	Plane frustumPlanes[::frustumPlaneCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
 	auto isAsyncPreparing = asyncPreparing && threadSystem;
+
+	#if GARDEN_EDITOR
+	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
+	#endif
 
 	// 1. Cull and prepare items 
 	for (auto meshSystem : meshSystems)
@@ -585,7 +585,7 @@ void MeshRenderSystem::renderShadows()
 {
 	SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 
-	const auto& systems = Manager::getInstance()->getSystems();
+	const auto& systems = Manager::get()->getSystems();
 	for (const auto& pair : systems)
 	{
 		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(pair.second);
@@ -616,7 +616,7 @@ void MeshRenderSystem::renderShadows()
 //**********************************************************************************************************************
 void MeshRenderSystem::preForwardRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!graphicsSystem->camera)
 		return;
 
@@ -630,7 +630,7 @@ void MeshRenderSystem::preForwardRender()
 
 void MeshRenderSystem::forwardRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!graphicsSystem->camera)
 		return;
 
@@ -642,7 +642,7 @@ void MeshRenderSystem::forwardRender()
 //**********************************************************************************************************************
 void MeshRenderSystem::preDeferredRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!graphicsSystem->camera)
 		return;
 
@@ -656,7 +656,7 @@ void MeshRenderSystem::preDeferredRender()
 
 void MeshRenderSystem::deferredRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!graphicsSystem->camera)
 		return;
 
@@ -666,7 +666,7 @@ void MeshRenderSystem::deferredRender()
 
 void MeshRenderSystem::hdrRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
 	if (!graphicsSystem->camera)
 		return;
 

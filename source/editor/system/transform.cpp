@@ -27,7 +27,6 @@ TransformEditorSystem* TransformEditorSystem::instance = nullptr;
 
 TransformEditorSystem::TransformEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
 
@@ -36,8 +35,7 @@ TransformEditorSystem::TransformEditorSystem()
 }
 TransformEditorSystem::~TransformEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
@@ -49,8 +47,7 @@ TransformEditorSystem::~TransformEditorSystem()
 
 void TransformEditorSystem::init()
 {
-	GARDEN_ASSERT(Manager::getInstance()->has<EditorRenderSystem>());
-	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>(
+	EditorRenderSystem::get()->registerEntityInspector<TransformComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -59,14 +56,14 @@ void TransformEditorSystem::init()
 }
 void TransformEditorSystem::deinit()
 {
-	EditorRenderSystem::getInstance()->unregisterEntityInspector<TransformComponent>();
+	EditorRenderSystem::get()->unregisterEntityInspector<TransformComponent>();
 }
 
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
-	if (EditorRenderSystem::getInstance()->selectedEntity == entity)
-		EditorRenderSystem::getInstance()->selectedEntity = {};
+	if (EditorRenderSystem::get()->selectedEntity == entity)
+		EditorRenderSystem::get()->selectedEntity = {};
 
 	auto payload = ImGui::GetDragDropPayload();
 	if (payload)
@@ -80,8 +77,8 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::getInstance();
-	auto transformSystem = TransformSystem::getInstance();
+	auto manager = Manager::get();
+	auto transformSystem = TransformSystem::get();
 
 	if (ImGui::BeginItemTooltip())
 	{
@@ -184,7 +181,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		}
 	}
 
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	if (editorSystem->selectedEntity != selectedEntity)
 	{
 		if (editorSystem->selectedEntity)

@@ -42,7 +42,7 @@ class TransformEditorSystem final : public System
 public:
 	float inspectorPriority = -0.9f;
 
-	static TransformEditorSystem* getInstance() noexcept
+	static TransformEditorSystem* get() noexcept
 	{
 		GARDEN_ASSERT(instance); // System is not created.
 		return instance;

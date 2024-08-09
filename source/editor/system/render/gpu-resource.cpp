@@ -25,14 +25,12 @@ using namespace garden;
 //**********************************************************************************************************************
 GpuResourceEditorSystem::GpuResourceEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", GpuResourceEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", GpuResourceEditorSystem::deinit);
 }
 GpuResourceEditorSystem::~GpuResourceEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", GpuResourceEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", GpuResourceEditorSystem::deinit);
@@ -41,16 +39,12 @@ GpuResourceEditorSystem::~GpuResourceEditorSystem()
 
 void GpuResourceEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
-
 	SUBSCRIBE_TO_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
 	SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 }
 void GpuResourceEditorSystem::deinit()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
 		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
@@ -839,7 +833,7 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 //**********************************************************************************************************************
 void GpuResourceEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::getInstance()->canRender())
+	if (!showWindow || !GraphicsSystem::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(750.0f, 450.0f), ImGuiCond_FirstUseEver);

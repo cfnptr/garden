@@ -22,15 +22,13 @@ using namespace garden;
 //**********************************************************************************************************************
 PhysicsEditorSystem::PhysicsEditorSystem()
 {
-	auto manager = Manager::getInstance();
 	SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
 	
 }
 PhysicsEditorSystem::~PhysicsEditorSystem()
 {
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 	{
 		UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
@@ -39,20 +37,18 @@ PhysicsEditorSystem::~PhysicsEditorSystem()
 
 void PhysicsEditorSystem::init()
 {
-	auto manager = Manager::getInstance();
-	GARDEN_ASSERT(manager->has<EditorRenderSystem>());
 	SUBSCRIBE_TO_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
 
-	EditorRenderSystem::getInstance()->registerEntityInspector<RigidbodyComponent>(
+	EditorRenderSystem::get()->registerEntityInspector<RigidbodyComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onRigidbodyInspector(entity, isOpened);
 	},
 	rigidbodyInspectorPriority);
 
-	if (manager->has<CharacterSystem>())
+	if (Manager::get()->has<CharacterSystem>())
 	{
-		EditorRenderSystem::getInstance()->registerEntityInspector<CharacterComponent>(
+		EditorRenderSystem::get()->registerEntityInspector<CharacterComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
 			onCharacterInspector(entity, isOpened);
@@ -62,27 +58,26 @@ void PhysicsEditorSystem::init()
 }
 void PhysicsEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	editorSystem->unregisterEntityInspector<RigidbodyComponent>();
 	editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
-	auto manager = Manager::getInstance();
-	if (manager->isRunning())
+	if (Manager::get()->isRunning())
 		UNSUBSCRIBE_FROM_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
 }
 
 //**********************************************************************************************************************
 void PhysicsEditorSystem::editorRender()
 {
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::get();
+	auto editorSystem = EditorRenderSystem::get();
 	if (!isEnabled || !editorSystem->selectedEntity || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
 	auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 
-	auto physicsSystem = PhysicsSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::get();
 	auto rigidbodyView = physicsSystem->tryGet(editorSystem->selectedEntity);
 
 	if (rigidbodyView && rigidbodyView->getShape())
@@ -109,7 +104,7 @@ void PhysicsEditorSystem::editorRender()
 		graphicsSystem->stopRecording();
 	}
 
-	auto characterSystem = CharacterSystem::getInstance();
+	auto characterSystem = CharacterSystem::get();
 	auto characterView = characterSystem->tryGet(editorSystem->selectedEntity);
 
 	if (characterView && characterView->getShape())
@@ -149,7 +144,7 @@ void PhysicsEditorSystem::editorRender()
 //**********************************************************************************************************************
 static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, AllowedDOF allowedDofCache)
 {
-	auto physicsSystem = PhysicsSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::get();
 	auto shape = rigidbodyView->getShape();
 	auto shapeView = physicsSystem->get(shape);
 	auto isChanged = false;
@@ -189,7 +184,7 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, AllowedDOF al
 //**********************************************************************************************************************
 static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, AllowedDOF allowedDofCached)
 {
-	auto physicsSystem = PhysicsSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::get();
 	auto shape = rigidbodyView->getShape();
 
 	int shapeType = 0;
@@ -251,7 +246,7 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, All
 	isAnyChanged |= ImGui::Checkbox("Z", &transZ);
 	ImGui::PopID();
 
-	ImGui::Text("Rotation:"); ImGui::SameLine();
+	ImGui::Text("Rotation:   "); ImGui::SameLine();
 	ImGui::PushID("dofRotation");
 	auto rotX = hasAnyFlag(allowedDofCached, AllowedDOF::RotationX);
 	isAnyChanged |= ImGui::Checkbox("X", &rotX); ImGui::SameLine();
@@ -275,6 +270,38 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, All
 		if (shape)
 			rigidbodyView->setShape(shape, false, false, rigidbodyView->isSensor(), allowedDofCached);
 	}
+
+	ImGui::BeginDisabled(!shape);
+	auto velocity = rigidbodyView->getLinearVelocity();
+	if (ImGui::DragFloat3("Linear Velocity", &velocity, 0.01f))
+		rigidbodyView->setLinearVelocity(velocity);
+	if (ImGui::BeginItemTooltip())
+	{
+		ImGui::Text("Units: meters per second (m/s)");
+		ImGui::EndTooltip();
+	}
+	if (ImGui::BeginPopupContextItem("linearVelocity"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			rigidbodyView->setLinearVelocity(float3(0.0f));
+		ImGui::EndPopup();
+	}
+
+	velocity = rigidbodyView->getAngularVelocity();
+	if (ImGui::DragFloat3("Angular Velocity", &velocity, 0.01f))
+		rigidbodyView->setAngularVelocity(velocity);
+	if (ImGui::BeginItemTooltip())
+	{
+		ImGui::Text("Units: radians per second (rad/s)");
+		ImGui::EndTooltip();
+	}
+	if (ImGui::BeginPopupContextItem("angularVelocity"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			rigidbodyView->setAngularVelocity(float3(0.0f));
+		ImGui::EndPopup();
+	}
+	ImGui::EndDisabled();
 
 	ImGui::Unindent();
 }
@@ -320,7 +347,7 @@ static void renderEventListeners(View<RigidbodyComponent> rigidbodyView)
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 {
-	auto physicsSystem = PhysicsSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::get();
 	if (ImGui::BeginItemTooltip())
 	{
 		auto rigidbodyView = physicsSystem->get(entity);
@@ -414,7 +441,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 			renderEventListeners(rigidbodyView);
 	}
 
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	if (editorSystem->selectedEntity != selectedEntity)
 	{
 		if (editorSystem->selectedEntity)
@@ -452,7 +479,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 //**********************************************************************************************************************
 static void renderShapeProperties(View<CharacterComponent> characterView, float3& characterSizeCached)
 {
-	auto physicsSystem = PhysicsSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::get();
 	auto shape = characterView->getShape();
 	auto isChanged = false;
 
@@ -522,7 +549,7 @@ static void renderShapeProperties(View<CharacterComponent> characterView, float3
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 {
-	auto characterSystem = CharacterSystem::getInstance();
+	auto characterSystem = CharacterSystem::get();
 	if (ImGui::BeginItemTooltip())
 	{
 		auto characterView = characterSystem->get(entity);
@@ -572,7 +599,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 		renderShapeProperties(characterView, characterSizeCached);
 	}
 
-	auto editorSystem = EditorRenderSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::get();
 	if (editorSystem->selectedEntity != selectedEntity)
 	{
 		if (editorSystem->selectedEntity)
