@@ -36,10 +36,9 @@ static void onTranslucentEntityInspector(ID<Entity> entity, GeometryEditor* edit
 #endif
 
 //--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getLightingUniforms(
-	GraphicsSystem* graphicsSystem, ID<Buffer> sh, ID<Image> specular)
+static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Buffer> sh, ID<Image> specular)
 {
-	auto specularView = graphicsSystem->get(specular);
+	auto specularView = GraphicsSystem::get()->get(specular);
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
 		{ "data", DescriptorSet::Uniform(sh) },
@@ -89,7 +88,7 @@ bool TranslucentRenderSystem::isDrawReady()
 			lightingComponent->sh, lightingComponent->specular);
 		lightingDescriptorSet = graphicsSystem->createDescriptorSet(
 			pipeline, std::move(uniforms), 2);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, lightingDescriptorSet,
+		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet,
 			"descriptorSet.translucent.lighting");
 		lightingCubemap = lightingComponent->cubemap;
 	}

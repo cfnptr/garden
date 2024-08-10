@@ -40,22 +40,21 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> createShadowData(GraphicsSystem* graphicsSystem,
-	vector<ID<ImageView>>& imageViews, int32 shadowMapSize)
+static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, int32 shadowMapSize)
 {
 	const auto shadowFormat = Image::Format::UnormD16;
+	auto graphicsSystem = GraphicsSystem::get();
 	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::DepthStencilAttachment |
 		Image::Bind::Sampled, { Image::Layers(SHADOW_MAP_CASCADE_COUNT) },
 		int2(shadowMapSize), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.shadow-mapping.buffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.shadow-mapping.buffer");
 	imageViews.resize(SHADOW_MAP_CASCADE_COUNT);
 
 	for (uint8 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++)
 	{
 		auto imageView = graphicsSystem->createImageView(image,
 			Image::Type::Texture2D, shadowFormat, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, imageView,
-			"imageView.shadow-mapping.buffer" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.shadow-mapping.buffer" + to_string(i));
 		imageViews[i] = imageView;
 	}
 	
@@ -63,9 +62,9 @@ static ID<Image> createShadowData(GraphicsSystem* graphicsSystem,
 }
 
 //--------------------------------------------------------------------------------------------------
-static void createDataBuffers(GraphicsSystem* graphicsSystem,
-	vector<vector<ID<Buffer>>>& dataBuffers)
+static void createDataBuffers(vector<vector<ID<Buffer>>>& dataBuffers)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	dataBuffers.resize(swapchainSize);
 
@@ -74,17 +73,16 @@ static void createDataBuffers(GraphicsSystem* graphicsSystem,
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform,
 			Buffer::Access::SequentialWrite, sizeof(ShadowMappingRenderSystem::DataBuffer),
 			Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer,
-			"buffer.uniform.shadow-mapping.data" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.shadow-mapping.data" + to_string(i));
 		dataBuffers[i].push_back(buffer);
 	}
 }
 
 //--------------------------------------------------------------------------------------------------
-static void createFramebuffers(
-	GraphicsSystem* graphicsSystem, const vector<ID<ImageView>>& imageViews,
+static void createFramebuffers(const vector<ID<ImageView>>& imageViews,
 	vector<ID<Framebuffer>>& framebuffers, int32 shadowMapSize)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	framebuffers.resize(SHADOW_MAP_CASCADE_COUNT);
 	Framebuffer::OutputAttachment depthStencilAttachment({}, true, false, true);
 
@@ -94,8 +92,7 @@ static void createFramebuffers(
 		depthStencilAttachment.imageView = imageViews[i];
 		auto framebuffer = graphicsSystem->createFramebuffer(
 			int2(shadowMapSize), std::move(colorAttachments), depthStencilAttachment);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer,
-			"framebuffer.shadow" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.shadow" + to_string(i));
 		framebuffers[i] = framebuffer;
 	}
 }
@@ -323,8 +320,7 @@ bool ShadowMappingRenderSystem::shadowRender()
 			graphicsSystem, shadowMap, dataBuffers);
 		descriptorSet = graphicsSystem->createDescriptorSet(
 			pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
-			"descriptorSet.shadow-mapping");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shadow-mapping");
 	}
 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();

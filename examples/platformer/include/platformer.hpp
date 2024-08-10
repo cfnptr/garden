@@ -23,23 +23,29 @@ namespace platformer
 using namespace ecsm;
 using namespace garden;
 
+#define CHARACTER_ANIM "main-characters/virtual-guy"
+
 enum class CharacterState : uint8
 {
-	Idle, Run, Jump, Fall, Count
+	Idle, Run, Jump, Fall, DoubleJump, WallJump, Count
 };
-static const string characterStateStrings[(uint8)CharacterState::Count] =
+static const string characterAnimStrings[(uint8)CharacterState::Count] =
 {
-	"CharacterIdle", "CharacterRun", "CharacterJump", "CharacterFall"
+	CHARACTER_ANIM "/idle", CHARACTER_ANIM "/run", CHARACTER_ANIM "/jump", CHARACTER_ANIM "/fall", 
+	CHARACTER_ANIM "/double-jump", CHARACTER_ANIM "/wall-jump"
 };
 
 class PlatformerSystem final : public System
 {
 	CharacterState currentState = {};
+	int32 slideCounter = 0;
 	bool isLastDirLeft = false;
+	bool isLastDoubleJumped = false;
 
 	PlatformerSystem();
 	~PlatformerSystem() final;
 
+	void initSensors();
 	void init();
 	void deinit();
 	void update();

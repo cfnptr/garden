@@ -201,13 +201,13 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
 		graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.lighting.shadow.buffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadow.buffer");
 
 	for (uint32 i = 0; i < shadowBufferCount; i++)
 	{
 		shadowImageViews[i] = graphicsSystem->createImageView(image,
 			Image::Type::Texture2D, Image::Format::UnormR8, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, shadowImageViews[i], "imageView.lighting.shadow" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(shadowImageViews[i], "imageView.lighting.shadow" + to_string(i));
 	}
 
 	return image;
@@ -232,7 +232,7 @@ static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const 
 		vector<Framebuffer::OutputAttachment> colorAttachments
 		{ Framebuffer::OutputAttachment(shadowImageViews[i], true, false, true) };
 		shadowFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, shadowFramebuffers[i], "framebuffer.lighting.shadow" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[i], "framebuffer.lighting.shadow" + to_string(i));
 	}
 }
 static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
@@ -253,13 +253,13 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
 		graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.lighting.ao.buffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.ao.buffer");
 
 	for (uint32 i = 0; i < aoBufferCount; i++)
 	{
 		aoImageViews[i] = graphicsSystem->createImageView(image,
 			Image::Type::Texture2D, Image::Format::UnormR8, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, aoImageViews[i], "imageView.lighting.ao" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(aoImageViews[i], "imageView.lighting.ao" + to_string(i));
 	}
 
 	return image;
@@ -284,7 +284,7 @@ static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<Image
 		vector<Framebuffer::OutputAttachment> colorAttachments
 		{ Framebuffer::OutputAttachment(aoImageViews[i], true, false, true) };
 		aoFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, aoFramebuffers[i], "framebuffer.lighting.ao" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(aoFramebuffers[i], "framebuffer.lighting.ao" + to_string(i));
 	}
 }
 static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
@@ -394,7 +394,7 @@ static ID<Image> createDfgLUT()
 	auto graphicsSystem = GraphicsSystem::get();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Bind::TransferDst |
 		Image::Bind::Sampled, { { pixels } }, int2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.lighting.dfgLUT");
+	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
 	free(pixels);
 	return image;
 }
@@ -487,7 +487,7 @@ void LightingRenderSystem::preHdrRender()
 	{
 		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
 		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, lightingDescriptorSet, "descriptorSet.lighting.base");
+		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
 	}
 
 	const auto& systems = manager->getSystems();
@@ -564,7 +564,7 @@ void LightingRenderSystem::preHdrRender()
 			{
 				auto uniforms = getAoDenoiseUniforms(aoImageViews);
 				aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, aoDenoiseDescriptorSet, "descriptorSet.lighting.ao-denoise");
+				SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.ao-denoise");
 			}
 
 			SET_GPU_DEBUG_LABEL("AO Denoise Pass", Color::transparent);
@@ -607,7 +607,7 @@ void LightingRenderSystem::hdrRender()
 	{
 		auto descriptorSet = createDescriptorSet( // TODO: maybe create shared DS?
 			ID<Buffer>(lightingView->sh), ID<Image>(lightingView->specular));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
 		lightingView->descriptorSet = descriptorSet;
 	}
 
@@ -893,7 +893,7 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 }
 
 //**********************************************************************************************************************
-static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem, ThreadSystem* threadSystem,
+static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	const vector<const void*>& _pixels, uint32 cubemapSize, Buffer::Strategy strategy)
 {
 	auto faces = (const float4**)_pixels.data();
@@ -941,7 +941,7 @@ static ID<Buffer> generateIblSH(GraphicsSystem* graphicsSystem, ThreadSystem* th
 	shaderPreprocessSH(shBufferData);
 
 	// TODO: check if final SH is the same as debug in release build.
-	return graphicsSystem->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
+	return GraphicsSystem::get()->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
 		Buffer::Access::None, shBufferData, shCoefCount * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
 }
 
@@ -999,9 +999,10 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 }
 
 //**********************************************************************************************************************
-static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadSystem* threadSystem,
+static ID<Image> generateIblSpecular(ThreadSystem* threadSystem, 
 	ID<ComputePipeline> iblSpecularPipeline, ID<Image> cubemap, Memory::Strategy strategy)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto cubemapView = graphicsSystem->get(cubemap);
 	auto cubemapSize = cubemapView->getSize().x;
 	auto cubemapFormat = cubemapView->getFormat();
@@ -1028,7 +1029,7 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadSyste
 	auto cpuSpecularCache = graphicsSystem->createBuffer(
 		Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 		specularCacheSize, Buffer::Usage::Auto, Buffer::Strategy::Speed);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, cpuSpecularCache,
+	SET_RESOURCE_DEBUG_NAME(cpuSpecularCache,
 		"buffer.storage.lighting.cpuSpecularCache" + to_string(*cpuSpecularCache));
 	auto cpuSpecularCacheView = graphicsSystem->get(cpuSpecularCache);
 
@@ -1067,7 +1068,7 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadSyste
 		auto gpuSpecularCache = graphicsSystem->createBuffer(Buffer::Bind::Storage |
 			Buffer::Bind::TransferDst, Buffer::Access::None, cacheSize,
 			Buffer::Usage::PreferGPU, Buffer::Strategy::Speed);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, gpuSpecularCache,
+		SET_RESOURCE_DEBUG_NAME(gpuSpecularCache,
 			"buffer.storage.lighting.gpuSpecularCache" + to_string(*gpuSpecularCache));
 		gpuSpecularCaches[i] = gpuSpecularCache;
 
@@ -1100,7 +1101,7 @@ static ID<Image> generateIblSpecular(GraphicsSystem* graphicsSystem, ThreadSyste
 		};
 		auto iblSpecularDescriptorSet = graphicsSystem->createDescriptorSet(
 			iblSpecularPipeline, std::move(iblSpecularUniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, iblSpecularDescriptorSet,
+		SET_RESOURCE_DEBUG_NAME(iblSpecularDescriptorSet,
 			"descriptorSet.lighting.iblSpecular" + to_string(*iblSpecularDescriptorSet));
 		pipelineView->bindDescriptorSet(iblSpecularDescriptorSet);
 
@@ -1143,18 +1144,18 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	cubemap = Ref<Image>(graphicsSystem->createImage(Image::Type::Cubemap,
 		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::TransferSrc |
 		Image::Bind::Sampled, mips, int3(size, 1), strategy, format));
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, cubemap, "image.cubemap." + path.generic_string());
+	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);
 	cubemapView->generateMips();
 
-	auto threadSystem = Manager::get()->get<ThreadSystem>();
-	sh = Ref<Buffer>(generateIblSH(graphicsSystem, threadSystem, mips[0], cubemapSize, strategy));
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, sh, "buffer.sh." + path.generic_string());
+	auto threadSystem = Manager::get()->tryGet<ThreadSystem>();
+	sh = Ref<Buffer>(generateIblSH(threadSystem, mips[0], cubemapSize, strategy));
+	SET_RESOURCE_DEBUG_NAME(sh, "buffer.sh." + path.generic_string());
 
-	specular = Ref<Image>(generateIblSpecular(graphicsSystem, threadSystem, 
+	specular = Ref<Image>(generateIblSpecular(threadSystem, 
 		iblSpecularPipeline, ID<Image>(cubemap), strategy));
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, specular, "image.cubemap.specular." + path.generic_string());
+	SET_RESOURCE_DEBUG_NAME(specular, "image.cubemap.specular." + path.generic_string());
 	
 	graphicsSystem->stopRecording();
 }

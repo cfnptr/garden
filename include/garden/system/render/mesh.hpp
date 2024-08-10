@@ -64,7 +64,7 @@ protected:
 	friend class MeshRenderSystem;
 public:
 	virtual MeshRenderType getMeshRenderType() const = 0;
-	virtual const LinearPool<MeshRenderComponent>& getMeshComponentPool() const = 0;
+	virtual LinearPool<MeshRenderComponent>& getMeshComponentPool() = 0;
 	virtual psize getMeshComponentSize() const = 0;
 };
 /**

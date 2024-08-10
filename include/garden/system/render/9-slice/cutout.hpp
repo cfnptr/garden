@@ -13,24 +13,24 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/sprite.hpp"
+#include "garden/system/render/9-slice.hpp"
 
 namespace garden
 {
 
 using namespace garden::graphics;
 
-struct CutoutSpriteComponent final : public SpriteRenderComponent
+struct Cutout9SliceComponent final : public NineSliceRenderComponent
 {
 	float alphaCutoff = 0.5f;
 };
-struct CutoutSpriteFrame final : public SpriteRenderFrame
+struct Cutout9SliceFrame final : public NineSliceRenderFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
 };
 
-class CutoutSpriteSystem final : public SpriteRenderSystem
+class Cutout9SliceSystem final : public NineSliceRenderSystem
 {
 public:
 	struct CutoutPushConstants final : public PushConstants
@@ -38,17 +38,18 @@ public:
 		float alphaCutoff;
 	};
 private:
-	uint16 _alignment = 0;
-	LinearPool<CutoutSpriteComponent, false> components;
-	LinearPool<CutoutSpriteFrame, false> animationFrames;
+	LinearPool<Cutout9SliceComponent, false> components;
+	LinearPool<Cutout9SliceFrame, false> animationFrames;
+	bool deferredBuffer = false;
+	bool linearFilter = false;
 
 	/**
-	 * @brief Creates a new cutout sprite rendering system instance.
+	 * @brief Creates a new cutout 9-slice rendering system instance.
 	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
 	 * @param useLinearFilter use linear filtering for texture
 	 */
-	CutoutSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
+	Cutout9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) final;

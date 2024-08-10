@@ -32,16 +32,16 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
+static ID<Buffer> createReadbackBuffer()
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto size = (sizeof(ToneMappingRenderSystem::Luminance) +
 		AE_HISTOGRAM_SIZE * sizeof(uint32)) * swapchainSize;
 	auto buffer = graphicsSystem->createBuffer(
 		Buffer::Bind::TransferDst, Buffer::Access::RandomReadWrite, size,
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer,
-		"buffer.auto-exposure.editor.readback");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.auto-exposure.editor.readback");
 	return buffer;
 }
 
@@ -176,7 +176,7 @@ void AutoExposureEditor::render()
 				auto uniforms = getLimitsUniforms();
 				limitsDescriptorSet = graphicsSystem->createDescriptorSet(
 					limitsPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, limitsDescriptorSet,
+				SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet,
 					"descriptorSet.auto-exposure.editor.limits");
 			}
 

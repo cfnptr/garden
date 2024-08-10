@@ -116,7 +116,7 @@ void ShadowMappingEditor::render()
 				auto uniforms = getCascadesUniforms();
 				cascadesDescriptorSet = graphicsSystem->createDescriptorSet(
 					cascadesPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, cascadesDescriptorSet,
+				SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet,
 					"descriptorSet.shadow-mapping.editor.cascades");
 			}
 

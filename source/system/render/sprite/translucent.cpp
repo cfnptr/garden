@@ -19,13 +19,10 @@
 
 using namespace garden;
 
-TranslucentSpriteSystem::TranslucentSpriteSystem(bool useDeferredBuffer, bool useLinearFilter)
-{
-	this->deferredBuffer = useDeferredBuffer;
-	this->linearFilter = useLinearFilter;
-}
-
 //**********************************************************************************************************************
+TranslucentSpriteSystem::TranslucentSpriteSystem(bool useDeferredBuffer, bool useLinearFilter) :
+	SpriteRenderSystem("sprite/translucent", useDeferredBuffer, useLinearFilter) { }
+
 ID<Component> TranslucentSpriteSystem::createComponent(ID<Entity> entity)
 {
 	return ID<Component>(components.create());
@@ -33,7 +30,7 @@ ID<Component> TranslucentSpriteSystem::createComponent(ID<Entity> entity)
 void TranslucentSpriteSystem::destroyComponent(ID<Component> instance)
 {
 	auto componentView = components.get(ID<TranslucentSpriteComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(componentView));
+	destroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<TranslucentSpriteComponent>(instance));
 }
 const string& TranslucentSpriteSystem::getComponentName() const
@@ -55,41 +52,25 @@ void TranslucentSpriteSystem::disposeComponents()
 	animationFrames.dispose();
 }
 
-//**********************************************************************************************************************
 MeshRenderType TranslucentSpriteSystem::getMeshRenderType() const
 {
 	return MeshRenderType::Translucent;
 }
-const LinearPool<MeshRenderComponent>& TranslucentSpriteSystem::getMeshComponentPool() const
+LinearPool<MeshRenderComponent>& TranslucentSpriteSystem::getMeshComponentPool()
 {
-	return *((const LinearPool<MeshRenderComponent>*)&components);
+	return *((LinearPool<MeshRenderComponent>*)&components);
 }
 psize TranslucentSpriteSystem::getMeshComponentSize() const
 {
 	return sizeof(TranslucentSpriteComponent);
 }
-
-ID<GraphicsPipeline> TranslucentSpriteSystem::createPipeline()
+LinearPool<SpriteRenderFrame>& TranslucentSpriteSystem::getFrameComponentPool()
 {
-	ID<Framebuffer> framebuffer;
-	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
-	else
-		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
-
-	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
-	if (!linearFilter)
-	{
-		GraphicsPipeline::SamplerState samplerState;
-		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
-			GraphicsPipeline::SamplerWrap::Repeat;
-		samplerStateOverrides.emplace("colorMap", samplerState);
-	}
-
-	// TODO: add support for overriding blending state, to allow custom blending functions
-
-	return ResourceSystem::get()->loadGraphicsPipeline("sprite/translucent",
-		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
+	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
+}
+psize TranslucentSpriteSystem::getFrameComponentSize() const
+{
+	return sizeof(TranslucentSpriteFrame);
 }
 
 //**********************************************************************************************************************
@@ -98,8 +79,8 @@ ID<AnimationFrame> TranslucentSpriteSystem::deserializeAnimation(IDeserializer& 
 	TranslucentSpriteFrame frame;
 	SpriteRenderSystem::deserializeAnimation(deserializer, frame);
 
-	if (frame.animateIsEnabled || frame.animateColorFactor ||
-		frame.animateUvSize || frame.animateUvOffset || frame.animateColorMapLayer)
+	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
+		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap)
 	{
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
@@ -112,5 +93,7 @@ View<AnimationFrame> TranslucentSpriteSystem::getAnimation(ID<AnimationFrame> fr
 }
 void TranslucentSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
+	auto frameView = animationFrames.get(ID<TranslucentSpriteFrame>(frame));
+	destroyResources(View<SpriteRenderFrame>(frameView));
 	animationFrames.destroy(ID<TranslucentSpriteFrame>(frame));
 }

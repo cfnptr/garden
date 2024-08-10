@@ -520,58 +520,6 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 	deserializedEntities.clear();
 }
 
-/*void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
-{
-	auto componentView = View<TransformComponent>(component);
-
-	uint32 uid = 0;
-	deserializer.read("uid", uid);
-
-	auto result = deserializedEntities.emplace(uid, entity);
-	if (!result.second)
-	{
-		auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Deserialized entity with already existing uid. (uid: " + to_string(uid) + ")");
-	}
-	
-	deserializer.read("position", componentView->position);
-	deserializer.read("rotation", componentView->rotation);
-	deserializer.read("scale", componentView->scale);
-
-	uint32 parent = 0;
-	if (deserializer.read("parent", parent))
-		deserializedParents.emplace_back(make_pair(entity, parent));
-
-	#if GARDEN_DEBUG | GARDEN_EDITOR
-	deserializer.read("debugName", componentView->debugName);
-	#endif
-}
-void TransformSystem::postDeserialize(IDeserializer& deserializer)
-{
-	auto manager = Manager::getInstance();
-	for (auto pair : deserializedParents)
-	{
-		auto parent = deserializedEntities.find(pair.second);
-		if (parent == deserializedEntities.end())
-		{
-			auto logSystem = Manager::getInstance()->tryGet<LogSystem>();
-			if (logSystem)
-			{
-				logSystem->error("Deserialized entity parent does not exist. ("
-					"parentUID: " + to_string(pair.second) + ")");
-			}
-			continue;
-		}
-
-		auto transformView = get(pair.first);
-		transformView->setParent(parent->second);
-	}
-
-	deserializedParents.clear();
-	deserializedEntities.clear();
-}*/
-
 //**********************************************************************************************************************
 void TransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {

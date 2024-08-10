@@ -52,11 +52,11 @@ protected:
 	void beginDrawAsync(int32 taskIndex) override;
 	void finalizeDraw(const float4x4& viewProj, uint32 drawCount) override;
 
-	virtual ID<GraphicsPipeline> createPipeline() = 0;
 	virtual void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity);
 	virtual map<string, DescriptorSet::Uniform> getBaseUniforms();
 	virtual map<string, DescriptorSet::Uniform> getDefaultUniforms() { return {}; }
+	virtual ID<GraphicsPipeline> createPipeline() = 0;
 public:
 	ID<GraphicsPipeline> getPipeline();
 	virtual uint64 getInstanceDataSize() = 0;

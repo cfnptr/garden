@@ -29,9 +29,14 @@ class PhysicsEditorSystem final : public System
 	float3 oldCharacterEulerAngles = float3(0.0f);
 	float3 newCharacterEulerAngles = float3(0.0f);
 	quat oldCharacterRotation = quat::identity;
+	float3 rigidbodyShapePosCached = float3(0.0f);
+	float3 rigidbodyHalfExtCached = float3(0.5f);
+	float rigidbodyConvexRadCached = 0.05f;
+	float3 characterShapePosCached = float3(0.0f);
+	float3 characterShapeSizeCached = float3(0.5f, 1.75f, 0.5f);
+	float characterConvexRadCached = 0.05f;
 	ID<Entity> selectedEntity = {};
 	AllowedDOF allowedDofCached = {};
-	float3 characterSizeCached = float3(0.5f, 1.75f, 0.5f);
 
 	PhysicsEditorSystem();
 	~PhysicsEditorSystem() final;

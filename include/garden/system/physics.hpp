@@ -240,7 +240,7 @@ private:
 	float3 lastPosition = float3(0.0f);
 	quat lastRotation = quat::identity;
 	MotionType motionType = {};
-	AllowedDOF allowedDOF = {};
+	AllowedDOF allowedDOF = AllowedDOF::All;
 	bool inSimulation = true;
 	uint8 _alignment = 0;
 

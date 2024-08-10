@@ -17,6 +17,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
+void NineSliceRenderSystem::copyComponent(View<Component> source, View<Component> destination)
+{
+	SpriteRenderSystem::copyComponent(source, destination);
+	auto destinationView = View<NineSliceRenderComponent>(destination);
+	const auto sourceView = View<NineSliceRenderComponent>(source);
+	destinationView->textureBorder = sourceView->textureBorder;
+	destinationView->windowBorder = sourceView->windowBorder;
+}
+
 uint64 NineSliceRenderSystem::getInstanceDataSize()
 {
 	return (uint64)sizeof(NineSliceInstanceData);

@@ -103,7 +103,7 @@ void InfiniteGridEditorSystem::editorRender()
 	{
 		auto uniforms = getUniforms();
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.infinite-grid");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infinite-grid");
 	}
 
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());

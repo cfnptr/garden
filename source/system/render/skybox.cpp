@@ -34,7 +34,7 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<GraphicsPipeline> createPipeline(DeferredRenderSystem* deferredSystem)
+static ID<GraphicsPipeline> createPipeline()
 {
 	auto skyboxPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"skybox", deferredSystem->getHdrFramebuffer(), deferredSystem->isRenderAsync());
@@ -82,8 +82,7 @@ void SkyboxRenderSystem::hdrRender()
 	if (!componentView->descriptorSet)
 	{
 		auto descriptorSet = createDescriptorSet(componentView->cubemap);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
-			"descriptorSet.skybox" + to_string(*descriptorSet));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.skybox" + to_string(*descriptorSet));
 		componentView->descriptorSet = descriptorSet;
 	}
 

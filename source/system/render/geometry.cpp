@@ -48,9 +48,9 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static void createInstanceBuffers(GraphicsSystem* graphicsSystem,
-	uint64 bufferSize, vector<vector<ID<Buffer>>>& instanceBuffers)
+static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>& instanceBuffers)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	instanceBuffers.resize(swapchainSize);
 
@@ -59,14 +59,14 @@ static void createInstanceBuffers(GraphicsSystem* graphicsSystem,
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage,
 			Buffer::Access::SequentialWrite, bufferSize,
 			Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer,
+		SET_RESOURCE_DEBUG_NAME(buffer,
 			"buffer.storage.geometry.instances" + to_string(i));
 		instanceBuffers[i].push_back(buffer);
 	}
 }
-static void destroyInstanceBuffers(GraphicsSystem* graphicsSystem,
-	vector<vector<ID<Buffer>>>& instanceBuffers)
+static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	for (auto& sets : instanceBuffers)
 		graphicsSystem->destroy(sets[0]);
 	instanceBuffers.clear();

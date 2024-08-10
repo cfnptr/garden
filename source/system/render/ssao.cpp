@@ -38,7 +38,7 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Buffer> createSampleBuffer(GraphicsSystem* graphicsSystem, uint32 sampleCount)
+static ID<Buffer> createSampleBuffer(uint32 sampleCount)
 {
 	uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
 	default_random_engine generator;
@@ -55,13 +55,13 @@ static ID<Buffer> createSampleBuffer(GraphicsSystem* graphicsSystem, uint32 samp
 		ssaoKernel[i] = float4(sample * scale * randomFloats(generator), 0.0f);
 	}
 
-	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform |
+	auto buffer = GraphicsSystem::get()->createBuffer(Buffer::Bind::Uniform |
 		Buffer::Bind::TransferDst, Buffer::Access::None, ssaoKernel,
 		0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.uniform.ssao.sample");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.ssao.sample");
 	return buffer;
 }
-static ID<Image> createNoiseTexture(GraphicsSystem* graphicsSystem)
+static ID<Image> createNoiseTexture()
 {
 	uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
 	default_random_engine generator;
@@ -75,10 +75,10 @@ static ID<Image> createNoiseTexture(GraphicsSystem* graphicsSystem)
 		ssaoNoise[i] = float4(noise, 0.0f);
 	}
 
-	auto texture = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16,
+	auto texture = GraphicsSystem::get()->createImage(Image::Format::SfloatR16G16B16A16,
 		Image::Bind::TransferDst | Image::Bind::Sampled, { { ssaoNoise.data() } },
 		int2(NOISE_SIZE), Image::Strategy::Size, Image::Format::SfloatR32G32B32A32);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, texture, "image.ssao.random");
+	SET_RESOURCE_DEBUG_NAME(texture, "image.ssao.random");
 	return texture;
 }
 
@@ -188,7 +188,7 @@ bool SsaoRenderSystem::aoRender()
 		auto uniforms = getUniforms(getManager(),
 			graphicsSystem, sampleBuffer, noiseTexture);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.ssao");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.ssao");
 	}
 
 	const auto uvToNDC = float4x4

@@ -28,8 +28,8 @@
 #include "garden/system/render/sprite/cutout.hpp"
 #include "garden/system/render/sprite/translucent.hpp"
 #include "garden/system/render/9-slice/opaque.hpp"
-// #include "garden/system/render/9-slice/cutout.hpp"
-// #include "garden/system/render/9-slice/translucent.hpp"
+#include "garden/system/render/9-slice/cutout.hpp"
+#include "garden/system/render/9-slice/translucent.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
@@ -96,8 +96,8 @@ void entryPoint()
 	manager->createSystem<CutoutSpriteSystem>(false, false);
 	manager->createSystem<TranslucentSpriteSystem>(false, false);
 	manager->createSystem<Opaque9SliceSystem>(false, false);
-	// manager->createSystem<Cutout9SliceSystem>(false, false);
-	// manager->createSystem<Translucent9SliceSystem>(false, false);
+	manager->createSystem<Cutout9SliceSystem>(false, false);
+	manager->createSystem<Translucent9SliceSystem>(false, false);
 	manager->createSystem<Controller2DSystem>();
 	manager->createSystem<PlatformerSystem>();
 	manager->createSystem<ThreadSystem>();

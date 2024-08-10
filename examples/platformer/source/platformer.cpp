@@ -19,6 +19,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
+#include "garden/system/2d-controller.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 
 #if GARDEN_EDITOR
@@ -72,6 +73,25 @@ void PlatformerSystem::init()
 			BodyEvent::ContactAdded);
 		}
 	}
+
+	auto characterSensors = LinkSystem::get()->findEntities("CharacterSensor");
+	for (auto i = characterSensors.first; i != characterSensors.second; i++)
+	{
+		auto rigidbodyView = physicsSystem->tryGet(i->second);
+		if (rigidbodyView)
+		{
+			rigidbodyView->addListener<PlatformerSystem>([this](ID<Entity> thisEntity, ID<Entity> otherEntity)
+			{
+				slideCounter++;
+			},
+			BodyEvent::ContactAdded);
+			rigidbodyView->addListener<PlatformerSystem>([this](ID<Entity> thisEntity, ID<Entity> otherEntity)
+			{
+				slideCounter--;
+			},
+			BodyEvent::ContactRemoved);
+		}
+	}
 }
 void PlatformerSystem::deinit()
 {
@@ -86,36 +106,12 @@ void PlatformerSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void setTagEntityActive(const string& tag, bool isActive, bool isDirLeft)
-{
-	auto manager = Manager::get();
-	auto transformSystem = TransformSystem::get();
-	auto entities = LinkSystem::get()->findEntities(tag);
-
-	for (auto i = entities.first; i != entities.second; i++)
-	{
-		auto entity = i->second;
-		auto transformView = transformSystem->tryGet(entity);
-		if (!transformView || !transformView->getParent())
-			continue;
-
-		auto parentView = transformSystem->tryGet(transformView->getParent());
-		if (!parentView || !parentView->isActiveWithAncestors())
-			continue;
-
-		transformView->isActive = isActive;
-
-		auto spriteView = manager->tryGet<CutoutSpriteComponent>(entity);
-		if (spriteView)
-			spriteView->uvSize.x = isDirLeft ? -1.0f : 1.0f;
-	}
-}
-
 void PlatformerSystem::update()
 {
 	auto manager = Manager::get();
 	auto transformSystem = TransformSystem::get();
 	auto characterSystem = CharacterSystem::get();
+	auto controller2DSystem = manager->get<Controller2DSystem>();
 	auto characters = LinkSystem::get()->findEntities("MainCharacter");
 
 	for (auto i = characters.first; i != characters.second; i++)
@@ -135,9 +131,25 @@ void PlatformerSystem::update()
 		if (length2(linearVelocity) > float3(0.01f))
 		{
 			if (characterView->getGroundState() == CharacterGround::OnGround)
+			{
 				newState = CharacterState::Run;
+				isLastDoubleJumped = false;
+			}
 			else
-				newState = linearVelocity.y > 0.0f ? CharacterState::Jump : CharacterState::Fall;
+			{
+				if (controller2DSystem->isDoubleJumped() && !isLastDoubleJumped)
+				{
+					newState = CharacterState::DoubleJump;
+					isLastDoubleJumped = true;
+				}
+				else
+				{
+					if (slideCounter > 0)
+						newState = CharacterState::WallJump;
+					else
+						newState = linearVelocity.y > 0.0f ? CharacterState::Jump : CharacterState::Fall;
+				}
+			}
 			isLastDirLeft = linearVelocity.x < 0.0f;
 		}
 		else
@@ -145,11 +157,32 @@ void PlatformerSystem::update()
 			newState = CharacterState::Idle;
 		}
 
-		if (newState != currentState)
+		if (transformView->getChildCount() > 0)
 		{
-			setTagEntityActive(characterStateStrings[(uint8)currentState], false, isLastDirLeft);
-			setTagEntityActive(characterStateStrings[(uint8)newState], true, isLastDirLeft);
-			currentState = newState;
+			auto child = transformView->getChild(0);
+			auto spriteView = manager->tryGet<CutoutSpriteComponent>(child);
+			if (spriteView)
+				spriteView->uvSize.x = isLastDirLeft ? -1.0f : 1.0f;
+
+			auto animationView = manager->tryGet<AnimationComponent>(child);
+			if (animationView)
+			{
+				auto isLooped = false;
+				if (animationView->isPlaying && animationView->getActiveLooped(isLooped))
+				{
+					if (!isLooped)
+						newState = currentState;
+				}
+
+				if (newState != currentState)
+				{
+					if (newState == CharacterState::DoubleJump)
+						animationView->frame = 0.0f;
+					animationView->active = characterAnimStrings[(uint8)newState];
+					animationView->isPlaying = true;
+					currentState = newState;
+				}
+			}
 		}
 	}
 }

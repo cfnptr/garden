@@ -37,9 +37,9 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"fxaa", graphicsSystem->getSwapchainFramebuffer());
 }
-static map<string, DescriptorSet::Uniform> getUniforms(
-	GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
+static map<string, DescriptorSet::Uniform> getUniforms()
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
 	map<string, DescriptorSet::Uniform> uniforms =
@@ -84,7 +84,7 @@ void FxaaRenderSystem::preSwapchainRender()
 	{
 		auto uniforms = getUniforms(graphicsSystem, getDeferredSystem());
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet, "descriptorSet.fxaa");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
 
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());

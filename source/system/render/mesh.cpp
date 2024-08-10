@@ -107,7 +107,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 	MeshRenderSystem::OpaqueBuffer* opaqueBuffer, uint32 itemOffset, uint32 itemCount)
 {
 	auto meshSystem = opaqueBuffer->meshSystem;
-	const auto& componentPool = meshSystem->getMeshComponentPool();
+	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)componentPool.getData();
 	auto items = opaqueBuffer->items.data();
@@ -160,7 +160,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 	uint32* translucentIndexData, uint32 itemOffset, uint32 itemCount)
 {
 	auto meshSystem = translucentBuffer->meshSystem;
-	const auto& componentPool = meshSystem->getMeshComponentPool();
+	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)componentPool.getData();
 	auto drawCount = &translucentBuffer->drawCount;

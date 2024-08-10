@@ -108,18 +108,17 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	auto keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
 	if (keyframeB == keyframes.end())
 	{
-		if (animationView->isLooped)
-		{
-			keyframeB--;
-			animationComponent->frame = fmod(animationComponent->frame, (float)keyframeB->first);
-			keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
-			GARDEN_ASSERT(keyframeB != keyframes.end()); // Something went wrong :(
-		}
-		else
+		if (!animationView->isLooped && keyframes.size() > 1)
 		{
 			animationComponent->isPlaying = false;
 			return;
 		}
+
+		keyframeB--;
+		animationComponent->frame = keyframeB->first == 0 ? 0.0f :
+			fmod(animationComponent->frame, (float)keyframeB->first);
+		keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
+		GARDEN_ASSERT(keyframeB != keyframes.end()); // Something went wrong :(
 	}
 
 	auto keyframeA = keyframeB;
@@ -138,19 +137,19 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
 			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
 			if (componentView)
-				animatableSystem->animateAsync(componentView, frameViewA, frameViewA, 0.0f);
+				animatableSystem->animateAsync(componentView, frameViewA, frameViewA, 1.0f);
 		}
 	}
 	else
 	{
 		auto currentFrame = animationComponent->frame;
-		auto frameA = (float)keyframeA->first;
-		auto frameB = (float)keyframeB->first;
+		auto frameA = keyframeA->first, frameB = keyframeB->first;
+		auto frameDiff = frameB - frameA;
+		auto t = frameDiff == 0 ? 1.0f : (currentFrame - frameA) / (float)frameDiff;
 
 		for (const auto& pairA : animatablesA)
 		{
 			auto animationFrameB = animatablesB.at(pairA.first);
-			auto t = (currentFrame - frameA) / (frameB - frameA);
 			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
 			auto frameViewB = animatableSystem->getAnimation(animationFrameB);
@@ -164,6 +163,12 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 			if (componentView)
 				animatableSystem->animateAsync(componentView, frameViewA, frameViewB, t);
 		}
+	}
+
+	if (!animationView->isLooped && keyframes.size() == 1)
+	{
+		animationComponent->isPlaying = false;
+		return;
 	}
 
 	animationComponent->frame += InputSystem::get()->getDeltaTime() * animationView->frameRate;

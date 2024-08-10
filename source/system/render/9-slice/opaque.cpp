@@ -19,13 +19,10 @@
 
 using namespace garden;
 
-Opaque9SliceSystem::Opaque9SliceSystem(bool useDeferredBuffer, bool useLinearFilter)
-{
-	this->deferredBuffer = useDeferredBuffer;
-	this->linearFilter = useLinearFilter;
-}
-
 //**********************************************************************************************************************
+Opaque9SliceSystem::Opaque9SliceSystem(bool useDeferredBuffer, bool useLinearFilter) :
+	NineSliceRenderSystem("9-slice/opaque", useDeferredBuffer, useLinearFilter) { }
+
 ID<Component> Opaque9SliceSystem::createComponent(ID<Entity> entity)
 {
 	return ID<Component>(components.create());
@@ -33,7 +30,7 @@ ID<Component> Opaque9SliceSystem::createComponent(ID<Entity> entity)
 void Opaque9SliceSystem::destroyComponent(ID<Component> instance)
 {
 	auto componentView = components.get(ID<Opaque9SliceComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(componentView));
+	destroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<Opaque9SliceComponent>(instance));
 }
 const string& Opaque9SliceSystem::getComponentName() const
@@ -55,39 +52,25 @@ void Opaque9SliceSystem::disposeComponents()
 	animationFrames.dispose();
 }
 
-//**********************************************************************************************************************
 MeshRenderType Opaque9SliceSystem::getMeshRenderType() const
 {
 	return MeshRenderType::Opaque;
 }
-const LinearPool<MeshRenderComponent>& Opaque9SliceSystem::getMeshComponentPool() const
+LinearPool<MeshRenderComponent>& Opaque9SliceSystem::getMeshComponentPool()
 {
-	return *((const LinearPool<MeshRenderComponent>*)&components);
+	return *((LinearPool<MeshRenderComponent>*)&components);
 }
 psize Opaque9SliceSystem::getMeshComponentSize() const
 {
 	return sizeof(Opaque9SliceComponent);
 }
-
-ID<GraphicsPipeline> Opaque9SliceSystem::createPipeline()
+LinearPool<SpriteRenderFrame>& Opaque9SliceSystem::getFrameComponentPool()
 {
-	ID<Framebuffer> framebuffer;
-	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
-	else
-		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
-
-	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
-	if (!linearFilter)
-	{
-		GraphicsPipeline::SamplerState samplerState;
-		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
-			GraphicsPipeline::SamplerWrap::Repeat;
-		samplerStateOverrides.emplace("colorMap", samplerState);
-	}
-
-	return ResourceSystem::get()->loadGraphicsPipeline("9-slice/opaque",
-		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
+	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
+}
+psize Opaque9SliceSystem::getFrameComponentSize() const
+{
+	return sizeof(Opaque9SliceFrame);
 }
 
 //**********************************************************************************************************************
@@ -96,8 +79,9 @@ ID<AnimationFrame> Opaque9SliceSystem::deserializeAnimation(IDeserializer& deser
 	Opaque9SliceFrame frame;
 	NineSliceRenderSystem::deserializeAnimation(deserializer, frame);
 
-	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || frame.animateUvOffset || 
-		frame.animateColorMapLayer || frame.animateTextureBorder || frame.animateWindowBorder)
+	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
+		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap ||
+		frame.animateTextureBorder || frame.animateWindowBorder)
 	{
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
@@ -110,5 +94,7 @@ View<AnimationFrame> Opaque9SliceSystem::getAnimation(ID<AnimationFrame> frame)
 }
 void Opaque9SliceSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
+	auto frameView = animationFrames.get(ID<Opaque9SliceFrame>(frame));
+	destroyResources(View<SpriteRenderFrame>(frameView));
 	animationFrames.destroy(ID<Opaque9SliceFrame>(frame));
 }

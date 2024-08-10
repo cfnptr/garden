@@ -19,13 +19,10 @@
 
 using namespace garden;
 
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter)
-{
-	this->deferredBuffer = useDeferredBuffer;
-	this->linearFilter = useLinearFilter;
-}
-
 //**********************************************************************************************************************
+OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter) :
+	SpriteRenderSystem("sprite/opaque", useDeferredBuffer, useLinearFilter) { }
+
 ID<Component> OpaqueSpriteSystem::createComponent(ID<Entity> entity)
 {
 	return ID<Component>(components.create());
@@ -33,7 +30,7 @@ ID<Component> OpaqueSpriteSystem::createComponent(ID<Entity> entity)
 void OpaqueSpriteSystem::destroyComponent(ID<Component> instance)
 {
 	auto componentView = components.get(ID<OpaqueSpriteComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(componentView));
+	destroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<OpaqueSpriteComponent>(instance));
 }
 const string& OpaqueSpriteSystem::getComponentName() const
@@ -55,39 +52,25 @@ void OpaqueSpriteSystem::disposeComponents()
 	animationFrames.dispose();
 }
 
-//**********************************************************************************************************************
 MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
 {
 	return MeshRenderType::Opaque;
 }
-const LinearPool<MeshRenderComponent>& OpaqueSpriteSystem::getMeshComponentPool() const
+LinearPool<MeshRenderComponent>& OpaqueSpriteSystem::getMeshComponentPool()
 {
-	return *((const LinearPool<MeshRenderComponent>*)&components);
+	return *((LinearPool<MeshRenderComponent>*)&components);
 }
 psize OpaqueSpriteSystem::getMeshComponentSize() const
 {
 	return sizeof(OpaqueSpriteComponent);
 }
-
-ID<GraphicsPipeline> OpaqueSpriteSystem::createPipeline()
+LinearPool<SpriteRenderFrame>& OpaqueSpriteSystem::getFrameComponentPool()
 {
-	ID<Framebuffer> framebuffer;
-	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
-	else
-		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
-
-	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
-	if (!linearFilter)
-	{
-		GraphicsPipeline::SamplerState samplerState;
-		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
-			GraphicsPipeline::SamplerWrap::Repeat;
-		samplerStateOverrides.emplace("colorMap", samplerState);
-	}
-
-	return ResourceSystem::get()->loadGraphicsPipeline("sprite/opaque",
-		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
+	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
+}
+psize OpaqueSpriteSystem::getFrameComponentSize() const
+{
+	return sizeof(OpaqueSpriteFrame);
 }
 
 //**********************************************************************************************************************
@@ -96,8 +79,8 @@ ID<AnimationFrame> OpaqueSpriteSystem::deserializeAnimation(IDeserializer& deser
 	OpaqueSpriteFrame frame;
 	SpriteRenderSystem::deserializeAnimation(deserializer, frame);
 
-	if (frame.animateIsEnabled || frame.animateColorFactor ||
-		frame.animateUvSize || frame.animateUvOffset || frame.animateColorMapLayer)
+	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
+		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap)
 	{
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
@@ -110,5 +93,7 @@ View<AnimationFrame> OpaqueSpriteSystem::getAnimation(ID<AnimationFrame> frame)
 }
 void OpaqueSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
+	auto frameView = animationFrames.get(ID<OpaqueSpriteFrame>(frame));
+	destroyResources(View<SpriteRenderFrame>(frameView));
 	animationFrames.destroy(ID<OpaqueSpriteFrame>(frame));
 }

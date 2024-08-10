@@ -81,7 +81,7 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 	{
 		auto componentView = Manager::get()->get<OpaqueSpriteComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -96,7 +96,7 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 	{
 		auto componentView = Manager::get()->get<CutoutSpriteComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -119,7 +119,7 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 	{
 		auto componentView = Manager::get()->get<TranslucentSpriteComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -136,13 +136,13 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	editorSystem->drawImageSelector(componentView->path, componentView->colorMap,
+	editorSystem->drawImageSelector(componentView->colorMapPath, componentView->colorMap,
 		componentView->descriptorSet, componentView->getEntity(), componentType, flags);
 	editorSystem->drawResource(componentView->descriptorSet);
 
 	ImGui::Checkbox("Enabled", &componentView->isEnabled); ImGui::SameLine();
 
-	if (ImGui::Checkbox("Array", &componentView->isArray) && !componentView->path.empty())
+	if (ImGui::Checkbox("Array", &componentView->isArray) && !componentView->colorMapPath.empty())
 	{
 		auto resourceSystem = ResourceSystem::get();
 		resourceSystem->destroyShared(componentView->colorMap);
@@ -151,7 +151,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
-		componentView->colorMap = ResourceSystem::get()->loadImage(componentView->path,
+		componentView->colorMap = ResourceSystem::get()->loadImage(componentView->colorMapPath,
 			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
 	}
