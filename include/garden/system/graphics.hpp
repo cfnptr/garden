@@ -30,6 +30,22 @@ using namespace ecsm;
 using namespace garden::graphics;
 class GraphicsSystem;
 
+#if GARDEN_DEBUG || GARDEN_EDITOR
+/**
+ * @brief Sets GPU resource debug name. (visible in GPU profiler)
+ * @param resource target resource instance
+ * @param[in] name object debug name
+ */
+#define SET_RESOURCE_DEBUG_NAME(resource, name) GraphicsSystem::get()->setDebugName(resource, name)
+#else
+/**
+ * @brief Sets GPU resource debug name. (visible in GPU profiler)
+ * @param resource target resource
+ * @param name debug name
+ */
+#define SET_RESOURCE_DEBUG_NAME(resource, name)
+#endif
+
 /***********************************************************************************************************************
  * @brief Contains information about swapchain changes.
  */
@@ -353,20 +369,6 @@ public:
 	{
 		setDebugName(ID<DescriptorSet>(descriptorSet), name);
 	}
-
-	/**
-	 * @brief Sets GPU resource debug name. (visible in GPU profiler)
-	 * @param resource target resource instance
-	 * @param[in] name object debug name
-	 */
-	#define SET_RESOURCE_DEBUG_NAME(graphicsSystem, resource, name) graphicsSystem->setDebugName(resource, name)
-	#else
-	/**
-	 * @brief Sets GPU resource debug name. (visible in GPU profiler)
-	 * @param resource target resource
-	 * @param name debug name
-	 */
-	#define SET_RESOURCE_DEBUG_NAME(graphicsSystem, resource, name)
 	#endif
 
 	/*******************************************************************************************************************

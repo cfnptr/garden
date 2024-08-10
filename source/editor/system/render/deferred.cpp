@@ -66,7 +66,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Framebuffer> gFr
 		{
 			shadowPlaceholder = graphicsSystem->createImage(Image::Format::UnormR8,
 				Image::Bind::Sampled, { { nullptr } }, int2(1), Image::Strategy::Size);
-			SET_RESOURCE_DEBUG_NAME(graphicsSystem, shadowPlaceholder, "image.shadowPlaceholder");
+			SET_RESOURCE_DEBUG_NAME(shadowPlaceholder, "image.shadowPlaceholder");
 		}
 		auto imageView = graphicsSystem->get(shadowPlaceholder);
 		shadowBuffer0 = aoBuffer0 = aoBuffer1 = imageView->getDefaultView();
@@ -191,7 +191,7 @@ void DeferredRenderEditorSystem::editorRender()
 			auto uniforms = getBufferUniforms(deferredSystem->getGFramebuffer(),
 				deferredSystem->getHdrFramebuffer(), shadowPlaceholder);
 			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(graphicsSystem, bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
+			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
 
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();

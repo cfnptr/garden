@@ -125,6 +125,12 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	ImGui::Checkbox("Randomize Start", &animationView->randomizeStart);
 
 	ImGui::InputText("Active", &animationView->active); // TODO: dropdown selector
+	if (ImGui::BeginPopupContextItem("active"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			animationView->active = "";
+		ImGui::EndPopup();
+	}
 
 	ImGui::DragFloat("Frame", &animationView->frame);
 	if (ImGui::BeginPopupContextItem("frame"))

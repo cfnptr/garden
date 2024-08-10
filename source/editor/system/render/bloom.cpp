@@ -113,7 +113,7 @@ void BloomEditor::render()
 					graphicsSystem, system->getDeferredSystem());
 				thresholdDescriptorSet = graphicsSystem->createDescriptorSet(
 					thresholdPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(graphicsSystem, thresholdDescriptorSet,
+				SET_RESOURCE_DEBUG_NAME(thresholdDescriptorSet,
 					"descriptorSet.bloom.editor.threshold");
 			}
 

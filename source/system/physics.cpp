@@ -582,8 +582,6 @@ void RigidbodyComponent::setShape(ID<Shape> shape, bool activate,
 					JPH::EActivation::Activate : JPH::EActivation::DontActivate);
 			}
 
-			this->allowedDOF = motionType == MotionType::Static ?
-				AllowedDOF::None : allowedDOF;
 			this->instance = body;
 		}
 	}
@@ -594,13 +592,12 @@ void RigidbodyComponent::setShape(ID<Shape> shape, bool activate,
 			if (inSimulation)
 				bodyInterface->RemoveBody(body->GetID());
 			bodyInterface->DestroyBody(body->GetID());
-
-			this->allowedDOF = {};
 			this->instance = nullptr;
 		}
 	}
 
 	this->shape = shape;
+	this->allowedDOF = allowedDOF;
 }
 
 //**********************************************************************************************************************

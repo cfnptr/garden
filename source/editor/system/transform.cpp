@@ -142,6 +142,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		{
 			auto difference = newEulerAngles - oldEulerAngles;
 			transformView->rotation *= quat(radians(difference));
+			transformView->rotation = normalize(transformView->rotation);
 			oldEulerAngles = newEulerAngles;
 		}
 		if (ImGui::BeginPopupContextItem("rotation"))

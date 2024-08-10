@@ -33,7 +33,8 @@ using namespace ecsm;
 class Controller2DSystem final : public System
 {
 	ID<Entity> camera = {};
-	bool isDragging = false;
+	bool canDoubleJump = true;
+	bool isLastJumping = false;
 
 	/**
 	 * @brief Creates a new 2D view controller system instance.
@@ -44,11 +45,14 @@ class Controller2DSystem final : public System
 	 */
 	~Controller2DSystem() final;
 
+	void updateCameraTransform();
+	void updateCharacterControll();
+
 	void init();
 	void deinit();
 	void update();
 	void swapchainRecreate();
-
+	
 	friend class ecsm::Manager;
 public:
 	string characterEntityTag = "MainCharacter";
@@ -56,6 +60,9 @@ public:
 	float horizontalSpeed = 2.0f;
 	float horizontalFactor = 0.99999f;
 	float jumpSpeed = 4.0f;
+	bool useDoubleJump = true;
+
+	bool isDoubleJumped() const noexcept { return !canDoubleJump; }
 };
 
 } // namespace garden

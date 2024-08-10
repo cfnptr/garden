@@ -29,7 +29,7 @@ static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 		useHdrColorBuffer ? Image::Format::SfloatR16G16B16A16 : swapchainImageView->getFormat(), 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen |
 		Image::Bind::TransferSrc, { { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.forward.color");
+	SET_RESOURCE_DEBUG_NAME(image, "image.forward.color");
 	return image;
 }
 static ID<Image> createDepthStencilBuffer()
@@ -40,7 +40,7 @@ static ID<Image> createDepthStencilBuffer()
 	auto image = graphicsSystem->createImage(depthBufferView->getFormat(), 
 		Image::Bind::DepthStencilAttachment | Image::Bind::Fullscreen,
 		{ { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.forward.depth");
+	SET_RESOURCE_DEBUG_NAME(image, "image.forward.depth");
 	return image;
 }
 
@@ -57,7 +57,7 @@ static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthS
 		depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		framebufferSize, std::move(colorAttachments), depthStencilAttachment); 
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer,"framebuffer.forward");
+	SET_RESOURCE_DEBUG_NAME(framebuffer,"framebuffer.forward");
 	return framebuffer;
 }
 

@@ -45,6 +45,11 @@ public:
 		float4 texWinBorder = float4(0.0f);
 	};
 protected:
+	NineSliceRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) :
+		SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter) { }
+
+	void copyComponent(View<Component> source, View<Component> destination) override;
+
 	uint64 getInstanceDataSize() override;
 	void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) override;

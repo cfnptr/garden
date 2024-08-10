@@ -91,7 +91,7 @@ void Controller2DSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void updateCameraTransform(ID<Entity> camera, float scrollSensitivity)
+void Controller2DSystem::updateCameraTransform()
 {
 	auto manager = Manager::get();
 	auto inputSystem = InputSystem::get();
@@ -138,8 +138,7 @@ static void updateCameraTransform(ID<Entity> camera, float scrollSensitivity)
 }
 
 //**********************************************************************************************************************
-static void updateCharacterControll(const string& characterEntityTag,
-	float horizontalSpeed, float horizontalFactor, float jumpSpeed)
+void Controller2DSystem::updateCharacterControll()
 {
 	#if GARDEN_EDITOR
 	auto editorSystem = Manager::get()->tryGet<EditorRenderSystem>();
@@ -167,6 +166,7 @@ static void updateCharacterControll(const string& characterEntityTag,
 		{
 			horizontalVelocity = horizontalSpeed;
 		}
+
 		auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 
 		for (auto i = characterEntities.first; i != characterEntities.second; i++)
@@ -186,21 +186,34 @@ static void updateCharacterControll(const string& characterEntityTag,
 			auto linearVelocity = characterView->getLinearVelocity();
 			linearVelocity.x = lerpDelta(linearVelocity.x,
 				horizontalVelocity, 1.0f - horizontalFactor, deltaTime);
+
 			if (characterView->getGroundState() == CharacterGround::OnGround)
+			{
 				linearVelocity.y = isJumping ? jumpSpeed : 0.0f;
+				canDoubleJump = true;
+			}
 			else
+			{
+				if (useDoubleJump && isJumping && canDoubleJump && !isLastJumping)
+				{
+					linearVelocity.y = jumpSpeed;
+					canDoubleJump = false;
+				}
 				linearVelocity.y += gravity.y * deltaTime;
+			}
 
 			characterView->setLinearVelocity(linearVelocity);
 			characterView->update(deltaTime, gravity);
 		}
+
+		isLastJumping = isJumping;
 	}
 }
 
 void Controller2DSystem::update()
 {
-	updateCameraTransform(camera, scrollSensitivity);
-	updateCharacterControll(characterEntityTag, horizontalSpeed, horizontalFactor, jumpSpeed);
+	updateCameraTransform();
+	updateCharacterControll();
 }
 
 void Controller2DSystem::swapchainRecreate()

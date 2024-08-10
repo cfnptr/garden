@@ -30,12 +30,6 @@
 #include "garden/system/resource.hpp"
 #endif
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
-#define SET_THIS_RESOURCE_DEBUG_NAME(resource, name) setDebugName(resource, name)
-#else
-#define SET_THIS_RESOURCE_DEBUG_NAME(resource, name)
-#endif
-
 using namespace mpio;
 using namespace garden;
 using namespace garden::primitive;
@@ -177,11 +171,11 @@ void GraphicsSystem::recreateImGui()
 }
 #endif
 
-static ID<ImageView> createDepthStencilBuffer(GraphicsSystem* graphicsSystem, int2 size, Image::Format format)
+static ID<ImageView> createDepthStencilBuffer(int2 size, Image::Format format)
 {
-	auto depthImage = graphicsSystem->createImage(format, Image::Bind::TransferDst | 
+	auto depthImage = GraphicsSystem::get()->createImage(format, Image::Bind::TransferDst |
 		Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, depthImage, "image.depthBuffer");
+	SET_RESOURCE_DEBUG_NAME(depthImage, "image.depthBuffer");
 	auto imageView = GraphicsAPI::imagePool.get(depthImage);
 	return imageView->getDefaultView();
 }
@@ -206,6 +200,9 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat
 	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
+	GARDEN_ASSERT(!instance); // More than one system instance detected.
+	instance = this;
+
 	auto appInfoSystem = AppInfoSystem::get();
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
 		windowSize, isFullscreen, useVsync, useTripleBuffering, asyncRecording);
@@ -215,13 +212,13 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat
 	glfwGetWindowSize(window, &this->windowSize.x, &this->windowSize.y);
 
 	if (depthStencilFormat != Image::Format::Undefined)
-		depthStencilBuffer = createDepthStencilBuffer(this, framebufferSize, depthStencilFormat);
+		depthStencilBuffer = createDepthStencilBuffer(framebufferSize, depthStencilFormat);
 
 	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 	swapchainFramebuffer = GraphicsAPI::framebufferPool.create(
 		framebufferSize, swapchainImage->getDefaultView(), depthStencilBuffer);
-	SET_THIS_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
+	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
 	cameraConstantsBuffers.resize(swapchainBufferCount);
@@ -231,13 +228,10 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat
 		auto constantsBuffer = createBuffer(Buffer::Bind::Uniform,
 			Buffer::Access::SequentialWrite, sizeof(CameraConstants),
 			Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_THIS_RESOURCE_DEBUG_NAME(constantsBuffer,
+		SET_RESOURCE_DEBUG_NAME(constantsBuffer,
 			"buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
 }
 GraphicsSystem::~GraphicsSystem()
 {
@@ -352,9 +346,9 @@ static void updateWindowInput(int2& framebufferSize, int2& windowSize, bool& isF
 }
 
 //**********************************************************************************************************************
-static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
-	vector<vector<ID<Buffer>>>& cameraConstantsBuffers)
+static void recreateCameraBuffers(vector<vector<ID<Buffer>>>& cameraConstantsBuffers)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	for (uint32 i = 0; i < (uint32)cameraConstantsBuffers.size(); i++)
 		graphicsSystem->destroy(cameraConstantsBuffers[i][0]);
 	cameraConstantsBuffers.clear();
@@ -367,7 +361,7 @@ static void recreateCameraBuffers(GraphicsSystem* graphicsSystem,
 		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform,
 			Buffer::Access::SequentialWrite, sizeof(CameraConstants),
 			Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, constantsBuffer,
+		SET_RESOURCE_DEBUG_NAME(constantsBuffer,
 			"buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
@@ -481,7 +475,7 @@ void GraphicsSystem::update()
 			{
 				auto format = depthStencilBufferView->getFormat();
 				destroy(depthStencilBufferView->getImage());
-				depthStencilBuffer = createDepthStencilBuffer(this, framebufferSize, format);
+				depthStencilBuffer = createDepthStencilBuffer(framebufferSize, format);
 			}
 		}
 
@@ -498,7 +492,7 @@ void GraphicsSystem::update()
 
 	if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
 	{
-		recreateCameraBuffers(this, cameraConstantsBuffers);
+		recreateCameraBuffers(cameraConstantsBuffers);
 		swapchainChanges.bufferCount = true;
 	}
 
@@ -641,7 +635,7 @@ ID<Buffer> GraphicsSystem::getFullSquareVertices()
 	{
 		fullSquareVertices = createBuffer(Buffer::Bind::Vertex |
 			Buffer::Bind::TransferDst, Buffer::Access::None, fullSquareVert2D);
-		SET_THIS_RESOURCE_DEBUG_NAME(fullSquareVertices, "buffer.vertex.fullSquare");
+		SET_RESOURCE_DEBUG_NAME(fullSquareVertices, "buffer.vertex.fullSquare");
 	}
 	return fullSquareVertices;
 }
@@ -651,7 +645,7 @@ ID<Buffer> GraphicsSystem::getFullCubeVertices()
 	{
 		fullCubeVertices = createBuffer(Buffer::Bind::Vertex |
 			Buffer::Bind::TransferDst, Buffer::Access::None, fullCubeVert);
-		SET_THIS_RESOURCE_DEBUG_NAME(fullCubeVertices, "buffer.vertex.fullCube");
+		SET_RESOURCE_DEBUG_NAME(fullCubeVertices, "buffer.vertex.fullCube");
 	}
 	return fullCubeVertices;
 }
@@ -664,7 +658,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 		const Color data[1] = { Color::transparent };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
+		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return emptyTexture;
@@ -676,7 +670,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 		const Color data[1] = { Color::white };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
+		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return whiteTexture;
@@ -688,7 +682,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 		const Color data[1] = { Color::green };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
+		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return greenTexture;
@@ -700,7 +694,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		const Color data[1] = { Color(127, 127, 255, 255) };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
-		SET_THIS_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
+		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
 	return normalMapTexture;
@@ -788,7 +782,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 	#endif
 
 	auto buffer = GraphicsAPI::bufferPool.create(bind, access, usage, strategy, size, 0);
-	SET_THIS_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
 
 	if (data)
 	{
@@ -802,7 +796,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 			auto stagingBuffer = GraphicsAPI::bufferPool.create(
 				Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 				Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
-			SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
+			SET_RESOURCE_DEBUG_NAME(stagingBuffer,
 				"buffer.staging" + to_string(*stagingBuffer));
 			auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
 			stagingBufferView->writeData(data, size);
@@ -906,7 +900,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 	auto image = GraphicsAPI::imagePool.create(type, format,
 		bind, strategy, size, mipCount, layerCount, 0);
-	SET_THIS_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
+	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
 	{
@@ -914,7 +908,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		auto stagingBuffer = GraphicsAPI::bufferPool.create(
 			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 			Buffer::Usage::Auto, Buffer::Strategy::Speed, stagingSize, 0);
-		SET_THIS_RESOURCE_DEBUG_NAME(stagingBuffer,
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer,
 			"buffer.imageStaging" + to_string(*stagingBuffer));
 		
 		ID<Image> targetImage; 
@@ -927,7 +921,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			targetImage = GraphicsAPI::imagePool.create(type, dataFormat,
 				Image::Bind::TransferDst | Image::Bind::TransferSrc,
 				Image::Strategy::Speed, size, mipCount, layerCount, 0);
-			SET_THIS_RESOURCE_DEBUG_NAME(targetImage,
+			SET_RESOURCE_DEBUG_NAME(targetImage,
 				"image.staging" + to_string(*targetImage));
 		}
 
@@ -1062,7 +1056,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 
 	auto imageView = GraphicsAPI::imageViewPool.create(false, image,
 		type, format, baseMip, mipCount, baseLayer, layerCount);
-	SET_THIS_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
+	SET_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
 	return imageView;
 }
 void GraphicsSystem::destroy(ID<ImageView> imageView)
@@ -1110,7 +1104,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 
 	auto framebuffer = GraphicsAPI::framebufferPool.create(size,
 		std::move(colorAttachments), depthStencilAttachment);
-	SET_THIS_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
 ID<Framebuffer> GraphicsSystem::createFramebuffer(
@@ -1158,7 +1152,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 	#endif
 
 	auto framebuffer = GraphicsAPI::framebufferPool.create(size, std::move(subpasses));
-	SET_THIS_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
 void GraphicsSystem::destroy(ID<Framebuffer> framebuffer)
@@ -1208,7 +1202,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 
 	auto descriptorSet = GraphicsAPI::descriptorSetPool.create(
 		ID<Pipeline>(graphicsPipeline), PipelineType::Graphics, std::move(uniforms), index);
-	SET_THIS_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> computePipeline,
@@ -1225,7 +1219,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 
 	auto descriptorSet = GraphicsAPI::descriptorSetPool.create(
 		ID<Pipeline>(computePipeline), PipelineType::Compute, std::move(uniforms), index);
-	SET_THIS_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
 void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)

@@ -99,6 +99,15 @@ public:
 	 */
 	bool hasChild(ID<Entity> child) const noexcept;
 	/**
+	 * @brief Returns this entity child.
+	 * @param index target child index in the array
+	 */
+	ID<Entity> getChild(uint32 index)
+	{
+		GARDEN_ASSERT(index < childCount);
+		return childs[index];
+	}
+	/**
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity

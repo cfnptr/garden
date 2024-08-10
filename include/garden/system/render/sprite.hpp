@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "garden/hash.hpp"
 #include "garden/system/render/instance.hpp"
 
 namespace garden
@@ -37,7 +38,7 @@ public:
 	float2 uvOffset = float2(0.0f);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path path = {};
+	fs::path colorMapPath = {};
 	#endif
 };
 
@@ -46,19 +47,30 @@ public:
  */
 struct SpriteRenderFrame : public AnimationFrame
 {
+	uint8 isEnabled : 1;
+	uint8 animateIsEnabled : 1;
+	uint8 animateColorFactor : 1;
+	uint8 animateUvSize : 1;
+	uint8 animateUvOffset : 1;
+	uint8 animateColorMapLayer : 1;
+	uint8 animateColorMap : 1;
+	uint8 isArray : 1;
 protected:
-	uint8 _alignment0 = 0;
+	uint16 _alignment0 = 0;
 public:
-	bool isEnabled = true;
-	bool animateIsEnabled = false;
-	bool animateColorFactor = false;
-	bool animateUvSize = false;
-	bool animateUvOffset = false;
-	bool animateColorMapLayer = false;
 	float4 colorFactor = float4(1.0f);
 	float2 uvSize = float2(1.0f);
 	float2 uvOffset = float2(0.0f);
 	float colorMapLayer = 0.0f;
+	Ref<Image> colorMap = {};
+	Ref<DescriptorSet> descriptorSet = {};
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	fs::path colorMapPath = {};
+	#endif
+
+	SpriteRenderFrame() : isEnabled(true), animateIsEnabled(false), animateColorFactor(false), animateUvSize(false), 
+		animateUvOffset(false), animateColorMapLayer(false), animateColorMap(false), isArray(false) { }
 };
 
 /***********************************************************************************************************************
@@ -79,10 +91,19 @@ public:
 		float colorMapLayer;
 	};
 protected:
+	fs::path pipelinePath = {};
+	Hash128::State hashState = nullptr;
 	ID<ImageView> defaultImageView = {};
+	bool deferredBuffer = false;
+	bool linearFilter = false;
+
+	SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter);
+	~SpriteRenderSystem() override;
 
 	void init() override;
 	void deinit() override;
+
+	Ref<DescriptorSet> createSharedDS(ID<Image> image, const string& path);
 	virtual void imageLoaded();
 
 	void copyComponent(View<Component> source, View<Component> destination) override;
@@ -100,6 +121,10 @@ protected:
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
+	ID<GraphicsPipeline> createPipeline() final;
+
+	virtual LinearPool<SpriteRenderFrame>& getFrameComponentPool() = 0;
+	virtual psize getFrameComponentSize() const = 0;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
@@ -108,8 +133,9 @@ protected:
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 	static void deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame);
-public:
-	static void tryDestroyResources(View<SpriteRenderComponent> spriteRenderView);
+	static void destroyResources(View<SpriteRenderFrame> frameView);
+
+	static void destroyResources(View<SpriteRenderComponent> spriteRenderView);
 };
 
 } // namespace garden

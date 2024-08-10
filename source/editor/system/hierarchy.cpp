@@ -193,7 +193,7 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 		transformView = TransformSystem::get()->get(renderEntity); // Do not optimize!!!
 		for (uint32 i = 0; i < transformView->getChildCount(); i++)
 		{
-			renderHierarchyEntity(transformView->getChilds()[i], selectedEntity); // TODO: use stack instead of recursion!
+			renderHierarchyEntity(transformView->getChild(i), selectedEntity); // TODO: use stack instead of recursion!
 			transformView = TransformSystem::get()->get(renderEntity); // Do not optimize!!!
 		}
 		ImGui::TreePop();

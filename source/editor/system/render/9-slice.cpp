@@ -17,8 +17,8 @@
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
 #include "garden/system/render/9-slice/opaque.hpp"
-// #include "garden/system/render/9-slice/cutout.hpp"
-// #include "garden/system/render/9-slice/translucent.hpp"
+#include "garden/system/render/9-slice/cutout.hpp"
+#include "garden/system/render/9-slice/translucent.hpp"
 #include "garden/editor/system/render/sprite.hpp"
 
 using namespace garden;
@@ -51,7 +51,7 @@ void NineSliceRenderEditorSystem::init()
 			onOpaqueEntityInspector(entity, isOpened);
 		});
 	}
-	/*if (manager->has<Cutout9SliceSystem>())
+	if (manager->has<Cutout9SliceSystem>())
 	{
 		editorSystem->registerEntityInspector<Cutout9SliceComponent>(
 		[this](ID<Entity> entity, bool isOpened)
@@ -66,14 +66,14 @@ void NineSliceRenderEditorSystem::init()
 		{
 			onTranslucentEntityInspector(entity, isOpened);
 		});
-	}*/
+	}
 }
 void NineSliceRenderEditorSystem::deinit()
 {
 	auto editorSystem = EditorRenderSystem::get();
 	editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
-	/*editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
-	editorSystem->tryUnregisterEntityInspector<Translucent9SliceComponent>();*/
+	editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
+	editorSystem->tryUnregisterEntityInspector<Translucent9SliceComponent>();
 }
 
 //**********************************************************************************************************************
@@ -83,7 +83,7 @@ void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, boo
 	{
 		auto componentView = Manager::get()->get<Opaque9SliceComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
@@ -94,17 +94,17 @@ void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, boo
 }
 void NineSliceRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	/*if (ImGui::BeginItemTooltip())
+	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::getInstance()->get<Cutout9SliceComponent>(entity);
+		auto componentView = Manager::get()->get<Cutout9SliceComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::getInstance()->get<Cutout9SliceComponent>(entity);
-		renderSpriteComponent(*componentView, typeid(Cutout9SliceComponent));
+		auto componentView = Manager::get()->get<Cutout9SliceComponent>(entity);
+		renderComponent(*componentView, typeid(Cutout9SliceComponent));
 
 		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
 		if (ImGui::BeginPopupContextItem("alphaCutoff"))
@@ -113,22 +113,22 @@ void NineSliceRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, boo
 				componentView->alphaCutoff = 0.5f;
 			ImGui::EndPopup();
 		}
-	}*/
+	}
 }
 void NineSliceRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	/*if (ImGui::BeginItemTooltip())
+	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::getInstance()->get<Translucent9SliceComponent>(entity);
+		auto componentView = Manager::get()->get<Translucent9SliceComponent>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->path.empty() ? "<null>" : componentView->path.generic_string().c_str());
+			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::getInstance()->get<Translucent9SliceComponent>(entity);
-		renderSpriteComponent(*componentView, typeid(Translucent9SliceComponent));
-	}*/
+		auto componentView = Manager::get()->get<Translucent9SliceComponent>(entity);
+		renderComponent(*componentView, typeid(Translucent9SliceComponent));
+	}
 }
 
 //**********************************************************************************************************************

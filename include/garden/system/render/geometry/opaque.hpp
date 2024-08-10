@@ -43,7 +43,7 @@ class OpaqueRenderSystem final : public GeometryRenderSystem
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	MeshRenderType getMeshRenderType() const final;
-	const LinearPool<MeshRenderComponent>& getMeshComponentPool() const final;
+	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
 	psize getMeshComponentSize() const final;
 	ID<GraphicsPipeline> createPipeline() final;
 
@@ -67,7 +67,7 @@ class OpaqueShadowRenderSystem final : public GeometryShadowRenderSystem
 	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	MeshRenderType getMeshRenderType() const final;
-	const LinearPool<MeshRenderComponent>& getMeshComponentPool() const final;
+	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
 	psize getMeshComponentSize() const final;
 	ID<GraphicsPipeline> createPipeline() final;
 

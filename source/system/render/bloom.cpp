@@ -36,8 +36,7 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> createBloomBufferData(GraphicsSystem* graphicsSystem,
-	int2 framebufferSize, vector<ID<ImageView>>& imageViews, vector<int2>& sizeBuffer)
+static ID<Image> createBloomBufferData(int2 framebufferSize, vector<ID<ImageView>>& imageViews, vector<int2>& sizeBuffer)
 {
 	const auto bufferFormat = Image::Format::UfloatB10G11R11;
 	auto bloomBufferSize =  max(framebufferSize / 2, int2(1));
@@ -46,10 +45,12 @@ static ID<Image> createBloomBufferData(GraphicsSystem* graphicsSystem,
 	Image::Mips mips(mipCount);
 	for (uint8 i = 0; i < mipCount; i++)
 		mips[i].push_back(nullptr);
+
+	auto graphicsSystem = GraphicsSystem::get();
 	auto image = graphicsSystem->createImage(bufferFormat,
 		Image::Bind::ColorAttachment | Image::Bind::Sampled |
 		Image::Bind::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.bloom.buffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.bloom.buffer");
 
 	imageViews.resize(mipCount);
 	sizeBuffer.resize(mipCount + 1);
@@ -59,8 +60,7 @@ static ID<Image> createBloomBufferData(GraphicsSystem* graphicsSystem,
 	{
 		auto imageView = graphicsSystem->createImageView(
 			image, Image::Type::Texture2D, bufferFormat, i, 1, 0, 1);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, imageView,
-			"imageView.bloom.buffer" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.bloom.buffer" + to_string(i));
 		imageViews[i] = imageView;
 
 		sizeBuffer[i + 1] = bloomBufferSize;
@@ -70,9 +70,10 @@ static ID<Image> createBloomBufferData(GraphicsSystem* graphicsSystem,
 }
 
 //--------------------------------------------------------------------------------------------------
-static void createBloomFramebuffers(GraphicsSystem* graphicsSystem, int2 framebufferSize,
+static void createBloomFramebuffers(int2 framebufferSize,
 	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto mipCount = (uint8)imageViews.size();
 	framebufferSize = max(framebufferSize / 2, int2(1));
 	framebuffers.resize(imageViews.size());
@@ -83,7 +84,7 @@ static void createBloomFramebuffers(GraphicsSystem* graphicsSystem, int2 framebu
 		{ Framebuffer::OutputAttachment(imageViews[i], false, true, true) };
 		auto framebuffer = graphicsSystem->createFramebuffer(
 			framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer,
+		SET_RESOURCE_DEBUG_NAME(framebuffer,
 			"framebuffer.bloom" + to_string(i));
 		framebuffers[i] = framebuffer;
 		framebufferSize = max(framebufferSize / 2, int2(1));
@@ -110,7 +111,7 @@ static void createBloomDescriptorSets(ID<Image> bloomBuffer,
 	auto uniforms = getUniforms(hdrFramebufferView->getColorAttachments()[0].imageView);
 	descriptorSets[0] = graphicsSystem->createDescriptorSet(
 		downsample0Pipeline, std::move(uniforms));
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSets[0],
+	SET_RESOURCE_DEBUG_NAME(descriptorSets[0],
 		"descriptorSet.bloom.downsample0");
 
 	auto mipCountMinOne = mipCount - 1;
@@ -119,7 +120,7 @@ static void createBloomDescriptorSets(ID<Image> bloomBuffer,
 		uniforms = getUniforms(imageViews[i - 1]);
 		auto descriptorSet = graphicsSystem->createDescriptorSet(
 			downsamplePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
+		SET_RESOURCE_DEBUG_NAME(descriptorSet,
 			"descriptorSet.bloom.downsample" + to_string(i));
 		descriptorSets[i] = descriptorSet;
 
@@ -127,7 +128,7 @@ static void createBloomDescriptorSets(ID<Image> bloomBuffer,
 		auto index = mipCount + (mipCountMinOne - i);
 		descriptorSet = graphicsSystem->createDescriptorSet(
 			upsamplePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
+		SET_RESOURCE_DEBUG_NAME(descriptorSet,
 			"descriptorSet.bloom.upsample" + to_string(i));
 		descriptorSets[index] = descriptorSet;
 	}

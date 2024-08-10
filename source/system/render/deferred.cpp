@@ -27,11 +27,11 @@ static void createGBuffers(ID<Image>* gBuffers)
 	auto graphicsSystem = GraphicsSystem::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	gBuffers[0] = graphicsSystem->createImage(Image::Format::SrgbR8G8B8A8, binds, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, gBuffers[0], "image.deferred.gBuffer0");
+	SET_RESOURCE_DEBUG_NAME(gBuffers[0], "image.deferred.gBuffer0");
 	gBuffers[1] = graphicsSystem->createImage(Image::Format::UnormA2R10G10B10, binds, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, gBuffers[1], "image.deferred.gBuffer1");
+	SET_RESOURCE_DEBUG_NAME(gBuffers[1], "image.deferred.gBuffer1");
 	gBuffers[2] = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, binds, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, gBuffers[2], "image.deferred.gBuffer2");
+	SET_RESOURCE_DEBUG_NAME(gBuffers[2], "image.deferred.gBuffer2");
 }
 static void destroyGBuffers(const ID<Image>* gBuffers)
 {
@@ -46,7 +46,7 @@ static ID<Image> createDepthBuffer()
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatD32, Image::Bind::DepthStencilAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.deferred.depth");
+	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.depth");
 	return image;
 }
 static ID<Image> createHdrBuffer()
@@ -55,7 +55,7 @@ static ID<Image> createHdrBuffer()
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16, Image::Bind::ColorAttachment | 
 		Image::Bind::Sampled | Image::Bind::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.deferred.hdr");
+	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.hdr");
 	return image;
 }
 static ID<Image> createLdrBuffer()
@@ -67,7 +67,7 @@ static ID<Image> createLdrBuffer()
 	auto image = graphicsSystem->createImage(swapchainImageView->getFormat(), 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen |
 		Image::Bind::TransferSrc, { { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, image, "image.deferred.ldr");
+	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.ldr");
 	return image;
 }
 
@@ -91,7 +91,7 @@ static ID<Framebuffer> createGFramebuffer(const ID<Image>* gBuffers)
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		framebufferSize, std::move(colorAttachments), depthStencilAttachment); 
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer, "framebuffer.deferred.gBuffer");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.gBuffer");
 	return framebuffer;
 }
 
@@ -108,7 +108,7 @@ static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer)
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		framebufferSize, std::move(colorAttachments), depthStencilAttachment);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer, "framebuffer.deferred.hdr");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.hdr");
 	return framebuffer;
 }
 static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
@@ -121,7 +121,7 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), false, true, true) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, framebuffer, "framebuffer.deferred.ldr");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.ldr");
 	return framebuffer;
 }
 

@@ -127,8 +127,9 @@ static void updateFileDrops(vector<fs::path>& fileDropPaths, const fs::path*& cu
 		fileDropPaths.clear();
 	}
 }
-static void updateWindowMode(InputSystem* inputSystem)
+static void updateWindowMode()
 {
+	auto inputSystem = InputSystem::get();
 	if (inputSystem->isKeyboardPressed(KeyboardButton::F11))
 	{
 		auto primaryMonitor = glfwGetPrimaryMonitor();
@@ -199,7 +200,7 @@ void InputSystem::input()
 	cursorPosition = newPosition;
 
 	updateFileDrops(fileDropPaths, currentFileDropPath);
-	updateWindowMode(this);
+	updateWindowMode();
 }
 
 //**********************************************************************************************************************

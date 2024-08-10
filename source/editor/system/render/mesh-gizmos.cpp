@@ -103,7 +103,7 @@ void MeshGizmosEditorSystem::init()
 
 	fullArrowVertices = graphicsSystem->createBuffer(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
 		Buffer::Access::None, fullArrowVert, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, fullArrowVertices, "buffer.vertex.gizmos.arrow");
+	SET_RESOURCE_DEBUG_NAME(fullArrowVertices, "buffer.vertex.gizmos.arrow");
 
 	auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
 	if (settingsSystem)

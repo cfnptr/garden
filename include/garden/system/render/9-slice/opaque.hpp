@@ -21,12 +21,7 @@ namespace garden
 using namespace garden::graphics;
 
 struct Opaque9SliceComponent final : public NineSliceRenderComponent { };
-
-struct Opaque9SliceFrame final : public NineSliceRenderFrame
-{
-private:
-	uint16 _alignment1 = 0;
-};
+struct Opaque9SliceFrame final : public NineSliceRenderFrame { };
 
 class Opaque9SliceSystem final : public NineSliceRenderSystem
 {
@@ -51,9 +46,10 @@ class Opaque9SliceSystem final : public NineSliceRenderSystem
 	void disposeComponents() final;
 
 	MeshRenderType getMeshRenderType() const final;
-	const LinearPool<MeshRenderComponent>& getMeshComponentPool() const final;
+	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
 	psize getMeshComponentSize() const final;
-	ID<GraphicsPipeline> createPipeline() final;
+	LinearPool<SpriteRenderFrame>& getFrameComponentPool() final;
+	psize getFrameComponentSize() const final;
 
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
 	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;

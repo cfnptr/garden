@@ -28,7 +28,7 @@ static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>&
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage, Buffer::Access::SequentialWrite,
 			bufferSize, Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.storage.instances" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.storage.instances" + to_string(i));
 		instanceBuffers[i].push_back(buffer);
 	}
 }
@@ -88,13 +88,13 @@ bool InstanceRenderSystem::isDrawReady()
 	{
 		auto uniforms = getBaseUniforms();
 		baseDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, baseDescriptorSet, "descriptorSet.instance.base");
+		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
 	}
 	if (!defaultDescriptorSet)
 	{
 		auto uniforms = getDefaultUniforms(); 
 		defaultDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms), 1);
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, defaultDescriptorSet, "descriptorSet.instance.default");
+		SET_RESOURCE_DEBUG_NAME(defaultDescriptorSet, "descriptorSet.instance.default");
 	}
 	
 	return true;
@@ -110,7 +110,7 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 		graphicsSystem->destroy(baseDescriptorSet);
 		auto uniforms = getBaseUniforms();
 		baseDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, baseDescriptorSet, "descriptorSet.instance.base");
+		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
 	}
 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();

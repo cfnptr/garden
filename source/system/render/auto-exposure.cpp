@@ -43,7 +43,7 @@ namespace
 	};
 }
 
-static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
+static ID<Buffer> createHistogramBuffer()
 {
 	#if GARDEN_EDITOR
 	const auto bind = Buffer::Bind::TransferSrc;
@@ -51,11 +51,11 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 	const auto bind = Buffer::Bind::None;
 	#endif
 	
-	auto buffer = graphicsSystem->createBuffer(
+	auto buffer = GraphicsSystem::get()->createBuffer(
 		Buffer::Bind::Storage | Buffer::Bind::TransferDst | bind,
 		Buffer::Access::None, AE_HISTOGRAM_SIZE * sizeof(uint32),
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.auto-exposure.histogram");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.auto-exposure.histogram");
 	return buffer;
 }
 
@@ -134,13 +134,13 @@ void AutoExposureRenderSystem::render()
 		auto uniforms = getHistogramUniforms(histogramBuffer);
 		histogramDescriptorSet = graphicsSystem->createDescriptorSet(
 			histogramPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, histogramDescriptorSet,
+		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet,
 			"descriptorSet.auto-exposure.histogram");
 		
 		uniforms = getAverageUniforms(histogramBuffer);
 		averageDescriptorSet = graphicsSystem->createDescriptorSet(
 			averagePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, averageDescriptorSet,
+		SET_RESOURCE_DEBUG_NAME(averageDescriptorSet,
 			"descriptorSet.auto-exposure.average");
 	}
 

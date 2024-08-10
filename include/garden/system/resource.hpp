@@ -42,8 +42,8 @@ enum class ImageLoadFlags : uint8
 	None = 0x00,       /**< No additional image load flags. */
 	LoadSync = 0x01,   /**< Load image synchronously. (Blocking call) */
 	LoadShared = 0x02, /**< Load and share instance on second load call. */
-	LoadArray = 0x04,  /**< Load as image array. (Texture2DArray) */
-	ArrayType = 0x08,  /**< Always load with array type. (Texture2DArray) */
+	LoadArray = 0x04,  /**< Load as image array. (Slice to layers) */
+	ArrayType = 0x08,  /**< Always load with array image type. (Texture2DArray) */
 	LinearData = 0x10  /**< Load image data in linear color space. */
 };
 
@@ -63,8 +63,8 @@ class ResourceSystem : public System
 protected:
 	struct GraphicsQueueItem
 	{
-		void* renderPass = nullptr;
 		GraphicsPipeline pipeline;
+		void* renderPass = nullptr;
 		ID<GraphicsPipeline> instance = {};
 	};
 	struct ComputeQueueItem
@@ -76,13 +76,25 @@ protected:
 	{
 		Buffer buffer;
 		Buffer staging;
+		fs::path path = "";
 		ID<Buffer> instance = {};
 	};
 	struct ImageQueueItem
 	{
-		int2 realSize = int2(0);
 		Image image;
 		Buffer staging;
+		vector<fs::path> paths = {};
+		int2 realSize = int2(0);
+		ID<Image> instance = {};
+	};
+	struct LoadedBufferItem
+	{
+		fs::path path = "";
+		ID<Buffer> instance = {};
+	};
+	struct LoadedImageItem
+	{
+		vector<fs::path> paths = {};
 		ID<Image> instance = {};
 	};
 	
@@ -94,12 +106,14 @@ protected:
 	queue<ComputeQueueItem> loadedComputeQueue;
 	queue<BufferQueueItem> loadedBufferQueue;
 	queue<ImageQueueItem> loadedImageQueue;
-	vector<ID<Buffer>> loadedBufferArray;
-	vector<ID<Image>> loadedImageArray;
-	mutex queueLocker;
+	vector<LoadedBufferItem> loadedBufferArray;
+	vector<LoadedImageItem> loadedImageArray;
+	mutex queueLocker = {};
 	Hash128::State hashState = nullptr;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
+	vector<fs::path> loadedImagePaths = {};
+	fs::path loadedBufferPath = {};
 
 	#if GARDEN_PACK_RESOURCES
 	pack::Reader packReader;
@@ -210,10 +224,15 @@ public:
 	void destroyShared(const Ref<Image>& image);
 
 	/**
-	 * @brief Returns current loaded image isntance.
+	 * @brief Returns current loaded image instance.
 	 * @details Useful inside "ImageLoaded" event.
 	 */
 	ID<Image> getLoadedImage() const noexcept { return loadedImage; }
+	/**
+	 * @brief Returns current loaded image path array.
+	 * @details Useful inside "ImageLoaded" event.
+	 */
+	const vector<fs::path>& getLoadedImagePaths() const noexcept { return loadedImagePaths; }
 
 	// TODO: storeImage
 

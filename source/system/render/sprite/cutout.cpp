@@ -20,11 +20,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter)
-{
-	this->deferredBuffer = useDeferredBuffer;
-	this->linearFilter = useLinearFilter;
-}
+CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter) :
+	SpriteRenderSystem("sprite/cutout", useDeferredBuffer, useLinearFilter) { }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
@@ -44,7 +41,7 @@ ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
 void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
 {
 	auto componentView = components.get(ID<CutoutSpriteComponent>(instance));
-	tryDestroyResources(View<SpriteRenderComponent>(componentView));
+	destroyResources(View<SpriteRenderComponent>(componentView));
 	components.destroy(ID<CutoutSpriteComponent>(instance));
 }
 void CutoutSpriteSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -73,39 +70,25 @@ void CutoutSpriteSystem::disposeComponents()
 	animationFrames.dispose();
 }
 
-//**********************************************************************************************************************
 MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
 {
 	return MeshRenderType::Opaque;
 }
-const LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool() const
+LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool()
 {
-	return *((const LinearPool<MeshRenderComponent>*)&components);
+	return *((LinearPool<MeshRenderComponent>*)&components);
 }
 psize CutoutSpriteSystem::getMeshComponentSize() const
 {
 	return sizeof(CutoutSpriteComponent);
 }
-
-ID<GraphicsPipeline> CutoutSpriteSystem::createPipeline()
+LinearPool<SpriteRenderFrame>& CutoutSpriteSystem::getFrameComponentPool()
 {
-	ID<Framebuffer> framebuffer;
-	if (deferredBuffer)
-		framebuffer = DeferredRenderSystem::get()->getGFramebuffer();
-	else
-		framebuffer = ForwardRenderSystem::get()->getFramebuffer();
-
-	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
-	if (!linearFilter)
-	{
-		GraphicsPipeline::SamplerState samplerState;
-		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
-			GraphicsPipeline::SamplerWrap::Repeat;
-		samplerStateOverrides.emplace("colorMap", samplerState);
-	}
-
-	return ResourceSystem::get()->loadGraphicsPipeline("sprite/cutout",
-		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
+	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
+}
+psize CutoutSpriteSystem::getFrameComponentSize() const
+{
+	return sizeof(CutoutSpriteFrame);
 }
 
 //**********************************************************************************************************************
@@ -137,9 +120,9 @@ ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deser
 	SpriteRenderSystem::deserializeAnimation(deserializer, frame);
 	frame.animateAlphaCutoff = deserializer.read("alphaCutoff", frame.alphaCutoff);
 
-	if (frame.animateIsEnabled || frame.animateColorFactor ||
-		frame.animateUvSize || frame.animateUvOffset ||
-		frame.animateColorMapLayer || frame.animateAlphaCutoff)
+	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
+		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap || 
+		frame.animateAlphaCutoff)
 	{
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	}
@@ -162,5 +145,7 @@ void CutoutSpriteSystem::animateAsync(View<Component> component,
 }
 void CutoutSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
 {
+	auto frameView = animationFrames.get(ID<CutoutSpriteFrame>(frame));
+	destroyResources(View<SpriteRenderFrame>(frameView));
 	animationFrames.destroy(ID<CutoutSpriteFrame>(frame));
 }

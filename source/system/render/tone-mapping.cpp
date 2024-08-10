@@ -35,7 +35,7 @@ namespace
 	};
 }
 
-static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
+static ID<Buffer> createLuminanceBuffer()
 {
 	#if GARDEN_EDITOR
 	const auto bind = Buffer::Bind::TransferSrc;
@@ -45,19 +45,18 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 
 	const float data[2] = { 1.0f / LUM_TO_EXP, 1.0f };
 	
-	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage |
+	auto buffer = GraphicsSystem::get()->createBuffer(Buffer::Bind::Storage |
 		Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind,
 		Buffer::Access::None, data, sizeof(ToneMappingRenderSystem::Luminance),
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(graphicsSystem, buffer, "buffer.toneMapping.luminance");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
 	return buffer;
 }
 
 //--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getUniforms(GraphicsSystem* graphicsSystem,
-	DeferredRenderSystem* deferredSystem, BloomRenderSystem* bloomSystem,
-	ID<Buffer> luminanceBuffer, bool useBloomBuffer)
+static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> luminanceBuffer, bool useBloomBuffer)
 {
+	auto graphicsSystem = GraphicsSystem::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 
 	ID<ImageView> bloomBufferView;
@@ -81,8 +80,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(GraphicsSystem* graphicsS
 	return uniforms;
 }
 
-static ID<GraphicsPipeline> createPipeline(DeferredRenderSystem* deferredSystem,
-	bool useBloomBuffer, ToneMapper toneMapper)
+static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneMapper)
 {
 	map<string, Pipeline::SpecConst> specConsts =
 	{
@@ -136,8 +134,7 @@ void ToneMappingRenderSystem::preLdrRender()
 		auto uniforms = getUniforms(graphicsSystem, getDeferredSystem(),
 			bloomSystem, luminanceBuffer, useBloomBuffer);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(graphicsSystem, descriptorSet,
-			"descriptorSet.deferred.toneMapping");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
 	}
 }
 void ToneMappingRenderSystem::ldrRender()
