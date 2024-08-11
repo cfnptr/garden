@@ -193,6 +193,11 @@ protected:
 	friend class ecsm::Manager;
 public:
 	/**
+	 * @brief Returns true if entity or it ancestors has DoNotSerialize component.
+	 * @param entity target entity with component
+	 */
+	bool hasOrAncestors(ID<Entity> entity) const;
+	/**
 	 * @brief Returns true if entity has DoNotSerialize component.
 	 * @param entity target entity with component
 	 * @note This function is faster than the Manager one.

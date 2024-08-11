@@ -138,6 +138,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		auto payload = ImGui::AcceptDragDropPayload("Entity");
 		if (payload)
 		{
+			GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 			auto entity = *((const ID<Entity>*)payload->Data);
 			auto entityTransformView = transformSystem->tryGet(entity);
 			if (entityTransformView)
@@ -250,6 +251,7 @@ void HierarchyEditorSystem::editorRender()
 			auto payload = ImGui::AcceptDragDropPayload("Entity");
 			if (payload)
 			{
+				GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 				auto entity = *((const ID<Entity>*)payload->Data);
 				auto entityTransform = TransformSystem::get()->tryGet(entity);
 				if (entityTransform)

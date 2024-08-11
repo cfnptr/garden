@@ -91,9 +91,9 @@ enum class BodyEvent : uint8
 {
 	Activated,        /**< Called whenever a body is activated */
 	Deactivated,      /**< Called whenever a body is deactivated */
-	ContactAdded,     /**< Called whenever a new contact point is detected */
-	ContactPersisted, /**< Called whenever a contact is detected that was also detected last update */
-	ContactRemoved,   /**< Called whenever a contact was detected last update but is not detected anymore */
+	Entered,          /**< Called whenever a new contact point is detected */
+	Stayed,           /**< Called whenever a contact is detected that was also detected last update */
+	Exited,           /**< Called whenever a contact was detected last update but is not detected anymore */
 	Count             /**< Physics body event count */
 };
 
@@ -144,7 +144,17 @@ enum class ShapeSubType : uint8
 	UserConvex6,
 	UserConvex7,
 	UserConvex8,
-	Count,
+	Count
+};
+
+/**
+ * @brief Rigid body constraint type. (Connection between two bodies)
+ */
+enum class ConstraintType : uint8
+{
+	Fixed,
+	Point,
+	Count
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(AllowedDOF)
@@ -172,9 +182,16 @@ public:
 	 */
 	ShapeType getType() const;
 	/**
-	 * @brief Collision volume shape sub type.
+	 * @brief Returns collision volume shape sub type.
 	 */
 	ShapeSubType getSubType() const;
+
+	/**
+	 * @brief Returns shape density. (kg / m^3)
+	 */
+	float getDensity() const;
+
+	// TODO: allow to set density. But we should then invalidate shared shapes.
 
 	/**
 	 * @brief Returns box shape half extent.
@@ -219,24 +236,20 @@ using namespace physics;
 struct RigidbodyComponent final : public Component
 {
 public:
-	typedef std::function<void(ID<Entity> thisEntity, ID<Entity> otherEntity)> Callback;
-
-	struct Listener final
+	/**
+	 * @brief Constraints allows to connect rigid bodies to each other.
+	 */
+	struct Constraint
 	{
-		type_index systemType;
-		Callback callback = nullptr;
-		BodyEvent eventType = {};
-	private:
-		uint8 _alignment0 = 0;
-		uint16 _alignment1 = 0;
-	public:
-		Listener(type_index _systemType, const Callback& _callback, BodyEvent _eventType) :
-			systemType(_systemType), callback(_callback), eventType(_eventType) { }
+		void* instance = nullptr;
+		ID<Entity> otherBody = {}; 
+		ConstraintType type = {};
 	};
 private:
 	ID<Shape> shape = {};
 	void* instance = nullptr;
-	vector<Listener> listeners;
+	vector<Constraint> constraints;
+	uint64 uid = 0;
 	float3 lastPosition = float3(0.0f);
 	quat lastRotation = quat::identity;
 	MotionType motionType = {};
@@ -251,33 +264,44 @@ private:
 	friend class LinearPool<RigidbodyComponent>;
 public:
 	/*******************************************************************************************************************
-	 * @brief Returns rigidbody events listener array,
+	 * @brief Rigidbody events listener name.
 	 */
-	const vector<Listener>& getListeners() const noexcept { return listeners; }
+	string eventListener;
 
 	/**
-	 * @brief Adds rigidbody events listener to the array.
-	 * 
-	 * @tparam T target listener system type
-	 * @param callback target event callback function
-	 * @param eventType target event type to subscribe to
+	 * @brief Returns rigidbody constraint array.
 	 */
-	template<class T = System>
-	void addListener(const Callback& callback, BodyEvent eventType)
-	{
-		GARDEN_ASSERT(callback);
-		GARDEN_ASSERT((uint8)eventType < (uint8)BodyEvent::Count);
-		static_assert(is_base_of_v<System, T>, "Must be derived from the System class.");
-		listeners.emplace_back(typeid(T), callback, eventType);
-	}
+	const vector<Constraint>& getConstraints() const noexcept { return constraints; }
+
 	/**
-	 * @brief Removes rigidbody events listener from the array.
-	 * @return True if listener is found and removed, otherwise false.
-	 * 
-	 * @param systemType target listener system type
-	 * @param eventType target event type to unsubscribe from
+	 * @brief Creates a new constraint between two rigidbodies.
+	 *
+	 * @param otherBody target rigidbody to attach to or null (null = world)
+	 * @param type bodies connection type
 	 */
-	bool tryRemoveListener(type_index systemType, BodyEvent eventType);
+	void createConstraint(ID<Entity> otherBody, ConstraintType type);
+	/**
+	 * @brief Destroys constraint between two rigidbodies.
+	 * @param index target constraint index in the array
+	 */
+	void destroyConstraint(uint32 index);
+	/**
+	 * @brief Destroys all constraints between this rigidbody.
+	 */
+	void destroyAllConstraints();
+
+	/**
+	 * @brief Returns true if constraint is enabled and used in simulation.
+	 * @param index target constraint index in the array
+	 */
+	bool isConstraintEnabled(uint32 index);
+	/**
+	 * @brief Sets constraint enabled state.
+	 * @param index target constraint index in the array
+	 */
+	void setConstraintEnabled(uint32 index, bool isEnabled);
+
+	// TODO: implement notifiers of shape changes, we should do it manulally for constraints
 
 	/**
 	 * @brief Returns motion type of the rigidbody.
@@ -285,7 +309,7 @@ public:
 	MotionType getMotionType() const noexcept { return motionType; }
 	/**
 	 * @brief Sets motion type of the rigidbody.
-	 * @note Rigidbody should allowDynamicOrKinematic to set dynamic or kinmatic motion type.
+	 * @note Rigidbody should allowDynamicOrKinematic to set dynamic or kinematic motion type.
 	 * 
 	 * @param motionType target motion type
 	 * @param activate is rigidbody should be activated
@@ -306,11 +330,10 @@ public:
 	 * @param shape target shape instance or null
 	 * @param activate is rigidbody should be activated
 	 * @param allowDynamicOrKinematic allow to change static motion type
-	 * @param isSensor is rigidbody should trigger collision events
 	 * @param allowedDOW which degrees of freedom rigidbody has
 	 */
-	void setShape(ID<Shape> shape, bool activate = true, bool allowDynamicOrKinematic = false, 
-		bool isSensor = false, AllowedDOF allowedDOF = AllowedDOF::All);
+	void setShape(ID<Shape> shape, bool activate = true, 
+		bool allowDynamicOrKinematic = false, AllowedDOF allowedDOF = AllowedDOF::All);
 
 	/**
 	 * @brief Allow to change static motion type to the dynamic or kinematic.
@@ -360,6 +383,17 @@ public:
 	 * @details See the @ref isSensor().
 	 */
 	void setSensor(bool isSensor);
+
+	/**
+	 * @brief Returns true if kinematic objects can collide with other kinematic or static objects.
+	 * @details See the @ref setKinematicVsStatic().
+	 */
+	bool isKinematicVsStatic() const;
+	/**
+	 * @brief Sets if kinematic objects can collide with other kinematic or static objects.
+	 * @warning Turning this on can be CPU intensive as much more collision detection work will be done.
+	 */
+	void setKinematicVsStatic(bool isKinematicVsStatic);
 
 	/*******************************************************************************************************************
 	 * @brief Returns rigidbody position in the phyics simulation world.
@@ -481,12 +515,25 @@ public:
 		uint16 _alignment1 = 0;
 	};
 private:
+	struct EntityConstraint final
+	{
+		uint64 otherUID = 0;
+		ID<Entity> entity = {};
+		ConstraintType type = {};
+	};
+
 	LinearPool<RigidbodyComponent> components;
 	LinearPool<Shape> shapes;
 	map<Hash128, ID<Shape>> sharedBoxShapes;
 	map<Hash128, ID<Shape>> sharedRotTransShapes;
 	vector<Event> bodyEvents;
 	vector<ID<Entity>> entityStack;
+	set<ID<Entity>> serializedConstraints;
+	map<uint64, ID<Entity>> deserializedEntities;
+	vector<EntityConstraint> deserializedConstraints;
+	mutex bodyEventLocker;
+	string valueStringCache;
+	Hash128::State hashState = nullptr;
 	void* tempAllocator = nullptr;
 	void* jobSystem = nullptr;
 	void* bpLayerInterface = nullptr;
@@ -497,11 +544,14 @@ private:
 	void* contactListener = nullptr;
 	void* bodyInterface = nullptr;
 	const void* lockInterface = nullptr;
-	Hash128::State hashState = nullptr;
-	mutex bodyEventLocker;
-	string valueStringCache;
+	ID<Entity> thisBody = {};
+	ID<Entity> otherBody = {};
 	float deltaTimeAccum = 0.0f;
 	uint32 cascadeLagCount = 0;
+
+	#if GARDEN_DEBUG
+	set<uint64> serializedEntities;
+	#endif
 
 	static PhysicsSystem* instance;
 
@@ -532,14 +582,16 @@ private:
 	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
+	void postSerialize(ISerializer& serializer) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	void postDeserialize(IDeserializer& deserializer) final;
 	
 	friend class ecsm::Manager;
 	friend struct RigidbodyComponent;
 	friend struct CharacterComponent;
 	friend struct CharacterSystem;
 public:
-	/**
+	/*******************************************************************************************************************
 	 * @brief Collision step count during simulation step.
 	 */
 	int32 collisionSteps = 1;
@@ -570,6 +622,17 @@ public:
 	const map<Hash128, ID<Shape>>& getSharedRotTransShapes() const noexcept { return sharedRotTransShapes; }
 
 	/**
+	 * @brief Returns current this rigidbody entity.
+	 * @details Useful inside rigidbody event. (see eventListener)
+	 */
+	ID<Entity> getThisBody() const noexcept { return thisBody; }
+	/**
+	 * @brief Returns current other rigidbody entity. (may be null)
+	 * @details Useful inside rigidbody event. (see eventListener)
+	 */
+	ID<Entity> getOtherBody() const noexcept { return otherBody; }
+
+	/**
 	 * @brief Returns global gravity vector.
 	 */
 	float3 getGravity() const noexcept;
@@ -579,7 +642,7 @@ public:
 	 */
 	void setGravity(const float3& gravity) const noexcept;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Creates a new box shape instance.
 	 * 
 	 * @details
@@ -588,16 +651,18 @@ public:
 	 * 
 	 * @param[in] halfExtent half edge length
 	 * @param convexRadius box convex radius
+	 * @param density box density (kg / m^3)
 	 */
-	ID<Shape> createBoxShape(const float3& halfExtent, float convexRadius = 0.05f);
+	ID<Shape> createBoxShape(const float3& halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
 	/**
 	 * @brief Creates a new shared box shape instance.
 	 * @details See the @ref createBoxShape().
 	 *
 	 * @param[in] halfExtent half edge length
 	 * @param convexRadius box convex radius
+	 * @param density box density (kg / m^3)
 	 */
-	ID<Shape> createSharedBoxShape(const float3& halfExtent, float convexRadius = 0.05f);
+	ID<Shape> createSharedBoxShape(const float3& halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
 
 	/**
 	 * @brief Creates a new rotated/translated shape instance.
@@ -808,7 +873,7 @@ public:
 	 */
 	void setMass(float mass);
 	
-	/**
+	/*******************************************************************************************************************
 	 * @brief Moves the character according to its current velocity.
 	 * 
 	 * @details

@@ -55,7 +55,11 @@ class PlatformerSystem final : public System
 	void editorStop();
 	#endif
 	
-	void onItemSensor(ID<Entity> thisEntity, ID<Entity> otherEntity);
+	void itemEntered();
+	void slideEntered();
+	void slideStayed();
+	void slideExited();
+
 	friend class ecsm::Manager;
 };
 

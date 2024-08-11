@@ -34,6 +34,17 @@ PlatformerSystem::PlatformerSystem()
 	SUBSCRIBE_TO_EVENT("Init", PlatformerSystem::init);
 	SUBSCRIBE_TO_EVENT("Deinit", PlatformerSystem::deinit);
 	SUBSCRIBE_TO_EVENT("Update", PlatformerSystem::update);
+
+	auto manager = Manager::get();
+	manager->registerEvent("Platformer.Item.Entered");
+	manager->registerEvent("Platformer.Slide.Entered");
+	manager->registerEvent("Platformer.Slide.Stayed");
+	manager->registerEvent("Platformer.Slide.Exited");
+
+	SUBSCRIBE_TO_EVENT("Platformer.Item.Entered", PlatformerSystem::itemEntered);
+	SUBSCRIBE_TO_EVENT("Platformer.Slide.Entered", PlatformerSystem::slideEntered);
+	SUBSCRIBE_TO_EVENT("Platformer.Slide.Stayed", PlatformerSystem::slideStayed);
+	SUBSCRIBE_TO_EVENT("Platformer.Slide.Exited", PlatformerSystem::slideExited);
 }
 PlatformerSystem::~PlatformerSystem()
 {
@@ -42,6 +53,17 @@ PlatformerSystem::~PlatformerSystem()
 		UNSUBSCRIBE_FROM_EVENT("Init", PlatformerSystem::init);
 		UNSUBSCRIBE_FROM_EVENT("Deinit", PlatformerSystem::deinit);
 		UNSUBSCRIBE_FROM_EVENT("Update", PlatformerSystem::update);
+
+		auto manager = Manager::get();
+		manager->unregisterEvent("Platformer.Item.Entered");
+		manager->unregisterEvent("Platformer.Slide.Entered");
+		manager->unregisterEvent("Platformer.Slide.Stayed");
+		manager->unregisterEvent("Platformer.Slide.Exited");
+
+		UNSUBSCRIBE_FROM_EVENT("Platformer.Item.Entered", PlatformerSystem::itemEntered);
+		UNSUBSCRIBE_FROM_EVENT("Platformer.Slide.Entered", PlatformerSystem::slideEntered);
+		UNSUBSCRIBE_FROM_EVENT("Platformer.Slide.Stayed", PlatformerSystem::slideStayed);
+		UNSUBSCRIBE_FROM_EVENT("Platformer.Slide.Exited", PlatformerSystem::slideExited);
 	}
 }
 
@@ -57,41 +79,6 @@ void PlatformerSystem::init()
 	#endif
 
 	ResourceSystem::get()->loadScene("platformer");
-
-	auto physicsSystem = PhysicsSystem::get();
-	auto items = LinkSystem::get()->findEntities("Item");
-
-	for (auto i = items.first; i != items.second; i++)
-	{
-		auto rigidbodyView = physicsSystem->tryGet(i->second);
-		if (rigidbodyView)
-		{
-			rigidbodyView->addListener<PlatformerSystem>([this](ID<Entity> thisEntity, ID<Entity> otherEntity)
-			{
-				onItemSensor(thisEntity, otherEntity);
-			},
-			BodyEvent::ContactAdded);
-		}
-	}
-
-	auto characterSensors = LinkSystem::get()->findEntities("CharacterSensor");
-	for (auto i = characterSensors.first; i != characterSensors.second; i++)
-	{
-		auto rigidbodyView = physicsSystem->tryGet(i->second);
-		if (rigidbodyView)
-		{
-			rigidbodyView->addListener<PlatformerSystem>([this](ID<Entity> thisEntity, ID<Entity> otherEntity)
-			{
-				slideCounter++;
-			},
-			BodyEvent::ContactAdded);
-			rigidbodyView->addListener<PlatformerSystem>([this](ID<Entity> thisEntity, ID<Entity> otherEntity)
-			{
-				slideCounter--;
-			},
-			BodyEvent::ContactRemoved);
-		}
-	}
 }
 void PlatformerSystem::deinit()
 {
@@ -121,16 +108,22 @@ void PlatformerSystem::update()
 		if (!transformView || !transformView->isActiveWithAncestors())
 			continue;
 
-		auto characterView = characterSystem->get(entity);
+		auto characterView = characterSystem->tryGet(entity);
 		if (!characterView || !characterView->getShape())
 			continue;
 
 		auto newState = currentState;
 		auto linearVelocity = characterView->getLinearVelocity();
-
-		if (length2(linearVelocity) > float3(0.01f))
+		if (slideCounter > 0 && linearVelocity.y < -1.0f)
 		{
-			if (characterView->getGroundState() == CharacterGround::OnGround)
+			linearVelocity.y = -1.0f;
+			characterView->setLinearVelocity(linearVelocity);
+		}
+
+		if (length2(linearVelocity) > float3(0.1f * 0.1f))
+		{
+			auto groundState = characterView->getGroundState();
+			if (groundState == CharacterGround::OnGround)
 			{
 				newState = CharacterState::Run;
 				isLastDoubleJumped = false;
@@ -150,16 +143,20 @@ void PlatformerSystem::update()
 						newState = linearVelocity.y > 0.0f ? CharacterState::Jump : CharacterState::Fall;
 				}
 			}
-			isLastDirLeft = linearVelocity.x < 0.0f;
+
+			if (slideCounter <= 0)
+				isLastDirLeft = linearVelocity.x < 0.0f;
 		}
 		else
 		{
 			newState = CharacterState::Idle;
 		}
 
-		if (transformView->getChildCount() > 0)
+		auto childCount = transformView->getChildCount();
+		for (uint32 i = 0; i < childCount; i++)
 		{
-			auto child = transformView->getChild(0);
+			auto child = transformView->getChild(i);
+
 			auto spriteView = manager->tryGet<CutoutSpriteComponent>(child);
 			if (spriteView)
 				spriteView->uvSize.x = isLastDirLeft ? -1.0f : 1.0f;
@@ -168,20 +165,26 @@ void PlatformerSystem::update()
 			if (animationView)
 			{
 				auto isLooped = false;
-				if (animationView->isPlaying && animationView->getActiveLooped(isLooped))
-				{
-					if (!isLooped)
-						newState = currentState;
-				}
+				if (animationView->isPlaying && animationView->getActiveLooped(isLooped) && !isLooped)
+					newState = currentState;
 
 				if (newState != currentState)
 				{
-					if (newState == CharacterState::DoubleJump)
-						animationView->frame = 0.0f;
 					animationView->active = characterAnimStrings[(uint8)newState];
+					if (animationView->getActiveLooped(isLooped) && !isLooped)
+						animationView->frame = 0.0f;
 					animationView->isPlaying = true;
 					currentState = newState;
 				}
+			}
+
+			auto rigidbodyView = manager->tryGet<RigidbodyComponent>(child);
+			if (rigidbodyView && rigidbodyView->getShape())
+			{
+				float3 position; quat rotation;
+				characterView->getPosAndRot(position, rotation);
+				if (rigidbodyView->isPosAndRotChanged(position, rotation))
+					rigidbodyView->setPosAndRot(position, rotation);
 			}
 		}
 	}
@@ -212,17 +215,39 @@ void PlatformerSystem::editorStop()
 #endif
 
 //**********************************************************************************************************************
-void PlatformerSystem::onItemSensor(ID<Entity> thisEntity, ID<Entity> otherEntity)
+void PlatformerSystem::itemEntered()
 {
+	auto physicsSystem = PhysicsSystem::get();
 	auto transformSystem = TransformSystem::get();
-	auto transformView = transformSystem->tryGet(thisEntity);
+	auto transformView = transformSystem->tryGet(physicsSystem->getThisBody());
+
 	if (transformView)
 	{
 		if (transformView->getParent())
 			transformSystem->destroyRecursive(transformView->getParent());
 		else
-			transformSystem->destroyRecursive(thisEntity);
+			transformSystem->destroyRecursive(physicsSystem->getThisBody());
 	}
 
 	// TODO: spawn particles.
+}
+void PlatformerSystem::slideEntered()
+{
+	slideCounter++;
+}
+void PlatformerSystem::slideStayed()
+{
+	auto physicsSystem = PhysicsSystem::get();
+	auto rigidbodyView = physicsSystem->get(physicsSystem->getThisBody());
+	auto shapeView = physicsSystem->get(rigidbodyView->getShape());
+	if (shapeView->getSubType() == ShapeSubType::RotatedTranslated)
+	{
+		float3 position; quat rotation;
+		shapeView->getPosAndRot(position, rotation);
+		isLastDirLeft = position.x < 0.0f;
+	}
+}
+void PlatformerSystem::slideExited()
+{
+	slideCounter--;
 }
