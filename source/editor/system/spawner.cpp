@@ -296,6 +296,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		auto payload = ImGui::AcceptDragDropPayload("Entity");
 		if (payload)
 		{
+			GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 			auto entity = *((const ID<Entity>*)payload->Data);
 			auto linkView = LinkSystem::get()->tryGet(entity);
 			if (linkView && linkView->getUUID())

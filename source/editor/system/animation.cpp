@@ -114,11 +114,8 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Playing", &animationView->isPlaying))
 	{
 		bool isLooped;
-		if (animationView->isPlaying && animationView->getActiveLooped(isLooped))
-		{
-			if (!isLooped)
-				animationView->frame = 0.0f;
-		}
+		if (animationView->isPlaying && animationView->getActiveLooped(isLooped) && !isLooped)
+			animationView->frame = 0.0f;
 	}
 	
 	ImGui::SameLine();
@@ -130,6 +127,13 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (ImGui::MenuItem("Reset Default"))
 			animationView->active = "";
 		ImGui::EndPopup();
+	}
+	if (ImGui::BeginDragDropTarget())
+	{
+		auto payload = ImGui::AcceptDragDropPayload("AnimationPath");
+		if (payload)
+			animationView->active = string((const char*)payload->Data, payload->DataSize);
+		ImGui::EndDragDropTarget();
 	}
 
 	ImGui::DragFloat("Frame", &animationView->frame);
@@ -147,17 +151,29 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
 		auto resourceSystem = ResourceSystem::get();
-		auto& animations = animationView->getAnimations();
+		const auto& animations = animationView->getAnimations();
 
 		for (auto i = animations.begin(); i != animations.end(); i++)
 		{
-			ImGui::InputText("Path", (string*)&i->first, ImGuiInputTextFlags_ReadOnly); ImGui::SameLine();
-			if (ImGui::Button(" - "))
+			ImGui::TreeNodeEx(i->first.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+			if (ImGui::BeginPopupContextItem(i->first.c_str()))
 			{
-				resourceSystem->destroyShared(i->second);
-				i = animationView->eraseAnimation(i);
-				if (i == animations.end())
-					break;
+				if (ImGui::MenuItem("Copy Animation Path"))
+					ImGui::SetClipboardText(i->first.c_str());
+				if (ImGui::MenuItem("Remove Animation"))
+				{
+					resourceSystem->destroyShared(i->second);
+					i = animationView->eraseAnimation(i);
+					if (i == animations.end())
+						break;
+				}
+				ImGui::EndPopup();
+			}
+			if (ImGui::BeginDragDropSource())
+			{
+				ImGui::SetDragDropPayload("AnimationPath", i->first.c_str(), i->first.length());
+				ImGui::Text("%s", i->first.c_str());
+				ImGui::EndDragDropSource();
 			}
 		}
 

@@ -74,7 +74,8 @@ float4x4 TransformComponent::calcModel(const float3& cameraPosition) const noexc
 
 	// TODO: rethink this architecture, we should't access physics system from here :(
 	auto rigidbodyComponent = Manager::get()->tryGet<RigidbodyComponent>(entity);
-	if (rigidbodyComponent && rigidbodyComponent->getMotionType() != MotionType::Static)
+	if (rigidbodyComponent && rigidbodyComponent->getMotionType() != MotionType::Static &&
+		!Manager::get()->has<CharacterComponent>(entity))
 	{
 		setTranslation(model, position - cameraPosition);
 		return model;
@@ -487,7 +488,19 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	{
 		uint64 parentUID = 0;
 		if (decodeBase64(&parentUID, uidStringCache, ModpDecodePolicy::kForgiving))
-			deserializedParents.emplace_back(make_pair(entity, parentUID));
+		{
+			if (componentView->uid == parentUID)
+			{
+				auto logSystem = Manager::get()->tryGet<LogSystem>();
+				if (logSystem)
+					logSystem->error("Deserialized entity with the same parent UID. (uid: " + uidStringCache + ")");
+			}
+			else
+			{
+				deserializedParents.emplace_back(make_pair(entity, parentUID));
+			}
+			// TODO: maybe also detect recursive descendant parent?
+		}
 	}
 
 	#if GARDEN_DEBUG | GARDEN_EDITOR
@@ -496,7 +509,6 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 }
 void TransformSystem::postDeserialize(IDeserializer& deserializer)
 {
-	auto manager = Manager::get();
 	for (auto pair : deserializedParents)
 	{
 		auto parent = deserializedEntities.find(pair.second);

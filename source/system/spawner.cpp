@@ -87,6 +87,8 @@ void SpawnerComponent::spawn(uint32 count)
 	{
 		auto duplicateEntity = transformSystem->duplicateRecursive(prefabEntity);
 
+		// if (physicsSystem)... TODO: Duplicate constraints recursive.
+
 		auto dupTransformView = transformSystem->tryGet(duplicateEntity);
 		if (dupTransformView)
 		{
@@ -177,6 +179,11 @@ void SpawnerSystem::preInit()
 {
 	auto manager = Manager::get();
 	auto prefabs = manager->createEntity();
+
+	if (manager->has<DoNotDestroySystem>())
+		manager->add<DoNotDestroyComponent>(prefabs);
+	if (manager->has<DoNotSerializeSystem>())
+		manager->add<DoNotSerializeComponent>(prefabs);
 
 	auto transformView = manager->add<TransformComponent>(prefabs);
 	transformView->isActive = false;
@@ -317,8 +324,6 @@ void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 		if (valueStringCache == "Manual")
 			componentView->mode = SpawnMode::Manual;
 	}
-
-	componentView->loadPrefab();
 }
 
 //**********************************************************************************************************************

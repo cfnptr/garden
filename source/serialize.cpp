@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/serialize.hpp"
+#include "garden/system/transform.hpp"
 
 using namespace garden;
 
@@ -62,6 +63,26 @@ void DoNotSerializeSystem::disposeComponents()
 }
 
 //**********************************************************************************************************************
+bool DoNotSerializeSystem::hasOrAncestors(ID<Entity> entity) const
+{
+	if (has(entity))
+		return true;
+
+	auto transformSystem = TransformSystem::get();
+	auto transformView = transformSystem->tryGet(entity);
+	if (!transformView)
+		return false;
+
+	auto parent = transformView->getParent();
+	while (parent)
+	{
+		if (has(parent))
+			return true;
+		transformView = transformSystem->get(parent);
+		parent = transformView->getParent();
+	}
+	return false;
+}
 bool DoNotSerializeSystem::has(ID<Entity> entity) const
 {
 	GARDEN_ASSERT(entity);

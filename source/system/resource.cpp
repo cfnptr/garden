@@ -1747,14 +1747,6 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		return {};
 	}
 
-	if (!fs::exists(scenePath))
-	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Scene file does not exist. (path: " + path.generic_string() + ")");
-		return {};
-	}
-
 	try
 	{
 		deserializer.load(scenePath);
@@ -1983,33 +1975,14 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 		if (transformSystem)
 			transformView = transformSystem->tryGet(instance);
 
-		if (dnsSystem)
-		{
-			if (dnsSystem->has(instance))
-				continue;
-
-			if (transformView)
-			{
-				auto shouldSkip = false;
-				auto nextParent = transformView->getParent();
-				while (nextParent)
-				{
-					if (dnsSystem->has(nextParent))
-					{
-						shouldSkip = true;
-						break;
-					}
-					nextParent = transformSystem->get(nextParent)->getParent();
-				}
-
-				if (shouldSkip)
-					continue;
-			}
-		}
-
 		if (rootEntity)
 		{
 			if (!transformView || (instance != rootEntity && !transformView->hasAncestor(rootEntity)))
+				continue;
+		}
+		else
+		{
+			if (dnsSystem && dnsSystem->hasOrAncestors(instance))
 				continue;
 		}
 
@@ -2055,6 +2028,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShared)
 {
 	GARDEN_ASSERT(!path.empty());
+	JsonDeserializer deserializer;
 
 	Hash128 hash;
 	if (loadShared)
@@ -2071,7 +2045,6 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 
 	#if GARDEN_PACK_RESOURCES
 	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
-	JsonDeserializer deserializer;
 	#else
 	fs::path filePath = "animations" / path; filePath += ".anim"; fs::path animationPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, animationPath))
@@ -2082,18 +2055,21 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 		return {};
 	}
 
-	std::ifstream fileStream(animationPath);
-	if (!fileStream.is_open())
+	try
+	{
+		deserializer.load(animationPath);
+	}
+	catch (exception& e)
 	{
 		auto logSystem = Manager::get()->tryGet<LogSystem>();
 		if (logSystem)
-			logSystem->error("Failed to open animation file. (path: " + path.generic_string() + ")");
+		{
+			logSystem->trace("Failed to deserialize scene. ("
+				"path: " + path.generic_string() + ", "
+				"error: " + string(e.what()) + ")");
+		}
 		return {};
 	}
-	
-	std::stringstream buffer;
-	buffer << fileStream.rdbuf();
-	JsonDeserializer deserializer(string_view(buffer.str()));
 	#endif
 
 	auto animationSystem = AnimationSystem::get();

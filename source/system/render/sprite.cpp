@@ -43,10 +43,10 @@ void SpriteRenderSystem::init()
 
 	#if GARDEN_DEBUG
 	auto graphicsSystem = GraphicsSystem::get();
-	for (psize i = 0; i < instanceBuffers.size(); i++)
+	for (uint32 i = 0; i < (uint32)instanceBuffers.size(); i++)
 	{
 		const auto& buffers = instanceBuffers[i];
-		for (psize j = 0; j < buffers.size(); j++)
+		for (uint32 j = 0; j < (uint32)buffers.size(); j++)
 		{
 			SET_RESOURCE_DEBUG_NAME(buffers[j], "buffer.storage.instances" + 
 				to_string(i) + "." + pipelinePath.generic_string());

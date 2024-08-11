@@ -178,6 +178,7 @@ class TransformSystem final : public System, public ISerializable, public IAnima
 	map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityParentPair> deserializedParents;
 	string uidStringCache;
+
 	#if GARDEN_DEBUG
 	set<uint64> serializedEntities;
 	#endif
