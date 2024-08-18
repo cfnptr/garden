@@ -134,9 +134,7 @@ void PhysicsEditorSystem::editorRender()
 }
 
 //**********************************************************************************************************************
-static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, const float3& rigidbodyShapePosCached, 
-	float3& rigidbodyHalfExtCached, float& rigidbodyConvexRadCached, float& rigidbodyDensityCached, 
-	AllowedDOF allowedDofCache, bool isChanged)
+static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::Cached& cached, bool isChanged)
 {
 	auto physicsSystem = PhysicsSystem::get();
 	auto shape = rigidbodyView->getShape();
@@ -153,44 +151,39 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, const float3&
 	}
 
 	if (shape)
-		rigidbodyHalfExtCached = shapeView->getBoxHalfExtent();
-	isChanged |= ImGui::DragFloat3("Half Extent", &rigidbodyHalfExtCached, 0.01f);
+		cached.rigidbodyHalfExt = shapeView->getBoxHalfExtent();
+	isChanged |= ImGui::DragFloat3("Half Extent", &cached.rigidbodyHalfExt, 0.01f);
 	if (ImGui::BeginPopupContextItem("halfExtent"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			rigidbodyHalfExtCached = float3(0.5f);
+			cached.rigidbodyHalfExt = float3(0.5f);
 			isChanged = true;
 		}
 		ImGui::EndPopup();
 	}
 
 	if (shape)
-		rigidbodyConvexRadCached = shapeView->getBoxConvexRadius();
-	isChanged |= ImGui::DragFloat("Convex Radius", &rigidbodyConvexRadCached, 0.01f);
+		cached.rigidbodyConvexRad = shapeView->getBoxConvexRadius();
+	isChanged |= ImGui::DragFloat("Convex Radius", &cached.rigidbodyConvexRad, 0.01f);
 	if (ImGui::BeginPopupContextItem("convexRadius"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			rigidbodyConvexRadCached = 0.05f;
+			cached.rigidbodyConvexRad = 0.05f;
 			isChanged = true;
 		}
 		ImGui::EndPopup();
 	}
 
 	if (shape)
-		rigidbodyDensityCached = shapeView->getDensity();
-	isChanged |= ImGui::DragFloat("Density", &rigidbodyDensityCached, 1.0f);
-	if (ImGui::BeginItemTooltip())
-	{
-		ImGui::Text("Units: kilograms per cubic metre (kg / m^3)");
-		ImGui::EndTooltip();
-	}
+		cached.rigidbodyDensity = shapeView->getDensity();
+	isChanged |= ImGui::DragFloat("Density", &cached.rigidbodyDensity, 1.0f, 0.0f, 0.0f, "%.3f kg/m^3");
 	if (ImGui::BeginPopupContextItem("density"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			rigidbodyDensityCached = 1000.0f;
+			cached.rigidbodyDensity = 1000.0f;
 			isChanged = true;
 		}
 		ImGui::EndPopup();
@@ -198,30 +191,37 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, const float3&
 
 	if (isChanged)
 	{
-		rigidbodyConvexRadCached = max(rigidbodyConvexRadCached, 0.0f);
-		rigidbodyHalfExtCached = max(rigidbodyHalfExtCached, float3(rigidbodyConvexRadCached));
-		rigidbodyDensityCached = max(rigidbodyDensityCached, 0.001f);
+		cached.rigidbodyConvexRad = max(cached.rigidbodyConvexRad, 0.0f);
+		cached.rigidbodyHalfExt = max(cached.rigidbodyHalfExt, float3(cached.rigidbodyConvexRad));
+		cached.rigidbodyDensity = max(cached.rigidbodyDensity, 0.001f);
 
+		if (cached.allowedDOF == AllowedDOF::None && cached.motionType != MotionType::Static)
+			cached.motionType = MotionType::Static;
+
+		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
 		physicsSystem->destroyShared(shape);
-		if (rigidbodyShapePosCached != float3(0.0f))
+		
+		if (cached.rigidbodyShapePos != float3(0.0f))
 		{
 			auto innerShape = physicsSystem->createSharedBoxShape(
-				rigidbodyHalfExtCached, rigidbodyConvexRadCached, rigidbodyDensityCached);
-			shape = physicsSystem->createSharedRotTransShape(innerShape, rigidbodyShapePosCached);
+				cached.rigidbodyHalfExt, cached.rigidbodyConvexRad, cached.rigidbodyDensity);
+			shape = physicsSystem->createSharedRotTransShape(innerShape, cached.rigidbodyShapePos);
 		}
 		else
 		{
-			shape = physicsSystem->createSharedBoxShape(
-				rigidbodyHalfExtCached, rigidbodyConvexRadCached, rigidbodyDensityCached);
+			shape = physicsSystem->createSharedBoxShape(cached.rigidbodyHalfExt, 
+				cached.rigidbodyConvexRad, cached.rigidbodyDensity);
 		}
-		rigidbodyView->setShape(shape, false, rigidbodyView->canBeKinematicOrDynamic(), allowedDofCache);
+
+		rigidbodyView->setShape(shape, cached.motionType, cached.rigidbodyCollLayer,
+			false, rigidbodyView->canBeKinematicOrDynamic(), cached.allowedDOF);
+		rigidbodyView->setSensor(cached.isSensor);
+		rigidbodyView->setKinematicVsStatic(isKinematicVsStatic);
 	}
 }
 
 //**********************************************************************************************************************
-static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, float3& rigidbodyShapePosCached, 
-	float3& rigidbodyHalfExtCached, float& rigidbodyConvexRadCached, 
-	float& rigidbodyDensityCached, AllowedDOF allowedDofCached)
+static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::Cached& cached)
 {
 	auto physicsSystem = PhysicsSystem::get();
 	auto shape = rigidbodyView->getShape();
@@ -236,9 +236,8 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, float3
 	{
 		auto shapeView = physicsSystem->get(shape);
 
-		quat _placeholder;
 		if (shapeView->getSubType() == ShapeSubType::RotatedTranslated)
-			shapeView->getPosAndRot(rigidbodyShapePosCached, _placeholder);
+			cached.rigidbodyShapePos = shapeView->getPosition();
 
 		if (shapeView->getType() == ShapeType::Decorated)
 		{
@@ -257,12 +256,12 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, float3
 		}
 	}
 
-	isChanged |= ImGui::DragFloat3("Position", &rigidbodyShapePosCached, 0.01f);
+	isChanged |= ImGui::DragFloat3("Position", &cached.rigidbodyShapePos, 0.01f);
 	if (ImGui::BeginPopupContextItem("shapePosition"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			rigidbodyShapePosCached = float3(0.0f);
+			cached.rigidbodyShapePos = float3(0.0f);
 			isChanged = true;
 		}
 		ImGui::EndPopup();
@@ -290,26 +289,23 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, float3
 	}
 
 	if (shapeType == 2)
-	{
-		renderBoxShape(rigidbodyView, rigidbodyShapePosCached, rigidbodyHalfExtCached, 
-			rigidbodyConvexRadCached, rigidbodyDensityCached, allowedDofCached, isChanged);
-	}
+		renderBoxShape(rigidbodyView, cached, isChanged);
 }
 
 //**********************************************************************************************************************
-static void renderConstraints(View<RigidbodyComponent> rigidbodyView,
-	ID<Entity>& constraintTargetCached, ConstraintType& constraintTypeCached)
+static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::Cached& cached)
 {
 	ImGui::Indent();
+	ImGui::PushID("constraints");
+
 	ImGui::BeginDisabled(!rigidbodyView->getShape());
+	const auto cTypes = "Fixed\0Point\00";
+	ImGui::Combo("Type", &cached.constraintType, cTypes);
 
-	const auto cTypes = "Fixed\00";
-	ImGui::Combo("Type", &constraintTypeCached, cTypes);
-
-	auto name = constraintTargetCached ? "Entity " + to_string(*constraintTargetCached) : "";
-	if (constraintTargetCached)
+	auto name = cached.constraintTarget ? "Entity " + to_string(*cached.constraintTarget) : "";
+	if (cached.constraintTarget)
 	{
-		auto transformView = Manager::get()->tryGet<TransformComponent>(constraintTargetCached);
+		auto transformView = Manager::get()->tryGet<TransformComponent>(cached.constraintTarget);
 		if (transformView && !transformView->debugName.empty())
 			name = transformView->debugName;
 	}
@@ -318,9 +314,9 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView,
 	if (ImGui::BeginPopupContextItem("otherEntity"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			constraintTargetCached = {};
+			cached.constraintTarget = {};
 		if (ImGui::MenuItem("Select Entity"))
-			EditorRenderSystem::get()->selectedEntity = constraintTargetCached;
+			EditorRenderSystem::get()->selectedEntity = cached.constraintTarget;
 		ImGui::EndPopup();
 	}
 	if (ImGui::BeginDragDropTarget())
@@ -329,22 +325,47 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView,
 		if (payload)
 		{
 			GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
-			constraintTargetCached = *((const ID<Entity>*)payload->Data);
+			cached.constraintTarget = *((const ID<Entity>*)payload->Data);
 		}
 		ImGui::EndDragDropTarget();
 	}
 
-	auto canCreate = !constraintTargetCached;
-	if (constraintTargetCached && constraintTargetCached != rigidbodyView->getEntity())
+	ImGui::Checkbox("Auto Points", &cached.autoConstraintPoints);
+
+	ImGui::BeginDisabled(cached.autoConstraintPoints);
+	ImGui::DragFloat3("This Point", &cached.thisConstraintPoint, 0.01f);
+	if (ImGui::BeginPopupContextItem("thisPoint"))
 	{
-		auto otherView = PhysicsSystem::get()->tryGet(constraintTargetCached);
+		if (ImGui::MenuItem("Reset Default"))
+			cached.thisConstraintPoint = float3(0.0f);
+		ImGui::EndPopup();
+	}
+	ImGui::DragFloat3("Other Point", &cached.otherConstraintPoint, 0.01f);
+	if (ImGui::BeginPopupContextItem("otherPoint"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			cached.otherConstraintPoint = float3(0.0f);
+		ImGui::EndPopup();
+	}
+	ImGui::EndDisabled();
+
+	auto canCreate = !cached.constraintTarget;
+	if (cached.constraintTarget && cached.constraintTarget != rigidbodyView->getEntity())
+	{
+		auto otherView = PhysicsSystem::get()->tryGet(cached.constraintTarget);
 		if (otherView && otherView->getShape())
 			canCreate = true;
 	}
 
+	ImGui::Separator();
+
 	ImGui::BeginDisabled(!canCreate);
 	if (ImGui::Button("Create Constraint", ImVec2(-FLT_MIN, 0.0f)))
-		rigidbodyView->createConstraint(constraintTargetCached, constraintTypeCached);
+	{
+		rigidbodyView->createConstraint(cached.constraintTarget, cached.constraintType,
+			cached.autoConstraintPoints ? float3(FLT_MAX) : cached.thisConstraintPoint, 
+			cached.autoConstraintPoints ? float3(FLT_MAX) : cached.otherConstraintPoint);
+	}
 	ImGui::EndDisabled();
 
 	ImGui::Spacing();
@@ -352,6 +373,8 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView,
 	if (ImGui::CollapsingHeader("Created"))
 	{
 		ImGui::Indent();
+		ImGui::PushID("constraint");
+
 		auto& constraints = rigidbodyView->getConstraints();
 		for (uint32 i = 0; i < (uint32)constraints.size(); i++)
 		{
@@ -369,16 +392,24 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView,
 			auto type = constraint.type;
 			ImGui::Combo("Type", &type, cTypes);
 
-			auto transformView = Manager::get()->tryGet<TransformComponent>(constraint.otherBody);
-			if (transformView && !transformView->debugName.empty())
-				name = transformView->debugName;
+			if (constraint.otherBody)
+			{
+				auto transformView = Manager::get()->tryGet<TransformComponent>(constraint.otherBody);
+				if (transformView && !transformView->debugName.empty())
+					name = transformView->debugName;
+				else
+					name = "Entity " + to_string(*constraint.otherBody);
+			}
 			else
-				name = "Entity " + to_string(*constraint.otherBody);
+			{
+				name = "<world>";
+			}
+			
 			ImGui::InputText("Other Entity", &name, ImGuiInputTextFlags_ReadOnly);
 			if (ImGui::BeginPopupContextItem("otherEntity"))
 			{
 				if (ImGui::MenuItem("Select Entity"))
-					EditorRenderSystem::get()->selectedEntity = constraintTargetCached;
+					EditorRenderSystem::get()->selectedEntity = cached.constraintTarget;
 				ImGui::EndPopup();
 			}
 
@@ -388,15 +419,17 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView,
 		if (constraints.empty())
 			ImGui::TextDisabled("No created constraints");
 
+		ImGui::PopID();
 		ImGui::Unindent();
 	}
-
 	ImGui::EndDisabled();
+
+	ImGui::PopID();
 	ImGui::Unindent();
 }
 
 //**********************************************************************************************************************
-static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, AllowedDOF& allowedDofCached)
+static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::Cached& cached)
 {
 	ImGui::Indent();
 	
@@ -405,43 +438,68 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, All
 
 	ImGui::BeginDisabled(rigidbodyView->getMotionType() == MotionType::Static);
 	ImGui::SeparatorText("Degrees of Freedom (DOF)");
-	allowedDofCached = rigidbodyView->getAllowedDOF();
+
+	if (shape)
+		cached.allowedDOF = rigidbodyView->getAllowedDOF();
+
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Set 3D"))
+	{
+		cached.allowedDOF = AllowedDOF::All;
+		isAnyChanged = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Set 2D"))
+	{
+		cached.allowedDOF = AllowedDOF::TranslationX | 
+			AllowedDOF::TranslationY | AllowedDOF::RotationZ;
+		isAnyChanged = true;
+	}
 
 	ImGui::Text("Translation:"); ImGui::SameLine();
 	ImGui::PushID("dofTranslation");
-	auto transX = hasAnyFlag(allowedDofCached, AllowedDOF::TranslationX);
+	auto transX = hasAnyFlag(cached.allowedDOF, AllowedDOF::TranslationX);
 	isAnyChanged |= ImGui::Checkbox("X", &transX); ImGui::SameLine();
-	auto transY = hasAnyFlag(allowedDofCached, AllowedDOF::TranslationY);
+	auto transY = hasAnyFlag(cached.allowedDOF, AllowedDOF::TranslationY);
 	isAnyChanged |= ImGui::Checkbox("Y", &transY); ImGui::SameLine();
-	auto transZ = hasAnyFlag(allowedDofCached, AllowedDOF::TranslationZ);
+	auto transZ = hasAnyFlag(cached.allowedDOF, AllowedDOF::TranslationZ);
 	isAnyChanged |= ImGui::Checkbox("Z", &transZ);
 	ImGui::PopID();
 
 	ImGui::Text("Rotation:   "); ImGui::SameLine();
 	ImGui::PushID("dofRotation");
-	auto rotX = hasAnyFlag(allowedDofCached, AllowedDOF::RotationX);
+	auto rotX = hasAnyFlag(cached.allowedDOF, AllowedDOF::RotationX);
 	isAnyChanged |= ImGui::Checkbox("X", &rotX); ImGui::SameLine();
-	auto rotY = hasAnyFlag(allowedDofCached, AllowedDOF::RotationY);
+	auto rotY = hasAnyFlag(cached.allowedDOF, AllowedDOF::RotationY);
 	isAnyChanged |= ImGui::Checkbox("Y", &rotY); ImGui::SameLine();
-	auto rotZ = hasAnyFlag(allowedDofCached, AllowedDOF::RotationZ);
+	auto rotZ = hasAnyFlag(cached.allowedDOF, AllowedDOF::RotationZ);
 	isAnyChanged |= ImGui::Checkbox("Z", &rotZ);
 	ImGui::PopID();
 	ImGui::EndDisabled();
 
 	if (isAnyChanged)
 	{
-		allowedDofCached = AllowedDOF::None;
-		if (transX) allowedDofCached |= AllowedDOF::TranslationX;
-		if (transY) allowedDofCached |= AllowedDOF::TranslationY;
-		if (transZ) allowedDofCached |= AllowedDOF::TranslationZ;
-		if (rotX) allowedDofCached |= AllowedDOF::RotationX;
-		if (rotY) allowedDofCached |= AllowedDOF::RotationY;
-		if (rotZ) allowedDofCached |= AllowedDOF::RotationZ;
+		cached.allowedDOF = AllowedDOF::None;
+		if (transX) cached.allowedDOF |= AllowedDOF::TranslationX;
+		if (transY) cached.allowedDOF |= AllowedDOF::TranslationY;
+		if (transZ) cached.allowedDOF |= AllowedDOF::TranslationZ;
+		if (rotX) cached.allowedDOF |= AllowedDOF::RotationX;
+		if (rotY) cached.allowedDOF |= AllowedDOF::RotationY;
+		if (rotZ) cached.allowedDOF |= AllowedDOF::RotationZ;
 
 		if (shape)
 		{
+			auto motionType = rigidbodyView->getMotionType();
+			auto collisionLayer = rigidbodyView->getCollisionLayer();
+			auto canBeKinematicOrDynamic = rigidbodyView->canBeKinematicOrDynamic();
+			auto isSensor = rigidbodyView->isSensor();
+			auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+			
 			rigidbodyView->setShape({});
-			rigidbodyView->setShape(shape, false, rigidbodyView->canBeKinematicOrDynamic(), allowedDofCached);
+			rigidbodyView->setShape(shape, motionType, collisionLayer, 
+				false, canBeKinematicOrDynamic, cached.allowedDOF);
+			rigidbodyView->setSensor(isSensor);
+			rigidbodyView->setKinematicVsStatic(isKinematicVsStatic);
 		}
 	}
 
@@ -449,13 +507,8 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, All
 	ImGui::SeparatorText("Velocity");
 
 	auto velocity = rigidbodyView->getLinearVelocity();
-	if (ImGui::DragFloat3("Linear", &velocity, 0.01f))
+	if (ImGui::DragFloat3("Linear", &velocity, 0.01f, 0.0f, 0.0f, "%.3f m/s"))
 		rigidbodyView->setLinearVelocity(velocity);
-	if (ImGui::BeginItemTooltip())
-	{
-		ImGui::Text("Units: metres per second (m/s)");
-		ImGui::EndTooltip();
-	}
 	if (ImGui::BeginPopupContextItem("linearVelocity"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
@@ -464,13 +517,8 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, All
 	}
 
 	velocity = rigidbodyView->getAngularVelocity();
-	if (ImGui::DragFloat3("Angular", &velocity, 0.01f))
+	if (ImGui::DragFloat3("Angular", &velocity, 0.01f, 0.0f, 0.0f, "%.3f rad/s"))
 		rigidbodyView->setAngularVelocity(velocity);
-	if (ImGui::BeginItemTooltip())
-	{
-		ImGui::Text("Units: radians per second (rad/s)");
-		ImGui::EndTooltip();
-	}
 	if (ImGui::BeginPopupContextItem("angularVelocity"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
@@ -506,7 +554,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 			ImGui::Text("Motion type: Kinematic");
 		else if (motionType == MotionType::Dynamic)
 			ImGui::Text("Motion type: Dynamic");
-		else ImGui::Text("Motion type: <unknown>");
+		else abort();
 		ImGui::EndTooltip();
 	}
 
@@ -524,13 +572,19 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 		}
 
 		rigidbodySelectedEntity = entity;
-		rigidbodyShapePosCached = float3(0.0f);
-		rigidbodyHalfExtCached = float3(0.5f);
-		rigidbodyConvexRadCached = 0.05f;
-		rigidbodyDensityCached = 1000.0f;
-		constraintTargetCached = {};
-		constraintTypeCached = {};
-		allowedDofCached = AllowedDOF::All;
+		cached.rigidbodyShapePos = float3(0.0f);
+		cached.rigidbodyHalfExt = float3(0.5f);
+		cached.rigidbodyConvexRad = 0.05f;
+		cached.rigidbodyDensity = 1000.0f;
+		cached.rigidbodyCollLayer = -1;
+		cached.thisConstraintPoint = float3(0.0f);
+		cached.otherConstraintPoint = float3(0.0f);
+		cached.autoConstraintPoints = true;
+		cached.isSensor = false;
+		cached.motionType = {};
+		cached.constraintTarget = {};
+		cached.constraintType = {};
+		cached.allowedDOF = AllowedDOF::All;
 	}
 	else
 	{
@@ -568,12 +622,13 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!shape);
-	auto isSensor = rigidbodyView->isSensor();
-	if (ImGui::Checkbox("Sensor", &isSensor))
-		rigidbodyView->setSensor(isSensor);
+	if (shape)
+		cached.isSensor = rigidbodyView->isSensor();
+	if (ImGui::Checkbox("Sensor", &cached.isSensor))
+		rigidbodyView->setSensor(cached.isSensor);
 	ImGui::EndDisabled();
 
-	ImGui::BeginDisabled(!isSensor);
+	ImGui::BeginDisabled(!cached.isSensor);
 	ImGui::InputText("Event Listener", &rigidbodyView->eventListener);
 	if (ImGui::BeginPopupContextItem("eventListener"))
 	{
@@ -615,32 +670,68 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 			rotation.x, rotation.y, rotation.z);
 		ImGui::EndTooltip();
 	}
+
+	if (shape)
+		cached.rigidbodyCollLayer = (int)rigidbodyView->getCollisionLayer();
+	if (ImGui::DragInt("Collision Layer", &cached.rigidbodyCollLayer))
+		rigidbodyView->setCollisionLayer(cached.rigidbodyCollLayer);
+	if (ImGui::BeginPopupContextItem("collisionLayer"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			rigidbodyView->setCollisionLayer();
+		ImGui::EndPopup();
+	}
+	if (ImGui::BeginItemTooltip())
+	{
+		switch (rigidbodyView->getCollisionLayer())
+		{
+		case (uint16)CollisionLayer::NonMoving:
+			ImGui::Text("Collision Layer: Non Moving");
+			break;
+		case (uint16)CollisionLayer::Moving:
+			ImGui::Text("Collision Layer: Moving");
+			break;
+		case (uint16)CollisionLayer::Sensor:
+			ImGui::Text("Collision Layer: Sensor");
+			break;
+		case (uint16)CollisionLayer::HqDebris:
+			ImGui::Text("Collision Layer: High Quality Debris");
+			break;
+		case (uint16)CollisionLayer::LqDebris:
+			ImGui::Text("Collision Layer: Low Quality Debris");
+			break;
+		default:
+			ImGui::Text("Collision Layer: Custom");
+			break;
+		}
+		ImGui::EndTooltip();
+	}
 	ImGui::EndDisabled();
 
 	ImGui::BeginDisabled(shape && !rigidbodyView->canBeKinematicOrDynamic());
 	const auto mTypes = "Static\0Kinematic\0Dynamic\00";
-	auto motionType = rigidbodyView->getMotionType();
-	if (ImGui::Combo("Motion Type", &motionType, mTypes))
+	if (shape)
+		cached.motionType = rigidbodyView->getMotionType();
+	if (ImGui::Combo("Motion Type", &cached.motionType, mTypes))
 	{
-		if (motionType != MotionType::Static)
-			allowedDofCached = AllowedDOF::All;
-		rigidbodyView->setMotionType(motionType);
+		if (cached.motionType != MotionType::Static)
+			cached.allowedDOF = AllowedDOF::All;
+		cached.rigidbodyCollLayer = -1;
+		rigidbodyView->setMotionType(cached.motionType);
 	}
 	ImGui::EndDisabled();
 
-	renderShapeProperties(rigidbodyView, rigidbodyShapePosCached, rigidbodyHalfExtCached,
-		rigidbodyConvexRadCached, rigidbodyDensityCached, allowedDofCached);
+	renderShapeProperties(rigidbodyView, cached);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Constraints"))
-		renderConstraints(rigidbodyView, constraintTargetCached, constraintTypeCached);
+		renderConstraints(rigidbodyView, cached);
 	if (ImGui::CollapsingHeader("Advanced Properties"))
-		renderAdvancedProperties(rigidbodyView, allowedDofCached);
+		renderAdvancedProperties(rigidbodyView, cached);
 }
 
 //**********************************************************************************************************************
-static void renderShapeProperties(View<CharacterComponent> characterView, float3& characterShapePosCached, 
-	float3& characterShapeSizeCached, float& characterConvexRadCached)
+static void renderShapeProperties(View<CharacterComponent> characterView, PhysicsEditorSystem::Cached& cached)
 {
 	auto physicsSystem = PhysicsSystem::get();
 	auto shape = characterView->getShape();
@@ -655,17 +746,16 @@ static void renderShapeProperties(View<CharacterComponent> characterView, float3
 		auto shapeView = physicsSystem->get(shape);
 		if (shapeView->getType() == ShapeType::Decorated)
 		{
-			quat _placeholder;
 			if (shapeView->getSubType() == ShapeSubType::RotatedTranslated)
-				shapeView->getPosAndRot(characterShapePosCached, _placeholder);
+				cached.characterShapePos = shapeView->getPosition();
 
 			auto innerShape = shapeView->getInnerShape();
 			shapeView = physicsSystem->get(innerShape);
 			switch (shapeView->getSubType())
 			{
 			case ShapeSubType::Box:
-				characterShapeSizeCached = shapeView->getBoxHalfExtent() * 2.0f;
-				characterConvexRadCached = shapeView->getBoxConvexRadius();
+				cached.characterShapeSize = shapeView->getBoxHalfExtent() * 2.0f;
+				cached.characterConvexRad = shapeView->getBoxConvexRadius();
 				shapeType = 2;
 				break;
 			default:
@@ -679,34 +769,34 @@ static void renderShapeProperties(View<CharacterComponent> characterView, float3
 		}
 	}
 
-	isChanged |= ImGui::DragFloat3("Size", &characterShapeSizeCached, 0.01f);
+	isChanged |= ImGui::DragFloat3("Size", &cached.characterShapeSize, 0.01f);
 	if (ImGui::BeginPopupContextItem("shapeSize"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			characterShapeSizeCached = float3(0.5f, 1.75f, 0.5f);
+			cached.characterShapeSize = float3(0.5f, 1.75f, 0.5f);
 			isChanged = true;
 		}
 		ImGui::EndPopup();
 	}
 
-	isChanged |= ImGui::DragFloat("Convex Radius", &characterConvexRadCached, 0.01f);
+	isChanged |= ImGui::DragFloat("Convex Radius", &cached.characterConvexRad, 0.01f);
 	if (ImGui::BeginPopupContextItem("convexRadius"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			characterConvexRadCached = 0.05f;
+			cached.characterConvexRad = 0.05f;
 			isChanged = true;
 		}
 		ImGui::EndPopup();
 	}
 
-	isChanged |= ImGui::DragFloat3("Position", &characterShapePosCached, 0.01f);
+	isChanged |= ImGui::DragFloat3("Position", &cached.characterShapePos, 0.01f);
 	if (ImGui::BeginPopupContextItem("shapePosition"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			characterShapePosCached = float3(0.0f);
+			cached.characterShapePos = float3(0.0f);
 			isChanged = true;
 		}
 		ImGui::EndPopup();
@@ -717,8 +807,8 @@ static void renderShapeProperties(View<CharacterComponent> characterView, float3
 	const auto sTypes = "None\0Custom\0Box\00";
 	if ((ImGui::Combo("Type", &shapeType, sTypes) || isChanged))
 	{
-		characterConvexRadCached = max(characterConvexRadCached, 0.0f);
-		characterShapeSizeCached = max(characterShapeSizeCached, float3(characterConvexRadCached * 2.0f));
+		cached.characterConvexRad = max(cached.characterConvexRad, 0.0f);
+		cached.characterShapeSize = max(cached.characterShapeSize, float3(cached.characterConvexRad * 2.0f));
 		ID<Shape> innerShape = {};
 
 		switch (shapeType)
@@ -730,9 +820,8 @@ static void renderShapeProperties(View<CharacterComponent> characterView, float3
 		case 2:
 			physicsSystem->destroyShared(shape);
 			innerShape = physicsSystem->createSharedBoxShape(
-				characterShapeSizeCached * 0.5f, characterConvexRadCached);
-			shape = physicsSystem->createRotTransShape(innerShape, float3(
-				characterShapePosCached.x, characterShapePosCached.y, characterShapePosCached.z));
+				cached.characterShapeSize * 0.5f, cached.characterConvexRad);
+			shape = physicsSystem->createRotTransShape(innerShape, cached.characterShapePos);
 			characterView->setShape(shape);
 			break;
 		default:
@@ -751,13 +840,8 @@ static void renderAdvancedProperties(View<CharacterComponent> characterView)
 
 	ImGui::BeginDisabled(!shape);
 	auto velocity = characterView->getLinearVelocity();
-	if (ImGui::DragFloat3("Linear Velocity", &velocity, 0.01f))
+	if (ImGui::DragFloat3("Linear Velocity", &velocity, 0.01f, 0.0f, 0.0f, "%.3f m/s"))
 		characterView->setLinearVelocity(velocity);
-	if (ImGui::BeginItemTooltip())
-	{
-		ImGui::Text("Units: metres per second (m/s)");
-		ImGui::EndTooltip();
-	}
 	if (ImGui::BeginPopupContextItem("linearVelocity"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
@@ -807,9 +891,9 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 		}
 
 		characterSelectedEntity = entity;
-		characterShapePosCached = float3(0.0f);
-		characterShapeSizeCached = float3(0.5f, 1.75f, 0.5f);
-		characterConvexRadCached = 0.05f;
+		cached.characterShapePos = float3(0.0f);
+		cached.characterShapeSize = float3(0.5f, 1.75f, 0.5f);
+		cached.characterConvexRad = 0.05f;
 	}
 	else
 	{
@@ -835,6 +919,20 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	auto shape = characterView->getShape();
 
 	ImGui::BeginDisabled(!shape);
+	auto collisionLayer = (int)characterView->collisionLayer;
+	if (ImGui::DragInt("Collision Layer", &collisionLayer))
+	{
+		if (collisionLayer < 0 || collisionLayer >= PhysicsSystem::get()->getProperties().collisionLayerCount)
+			collisionLayer = (uint16)CollisionLayer::Moving;
+		characterView->collisionLayer = (uint16)collisionLayer;
+	}
+	if (ImGui::BeginPopupContextItem("collisionLayer"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			characterView->collisionLayer = (uint16)CollisionLayer::Moving;
+		ImGui::EndPopup();
+	}
+
 	float3 position; quat rotation;
 	characterView->getPosAndRot(position, rotation);
 	if (ImGui::DragFloat3("Position", &position, 0.01f))
@@ -868,7 +966,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	}
 
 	auto mass = characterView->getMass();
-	if (ImGui::DragFloat("Mass", &mass, 0.01f))
+	if (ImGui::DragFloat("Mass", &mass, 0.01f, 0.0f, 0.0f, "%.3f kg"))
 		characterView->setMass(mass);
 	if (ImGui::BeginPopupContextItem("mass"))
 	{
@@ -876,15 +974,9 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 			characterView->setMass(70.0f);
 		ImGui::EndPopup();
 	}
-	if (ImGui::BeginItemTooltip())
-	{
-		ImGui::Text("Units: kilograms");
-		ImGui::EndTooltip();
-	}
 	ImGui::EndDisabled();
 
-	renderShapeProperties(characterView, characterShapePosCached,
-		characterShapeSizeCached, characterConvexRadCached);
+	renderShapeProperties(characterView, cached);
 
 	if (ImGui::CollapsingHeader("Advanced Properties"))
 		renderAdvancedProperties(characterView);

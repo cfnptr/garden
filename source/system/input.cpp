@@ -189,9 +189,10 @@ void InputSystem::input()
 		return;
 	}
 
-	auto newTime = glfwGetTime();
-	deltaTime = newTime - time;
-	time = newTime;
+	auto currentTime = glfwGetTime();
+	deltaTime = (currentTime - systemTime) * timeMultiplier;
+	time += deltaTime;
+	systemTime = currentTime;
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos(window, &x, &y);

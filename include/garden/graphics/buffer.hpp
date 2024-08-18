@@ -69,7 +69,7 @@ public:
 		TransferDst = 0x02, /**< Buffer can be used as the destination of a transfer command. */
 		Vertex = 0x04,      /**< Buffer can be used by a graphics rendering command. */
 		Index = 0x08,       /**< Buffer can be used by a graphics rendering command. */
-		Uniform = 0x10,     /**< Buffer can be used in a descriptor set. */
+		Uniform = 0x10,     /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
 		Storage = 0x20      /**< Buffer can be used in a descriptor set. */
 	};
 

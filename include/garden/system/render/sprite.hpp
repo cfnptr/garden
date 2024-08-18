@@ -42,7 +42,7 @@ public:
 	#endif
 };
 
-/***********************************************************************************************************************
+/**
  * @brief Sprite mesh animation frame container.
  */
 struct SpriteRenderFrame : public AnimationFrame

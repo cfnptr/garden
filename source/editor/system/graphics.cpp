@@ -129,7 +129,8 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), progressInfo.c_str());
 
 		ImGui::SeparatorText("Frames Per Second");
-		auto deltaTime = (float)InputSystem::get()->getDeltaTime();
+		auto inputSystem = InputSystem::get();
+		auto deltaTime = (float)inputSystem->getDeltaTime() / (float)inputSystem->timeMultiplier;
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 

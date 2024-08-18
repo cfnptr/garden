@@ -15,10 +15,10 @@
 #include "platformer.hpp"
 #include "garden/system/link.hpp"
 #include "garden/system/spawner.hpp"
-#include "garden/system/physics.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
+#include "garden/system/character.hpp"
 #include "garden/system/2d-controller.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 
@@ -96,6 +96,7 @@ void PlatformerSystem::deinit()
 void PlatformerSystem::update()
 {
 	auto manager = Manager::get();
+	auto inputSystem = InputSystem::get();
 	auto transformSystem = TransformSystem::get();
 	auto characterSystem = CharacterSystem::get();
 	auto controller2DSystem = manager->get<Controller2DSystem>();
@@ -114,15 +115,16 @@ void PlatformerSystem::update()
 
 		auto newState = currentState;
 		auto linearVelocity = characterView->getLinearVelocity();
-		if (slideCounter > 0 && linearVelocity.y < -1.0f)
+		if (slideCounter > 0 && linearVelocity.y < -maxSlideSpeed)
 		{
-			linearVelocity.y = -1.0f;
+			linearVelocity.y = -maxSlideSpeed;
 			characterView->setLinearVelocity(linearVelocity);
 		}
 
 		if (length2(linearVelocity) > float3(0.1f * 0.1f))
 		{
 			auto groundState = characterView->getGroundState();
+
 			if (groundState == CharacterGround::OnGround)
 			{
 				newState = CharacterState::Run;
@@ -137,10 +139,10 @@ void PlatformerSystem::update()
 				}
 				else
 				{
-					if (slideCounter > 0)
-						newState = CharacterState::WallJump;
+					if (linearVelocity.y > 0.0f)
+						newState = CharacterState::Jump;
 					else
-						newState = linearVelocity.y > 0.0f ? CharacterState::Jump : CharacterState::Fall;
+						newState = slideCounter > 0 ? CharacterState::WallJump : CharacterState::Fall;
 				}
 			}
 
@@ -197,9 +199,51 @@ void PlatformerSystem::editorStart()
 	auto spawner = LinkSystem::get()->findEntities("MainSpawner");
 	if (spawner.first != spawner.second)
 	{
-		auto spawnerView = SpawnerSystem::get()->tryGet(spawner.first->second);
+		auto entity = spawner.first->second;
+		auto spawnerView = SpawnerSystem::get()->tryGet(entity);
 		if (spawnerView)
 			spawnerView->spawn();
+
+		auto transformView = TransformSystem::get()->tryGet(entity);
+		if (transformView)
+		{
+			auto childCount = transformView->getChildCount();
+			for (uint32 i = 0; i < childCount; i++)
+			{
+				auto child = transformView->getChild(i);
+				auto animationView = AnimationSystem::get()->tryGet(child);
+				if (!animationView)
+					continue;
+
+				currentState = CharacterState::Appearing;
+				animationView->active = characterAnimStrings[(uint8)CharacterState::Appearing];
+				animationView->frame = 0;
+				animationView->isPlaying = true;
+			}
+		}
+	}
+
+	auto characters = LinkSystem::get()->findEntities("MainCharacter");
+	for (auto i = characters.first; i != characters.second; i++)
+	{
+		auto entity = i->second;
+		auto transformView = TransformSystem::get()->tryGet(entity);
+		if (!transformView || !transformView->isActiveWithAncestors())
+			continue;
+
+		auto childCount = transformView->getChildCount();
+		for (uint32 i = 0; i < childCount; i++)
+		{
+			auto child = transformView->getChild(i);
+			auto animationView = AnimationSystem::get()->tryGet(child);
+			if (!animationView)
+				continue;
+
+			currentState = CharacterState::Appearing;
+			animationView->active = characterAnimStrings[(uint8)CharacterState::Appearing];
+			animationView->frame = 0;
+			animationView->isPlaying = true;
+		}
 	}
 }
 void PlatformerSystem::editorStop()
@@ -211,6 +255,7 @@ void PlatformerSystem::editorStop()
 		if (spawnerView)
 			spawnerView->destroySpawned();
 	}
+	slideCounter = 0;
 }
 #endif
 
@@ -242,8 +287,7 @@ void PlatformerSystem::slideStayed()
 	auto shapeView = physicsSystem->get(rigidbodyView->getShape());
 	if (shapeView->getSubType() == ShapeSubType::RotatedTranslated)
 	{
-		float3 position; quat rotation;
-		shapeView->getPosAndRot(position, rotation);
+		auto position = shapeView->getPosition();
 		isLastDirLeft = position.x < 0.0f;
 	}
 }

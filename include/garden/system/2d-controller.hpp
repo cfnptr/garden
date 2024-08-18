@@ -33,6 +33,7 @@ using namespace ecsm;
 class Controller2DSystem final : public System
 {
 	ID<Entity> camera = {};
+	float2 followTarget = float2(0.0f);
 	bool canDoubleJump = true;
 	bool isLastJumping = false;
 
@@ -46,6 +47,7 @@ class Controller2DSystem final : public System
 	~Controller2DSystem() final;
 
 	void updateCameraTransform();
+	void updateCameraFollowing();
 	void updateCharacterControll();
 
 	void init();
@@ -60,6 +62,9 @@ public:
 	float horizontalSpeed = 2.0f;
 	float horizontalFactor = 0.99999f;
 	float jumpSpeed = 4.0f;
+	float followThreshold = 0.6f;
+	float followFactor = 0.8f;
+	float2 followCenter = float2(0.0f, 0.25f);
 	bool useDoubleJump = true;
 
 	bool isDoubleJumped() const noexcept { return !canDoubleJump; }

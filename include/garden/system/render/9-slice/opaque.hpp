@@ -25,10 +25,9 @@ struct Opaque9SliceFrame final : public NineSliceRenderFrame { };
 
 class Opaque9SliceSystem final : public NineSliceRenderSystem
 {
+	uint16 _alignment = 0;
 	LinearPool<Opaque9SliceComponent, false> components;
 	LinearPool<Opaque9SliceFrame, false> animationFrames;
-	bool deferredBuffer = false;
-	bool linearFilter = false;
 
 	/**
 	 * @brief Creates a new opaque 9-slice rendering system instance.

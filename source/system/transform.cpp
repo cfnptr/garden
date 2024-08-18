@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/transform.hpp"
-#include "garden/system/physics.hpp"
+#include "garden/system/character.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
 

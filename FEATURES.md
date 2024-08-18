@@ -32,7 +32,6 @@
 * Scene Serialization / Deserialization
 * First Person View (FPV)
 * .web / .png / .jpg / .exr / .hdr Support
-* glTF Model And Scene Loader
 * Config File Reader / Writer
 * Resource Pack Reader / Writer
 * Equi To Cube Map Converter

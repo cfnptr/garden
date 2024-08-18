@@ -25,10 +25,9 @@ struct TranslucentSpriteFrame final : public SpriteRenderFrame { };
 
 class TranslucentSpriteSystem final : public SpriteRenderSystem
 {
+	uint16 _alignment = 0;
 	LinearPool<TranslucentSpriteComponent, false> components;
 	LinearPool<TranslucentSpriteFrame, false> animationFrames;
-	bool deferredBuffer = false;
-	bool linearFilter = false;
 
 	/**
 	 * @brief Creates a new translucent sprite rendering system instance.

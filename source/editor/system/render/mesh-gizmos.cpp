@@ -17,9 +17,9 @@
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/system/render/mesh.hpp"
+#include "garden/system/character.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/physics.hpp"
 #include "garden/system/camera.hpp"
 #include "math/angles.hpp"
 
