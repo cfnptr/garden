@@ -215,7 +215,8 @@ void EditorRenderSystem::showMainMenuBar()
 	}
 
 	static double lastFps = 0.0;
-	auto fps = 1.0 / InputSystem::get()->getDeltaTime();
+	auto inputSystem = InputSystem::get();
+	auto fps = 1.0 / (inputSystem->getDeltaTime() / inputSystem->timeMultiplier);
 	stats += " | FPS: " + to_string((int32)((lastFps + fps) * 0.5));
 	lastFps = fps;
 
@@ -603,6 +604,14 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 				manager->destroy(selected);
 			ImGui::EndPopup();
 			return false;
+		}
+		if (ImGui::MenuItem("Reset Component"))
+		{
+			auto manager = Manager::get();
+			auto tmpEntity = manager->createEntity();
+			manager->add(tmpEntity, componentType);
+			manager->copy(tmpEntity, selectedEntity, componentType);
+			manager->destroy(tmpEntity);
 		}
 
 		if (ImGui::MenuItem("Copy Component Name"))

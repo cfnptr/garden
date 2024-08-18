@@ -46,6 +46,7 @@ struct SpawnerComponent final : public Component
 	bool spawnAsChild = true;  /**< Spawn object as a spawner entity child */
 private:
 	uint8 _alignment = 0;
+	double delayTime = 0.0;
 	vector<Hash128> spawnedEntities;
 
 	bool destroy();

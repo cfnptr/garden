@@ -14,9 +14,9 @@
 
 #include "garden/system/spawner.hpp"
 #include "garden/system/link.hpp"
-#include "garden/system/physics.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/character.hpp"
 
 using namespace garden;
 
@@ -135,6 +135,9 @@ void SpawnerComponent::spawn(uint32 count)
 			manager->add<DoNotSerializeComponent>(duplicateEntity);
 		spawnedEntities.push_back(dupLinkView->getUUID());
 	}
+
+	if (delay != 0.0f)
+		delayTime = InputSystem::get()->getTime() + delay;
 }
 void SpawnerComponent::destroySpawned()
 {
@@ -205,6 +208,7 @@ void SpawnerSystem::update()
 	auto manager = Manager::get();
 	auto linkSystem = LinkSystem::get();
 	auto transformSystem = TransformSystem::get();
+	auto currentTime = InputSystem::get()->getTime();
 	auto componentData = components.getData();
 	auto occupancy = components.getOccupancy();
 
@@ -215,14 +219,18 @@ void SpawnerSystem::update()
 			continue;
 
 		auto transformView = transformSystem->tryGet(componentView->entity);
-		if (transformView && !transformView->isActive)
+		if (transformView && !transformView->isActiveWithAncestors())
 			continue;
+
+		if (componentView->delay != 0.0f)
+		{
+			if (componentView->delayTime > currentTime)
+				continue;
+		}
 
 		auto mode = componentView->mode;
 		if (mode == SpawnMode::OneShot)
 		{
-			// TODO: take into account delay
-
 			auto difference = (int64)componentView->maxCount - componentView->spawnedEntities.size();
 			if (difference > 0)
 				componentView->spawn(difference);
@@ -243,6 +251,8 @@ void SpawnerSystem::copyComponent(View<Component> source, View<Component> destin
 {
 	const auto sourceView = View<SpawnerComponent>(source);
 	auto destinationView = View<SpawnerComponent>(destination);
+	destinationView->destroy();
+
 	destinationView->path = sourceView->path;
 	destinationView->prefab = sourceView->prefab;
 	destinationView->maxCount = sourceView->maxCount;

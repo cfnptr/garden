@@ -65,7 +65,7 @@ void AnimationEditorSystem::editorRender()
 	if (!showWindow || !GraphicsSystem::get()->canRender())
 		return;
 
-	if (ImGui::Begin("Animation Edtor", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
+	if (ImGui::Begin("Animation Editor", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		ImGui::Text("It's not implemented yet :(");
 		ImGui::Text("But you can be the one who will do it!");
@@ -162,8 +162,10 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 					ImGui::SetClipboardText(i->first.c_str());
 				if (ImGui::MenuItem("Remove Animation"))
 				{
-					resourceSystem->destroyShared(i->second);
+					auto animation = i->second;
 					i = animationView->eraseAnimation(i);
+					resourceSystem->destroyShared(animation);
+
 					if (i == animations.end())
 						break;
 				}

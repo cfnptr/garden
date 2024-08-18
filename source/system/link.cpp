@@ -129,24 +129,15 @@ void LinkSystem::copyComponent(View<Component> source, View<Component> destinati
 {
 	const auto sourceView = View<LinkComponent>(source);
 	auto destinationView = View<LinkComponent>(destination);
+	destinationView->destroy();
 
 	if (sourceView->uuid)
 		destinationView->regenerateUUID();
-	else
-		destinationView->uuid = {};
 
-	if (!destinationView->tag.empty())
-		eraseEntityTag(tagMap, destinationView->entity, destinationView->tag);
-
-	const auto& tag = sourceView->tag;
-	if (tag.empty())
+	if (!sourceView->tag.empty())
 	{
-		destinationView->tag = "";
-	}
-	else
-	{
-		tagMap.emplace(tag, destinationView->entity);
-		destinationView->tag = tag;
+		tagMap.emplace(sourceView->tag, destinationView->entity);
+		destinationView->tag = sourceView->tag;
 	}
 }
 const string& LinkSystem::getComponentName() const

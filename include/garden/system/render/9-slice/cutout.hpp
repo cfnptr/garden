@@ -38,10 +38,9 @@ public:
 		float alphaCutoff;
 	};
 private:
+	uint16 _alignment = 0;
 	LinearPool<Cutout9SliceComponent, false> components;
 	LinearPool<Cutout9SliceFrame, false> animationFrames;
-	bool deferredBuffer = false;
-	bool linearFilter = false;
 
 	/**
 	 * @brief Creates a new cutout 9-slice rendering system instance.

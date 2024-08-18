@@ -16,31 +16,43 @@
 #include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/physics.hpp"
+#include "garden/system/character.hpp"
 
 namespace garden
 {
 
 class PhysicsEditorSystem final : public System
 {
+public:
+	struct Cached final
+	{
+		float3 rigidbodyShapePos = float3(0.0f);
+		float3 rigidbodyHalfExt = float3(0.5f);
+		float rigidbodyConvexRad = 0.05f;
+		float rigidbodyDensity = 1000.0f;
+		int rigidbodyCollLayer = -1;
+		float3 characterShapePos = float3(0.0f);
+		float3 characterShapeSize = float3(0.5f, 1.75f, 0.5f);
+		float characterConvexRad = 0.05f;
+		float3 thisConstraintPoint = float3(0.0f);
+		float3 otherConstraintPoint = float3(0.0f);
+		ID<Entity> constraintTarget = {};
+		bool autoConstraintPoints = true;
+		bool isSensor = false;
+		MotionType motionType = {};
+		ConstraintType constraintType = {};
+		AllowedDOF allowedDOF = {};
+	};
+private:
+	Cached cached = {};
 	float3 oldRigidbodyEulerAngles = float3(0.0f);
 	float3 newRigidbodyEulerAngles = float3(0.0f);
 	quat oldRigidbodyRotation = quat::identity;
 	float3 oldCharacterEulerAngles = float3(0.0f);
 	float3 newCharacterEulerAngles = float3(0.0f);
 	quat oldCharacterRotation = quat::identity;
-	float3 rigidbodyShapePosCached = float3(0.0f);
-	float3 rigidbodyHalfExtCached = float3(0.5f);
-	float rigidbodyConvexRadCached = 0.05f;
-	float rigidbodyDensityCached = 1000.0f;
 	ID<Entity> rigidbodySelectedEntity = {};
-	float3 characterShapePosCached = float3(0.0f);
-	float3 characterShapeSizeCached = float3(0.5f, 1.75f, 0.5f);
-	float characterConvexRadCached = 0.05f;
 	ID<Entity> characterSelectedEntity = {};
-	ID<Entity> constraintTargetCached = {};
-	ConstraintType constraintTypeCached = {};
-	AllowedDOF allowedDofCached = {};
 
 	PhysicsEditorSystem();
 	~PhysicsEditorSystem() final;

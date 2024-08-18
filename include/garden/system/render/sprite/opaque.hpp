@@ -25,10 +25,9 @@ struct OpaqueSpriteFrame final : public SpriteRenderFrame { };
 
 class OpaqueSpriteSystem final : public SpriteRenderSystem
 {
+	uint16 _alignment = 0;
 	LinearPool<OpaqueSpriteComponent, false> components;
 	LinearPool<OpaqueSpriteFrame, false> animationFrames;
-	bool deferredBuffer = false;
-	bool linearFilter = false;
 
 	/**
 	 * @brief Creates a new opaque sprite rendering system instance.

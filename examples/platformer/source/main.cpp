@@ -18,18 +18,16 @@
 #include "garden/system/link.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/spawner.hpp"
-#include "garden/system/physics.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/animation.hpp"
+#include "garden/system/character.hpp"
 #include "garden/system/2d-controller.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/sprite/opaque.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
-#include "garden/system/render/sprite/translucent.hpp"
 #include "garden/system/render/9-slice/opaque.hpp"
 #include "garden/system/render/9-slice/cutout.hpp"
-#include "garden/system/render/9-slice/translucent.hpp"
 #include "platformer/defines.hpp"
 
 #if GARDEN_EDITOR
@@ -83,7 +81,6 @@ void entryPoint()
 	manager->createSystem<SpawnerSystem>();
 	manager->createSystem<CameraSystem>();
 	manager->createSystem<TransformSystem>();
-	manager->createSystem<BakedTransformSystem>();
 	manager->createSystem<InputSystem>();
 	manager->createSystem<AnimationSystem>();
 	// Note: for a such game better to use Box2D physics, Jolt is overkill.
@@ -94,10 +91,8 @@ void entryPoint()
 	manager->createSystem<MeshRenderSystem>();
 	manager->createSystem<OpaqueSpriteSystem>(false, false);
 	manager->createSystem<CutoutSpriteSystem>(false, false);
-	manager->createSystem<TranslucentSpriteSystem>(false, false);
 	manager->createSystem<Opaque9SliceSystem>(false, false);
 	manager->createSystem<Cutout9SliceSystem>(false, false);
-	manager->createSystem<Translucent9SliceSystem>(false, false);
 	manager->createSystem<Controller2DSystem>();
 	manager->createSystem<PlatformerSystem>();
 	manager->createSystem<ThreadSystem>();

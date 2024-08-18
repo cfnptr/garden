@@ -1957,7 +1957,6 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	serializer.beginChild("entities");
 	
 	auto dnsSystem = manager->tryGet<DoNotSerializeSystem>();
-	auto camera = GraphicsSystem::get()->camera;
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -1968,7 +1967,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 		auto instance = entities.getID(entityView);
 		const auto& components = entityView->getComponents();
 
-		if (components.empty() || instance == camera)
+		if (components.empty())
 			continue;
 
 		View<TransformComponent> transformView = {};
@@ -1992,6 +1991,14 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 		for (const auto& pair : components)
 		{
 			auto system = pair.second.first;
+			if (pair.first == typeid(DoNotDestroyComponent) || pair.first == typeid(DoNotDuplicateComponent))
+			{
+				serializer.beginArrayElement();
+				serializer.write(".type", system->getComponentName());
+				serializer.endArrayElement();
+				continue;
+			}
+
 			auto serializableSystem = dynamic_cast<ISerializable*>(system);
 			const auto& componentName = system->getComponentName();
 			if (!serializableSystem || componentName.empty())

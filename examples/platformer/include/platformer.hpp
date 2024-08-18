@@ -23,21 +23,24 @@ namespace platformer
 using namespace ecsm;
 using namespace garden;
 
-#define CHARACTER_ANIM "main-characters/virtual-guy"
+#define CHARACTER_ANIM "main-characters"
+#define VIRTUAL_GUY_ANIM CHARACTER_ANIM "/virtual-guy"
 
 enum class CharacterState : uint8
 {
-	Idle, Run, Jump, Fall, DoubleJump, WallJump, Count
+	Idle, Run, Jump, Fall, DoubleJump, WallJump, Hit, Appearing, Disappearing, Count
 };
 static const string characterAnimStrings[(uint8)CharacterState::Count] =
 {
-	CHARACTER_ANIM "/idle", CHARACTER_ANIM "/run", CHARACTER_ANIM "/jump", CHARACTER_ANIM "/fall", 
-	CHARACTER_ANIM "/double-jump", CHARACTER_ANIM "/wall-jump"
+	VIRTUAL_GUY_ANIM "/idle", VIRTUAL_GUY_ANIM "/run", VIRTUAL_GUY_ANIM "/jump", VIRTUAL_GUY_ANIM "/fall",
+	VIRTUAL_GUY_ANIM "/double-jump", VIRTUAL_GUY_ANIM "/wall-jump", VIRTUAL_GUY_ANIM "/hit",
+	CHARACTER_ANIM "/appearing", CHARACTER_ANIM "/disappearing"
 };
 
 class PlatformerSystem final : public System
 {
 	CharacterState currentState = {};
+	float animSwitchDelay = 0.0f;
 	int32 slideCounter = 0;
 	bool isLastDirLeft = false;
 	bool isLastDoubleJumped = false;
@@ -61,6 +64,8 @@ class PlatformerSystem final : public System
 	void slideExited();
 
 	friend class ecsm::Manager;
+public:
+	float maxSlideSpeed = 1.0f;
 };
 
 } // namespace garden

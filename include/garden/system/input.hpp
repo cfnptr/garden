@@ -135,7 +135,7 @@ class InputSystem final : public System
 	float2 cursorPosition = float2(0.0f);
 	float2 cursorDelta = float2(0.0f);
 	float2 mouseScroll = float2(0.0f);
-	double time = 0.0, deltaTime = 0.0;
+	double time = 0.0, systemTime = 0.0, deltaTime = 0.0;
 	CursorMode cursorMode = CursorMode::Default;
 	const fs::path* currentFileDropPath = nullptr;
 
@@ -159,12 +159,20 @@ class InputSystem final : public System
 	friend class ecsm::Manager;
 public:
 	/**
-	 * @brief Returns time since some start point in the past. (in seconds)
+	 * @brief Current time multiplier.
+	 * @details Can be used to simulate slow motion or speed up effects.
+	 */
+	double timeMultiplier = 1.0;
+
+	/**
+	 * @brief Returns time since start of the program. (in seconds)
 	 * @details You can use it to implement time based events or delays.
+	 * @note It is affected by the timeMultiplier value.
 	 */
 	double getTime() const noexcept { return time; }
 	/**
 	 * @brief Returns time elapsed between two previous frames. (in seconds)
+	 * @note It is affected by the timeMultiplier value.
 	 * 
 	 * @details
 	 * This value is crucial for ensuring that animations, physics calculations, 
