@@ -9,6 +9,8 @@ extensible architecture, built-in editor, convenient creation of rendering pipel
 shader language (GSL), and automatic placement of GPU memory barriers, which are necessary in recent 
 graphics APIs. See the [features](FEATURES.md) list.
 
+See the [Voxfield](https://github.com/cfnptr/voxfield) game as an usage example.
+
 ## Supported operating systems
 
 * Windows (10/11)
@@ -46,18 +48,12 @@ If you want, you can freely disable it and compile for any other architecture, i
 
 Use building [instructions](BUILDING.md) to install all required tools and libraries.
 
-## Build examples
-
-1. Run ```git clone --progress --recursive https://github.com/cfnptr/garden``` using **Terminal**
-2. Open garden directory using **IDE** or use [build.sh](build.sh) script
-
 ### CMake options
 
 | Name                        | Description                                      | Default value |
 |-----------------------------|--------------------------------------------------|---------------|
 | GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
 | GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
-| GARDEN_BUILD_EXAMPLES       | Build Garden library examples                    | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
 | GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
