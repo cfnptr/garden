@@ -19,8 +19,6 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "ecsm.hpp"
-
 
 #if GARDEN_OS_WINDOWS && !GARDEN_DEBUG
 #define NOMINMAX

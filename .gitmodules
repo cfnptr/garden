@@ -55,9 +55,6 @@
 [submodule "libraries/voxy"]
 	path = libraries/voxy
 	url = https://github.com/cfnptr/voxy
-[submodule "examples/platformer/resources"]
-	path = examples/platformer/resources
-	url = https://github.com/cfnptr/platformer-resources
 [submodule "libraries/jolt"]
 	path = libraries/jolt
 	url = https://github.com/jrouwe/JoltPhysics
