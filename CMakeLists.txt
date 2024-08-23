@@ -269,6 +269,8 @@ target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
 
+include(libraries/garden/cmake/publish-functions.cmake)
+
 if(GARDEN_BUILD_GSLC)
 	add_executable(gslc source/graphics/compiler.cpp)
 	target_compile_definitions(gslc PUBLIC GSL_COMPILER)
