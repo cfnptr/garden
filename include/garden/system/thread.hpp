@@ -40,6 +40,8 @@ class ThreadSystem final : public System
 	ThreadPool backgroundPool;
 	ThreadPool foregroundPool;
 
+	static ThreadSystem* instance;
+
 	/**
 	 * @brief Creates a new thread system instance.
 	 */
@@ -47,6 +49,9 @@ class ThreadSystem final : public System
 	{
 		mpmt::Thread::setForegroundPriority();
 		SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
+
+		GARDEN_ASSERT(!instance); // More than one system instance detected.
+		instance = this;
 	}
 	/**
 	 * @brief Destroys thread system instance.
@@ -55,6 +60,9 @@ class ThreadSystem final : public System
 	{
 		if (Manager::get()->isRunning())
 			UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
+
+		GARDEN_ASSERT(instance); // More than one system instance detected.
+		instance = nullptr;
 	}
 		
 	void preDeinit()
@@ -75,6 +83,17 @@ public:
 	 * @details Use it to parallel some jobs during current frame.
 	 */
 	ThreadPool& getForegroundPool() noexcept { return foregroundPool; }
+
+	/**
+	 * @brief Returns thread system instance.
+	 */
+	static ThreadSystem* get() noexcept
+	{
+		GARDEN_ASSERT(instance); // System is not created.
+		return instance;
+	}
 };
+
+ThreadSystem* ThreadSystem::instance = nullptr;
 
 } // namespace garden
