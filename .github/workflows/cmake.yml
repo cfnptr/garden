@@ -46,7 +46,7 @@ jobs:
         volumeInfo=$(hdiutil attach vulkan_sdk.dmg | grep Volumes)
         volume=$(echo "$volumeInfo" | cut -f 3)
         cp -rf $volume/InstallVulkan.app .
-        ./InstallVulkan.app/Contents/MacOS/InstallVulkan install com.lunarg.vulkan com.lunarg.vulkan.core com.lunarg.vulkan.usr --al -c
+        sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan install com.lunarg.vulkan.core com.lunarg.vulkan.usr --al -c
 
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'
