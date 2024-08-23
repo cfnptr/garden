@@ -20,23 +20,33 @@ jobs:
     - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest' 
       run: |
-        sudo apt-get update
-        sudo apt-get install openssl libssl-dev xorg-dev
+        sudo apt-get update && sudo apt-get install openssl libssl-dev xorg-dev
+
+    - name: Install macOS packages
+      if: matrix.os == 'macos-latest' 
+      run: |
+        brew update && brew install openssl
+
+    - name: Install Windows packages
+      if: matrix.os == 'windows-latest' 
+      run: choco install openssl
 
     - name: Install Ubuntu VulkanSDK
       if: matrix.os == 'ubuntu-latest'
       run: |
         wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
         sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
-        sudo apt-get update
-        sudo apt-get install vulkan-sdk
+        sudo apt-get update && sudo apt-get install vulkan-sdk
 
     - name: Install macOS VulkanSDK
       if: matrix.os == 'macos-latest'
       shell: bash
       run: |
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.dmg
-        ./vulkan_sdk.dmg install --al -c
+        volumeInfo=$(hdiutil attach vulkan_sdk.dmg | grep Volumes)
+        volume=$(echo "$volumeInfo" | cut -f 3)
+        cp -rf $volume/InstallVulkan.app .
+        ./InstallVulkan.app/Contents/MacOS/InstallVulkan install com.lunarg.vulkan com.lunarg.vulkan.core com.lunarg.vulkan.usr --al -c
 
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'
