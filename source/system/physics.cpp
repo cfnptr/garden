@@ -620,7 +620,7 @@ void RigidbodyComponent::setPosition(const float3& position, bool activate)
 	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::get()->bodyInterface;
 	bodyInterface->SetPosition(body->GetID(), toVec3(position), activate && inSimulation ? 
 		JPH::EActivation::Activate : JPH::EActivation::DontActivate);
-	lastPosition = lastPosition;
+	lastPosition = position;
 }
 
 quat RigidbodyComponent::getRotation() const

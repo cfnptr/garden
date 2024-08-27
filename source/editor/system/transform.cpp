@@ -84,7 +84,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto transformView = transformSystem->get(entity);
-		ImGui::Text("Active: %s", transformView->isActive ? "true" : false);
+		ImGui::Text("Active: %s", transformView->isActive ? "true" : "false");
 		if (transformView->getParent())
 		{
 			auto parentView = transformSystem->get(transformView->getParent());

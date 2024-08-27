@@ -55,7 +55,7 @@ Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Envi
 ## 2. Install required packages
 
 1. Run ```sudo apt-get update``` using **Terminal** app
-2. And ```sudo apt-get install git gcc g++ cmake clang xorg-dev libssl-dev```
+2. And ```sudo apt-get install git gcc g++ gdb cmake clang zlib1g-dev libssl-dev xorg-dev```
 
 ## 3. Install Vulkan SDK
 
@@ -75,7 +75,7 @@ Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
 2. Run ```brew update``` using **Terminal** app
-3. And ```brew install git cmake openssl```
+3. And ```brew install git cmake zlib openssl```
 
 ## 3. Install Vulkan SDK
 

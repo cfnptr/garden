@@ -62,7 +62,7 @@ public:
 		fs::path cachesPath;
 		fs::path resourcesPath;
 		#endif
-		#if GARDEN_PACK_RESOURCES && defined(GSL_COMPILER)
+		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
 		#endif
@@ -76,7 +76,7 @@ public:
 		fs::path cachesPath;
 		fs::path resourcesPath;
 		#endif
-		#if GARDEN_PACK_RESOURCES && defined(GSL_COMPILER)
+		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 		pack::Reader* packReader = nullptr;
 		int32 threadIndex = 0;
 		#endif

@@ -22,6 +22,7 @@
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
 #include "math/flags.hpp"
+#include <cfloat>
 
 namespace garden
 {
@@ -208,10 +209,10 @@ private:
 
 	bool destroy();
 
-	friend class PhysicsSystem;
 	friend class LinearPool<Shape>;
-	friend struct RigidbodyComponent;
-	friend struct CharacterComponent;
+	friend class garden::PhysicsSystem;
+	friend struct garden::RigidbodyComponent;
+	friend struct garden::CharacterComponent;
 public:
 	/**
 	 * @brief Return category of the collision volume shape.
@@ -303,7 +304,7 @@ private:
 	bool destroy();
 
 	friend class PhysicsSystem;
-	friend class CharacterComponent;
+	friend struct CharacterComponent;
 	friend class LinearPool<RigidbodyComponent>;
 public:
 	/**
@@ -571,6 +572,8 @@ public:
 		uint32 maxContactConstraintCount = 10240;
 		uint16 collisionLayerCount = (uint16)CollisionLayer::DefaultCount;
 		uint16 broadPhaseLayerCount = (uint16)BroadPhaseLayer::DefaultCount;
+
+		Properties() { }
 	};
 	struct Event final
 	{
