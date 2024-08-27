@@ -25,15 +25,6 @@
 [submodule "libraries/webp"]
 	path = libraries/webp
 	url = https://github.com/webmproject/libwebp
-[submodule "libraries/png"]
-	path = libraries/png
-	url = https://github.com/cfnptr/libpng
-[submodule "libraries/openexr"]
-	path = libraries/openexr
-	url = https://github.com/AcademySoftwareFoundation/openexr
-[submodule "libraries/imath"]
-	path = libraries/imath
-	url = https://github.com/AcademySoftwareFoundation/Imath
 [submodule "libraries/json"]
 	path = libraries/json
 	url = https://github.com/nlohmann/json

@@ -24,32 +24,25 @@
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
-#include "ImfIO.h"
-#include "ImfHeader.h"
-#include "ImfInputFile.h"
-#include "ImfFrameBuffer.h"
 #include "webp/decode.h"
 #include "png.h"
 #include "stb_image.h"
+#include "stb_image_write.h"
 
 #include <fstream>
-
-#if GARDEN_DEBUG
-#include "ImfRgbaFile.h"
-#include "webp/encode.h"
-#endif
+#include <iostream>
 
 using namespace garden;
 using namespace math::ibl;
 
-static const uint8 imageFileExtCount = 9;
+static const uint8 imageFileExtCount = 8;
 static const char* imageFileExts[] =
 {
-	".webp", ".png", ".exr", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga"
+	".webp", ".png", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga"
 };
 static const ImageFileType imageFileTypes[] =
 {
-	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Exr, ImageFileType::Jpg, ImageFileType::Jpg,
+	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Jpg, ImageFileType::Jpg,
 	ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, ImageFileType::Tga
 };
 
@@ -448,42 +441,6 @@ void ResourceSystem::input()
 }
 
 //**********************************************************************************************************************
-namespace
-{
-	class ExrMemoryStream final : public Imf::IStream
-	{
-		const uint8* data = nullptr;
-		uint64_t size = 0, offset = 0;
-	public:
-		ExrMemoryStream(const uint8* data, uint64_t size) : IStream("")
-		{
-			this->data = data;
-			this->size = size;
-		}
-
-		bool isMemoryMapped() const final { return true; }
-
-		bool read(char c[], int n)
-		{
-			if (n + offset > size)
-				throw range_error("out of memory range");
-			memcpy(c, data + offset, n); offset += n;
-			return offset < size;
-		}
-		char* readMemoryMapped(int n) final
-		{
-			if (n + offset > size)
-				throw range_error("out of memory range");
-			auto c = data + offset; offset += n;
-			return (char*)c;
-		}
-
-		uint64_t tellg() final { return offset; }
-		void seekg(uint64_t pos) { offset = pos; }
-	};
-}
-
-//**********************************************************************************************************************
 static void loadMissingImage(vector<uint8>& data, int2& size, Image::Format& format)
 {
 	data.resize(sizeof(Color) * 16);
@@ -543,7 +500,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#else
-	auto filePath = appCachesPath / imagePath; filePath += ".exr";
+	auto filePath = appCachesPath / imagePath; filePath += ".hdr";
 	fileCount += fs::exists(filePath) ? 1 : 0;
 
 	if (fileCount == 0)
@@ -596,7 +553,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	}
 	else
 	{
-		fileType = ImageFileType::Exr;
+		fileType = ImageFileType::Hdr;
 	}
 
 	File::loadBinary(filePath, dataBuffer);
@@ -613,23 +570,14 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
-static void writeExrImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
+static void writeImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
 {
-	vector<Imf::Rgba> halfPixels(data.size());
-	auto floatCount = data.size() / sizeof(float4);
-	auto floatPixels = (const float4*)data.data();
-
-	for (psize i = 0; i < floatCount; i++)
-	{
-		auto pixel = floatPixels[i];
-		halfPixels[i] = Imf::Rgba(pixel.x, pixel.y, pixel.z, pixel.w);
-	} 
+	auto directory = filePath.parent_path();
+	if (!fs::exists(directory))
+		fs::create_directories(directory);
 
 	auto pathString = filePath.generic_string();
-	Imf::RgbaOutputFile outputFile(pathString.c_str(), size, size, Imf::WRITE_RGBA, 1.0f,
-		Imath::V2f(0.0f, 0.0f), 1.0f, Imf::INCREASING_Y, Imf::ZIP_COMPRESSION, 1);
-	outputFile.setFrameBuffer(halfPixels.data(), 1, size);
-	outputFile.writePixels(size);
+	stbi_write_hdr(pathString.c_str(), size, size, 4, (const float*)data.data());
 }
 #endif
 
@@ -649,9 +597,9 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	auto cacheFilePath = filePath.generic_string();
 	
 	// TODO: also check for data timestamp against original.
-	if (!fs::exists(cacheFilePath + "-nx.exr") || !fs::exists(cacheFilePath + "-px.exr") ||
-		!fs::exists(cacheFilePath + "-ny.exr") || !fs::exists(cacheFilePath + "-py.exr") ||
-		!fs::exists(cacheFilePath + "-nz.exr") || !fs::exists(cacheFilePath + "-pz.exr"))
+	if (!fs::exists(cacheFilePath + "-nx.hdr") || !fs::exists(cacheFilePath + "-px.hdr") ||
+		!fs::exists(cacheFilePath + "-ny.hdr") || !fs::exists(cacheFilePath + "-py.hdr") ||
+		!fs::exists(cacheFilePath + "-nz.hdr") || !fs::exists(cacheFilePath + "-pz.hdr"))
 	{
 		loadImageData(path, equiData, equiSize, format, threadIndex);
 
@@ -774,12 +722,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			{
 				switch (task.getTaskIndex())
 				{
-					case 0: writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left); break;
-					case 1: writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right); break;
-					case 2: writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom); break;
-					case 3: writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top); break;
-					case 4: writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back); break;
-					case 5: writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front); break;
+					case 0: writeImageData(cacheFilePath + "-nx.hdr", cubemapSize, left); break;
+					case 1: writeImageData(cacheFilePath + "-px.hdr", cubemapSize, right); break;
+					case 2: writeImageData(cacheFilePath + "-ny.hdr", cubemapSize, bottom); break;
+					case 3: writeImageData(cacheFilePath + "-py.hdr", cubemapSize, top); break;
+					case 4: writeImageData(cacheFilePath + "-nz.hdr", cubemapSize, back); break;
+					case 5: writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front); break;
 					default: abort();
 				}
 			}), 6);
@@ -787,12 +735,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 		else
 		{
-			writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left);
-			writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right);
-			writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom);
-			writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top);
-			writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back);
-			writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
+			writeImageData(cacheFilePath + "-nx.hdr", cubemapSize, left);
+			writeImageData(cacheFilePath + "-px.hdr", cubemapSize, right);
+			writeImageData(cacheFilePath + "-ny.hdr", cubemapSize, bottom);
+			writeImageData(cacheFilePath + "-py.hdr", cubemapSize, top);
+			writeImageData(cacheFilePath + "-nz.hdr", cubemapSize, back);
+			writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front);
 		}
 
 		auto logSystem = Manager::get()->tryGet<LogSystem>();
@@ -896,35 +844,6 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
 			throw runtime_error("Invalid PNG image data.");
 	}
-	else if (fileType == ImageFileType::Exr)
-	{
-		ExrMemoryStream memoryStream(data, (uint64)dataSize);
-		Imf::InputFile inputFile(memoryStream, 1);
-		auto dataWindow = inputFile.header().dataWindow();
-		imageSize = int2(dataWindow.max.x - dataWindow.min.x + 1,
-			dataWindow.max.y - dataWindow.min.y + 1);
-		auto pixelCount = (psize)imageSize.x * imageSize.y;
-		pixels.resize(pixelCount * sizeof(float4));
-
-		Imf::FrameBuffer frameBuffer;
-		frameBuffer.insert("R", Imf::Slice(Imf::FLOAT, (char*)pixels.data() +
-			sizeof(float) * 0, sizeof(float4), imageSize.x * sizeof(float4)));
-		frameBuffer.insert("G", Imf::Slice(Imf::FLOAT, (char*)pixels.data() +
-			sizeof(float) * 1, sizeof(float4), imageSize.x * sizeof(float4)));
-		frameBuffer.insert("B", Imf::Slice(Imf::FLOAT, (char*)pixels.data() +
-			sizeof(float) * 2, sizeof(float4), imageSize.x * sizeof(float4)));
-		frameBuffer.insert("A", Imf::Slice(Imf::FLOAT, (char*)pixels.data() +
-			sizeof(float) * 3, sizeof(float4), imageSize.x * sizeof(float4)));
-		inputFile.setFrameBuffer(frameBuffer);
-		inputFile.readPixels(dataWindow.min.y, dataWindow.max.y);
-
-		auto pixelData = (float4*)pixels.data();
-		for (psize i = 0; i < pixelCount; i++)
-		{
-			auto pixel = pixelData[i];
-			pixelData[i] = min(pixel, float4(65504.0f));
-		}
-	}
 	else if (fileType == ImageFileType::Jpg || fileType == ImageFileType::Bmp ||
 		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga)
 	{
@@ -950,7 +869,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 
 	switch (fileType)
 	{
-	case garden::ImageFileType::Exr:
+	case garden::ImageFileType::Hdr:
 		format = Image::Format::SfloatR32G32B32A32;
 		break;
 	default:
