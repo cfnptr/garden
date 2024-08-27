@@ -49,3 +49,6 @@
 [submodule "libraries/jolt"]
 	path = libraries/jolt
 	url = https://github.com/jrouwe/JoltPhysics
+[submodule "libraries/png"]
+	path = libraries/png
+	url = https://github.com/pnggroup/libpng
