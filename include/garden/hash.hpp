@@ -19,6 +19,8 @@
 
 #pragma once
 #include "garden/defines.hpp"
+
+#include <vector>
 #include <cstring>
 
 namespace garden
