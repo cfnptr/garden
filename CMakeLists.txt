@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #***********************************************************************************************************************
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.24)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
@@ -24,6 +24,13 @@ endif()
 
 if(TARGET garden)
 	return()
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
+	if (NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
+		message(FATAL_ERROR "vcpkg is not installed or added to the system evn vars.")
+	endif()
 endif()
 
 project(Garden VERSION 0.0.1 LANGUAGES CXX
@@ -83,6 +90,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(BUILD_SHARED_LIBS OFF)
 set(SKIP_INSTALL_ALL TRUE)
+set(ZLIB_USE_STATIC_LIBS ON)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	enable_language(OBJC)
@@ -150,11 +158,16 @@ endif()
 
 set(GARDEN_APP_VERSION "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
 
-set(GARDEN_DEBUG ${GARDEN_DEBUG} PARENT_SCOPE)
-set(GARDEN_EDITOR ${GARDEN_EDITOR} PARENT_SCOPE)
-set(GARDEN_PACK_RESOURCES ${GARDEN_PACK_RESOURCES} PARENT_SCOPE)
-set(GARDEN_LITTLE_ENDIAN ${GARDEN_LITTLE_ENDIAN} PARENT_SCOPE)
-set(GARDEN_APP_VERSION ${GARDEN_APP_VERSION} PARENT_SCOPE)
+if(NOT PROJECT_IS_TOP_LEVEL)
+	set(GARDEN_DEBUG ${GARDEN_DEBUG} PARENT_SCOPE)
+	set(GARDEN_EDITOR ${GARDEN_EDITOR} PARENT_SCOPE)
+	set(GARDEN_PACK_RESOURCES ${GARDEN_PACK_RESOURCES} PARENT_SCOPE)
+	set(GARDEN_LITTLE_ENDIAN ${GARDEN_LITTLE_ENDIAN} PARENT_SCOPE)
+	set(GARDEN_APP_VERSION ${GARDEN_APP_VERSION} PARENT_SCOPE)
+endif()
+
+include(cmake/publish-functions.cmake)
+include(cmake/compile-options.cmake)
 
 configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
@@ -162,8 +175,9 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb
 	libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static math-static 
-	conf-static pack-static logy-static nets-static voxy glfw webp zlibstatic png_static FastNoise OpenEXR Jolt)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash 
+	ecsm-static math-static conf-static pack-static logy-static nets-static 
+	voxy glfw webp zlibstatic png_static FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -229,22 +243,10 @@ set(PNG_SHARED OFF CACHE BOOL "" FORCE)
 set(PNG_FRAMEWORK OFF CACHE BOOL "" FORCE)
 set(PNG_TESTS OFF CACHE BOOL "" FORCE)
 set(PNG_TOOLS OFF CACHE BOOL "" FORCE)
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	set(PNG_BUILD_ZLIB ON CACHE BOOL "" FORCE)
-endif()
 add_subdirectory(libraries/png)
 
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)
-
-set(OPENEXR_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(OPENEXR_TEST_LIBRARIES OFF CACHE BOOL "" FORCE)
-set(OPENEXR_TEST_TOOLS OFF CACHE BOOL "" FORCE)
-set(OPENEXR_INSTALL OFF CACHE BOOL "" FORCE)
-set(OPENEXR_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
-set(OPENEXR_INSTALL_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(libraries/imath)
-add_subdirectory(libraries/openexr)
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")
 	set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
@@ -270,8 +272,6 @@ add_library(garden STATIC ${GARDEN_SOURCES})
 target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
-
-include(cmake/publish-functions.cmake)
 
 if(GARDEN_BUILD_GSLC)
 	add_executable(gslc source/graphics/compiler.cpp)

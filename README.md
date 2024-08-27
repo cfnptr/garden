@@ -40,10 +40,10 @@ If you want, you can freely disable it and compile for any other architecture, i
 ## Build requirements
 
 * C++17 compiler
-* [Git 2.30+](https://git-scm.com)
-* [CMake 3.22+](https://cmake.org)
+* [Git 2.39+](https://git-scm.com)
+* [CMake 3.24+](https://cmake.org)
 * [Vulkan SDK 1.3+](https://vulkan.lunarg.com)
-* [OpenSSL 3.0+](https://openssl.org)
+* [OpenSSL 3.3+](https://openssl.org)
 * [X11](https://www.x.org) (Linux only)
 
 Use building [instructions](BUILDING.md) to install all required tools and libraries.
@@ -94,14 +94,12 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
 * [FreeType](https://github.com/freetype/freetype) (FreeType license)
 * [GLFW](https://github.com/glfw/glfw) (Zlib license)
-* [Imath](https://github.com/AcademySoftwareFoundation/Imath) (BSD-3-Clause license)
 * [ImGui](https://github.com/ocornut/imgui) (MIT license)
 * [JoltPhysics](https://github.com/jrouwe/JoltPhysics) (MIT license)
 * [JSON](https://github.com/nlohmann/json) (MIT license)
 * [Logy](https://github.com/cfnptr/logy) (Apache-2.0 license)
 * [Math](https://github.com/cfnptr/math) (Apache-2.0 license)
 * [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)
-* [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) (BSD-3-Clause license)
 * [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)

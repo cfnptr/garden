@@ -31,7 +31,7 @@ using namespace math;
  */
 enum class ImageFileType : uint8
 {
-	Webp, Exr, Png, Jpg, Hdr, Bmp, Psd, Tga, Count
+	Webp, Png, Jpg, Hdr, Bmp, Psd, Tga, Count
 };
 
 /**
@@ -42,7 +42,6 @@ enum class ImageFileType : uint8
 static ImageFileType toImageFileType(string_view name)
 {
 	if (name == "webp") return ImageFileType::Webp;
-	if (name == "exr") return ImageFileType::Exr;
 	if (name == "png") return ImageFileType::Png;
 	if (name == "jpg" || name == "jpeg") return ImageFileType::Jpg;
 	if (name == "hdr") return ImageFileType::Hdr;

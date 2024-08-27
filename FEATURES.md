@@ -31,7 +31,7 @@
 * Settings / Logging System
 * Scene Serialization / Deserialization
 * First Person View (FPV)
-* .web / .png / .jpg / .exr / .hdr Support
+* .web / .png / .jpg / .hdr Support
 * Config File Reader / Writer
 * Resource Pack Reader / Writer
 * Equi To Cube Map Converter

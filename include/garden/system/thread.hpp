@@ -45,32 +45,13 @@ class ThreadSystem final : public System
 	/**
 	 * @brief Creates a new thread system instance.
 	 */
-	ThreadSystem() : backgroundPool(true, "BG"), foregroundPool(false, "FG")
-	{
-		mpmt::Thread::setForegroundPriority();
-		SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
-
-		GARDEN_ASSERT(!instance); // More than one system instance detected.
-		instance = this;
-	}
+	ThreadSystem();
 	/**
 	 * @brief Destroys thread system instance.
 	 */
-	~ThreadSystem() final
-	{
-		if (Manager::get()->isRunning())
-			UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
-
-		GARDEN_ASSERT(instance); // More than one system instance detected.
-		instance = nullptr;
-	}
+	~ThreadSystem() final;
 		
-	void preDeinit()
-	{
-		backgroundPool.removeAll();
-		backgroundPool.wait();
-	}
-
+	void preDeinit();
 	friend class ecsm::Manager;
 public:
 	/**
@@ -93,7 +74,5 @@ public:
 		return instance;
 	}
 };
-
-ThreadSystem* ThreadSystem::instance = nullptr;
 
 } // namespace garden

@@ -1125,7 +1125,7 @@ void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Re
 	if (ImGui::Button(" + "))
 	{	
 		static const set<string> extensions = 
-		{ ".webp", ".png", ".exr", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga" };
+		{ ".webp", ".png", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga" };
 		auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
 
 		openFileSelector([_path, _image, _descriptorSet, entity, componentType, loadFlags](const fs::path& selectedFile)

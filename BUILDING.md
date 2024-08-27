@@ -34,11 +34,16 @@ You may use default Git install options or chose any other default Git editor in
 
 To build the engine you will only need **The Vulkan SDK Core** components.
 
-## 5. Install OpenSSL
+## 5. Install vcpkg package manager
 
-1. Install **Chocolatey** package manager from [chocolatey.org](https://chocolatey.org/install)
-2. Run ```choco install openssl``` using **Terminal** or **CMD**
+1. Follow installation steps from [learn.microsoft.com](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started)
+2. Run ```vcpkg integrate install``` using **Terminal** or **CMD** app to make packages available user-wide
 
+Better to use C:\vcpkg path. Don't forget to add **vcpkg** to the System Environment Variables!
+
+## 6. Install required packages
+
+1. Run ```vcpkg install zlib openssl``` using **Terminal** or **CMD** app
 
 # Ubuntu (22.04 LTS)
 

@@ -16,14 +16,11 @@
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
-#include "ImfIO.h"
-#include "ImfHeader.h"
-#include "ImfRgbaFile.h"
-#include "ImfInputFile.h"
-#include "ImfFrameBuffer.h"
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 #include <vector>
 #include <fstream>
@@ -35,42 +32,6 @@ using namespace garden::graphics;
 using namespace math::ibl;
 
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
-//******************************************************************************************************************
-namespace
-{
-	class ExrMemoryStream final : public Imf::IStream
-	{
-		const uint8* data = nullptr;
-		uint64_t size = 0, offset = 0;
-	public:
-		ExrMemoryStream(const uint8* data, uint64_t size) : IStream("")
-		{
-			this->data = data;
-			this->size = size;
-		}
-
-		bool isMemoryMapped() const final { return true; }
-
-		bool read(char c[], int n)
-		{
-			if (n + offset > size)
-				throw range_error("out of memory range");
-			memcpy(c, data + offset, n); offset += n;
-			return offset < size;
-		}
-		char* readMemoryMapped(int n) final
-		{
-			if (n + offset > size)
-				throw range_error("out of memory range");
-			auto c = data + offset; offset += n;
-			return (char*)c;
-		}
-
-		uint64_t tellg() final { return offset; }
-		void seekg(uint64_t pos) { offset = pos; }
-	};
-}
-
 //******************************************************************************************************************
 // x = 1.0 / (Pi * 2), y =  1.0 / Pi
 static const float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
@@ -107,28 +68,14 @@ void Equi2Cube::convert(const int3& coords, int32 cubemapSize, int2 equiSize,
 		uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
 }
 
-//******************************************************************************************************************
-static void writeExrImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
+static void writeImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
 {
-	vector<Imf::Rgba> halfPixels(data.size());
-	auto floatCount = data.size() / sizeof(float4);
-	auto floatPixels = (const float4*)data.data();
-
-	for (psize i = 0; i < floatCount; i++)
-	{
-		auto pixel = floatPixels[i];
-		halfPixels[i] = Imf::Rgba(pixel.x, pixel.y, pixel.z, pixel.w);
-	}
-
 	auto directory = filePath.parent_path();
 	if (!fs::exists(directory))
 		fs::create_directories(directory);
 
 	auto pathString = filePath.generic_string();
-	Imf::RgbaOutputFile outputFile(pathString.c_str(), size, size, Imf::WRITE_RGBA, 1.0f,
-		Imath::V2f(0.0f, 0.0f), 1.0f, Imf::INCREASING_Y, Imf::ZIP_COMPRESSION, 1);
-	outputFile.setFrameBuffer(halfPixels.data(), 1, size);
-	outputFile.writePixels(size);
+	stbi_write_hdr(pathString.c_str(), size, size, 4, (const float*)data.data());
 }
 
 //******************************************************************************************************************
@@ -140,36 +87,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		return false;
 
 	auto extension = filePath.extension();
-	if (extension == ".exr")
-	{
-		ExrMemoryStream memoryStream(dataBuffer.data(), dataBuffer.size());
-		Imf::InputFile inputFile(memoryStream, 1);
-		auto dataWindow = inputFile.header().dataWindow();
-		equiSize = int2(dataWindow.max.x - dataWindow.min.x + 1,
-			dataWindow.max.y - dataWindow.min.y + 1);
-		auto pixelCount = (psize)equiSize.x * equiSize.y;
-		equiData.resize(pixelCount * sizeof(float4));
-
-		Imf::FrameBuffer frameBuffer;
-		frameBuffer.insert("R", Imf::Slice(Imf::FLOAT, (char*)equiData.data() +
-			sizeof(float) * 0, sizeof(float4), equiSize.x * sizeof(float4)));
-		frameBuffer.insert("G", Imf::Slice(Imf::FLOAT, (char*)equiData.data() +
-			sizeof(float) * 1, sizeof(float4), equiSize.x * sizeof(float4)));
-		frameBuffer.insert("B", Imf::Slice(Imf::FLOAT, (char*)equiData.data() +
-			sizeof(float) * 2, sizeof(float4), equiSize.x * sizeof(float4)));
-		frameBuffer.insert("A", Imf::Slice(Imf::FLOAT, (char*)equiData.data() +
-			sizeof(float) * 3, sizeof(float4), equiSize.x * sizeof(float4)));
-		inputFile.setFrameBuffer(frameBuffer);
-		inputFile.readPixels(dataWindow.min.y, dataWindow.max.y);
-
-		auto pixels = (float4*)equiData.data();
-		for (psize i = 0; i < pixelCount; i++)
-		{
-			auto pixel = pixels[i];
-			pixels[i] = min(pixel, float4(65504.0f));
-		}
-	}
-	else if (extension == ".hdr")
+	if (extension == ".hdr")
 	{
 		auto pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &equiSize.x, &equiSize.y, nullptr, 4);
@@ -219,12 +137,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto cacheFilePath = (outputPath / filePath).generic_string();
 	cacheFilePath.resize(cacheFilePath.length() - 4);
-	writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left);
-	writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right);
-	writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom);
-	writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top);
-	writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back);
-	writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
+	writeImageData(cacheFilePath + "-nx.hdr", cubemapSize, left);
+	writeImageData(cacheFilePath + "-px.hdr", cubemapSize, right);
+	writeImageData(cacheFilePath + "-ny.hdr", cubemapSize, bottom);
+	writeImageData(cacheFilePath + "-py.hdr", cubemapSize, top);
+	writeImageData(cacheFilePath + "-nz.hdr", cubemapSize, back);
+	writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front);
 	return true;
 }
 #endif
