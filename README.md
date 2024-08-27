@@ -42,9 +42,8 @@ If you want, you can freely disable it and compile for any other architecture, i
 * C++17 compiler
 * [Git 2.39+](https://git-scm.com)
 * [CMake 3.24+](https://cmake.org)
-* [Vulkan SDK 1.3+](https://vulkan.lunarg.com)
-* [OpenSSL 3.3+](https://openssl.org)
-* [X11](https://www.x.org) (Linux only)
+* [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
+* [brew](https://brew.sh/) (macOS only)
 
 Use building [instructions](BUILDING.md) to install all required tools and libraries.
 

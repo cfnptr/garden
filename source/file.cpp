@@ -55,6 +55,7 @@ bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
 	return !inputStream.fail();
 }
 
+#if GARDEN_DEBUG
 bool File::tryGetResourcePath(const fs::path& appResourcesPath, const fs::path& resourcePath, fs::path& filePath)
 {
 	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
@@ -68,3 +69,4 @@ bool File::tryGetResourcePath(const fs::path& appResourcesPath, const fs::path& 
 	filePath = hasEngineFile ? enginePath : appPath;
 	return true;
 }
+#endif

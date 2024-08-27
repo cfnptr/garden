@@ -20,12 +20,12 @@ jobs:
     - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest' 
       run: |
-        sudo apt-get update && sudo apt-get install openssl libssl-dev xorg-dev
+        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev
 
     - name: Install macOS packages
       if: matrix.os == 'macos-latest' 
       run: |
-        brew update && brew install openssl
+        brew update && brew install zlib openssl
 
     - name: Install Windows packages
       if: matrix.os == 'windows-latest' 

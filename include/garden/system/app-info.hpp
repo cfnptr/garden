@@ -45,7 +45,7 @@ class AppInfoSystem final : public System
 	fs::path resourcesPath;
 	#endif
 
-	inline static AppInfoSystem* instance = nullptr;
+	static AppInfoSystem* instance;
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new app info system instance.
@@ -62,31 +62,11 @@ class AppInfoSystem final : public System
 		#if GARDEN_DEBUG
 		, fs::path cachesPath, fs::path resourcesPath
 		#endif
-		)
-	{
-		this->name = name;
-		this->nameLowercase = nameLowercase;
-		this->description = description;
-		this->creator = creator;
-		this->copyright = copyright;
-		this->version = version;
-
-		#if GARDEN_DEBUG
-		this->cachesPath = cachesPath;
-		this->resourcesPath = resourcesPath;
-		#endif
-
-		GARDEN_ASSERT(!instance); // More than one system instance detected.
-		instance = this;
-	}
+		);
 	/**
 	 * @brief Destroy app info system instance.
 	 */
-	AppInfoSystem::~AppInfoSystem()
-	{
-		GARDEN_ASSERT(instance); // More than one system instance detected.
-		instance = nullptr;
-	}
+	~AppInfoSystem() final;
 	
 	friend class ecsm::Manager;
 public:
