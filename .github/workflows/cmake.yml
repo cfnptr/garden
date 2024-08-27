@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
+  VCPKG_ROOT: C:/vcpkg
 
 jobs:
   build:
