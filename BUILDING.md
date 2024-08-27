@@ -39,7 +39,7 @@ To build the engine you will only need **The Vulkan SDK Core** components.
 1. Follow installation steps from [learn.microsoft.com](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started)
 2. Run ```vcpkg integrate install``` using **Terminal** or **CMD** app to make packages available user-wide
 
-Better to use C:\vcpkg path. Don't forget to add **vcpkg** to the System Environment Variables!
+Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Environment Variables!
 
 ## 6. Install required packages
 

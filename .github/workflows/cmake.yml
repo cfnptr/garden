@@ -29,7 +29,7 @@ jobs:
 
     - name: Install Windows packages
       if: matrix.os == 'windows-latest' 
-      run: choco install openssl
+      run: vcpkg install zlib openssl
 
     - name: Install Ubuntu VulkanSDK
       if: matrix.os == 'ubuntu-latest'
