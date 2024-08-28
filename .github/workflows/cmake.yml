@@ -4,7 +4,6 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
-  VCPKG_ROOT: C:/vcpkg
 
 jobs:
   build:
@@ -18,18 +17,30 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Set vcpkg environment variable
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+
+    - uses: actions/cache@v4
+      if: matrix.os == 'windows-latest'
+      id: windows-pkgs
+      with:
+        path: $VCPKG_ROOT/installed
+        key: Windows-${{hashFiles('$VCPKG_ROOT/ports/zlib/vcpkg.json', '$VCPKG_ROOT/ports/openssl/vcpkg.json')}}
+
     - name: Install Ubuntu packages
-      if: matrix.os == 'ubuntu-latest' 
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev
 
     - name: Install macOS packages
-      if: matrix.os == 'macos-latest' 
+      if: matrix.os == 'macos-latest'
       run: |
         brew update && brew install zlib openssl
 
     - name: Install Windows packages
-      if: matrix.os == 'windows-latest' 
+      if: matrix.os == 'windows-latest' && steps.windows-pkgs.outputs.cache-hit != 'true'
       run: vcpkg install zlib openssl
 
     - name: Install Ubuntu VulkanSDK
@@ -47,14 +58,14 @@ jobs:
         volumeInfo=$(hdiutil attach vulkan_sdk.dmg | grep Volumes)
         volume=$(echo "$volumeInfo" | cut -f 3)
         cp -rf $volume/InstallVulkan.app .
-        sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan install com.lunarg.vulkan.core com.lunarg.vulkan.usr --al -c
+        sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr 
 
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         curl -O https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe
-        ./vulkan_sdk.exe install --al -c
+        ./vulkan_sdk.exe --al --da -c install
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build
