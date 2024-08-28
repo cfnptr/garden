@@ -49,7 +49,9 @@ jobs:
         sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr 
 
     - name: Install Windows packages
-      if: ${{ matrix.os == 'windows-latest' && steps.${{env.VCPKG_CACHE}}.outputs.cache-hit != 'true' }}
+      if: |
+        matrix.os == 'windows-latest' &&
+        steps.${{env.VCPKG_CACHE}}.outputs.cache-hit != 'true'
       run: vcpkg install zlib openssl
 
     - name: Install Windows VulkanSDK
