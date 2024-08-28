@@ -19,16 +19,13 @@
 #include "garden/system/camera.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
+#include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/resource/primitive.hpp"
 #include "mpio/os.hpp"
-
-#if GARDEN_DEBUG
-#include "garden/system/resource.hpp"
-#endif
 
 using namespace mpio;
 using namespace garden;

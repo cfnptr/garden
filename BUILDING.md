@@ -14,8 +14,9 @@
 1. Download latest version from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads)
 2. Launch downloaded Visual Studio installer
 3. Select "Desktop development with C++" before installation
-4. Add "C++ Clang tools for Windows" inside **Installation details**
-5. Then click **Install** button to begin installation
+4. Add "C++ Clang tools for Windows" inside **Installation details** (optional)
+5. Unselect "vcpkg package manager" inside **Installation details** we will use our own
+6. Finally click **Install** button to begin installation
 
 ## 2. Install Git
 
