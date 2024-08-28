@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
+  VCPKG_CACHE: Windows-zlib_1.3.1-openssl_3.3.1
 
 jobs:
   build:
@@ -22,50 +23,47 @@ jobs:
       shell: bash
       run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
-    - uses: actions/cache@v4
+    - name: Cache vcpkg packages
+      uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
       id: windows-pkgs
       with:
         path: $VCPKG_ROOT/installed
-        key: Windows-${{hashFiles('$VCPKG_ROOT/ports/zlib/vcpkg.json', '$VCPKG_ROOT/ports/openssl/vcpkg.json')}}
+        key: ${{env.VCPKG_CACHE}}
 
     - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest'
       run: |
-        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev
+        wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev vulkan-sdk
 
     - name: Install macOS packages
       if: matrix.os == 'macos-latest'
       run: |
         brew update && brew install zlib openssl
-
-    - name: Install Windows packages
-      if: matrix.os == 'windows-latest' && steps.windows-pkgs.outputs.cache-hit != 'true'
-      run: vcpkg install zlib openssl
-
-    - name: Install Ubuntu VulkanSDK
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
-        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
-        sudo apt-get update && sudo apt-get install vulkan-sdk
-
-    - name: Install macOS VulkanSDK
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.dmg
         volumeInfo=$(hdiutil attach vulkan_sdk.dmg | grep Volumes)
         volume=$(echo "$volumeInfo" | cut -f 3)
         cp -rf $volume/InstallVulkan.app .
         sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr 
 
+    - name: Install Windows packages
+      if: matrix.os == 'windows-latest' && steps.${{env.VCPKG_CACHE}}.outputs.cache-hit != 'true'
+      run: vcpkg install zlib openssl
+
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'
+      env:
+        SDK_PATH: C:/VulkanSDK
       shell: bash
       run: |
+        vulkanVersion=$(curl -s https://vulkan.lunarg.com/sdk/latest/windows.txt)
         curl -O https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe
         ./vulkan_sdk.exe --al --da -c install
+        echo "VK_SDK_PATH=${{env.SDK_PATH}}/$vulkanVersion" >> $GITHUB_ENV
+        echo "VULKAN_SDK=${{env.SDK_PATH}}/$vulkanVersion" >> $GITHUB_ENV
+        echo "${{env.SDK_PATH}}/$vulkanVersion/Bin" >> $GITHUB_PATH
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build
