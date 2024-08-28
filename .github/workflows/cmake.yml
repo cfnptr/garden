@@ -26,7 +26,7 @@ jobs:
     - name: Cache vcpkg packages
       uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
-      id: windows-pkgs
+      id: vcpkg-cache
       with:
         path: $VCPKG_ROOT/installed
         key: ${{env.VCPKG_CACHE}}
@@ -49,9 +49,7 @@ jobs:
         sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr 
 
     - name: Install Windows packages
-      if: |
-        matrix.os == 'windows-latest' &&
-        steps.${{env.VCPKG_CACHE}}.outputs.cache-hit != 'true'
+      if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
       run: vcpkg install zlib openssl
 
     - name: Install Windows VulkanSDK
