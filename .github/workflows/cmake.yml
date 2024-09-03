@@ -28,7 +28,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       id: vcpkg-cache
       with:
-        path: $VCPKG_ROOT/installed
+        path: C:/vcpkg/installed
         key: ${{env.VCPKG_CACHE}}
 
     - name: Install Ubuntu packages
