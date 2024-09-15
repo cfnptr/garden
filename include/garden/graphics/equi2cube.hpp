@@ -33,8 +33,8 @@ using namespace math;
 class Equi2Cube final
 {
 public:
-	static void convert(const int3& coords, int32 cubemapSize, int2 equiSize,
-		int2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim);
+	static void convert(const uint3& coords, uint32 cubemapSize, uint2 equiSize,
+		uint2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim);
 
 	#if GARDEN_DEBUG || defined(EQUI2CUBE)
 	/**

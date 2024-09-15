@@ -15,6 +15,7 @@
 #include "garden/system/character.hpp"
 #include "garden/system/physics-impl.hpp"
 #include "garden/system/transform.hpp"
+#include "math/matrix/transform.hpp"
 
 #include "Jolt/Physics/PhysicsSystem.h"
 #include "Jolt/Physics/Character/CharacterVirtual.h"

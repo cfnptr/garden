@@ -20,9 +20,6 @@ namespace garden
 
 // TODO: I have failed to find good denoiser for shadows. Research this field.
 
-const uint8 shadowBufferCount = 1;
-const uint8 aoBufferCount = 2;
-
 using namespace garden::graphics;
 class LightingRenderSystem;
 
@@ -72,6 +69,16 @@ protected:
  */
 class LightingRenderSystem final : public System
 {
+public:
+	/**
+	 * @brief Lighting rendering shadow buffer count.
+	 */
+	inline static const uint8 shadowBufferCount = 1;
+	/**
+	 * @brief Lighting rendering AO buffer count. (Ambient Occlusion)
+	 */
+	inline static const uint8 aoBufferCount = 2;
+private:
 	DeferredRenderSystem* deferredSystem = nullptr;
 	LinearPool<LightingRenderComponent, false> components;
 	vector<IShadowRenderSystem*> shadowSystems;

@@ -24,21 +24,21 @@
 namespace garden
 {
 
+using namespace math;
+using namespace ecsm;
+
 /**
  * @brief Generic head-mounted display depth.
  */
-const float defaultHmdDepth = 0.01f;
+inline static const float defaultHmdDepth = 0.01f;
 /**
  * @brief Optimal FOV for a PC monitor.
  */
-const float defaultFieldOfView = 90.0f;
+inline static const float defaultFieldOfView = 90.0f;
 /**
  * @brief Generic 16/9 display aspect ratio.
  */
-const float defaultAspectRatio = (16.0f / 9.0f);
-
-using namespace math;
-using namespace ecsm;
+inline static const float defaultAspectRatio = (16.0f / 9.0f);
 
 /**
  * @brief Camera projection type.

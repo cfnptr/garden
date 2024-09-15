@@ -21,6 +21,7 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
+#include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;

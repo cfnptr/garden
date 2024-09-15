@@ -36,10 +36,10 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> createBloomBufferData(int2 framebufferSize, vector<ID<ImageView>>& imageViews, vector<int2>& sizeBuffer)
+static ID<Image> createBloomBufferData(uint2 framebufferSize, vector<ID<ImageView>>& imageViews, vector<uint2>& sizeBuffer)
 {
 	const auto bufferFormat = Image::Format::UfloatB10G11R11;
-	auto bloomBufferSize =  max(framebufferSize / 2, int2(1));
+	auto bloomBufferSize =  max(framebufferSize / 2u, uint2(1));
 	auto mipCount = std::min((uint8)MAX_BLOOM_MIP_COUNT,
 		(uint8)calcMipCount(bloomBufferSize));
 	Image::Mips mips(mipCount);
@@ -64,18 +64,18 @@ static ID<Image> createBloomBufferData(int2 framebufferSize, vector<ID<ImageView
 		imageViews[i] = imageView;
 
 		sizeBuffer[i + 1] = bloomBufferSize;
-		bloomBufferSize = max(bloomBufferSize / 2, int2(1));
+		bloomBufferSize = max(bloomBufferSize / 2u, uint2(1));
 	}
 	return image;
 }
 
 //--------------------------------------------------------------------------------------------------
-static void createBloomFramebuffers(int2 framebufferSize,
+static void createBloomFramebuffers(uint2 framebufferSize,
 	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::get();
 	auto mipCount = (uint8)imageViews.size();
-	framebufferSize = max(framebufferSize / 2, int2(1));
+	framebufferSize = max(framebufferSize / 2u, uint2(1));
 	framebuffers.resize(imageViews.size());
 
 	for (uint8 i = 0; i < mipCount; i++)
@@ -87,7 +87,7 @@ static void createBloomFramebuffers(int2 framebufferSize,
 		SET_RESOURCE_DEBUG_NAME(framebuffer,
 			"framebuffer.bloom" + to_string(i));
 		framebuffers[i] = framebuffer;
-		framebufferSize = max(framebufferSize / 2, int2(1));
+		framebufferSize = max(framebufferSize / 2u, uint2(1));
 	}
 }
 

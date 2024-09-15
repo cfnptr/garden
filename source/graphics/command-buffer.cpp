@@ -545,8 +545,7 @@ void CommandBuffer::submit(uint64 frameIndex)
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					swapchainImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
 				commandBuffer.pipelineBarrier(oldPipelineStage,
-					vk::PipelineStageFlags(newImageState.stage),
-					{}, {}, {}, imageMemoryBarrier);
+					vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
 				newImageState.layout = (uint32)vk::ImageLayout::eGeneral;
 			}
 			oldImageState = newImageState;
@@ -655,8 +654,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, (VkImage)image->instance,
 				vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor,
-					imageView->baseMip, imageView->mipCount,
-					imageView->baseLayer, imageView->layerCount));
+					imageView->baseMip, imageView->mipCount, imageView->baseLayer, imageView->layerCount));
 			imageMemoryBarriers.push_back(imageMemoryBarrier);
 		}
 		oldImageState = newImageState;
@@ -815,8 +813,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		
 		if (commandType == Command::Type::BindDescriptorSets)
 		{
-			const auto& bindDescriptorSetsCommand =
-				*(const BindDescriptorSetsCommand*)subCommand;
+			const auto& bindDescriptorSetsCommand = *(const BindDescriptorSetsCommand*)subCommand;
 			auto descriptorSetRange = (const DescriptorSet::Range*)(
 				(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
 			addDescriptorSetBarriers(descriptorSetRange,
@@ -904,6 +901,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			vk::RenderingFlagBits::eContentsSecondaryCommandBuffers : vk::RenderingFlags(),
 			rect, 1, 0, colorAttachmentCount, colorAttachmentInfos.data(),
 			depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
+
 		if (Vulkan::versionMinor < 3)
 			commandBuffer.beginRenderingKHR(renderingInfo, Vulkan::dynamicLoader);
 		else 
@@ -1078,17 +1076,15 @@ void CommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 
 		if (isFormatFloat(format))
 		{
-			memcpy(clearValue.color.float32.data(),
-				&attachment.color.floatValue, sizeof(float) * 4);
+			memcpy(clearValue.color.float32.data(), &attachment.color.floatValue, sizeof(float) * 4);
 		}
 		else if (isFormatInt(format))
 		{
-			memcpy(clearValue.color.int32.data(),
-				&attachment.color.intValue, sizeof(int32) * 4);
+			memcpy(clearValue.color.int32.data(), &attachment.color.intValue, sizeof(int32) * 4);
 		}
 		else if (isFormatUint(format))
 		{
-			abort(); // TODO:
+			memcpy(clearValue.color.uint32.data(), &attachment.color.uintValue, sizeof(uint32) * 4);
 		}
 		else
 		{
@@ -1096,24 +1092,23 @@ void CommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 			clearValue.depthStencil.stencil = attachment.color.deptStencilValue.stencil;
 		}
 
-		clearAttachments[i] = vk::ClearAttachment(
-			toVkImageAspectFlags(format), attachment.index, clearValue);
+		clearAttachments[i] = vk::ClearAttachment(toVkImageAspectFlags(format), attachment.index, clearValue);
 	}
 
 	for (uint32 i = 0; i < command.regionCount; i++)
 	{
 		auto region = regions[i];
 		
-		vk::Rect2D rect({ region.offset.x, region.offset.y }, {});
-		if (region.extent == 0)
+		vk::Rect2D rect({ (int32)region.offset.x, (int32)region.offset.y }, {});
+		if (region.extent == 0u)
 		{
-			rect.extent.width = (uint32)framebufferView->size.x;
-			rect.extent.height = (uint32)framebufferView->size.y;
+			rect.extent.width = framebufferView->size.x;
+			rect.extent.height = framebufferView->size.y;
 		}
 		else
 		{
-			rect.extent.width = (uint32)region.extent.x;
-			rect.extent.height = (uint32)region.extent.y;
+			rect.extent.width = region.extent.x;
+			rect.extent.height = region.extent.y;
 		}
 		
 		clearAttachmentsRects[i] = vk::ClearRect(rect, region.baseLayer,
@@ -1134,19 +1129,15 @@ void CommandBuffer::processCommand(const BindPipelineCommand& command)
 		vk::Pipeline pipeline;
 		if (command.pipelineType == PipelineType::Graphics)
 		{
-			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
-				ID<GraphicsPipeline>(command.pipeline));
+			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(command.pipeline));
 			pipeline = pipelineView->variantCount > 1 ?
-				((VkPipeline*)pipelineView->instance)[command.variant] :
-				(VkPipeline)pipelineView->instance;
+				((VkPipeline*)pipelineView->instance)[command.variant] : (VkPipeline)pipelineView->instance;
 		}
 		else if (command.pipelineType == PipelineType::Compute)
 		{
-			auto pipelineView = GraphicsAPI::computePipelinePool.get(
-				ID<ComputePipeline>(command.pipeline));
+			auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(command.pipeline));
 			pipeline = pipelineView->variantCount > 1 ?
-				((VkPipeline*)pipelineView->instance)[command.variant] :
-				(VkPipeline)pipelineView->instance;
+				((VkPipeline*)pipelineView->instance)[command.variant] : (VkPipeline)pipelineView->instance;
 		}
 		else abort();
 
@@ -1182,7 +1173,10 @@ void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 			for (uint32 j = descriptor.offset; j < count; j++)
 				descriptorSets.push_back(instance[j]);
 		}
-		else descriptorSets.push_back((VkDescriptorSet)instance);
+		else
+		{
+			descriptorSets.push_back((VkDescriptorSet)instance);
+		}
 	}
 
 	auto descriptorSet = GraphicsAPI::descriptorSetPool.get(descriptorSetRange[0].set);
@@ -1214,10 +1208,8 @@ void CommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 void CommandBuffer::processCommand(const PushConstantsCommand& command)
 {
 	vk::CommandBuffer commandBuffer((VkCommandBuffer)instance);
-
-	commandBuffer.pushConstants((VkPipelineLayout)command.pipelineLayout,
-		(vk::ShaderStageFlags)command.shaderStages, 0, command.dataSize,
-		(const uint8*)&command + sizeof(PushConstantsCommandBase));
+	commandBuffer.pushConstants((VkPipelineLayout)command.pipelineLayout, (vk::ShaderStageFlags)command.shaderStages, 
+		0, command.dataSize, (const uint8*)&command + sizeof(PushConstantsCommandBase));
 }
 
 void CommandBuffer::processCommand(const SetViewportCommand& command)
@@ -1267,8 +1259,7 @@ void CommandBuffer::processCommand(const DrawCommand& command)
 		Framebuffer::currentVertexBuffers[0] = command.vertexBuffer;
 	}
 
-	commandBuffer.draw(command.vertexCount, command.instanceCount, 
-		command.vertexOffset, command.instanceOffset);
+	commandBuffer.draw(command.vertexCount, command.instanceCount, command.vertexOffset, command.instanceOffset);
 }
 
 //**********************************************************************************************************************
@@ -1318,11 +1309,8 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 			break;
 
 		auto commandType = subCommand->type;
-		if (commandType == Command::Type::Dispatch || 
-			commandType == Command::Type::BindPipeline)
-		{
+		if (commandType == Command::Type::Dispatch || commandType == Command::Type::BindPipeline)
 			break;
-		}
 
 		offset -= subCommand->lastSize;
 		if (commandType != Command::Type::BindDescriptorSets)
@@ -1336,9 +1324,7 @@ void CommandBuffer::processCommand(const DispatchCommand& command)
 	}
 
 	processPipelineBarriers(oldPipelineStage, newPipelineStage);
-
-	commandBuffer.dispatch((uint32)command.groupCount.x,
-		(uint32)command.groupCount.y, (uint32)command.groupCount.z);
+	commandBuffer.dispatch(command.groupCount.x, command.groupCount.y, command.groupCount.z);
 }
 
 //**********************************************************************************************************************
@@ -1358,8 +1344,7 @@ void CommandBuffer::processCommand(const FillBufferCommand& command)
 	if (!isSameState(oldBufferState, newBufferState))
 	{
 		vk::BufferMemoryBarrier bufferMemoryBarrier(
-			vk::AccessFlags(oldBufferState.access),
-			vk::AccessFlags(newBufferState.access),
+			vk::AccessFlags(oldBufferState.access), vk::AccessFlags(newBufferState.access),
 			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 			(VkBuffer)buffer->instance, command.offset,
 			command.size == 0 ? buffer->binarySize : command.size);
@@ -1468,8 +1453,7 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 		{
 			for (uint32 layer = 0; layer < layerCount; layer++)
 			{
-				auto& oldImageState = getImageState(command.image, 
-					region.baseMip + mip, region.baseLayer + layer);
+				auto& oldImageState = getImageState(command.image, region.baseMip + mip, region.baseLayer + layer);
 				oldPipelineStage |= oldImageState.stage;
 
 				if (!isSameState(oldImageState, newImageState))
@@ -1479,8 +1463,7 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 						(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 						VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 						(VkImage)image->instance, vk::ImageSubresourceRange(
-							srcAspectFlags, region.baseMip + mip, 1,
-							region.baseLayer + layer, 1));
+							srcAspectFlags, region.baseMip + mip, 1, region.baseLayer + layer, 1));
 					imageMemoryBarriers.push_back(imageMemoryBarrier);
 				}
 				oldImageState = newImageState;
@@ -1497,10 +1480,11 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 			memcpy(clearValue.float32.data(), &command.color, sizeof(float) * 4);
 		else if (command.clearType == 2)
 			memcpy(clearValue.int32.data(), &command.color, sizeof(int32) * 4);
+		else if (command.clearType == 3)
+			memcpy(clearValue.uint32.data(), &command.color, sizeof(uint32) * 4);
 		else abort();
 
-		commandBuffer.clearColorImage(
-			(VkImage)image->instance, vk::ImageLayout::eTransferDstOptimal,
+		commandBuffer.clearColorImage((VkImage)image->instance, vk::ImageLayout::eTransferDstOptimal,
 			&clearValue, command.regionCount, imageClears.data());
 	}
 	else
@@ -1508,8 +1492,7 @@ void CommandBuffer::processCommand(const ClearImageCommand& command)
 		vk::ClearDepthStencilValue clearValue;
 		clearValue.depth = command.color.x;
 		memcpy(&clearValue.stencil, &command.color.y, sizeof(uint32));
-		commandBuffer.clearDepthStencilImage(
-			(VkImage)image->instance, vk::ImageLayout::eTransferDstOptimal,
+		commandBuffer.clearDepthStencilImage((VkImage)image->instance, vk::ImageLayout::eTransferDstOptimal, 
 			&clearValue, command.regionCount, imageClears.data());
 	}
 }
@@ -1551,14 +1534,14 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 		vk::Offset3D dstOffset(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
 		vk::Extent3D extent;
 
-		if (region.extent == 0)
+		if (region.extent == 0u)
 		{
 			auto mipImageSize = calcSizeAtMip(srcImage->size, region.srcMipLevel);
-			extent = vk::Extent3D((uint32)mipImageSize.x, (uint32)mipImageSize.y, (uint32)mipImageSize.z);
+			extent = vk::Extent3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
 		}
 		else
 		{
-			extent = vk::Extent3D((uint32)region.extent.x, (uint32)region.extent.y, (uint32)region.extent.z);
+			extent = vk::Extent3D(region.extent.x, region.extent.y, region.extent.z);
 		}
 
 		imageCopies[i] = vk::ImageCopy(srcSubresource, srcOffset, dstSubresource, dstOffset, extent);
@@ -1566,8 +1549,7 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 		// TODO: possibly somehow combine these barriers?
 		for (uint32 j = 0; j < srcSubresource.layerCount; j++)
 		{
-			auto& oldSrcImageState = getImageState(command.source, 
-				region.srcMipLevel, region.srcBaseLayer + j);
+			auto& oldSrcImageState = getImageState(command.source, region.srcMipLevel, region.srcBaseLayer + j);
 			oldPipelineStage |= oldSrcImageState.stage;
 
 			if (!isSameState(oldSrcImageState, newSrcImageState))
@@ -1577,14 +1559,12 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 					(vk::ImageLayout)oldSrcImageState.layout, (vk::ImageLayout)newSrcImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)srcImage->instance, vk::ImageSubresourceRange(
-						srcAspectFlags, region.srcMipLevel, 1,
-						region.srcBaseLayer + j, 1));
+						srcAspectFlags, region.srcMipLevel, 1, region.srcBaseLayer + j, 1));
 				imageMemoryBarriers.push_back(imageMemoryBarrier);
 			}
 			oldSrcImageState = newSrcImageState;
 
-			auto& oldDstImageState = getImageState(command.destination,
-				region.dstMipLevel, region.dstBaseLayer + j);
+			auto& oldDstImageState = getImageState(command.destination, region.dstMipLevel, region.dstBaseLayer + j);
 			oldPipelineStage |= oldDstImageState.stage;
 
 			if (!isSameState(oldDstImageState, newDstImageState))
@@ -1594,8 +1574,7 @@ void CommandBuffer::processCommand(const CopyImageCommand& command)
 					(vk::ImageLayout)oldDstImageState.layout, (vk::ImageLayout)newDstImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)dstImage->instance, vk::ImageSubresourceRange(
-						dstAspectFlags, region.dstMipLevel, 1,
-						region.dstBaseLayer + j, 1));
+						dstAspectFlags, region.dstMipLevel, 1, region.dstBaseLayer + j, 1));
 				imageMemoryBarriers.push_back(imageMemoryBarrier);
 			}
 			oldDstImageState = newDstImageState;
@@ -1645,21 +1624,18 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		vk::Offset3D dstOffset(region.imageOffset.x, region.imageOffset.y, region.imageOffset.z);
 		vk::Extent3D dstExtent;
 		
-		if (region.imageExtent == 0)
+		if (region.imageExtent == 0u)
 		{
 			auto mipImageSize = calcSizeAtMip(image->size, region.imageMipLevel);
-			dstExtent = vk::Extent3D((uint32)mipImageSize.x,
-				(uint32)mipImageSize.y, (uint32)mipImageSize.z);
+			dstExtent = vk::Extent3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
 		}
 		else
 		{
-			dstExtent = vk::Extent3D((uint32)region.imageExtent.x,
-				(uint32)region.imageExtent.y, (uint32)region.imageExtent.z);
+			dstExtent = vk::Extent3D(region.imageExtent.x, region.imageExtent.y, region.imageExtent.z);
 		}
 
-		bufferImageCopies[i] = vk::BufferImageCopy(
-			(vk::DeviceSize)region.bufferOffset, region.bufferRowLength,
-			region.bufferImageHeight, imageSubresource, dstOffset, dstExtent);
+		bufferImageCopies[i] = vk::BufferImageCopy((vk::DeviceSize)region.bufferOffset, 
+			region.bufferRowLength, region.bufferImageHeight, imageSubresource, dstOffset, dstExtent);
 
 		auto& oldBufferState = getBufferState(command.buffer);
 		oldPipelineStage |= oldBufferState.stage;
@@ -1676,8 +1652,7 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 
 		for (uint32 j = 0; j < imageSubresource.layerCount; j++)
 		{
-			auto& oldImageState = getImageState(command.image,
-				region.imageMipLevel, region.imageBaseLayer + j);
+			auto& oldImageState = getImageState(command.image, region.imageMipLevel, region.imageBaseLayer + j);
 			oldPipelineStage |= oldImageState.stage;
 
 			if (!isSameState(oldImageState, newImageState))
@@ -1687,8 +1662,7 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)image->instance, vk::ImageSubresourceRange(
-						dstAspectFlags, region.imageMipLevel, 1,
-						region.imageBaseLayer + j, 1));
+						dstAspectFlags, region.imageMipLevel, 1, region.imageBaseLayer + j, 1));
 				imageMemoryBarriers.push_back(imageMemoryBarrier);
 			}
 			oldImageState = newImageState;
@@ -1699,15 +1673,13 @@ void CommandBuffer::processCommand(const CopyBufferImageCommand& command)
 
 	if (command.toBuffer)
 	{
-		commandBuffer.copyImageToBuffer((VkImage)image->instance,
-			vk::ImageLayout::eTransferSrcOptimal, (VkBuffer)buffer->instance, 
-			command.regionCount, bufferImageCopies.data());
+		commandBuffer.copyImageToBuffer((VkImage)image->instance, vk::ImageLayout::eTransferSrcOptimal, 
+			(VkBuffer)buffer->instance, command.regionCount, bufferImageCopies.data());
 	}
 	else
 	{
-		commandBuffer.copyBufferToImage((VkBuffer)buffer->instance, 
-			(VkImage)image->instance, vk::ImageLayout::eTransferDstOptimal,
-			command.regionCount, bufferImageCopies.data());
+		commandBuffer.copyBufferToImage((VkBuffer)buffer->instance, (VkImage)image->instance, 
+			vk::ImageLayout::eTransferDstOptimal, command.regionCount, bufferImageCopies.data());
 	}
 }
 
@@ -1749,7 +1721,7 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 		array<vk::Offset3D, 2> dstBounds;
 		dstBounds[0] = vk::Offset3D(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
 
-		if (region.srcExtent == 0)
+		if (region.srcExtent == 0u)
 		{
 			auto mipImageSize = calcSizeAtMip(srcImage->size, region.srcMipLevel);
 			srcBounds[1] = vk::Offset3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
@@ -1758,7 +1730,7 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 		{
 			srcBounds[1] = vk::Offset3D(region.srcExtent.x, region.srcExtent.y, region.srcExtent.z);
 		}
-		if (region.dstExtent == 0)
+		if (region.dstExtent == 0u)
 		{
 			auto mipImageSize = calcSizeAtMip(dstImage->size, region.dstMipLevel);
 			dstBounds[1] = vk::Offset3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
@@ -1773,8 +1745,7 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 		// TODO: possibly somehow combine these barriers?
 		for (uint32 j = 0; j < srcSubresource.layerCount; j++)
 		{
-			auto& oldSrcImageState = getImageState(command.source, 
-				region.srcMipLevel, region.srcBaseLayer + j);
+			auto& oldSrcImageState = getImageState(command.source, region.srcMipLevel, region.srcBaseLayer + j);
 			oldPipelineStage |= oldSrcImageState.stage;
 
 			if (!isSameState(oldSrcImageState, newSrcImageState))
@@ -1784,14 +1755,12 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 					(vk::ImageLayout)oldSrcImageState.layout, (vk::ImageLayout)newSrcImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)srcImage->instance, vk::ImageSubresourceRange(
-						srcAspectFlags, region.srcMipLevel, 1,
-						region.srcBaseLayer + j, 1));
+						srcAspectFlags, region.srcMipLevel, 1, region.srcBaseLayer + j, 1));
 				imageMemoryBarriers.push_back(imageMemoryBarrier);
 			}
 			oldSrcImageState = newSrcImageState;
 
-			auto& oldDstImageState = getImageState(command.destination,
-				region.dstMipLevel, region.dstBaseLayer + j);
+			auto& oldDstImageState = getImageState(command.destination, region.dstMipLevel, region.dstBaseLayer + j);
 			oldPipelineStage |= oldDstImageState.stage;
 
 			if (!isSameState(oldDstImageState, newDstImageState))
@@ -1801,8 +1770,7 @@ void CommandBuffer::processCommand(const BlitImageCommand& command)
 					(vk::ImageLayout)oldDstImageState.layout, (vk::ImageLayout)newDstImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					(VkImage)dstImage->instance, vk::ImageSubresourceRange(
-						dstAspectFlags, region.dstMipLevel, 1,
-						region.dstBaseLayer + j, 1));
+						dstAspectFlags, region.dstMipLevel, 1, region.dstBaseLayer + j, 1));
 				imageMemoryBarriers.push_back(imageMemoryBarrier);
 			}
 			oldDstImageState = newDstImageState;
@@ -1865,8 +1833,7 @@ void CommandBuffer::addCommand(const BeginRenderPassCommand& command)
 }
 void CommandBuffer::addCommand(const NextSubpassCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(NextSubpassCommand);
 	auto allocation = (NextSubpassCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -1876,12 +1843,9 @@ void CommandBuffer::addCommand(const NextSubpassCommand& command)
 }
 void CommandBuffer::addCommand(const ExecuteCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly ||
-		type == CommandBufferType::ComputeOnly);
-	auto commandSize = (uint32)(sizeof(ExecuteCommandBase) +
-		command.bufferCount * sizeof(void*));
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+	auto commandSize = (uint32)(sizeof(ExecuteCommandBase) + command.bufferCount * sizeof(void*));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(ExecuteCommandBase));
 	memcpy((uint8*)allocation + sizeof(ExecuteCommandBase),
@@ -1893,8 +1857,7 @@ void CommandBuffer::addCommand(const ExecuteCommand& command)
 }
 void CommandBuffer::addCommand(const EndRenderPassCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 	auto commandSize = (uint32)sizeof(EndRenderPassCommand);
 	auto allocation = allocateCommand(commandSize);
 	allocation->type = command.type;
@@ -1923,8 +1886,7 @@ void CommandBuffer::addCommand(const ClearAttachmentsCommand& command)
 void CommandBuffer::addCommand(const BindPipelineCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)sizeof(BindPipelineCommand);
 	auto allocation = (BindPipelineCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -1936,8 +1898,7 @@ void CommandBuffer::addCommand(const BindPipelineCommand& command)
 void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)(sizeof(BindDescriptorSetsCommandBase) + 
 		command.rangeCount * sizeof(DescriptorSet::Range));
 	auto allocation = allocateCommand(commandSize);
@@ -1951,14 +1912,11 @@ void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 void CommandBuffer::addCommand(const PushConstantsCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::ComputeOnly);
-	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) +
-		alignSize(command.dataSize));
+		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize(command.dataSize));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(PushConstantsCommandBase));
-	memcpy((uint8*)allocation + sizeof(PushConstantsCommandBase),
-		command.data, command.dataSize);
+	memcpy((uint8*)allocation + sizeof(PushConstantsCommandBase), command.data, command.dataSize);
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
@@ -2018,8 +1976,7 @@ void CommandBuffer::addCommand(const DrawIndexedCommand& command)
 void CommandBuffer::addCommand(const DispatchCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)sizeof(DispatchCommand);
 	auto allocation = (DispatchCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2032,10 +1989,8 @@ void CommandBuffer::addCommand(const DispatchCommand& command)
 //**********************************************************************************************************************
 void CommandBuffer::addCommand(const FillBufferCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly ||
-		type == CommandBufferType::ComputeOnly);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)sizeof(FillBufferCommand);
 	auto allocation = (FillBufferCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -2046,12 +2001,9 @@ void CommandBuffer::addCommand(const FillBufferCommand& command)
 }
 void CommandBuffer::addCommand(const CopyBufferCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly ||
-		type == CommandBufferType::ComputeOnly);
-	auto commandSize = (uint32)(sizeof(CopyBufferCommandBase) +
-		command.regionCount * sizeof(Buffer::CopyRegion));
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+	auto commandSize = (uint32)(sizeof(CopyBufferCommandBase) + command.regionCount * sizeof(Buffer::CopyRegion));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(CopyBufferCommandBase));
 	memcpy((uint8*)allocation + sizeof(CopyBufferCommandBase),
@@ -2066,10 +2018,8 @@ void CommandBuffer::addCommand(const CopyBufferCommand& command)
 void CommandBuffer::addCommand(const ClearImageCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::ComputeOnly);
-	auto commandSize = (uint32)(sizeof(ClearImageCommandBase) +
-		command.regionCount * sizeof(Image::ClearRegion));
+		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+	auto commandSize = (uint32)(sizeof(ClearImageCommandBase) + command.regionCount * sizeof(Image::ClearRegion));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(ClearImageCommandBase));
 	memcpy((uint8*)allocation + sizeof(ClearImageCommandBase),
@@ -2081,10 +2031,8 @@ void CommandBuffer::addCommand(const ClearImageCommand& command)
 }
 void CommandBuffer::addCommand(const CopyImageCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly ||
-		type == CommandBufferType::ComputeOnly);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)(sizeof(CopyImageCommandBase) +
 		command.regionCount * sizeof(Image::CopyImageRegion));
 	auto allocation = allocateCommand(commandSize);
@@ -2098,10 +2046,8 @@ void CommandBuffer::addCommand(const CopyImageCommand& command)
 }
 void CommandBuffer::addCommand(const CopyBufferImageCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly ||
-		type == CommandBufferType::ComputeOnly);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)(sizeof(CopyBufferImageCommandBase) +
 		command.regionCount * sizeof(Image::CopyBufferRegion));
 	auto allocation = allocateCommand(commandSize);
@@ -2115,10 +2061,8 @@ void CommandBuffer::addCommand(const CopyBufferImageCommand& command)
 }
 void CommandBuffer::addCommand(const BlitImageCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)(sizeof(BlitImageCommandBase) +
-		command.regionCount * sizeof(Image::BlitRegion));
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+	auto commandSize = (uint32)(sizeof(BlitImageCommandBase) + command.regionCount * sizeof(Image::BlitRegion));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BlitImageCommandBase));
 	memcpy((uint8*)allocation + sizeof(BlitImageCommandBase),
@@ -2134,12 +2078,10 @@ void CommandBuffer::addCommand(const BlitImageCommand& command)
 void CommandBuffer::addCommand(const BeginLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) +
-		alignSize(nameLength));
+	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) + alignSize(nameLength));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BeginLabelCommandBase));
-	memcpy((uint8*)allocation + sizeof(BeginLabelCommandBase),
-		command.name, nameLength);
+	memcpy((uint8*)allocation + sizeof(BeginLabelCommandBase), command.name, nameLength);
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
@@ -2157,12 +2099,10 @@ void CommandBuffer::addCommand(const EndLabelCommand& command)
 void CommandBuffer::addCommand(const InsertLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) +
-		alignSize(nameLength));
+	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) + alignSize(nameLength));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(InsertLabelCommandBase));
-	memcpy((uint8*)allocation + sizeof(InsertLabelCommandBase),
-		command.name, nameLength);
+	memcpy((uint8*)allocation + sizeof(InsertLabelCommandBase), command.name, nameLength);
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;

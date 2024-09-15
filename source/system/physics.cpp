@@ -20,6 +20,7 @@
 #include "garden/system/input.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
+#include "math/matrix/transform.hpp"
 
 #include "Jolt/RegisterTypes.h"
 #include "Jolt/Core/Factory.h"
@@ -1043,7 +1044,7 @@ void PhysicsSystem::prepareSimulate()
 		auto threadPool = jobSystem->getThreadPool();
 		auto componentData = components.getData();
 
-		threadPool->addItems(ThreadPool::Task([componentData](const ThreadPool::Task& task)
+		threadPool->addItems(ThreadPool::Task([this, componentData](const ThreadPool::Task& task)
 		{
 			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::get()->physicsInstance;
 			auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.

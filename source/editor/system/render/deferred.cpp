@@ -65,7 +65,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Framebuffer> gFr
 		if (!shadowPlaceholder)
 		{
 			shadowPlaceholder = graphicsSystem->createImage(Image::Format::UnormR8,
-				Image::Bind::Sampled, { { nullptr } }, int2(1), Image::Strategy::Size);
+				Image::Bind::Sampled, { { nullptr } }, uint2(1), Image::Strategy::Size);
 			SET_RESOURCE_DEBUG_NAME(shadowPlaceholder, "image.shadowPlaceholder");
 		}
 		auto imageView = graphicsSystem->get(shadowPlaceholder);

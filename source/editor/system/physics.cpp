@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/transform.hpp"
+#include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;

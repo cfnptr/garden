@@ -25,6 +25,9 @@
 namespace garden::graphics
 {
 
+using namespace std;
+using namespace math;
+
 /**
  * @brief Optimal sync primitive count.
  */
@@ -33,9 +36,6 @@ const int frameLag = 2;
  * @brief Nvidia architecture maximum binary size.
  */
 const psize maxPushConstantsSize = 128;
-
-using namespace std;
-using namespace math;
 
 /***********************************************************************************************************************
  * @brief Point where programmable shading occurs.

@@ -178,6 +178,7 @@ public:
 	{
 		float4 floatValue = float4(0.0f);   /**< Floating point clear color. */
 		int4 intValue;                      /**< Signed integer clear color. */
+		uint4 uintValue;                    /**< Unsigned integer clear color. */
 		DepthStencilValue deptStencilValue; /**< Depth/stencil clear value. */
 	};
 	/**
@@ -195,8 +196,8 @@ public:
 	 */
 	struct ClearRegion final
 	{
-		int2 offset = int2(0); /**< Region offset in texels. */
-		int2 extent = int2(0); /**< Region extent in texels. */
+		uint2 offset = uint2(0); /**< Region offset in texels. */
+		uint2 extent = uint2(0); /**< Region extent in texels. */
 		uint32 baseLayer = 0;  /**< Image base array layer. */
 		uint32 layerCount = 0; /**< Image array layer count. */
 	};
@@ -206,17 +207,17 @@ private:
 	void* renderPass = nullptr;
 	vector<Subpass> subpasses;
 	vector<OutputAttachment> colorAttachments;
-	int2 size = int2(0);
+	uint2 size = uint2(0);
 	OutputAttachment depthStencilAttachment = {};
 	bool isSwapchain = false;
 
 	// Note: Use GraphicsSystem to create, destroy and access framebuffers.
 
 	Framebuffer() = default;
-	Framebuffer(int2 size, vector<Subpass>&& subpasses);
-	Framebuffer(int2 size, vector<OutputAttachment>&& colorAttachments,
+	Framebuffer(uint2 size, vector<Subpass>&& subpasses);
+	Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments,
 		OutputAttachment depthStencilAttachment);
-	Framebuffer(int2 size, ID<ImageView> swapchainImage, ID<ImageView> depthBuffer)
+	Framebuffer(uint2 size, ID<ImageView> swapchainImage, ID<ImageView> depthBuffer)
 	{
 		this->instance = (void*)1;
 		this->colorAttachments.emplace_back(swapchainImage, false, true, true);
@@ -244,7 +245,7 @@ public:
 	 * @brief Returns framebuffer size in texels.
 	 * @details All attachments should have this size.
 	 */
-	int2 getSize() const noexcept { return size; }
+	uint2 getSize() const noexcept { return size; }
 	/**
 	 * @brief Returns framebuffer color attachments.
 	 * @details Images within a framebuffer where the output color data from rendering operations is stored.
@@ -280,7 +281,7 @@ public:
 	 * @param colorAttachmentCount color attachment array size
 	 * @param depthStencilAttachment depth stencil attachment or empty
 	 */
-	void update(int2 size, const OutputAttachment* colorAttachments,
+	void update(uint2 size, const OutputAttachment* colorAttachments,
 		uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment = {});
 	/**
 	 * @brief Updates framebufer attachments.
@@ -290,7 +291,7 @@ public:
 	 * @param[in] colorAttachments color attachment array
 	 * @param depthStencilAttachment depth stencil attachment or empty
 	 */
-	void update(int2 size, vector<OutputAttachment>&& colorAttachments,
+	void update(uint2 size, vector<OutputAttachment>&& colorAttachments,
 		OutputAttachment depthStencilAttachment = {});
 	
 	/**
@@ -300,7 +301,7 @@ public:
 	 * @param size a new framebuffer size in texels
 	 * @param[in] subpasses target subpass array
 	 */
-	void recreate(int2 size, const vector<SubpassImages>& subpasses);
+	void recreate(uint2 size, const vector<SubpassImages>& subpasses);
 
 	/**
 	 * @brief Returns current render pass framebuffer.
@@ -504,7 +505,7 @@ public:
 	 * @warning In most cases you should use @ref Framebuffer functions.
 	 * @param[in] framebuffer target framebuffer instance
 	 */
-	static int2& getSize(Framebuffer& framebuffer) noexcept { return framebuffer.size; }
+	static uint2& getSize(Framebuffer& framebuffer) noexcept { return framebuffer.size; }
 	/**
 	 * @brief Returns framebuffer depth/stencil attachment.
 	 * @warning In most cases you should use @ref Framebuffer functions.

@@ -84,7 +84,7 @@ protected:
 		Image image;
 		Buffer staging;
 		vector<fs::path> paths = {};
-		int2 realSize = int2(0);
+		uint2 realSize = uint2(0);
 		ID<Image> instance = {};
 	};
 	struct LoadedBufferItem
@@ -155,7 +155,7 @@ public:
 	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
 	void loadImageData(const fs::path& path, vector<uint8>& data,
-		int2& size, Image::Format& format, int32 threadIndex = -1) const;
+		uint2& size, Image::Format& format, int32 threadIndex = -1) const;
 
 	/**
 	 * @brief Loads cubemap image data (pixels) the resource pack.
@@ -174,7 +174,7 @@ public:
 	 */
 	void loadCubemapData(const fs::path& path, vector<uint8>& left, vector<uint8>& right,
 		vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front,
-		int2& size, Image::Format& format, int32 threadIndex = -1) const;
+		uint2& size, Image::Format& format, int32 threadIndex = -1) const;
 	
 	/**
 	 * @brief Loads image data (pixels) from the memory file. (MT-Safe)
@@ -187,7 +187,7 @@ public:
 	 * @param[out] format loaded image data format
 	 */
 	static void loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
-		vector<uint8>& pixels, int2& imageSize, Image::Format& format);
+		vector<uint8>& pixels, uint2& imageSize, Image::Format& format);
 
 	/*******************************************************************************************************************
 	 * @brief Loads image from the resource pack.

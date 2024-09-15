@@ -49,12 +49,12 @@ public:
 	{
 		uint8 _alignment0 = 0;
 		uint16 _alignment1 = 0;
-		int3 localSize = int3(0);
+		uint3 localSize = uint3(0);
 		vector<uint8> code;
 	};
 private:
 	uint8 _alignment = 0;
-	int3 localSize = int3(0);
+	uint3 localSize = uint3(0);
 
 	// Note: Use GraphicsSystem to create, destroy and access compute pipelines.
 
@@ -71,7 +71,7 @@ public:
 	 * @brief Returns shader local work group size.
 	 * @details It is also available in the shader: gl.workGroupSize
 	 */
-	const int3& getLocalSize() const noexcept { return localSize; }
+	const uint3& getLocalSize() const noexcept { return localSize; }
 
 	//******************************************************************************************************************
 	// Render commands
@@ -92,7 +92,7 @@ public:
      *     gl.localInvocationID.y * gl.workGroupSize.x + gl.localInvocationID.x;
 	 * gl.globalInvocationID = gl.workGroupID * gl.workGroupSize + gl.localInvocationID;
 	 */
-	void dispatch(const int3& count, bool isGlobalCount = true);
+	void dispatch(const uint3& count, bool isGlobalCount = true);
 };
 
 /***********************************************************************************************************************
@@ -107,7 +107,7 @@ public:
 	 * @warning In most cases you should use @ref ComputePipeline functions.
 	 * @param[in] buffer target buffer instance
 	 */
-	static int3& getLocalSize(ComputePipeline& pipeline) noexcept { return pipeline.localSize; }
+	static uint3& getLocalSize(ComputePipeline& pipeline) noexcept { return pipeline.localSize; }
 
 	/**
 	 * @brief Creates a new compute pipeline data.

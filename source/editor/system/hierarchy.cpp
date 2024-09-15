@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/camera.hpp"
 #include "garden/system/transform.hpp"
+#include "math/matrix/transform.hpp"
 
 using namespace garden;
 

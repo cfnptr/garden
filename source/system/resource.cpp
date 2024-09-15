@@ -441,7 +441,7 @@ void ResourceSystem::input()
 }
 
 //**********************************************************************************************************************
-static void loadMissingImage(vector<uint8>& data, int2& size, Image::Format& format)
+static void loadMissingImage(vector<uint8>& data, uint2& size, Image::Format& format)
 {
 	data.resize(sizeof(Color) * 16);
 	auto pixels = (Color*)data.data();
@@ -449,11 +449,11 @@ static void loadMissingImage(vector<uint8>& data, int2& size, Image::Format& for
 	pixels[4] = Color::black;   pixels[5] = Color::magenta;  pixels[6] = Color::black;    pixels[7] = Color::magenta;
 	pixels[8] = Color::magenta; pixels[9] = Color::black;    pixels[10] = Color::magenta; pixels[11] = Color::black;
 	pixels[12] = Color::black;  pixels[13] = Color::magenta; pixels[14] = Color::black;   pixels[15] = Color::magenta;
-	size = int2(4, 4);
+	size = uint2(4, 4);
 	format = Image::Format::SrgbR8G8B8A8;
 } 
 static void loadMissingImage(vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom,
-	vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, int2& size, Image::Format& format)
+	vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, uint2& size, Image::Format& format)
 {
 	loadMissingImage(left, size, format);
 	loadMissingImage(right, size, format);
@@ -465,7 +465,7 @@ static void loadMissingImage(vector<uint8>& left, vector<uint8>& right, vector<u
 
 //**********************************************************************************************************************
 void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
-	int2& size, Image::Format& format, int32 threadIndex) const
+	uint2& size, Image::Format& format, int32 threadIndex) const
 {
 	// TODO: store images as bc compressed for polygon geometry. KTX 2.0
 	GARDEN_ASSERT(!path.empty());
@@ -570,7 +570,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
-static void writeImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
+static void writeImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
 {
 	auto directory = filePath.parent_path();
 	if (!fs::exists(directory))
@@ -584,12 +584,12 @@ static void writeImageData(const fs::path& filePath, int32 size, const vector<ui
 //**********************************************************************************************************************
 void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back,
-	vector<uint8>& front, int2& size, Image::Format& format, int32 threadIndex) const
+	vector<uint8>& front, uint2& size, Image::Format& format, int32 threadIndex) const
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> equiData; int2 equiSize;
+	vector<uint8> equiData; uint2 equiSize;
 	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
 
 	#if !GARDEN_PACK_RESOURCES
@@ -661,12 +661,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 
 		auto invDim = 1.0f / cubemapSize;
-		auto equiSizeMinus1 = equiSize - 1;
+		auto equiSizeMinus1 = equiSize - 1u;
 		auto pixelsSize = cubemapSize * cubemapSize * sizeof(float4);
 		left.resize(pixelsSize); right.resize(pixelsSize);
 		bottom.resize(pixelsSize); top.resize(pixelsSize);
 		back.resize(pixelsSize); front.resize(pixelsSize);
-		size = int2(equiSize.x / 4, equiSize.y / 2);
+		size = uint2(equiSize.x / 4, equiSize.y / 2);
 
 		float4* cubePixelArray[6] =
 		{
@@ -685,7 +685,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
-					int3 coords;
+					uint3 coords;
 					coords.z = i / sizeXY;
 					coords.y = (i - coords.z * sizeXY) / cubemapSize;
 					coords.x = i - (coords.y * cubemapSize + coords.z * sizeXY);
@@ -707,7 +707,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 				{
 					for (int32 x = 0; x < cubemapSize; x++)
 					{
-						Equi2Cube::convert(int3(x, y, face), cubemapSize,
+						Equi2Cube::convert(uint3(x, y, face), cubemapSize,
 							equiSize, equiSizeMinus1, equiPixels, cubePixels, invDim);
 					}
 				}
@@ -750,7 +750,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	}
 	#endif
 
-	int2 leftSize, rightSize, bottomSize, topSize, backSize, frontSize;
+	uint2 leftSize, rightSize, bottomSize, topSize, backSize, frontSize;
 	Image::Format leftFormat, rightFormat, bottomFormat, topFormat, backFormat, frontFormat;
 
 	if (threadIndex < 0 && threadSystem)
@@ -816,12 +816,14 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 
 //**********************************************************************************************************************
 void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
-	vector<uint8>& pixels, int2& imageSize, Image::Format& format)
+	vector<uint8>& pixels, uint2& imageSize, Image::Format& format)
 {
 	if (fileType == ImageFileType::Webp)
 	{
-		if (!WebPGetInfo(data, dataSize, &imageSize.x, &imageSize.y))
+		int sizeX = 0, sizeY = 0;
+		if (!WebPGetInfo(data, dataSize, &sizeX, &sizeY))
 			throw runtime_error("Invalid WebP image info.");
+		imageSize = uint2(sizeX, sizeY);
 		pixels.resize(sizeof(Color) * imageSize.x * imageSize.y);
 		auto decodeResult = WebPDecodeRGBAInto(data, dataSize,
 			pixels.data(), pixels.size(), (int)(imageSize.x * sizeof(Color)));
@@ -838,7 +840,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 			throw runtime_error("Invalid PNG image info.");
 
 		image.format = PNG_FORMAT_RGBA;
-		imageSize = int2(image.width, image.height);
+		imageSize = uint2(image.width, image.height);
 		pixels.resize(PNG_IMAGE_SIZE(image));
 
 		if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
@@ -847,20 +849,24 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 	else if (fileType == ImageFileType::Jpg || fileType == ImageFileType::Bmp ||
 		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga)
 	{
+		int sizeX = 0, sizeY = 0;
 		auto pixelData = (uint8*)stbi_load_from_memory(data,
-			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
+			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
 			throw runtime_error("Invalid JPG image data.");
+		imageSize = uint2(sizeX, sizeY);
 		pixels.resize(sizeof(Color) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
 	}
 	else if (fileType == ImageFileType::Hdr)
 	{
+		int sizeX = 0, sizeY = 0;
 		auto pixelData = (uint8*)stbi_loadf_from_memory(data,
-			(int)dataSize, &imageSize.x, &imageSize.y, nullptr, 4);
+			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
 			throw runtime_error("Invalid HDR image data.");
+		imageSize = uint2(sizeX, sizeY);
 		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
@@ -880,13 +886,13 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 
 //**********************************************************************************************************************
 static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::path>& paths,
-	vector<vector<uint8>>& pixelArrays, int2& size, Image::Format& format, int32 threadIndex)
+	vector<vector<uint8>>& pixelArrays, uint2& size, Image::Format& format, int32 threadIndex)
 {
 	resourceSystem->loadImageData(paths[0], pixelArrays[0], size, format, threadIndex);
 
-	for (int32 i = 1; i < (int32)paths.size(); i++)
+	for (uint32 i = 1; i < (uint32)paths.size(); i++)
 	{
-		int2 elementSize; Image::Format elementFormat;
+		uint2 elementSize; Image::Format elementFormat;
 		resourceSystem->loadImageData(paths[i], pixelArrays[i], elementSize, elementFormat, threadIndex);
 
 		if (size != elementSize || format != elementFormat)
@@ -897,23 +903,23 @@ static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::
 			if (format == Image::Format::SfloatR32G32B32A32)
 			{
 				auto pixels = (float4*)pixelArrays[i].data();
-				for (int32 i = 0; i < count; i++)
+				for (uint32 i = 0; i < count; i++)
 					pixels[i] = float4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkboard pattern?
 			}
 			else
 			{
 				auto pixels = (Color*)pixelArrays[i].data();
-				for (int32 i = 0; i < count; i++)
+				for (uint32 i = 0; i < count; i++)
 					pixels[i] = Color::magenta;
 			}
 		}
 	}
 }
-static void calcLoadedImageDim(psize pathCount, int2 realSize,
-	ImageLoadFlags flags, int2& imageSize, int32& layerCount) noexcept
+static void calcLoadedImageDim(psize pathCount, uint2 realSize,
+	ImageLoadFlags flags, uint2& imageSize, uint32& layerCount) noexcept
 {
 	imageSize = realSize;
-	layerCount = (int32)pathCount;
+	layerCount = (uint32)pathCount;
 
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
 	{
@@ -931,18 +937,18 @@ static void calcLoadedImageDim(psize pathCount, int2 realSize,
 		if (layerCount == 0) layerCount = 1;
 	}
 }
-static Image::Type calcLoadedImageType(psize pathCount, int32 sizeY, ImageLoadFlags flags) noexcept
+static Image::Type calcLoadedImageType(psize pathCount, uint32 sizeY, ImageLoadFlags flags) noexcept
 {
 	if (pathCount > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType))
 		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
 	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
 }
-static uint8 calcLoadedImageMipCount(uint8 maxMipCount, int2 imageSize) noexcept
+static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcept
 {
 	return maxMipCount == 0 ? calcMipCount(imageSize) : std::min(maxMipCount, calcMipCount(imageSize));
 }
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap,
-	int2 realSize, int2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
+	uint2 realSize, uint2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
 {
 	psize mapOffset = 0;
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray) && realSize.x > realSize.y)
@@ -950,11 +956,11 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 		auto pixels = pixelArrays[0].data();
 		auto layerCount = realSize.x / realSize.y;
 		auto lineSize = formatBinarySize * imageSize.x;
-		int32 offsetX = 0;
+		uint32 offsetX = 0;
 
-		for (int32 l = 0; l < layerCount; l++)
+		for (uint32 l = 0; l < layerCount; l++)
 		{
-			for (int32 y = 0; y < imageSize.y; y++)
+			for (uint32 y = 0; y < imageSize.y; y++)
 			{
 				auto pixelsOffset = (psize)(y * realSize.x + offsetX) * formatBinarySize;
 				memcpy(stagingMap + mapOffset, pixels + pixelsOffset, lineSize);
@@ -965,7 +971,7 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 	}
 	else
 	{
-		for (int32 i = 0; i < (int32)pixelArrays.size(); i++)
+		for (uint32 i = 0; i < (uint32)pixelArrays.size(); i++)
 		{
 			const auto& pixels = pixelArrays[i];
 			memcpy(stagingMap + mapOffset, pixels.data(), pixels.size());
@@ -1048,14 +1054,14 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
 			auto& paths = data->paths;
-			vector<vector<uint8>> pixelArrays(paths.size()); int2 realSize; Image::Format format;
+			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 			loadImageArrayData(this, paths, pixelArrays, realSize, format, task.getThreadIndex());
 			
 			if (hasAnyFlag(data->flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
 				format = Image::Format::UnormR8G8B8A8;
 
 			auto formatBinarySize = toBinarySize(format);
-			int2 imageSize; int32 layerCount;
+			uint2 imageSize; uint32 layerCount;
 			calcLoadedImageDim(paths.size(), realSize, data->flags, imageSize, layerCount);
 			auto type = calcLoadedImageType(paths.size(), realSize.y, data->flags);
 			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
@@ -1063,7 +1069,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			ImageQueueItem item =
 			{
 				ImageExt::create(type, format, data->bind, data->strategy, 
-					int3(imageSize, 1), mipCount, layerCount, data->version),
+					uint3(imageSize, 1), mipCount, layerCount, data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
 					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0),
 				std::move(paths),
@@ -1083,20 +1089,20 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	}
 	else
 	{
-		vector<vector<uint8>> pixelArrays(paths.size()); int2 realSize; Image::Format format;
+		vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 		loadImageArrayData(this, paths, pixelArrays, realSize, format, -1);
 
 		if (hasAnyFlag(flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
 			format = Image::Format::UnormR8G8B8A8;
 
 		auto formatBinarySize = toBinarySize(format);
-		int2 imageSize; int32 layerCount;
+		uint2 imageSize; uint32 layerCount;
 		calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
 		auto type = calcLoadedImageType(paths.size(), realSize.y, flags);
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
 
 		auto imageInstance = ImageExt::create(type, format, bind, strategy,
-			int3(imageSize, 1), mipCount, layerCount, 0);
+			uint3(imageSize, 1), mipCount, layerCount, 0);
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 

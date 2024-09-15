@@ -15,6 +15,7 @@
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "math/matrix/transform.hpp"
 #include "mpmt/atomic.h"
 
 #if GARDEN_EDITOR
@@ -135,7 +136,7 @@ static void prepareOpaqueItems(const float3& cameraOffset, const float3& cameraP
 			model = float4x4::identity;
 		}
 
-		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, frustumPlaneCount))
+		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, Plane::frustumCount))
 			continue;
 
 		// TODO: optimize this using SpatialDB.
@@ -186,7 +187,7 @@ static void prepareTranslucentItems(const float3& cameraOffset, const float3& ca
 			model = float4x4::identity;
 		}
 
-		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, frustumPlaneCount))
+		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, Plane::frustumCount))
 			continue;
 
 		MeshRenderSystem::TranslucentItem translucentItem;
@@ -262,7 +263,7 @@ void MeshRenderSystem::prepareItems(const float4x4& viewProj, const float3& came
 	auto translucentItemData = translucentItems.data();
 	auto translucentIndexData = translucentIndices.data();
 	uint32 opaqueBufferIndex = 0, translucentBufferIndex = 0;
-	Plane frustumPlanes[::frustumPlaneCount];
+	Plane frustumPlanes[Plane::frustumCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
 	auto isAsyncPreparing = asyncPreparing && threadSystem;
 
@@ -599,7 +600,7 @@ void MeshRenderSystem::renderShadows()
 			if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 				continue;
 
-			prepareItems(viewProj, cameraOffset, frustumPlaneCount,
+			prepareItems(viewProj, cameraOffset, Plane::frustumCount,
 				MeshRenderType::OpaqueShadow, MeshRenderType::TranslucentShadow);
 
 			shadowSystem->beginShadowRender(i, MeshRenderType::OpaqueShadow);
@@ -624,7 +625,7 @@ void MeshRenderSystem::preForwardRender()
 	renderShadows();
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
+	prepareItems(cameraConstants.viewProj, float3(0.0f), Plane::frustumCount - 2,
 		MeshRenderType::Opaque, MeshRenderType::Translucent);
 }
 
@@ -650,7 +651,7 @@ void MeshRenderSystem::preDeferredRender()
 	renderShadows();
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	prepareItems(cameraConstants.viewProj, float3(0.0f), frustumPlaneCount - 2,
+	prepareItems(cameraConstants.viewProj, float3(0.0f), Plane::frustumCount - 2,
 		MeshRenderType::Opaque, MeshRenderType::Translucent);
 }
 

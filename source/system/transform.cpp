@@ -16,6 +16,7 @@
 #include "garden/system/character.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
+#include "math/matrix/transform.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/transform.hpp"

@@ -40,13 +40,13 @@ namespace
 }
 
 //--------------------------------------------------------------------------------------------------
-static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, int32 shadowMapSize)
+static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
 	const auto shadowFormat = Image::Format::UnormD16;
 	auto graphicsSystem = GraphicsSystem::get();
 	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::DepthStencilAttachment |
 		Image::Bind::Sampled, { Image::Layers(SHADOW_MAP_CASCADE_COUNT) },
-		int2(shadowMapSize), Image::Strategy::Size);
+		uint2(shadowMapSize), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.shadow-mapping.buffer");
 	imageViews.resize(SHADOW_MAP_CASCADE_COUNT);
 
@@ -80,7 +80,7 @@ static void createDataBuffers(vector<vector<ID<Buffer>>>& dataBuffers)
 
 //--------------------------------------------------------------------------------------------------
 static void createFramebuffers(const vector<ID<ImageView>>& imageViews,
-	vector<ID<Framebuffer>>& framebuffers, int32 shadowMapSize)
+	vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
 {
 	auto graphicsSystem = GraphicsSystem::get();
 	framebuffers.resize(SHADOW_MAP_CASCADE_COUNT);
@@ -91,7 +91,7 @@ static void createFramebuffers(const vector<ID<ImageView>>& imageViews,
 		vector<Framebuffer::OutputAttachment> colorAttachments;
 		depthStencilAttachment.imageView = imageViews[i];
 		auto framebuffer = graphicsSystem->createFramebuffer(
-			int2(shadowMapSize), std::move(colorAttachments), depthStencilAttachment);
+			uint2(shadowMapSize), std::move(colorAttachments), depthStencilAttachment);
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.shadow" + to_string(i));
 		framebuffers[i] = framebuffer;
 	}
@@ -371,7 +371,7 @@ const vector<ID<Framebuffer>>& ShadowMappingRenderSystem::getFramebuffers()
 }
 
 //--------------------------------------------------------------------------------------------------
-void ShadowMappingRenderSystem::setShadowMapSize(int32 size)
+void ShadowMappingRenderSystem::setShadowMapSize(uint32 size)
 {
 	abort(); // TODO:
 }

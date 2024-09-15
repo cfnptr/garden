@@ -79,6 +79,9 @@ public:
 	virtual void write(string_view name, int2 value) = 0;
 	virtual void write(string_view name, const int3& value) = 0;
 	virtual void write(string_view name, const int4& value) = 0;
+	virtual void write(string_view name, uint2 value) = 0;
+	virtual void write(string_view name, const uint3& value) = 0;
+	virtual void write(string_view name, const uint4& value) = 0;
 	virtual void write(string_view name, float2 value) = 0;
 	virtual void write(string_view name, const float3& value) = 0;
 	virtual void write(string_view name, const float4& value) = 0;
@@ -132,6 +135,9 @@ public:
 	virtual bool read(string_view name, int2& value) = 0;
 	virtual bool read(string_view name, int3& value) = 0;
 	virtual bool read(string_view name, int4& value) = 0;
+	virtual bool read(string_view name, uint2& value) = 0;
+	virtual bool read(string_view name, uint3& value) = 0;
+	virtual bool read(string_view name, uint4& value) = 0;
 	virtual bool read(string_view name, float2& value) = 0;
 	virtual bool read(string_view name, float3& value) = 0;
 	virtual bool read(string_view name, float4& value) = 0;

@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+set(BUILD_SHARED_LIBS OFF)
+set(SKIP_INSTALL_ALL TRUE)
+set(ZLIB_USE_STATIC_LIBS ON)
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 

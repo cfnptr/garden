@@ -197,13 +197,13 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	Image::Mips mips(1); mips[0].assign(shadowBufferCount, nullptr);
+	Image::Mips mips(1); mips[0].assign(LightingRenderSystem::shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
 		graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadow.buffer");
 
-	for (uint32 i = 0; i < shadowBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::shadowBufferCount; i++)
 	{
 		shadowImageViews[i] = graphicsSystem->createImageView(image,
 			Image::Type::Texture2D, Image::Format::UnormR8, 0, 1, i, 1);
@@ -215,7 +215,7 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	for (uint32 i = 0; i < shadowBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::shadowBufferCount; i++)
 	{
 		graphicsSystem->destroy(shadowImageViews[i]);
 		shadowImageViews[i] = {};
@@ -227,7 +227,7 @@ static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const 
 {
 	auto graphicsSystem = GraphicsSystem::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	for (uint32 i = 0; i < shadowBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::shadowBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
 		{ Framebuffer::OutputAttachment(shadowImageViews[i], true, false, true) };
@@ -238,7 +238,7 @@ static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const 
 static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	for (uint32 i = 0; i < shadowBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::shadowBufferCount; i++)
 	{
 		graphicsSystem->destroy(shadowFramebuffers[i]);
 		shadowFramebuffers[i] = {};
@@ -249,13 +249,13 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	Image::Mips mips(1); mips[0].assign(aoBufferCount, nullptr);
+	Image::Mips mips(1); mips[0].assign(LightingRenderSystem::aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
 		graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.ao.buffer");
 
-	for (uint32 i = 0; i < aoBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::aoBufferCount; i++)
 	{
 		aoImageViews[i] = graphicsSystem->createImageView(image,
 			Image::Type::Texture2D, Image::Format::UnormR8, 0, 1, i, 1);
@@ -267,7 +267,7 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	for (uint32 i = 0; i < aoBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::aoBufferCount; i++)
 	{
 		graphicsSystem->destroy(aoImageViews[i]);
 		aoImageViews[i] = {};
@@ -279,7 +279,7 @@ static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<Image
 {
 	auto graphicsSystem = GraphicsSystem::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	for (uint32 i = 0; i < aoBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::aoBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
 		{ Framebuffer::OutputAttachment(aoImageViews[i], true, false, true) };
@@ -290,7 +290,7 @@ static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<Image
 static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	for (uint32 i = 0; i < aoBufferCount; i++)
+	for (uint32 i = 0; i < LightingRenderSystem::aoBufferCount; i++)
 	{
 		graphicsSystem->destroy(aoFramebuffers[i]);
 		aoFramebuffers[i] = {};
@@ -299,7 +299,8 @@ static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 
 //**********************************************************************************************************************
 static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
-	ID<ImageView> shadowImageViews[shadowBufferCount], ID<ImageView> aoImageViews[aoBufferCount])
+	ID<ImageView> shadowImageViews[LightingRenderSystem::shadowBufferCount], 
+	ID<ImageView> aoImageViews[LightingRenderSystem::aoBufferCount])
 {
 	auto graphicsSystem = GraphicsSystem::get();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::get()->getGFramebuffer());
@@ -323,14 +324,14 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 }
 
 static map<string, DescriptorSet::Uniform> getShadowDenoiseUniforms(
-	ID<ImageView> shadowImageViews[shadowBufferCount])
+	ID<ImageView> shadowImageViews[LightingRenderSystem::shadowBufferCount])
 {
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ { "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) } };
 	return uniforms;
 }
 static map<string, DescriptorSet::Uniform> getAoDenoiseUniforms(
-	ID<ImageView> aoImageViews[aoBufferCount])
+	ID<ImageView> aoImageViews[LightingRenderSystem::aoBufferCount])
 {
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ { "aoBuffer", DescriptorSet::Uniform(aoImageViews[0]) } };
@@ -354,7 +355,8 @@ static ID<ComputePipeline> createIblSpecularPipeline()
 {
 	return ResourceSystem::get()->loadComputePipeline("ibl-specular", false, false);
 }
-static ID<GraphicsPipeline> createAoDenoisePipeline(const ID<Framebuffer> aoFramebuffers[aoBufferCount])
+static ID<GraphicsPipeline> createAoDenoisePipeline(
+	const ID<Framebuffer> aoFramebuffers[LightingRenderSystem::aoBufferCount])
 {
 	return ResourceSystem::get()->loadGraphicsPipeline("denoise/ao", aoFramebuffers[1]);
 }
@@ -393,7 +395,7 @@ static ID<Image> createDfgLUT()
 	
 	auto graphicsSystem = GraphicsSystem::get();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Bind::TransferDst |
-		Image::Bind::Sampled, { { pixels } }, int2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
+		Image::Bind::Sampled, { { pixels } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
 	free(pixels);
 	return image;
@@ -879,7 +881,7 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 		for (uint32 i = itemOffset; i < itemCount; i++)
 		{
 			auto y = i / cubemapSize, x = i - y * cubemapSize;
-			auto st = coordsToST(int2(x, y), invDim);
+			auto st = coordsToST(uint2(x, y), invDim);
 			auto dir = stToDir(st, face);
 			// TODO: check if inversion is required, or just use pixels[i].
 			auto color = pixels[(invCubemapSize - y) * cubemapSize + x];
@@ -1017,9 +1019,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		mips[i] = Image::Layers(6);
 
 	auto specular = graphicsSystem->createImage(Image::Type::Cubemap,
-		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst |
-		Image::Bind::Storage | Image::Bind::Sampled, mips,
-		int3(cubemapSize, cubemapSize, 1), strategy);
+		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::Storage | 
+		Image::Bind::Sampled, mips, uint3(cubemapSize, cubemapSize, 1), strategy);
 
 	uint64 specularCacheSize = 0;
 	for (uint8 i = 1; i < specularMipCount; i++)
@@ -1080,7 +1081,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	}
 
 	Image::CopyImageRegion imageCopyRegion;
-	imageCopyRegion.extent = int3(cubemapSize, cubemapSize, 1);
+	imageCopyRegion.extent = uint3(cubemapSize, cubemapSize, 1);
 	imageCopyRegion.layerCount = 6;
 	Image::copy(cubemap, specular, imageCopyRegion);
 
@@ -1108,7 +1109,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		auto pushConstants = pipelineView->getPushConstants<SpecularPC>();
 		pushConstants->count = countBuffer[i - 1];
 		pipelineView->pushConstants();
-		pipelineView->dispatch(int3(cubemapSize, cubemapSize, 6));
+		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
 
 		graphicsSystem->destroy(iblSpecularDescriptorSet);
 		graphicsSystem->destroy(iblSpecularView);
@@ -1127,7 +1128,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 	GARDEN_ASSERT(!path.empty());
 	
 	vector<uint8> left, right, bottom, top, back, front;
-	int2 size; Image::Format format;
+	uint2 size; Image::Format format;
 	ResourceSystem::get()->loadCubemapData(path, left, right, bottom, top, back, front, size, format);
 	auto cubemapSize = size.x;
 
@@ -1143,7 +1144,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 
 	cubemap = Ref<Image>(graphicsSystem->createImage(Image::Type::Cubemap,
 		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::TransferSrc |
-		Image::Bind::Sampled, mips, int3(size, 1), strategy, format));
+		Image::Bind::Sampled, mips, uint3(size, 1), strategy, format));
 	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);

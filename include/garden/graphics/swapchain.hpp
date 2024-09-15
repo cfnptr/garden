@@ -48,7 +48,7 @@ public:
 		#endif
 	};
 private:
-	int2 framebufferSize = int2(0);
+	uint2 framebufferSize = uint2(0);
 	vk::Fence fences[frameLag];
 	vk::Semaphore imageAcquiredSemaphores[frameLag];
 	vk::Semaphore drawCompleteSemaphores[frameLag];
@@ -59,7 +59,7 @@ private:
 	bool vsync = false, tripleBuffering = false, useThreading = false;
 
 	Swapchain() = default;
-	Swapchain(int2 framebufferSize, bool useVsync,
+	Swapchain(uint2 framebufferSize, bool useVsync,
 		bool useTripleBuffering, bool useThreading);
 	void destroy();
 
@@ -70,12 +70,12 @@ public:
 	const Buffer& getCurrentBuffer() const noexcept { return buffers[bufferIndex]; }
 	uint32 getCurrentBufferIndex() const noexcept { return bufferIndex; }
 	uint32 getCurrentFrameIndex() const noexcept { return frameIndex; }
-	int2 getFramebufferSize() const noexcept { return framebufferSize; }
+	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
 	bool useVsync() const noexcept { return vsync; }
 	bool useTripleBuffering() const noexcept { return tripleBuffering; }
 
 	void setThreadPool(ThreadPool& threadPool);
-	void recreate(int2 framebufferSize, bool useVsync, bool useTripleBuffering);
+	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering);
 	bool acquireNextImage();
 	void submit();
 	bool present();
