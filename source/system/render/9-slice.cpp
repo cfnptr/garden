@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/9-slice.hpp"
+#include "math/matrix/transform.hpp"
 
 using namespace garden;
 
@@ -40,7 +41,7 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	if (nineSliceRenderView->colorMap)
 	{
 		auto imageView = GraphicsSystem::get()->get(nineSliceRenderView->colorMap);
-		imageSize = (float2)(int2)imageView->getSize();
+		imageSize = (float2)(uint2)imageView->getSize();
 	}
 	auto scale = extractScale2(model) * imageSize;
 

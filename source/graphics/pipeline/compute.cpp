@@ -60,9 +60,9 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 }
 
 //*********************************************************************************************************************
-void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
+void ComputePipeline::dispatch(const uint3& count, bool isGlobalCount)
 {
-	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(count > 0u);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!Framebuffer::getCurrent());
 	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
@@ -73,6 +73,6 @@ void ComputePipeline::dispatch(const int3& count, bool isGlobalCount)
 	#endif
 
 	DispatchCommand command;
-	command.groupCount = isGlobalCount ? (int3)ceil((float3)count / (float3)localSize) : count;
+	command.groupCount = isGlobalCount ? (uint3)ceil((float3)count / (float3)localSize) : count;
 	GraphicsAPI::currentCommandBuffer->addCommand(command);
 }

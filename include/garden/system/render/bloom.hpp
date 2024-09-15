@@ -39,7 +39,7 @@ class BloomRenderSystem final : public System,
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
-	vector<int2> sizeBuffer;
+	vector<uint2> sizeBuffer;
 	bool useThreshold = false;
 	bool useAntiFlickering = true;
 	uint16 _alignment = 0;

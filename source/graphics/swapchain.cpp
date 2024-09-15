@@ -69,15 +69,13 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 }
 
 //*********************************************************************************************************************
-static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, int2 framebufferSize)
+static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, uint2 framebufferSize)
 {
 	if (capabilities.currentExtent.width == UINT32_MAX)
 	{
 		return vk::Extent2D(
-			clamp((uint32)framebufferSize.x,
-				capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-			clamp((uint32)framebufferSize.y,
-				capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
+			clamp(framebufferSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+			clamp(framebufferSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
 	}
 	return capabilities.currentExtent;
 }
@@ -134,7 +132,7 @@ static vk::PresentModeKHR getBestVkPresentMode(
 
 //*********************************************************************************************************************
 static vk::SwapchainKHR createVkSwapchain(vk::PhysicalDevice physicalDevice,
-	vk::Device device, vk::SurfaceKHR surface, int2 framebufferSize, bool useVsync,
+	vk::Device device, vk::SurfaceKHR surface, uint2 framebufferSize, bool useVsync,
 	bool useTripleBuffering, vk::SwapchainKHR oldSwapchain, vk::Format& format)
 {
 	auto capabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
@@ -182,7 +180,7 @@ static vector<vk::CommandPool> createVkCommandPools(vk::Device device,
 static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 	vk::Device device, vk::SwapchainKHR swapchain, vk::Format surfaceFormat,
 	vk::CommandPool graphicsCommandPool, LinearPool<Image>& imagePool,
-	uint32 graphicsQueueFamilyIndex, int2 framebufferSize, bool useThreading)
+	uint32 graphicsQueueFamilyIndex, uint2 framebufferSize, bool useThreading)
 {
 	auto images = device.getSwapchainImagesKHR(swapchain);
 	auto imageFormat = toImageFormat(surfaceFormat);
@@ -246,7 +244,7 @@ static void destroyVkSwapchainBuffers(vk::Device device, LinearPool<Image>& imag
 }
 
 //*********************************************************************************************************************
-Swapchain::Swapchain(int2 framebufferSize, bool useVsync, bool useTripleBuffering, bool useThreading)
+Swapchain::Swapchain(uint2 framebufferSize, bool useVsync, bool useTripleBuffering, bool useThreading)
 {
 	for (uint8 i = 0; i < frameLag; i++)
 	{
@@ -287,7 +285,7 @@ void Swapchain::setThreadPool(ThreadPool& threadPool)
 }
 
 //*********************************************************************************************************************
-void Swapchain::recreate(int2 framebufferSize, bool useVsync, bool useTripleBuffering)
+void Swapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
 	Vulkan::device.waitIdle();
 	vk::Format format;

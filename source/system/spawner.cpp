@@ -17,6 +17,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
+#include "math/matrix/transform.hpp"
 
 using namespace garden;
 

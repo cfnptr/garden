@@ -62,7 +62,7 @@ static void updateHistogram(const char* name, float* sampleBuffer, float* sorted
 	auto maxValue = (float)-FLT_MAX;
 	auto average = 0.0f;
 
-	for (uint32 i = 0; i < sampleBufferSize; i++)
+	for (uint32 i = 0; i < GraphicsEditorSystem::sampleBufferSize; i++)
 	{
 		auto sample = sampleBuffer[i];
 		if (i > 0)
@@ -74,23 +74,23 @@ static void updateHistogram(const char* name, float* sampleBuffer, float* sorted
 		average += sample;
 	}
 
-	average /= sampleBufferSize;
+	average /= GraphicsEditorSystem::sampleBufferSize;
 	auto fps = 1.0f / deltaTime;
-	sampleBuffer[sampleBufferSize - 1] = fps;
+	sampleBuffer[GraphicsEditorSystem::sampleBufferSize - 1] = fps;
 
-	memcpy(sortedBuffer, sampleBuffer, sampleBufferSize * sizeof(float));
-	std::sort(sortedBuffer, sortedBuffer + sampleBufferSize, std::less<float>());
+	memcpy(sortedBuffer, sampleBuffer, GraphicsEditorSystem::sampleBufferSize * sizeof(float));
+	std::sort(sortedBuffer, sortedBuffer + GraphicsEditorSystem::sampleBufferSize, std::less<float>());
 
 	auto onePercentLow = 0.0f;
-	for (uint32 i = 0; i < sampleBufferSize / 100; i++)
+	for (uint32 i = 0; i < GraphicsEditorSystem::sampleBufferSize / 100; i++)
 		onePercentLow += sortedBuffer[i];
-	onePercentLow /= sampleBufferSize / 100;
+	onePercentLow /= GraphicsEditorSystem::sampleBufferSize / 100;
 
 	ImGui::Text("Time: %f | 1%% Low: %f",
 		1.0f / average, 1.0f / onePercentLow);
 	ImGui::Text("FPS: %d | 1%% Low: %d | Minimal: %d",
 		(int)average, (int)onePercentLow, (int)minValue);
-	ImGui::PlotHistogram(name, sampleBuffer, sampleBufferSize,
+	ImGui::PlotHistogram(name, sampleBuffer, GraphicsEditorSystem::sampleBufferSize,
 		0, nullptr, minValue, maxValue, { 256.0f, 64.0f }, 4);
 }
 
@@ -101,10 +101,10 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 	{
 		if (!cpuFpsBuffer)
 		{
-			cpuFpsBuffer = new float[sampleBufferSize]();
-			gpuFpsBuffer = new float[sampleBufferSize]();
-			cpuSortedBuffer = new float[sampleBufferSize]();
-			gpuSortedBuffer = new float[sampleBufferSize]();
+			cpuFpsBuffer = new float[GraphicsEditorSystem::sampleBufferSize]();
+			gpuFpsBuffer = new float[GraphicsEditorSystem::sampleBufferSize]();
+			cpuSortedBuffer = new float[GraphicsEditorSystem::sampleBufferSize]();
+			gpuSortedBuffer = new float[GraphicsEditorSystem::sampleBufferSize]();
 		}
 
 		ImGui::SeparatorText("Mesh Draw Calls");

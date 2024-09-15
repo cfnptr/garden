@@ -36,7 +36,7 @@ static void createGBuffers(ID<Image>* gBuffers)
 static void destroyGBuffers(const ID<Image>* gBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::get();
-	for (uint32 i = 0; i < gBufferCount; i++)
+	for (uint32 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
 		graphicsSystem->destroy(gBuffers[i]);
 }
 

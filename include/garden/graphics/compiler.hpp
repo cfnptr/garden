@@ -32,11 +32,6 @@
 namespace garden::graphics
 {
 
-/**
- * @brief Compiled shader file magic number size in bytes.
- */
-const psize gslMagicSize = 4;
-
 using namespace std;
 
 /**
@@ -53,6 +48,11 @@ using namespace std;
 class Compiler final
 {
 public:
+	/**
+	 * @brief Compiled shader file magic number size in bytes.
+	 */
+	inline static const psize gslMagicSize = 4;
+
 	/**
 	 * @brief Graphics pipeline shader data.
 	 */
@@ -85,11 +85,11 @@ public:
 	/**
 	 * @brief Graphics pipeline file magic number
 	 */
-	static const string_view graphicsGslMagic;
+	inline static const string_view graphicsGslMagic = "GSLG";
 	/**
 	 * @brief Graphics pipeline file magic number
 	 */
-	static const string_view computeGslMagic;
+	inline static const string_view computeGslMagic = "GSLC";
 	
 	/**
 	 * @brief Loads graphics pipeline shader data.

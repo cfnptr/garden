@@ -94,7 +94,7 @@ public:
 	// TODO: move rest to api.hpp and make these calls universal.
 
 	static void initialize(const string& appName, const string& appDataName, Version appVersion,
-		int2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading);
+		uint2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading);
 	static void terminate();
 	static void updateDestroyBuffer();
 };

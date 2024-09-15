@@ -28,10 +28,6 @@ namespace garden
 using namespace ecsm;
 using namespace math;
 
-const int32 defaultWindowWidth = 1280;
-const int32 defaultWindowHeight = 720;
-const int2 defaultWindowSize = int2(defaultWindowWidth, defaultWindowHeight);
-
 /***********************************************************************************************************************
  * @brief Keyboard button key codes. (GLFW)
  */
@@ -129,6 +125,20 @@ static const vector<KeyboardButton> allKeyboardButtons =
  */
 class InputSystem final : public System
 {
+public:
+	/**
+	 * @brief Default window width in pixels across X-axis.
+	 */
+	inline static const uint32 defaultWindowWidth = 1280;
+	/**
+	 * @brief Default window height in pixels across Y-axis.
+	 */
+	inline static const uint32 defaultWindowHeight = 720;
+	/**
+	 * @brief Default window size in pixels.
+	 */
+	inline static const uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
+private:
 	vector<bool> lastKeyboardStates;
 	vector<bool> lastMouseStates;
 	vector<fs::path> fileDropPaths;

@@ -25,6 +25,7 @@
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/resource/primitive.hpp"
+#include "math/matrix/transform.hpp"
 #include "mpio/os.hpp"
 
 using namespace mpio;
@@ -79,7 +80,7 @@ void GraphicsSystem::initializeImGui()
 	destroy(imGuiFramebuffer);
 
 	vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
-		1, nullptr, (uint32)framebufferSize.x, (uint32)framebufferSize.y, 1);
+		1, nullptr, framebufferSize.x, framebufferSize.y, 1);
 	ImGuiData::framebuffers.resize(Vulkan::swapchain.getBufferCount());
 
 	for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
@@ -155,7 +156,7 @@ void GraphicsSystem::recreateImGui()
 		Vulkan::device.destroyFramebuffer(framebuffer);
 
 	vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
-		1, nullptr, (uint32)framebufferSize.x, (uint32)framebufferSize.y, 1);
+		1, nullptr, framebufferSize.x, framebufferSize.y, 1);
 	ImGuiData::framebuffers.resize(Vulkan::swapchain.getBufferCount());
 
 	for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
@@ -168,7 +169,7 @@ void GraphicsSystem::recreateImGui()
 }
 #endif
 
-static ID<ImageView> createDepthStencilBuffer(int2 size, Image::Format format)
+static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 {
 	auto depthImage = GraphicsSystem::get()->createImage(format, Image::Bind::TransferDst |
 		Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
@@ -180,7 +181,7 @@ static ID<ImageView> createDepthStencilBuffer(int2 size, Image::Format format)
 //**********************************************************************************************************************
 GraphicsSystem* GraphicsSystem::instance = nullptr;
 
-GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat,
+GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat,
 	bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useAsyncRecording)
 {
 	this->useVsync = useVsync;
@@ -204,9 +205,12 @@ GraphicsSystem::GraphicsSystem(int2 windowSize, Image::Format depthStencilFormat
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
 		windowSize, isFullscreen, useVsync, useTripleBuffering, asyncRecording);
 
+	int sizeX = 0, sizeY = 0;
 	auto window = (GLFWwindow*)GraphicsAPI::window;
-	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
-	glfwGetWindowSize(window, &this->windowSize.x, &this->windowSize.y);
+	glfwGetFramebufferSize(window, &sizeX, &sizeY);
+	framebufferSize = uint2(sizeX, sizeY);
+	glfwGetWindowSize(window, &sizeX, &sizeY);
+	this->windowSize = uint2(sizeX, sizeY);
 
 	if (depthStencilFormat != Image::Format::Undefined)
 		depthStencilBuffer = createDepthStencilBuffer(framebufferSize, depthStencilFormat);
@@ -327,19 +331,20 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 }
 
 //**********************************************************************************************************************
-static void updateWindowInput(int2& framebufferSize, int2& windowSize, bool& isFramebufferSizeValid)
+static void updateWindowInput(uint2& framebufferSize, uint2& windowSize, bool& isFramebufferSizeValid)
 {
+	int sizeX = 0, sizeY = 0;
 	auto window = (GLFWwindow*)GraphicsAPI::window;
-	int framebufferWidth = 0, framebufferHeight = 0;
-	glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
-	int windowWidth = 0, windowHeight = 0;
-	glfwGetWindowSize(window, &windowWidth, &windowHeight);
+	glfwGetFramebufferSize(window, &sizeX, &sizeY);
 
-	isFramebufferSizeValid = framebufferWidth != 0 && framebufferHeight != 0;
+	isFramebufferSizeValid = sizeX != 0 && sizeY != 0;
 	if (isFramebufferSizeValid)
-		framebufferSize = int2(framebufferWidth, framebufferHeight);
-	if (windowWidth != 0 && windowHeight != 0)
-		windowSize = int2(windowWidth, windowHeight);
+		framebufferSize = uint2(sizeX, sizeY);
+
+	glfwGetWindowSize(window, &sizeX, &sizeY);
+
+	if (sizeX != 0 && sizeY != 0)
+		windowSize = uint2(sizeX, sizeY);
 }
 
 //**********************************************************************************************************************
@@ -366,7 +371,7 @@ static void recreateCameraBuffers(vector<vector<ID<Buffer>>>& cameraConstantsBuf
 
 //**********************************************************************************************************************
 static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
-	ID<ImageView> depthStencilBuffer, int2 framebufferSize)
+	ID<ImageView> depthStencilBuffer, uint2 framebufferSize)
 {
 	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
@@ -378,7 +383,7 @@ static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 
 //**********************************************************************************************************************
 static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLight,
-	int2 scaledFramebufferSize, CameraConstants& cameraConstants)
+	uint2 scaledFramebufferSize, CameraConstants& cameraConstants)
 {
 	auto manager = Manager::get();
 
@@ -468,7 +473,7 @@ void GraphicsSystem::update()
 		{
 			auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
 			auto depthStencilImageView = GraphicsAPI::imagePool.get(depthStencilBufferView->getImage());
-			if (framebufferSize != (int2)depthStencilImageView->getSize())
+			if (framebufferSize != (uint2)depthStencilImageView->getSize())
 			{
 				auto format = depthStencilBufferView->getFormat();
 				destroy(depthStencilBufferView->getImage());
@@ -602,9 +607,9 @@ void GraphicsSystem::setRenderScale(float renderScale)
 	swapchainChanges.framebufferSize = true;
 	recreateSwapchain(swapchainChanges);
 }
-int2 GraphicsSystem::getScaledFramebufferSize() const noexcept
+uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
 {
-	return max((int2)(float2(framebufferSize) * renderScale), int2(1));
+	return max((uint2)(float2(framebufferSize) * renderScale), uint2(1));
 }
 
 bool GraphicsSystem::hasDynamicRendering() const noexcept
@@ -654,7 +659,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 	{
 		const Color data[1] = { Color::transparent };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
@@ -666,7 +671,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 	{
 		const Color data[1] = { Color::white };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
@@ -678,7 +683,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 	{
 		const Color data[1] = { Color::green };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
@@ -690,7 +695,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 	{
 		const Color data[1] = { Color(127, 127, 255, 255) };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, int2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
 	}
@@ -712,7 +717,7 @@ void GraphicsSystem::setWindowIcon(const vector<string>& paths)
 
 	for (psize i = 0; i < paths.size(); i++)
 	{
-		int2 size; Image::Format format;
+		uint2 size; Image::Format format;
 		resourceSystem->loadImageData(paths[i], imageData[i], size, format);
 
 		GLFWimage image;
@@ -826,11 +831,11 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
 
 //**********************************************************************************************************************
 ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Bind bind,
-	const Image::Mips& data, const int3& size, Image::Strategy strategy, Image::Format dataFormat)
+	const Image::Mips& data, const uint3& size, Image::Strategy strategy, Image::Format dataFormat)
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
 	GARDEN_ASSERT(!data.empty());
-	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(size > 0u);
 
 	auto mipCount = (uint8)data.size();
 	auto layerCount = (uint32)data[0].size();
@@ -892,21 +897,18 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			stagingCount++;
 		}
 
-		mipSize = max(mipSize / 2, int3(1));
+		mipSize = max(mipSize / 2u, uint3(1));
 	}
 
-	auto image = GraphicsAPI::imagePool.create(type, format,
-		bind, strategy, size, mipCount, layerCount, 0);
+	auto image = GraphicsAPI::imagePool.create(type, format, bind, strategy, size, mipCount, layerCount, 0);
 	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
 	{
 		GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
-		auto stagingBuffer = GraphicsAPI::bufferPool.create(
-			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, Buffer::Strategy::Speed, stagingSize, 0);
-		SET_RESOURCE_DEBUG_NAME(stagingBuffer,
-			"buffer.imageStaging" + to_string(*stagingBuffer));
+		auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, 
+			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, stagingSize, 0);
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.imageStaging" + to_string(*stagingBuffer));
 		
 		ID<Image> targetImage; 
 		if (format == dataFormat)
@@ -915,11 +917,9 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		}
 		else
 		{
-			targetImage = GraphicsAPI::imagePool.create(type, dataFormat,
-				Image::Bind::TransferDst | Image::Bind::TransferSrc,
-				Image::Strategy::Speed, size, mipCount, layerCount, 0);
-			SET_RESOURCE_DEBUG_NAME(targetImage,
-				"image.staging" + to_string(*targetImage));
+			targetImage = GraphicsAPI::imagePool.create(type, dataFormat, Image::Bind::TransferDst | 
+				Image::Bind::TransferSrc, Image::Strategy::Speed, size, mipCount, layerCount, 0);
+			SET_RESOURCE_DEBUG_NAME(targetImage, "image.staging" + to_string(*targetImage));
 		}
 
 		auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
@@ -952,7 +952,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				stagingOffset += binarySize;
 			}
 
-			mipSize = max(mipSize / 2, int3(1));
+			mipSize = max(mipSize / 2u, uint3(1));
 		}
 
 		GARDEN_ASSERT(stagingCount == copyIndex);
@@ -984,7 +984,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				region.srcMipLevel = i;
 				region.dstMipLevel = i;
 				blitRegions[i] = region;
-				mipSize = max(mipSize / 2, int3(1));
+				mipSize = max(mipSize / 2u, uint3(1));
 			}
 
 			Image::blit(targetImage, image, blitRegions);
@@ -1071,11 +1071,10 @@ View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
 
 //**********************************************************************************************************************
 // TODO: add checks if attachments do not overlaps and repeat.
-ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
-	vector<Framebuffer::OutputAttachment>&& colorAttachments,
-	Framebuffer::OutputAttachment depthStencilAttachment)
+ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
+	vector<Framebuffer::OutputAttachment>&& colorAttachments, Framebuffer::OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(size > 0u);
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 
 	// TODO: we can use attachments with different sizes, but should we?
@@ -1086,7 +1085,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
+		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
 	}
 	if (depthStencilAttachment.imageView)
@@ -1094,7 +1093,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
 		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
+		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
 	}
 	#endif
@@ -1104,10 +1103,9 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(int2 size,
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
-ID<Framebuffer> GraphicsSystem::createFramebuffer(
-	int2 size, vector<Framebuffer::Subpass>&& subpasses)
+ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses)
 {
-	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(size > 0u);
 	GARDEN_ASSERT(!subpasses.empty());
 
 	#if GARDEN_DEBUG
@@ -1120,7 +1118,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 			GARDEN_ASSERT(inputAttachment.shaderStages != ShaderStage::None);
 			auto imageView = GraphicsAPI::imageViewPool.get(inputAttachment.imageView);
 			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
+			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
 		}
 
@@ -1133,7 +1131,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(
 				(!outputAttachment.clear && outputAttachment.load));
 			auto imageView = GraphicsAPI::imageViewPool.get(outputAttachment.imageView);
 			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip((int2)image->getSize(), imageView->getBaseMip()));
+			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 			#if GARDEN_DEBUG
 			if (isFormatColor(imageView->getFormat()))
 				GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));

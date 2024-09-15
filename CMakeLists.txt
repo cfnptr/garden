@@ -26,18 +26,7 @@ if(TARGET garden)
 	return()
 endif()
 
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-	cmake_path(SET VCPKG_ROOT $ENV{VCPKG_ROOT})
-	set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
-	if (NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
-		message(FATAL_ERROR "vcpkg is not installed or added to the System Environment Variables.")
-	endif()
-elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-	set(HOMEBREW_PREFIX $ENV{HOMEBREW_PREFIX})
-	if (NOT EXISTS ${HOMEBREW_PREFIX})
-		message(FATAL_ERROR "Homebrew is not installed or added to the System Environment Variables.")
-	endif()
-endif()
+include(cmake/package-managers.cmake)
 
 project(Garden VERSION 0.0.1 LANGUAGES CXX
 	DESCRIPTION "An open source cross platform game engine \
@@ -94,9 +83,6 @@ endif()
 #***********************************************************************************************************************
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(BUILD_SHARED_LIBS OFF)
-set(SKIP_INSTALL_ALL TRUE)
-set(ZLIB_USE_STATIC_LIBS ON)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	enable_language(OBJC)
@@ -188,7 +174,6 @@ set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
-	set(CMAKE_PREFIX_PATH ${HOMEBREW_PREFIX} ${HOMEBREW_PREFIX}/opt/zlib)
 endif()
 
 find_package(Vulkan REQUIRED)

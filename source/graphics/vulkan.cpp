@@ -794,7 +794,7 @@ static void destroyPipelineCache(const string& appDataName, Version appVersion, 
 
 //*********************************************************************************************************************
 void Vulkan::initialize(const string& appName, const string& appDataName, Version appVersion,
-	int2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading)
+	uint2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading)
 {
 	GARDEN_ASSERT(!GraphicsAPI::isRunning);
 
@@ -841,8 +841,8 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 
 	if (glfwRawMouseMotionSupported())
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	glfwSetWindowSizeLimits(window, minFramebufferSize, minFramebufferSize,
-		GLFW_DONT_CARE, GLFW_DONT_CARE);
+	glfwSetWindowSizeLimits(window, GraphicsAPI::minFramebufferSize, 
+		GraphicsAPI::minFramebufferSize, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
 	uint32 graphicsQueueMaxCount = 0, transferQueueMaxCount = 0, computeQueueMaxCount = 0;
 	uint32 frameQueueIndex = 0, graphicsQueueIndex = 0, transferQueueIndex = 0, computeQueueIndex = 0;
@@ -885,9 +885,9 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	pipelineCache = createPipelineCache(appDataName, appVersion,
 		device, deviceProperties, GraphicsAPI::hashState);
 
-	int2 framebufferSize;
-	glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
-	swapchain = Swapchain(framebufferSize, useVsync, useTripleBuffering, useThreading);
+	int sizeX = 0, sizeY = 0;
+	glfwGetFramebufferSize(window, &sizeX, &sizeY);
+	swapchain = Swapchain(uint2(sizeX, sizeY), useVsync, useTripleBuffering, useThreading);
 
 	GraphicsAPI::frameCommandBuffer.initialize(CommandBufferType::Frame);
 	GraphicsAPI::graphicsCommandBuffer.initialize(CommandBufferType::Graphics);

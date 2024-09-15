@@ -143,9 +143,9 @@ public:
 	 */
 	struct CopyImageRegion final
 	{
-		int3 srcOffset = int3(0); /**< Source image region offset in texels. */
-		int3 dstOffset = int3(0); /**< Destination image region offset in texels. */
-		int3 extent = int3(0);    /**< Copy region extent in texels. */
+		uint3 srcOffset = uint3(0); /**< Source image region offset in texels. */
+		uint3 dstOffset = uint3(0); /**< Destination image region offset in texels. */
+		uint3 extent = uint3(0);    /**< Copy region extent in texels. */
 		uint32 srcBaseLayer = 0;  /**< Source image base array layer. */
 		uint32 dstBaseLayer = 0;  /**< Destination image base array layer. */
 		uint32 layerCount = 0;    /**< Copy array layer count. */
@@ -161,8 +161,8 @@ public:
 		uint64 bufferOffset = 0;      /**< Buffer offset in bytes. */
 		uint32 bufferRowLength = 0;   /**< Buffer row length in texels. */
 		uint32 bufferImageHeight = 0; /**< Buffer image height in texels. */
-		int3 imageOffset = int3(0);   /**< Image offset in texels. */
-		int3 imageExtent = int3(0);   /**< Image extent in texels. */
+		uint3 imageOffset = uint3(0);   /**< Image offset in texels. */
+		uint3 imageExtent = uint3(0);   /**< Image extent in texels. */
 		uint32 imageBaseLayer = 0;    /**< Image base array layer. */
 		uint32 imageLayerCount = 0;   /**< Image array layer count. */
 		uint32 imageMipLevel = 0;     /**< Image mipmap level. */
@@ -173,10 +173,10 @@ public:
 	 */
 	struct BlitRegion final
 	{
-		int3 srcOffset = int3(0); /**< Source image offset in texels. */
-		int3 srcExtent = int3(0); /**< Source image extent in texels. */
-		int3 dstOffset = int3(0); /**< Destination image offset in texels. */
-		int3 dstExtent = int3(0); /**< Destination image extent in texels. */
+		uint3 srcOffset = uint3(0); /**< Source image offset in texels. */
+		uint3 srcExtent = uint3(0); /**< Source image extent in texels. */
+		uint3 dstOffset = uint3(0); /**< Destination image offset in texels. */
+		uint3 dstExtent = uint3(0); /**< Destination image extent in texels. */
 		uint32 srcBaseLayer = 0;  /**< Source image base array layer. */
 		uint32 dstBaseLayer = 0;  /**< Destination image base array layer. */
 		uint32 layerCount = 0;    /**< Blit array layer count. */
@@ -194,7 +194,7 @@ private:
 	uint8 mipCount = 0;
 	bool swapchain = false;
 	vector<uint32> layouts;
-	int3 size = int3(0);
+	uint3 size = uint3(0);
 	uint32 layerCount = 0;
 	ID<ImageView> defaultView = {};
 
@@ -202,10 +202,10 @@ private:
 	
 	Image() = default;
 	Image(Type type, Format format, Bind bind, Strategy strategy,
-		const int3& size, uint8 mipCount, uint32 layerCount, uint64 version);
+		const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version);
 	Image(Bind bind, Strategy strategy, uint64 version) noexcept : Memory(
 		0, Access::None, Usage::Auto, strategy, version) { this->bind = bind; }
-	Image(void* instance, Format format, Bind bind, Strategy strategy, int2 size, uint64 version);
+	Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version);
 	bool destroy() final;
 
 	friend class Vulkan;
@@ -220,7 +220,7 @@ public:
 	 * @brief Returns image size in texels.
 	 * @details Unused image size dimensions always have size of 1.
 	 */
-	const int3& getSize() const noexcept { return size; }
+	const uint3& getSize() const noexcept { return size; }
 	/**
 	 * @brief Returns image dimensionality type.
 	 * @details Informs the API about how to interpret the image data in memory.
@@ -305,6 +305,15 @@ public:
 	 */
 	void clear(const int4& color, const ClearRegion* regions, uint32 count);
 	/**
+	 * @brief Clears image regions with specified color.
+	 * @details See the @ref Image::clear().
+	 *
+	 * @param[in] color unsigned integer color for clearing
+	 * @param[in] regions target image regions
+	 * @param count region array size
+	 */
+	void clear(const uint4& color, const ClearRegion* regions, uint32 count);
+	/**
 	 * @brief Clears image regions with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
 	 * 
@@ -314,8 +323,6 @@ public:
 	 * @param count region array size
 	 */
 	void clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count);
-
-	// TODO: clear(const uint4& color...);
 
 	/*******************************************************************************************************************
 	 * @brief Clears image regions with specified color.
@@ -338,6 +345,17 @@ public:
 	 */
 	template<psize N>
 	void clear(const int4& color, const array<ClearRegion, N>& regions)
+	{ clear(color, regions.data(), (uint32)N); }
+	/**
+	 * @brief Clears image regions with specified color.
+	 * @details See the @ref Image::clear().
+	 * 
+	 * @tparam N region array size
+	 * @param[in] color unsigned integer color for clearing
+	 * @param[in] regions target image region array
+	 */
+	template<psize N>
+	void clear(const uint4& color, const array<ClearRegion, N>& regions)
 	{ clear(color, regions.data(), (uint32)N); }
 	/**
 	 * @brief Clears image regions with specified depth/stencil value.
@@ -371,6 +389,15 @@ public:
 	void clear(const int4& color, const vector<ClearRegion>& regions)
 	{ clear(color, regions.data(), (uint32)regions.size()); }
 	/**
+	 * @brief Clears image regions with specified color.
+	 * @details See the @ref Image::clear().
+	 * 
+	 * @param[in] color unsigned integer color for clearing
+	 * @param[in] regions target image region vector
+	 */
+	void clear(const uint4& color, const vector<ClearRegion>& regions)
+	{ clear(color, regions.data(), (uint32)regions.size()); }
+	/**
 	 * @brief Clears image regions with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
 	 * 
@@ -398,6 +425,14 @@ public:
 	 */
 	void clear(const int4& color, const ClearRegion& region) { clear(color, &region, 1); }
 	/**
+	 * @brief Clears image region with specified color.
+	 * @details See the @ref Image::clear().
+	 *
+	 * @param[in] color unsinged integer color for clearing
+	 * @param[in] region target image region
+	 */
+	void clear(const uint4& color, const ClearRegion& region) { clear(color, &region, 1); }
+	/**
 	 * @brief Clears image region with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
 	 * 
@@ -410,15 +445,21 @@ public:
 	/**
 	 * @brief Clears entire image with specified color.
 	 * @details See the @ref Image::clear().
-	 * @param color depth value for clearing
+	 * @param color floating point value for clearing
 	 */
 	void clear(const float4& color) { ClearRegion region; clear(color, &region, 1); }
 	/**
 	 * @brief Clears entire image with specified color.
 	 * @details See the @ref Image::clear().
-	 * @param color depth value for clearing
+	 * @param color signed integer value for clearing
 	 */
 	void clear(const int4& color) { ClearRegion region; clear(color, &region, 1); }
+	/**
+	 * @brief Clears entire image with specified color.
+	 * @details See the @ref Image::clear().
+	 * @param color unsigned integer value for clearing
+	 */
+	void clear(const uint4& color) { ClearRegion region; clear(color, &region, 1); }
 	/**
 	 * @brief Clears entire image with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
@@ -1039,7 +1080,7 @@ public:
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
-	static int3& getSize(Image& image) noexcept { return image.size; }
+	static uint3& getSize(Image& image) noexcept { return image.size; }
 	/**
 	 * @brief Returns image array layer count.
 	 * @warning In most cases you should use @ref Image functions.
@@ -1067,7 +1108,7 @@ public:
 	 * @param version image instance version
 	 */
 	static Image create(Image::Type type, Image::Format format, Image::Bind bind,
-		Image::Strategy strategy, const int3& size, uint8 mipCount, uint32 layerCount, uint64 version)
+		Image::Strategy strategy, const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version)
 	{
 		return Image(type, format, bind, strategy, size, mipCount, layerCount, version);
 	}

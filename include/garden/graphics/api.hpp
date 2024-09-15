@@ -29,11 +29,6 @@ namespace garden::graphics
 using namespace garden;
 
 /**
- * @brief Minimal DLSS output size
- */ 
-const int32 minFramebufferSize = 32;
-
-/**
  * @brief Base graphics API class.
  * 
  * @details
@@ -53,6 +48,11 @@ const int32 minFramebufferSize = 32;
 class GraphicsAPI final
 {
 public:
+	/**
+	 * @brief Minimal DLSS output size
+	 */
+	inline static const int32 minFramebufferSize = 32;
+
 	enum class DestroyResourceType : uint32
 	{
 		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,

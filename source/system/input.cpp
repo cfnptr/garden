@@ -139,9 +139,10 @@ static void updateWindowMode()
 		if (glfwGetWindowAttrib(window, GLFW_DECORATED) == GLFW_FALSE)
 		{
 			glfwSetWindowMonitor(window, nullptr,
-				videoMode->width / 2 - defaultWindowWidth / 2,
-				videoMode->height / 2 - defaultWindowHeight / 2,
-				defaultWindowWidth, defaultWindowHeight, videoMode->refreshRate);
+				videoMode->width / 2 - InputSystem::defaultWindowWidth / 2,
+				videoMode->height / 2 - InputSystem::defaultWindowHeight / 2,
+				InputSystem::defaultWindowWidth, InputSystem::defaultWindowHeight, 
+				videoMode->refreshRate);
 			glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
 		}
 		else

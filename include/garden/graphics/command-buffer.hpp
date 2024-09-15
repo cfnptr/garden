@@ -191,7 +191,7 @@ struct DispatchCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	int3 groupCount = int3(0);
+	uint3 groupCount = uint3(0);
 	DispatchCommand() noexcept : Command(Type::Dispatch) { }
 };
 

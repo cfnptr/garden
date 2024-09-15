@@ -82,17 +82,17 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 static vector<vk::BufferImageCopy> bufferImageCopies;
 
 Image::Image(Type type, Format format, Bind bind, Strategy strategy,
-	const int3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
+	const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
 	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(mipCount * layerCount)
 {
-	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(size > 0u);
 	GARDEN_ASSERT(mipCount > 0);
 	GARDEN_ASSERT(layerCount > 0);
 
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.imageType = (VkImageType)toVkImageType(type);
 	imageInfo.format = (VkFormat)toVkFormat(format);
-	imageInfo.extent = { (uint32)size.x, (uint32)size.y, (uint32)size.z };
+	imageInfo.extent = { size.x, size.y, size.z };
 	imageInfo.mipLevels = mipCount;
 	imageInfo.arrayLayers = layerCount;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -146,7 +146,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	{
 		this->binarySize += formatBinarySize *
 			mipSize.x * mipSize.y * mipSize.z * layerCount;
-		mipSize = max(mipSize / 2, int3(1));
+		mipSize = max(mipSize / 2u, uint3(1));
 	}
 
 	for (auto& layout : this->layouts)
@@ -154,9 +154,8 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 }
 
 //**********************************************************************************************************************
-Image::Image(void* instance, Format format, Bind bind,
-	Strategy strategy, int2 size, uint64 version) : Memory(toBinarySize(format) * size.x * size.y,
-		Access::None, Usage::Auto, strategy, version), layouts(1)
+Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version) : 
+	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), layouts(1)
 {
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;
@@ -164,7 +163,7 @@ Image::Image(void* instance, Format format, Bind bind,
 	this->bind = bind;
 	this->mipCount = 1;
 	this->swapchain = true;
-	this->size = int3(size, 1);
+	this->size = uint3(size, 1);
 	this->layerCount = 1;
 	this->layouts[0] = (uint32)vk::ImageLayout::eUndefined;
 }
@@ -243,7 +242,7 @@ void Image::generateMips(SamplerFilter filter)
 	{
 		Image::BlitRegion region;
 		region.srcExtent = mipSize;
-		mipSize = max(mipSize / 2, int3(1));
+		mipSize = max(mipSize / 2u, uint3(1));
 		region.dstExtent = mipSize;
 		region.layerCount = layerCount;
 		region.srcMipLevel = i - 1;
@@ -287,6 +286,29 @@ void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 
 	ClearImageCommand command;
 	command.clearType = 2;
+	command.regionCount = count;
+	command.image = GraphicsAPI::imagePool.getID(this);
+	memcpy(&command.color, &color, sizeof(float4));
+	command.regions = regions;
+	GraphicsAPI::currentCommandBuffer->addCommand(command);
+
+	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	{
+		readyLock++;
+		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+	}
+}
+void Image::clear(const uint4& color, const ClearRegion* regions, uint32 count)
+{
+	GARDEN_ASSERT(regions);
+	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(!Framebuffer::getCurrent());
+	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(isFormatInt(format));
+	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+
+	ClearImageCommand command;
+	command.clearType = 3;
 	command.regionCount = count;
 	command.image = GraphicsAPI::imagePool.getID(this);
 	memcpy(&command.color, &color, sizeof(float4));
@@ -346,20 +368,16 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.srcOffset >= 0);
-		GARDEN_ASSERT(region.dstOffset >= 0);
-		GARDEN_ASSERT(region.extent >= 0);
-		GARDEN_ASSERT(region.layerCount >= 0);
 		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->layerCount);
 		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->layerCount);
 		GARDEN_ASSERT(region.srcMipLevel <= srcView->mipCount);
 		GARDEN_ASSERT(region.dstMipLevel <= dstView->mipCount);
-		GARDEN_ASSERT((region.extent == 0 && region.srcOffset == 0) || region.extent != 0);
+		GARDEN_ASSERT((region.extent == 0u && region.srcOffset == 0u) || region.extent != 0u);
 
-		if (region.extent == 0)
+		if (region.extent == 0u)
 		{
-			GARDEN_ASSERT(region.srcOffset == 0);
-			GARDEN_ASSERT(region.dstOffset == 0);
+			GARDEN_ASSERT(region.srcOffset == 0u);
+			GARDEN_ASSERT(region.dstOffset == 0u);
 		}
 		else
 		{
@@ -409,15 +427,12 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.imageOffset >= 0);
-		GARDEN_ASSERT(region.imageExtent >= 0);
-		GARDEN_ASSERT(region.imageLayerCount >= 0);
 		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->layerCount);
 		GARDEN_ASSERT(region.imageMipLevel <= imageView->mipCount);
 
-		if (region.imageExtent == 0)
+		if (region.imageExtent == 0u)
 		{
-			GARDEN_ASSERT(region.imageOffset == 0);
+			GARDEN_ASSERT(region.imageOffset == 0u);
 		}
 		else
 		{
@@ -468,15 +483,12 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.imageOffset >= 0);
-		GARDEN_ASSERT(region.imageExtent >= 0);
-		GARDEN_ASSERT(region.imageLayerCount >= 0);
 		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->layerCount);
 		GARDEN_ASSERT(region.imageMipLevel <= imageView->mipCount);
 
-		if (region.imageExtent == 0)
+		if (region.imageExtent == 0u)
 		{
-			GARDEN_ASSERT(region.imageOffset == 0);
+			GARDEN_ASSERT(region.imageOffset == 0u);
 		}
 		else
 		{
@@ -527,27 +539,23 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.srcOffset >= 0);
-		GARDEN_ASSERT(region.srcExtent >= 0);
-		GARDEN_ASSERT(region.dstOffset >= 0);
-		GARDEN_ASSERT(region.dstExtent >= 0);
 		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->layerCount);
 		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->layerCount);
 		GARDEN_ASSERT(region.srcMipLevel <= srcView->mipCount);
 		GARDEN_ASSERT(region.dstMipLevel <= dstView->mipCount);
 
-		if (region.srcExtent == 0)
+		if (region.srcExtent == 0u)
 		{
-			GARDEN_ASSERT(region.srcOffset == 0);
+			GARDEN_ASSERT(region.srcOffset == 0u);
 		}
 		else
 		{
 			auto mipImageSize = calcSizeAtMip(srcView->size, region.srcMipLevel);
 			GARDEN_ASSERT(region.srcExtent + region.srcOffset <= mipImageSize);
 		}
-		if (region.dstExtent == 0)
+		if (region.dstExtent == 0u)
 		{
-			GARDEN_ASSERT(region.dstOffset == 0);
+			GARDEN_ASSERT(region.dstOffset == 0u);
 		}
 		else
 		{

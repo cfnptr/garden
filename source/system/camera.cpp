@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/camera.hpp"
+#include "math/matrix/projection.hpp"
 
 using namespace garden;
 

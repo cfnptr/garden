@@ -73,7 +73,7 @@ public:
 	using ConstantsBuffer = vector<vector<ID<Buffer>>>;
 private:
 	ConstantsBuffer cameraConstantsBuffers;
-	int2 framebufferSize = int2(0), windowSize = int2(0);
+	uint2 framebufferSize = uint2(0), windowSize = uint2(0);
 	uint64 frameIndex = 0, tickIndex = 0;
 	ID<Buffer> fullSquareVertices = {};
 	ID<Buffer> fullCubeVertices = {};
@@ -108,7 +108,7 @@ private:
 	 * @param useTripleBuffering use swapchain triple buffering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	GraphicsSystem(int2 windowSize = defaultWindowSize, 
+	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize,
 		Image::Format depthStencilFormat = Image::Format::SfloatD32, bool isFullscreen = !GARDEN_DEBUG,
 		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true);
 	/**
@@ -167,7 +167,7 @@ public:
 	 * @brief Returns scaled by render scale framebuffer size
 	 * @details Useful for scaling forward/deferred framebuffer.
 	 */
-	int2 getScaledFramebufferSize() const noexcept;
+	uint2 getScaledFramebufferSize() const noexcept;
 
 	/**
 	 * @brief Returns current frame index since the application launch.
@@ -184,12 +184,12 @@ public:
 	 * @brief Returns current framebuffer size in pixels.
 	 * @details It can change when window or swapchain is resized.
 	 */
-	int2 getFramebufferSize() const noexcept { return framebufferSize; }
+	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
 	/**
 	 * @brief Returns current window size in units.
 	 * @note It can differ from the framebuffer size! (e.g on macOS)
 	 */
-	int2 getWindowSize() const noexcept { return windowSize; }
+	uint2 getWindowSize() const noexcept { return windowSize; }
 
 	/**
 	 * @brief Returns true if frame can be rendered on current tick.
@@ -484,7 +484,7 @@ public:
 	 * @param dataFormat data array format
 	 */
 	ID<Image> createImage(
-		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, const int3& size,
+		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined);
 
 	/**
@@ -498,7 +498,7 @@ public:
 	 * @param dataFormat data array format
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, const int3& size,
+		Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		return createImage(Image::Type::Texture3D, format, bind, data, size, strategy, dataFormat);
@@ -515,12 +515,12 @@ public:
 	 * @param dataFormat data array format
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, int2 size,
+		Image::Format format, Image::Bind bind, const Image::Mips& data, uint2 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture2DArray : Image::Type::Texture2D;
-		return createImage(imageType, format, bind, data, int3(size, 1), strategy, dataFormat);
+		return createImage(imageType, format, bind, data, uint3(size, 1), strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new 1D image (texture) instance.
@@ -539,7 +539,7 @@ public:
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture1DArray : Image::Type::Texture1D;
-		return createImage(imageType, format, bind, data, int3(size, 1, 1), strategy, dataFormat);
+		return createImage(imageType, format, bind, data, uint3(size, 1, 1), strategy, dataFormat);
 	}
 
 	/* 
@@ -603,7 +603,7 @@ public:
 	 * @param colorAttachments color attachments or empty array
 	 * @param colorAttachments depth or/and stencil attachment or null
 	 */
-	ID<Framebuffer> createFramebuffer(int2 size, vector<Framebuffer::OutputAttachment>&& colorAttachments,
+	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::OutputAttachment>&& colorAttachments,
 		Framebuffer::OutputAttachment depthStencilAttachment = {});
 	
 	/**
@@ -612,7 +612,7 @@ public:
 	 * @param size framebuffer size in pixels
 	 * @param[in] subpasses target framebuffer subpasses
 	 */
-	ID<Framebuffer> createFramebuffer(int2 size, vector<Framebuffer::Subpass>&& subpasses);
+	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses);
 
 	/**
 	 * @brief Destroys framebuffer instance.

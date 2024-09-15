@@ -35,9 +35,6 @@ using namespace garden::graphics;
 //******************************************************************************************************************
 static const uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
-const string_view Compiler::graphicsGslMagic = "GSLG";
-const string_view Compiler::computeGslMagic = "GSLC";
-
 namespace
 {
 	struct GslValues
@@ -61,7 +58,7 @@ namespace
 	struct ComputeGslValues final : public GslValues
 	{
 		uint8 _alignment = 0;
-		int3 localSize = int3(0);
+		uint3 localSize = uint3(0);
 		// should be aligned.
 	};
 }
@@ -215,8 +212,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		}
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0)
 		{
-			auto index = strtol(lineData.word.c_str() + 3, nullptr, 10);
-			if (index < 0 || index > UINT8_MAX)
+			auto index = strtoul(lineData.word.c_str() + 3, nullptr, 10);
+			if (index > UINT8_MAX)
 				throw CompileError("invalid descriptor set index", fileData.lineIndex, lineData.word);
 			fileData.descriptorSetIndex = (uint8)index;
 		}
@@ -279,7 +276,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		auto arrayOpenPos = lineData.uniformName.find_first_of('[');
 		if (arrayOpenPos != string::npos)
 		{
-			auto arraySize = strtol(lineData.uniformName.c_str() + arrayOpenPos + 1, nullptr, 10);
+			auto arraySize = strtoul(lineData.uniformName.c_str() + arrayOpenPos + 1, nullptr, 10);
 			if (arraySize == 0)
 			{
 				auto arrayClosePos = lineData.uniformName.find_first_of(']', arrayOpenPos);
@@ -330,7 +327,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		auto arrayOpenPos = lineData.uniformName.find_first_of('[');
 		if (arrayOpenPos != string::npos)
 		{
-			auto arraySize = strtol(lineData.uniformName.c_str() + arrayOpenPos + 1, nullptr, 10);
+			auto arraySize = strtoul(lineData.uniformName.c_str() + arrayOpenPos + 1, nullptr, 10);
 			if (arraySize == 0)
 			{
 				auto arrayClosePos = lineData.uniformName.find_first_of(']', arrayOpenPos);
@@ -800,8 +797,8 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			}
 			else if (lineData.word.length() >= 9 && memcmp(lineData.word.c_str(), "colorMask", 9) == 0)
 			{
-				if (lineData.word.length() > 9) // TODO: check strtol for overflow
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 9, nullptr, 10);
+				if (lineData.word.length() > 9) // TODO: check strtoul for overflow
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 9, nullptr, 10);
 				else
 					throw CompileError("no colorMask blend state index", fileData.lineIndex);
 				lineData.isColorMask = 1;
@@ -809,7 +806,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 8 && memcmp(lineData.word.c_str(), "blending", 8) == 0)
 			{
 				if (lineData.word.length() > 8)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 8, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 8, nullptr, 10);
 				else
 					throw CompileError("no blending blend state index", fileData.lineIndex);
 				lineData.isBlending = 1;
@@ -817,7 +814,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "srcBlendFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no src blend factor blend state index", fileData.lineIndex);
 				lineData.isSrcBlendFactor = 1;
@@ -825,7 +822,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "dstBlendFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no dst blend factor blend state index", fileData.lineIndex);
 				lineData.isDstBlendFactor = 1;
@@ -833,7 +830,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "srcColorFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no src color factor blend state index", fileData.lineIndex);
 				lineData.isSrcColorFactor = 1;
@@ -841,7 +838,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "dstColorFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no dst color factor blend state index", fileData.lineIndex);
 				lineData.isDstColorFactor = 1;
@@ -849,7 +846,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "srcAlphaFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no src alpha factor blend state index", fileData.lineIndex);
 				lineData.isSrcAlphaFactor = 1;
@@ -857,7 +854,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "dstAlphaFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no dst alpha factor blend state index", fileData.lineIndex);
 				lineData.isDstAlphaFactor = 1;
@@ -865,7 +862,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "blendOperation", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no blend operation blend state index", fileData.lineIndex);
 				lineData.isBlendOperation = 1;
@@ -873,7 +870,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "colorOperation", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no color operation blend state index", fileData.lineIndex);
 				lineData.isColorOperation = 1;
@@ -881,7 +878,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "alphaOperation", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
-					fileData.blendStateIndex = (uint8)strtol(lineData.word.c_str() + 14, nullptr, 10);
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
 				else
 					throw CompileError("no alpha operation blend state index", fileData.lineIndex);
 				lineData.isAlphaOperation = 1;
@@ -1164,7 +1161,7 @@ static void onShaderFeature(FileData& fileData, LineData& lineData)
 
 static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& variantCount)
 {
-	auto count = strtol(lineData.word.c_str(), nullptr, 10);
+	auto count = strtoul(lineData.word.c_str(), nullptr, 10);
 	if (count <= 1 || count > UINT8_MAX)
 		throw CompileError("invalid variant count", fileData.lineIndex, lineData.word);
 	variantCount = (uint8)count;
@@ -1174,8 +1171,8 @@ static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& 
 
 static void onShaderAttachmentOffset(GraphicsFileData& fileData, GraphicsLineData& lineData)
 {
-	auto offset = strtol(lineData.word.c_str(), nullptr, 10);
-	if (offset < 0 || offset > UINT8_MAX)
+	auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
+	if (offset > UINT8_MAX)
 		throw CompileError("invalid subpass input offset", fileData.lineIndex, lineData.word);
 	fileData.attachmentIndex += (uint8)offset;
 	fileData.outputFileStream << "// #attachmentOffset ";
@@ -1505,8 +1502,8 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 			}
 			else if (lineData.isAttributeOffset)
 			{
-				auto offset = strtol(lineData.word.c_str(), nullptr, 10);
-				if (offset < 0 || offset > UINT16_MAX)
+				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
+				if (offset > UINT16_MAX)
 				{
 					throw CompileError("invalid vertex attribute offset",
 						fileData.lineIndex, lineData.word);
@@ -1995,7 +1992,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 				{
 					if (lineData.word.find_first_of(';') == string::npos)
 						throw CompileError("no ';' after local size", fileData.lineIndex);
-					data.localSize.z = strtol(lineData.word.c_str(), nullptr, 10);
+					data.localSize.z = strtoul(lineData.word.c_str(), nullptr, 10);
 					if (data.localSize.z <= 0)
 						throw CompileError("local size 'z' can not be less than one", fileData.lineIndex);
 					fileData.outputFileStream << "layout(local_size_x = " <<
@@ -2010,14 +2007,14 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 
 					if (lineData.isLocalSize == 2)
 					{
-						data.localSize.x = strtol(lineData.word.c_str(), nullptr, 10);
+						data.localSize.x = strtoul(lineData.word.c_str(), nullptr, 10);
 						if (data.localSize.x <= 0)
 							throw CompileError("local size 'x' can not be less than one", fileData.lineIndex);
 						lineData.isLocalSize = 3;
 					}
 					else if (lineData.isLocalSize == 3)
 					{
-						data.localSize.y = strtol(lineData.word.c_str(), nullptr, 10);
+						data.localSize.y = strtoul(lineData.word.c_str(), nullptr, 10);
 						if (data.localSize.y <= 0)
 							throw CompileError("local size 'y' can not be less than one", fileData.lineIndex);
 						lineData.isLocalSize = 4;
@@ -2100,7 +2097,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 			fileData.outputFileStream << "\n";
 	}
 
-	if (data.localSize == 0)
+	if (data.localSize == 0u)
 		throw CompileError("undeclared work group localSize");
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
@@ -2151,11 +2148,11 @@ template<typename T>
 static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
-	if (dataOffset + gslMagicSize + sizeof(gslHeader) > dataSize)
+	if (dataOffset + Compiler::gslMagicSize + sizeof(gslHeader) > dataSize)
 		throw runtime_error("Invalid GSL header size.");
-	if (memcmp(data + dataOffset, gslMagic.data(), gslMagicSize) != 0)
+	if (memcmp(data + dataOffset, gslMagic.data(), Compiler::gslMagicSize) != 0)
 		throw runtime_error("Invalid GSL header magic value.");
-	dataOffset += gslMagicSize;
+	dataOffset += Compiler::gslMagicSize;
 	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
 		throw runtime_error("Invalid GSL header version or endianness.");
 	dataOffset += sizeof(gslHeader);

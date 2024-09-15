@@ -41,11 +41,10 @@ static float2 toSphericalMapUV(const float3& v)
 	auto st = float2(atan2(v.x, v.z), asin(-v.y));
 	return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
 }
-static float4 filterCubeMap(float2 coords, const float4* pixels, int2 sizeMinus1, int32 sizeX)
+static float4 filterCubeMap(float2 coords, const float4* pixels, uint2 sizeMinus1, uint32 sizeX)
 {
-	auto coords0 = int2((int32)coords.x, (int32)coords.y);
-	coords0 = clamp(coords0, int2(0), sizeMinus1);
-	auto coords1 = min(coords0 + 1, sizeMinus1);
+	auto coords0 = min((uint2)coords, sizeMinus1);
+	auto coords1 = min(coords0 + 1u, sizeMinus1);
 	auto uv = coords - coords0;
 	auto invUV = 1.0f - uv;
 
@@ -58,8 +57,8 @@ static float4 filterCubeMap(float2 coords, const float4* pixels, int2 sizeMinus1
 		(invUV.x * uv.y) * s2 + (uv.x * uv.y) * s3;
 }
 
-void Equi2Cube::convert(const int3& coords, int32 cubemapSize, int2 equiSize,
-	int2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim)
+void Equi2Cube::convert(const uint3& coords, uint32 cubemapSize, uint2 equiSize,
+	uint2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim)
 {
 	auto dir = coordsToDir(coords, invDim);
 	auto uv = toSphericalMapUV(dir);
@@ -68,7 +67,7 @@ void Equi2Cube::convert(const int3& coords, int32 cubemapSize, int2 equiSize,
 		uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
 }
 
-static void writeImageData(const fs::path& filePath, int32 size, const vector<uint8>& data)
+static void writeImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
 {
 	auto directory = filePath.parent_path();
 	if (!fs::exists(directory))
@@ -82,17 +81,19 @@ static void writeImageData(const fs::path& filePath, int32 size, const vector<ui
 bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {	
 	GARDEN_ASSERT(!filePath.empty());
-	vector<uint8> dataBuffer, equiData; int2 equiSize;
+	vector<uint8> dataBuffer, equiData; uint2 equiSize;
 	if (!File::tryLoadBinary(inputPath / filePath, dataBuffer))
 		return false;
 
 	auto extension = filePath.extension();
 	if (extension == ".hdr")
 	{
+		int sizeX = 0, sizeY = 0;
 		auto pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
-			(int)dataBuffer.size(), &equiSize.x, &equiSize.y, nullptr, 4);
+			(int)dataBuffer.size(), &sizeX, &sizeY, nullptr, 4);
 		if (!pixels)
 			throw runtime_error("Invalid image data.(path: " + filePath.generic_string() + ")");
+		equiSize = uint2((uint32)sizeX, (uint32)sizeY);
 		equiData.resize(sizeof(float4) * equiSize.x * equiSize.y);
 		memcpy(equiData.data(), pixels, equiData.size());
 		stbi_image_free(pixels);
@@ -108,12 +109,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		throw runtime_error("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
 
 	auto invDim = 1.0f / cubemapSize;
-	auto equiSizeMinus1 = equiSize - 1;
+	auto equiSizeMinus1 = equiSize - 1u;
 	auto equiPixels = (float4*)equiData.data();
 	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
+
 	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
 		top(pixelsSize), back(pixelsSize), front(pixelsSize);
-	auto size = int2(equiSize.x / 4, equiSize.y / 2);
 
 	float4* cubePixelArray[6] =
 	{
@@ -125,11 +126,11 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	for (uint8 face = 0; face < 6; face++)
 	{
 		auto cubePixels = cubePixelArray[face];
-		for (int32 y = 0; y < cubemapSize; y++)
+		for (uint32 y = 0; y < cubemapSize; y++)
 		{
-			for (int32 x = 0; x < cubemapSize; x++)
+			for (uint32 x = 0; x < cubemapSize; x++)
 			{
-				convert(int3(x, y, face), cubemapSize, equiSize,
+				convert(uint3(x, y, face), cubemapSize, equiSize,
 					equiSizeMinus1, equiPixels, cubePixels, invDim);
 			}
 		}

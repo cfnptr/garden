@@ -72,6 +72,9 @@ public:
 	void write(string_view name, int2 value) final;
 	void write(string_view name, const int3& value) final;
 	void write(string_view name, const int4& value) final;
+	void write(string_view name, uint2 value) final;
+	void write(string_view name, const uint3& value) final;
+	void write(string_view name, const uint4& value) final;
 	void write(string_view name, float2 value) final;
 	void write(string_view name, const float3& value) final;
 	void write(string_view name, const float4& value) final;
@@ -137,6 +140,9 @@ public:
 	bool read(string_view name, int2& value) final;
 	bool read(string_view name, int3& value) final;
 	bool read(string_view name, int4& value) final;
+	bool read(string_view name, uint2& value) final;
+	bool read(string_view name, uint3& value) final;
+	bool read(string_view name, uint4& value) final;
 	bool read(string_view name, float2& value) final;
 	bool read(string_view name, float3& value) final;
 	bool read(string_view name, float4& value) final;

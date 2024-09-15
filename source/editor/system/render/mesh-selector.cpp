@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/settings.hpp"
 #include "garden/system/render/mesh.hpp"
+#include "math/matrix/transform.hpp"
 
 using namespace garden;
 
@@ -118,7 +119,7 @@ void MeshSelectorEditorSystem::editorRender()
 				auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
 				auto ray = Ray((float3)localOrigin, (float3)localDirection);
 				auto points = raycast2(meshRenderView->aabb, ray);
-				if (points.x < 0.0f || !isIntersected(points))
+				if (points.x < 0.0f || !isAabbIntersected(points))
 					continue;
 			
 				auto dist2 = distance2((float3)globalOrigin, getTranslation(model));

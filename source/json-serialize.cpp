@@ -227,6 +227,24 @@ void JsonSerializer::write(string_view name, const int4& value)
 	auto& object = *hierarchy.top();
 	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z }, { "w", value.w } };
 }
+void JsonSerializer::write(string_view name, uint2 value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = *hierarchy.top();
+	object[name] = { { "x", value.x }, { "y", value.y } };
+}
+void JsonSerializer::write(string_view name, const uint3& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = *hierarchy.top();
+	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z } };
+}
+void JsonSerializer::write(string_view name, const uint4& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = *hierarchy.top();
+	object[name] = { { "x", value.x }, { "y", value.y }, { "z", value.z }, { "w", value.w } };
+}
 void JsonSerializer::write(string_view name, float2 value)
 {
 	GARDEN_ASSERT(!name.empty());
@@ -633,6 +651,50 @@ bool JsonDeserializer::read(string_view name, int4& value)
 	i = &a["y"]; if (i->is_number_integer()) value.y = (int32)*i; else result = false;
 	i = &a["z"]; if (i->is_number_integer()) value.z = (int32)*i; else result = false;
 	i = &a["w"]; if (i->is_number_integer()) value.w = (int32)*i; else result = false;
+	return result;
+}
+
+//**********************************************************************************************************************
+bool JsonDeserializer::read(string_view name, uint2& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = *hierarchy.top();
+	auto& a = object[name];
+	if (!a.is_object())
+		return false;
+
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_unsigned()) value.x = (uint32)*i; else result = false;
+	i = &a["y"]; if (i->is_number_unsigned()) value.y = (uint32)*i; else result = true;
+	return result;
+}
+bool JsonDeserializer::read(string_view name, uint3& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = *hierarchy.top();
+	auto& a = object[name];
+	if (!a.is_object())
+		return false;
+
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_unsigned()) value.x = (uint32)*i; else result = false;
+	i = &a["y"]; if (i->is_number_unsigned()) value.y = (uint32)*i; else result = false;
+	i = &a["z"]; if (i->is_number_unsigned()) value.z = (uint32)*i; else result = false;
+	return result;
+}
+bool JsonDeserializer::read(string_view name, uint4& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = *hierarchy.top();
+	auto& a = object[name];
+	if (!a.is_object())
+		return false;
+
+	auto result = true;
+	auto i = &a["x"]; if (i->is_number_unsigned()) value.x = (uint32)*i; else result = false;
+	i = &a["y"]; if (i->is_number_unsigned()) value.y = (uint32)*i; else result = false;
+	i = &a["z"]; if (i->is_number_unsigned()) value.z = (uint32)*i; else result = false;
+	i = &a["w"]; if (i->is_number_unsigned()) value.w = (uint32)*i; else result = false;
 	return result;
 }
 
