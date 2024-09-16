@@ -22,21 +22,21 @@ using namespace garden;
 //**********************************************************************************************************************
 LightingRenderEditorSystem::LightingRenderEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", LightingRenderEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", LightingRenderEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", LightingRenderEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LightingRenderEditorSystem::deinit);
 }
 LightingRenderEditorSystem::~LightingRenderEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderEditorSystem::deinit);
 	}
 }
 
 void LightingRenderEditorSystem::init()
 {
-	EditorRenderSystem::get()->registerEntityInspector<LightingRenderComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<LightingRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -45,7 +45,7 @@ void LightingRenderEditorSystem::init()
 }
 void LightingRenderEditorSystem::deinit()
 {
-	EditorRenderSystem::get()->unregisterEntityInspector<LightingRenderComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<LightingRenderComponent>();
 }
 
 //**********************************************************************************************************************
@@ -54,8 +54,8 @@ void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpe
 	if (!isOpened)
 		return;
 
-	auto manager = Manager::get();
-	auto graphicsSystem = GraphicsSystem::get();
+	auto manager = Manager::Instance::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto lightingView = manager->get<LightingRenderComponent>(entity);
 
 	if (lightingView->cubemap) // TODO: use common resource name gui shower.

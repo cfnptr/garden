@@ -117,55 +117,48 @@ namespace
 }
 
 //**********************************************************************************************************************
-ResourceSystem* ResourceSystem::instance = nullptr;
-
-ResourceSystem::ResourceSystem()
+ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
 	hashState = Hash128::createState();
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	manager->registerEvent("ImageLoaded");
 	manager->registerEvent("BufferLoaded");
 
-	SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
 	#if GARDEN_PACK_RESOURCES
 	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
 	#endif
 	#if GARDEN_EDITOR
-	auto appInfoSystem = AppInfoSystem::get();
+	auto appInfoSystem = AppInfoSystem::Instance::get();
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
 	appVersion = appInfoSystem->getVersion();
 	#endif
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
 }
 ResourceSystem::~ResourceSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
 
-		auto manager = Manager::get();
+		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("ImageLoaded");
 		manager->unregisterEvent("BufferLoaded");
 	}
 
 	Hash128::destroyState(hashState);
-
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
 void ResourceSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
+	ECSM_SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
 }
 void ResourceSystem::deinit()
 {
@@ -194,8 +187,8 @@ void ResourceSystem::deinit()
 		loadedGraphicsQueue.pop();
 	}
 
-	if (Manager::get()->isRunning())
-		UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
+	if (Manager::Instance::get()->isRunning())
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 }
 
 //**********************************************************************************************************************
@@ -205,7 +198,7 @@ void ResourceSystem::dequeuePipelines()
 	auto hasNewResources = !loadedGraphicsQueue.empty() || !loadedComputeQueue.empty();
 	LogSystem* logSystem = nullptr;
 	if (hasNewResources)
-		logSystem = Manager::get()->tryGet<LogSystem>();
+		logSystem = LogSystem::Instance::tryGet();
 	#endif
 
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
@@ -220,10 +213,7 @@ void ResourceSystem::dequeuePipelines()
 			if (PipelineExt::getVersion(pipeline) == PipelineExt::getVersion(item.pipeline))
 			{
 				GraphicsPipelineExt::moveInternalObjects(item.pipeline, pipeline);
-				#if GARDEN_DEBUG
-				if (logSystem)
-					logSystem->trace("Loaded graphics pipeline. (path: " + pipeline.getPath().generic_string() + ")");
-				#endif
+				GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " + pipeline.getPath().generic_string() + ")");
 			}
 			else
 			{
@@ -262,10 +252,7 @@ void ResourceSystem::dequeuePipelines()
 			if (PipelineExt::getVersion(pipeline) == PipelineExt::getVersion(item.pipeline))
 			{
 				ComputePipelineExt::moveInternalObjects(item.pipeline, pipeline);
-				#if GARDEN_DEBUG
-				if (logSystem)
-					logSystem->trace("Loaded compute pipeline. (path: " + pipeline.getPath().generic_string() + ")");
-				#endif
+				GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + pipeline.getPath().generic_string() + ")");
 			}
 			else
 			{
@@ -281,8 +268,8 @@ void ResourceSystem::dequeuePipelines()
 //**********************************************************************************************************************
 void ResourceSystem::dequeueBuffersAndImages()
 {
-	auto manager = Manager::get();
-	auto graphicsSystem = GraphicsSystem::get();
+	auto manager = Manager::Instance::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 
 	#if GARDEN_DEBUG
 	if (!loadedBufferQueue.empty() || !loadedImageQueue.empty())
@@ -418,7 +405,7 @@ void ResourceSystem::dequeueBuffersAndImages()
 //**********************************************************************************************************************
 void ResourceSystem::input()
 {
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	for (auto& buffer : loadedBufferArray)
 	{
 		loadedBuffer = buffer.instance;
@@ -491,9 +478,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	if (fileType == ImageFileType::Count)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Image does not exist. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
 		loadMissingImage(data, size, format);
 		return;
 	}
@@ -517,9 +502,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		
 		if (fileCount > 1)
 		{
-			auto logSystem = Manager::get()->tryGet<LogSystem>();
-			if (logSystem)
-				logSystem->error("Ambiguous image file extension. (path: " + path.generic_string() + ")");
+			GARDEN_LOG_ERROR("Ambiguous image file extension. (path: " + path.generic_string() + ")");
 			loadMissingImage(data, size, format);
 			return;
 		}
@@ -538,14 +521,10 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 			if (fileCount != 1)
 			{
-				auto logSystem = Manager::get()->tryGet<LogSystem>();
-				if (logSystem)
-				{
-					if (fileCount == 0)
-						logSystem->error("Image file does not exist. (path: " + path.generic_string() + ")");
-					else
-						logSystem->error("Image file is ambiguous. (path: " + path.generic_string() + ")");
-				}
+				if (fileCount == 0)
+					GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
+				else
+					GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
 				loadMissingImage(data, size, format);
 				return;
 			}
@@ -560,12 +539,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	#endif
 
 	loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, data, size, format);
-
-	#if GARDEN_DEBUG
-	auto logSystem = Manager::get()->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->trace("Loaded image. (path: " + path.generic_string() + ")");
-	#endif
+	GARDEN_LOG_TRACE("Loaded image. (path: " + path.generic_string() + ")");
 }
 
 #if !GARDEN_PACK_RESOURCES
@@ -590,7 +564,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	vector<uint8> equiData; uint2 equiSize;
-	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 
 	#if !GARDEN_PACK_RESOURCES
 	auto filePath = appCachesPath / "images" / path;
@@ -606,17 +580,13 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
 		{
-			auto logSystem = Manager::get()->tryGet<LogSystem>();
-			if (logSystem)
-				logSystem->error("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
+			GARDEN_LOG_ERROR("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
 			loadMissingImage(left, right, bottom, top, back, front, size, format);
 			return;
 		}
 		if (cubemapSize % 32 != 0)
 		{
-			auto logSystem = Manager::get()->tryGet<LogSystem>();
-			if (logSystem)
-				logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
+			GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
 			loadMissingImage(left, right, bottom, top, back, front, size, format);
 			return;
 		}
@@ -743,9 +713,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front);
 		}
 
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->trace("Converted spherical cubemap. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_TRACE("Converted spherical cubemap. (path: " + path.generic_string() + ")");
 		return;
 	}
 	#endif
@@ -789,24 +757,18 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Invalid cubemap size. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Invalid cubemap side size. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Invalid cubemap side size. (path: " + path.generic_string() + ")");
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Invalid cubemap format. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Invalid cubemap format. (path: " + path.generic_string() + ")");
 	}
 	#endif
 
@@ -1015,7 +977,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto result = sharedImages.find(hash);
 		if (result != sharedImages.end())
 		{
-			auto imageView = GraphicsSystem::get()->get(result->second);
+			auto imageView = GraphicsSystem::Instance::get()->get(result->second);
 			if (imageView->isLoaded())
 			{
 				LoadedImageItem item;
@@ -1038,7 +1000,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		resource->setDebugName("image." + debugName + paths[0].generic_string());
 	#endif
 
-	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (!hasAnyFlag(flags, ImageLoadFlags::LoadSync) && threadSystem)
 	{
 		auto data = new ImageLoadData();
@@ -1106,7 +1068,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto imageView = GraphicsAPI::imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
-		auto graphicsSystem = GraphicsSystem::get();
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 			Buffer::Usage::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
 		SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
@@ -1151,7 +1113,7 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 	}
 
 	if (image.isLastRef())
-		GraphicsSystem::get()->destroy(ID<Image>(image));
+		GraphicsSystem::Instance::get()->destroy(ID<Image>(image));
 }
 
 //**********************************************************************************************************************
@@ -1169,7 +1131,7 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 	}
 
 	if (buffer.isLastRef())
-		GraphicsSystem::get()->destroy(ID<Buffer>(buffer));
+		GraphicsSystem::Instance::get()->destroy(ID<Buffer>(buffer));
 }
 
 //**********************************************************************************************************************
@@ -1184,7 +1146,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash
 	if (searchrResult != sharedDescriptorSets.end())
 		return searchrResult->second;
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64());
 
@@ -1204,7 +1166,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash
 	if (searchrResult != sharedDescriptorSets.end())
 		return searchrResult->second;
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64());
 
@@ -1228,7 +1190,7 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 	}
 
 	if (descriptorSet.isLastRef())
-		GraphicsSystem::get()->destroy(ID<DescriptorSet>(descriptorSet));
+		GraphicsSystem::Instance::get()->destroy(ID<DescriptorSet>(descriptorSet));
 }
 
 //**********************************************************************************************************************
@@ -1278,8 +1240,6 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 			outputPath = fragmentOutputPath.parent_path();
 		}
 
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-
 		auto compileResult = false;
 		try
 		{
@@ -1291,19 +1251,13 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() << "(.frag):" << e.what() << "\n"; // TODO: get info which stage throw.
-			if (logSystem)
-			{
-				logSystem->error("Failed to compile graphics shaders. ("
-					"name: " + data.shaderPath.generic_string() + ")");
-			}
+			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + data.shaderPath.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
 			throw runtime_error("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		if (logSystem)
-			logSystem->trace("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
-
+		GARDEN_LOG_TRACE("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
 	#endif
@@ -1314,13 +1268,8 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-		{
-			logSystem->error("Failed to load graphics shaders. ("
-				"name: " + data.shaderPath.generic_string() + ", "
-				"error: " + string(e.what()) + ")");
-		}
+		GARDEN_LOG_ERROR("Failed to load graphics shaders. ("
+			"name: " + data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
 		return false;
 	}
 
@@ -1384,7 +1333,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		depthStencilFormat = attachment->getFormat();
 	}
 
-	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new GraphicsPipelineLoadData();
@@ -1474,12 +1423,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
-
-		#if GARDEN_DEBUG
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->trace("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
-		#endif
+		GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
 	}
 
 	return pipeline;
@@ -1509,8 +1453,6 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 			data.resourcesPath / "shaders"
 		};
 
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-
 		auto compileResult = false;
 		try
 		{
@@ -1523,19 +1465,13 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() << ":" << e.what() << "\n";
-			if (logSystem)
-			{
-				logSystem->error("Failed to compile compute shader. ("
-					"name: " + data.shaderPath.generic_string() + ")");
-			}
+			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + data.shaderPath.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
 			throw runtime_error("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		if (logSystem)
-			logSystem->trace("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
-
+		GARDEN_LOG_TRACE("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
 	#endif
@@ -1546,13 +1482,8 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 	}
 	catch (const exception& e)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-		{
-			logSystem->error("Failed to load compute shader. ("
-				"name: " + data.shaderPath.generic_string() + ", "
-				"error: " + string(e.what()) + ")");
-		}
+		GARDEN_LOG_ERROR("Failed to load compute shader. ("
+			"name: " + data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
 		return false;
 	}
 
@@ -1571,7 +1502,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	auto version = GraphicsAPI::computePipelineVersion++;
 	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
-	auto threadSystem = Manager::get()->tryGet<ThreadSystem>(); // Do not optimize this getter.
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (loadAsync && threadSystem)
 	{
 		auto data = new ComputePipelineLoadData();
@@ -1643,12 +1574,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
-
-		#if GARDEN_DEBUG
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->trace("Loaded compute pipeline. (path: " + path.generic_string() + ")");
-		#endif
+		GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + path.generic_string() + ")");
 	}
 
 	return pipeline;
@@ -1666,9 +1592,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	fs::path filePath = "scenes" / path; filePath += ".scene"; fs::path scenePath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, scenePath))
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Scene file does not exist or ambiguous. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Scene file does not exist or ambiguous. (path: " + path.generic_string() + ")");
 		return {};
 	}
 
@@ -1678,24 +1602,19 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	catch (exception& e)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-		{
-			logSystem->trace("Failed to deserialize scene. ("
-				"path: " + path.generic_string() + ", "
-				"error: " + string(e.what()) + ")");
-		}
+		GARDEN_LOG_TRACE("Failed to deserialize scene. ("
+			"path: " + path.generic_string() + ", error: " + string(e.what()) + ")");
 		return {};
 	}
 	#endif
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	TransformSystem* transformSystem = nullptr;
 	ID<Entity> rootEntity = {};
 
 	if (addRootEntity)
 	{
-		transformSystem = manager->tryGet<TransformSystem>();
+		transformSystem = TransformSystem::Instance::tryGet();
 		if (transformSystem)
 		{
 			rootEntity = manager->createEntity();
@@ -1780,7 +1699,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 				{
 					if (addRootEntity)
 					{
-						auto transformView = transformSystem->tryGet(entity);
+						auto transformView = transformSystem->tryGetComponent(entity);
 						if (transformView)
 							transformView->setParent(rootEntity);
 					}
@@ -1810,19 +1729,14 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 			transformView->shrinkChilds();
 	}
 
-	#if GARDEN_DEBUG
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->trace("Loaded scene. (path: " + path.generic_string() + ")");
-	#endif
-
+	GARDEN_LOG_TRACE("Loaded scene. (path: " + path.generic_string() + ")");
 	return rootEntity;
 }
 
 void ResourceSystem::clearScene()
 {
-	auto manager = Manager::get();
-	auto transformSystem = manager->tryGet<TransformSystem>();
+	auto manager = Manager::Instance::get();
+	auto transformSystem = TransformSystem::Instance::tryGet();
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -1836,18 +1750,14 @@ void ResourceSystem::clearScene()
 
 		if (transformSystem)
 		{
-			auto transformView = transformSystem->tryGet(entityID);
+			auto transformView = transformSystem->tryGetComponent(entityID);
 			if (transformView)
 				transformView->setParent({});
 		}
 		manager->destroy(entityID);
 	}
 
-	#if GARDEN_DEBUG
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->trace("Cleaned scene.");
-	#endif
+	GARDEN_LOG_TRACE("Cleaned scene.");
 }
 
 #if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
@@ -1864,8 +1774,8 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	auto filePath = scenesPath / path; filePath += ".scene";
 	JsonSerializer serializer(filePath);
 
-	auto manager = Manager::get();
-	auto transformSystem = manager->tryGet<TransformSystem>();
+	auto manager = Manager::Instance::get();
+	auto transformSystem = TransformSystem::Instance::tryGet();
 	if (rootEntity && (!transformSystem || !manager->has<TransformComponent>(rootEntity)))
 		rootEntity = {};
 
@@ -1881,7 +1791,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	serializer.write("version", appVersion.toString3());
 	serializer.beginChild("entities");
 	
-	auto dnsSystem = manager->tryGet<DoNotSerializeSystem>();
+	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
 	const auto& entities = manager->getEntities();
 	auto entityOccupancy = entities.getOccupancy();
 	auto entityData = entities.getData();
@@ -1897,7 +1807,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 
 		View<TransformComponent> transformView = {};
 		if (transformSystem)
-			transformView = transformSystem->tryGet(instance);
+			transformView = transformSystem->tryGetComponent(instance);
 
 		if (rootEntity)
 		{
@@ -1950,9 +1860,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 		serializableSystem->postSerialize(serializer);
 	}
 
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem) 
-		logSystem->trace("Stored scene. (path: " + path.generic_string() + ")");
+	GARDEN_LOG_TRACE("Stored scene. (path: " + path.generic_string() + ")");
 }
 #endif
 
@@ -1981,9 +1889,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	fs::path filePath = "animations" / path; filePath += ".anim"; fs::path animationPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, animationPath))
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-			logSystem->error("Animation file does not exist or ambiguous. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Animation file does not exist or ambiguous. (path: " + path.generic_string() + ")");
 		return {};
 	}
 
@@ -1993,18 +1899,13 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	}
 	catch (exception& e)
 	{
-		auto logSystem = Manager::get()->tryGet<LogSystem>();
-		if (logSystem)
-		{
-			logSystem->trace("Failed to deserialize scene. ("
-				"path: " + path.generic_string() + ", "
-				"error: " + string(e.what()) + ")");
-		}
+		GARDEN_LOG_TRACE("Failed to deserialize scene. ("
+			"path: " + path.generic_string() + ", error: " + string(e.what()) + ")");
 		return {};
 	}
 	#endif
 
-	auto animationSystem = AnimationSystem::get();
+	auto animationSystem = AnimationSystem::Instance::get();
 	auto animation = animationSystem->createAnimation();
 	auto animationView = animationSystem->get(animation);
 
@@ -2013,7 +1914,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 
 	if (deserializer.beginChild("keyframes"))
 	{
-		const auto& componentNames = Manager::get()->getComponentNames();
+		const auto& componentNames = Manager::Instance::get()->getComponentNames();
 		auto keyframeCount = (uint32)deserializer.getArraySize();
 
 		for (uint32 i = 0; i < keyframeCount; i++)
@@ -2092,12 +1993,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 		GARDEN_ASSERT(result.second); // Corrupted shared animations array.
 	}
 
-	#if GARDEN_DEBUG
-	auto logSystem = Manager::get()->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->trace("Loaded animation. (path: " + path.generic_string() + ")");
-	#endif
-
+	GARDEN_LOG_TRACE("Loaded animation. (path: " + path.generic_string() + ")");
 	return animationRef;
 }
 
@@ -2115,7 +2011,7 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 	}
 
 	if (animation.isLastRef())
-		AnimationSystem::get()->destroy(ID<Animation>(animation));
+		AnimationSystem::Instance::get()->destroy(ID<Animation>(animation));
 }
 
 #if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
@@ -2133,7 +2029,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	auto filePath = animationsPath / path; filePath += ".anim";
 	JsonSerializer serializer(filePath);
 
-	const auto animationView = AnimationSystem::get()->get(animation);
+	const auto animationView = AnimationSystem::Instance::get()->get(animation);
 	serializer.write("frameRate", animationView->frameRate);
 	serializer.write("isLooped", animationView->isLooped);
 
@@ -2182,9 +2078,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	}
 	serializer.endChild();
 
-	auto logSystem = Manager::get()->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->trace("Stored animation. (path: " + path.generic_string() + ")");
+	GARDEN_LOG_TRACE("Stored animation. (path: " + path.generic_string() + ")");
 }
 #endif
 

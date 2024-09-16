@@ -39,7 +39,7 @@ static ID<GraphicsPipeline> createPipeline()
 }
 static map<string, DescriptorSet::Uniform> getUniforms()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
 	map<string, DescriptorSet::Uniform> uniforms =
@@ -55,7 +55,7 @@ static map<string, DescriptorSet::Uniform> getUniforms()
 //--------------------------------------------------------------------------------------------------
 void FxaaRenderSystem::initialize()
 {
-	auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getBool("useFXAA", isEnabled);
 

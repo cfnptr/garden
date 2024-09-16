@@ -36,14 +36,9 @@ float CameraComponent::getNearPlane() const noexcept
 }
 
 //**********************************************************************************************************************
-ID<Component> CameraSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void CameraSystem::destroyComponent(ID<Component> instance)
-{
-	components.destroy(ID<CameraComponent>(instance));
-}
+CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton) { }
+CameraSystem::~CameraSystem() { unsetSingleton(); }
+
 void CameraSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<CameraComponent>(source);
@@ -55,14 +50,6 @@ const string& CameraSystem::getComponentName() const
 {
 	static const string name = "Camera";
 	return name;
-}
-type_index CameraSystem::getComponentType() const
-{
-	return typeid(CameraComponent);
-}
-View<Component> CameraSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<CameraComponent>(instance)));
 }
 void CameraSystem::disposeComponents()
 {

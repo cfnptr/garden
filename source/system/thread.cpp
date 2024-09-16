@@ -17,23 +17,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-ThreadSystem* ThreadSystem::instance = nullptr;
-
-ThreadSystem::ThreadSystem() : backgroundPool(true, "BG"), foregroundPool(false, "FG")
+ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
+	backgroundPool(true, "BG"), foregroundPool(false, "FG")
 {
 	mpmt::Thread::setForegroundPriority();
-	SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 }
 ThreadSystem::~ThreadSystem()
 {
-	if (Manager::get()->isRunning())
-		UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
-
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	if (Manager::Instance::get()->isRunning())
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
+	unsetSingleton();
 }
 
 void ThreadSystem::preDeinit()

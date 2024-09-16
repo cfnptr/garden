@@ -24,7 +24,7 @@ static void createGBuffers(ID<Image>* gBuffers)
 	const auto strategy = Image::Strategy::Size;
 	const Image::Mips mips = { { nullptr } };
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	gBuffers[0] = graphicsSystem->createImage(Image::Format::SrgbR8G8B8A8, binds, mips, framebufferSize, strategy);
 	SET_RESOURCE_DEBUG_NAME(gBuffers[0], "image.deferred.gBuffer0");
@@ -35,14 +35,14 @@ static void createGBuffers(ID<Image>* gBuffers)
 }
 static void destroyGBuffers(const ID<Image>* gBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint32 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
 		graphicsSystem->destroy(gBuffers[i]);
 }
 
 static ID<Image> createDepthBuffer()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatD32, Image::Bind::DepthStencilAttachment |
 		Image::Bind::Sampled | Image::Bind::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
@@ -51,7 +51,7 @@ static ID<Image> createDepthBuffer()
 }
 static ID<Image> createHdrBuffer()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16, Image::Bind::ColorAttachment | 
 		Image::Bind::Sampled | Image::Bind::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
@@ -60,7 +60,7 @@ static ID<Image> createHdrBuffer()
 }
 static ID<Image> createLdrBuffer()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto swapchainView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 	auto swapchainImageView = graphicsSystem->get(swapchainView->getColorAttachments()[0].imageView);
@@ -74,7 +74,7 @@ static ID<Image> createLdrBuffer()
 //**********************************************************************************************************************
 static ID<Framebuffer> createGFramebuffer(const ID<Image>* gBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto gBuffer0View = graphicsSystem->get(gBuffers[0]);
 	auto gBuffer1View = graphicsSystem->get(gBuffers[1]);
@@ -97,7 +97,7 @@ static ID<Framebuffer> createGFramebuffer(const ID<Image>* gBuffers)
 
 static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto hdrBufferView = graphicsSystem->get(hdrBuffer);
 	auto depthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
@@ -113,7 +113,7 @@ static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer)
 }
 static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto ldrBufferView = graphicsSystem->get(ldrBuffer);
 
@@ -126,13 +126,11 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 }
 
 //**********************************************************************************************************************
-DeferredRenderSystem* DeferredRenderSystem::instance = nullptr;
-
-DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording)
+DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording, bool setSingleton) : Singleton(setSingleton)
 {
 	this->asyncRecording = useAsyncRecording;
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreDeferredRender");
 	manager->registerEvent("DeferredRender");
 	manager->registerEvent("PreHdrRender");
@@ -142,41 +140,38 @@ DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording)
 	manager->tryRegisterEvent("PreSwapchainRender"); // Note: can be shared with forward system.
 	manager->registerEvent("GBufferRecreate");
 
-	SUBSCRIBE_TO_EVENT("Init", DeferredRenderSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", DeferredRenderSystem::deinit);
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", DeferredRenderSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", DeferredRenderSystem::deinit);
 }
 DeferredRenderSystem::~DeferredRenderSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderSystem::deinit);
 
-		auto manager = Manager::get();
+		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreDeferredRender");
 		manager->unregisterEvent("DeferredRender");
 		manager->unregisterEvent("PreHdrRender");
 		manager->unregisterEvent("HdrRender");
 		manager->unregisterEvent("PreLdrRender");
 		manager->unregisterEvent("LdrRender");
-		manager->tryUnregisterEvent("PreSwapchainRender");
+		if (manager->getEventSubscribers("PreSwapchainRender").empty())
+			manager->tryUnregisterEvent("PreSwapchainRender");
 		manager->unregisterEvent("GBufferRecreate");
 	}
 
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
 void DeferredRenderSystem::init()
 {
-	GARDEN_ASSERT(asyncRecording == GraphicsSystem::get()->useAsyncRecording());
+	GARDEN_ASSERT(asyncRecording == GraphicsSystem::Instance::get()->useAsyncRecording());
 
-	SUBSCRIBE_TO_EVENT("Render", DeferredRenderSystem::render);
-	SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("Render", DeferredRenderSystem::render);
+	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 
 	if (!gBuffers[0])
 		createGBuffers(gBuffers);
@@ -194,9 +189,9 @@ void DeferredRenderSystem::init()
 }
 void DeferredRenderSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::get();
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(ldrFramebuffer);
 		graphicsSystem->destroy(hdrFramebuffer);
 		graphicsSystem->destroy(gFramebuffer);
@@ -205,21 +200,21 @@ void DeferredRenderSystem::deinit()
 		graphicsSystem->destroy(hdrBuffer);
 		destroyGBuffers(gBuffers);
 
-		UNSUBSCRIBE_FROM_EVENT("Render", DeferredRenderSystem::render);
-		UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", DeferredRenderSystem::render);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 	}
 }
 
 //**********************************************************************************************************************
 void DeferredRenderSystem::render()
 {
-	if (!isEnabled || !GraphicsSystem::get()->canRender())
+	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
 		return;
 	
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 
 	#if GARDEN_DEBUG
-	auto forwardSystem = manager->tryGet<ForwardRenderSystem>();
+	auto forwardSystem = ForwardRenderSystem::Instance::tryGet();
 	if (forwardSystem)
 	{
 		// Can not use deferred and forward render system at the same time.
@@ -227,7 +222,7 @@ void DeferredRenderSystem::render()
 	}
 	#endif
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
 	{
@@ -294,7 +289,7 @@ void DeferredRenderSystem::render()
 //**********************************************************************************************************************
 void DeferredRenderSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
@@ -332,7 +327,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		depthStencilAttachment.load = false;
 		framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
 
-		Manager::get()->runEvent("GBufferRecreate");
+		Manager::Instance::get()->runEvent("GBufferRecreate");
 	}
 }
 

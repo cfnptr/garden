@@ -28,11 +28,9 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
-LogSystem* LogSystem::instance = nullptr;
-
-LogSystem::LogSystem(LogLevel level, double rotationTime)
+LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : Singleton(setSingleton)
 {
-	auto appInfoSystem = AppInfoSystem::get();
+	auto appInfoSystem = AppInfoSystem::Instance::get();
 
 	try
 	{
@@ -56,16 +54,11 @@ LogSystem::LogSystem(LogLevel level, double rotationTime)
 	info("Thread count: " + to_string(thread::hardware_concurrency()));
 	info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
 	info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
 }
 LogSystem::~LogSystem()
 {
-	logger.log(INFO_LOG_LEVEL, "Stopped logging system.");
-
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	info("Stopped logging system.");
+	unsetSingleton();
 }
 
 void LogSystem::log(LogLevel level, const string& message) noexcept
@@ -73,7 +66,7 @@ void LogSystem::log(LogLevel level, const string& message) noexcept
 	logger.log(level, "%.*s", message.length(), message.c_str());
 
 	#if GARDEN_EDITOR
-	auto logEditorSystem = Manager::get()->tryGet<LogEditorSystem>();
+	auto logEditorSystem = LogEditorSystem::Instance::tryGet();
 	if (logEditorSystem)
 		logEditorSystem->log(level, message);
 	#endif

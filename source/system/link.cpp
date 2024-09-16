@@ -32,7 +32,7 @@ static void eraseEntityTag(multimap<string, ID<Entity>>& tagMap, ID<Entity> enti
 //**********************************************************************************************************************
 bool LinkComponent::destroy()
 {
-	auto linkSystem = LinkSystem::get();
+	auto linkSystem = LinkSystem::Instance::get();
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
@@ -49,7 +49,7 @@ bool LinkComponent::destroy()
 
 void LinkComponent::regenerateUUID()
 {
-	auto linkSystem = LinkSystem::get();
+	auto linkSystem = LinkSystem::Instance::get();
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
@@ -71,14 +71,14 @@ bool LinkComponent::trySetUUID(const Hash128& uuid)
 
 	if (uuid)
 	{
-		auto linkSystem = LinkSystem::get();
+		auto linkSystem = LinkSystem::Instance::get();
 		auto result = linkSystem->uuidMap.emplace(uuid, entity);
 		if (!result.second)
 			return false;
 	}
 	if (this->uuid)
 	{
-		auto linkSystem = LinkSystem::get();
+		auto linkSystem = LinkSystem::Instance::get();
 		auto result = linkSystem->uuidMap.erase(this->uuid);
 		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
 	}
@@ -91,7 +91,7 @@ void LinkComponent::setTag(const string& tag)
 	if (this->tag == tag)
 		return;
 
-	auto linkSystem = LinkSystem::get();
+	auto linkSystem = LinkSystem::Instance::get();
 	if (!this->tag.empty())
 		eraseEntityTag(linkSystem->tagMap, entity, this->tag);
 	if (!tag.empty())
@@ -101,30 +101,14 @@ void LinkComponent::setTag(const string& tag)
 }
 
 //**********************************************************************************************************************
-LinkSystem* LinkSystem::instance = nullptr;
-
-LinkSystem::LinkSystem()
-{
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
-}
+LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton) { }
 LinkSystem::~LinkSystem()
 {
 	components.clear(false);
-
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
-ID<Component> LinkSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void LinkSystem::destroyComponent(ID<Component> instance)
-{
-	components.destroy(ID<LinkComponent>(instance));
-}
 void LinkSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<LinkComponent>(source);
@@ -144,18 +128,6 @@ const string& LinkSystem::getComponentName() const
 {
 	static const string name = "Link";
 	return name;
-}
-type_index LinkSystem::getComponentType() const
-{
-	return typeid(LinkComponent);
-}
-View<Component> LinkSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<LinkComponent>(instance)));
-}
-void LinkSystem::disposeComponents()
-{
-	components.dispose();
 }
 
 //**********************************************************************************************************************
@@ -179,21 +151,12 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 	if (deserializer.read("uuid", uuidStringCache))
 	{
 		if (!componentView->uuid.fromBase64(uuidStringCache))
-		{
-			auto logSystem = Manager::get()->tryGet<LogSystem>();
-			if (logSystem)
-				logSystem->error("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
-		}
+			GARDEN_LOG_ERROR("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
 
 		auto result = uuidMap.emplace(componentView->uuid, entity);
 		if (!result.second)
 		{
-			auto logSystem = Manager::get()->tryGet<LogSystem>();
-			if (logSystem)
-			{
-				logSystem->error("Deserialized entity with already "
-					"existing link uuid. (uuid: " + uuidStringCache + ")");
-			}
+			GARDEN_LOG_ERROR("Deserialized entity with already existing link uuid. (uuid: " + uuidStringCache + ")");
 			componentView->uuid = {};
 		}
 	}
@@ -221,29 +184,4 @@ void LinkSystem::findEntities(const string& tag, vector<ID<Entity>>& entities) c
 	auto result = tagMap.equal_range(tag);
 	for (auto i = result.first; i != result.second; i++)
 		entities.emplace_back(i->second);
-}
-
-bool LinkSystem::has(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& entityComponents = entityView->getComponents();
-	return entityComponents.find(typeid(LinkComponent)) != entityComponents.end();
-}
-View<LinkComponent> LinkSystem::get(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& pair = entityView->getComponents().at(typeid(LinkComponent));
-	return components.get(ID<LinkComponent>(pair.second));
-}
-View<LinkComponent> LinkSystem::tryGet(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& entityComponents = entityView->getComponents();
-	auto result = entityComponents.find(typeid(LinkComponent));
-	if (result == entityComponents.end())
-		return {};
-	return components.get(ID<LinkComponent>(result->second.second));
 }

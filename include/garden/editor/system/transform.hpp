@@ -19,16 +19,14 @@
 namespace garden
 {
 
-class TransformEditorSystem final : public System
+class TransformEditorSystem final : public System, public Singleton<TransformEditorSystem>
 {
 	float3 oldEulerAngles = float3(0.0f);
 	float3 newEulerAngles = float3(0.0f);
 	quat oldRotation = quat::identity;
 	ID<Entity> selectedEntity = {};
 
-	static TransformEditorSystem* instance;
-
-	TransformEditorSystem();
+	TransformEditorSystem(bool setSingleton = true);
 	~TransformEditorSystem() final;
 	
 	void init();
@@ -41,12 +39,6 @@ class TransformEditorSystem final : public System
 	friend class TransformSystem;
 public:
 	float inspectorPriority = -0.9f;
-
-	static TransformEditorSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

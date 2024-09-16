@@ -20,8 +20,9 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter) :
-	SpriteRenderSystem("sprite/cutout", useDeferredBuffer, useLinearFilter) { }
+CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
+	SpriteRenderSystem("sprite/cutout", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+CutoutSpriteSystem::~CutoutSpriteSystem() { unsetSingleton(); }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)

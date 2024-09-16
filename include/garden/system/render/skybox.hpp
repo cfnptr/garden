@@ -35,7 +35,7 @@ struct SkyboxRenderComponent final : public Component
 class SkyboxRenderSystem final : public System,
 	public IRenderSystem, public IDeferredRenderSystem
 {
-	LinearPool<SkyboxRenderComponent, false> components;
+	LinearPool<SkyboxRenderComponent, false> components; // TODO: Use ComponentSystem<...
 	ID<Buffer> fullCubeVertices = {};
 	ID<GraphicsPipeline> pipeline = {};
 

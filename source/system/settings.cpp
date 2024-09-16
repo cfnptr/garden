@@ -25,17 +25,17 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
-SettingsSystem::SettingsSystem()
+SettingsSystem::SettingsSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
+	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
+	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
 }
 SettingsSystem::~SettingsSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", SettingsSystem::postDeinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", SettingsSystem::postDeinit);
 	}
 
 	delete (conf::Reader*)confReader;
@@ -45,32 +45,28 @@ SettingsSystem::~SettingsSystem()
 		if (pair.second.type == Type::String)
 			delete (char*)pair.second.data;
 	}
+
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
 void SettingsSystem::preInit()
 {
-	auto appInfoSystem = AppInfoSystem::get();
-	auto logSystem = Manager::get()->tryGet<LogSystem>();
-
+	auto appInfoSystem = AppInfoSystem::Instance::get();
 	try
 	{
 		auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
 		confReader = new conf::Reader(appDataPath / "settings.txt");
-		if (logSystem)
-			logSystem->info("Loaded settings file.");
+		GARDEN_LOG_INFO("Loaded settings file.");
 	}
 	catch (const exception& e)
 	{
-		if (logSystem)
-			logSystem->warn("Failed to load settings file. (error: " + string(e.what()) + ")");
+		GARDEN_LOG_WARN("Failed to load settings file. (error: " + string(e.what()) + ")");
 	}
 }
 void SettingsSystem::postDeinit()
 {
-	auto appInfoSystem = AppInfoSystem::get();
-	auto logSystem = Manager::get()->tryGet<LogSystem>();
-
+	auto appInfoSystem = AppInfoSystem::Instance::get();
 	try
 	{
 		auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
@@ -97,13 +93,11 @@ void SettingsSystem::postDeinit()
 			}
 		}
 
-		if (logSystem)
-			logSystem->info("Stored settings file.");
+		GARDEN_LOG_INFO("Stored settings file.");
 	}
 	catch (const exception& e)
 	{
-		if (logSystem)
-			logSystem->error("Failed to store settings file. (error: " + string(e.what()) + ")");
+		GARDEN_LOG_ERROR("Failed to store settings file. (error: " + string(e.what()) + ")");
 	}
 }
 

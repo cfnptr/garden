@@ -17,14 +17,12 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-AppInfoSystem* AppInfoSystem::instance = nullptr;
-
 AppInfoSystem::AppInfoSystem(const string& name, const string& nameLowercase, const string& description,
-	const string& creator, const string& copyright, Version version
+	const string& creator, const string& copyright, Version version,
 	#if GARDEN_DEBUG
-	, fs::path cachesPath, fs::path resourcesPath
+	fs::path cachesPath, fs::path resourcesPath,
 	#endif
-)
+	bool setSingleton) : Singleton(setSingleton)
 {
 	this->name = name;
 	this->nameLowercase = nameLowercase;
@@ -37,15 +35,5 @@ AppInfoSystem::AppInfoSystem(const string& name, const string& nameLowercase, co
 	this->cachesPath = cachesPath;
 	this->resourcesPath = resourcesPath;
 	#endif
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
 }
-/**
- * @brief Destroy app info system instance.
- */
-AppInfoSystem::~AppInfoSystem()
-{
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
-}
+AppInfoSystem::~AppInfoSystem() { unsetSingleton(); }

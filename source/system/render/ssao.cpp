@@ -55,7 +55,7 @@ static ID<Buffer> createSampleBuffer(uint32 sampleCount)
 		ssaoKernel[i] = float4(sample * scale * randomFloats(generator), 0.0f);
 	}
 
-	auto buffer = GraphicsSystem::get()->createBuffer(Buffer::Bind::Uniform |
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::Uniform |
 		Buffer::Bind::TransferDst, Buffer::Access::None, ssaoKernel,
 		0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.ssao.sample");
@@ -75,7 +75,7 @@ static ID<Image> createNoiseTexture()
 		ssaoNoise[i] = float4(noise, 0.0f);
 	}
 
-	auto texture = GraphicsSystem::get()->createImage(Image::Format::SfloatR16G16B16A16,
+	auto texture = GraphicsSystem::Instance::get()->createImage(Image::Format::SfloatR16G16B16A16,
 		Image::Bind::TransferDst | Image::Bind::Sampled, { { ssaoNoise.data() } },
 		uint2(NOISE_SIZE), Image::Strategy::Size, Image::Format::SfloatR32G32B32A32);
 	SET_RESOURCE_DEBUG_NAME(texture, "image.ssao.random");
@@ -122,7 +122,7 @@ void SsaoRenderSystem::initialize()
 	auto manager = getManager();
 	auto graphicsSystem = getGraphicsSystem();
 
-	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getBool("useSSAO", isEnabled);
 

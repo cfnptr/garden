@@ -26,50 +26,50 @@ using namespace garden;
 //**********************************************************************************************************************
 HierarchyEditorSystem::HierarchyEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", HierarchyEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", HierarchyEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", HierarchyEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", HierarchyEditorSystem::deinit);
 }
 HierarchyEditorSystem::~HierarchyEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", HierarchyEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", HierarchyEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HierarchyEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HierarchyEditorSystem::deinit);
 	}
 }
 
 void HierarchyEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 }
 void HierarchyEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
 static void updateHierarchyClick(ID<Entity> renderEntity)
 {
-	auto manager = Manager::get();
-	auto transformSystem = TransformSystem::get();
+	auto manager = Manager::Instance::get();
+	auto transformSystem = TransformSystem::Instance::get();
 
 	if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && ImGui::IsItemHovered(ImGuiHoveredFlags_None))
 	{
-		auto editorSystem = EditorRenderSystem::get();
+		auto editorSystem = EditorRenderSystem::Instance::get();
 		editorSystem->selectedEntity = renderEntity;
 	}
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
 		graphicsSystem->camera && graphicsSystem->camera != renderEntity)
 	{
-		auto entityTransformView = transformSystem->tryGet(renderEntity);
-		auto cameraTransformView = transformSystem->tryGet(graphicsSystem->camera);
+		auto entityTransformView = transformSystem->tryGetComponent(renderEntity);
+		auto cameraTransformView = transformSystem->tryGetComponent(graphicsSystem->camera);
 		if (entityTransformView && cameraTransformView)
 		{
 			auto model = entityTransformView->calcModel();
@@ -100,10 +100,10 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		if (ImGui::MenuItem("Duplicate Entity", nullptr, false, !manager->has<DoNotDuplicateComponent>(renderEntity)))
 		{
 			auto duplicate = transformSystem->duplicateRecursive(renderEntity);
-			auto entityTransformView = transformSystem->tryGet(renderEntity);
+			auto entityTransformView = transformSystem->tryGetComponent(renderEntity);
 			if (entityTransformView)
 			{
-				auto duplicateTransformView = transformSystem->get(duplicate);
+				auto duplicateTransformView = transformSystem->getComponent(duplicate);
 				duplicateTransformView->setParent(entityTransformView->getParent());
 			}
 		}
@@ -116,14 +116,14 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		auto hasTransform = manager->has<TransformComponent>(renderEntity);
 		if (ImGui::MenuItem("Copy Debug Name", nullptr, false, hasTransform))
 		{
-			auto transformView = transformSystem->get(renderEntity);
+			auto transformView = transformSystem->getComponent(renderEntity);
 			auto debugName = transformView->debugName.empty() ?
 				"Entity " + to_string(*renderEntity) : transformView->debugName;
 			ImGui::SetClipboardText(debugName.c_str());
 		}
 		if (ImGui::MenuItem("Store as Scene", nullptr, false, hasTransform))
 		{
-			auto editorSystem = EditorRenderSystem::get();
+			auto editorSystem = EditorRenderSystem::Instance::get();
 			editorSystem->selectedEntity = renderEntity;
 			editorSystem->exportScene = true;
 		}
@@ -141,10 +141,10 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		{
 			GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 			auto entity = *((const ID<Entity>*)payload->Data);
-			auto entityTransformView = transformSystem->tryGet(entity);
+			auto entityTransformView = transformSystem->tryGetComponent(entity);
 			if (entityTransformView)
 			{
-				auto renderTransformView = transformSystem->tryGet(renderEntity);
+				auto renderTransformView = transformSystem->tryGetComponent(renderEntity);
 				if (renderTransformView && !renderTransformView->hasAncestor(entity))
 					entityTransformView->setParent(renderEntity);
 			}
@@ -154,7 +154,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 	if (ImGui::BeginDragDropSource())
 	{
 		ImGui::SetDragDropPayload("Entity", &renderEntity, sizeof(ID<Entity>));
-		auto renderTransformView = transformSystem->tryGet(renderEntity);
+		auto renderTransformView = transformSystem->tryGetComponent(renderEntity);
 		if (renderTransformView && !renderTransformView->debugName.empty())
 		{
 			ImGui::Text("%s", renderTransformView->debugName.c_str());
@@ -171,7 +171,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 //**********************************************************************************************************************
 static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
-	auto transformView = TransformSystem::get()->get(renderEntity);
+	auto transformView = TransformSystem::Instance::get()->getComponent(renderEntity);
 	auto debugName = transformView->debugName.empty() ? 
 		"Entity " + to_string(*renderEntity) : transformView->debugName;
 	
@@ -192,11 +192,11 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 			ImGui::PopStyleColor();
 		updateHierarchyClick(renderEntity);
 
-		transformView = TransformSystem::get()->get(renderEntity); // Do not optimize!!!
+		transformView = TransformSystem::Instance::get()->getComponent(renderEntity); // Do not optimize!!!
 		for (uint32 i = 0; i < transformView->getChildCount(); i++)
 		{
 			renderHierarchyEntity(transformView->getChild(i), selectedEntity); // TODO: use stack instead of recursion!
-			transformView = TransformSystem::get()->get(renderEntity); // Do not optimize!!!
+			transformView = TransformSystem::Instance::get()->getComponent(renderEntity); // Do not optimize!!!
 		}
 		ImGui::TreePop();
 	}
@@ -212,8 +212,7 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 //**********************************************************************************************************************
 void HierarchyEditorSystem::editorRender()
 {
-	auto manager = Manager::get();
-	if (!showWindow || !GraphicsSystem::get()->canRender() || !manager->has<TransformSystem>())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender() || !TransformSystem::Instance::has())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 192.0f), ImGuiCond_FirstUseEver);
@@ -224,6 +223,7 @@ void HierarchyEditorSystem::editorRender()
 		{
 			if (ImGui::MenuItem("Create Entity"))
 			{
+				auto manager = Manager::Instance::get();
 				auto entity = manager->createEntity();
 				manager->add<TransformComponent>(entity);
 			}
@@ -254,7 +254,7 @@ void HierarchyEditorSystem::editorRender()
 			{
 				GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 				auto entity = *((const ID<Entity>*)payload->Data);
-				auto entityTransform = TransformSystem::get()->tryGet(entity);
+				auto entityTransform = TransformSystem::Instance::get()->tryGetComponent(entity);
 				if (entityTransform)
 					entityTransform->setParent({});
 			}
@@ -267,8 +267,8 @@ void HierarchyEditorSystem::editorRender()
 
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto editorSystem = EditorRenderSystem::get();
-		const auto& components = TransformSystem::get()->getComponents();
+		auto editorSystem = EditorRenderSystem::Instance::get();
+		const auto& components = TransformSystem::Instance::get()->getComponents();
 
 		if (searchString.empty())
 		{
@@ -305,7 +305,7 @@ void HierarchyEditorSystem::editorRender()
 			}
 		}
 
-		const auto& entities = manager->getEntities();
+		const auto& entities = Manager::Instance::get()->getEntities();
 		auto hasSeparator = false;
 
 		// Entities without transform component

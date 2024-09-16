@@ -36,7 +36,7 @@ class GraphicsSystem;
  * @param resource target resource instance
  * @param[in] name object debug name
  */
-#define SET_RESOURCE_DEBUG_NAME(resource, name) GraphicsSystem::get()->setDebugName(resource, name)
+#define SET_RESOURCE_DEBUG_NAME(resource, name) GraphicsSystem::Instance::get()->setDebugName(resource, name)
 #else
 /**
  * @brief Sets GPU resource debug name. (visible in GPU profiler)
@@ -67,7 +67,7 @@ struct SwapchainChanges final
  * 
  * Registers events: Render, Present, SwapchainRecreate.
  */
-class GraphicsSystem final : public System
+class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
 public:
 	using ConstantsBuffer = vector<vector<ID<Buffer>>>;
@@ -96,8 +96,6 @@ private:
 	ID<GraphicsPipeline> aabbPipeline;
 	#endif
 
-	static GraphicsSystem* instance;
-
 	/**
 	 * @brief Creates a new graphics system instance.
 	 * 
@@ -107,10 +105,11 @@ private:
 	 * @param useVsync use vertical synchronization (V-Sync)
 	 * @param useTripleBuffering use swapchain triple buffering
 	 * @param useAsyncRecording use multithreaded render commands recording
+	 * @param setSingleton set system singleton instance
 	 */
 	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize,
 		Image::Format depthStencilFormat = Image::Format::SfloatD32, bool isFullscreen = !GARDEN_DEBUG,
-		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true);
+		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys graphics system instance.
 	 */
@@ -708,15 +707,6 @@ public:
 	View<DescriptorSet> get(const Ref<DescriptorSet>& descriptorSet) const
 	{
 		return get(ID<DescriptorSet>(descriptorSet));
-	}
-
-	/**
-	 * @brief Returns graphics system instance.
-	 */
-	static GraphicsSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
 	}
 	
 	//******************************************************************************************************************

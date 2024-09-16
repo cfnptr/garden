@@ -46,6 +46,7 @@ private:
 
 	friend class AnimationSystem;
 	friend class LinearPool<AnimationComponent>;
+	friend class ComponentSystem<AnimationComponent>;
 public:
 	/**
 	 * @brief Returns animations map.
@@ -91,36 +92,30 @@ public:
 /***********************************************************************************************************************
  * @brief Handles object properties animation.
  */
-class AnimationSystem final : public System, public ISerializable
+class AnimationSystem final : public ComponentSystem<AnimationComponent>, 
+	public Singleton<AnimationSystem>, public ISerializable
 {
-	ThreadSystem* threadSystem = nullptr;
-	LinearPool<AnimationComponent> components;
 	LinearPool<Animation> animations;
 	mt19937 randomGenerator;
 	bool animateAsync = false;
 
-	static AnimationSystem* instance;
-
 	/**
 	 * @brief Creates a new animation system instance.
+	 * 
 	 * @param useAsync multithreaded components animation
+	 * @param setSingleton set system singleton instance
 	 */
-	AnimationSystem(bool animateAsync = true);
+	AnimationSystem(bool animateAsync = true, bool setSingleton = true);
 	/**
 	 * @brief Destroy animation system instance.
 	 */
 	~AnimationSystem() final;
 
-	void init();
 	void postDeinit();
 	void update();
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
@@ -161,34 +156,6 @@ public:
 	 * @param animation target animation instance or null
 	 */
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }
-
-	/**
-	 * @brief Returns true if entity has animation component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity animation component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<AnimationComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity animation component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<AnimationComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns animation system instance.
-	 */
-	static AnimationSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

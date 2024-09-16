@@ -23,7 +23,7 @@ using namespace garden::graphics;
 struct TranslucentSpriteComponent final : public SpriteRenderComponent { };
 struct TranslucentSpriteFrame final : public SpriteRenderFrame { };
 
-class TranslucentSpriteSystem final : public SpriteRenderSystem
+class TranslucentSpriteSystem final : public SpriteRenderSystem, public Singleton<TranslucentSpriteSystem>
 {
 	uint16 _alignment = 0;
 	LinearPool<TranslucentSpriteComponent, false> components;
@@ -34,8 +34,13 @@ class TranslucentSpriteSystem final : public SpriteRenderSystem
 	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
 	 * @param useLinearFilter use linear filtering for texture
+	 * @param setSingleton set system singleton instance
 	 */
-	TranslucentSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
+	TranslucentSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	/**
+	 * @brief Destroys opaque translucent rendering system instance.
+	 */
+	~TranslucentSpriteSystem() final;
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;

@@ -32,7 +32,7 @@ using namespace ecsm;
  * @brief Application settings holder.
  * @details The system responsible for saving and loading settings between program runs.
  */
-class SettingsSystem final : public System
+class SettingsSystem final : public System, public Singleton<SettingsSystem>
 {
 	enum class Type : uint32
 	{
@@ -52,8 +52,9 @@ class SettingsSystem final : public System
 
 	/**
 	 * @brief Creates a new settings system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	SettingsSystem();
+	SettingsSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys settings system instance.
 	 */

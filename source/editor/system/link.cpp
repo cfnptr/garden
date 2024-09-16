@@ -23,24 +23,24 @@ using namespace garden;
 //**********************************************************************************************************************
 LinkEditorSystem::LinkEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", LinkEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", LinkEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", LinkEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LinkEditorSystem::deinit);
 }
 LinkEditorSystem::~LinkEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", LinkEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", LinkEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LinkEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LinkEditorSystem::deinit);
 	}
 }
 
 void LinkEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", LinkEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", LinkEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 
-	EditorRenderSystem::get()->registerEntityInspector<LinkComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<LinkComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -49,20 +49,20 @@ void LinkEditorSystem::init()
 }
 void LinkEditorSystem::deinit()
 {
-	EditorRenderSystem::get()->unregisterEntityInspector<LinkComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<LinkComponent>();
 
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", LinkEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LinkEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
 static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 {
-	auto linkSystem = LinkSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
+	auto linkSystem = LinkSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& uuidMap = linkSystem->getUuidMap();
 	const auto& linkComponents = linkSystem->getComponents();
 
@@ -104,9 +104,9 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 //**********************************************************************************************************************
 static void renderTagList(const string& searchString, bool searchCaseSensitive)
 {
-	auto manager = Manager::get();
-	auto linkSystem = LinkSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
+	auto manager = Manager::Instance::get();
+	auto linkSystem = LinkSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& tagMap = linkSystem->getTagMap();
 	const auto& linkComponents = linkSystem->getComponents();
 	map<string, uint32> uniqueTags;
@@ -175,7 +175,7 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 //**********************************************************************************************************************
 void LinkEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::get()->canRender())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);
@@ -201,7 +201,7 @@ void LinkEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto linkView = LinkSystem::get()->get(entity);
+	auto linkView = LinkSystem::Instance::get()->getComponent(entity);
 	if ((linkView->getUUID() || !linkView->getTag().empty()) && ImGui::BeginItemTooltip())
 	{
 		if (linkView->getUUID())

@@ -67,7 +67,8 @@ protected:
 /***********************************************************************************************************************
  * @brief PBR lighting rendering system.
  */
-class LightingRenderSystem final : public System
+class LightingRenderSystem final : public ComponentSystem<LightingRenderComponent, false>,
+	public Singleton<LightingRenderSystem>
 {
 public:
 	/**
@@ -79,8 +80,6 @@ public:
 	 */
 	inline static const uint8 aoBufferCount = 2;
 private:
-	DeferredRenderSystem* deferredSystem = nullptr;
-	LinearPool<LightingRenderComponent, false> components;
 	vector<IShadowRenderSystem*> shadowSystems;
 	vector<IAoRenderSystem*> aoSystems;
 	ID<Image> dfgLUT = {};
@@ -103,8 +102,9 @@ private:
 	 * 
 	 * @param useShadowBuffer use shadow buffer for rendering
 	 * @param useAoBuffer use ambient occlusion buffer for rendering
+	 * @param setSingleton set system singleton instance
 	 */
-	LightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false);
+	LightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false, bool setSingleton = true);
 	/**
 	 * @brief Destroys lighting rendering system instance.
 	 */

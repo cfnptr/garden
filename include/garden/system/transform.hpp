@@ -55,6 +55,7 @@ private:
 
 	friend class TransformSystem;
 	friend class LinearPool<TransformComponent>;
+	friend class ComponentSystem<TransformComponent>;
 public:
 	/**
 	 * @brief Returns this entity parent object, or null if it is root entity.
@@ -166,12 +167,12 @@ struct TransformFrame final : public AnimationFrame
  * Fundamental aspect of the engine architecture that handles the 
  * positioning, rotation, scaling and other properties of objects within the 3D space.
  */
-class TransformSystem final : public System, public ISerializable, public IAnimatable
+class TransformSystem final : public ComponentSystem<TransformComponent>, 
+	public Singleton<TransformSystem>, public ISerializable, public IAnimatable
 {
 	using EntityParentPair = pair<ID<Entity>, uint64>;
 	using EntityDuplicatePair = pair<ID<Entity>, ID<Entity>>;
 
-	LinearPool<TransformComponent> components;
 	LinearPool<TransformFrame, false> animationFrames;
 	vector<ID<Entity>> entityStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
@@ -183,23 +184,19 @@ class TransformSystem final : public System, public ISerializable, public IAnima
 	set<uint64> serializedEntities;
 	#endif
 
-	static TransformSystem* instance;
-
 	/**
 	 * @brief Creates a new transformer system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	TransformSystem();
+	TransformSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroy transformer system instance.
 	 */
 	~TransformSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
@@ -231,34 +228,6 @@ public:
 	 * @param entity target entity to duplicate from
 	 */
 	ID<Entity> duplicateRecursive(ID<Entity> entity);
-
-	/**
-	 * @brief Returns true if entity has transform component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity transform component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<TransformComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity transform component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<TransformComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns transform system instance.
-	 */
-	static TransformSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 /***********************************************************************************************************************
@@ -269,22 +238,20 @@ struct BakedTransformComponent final : public Component { };
 /**
  * @brief Handles baked, static components.
  */
-class BakedTransformSystem final : public System, public ISerializable
+class BakedTransformSystem final : public ComponentSystem<BakedTransformComponent, false>, 
+	public Singleton<BakedTransformSystem>, public ISerializable
 {
-protected:
-	LinearPool<BakedTransformComponent, false> components;
+	/**
+	 * @brief Creates a new baked transformer system instance.
+	 * @param setSingleton set system singleton instance
+	 */
+	BakedTransformSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroy baked transformer system instance.
+	 */
+	~BakedTransformSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	void disposeComponents() final;
-
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
-	
 	friend class ecsm::Manager;
 };
 

@@ -24,24 +24,24 @@ using namespace garden;
 //**********************************************************************************************************************
 AnimationEditorSystem::AnimationEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", AnimationEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", AnimationEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", AnimationEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AnimationEditorSystem::deinit);
 }
 AnimationEditorSystem::~AnimationEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", AnimationEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", AnimationEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AnimationEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AnimationEditorSystem::deinit);
 	}
 }
 
 void AnimationEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", AnimationEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", AnimationEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
 
-	EditorRenderSystem::get()->registerEntityInspector<AnimationComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<AnimationComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -50,19 +50,19 @@ void AnimationEditorSystem::init()
 }
 void AnimationEditorSystem::deinit()
 {
-	EditorRenderSystem::get()->unregisterEntityInspector<AnimationComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<AnimationComponent>();
 
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", AnimationEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AnimationEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
 void AnimationEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::get()->canRender())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	if (ImGui::Begin("Animation Editor", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
@@ -82,26 +82,26 @@ void AnimationEditorSystem::editorBarTool()
 static void renderAnimationSelector(ID<Entity> entity)
 {
 	static const set<string> extensions = { ".anim" };
-	EditorRenderSystem::get()->openFileSelector([entity](const fs::path& selectedFile)
+	EditorRenderSystem::Instance::get()->openFileSelector([entity](const fs::path& selectedFile)
 	{
-		auto animationView = AnimationSystem::get()->tryGet(entity);
-		if (!animationView || EditorRenderSystem::get()->selectedEntity != entity)
+		auto animationView = AnimationSystem::Instance::get()->tryGetComponent(entity);
+		if (!animationView || EditorRenderSystem::Instance::get()->selectedEntity != entity)
 			return;
 
 		auto path = selectedFile;
 		path.replace_extension();
-		auto animation = ResourceSystem::get()->loadAnimation(path, true);
+		auto animation = ResourceSystem::Instance::get()->loadAnimation(path, true);
 		if (animation)
 			animationView->emplaceAnimation(path.generic_string(), std::move(animation));
 	},
-	AppInfoSystem::get()->getResourcesPath() / "animations", extensions);
+	AppInfoSystem::Instance::get()->getResourcesPath() / "animations", extensions);
 }
 
 void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto animationView = AnimationSystem::get()->get(entity);
+		auto animationView = AnimationSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Playing: %s, Frame: %f", animationView->isPlaying ?
 			animationView->active.c_str() : "none", animationView->frame);
 		ImGui::EndTooltip();
@@ -110,7 +110,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto animationView = AnimationSystem::get()->get(entity);
+	auto animationView = AnimationSystem::Instance::get()->getComponent(entity);
 	if (ImGui::Checkbox("Playing", &animationView->isPlaying))
 	{
 		bool isLooped;
@@ -150,7 +150,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::Indent();
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto resourceSystem = ResourceSystem::get();
+		auto resourceSystem = ResourceSystem::Instance::get();
 		const auto& animations = animationView->getAnimations();
 
 		for (auto i = animations.begin(); i != animations.end(); i++)

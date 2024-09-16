@@ -34,7 +34,7 @@ namespace
 //--------------------------------------------------------------------------------------------------
 static ID<Buffer> createReadbackBuffer()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto size = (sizeof(ToneMappingRenderSystem::Luminance) +
 		AE_HISTOGRAM_SIZE * sizeof(uint32)) * swapchainSize;

@@ -76,27 +76,27 @@ namespace
 //**********************************************************************************************************************
 MeshGizmosEditorSystem::MeshGizmosEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 	
 }
 MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 	}
 }
 
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 
-	auto graphicsSystem = GraphicsSystem::get();
-	auto resourceSystem = ResourceSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 	auto swapchainFramebuffer = graphicsSystem->getSwapchainFramebuffer();
 
 	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", swapchainFramebuffer);
@@ -106,7 +106,7 @@ void MeshGizmosEditorSystem::init()
 		Buffer::Access::None, fullArrowVert, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(fullArrowVertices, "buffer.vertex.gizmos.arrow");
 
-	auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 	{
 		settingsSystem->getColor("meshGizmosColor", handleColor);
@@ -118,15 +118,15 @@ void MeshGizmosEditorSystem::init()
 }
 void MeshGizmosEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::get();
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(fullArrowVertices);
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
 
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 	}
 }
 
@@ -179,7 +179,7 @@ static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->renderScale = 0.25f / graphicsSystem->getRenderScale();
 	
@@ -196,8 +196,8 @@ static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::editorRender()
 {
-	auto graphicsSystem = GraphicsSystem::get();
-	auto selectedEntity = EditorRenderSystem::get()->selectedEntity;
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto selectedEntity = EditorRenderSystem::Instance::get()->selectedEntity;
 
 	if (!isEnabled || !graphicsSystem->canRender() || !selectedEntity ||
 		!graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
@@ -205,12 +205,12 @@ void MeshGizmosEditorSystem::editorRender()
 		return;
 	}
 
-	auto inputSystem = InputSystem::get();
+	auto inputSystem = InputSystem::Instance::get();
 	if (!inputSystem->getMouseState(MouseButton::Left))
 		dragMode = 0;
 	
-	auto manager = Manager::get();
-	auto transformView = TransformSystem::get()->tryGet(selectedEntity);
+	auto manager = Manager::Instance::get();
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
 	auto fullCubeVertices = graphicsSystem->getFullCubeVertices();
@@ -373,7 +373,7 @@ void MeshGizmosEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Mesh Gizmos"))
 	{
-		auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
+		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled);
 

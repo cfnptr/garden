@@ -43,7 +43,7 @@ namespace
 static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
 	const auto shadowFormat = Image::Format::UnormD16;
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::DepthStencilAttachment |
 		Image::Bind::Sampled, { Image::Layers(SHADOW_MAP_CASCADE_COUNT) },
 		uint2(shadowMapSize), Image::Strategy::Size);
@@ -64,7 +64,7 @@ static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shad
 //--------------------------------------------------------------------------------------------------
 static void createDataBuffers(vector<vector<ID<Buffer>>>& dataBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	dataBuffers.resize(swapchainSize);
 
@@ -82,7 +82,7 @@ static void createDataBuffers(vector<vector<ID<Buffer>>>& dataBuffers)
 static void createFramebuffers(const vector<ID<ImageView>>& imageViews,
 	vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(SHADOW_MAP_CASCADE_COUNT);
 	Framebuffer::OutputAttachment depthStencilAttachment({}, true, false, true);
 
@@ -133,7 +133,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(
 void ShadowMappingRenderSystem::initialize()
 {
 	auto graphicsSystem = getGraphicsSystem();
-	auto settingsSystem = getManager()->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getInt("shadowMapSize", shadowMapSize);
 

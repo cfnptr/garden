@@ -22,31 +22,33 @@ using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
-LogEditorSystem::LogEditorSystem()
+LogEditorSystem::LogEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
 }
 LogEditorSystem::~LogEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
 	}
+
+	unsetSingleton();
 }
 
 void LogEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
 void LogEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 	}
 }
 
@@ -84,7 +86,7 @@ static void updateTextBuffer(string& textBuffer,
 //**********************************************************************************************************************
 void LogEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::get()->canRender())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(560.0f, 180.0f), ImGuiCond_FirstUseEver);

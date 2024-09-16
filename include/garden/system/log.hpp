@@ -27,6 +27,75 @@ namespace garden
 
 using namespace ecsm;
 
+#ifndef GARDEN_LOG_LEVEL
+#if GARDEN_DEBUG
+#define GARDEN_LOG_LEVEL ALL_LOG_LEVEL
+#else
+#define GARDEN_LOG_LEVEL INFO_LOG_LEVEL
+#endif
+#endif
+
+
+#if GARDEN_LOG_LEVEL >= TRACE_LOG_LEVEL
+/**
+ * @brief Writes trace message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
+#define GARDEN_LOG_TRACE(message) LogSystem::tryTrace(message)
+#else
+#define GARDEN_LOG_TRACE(message)
+#endif
+
+#if GARDEN_LOG_LEVEL >= DEBUG_LOG_LEVEL
+/**
+ * @brief Writes debug message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
+#define GARDEN_LOG_DEBUG(message) LogSystem::tryDebug(message)
+#else
+#define GARDEN_LOG_DEBUG(message)
+#endif
+
+#if GARDEN_LOG_LEVEL >= INFO_LOG_LEVEL
+/**
+ * @brief Writes information message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
+#define GARDEN_LOG_INFO(message) LogSystem::tryInfo(message)
+#else
+#define GARDEN_LOG_INFO(message)
+#endif
+
+#if GARDEN_LOG_LEVEL >= WARN_LOG_LEVEL
+/**
+ * @brief Writes warning message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
+#define GARDEN_LOG_WARN(message) LogSystem::tryWarn(message)
+#else
+#define GARDEN_LOG_WARN(message)
+#endif
+
+#if GARDEN_LOG_LEVEL >= ERROR_LOG_LEVEL
+/**
+ * @brief Writes error message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
+#define GARDEN_LOG_ERROR(message) LogSystem::tryError(message)
+#else
+#define GARDEN_LOG_ERROR(message)
+#endif
+
+#if GARDEN_LOG_LEVEL >= FATAL_LOG_LEVEL
+/**
+ * @brief Writes fatal message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
+#define GARDEN_LOG_FATAL(message) LogSystem::tryFatal(message)
+#else
+#define GARDEN_LOG_FATAL(message)
+#endif
+
 /**
  * @brief Message logging system.
  * 
@@ -35,18 +104,18 @@ using namespace ecsm;
  * These logs provide a detailed record of activities and help developers, system administrators, and support 
  * teams diagnose and troubleshoot issues, monitor performance, and ensure the security of the system.
  */
-class LogSystem final : public System
+class LogSystem final : public System, public Singleton<LogSystem>
 {
 	logy::Logger logger;
-	static LogSystem* instance;
 
 	/**
 	 * @brief Creates a new logging system instance.
 	 * 
 	 * @param level message logging level (log if <= level)
 	 * @param rotationTime delay between log file rotation (0.0 = disabled)
+	 * @param setSingleton set system singleton instance
 	 */
-	LogSystem(LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0);
+	LogSystem(LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0, bool setSingleton = true);
 	/**
 	 * @brief Destroys logging system instance.
 	 */
@@ -119,13 +188,58 @@ public:
 	const logy::Logger& getInternal() const noexcept { return logger; }
 
 	/**
-	 * @brief Returns logging system instance.
-	 * @warning Do not use it if you have several logging system instances.
+	 * @brief Writes trace message to the log if system exist. (MT-Safe)
+	 * @param[in] message target logging message
 	 */
-	static LogSystem* get() noexcept
+	static void tryTrace(const string& message)
 	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
+		auto logSystem = LogSystem::Instance::tryGet();
+		if (logSystem) logSystem->trace(message);
+	}
+	/**
+	 * @brief Writes debug message to the log if system exist. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
+	static void tryDebug(const string& message)
+	{
+		auto logSystem = LogSystem::Instance::tryGet();
+		if (logSystem) logSystem->debug(message);
+	}
+	/**
+	 * @brief Writes information message to the log if system exist. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
+	static void tryInfo(const string& message)
+	{
+		auto logSystem = LogSystem::Instance::tryGet();
+		if (logSystem) logSystem->info(message);
+	}
+	/**
+	 * @brief Writes warning message to the log if system exist. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
+	static void tryWarn(const string& message)
+	{
+		auto logSystem = LogSystem::Instance::tryGet();
+		if (logSystem) logSystem->warn(message);
+	}
+	/**
+	 * @brief Writes error message to the log if system exist. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
+	static void tryError(const string& message)
+	{
+		auto logSystem = LogSystem::Instance::tryGet();
+		if (logSystem) logSystem->error(message);
+	}
+	/**
+	 * @brief Writes fatal message to the log if system exist. (MT-Safe)
+	 * @param[in] message target logging message
+	 */
+	static void tryFatal(const string& message)
+	{
+		auto logSystem = LogSystem::Instance::tryGet();
+		if (logSystem) logSystem->fatal(message);
 	}
 };
 

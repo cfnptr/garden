@@ -63,7 +63,7 @@ void BloomEditor::render()
 
 		if (ImGui::Checkbox("Enabled", &system->isEnabled))
 		{
-			auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
 				settingsSystem->setBool("useBloom", system->isEnabled);
 		}

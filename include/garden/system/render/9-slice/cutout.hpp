@@ -30,7 +30,7 @@ struct Cutout9SliceFrame final : public NineSliceRenderFrame
 	bool animateAlphaCutoff = false;
 };
 
-class Cutout9SliceSystem final : public NineSliceRenderSystem
+class Cutout9SliceSystem final : public NineSliceRenderSystem, public Singleton<Cutout9SliceSystem>
 {
 public:
 	struct CutoutPushConstants final : public PushConstants
@@ -47,8 +47,13 @@ private:
 	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
 	 * @param useLinearFilter use linear filtering for texture
+	 * @param setSingleton set system singleton instance
 	 */
-	Cutout9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
+	Cutout9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	/**
+	 * @brief Destroys cutout 9-slice rendering system instance.
+	 */
+	~Cutout9SliceSystem() final;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) final;

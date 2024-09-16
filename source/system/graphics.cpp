@@ -127,7 +127,7 @@ void GraphicsSystem::initializeImGui()
 	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), fontSize);
 	GARDEN_ASSERT(fontResult);
 	#else
-	auto& packReader = ResourceSystem::get()->getPackReader();
+	auto& packReader = ResourceSystem::Instance::get()->getPackReader();
 	auto fontIndex = packReader.getItemIndex(fontPath);
 	auto fontDataSize = packReader.getItemDataSize(fontIndex);
 	auto fontData = malloc<uint8>(fontDataSize);
@@ -171,7 +171,7 @@ void GraphicsSystem::recreateImGui()
 
 static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 {
-	auto depthImage = GraphicsSystem::get()->createImage(format, Image::Bind::TransferDst |
+	auto depthImage = GraphicsSystem::Instance::get()->createImage(format, Image::Bind::TransferDst |
 		Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(depthImage, "image.depthBuffer");
 	auto imageView = GraphicsAPI::imagePool.get(depthImage);
@@ -179,29 +179,27 @@ static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 }
 
 //**********************************************************************************************************************
-GraphicsSystem* GraphicsSystem::instance = nullptr;
-
-GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat,
-	bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useAsyncRecording)
+GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat, bool isFullscreen, 
+	bool useVsync, bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false)
 {
 	this->useVsync = useVsync;
 	this->useTripleBuffering = useTripleBuffering;
 	this->asyncRecording = useAsyncRecording;
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	manager->registerEventAfter("Render", "Update");
 	manager->registerEventAfter("Present", "Render");
 	manager->registerEvent("SwapchainRecreate");
 
-	SUBSCRIBE_TO_EVENT("PreInit", GraphicsSystem::preInit);
-	SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
-	SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
-	SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
+	ECSM_SUBSCRIBE_TO_EVENT("PreInit", GraphicsSystem::preInit);
+	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
+	ECSM_SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	if (_setSingleton)
+		setSingleton();
 
-	auto appInfoSystem = AppInfoSystem::get();
+	auto appInfoSystem = AppInfoSystem::Instance::get();
 	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
 		windowSize, isFullscreen, useVsync, useTripleBuffering, asyncRecording);
 
@@ -236,16 +234,16 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 }
 GraphicsSystem::~GraphicsSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
 		// Note: constants buffers and other resources will destroyed by terminating graphics API.
 
-		UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
-		UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
-		UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
 
-		auto manager = Manager::get();
+		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Render");
 		manager->unregisterEvent("Present");
 		manager->unregisterEvent("SwapchainRecreate");
@@ -254,37 +252,28 @@ GraphicsSystem::~GraphicsSystem()
 	#if GARDEN_EDITOR
 	terminateImGui();
 	#endif
-	Vulkan::terminate();
 
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	Vulkan::terminate();
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
 void GraphicsSystem::preInit()
 {
-	SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
+	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 	
-	auto manager = Manager::get();
-	auto threadSystem = manager->tryGet<ThreadSystem>();
+	auto manager = Manager::Instance::get();
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 		Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
 
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem)
-	{
-		logSystem->info("GPU: " + string(
-			Vulkan::deviceProperties.properties.deviceName.data()));
-		auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
-		logSystem->info("Vulkan API: " +
-			to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
-			to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
-			to_string(VK_API_VERSION_PATCH(apiVersion)));
-		logSystem->info("Framebuffer size: " +
-			to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
-	}
+	GARDEN_LOG_INFO("GPU: " + string(Vulkan::deviceProperties.properties.deviceName.data()));
+	auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
+	GARDEN_LOG_INFO("Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
+		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
+	GARDEN_LOG_INFO("Framebuffer size: " + to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
 
-	auto settingsSystem = manager->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("useVsync", useVsync);
@@ -300,10 +289,8 @@ void GraphicsSystem::preDeinit()
 {
 	Vulkan::device.waitIdle();
 
-	if (Manager::get()->isRunning())
-	{
-		UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
-	}
+	if (Manager::Instance::get()->isRunning())
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
 }
 
 //**********************************************************************************************************************
@@ -316,11 +303,11 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 {
 	auto view = calcView(transform);
 	auto nextParent = transform->getParent();
-	auto transformSystem = TransformSystem::get();
+	auto transformSystem = TransformSystem::Instance::get();
 
 	while (nextParent)
 	{
-		auto nextTransformView = transformSystem->get(nextParent);
+		auto nextTransformView = transformSystem->getComponent(nextParent);
 		auto parentModel = ::calcModel(nextTransformView->position,
 			nextTransformView->rotation, nextTransformView->scale);
 		view = parentModel * view;
@@ -350,7 +337,7 @@ static void updateWindowInput(uint2& framebufferSize, uint2& windowSize, bool& i
 //**********************************************************************************************************************
 static void recreateCameraBuffers(vector<vector<ID<Buffer>>>& cameraConstantsBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint32 i = 0; i < (uint32)cameraConstantsBuffers.size(); i++)
 		graphicsSystem->destroy(cameraConstantsBuffers[i][0]);
 	cameraConstantsBuffers.clear();
@@ -385,7 +372,7 @@ static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLight,
 	uint2 scaledFramebufferSize, CameraConstants& cameraConstants)
 {
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 
 	auto transformView = manager->tryGet<TransformComponent>(camera);
 	if (transformView)
@@ -462,9 +449,6 @@ void GraphicsSystem::update()
 	swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
 	swapchainChanges.vsyncState |= newSwapchainChanges.vsyncState;
 	
-	auto manager = Manager::get();
-	auto logSystem = manager->tryGet<LogSystem>();
-
 	if (swapchainRecreated)
 	{
 		Vulkan::swapchain.recreate(framebufferSize, useVsync, useTripleBuffering);
@@ -485,11 +469,8 @@ void GraphicsSystem::update()
 		recreateImGui();
 		#endif
 
-		if (logSystem)
-		{
-			logSystem->info("Recreated swapchain. (" +
-				to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y) + ")");
-		}
+		GARDEN_LOG_INFO("Recreated swapchain. (" + 
+			to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y) + ")");
 	}
 
 	if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
@@ -501,17 +482,14 @@ void GraphicsSystem::update()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
-		{
-			if (logSystem)
-				logSystem->warn("Out fo date or suboptimal swapchain.");
-		}
+			GARDEN_LOG_WARN("Out fo date or suboptimal swapchain.");
 	}
 
 	updateCurrentFramebuffer(swapchainFramebuffer, depthStencilBuffer, framebufferSize);
 	
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
-		manager->runEvent("SwapchainRecreate");
+		Manager::Instance::get()->runEvent("SwapchainRecreate");
 		swapchainChanges = {};
 		forceRecreateSwapchain = false;
 	}
@@ -574,12 +552,7 @@ void GraphicsSystem::present()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.present())
-		{
-			auto logSystem = Manager::get()->tryGet<LogSystem>();
-			if (logSystem)
-				logSystem->warn("Out fo date or suboptimal swapchain.");
-		}
-
+			LogSystem::tryWarn("Out fo date or suboptimal swapchain.");
 		frameIndex++;
 	}
 	else
@@ -713,7 +686,7 @@ void GraphicsSystem::setWindowIcon(const vector<string>& paths)
 	#if GARDEN_OS_WINDOWS
 	vector<vector<uint8>> imageData(paths.size());
 	vector<GLFWimage> images(paths.size());
-	auto resourceSystem = ResourceSystem::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 
 	for (psize i = 0; i < paths.size(); i++)
 	{
@@ -1059,7 +1032,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 void GraphicsSystem::destroy(ID<ImageView> imageView)
 {
 	#if GARDEN_DEBUG
-	if (instance)
+	if (imageView)
 		GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(imageView)->isDefault());
 	#endif
 	GraphicsAPI::imageViewPool.destroy(imageView);
@@ -1153,7 +1126,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 void GraphicsSystem::destroy(ID<Framebuffer> framebuffer)
 {
 	#if GARDEN_DEBUG
-	if (instance)
+	if (framebuffer)
 		GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(framebuffer)->isSwapchainFramebuffer());
 	#endif
 	GraphicsAPI::framebufferPool.destroy(framebuffer);
@@ -1267,7 +1240,7 @@ void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
 {
 	if (!linePipeline)
 	{
-		linePipeline = ResourceSystem::get()->loadGraphicsPipeline(
+		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/wireframe-line", swapchainFramebuffer, false, false);
 	}
 
@@ -1286,7 +1259,7 @@ void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 {
 	if (!aabbPipeline)
 	{
-		aabbPipeline = ResourceSystem::get()->loadGraphicsPipeline(
+		aabbPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/aabb-lines", swapchainFramebuffer, false, false);
 	}
 

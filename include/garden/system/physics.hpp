@@ -306,6 +306,7 @@ private:
 	friend class PhysicsSystem;
 	friend struct CharacterComponent;
 	friend class LinearPool<RigidbodyComponent>;
+	friend class ComponentSystem<RigidbodyComponent>;
 public:
 	/**
 	 * @brief Rigidbody events listener name.
@@ -560,7 +561,8 @@ public:
 /***********************************************************************************************************************
  * @brief Provides an approximate simulation of rigid body dynamics (including collision detection).
  */
-class PhysicsSystem final : public System, public ISerializable
+class PhysicsSystem final : public ComponentSystem<RigidbodyComponent>, 
+	public Singleton<PhysicsSystem>, public ISerializable
 {
 public:
 	struct Properties final
@@ -593,7 +595,6 @@ private:
 	};
 
 	Properties properties;
-	LinearPool<RigidbodyComponent> components;
 	LinearPool<Shape> shapes;
 	map<Hash128, ID<Shape>> sharedBoxShapes;
 	map<Hash128, ID<Shape>> sharedRotTransShapes;
@@ -624,13 +625,13 @@ private:
 	set<uint64> serializedEntities;
 	#endif
 
-	static PhysicsSystem* instance;
-
 	/**
 	 * @brief Creates a new physics system instance.
+	 * 
 	 * @param properties target pshysics simulation properties
+	 * @param setSingleton set system singleton instance
 	 */
-	PhysicsSystem(const Properties& properties = {});
+	PhysicsSystem(const Properties& properties = {}, bool setSingleton = true);
 	/**
 	 * @brief Destroy physics system instance.
 	 */
@@ -644,12 +645,8 @@ private:
 	void processSimulate();
 	void interpolateResult(float t);
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	
 	void serializeDecoratedShape(ISerializer& serializer, ID<Shape> shape);
@@ -824,34 +821,6 @@ public:
 	 * @param shape target shape instance or null
 	 */
 	void destroyShared(ID<Shape> shape);
-
-	/**
-	 * @brief Returns true if entity has rigidbody component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity rigidbody component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<RigidbodyComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity rigidbody component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<RigidbodyComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns physics system instance.
-	 */
-	static PhysicsSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

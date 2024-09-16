@@ -30,7 +30,7 @@ using namespace ecsm;
 /***********************************************************************************************************************
  * @brief General 2D view controller.
  */
-class Controller2DSystem final : public System
+class Controller2DSystem final : public System, public Singleton<Controller2DSystem>
 {
 	ID<Entity> camera = {};
 	float2 followTarget = float2(0.0f);
@@ -39,8 +39,9 @@ class Controller2DSystem final : public System
 
 	/**
 	 * @brief Creates a new 2D view controller system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	Controller2DSystem();
+	Controller2DSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys 2D view controller system instance.
 	 */

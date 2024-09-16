@@ -123,7 +123,7 @@ static const vector<KeyboardButton> allKeyboardButtons =
  * 
  * Registers events: Input, FileDrop.
  */
-class InputSystem final : public System
+class InputSystem final : public System, public Singleton<InputSystem>
 {
 public:
 	/**
@@ -149,12 +149,11 @@ private:
 	CursorMode cursorMode = CursorMode::Default;
 	const fs::path* currentFileDropPath = nullptr;
 
-	static InputSystem* instance;
-
 	/**
 	 * @brief Creates a new input system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	InputSystem();
+	InputSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys input system instance.
 	 */
@@ -256,15 +255,6 @@ public:
 	 * @param mode target cursor mode
 	 */
 	void setCursorMode(CursorMode mode) noexcept;
-
-	/**
-	 * @brief Returns input system instance.
-	 */
-	static InputSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 /**

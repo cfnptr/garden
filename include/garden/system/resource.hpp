@@ -58,7 +58,7 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
  * 
  * Registers events: ImageLoaded, BufferLoaded.
  */
-class ResourceSystem : public System
+class ResourceSystem : public System, public Singleton<ResourceSystem>
 {
 protected:
 	struct GraphicsQueueItem
@@ -124,12 +124,11 @@ protected:
 	Version appVersion;
 	#endif
 
-	static ResourceSystem* instance;
-
 	/**
 	 * @brief Creates a new resource system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	ResourceSystem();
+	ResourceSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys resource system instance.
 	 */
@@ -380,15 +379,6 @@ public:
 	 */
 	pack::Reader& getPackReader() noexcept { return packReader; }
 	#endif
-
-	/**
-	 * @brief Returns resource system instance.
-	 */
-	static ResourceSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

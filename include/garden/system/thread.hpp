@@ -35,23 +35,26 @@ using namespace ecsm;
  * A thread system is used to manage and reuse a pool of worker threads for executing tasks asynchronously.
  * Threads allow for concurrent execution of code within a single process, enabling multitasking and parallelism.
  */
-class ThreadSystem final : public System
+class ThreadSystem final : public System, public Singleton<ThreadSystem>
 {
 	ThreadPool backgroundPool;
 	ThreadPool foregroundPool;
 
-	static ThreadSystem* instance;
-
 	/**
 	 * @brief Creates a new thread system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	ThreadSystem();
+	ThreadSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys thread system instance.
 	 */
 	~ThreadSystem() final;
-		
+
+	/**
+	 * @brief Calling before deinit to remove all unfinished tasks.
+	 */
 	void preDeinit();
+
 	friend class ecsm::Manager;
 public:
 	/**
@@ -64,15 +67,6 @@ public:
 	 * @details Use it to parallel some jobs during current frame.
 	 */
 	ThreadPool& getForegroundPool() noexcept { return foregroundPool; }
-
-	/**
-	 * @brief Returns thread system instance.
-	 */
-	static ThreadSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

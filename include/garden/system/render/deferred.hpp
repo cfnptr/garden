@@ -41,7 +41,7 @@ class DeferredRenderSystem;
  * Registers events: PreDeferredRender, DeferredRender, PreHdrRender, HdrRender,
  *   PreLdrRender, LdrRender, PreSwapchainRender, GBufferRecreate.
  */
-class DeferredRenderSystem final : public System
+class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>
 {
 public:
 	/**
@@ -58,13 +58,13 @@ private:
 	ID<Framebuffer> toneMappingFramebuffer = {};
 	bool asyncRecording = false;
 
-	static DeferredRenderSystem* instance;
-
 	/**
 	 * @brief Creates a new deferred rendering system instance.
+	 * 
 	 * @param useAsyncRecording use multithreaded render commands recording
+	 * @param setSingleton set system singleton instance
 	 */
-	DeferredRenderSystem(bool useAsyncRecording = true);
+	DeferredRenderSystem(bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
 	 */
@@ -89,15 +89,6 @@ public:
 	ID<Framebuffer> getGFramebuffer();
 	ID<Framebuffer> getHdrFramebuffer();
 	ID<Framebuffer> getLdrFramebuffer();
-
-	/**
-	 * @brief Returns deferred render system instance.
-	 */
-	static DeferredRenderSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

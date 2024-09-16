@@ -62,6 +62,7 @@ private:
 
 	friend class CharacterSystem;
 	friend class LinearPool<CharacterComponent>;
+	friend class ComponentSystem<CharacterComponent>;
 public:
 	/**
 	 * @brief Character collision layer index.
@@ -219,31 +220,25 @@ public:
  *   Support for specifying a local coordinate system that allows e.g. walking around in a flying space ship that is 
  *     equipped with 'inertial dampers' (a sci-fi concept often used in games).
  */
-class CharacterSystem final : public System, public ISerializable
+class CharacterSystem final : public ComponentSystem<CharacterComponent>, 
+	public Singleton<CharacterSystem>, public ISerializable
 {
-	LinearPool<CharacterComponent> components;
 	vector<ID<Entity>> entityStack;
 	void* charVsCharCollision = nullptr;
 	string valueStringCache;
-
-	static CharacterSystem* instance;
 public:
 	/**
 	 * @brief Creates a new character system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	CharacterSystem();
+	CharacterSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroy character system instance.
 	 */
 	~CharacterSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
@@ -258,34 +253,6 @@ public:
 	 * @param entity target character enity instance
 	 */
 	void setWorldTransformRecursive(ID<Entity> entity);
-
-	/**
-	 * @brief Returns true if entity has character component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity character component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<CharacterComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity character component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<CharacterComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns character system instance.
-	 */
-	static CharacterSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 // TODO: support non virtual Jolt JPH::Character for AI characters/players.

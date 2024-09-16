@@ -31,7 +31,7 @@ using namespace math;
 /**
  * @brief Application information holder.
  */
-class AppInfoSystem final : public System
+class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 {
 	string name;
 	string nameLowercase;
@@ -45,8 +45,6 @@ class AppInfoSystem final : public System
 	fs::path resourcesPath;
 	#endif
 
-	static AppInfoSystem* instance;
-
 	/*******************************************************************************************************************
 	 * @brief Creates a new app info system instance.
 	 * 
@@ -56,13 +54,14 @@ class AppInfoSystem final : public System
 	 * @param[in] creator application creator (company or author)
 	 * @param[in] copyright application copyright (license)
 	 * @param version application version
+	 * @param setSingleton set system singleton instance
 	 */
 	AppInfoSystem(const string& name, const string& nameLowercase, const string& description,
-		const string& creator, const string& copyright, Version version
+		const string& creator, const string& copyright, Version version,
 		#if GARDEN_DEBUG
-		, fs::path cachesPath, fs::path resourcesPath
+		fs::path cachesPath, fs::path resourcesPath,
 		#endif
-		);
+		bool setSingleton = true);
 	/**
 	 * @brief Destroy app info system instance.
 	 */
@@ -126,15 +125,6 @@ public:
 	 */
 	const fs::path& getResourcesPath() const noexcept { return resourcesPath; }
 	#endif
-
-	/**
-	 * @brief Returns app info system instance.
-	 */
-	static AppInfoSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden
