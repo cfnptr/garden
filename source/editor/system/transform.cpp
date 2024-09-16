@@ -24,31 +24,25 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-TransformEditorSystem* TransformEditorSystem::instance = nullptr;
-
-TransformEditorSystem::TransformEditorSystem()
+TransformEditorSystem::TransformEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
 }
 TransformEditorSystem::~TransformEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
 	}
 
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
 void TransformEditorSystem::init()
 {
-	EditorRenderSystem::get()->registerEntityInspector<TransformComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<TransformComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -57,14 +51,15 @@ void TransformEditorSystem::init()
 }
 void TransformEditorSystem::deinit()
 {
-	EditorRenderSystem::get()->unregisterEntityInspector<TransformComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<TransformComponent>();
 }
 
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
-	if (EditorRenderSystem::get()->selectedEntity == entity)
-		EditorRenderSystem::get()->selectedEntity = {};
+	auto editorSystem = EditorRenderSystem::Instance::get();
+	if (editorSystem->selectedEntity == entity)
+		editorSystem->selectedEntity = {};
 
 	auto payload = ImGui::GetDragDropPayload();
 	if (payload)
@@ -79,16 +74,16 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::get();
-	auto transformSystem = TransformSystem::get();
+	auto manager = Manager::Instance::get();
+	auto transformSystem = TransformSystem::Instance::get();
 
 	if (ImGui::BeginItemTooltip())
 	{
-		auto transformView = transformSystem->get(entity);
+		auto transformView = transformSystem->getComponent(entity);
 		ImGui::Text("Active: %s", transformView->isActive ? "true" : "false");
 		if (transformView->getParent())
 		{
-			auto parentView = transformSystem->get(transformView->getParent());
+			auto parentView = transformSystem->getComponent(transformView->getParent());
 			ImGui::Text("Parent: %lu %s", (unsigned long)*transformView->getParent(),
 				parentView->debugName.empty() ? "" : ("(" + parentView->debugName + ")").c_str());
 		}
@@ -101,7 +96,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto transformView = transformSystem->get(entity);
+			auto transformView = transformSystem->getComponent(entity);
 			oldEulerAngles = newEulerAngles = degrees(transformView->rotation.toEulerAngles());
 			oldRotation = transformView->rotation;
 		}
@@ -112,7 +107,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto transformView = transformSystem->get(entity);
+			auto transformView = transformSystem->getComponent(entity);
 			if (oldRotation != transformView->rotation)
 			{
 				oldEulerAngles = newEulerAngles = degrees(transformView->rotation.toEulerAngles());
@@ -124,7 +119,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto transformView = transformSystem->get(entity);
+	auto transformView = transformSystem->getComponent(entity);
 	ImGui::Checkbox("Active", &transformView->isActive);
 
 	auto isBaked = manager->has<BakedTransformComponent>(entity);

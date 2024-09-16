@@ -45,8 +45,8 @@ static ID<Buffer> createLuminanceBuffer()
 
 	const float data[2] = { 1.0f / LUM_TO_EXP, 1.0f };
 	
-	auto buffer = GraphicsSystem::get()->createBuffer(Buffer::Bind::Storage |
-		Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind,
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(
+		Buffer::Bind::Storage | Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind,
 		Buffer::Access::None, data, sizeof(ToneMappingRenderSystem::Luminance),
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
@@ -56,7 +56,7 @@ static ID<Buffer> createLuminanceBuffer()
 //--------------------------------------------------------------------------------------------------
 static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> luminanceBuffer, bool useBloomBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 
 	ID<ImageView> bloomBufferView;
@@ -95,9 +95,6 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneM
 //--------------------------------------------------------------------------------------------------
 void ToneMappingRenderSystem::initialize()
 {
-	auto manager = getManager();
-	bloomSystem = manager->tryGet<BloomRenderSystem>();
-	
 	if (!luminanceBuffer)
 		luminanceBuffer = createLuminanceBuffer(getGraphicsSystem());
 	if (!pipeline)

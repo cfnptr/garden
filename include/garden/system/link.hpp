@@ -41,6 +41,7 @@ private:
 
 	friend class LinkSystem;
 	friend class LinearPool<LinkComponent>;
+	friend class ComponentSystem<LinkComponent>;
 public:
 	/**
 	 * @brief Returns entity universally unique identifier (UUID).
@@ -73,32 +74,25 @@ public:
 /***********************************************************************************************************************
  * @brief Handles fast objects search by unique identifier or tag.
  */
-class LinkSystem final : public System, public ISerializable
+class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton<LinkSystem>, public ISerializable
 {
-	LinearPool<LinkComponent> components;
 	map<Hash128, ID<Entity>> uuidMap;
 	multimap<string, ID<Entity>> tagMap;
 	string uuidStringCache;
 	random_device randomDevice;
 
-	static LinkSystem* instance;
-
 	/**
 	 * @brief Creates a new logging system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	LinkSystem();
+	LinkSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys logging system instance.
 	 */
 	~LinkSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
@@ -135,35 +129,6 @@ public:
 	 * @param[in] tag target entities tag
 	 */
 	void findEntities(const string& tag, vector<ID<Entity>>& entities) const;
-
-	/**
-	 * @brief Returns true if entity has link component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity link component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<LinkComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity link component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<LinkComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns link system instance.
-	 * @warning Do not use it if you have several link system instances.
-	 */
-	static LinkSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

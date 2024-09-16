@@ -24,47 +24,47 @@ using namespace garden;
 //**********************************************************************************************************************
 MeshSelectorEditorSystem::MeshSelectorEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 }
 MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 	}
 }
 
 void MeshSelectorEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 
-	auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getColor("meshSelectorColor", aabbColor);
 }
 void MeshSelectorEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 	}
 }
 
 //**********************************************************************************************************************
 void MeshSelectorEditorSystem::editorRender()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::get();
-	auto inputSystem = InputSystem::get();
-	auto transformSystem = TransformSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
+	auto manager = Manager::Instance::get();
+	auto inputSystem = InputSystem::Instance::get();
+	auto transformSystem = TransformSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
@@ -104,7 +104,7 @@ void MeshSelectorEditorSystem::editorRender()
 				if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 					continue;
 
-				auto transformView = transformSystem->tryGet(meshRenderView->getEntity());
+				auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
 				if (!transformView->isActiveWithAncestors())
 					continue;
 
@@ -172,7 +172,7 @@ void MeshSelectorEditorSystem::editorRender()
 				break;
 		}
 
-		auto transformView = transformSystem->tryGet(selectedEntity);
+		auto transformView = transformSystem->tryGetComponent(selectedEntity);
 		if (transformView && selectedEntityAabb != Aabb())
 		{
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
@@ -197,7 +197,7 @@ void MeshSelectorEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Mesh Selector"))
 	{
-		auto settingsSystem = Manager::get()->tryGet<SettingsSystem>();
+		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled);
 

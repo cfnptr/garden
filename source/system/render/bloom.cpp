@@ -46,7 +46,7 @@ static ID<Image> createBloomBufferData(uint2 framebufferSize, vector<ID<ImageVie
 	for (uint8 i = 0; i < mipCount; i++)
 		mips[i].push_back(nullptr);
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(bufferFormat,
 		Image::Bind::ColorAttachment | Image::Bind::Sampled |
 		Image::Bind::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
@@ -73,7 +73,7 @@ static ID<Image> createBloomBufferData(uint2 framebufferSize, vector<ID<ImageVie
 static void createBloomFramebuffers(uint2 framebufferSize,
 	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto mipCount = (uint8)imageViews.size();
 	framebufferSize = max(framebufferSize / 2u, uint2(1));
 	framebuffers.resize(imageViews.size());
@@ -164,7 +164,7 @@ static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 //--------------------------------------------------------------------------------------------------
 void BloomRenderSystem::initialize()
 {
-	auto settingsSystem = Manager::getInstance()->tryGet<SettingsSystem>();
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getBool("useBloom", isEnabled);
 

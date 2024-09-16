@@ -39,10 +39,10 @@ SpriteRenderSystem::~SpriteRenderSystem()
 void SpriteRenderSystem::init()
 {
 	InstanceRenderSystem::init();
-	SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
 	#if GARDEN_DEBUG
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint32 i = 0; i < (uint32)instanceBuffers.size(); i++)
 	{
 		const auto& buffers = instanceBuffers[i];
@@ -56,10 +56,10 @@ void SpriteRenderSystem::init()
 }
 void SpriteRenderSystem::deinit()
 {
-	// TODO: somehow destroy default image view
+	// TODO: somehow destroy default image view, maybe check it ref count?
 
-	if (Manager::get()->isRunning())
-		UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+	if (Manager::Instance::get()->isRunning())
+		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
 	InstanceRenderSystem::deinit();
 }
@@ -67,7 +67,7 @@ void SpriteRenderSystem::deinit()
 //**********************************************************************************************************************
 Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(ID<Image> image, const string& path)
 {
-	auto imageView = GraphicsSystem::get()->get(image);
+	auto imageView = GraphicsSystem::Instance::get()->get(image);
 	auto imageSize = imageView->getSize();
 	auto imageType = imageView->getType();
 
@@ -78,7 +78,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(ID<Image> image, const str
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
 	auto uniforms = getSpriteUniforms(imageView->getDefaultView());
-	auto descriptorSet = ResourceSystem::get()->createSharedDescriptorSet(
+	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDescriptorSet(
 		Hash128::digestState(hashState), getPipeline(), std::move(uniforms), 1);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptoSet.shared." + path);
 	return descriptorSet;
@@ -86,7 +86,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(ID<Image> image, const str
 
 void SpriteRenderSystem::imageLoaded()
 {
-	auto resourceSystem = ResourceSystem::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 	auto image = resourceSystem->getLoadedImage();
 	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
 	auto& spriteRenderPool = getMeshComponentPool();
@@ -122,7 +122,7 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 	auto destinationView = View<SpriteRenderComponent>(destination);
 	const auto sourceView = View<SpriteRenderComponent>(source);
 
-	auto resourceSystem = ResourceSystem::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 	resourceSystem->destroyShared(destinationView->descriptorSet);
 	resourceSystem->destroyShared(destinationView->colorMap);
 
@@ -147,7 +147,7 @@ bool SpriteRenderSystem::isDrawReady()
 	if (!InstanceRenderSystem::isDrawReady())
 		return false;
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto vertexBufferView = graphicsSystem->get(graphicsSystem->getFullSquareVertices());
 
 	if (!vertexBufferView->isReady())
@@ -213,12 +213,12 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<Ima
 }
 map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 {
-	auto whiteTexture = GraphicsSystem::get()->getWhiteTexture();
+	auto whiteTexture = GraphicsSystem::Instance::get()->getWhiteTexture();
 	if (!defaultImageView)
 	{
-		auto graphicsSystem = GraphicsSystem::get();
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		auto imageView = graphicsSystem->get(whiteTexture);
-		defaultImageView = GraphicsSystem::get()->createImageView(
+		defaultImageView = graphicsSystem->createImageView(
 			imageView->getImage(), Image::Type::Texture2DArray);
 		SET_RESOURCE_DEBUG_NAME(defaultImageView, 
 			"image.whiteTexture.arrayView." + pipelinePath.generic_string());
@@ -231,8 +231,8 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
 ID<GraphicsPipeline> SpriteRenderSystem::createPipeline()
 {
 	auto framebuffer = deferredBuffer ?
-		DeferredRenderSystem::get()->getGFramebuffer() :
-		ForwardRenderSystem::get()->getFramebuffer();
+		DeferredRenderSystem::Instance::get()->getGFramebuffer() :
+		ForwardRenderSystem::Instance::get()->getFramebuffer();
 
 	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
 	if (!linearFilter)
@@ -245,7 +245,7 @@ ID<GraphicsPipeline> SpriteRenderSystem::createPipeline()
 
 	// TODO: add support for overriding blending state, to allow custom blending functions
 
-	return ResourceSystem::get()->loadGraphicsPipeline(pipelinePath,
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath,
 		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
 }
 
@@ -300,7 +300,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	componentView->colorMap = ResourceSystem::get()->loadImage(colorMapPath,
+	componentView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
 		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 }
 
@@ -406,13 +406,13 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (frame.isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	frame.colorMap = ResourceSystem::get()->loadImage(colorMapPath,
+	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
 		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 	frame.descriptorSet = {}; // See the imageLoaded()
 }
 void SpriteRenderSystem::destroyResources(View<SpriteRenderFrame> frameView)
 {
-	auto resourceSystem = ResourceSystem::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 	resourceSystem->destroyShared(frameView->colorMap);
 	resourceSystem->destroyShared(frameView->descriptorSet);
 	frameView->colorMap = {};
@@ -420,7 +420,7 @@ void SpriteRenderSystem::destroyResources(View<SpriteRenderFrame> frameView)
 }
 void SpriteRenderSystem::destroyResources(View<SpriteRenderComponent> spriteRenderView)
 {
-	auto resourceSystem = ResourceSystem::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 	resourceSystem->destroyShared(spriteRenderView->colorMap);
 	resourceSystem->destroyShared(spriteRenderView->descriptorSet);
 	spriteRenderView->colorMap = {};

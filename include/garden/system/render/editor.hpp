@@ -43,7 +43,7 @@ using namespace garden::graphics;
  * Registers events: EditorStart, EditorStop, EditorRender, EditorBarFile, 
  *   EditorBarCreate, EditorBarTool, EditorBar, EditorSettings.
  */
-class EditorRenderSystem final : public System
+class EditorRenderSystem final : public System, public Singleton<EditorRenderSystem>
 {
 public:
 	using OnComponent = std::function<void(ID<Entity> entity, bool isOpened)>;
@@ -70,16 +70,15 @@ private:
 	bool newScene = false;
 	bool playing = false;
 
-	static EditorRenderSystem* instance;
-
 	/**
 	 * @brief Creates a new editor render system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	EditorRenderSystem();
+	EditorRenderSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys editor render system instance.
 	 */
-	~EditorRenderSystem();
+	~EditorRenderSystem() final;
 
 	void showMainMenuBar();
 	void showAboutWindow();
@@ -155,15 +154,6 @@ public:
 	void drawResource(const Ref<ComputePipeline>& computePipeline)
 	{
 		drawResource(ID<ComputePipeline>(computePipeline));
-	}
-
-	/**
-	 * @brief Returns editor render system instance.
-	 */
-	static EditorRenderSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
 	}
 };
 

@@ -23,10 +23,8 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
-	auto manager = Manager::get();
-	auto logSystem = manager->tryGet<LogSystem>();
-	if (logSystem)
-		logSystem->info("Dropped " + to_string(count) + " items on a window.");
+	auto manager = Manager::Instance::get();
+	GARDEN_LOG_INFO("Dropped " + to_string(count) + " items on a window.");
 
 	#if GARDEN_EDITOR
 	/* TODO: move these to the resources system
@@ -60,8 +58,7 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 			}
 			catch (const exception& e)
 			{
-				if (logSystem)
-					logSystem->error("Failed to load scene. (error: " + string(e.what()) + ")");
+				GARDEN_LOG_ERROR("Failed to load scene. (error: " + string(e.what()) + ")");
 			}
 			break;
 		}
@@ -69,46 +66,42 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 	*/
 	#endif
 
-	auto inputSystem = InputSystem::get();
+	auto inputSystem = InputSystem::Instance::get();
 	for (int i = 0; i < count; i++)
 		inputSystem->fileDropPaths.push_back(paths[i]);
 }
 
 void InputSystem::onMouseScroll(void* window, double offsetX, double offsetY)
 {
-	InputSystem::get()->mouseScroll += float2((float)offsetX, (float)offsetY);
+	InputSystem::Instance::get()->mouseScroll += float2((float)offsetX, (float)offsetY);
 }
 
 //**********************************************************************************************************************
-InputSystem* InputSystem::instance = nullptr;
 
-InputSystem::InputSystem() : lastKeyboardStates((psize)KeyboardButton::Last + 1, false),
+InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
+	lastKeyboardStates((psize)KeyboardButton::Last + 1, false),
 	lastMouseStates((psize)MouseButton::Last + 1, false)
 {
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEvent("FileDrop");
 
-	SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
-	SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	ECSM_SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
+	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
 }
 InputSystem::~InputSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
-		UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
 
-		auto manager = Manager::get();
+		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Input");
 		manager->unregisterEvent("FileDrop");
 	}
 
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
@@ -116,7 +109,7 @@ static void updateFileDrops(vector<fs::path>& fileDropPaths, const fs::path*& cu
 {
 	if (!fileDropPaths.empty())
 	{
-		const auto& subscribers = Manager::get()->getEventSubscribers("FileDrop");
+		const auto& subscribers = Manager::Instance::get()->getEventSubscribers("FileDrop");
 		for (const auto& path : fileDropPaths)
 		{
 			currentFileDropPath = &path;
@@ -129,7 +122,7 @@ static void updateFileDrops(vector<fs::path>& fileDropPaths, const fs::path*& cu
 }
 static void updateWindowMode()
 {
-	auto inputSystem = InputSystem::get();
+	auto inputSystem = InputSystem::Instance::get();
 	if (inputSystem->isKeyboardPressed(KeyboardButton::F11))
 	{
 		auto primaryMonitor = glfwGetPrimaryMonitor();
@@ -186,7 +179,7 @@ void InputSystem::input()
 		// TODO: add modal if user sure want to exit.
 		// And also allow to force quit or wait for running threads.
 		glfwHideWindow(window);
-		Manager::get()->stop();
+		Manager::Instance::get()->stop();
 		return;
 	}
 

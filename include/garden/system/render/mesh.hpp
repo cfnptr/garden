@@ -109,7 +109,6 @@ public:
 		volatile int64 drawCount;
 	};
 private:
-	ThreadSystem* threadSystem = nullptr;
 	vector<OpaqueBuffer> opaqueBuffers;
 	vector<TranslucentBuffer> translucentBuffers;
 	vector<TranslucentItem> translucentItems;
@@ -134,11 +133,11 @@ private:
 	~MeshRenderSystem() final;
 
 	void prepareSystems();
-	void prepareItems(const float4x4& viewProj, const float3& cameraOffset,
+	void prepareItems(ThreadSystem* threadSystem, const float4x4& viewProj, const float3& cameraOffset,
 		uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType);
-	void renderOpaque(const float4x4& viewProj);
-	void renderTranslucent(const float4x4& viewProj);
-	void renderShadows();
+	void renderOpaque(ThreadSystem* threadSystem, const float4x4& viewProj);
+	void renderTranslucent(ThreadSystem* threadSystem, const float4x4& viewProj);
+	void renderShadows(ThreadSystem* threadSystem);
 
 	void init();
 	void deinit();

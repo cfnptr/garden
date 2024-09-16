@@ -25,24 +25,24 @@ using namespace garden;
 //**********************************************************************************************************************
 SpawnerEditorSystem::SpawnerEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", SpawnerEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", SpawnerEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", SpawnerEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SpawnerEditorSystem::deinit);
 }
 SpawnerEditorSystem::~SpawnerEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", SpawnerEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnerEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpawnerEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnerEditorSystem::deinit);
 	}
 }
 
 void SpawnerEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 
-	EditorRenderSystem::get()->registerEntityInspector<SpawnerComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<SpawnerComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -51,22 +51,22 @@ void SpawnerEditorSystem::init()
 }
 void SpawnerEditorSystem::deinit()
 {
-	EditorRenderSystem::get()->unregisterEntityInspector<SpawnerComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
 
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
 static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 {
-	auto linkSystem = LinkSystem::get();
-	auto spawnerSystem = SpawnerSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
-	auto transformSystem = Manager::get()->tryGet<TransformSystem>();
+	auto linkSystem = LinkSystem::Instance::get();
+	auto spawnerSystem = SpawnerSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto transformSystem = TransformSystem::Instance::tryGet();
 	const auto& components = spawnerSystem->getComponents();
 	auto occupancy = components.getOccupancy();
 	auto componentData = components.getData();
@@ -94,9 +94,9 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 			flags |= ImGuiTreeNodeFlags_Selected;
 		
 		string name;
-		if (transformSystem && transformSystem->has(entity))
+		if (transformSystem && transformSystem->hasComponent(entity))
 		{
-			auto transformView = transformSystem->get(entity);
+			auto transformView = transformSystem->getComponent(entity);
 			name = transformView->debugName.empty() ?
 				"Entity " + to_string(*entity) : transformView->debugName;
 		}
@@ -139,9 +139,9 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 //**********************************************************************************************************************
 static void renderSharedPrefabs(const string& searchString, bool searchCaseSensitive)
 {
-	auto linkSystem = LinkSystem::get();
-	auto spawnerSystem = SpawnerSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
+	auto linkSystem = LinkSystem::Instance::get();
+	auto spawnerSystem = SpawnerSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& sharedPrefabs = spawnerSystem->getSharedPrefabs();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -189,7 +189,7 @@ static void renderSharedPrefabs(const string& searchString, bool searchCaseSensi
 //**********************************************************************************************************************
 void SpawnerEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::get()->canRender())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);
@@ -206,7 +206,7 @@ void SpawnerEditorSystem::editorRender()
 		ImGui::Spacing();
 
 		if (ImGui::Button("Destroy Shared Prefabs", ImVec2(-FLT_MIN, 0.0f)))
-			SpawnerSystem::get()->destroySharedPrefabs();
+			SpawnerSystem::Instance::get()->destroySharedPrefabs();
 	}
 	ImGui::End();
 }
@@ -219,8 +219,8 @@ void SpawnerEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 static void renderSpawnedEntities(const vector<Hash128>& spawnedEntities)
 {
-	auto linkSystem = LinkSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
+	auto linkSystem = LinkSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
@@ -260,7 +260,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto spawnerView = SpawnerSystem::get()->get(entity);
+		auto spawnerView = SpawnerSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Active: %s, Path: %s, Prefab: %s",
 			spawnerView->isActive ? "true" : "false", spawnerView->path.generic_string().c_str(),
 			spawnerView->prefab ? spawnerView->prefab.toBase64().c_str() : "");
@@ -270,12 +270,12 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto spawnerView = SpawnerSystem::get()->get(entity);
+	auto spawnerView = SpawnerSystem::Instance::get()->getComponent(entity);
 	ImGui::Checkbox("Active", &spawnerView->isActive); ImGui::SameLine();
 	ImGui::Checkbox("Spawn As Child", &spawnerView->spawnAsChild);
 	
 	static const set<string> extensions = { ".scene" };
-	EditorRenderSystem::get()->drawFileSelector(spawnerView->path,
+	EditorRenderSystem::Instance::get()->drawFileSelector(spawnerView->path,
 		spawnerView->getEntity(), typeid(SpawnerComponent), "scenes", extensions);
 	
 	auto uuid = spawnerView->prefab ? spawnerView->prefab.toBase64() : "";
@@ -298,7 +298,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		{
 			GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 			auto entity = *((const ID<Entity>*)payload->Data);
-			auto linkView = LinkSystem::get()->tryGet(entity);
+			auto linkView = LinkSystem::Instance::get()->tryGetComponent(entity);
 			if (linkView && linkView->getUUID())
 				spawnerView->prefab = linkView->getUUID();
 		}

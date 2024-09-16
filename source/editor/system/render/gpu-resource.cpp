@@ -25,29 +25,29 @@ using namespace garden;
 //**********************************************************************************************************************
 GpuResourceEditorSystem::GpuResourceEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", GpuResourceEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", GpuResourceEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", GpuResourceEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GpuResourceEditorSystem::deinit);
 }
 GpuResourceEditorSystem::~GpuResourceEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", GpuResourceEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", GpuResourceEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GpuResourceEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GpuResourceEditorSystem::deinit);
 	}
 }
 
 void GpuResourceEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 }
 void GpuResourceEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 	}
 }
 
@@ -833,7 +833,7 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 //**********************************************************************************************************************
 void GpuResourceEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::get()->canRender())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(750.0f, 450.0f), ImGuiCond_FirstUseEver);

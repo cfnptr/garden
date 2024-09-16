@@ -32,7 +32,7 @@ using namespace garden::graphics;
  * 
  * Registers events: PreForwardRender, ForwardRender, PreSwapchainRender, ColorBufferRecreate.
  */
-class ForwardRenderSystem final : public System
+class ForwardRenderSystem final : public System, public Singleton<ForwardRenderSystem>
 {
 	ID<Image> colorBuffer = {};
 	ID<Image> depthStencilBuffer = {};
@@ -41,21 +41,20 @@ class ForwardRenderSystem final : public System
 	bool asyncRecording = false;
 	bool hdrColorBuffer = false;
 
-	static ForwardRenderSystem* instance;
-
 	/**
 	 * @brief Creates a new forward rendering system instance.
 	 * 
 	 * @param useAsyncRecording clear color buffer before render pass
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param useHdrColorBuffer create color buffer with extended color range
+	 * @param setSingleton set system singleton instance
 	 */
-	ForwardRenderSystem(bool clearColorBuffer = GARDEN_EDITOR,
-		bool useAsyncRecording = true, bool useHdrColorBuffer = false);
+	ForwardRenderSystem(bool clearColorBuffer = GARDEN_EDITOR, bool useAsyncRecording = true, 
+		bool useHdrColorBuffer = false, bool setSingleton = true);
 	/**
 	 * @brief Destroys forward rendering system instance.
 	 */
-	~ForwardRenderSystem();
+	~ForwardRenderSystem() final;
 
 	void init();
 	void deinit();
@@ -73,15 +72,6 @@ public:
 	ID<Image> getColorBuffer();
 	ID<Image> getDepthStencilBuffer();
 	ID<Framebuffer> getFramebuffer();
-
-	/**
-	 * @brief Returns forward render system instance.
-	 */
-	static ForwardRenderSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // System is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

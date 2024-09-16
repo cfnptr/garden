@@ -51,7 +51,7 @@ static ID<Buffer> createHistogramBuffer()
 	const auto bind = Buffer::Bind::None;
 	#endif
 	
-	auto buffer = GraphicsSystem::get()->createBuffer(
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(
 		Buffer::Bind::Storage | Buffer::Bind::TransferDst | bind,
 		Buffer::Access::None, AE_HISTOGRAM_SIZE * sizeof(uint32),
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);

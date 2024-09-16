@@ -31,7 +31,7 @@ class AutoExposureEditor final
 	bool showWindow = false;
 
 	AutoExposureEditor(AutoExposureRenderSystem* system);
-	~AutoExposureEditor();
+	~AutoExposureEditor() final;
 
 	void render();
 	void recreateSwapchain(const IRenderSystem::SwapchainChanges& changes);

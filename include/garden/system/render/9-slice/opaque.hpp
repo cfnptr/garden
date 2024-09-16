@@ -23,7 +23,7 @@ using namespace garden::graphics;
 struct Opaque9SliceComponent final : public NineSliceRenderComponent { };
 struct Opaque9SliceFrame final : public NineSliceRenderFrame { };
 
-class Opaque9SliceSystem final : public NineSliceRenderSystem
+class Opaque9SliceSystem final : public NineSliceRenderSystem, public Singleton<Opaque9SliceSystem>
 {
 	uint16 _alignment = 0;
 	LinearPool<Opaque9SliceComponent, false> components;
@@ -34,8 +34,13 @@ class Opaque9SliceSystem final : public NineSliceRenderSystem
 	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
 	 * @param useLinearFilter use linear filtering for texture
+	 * @param setSingleton set system singleton instance
 	 */
-	Opaque9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
+	Opaque9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	/**
+	 * @brief Destroys opaque 9-slice rendering system instance.
+	 */
+	~Opaque9SliceSystem() final;
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;

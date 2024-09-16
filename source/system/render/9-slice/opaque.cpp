@@ -20,8 +20,9 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Opaque9SliceSystem::Opaque9SliceSystem(bool useDeferredBuffer, bool useLinearFilter) :
-	NineSliceRenderSystem("9-slice/opaque", useDeferredBuffer, useLinearFilter) { }
+Opaque9SliceSystem::Opaque9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
+	NineSliceRenderSystem("9-slice/opaque", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+Opaque9SliceSystem::~Opaque9SliceSystem() { unsetSingleton(); }
 
 ID<Component> Opaque9SliceSystem::createComponent(ID<Entity> entity)
 {

@@ -164,17 +164,23 @@ public:
 /***********************************************************************************************************************
  * @brief Handles camera projections.
  */
-class CameraSystem final : public System, public ISerializable, public IAnimatable
+class CameraSystem final : public ComponentSystem<CameraComponent, false>, 
+	public Singleton<CameraSystem>, public ISerializable, public IAnimatable
 {
-	LinearPool<CameraComponent, false> components;
 	LinearPool<CameraFrame, false> animationFrames;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
+	/**
+	 * @brief Creates a new camera system instance.
+	 * @param setSingleton set system singleton instance
+	 */
+	CameraSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroy camera system instance.
+	 */
+	~CameraSystem() final;
+
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
 	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;

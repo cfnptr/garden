@@ -18,92 +18,33 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-DoNotSerializeSystem* DoNotSerializeSystem::instance = nullptr;
-
-DoNotSerializeSystem::DoNotSerializeSystem()
-{
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
-}
-DoNotSerializeSystem::~DoNotSerializeSystem()
-{
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
-}
-
-ID<Component> DoNotSerializeSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void DoNotSerializeSystem::destroyComponent(ID<Component> instance)
-{ 
-	components.destroy(ID<DoNotSerializeComponent>(instance));
-}
-void DoNotSerializeSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	return;
-}
+DoNotSerializeSystem::DoNotSerializeSystem(bool setSingleton) : Singleton(setSingleton) { }
+DoNotSerializeSystem::~DoNotSerializeSystem() { unsetSingleton(); }
 
 const string& DoNotSerializeSystem::getComponentName() const
 {
 	static const string name = "Do Not Serialize";
 	return name;
 }
-type_index DoNotSerializeSystem::getComponentType() const
-{
-	return typeid(DoNotSerializeComponent);
-}
-View<Component> DoNotSerializeSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<DoNotSerializeComponent>(instance)));
-}
-void DoNotSerializeSystem::disposeComponents()
-{
-	components.dispose();
-}
 
 //**********************************************************************************************************************
 bool DoNotSerializeSystem::hasOrAncestors(ID<Entity> entity) const
 {
-	if (has(entity))
+	if (hasComponent(entity))
 		return true;
 
-	auto transformSystem = TransformSystem::get();
-	auto transformView = transformSystem->tryGet(entity);
+	auto transformSystem = TransformSystem::Instance::get();
+	auto transformView = transformSystem->tryGetComponent(entity);
 	if (!transformView)
 		return false;
 
 	auto parent = transformView->getParent();
 	while (parent)
 	{
-		if (has(parent))
+		if (hasComponent(parent))
 			return true;
-		transformView = transformSystem->get(parent);
+		transformView = transformSystem->getComponent(parent);
 		parent = transformView->getParent();
 	}
 	return false;
-}
-bool DoNotSerializeSystem::has(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& entityComponents = entityView->getComponents();
-	return entityComponents.find(typeid(DoNotSerializeComponent)) != entityComponents.end();
-}
-View<DoNotSerializeComponent> DoNotSerializeSystem::get(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& pair = entityView->getComponents().at(typeid(DoNotSerializeComponent));
-	return components.get(ID<DoNotSerializeComponent>(pair.second));
-}
-View<DoNotSerializeComponent> DoNotSerializeSystem::tryGet(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& entityComponents = entityView->getComponents();
-	auto result = entityComponents.find(typeid(DoNotSerializeComponent));
-	if (result == entityComponents.end())
-		return {};
-	return components.get(ID<DoNotSerializeComponent>(result->second.second));
 }

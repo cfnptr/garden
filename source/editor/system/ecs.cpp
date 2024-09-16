@@ -21,29 +21,29 @@ using namespace garden;
 //**********************************************************************************************************************
 EcsEditorSystem::EcsEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", EcsEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", EcsEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", EcsEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", EcsEditorSystem::deinit);
 }
 EcsEditorSystem::~EcsEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", EcsEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", EcsEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", EcsEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", EcsEditorSystem::deinit);
 	}
 }
 
 void EcsEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", EcsEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", EcsEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 }
 void EcsEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", EcsEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", EcsEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 	}
 }
 
@@ -52,7 +52,7 @@ static void renderOrderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& orderedEvents = Manager::get()->getOrderedEvents();
+	const auto& orderedEvents = Manager::Instance::get()->getOrderedEvents();
 	for (auto orderedEvent : orderedEvents)
 	{
 		auto flags = (int)ImGuiTreeNodeFlags_None;
@@ -87,7 +87,7 @@ static void renderUnorderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	const auto& events = manager->getEvents();
 	const auto& orderedEvents = manager->getOrderedEvents();
 
@@ -140,7 +140,7 @@ static void renderRegisteredSystems()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& systems = Manager::get()->getSystems();
+	const auto& systems = Manager::Instance::get()->getSystems();
 	for (const auto& pair : systems)
 	{
 		auto name = typeToString(pair.first);
@@ -162,7 +162,7 @@ static void renderRegisteredComponents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& componentTypes = Manager::get()->getComponentTypes();
+	const auto& componentTypes = Manager::Instance::get()->getComponentTypes();
 	for (const auto& pair : componentTypes)
 	{
 		auto name = pair.second->getComponentName();
@@ -185,7 +185,7 @@ static void renderRegisteredComponents()
 //**********************************************************************************************************************
 void EcsEditorSystem::editorRender()
 {
-	if (!showWindow || !GraphicsSystem::get()->canRender())
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);

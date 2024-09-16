@@ -30,7 +30,7 @@ struct CutoutSpriteFrame final : public SpriteRenderFrame
 	bool animateAlphaCutoff = false;
 };
 
-class CutoutSpriteSystem final : public SpriteRenderSystem
+class CutoutSpriteSystem final : public SpriteRenderSystem, public Singleton<CutoutSpriteSystem>
 {
 public:
 	struct CutoutPushConstants final : public PushConstants
@@ -47,8 +47,13 @@ private:
 	 * 
 	 * @param useDeferredBuffer use deferred or forward framebuffer
 	 * @param useLinearFilter use linear filtering for texture
+	 * @param setSingleton set system singleton instance
 	 */
-	CutoutSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true);
+	CutoutSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	/**
+	 * @brief Destroys cutout sprite rendering system instance.
+	 */
+	~CutoutSpriteSystem() final;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) final;

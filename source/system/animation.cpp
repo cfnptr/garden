@@ -21,7 +21,7 @@ using namespace garden;
 //**********************************************************************************************************************
 bool AnimationComponent::destroy()
 {
-	auto resourceSystem = ResourceSystem::get();
+	auto resourceSystem = ResourceSystem::Instance::get();
 	for (const auto& pair : animations)
 		resourceSystem->destroyShared(pair.second);
 	animations.clear();
@@ -37,45 +37,33 @@ bool AnimationComponent::getActiveLooped(bool& isLooped) const
 	if (searchResult == animations.end())
 		return false;
 
-	auto animation = AnimationSystem::get()->get(searchResult->second);
+	auto animation = AnimationSystem::Instance::get()->get(searchResult->second);
 	isLooped = animation->isLooped;
 	return true;
 }
 
 //**********************************************************************************************************************
-AnimationSystem* AnimationSystem::instance = nullptr;
-
-AnimationSystem::AnimationSystem(bool animateAsync)
+AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) : Singleton(setSingleton)
 {
 	this->animateAsync = animateAsync;
 
 	random_device randomDevice;
 	this->randomGenerator = mt19937(randomDevice());
 
-	SUBSCRIBE_TO_EVENT("Init", AnimationSystem::init);
-	SUBSCRIBE_TO_EVENT("PostDeinit", AnimationSystem::postDeinit);
-	SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", AnimationSystem::postDeinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
 }
 AnimationSystem::~AnimationSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", AnimationSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("PostDeinit", AnimationSystem::postDeinit);
-		UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", AnimationSystem::postDeinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
 	}
 
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
-void AnimationSystem::init()
-{
-	threadSystem = Manager::get()->tryGet<ThreadSystem>();
-}
 void AnimationSystem::postDeinit()
 {
 	components.clear();
@@ -88,7 +76,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (!entity || !animationComponent->isPlaying && !animationComponent->active.empty())
 		return;
 
-	auto transformView = Manager::get()->tryGet<TransformComponent>(entity);
+	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
 	if (transformView)
 	{
 		if (!transformView->isActiveWithAncestors())
@@ -125,7 +113,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (keyframeA != keyframes.begin())
 		keyframeA--;
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	const auto& animatablesA = keyframeA->second;
 	const auto& animatablesB = keyframeB->second;
 
@@ -171,7 +159,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 		return;
 	}
 
-	animationComponent->frame += InputSystem::get()->getDeltaTime() * animationView->frameRate;
+	animationComponent->frame += InputSystem::Instance::get()->getDeltaTime() * animationView->frameRate;
 }
 
 //**********************************************************************************************************************
@@ -180,6 +168,7 @@ void AnimationSystem::update()
 	auto animations = &this->animations;
 	auto componentData = components.getData();
 	auto occupancy = components.getOccupancy();
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 
 	if (animateAsync && threadSystem)
 	{
@@ -219,7 +208,7 @@ static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponen
 	if (searchResult == animations.end())
 		return;
 
-	auto animationView = AnimationSystem::get()->get(searchResult->second);
+	auto animationView = AnimationSystem::Instance::get()->get(searchResult->second);
 	if (animationView->getKeyframes().empty())
 		return;
 
@@ -229,14 +218,6 @@ static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponen
 }
 
 //**********************************************************************************************************************
-ID<Component> AnimationSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void AnimationSystem::destroyComponent(ID<Component> instance)
-{
-	components.destroy(ID<AnimationComponent>(instance));
-}
 void AnimationSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<AnimationComponent>(source);
@@ -254,14 +235,6 @@ const string& AnimationSystem::getComponentName() const
 {
 	static const string name = "Animation";
 	return name;
-}
-type_index AnimationSystem::getComponentType() const
-{
-	return typeid(AnimationComponent);
-}
-View<Component> AnimationSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<AnimationComponent>(instance)));
 }
 void AnimationSystem::disposeComponents()
 {
@@ -303,7 +276,7 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 
 	if (deserializer.beginChild("animations"))
 	{
-		auto resourceSystem = ResourceSystem::get();
+		auto resourceSystem = ResourceSystem::Instance::get();
 		auto arraySize = (uint32)deserializer.getArraySize();
 		for (uint32 i = 0; i < arraySize; i++)
 		{
@@ -329,30 +302,4 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	deserializer.read("isPlaying", componentView->isPlaying);
 	deserializer.read("randomizeStart", componentView->randomizeStart);
 	randomizeStartFrame(randomGenerator, componentView);
-}
-
-//**********************************************************************************************************************
-bool AnimationSystem::has(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& entityComponents = entityView->getComponents();
-	return entityComponents.find(typeid(AnimationComponent)) != entityComponents.end();
-}
-View<AnimationComponent> AnimationSystem::get(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& pair = entityView->getComponents().at(typeid(AnimationComponent));
-	return components.get(ID<AnimationComponent>(pair.second));
-}
-View<AnimationComponent> AnimationSystem::tryGet(ID<Entity> entity) const
-{
-	GARDEN_ASSERT(entity);
-	const auto entityView = Manager::get()->getEntities().get(entity);
-	const auto& entityComponents = entityView->getComponents();
-	auto result = entityComponents.find(typeid(AnimationComponent));
-	if (result == entityComponents.end())
-		return {};
-	return components.get(ID<AnimationComponent>(result->second.second));
 }

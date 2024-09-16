@@ -40,7 +40,7 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	auto imageSize = float2(1.0f); // White texture size
 	if (nineSliceRenderView->colorMap)
 	{
-		auto imageView = GraphicsSystem::get()->get(nineSliceRenderView->colorMap);
+		auto imageView = GraphicsSystem::Instance::get()->get(nineSliceRenderView->colorMap);
 		imageSize = (float2)(uint2)imageView->getSize();
 	}
 	auto scale = extractScale2(model) * imageSize;

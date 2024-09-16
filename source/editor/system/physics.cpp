@@ -24,33 +24,33 @@ using namespace garden;
 //**********************************************************************************************************************
 PhysicsEditorSystem::PhysicsEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
 	
 }
 PhysicsEditorSystem::~PhysicsEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
 	}
 }
 
 void PhysicsEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
 
-	EditorRenderSystem::get()->registerEntityInspector<RigidbodyComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<RigidbodyComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onRigidbodyInspector(entity, isOpened);
 	},
 	rigidbodyInspectorPriority);
 
-	if (Manager::get()->has<CharacterSystem>())
+	if (CharacterSystem::Instance::has())
 	{
-		EditorRenderSystem::get()->registerEntityInspector<CharacterComponent>(
+		EditorRenderSystem::Instance::get()->registerEntityInspector<CharacterComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
 			onCharacterInspector(entity, isOpened);
@@ -60,19 +60,19 @@ void PhysicsEditorSystem::init()
 }
 void PhysicsEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 	editorSystem->unregisterEntityInspector<RigidbodyComponent>();
 	editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
-	if (Manager::get()->isRunning())
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
+	if (Manager::Instance::get()->isRunning())
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
 }
 
 //**********************************************************************************************************************
 static void renderShapeAABB(float3 position, quat rotation, ID<Shape> shape, Color aabbColor)
 {
-	auto physicsSystem = PhysicsSystem::get();
-	auto graphicsSystem = GraphicsSystem::get();
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 
 	auto shapeView = physicsSystem->get(shape);
 	if (shapeView->getType() == ShapeType::Decorated)
@@ -107,14 +107,14 @@ static void renderShapeAABB(float3 position, quat rotation, ID<Shape> shape, Col
 
 void PhysicsEditorSystem::editorRender()
 {
-	auto graphicsSystem = GraphicsSystem::get();
-	auto editorSystem = EditorRenderSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto selectedEntity = editorSystem->selectedEntity;
 	if (!isEnabled || !selectedEntity || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
-	auto physicsSystem = PhysicsSystem::get();
-	auto rigidbodyView = physicsSystem->tryGet(selectedEntity);
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto rigidbodyView = physicsSystem->tryGetComponent(selectedEntity);
 
 	if (rigidbodyView && rigidbodyView->getShape())
 	{
@@ -123,8 +123,8 @@ void PhysicsEditorSystem::editorRender()
 		renderShapeAABB(position, rotation, rigidbodyView->getShape(), rigidbodyAabbColor);
 	}
 
-	auto characterSystem = CharacterSystem::get();
-	auto characterView = characterSystem->tryGet(selectedEntity);
+	auto characterSystem = CharacterSystem::Instance::get();
+	auto characterView = characterSystem->tryGetComponent(selectedEntity);
 
 	if (characterView && characterView->getShape())
 	{
@@ -137,7 +137,7 @@ void PhysicsEditorSystem::editorRender()
 //**********************************************************************************************************************
 static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::Cached& cached, bool isChanged)
 {
-	auto physicsSystem = PhysicsSystem::get();
+	auto physicsSystem = PhysicsSystem::Instance::get();
 	auto shape = rigidbodyView->getShape();
 
 	View<Shape> shapeView = {};
@@ -224,7 +224,7 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, PhysicsEditor
 //**********************************************************************************************************************
 static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::Cached& cached)
 {
-	auto physicsSystem = PhysicsSystem::get();
+	auto physicsSystem = PhysicsSystem::Instance::get();
 	auto shape = rigidbodyView->getShape();
 	auto innerShape = shape;
 	auto isChanged = false;
@@ -306,7 +306,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	auto name = cached.constraintTarget ? "Entity " + to_string(*cached.constraintTarget) : "";
 	if (cached.constraintTarget)
 	{
-		auto transformView = Manager::get()->tryGet<TransformComponent>(cached.constraintTarget);
+		auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(cached.constraintTarget);
 		if (transformView && !transformView->debugName.empty())
 			name = transformView->debugName;
 	}
@@ -317,7 +317,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 		if (ImGui::MenuItem("Reset Default"))
 			cached.constraintTarget = {};
 		if (ImGui::MenuItem("Select Entity"))
-			EditorRenderSystem::get()->selectedEntity = cached.constraintTarget;
+			EditorRenderSystem::Instance::get()->selectedEntity = cached.constraintTarget;
 		ImGui::EndPopup();
 	}
 	if (ImGui::BeginDragDropTarget())
@@ -353,7 +353,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	auto canCreate = !cached.constraintTarget;
 	if (cached.constraintTarget && cached.constraintTarget != rigidbodyView->getEntity())
 	{
-		auto otherView = PhysicsSystem::get()->tryGet(cached.constraintTarget);
+		auto otherView = PhysicsSystem::Instance::get()->tryGetComponent(cached.constraintTarget);
 		if (otherView && otherView->getShape())
 			canCreate = true;
 	}
@@ -395,7 +395,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 
 			if (constraint.otherBody)
 			{
-				auto transformView = Manager::get()->tryGet<TransformComponent>(constraint.otherBody);
+				auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(constraint.otherBody);
 				if (transformView && !transformView->debugName.empty())
 					name = transformView->debugName;
 				else
@@ -410,7 +410,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 			if (ImGui::BeginPopupContextItem("otherEntity"))
 			{
 				if (ImGui::MenuItem("Select Entity"))
-					EditorRenderSystem::get()->selectedEntity = cached.constraintTarget;
+					EditorRenderSystem::Instance::get()->selectedEntity = cached.constraintTarget;
 				ImGui::EndPopup();
 			}
 
@@ -542,10 +542,10 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, Phy
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 {
-	auto physicsSystem = PhysicsSystem::get();
+	auto physicsSystem = PhysicsSystem::Instance::get();
 	if (ImGui::BeginItemTooltip())
 	{
-		auto rigidbodyView = physicsSystem->get(entity);
+		auto rigidbodyView = physicsSystem->getComponent(entity);
 		ImGui::Text("Has shape: %s, Active: %s", rigidbodyView->getShape() ? "true" : "false",
 			rigidbodyView->isActive() ? "true" : "false");
 		auto motionType = rigidbodyView->getMotionType();
@@ -563,7 +563,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto rigidbodyView = physicsSystem->get(entity);
+			auto rigidbodyView = physicsSystem->getComponent(entity);
 			if (rigidbodyView->getShape())
 			{
 				auto rotation = rigidbodyView->getRotation();
@@ -591,7 +591,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto rigidbodyView = physicsSystem->get(entity);
+			auto rigidbodyView = physicsSystem->getComponent(entity);
 			if (rigidbodyView->getShape())
 			{
 				auto rotation = rigidbodyView->getRotation();
@@ -607,7 +607,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto rigidbodyView = physicsSystem->get(entity);
+	auto rigidbodyView = physicsSystem->getComponent(entity);
 	auto shape = rigidbodyView->getShape();
 
 	ImGui::BeginDisabled(!shape || rigidbodyView->getMotionType() == MotionType::Static);
@@ -734,7 +734,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 //**********************************************************************************************************************
 static void renderShapeProperties(View<CharacterComponent> characterView, PhysicsEditorSystem::Cached& cached)
 {
-	auto physicsSystem = PhysicsSystem::get();
+	auto physicsSystem = PhysicsSystem::Instance::get();
 	auto shape = characterView->getShape();
 	auto isChanged = false;
 
@@ -870,10 +870,10 @@ static void renderAdvancedProperties(View<CharacterComponent> characterView)
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 {
-	auto characterSystem = CharacterSystem::get();
+	auto characterSystem = CharacterSystem::Instance::get();
 	if (ImGui::BeginItemTooltip())
 	{
-		auto characterView = characterSystem->get(entity);
+		auto characterView = characterSystem->getComponent(entity);
 		ImGui::Text("Has shape: %s", characterView->getShape() ? "true" : "false");
 		ImGui::EndTooltip();
 	}
@@ -882,7 +882,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto characterView = characterSystem->get(entity);
+			auto characterView = characterSystem->getComponent(entity);
 			if (characterView->getShape())
 			{
 				auto rotation = characterView->getRotation();
@@ -900,7 +900,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto characterView = characterSystem->get(entity);
+			auto characterView = characterSystem->getComponent(entity);
 			if (characterView->getShape())
 			{
 				auto rotation = characterView->getRotation();
@@ -916,14 +916,15 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto characterView = characterSystem->get(entity);
+	auto characterView = characterSystem->getComponent(entity);
 	auto shape = characterView->getShape();
 
 	ImGui::BeginDisabled(!shape);
 	auto collisionLayer = (int)characterView->collisionLayer;
 	if (ImGui::DragInt("Collision Layer", &collisionLayer))
 	{
-		if (collisionLayer < 0 || collisionLayer >= PhysicsSystem::get()->getProperties().collisionLayerCount)
+		auto physicsSystem = PhysicsSystem::Instance::get();
+		if (collisionLayer < 0 || collisionLayer >= physicsSystem->getProperties().collisionLayerCount)
 			collisionLayer = (uint16)CollisionLayer::Moving;
 		characterView->collisionLayer = (uint16)collisionLayer;
 	}

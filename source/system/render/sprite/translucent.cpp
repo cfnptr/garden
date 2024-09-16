@@ -20,8 +20,9 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-TranslucentSpriteSystem::TranslucentSpriteSystem(bool useDeferredBuffer, bool useLinearFilter) :
-	SpriteRenderSystem("sprite/translucent", useDeferredBuffer, useLinearFilter) { }
+TranslucentSpriteSystem::TranslucentSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
+	SpriteRenderSystem("sprite/translucent", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+TranslucentSpriteSystem::~TranslucentSpriteSystem() { unsetSingleton(); }
 
 ID<Component> TranslucentSpriteSystem::createComponent(ID<Entity> entity)
 {

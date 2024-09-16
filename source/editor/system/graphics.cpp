@@ -24,15 +24,15 @@ using namespace garden;
 //**********************************************************************************************************************
 GraphicsEditorSystem::GraphicsEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
 }
 GraphicsEditorSystem::~GraphicsEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
 	}
 
 	delete[] gpuSortedBuffer;
@@ -43,15 +43,15 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 
 void GraphicsEditorSystem::init()
 {
-	SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
-	SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
 void GraphicsEditorSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
-		UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 	}
 }
 
@@ -129,7 +129,7 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), progressInfo.c_str());
 
 		ImGui::SeparatorText("Frames Per Second");
-		auto inputSystem = InputSystem::get();
+		auto inputSystem = InputSystem::Instance::get();
 		auto deltaTime = (float)inputSystem->getDeltaTime() / (float)inputSystem->timeMultiplier;
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
@@ -246,7 +246,7 @@ void GraphicsEditorSystem::showMemoryStatistics()
 //**********************************************************************************************************************
 void GraphicsEditorSystem::editorRender()
 {
-	if (!GraphicsSystem::get()->canRender())
+	if (!GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	if (performanceStatistics)

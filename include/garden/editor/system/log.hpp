@@ -21,7 +21,7 @@
 namespace garden
 {
 
-class LogEditorSystem final : public System
+class LogEditorSystem final : public System, public Singleton<LogEditorSystem>
 {
 	string searchString;
 	string textBuffer, logLine;
@@ -38,7 +38,7 @@ class LogEditorSystem final : public System
 	bool includeAll = true;
 	bool isDirty = true;
 
-	LogEditorSystem();
+	LogEditorSystem(bool setSingleton = true);
 	~LogEditorSystem() final;
 
 	void init();

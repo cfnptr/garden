@@ -21,7 +21,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto swapchainView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 	auto swapchainImageView = graphicsSystem->get(swapchainView->getColorAttachments()[0].imageView);
@@ -34,7 +34,7 @@ static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 }
 static ID<Image> createDepthStencilBuffer()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto depthBufferView = graphicsSystem->get(graphicsSystem->getDepthStencilBuffer());
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto image = graphicsSystem->createImage(depthBufferView->getFormat(), 
@@ -46,7 +46,7 @@ static ID<Image> createDepthStencilBuffer()
 
 static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthStencilBuffer, bool clearColorBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto colorBufferView = graphicsSystem->get(colorBuffer);
 	auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
@@ -62,52 +62,48 @@ static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthS
 }
 
 //**********************************************************************************************************************
-ForwardRenderSystem* ForwardRenderSystem::instance = nullptr;
-
-ForwardRenderSystem::ForwardRenderSystem(bool clearColorBuffer, bool useAsyncRecording, bool useHdrColorBuffer)
+ForwardRenderSystem::ForwardRenderSystem(bool clearColorBuffer, bool useAsyncRecording, 
+	bool useHdrColorBuffer, bool setSingleton) : Singleton(setSingleton)
 {
 	this->clearColorBuffer = clearColorBuffer;
 	this->asyncRecording = useAsyncRecording;
 	this->hdrColorBuffer = useHdrColorBuffer;
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreForwardRender");
 	manager->registerEvent("ForwardRender");
-	manager->tryRegisterEvent("PreSwapchainRender"); // Note: can be shared with deferred system.
+	if (manager->getEventSubscribers("PreSwapchainRender").empty())
+		manager->tryRegisterEvent("PreSwapchainRender"); // Note: can be shared with deferred system.
 	manager->registerEvent("ColorBufferRecreate");
 
-	SUBSCRIBE_TO_EVENT("Init", ForwardRenderSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", ForwardRenderSystem::deinit);
-
-	GARDEN_ASSERT(!instance); // More than one system instance detected.
-	instance = this;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", ForwardRenderSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ForwardRenderSystem::deinit);
 }
 ForwardRenderSystem::~ForwardRenderSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", ForwardRenderSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", ForwardRenderSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ForwardRenderSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ForwardRenderSystem::deinit);
 		
-		auto manager = Manager::get();
+		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreForwardRender");
 		manager->unregisterEvent("ForwardRender");
 		manager->tryUnregisterEvent("PreSwapchainRender");
 		manager->unregisterEvent("ColorBufferRecreate");
 	}
 
-	GARDEN_ASSERT(instance); // More than one system instance detected.
-	instance = nullptr;
+	unsetSingleton();
 }
 
 //**********************************************************************************************************************
 void ForwardRenderSystem::init()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	GARDEN_ASSERT(asyncRecording == graphicsSystem->useAsyncRecording());
 
-	SUBSCRIBE_TO_EVENT("Render", ForwardRenderSystem::render);
-	SUBSCRIBE_TO_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("Render", ForwardRenderSystem::render);
+	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
 
 	if (!colorBuffer)
 		colorBuffer = createColorBuffer(hdrColorBuffer);
@@ -118,27 +114,27 @@ void ForwardRenderSystem::init()
 }
 void ForwardRenderSystem::deinit()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		auto graphicsSystem = GraphicsSystem::get();
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(framebuffer);
 		graphicsSystem->destroy(colorBuffer);
 
-		UNSUBSCRIBE_FROM_EVENT("Render", ForwardRenderSystem::render);
-		UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ForwardRenderSystem::render);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
 	}
 }
 
 //**********************************************************************************************************************
 void ForwardRenderSystem::render()
 {
-	if (!isEnabled || !GraphicsSystem::get()->canRender())
+	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
-	auto manager = Manager::get();
+	auto manager = Manager::Instance::get();
 	
 	#if GARDEN_DEBUG
-	auto deferredSystem = manager->tryGet<DeferredRenderSystem>();
+	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
 	if (deferredSystem)
 	{
 		// Can not use forward and deferred render system at the same time.
@@ -146,7 +142,7 @@ void ForwardRenderSystem::render()
 	}
 	#endif
 
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
 	{
@@ -197,7 +193,7 @@ void ForwardRenderSystem::render()
 //**********************************************************************************************************************
 void ForwardRenderSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
@@ -222,7 +218,7 @@ void ForwardRenderSystem::swapchainRecreate()
 			depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 		framebufferView->update(framebufferSize, &colorAttachment, 1, depthStencilAttachment);
 
-		Manager::get()->runEvent("ColorBufferRecreate");
+		Manager::Instance::get()->runEvent("ColorBufferRecreate");
 	}
 }
 
@@ -237,7 +233,7 @@ ID<Image> ForwardRenderSystem::getDepthStencilBuffer()
 {
 	if (!depthStencilBuffer)
 	{
-		if (GraphicsSystem::get()->getRenderScale() != 1.0f)
+		if (GraphicsSystem::Instance::get()->getRenderScale() != 1.0f)
 			depthStencilBuffer = createDepthStencilBuffer();
 	}
 	return depthStencilBuffer;

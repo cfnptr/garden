@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
-  VCPKG_CACHE: Windows-zlib_1.3.1-openssl_3.3.1
+  VCPKG_CACHE: Windows-zlib_1.3.1-openssl_3.3.2
 
 jobs:
   build:

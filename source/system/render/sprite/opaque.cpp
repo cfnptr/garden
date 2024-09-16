@@ -20,8 +20,9 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter) :
-	SpriteRenderSystem("sprite/opaque", useDeferredBuffer, useLinearFilter) { }
+OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
+	SpriteRenderSystem("sprite/opaque", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
 
 ID<Component> OpaqueSpriteSystem::createComponent(ID<Entity> entity)
 {

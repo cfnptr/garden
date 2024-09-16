@@ -156,11 +156,11 @@ class ISerializable
 {
 public:
 	virtual void preSerialize(ISerializer& serializer) { }
-	virtual void serialize(ISerializer& serializer, const View<Component> component) = 0;
+	virtual void serialize(ISerializer& serializer, const View<Component> component) { }
 	virtual void postSerialize(ISerializer& serializer) { }
 
 	virtual void preDeserialize(IDeserializer& deserializer) { }
-	virtual void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) = 0;
+	virtual void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) { }
 	virtual void postDeserialize(IDeserializer& deserializer) { }
 };
 
@@ -173,29 +173,21 @@ struct DoNotSerializeComponent : public Component { };
 /**
  * @brief Handles entities that should not be serialized.
  */
-class DoNotSerializeSystem : public System
+class DoNotSerializeSystem : public ComponentSystem<DoNotSerializeComponent, false>, 
+	public Singleton<DoNotSerializeSystem>
 {
 protected:
-	LinearPool<DoNotSerializeComponent, false> components;
-	static DoNotSerializeSystem* instance;
-
 	/**
 	 * @brief Creates a new DoNotSerialize system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	DoNotSerializeSystem();
+	DoNotSerializeSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys DoNotSerialize system instance.
 	 */
 	~DoNotSerializeSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) override;
-	void destroyComponent(ID<Component> instance) override;
-	void copyComponent(View<Component> source, View<Component> destination) override;
 	const string& getComponentName() const override;
-	type_index getComponentType() const override;
-	View<Component> getComponent(ID<Component> instance) override;
-	void disposeComponents() override;
-	
 	friend class ecsm::Manager;
 public:
 	/**
@@ -203,34 +195,6 @@ public:
 	 * @param entity target entity with component
 	 */
 	bool hasOrAncestors(ID<Entity> entity) const;
-	/**
-	 * @brief Returns true if entity has DoNotSerialize component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity DoNotSerialize component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<DoNotSerializeComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity DoNotSerialize component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<DoNotSerializeComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns DoNotSerialize system instance.
-	 * @warning Do not use it if you have several link system instances.
-	 */
-	static DoNotSerializeSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // DoNotSerialize system is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

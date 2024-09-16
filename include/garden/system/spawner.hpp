@@ -53,6 +53,7 @@ private:
 
 	friend class SpawnerSystem;
 	friend class LinearPool<SpawnerComponent>;
+	friend class ComponentSystem<SpawnerComponent>;
 public:
 	/**
 	 * @brief Returns spawned enitity array.
@@ -90,18 +91,17 @@ public:
 /***********************************************************************************************************************
  * @brief Provides spawning of pre-defined objects (prefabs) at runtime.
  */
-class SpawnerSystem final : public System, public ISerializable
+class SpawnerSystem final : public ComponentSystem<SpawnerComponent>, 
+	public Singleton<SpawnerSystem>, public ISerializable
 {
-	LinearPool<SpawnerComponent> components;
 	map<string, Hash128> sharedPrefabs;
 	string valueStringCache;
 
-	static SpawnerSystem* instance;
-
 	/**
 	 * @brief Creates a new spawner system instance.
+	 * @param setSingleton set system singleton instance
 	 */
-	SpawnerSystem();
+	SpawnerSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys spawner system instance.
 	 */
@@ -111,13 +111,8 @@ class SpawnerSystem final : public System, public ISerializable
 	void postDeinit();
 	void update();
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
@@ -214,35 +209,6 @@ public:
 	 * @brief Destroys all existing shared prefab entities and clears the map.
 	 */
 	void destroySharedPrefabs();
-
-	/**
-	 * @brief Returns true if entity has spawner component.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	bool has(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity spawner component view.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<SpawnerComponent> get(ID<Entity> entity) const;
-	/**
-	 * @brief Returns entity spawner component view if exist.
-	 * @param entity target entity with component
-	 * @note This function is faster than the Manager one.
-	 */
-	View<SpawnerComponent> tryGet(ID<Entity> entity) const;
-
-	/**
-	 * @brief Returns spawner system instance.
-	 * @warning Do not use it if you have several link system instances.
-	 */
-	static SpawnerSystem* get() noexcept
-	{
-		GARDEN_ASSERT(instance); // Spawn system is not created.
-		return instance;
-	}
 };
 
 } // namespace garden

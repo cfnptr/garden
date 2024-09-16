@@ -22,21 +22,21 @@ using namespace garden;
 //**********************************************************************************************************************
 CameraEditorSystem::CameraEditorSystem()
 {
-	SUBSCRIBE_TO_EVENT("Init", CameraEditorSystem::init);
-	SUBSCRIBE_TO_EVENT("Deinit", CameraEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", CameraEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CameraEditorSystem::deinit);
 }
 CameraEditorSystem::~CameraEditorSystem()
 {
-	if (Manager::get()->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
-		UNSUBSCRIBE_FROM_EVENT("Init", CameraEditorSystem::init);
-		UNSUBSCRIBE_FROM_EVENT("Deinit", CameraEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CameraEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CameraEditorSystem::deinit);
 	}
 }
 
 void CameraEditorSystem::init()
 {
-	EditorRenderSystem::get()->registerEntityInspector<CameraComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<CameraComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -45,7 +45,7 @@ void CameraEditorSystem::init()
 }
 void CameraEditorSystem::deinit()
 {
-	EditorRenderSystem::get()->unregisterEntityInspector<CameraComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<CameraComponent>();
 }
 
 //**********************************************************************************************************************
@@ -53,7 +53,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto cameraView = Manager::get()->get<CameraComponent>(entity);
+		auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
 		ImGui::Text("Projection: %s", cameraView->type ==
 			ProjectionType::Perspective ? "Perspective" : "Orthographic");
 		ImGui::EndTooltip();
@@ -62,7 +62,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto cameraView = Manager::get()->get<CameraComponent>(entity);
+	auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
 	if (cameraView->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraView->p.perspective.fieldOfView);
