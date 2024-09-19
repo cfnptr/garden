@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Common sprite rendering functions.
+ */
+
 #pragma once
 #include "garden/hash.hpp"
 #include "garden/system/render/instance.hpp"
@@ -22,30 +27,30 @@ namespace garden
 using namespace garden::graphics;
 
 /***********************************************************************************************************************
- * @brief Sprite mesh rendering data container.
+ * @brief Sprite rendering data container.
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
 protected:
 	uint16 _alignment0 = 0;
 public:
-	bool isArray = false;
-	Ref<Image> colorMap = {};
-	Ref<DescriptorSet> descriptorSet = {};
-	float colorMapLayer = 0.0f;
-	float4 colorFactor = float4(1.0f);
-	float2 uvSize = float2(1.0f);
-	float2 uvOffset = float2(0.0f);
+	bool isArray = false;                  /**< Is sprite texture type array. */
+	Ref<Image> colorMap = {};              /**< Color map texture instance. */
+	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
+	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
+	float4 colorFactor = float4(1.0f);     /**< Texture color multiplier. */
+	float2 uvSize = float2(1.0f);          /**< Texture UV size. */
+	float2 uvOffset = float2(0.0f);        /**< Texture UV offset. */
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path colorMapPath = {};
+	fs::path colorMapPath = {};            /**< Color map texture path. */
 	#endif
 };
 
 /**
- * @brief Sprite mesh animation frame container.
+ * @brief Sprite animation frame container.
  */
-struct SpriteRenderFrame : public AnimationFrame
+struct SpriteAnimationFrame : public AnimationFrame
 {
 	uint8 isEnabled : 1;
 	uint8 animateIsEnabled : 1;
@@ -69,12 +74,12 @@ public:
 	fs::path colorMapPath = {};
 	#endif
 
-	SpriteRenderFrame() : isEnabled(true), animateIsEnabled(false), animateColorFactor(false), animateUvSize(false), 
+	SpriteAnimationFrame() : isEnabled(true), animateIsEnabled(false), animateColorFactor(false), animateUvSize(false),
 		animateUvOffset(false), animateColorMapLayer(false), animateColorMap(false), isArray(false) { }
 };
 
 /***********************************************************************************************************************
- * @brief Sprite mesh rendering system.
+ * @brief Sprite rendering system.
  */
 class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable, public IAnimatable
 {
@@ -96,8 +101,19 @@ protected:
 	ID<ImageView> defaultImageView = {};
 	bool deferredBuffer = false;
 	bool linearFilter = false;
+	uint16 _alignment0 = 0;
 
+	/**
+	 * @brief Creates a new sprite render system instance.
+	 * 
+	 * @param[in] pipelinePath target rendering pipeline path
+	 * @param useDeferredBuffer use deferred or forward rendering buffer
+	 * @param useLinearFilter use linear or nearest texture filter
+	 */
 	SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter);
+	/**
+	 * @brief Destroys sprite render system instance.
+	 */
 	~SpriteRenderSystem() override;
 
 	void init() override;
@@ -123,19 +139,144 @@ protected:
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
 	ID<GraphicsPipeline> createPipeline() final;
 
-	virtual LinearPool<SpriteRenderFrame>& getFrameComponentPool() = 0;
-	virtual psize getFrameComponentSize() const = 0;
-
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
-	static void deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame);
-	static void destroyResources(View<SpriteRenderFrame> frameView);
+	static void deserializeAnimation(IDeserializer& deserializer, SpriteAnimationFrame& frame);
+	static void destroyResources(View<SpriteAnimationFrame> frameView);
 
 	static void destroyResources(View<SpriteRenderComponent> spriteRenderView);
+public:
+	/**
+	 * @brief Returns sprite animation frame pool.
+	 */
+	virtual LinearPool<SpriteAnimationFrame>& getAnimationFramePool() = 0;
+	/**
+	 * @brief Returns sprite animation frame size in bytes.
+	 */
+	virtual psize getAnimationFrameSize() const = 0;
+};
+
+/***********************************************************************************************************************
+ * @brief Sprite mesh rendering component system.
+ */
+template<class C = SpriteRenderComponent, class A = SpriteAnimationFrame,
+	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+class SpriteRenderCompSystem : public SpriteRenderSystem
+{
+protected:
+	LinearPool<C, DestroyComponents> components;
+	LinearPool<A, DestroyAnimationFrames> animationFrames;
+
+	SpriteRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) : 
+		SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter) { }
+
+	ID<Component> createComponent(ID<Entity> entity) override
+	{
+		return ID<Component>(components.create());
+	}
+	void destroyComponent(ID<Component> instance) override
+	{
+		auto componentView = components.get(ID<C>(instance));
+		destroyResources(View<SpriteRenderComponent>(componentView));
+		components.destroy(ID<C>(instance));
+	}
+	void copyComponent(View<Component> source, View<Component> destination) override
+	{
+		if constexpr (DestroyComponents)
+		{
+			auto destinationView = View<C>(destination);
+			destinationView->destroy();
+		}
+	}
+
+	const string& getComponentName() const override
+	{
+		static const string name = typeToString(typeid(C));
+		return name;
+	}
+	type_index getComponentType() const override
+	{
+		return typeid(C);
+	}
+	View<Component> getComponent(ID<Component> instance) override
+	{
+		return View<Component>(components.get(ID<C>(instance)));
+	}
+	void disposeComponents() override
+	{
+		components.dispose();
+		animationFrames.dispose();
+	}
+
+	LinearPool<MeshRenderComponent>& getMeshComponentPool() override
+	{
+		return *((LinearPool<MeshRenderComponent>*)&components);
+	}
+	psize getMeshComponentSize() const override
+	{
+		return sizeof(C);
+	}
+
+	LinearPool<SpriteAnimationFrame>& getAnimationFramePool() override
+	{
+		return *((LinearPool<SpriteAnimationFrame>*)&animationFrames);
+	}
+	psize getAnimationFrameSize() const override
+	{
+		return sizeof(A);
+	}
+	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) override
+	{
+		A frame;
+		SpriteRenderSystem::deserializeAnimation(deserializer, frame);
+
+		if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize ||
+			frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap)
+		{
+			return ID<AnimationFrame>(animationFrames.create(frame));
+		}
+
+		return {};
+	}
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) override
+	{
+		return View<AnimationFrame>(animationFrames.get(ID<A>(frame)));
+	}
+	void destroyAnimation(ID<AnimationFrame> frame) override
+	{
+		auto frameView = animationFrames.get(ID<A>(frame));
+		destroyResources(View<SpriteAnimationFrame>(frameView));
+		animationFrames.destroy(ID<A>(frame));
+	}
+public:
+	bool hasComponent(ID<Entity> entity) const
+	{
+		assert(entity);
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		const auto& entityComponents = entityView->getComponents();
+		return entityComponents.find(typeid(C)) != entityComponents.end();
+	}
+	View<C> getComponent(ID<Entity> entity) const
+	{
+		assert(entity);
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		const auto& pair = entityView->getComponents().at(typeid(C));
+		return components.get(ID<C>(pair.second));
+	}
+	View<C> tryGetComponent(ID<Entity> entity) const
+	{
+		assert(entity);
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		const auto& entityComponents = entityView->getComponents();
+		auto result = entityComponents.find(typeid(C));
+		if (result == entityComponents.end())
+			return {};
+		return components.get(ID<C>(result->second.second));
+	}
 };
 
 } // namespace garden

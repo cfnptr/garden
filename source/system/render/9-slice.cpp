@@ -74,7 +74,7 @@ void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> 
 void NineSliceRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
-	auto frameView = View<NineSliceRenderFrame>(frame);
+	auto frameView = View<NineSliceAnimationFrame>(frame);
 	if (frameView->animateTextureBorder)
 		serializer.write("textureBorder", frameView->textureBorder);
 	if (frameView->animateWindowBorder)
@@ -85,14 +85,14 @@ void NineSliceRenderSystem::animateAsync(View<Component> component,
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
 	auto componentView = View<NineSliceRenderComponent>(component);
-	auto frameA = View<NineSliceRenderFrame>(a);
-	auto frameB = View<NineSliceRenderFrame>(b);
+	auto frameA = View<NineSliceAnimationFrame>(a);
+	auto frameB = View<NineSliceAnimationFrame>(b);
 	if (frameA->animateTextureBorder)
 		componentView->textureBorder = lerp(frameA->textureBorder, frameB->textureBorder, t);
 	if (frameA->animateWindowBorder)
 		componentView->windowBorder = lerp(frameA->windowBorder, frameB->windowBorder, t);
 }
-void NineSliceRenderSystem::deserializeAnimation(IDeserializer& deserializer, NineSliceRenderFrame& frame)
+void NineSliceRenderSystem::deserializeAnimation(IDeserializer& deserializer, NineSliceAnimationFrame& frame)
 {
 	frame.animateTextureBorder = deserializer.read("textureBorder", frame.textureBorder);
 	frame.animateWindowBorder = deserializer.read("windowBorder", frame.windowBorder);

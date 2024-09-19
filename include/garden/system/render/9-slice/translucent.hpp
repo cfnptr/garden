@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Translucent 9-slice sprite rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/9-slice.hpp"
 
@@ -21,14 +26,11 @@ namespace garden
 using namespace garden::graphics;
 
 struct Translucent9SliceComponent final : public NineSliceRenderComponent { };
-struct Translucent9SliceFrame final : public NineSliceRenderFrame { };
+struct Translucent9SliceFrame final : public NineSliceAnimationFrame { };
 
-class Translucent9SliceSystem final : public NineSliceRenderSystem, public Singleton<Translucent9SliceSystem>
+class Translucent9SliceSystem final : public NineSliceRenderCompSystem<
+	Translucent9SliceComponent, Translucent9SliceFrame, false, false>, public Singleton<Translucent9SliceSystem>
 {
-	uint16 _alignment = 0;
-	LinearPool<Translucent9SliceComponent, false> components;
-	LinearPool<Translucent9SliceFrame, false> animationFrames;
-
 	/**
 	 * @brief Creates a new translucent 9-slice rendering system instance.
 	 * 
@@ -42,22 +44,8 @@ class Translucent9SliceSystem final : public NineSliceRenderSystem, public Singl
 	 */
 	~Translucent9SliceSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
 	MeshRenderType getMeshRenderType() const final;
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
-	psize getMeshComponentSize() const final;
-	LinearPool<SpriteRenderFrame>& getFrameComponentPool() final;
-	psize getFrameComponentSize() const final;
-
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;
 };

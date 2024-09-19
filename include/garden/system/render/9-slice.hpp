@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Common sprite rendering functions.
+ */
+
 // TODO: Add center slice repeat mode instead of stretching, if needed.
 //       Also add adaptive stretch mode like in Unity, if needed.
 
@@ -29,7 +34,7 @@ struct NineSliceRenderComponent : public SpriteRenderComponent
 	float2 windowBorder = float2(0.0f);
 };
 
-struct NineSliceRenderFrame : public SpriteRenderFrame
+struct NineSliceAnimationFrame : public SpriteAnimationFrame
 {
 	float2 textureBorder = float2(0.0f);
 	float2 windowBorder = float2(0.0f);
@@ -37,6 +42,9 @@ struct NineSliceRenderFrame : public SpriteRenderFrame
 	bool animateWindowBorder = false;
 };
 
+/***********************************************************************************************************************
+ * @brief Nine slice sprite rendering system.
+ */
 class NineSliceRenderSystem : public SpriteRenderSystem
 {
 public:
@@ -60,7 +68,127 @@ protected:
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
-	static void deserializeAnimation(IDeserializer& deserializer, NineSliceRenderFrame& frame);
+	static void deserializeAnimation(IDeserializer& deserializer, NineSliceAnimationFrame& frame);
+};
+
+/***********************************************************************************************************************
+ * @brief Nine slice sprite rendering component system.
+ */
+template<class C = NineSliceRenderComponent, class A = NineSliceAnimationFrame,
+	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+class NineSliceRenderCompSystem : public NineSliceRenderSystem
+{
+protected:
+	LinearPool<C, DestroyComponents> components;
+	LinearPool<A, DestroyAnimationFrames> animationFrames;
+
+	NineSliceRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) :
+		NineSliceRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter) { }
+
+	ID<Component> createComponent(ID<Entity> entity) override
+	{
+		return ID<Component>(components.create());
+	}
+	void destroyComponent(ID<Component> instance) override
+	{
+		auto componentView = components.get(ID<C>(instance));
+		destroyResources(View<SpriteRenderComponent>(componentView));
+		components.destroy(ID<C>(instance));
+	}
+	void copyComponent(View<Component> source, View<Component> destination) override
+	{
+		if constexpr (DestroyComponents)
+		{
+			auto destinationView = View<C>(destination);
+			destinationView->destroy();
+		}
+	}
+
+	const string& getComponentName() const override
+	{
+		static const string name = typeToString(typeid(C));
+		return name;
+	}
+	type_index getComponentType() const override
+	{
+		return typeid(C);
+	}
+	View<Component> getComponent(ID<Component> instance) override
+	{
+		return View<Component>(components.get(ID<C>(instance)));
+	}
+	void disposeComponents() override
+	{
+		components.dispose();
+		animationFrames.dispose();
+	}
+
+	LinearPool<MeshRenderComponent>& getMeshComponentPool() override
+	{
+		return *((LinearPool<MeshRenderComponent>*)&components);
+	}
+	psize getMeshComponentSize() const override
+	{
+		return sizeof(C);
+	}
+
+	LinearPool<SpriteAnimationFrame>& getAnimationFramePool() override
+	{
+		return *((LinearPool<SpriteAnimationFrame>*)&animationFrames);
+	}
+	psize getAnimationFrameSize() const override
+	{
+		return sizeof(A);
+	}
+	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) override
+	{
+		A frame;
+		NineSliceRenderSystem::deserializeAnimation(deserializer, frame);
+
+		if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize ||
+			frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap ||
+			frame.animateTextureBorder || frame.animateWindowBorder)
+		{
+			return ID<AnimationFrame>(animationFrames.create(frame));
+		}
+
+		return {};
+	}
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) override
+	{
+		return View<AnimationFrame>(animationFrames.get(ID<A>(frame)));
+	}
+	void destroyAnimation(ID<AnimationFrame> frame) override
+	{
+		auto frameView = animationFrames.get(ID<A>(frame));
+		destroyResources(View<SpriteAnimationFrame>(frameView));
+		animationFrames.destroy(ID<A>(frame));
+	}
+public:
+	bool hasComponent(ID<Entity> entity) const
+	{
+		assert(entity);
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		const auto& entityComponents = entityView->getComponents();
+		return entityComponents.find(typeid(C)) != entityComponents.end();
+	}
+	View<C> getComponent(ID<Entity> entity) const
+	{
+		assert(entity);
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		const auto& pair = entityView->getComponents().at(typeid(C));
+		return components.get(ID<C>(pair.second));
+	}
+	View<C> tryGetComponent(ID<Entity> entity) const
+	{
+		assert(entity);
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		const auto& entityComponents = entityView->getComponents();
+		auto result = entityComponents.find(typeid(C));
+		if (result == entityComponents.end())
+			return {};
+		return components.get(ID<C>(result->second.second));
+	}
 };
 
 } // namespace garden

@@ -18,7 +18,7 @@
 using namespace std;
 using namespace garden::graphics;
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology)
 {
 	switch (topology)
@@ -61,7 +61,7 @@ static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace)
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor)
 {
 	switch (blendFactor)
@@ -113,7 +113,7 @@ static vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorCompon
 	return result;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRecording) :
 	Pipeline(createData, asyncRecording)
 {
@@ -328,7 +328,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 	destroyShaders(shaders);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 {
 	GARDEN_ASSERT(framebuffer);
@@ -407,7 +407,7 @@ void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
 		Vulkan::secondaryCommandBuffers[taskIndex++].setViewport(0, 1, &vkViewport);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::setScissor(const int4& scissor)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -475,7 +475,7 @@ void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
 		Vulkan::secondaryCommandBuffers[taskIndex++].setScissor(0, 1, &vkScissor);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -552,7 +552,7 @@ void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, in
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 	uint32 instanceCount, uint32 vertexOffset, uint32 instanceOffset) // TODO: support multiple buffer binding.
 {
@@ -590,7 +590,7 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	uint32 vertexCount, uint32 instanceCount, uint32 vertexOffset, uint32 instanceOffset)
 {
@@ -653,7 +653,7 @@ void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer, Index indexType,
 	uint32 indexCount, uint32 instanceCount, uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
 {
@@ -699,7 +699,7 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 	ID<Buffer> indexBuffer, Index indexType, uint32 indexCount, uint32 instanceCount,
 	uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
@@ -764,7 +764,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsPipeline::drawFullscreen()
 {
 	GARDEN_ASSERT(instance); // is ready

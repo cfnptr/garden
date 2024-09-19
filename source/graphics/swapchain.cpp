@@ -28,7 +28,7 @@ static uint32 getBestVkImageCount(const vk::SurfaceCapabilitiesKHR& capabilities
 	return imageCount;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 	vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, bool useHDR)
 {
@@ -68,7 +68,7 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 	return formats[0];
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, uint2 framebufferSize)
 {
 	if (capabilities.currentExtent.width == UINT32_MAX)
@@ -130,7 +130,7 @@ static vk::PresentModeKHR getBestVkPresentMode(
 	return vk::PresentModeKHR::eFifo;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::SwapchainKHR createVkSwapchain(vk::PhysicalDevice physicalDevice,
 	vk::Device device, vk::SurfaceKHR surface, uint2 framebufferSize, bool useVsync,
 	bool useTripleBuffering, vk::SwapchainKHR oldSwapchain, vk::Format& format)
@@ -176,7 +176,7 @@ static vector<vk::CommandPool> createVkCommandPools(vk::Device device,
 	return commandPools;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 	vk::Device device, vk::SwapchainKHR swapchain, vk::Format surfaceFormat,
 	vk::CommandPool graphicsCommandPool, LinearPool<Image>& imagePool,
@@ -243,7 +243,7 @@ static void destroyVkSwapchainBuffers(vk::Device device, LinearPool<Image>& imag
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 Swapchain::Swapchain(uint2 framebufferSize, bool useVsync, bool useTripleBuffering, bool useThreading)
 {
 	for (uint8 i = 0; i < frameLag; i++)
@@ -284,7 +284,7 @@ void Swapchain::setThreadPool(ThreadPool& threadPool)
 	this->threadPool = &threadPool;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Swapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
 	Vulkan::device.waitIdle();
@@ -306,7 +306,7 @@ void Swapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuf
 	this->frameIndex = 0;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 bool Swapchain::acquireNextImage()
 {
 	auto fence = fences[frameIndex]; 
@@ -342,7 +342,7 @@ bool Swapchain::acquireNextImage()
 	return true;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Swapchain::submit()
 {
 	const auto& buffer = buffers[bufferIndex];
@@ -365,7 +365,7 @@ bool Swapchain::present()
 	return true;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vector<vk::Format> colorAttachmentFormats;
 
 void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass, uint8 subpassIndex,
@@ -470,7 +470,7 @@ void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass
 	threadPool->wait();
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vector<vk::CommandBuffer> secondaryCommandBuffers;
 
 void Swapchain::endSecondaryCommandBuffers()

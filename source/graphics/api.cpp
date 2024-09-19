@@ -49,7 +49,7 @@ uint8 GraphicsAPI::flushDestroyIndex = 1;
 bool GraphicsAPI::recordGpuTime = false;
 #endif
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void GraphicsAPI::destroyResource(DestroyResourceType type, void* data0, void* data1, uint32 count)
 {
 	DestroyResource destroyResource;

@@ -113,7 +113,7 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
 	}
 
-	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
+	swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto instanceBufferView = graphicsSystem->get(instanceBuffers[swapchainIndex][0]);
 	pipelineView = graphicsSystem->get(pipeline);
 	instanceMap = instanceBufferView->getMap();
@@ -126,7 +126,6 @@ void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCount)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto instanceBufferView = graphicsSystem->get(instanceBuffers[swapchainIndex][0]);
 	instanceBufferView->flush(drawCount * getInstanceDataSize());
 }
@@ -157,9 +156,20 @@ void InstanceRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRender
 	DescriptorSet::Range* range, uint8& index, uint8 capacity)
 {
 	GARDEN_ASSERT(index < capacity);
-	auto swapchainIndex = GraphicsSystem::Instance::get()->getSwapchainIndex();
 	range[index++] = DescriptorSet::Range(baseDescriptorSet, 1, swapchainIndex);
 }
+
+#if GARDEN_DEBUG
+void InstanceRenderSystem::setInstancesBuffersName(const string& debugName)
+{
+	for (uint32 i = 0; i < (uint32)instanceBuffers.size(); i++)
+	{
+		const auto& buffers = instanceBuffers[i];
+		for (uint32 j = 0; j < (uint32)buffers.size(); j++)
+			SET_RESOURCE_DEBUG_NAME(buffers[j], "buffer.storage.instances" + to_string(i) + "." + debugName);
+	}
+}
+#endif
 
 map<string, DescriptorSet::Uniform> InstanceRenderSystem::getBaseUniforms()
 {

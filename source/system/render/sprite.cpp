@@ -42,16 +42,7 @@ void SpriteRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
 	#if GARDEN_DEBUG
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	for (uint32 i = 0; i < (uint32)instanceBuffers.size(); i++)
-	{
-		const auto& buffers = instanceBuffers[i];
-		for (uint32 j = 0; j < (uint32)buffers.size(); j++)
-		{
-			SET_RESOURCE_DEBUG_NAME(buffers[j], "buffer.storage.instances" + 
-				to_string(i) + "." + pipelinePath.generic_string());
-		}
-	}
+	setInstancesBuffersName(pipelinePath.generic_string());
 	#endif
 }
 void SpriteRenderSystem::deinit()
@@ -102,14 +93,14 @@ void SpriteRenderSystem::imageLoaded()
 		spriteRenderView->descriptorSet = createSharedDS(image, imagePath.generic_string());
 	}
 
-	auto& spriteFramePool = getFrameComponentPool();
-	componentSize = getFrameComponentSize();
+	auto& spriteFramePool = getAnimationFramePool();
+	componentSize = getAnimationFrameSize();
 	componentData = (uint8*)spriteFramePool.getData();
 	componentOccupancy = spriteFramePool.getOccupancy();
 
 	for (uint32 i = 0; i < componentOccupancy; i++)
 	{
-		auto spriteRenderFrame = (SpriteRenderFrame*)(componentData + i * componentSize);
+		auto spriteRenderFrame = (SpriteAnimationFrame*)(componentData + i * componentSize);
 		if (spriteRenderFrame->colorMap != image || spriteRenderFrame->descriptorSet)
 			continue;
 		spriteRenderFrame->descriptorSet = createSharedDS(image, imagePath.generic_string());
@@ -166,9 +157,7 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	setDescriptorSetRange(meshRenderView, descriptorSetRange, descriptorSetCount, 8);
 	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
 
-	auto pushConstantsSize = pipelineView->getPushConstantsSize();
-	auto pushConstants = (PushConstants*)(
-		pipelineView->getPushConstantsBuffer().data() + pushConstantsSize * taskIndex);
+	auto pushConstants = (PushConstants*)pipelineView->getPushConstantsAsync(taskIndex);
 	setPushConstants(spriteRenderView, pushConstants, viewProj, model, drawIndex, taskIndex);
 	pipelineView->pushConstantsAsync(taskIndex);
 
@@ -307,7 +296,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 //**********************************************************************************************************************
 void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<SpriteRenderFrame>(frame);
+	auto frameView = View<SpriteAnimationFrame>(frame);
 	if (frameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)frameView->isEnabled);
 	if (frameView->animateColorFactor)
@@ -333,8 +322,8 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto componentView = View<SpriteRenderComponent>(component);
-	auto frameA = View<SpriteRenderFrame>(a);
-	auto frameB = View<SpriteRenderFrame>(b);
+	auto frameA = View<SpriteAnimationFrame>(a);
+	auto frameB = View<SpriteAnimationFrame>(b);
 
 	if (frameA->animateIsEnabled)
 		componentView->isEnabled = (bool)round(t);
@@ -375,7 +364,7 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 		}
 	}
 }
-void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteRenderFrame& frame)
+void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteAnimationFrame& frame)
 {
 	auto boolValue = true;
 	frame.animateIsEnabled = deserializer.read("isEnabled", boolValue);
@@ -410,7 +399,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 	frame.descriptorSet = {}; // See the imageLoaded()
 }
-void SpriteRenderSystem::destroyResources(View<SpriteRenderFrame> frameView)
+void SpriteRenderSystem::destroyResources(View<SpriteAnimationFrame> frameView)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
 	resourceSystem->destroyShared(frameView->colorMap);

@@ -440,8 +440,8 @@ static void renderWordNode(const map<string, ComponentEntry>& nodes, ID<Entity> 
 		}
 	}
 }
-static void renderAddComponent(const map<type_index, EditorRenderSystem::Inspector>& entityInspectors,
-	ID<Entity> selectedEntity, uint32& itemCount)
+static void renderAddComponent(const unordered_map<type_index, 
+	EditorRenderSystem::Inspector>& entityInspectors, ID<Entity> selectedEntity, uint32& itemCount)
 {
 	auto manager = Manager::Instance::get();
 	const auto& componentTypes = manager->getComponentTypes();
@@ -514,7 +514,7 @@ static void renderAddComponent(const map<type_index, EditorRenderSystem::Inspect
 	wordNodes.clear();
 }
 
-static bool renderInspectorWindowPopup(const map<type_index, 
+static bool renderInspectorWindowPopup(const unordered_map<type_index, 
 	EditorRenderSystem::Inspector>& entityInspectors, ID<Entity>& selectedEntity)
 {
 	if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))

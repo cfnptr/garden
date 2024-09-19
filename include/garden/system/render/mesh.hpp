@@ -53,30 +53,101 @@ struct MeshRenderComponent : public Component
 class IMeshRenderSystem
 {
 protected:
-	virtual bool isDrawReady() = 0;
+	/**
+	 * @brief Returns true if system is ready for rendering. (All resources loaded, etc.)
+	 */
+	virtual bool isDrawReady() { return true; }
+	/**
+	 * @brief Prepares data required for mesh rendering.
+	 *
+	 * @param[in] viewProj camera view * projection matrix
+	 * @param[in] drawCount total mesh draw item count
+	 */
 	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount) { }
+	/**
+	 * @brief Begins mesh drawing asynchronously.
+	 * @warning Be careful with multithreaded code!
+	 * @param taskIndex thread pool task index (not thread index!)
+	 */
 	virtual void beginDrawAsync(int32 taskIndex) { }
+	/**
+	 * @brief Draws mesh item asynchronously.
+	 * @warning Be careful with multithreaded code!
+	 * 
+	 * @param[in,out] meshRenderView target mesh render item
+	 * @param[in] viewProj camera view * projection matrix
+	 * @param[in] model mesh model matrix (position, scale, rotation, etc.)
+	 * @param drawIndex mesh item draw index (sorted)
+	 * @param taskIndex thread pool task index (not thread index!)
+	 */
 	virtual void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
 		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
+	/**
+	 * @brief Ends mesh drawing asynchronously.
+	 * @warning Be careful with multithreaded code!
+	 * 
+	 * @param[in] drawCount total mesh draw item count
+	 * @param taskIndex thread pool task index (not thread index!)
+	 */
 	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
+	/**
+	 * @brief Finalizes data used for mesh rendering.
+	 * @warning Be careful with multithreaded code!
+	 * 
+	 * @param[in] viewProj camera view * projection matrix
+	 * @param[in] drawCount total mesh draw item count
+	 */
 	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount) { }
 
 	friend class MeshRenderSystem;
 public:
-	virtual MeshRenderType getMeshRenderType() const = 0;
+	/**
+	 * @brief Returns system mesh render type. (Opaque, translucent, etc.)
+	 */
+	virtual MeshRenderType getMeshRenderType() const { return MeshRenderType::Opaque; }
+	/**
+	 * @brief Returns system mesh component pool.
+	 */
 	virtual LinearPool<MeshRenderComponent>& getMeshComponentPool() = 0;
+	/**
+	 * @brief Returns system mesh component size in bytes.
+	 */
 	virtual psize getMeshComponentSize() const = 0;
 };
-/**
+
+/***********************************************************************************************************************
  * @brief Mesh shadow render system interface.
  */
 class IShadowMeshRenderSystem
 {
 protected:
+	/**
+	 * @brief Returns mesh shadow render pass count.
+	 */
 	virtual uint32 getShadowPassCount() = 0;
+	/**
+	 * @brief Prepares all required data for mesh shadow rendering.
+	 * 
+	 * @param passIndex shadow render pass index
+	 * @param[in] viewProj camera view * projection matrix
+	 * @param[in] cameraOffset camera offset in the space
+	 */
 	virtual bool prepareShadowRender(uint32 passIndex, float4x4& viewProj, float3& cameraOffset) = 0;
+	/**
+	 * @brief Begins mesh shadow pass rendering.
+	 * 
+	 * @param passIndex shadow render pass index
+	 * @param renderType shadow mesh render type
+	 */
 	virtual void beginShadowRender(uint32 passIndex, MeshRenderType renderType) = 0;
+	/**
+	 * @brief Ends mesh shadow pass rendering.
+	 * 
+	 * @param passIndex shadow render pass index
+	 * @param renderType shadow mesh render type
+	 */
 	virtual void endShadowRender(uint32 passIndex, MeshRenderType renderType) = 0;
+
 	friend class MeshRenderSystem;
 };
 
@@ -151,7 +222,13 @@ private:
 	friend class GizmosEditorSystem;
 	friend class SelectorEditorSystem;
 public:
+	/**
+	 * @brief Returns true if mesh render system uses multithreaded render commands recording.
+	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
+	/**
+	 * @brief Returns true if mesh render system uses multithreaded render items preparing.
+	 */
 	bool useAsyncPreparing() const noexcept { return asyncPreparing; }
 };
 

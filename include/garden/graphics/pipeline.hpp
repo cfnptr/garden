@@ -387,6 +387,25 @@ public:
 	template<typename T>
 	const T* getPushConstantsAsync(int32 taskIndex) const { return getPushConstantsAsync<T>(taskIndex); }
 
+	/**
+	 * @brief Returns push constants data. (MT-Safe)
+	 * @details See the @ref Pipeline::pushConstants()
+	 * @param taskIndex index of the thread pool task
+	 */
+	uint8* getPushConstantsAsync(int32 taskIndex)
+	{
+		GARDEN_ASSERT(asyncRecording);
+		GARDEN_ASSERT(taskIndex >= 0);
+		GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
+		return pushConstantsBuffer.data() + pushConstantsSize * taskIndex;
+	}
+	/**
+	 * @brief Returns push constants data. (MT-Safe)
+	 * @details See the @ref Pipeline::pushConstants()
+	 * @param taskIndex index of the thread pool task
+	 */
+	const uint8* getPushConstantsAsync(int32 taskIndex) const { return getPushConstantsAsync(taskIndex); }
+
 	//******************************************************************************************************************
 	// Render commands
 	//******************************************************************************************************************

@@ -28,6 +28,7 @@ namespace garden::graphics
 using namespace std;
 class CommandBuffer;
 
+
 //**********************************************************************************************************************
 struct Command
 {
@@ -350,7 +351,7 @@ private:
 	void* fence = nullptr;
 	uint8* data = nullptr;
 	psize size = 0, capacity = 16;
-	map<ImageSubresource, ImageState> imageStates;
+	map<ImageSubresource, ImageState> imageStates; // TODO: maybe use unordered_map or faster hashtables?
 	map<ID<Buffer>, BufferState> bufferStates;
 	vector<LockResource> lockedResources;
 	vector<LockResource> lockingResources;

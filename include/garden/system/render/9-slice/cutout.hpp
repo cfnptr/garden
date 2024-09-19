@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Cutout 9-slice sprite rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/9-slice.hpp"
 
@@ -24,13 +29,14 @@ struct Cutout9SliceComponent final : public NineSliceRenderComponent
 {
 	float alphaCutoff = 0.5f;
 };
-struct Cutout9SliceFrame final : public NineSliceRenderFrame
+struct Cutout9SliceFrame final : public NineSliceAnimationFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
 };
 
-class Cutout9SliceSystem final : public NineSliceRenderSystem, public Singleton<Cutout9SliceSystem>
+class Cutout9SliceSystem final : public NineSliceRenderCompSystem<
+	Cutout9SliceComponent, Cutout9SliceFrame, false, false>, public Singleton<Cutout9SliceSystem>
 {
 public:
 	struct CutoutPushConstants final : public PushConstants
@@ -38,10 +44,6 @@ public:
 		float alphaCutoff;
 	};
 private:
-	uint16 _alignment = 0;
-	LinearPool<Cutout9SliceComponent, false> components;
-	LinearPool<Cutout9SliceFrame, false> animationFrames;
-
 	/**
 	 * @brief Creates a new cutout 9-slice rendering system instance.
 	 * 
@@ -58,29 +60,14 @@ private:
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
-	MeshRenderType getMeshRenderType() const final;
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
-	psize getMeshComponentSize() const final;
-	LinearPool<SpriteRenderFrame>& getFrameComponentPool() final;
-	psize getFrameComponentSize() const final;
-
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
-
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;
 };
