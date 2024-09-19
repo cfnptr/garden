@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Translucent sprite rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/sprite.hpp"
 
 namespace garden
 {
 
-using namespace garden::graphics;
-
 struct TranslucentSpriteComponent final : public SpriteRenderComponent { };
-struct TranslucentSpriteFrame final : public SpriteRenderFrame { };
+struct TranslucentSpriteFrame final : public SpriteAnimationFrame { };
 
-class TranslucentSpriteSystem final : public SpriteRenderSystem, public Singleton<TranslucentSpriteSystem>
+class TranslucentSpriteSystem final : public SpriteRenderCompSystem<
+	TranslucentSpriteComponent, TranslucentSpriteFrame, false, false>, public Singleton<TranslucentSpriteSystem>
 {
-	uint16 _alignment = 0;
-	LinearPool<TranslucentSpriteComponent, false> components;
-	LinearPool<TranslucentSpriteFrame, false> animationFrames;
-
 	/**
 	 * @brief Creates a new translucent sprite rendering system instance.
 	 * 
@@ -42,22 +42,8 @@ class TranslucentSpriteSystem final : public SpriteRenderSystem, public Singleto
 	 */
 	~TranslucentSpriteSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
 	MeshRenderType getMeshRenderType() const final;
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
-	psize getMeshComponentSize() const final;
-	LinearPool<SpriteRenderFrame>& getFrameComponentPool() final;
-	psize getFrameComponentSize() const final;
-
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;
 };

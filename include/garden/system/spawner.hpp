@@ -94,7 +94,7 @@ public:
 class SpawnerSystem final : public ComponentSystem<SpawnerComponent>, 
 	public Singleton<SpawnerSystem>, public ISerializable
 {
-	map<string, Hash128> sharedPrefabs;
+	unordered_map<string, Hash128> sharedPrefabs;
 	string valueStringCache;
 
 	/**
@@ -127,7 +127,7 @@ public:
 	/**
 	 * @brief Returns shared prefab map.
 	 */
-	const map<string, Hash128>& getSharedPrefabs() const noexcept { return sharedPrefabs; }
+	const unordered_map<string, Hash128>& getSharedPrefabs() const noexcept { return sharedPrefabs; }
 
 	/**
 	 * @brief Returns true if has shared prefab.

@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Opaque 9-slice sprite rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/9-slice.hpp"
 
@@ -21,14 +26,11 @@ namespace garden
 using namespace garden::graphics;
 
 struct Opaque9SliceComponent final : public NineSliceRenderComponent { };
-struct Opaque9SliceFrame final : public NineSliceRenderFrame { };
+struct Opaque9SliceFrame final : public NineSliceAnimationFrame { };
 
-class Opaque9SliceSystem final : public NineSliceRenderSystem, public Singleton<Opaque9SliceSystem>
+class Opaque9SliceSystem final : public NineSliceRenderCompSystem<
+	Opaque9SliceComponent, Opaque9SliceFrame, false, false>, public Singleton<Opaque9SliceSystem>
 {
-	uint16 _alignment = 0;
-	LinearPool<Opaque9SliceComponent, false> components;
-	LinearPool<Opaque9SliceFrame, false> animationFrames;
-
 	/**
 	 * @brief Creates a new opaque 9-slice rendering system instance.
 	 * 
@@ -42,23 +44,7 @@ class Opaque9SliceSystem final : public NineSliceRenderSystem, public Singleton<
 	 */
 	~Opaque9SliceSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
-	MeshRenderType getMeshRenderType() const final;
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
-	psize getMeshComponentSize() const final;
-	LinearPool<SpriteRenderFrame>& getFrameComponentPool() final;
-	psize getFrameComponentSize() const final;
-
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
-	
 	friend class ecsm::Manager;
 };
 

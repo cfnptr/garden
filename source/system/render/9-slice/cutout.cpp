@@ -21,7 +21,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 Cutout9SliceSystem::Cutout9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	NineSliceRenderSystem("9-slice/cutout", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+	NineSliceRenderCompSystem("9-slice/cutout", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
 Cutout9SliceSystem::~Cutout9SliceSystem() { unsetSingleton(); }
 
 void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
@@ -34,17 +34,6 @@ void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 	cutoutPushConstants->alphaCutoff = cutout9SliceView->alphaCutoff;
 }
 
-//**********************************************************************************************************************
-ID<Component> Cutout9SliceSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void Cutout9SliceSystem::destroyComponent(ID<Component> instance)
-{
-	auto componentView = components.get(ID<Cutout9SliceComponent>(instance));
-	destroyResources(View<SpriteRenderComponent>(componentView));
-	components.destroy(ID<Cutout9SliceComponent>(instance));
-}
 void Cutout9SliceSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	NineSliceRenderSystem::copyComponent(source, destination);
@@ -56,40 +45,6 @@ const string& Cutout9SliceSystem::getComponentName() const
 {
 	static const string name = "Cutout 9-Slice";
 	return name;
-}
-type_index Cutout9SliceSystem::getComponentType() const
-{
-	return typeid(Cutout9SliceComponent);
-}
-View<Component> Cutout9SliceSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<Cutout9SliceComponent>(instance)));
-}
-void Cutout9SliceSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
-}
-
-MeshRenderType Cutout9SliceSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
-LinearPool<MeshRenderComponent>& Cutout9SliceSystem::getMeshComponentPool()
-{
-	return *((LinearPool<MeshRenderComponent>*)&components);
-}
-psize Cutout9SliceSystem::getMeshComponentSize() const
-{
-	return sizeof(Cutout9SliceComponent);
-}
-LinearPool<SpriteRenderFrame>& Cutout9SliceSystem::getFrameComponentPool()
-{
-	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
-}
-psize Cutout9SliceSystem::getFrameComponentSize() const
-{
-	return sizeof(Cutout9SliceFrame);
 }
 
 //**********************************************************************************************************************
@@ -107,7 +62,6 @@ void Cutout9SliceSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 	deserializer.read("alphaCutoff", componentView->alphaCutoff);
 }
 
-//**********************************************************************************************************************
 void Cutout9SliceSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
@@ -130,10 +84,6 @@ ID<AnimationFrame> Cutout9SliceSystem::deserializeAnimation(IDeserializer& deser
 
 	return {};
 }
-View<AnimationFrame> Cutout9SliceSystem::getAnimation(ID<AnimationFrame> frame)
-{
-	return View<AnimationFrame>(animationFrames.get(ID<Cutout9SliceFrame>(frame)));
-}
 void Cutout9SliceSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
@@ -143,10 +93,4 @@ void Cutout9SliceSystem::animateAsync(View<Component> component,
 	auto frameB = View<Cutout9SliceFrame>(b);
 	if (frameA->animateAlphaCutoff)
 		componentView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
-}
-void Cutout9SliceSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	auto frameView = animationFrames.get(ID<Cutout9SliceFrame>(frame));
-	destroyResources(View<SpriteRenderFrame>(frameView));
-	animationFrames.destroy(ID<Cutout9SliceFrame>(frame));
 }

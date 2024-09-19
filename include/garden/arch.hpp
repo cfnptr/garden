@@ -21,12 +21,16 @@
 
 #if defined(__x86_64__) || defined(_M_X64)
 #define GARDEN_ARCH "x86-64"
+#define GARDEN_ARCH_X86_64
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
 #define GARDEN_ARCH "x86-32"
+#define GARDEN_ARCH_X86_32
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #define GARDEN_ARCH "ARM64"
+#define GARDEN_ARCH_ARM64
 #elif defined(__arm__) || defined(_M_ARM)
 #define GARDEN_ARCH "ARM32"
+#define GARDEN_ARCH_ARM32
 #else
 #error "Unknown CPU architecture"
 #endif

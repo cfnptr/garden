@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Opaque sprite rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/sprite.hpp"
 
 namespace garden
 {
 
-using namespace garden::graphics;
-
 struct OpaqueSpriteComponent final : public SpriteRenderComponent { };
-struct OpaqueSpriteFrame final : public SpriteRenderFrame { };
+struct OpaqueSpriteFrame final : public SpriteAnimationFrame { };
 
-class OpaqueSpriteSystem final : public SpriteRenderSystem, public Singleton<OpaqueSpriteSystem>
+class OpaqueSpriteSystem final : public SpriteRenderCompSystem<
+	OpaqueSpriteComponent, OpaqueSpriteFrame, false, false>, public Singleton<OpaqueSpriteSystem>
 {
-	uint16 _alignment = 0;
-	LinearPool<OpaqueSpriteComponent, false> components;
-	LinearPool<OpaqueSpriteFrame, false> animationFrames;
-
 	/**
 	 * @brief Creates a new opaque sprite rendering system instance.
 	 * 
@@ -42,23 +42,7 @@ class OpaqueSpriteSystem final : public SpriteRenderSystem, public Singleton<Opa
 	 */
 	~OpaqueSpriteSystem() final;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
-
-	MeshRenderType getMeshRenderType() const final;
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() final;
-	psize getMeshComponentSize() const final;
-	LinearPool<SpriteRenderFrame>& getFrameComponentPool() final;
-	psize getFrameComponentSize() const final;
-
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
-	
 	friend class ecsm::Manager;
 };
 

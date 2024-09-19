@@ -42,7 +42,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 #if GARDEN_DEBUG
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static const vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
 	//vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
 	vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -92,7 +92,7 @@ bool Vulkan::hasDebugUtils = false;
 #endif
 
 #if GARDEN_DEBUG
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -131,7 +131,7 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 	return false;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	uint32& instanceVersionMajor, uint32& instanceVersionMinor
 	#if GARDEN_DEBUG
@@ -239,7 +239,7 @@ static vk::DebugUtilsMessengerEXT createVkDebugMessenger(
 }
 #endif
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance, bool& isDeviceIntegrated)
 {
 	auto devices = instance.enumeratePhysicalDevices();
@@ -296,7 +296,7 @@ static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
 	return vk::SurfaceKHR(surface);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface,
 	uint32& graphicsQueueFamilyIndex, uint32& transferQueueFamilyIndex, uint32& computeQueueFamilyIndex,
 	uint32& graphicsQueueMaxCount, uint32& transferQueueMaxCount, uint32& computeQueueMaxCount)
@@ -387,7 +387,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 	computeQueueMaxCount = properties[computeIndex].queueCount;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::Device createVkDevice(
 	vk::PhysicalDevice physicalDevice, uint32 versionMajor, uint32 versionMinor,
 	uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex,
@@ -602,7 +602,7 @@ static vk::Device createVkDevice(
 	return physicalDevice.createDevice(deviceInfo);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static void updateVkDynamicLoader(uint32 versionMajor, uint32 versionMinor,
 	vk::Device device, vk::DispatchLoaderDynamic& dynamicLoader)
 {
@@ -631,7 +631,7 @@ static void updateVkDynamicLoader(uint32 versionMajor, uint32 versionMinor,
 	#endif
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVersion, vk::Instance instance,
 	vk::PhysicalDevice physicalDevice, vk::Device device, bool hasMemoryBudget, bool hasMemoryPriority)
 {
@@ -691,7 +691,7 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 	return device.createDescriptorPool(descriptorPoolInfo);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 namespace
 {
 	struct PipelineCacheHeader final
@@ -756,7 +756,7 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 	return device.createPipelineCache(cacheInfo);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static void destroyPipelineCache(const string& appDataName, Version appVersion, vk::PipelineCache pipelineCache, 
 	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, Hash128::State hashState)
 {
@@ -792,7 +792,7 @@ static void destroyPipelineCache(const string& appDataName, Version appVersion, 
 	device.destroyPipelineCache(pipelineCache);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Vulkan::initialize(const string& appName, const string& appDataName, Version appVersion,
 	uint2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading)
 {
@@ -895,7 +895,7 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	GraphicsAPI::computeCommandBuffer.initialize(CommandBufferType::ComputeOnly);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Vulkan::terminate()
 {
 	if (!GraphicsAPI::isRunning)
@@ -948,7 +948,7 @@ void Vulkan::terminate()
 	Hash128::destroyState(GraphicsAPI::hashState);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Vulkan::updateDestroyBuffer()
 {
 	auto& destroyBuffer = GraphicsAPI::destroyBuffers[GraphicsAPI::flushDestroyIndex];

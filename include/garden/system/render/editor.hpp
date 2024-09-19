@@ -57,7 +57,7 @@ public:
 			onComponent(_onComponent), priority(_priority) { }
 	};
 private:
-	map<type_index, Inspector> entityInspectors;
+	unordered_map<type_index, Inspector> entityInspectors;
 	fs::path exportsScenePath = "unnamed";
 	fs::path fileSelectDirectory;
 	fs::path selectedEntry;

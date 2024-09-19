@@ -21,80 +21,11 @@ using namespace garden;
 
 //**********************************************************************************************************************
 OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderSystem("sprite/opaque", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+	SpriteRenderCompSystem("sprite/opaque", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
 OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
 
-ID<Component> OpaqueSpriteSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void OpaqueSpriteSystem::destroyComponent(ID<Component> instance)
-{
-	auto componentView = components.get(ID<OpaqueSpriteComponent>(instance));
-	destroyResources(View<SpriteRenderComponent>(componentView));
-	components.destroy(ID<OpaqueSpriteComponent>(instance));
-}
 const string& OpaqueSpriteSystem::getComponentName() const
 {
 	static const string name = "Opaque Sprite";
 	return name;
-}
-type_index OpaqueSpriteSystem::getComponentType() const
-{
-	return typeid(OpaqueSpriteComponent);
-}
-View<Component> OpaqueSpriteSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<OpaqueSpriteComponent>(instance)));
-}
-void OpaqueSpriteSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
-}
-
-MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
-LinearPool<MeshRenderComponent>& OpaqueSpriteSystem::getMeshComponentPool()
-{
-	return *((LinearPool<MeshRenderComponent>*)&components);
-}
-psize OpaqueSpriteSystem::getMeshComponentSize() const
-{
-	return sizeof(OpaqueSpriteComponent);
-}
-LinearPool<SpriteRenderFrame>& OpaqueSpriteSystem::getFrameComponentPool()
-{
-	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
-}
-psize OpaqueSpriteSystem::getFrameComponentSize() const
-{
-	return sizeof(OpaqueSpriteFrame);
-}
-
-//**********************************************************************************************************************
-ID<AnimationFrame> OpaqueSpriteSystem::deserializeAnimation(IDeserializer& deserializer)
-{
-	OpaqueSpriteFrame frame;
-	SpriteRenderSystem::deserializeAnimation(deserializer, frame);
-
-	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
-		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap)
-	{
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	}
-
-	return {};
-}
-View<AnimationFrame> OpaqueSpriteSystem::getAnimation(ID<AnimationFrame> frame)
-{
-	return View<AnimationFrame>(animationFrames.get(ID<OpaqueSpriteFrame>(frame)));
-}
-void OpaqueSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	auto frameView = animationFrames.get(ID<OpaqueSpriteFrame>(frame));
-	destroyResources(View<SpriteRenderFrame>(frameView));
-	animationFrames.destroy(ID<OpaqueSpriteFrame>(frame));
 }

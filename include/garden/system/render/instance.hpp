@@ -31,6 +31,7 @@ protected:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> baseDescriptorSet = {};
 	ID<DescriptorSet> defaultDescriptorSet = {};
+	uint32 swapchainIndex = 0;
 	View<GraphicsPipeline> pipelineView = {};
 	uint8* instanceMap = nullptr;
 
@@ -57,8 +58,18 @@ protected:
 	virtual map<string, DescriptorSet::Uniform> getBaseUniforms();
 	virtual map<string, DescriptorSet::Uniform> getDefaultUniforms() { return {}; }
 	virtual ID<GraphicsPipeline> createPipeline() = 0;
+
+	#if GARDEN_DEBUG
+	void setInstancesBuffersName(const string& debugName);
+	#endif
 public:
+	/**
+	 * @breif Returns system graphics rendering pipeline.
+	 */
 	ID<GraphicsPipeline> getPipeline();
+	/**
+	 * @brief Returns system mesh instance data size in bytes.
+	 */
 	virtual uint64 getInstanceDataSize() = 0;
 };
 

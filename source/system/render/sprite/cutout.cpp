@@ -21,7 +21,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderSystem("sprite/cutout", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+	SpriteRenderCompSystem("sprite/cutout", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
 CutoutSpriteSystem::~CutoutSpriteSystem() { unsetSingleton(); }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
@@ -34,17 +34,6 @@ void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 	cutoutPushConstants->alphaCutoff = cutoutSpriteView->alphaCutoff;
 }
 
-//**********************************************************************************************************************
-ID<Component> CutoutSpriteSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void CutoutSpriteSystem::destroyComponent(ID<Component> instance)
-{
-	auto componentView = components.get(ID<CutoutSpriteComponent>(instance));
-	destroyResources(View<SpriteRenderComponent>(componentView));
-	components.destroy(ID<CutoutSpriteComponent>(instance));
-}
 void CutoutSpriteSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	SpriteRenderSystem::copyComponent(source, destination);
@@ -56,40 +45,6 @@ const string& CutoutSpriteSystem::getComponentName() const
 {
 	static const string name = "Cutout Sprite";
 	return name;
-}
-type_index CutoutSpriteSystem::getComponentType() const
-{
-	return typeid(CutoutSpriteComponent);
-}
-View<Component> CutoutSpriteSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<CutoutSpriteComponent>(instance)));
-}
-void CutoutSpriteSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
-}
-
-MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
-LinearPool<MeshRenderComponent>& CutoutSpriteSystem::getMeshComponentPool()
-{
-	return *((LinearPool<MeshRenderComponent>*)&components);
-}
-psize CutoutSpriteSystem::getMeshComponentSize() const
-{
-	return sizeof(CutoutSpriteComponent);
-}
-LinearPool<SpriteRenderFrame>& CutoutSpriteSystem::getFrameComponentPool()
-{
-	return *((LinearPool<SpriteRenderFrame>*)&animationFrames);
-}
-psize CutoutSpriteSystem::getFrameComponentSize() const
-{
-	return sizeof(CutoutSpriteFrame);
 }
 
 //**********************************************************************************************************************
@@ -107,7 +62,6 @@ void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 	deserializer.read("alphaCutoff", componentView->alphaCutoff);
 }
 
-//**********************************************************************************************************************
 void CutoutSpriteSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
@@ -130,10 +84,6 @@ ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deser
 
 	return {};
 }
-View<AnimationFrame> CutoutSpriteSystem::getAnimation(ID<AnimationFrame> frame)
-{
-	return View<AnimationFrame>(animationFrames.get(ID<CutoutSpriteFrame>(frame)));
-}
 void CutoutSpriteSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
@@ -143,10 +93,4 @@ void CutoutSpriteSystem::animateAsync(View<Component> component,
 	auto frameB = View<CutoutSpriteFrame>(b);
 	if (frameA->animateAlphaCutoff)
 		componentView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
-}
-void CutoutSpriteSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	auto frameView = animationFrames.get(ID<CutoutSpriteFrame>(frame));
-	destroyResources(View<SpriteRenderFrame>(frameView));
-	animationFrames.destroy(ID<CutoutSpriteFrame>(frame));
 }

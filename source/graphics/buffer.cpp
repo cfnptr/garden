@@ -18,7 +18,7 @@
 using namespace std;
 using namespace garden::graphics;
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 static vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind)
 {
 	vk::BufferUsageFlags flags;
@@ -70,7 +70,7 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUs
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size,
 	uint64 version) : Memory(size, access, usage, strategy, version)
 {
@@ -109,7 +109,7 @@ Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 
 	this->bind = bind;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 bool Buffer::destroy()
 {
 	if (!instance || readyLock > 0)
@@ -175,7 +175,7 @@ bool Buffer::destroy()
 	return true;
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 bool Buffer::isMappable() const
 {
 	if (map)
@@ -232,7 +232,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 }
 
 #if GARDEN_DEBUG
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Buffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
@@ -246,7 +246,7 @@ void Buffer::setDebugName(const string& name)
 }
 #endif
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -270,7 +270,7 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	}
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(source);

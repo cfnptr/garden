@@ -18,7 +18,7 @@
 using namespace std;
 using namespace garden::graphics;
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecording) :
 	Pipeline(createData, asyncRecording)
 {
@@ -59,7 +59,7 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 	destroyShaders(shaders);
 }
 
-//*********************************************************************************************************************
+//**********************************************************************************************************************
 void ComputePipeline::dispatch(const uint3& count, bool isGlobalCount)
 {
 	GARDEN_ASSERT(count > 0u);

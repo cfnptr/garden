@@ -40,8 +40,8 @@ const fs::path appResourcesPath = fs::path("@GARDEN_APP_RESOURCES_DIR@");
 
 static void createAppSystem()
 {
-	Manager::get()->createSystem<AppInfoSystem>(appName, appNameLowercase,
-		appDescription, appCreator, appCopyright, appVersion
+	Manager::Instance::get()->createSystem<AppInfoSystem>(
+		appName, appNameLowercase, appDescription, appCreator, appCopyright, appVersion
 		#if GARDEN_DEBUG
 		, appCachesPath, appResourcesPath
 		#endif

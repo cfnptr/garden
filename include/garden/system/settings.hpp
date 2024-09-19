@@ -48,7 +48,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	};
 
 	void* confReader = nullptr;
-	map<string, Item> items;
+	unordered_map<string, Item> items;
 
 	/**
 	 * @brief Creates a new settings system instance.
