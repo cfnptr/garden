@@ -52,3 +52,6 @@
 [submodule "libraries/png"]
 	path = libraries/png
 	url = https://github.com/pnggroup/libpng
+[submodule "libraries/tinyexr"]
+	path = libraries/tinyexr
+	url = https://github.com/syoyo/tinyexr

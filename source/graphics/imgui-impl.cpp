@@ -18,7 +18,6 @@
 using namespace std;
 using namespace garden::graphics;
 
-vk::PipelineCache ImGuiData::pipelineCache = {};
 vk::RenderPass ImGuiData::renderPass = {};
 vector<vk::Framebuffer> ImGuiData::framebuffers;
 #endif

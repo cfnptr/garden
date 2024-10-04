@@ -53,19 +53,21 @@
  * @brief Prints error and aborts program if statement is not true.
  * @param statement target statement
  */
-#define GARDEN_ASSERT(statement)                                       \
-if (!(statement))                                                      \
-{                                                                      \
-	printf("Assertion failed: (%s), function %s, file %s, line %d.\n", \
-		#statement, __PRETTY_FUNCTION__, __FILE__, __LINE__);          \
-	abort();                                                           \
-}
+#define GARDEN_ASSERT(statement)                                           \
+{                                                                          \
+	if (!(statement))                                                      \
+	{                                                                      \
+		printf("Assertion failed: (%s), function %s, file %s, line %d.\n", \
+			#statement, __PRETTY_FUNCTION__, __FILE__, __LINE__);          \
+		abort();                                                           \
+	}                                                                      \
+} (void)0
 #else
 /**
  * @brief Prints error and aborts program if statement is not true.
  * @param statement target statement
  */
-#define GARDEN_ASSERT(statement)
+#define GARDEN_ASSERT(statement) (void)0
 #endif
 
 namespace garden

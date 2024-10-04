@@ -279,26 +279,26 @@ struct DebugLabel
  * @param[in] name target region name
  * @param color label color in the profiler
  */
-#define SET_GPU_DEBUG_LABEL(name, color)
+#define SET_GPU_DEBUG_LABEL(name, color) (void)0
 /**
  * @brief Inserts debug label. (Debug Only)
  * 
  * @param[in] name target label name
  * @param color label color in the profiler
  */
-#define INSERT_GPU_DEBUG_LABEL(name, color)
+#define INSERT_GPU_DEBUG_LABEL(name, color) (void)0
 /**
  * @brief Begins command buffer label region. (Debug Only)
  * 
  * @param[in] name target region name
  * @param color label color in the profiler
  */
-#define BEGIN_GPU_DEBUG_LABEL(name, color)
+#define BEGIN_GPU_DEBUG_LABEL(name, color) (void)0
 /**
  * @brief Ends command buffer label region. (Debug Only)
  * @note Do not forget to end all label regions.
  */
-#define END_GPU_DEBUG_LABEL()
+#define END_GPU_DEBUG_LABEL() (void)0
 #endif
 
 } // namespace garden::graphics

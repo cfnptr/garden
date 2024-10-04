@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(BUILD_SHARED_LIBS OFF)
-set(SKIP_INSTALL_ALL TRUE)
-set(ZLIB_USE_STATIC_LIBS ON)
-
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
 # Based on Steam survey instruction set support.
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	add_compile_options(/MP /nologo /utf-8 /arch:AVX2)

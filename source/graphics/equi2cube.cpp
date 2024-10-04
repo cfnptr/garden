@@ -16,6 +16,12 @@
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
+#define TINYEXR_USE_MINIZ 0
+#define TINYEXR_USE_STB_ZLIB 0
+#include "zlib.h"
+#define TINYEXR_IMPLEMENTATION
+#include "tinyexr.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -67,42 +73,73 @@ void Equi2Cube::convert(const uint3& coords, uint32 cubemapSize, uint2 equiSize,
 		uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
 }
 
-static void writeImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
+static void writeExrImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
 {
 	auto directory = filePath.parent_path();
 	if (!fs::exists(directory))
 		fs::create_directories(directory);
 
-	auto pathString = filePath.generic_string();
-	stbi_write_hdr(pathString.c_str(), size, size, 4, (const float*)data.data());
+	const char* error = nullptr;
+	auto result = SaveEXR((const float*)data.data(), size, size, 
+		4, true, filePath.generic_string().c_str(), &error);
+
+	if (result != TINYEXR_SUCCESS)
+	{
+		auto errorString = string(error);
+		FreeEXRErrorMessage(error);
+		throw runtime_error("Faield to store EXR image. ("
+			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
+	}
 }
 
 //******************************************************************************************************************
 bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {	
 	GARDEN_ASSERT(!filePath.empty());
+	auto path = inputPath / filePath;
 	vector<uint8> dataBuffer, equiData; uint2 equiSize;
-	if (!File::tryLoadBinary(inputPath / filePath, dataBuffer))
+	float* pixels = nullptr; // width * height * RGBA
+	int sizeX = 0, sizeY = 0;
+
+	if (!File::tryLoadBinary(path, dataBuffer))
 		return false;
 
 	auto extension = filePath.extension();
-	if (extension == ".hdr")
+	if (extension == ".exr")
 	{
-		int sizeX = 0, sizeY = 0;
-		auto pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
+		const char* error = nullptr;
+		auto result = LoadEXRFromMemory(&pixels, &sizeX, &sizeY, dataBuffer.data(), dataBuffer.size(), &error);
+		if (result == TINYEXR_ERROR_CANT_OPEN_FILE)
+		{
+			FreeEXRErrorMessage(error);
+			return false;
+		}
+
+		if (result != TINYEXR_SUCCESS)
+		{
+			auto errorString = string(error);
+			FreeEXRErrorMessage(error);
+			throw runtime_error("Failed to load EXR image. ("
+				"path: " + filePath.generic_string() + ", error: " + errorString + ")");
+		}
+	}
+	else if (extension == ".hdr")
+	{
+		pixels = stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &sizeX, &sizeY, nullptr, 4);
 		if (!pixels)
-			throw runtime_error("Invalid image data.(path: " + filePath.generic_string() + ")");
-		equiSize = uint2((uint32)sizeX, (uint32)sizeY);
-		equiData.resize(sizeof(float4) * equiSize.x * equiSize.y);
-		memcpy(equiData.data(), pixels, equiData.size());
-		stbi_image_free(pixels);
+			throw runtime_error("Failed to load HDR image. (path: " + filePath.generic_string() + ")");
 	}
 	else
 	{
 		throw runtime_error("Unsupported image file extension. ("
 			"path: " + filePath.generic_string() + ")");
 	}
+
+	equiSize = uint2((uint32)sizeX, (uint32)sizeY);
+	equiData.resize(sizeof(float4) * equiSize.x * equiSize.y);
+	memcpy(equiData.data(), pixels, equiData.size());
+	free(pixels);
 
 	auto cubemapSize = equiSize.x / 4;
 	if (equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
@@ -138,12 +175,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto cacheFilePath = (outputPath / filePath).generic_string();
 	cacheFilePath.resize(cacheFilePath.length() - 4);
-	writeImageData(cacheFilePath + "-nx.hdr", cubemapSize, left);
-	writeImageData(cacheFilePath + "-px.hdr", cubemapSize, right);
-	writeImageData(cacheFilePath + "-ny.hdr", cubemapSize, bottom);
-	writeImageData(cacheFilePath + "-py.hdr", cubemapSize, top);
-	writeImageData(cacheFilePath + "-nz.hdr", cubemapSize, back);
-	writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front);
+	writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left);
+	writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right);
+	writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom);
+	writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top);
+	writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back);
+	writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
 	return true;
 }
 #endif

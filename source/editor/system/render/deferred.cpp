@@ -221,7 +221,7 @@ void DeferredRenderEditorSystem::deferredRender()
 {
 	if (drawMode != DrawMode::Lighting)
 		return;
-
+	return;
 	if (!lightingPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();

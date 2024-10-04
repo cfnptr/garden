@@ -653,8 +653,7 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	return allocator;
 }
 
-static vk::CommandPool createVkCommandPool(vk::Device device,
-	uint32 queueFamilyIndex, bool isTransient = false)
+static vk::CommandPool createVkCommandPool(vk::Device device, uint32 queueFamilyIndex, bool isTransient = false)
 {
 	vk::CommandPoolCreateFlags flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	if (isTransient)

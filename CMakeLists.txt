@@ -166,10 +166,10 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/vma/include libraries/stb
-	libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
+	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash 
 	ecsm-static math-static conf-static pack-static logy-static nets-static 
-	voxy glfw webp zlibstatic png_static FastNoise Jolt)
+	voxy glfw webp zlibstatic png_static tinyexr FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -236,6 +236,9 @@ set(PNG_FRAMEWORK OFF CACHE BOOL "" FORCE)
 set(PNG_TESTS OFF CACHE BOOL "" FORCE)
 set(PNG_TOOLS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/png)
+
+set(TINYEXR_BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/tinyexr)
 
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)

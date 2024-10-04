@@ -163,8 +163,9 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 	if (!createData.renderPass)
 	{
 		const auto& colorFormats = createData.colorFormats;
-		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size()); 
+
 		// Different shader output and framebuffer attachment count.
+		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size()); 
 
 		if (!colorFormats.empty())
 		{

@@ -41,8 +41,11 @@ static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 }
 
 //**********************************************************************************************************************
-InstanceRenderSystem::InstanceRenderSystem()
+InstanceRenderSystem::InstanceRenderSystem(bool useBaseDS, bool useDefaultDS)
 {
+	this->useBaseDS = useBaseDS;
+	this->useDefaultDS = useDefaultDS;
+
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InstanceRenderSystem::deinit);
 }
@@ -68,8 +71,11 @@ void InstanceRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning())
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(defaultDescriptorSet);
+		graphicsSystem->destroy(baseDescriptorSet);
 		destroyInstanceBuffers(instanceBuffers);
-		GraphicsSystem::Instance::get()->destroy(pipeline);
+		graphicsSystem->destroy(pipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InstanceRenderSystem::swapchainRecreate);
 	}
@@ -84,15 +90,15 @@ bool InstanceRenderSystem::isDrawReady()
 	if (!pipelineView->isReady())
 		return false;
 
-	if (!baseDescriptorSet)
+	if (!baseDescriptorSet && useBaseDS)
 	{
 		auto uniforms = getBaseUniforms();
 		baseDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
 	}
-	if (!defaultDescriptorSet)
+	if (!defaultDescriptorSet && useDefaultDS)
 	{
-		auto uniforms = getDefaultUniforms(); 
+		auto uniforms = getDefaultUniforms();
 		defaultDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms), 1);
 		SET_RESOURCE_DEBUG_NAME(defaultDescriptorSet, "descriptorSet.instance.default");
 	}

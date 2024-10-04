@@ -155,9 +155,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			for (const auto& resourceArray : pair.second.resourceSets)
 			{
 				for (auto resource : resourceArray)
-				{
 					GARDEN_ASSERT(resource);
-				}
 			}
 		}
 	}

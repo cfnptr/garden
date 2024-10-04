@@ -242,9 +242,15 @@ void MeshGizmosEditorSystem::editorRender()
 	if (cameraView)
 	{
 		if (cameraView->type == ProjectionType::Perspective)
-			modelScale *= length(translation);
+		{
+			if (translation != float3(0.0f))
+				modelScale *= length(translation);
+		}
 		else
-			modelScale *= (cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x) * 0.5f;
+		{
+			modelScale *= (cameraView->p.orthographic.height.y - 
+				cameraView->p.orthographic.height.x) * 0.5f;
+		}
 	}
 	model = calcModel(translation, rotation, float3(modelScale));
 

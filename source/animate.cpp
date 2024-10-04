@@ -18,6 +18,13 @@ using namespace garden;
 
 bool Animation::destroy()
 {
+	destroyKeyframes(keyframes);
+	keyframes.clear();
+	return true;
+}
+
+void Animation::destroyKeyframes(const map<int32, Animatables>& keyframes)
+{
 	for (const auto& keyframe : keyframes)
 	{
 		const auto& animatables = keyframe.second;
@@ -27,6 +34,4 @@ bool Animation::destroy()
 			animatableSystem->destroyAnimation(pair.second);
 		}
 	}
-	keyframes.clear();
-	return true;
 }

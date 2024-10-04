@@ -43,7 +43,7 @@ class GraphicsSystem;
  * @param resource target resource
  * @param name debug name
  */
-#define SET_RESOURCE_DEBUG_NAME(resource, name)
+#define SET_RESOURCE_DEBUG_NAME(resource, name) (void)0
 #endif
 
 /***********************************************************************************************************************
