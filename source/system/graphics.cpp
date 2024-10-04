@@ -56,9 +56,6 @@ void GraphicsSystem::initializeImGui()
 	ImGui::CreateContext();
 	setImGuiStyle();
 
-	auto pipelineCacheInfo = vk::PipelineCacheCreateInfo();
-	ImGuiData::pipelineCache = Vulkan::device.createPipelineCache(pipelineCacheInfo);
-
 	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
 	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
 
@@ -104,7 +101,7 @@ void GraphicsSystem::initializeImGui()
 	init_info.MinImageCount = 2;
 	init_info.ImageCount = (uint32)ImGuiData::framebuffers.size();
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	init_info.PipelineCache = ImGuiData::pipelineCache;
+	init_info.PipelineCache = Vulkan::pipelineCache;
 	init_info.Subpass = 0;
 	init_info.UseDynamicRendering = false; // TODO: use it instead of render pass hack.
 	init_info.Allocator = nullptr;
@@ -147,7 +144,6 @@ void GraphicsSystem::terminateImGui()
 	for (auto framebuffer : ImGuiData::framebuffers)
 		Vulkan::device.destroyFramebuffer(framebuffer);
 	Vulkan::device.destroyRenderPass(ImGuiData::renderPass);
-	Vulkan::device.destroyPipelineCache(ImGuiData::pipelineCache);
 	ImGui::DestroyContext();
 }
 void GraphicsSystem::recreateImGui()
@@ -1020,9 +1016,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 		layerCount = _image->getLayerCount();
 
 	if (type != Image::Type::Texture1DArray && type != Image::Type::Texture2DArray)
-	{
 		GARDEN_ASSERT(layerCount == 1);
-	}
 
 	auto imageView = GraphicsAPI::imageViewPool.create(false, image,
 		type, format, baseMip, mipCount, baseLayer, layerCount);

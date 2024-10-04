@@ -43,7 +43,7 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_TRACE(message) LogSystem::tryTrace(message)
 #else
-#define GARDEN_LOG_TRACE(message)
+#define GARDEN_LOG_TRACE(message) (void)0
 #endif
 
 #if GARDEN_LOG_LEVEL >= DEBUG_LOG_LEVEL
@@ -53,7 +53,7 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_DEBUG(message) LogSystem::tryDebug(message)
 #else
-#define GARDEN_LOG_DEBUG(message)
+#define GARDEN_LOG_DEBUG(message) (void)0
 #endif
 
 #if GARDEN_LOG_LEVEL >= INFO_LOG_LEVEL
@@ -63,7 +63,7 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_INFO(message) LogSystem::tryInfo(message)
 #else
-#define GARDEN_LOG_INFO(message)
+#define GARDEN_LOG_INFO(message) (void)0
 #endif
 
 #if GARDEN_LOG_LEVEL >= WARN_LOG_LEVEL
@@ -73,7 +73,7 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_WARN(message) LogSystem::tryWarn(message)
 #else
-#define GARDEN_LOG_WARN(message)
+#define GARDEN_LOG_WARN(message) (void)0
 #endif
 
 #if GARDEN_LOG_LEVEL >= ERROR_LOG_LEVEL
@@ -83,7 +83,7 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_ERROR(message) LogSystem::tryError(message)
 #else
-#define GARDEN_LOG_ERROR(message)
+#define GARDEN_LOG_ERROR(message) (void)0
 #endif
 
 #if GARDEN_LOG_LEVEL >= FATAL_LOG_LEVEL
@@ -93,7 +93,7 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_FATAL(message) LogSystem::tryFatal(message)
 #else
-#define GARDEN_LOG_FATAL(message)
+#define GARDEN_LOG_FATAL(message) (void)0
 #endif
 
 /**

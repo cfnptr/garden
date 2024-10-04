@@ -42,7 +42,7 @@
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
-#define GARDEN_MESSAGE_ERROR(cstr)
+#define GARDEN_MESSAGE_ERROR(cstr) (void)0
 #endif
 
 #if GARDEN_DEBUG

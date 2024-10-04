@@ -150,17 +150,46 @@ public:
 };
 
 /**
- * @brief Base serializable interface.
+ * @brief Base serializable system interface.
  */
 class ISerializable
 {
 public:
+	/**
+	 * @brief Prepares system for components serialization.
+	 * @param[in,out] serializer target serializer instance
+	 */
 	virtual void preSerialize(ISerializer& serializer) { }
+	/**
+	 * @brief Serializes specified system component.
+	 * 
+	 * @param[in,out] serializer target serializer instance
+	 * @param component system component view
+	 */
 	virtual void serialize(ISerializer& serializer, const View<Component> component) { }
+	/**
+	 * @brief Finalizes system after components serialization.
+	 * @param[in,out] serializer target serializer instance
+	 */
 	virtual void postSerialize(ISerializer& serializer) { }
 
+	/**
+	 * @brief Prepares system for components deserialization.
+	 * @param[in,out] deserializer target deserializer instance
+	 */
 	virtual void preDeserialize(IDeserializer& deserializer) { }
+	/**
+	 * @brief Deserializes specified system component.
+	 * 
+	 * @param[in,out] deserializer target deserializer instance
+	 * @param entity component containing entity
+	 * @param component system component view
+	 */
 	virtual void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) { }
+	/**
+	 * @brief Finalizes system after components deserialization.
+	 * @param[in,out] deserializer target deserializer instance
+	 */
 	virtual void postDeserialize(IDeserializer& deserializer) { }
 };
 

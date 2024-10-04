@@ -27,12 +27,11 @@ void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 		throw runtime_error("Failed to open binary file. (path: " + filePath.generic_string() + ")");
 
 	auto fileSize = (psize)inputStream.tellg();
+	data.resize(fileSize);
 	if (fileSize == 0)
-		throw runtime_error("No binary file data. (path: " + filePath.generic_string() + ")");
+		return;
 
 	inputStream.seekg(0, ios::beg);
-	data.resize(fileSize);
-
 	if (!inputStream.read((char*)data.data(), fileSize))
 		throw runtime_error("Failed to read binary file. (path: " + filePath.generic_string() + ")");
 }
@@ -44,11 +43,11 @@ bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
 		return false;
 
 	auto fileSize = (psize)inputStream.tellg();
+	data.resize(fileSize);
 	if (fileSize == 0)
-		return false;
+		return true;
 
 	inputStream.seekg(0, ios::beg);
-	data.resize(fileSize);
 	if (!inputStream.read((char*)data.data(), fileSize))
 		return false;
 

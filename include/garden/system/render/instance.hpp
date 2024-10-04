@@ -34,11 +34,16 @@ protected:
 	uint32 swapchainIndex = 0;
 	View<GraphicsPipeline> pipelineView = {};
 	uint8* instanceMap = nullptr;
+	bool useBaseDS = false;
+	bool useDefaultDS = false;
 
 	/**
 	 * @brief Creates a new instance rendering system instance.
+	 * 
+	 * @param useBaseDS use base descriptor set
+	 * @param useDefaultDS use default descriptor set
 	 */
-	InstanceRenderSystem();
+	InstanceRenderSystem(bool useBaseDS = true, bool useDefaultDS = true);
 	/**
 	 * @brief Destroys instance rendering system instance.
 	 */

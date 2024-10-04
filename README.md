@@ -102,6 +102,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)
+* [TinyEXR](https://github.com/syoyo/tinyexr) (BSD-3-Clause license)
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)
 * [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)

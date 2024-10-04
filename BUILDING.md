@@ -44,7 +44,7 @@ Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Envi
 
 ## 6. Install required packages
 
-1. Run ```vcpkg install zlib openssl``` using **Terminal** or **CMD** app
+1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static``` using **Terminal** or **CMD** app
 
 # Ubuntu (22.04 LTS)
 

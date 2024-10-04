@@ -1578,7 +1578,9 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 
 	outputFilePath += ".spv";
 	if (!File::tryLoadBinary(outputFilePath, data.vertexCode))
-		throw CompileError("failed to open compiled shader");
+		throw CompileError("failed to open compiled shader file");
+	if (data.vertexCode.empty())
+		throw CompileError("compiled shader file is empty");
 	return true;
 }
 
@@ -1810,7 +1812,9 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 
 	outputFilePath += ".spv";
 	if (!File::tryLoadBinary(outputFilePath, data.fragmentCode))
-		throw CompileError("failed to open compiled shader");
+		throw CompileError("failed to open compiled shader file");
+	if (data.fragmentCode.empty())
+		throw CompileError("compiled shader file is empty");
 	return true;
 }
 
@@ -2138,7 +2142,9 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 
 	outputFilePath += ".spv";
 	if (!File::tryLoadBinary(outputFilePath, data.code))
-		throw CompileError("failed to open compiled shader");
+		throw CompileError("failed to open compiled shader file");
+	if (data.code.empty())
+		throw CompileError("compiled shader file is empty");
 	return true;
 }
 #endif
@@ -2199,6 +2205,8 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	#else
 	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
 		throw runtime_error("Failed to open header file");
+	if (dataBuffer.empty())
+		throw runtime_error("Header file is empty");
 	#endif
 
 	GraphicsGslValues values; uint32 dataOffset = 0;
@@ -2249,7 +2257,7 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	#endif
 
 	if (data.vertexCode.empty() && data.fragmentCode.empty())
-		throw runtime_error("Failed to open graphics shader files");
+		throw runtime_error("Graphics shader files are empty");
 }
 
 //******************************************************************************************************************
@@ -2266,6 +2274,8 @@ void Compiler::loadComputeShader(ComputeData& data)
 	#else
 	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
 		throw runtime_error("Failed to open header file");
+	if (dataBuffer.empty())
+		throw runtime_error("Header file is empty");
 	#endif
 
 	ComputeGslValues values; uint32 dataOffset = 0; 
@@ -2289,6 +2299,8 @@ void Compiler::loadComputeShader(ComputeData& data)
 	#else
 	if (!File::tryLoadBinary(data.cachesPath / computeFilePath, data.code))
 		throw runtime_error("Failed to open compute shader file");
+	if (data.code.empty())
+		throw runtime_error("Compute shader file is empty");
 	#endif
 }
 

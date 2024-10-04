@@ -96,12 +96,11 @@ public:
 		float colorMapLayer;
 	};
 protected:
-	fs::path pipelinePath = {};
-	Hash128::State hashState = nullptr;
-	ID<ImageView> defaultImageView = {};
 	bool deferredBuffer = false;
 	bool linearFilter = false;
-	uint16 _alignment0 = 0;
+	ID<ImageView> defaultImageView = {};
+	Hash128::State hashState = nullptr;
+	fs::path pipelinePath = {};
 
 	/**
 	 * @brief Creates a new sprite render system instance.

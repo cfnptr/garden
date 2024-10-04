@@ -29,7 +29,6 @@ using namespace std;
 class ImGuiData final
 {
 public:
-	static vk::PipelineCache pipelineCache;
 	static vk::RenderPass renderPass;
 	static vector<vk::Framebuffer> framebuffers;
 };

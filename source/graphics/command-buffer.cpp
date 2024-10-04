@@ -25,8 +25,7 @@ using namespace garden::graphics;
 static vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
 static vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
 
-static vk::CommandBuffer createVkCommandBuffer(
-	vk::Device device, vk::CommandPool commandPool)
+static vk::CommandBuffer createVkCommandBuffer(vk::Device device, vk::CommandPool commandPool)
 {
 	vk::CommandBufferAllocateInfo commandBufferInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1);
 	vk::CommandBuffer commandBuffer;
@@ -133,7 +132,8 @@ CommandBuffer::ImageState& CommandBuffer::getImageState(ID<Image> image, uint32 
 		ImageState newImageState;
 		newImageState.access = (uint32)VK_ACCESS_NONE;
 		newImageState.layout = imageView->layouts[mip * imageView->layerCount + layer];
-		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eNone;
+		newImageState.stage = imageView->swapchain ? 
+			(uint32)vk::PipelineStageFlagBits::eBottomOfPipe : (uint32)vk::PipelineStageFlagBits::eNone;
 		auto addResult = imageStates.emplace(imageSubresource, newImageState);
 		return addResult.first->second;
 	}
@@ -505,23 +505,25 @@ void CommandBuffer::submit(uint64 frameIndex)
 		vk::Image swapchainImage((VkImage)GraphicsAPI::imagePool.get(swapchainBuffer->colorImage)->instance);
 		if (!hasAnyCommand)
 		{
+			auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
+			ImageState newImageState;
+			newImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
+			newImageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
+			newImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+
 			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlagBits::eNone, vk::AccessFlagBits::eTransferWrite,
-				vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				swapchainImage, vk::ImageSubresourceRange(
-					vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+				swapchainImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
 			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-				vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, imageMemoryBarrier);
+				vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
+			oldImageState = newImageState;
+
 			array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 			commandBuffer.clearColorImage(swapchainImage,
 				vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(clearColor),
 				vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-			
-			auto& imageState = getImageState(swapchainBuffer->colorImage, 0, 0);
-			imageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-			imageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
-			imageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
 		}
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -562,9 +564,6 @@ void CommandBuffer::submit(uint64 frameIndex)
 		#endif
 
 		auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
-		auto oldPipelineStage = (vk::PipelineStageFlagBits)oldImageState.stage;
-		if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
-			oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
 		ImageState newImageState;
 		newImageState.access = (uint32)vk::AccessFlagBits::eNone;
 		newImageState.layout = (uint32)vk::ImageLayout::ePresentSrcKHR;
@@ -574,7 +573,8 @@ void CommandBuffer::submit(uint64 frameIndex)
 			(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 			swapchainImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-		commandBuffer.pipelineBarrier(oldPipelineStage,
+		commandBuffer.pipelineBarrier(oldImageState.stage == (uint32)vk::PipelineStageFlagBits::eNone ?
+			vk::PipelineStageFlagBits::eTopOfPipe : (vk::PipelineStageFlagBits)oldImageState.stage,
 			vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
 		oldImageState = newImageState;
 
@@ -642,6 +642,8 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 		ImageState newImageState;
 		newImageState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
+		if (colorAttachment.load)
+			newImageState.access |= (uint32)vk::AccessFlagBits::eColorAttachmentRead;
 		newImageState.layout = (uint32)vk::ImageLayout::eColorAttachmentOptimal;
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		newPipelineStage |= newImageState.stage;
@@ -710,7 +712,9 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		oldPipelineStage |= oldImageState.stage;
 
 		ImageState newImageState;
-		newImageState.access = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+		newImageState.access |= (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+		if (depthStencilAttachment.load)
+			newImageState.access |= (uint32)vk::AccessFlagBits::eDepthStencilAttachmentRead;
 		newImageState.layout = (uint32)vk::ImageLayout::eDepthStencilAttachmentOptimal;
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eEarlyFragmentTests;
 		newPipelineStage |= newImageState.stage;

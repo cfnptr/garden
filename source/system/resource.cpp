@@ -24,6 +24,11 @@
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
+#define TINYEXR_USE_MINIZ 0
+#define TINYEXR_USE_STB_ZLIB 0
+#include "zlib.h"
+#include "tinyexr.h"
+
 #include "webp/decode.h"
 #include "png.h"
 #include "stb_image.h"
@@ -38,12 +43,12 @@ using namespace math::ibl;
 static const uint8 imageFileExtCount = 8;
 static const char* imageFileExts[] =
 {
-	".webp", ".png", ".jpg", ".jpeg", ".hdr", ".bmp", ".psd", ".tga"
+	".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga"
 };
 static const ImageFileType imageFileTypes[] =
 {
 	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Jpg, ImageFileType::Jpg,
-	ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, ImageFileType::Tga
+	ImageFileType::Exr, ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, ImageFileType::Tga
 };
 
 //**********************************************************************************************************************
@@ -485,7 +490,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#else
-	auto filePath = appCachesPath / imagePath; filePath += ".hdr";
+	auto filePath = appCachesPath / imagePath; filePath += ".exr";
 	fileCount += fs::exists(filePath) ? 1 : 0;
 
 	if (fileCount == 0)
@@ -532,7 +537,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	}
 	else
 	{
-		fileType = ImageFileType::Hdr;
+		fileType = ImageFileType::Exr;
 	}
 
 	File::loadBinary(filePath, dataBuffer);
@@ -544,14 +549,23 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
-static void writeImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
+static void writeExrImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
 {
 	auto directory = filePath.parent_path();
 	if (!fs::exists(directory))
 		fs::create_directories(directory);
 
-	auto pathString = filePath.generic_string();
-	stbi_write_hdr(pathString.c_str(), size, size, 4, (const float*)data.data());
+	const char* error = nullptr;
+	auto result = SaveEXR((const float*)data.data(), size, size,
+		4, true, filePath.generic_string().c_str(), &error);
+
+	if (result != TINYEXR_SUCCESS)
+	{
+		auto errorString = string(error);
+		FreeEXRErrorMessage(error);
+		throw runtime_error("Faield to store EXR image. ("
+			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
+	}
 }
 #endif
 
@@ -692,12 +706,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			{
 				switch (task.getTaskIndex())
 				{
-					case 0: writeImageData(cacheFilePath + "-nx.hdr", cubemapSize, left); break;
-					case 1: writeImageData(cacheFilePath + "-px.hdr", cubemapSize, right); break;
-					case 2: writeImageData(cacheFilePath + "-ny.hdr", cubemapSize, bottom); break;
-					case 3: writeImageData(cacheFilePath + "-py.hdr", cubemapSize, top); break;
-					case 4: writeImageData(cacheFilePath + "-nz.hdr", cubemapSize, back); break;
-					case 5: writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front); break;
+					case 0: writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left); break;
+					case 1: writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right); break;
+					case 2: writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom); break;
+					case 3: writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top); break;
+					case 4: writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back); break;
+					case 5: writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front); break;
 					default: abort();
 				}
 			}), 6);
@@ -705,12 +719,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 		else
 		{
-			writeImageData(cacheFilePath + "-nx.hdr", cubemapSize, left);
-			writeImageData(cacheFilePath + "-px.hdr", cubemapSize, right);
-			writeImageData(cacheFilePath + "-ny.hdr", cubemapSize, bottom);
-			writeImageData(cacheFilePath + "-py.hdr", cubemapSize, top);
-			writeImageData(cacheFilePath + "-nz.hdr", cubemapSize, back);
-			writeImageData(cacheFilePath + "-pz.hdr", cubemapSize, front);
+			writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left);
+			writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right);
+			writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom);
+			writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top);
+			writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back);
+			writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
 		}
 
 		GARDEN_LOG_TRACE("Converted spherical cubemap. (path: " + path.generic_string() + ")");
@@ -812,7 +826,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga)
 	{
 		int sizeX = 0, sizeY = 0;
-		auto pixelData = (uint8*)stbi_load_from_memory(data,
+		auto pixelData = stbi_load_from_memory(data,
 			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
 			throw runtime_error("Invalid JPG image data.");
@@ -821,10 +835,29 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
 	}
+	else if (fileType == ImageFileType::Exr)
+	{
+		int sizeX = 0, sizeY = 0;
+		float* pixelData = nullptr;
+		const char* error = nullptr;
+
+		auto result = LoadEXRFromMemory(&pixelData, &sizeX, &sizeY, data, dataSize, &error);
+		if (result != TINYEXR_SUCCESS)
+		{
+			auto errorString = string(error);
+			FreeEXRErrorMessage(error);
+			throw runtime_error(errorString);
+		}
+
+		imageSize = uint2(sizeX, sizeY);
+		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
+		memcpy(pixels.data(), pixelData, pixels.size());
+		free(pixelData);
+	}
 	else if (fileType == ImageFileType::Hdr)
 	{
 		int sizeX = 0, sizeY = 0;
-		auto pixelData = (uint8*)stbi_loadf_from_memory(data,
+		auto pixelData = stbi_loadf_from_memory(data,
 			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
 			throw runtime_error("Invalid HDR image data.");
@@ -837,7 +870,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 
 	switch (fileType)
 	{
-	case garden::ImageFileType::Hdr:
+	case garden::ImageFileType::Exr:
 		format = Image::Format::SfloatR32G32B32A32;
 		break;
 	default:
@@ -952,9 +985,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
 
 	if (paths.size() > 1)
-	{
 		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray));
-	}
 	
 	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
