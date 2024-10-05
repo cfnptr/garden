@@ -32,7 +32,7 @@
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
-#define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(NULL, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
+#define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(nullptr, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
 #else
 /**
  * @brief Declares application main function.

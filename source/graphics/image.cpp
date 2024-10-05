@@ -105,6 +105,22 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 
 	if (type == Type::Cubemap)
 		imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+	#if GARDEN_DEBUG
+	vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
+	imageFormatInfo.format = vk::Format(imageInfo.format);
+	imageFormatInfo.type = vk::ImageType(imageInfo.imageType);
+	imageFormatInfo.tiling = vk::ImageTiling(imageInfo.tiling);
+	imageFormatInfo.usage = vk::ImageUsageFlags(imageInfo.usage);
+	imageFormatInfo.flags = vk::ImageCreateFlags(imageInfo.flags);
+	auto imageFormatProperties = Vulkan::physicalDevice.getImageFormatProperties2(imageFormatInfo);
+	GARDEN_ASSERT(size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width);
+	GARDEN_ASSERT(size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height);
+	GARDEN_ASSERT(size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth);
+	GARDEN_ASSERT(mipCount <= imageFormatProperties.imageFormatProperties.maxMipLevels);
+	GARDEN_ASSERT(layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers);
+	GARDEN_ASSERT(imageInfo.samples <= (VkSampleCountFlags)imageFormatProperties.imageFormatProperties.sampleCounts);
+	#endif
  
 	VmaAllocationCreateInfo allocationCreateInfo = {};
 	allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -215,6 +231,24 @@ ID<ImageView> Image::getDefaultView()
 
 	return defaultView;
 }
+
+ bool Image::isSupported(Type type, Format format, Bind bind, const uint3& size, uint8 mipCount, uint32 layerCount)
+ {
+	vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
+	imageFormatInfo.format = toVkFormat(format);
+	imageFormatInfo.type = toVkImageType(type);
+	imageFormatInfo.tiling = vk::ImageTiling::eOptimal;
+	imageFormatInfo.usage = toVkImageUsages(bind);
+	if (type == Type::Cubemap)
+		imageFormatInfo.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
+
+	auto imageFormatProperties = Vulkan::physicalDevice.getImageFormatProperties2(imageFormatInfo);
+	return size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width &&
+		size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height &&
+		size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth &&
+		mipCount <= imageFormatProperties.imageFormatProperties.maxMipLevels && 
+		layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers;
+ }
 
 #if GARDEN_DEBUG
 void Image::setDebugName(const string& name)

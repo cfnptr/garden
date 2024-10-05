@@ -121,6 +121,7 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 	case Image::Format::SfloatR16G16B16A16: return vk::Format::eR16G16B16A16Sfloat;
 	case Image::Format::SfloatR32G32B32A32: return vk::Format::eR32G32B32A32Sfloat;
 	case Image::Format::UnormA2R10G10B10: return vk::Format::eA2R10G10B10UnormPack32;
+	case Image::Format::UnormA2B10G10R10: return vk::Format::eA2B10G10R10UnormPack32;
 	case Image::Format::UfloatB10G11R11: return vk::Format::eB10G11R11UfloatPack32;
 	case Image::Format::UnormD16: return vk::Format::eD16Unorm;
 	case Image::Format::SfloatD32: return vk::Format::eD32Sfloat;
@@ -151,6 +152,7 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 	case vk::Format::eR16G16B16A16Sfloat: return Image::Format::SfloatR16G16B16A16;
 	case vk::Format::eR32G32B32A32Sfloat: return Image::Format::SfloatR32G32B32A32;
 	case vk::Format::eA2R10G10B10UnormPack32: return Image::Format::UnormA2R10G10B10;
+	case vk::Format::eA2B10G10R10UnormPack32: return Image::Format::UnormA2B10G10R10;
 	case vk::Format::eB10G11R11UfloatPack32: return Image::Format::UfloatB10G11R11;
 	case vk::Format::eD16Unorm: return Image::Format::UnormD16;
 	case vk::Format::eD32Sfloat: return Image::Format::SfloatD32;

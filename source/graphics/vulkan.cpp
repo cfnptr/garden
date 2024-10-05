@@ -240,7 +240,7 @@ static vk::DebugUtilsMessengerEXT createVkDebugMessenger(
 #endif
 
 //**********************************************************************************************************************
-static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance, bool& isDeviceIntegrated)
+static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance)
 {
 	auto devices = instance.enumeratePhysicalDevices();
 
@@ -272,20 +272,11 @@ static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance, bool& isD
 			{
 				targetIndex = i;
 				targetScore = score;
-
-				isDeviceIntegrated = properties.deviceType ==
-					vk::PhysicalDeviceType::eIntegratedGpu;
 			}
 		}
-		
-		return devices[targetIndex];
 	}
-	else
-	{
-		auto properties = devices[0].getProperties();
-		isDeviceIntegrated = properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
-		return devices[0];
-	}
+
+	return devices[targetIndex];
 }
 
 static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
@@ -411,13 +402,6 @@ static vk::Device createVkDevice(
 		else
 			transferQueueIndex = graphicsQueueIndex;
 	}
-	else if (transferQueueFamilyIndex == computeQueueFamilyIndex)
-	{
-		if (computeQueueCount < computeQueueMaxCount)
-			transferQueueIndex = computeQueueCount++;
-		else
-			transferQueueIndex = computeQueueIndex;
-	}
 	else
 	{
 		transferQueueCount = 1;
@@ -456,7 +440,7 @@ static vk::Device createVkDevice(
 	if (transferQueueCount > 0)
 	{
 		queueInfos.push_back(vk::DeviceQueueCreateInfo({},
-		transferQueueFamilyIndex, transferQueueCount, queuePriorities.data()));
+			transferQueueFamilyIndex, transferQueueCount, queuePriorities.data()));
 	}
 	if (computeQueueCount > 0)
 	{
@@ -827,7 +811,7 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	auto window = glfwCreateWindow(windowSize.x, windowSize.y,
-		appName.c_str(), primaryMonitor, NULL);
+		appName.c_str(), primaryMonitor, nullptr);
 	if (!window)
 		throw runtime_error("Failed to create GLFW window.");
 	GraphicsAPI::window = window;
@@ -856,12 +840,16 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	dynamicLoader = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 	#endif
 	
-	physicalDevice = getBestPhysicalDevice(instance, GraphicsAPI::isDeviceIntegrated);
+	physicalDevice = getBestPhysicalDevice(instance);
+	deviceProperties = physicalDevice.getProperties2();
+	versionMajor = VK_API_VERSION_MAJOR(deviceProperties.properties.apiVersion);
+	versionMinor = VK_API_VERSION_MINOR(deviceProperties.properties.apiVersion);
+	GraphicsAPI::isDeviceIntegrated = 
+		deviceProperties.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 	surface = createVkSurface(instance, window);
 	getVkQueueFamilyIndices(physicalDevice, surface, graphicsQueueFamilyIndex,
 		transferQueueFamilyIndex, computeQueueFamilyIndex, graphicsQueueMaxCount,
 		transferQueueMaxCount, computeQueueMaxCount);
-	deviceProperties = physicalDevice.getProperties2();
 	deviceFeatures = physicalDevice.getFeatures2();
 	device = createVkDevice(physicalDevice, versionMajor, versionMinor,
 		graphicsQueueFamilyIndex, transferQueueFamilyIndex, computeQueueFamilyIndex,
