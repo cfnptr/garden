@@ -265,7 +265,7 @@ void GraphicsSystem::preInit()
 
 	GARDEN_LOG_INFO("GPU: " + string(Vulkan::deviceProperties.properties.deviceName.data()));
 	auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
-	GARDEN_LOG_INFO("Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
+	GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
 	GARDEN_LOG_INFO("Framebuffer size: " + to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
 

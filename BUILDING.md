@@ -3,8 +3,8 @@
 ## Operating Systems
 
 * [Window (10/11)](BUILDING.md#windows-1011)
-* [Ubuntu (22.04 LTS)](BUILDING.md#ubuntu-2204-lts)
-* [macOS (Ventura 13)](BUILDING.md#macos-ventura-13)
+* [Ubuntu (22.04/24.04)](BUILDING.md#ubuntu-22042404)
+* [macOS (14/15)](BUILDING.md#macos-1415)
 * [Build Project](BUILDING.md#build-project)
 
 # Windows (10/11)
@@ -46,7 +46,7 @@ Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Envi
 
 1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static``` using **Terminal** or **CMD** app
 
-# Ubuntu (22.04 LTS)
+# Ubuntu (22.04/24.04)
 
 ## 1. Install Visual Studio Code (Or any other IDE)
 
@@ -65,7 +65,7 @@ Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Envi
 Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 
 
-# macOS (Ventura 13)
+# macOS (14/15)
 
 ## 1. Install Xcode (Or any other IDE)
 

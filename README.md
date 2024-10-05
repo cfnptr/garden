@@ -9,8 +9,6 @@ extensible architecture, built-in editor, convenient creation of rendering pipel
 shader language (GSL), and automatic placement of GPU memory barriers, which are necessary in recent 
 graphics APIs. See the [features](FEATURES.md) list.
 
-See the [Voxfield](https://github.com/cfnptr/voxfield) game as an usage example.
-
 ## Supported operating systems
 
 * Windows (10/11)

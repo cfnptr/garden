@@ -214,7 +214,7 @@ protected:
 	/**
 	 * @brief Destroys DoNotSerialize system instance.
 	 */
-	~DoNotSerializeSystem() final;
+	~DoNotSerializeSystem() override;
 
 	const string& getComponentName() const override;
 	friend class ecsm::Manager;

@@ -99,6 +99,7 @@ public:
 		SfloatR16G16B16A16, /**< 16-bit signed floating point (red, green, blue, alpha channel) format. */
 		SfloatR32G32B32A32, /**< 32-bit signed floating point (red, green, blue, alpha channel) format. */
 		UnormA2R10G10B10,   /**< normalized uint as float (2-bit alpha, 10-bit red/green/blue channel) format. */
+		UnormA2B10G10R10,   /**< normalized uint as float (2-bit alpha, 10-bit blue/green/red channel) format. */
 		UfloatB10G11R11,    /**< Unsigned floating point (10-bit blue, 11-bit green, 10-bit red channel) format. */
 		UnormD16,           /**< 16-bit normalized uint as float depth format. */
 		SfloatD32,          /**< 32-bit signed floating point depth format. */
@@ -262,6 +263,19 @@ public:
 	 * @note Default image view instance is created on a first getter call.
 	 */
 	bool hasDefaultView() const noexcept { return (bool)defaultView; }
+
+	/**
+	 * @brief Returns true if specified image properties are supported by the GPU.
+	 * 
+	 * @param type image dimensionality
+	 * @param format image data format
+	 * @param bind image bind type
+	 * @param[in] size image size in pixels
+	 * @param mipCount image mip level count
+	 * @param layerCount image array layer count
+	 */
+	static bool isSupported(Type type, Format format, Bind bind, 
+		const uint3& size, uint8 mipCount = 1, uint32 layerCount = 1);
 
 	#if GARDEN_DEBUG
 	/**
@@ -887,7 +901,9 @@ static psize toBinarySize(Image::Format imageFormat)
 	case Image::Format::SfloatR32G32: return 8;
 	case Image::Format::SfloatR16G16B16A16: return 8;
 	case Image::Format::SfloatR32G32B32A32: return 16;
-	case Image::Format::UnormA2R10G10B10: return 4;
+	case Image::Format::UnormA2R10G10B10:
+	case Image::Format::UnormA2B10G10R10:
+		return 4;
 	case Image::Format::UfloatB10G11R11: return 4;
 	case Image::Format::UnormD16: return 2;
 	case Image::Format::SfloatD32: return 4;
@@ -1009,7 +1025,7 @@ static const string_view imageFormatNames[(psize)Image::Format::Count] =
 	"Undefined", "UintR8", "UintR16", "UintR32",
 	"UnormR8", "UnormR8G8", "UnormR8G8B8A8", "UnormB8G8R8A8", "SrgbR8G8B8A8", "SrgbB8G8R8A8",
 	"SfloatR16G16", "SfloatR32G32", "SfloatR16G16B16A16", "SfloatR32G32B32A32",
-	"UnormA2R10G10B10", "UfloatB10G11R11",
+	"UnormA2R10G10B10", "UnormA2B10G10R10", "UfloatB10G11R11",
 	"UnormD16", "SfloatD32", "UnormD24UintS8", "SfloatD32Uint8S",
 };
 

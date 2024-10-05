@@ -24,8 +24,49 @@
 #include "mpio/os.hpp"
 #include <thread>
 
+#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+#include <sys/utsname.h>
+#elif GARDEN_OS_WINDOWS
+#include <windows.h>
+#pragma comment(lib, "Version.lib")
+#endif
+
 using namespace mpio;
 using namespace garden;
+
+//**********************************************************************************************************************
+static void logKernelInfo(LogSystem* logSystem)
+{
+	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+	struct utsname info;
+	memset(&info, 0, sizeof(struct utsname));
+	auto result = uname(&info);
+	if (result != 0)
+		throw runtime_error("Failed to get kernel information.");
+	logSystem->info("OS name: " + string(info.sysname));
+	logSystem->info("OS release: " + string(info.release));
+	logSystem->info("OS version: " + string(info.version));
+	logSystem->info("OS machine: " + string(info.machine));
+	#elif GARDEN_OS_WINDOWS
+	auto kernelDLL = L"kernel32.dll"; DWORD dummy;
+	auto infoSize = GetFileVersionInfoSizeExW(FILE_VER_GET_NEUTRAL, kernelDLL, &dummy);
+	vector<char> buffer(infoSize);
+	auto result = GetFileVersionInfoExW(FILE_VER_GET_NEUTRAL, kernelDLL, dummy, buffer.size(), buffer.data());
+	if (!result)
+		throw runtime_error("Failed to get kernel file version information.");
+	void* info = nullptr; UINT size = 0;
+	result = VerQueryValueW(buffer.data(), L"\\", &info, &size);
+	if (!result)
+		throw runtime_error("Failed to get kernel version.");
+	auto fileInfo = (const VS_FIXEDFILEINFO*)info;
+	auto osName = HIWORD(fileInfo->dwFileVersionMS) == 10 && HIWORD(fileInfo->dwFileVersionLS) >= 22000 ?
+		string("Windows 11") : "Windows " + to_string(HIWORD(fileInfo->dwFileVersionMS));
+	logSystem->info("OS name: " + osName);
+	logSystem->info("OS version: " + 
+		to_string(HIWORD(fileInfo->dwFileVersionMS)) + "." + to_string(LOWORD(fileInfo->dwFileVersionMS)) + "." + 
+		to_string(HIWORD(fileInfo->dwFileVersionLS)) + "." + to_string(LOWORD(fileInfo->dwFileVersionLS)));
+	#endif
+}
 
 //**********************************************************************************************************************
 LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : Singleton(setSingleton)
@@ -48,7 +89,8 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	info("Started logging system. (UTC+0)");
 	info(appInfoSystem->getName() + " [v" + appInfoSystem->getVersion().toString3() + "]");
 	info(GARDEN_NAME_STRING " Engine [v" GARDEN_VERSION_STRING "]");
-	info("OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
+	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
+	logKernelInfo(this);
 	info("SIMDs: " + string(GARDEN_SIMD_STRING));
 	info("CPU: " + string(OS::getCpuName()));
 	info("Thread count: " + to_string(thread::hardware_concurrency()));

@@ -28,7 +28,7 @@ static void createGBuffers(ID<Image>* gBuffers)
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	gBuffers[0] = graphicsSystem->createImage(Image::Format::SrgbR8G8B8A8, binds, mips, framebufferSize, strategy);
 	SET_RESOURCE_DEBUG_NAME(gBuffers[0], "image.deferred.gBuffer0");
-	gBuffers[1] = graphicsSystem->createImage(Image::Format::UnormA2R10G10B10, binds, mips, framebufferSize, strategy);
+	gBuffers[1] = graphicsSystem->createImage(Image::Format::UnormA2B10G10R10, binds, mips, framebufferSize, strategy);
 	SET_RESOURCE_DEBUG_NAME(gBuffers[1], "image.deferred.gBuffer1");
 	gBuffers[2] = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, binds, mips, framebufferSize, strategy);
 	SET_RESOURCE_DEBUG_NAME(gBuffers[2], "image.deferred.gBuffer2");

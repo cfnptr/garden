@@ -71,11 +71,11 @@ void WatcherSystem::initialize()
 	FSEventStreamContext context;
 	context.version = 0;
 	context.info = this;
-	context.retain = NULL;
-	context.release = NULL;
-	context.copyDescription = NULL;
+	context.retain = nullptr;
+	context.release = nullptr;
+	context.copyDescription = nullptr;
 
-	auto stream = FSEventStreamCreate(NULL, &onChange, &context, pathsToWatch,
+	auto stream = FSEventStreamCreate(nullptr, &onChange, &context, pathsToWatch,
 		kFSEventStreamEventIdSinceNow, 1.0, kFSEventStreamCreateFlagFileEvents);
 	this->instance = stream;
 

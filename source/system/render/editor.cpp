@@ -270,7 +270,7 @@ void EditorRenderSystem::showAboutWindow()
 			auto apiString = to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 				to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
 				to_string(VK_API_VERSION_PATCH(apiVersion));
-			ImGui::Text("Vulkan API: %s", apiString.c_str());
+			ImGui::Text("Device Vulkan API: %s", apiString.c_str());
 
 			auto graphicsSystem = GraphicsSystem::Instance::tryGet();
 			if (graphicsSystem)
