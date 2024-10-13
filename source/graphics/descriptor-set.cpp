@@ -22,13 +22,9 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 static vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 
-DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
-	map<string, Uniform>&& uniforms, uint8 index)
+DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, map<string, Uniform>&& uniforms, 
+	uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
 {
-	this->pipeline = pipeline;
-	this->pipelineType = pipelineType;
-	this->index = index;	
-
 	vk::DescriptorSetLayout descriptorSetLayout;
 	vk::DescriptorPool descriptorPool;
 

@@ -1,4 +1,4 @@
-# GARDEN ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
+# Garden
 
 ![Engine screenshot](docs/engine-screenshot.png)
 
@@ -12,8 +12,8 @@ graphics APIs. See the [features](FEATURES.md) list.
 ## Supported operating systems
 
 * Windows (10/11)
-* Ubuntu (22.04 LTS)
-* macOS (Ventura 13)
+* Ubuntu (22.04/24.04)
+* macOS (14/15)
 
 This list includes only those systems on which functionality testing is conducted.
 However, you can also compile it under any other Linux distribution or operating system.
@@ -35,7 +35,7 @@ However, you can also compile it under any other Linux distribution or operating
 These requirements are based on the support of the **AVX2** instruction set.
 If you want, you can freely disable it and compile for any other architecture, including **ARM**.
 
-## Build requirements
+## Build requirements ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
 
 * C++17 compiler
 * [Git 2.39+](https://git-scm.com)
@@ -79,6 +79,12 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | garden | Static Garden library  | `.lib`  | `.a`   | `.a`  |
 | {name} | Application executable | `.exe`  | `.app` |       |
 
+## Cloning
+
+```
+git clone --recursive https://github.com/cfnptr/garden
+```
+
 ## Garden Shading Language (GSL)
 
 Documentation with all GLSL changes is located [here](docs/gsl.md).
@@ -90,19 +96,21 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
 * [FreeType](https://github.com/freetype/freetype) (FreeType license)
-* [GLFW](https://github.com/glfw/glfw) (Zlib license)
+* [GLFW](https://github.com/glfw/glfw) (zlib license)
 * [ImGui](https://github.com/ocornut/imgui) (MIT license)
 * [JoltPhysics](https://github.com/jrouwe/JoltPhysics) (MIT license)
 * [JSON](https://github.com/nlohmann/json) (MIT license)
 * [Logy](https://github.com/cfnptr/logy) (Apache-2.0 license)
 * [Math](https://github.com/cfnptr/math) (Apache-2.0 license)
 * [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)
+* [OpenSSL](https://github.com/openssl/openssl) (Apache-2.0 license)
 * [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)
 * [TinyEXR](https://github.com/syoyo/tinyexr) (BSD-3-Clause license)
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
+* [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
 * [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)
 * [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)
 * [xxHash](https://github.com/Cyan4973/xxHash) (BSD-2-Clause license)
-* [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
+* [zlib](https://github.com/madler/zlib) (zlib license)

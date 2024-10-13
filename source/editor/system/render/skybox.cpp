@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,64 +11,55 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/render/skybox.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/skybox.hpp"
+
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-SkyboxEditor::SkyboxEditor(SkyboxRenderSystem* system)
+//**********************************************************************************************************************
+SkyboxRenderEditorSystem::SkyboxRenderEditorSystem()
 {
-	EditorRenderSystem::getInstance()->registerEntityInspector(typeid(SkyboxRenderComponent),
-		[this](ID<Entity> entity) { onEntityInspector(entity); }); // TODO: set inspectorPriority = -0.1f
-	this->system = system;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
 }
-// TODO: unregister inspector
+SkyboxRenderEditorSystem::~SkyboxRenderEditorSystem()
+{
+	if (Manager::Instance::get()->isRunning())
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
+	}
+}
+
+void SkyboxRenderEditorSystem::init()
+{
+	EditorRenderSystem::Instance::get()->registerEntityInspector<SkyboxRenderComponent>(
+	[this](ID<Entity> entity, bool isOpened)
+	{
+		onEntityInspector(entity, isOpened);
+	},
+	inspectorPriority);
+}
+void SkyboxRenderEditorSystem::deinit()
+{
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<SkyboxRenderComponent>();
+}
 
 //--------------------------------------------------------------------------------------------------
-void SkyboxEditor::onEntityInspector(ID<Entity> entity)
+void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	if (ImGui::CollapsingHeader("Skybox Render"))
-	{
-		auto manager = Manager::getInstance();
-		auto graphicsSystem = system->getGraphicsSystem();
-		auto skyboxView = manager->get<SkyboxRenderComponent>(entity);
+	if (!isOpened)
+		return;
 
-		if (skyboxView->cubemap)
-		{
-			auto imageView = graphicsSystem->get(skyboxView->cubemap);
-			auto stringOffset = imageView->getDebugName().find_last_of('.');
-			if (stringOffset == string::npos)
-				stringOffset = 0;
-			else
-				stringOffset++;
-			auto image = to_string(*skyboxView->cubemap) + " (" +
-				string(imageView->getDebugName().c_str() + stringOffset) + ")";
-			ImGui::InputText("Cubemap", &image, ImGuiInputTextFlags_ReadOnly);
-		}
-		else
-		{
-			ImGui::Text("Cubemap: null");
-		}
+	auto componentView = SkyboxRenderSystem::Instance::get()->getComponent(entity);
+	auto editorSystem = EditorRenderSystem::Instance::get();
+	editorSystem->drawResource(componentView->cubemap);
+	editorSystem->drawResource(componentView->descriptorSet);
 
-		if (skyboxView->descriptorSet)
-		{
-			auto descriptorSetView = graphicsSystem->get(skyboxView->descriptorSet);
-			auto stringOffset = descriptorSetView->getDebugName().find_last_of('.');
-			if (stringOffset == string::npos)
-				stringOffset = 0;
-			else
-				stringOffset++;
-			auto descriptorSet = to_string(*skyboxView->descriptorSet) + " (" +
-				string(descriptorSetView->getDebugName().c_str() + stringOffset) + ")";
-			ImGui::InputText("Descriptor Set", &descriptorSet, ImGuiInputTextFlags_ReadOnly);
-		}
-		else
-		{
-			ImGui::Text("Descriptor Set: null");
-		}
-	}
+	// TODO: use here editorSystem->drawImageSelector() instead.
+	// But we need to add cubemaps load support to it.
 }
 #endif

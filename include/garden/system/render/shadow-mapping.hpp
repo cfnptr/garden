@@ -24,7 +24,7 @@
 namespace garden
 {
 
-#define SHADOW_MAP_CASCADE_COUNT 3 // TODO: use const variable instead
+#define SHADOW_MAP_CASCADE_COUNT 3 // TODO: use constexpr variable instead
 
 using namespace garden::graphics;
 

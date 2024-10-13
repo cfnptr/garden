@@ -39,17 +39,16 @@ using namespace math;
 struct Hash128
 {
 	typedef void* State;
-
+protected:
+	static State stateInstance;
+public:
 	uint64 low64 = 0;
 	uint64 high64 = 0;
 
 	/**
 	 * @brief Creates a new hash container from a low and high parts. (non-cryptographic)
 	 */
-	Hash128(uint64 low64 = 0, uint64 high64 = 0) noexcept
-	{
-		this->low64 = low64; this->high64 = high64;
-	}
+	constexpr Hash128(uint64 low64 = 0, uint64 high64 = 0) noexcept : low64(low64), high64(high64) { }
 	/**
 	 * @brief Creates a new hash of the binary data. (non-cryptographic)
 	 * 
@@ -173,6 +172,12 @@ struct Hash128
 	template<typename T, psize S>
 	static void updateState(State state, const array<T, S>& data) {
 		updateState(state, data.data(), S * sizeof(T)); }
+
+	/**
+	 * @brief Returns singleton hash state instance.
+	 * @details Creates a new one on first call.
+	 */
+	static State getState();
 };
 
 } // namespace garden

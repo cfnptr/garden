@@ -204,8 +204,8 @@ private:
 	Image() = default;
 	Image(Type type, Format format, Bind bind, Strategy strategy,
 		const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version);
-	Image(Bind bind, Strategy strategy, uint64 version) noexcept : Memory(
-		0, Access::None, Usage::Auto, strategy, version) { this->bind = bind; }
+	Image(Bind bind, Strategy strategy, uint64 version) noexcept :
+		Memory(0, Access::None, Usage::Auto, strategy, version), bind(bind) { }
 	Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version);
 	bool destroy() final;
 
@@ -718,7 +718,7 @@ public:
 /**
  * @brief Image bind type count.
  */
-const uint8 imageBindCount = 10;
+constexpr uint8 imageBindCount = 10;
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Bind)
 
@@ -1013,14 +1013,14 @@ static string toStringList(Image::Bind imageBind) noexcept
 /***********************************************************************************************************************
  * @brief Image dimensionality type name strings.
  */
-static const string_view imageTypeNames[(psize)Image::Type::Count] =
+constexpr string_view imageTypeNames[(psize)Image::Type::Count] =
 {
 	"Texture1D", "Texture2D", "Texture3D", "Texture1DArray", "Texture2DArray", "Cubemap"
 };
 /**
  * @brief Image data format name strings.
  */
-static const string_view imageFormatNames[(psize)Image::Format::Count] =
+constexpr string_view imageFormatNames[(psize)Image::Format::Count] =
 {
 	"Undefined", "UintR8", "UintR16", "UintR32",
 	"UnormR8", "UnormR8G8", "UnormR8G8B8A8", "UnormB8G8R8A8", "SrgbR8G8B8A8", "SrgbB8G8R8A8",

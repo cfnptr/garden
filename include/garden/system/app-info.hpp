@@ -48,16 +48,16 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 	/*******************************************************************************************************************
 	 * @brief Creates a new app info system instance.
 	 * 
-	 * @param[in] name application name
-	 * @param[in] nameLowercase application lowercase name
-	 * @param[in] description application description
-	 * @param[in] creator application creator (company or author)
-	 * @param[in] copyright application copyright (license)
+	 * @param name application name
+	 * @param nameLowercase application lowercase name
+	 * @param description application description
+	 * @param creator application creator (company or author)
+	 * @param copyright application copyright (license)
 	 * @param version application version
 	 * @param setSingleton set system singleton instance
 	 */
-	AppInfoSystem(const string& name, const string& nameLowercase, const string& description,
-		const string& creator, const string& copyright, Version version,
+	AppInfoSystem(string_view name, string_view nameLowercase, string_view description,
+		string_view creator, string_view copyright, Version version,
 		#if GARDEN_DEBUG
 		fs::path cachesPath, fs::path resourcesPath,
 		#endif

@@ -29,7 +29,7 @@ using namespace garden;
 
 namespace
 {
-	struct PushConstants final
+	struct PushConstants final // TODO: move to the class
 	{
 		float4 farNearPlanes;
 		float4 lightDir;

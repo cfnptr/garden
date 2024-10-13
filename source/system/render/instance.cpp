@@ -41,11 +41,9 @@ static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
 }
 
 //**********************************************************************************************************************
-InstanceRenderSystem::InstanceRenderSystem(bool useBaseDS, bool useDefaultDS)
+InstanceRenderSystem::InstanceRenderSystem(bool useBaseDS, bool useDefaultDS) : 
+	useBaseDS(useBaseDS), useDefaultDS(useDefaultDS)
 {
-	this->useBaseDS = useBaseDS;
-	this->useDefaultDS = useDefaultDS;
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InstanceRenderSystem::deinit);
 }

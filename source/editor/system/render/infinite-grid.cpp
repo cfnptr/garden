@@ -21,18 +21,6 @@
 
 using namespace garden;
 
-namespace
-{
-	struct PushConstants final
-	{
-		float4 gridColor;
-		float4 axisColorX;
-		float4 axisColorY;
-		float gridScale;
-		int32 isHorizontal;
-	};
-}
-
 static map<string, DescriptorSet::Uniform> getUniforms()
 {
 	map<string, DescriptorSet::Uniform> uniforms =

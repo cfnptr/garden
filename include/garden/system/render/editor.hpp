@@ -32,7 +32,7 @@ namespace garden
 using namespace ecsm;
 using namespace garden::graphics;
 
-/***********************************************************************************************************************
+/**
  * @brief Editor GUI rendering system.
  * 
  * @details
@@ -53,8 +53,8 @@ public:
 		OnComponent onComponent;
 		float priority = 0.0f;
 
-		Inspector(const OnComponent& _onComponent, float _priority = 0.0f) :
-			onComponent(_onComponent), priority(_priority) { }
+		Inspector(const OnComponent& onComponent, float priority = 0.0f) :
+			onComponent(onComponent), priority(priority) { }
 	};
 private:
 	unordered_map<type_index, Inspector> entityInspectors;

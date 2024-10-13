@@ -196,21 +196,23 @@ void DeferredRenderEditorSystem::editorRender()
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
-			SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
 			graphicsSystem->startRecording(CommandBufferType::Frame);
-			framebufferView->beginRenderPass(float4(0.0f));
-			pipelineView->bind();
-			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(bufferDescriptorSet);
-			auto pushConstants = pipelineView->getPushConstants<BufferPC>();
-			pushConstants->viewProjInv = cameraConstants.viewProjInv;
-			pushConstants->drawMode = (int32)drawMode;
-			pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
-			pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
-			pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
-			pipelineView->pushConstants();
-			pipelineView->drawFullscreen();
-			framebufferView->endRenderPass();
+			{
+				SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
+				framebufferView->beginRenderPass(float4(0.0f));
+				pipelineView->bind();
+				pipelineView->setViewportScissor();
+				pipelineView->bindDescriptorSet(bufferDescriptorSet);
+				auto pushConstants = pipelineView->getPushConstants<BufferPC>();
+				pushConstants->viewProjInv = cameraConstants.viewProjInv;
+				pushConstants->drawMode = (int32)drawMode;
+				pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
+				pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
+				pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
+				pipelineView->pushConstants();
+				pipelineView->drawFullscreen();
+				framebufferView->endRenderPass();
+			}
 			graphicsSystem->stopRecording();
 		}
 	}

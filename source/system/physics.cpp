@@ -161,9 +161,9 @@ class GardenContactListener final : public JPH::ContactListener
 	vector<PhysicsSystem::Event>* bodyEvents = nullptr;
 	mutex* bodyEventLocker = nullptr;
 public:
-	GardenContactListener(PhysicsSystem* _physicsSystem, 
-		vector<PhysicsSystem::Event>* _bodyEvents, mutex* _bodyEventLocker) :
-		physicsSystem(_physicsSystem), bodyEvents(_bodyEvents), bodyEventLocker(_bodyEventLocker) { }
+	GardenContactListener(PhysicsSystem* physicsSystem, 
+		vector<PhysicsSystem::Event>* bodyEvents, mutex* bodyEventLocker) :
+		physicsSystem(physicsSystem), bodyEvents(bodyEvents), bodyEventLocker(bodyEventLocker) { }
 
 	JPH::ValidateResult OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2, 
 		JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult& inCollisionResult) final
@@ -885,7 +885,6 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 	GARDEN_ASSERT(properties.broadPhaseLayerCount >= (uint16)BroadPhaseLayer::DefaultCount);
 
 	this->properties = properties;
-	this->hashState = Hash128::createState();
 
 	auto manager = Manager::Instance::get();
 	manager->registerEventBefore("Simulate", "Update");
@@ -1001,7 +1000,6 @@ PhysicsSystem::~PhysicsSystem()
 		manager->unregisterEvent("Simulate");
 	}
 
-	Hash128::destroyState(hashState);
 	unsetSingleton();
 }	
 
@@ -1647,6 +1645,7 @@ ID<Shape> PhysicsSystem::createSharedBoxShape(const float3& halfExtent, float co
 	GARDEN_ASSERT(convexRadius >= 0.0f);
 	GARDEN_ASSERT(density > 0.0f);
 
+	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
 	Hash128::updateState(hashState, &halfExtent, sizeof(float3));
 	Hash128::updateState(hashState, &convexRadius, sizeof(float));
@@ -1679,6 +1678,7 @@ ID<Shape> PhysicsSystem::createSharedRotTransShape(ID<Shape> innerShape, const f
 {
 	GARDEN_ASSERT(innerShape);
 
+	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
 	Hash128::updateState(hashState, &innerShape, sizeof(ID<Shape>));
 	Hash128::updateState(hashState, &position, sizeof(float3));

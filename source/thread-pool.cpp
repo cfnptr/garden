@@ -68,17 +68,14 @@ void ThreadPool::threadFunction(uint32 index)
 }
 
 //**********************************************************************************************************************
-ThreadPool::ThreadPool(bool isBackground, const string& name, uint32 threadCount)
+ThreadPool::ThreadPool(bool isBackground, const string& name, uint32 threadCount) : 
+	name(name), background(isBackground), isRunning(true)
 {
 	GARDEN_ASSERT(threadCount > 0);
 	
 	if (threadCount == UINT32_MAX)
 		threadCount = thread::hardware_concurrency();
 	this->threads.resize(threadCount);
-
-	this->name = name;
-	this->background = isBackground;
-	this->isRunning = true;
 
 	for (uint32 i = 0; i < threadCount; i++)
 		this->threads[i] = thread(&ThreadPool::threadFunction, this, i);

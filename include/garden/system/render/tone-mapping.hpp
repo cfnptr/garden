@@ -21,7 +21,7 @@
 namespace garden
 {
 
-#define LUM_TO_EXP 9.6f // TODO: use const variable instead and move to math library
+#define LUM_TO_EXP 9.6f // TODO: use constexpr variable instead and move to math library
 
 using namespace garden::graphics;
 

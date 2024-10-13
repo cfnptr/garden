@@ -62,13 +62,10 @@ static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthS
 }
 
 //**********************************************************************************************************************
-ForwardRenderSystem::ForwardRenderSystem(bool clearColorBuffer, bool useAsyncRecording, 
-	bool useHdrColorBuffer, bool setSingleton) : Singleton(setSingleton)
+ForwardRenderSystem::ForwardRenderSystem(bool clearColorBuffer,
+	bool useAsyncRecording, bool useHdrColorBuffer, bool setSingleton) : Singleton(setSingleton), 
+	clearColorBuffer(clearColorBuffer), asyncRecording(useAsyncRecording), hdrColorBuffer(useHdrColorBuffer)
 {
-	this->clearColorBuffer = clearColorBuffer;
-	this->asyncRecording = useAsyncRecording;
-	this->hdrColorBuffer = useHdrColorBuffer;
-
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreForwardRender");
 	manager->registerEvent("ForwardRender");

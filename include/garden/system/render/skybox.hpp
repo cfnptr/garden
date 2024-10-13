@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-/*
+/***********************************************************************************************************************
+ * @file
+ * @brief Skybox rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
@@ -22,41 +24,62 @@ namespace garden
 {
 
 using namespace garden::graphics;
-class SkyboxRenderSystem;
 
-//--------------------------------------------------------------------------------------------------
+/**
+ * @brief Skybox rendering data container.
+ */
 struct SkyboxRenderComponent final : public Component
 {
-	Ref<Image> cubemap = {};
-	Ref<DescriptorSet> descriptorSet = {};
+	Ref<Image> cubemap = {};               /**< Skybox cubemap texture. */
+	Ref<DescriptorSet> descriptorSet = {}; /**< Skybox descriptor set. */
+
+	bool destroy();
 };
 
-//--------------------------------------------------------------------------------------------------
-class SkyboxRenderSystem final : public System,
-	public IRenderSystem, public IDeferredRenderSystem
+/**
+ * @brief Skybox rendering system.
+ */
+class SkyboxRenderSystem final : public ComponentSystem<SkyboxRenderComponent>, public Singleton<SkyboxRenderSystem>
 {
-	LinearPool<SkyboxRenderComponent, false> components; // TODO: Use ComponentSystem<...
-	ID<Buffer> fullCubeVertices = {};
+public:
+	struct PushConstants final
+	{
+		float4x4 viewProj;
+	};
+private:
 	ID<GraphicsPipeline> pipeline = {};
+	ID<Buffer> fullCubeVertices = {};
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new skybox rendering system instance.
+	 * @param setSingleton set system singleton instance
+	 */
+	SkyboxRenderSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroy skybox rendering system instance.
+	 */
+	~SkyboxRenderSystem() final;
 
-	void initialize() final;
-	void terminate() final;
-	void hdrRender() final;
+	void init();
+	void deinit();
+	void imageLoaded();
+	void hdrRender();
 
-	type_index getComponentType() const final;
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
+	const string& getComponentName() const final;
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Returns skybox graphics pipeline.
+	 */
 	ID<GraphicsPipeline> getPipeline();
-	ID<DescriptorSet> createDescriptorSet(ID<Image> cubemap);
+
+	/**
+	 * @brief Creates shared skybox descriptor set.
+	 * 
+	 * @param path skybox resource path
+	 * @param cubemap skybox cubemap instance
+	 */
+	Ref<DescriptorSet> createSharedDS(const string& path, ID<Image> cubemap);
 };
 
 } // namespace garden
-*/

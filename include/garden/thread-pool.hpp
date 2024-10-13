@@ -69,10 +69,7 @@ public:
 		 * @param[in] function target function that should be executed by a thread
 		 * @warning You should manually synchronize data access and prevent race conditions!
 		 */
-		Task(const OnTask& function) noexcept
-		{
-			this->function = function;
-		}
+		Task(const OnTask& function) noexcept : function(function) { }
 
 		/**
 		 * @brief Returns function that should be executed by a thread

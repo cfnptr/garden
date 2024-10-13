@@ -28,7 +28,7 @@ using namespace garden;
 
 // TODO: change winding order, and use better quad layout
 
-static const array<float3, 18> fullArrowVert =
+constexpr array<float3, 18> fullArrowVert =
 {
 	// -X side
 	float3(-0.5f, -0.5f, -0.5f),
@@ -57,13 +57,6 @@ static const array<float3, 18> fullArrowVert =
 
 namespace
 {
-	struct PushConstants final
-	{
-		float4x4 mvp;
-		float4 color;
-		float renderScale;
-	};
-
 	struct GizmosMesh final
 	{
 		float4x4 model = float4x4(0.0f);
@@ -180,7 +173,7 @@ static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
 	pipelineView->setViewportScissor();
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+	auto pushConstants = pipelineView->getPushConstants<MeshGizmosEditorSystem::PushConstants>();
 	pushConstants->renderScale = 0.25f / graphicsSystem->getRenderScale();
 	
 	for (const auto& mesh : gizmosMeshes)

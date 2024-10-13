@@ -51,7 +51,7 @@ public:
 	/**
 	 * @brief Minimal DLSS output size
 	 */
-	inline static const int32 minFramebufferSize = 32;
+	static constexpr int32 minFramebufferSize = 32;
 
 	enum class DestroyResourceType : uint32
 	{
@@ -68,7 +68,6 @@ public:
 
 	static string appDataName;
 	static Version appVersion;
-	static Hash128::State hashState;
 	static void* window;
 	static LinearPool<Buffer> bufferPool;
 	static LinearPool<Image> imagePool;

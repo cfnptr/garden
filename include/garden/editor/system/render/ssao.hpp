@@ -19,8 +19,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class SsaoEditor final
 {
 	bool showWindow = false;

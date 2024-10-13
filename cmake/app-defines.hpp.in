@@ -22,16 +22,16 @@ using namespace std;
 using namespace math;
 using namespace garden;
 
-const string appName = "@GARDEN_APP_NAME@";
-const string appNameLowercase = "@GARDEN_APP_NAME_LOWERCASE@";
-const string appDescription = "@GARDEN_APP_DESCRIPTION@";
-const string appCreator = "@GARDEN_APP_CREATOR@";
-const string appCopyright = "@GARDEN_APP_COPYRIGHT@";
-const uint8 appVersionMajor = @GARDEN_APP_VERSION_MAJOR@;
-const uint8 appVersionMinor = @GARDEN_APP_VERSION_MINOR@;
-const uint8 appVersionPatch = @GARDEN_APP_VERSION_PATCH@;
-const Version appVersion = Version(@GARDEN_APP_VERSION_MAJOR@, @GARDEN_APP_VERSION_MINOR@, @GARDEN_APP_VERSION_PATCH@);
-const string appVersionString = "@GARDEN_APP_VERSION@";
+constexpr string_view appName = "@GARDEN_APP_NAME@";
+constexpr string_view appNameLowercase = "@GARDEN_APP_NAME_LOWERCASE@";
+constexpr string_view appDescription = "@GARDEN_APP_DESCRIPTION@";
+constexpr string_view appCreator = "@GARDEN_APP_CREATOR@";
+constexpr string_view appCopyright = "@GARDEN_APP_COPYRIGHT@";
+constexpr uint8 appVersionMajor = @GARDEN_APP_VERSION_MAJOR@;
+constexpr uint8 appVersionMinor = @GARDEN_APP_VERSION_MINOR@;
+constexpr uint8 appVersionPatch = @GARDEN_APP_VERSION_PATCH@;
+constexpr Version appVersion = Version(@GARDEN_APP_VERSION_MAJOR@, @GARDEN_APP_VERSION_MINOR@, @GARDEN_APP_VERSION_PATCH@);
+constexpr string_view appVersionString = "@GARDEN_APP_VERSION@";
 
 #if GARDEN_DEBUG
 const fs::path appCachesPath = fs::path("@GARDEN_APP_CACHES_DIR@");

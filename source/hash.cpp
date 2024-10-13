@@ -26,6 +26,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
+Hash128::State Hash128::stateInstance = nullptr;
+
 Hash128::Hash128(const void* data, psize size, Hash128::State state)
 {
 	if (state)
@@ -115,4 +117,10 @@ Hash128 Hash128::digestState(State state) noexcept
 	GARDEN_ASSERT(state);
 	auto result = XXH3_128bits_digest((XXH3_state_t*)state);
 	return Hash128(result.low64, result.high64);
+}
+Hash128::State Hash128::getState()
+{
+	if (!stateInstance)
+		stateInstance = createState();
+	return stateInstance;
 }

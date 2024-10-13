@@ -31,9 +31,8 @@ namespace garden
 {
 
 using namespace garden::graphics;
-class DeferredRenderSystem;
 
-/***********************************************************************************************************************
+/**
  * @brief Deferred rendering system.
  * 
  * @details
@@ -47,7 +46,7 @@ public:
 	/**
 	 * @brief Deferred rendering G-Buffer count.
 	 */
-	inline static const uint8 gBufferCount = 3;
+	static constexpr uint8 gBufferCount = 3;
 private:
 	ID<Image> gBuffers[gBufferCount] = {};
 	ID<Image> hdrBuffer = {};

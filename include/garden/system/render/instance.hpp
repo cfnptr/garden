@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Common mesh instance rendering functions.
+ */
+
 #pragma once
 #include "garden/system/render/mesh.hpp"
 
@@ -19,10 +24,9 @@ namespace garden
 {
 
 using namespace garden::graphics;
-class SpriteRenderSystem;
 
-/***********************************************************************************************************************
- * @brief General instance rendering system.
+/**
+ * @brief General mesh instance rendering system.
  */
 class InstanceRenderSystem : public System, public IMeshRenderSystem
 {
@@ -69,7 +73,7 @@ protected:
 	#endif
 public:
 	/**
-	 * @breif Returns system graphics rendering pipeline.
+	 * @breif Returns system graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getPipeline();
 	/**

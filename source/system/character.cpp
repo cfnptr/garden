@@ -318,7 +318,7 @@ CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 }
 CharacterSystem::~CharacterSystem()
 {
-	components.clear();
+	components.clear(); // Do not remove this!
 	delete (JPH::CharacterVsCharacterCollisionSimple*)charVsCharCollision;
 	unsetSingleton();
 }

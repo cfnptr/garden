@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/lighting.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/thread.hpp"
@@ -28,27 +29,14 @@ using namespace math::brdf;
 
 namespace
 {
-	struct LightingPC final
-	{
-		float4x4 uvToWorld;
-		float4 shadowColor;
-	};
-	struct SpecularPC final
-	{
-		uint32 count;
-	};
-
 	struct SpecularItem final
 	{
-		float4 l;
-		float4 nolMip;
+		float4 l = float4(0.0f);
+		float4 nolMip = float4(0.0f);
 
-		SpecularItem(const float3& l, float nol, float mip)  noexcept
-		{
-			this->l = float4(l, 0.0f);
-			this->nolMip = float4(nol, mip, 0.0f, 0.0f);
-		}
-		SpecularItem() = default;
+		constexpr SpecularItem(const float3& l, float nol, float mip) noexcept :
+			l(float4(l, 0.0f)), nolMip(float4(nol, mip, 0.0f, 0.0f)) { }
+		constexpr SpecularItem() = default;
 	};
 }
 
@@ -402,12 +390,24 @@ static ID<Image> createDfgLUT()
 }
 
 //**********************************************************************************************************************
-LightingRenderSystem::LightingRenderSystem(bool useShadowBuffer, 
-	bool useAoBuffer, bool setSingleton) : Singleton(setSingleton)
+bool LightingRenderComponent::destroy()
 {
-	this->hasShadowBuffer = useShadowBuffer;
-	this->hasAoBuffer = useAoBuffer;
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (cubemap.isLastRef())
+		graphicsSystem->destroy(ID<Image>(cubemap));
+	if (sh.isLastRef())
+		graphicsSystem->destroy(ID<Buffer>(sh));
+	if (specular.isLastRef())
+		graphicsSystem->destroy(ID<Image>(specular));
+	if (descriptorSet.isLastRef())
+		graphicsSystem->destroy(ID<DescriptorSet>(descriptorSet));
+	cubemap = {}; sh = {}; specular = {}; descriptorSet = {};
+	return true;
+}
 
+LightingRenderSystem::LightingRenderSystem(bool useShadowBuffer, bool useAoBuffer, bool setSingleton) : 
+	Singleton(setSingleton), hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer)
+{
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", LightingRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LightingRenderSystem::deinit);
@@ -459,6 +459,8 @@ void LightingRenderSystem::init()
 }
 void LightingRenderSystem::deinit()
 {
+	components.clear();
+
 	auto manager = Manager::Instance::get();
 	if (manager->isRunning())
 	{
@@ -593,12 +595,19 @@ void LightingRenderSystem::preHdrRender()
 void LightingRenderSystem::hdrRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pipelineView = graphicsSystem->get(lightingPipeline);
-	auto dfgLutView = graphicsSystem->get(dfgLUT);
-	if (!graphicsSystem->camera || !pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
+	if (!graphicsSystem->camera)
 		return;
 
-	auto lightingView = Manager::Instance::get()->tryGet<LightingRenderComponent>(graphicsSystem->camera); // TODO: use lightingSystem->tryGet()
+	auto pipelineView = graphicsSystem->get(lightingPipeline);
+	auto dfgLutView = graphicsSystem->get(dfgLUT);
+	if (!pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
+		return;
+
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	if (transformView && !transformView->isActiveWithAncestors())
+		return;
+
+	auto lightingView = LightingRenderSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
 	if (!lightingView || !lightingView->cubemap || !lightingView->sh || !lightingView->specular)
 		return;
 
@@ -705,46 +714,21 @@ void LightingRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-ID<Component> LightingRenderSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void LightingRenderSystem::destroyComponent(ID<Component> instance)
-{
-	auto resourceSystem = ResourceSystem::Instance::get();
-	auto componentView = components.get(ID<LightingRenderComponent>(instance));
-	resourceSystem->destroyShared(componentView->cubemap);
-	resourceSystem->destroyShared(componentView->sh);
-	resourceSystem->destroyShared(componentView->specular);
-	resourceSystem->destroyShared(componentView->descriptorSet);
-	components.destroy(ID<LightingRenderComponent>(instance));
-}
 void LightingRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<LightingRenderComponent>(source);
 	auto destinationView = View<LightingRenderComponent>(destination);
+	destinationView->destroy();
+
 	destinationView->cubemap = sourceView->cubemap;
 	destinationView->sh = sourceView->sh;
 	destinationView->specular = sourceView->specular;
 	destinationView->descriptorSet = sourceView->descriptorSet;
-	// TODO: destroy destination shared resources
 }
 const string& LightingRenderSystem::getComponentName() const
 {
 	static const string name = "Lighting";
 	return name;
-}
-type_index LightingRenderSystem::getComponentType() const
-{
-	return typeid(LightingRenderComponent);
-}
-View<Component> LightingRenderSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<LightingRenderComponent>(instance)));
-}
-void LightingRenderSystem::disposeComponents()
-{
-	components.dispose();
 }
 
 //**********************************************************************************************************************
@@ -1109,7 +1093,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 			"descriptorSet.lighting.iblSpecular" + to_string(*iblSpecularDescriptorSet));
 		pipelineView->bindDescriptorSet(iblSpecularDescriptorSet);
 
-		auto pushConstants = pipelineView->getPushConstants<SpecularPC>();
+		auto pushConstants = pipelineView->getPushConstants<LightingRenderSystem::SpecularPC>();
 		pushConstants->count = countBuffer[i - 1];
 		pipelineView->pushConstants();
 		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
@@ -1167,6 +1151,9 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 //**********************************************************************************************************************
 Ref<DescriptorSet> LightingRenderSystem::createDescriptorSet(ID<Buffer> sh, ID<Image> specular)
 {
+	GARDEN_ASSERT(sh);
+	GARDEN_ASSERT(specular);
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto specularView = graphicsSystem->get(specular);
 

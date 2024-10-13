@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,134 +11,148 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-/*
 #include "garden/system/render/skybox.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/resource/primitive.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 
-#if GARDEN_EDITOR
-#include "garden/editor/system/render/skybox.hpp"
-#endif
-
 using namespace garden;
+using namespace garden::primitive;
 
-namespace
+bool SkyboxRenderComponent::destroy()
 {
-	struct PushConstants final
-	{
-		float4x4 viewProj;
-	};
+	auto resourceSystem = ResourceSystem::Instance::get();
+	resourceSystem->destroyShared(descriptorSet);
+	resourceSystem->destroyShared(cubemap);
+	cubemap = {}; descriptorSet = {};
+	return true;
 }
 
-//--------------------------------------------------------------------------------------------------
+SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSingleton)
+{
+	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SkyboxRenderSystem::deinit);
+}
+SkyboxRenderSystem::~SkyboxRenderSystem()
+{
+	if (Manager::Instance::get()->isRunning())
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderSystem::deinit);
+	}
+
+	unsetSingleton();
+}
+
+const string& SkyboxRenderSystem::getComponentName() const
+{
+	static const string name = "Skybox";
+	return name;
+}
+
+//**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
-	auto skyboxPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getHdrFramebuffer(), deferredSystem->isRenderAsync());
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"skybox", deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording());
 	return skyboxPipeline;
 }
 
-//--------------------------------------------------------------------------------------------------
-void SkyboxRenderSystem::initialize()
+void SkyboxRenderSystem::init()
 {
-	auto graphicsSystem = getGraphicsSystem();	
-	fullCubeVertices = graphicsSystem->getFullCubeVertices();
+	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
+	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", SkyboxRenderSystem::hdrRender);
+
 	if (!pipeline)
-		pipeline = createPipeline(getDeferredSystem());
+		pipeline = createPipeline();
 
-	#if GARDEN_EDITOR
-	editor = new SkyboxEditor(this);
-	#endif
+	// Do not optimize this, we need to instantiate shared buffer outside rendering.
+	fullCubeVertices = GraphicsSystem::Instance::get()->getFullCubeVertices();
 }
-void SkyboxRenderSystem::terminate()
+void SkyboxRenderSystem::deinit()
 {
-	#if GARDEN_EDITOR
-	delete (SkyboxEditor*)editor;
-	#endif
+	components.clear();
+
+	if (Manager::Instance::get()->isRunning())
+	{
+		GraphicsSystem::Instance::get()->destroy(pipeline);
+
+		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", SkyboxRenderSystem::hdrRender);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
+void SkyboxRenderSystem::imageLoaded()
+{
+	auto resourceSystem = ResourceSystem::Instance::get();
+	auto image = resourceSystem->getLoadedImage();
+	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
+	auto componentData = components.getData();
+	auto occupancy = components.getOccupancy();
+	Ref<DescriptorSet> descriptorSet = {};
+
+	for (uint32 i = 0; i < occupancy; i++)
+	{
+		auto skyboxView = &componentData[i];
+		if (skyboxView->cubemap != image || skyboxView->descriptorSet)
+			continue;
+		if (!descriptorSet)
+			descriptorSet = createSharedDS(imagePath.generic_string(), image);
+		skyboxView->descriptorSet = descriptorSet;
+	}
+}
+
+//**********************************************************************************************************************
 void SkyboxRenderSystem::hdrRender()
 {
-	auto manager = getManager();
-	auto graphicsSystem = getGraphicsSystem();
-	auto camera = graphicsSystem->camera;
-	auto pipelineView = graphicsSystem->get(pipeline);
-	auto fullCubeView = graphicsSystem->get(fullCubeVertices);
-	if (!camera || !pipelineView->isReady() || !fullCubeView->isReady())
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!graphicsSystem->camera)
+		return;
+
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	if (transformView && !transformView->isActiveWithAncestors())
 		return;
 	
-	auto componentView = manager->tryGet<SkyboxRenderComponent>(graphicsSystem->camera); // TODO: use skyboxSystem->tryGet()
-	if (!componentView)
+	auto skyboxView = tryGetComponent(graphicsSystem->camera);
+	if (!skyboxView || !skyboxView->cubemap || !skyboxView->descriptorSet)
 		return;
 
-	auto cubemapView = graphicsSystem->get(componentView->cubemap);
-	if (!cubemapView->isReady())
+	auto pipelineView = graphicsSystem->get(pipeline);
+	auto fullCubeView = graphicsSystem->get(fullCubeVertices);
+	auto cubemapView = graphicsSystem->get(skyboxView->cubemap);
+	if (!pipelineView->isReady() || !fullCubeView->isReady() || !cubemapView->isReady())
 		return;
 
-	if (!componentView->descriptorSet)
-	{
-		auto descriptorSet = createDescriptorSet(componentView->cubemap);
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.skybox" + to_string(*descriptorSet));
-		componentView->descriptorSet = descriptorSet;
-	}
-
-	auto deferredSystem = DeferredRenderSystem::getInstance();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
-	if (deferredSystem->isRenderAsync())
+	if (deferredSystem->useAsyncRecording())
 	{
 		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4(float2(0.0f),
-			getDeferredSystem()->getFramebufferSize()), 0);
-		pipelineView->bindDescriptorSetAsync(componentView->descriptorSet, 0, 0);
+		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
+		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
 		auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(0);
 		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstantsAsync(0);
-		pipelineView->drawAsync(0, fullCubeVertices, 36);
+		pipelineView->drawAsync(0, fullCubeVertices, fullCubeVertCount);
 	}
 	else
 	{
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(componentView->descriptorSet);
+		pipelineView->bindDescriptorSet(ID<DescriptorSet>(skyboxView->descriptorSet));
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstants();
-		pipelineView->draw(fullCubeVertices, 36);
+		pipelineView->draw(fullCubeVertices, fullCubeVertCount);
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-type_index SkyboxRenderSystem::getComponentType() const
-{
-	return typeid(SkyboxRenderComponent);
-}
-ID<Component> SkyboxRenderSystem::createComponent(ID<Entity> entity)
-{
-	return ID<Component>(components.create());
-}
-void SkyboxRenderSystem::destroyComponent(ID<Component> instance)
-{
-	auto resourceSystem = ResourceSystem::getInstance();
-	auto componentView = components.get(ID<SkyboxRenderComponent>(instance));
-	resourceSystem->destroyShared(componentView->cubemap);
-	resourceSystem->destroyShared(componentView->descriptorSet);
-	components.destroy(ID<SkyboxRenderComponent>(instance));
-}
-View<Component> SkyboxRenderSystem::getComponent(ID<Component> instance)
-{
-	return View<Component>(components.get(ID<SkyboxRenderComponent>(instance)));
-}
-void SkyboxRenderSystem::disposeComponents()
-{
-	components.dispose();
-}
-
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()
 {
 	if (!pipeline)
@@ -147,14 +160,26 @@ ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()
 	return pipeline;
 }
 
-//--------------------------------------------------------------------------------------------------
-ID<DescriptorSet> SkyboxRenderSystem::createDescriptorSet(ID<Image> cubemap)
+Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(const string& path, ID<Image> cubemap)
 {
+	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(cubemap);
-	auto graphicsSystem = getGraphicsSystem();
-	auto cubemapView = graphicsSystem->get(cubemap);
+
+	auto cubemapView = GraphicsSystem::Instance::get()->get(cubemap);
+	auto imageSize = (uint2)cubemapView->getSize();
+	auto imageType = cubemapView->getType();
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, path.c_str(), path.length());
+	Hash128::updateState(hashState, &imageSize.x, sizeof(uint32));
+	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
+	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
+
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ { "cubemap", DescriptorSet::Uniform(cubemapView->getDefaultView()) } };
-	return graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
+		Hash128::digestState(hashState), pipeline, std::move(uniforms));
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptoSet.shared." + path);
+	return descriptorSet;
 }
-*/

@@ -28,7 +28,7 @@
 #define WAVELENGTH_R 680 // Higher than peak 580
 #define WAVELENGTH_G 550
 #define WAVELENGTH_B 440
-// TODO: use const instead and put inside namespace
+// TODO: use constexpr instead and put inside namespace
 
 #define EARTH_RADIUS 6371.0 // km - volumetric mean radius
 #define EARTH_ATMOSPHERE_HEIGHT 100.0 // km - karman line
@@ -72,7 +72,7 @@ public:
 };
 
 //--------------------------------------------------------------------------------------------------
-static const float gasMolarMasses[(psize)Gas::Count] =
+constexpr float gasMolarMasses[(psize)Gas::Count] =
 {
 	4.002602f, 20.1797f, 39.948f, 83.798f, 131.293f, 2.01588f,
 	28.0134f, 31.9988f, 16.0425f, 28.0101f, 44.0095f,
@@ -118,7 +118,7 @@ static float3 calcRayleighScattering(float airIOR, double molecularDensity) noex
 //--------------------------------------------------------------------------------------------------
 static float calcEarthAirMolarMass()
 {
-	const vector<pair<float, Gas>> gasses =
+	static const vector<pair<float, Gas>> gasses =
 	{
 		{ 0.78084f, Gas::N2 }, { 0.20946f, Gas::O2 }, { 0.00934f, Gas::Ar },
 		{ 0.00033f, Gas::CO2 }, { 0.00001818f, Gas::Ne }, { 0.00000524f, Gas::He },
@@ -129,7 +129,7 @@ static float calcEarthAirMolarMass()
 }
 static float calcMarsAirMolarMass()
 {
-	const vector<pair<float, Gas>> gasses =
+	static const vector<pair<float, Gas>> gasses =
 	{
 		{ 0.9532f, Gas::CO2 }, { 0.027f, Gas::N2 }, { 0.016f, Gas::Ar },
 		{ 0.0013f, Gas::O2 }, { 0.0007f, Gas::CO }, { 0.0000025f, Gas::Ne },

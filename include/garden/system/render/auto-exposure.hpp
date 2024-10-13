@@ -29,7 +29,7 @@
 namespace garden
 {
 
-#define AE_HISTOGRAM_SIZE 256 // TODO: use const variable instead of define.
+#define AE_HISTOGRAM_SIZE 256 // TODO: use constexpr variable instead of define.
 
 using namespace garden::graphics;
 

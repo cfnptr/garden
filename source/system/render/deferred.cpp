@@ -126,10 +126,9 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 }
 
 //**********************************************************************************************************************
-DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording, bool setSingleton) : Singleton(setSingleton)
+DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording, bool setSingleton) : 
+	Singleton(setSingleton), asyncRecording(useAsyncRecording)
 {
-	this->asyncRecording = useAsyncRecording;
-
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreDeferredRender");
 	manager->registerEvent("DeferredRender");

@@ -26,7 +26,7 @@ using namespace garden;
 
 namespace
 {
-	struct PushConstants final
+	struct PushConstants final // TODO: move to the class
 	{
 		uint32 frameIndex;
 		float exposureCoeff;

@@ -56,13 +56,13 @@ public:
 		 * @param imageView target input image view
 		 * @param shaderStages shader stages where attachment is used [affects synchronization!]
 		 */
-		InputAttachment(ID<ImageView> imageView, ShaderStage shaderStages) noexcept
-		{ this->imageView = imageView; this->shaderStages = shaderStages; }
+		constexpr InputAttachment(ID<ImageView> imageView, ShaderStage shaderStages) noexcept :
+			imageView(imageView), shaderStages(shaderStages) { }
 		/**
 		 * @brief Creates a new empty framebuffer input attachment.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		InputAttachment() { }
+		constexpr InputAttachment() = default;
 	};
 	/**
 	 * @brief Framebuffer output attachment description.
@@ -84,18 +84,13 @@ public:
 		 * @param load load output attachment content before rendering
 		 * @param store store output attachment content after rendering
 		 */
-		OutputAttachment(ID<ImageView> imageView, bool clear, bool load, bool store) noexcept
-		{
-			this->imageView = imageView;
-			this->clear = clear;
-			this->load = load;
-			this->store = store;
-		}
+		constexpr OutputAttachment(ID<ImageView> imageView, bool clear, bool load, bool store) noexcept :
+			imageView(imageView), clear(clear), load(load), store(store) { }
 		/**
 		 * @brief Creates a new empty framebuffer output attachment.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		OutputAttachment() { }
+		constexpr OutputAttachment() = default;
 	};
 
 	/*******************************************************************************************************************
@@ -122,17 +117,13 @@ public:
 		 * @param[in] outputAttachments subpass output attachment array
 		 */
 		Subpass(PipelineType pipelineType, const vector<InputAttachment>& inputAttachments,
-			const vector<OutputAttachment>& outputAttachments) noexcept
-		{
-			this->inputAttachments = inputAttachments;
-			this->outputAttachments = outputAttachments;
-			this->pipelineType = pipelineType;
-		}
+			const vector<OutputAttachment>& outputAttachments) noexcept :
+			inputAttachments(inputAttachments), outputAttachments(outputAttachments), pipelineType(pipelineType) { }
 		/**
 		 * @brief Creates a new empty framebuffer subpass.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		Subpass() { }
+		Subpass() = default;
 	};
 	/**
 	 * @brief Framebuffer subpass attachment container.
@@ -151,16 +142,13 @@ public:
 		 * @param[in] outputAttachments a new subpass output attachment array
 		 */
 		SubpassImages(const vector<ID<ImageView>>& inputAttachments,
-			const vector<ID<ImageView>>& outputAttachments) noexcept
-		{
-			this->inputAttachments = inputAttachments;
-			this->outputAttachments = outputAttachments;
-		}
+			const vector<ID<ImageView>>& outputAttachments) noexcept :
+			inputAttachments(inputAttachments), outputAttachments(outputAttachments) { }
 		/**
 		 * @brief Creates a new empty framebuffer subpass images container.
 		 * @note It can not be used to recreate a subpass.
 		 */
-		SubpassImages() { }
+		SubpassImages() = default;
 	};
 
 	/*******************************************************************************************************************

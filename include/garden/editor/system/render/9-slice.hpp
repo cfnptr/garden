@@ -21,8 +21,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class NineSliceRenderEditorSystem final : public System
 {
 	NineSliceRenderEditorSystem();

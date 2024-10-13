@@ -124,9 +124,13 @@ public:
 		 * @param count descriptor set count to bind
 		 * @param offset descriptor set offset in the array or 0
 		 */
-		Range(ID<DescriptorSet> set, uint32 count = 1, uint32 offset = 0) noexcept
-		{ this->set = set; this->count = count; this->offset = offset; }
-		Range() = default;
+		constexpr Range(ID<DescriptorSet> set, uint32 count = 1, uint32 offset = 0) noexcept :
+			set(set), count(count), offset(offset) { }
+		/**
+		 * @brief Creates a new empty descriptor set range description.
+		 * @note It can not be used to bind descriptor set range.
+		 */
+		constexpr Range() = default;
 	};
 private:
 	ID<Pipeline> pipeline = {};

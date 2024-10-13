@@ -258,7 +258,7 @@ void EditorRenderSystem::showAboutWindow()
 
 		if (ImGui::CollapsingHeader("System Info"))
 		{
-			ImGui::Text("OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
+			ImGui::Text("OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
 			ImGui::Text("SIMDs: %s", GARDEN_SIMD_STRING);
 			auto cpuName = OS::getCpuName();
 			ImGui::Text("CPU: %s", cpuName.c_str());
@@ -415,8 +415,7 @@ namespace
 		map<string, ComponentEntry> nodes;
 		type_index componentType;
 
-		ComponentEntry(type_index _componentType) :
-			componentType(_componentType) { }
+		ComponentEntry(type_index _componentType) : componentType(componentType) { }
 	};
 }
 

@@ -92,7 +92,7 @@ private:
 	Buffer() = default;
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size, uint64 version);
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
-		Memory(0, access, usage, strategy, version) { this->bind = bind; }
+		Memory(0, access, usage, strategy, version), bind(bind) { }
 	bool destroy() final;
 
 	friend class Image;
@@ -281,7 +281,7 @@ public:
 /**
  * @brief Buffer bind type count.
  */
-const uint8 bufferBindCount = 7;
+constexpr uint8 bufferBindCount = 7;
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Bind)
 

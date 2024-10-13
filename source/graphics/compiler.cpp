@@ -33,7 +33,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //******************************************************************************************************************
-static const uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
+constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
 namespace
 {
@@ -155,7 +155,7 @@ static GraphicsPipeline::ColorComponent toColorComponents(string_view colorCompo
 	return components;
 }
 
-static const string_view glslImageFormatNames[(psize)GslImageFormat::Count] =
+constexpr string_view glslImageFormatNames[(psize)GslImageFormat::Count] =
 {
 	"rgba16f", "rgba32f", "rg16f", "rg32f", "r16f", "r32f",
 	"rgba8i", "rgba16i", "rgba32i", "rg8i", "rg16i", "rg32i", "r8i", "r16i", "r32i",
