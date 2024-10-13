@@ -40,12 +40,12 @@
 using namespace garden;
 using namespace math::ibl;
 
-static const uint8 imageFileExtCount = 8;
-static const char* imageFileExts[] =
+constexpr uint8 imageFileExtCount = 8;
+constexpr string_view imageFileExts[] =
 {
 	".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga"
 };
-static const ImageFileType imageFileTypes[] =
+constexpr ImageFileType imageFileTypes[] =
 {
 	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Jpg, ImageFileType::Jpg,
 	ImageFileType::Exr, ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, ImageFileType::Tga
@@ -103,7 +103,7 @@ namespace
 		Buffer::Access access = {};
 		Buffer::Strategy strategy = {};
 
-		GeneralBufferLoadData(ModelData::Accessor _accessor) : accessor(_accessor) { }
+		GeneralBufferLoadData(ModelData::Accessor accessor) : accessor(accessor) { }
 	};
 	struct VertexBufferLoadData final
 	{
@@ -116,7 +116,7 @@ namespace
 		Buffer::Access access = {};
 		Buffer::Strategy strategy = {};
 
-		VertexBufferLoadData(ModelData::Primitive _primitive) : primitive(_primitive) { }
+		VertexBufferLoadData(ModelData::Primitive primitive) : primitive(primitive) { }
 	};
 	*/
 }
@@ -125,7 +125,6 @@ namespace
 ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
-	hashState = Hash128::createState();
 
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("ImageLoaded");
@@ -156,7 +155,6 @@ ResourceSystem::~ResourceSystem()
 		manager->unregisterEvent("BufferLoaded");
 	}
 
-	Hash128::destroyState(hashState);
 	unsetSingleton();
 }
 
@@ -443,16 +441,28 @@ static void loadMissingImage(vector<uint8>& data, uint2& size, Image::Format& fo
 	pixels[12] = Color::black;  pixels[13] = Color::magenta; pixels[14] = Color::black;   pixels[15] = Color::magenta;
 	size = uint2(4, 4);
 	format = Image::Format::SrgbR8G8B8A8;
-} 
+}
+static void loadMissingImageFloat(vector<uint8>& data, uint2& size, Image::Format& format)
+{
+	const float4 colorMagenta = (float4)Color::magenta; const float4 colorBlack = (float4)Color::black;
+	data.resize(sizeof(float4) * 16);
+	auto pixels = (float4*)data.data();
+	pixels[0] = colorMagenta; pixels[1] = colorBlack;    pixels[2] = colorMagenta;  pixels[3] = colorBlack;
+	pixels[4] = colorBlack;   pixels[5] = colorMagenta;  pixels[6] = colorBlack;    pixels[7] = colorMagenta;
+	pixels[8] = colorMagenta; pixels[9] = colorBlack;    pixels[10] = colorMagenta; pixels[11] = colorBlack;
+	pixels[12] = colorBlack;  pixels[13] = colorMagenta; pixels[14] = colorBlack;   pixels[15] = colorMagenta;
+	size = uint2(4, 4);
+	format = Image::Format::SfloatR32G32B32A32;
+}
 static void loadMissingImage(vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom,
 	vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, uint2& size, Image::Format& format)
 {
-	loadMissingImage(left, size, format);
-	loadMissingImage(right, size, format);
-	loadMissingImage(bottom, size, format);
-	loadMissingImage(top, size, format);
-	loadMissingImage(back, size, format);
-	loadMissingImage(front, size, format);
+	loadMissingImageFloat(left, size, format);
+	loadMissingImageFloat(right, size, format);
+	loadMissingImageFloat(bottom, size, format);
+	loadMissingImageFloat(top, size, format);
+	loadMissingImageFloat(back, size, format);
+	loadMissingImageFloat(front, size, format);
 } 
 
 //**********************************************************************************************************************
@@ -993,6 +1003,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	Hash128 hash;
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
 	{
+		auto hashState = Hash128::getState();
 		Hash128::resetState(hashState);
 		for (const auto& item : paths)
 		{
@@ -1166,8 +1177,8 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash, 
-	ID<GraphicsPipeline> graphicsPipeline, map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<GraphicsPipeline> graphicsPipeline, 
+	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
 	GARDEN_ASSERT(hash);
 	GARDEN_ASSERT(graphicsPipeline);
@@ -1186,8 +1197,8 @@ Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash
 	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
 	return sharedDescriptorSet;
 }
-Ref<DescriptorSet> ResourceSystem::createSharedDescriptorSet(const Hash128& hash, 
-	ID<ComputePipeline> computePipeline, map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<ComputePipeline> computePipeline, 
+	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
 {
 	GARDEN_ASSERT(hash);
 	GARDEN_ASSERT(computePipeline);
@@ -1905,6 +1916,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	if (loadShared)
 	{
 		auto pathString = path.generic_string();
+		auto hashState = Hash128::getState();
 		Hash128::resetState(hashState);
 		Hash128::updateState(hashState, pathString.c_str(), pathString.length());
 		hash = Hash128::digestState(hashState);

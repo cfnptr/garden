@@ -163,7 +163,7 @@ void InputSystem::input()
 	auto window = (GLFWwindow*)GraphicsAPI::window;
 	mouseScroll = float2(0.0f);
 	
-	for (psize i = 0; i < allKeyboardButtons.size(); i++)
+	for (psize i = 0; i < keyboardButtonCount; i++)
 	{
 		auto button = (int)allKeyboardButtons[i];
 		lastKeyboardStates[button] = glfwGetKey(window, button);

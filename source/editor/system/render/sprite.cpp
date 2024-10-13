@@ -77,14 +77,14 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::Instance::get()->get<OpaqueSpriteComponent>(entity);
+		auto componentView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::Instance::get()->get<OpaqueSpriteComponent>(entity);
+		auto componentView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
 		renderComponent(*componentView, typeid(OpaqueSpriteComponent));
 	}
 }
@@ -92,14 +92,14 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::Instance::get()->get<CutoutSpriteComponent>(entity);
+		auto componentView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::Instance::get()->get<CutoutSpriteComponent>(entity);
+		auto componentView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
 		renderComponent(*componentView, typeid(CutoutSpriteComponent));
 
 		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
@@ -115,14 +115,14 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = Manager::Instance::get()->get<TranslucentSpriteComponent>(entity);
+		auto componentView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
 			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = Manager::Instance::get()->get<TranslucentSpriteComponent>(entity);
+		auto componentView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
 		renderComponent(*componentView, typeid(TranslucentSpriteComponent));
 	}
 }

@@ -171,7 +171,7 @@ enum class GslUniformType : uint8
 /***********************************************************************************************************************
  * @brief GSL data type name strings. (camelCase)
  */
-static const string_view gslDataTypeNames[(psize)GslDataType::Count] =
+constexpr string_view gslDataTypeNames[(psize)GslDataType::Count] =
 {
 	"bool", "int", "uint", "float", "bool2", "bool3", "bool4",
 	"int2", "int3", "int4", "uint2", "uint3", "uint4",
@@ -181,14 +181,14 @@ static const string_view gslDataTypeNames[(psize)GslDataType::Count] =
 /**
  * @brief GSL data format name strings. (camelCase)
  */
-static const string_view gslDataFormatNames[(psize)GslDataFormat::Count] =
+constexpr string_view gslDataFormatNames[(psize)GslDataFormat::Count] =
 {
 	"f32", "i8", "i16", "i32", "u8", "u16", "u32"
 };
 /**
  * @brief GSL image format name strings. (camelCase)
  */
-static const string_view gslImageFormatNames[(psize)GslImageFormat::Count] =
+constexpr string_view gslImageFormatNames[(psize)GslImageFormat::Count] =
 {
 	"f16rgba", "f32rgba", "f16rg", "f32rg", "f16r", "f32r",
 	"i8rgba", "i16rgba", "i32rgba", "i8rg", "i16rg", "i32rg", "i8r", "i16r", "i32r",
@@ -197,7 +197,7 @@ static const string_view gslImageFormatNames[(psize)GslImageFormat::Count] =
 /**
  * @brief GSL uniform type name strings. (camelCase)
  */
-static const string_view gslUniformTypeNames[(psize)GslUniformType::Count] =
+constexpr string_view gslUniformTypeNames[(psize)GslUniformType::Count] =
 {
 	"sampler1D", "sampler2D", "sampler3D", "samplerCube", "sampler1DArray", "sampler2DArray",
 	"isampler1D", "isampler2D", "isampler3D", "isamplerCube", "isampler1DArray", "isampler2DArray",

@@ -26,7 +26,7 @@ namespace garden
 
 using namespace garden::graphics;
 
-/***********************************************************************************************************************
+/**
  * @brief Sprite rendering data container.
  */
 struct SpriteRenderComponent : public MeshRenderComponent
@@ -99,7 +99,6 @@ protected:
 	bool deferredBuffer = false;
 	bool linearFilter = false;
 	ID<ImageView> defaultImageView = {};
-	Hash128::State hashState = nullptr;
 	fs::path pipelinePath = {};
 
 	/**
@@ -110,15 +109,9 @@ protected:
 	 * @param useLinearFilter use linear or nearest texture filter
 	 */
 	SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter);
-	/**
-	 * @brief Destroys sprite render system instance.
-	 */
-	~SpriteRenderSystem() override;
 
 	void init() override;
 	void deinit() override;
-
-	Ref<DescriptorSet> createSharedDS(ID<Image> image, const string& path);
 	virtual void imageLoaded();
 
 	void copyComponent(View<Component> source, View<Component> destination) override;
@@ -157,6 +150,14 @@ public:
 	 * @brief Returns sprite animation frame size in bytes.
 	 */
 	virtual psize getAnimationFrameSize() const = 0;
+
+	/**
+	 * @brief Creates shared sprite descriptor set.
+	 * 
+	 * @param path sprite resource path
+	 * @param image sprite texture instance
+	 */
+	Ref<DescriptorSet> createSharedDS(const string& path, ID<Image> image);
 };
 
 /***********************************************************************************************************************

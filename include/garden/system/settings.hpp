@@ -44,7 +44,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 		uint64 data = 0;
 		Type type = {};
 
-		Item(Type _type, uint64 _data) : data(_data), type(_type) { }
+		Item(Type type, uint64 data) : data(data), type(type) { }
 	};
 
 	void* confReader = nullptr;

@@ -24,7 +24,7 @@ using namespace garden;
 
 namespace
 {
-	struct PushConstants final
+	struct PushConstants final  // TODO: move to the class
 	{
 		float threshold;
 	};
@@ -119,7 +119,6 @@ void BloomEditor::render()
 
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			graphicsSystem->startRecording(CommandBufferType::Frame);
-
 			{
 				SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
 				framebufferView->beginRenderPass(float4(0.0f));
@@ -132,7 +131,6 @@ void BloomEditor::render()
 				pipelineView->drawFullscreen();
 				framebufferView->endRenderPass();
 			}
-
 			graphicsSystem->stopRecording();
 		}
 	}

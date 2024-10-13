@@ -25,11 +25,9 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording, bool useAsyncPreparing)
+MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording, bool useAsyncPreparing) :
+	asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
 {
-	this->asyncRecording = useAsyncRecording;
-	this->asyncPreparing = useAsyncPreparing;
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
 }

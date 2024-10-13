@@ -23,18 +23,8 @@ using namespace garden;
 // TODO: Add automatic tightly packed sprite arrays (add support of this to the resource system or texture atlases).
 
 //**********************************************************************************************************************
-SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter)
-{
-	this->pipelinePath = pipelinePath;
-	this->deferredBuffer = useDeferredBuffer;
-	this->linearFilter = useLinearFilter;
-	hashState = Hash128::createState();
-}
-SpriteRenderSystem::~SpriteRenderSystem()
-{
-	Hash128::destroyState(hashState);
-	InstanceRenderSystem::~InstanceRenderSystem();
-}
+SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) :
+	pipelinePath(pipelinePath), deferredBuffer(useDeferredBuffer), linearFilter(useLinearFilter) { }
 
 void SpriteRenderSystem::init()
 {
@@ -56,25 +46,6 @@ void SpriteRenderSystem::deinit()
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(ID<Image> image, const string& path)
-{
-	auto imageView = GraphicsSystem::Instance::get()->get(image);
-	auto imageSize = imageView->getSize();
-	auto imageType = imageView->getType();
-
-	Hash128::resetState(hashState);
-	Hash128::updateState(hashState, path.c_str(), path.length());
-	Hash128::updateState(hashState, &imageSize.x, sizeof(int32));
-	Hash128::updateState(hashState, &imageSize.y, sizeof(int32));
-	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
-
-	auto uniforms = getSpriteUniforms(imageView->getDefaultView());
-	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDescriptorSet(
-		Hash128::digestState(hashState), getPipeline(), std::move(uniforms), 1);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptoSet.shared." + path);
-	return descriptorSet;
-}
-
 void SpriteRenderSystem::imageLoaded()
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
@@ -84,13 +55,16 @@ void SpriteRenderSystem::imageLoaded()
 	auto componentSize = getMeshComponentSize();
 	auto componentData = (uint8*)spriteRenderPool.getData();
 	auto componentOccupancy = spriteRenderPool.getOccupancy();
+	Ref<DescriptorSet> descriptorSet = {};
 	
 	for (uint32 i = 0; i < componentOccupancy; i++)
 	{
 		auto spriteRenderView = (SpriteRenderComponent*)(componentData + i * componentSize);
 		if (spriteRenderView->colorMap != image || spriteRenderView->descriptorSet)
 			continue;
-		spriteRenderView->descriptorSet = createSharedDS(image, imagePath.generic_string());
+		if (!descriptorSet)
+			descriptorSet = createSharedDS(imagePath.generic_string(), image);
+		spriteRenderView->descriptorSet = descriptorSet;
 	}
 
 	auto& spriteFramePool = getAnimationFramePool();
@@ -103,7 +77,9 @@ void SpriteRenderSystem::imageLoaded()
 		auto spriteRenderFrame = (SpriteAnimationFrame*)(componentData + i * componentSize);
 		if (spriteRenderFrame->colorMap != image || spriteRenderFrame->descriptorSet)
 			continue;
-		spriteRenderFrame->descriptorSet = createSharedDS(image, imagePath.generic_string());
+		if (!descriptorSet)
+			descriptorSet = createSharedDS(imagePath.generic_string(), image);
+		spriteRenderFrame->descriptorSet = descriptorSet;
 	}
 }
 
@@ -399,6 +375,8 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
 	frame.descriptorSet = {}; // See the imageLoaded()
 }
+
+//**********************************************************************************************************************
 void SpriteRenderSystem::destroyResources(View<SpriteAnimationFrame> frameView)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
@@ -414,4 +392,27 @@ void SpriteRenderSystem::destroyResources(View<SpriteRenderComponent> spriteRend
 	resourceSystem->destroyShared(spriteRenderView->descriptorSet);
 	spriteRenderView->colorMap = {};
 	spriteRenderView->descriptorSet = {};
+}
+
+Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Image> image)
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(image);
+
+	auto imageView = GraphicsSystem::Instance::get()->get(image);
+	auto imageSize = (uint2)imageView->getSize();
+	auto imageType = imageView->getType();
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, path.c_str(), path.length());
+	Hash128::updateState(hashState, &imageSize.x, sizeof(uint32));
+	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
+	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
+
+	auto uniforms = getSpriteUniforms(imageView->getDefaultView());
+	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
+		Hash128::digestState(hashState), getPipeline(), std::move(uniforms), 1);
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptoSet.shared." + path);
+	return descriptorSet;
 }

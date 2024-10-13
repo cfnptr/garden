@@ -19,10 +19,16 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class MeshGizmosEditorSystem final : public System
 {
+public:
+	struct PushConstants final
+	{
+		float4x4 mvp;
+		float4 color;
+		float renderScale;
+	};
+private:
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
 	ID<GraphicsPipeline> backGizmosPipeline = {};
 	ID<Buffer> fullArrowVertices = {};

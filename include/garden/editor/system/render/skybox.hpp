@@ -13,19 +13,24 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/skybox.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-using namespace garden::graphics;
-
-class SkyboxEditor final
+class SkyboxRenderEditorSystem final : public System
 {
-	SkyboxEditor(SkyboxRenderSystem* system);
-	void onEntityInspector(ID<Entity> entity);
-	friend class SkyboxRenderSystem;
+	SkyboxRenderEditorSystem();
+	~SkyboxRenderEditorSystem() final;
+
+	void init();
+	void deinit();
+
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	friend class ecsm::Manager;
+public:
+	float inspectorPriority = -0.1f;
 };
 
 } // namespace garden

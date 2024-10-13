@@ -21,6 +21,16 @@ namespace garden
 
 class InfiniteGridEditorSystem final : public System
 {
+public:
+	struct PushConstants final
+	{
+		float4 gridColor;
+		float4 axisColorX;
+		float4 axisColorY;
+		float gridScale;
+		int32 isHorizontal;
+	};
+private:
 	ID<GraphicsPipeline> pipeline;
 	ID<DescriptorSet> descriptorSet;
 

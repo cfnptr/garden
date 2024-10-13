@@ -293,11 +293,8 @@ private:
 	GraphicsPipeline() = default;
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
 		uint64 pipelineVersion, ID<Framebuffer> framebuffer, uint8 subpassIndex) :
-		Pipeline(PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion)
-	{
-		this->framebuffer = framebuffer;
-		this->subpassIndex = subpassIndex;
-	}
+		Pipeline(PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion),
+		framebuffer(framebuffer), subpassIndex(subpassIndex) { }
 	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
 
 	friend class CommandBuffer;
@@ -460,7 +457,7 @@ public:
 /**
  * @brief Color component count.
  */
-const uint8 colorComponentCount = 4;
+constexpr uint8 colorComponentCount = 4;
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(GraphicsPipeline::ColorComponent)
 

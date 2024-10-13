@@ -30,15 +30,15 @@ using namespace ecsm;
 /**
  * @brief Generic head-mounted display depth.
  */
-inline static const float defaultHmdDepth = 0.01f;
+constexpr float defaultHmdDepth = 0.01f;
 /**
  * @brief Optimal FOV for a PC monitor.
  */
-inline static const float defaultFieldOfView = 90.0f;
+constexpr float defaultFieldOfView = 90.0f;
 /**
  * @brief Generic 16/9 display aspect ratio.
  */
-inline static const float defaultAspectRatio = (16.0f / 9.0f);
+constexpr float defaultAspectRatio = (16.0f / 9.0f);
 
 /**
  * @brief Camera projection type.

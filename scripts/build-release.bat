@@ -1,5 +1,5 @@
 @ECHO OFF
-cd /D "%~dp0"
+CD /D "%~dp0"
 
 cmake --version > nul
 

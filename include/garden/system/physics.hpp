@@ -205,7 +205,7 @@ private:
 	void* instance = nullptr;
 
 	Shape() = default;
-	Shape(void* _instance) : instance(_instance) { }
+	Shape(void* instance) : instance(instance) { }
 
 	bool destroy();
 
@@ -605,7 +605,6 @@ private:
 	vector<EntityConstraint> deserializedConstraints;
 	mutex bodyEventLocker;
 	string valueStringCache;
-	Hash128::State hashState = nullptr;
 	void* tempAllocator = nullptr;
 	void* jobSystem = nullptr;
 	void* bpLayerInterface = nullptr;

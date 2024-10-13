@@ -20,7 +20,6 @@ using namespace garden::graphics;
 
 string GraphicsAPI::appDataName;
 Version GraphicsAPI::appVersion;
-Hash128::State GraphicsAPI::hashState = nullptr;
 void* GraphicsAPI::window = nullptr;
 LinearPool<Buffer> GraphicsAPI::bufferPool;
 LinearPool<Image> GraphicsAPI::imagePool;

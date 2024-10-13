@@ -87,7 +87,7 @@
 #endif
 
 //**********************************************************************************************************************
-static const char* GARDEN_SIMD_STRING = ""
+constexpr char* GARDEN_SIMD_STRING = ""
 	#if GARDEN_SIMD_SSE
 	"SSE "
 	#endif

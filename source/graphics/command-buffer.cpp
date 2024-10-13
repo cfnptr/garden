@@ -94,7 +94,7 @@ void CommandBuffer::terminate()
 }
 
 //**********************************************************************************************************************
-static const uint32 writeAccessMask =
+constexpr uint32 writeAccessMask =
 	VK_ACCESS_SHADER_WRITE_BIT |
 	VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
 	VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |

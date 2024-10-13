@@ -23,7 +23,7 @@ using namespace garden;
 
 namespace
 {
-	struct PushConstants final
+	struct PushConstants final // TODO: move to the class
 	{
 		float4 farPlanes;
 	};
@@ -123,19 +123,19 @@ void ShadowMappingEditor::render()
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 			graphicsSystem->startRecording(CommandBufferType::Frame);
-
-			SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
-			framebufferView->beginRenderPass(float4(0.0f));
-			pipelineView->bind();
-			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(cascadesDescriptorSet);
-			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-			pushConstants->farPlanes = float4(
-				cameraConstants.nearPlane / system->farPlanes, 0.0f);
-			pipelineView->pushConstants();
-			pipelineView->drawFullscreen();
-			framebufferView->endRenderPass();
-			
+			{
+				SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
+				framebufferView->beginRenderPass(float4(0.0f));
+				pipelineView->bind();
+				pipelineView->setViewportScissor();
+				pipelineView->bindDescriptorSet(cascadesDescriptorSet);
+				auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+				pushConstants->farPlanes = float4(
+					cameraConstants.nearPlane / system->farPlanes, 0.0f);
+				pipelineView->pushConstants();
+				pipelineView->drawFullscreen();
+				framebufferView->endRenderPass();
+			}
 			graphicsSystem->stopRecording();
 		}
 	}

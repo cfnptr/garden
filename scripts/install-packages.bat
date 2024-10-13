@@ -1,5 +1,5 @@
 @ECHO OFF
-cd /D "%~dp0"
+CD /D "%~dp0"
 
 vcpkg --version > nul
 
@@ -8,14 +8,7 @@ IF NOT %ERRORLEVEL% == 0 (
     EXIT /B %ERRORLEVEL%
 )
 
-vcpkg integrate install
-
-IF NOT %ERRORLEVEL% == 0 (
-    ECHO Failed to integrate vcpkg user-wide.
-    EXIT /B %ERRORLEVEL%
-)
-
-vcpkg install zlib openssl
+vcpkg install zlib:x64-windows-static openssl:x64-windows-static
 
 IF NOT %ERRORLEVEL% == 0 (
     ECHO vcpkg failed to install required packages.

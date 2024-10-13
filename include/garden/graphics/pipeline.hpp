@@ -265,15 +265,10 @@ protected:
 
 	Pipeline() = default;
 	Pipeline(CreateData& createData, bool useAsyncRecording);
-	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount,
-		bool useAsyncRecording, uint64 pipelineVersion)
+	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, 
+		uint64 pipelineVersion) : pipelinePath(path), pipelineVersion(pipelineVersion),
+		maxBindlessCount(maxBindlessCount), type(type), asyncRecording(useAsyncRecording)
 	{
-		this->pipelinePath = path;
-		this->pipelineVersion = pipelineVersion;
-		this->maxBindlessCount = maxBindlessCount;
-		this->type = type;
-		this->asyncRecording = useAsyncRecording;
-
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (type == PipelineType::Graphics)
 			debugName = "graphicsPipeline." + path.generic_string();
@@ -589,14 +584,14 @@ static Pipeline::CompareOperation toCompareOperation(string_view compareOperatio
 /***********************************************************************************************************************
  * @brief Sampler wrap mode name strings.
  */
-static const string_view samplerWrapNames[(psize)Pipeline::SamplerWrap::Count] =
+constexpr string_view samplerWrapNames[(psize)Pipeline::SamplerWrap::Count] =
 {
 	"Repeat", "MirroredRepeat", "ClampToEdge", "ClampToBorder", "MirrorClampToEdge"
 };
 /**
  * @brief Border color name strings.
  */
-static const string_view borderColorNames[(psize)Pipeline::BorderColor::Count] =
+constexpr string_view borderColorNames[(psize)Pipeline::BorderColor::Count] =
 {
 	"FloatTransparentBlack", "IntTransparentBlack", "FloatOpaqueBlack",
 	"IntOpaqueBlack", "FloatOpaqueWhite", "IntOpaqueWhite"
@@ -604,7 +599,7 @@ static const string_view borderColorNames[(psize)Pipeline::BorderColor::Count] =
 /**
  * @brief Compare operation name strings.
  */
-static const string_view compareOperationNames[(psize)Pipeline::CompareOperation::Count] =
+constexpr string_view compareOperationNames[(psize)Pipeline::CompareOperation::Count] =
 {
 	"Never", "Less", "Equal", "LessOrEqual", "Greater", "NotEqual", "GreaterOrEqual", "Always"
 };

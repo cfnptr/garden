@@ -43,10 +43,9 @@ bool AnimationComponent::getActiveLooped(bool& isLooped) const
 }
 
 //**********************************************************************************************************************
-AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) : Singleton(setSingleton)
+AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) : 
+	Singleton(setSingleton), animateAsync(animateAsync)
 {
-	this->animateAsync = animateAsync;
-
 	random_device randomDevice;
 	this->randomGenerator = mt19937(randomDevice());
 

@@ -31,11 +31,11 @@ using namespace math;
 /**
  * @brief Optimal sync primitive count.
  */
-const int frameLag = 2;
+constexpr int frameLag = 2;
 /**
  * @brief Nvidia architecture maximum binary size.
  */
-const psize maxPushConstantsSize = 128;
+constexpr psize maxPushConstantsSize = 128;
 
 /***********************************************************************************************************************
  * @brief Point where programmable shading occurs.
@@ -117,14 +117,14 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
 /***********************************************************************************************************************
  * @brief Pipeline type name strings.
  */
-static const string_view pipelineTypeNames[(psize)PipelineType::Count] =
+constexpr string_view pipelineTypeNames[(psize)PipelineType::Count] =
 {
 	"Graphics", "Compute"
 };
 /**
  * @brief Sampler filter name strings.
  */
-static const string_view samplerFilterNames[(psize)SamplerFilter::Count] =
+constexpr string_view samplerFilterNames[(psize)SamplerFilter::Count] =
 {
 	"Nearest", "Linear"
 };

@@ -14,6 +14,10 @@
 
 # Based on Steam survey instruction set support.
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	endif()
+
 	add_compile_options(/MP /nologo /utf-8 /arch:AVX2)
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(/GL)

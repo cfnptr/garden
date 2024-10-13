@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Lighting rendering functions.
+ */
+
+// TODO: I have failed to find good denoiser for shadows. Research this field.
+
 #pragma once
 #include "garden/system/render/deferred.hpp"
 
 namespace garden
 {
 
-// TODO: I have failed to find good denoiser for shadows. Research this field.
-
 using namespace garden::graphics;
-class LightingRenderSystem;
 
 // TODO: TODO: check if correct.
 //float iorToReflectance(float transmittedIor, float incidentIor = 1.0)
@@ -30,15 +34,17 @@ class LightingRenderSystem;
 // return sqrt(f0 / 0.16);
 //}
 
-/***********************************************************************************************************************
+/**
  * @brief PBR lighting rendering data container.
  */
 struct LightingRenderComponent final : public Component
 {
-	Ref<Image> cubemap = {};
-	Ref<Buffer> sh = {};
-	Ref<Image> specular = {};
-	Ref<DescriptorSet> descriptorSet = {};
+	Ref<Image> cubemap = {};               /**< Lighting cubemap image. */
+	Ref<Buffer> sh = {};                   /**< Lighting spherical harmonics buffer. */
+	Ref<Image> specular = {};              /**< Lighting specular cubemap. */
+	Ref<DescriptorSet> descriptorSet = {}; /**< Lighting descriptor set. */
+
+	bool destroy();
 };
 
 /**
@@ -47,8 +53,15 @@ struct LightingRenderComponent final : public Component
 class IShadowRenderSystem
 {
 protected:
+	/**
+	 * @brief Prepares system for shadow rendering.
+	 */
 	virtual void preShadowRender() { }
+	/**
+	 * @brief Renders system shadows.
+	 */
 	virtual bool shadowRender() = 0;
+
 	friend class LightingRenderSystem;
 };
 /**
@@ -57,28 +70,43 @@ protected:
 class IAoRenderSystem
 {
 protected:
+	/**
+	 * @brief Prepares system for ambient occlusion rendering.
+	 */
 	virtual void preAoRender() { }
+	/**
+	 * @brief Renders system ambient occlusion.
+	 */
 	virtual bool aoRender() = 0;
+
 	friend class LightingRenderSystem;
 };
-
-// TODO: allow to disable shadow or ao buffers.
 
 /***********************************************************************************************************************
  * @brief PBR lighting rendering system.
  */
-class LightingRenderSystem final : public ComponentSystem<LightingRenderComponent, false>,
+class LightingRenderSystem final : public ComponentSystem<LightingRenderComponent>, 
 	public Singleton<LightingRenderSystem>
 {
 public:
 	/**
 	 * @brief Lighting rendering shadow buffer count.
 	 */
-	inline static const uint8 shadowBufferCount = 1;
+	static constexpr uint8 shadowBufferCount = 1;
 	/**
 	 * @brief Lighting rendering AO buffer count. (Ambient Occlusion)
 	 */
-	inline static const uint8 aoBufferCount = 2;
+	static constexpr uint8 aoBufferCount = 2;
+
+	struct LightingPC final
+	{
+		float4x4 uvToWorld;
+		float4 shadowColor;
+	};
+	struct SpecularPC final
+	{
+		uint32 count;
+	};
 private:
 	vector<IShadowRenderSystem*> shadowSystems;
 	vector<IAoRenderSystem*> aoSystems;
@@ -100,8 +128,8 @@ private:
 	/**
 	 * @brief Creates a new lighting rendering system instance.
 	 * 
-	 * @param useShadowBuffer use shadow buffer for rendering
-	 * @param useAoBuffer use ambient occlusion buffer for rendering
+	 * @param useShadowBuffer create and use shadow buffer for rendering
+	 * @param useAoBuffer create use ambient occlusion buffer for rendering
 	 * @param setSingleton set system singleton instance
 	 */
 	LightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false, bool setSingleton = true);
@@ -116,37 +144,95 @@ private:
 	void hdrRender();
 	void gBufferRecreate();
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-	type_index getComponentType() const final;
-	View<Component> getComponent(ID<Component> instance) final;
-	void disposeComponents() final;
 
 	friend class ecsm::Manager;
 public:
+	/*******************************************************************************************************************
+	 * @brief Shadow color factor. (RGBA)
+	 */
 	float4 shadowColor = float4(1.0f);
 
+	/**
+	 * @brief Use shadow buffer for lighting rendering.
+	 */
 	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
+	/**
+	 * @brief Use ambient occlusion buffer for lighting rendering.
+	 */
 	bool useAoBuffer() const noexcept { return hasAoBuffer; }
+	/**
+	 * @brief Enables or disables use of the shadow and ambient occlusion buffers.
+	 * @details It destroys existing buffers on use set to false.
+	 * 
+	 * @param useShadowBuffer use shadow buffer for rendering
+	 * @param useAoBuffer use ambient occlusion buffer for rendering
+	 */
 	void setConsts(bool useShadowBuffer, bool useAoBuffer);
 
+	/**
+	 * @brief Returns lighting graphics pipeline instance.
+	 */
 	ID<GraphicsPipeline> getLightingPipeline();
+	/**
+	 * @brief Returns IBL specular graphics pipeline instance. (Image Based Lighting)
+	 */
 	ID<ComputePipeline> getIblSpecularPipeline();
+	/**
+	 * @brief Returns AO denoise graphics pipeline instance.
+	 */
 	ID<GraphicsPipeline> getAoDenoisePipeline();
 
+	/**
+	 * @brief Returns shadow framebuffer array.
+	 */
 	const ID<Framebuffer>* getShadowFramebuffers();
+	/**
+	 * @brief Returns ambient occlusion framebuffer array.
+	 */
 	const ID<Framebuffer>* getAoFramebuffers();
 
+	/**
+	 * @brief Returns DFG LUT image instance. (DFG Look Up Table)
+	 */
 	ID<Image> getDfgLUT();
+	/**
+	 * @brief Returns shadow buffer instance.
+	 */
 	ID<Image> getShadowBuffer();
+	/**
+	 * @brief Returns ambient occlusion buffer instance.
+	 */
 	ID<Image> getAoBuffer();
+	/**
+	 * @brief Returns shadow image view array.
+	 */
 	const ID<ImageView>* getShadowImageViews();
+	/**
+	 * @brief Returns ambient occlusion image view array.
+	 */
 	const ID<ImageView>* getAoImageViews();
 
+	/*******************************************************************************************************************
+	 * @brief Loads cubemap rendering data from the resource pack.
+	 * @note Loads from the scenes directory in debug build.
+	 * 
+	 * @param[in] path target cubemap resource path
+	 * @param[out] cubemap cubemap image instance
+	 * @param[out] sh spherical harmonics buffer instance
+	 * @param[out] specular specular cubemap instance
+	 * @param strategy graphics memory allocation strategy
+	 */
 	void loadCubemap(const fs::path& path, Ref<Image>& cubemap, Ref<Buffer>& sh,
 		Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size);
+
+	/**
+	 * @brief Creates lighting descriptor set.
+	 * 
+	 * @param sh spherical harmonics buffer instance
+	 * @param specular specular cubemap instance
+	 */
 	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular);
 };
 

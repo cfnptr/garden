@@ -19,8 +19,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class LightingRenderEditorSystem final : public System
 {
 	LightingRenderEditorSystem();
@@ -30,7 +28,6 @@ class LightingRenderEditorSystem final : public System
 	void deinit();
 	
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
-
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = -0.1f;

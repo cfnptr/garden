@@ -21,8 +21,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class SpriteRenderEditorSystem final : public System
 {
 	SpriteRenderEditorSystem();

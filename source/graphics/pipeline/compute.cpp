@@ -20,10 +20,8 @@ using namespace garden::graphics;
 
 //**********************************************************************************************************************
 ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecording) :
-	Pipeline(createData, asyncRecording)
+	Pipeline(createData, asyncRecording), localSize(createData.localSize)
 {
-	this->localSize = createData.localSize;
-
 	auto _code = vector<vector<uint8>>(1); _code[0] = std::move(createData.code);
 	auto shaders = createShaders(_code, createData.shaderPath);
 

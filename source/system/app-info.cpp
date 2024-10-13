@@ -17,20 +17,15 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-AppInfoSystem::AppInfoSystem(const string& name, const string& nameLowercase, const string& description,
-	const string& creator, const string& copyright, Version version,
+AppInfoSystem::AppInfoSystem(string_view name, string_view nameLowercase, string_view description,
+	string_view creator, string_view copyright, Version version,
 	#if GARDEN_DEBUG
 	fs::path cachesPath, fs::path resourcesPath,
 	#endif
-	bool setSingleton) : Singleton(setSingleton)
+	bool setSingleton) : Singleton(setSingleton), 
+	name(name), nameLowercase(nameLowercase), description(description),
+	creator(creator), copyright(copyright), version(version)
 {
-	this->name = name;
-	this->nameLowercase = nameLowercase;
-	this->description = description;
-	this->creator = creator;
-	this->copyright = copyright;
-	this->version = version;
-
 	#if GARDEN_DEBUG
 	this->cachesPath = cachesPath;
 	this->resourcesPath = resourcesPath;

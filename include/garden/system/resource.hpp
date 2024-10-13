@@ -109,7 +109,6 @@ protected:
 	vector<LoadedBufferItem> loadedBufferArray;
 	vector<LoadedImageItem> loadedImageArray;
 	mutex queueLocker = {};
-	Hash128::State hashState = nullptr;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
 	vector<fs::path> loadedImagePaths = {};
@@ -267,8 +266,7 @@ public:
 	 * @param[in] uniforms shader uniform array
 	 * @param index index of descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createSharedDescriptorSet(
-		const Hash128& hash, ID<GraphicsPipeline> graphicsPipeline,
+	Ref<DescriptorSet> createSharedDS(const Hash128& hash, ID<GraphicsPipeline> graphicsPipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
 
 	/**
@@ -279,8 +277,7 @@ public:
 	 * @param[in] uniforms shader uniform array
 	 * @param index index of descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createSharedDescriptorSet(
-		const Hash128& hash, ID<ComputePipeline> computePipeline,
+	Ref<DescriptorSet> createSharedDS(const Hash128& hash, ID<ComputePipeline> computePipeline,
 		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
 
 	/**

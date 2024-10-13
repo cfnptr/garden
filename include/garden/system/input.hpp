@@ -79,9 +79,14 @@ enum class CursorType : uint8
 };
 
 /***********************************************************************************************************************
+ * @brief Defined keyboard button count. (GLFW)
+ */
+constexpr uint8 keyboardButtonCount = 120;
+
+/**
  * @brief All defined keyboard buttons array. (GLFW)
  */
-static const vector<KeyboardButton> allKeyboardButtons =
+constexpr KeyboardButton allKeyboardButtons[keyboardButtonCount] =
 {
 	KeyboardButton::Space, KeyboardButton::Apostrophe, KeyboardButton::Comma,
 	KeyboardButton::Minus, KeyboardButton::Period, KeyboardButton::Slash,
@@ -129,15 +134,15 @@ public:
 	/**
 	 * @brief Default window width in pixels across X-axis.
 	 */
-	inline static const uint32 defaultWindowWidth = 1280;
+	static constexpr uint32 defaultWindowWidth = 1280;
 	/**
 	 * @brief Default window height in pixels across Y-axis.
 	 */
-	inline static const uint32 defaultWindowHeight = 720;
+	static constexpr uint32 defaultWindowHeight = 720;
 	/**
 	 * @brief Default window size in pixels.
 	 */
-	inline static const uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
+	static constexpr uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
 private:
 	vector<bool> lastKeyboardStates;
 	vector<bool> lastMouseStates;

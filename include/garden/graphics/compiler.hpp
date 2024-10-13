@@ -51,7 +51,7 @@ public:
 	/**
 	 * @brief Compiled shader file magic number size in bytes.
 	 */
-	inline static const psize gslMagicSize = 4;
+	static constexpr psize gslMagicSize = 4;
 
 	/**
 	 * @brief Graphics pipeline shader data.
@@ -85,11 +85,11 @@ public:
 	/**
 	 * @brief Graphics pipeline file magic number
 	 */
-	inline static const string_view graphicsGslMagic = "GSLG";
+	static constexpr string_view graphicsGslMagic = "GSLG";
 	/**
 	 * @brief Graphics pipeline file magic number
 	 */
-	inline static const string_view computeGslMagic = "GSLC";
+	static constexpr string_view computeGslMagic = "GSLC";
 	
 	/**
 	 * @brief Loads graphics pipeline shader data.

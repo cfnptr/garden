@@ -40,7 +40,7 @@ using namespace math::ibl;
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
 //******************************************************************************************************************
 // x = 1.0 / (Pi * 2), y =  1.0 / Pi
-static const float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
+constexpr float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
 
 static float2 toSphericalMapUV(const float3& v)
 {

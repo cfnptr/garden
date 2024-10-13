@@ -51,7 +51,7 @@ private:
 	Type type = {};
 public:
 	friend class CommandBuffer;
-	Command(Type type) noexcept { this->type = type; }
+	Command(Type type) noexcept : type(type) { }
 };
 
 //**********************************************************************************************************************

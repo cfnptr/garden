@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common sprite rendering functions.
+ * @brief Common 9-slice sprite rendering functions. (scale 9 grid, 9-patch)
  */
 
 // TODO: Add center slice repeat mode instead of stretching, if needed.
@@ -28,12 +28,18 @@ namespace garden
 
 using namespace garden::graphics;
 
+/**
+ * @brief 9-slice sprite rendering data container.
+ */
 struct NineSliceRenderComponent : public SpriteRenderComponent
 {
 	float2 textureBorder = float2(0.0f);
 	float2 windowBorder = float2(0.0f);
 };
 
+/**
+ * @brief 9-slice sprite animation frame container.
+ */
 struct NineSliceAnimationFrame : public SpriteAnimationFrame
 {
 	float2 textureBorder = float2(0.0f);
@@ -43,7 +49,7 @@ struct NineSliceAnimationFrame : public SpriteAnimationFrame
 };
 
 /***********************************************************************************************************************
- * @brief Nine slice sprite rendering system.
+ * @brief 9-slice sprite rendering system.
  */
 class NineSliceRenderSystem : public SpriteRenderSystem
 {
@@ -72,7 +78,7 @@ protected:
 };
 
 /***********************************************************************************************************************
- * @brief Nine slice sprite rendering component system.
+ * @brief 9-slice sprite rendering component system.
  */
 template<class C = NineSliceRenderComponent, class A = NineSliceAnimationFrame,
 	bool DestroyComponents = true, bool DestroyAnimationFrames = true>

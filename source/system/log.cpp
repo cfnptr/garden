@@ -89,7 +89,7 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	info("Started logging system. (UTC+0)");
 	info(appInfoSystem->getName() + " [v" + appInfoSystem->getVersion().toString3() + "]");
 	info(GARDEN_NAME_STRING " Engine [v" GARDEN_VERSION_STRING "]");
-	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_ARCH ")");
+	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
 	logKernelInfo(this);
 	info("SIMDs: " + string(GARDEN_SIMD_STRING));
 	info("CPU: " + string(OS::getCpuName()));

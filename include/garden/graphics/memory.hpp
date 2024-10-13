@@ -76,14 +76,8 @@ protected:
 	// Note: Use GraphicsSystem to create, destroy and access memory resources.
 
 	Memory() = default;
-	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version) noexcept
-	{
-		this->binarySize = binarySize;
-		this->version = version;
-		this->access = access;
-		this->usage = usage;
-		this->strategy = strategy;
-	}
+	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
+		binarySize(binarySize), version(version), access(access), usage(usage), strategy(strategy) { }
 
 	friend class MemoryExt;
 public:
@@ -112,21 +106,21 @@ public:
 /**
  * @brief Memory access name strings.
  */
-static const string_view memoryAccessNames[(psize)Memory::Access::Count] =
+constexpr string_view memoryAccessNames[(psize)Memory::Access::Count] =
 {
 	"None", "SequentialWrite", "RandomReadWrite"
 };
 /**
  * @brief Memory preferred usage name strings.
  */
-static const string_view memoryUsageNames[(psize)Memory::Usage::Count] =
+constexpr string_view memoryUsageNames[(psize)Memory::Usage::Count] =
 {
 	"Auto", "PreferGPU", "PreferCPU"
 };
 /**
  * @brief Memory allocation strategy name strings.
  */
-static const string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
+constexpr string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
 {
 	"Default", "Size", "Speed"
 };

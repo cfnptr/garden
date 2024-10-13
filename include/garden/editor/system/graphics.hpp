@@ -22,7 +22,7 @@ namespace garden
 class GraphicsEditorSystem final : public System
 {
 public:
-	inline static const psize sampleBufferSize = 512;
+	static constexpr psize sampleBufferSize = 512;
 private:
 	float* cpuFpsBuffer = nullptr;
 	float* gpuFpsBuffer = nullptr;

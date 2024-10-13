@@ -167,8 +167,13 @@ void GraphicsSystem::recreateImGui()
 
 static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 {
-	auto depthImage = GraphicsSystem::Instance::get()->createImage(format, Image::Bind::TransferDst |
-		Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment, { { nullptr } }, size, Image::Strategy::Size);
+	auto bind = Image::Bind::TransferDst | Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment;
+	#if GARDEN_DEBUG
+	bind |= Image::Bind::Sampled;
+	#endif
+
+	auto depthImage = GraphicsSystem::Instance::get()->createImage(
+		format, bind, { { nullptr } }, size, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(depthImage, "image.depthBuffer");
 	auto imageView = GraphicsAPI::imagePool.get(depthImage);
 	return imageView->getDefaultView();
@@ -176,12 +181,9 @@ static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 
 //**********************************************************************************************************************
 GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat, bool isFullscreen, 
-	bool useVsync, bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false)
+	bool useVsync, bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
+	useVsync(useVsync), useTripleBuffering(useTripleBuffering), asyncRecording(useAsyncRecording)
 {
-	this->useVsync = useVsync;
-	this->useTripleBuffering = useTripleBuffering;
-	this->asyncRecording = useAsyncRecording;
-
 	auto manager = Manager::Instance::get();
 	manager->registerEventAfter("Render", "Update");
 	manager->registerEventAfter("Present", "Render");

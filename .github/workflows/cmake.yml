@@ -41,7 +41,7 @@ jobs:
     - name: Install macOS packages
       if: matrix.os == 'macos-latest'
       run: |
-        brew update && brew install zlib
+        brew update && brew install zlib openssl
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.dmg
         volumeInfo=$(hdiutil attach vulkan_sdk.dmg | grep Volumes)
         volume=$(echo "$volumeInfo" | cut -f 3)

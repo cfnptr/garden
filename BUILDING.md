@@ -7,6 +7,7 @@
 * [macOS (14/15)](BUILDING.md#macos-1415)
 * [Build Project](BUILDING.md#build-project)
 
+
 # Windows (10/11)
 
 ## 1. Install Visual Studio Community (Or any other IDE)
@@ -33,18 +34,34 @@ You may use default Git install options or chose any other default Git editor in
 
 * Download and install latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **Windows**
 
-To build the engine you will only need **The Vulkan SDK Core** components.
+To build the project you will only need **The Vulkan SDK Core** components.
 
-## 5. Install vcpkg package manager
+## 5. Clone Repository
 
-1. Follow installation steps from [learn.microsoft.com](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started)
-2. Run ```vcpkg integrate install``` using **Terminal** or **CMD** app to make packages available user-wide
+1. Open **Terminal** or **CMD** app to execute following commands
+2. Change current working directory using ```cd``` command where to clone repository. (Google it)
+3. Run ```git clone --recursive https://github.com/cfnptr/garden``` command to download repository
+4. Run ```cd garden/``` to enter repository directory
 
-Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Environment Variables!
+Note! Use appropriate github link if Garden engine is used as a third-party library.
+
+## 6. Install vcpkg package manager
+
+1. Open **CMD** or **Terminal** app as Administrator. (Right click the app)
+2. Run ```scripts/update-vcpkg.bat``` command from the repository *scripts/* directory
+
+Or
+
+1. Follow installation steps from [learn.microsoft.com](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started) (Better to choose C:\vcpkg path)
+2. Run ```vcpkg integrate install``` command using **Terminal** or **CMD** app to make packages available user-wide
+3. Add **vcpkg** to the System Environment Variables. (Google it)
 
 ## 6. Install required packages
 
 1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static``` using **Terminal** or **CMD** app
+
+Alternatively run ```install-packages.bat``` from the repository **scripts/** directory
+
 
 # Ubuntu (22.04/24.04)
 
@@ -55,7 +72,7 @@ Better to choose C:\vcpkg path. Don't forget to add **vcpkg** to the System Envi
 
 ## 2. Install required packages
 
-1. Run ```sudo apt-get update``` using **Terminal** app
+1. Run ```sudo apt-get update``` command using **Terminal** app
 2. And ```sudo apt-get install git gcc g++ gdb cmake clang zlib1g-dev libssl-dev xorg-dev```
 
 ## 3. Install Vulkan SDK
@@ -70,12 +87,12 @@ Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 ## 1. Install Xcode (Or any other IDE)
 
 1. Download and install latest version from **App Store** app
-2. Run ```xcode-select --install``` using **Terminal** app to install Xcode tools
+2. Run ```xcode-select --install``` command using **Terminal** app to install Xcode tools
 
 ## 2. Install required packages
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
-2. Run ```brew update``` using **Terminal** app
+2. Run ```brew update``` command using **Terminal** app
 3. And ```brew install git cmake zlib openssl```
 
 ## 3. Install Vulkan SDK
@@ -83,7 +100,7 @@ Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 1. Download latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **macOS**
 2. During **Select Components** screen "System Global Installation" should be checked
 
-To build the engine you will only need The Vulkan SDK Core components.
+To build the project you will only need The Vulkan SDK Core components.
 
 
 # Build Project

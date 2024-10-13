@@ -19,8 +19,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class ShadowMappingEditor final
 {
 	ID<GraphicsPipeline> cascadesPipeline = {};
