@@ -80,6 +80,7 @@ vector<bool> Vulkan::secondaryCommandStates;
 Swapchain Vulkan::swapchain;
 vk::PhysicalDeviceProperties2 Vulkan::deviceProperties = {};
 vk::PhysicalDeviceFeatures2 Vulkan::deviceFeatures = {};
+bool Vulkan::isCacheLoaded = false;
 bool Vulkan::hasMemoryBudget = false;
 bool Vulkan::hasMemoryPriority = false;
 bool Vulkan::hasPageableMemory = false;
@@ -691,7 +692,7 @@ namespace
 }
 
 static vk::PipelineCache createPipelineCache(const string& appDataName, Version appVersion,
-	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties)
+	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, bool& isLoaded)
 {
 	const auto cacheHeaderSize = sizeof(PipelineCacheHeader) - sizeof(VkPipelineCacheHeaderVersionOne);
 	auto path = Directory::getAppDataPath(appDataName) / "caches/shaders";
@@ -731,7 +732,9 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 				{
 					cacheInfo.initialDataSize = fileData.size() - cacheHeaderSize;
 					cacheInfo.pInitialData = fileData.data() + cacheHeaderSize;
+					isLoaded = true;
 				}
+				else isLoaded = false;
 			}
 		}
 	}
@@ -868,7 +871,8 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	transferCommandPool = createVkCommandPool(device, transferQueueFamilyIndex);
 	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex); 
 	descriptorPool = createVkDescriptorPool(device);
-	pipelineCache = createPipelineCache(appDataName, appVersion, device, deviceProperties);
+	pipelineCache = createPipelineCache(appDataName, appVersion, 
+		device, deviceProperties, isCacheLoaded);
 
 	int sizeX = 0, sizeY = 0;
 	glfwGetFramebufferSize(window, &sizeX, &sizeY);

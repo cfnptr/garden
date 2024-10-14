@@ -128,10 +128,8 @@ private:
 	void present();
 
 	friend class ecsm::Manager;
-
-	//******************************************************************************************************************
 public:
-	/**
+	/*******************************************************************************************************************
 	 * @brief Current main render camera.
 	 */
 	ID<Entity> camera = {};
@@ -168,7 +166,7 @@ public:
 	 */
 	uint2 getScaledFramebufferSize() const noexcept;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns current frame index since the application launch.
 	 * @details It does not count frames when the window is minimized.
 	 */
@@ -229,7 +227,7 @@ public:
 	 */
 	uint32 getSwapchainIndex() const noexcept;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns full cube vertex buffer.
 	 * @details Allocates if it is not created yet.
 	 */

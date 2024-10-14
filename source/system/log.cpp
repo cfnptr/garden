@@ -23,6 +23,7 @@
 #include "mpmt/thread.hpp"
 #include "mpio/os.hpp"
 #include <thread>
+#include <chrono>
 
 #if GARDEN_OS_LINUX || GARDEN_OS_MACOS
 #include <sys/utsname.h>
@@ -68,6 +69,15 @@ static void logKernelInfo(LogSystem* logSystem)
 	#endif
 }
 
+static string getCurrentDate()
+{
+	auto currentTime = chrono::system_clock::to_time_t(chrono::system_clock::now());
+	auto timeString = string(std::ctime(&currentTime));
+	if (timeString.size() > 0)
+		timeString.resize(timeString.size() - 1);
+	return timeString;
+}
+
 //**********************************************************************************************************************
 LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : Singleton(setSingleton)
 {
@@ -87,6 +97,7 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 
 	mpmt::Thread::setName("MAIN");
 	info("Started logging system. (UTC+0)");
+	info("Date: " + getCurrentDate());
 	info(appInfoSystem->getName() + " [v" + appInfoSystem->getVersion().toString3() + "]");
 	info(GARDEN_NAME_STRING " Engine [v" GARDEN_VERSION_STRING "]");
 	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");

@@ -454,7 +454,7 @@ static void loadMissingImageFloat(vector<uint8>& data, uint2& size, Image::Forma
 	size = uint2(4, 4);
 	format = Image::Format::SfloatR32G32B32A32;
 }
-static void loadMissingImage(vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom,
+static void loadMissingImageFloat(vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom,
 	vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, uint2& size, Image::Format& format)
 {
 	loadMissingImageFloat(left, size, format);
@@ -463,7 +463,44 @@ static void loadMissingImage(vector<uint8>& left, vector<uint8>& right, vector<u
 	loadMissingImageFloat(top, size, format);
 	loadMissingImageFloat(back, size, format);
 	loadMissingImageFloat(front, size, format);
-} 
+}
+
+#if !GARDEN_PACK_RESOURCES
+//**********************************************************************************************************************
+static int32 getImageFilePath(const fs::path& appCachesPath, const fs::path& appResourcesPath,
+	fs::path path, fs::path& filePath, ImageFileType& fileType)
+{
+	auto imagePath = fs::path("images") / path;
+	filePath = appCachesPath / imagePath;
+	filePath += ".exr";
+
+	int32 fileCount = fs::exists(filePath) ? 1 : 0;
+	fileType = ImageFileType::Exr;
+
+	for (uint8 i = 0; i < imageFileExtCount; i++)
+	{
+		imagePath.replace_extension(imageFileExts[i]);
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileType = imageFileTypes[i];
+			fileCount++;
+		}
+	}
+
+	imagePath = fs::path("models") / path;
+	for (uint8 i = 0; i < imageFileExtCount; i++)
+	{
+		imagePath.replace_extension(imageFileExts[i]);
+		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
+		{
+			fileType = imageFileTypes[i];
+			fileCount++;
+		}
+	}
+
+	return fileCount;
+}
+#endif
 
 //**********************************************************************************************************************
 void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
@@ -474,8 +511,6 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	vector<uint8> dataBuffer;
-	ImageFileType fileType = ImageFileType::Count; int32 fileCount = 0;
-	auto imagePath = fs::path("images") / path;
 
 	if (threadIndex < 0)
 		threadIndex = 0;
@@ -483,7 +518,9 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 		threadIndex++;
 
 	#if GARDEN_PACK_RESOURCES
+	auto imagePath = fs::path("images") / path;
 	uint64 itemIndex = 0;
+
 	for (uint8 i = 0; i < imageFileExtCount; i++)
 	{
 		imagePath.replace_extension(imageFileExts[i]);
@@ -500,54 +537,20 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#else
-	auto filePath = appCachesPath / imagePath; filePath += ".exr";
-	fileCount += fs::exists(filePath) ? 1 : 0;
+	fs::path filePath; ImageFileType fileType;
+	auto fileCount = getImageFilePath(appCachesPath, appResourcesPath, path, filePath, fileType);
 
 	if (fileCount == 0)
 	{
-		for (uint8 i = 0; i < imageFileExtCount; i++)
-		{
-			imagePath.replace_extension(imageFileExts[i]);
-			if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-			{
-				fileType = imageFileTypes[i];
-				fileCount++;
-			}
-		}
-		
-		if (fileCount > 1)
-		{
-			GARDEN_LOG_ERROR("Ambiguous image file extension. (path: " + path.generic_string() + ")");
-			loadMissingImage(data, size, format);
-			return;
-		}
-		else if (fileCount == 0)
-		{
-			imagePath = fs::path("models") / path;
-			for (uint8 i = 0; i < imageFileExtCount; i++)
-			{
-				imagePath.replace_extension(imageFileExts[i]);
-				if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
-				{
-					fileType = imageFileTypes[i];
-					fileCount++; 
-				}
-			}
-
-			if (fileCount != 1)
-			{
-				if (fileCount == 0)
-					GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
-				else
-					GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
-				loadMissingImage(data, size, format);
-				return;
-			}
-		}
+		GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
+		loadMissingImage(data, size, format);
+		return;
 	}
-	else
+	if (fileCount > 1)
 	{
-		fileType = ImageFileType::Exr;
+		GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
+		loadMissingImage(data, size, format);
+		return;
 	}
 
 	File::loadBinary(filePath, dataBuffer);
@@ -567,7 +570,7 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 
 	const char* error = nullptr;
 	auto result = SaveEXR((const float*)data.data(), size, size,
-		4, true, filePath.generic_string().c_str(), &error);
+		4, false, filePath.generic_string().c_str(), &error);
 
 	if (result != TINYEXR_SUCCESS)
 	{
@@ -579,134 +582,180 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 }
 #endif
 
-//**********************************************************************************************************************
-void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
-	vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back,
-	vector<uint8>& front, uint2& size, Image::Format& format, int32 threadIndex) const
+static void clampFloatImageData(vector<uint8>& equiData)
 {
-	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+	auto pixelData = (float4*)equiData.data();
+	auto pixelCount = equiData.size() / sizeof(float4);
 
-	vector<uint8> equiData; uint2 equiSize;
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-
-	#if !GARDEN_PACK_RESOURCES
-	auto filePath = appCachesPath / "images" / path;
-	auto cacheFilePath = filePath.generic_string();
-	
-	// TODO: also check for data timestamp against original.
-	if (!fs::exists(cacheFilePath + "-nx.hdr") || !fs::exists(cacheFilePath + "-px.hdr") ||
-		!fs::exists(cacheFilePath + "-ny.hdr") || !fs::exists(cacheFilePath + "-py.hdr") ||
-		!fs::exists(cacheFilePath + "-nz.hdr") || !fs::exists(cacheFilePath + "-pz.hdr"))
+	for (psize i = 0; i < pixelCount; i++)
 	{
-		loadImageData(path, equiData, equiSize, format, threadIndex);
+		auto pixel = pixelData[i];
+		pixelData[i] = min(pixel, float4(65504.0f));
+	}
+}
 
-		auto cubemapSize = equiSize.x / 4;
-		if (equiSize.x / 2 != equiSize.y)
-		{
-			GARDEN_LOG_ERROR("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
-			loadMissingImage(left, right, bottom, top, back, front, size, format);
-			return;
-		}
-		if (cubemapSize % 32 != 0)
-		{
-			GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
-			loadMissingImage(left, right, bottom, top, back, front, size, format);
-			return;
-		}
-		
-		vector<float4> floatData; const float4* equiPixels;
-		if (format == Image::Format::SrgbR8G8B8A8)
-		{
-			floatData.resize(equiData.size() / sizeof(Color));
-			auto dstData = floatData.data();
-			auto srcData = (const Color*)equiData.data();
-
-			if (threadIndex < 0 && threadSystem)
-			{
-				auto& threadPool = threadSystem->getForegroundPool();
-				threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
-				{
-					auto itemCount = task.getItemCount();
-					for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-					{
-						auto srcColor = (float4)srcData[i];
-						dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
-					}
-				}),
-				(uint32)floatData.size());
-				threadPool.wait();
-			}
-			else
-			{
-				for (uint32 i = 0; i < (uint32)floatData.size(); i++)
-				{
-					auto srcColor = (float4)srcData[i];
-					dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
-				}
-			}
-
-			equiPixels = floatData.data();
-			format = Image::Format::SfloatR32G32B32A32;
-		}
-		else
-		{
-			equiPixels = (float4*)equiData.data();
-		}
-
-		auto invDim = 1.0f / cubemapSize;
-		auto equiSizeMinus1 = equiSize - 1u;
-		auto pixelsSize = cubemapSize * cubemapSize * sizeof(float4);
-		left.resize(pixelsSize); right.resize(pixelsSize);
-		bottom.resize(pixelsSize); top.resize(pixelsSize);
-		back.resize(pixelsSize); front.resize(pixelsSize);
-		size = uint2(equiSize.x / 4, equiSize.y / 2);
-
-		float4* cubePixelArray[6] =
-		{
-			(float4*)right.data(), (float4*)left.data(),
-			(float4*)top.data(), (float4*)bottom.data(),
-			(float4*)front.data(), (float4*)back.data(),
-		};
+//**********************************************************************************************************************
+static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uint8>& equiData, 
+	uint2 equiSize, vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, 
+	vector<uint8>& back, vector<uint8>& front, Image::Format format, int32 threadIndex)
+{
+	vector<float4> floatData; const float4* equiPixels;
+	if (format == Image::Format::SrgbR8G8B8A8)
+	{
+		floatData.resize(equiData.size() / sizeof(Color));
+		auto dstData = floatData.data();
+		auto srcData = (const Color*)equiData.data();
 
 		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
 			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 			{
-				auto sizeXY = cubemapSize * cubemapSize;
 				auto itemCount = task.getItemCount();
-
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
-					uint3 coords;
-					coords.z = i / sizeXY;
-					coords.y = (i - coords.z * sizeXY) / cubemapSize;
-					coords.x = i - (coords.y * cubemapSize + coords.z * sizeXY);
-					auto cubePixels = cubePixelArray[coords.z];
-
-					Equi2Cube::convert(coords, cubemapSize, equiSize,
-						equiSizeMinus1, equiPixels, cubePixels, invDim);
+					auto srcColor = (float4)srcData[i];
+					dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
 				}
 			}),
-			cubemapSize * cubemapSize * 6);
+			(uint32)floatData.size());
 			threadPool.wait();
 		}
 		else
 		{
-			for (uint8 face = 0; face < 6; face++)
+			for (uint32 i = 0; i < (uint32)floatData.size(); i++)
 			{
-				auto cubePixels = cubePixelArray[face];
-				for (int32 y = 0; y < cubemapSize; y++)
+				auto srcColor = (float4)srcData[i];
+				dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
+			}
+		}
+
+		equiPixels = floatData.data();
+	}
+	else
+	{
+		equiPixels = (float4*)equiData.data();
+	}
+
+	auto cubemapSize = equiSize.x / 4;
+	auto invDim = 1.0f / cubemapSize;
+	auto equiSizeMinus1 = equiSize - 1u;
+	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
+	left.resize(pixelsSize); right.resize(pixelsSize);
+	bottom.resize(pixelsSize); top.resize(pixelsSize);
+	back.resize(pixelsSize); front.resize(pixelsSize);
+
+	float4* cubePixelArray[6] =
+	{
+		(float4*)right.data(), (float4*)left.data(),
+		(float4*)top.data(), (float4*)bottom.data(),
+		(float4*)front.data(), (float4*)back.data(),
+	};
+
+	if (threadIndex < 0 && threadSystem)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+		{
+			auto sizeXY = cubemapSize * cubemapSize;
+			auto itemCount = task.getItemCount();
+
+			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+			{
+				uint3 coords;
+				coords.z = i / sizeXY;
+				coords.y = (i - coords.z * sizeXY) / cubemapSize;
+				coords.x = i - (coords.y * cubemapSize + coords.z * sizeXY);
+				auto cubePixels = cubePixelArray[coords.z];
+
+				Equi2Cube::convert(coords, cubemapSize, equiSize,
+					equiSizeMinus1, equiPixels, cubePixels, invDim);
+			}
+		}),
+		cubemapSize * cubemapSize * 6);
+		threadPool.wait();
+	}
+	else
+	{
+		for (uint8 face = 0; face < 6; face++)
+		{
+			auto cubePixels = cubePixelArray[face];
+			for (int32 y = 0; y < cubemapSize; y++)
+			{
+				for (int32 x = 0; x < cubemapSize; x++)
 				{
-					for (int32 x = 0; x < cubemapSize; x++)
-					{
-						Equi2Cube::convert(uint3(x, y, face), cubemapSize,
-							equiSize, equiSizeMinus1, equiPixels, cubePixels, invDim);
-					}
+					Equi2Cube::convert(uint3(x, y, face), cubemapSize,
+						equiSize, equiSizeMinus1, equiPixels, cubePixels, invDim);
 				}
 			}
 		}
+	}
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
+	vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, 
+	vector<uint8>& front, uint2& size, bool clamp16, int32 threadIndex) const
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	Image::Format format;
+
+	#if !GARDEN_PACK_RESOURCES
+	auto filePath = appCachesPath / "images" / path;
+	auto cacheFilePath = filePath.generic_string();
+
+	fs::path inputFilePath; ImageFileType inputFileType;
+	auto fileCount = getImageFilePath(appCachesPath, appResourcesPath, path, inputFilePath, inputFileType);
+
+	if (fileCount == 0)
+	{
+		GARDEN_LOG_ERROR("Cubemap image file does not exist. (path: " + path.generic_string() + ")");
+		loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+		return;
+	}
+	if (fileCount > 1)
+	{
+		GARDEN_LOG_ERROR("Cubemap image file is ambiguous. (path: " + path.generic_string() + ")");
+		loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+		return;
+	}
+	
+	auto inputLastWriteTime = fs::last_write_time(inputFilePath);
+	if (!fs::exists(cacheFilePath + "-nx.exr") || !fs::exists(cacheFilePath + "-px.exr") ||
+		!fs::exists(cacheFilePath + "-ny.exr") || !fs::exists(cacheFilePath + "-py.exr") ||
+		!fs::exists(cacheFilePath + "-nz.exr") || !fs::exists(cacheFilePath + "-pz.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-nx.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-px.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-ny.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-py.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-nz.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-pz.exr"))
+	{
+		vector<uint8> equiData; uint2 equiSize;
+		loadImageData(path, equiData, equiSize, format, threadIndex);
+
+		auto cubemapSize = equiSize.x / 4;
+		if (equiSize.x / 2 != equiSize.y)
+		{
+			GARDEN_LOG_ERROR("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
+			loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+			return;
+		}
+		if (cubemapSize % 32 != 0)
+		{
+			GARDEN_LOG_ERROR("Invalid cubemap image size. (path: " + path.generic_string() + ")");
+			loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+			return;
+		}
+
+		if (clamp16 && format == Image::Format::SfloatR32G32B32A32)
+			clampFloatImageData(equiData);
+		convertCubemapImageData(threadSystem, equiData, equiSize,
+			left, right, bottom, top, back, front, format, threadIndex);
+		size = uint2(equiSize.x / 4, equiSize.y / 2);
 
 		fs::create_directories(filePath.parent_path());
 		if (threadIndex < 0 && threadSystem)
@@ -782,22 +831,27 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
+		loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+		return;
 	}
 	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap side size. (path: " + path.generic_string() + ")");
+		loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+		return;
 	}
 	if (leftFormat != rightFormat || leftFormat != bottomFormat ||
 		leftFormat != topFormat || leftFormat != backFormat || leftFormat != frontFormat)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap format. (path: " + path.generic_string() + ")");
+		loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
+		return;
 	}
 	#endif
 
 	size = leftSize;
-	format = leftFormat;
 }
 
 //**********************************************************************************************************************
@@ -920,38 +974,6 @@ static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::
 		}
 	}
 }
-static void calcLoadedImageDim(psize pathCount, uint2 realSize,
-	ImageLoadFlags flags, uint2& imageSize, uint32& layerCount) noexcept
-{
-	imageSize = realSize;
-	layerCount = (uint32)pathCount;
-
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
-	{
-		if (realSize.x > realSize.y)
-		{
-			layerCount = realSize.x / realSize.y;
-			imageSize.x = imageSize.y;
-		}
-		else
-		{
-			layerCount = realSize.y / realSize.x;
-			imageSize.y = imageSize.x;
-		}
-
-		if (layerCount == 0) layerCount = 1;
-	}
-}
-static Image::Type calcLoadedImageType(psize pathCount, uint32 sizeY, ImageLoadFlags flags) noexcept
-{
-	if (pathCount > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType))
-		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
-	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
-}
-static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcept
-{
-	return maxMipCount == 0 ? calcMipCount(imageSize) : std::min(maxMipCount, calcMipCount(imageSize));
-}
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap,
 	uint2 realSize, uint2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
 {
@@ -983,6 +1005,40 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 			mapOffset += pixels.size();
 		}
 	}
+}
+
+//**********************************************************************************************************************
+static void calcLoadedImageDim(psize pathCount, uint2 realSize,
+	ImageLoadFlags flags, uint2& imageSize, uint32& layerCount) noexcept
+{
+	imageSize = realSize;
+	layerCount = (uint32)pathCount;
+
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
+	{
+		if (realSize.x > realSize.y)
+		{
+			layerCount = realSize.x / realSize.y;
+			imageSize.x = imageSize.y;
+		}
+		else
+		{
+			layerCount = realSize.y / realSize.x;
+			imageSize.y = imageSize.x;
+		}
+
+		if (layerCount == 0) layerCount = 1;
+	}
+}
+static Image::Type calcLoadedImageType(psize pathCount, uint32 sizeY, ImageLoadFlags flags) noexcept
+{
+	if (pathCount > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType))
+		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
+	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
+}
+static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcept
+{
+	return maxMipCount == 0 ? calcMipCount(imageSize) : std::min(maxMipCount, calcMipCount(imageSize));
 }
 
 //**********************************************************************************************************************

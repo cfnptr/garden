@@ -42,10 +42,8 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         brew update && brew install zlib openssl
-        curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.dmg
-        volumeInfo=$(hdiutil attach vulkan_sdk.dmg | grep Volumes)
-        volume=$(echo "$volumeInfo" | cut -f 3)
-        cp -rf $volume/InstallVulkan.app .
+        curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
+        unzip vulkan_sdk.zip
         sudo ./InstallVulkan.app/Contents/MacOS/InstallVulkan --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr 
 
     - name: Install Windows packages

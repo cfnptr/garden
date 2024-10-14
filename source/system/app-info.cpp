@@ -20,7 +20,7 @@ using namespace garden;
 AppInfoSystem::AppInfoSystem(string_view name, string_view nameLowercase, string_view description,
 	string_view creator, string_view copyright, Version version,
 	#if GARDEN_DEBUG
-	fs::path cachesPath, fs::path resourcesPath,
+	const fs::path& cachesPath, const fs::path& resourcesPath,
 	#endif
 	bool setSingleton) : Singleton(setSingleton), 
 	name(name), nameLowercase(nameLowercase), description(description),

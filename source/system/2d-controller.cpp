@@ -94,6 +94,129 @@ void Controller2DSystem::deinit()
 }
 
 //**********************************************************************************************************************
+void Controller2DSystem::update()
+{
+	if (useMouseControll)
+		updateCameraControll();
+
+	updateCharacterControll();
+	updateCameraFollowing();
+}
+
+void Controller2DSystem::swapchainRecreate()
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+
+	if (swapchainChanges.framebufferSize)
+	{
+		auto cameraView = CameraSystem::Instance::get()->tryGetComponent(camera);
+		if (cameraView)
+		{
+			auto framebufferSize = graphicsSystem->getFramebufferSize();
+			auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+			cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
+		}
+	}
+}
+
+//**********************************************************************************************************************
+void Controller2DSystem::updateCameraControll()
+{
+	auto inputSystem = InputSystem::Instance::get();
+
+	#if GARDEN_EDITOR
+	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Default)
+		return;
+	#endif
+
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
+	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(camera);
+
+	if (!transformView || !transformView->isActiveWithAncestors() || 
+		!cameraView || cameraView->type != ProjectionType::Orthographic)
+	{
+		return;
+	}
+
+	if (inputSystem->getMouseState(MouseButton::Right))
+	{
+		auto cursorDelta = inputSystem->getCursorDelta();
+		auto windowSize = (float2)GraphicsSystem::Instance::get()->getWindowSize();
+		auto othoSize = float2(
+			cameraView->p.orthographic.width.y - cameraView->p.orthographic.width.x,
+			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
+		auto offset = cursorDelta / (windowSize / othoSize);
+		offset = (float2x2)transformView->calcModel() * offset;
+
+		transformView->position.x -= offset.x;
+		transformView->position.y += offset.y;
+	}
+
+	auto mouseScrollY = inputSystem->getMouseScroll().y;
+	if (mouseScrollY != 0.0f)
+	{
+		mouseScrollY *= scrollSensitivity * 0.5f;
+
+		auto framebufferSize = (float2)GraphicsSystem::Instance::get()->getFramebufferSize();
+		auto aspectRatio = framebufferSize.x / framebufferSize.y;
+		cameraView->p.orthographic.height.x += mouseScrollY;
+		cameraView->p.orthographic.height.y -= mouseScrollY;
+		if (cameraView->p.orthographic.height.x >= 0.0f)
+			cameraView->p.orthographic.height.x = -0.1f;
+		if (cameraView->p.orthographic.height.y <= 0.0f)
+			cameraView->p.orthographic.height.y = 0.1f;
+		cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
+	}
+}
+
+//**********************************************************************************************************************
+void Controller2DSystem::updateCameraFollowing()
+{
+	#if GARDEN_EDITOR
+	auto editorSystem = EditorRenderSystem::Instance::tryGet();
+	if (editorSystem && !editorSystem->isPlaying())
+		return;
+	#endif
+
+	auto manager = Manager::Instance::get();
+	auto transformSystem = TransformSystem::Instance::get();
+	auto cameraTransformView = transformSystem->tryGetComponent(camera);
+	auto cameraView = manager->tryGet<CameraComponent>(camera);
+	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
+
+	if (!cameraTransformView || !cameraTransformView->isActiveWithAncestors() ||
+		!cameraView || cameraView->type != ProjectionType::Orthographic)
+	{
+		return;
+	}
+
+	auto characterSystem = CharacterSystem::Instance::get();
+	auto deltaTime = (float)InputSystem::Instance::get()->getDeltaTime();
+
+	for (auto i = characterEntities.first; i != characterEntities.second; i++)
+	{
+		auto charTransformView = transformSystem->tryGetComponent(i->second);
+		if (!charTransformView || !charTransformView->isActiveWithAncestors())
+			continue;
+
+		auto characterView = characterSystem->tryGetComponent(i->second);
+		if (!characterView)
+			continue;
+
+		auto cameraWidth = cameraView->p.orthographic.width;
+		auto cameraHeight = cameraView->p.orthographic.height;
+		auto posOffset = float2(cameraWidth.y - cameraWidth.x, 
+			cameraHeight.y - cameraHeight.x) * followCenter;
+		auto newPosition = lerpDelta((float2)cameraTransformView->position,
+			(float2)characterView->getPosition() + posOffset, 1.0f - followFactor, deltaTime);
+		cameraTransformView->position.x = newPosition.x;
+		cameraTransformView->position.y = newPosition.y;
+		break;
+	}
+}
+
+//**********************************************************************************************************************
 void Controller2DSystem::updateCharacterControll()
 {
 	#if GARDEN_EDITOR
@@ -164,122 +287,4 @@ void Controller2DSystem::updateCharacterControll()
 	}
 
 	isLastJumping = isJumping;
-}
-
-//**********************************************************************************************************************
-void Controller2DSystem::updateCameraFollowing()
-{
-	#if GARDEN_EDITOR
-	auto editorSystem = EditorRenderSystem::Instance::tryGet();
-	if (editorSystem && !editorSystem->isPlaying())
-		return;
-	#endif
-
-	auto manager = Manager::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
-	auto cameraTransformView = transformSystem->tryGetComponent(camera);
-	auto cameraView = manager->tryGet<CameraComponent>(camera);
-	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
-
-	if (!cameraTransformView || !cameraTransformView->isActiveWithAncestors() ||
-		!cameraView || cameraView->type != ProjectionType::Orthographic)
-	{
-		return;
-	}
-
-	auto characterSystem = CharacterSystem::Instance::get();
-	auto deltaTime = (float)InputSystem::Instance::get()->getDeltaTime();
-
-	for (auto i = characterEntities.first; i != characterEntities.second; i++)
-	{
-		auto charTransformView = transformSystem->tryGetComponent(i->second);
-		if (!charTransformView || !charTransformView->isActiveWithAncestors())
-			continue;
-
-		auto characterView = characterSystem->tryGetComponent(i->second);
-		if (!characterView)
-			continue;
-
-		auto cameraWidth = cameraView->p.orthographic.width;
-		auto cameraHeight = cameraView->p.orthographic.height;
-		auto posOffset = float2(cameraWidth.y - cameraWidth.x, 
-			cameraHeight.y - cameraHeight.x) * followCenter;
-		auto newPosition = lerpDelta((float2)cameraTransformView->position,
-			(float2)characterView->getPosition() + posOffset, 1.0f - followFactor, deltaTime);
-		cameraTransformView->position.x = newPosition.x;
-		cameraTransformView->position.y = newPosition.y;
-		break;
-	}
-}
-
-#if GARDEN_EDITOR
-//**********************************************************************************************************************
-void Controller2DSystem::updateCameraTransform()
-{
-	auto manager = Manager::Instance::get();
-	auto inputSystem = InputSystem::Instance::get();
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
-	auto cameraView = manager->tryGet<CameraComponent>(camera);
-
-	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Default || 
-		!transformView || !transformView->isActiveWithAncestors() || 
-		!cameraView || cameraView->type != ProjectionType::Orthographic)
-	{
-		return;
-	}
-
-	if (inputSystem->getMouseState(MouseButton::Right))
-	{
-		auto cursorDelta = inputSystem->getCursorDelta();
-		auto windowSize = (float2)GraphicsSystem::Instance::get()->getWindowSize();
-		auto othoSize = float2(
-			cameraView->p.orthographic.width.y - cameraView->p.orthographic.width.x,
-			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
-		auto offset = cursorDelta / (windowSize / othoSize);
-		offset = (float2x2)transformView->calcModel() * offset;
-
-		transformView->position.x -= offset.x;
-		transformView->position.y += offset.y;
-	}
-
-	auto mouseScrollY = inputSystem->getMouseScroll().y;
-	if (mouseScrollY != 0.0f)
-	{
-		mouseScrollY *= scrollSensitivity * 0.5f;
-
-		auto framebufferSize = (float2)GraphicsSystem::Instance::get()->getFramebufferSize();
-		auto aspectRatio = framebufferSize.x / framebufferSize.y;
-		cameraView->p.orthographic.height.x += mouseScrollY;
-		cameraView->p.orthographic.height.y -= mouseScrollY;
-		if (cameraView->p.orthographic.height.x >= 0.0f)
-			cameraView->p.orthographic.height.x = -0.1f;
-		if (cameraView->p.orthographic.height.y <= 0.0f)
-			cameraView->p.orthographic.height.y = 0.1f;
-		cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
-	}
-}
-#endif
-
-void Controller2DSystem::update()
-{
-	updateCharacterControll();
-	updateCameraFollowing();
-
-	#if GARDEN_EDITOR
-	updateCameraTransform();
-	#endif
-}
-
-void Controller2DSystem::swapchainRecreate()
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize)
-	{
-		auto framebufferSize = graphicsSystem->getFramebufferSize();
-		auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
-		auto cameraView = Manager::Instance::get()->get<CameraComponent>(camera);
-		cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
-	}
 }

@@ -14,6 +14,7 @@
 
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
+#include "common/tone-mapping.gsl"
 
 pipelineState
 {
@@ -62,7 +63,8 @@ void main()
 {
 	if (pc.drawMode == HDR_DRAW_MODE)
 	{
-		fb.color = float4(texture(hdrBuffer, fs.texCoords).rgb, 1.0f);
+		float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
+		fb.color = float4(gammaCorrection(hdrColor), 1.0f);
 	}
 	else if (pc.drawMode == BASE_COLOR_DRAW_MODE)
 	{
