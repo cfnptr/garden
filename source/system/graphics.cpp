@@ -256,6 +256,35 @@ GraphicsSystem::~GraphicsSystem()
 }
 
 //**********************************************************************************************************************
+static string getDeviceDriverVersion()
+{
+	auto version = Vulkan::deviceProperties.properties.driverVersion;
+	if (Vulkan::deviceProperties.properties.vendorID == 0x10DE) // Nvidia
+	{
+		return to_string((version >> 22u) & 0x3FFu) + "." + to_string((version >> 14u) & 0x0FFu) + "." +
+			to_string((version >> 6u) & 0x0ff) + "." + to_string(version & 0x003Fu);
+	}
+
+	#if GARDEN_OS_WINDOWS
+	if (Vulkan::deviceProperties.properties.vendorID == 0x8086) // Intel
+		return to_string(version >> 14u) + "." + to_string(version & 0x3FFFu);
+	#endif
+
+	if (Vulkan::deviceProperties.properties.vendorID == 0x14E4) // Broadcom
+		return to_string(version / 10000) + "." + to_string((version % 10000) / 100);
+
+	if (Vulkan::deviceProperties.properties.vendorID == 0x1010) // ImgTec
+	{
+		if (version > 500000000)
+			return "0.0." + to_string(version);
+		else
+			return to_string(version);
+	}
+
+	return to_string(VK_API_VERSION_MAJOR(version)) + "." + to_string(VK_API_VERSION_MINOR(version)) + "." +
+		to_string(VK_API_VERSION_PATCH(version)) + "." + to_string(VK_API_VERSION_VARIANT(version));
+}
+
 void GraphicsSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
@@ -269,7 +298,13 @@ void GraphicsSystem::preInit()
 	auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
 	GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
+	GARDEN_LOG_INFO("Driver version: " + getDeviceDriverVersion());
 	GARDEN_LOG_INFO("Framebuffer size: " + to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
+
+	if (Vulkan::isCacheLoaded)
+		GARDEN_LOG_INFO("Loaded existing pipeline cache.");
+	else
+		GARDEN_LOG_INFO("Created a new pipeline cache.");
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)

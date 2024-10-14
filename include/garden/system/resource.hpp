@@ -167,12 +167,14 @@ public:
 	 * @param[out] back back cubemap image pixel data container
 	 * @param[out] front front cubemap image pixel data container
 	 * @param[out] size loaded cubemap image size in pixels
-	 * @param[out] format loaded cubemap image data format
+	 * @para clamp16 clamp color values to a 16-bit range
 	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
 	void loadCubemapData(const fs::path& path, vector<uint8>& left, vector<uint8>& right,
-		vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front,
-		uint2& size, Image::Format& format, int32 threadIndex = -1) const;
+		vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, 
+		uint2& size, bool clamp16 = false, int32 threadIndex = -1) const;
+
+	// TODO: maybe support loading as non float cubemaps?
 	
 	/**
 	 * @brief Loads image data (pixels) from the memory file. (MT-Safe)

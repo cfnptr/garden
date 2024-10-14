@@ -80,6 +80,7 @@ public:
 	static Swapchain swapchain;
 	static vk::PhysicalDeviceProperties2 deviceProperties;
 	static vk::PhysicalDeviceFeatures2 deviceFeatures;
+	static bool isCacheLoaded;
 	static bool hasMemoryBudget;
 	static bool hasMemoryPriority;
 	static bool hasPageableMemory;

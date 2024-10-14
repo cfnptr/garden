@@ -1114,9 +1114,8 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 {
 	GARDEN_ASSERT(!path.empty());
 	
-	vector<uint8> left, right, bottom, top, back, front;
-	uint2 size; Image::Format format;
-	ResourceSystem::Instance::get()->loadCubemapData(path, left, right, bottom, top, back, front, size, format);
+	vector<uint8> left, right, bottom, top, back, front; uint2 size;
+	ResourceSystem::Instance::get()->loadCubemapData(path, left, right, bottom, top, back, front, size, true);
 	auto cubemapSize = size.x;
 
 	auto mipCount = calcMipCount(cubemapSize);
@@ -1131,7 +1130,7 @@ void LightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap
 
 	cubemap = Ref<Image>(graphicsSystem->createImage(Image::Type::Cubemap,
 		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::TransferSrc |
-		Image::Bind::Sampled, mips, uint3(size, 1), strategy, format));
+		Image::Bind::Sampled, mips, uint3(size, 1), strategy, Image::Format::SfloatR32G32B32A32));
 	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);
