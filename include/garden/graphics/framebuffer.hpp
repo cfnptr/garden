@@ -62,7 +62,7 @@ public:
 		 * @brief Creates a new empty framebuffer input attachment.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		constexpr InputAttachment() = default;
+		constexpr InputAttachment() { }
 	};
 	/**
 	 * @brief Framebuffer output attachment description.
@@ -90,7 +90,7 @@ public:
 		 * @brief Creates a new empty framebuffer output attachment.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		constexpr OutputAttachment() = default;
+		constexpr OutputAttachment() { }
 	};
 
 	/*******************************************************************************************************************
@@ -123,7 +123,7 @@ public:
 		 * @brief Creates a new empty framebuffer subpass.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		Subpass() = default;
+		Subpass() { }
 	};
 	/**
 	 * @brief Framebuffer subpass attachment container.
@@ -148,7 +148,7 @@ public:
 		 * @brief Creates a new empty framebuffer subpass images container.
 		 * @note It can not be used to recreate a subpass.
 		 */
-		SubpassImages() = default;
+		SubpassImages() { }
 	};
 
 	/*******************************************************************************************************************
