@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Based on Steam survey instruction set support.
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
 		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -27,6 +28,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 	add_compile_options(-Wno-nullability-completeness -Wno-unused-function)
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(-flto)
+	endif()
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+		add_link_options("-fuse-ld=lld")
 	endif()
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		add_compile_options(-fno-fat-lto-objects)

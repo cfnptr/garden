@@ -220,6 +220,7 @@ public:
 
 	/**
 	 * @brief Destroys shared image if it's the last one.
+	 * @param[in] target shared image reference
 	 */
 	void destroyShared(const Ref<Image>& image);
 
@@ -251,6 +252,7 @@ public:
 
 	/**
 	 * @brief Destroys shared buffer if it's the last one.
+	 * @param[in] target shared buffer reference
 	 */
 	void destroyShared(const Ref<Buffer>& buffer);
 
@@ -284,6 +286,7 @@ public:
 
 	/**
 	 * @brief Destroys shared descriptor set if it's the last one.
+	 * @param[in] target shared descriptor set reference
 	 */
 	void destroyShared(const Ref<DescriptorSet>& descriptorSet);
 
@@ -358,6 +361,7 @@ public:
 
 	/**
 	 * @brief Destroys shared animation if it's the last one.
+	 * @param[in] target shared animation reference
 	 */
 	void destroyShared(const Ref<Animation>& animation);
 

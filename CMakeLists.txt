@@ -89,6 +89,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	enable_language(OBJCXX)
 endif()
 
+if(GARDEN_USE_CLANG)
+	message(STATUS "Using Clang compiler for the Linux build")
+endif()
+
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 

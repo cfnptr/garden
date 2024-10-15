@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "msys" ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     cmake -DCMAKE_BUILD_TYPE=Debug -S ../ -B ../build-debug-clang/
 else
-    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -S ../ -B ../build-debug-clang/
+    cmake -DCMAKE_BUILD_TYPE=Debug -D GARDEN_USE_CLANG=TRUE -S ../ -B ../build-debug-clang/
 fi
 
 status=$?

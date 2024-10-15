@@ -510,6 +510,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
+	ImageFileType fileType;
 	vector<uint8> dataBuffer;
 
 	if (threadIndex < 0)
@@ -537,7 +538,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#else
-	fs::path filePath; ImageFileType fileType;
+	fs::path filePath;
 	auto fileCount = getImageFilePath(appCachesPath, appResourcesPath, path, filePath, fileType);
 
 	if (fileCount == 0)
