@@ -73,7 +73,7 @@ Alternatively run ```install-packages.bat``` from the repository **scripts/** di
 ## 2. Install required packages
 
 1. Run ```sudo apt-get update``` command using **Terminal** app
-2. And ```sudo apt-get install git gcc g++ gdb cmake clang zlib1g-dev libssl-dev xorg-dev```
+2. And ```sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev```
 
 ## 3. Install Vulkan SDK
 

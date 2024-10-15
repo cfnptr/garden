@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "msys" ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     cmake -DCMAKE_BUILD_TYPE=Release -S ../ -B ../build-release-clang/
 else
-    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=/usr/bin/clang-cpp -S ../ -B ../build-release-clang/
+    cmake -DCMAKE_BUILD_TYPE=Release -D GARDEN_USE_CLANG=TRUE -S ../ -B ../build-release-clang/
 fi
 
 status=$?
