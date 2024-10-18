@@ -244,7 +244,7 @@ public:
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 
 	friend class ecsm::Manager;
-	friend class CharacterComponent;
+	friend struct CharacterComponent;
 public:
 	/**
 	 * @brief Sets character world space position and rotation from a transform.

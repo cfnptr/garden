@@ -309,35 +309,36 @@ void Swapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuf
 //**********************************************************************************************************************
 bool Swapchain::acquireNextImage()
 {
-	auto fence = fences[frameIndex]; 
-	auto waitResult = Vulkan::device.waitForFences(1, &fence, VK_FALSE, 10000000000); // Note: emergency 10 seconds timeout.
+	auto fence = fences[frameIndex];
+	auto waitResult = Vulkan::device.waitForFences(1, &fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
 	Vulkan::device.resetFences(fence);
-
-	auto result = Vulkan::device.acquireNextImageKHR(instance, UINT64_MAX,
-		imageAcquiredSemaphores[frameIndex], VK_NULL_HANDLE, &bufferIndex);
+	
+	auto result = Vulkan::device.acquireNextImageKHR(instance,
+		UINT64_MAX, imageAcquiredSemaphores[frameIndex], {}, &bufferIndex);
 		
-	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+	if (result == vk::Result::eSuboptimalKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
 		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
+	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
 
-	auto& buffer = buffers[bufferIndex];
+	auto buffer = &buffers[bufferIndex];
 	if (useThreading)
 	{
-		threadPool->addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
+		threadPool->addTasks(ThreadPool::Task([buffer](const ThreadPool::Task& task)
 		{
-			Vulkan::device.resetCommandPool(buffer.secondaryCommandPools[task.getTaskIndex()]);
+			Vulkan::device.resetCommandPool(buffer->secondaryCommandPools[task.getTaskIndex()]);
 		}),
-		(uint32)buffer.secondaryCommandPools.size());
+		(uint32)buffer->secondaryCommandPools.size());
 		threadPool->wait();
 	}
 	else
 	{
-		Vulkan::device.resetCommandPool(buffer.secondaryCommandPools[0]);
+		Vulkan::device.resetCommandPool(buffer->secondaryCommandPools[0]);
 	}
 
-	buffer.secondaryCommandBufferIndex = 0;
+	buffer->secondaryCommandBufferIndex = 0;
 	vmaSetCurrentFrameIndex(Vulkan::memoryAllocator, bufferIndex);
 	return true;
 }
@@ -355,13 +356,14 @@ bool Swapchain::present()
 {
 	vk::PresentInfoKHR presentInfo(1, &drawCompleteSemaphores[frameIndex], 1, &instance, &bufferIndex);
 	auto result = Vulkan::frameQueue.presentKHR(&presentInfo); // & is required here.
+	frameIndex = (frameIndex + 1) % frameLag;
 
-	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+	if (result == vk::Result::eSuboptimalKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
 		throw runtime_error("Failed to present image. (error: " + vk::to_string(result) + ")");
+	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
 
-	frameIndex = (frameIndex + 1) % frameLag;
 	return true;
 }
 
@@ -388,7 +390,7 @@ void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass
 	{
 		buffer.secondaryCommandBuffers.resize(buffer.secondaryCommandBufferIndex + commandBufferCount);
 		auto secondaryCommandBuffers = buffer.secondaryCommandBuffers.data() + buffer.secondaryCommandBufferIndex;
-		vk::CommandBufferAllocateInfo allocateInfo(VK_NULL_HANDLE, vk::CommandBufferLevel::eSecondary, 1);
+		vk::CommandBufferAllocateInfo allocateInfo({}, vk::CommandBufferLevel::eSecondary, 1);
 		
 		for (uint32 i = 0; i < commandBufferCount; i++)
 		{

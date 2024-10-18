@@ -24,7 +24,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) :
-	pipelinePath(pipelinePath), deferredBuffer(useDeferredBuffer), linearFilter(useLinearFilter) { }
+	deferredBuffer(useDeferredBuffer), linearFilter(useLinearFilter), pipelinePath(pipelinePath) { }
 
 void SpriteRenderSystem::init()
 {

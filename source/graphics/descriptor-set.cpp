@@ -237,9 +237,8 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			GARDEN_ASSERT(dsUniform.type == typeid(ImageView));
 			writeDescriptorSet.pBufferInfo = nullptr;
 
-			vk::DescriptorImageInfo imageInfo(VK_NULL_HANDLE, VK_NULL_HANDLE,
-				isImageType(uniformType) ? vk::ImageLayout::eGeneral :
-				vk::ImageLayout::eShaderReadOnlyOptimal);
+			vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
+				vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
@@ -412,8 +411,8 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 		GARDEN_ASSERT(uniform.type == typeid(ImageView));
 		writeDescriptorSet.pBufferInfo = nullptr;
 
-		vk::DescriptorImageInfo imageInfo(VK_NULL_HANDLE, VK_NULL_HANDLE,
-			isImageType(uniformType) ? vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
+		vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
+			vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		const auto& resourceArray = uniform.resourceSets[0];
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)

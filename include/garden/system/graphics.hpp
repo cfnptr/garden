@@ -626,7 +626,7 @@ public:
 	 * @brief Returns framebuffer data accessor.
 	 * @param framebuffer target framebuffer instance
 	 */
-	View<Framebuffer> get(const Ref<Framebuffer>& framebuffer) const { return get(framebuffer); }
+	View<Framebuffer> get(const Ref<Framebuffer>& framebuffer) const { return get(ID<Framebuffer>(framebuffer)); }
 
 	/*******************************************************************************************************************
 	 * @brief Destroys graphics pipeline instance.

@@ -64,7 +64,6 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 	auto linkSystem = LinkSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& uuidMap = linkSystem->getUuidMap();
-	const auto& linkComponents = linkSystem->getComponents();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
@@ -108,7 +107,6 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 	auto linkSystem = LinkSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& tagMap = linkSystem->getTagMap();
-	const auto& linkComponents = linkSystem->getComponents();
 	map<string, uint32> uniqueTags;
 
 	for (const auto& pair : tagMap)

@@ -17,13 +17,20 @@ set(SKIP_INSTALL_ALL TRUE CACHE BOOL "" FORCE)
 set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 
+# All these variables should be set before project() call.
+
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
 	set(OPENSSL_MSVC_STATIC_RT ON CACHE BOOL "" FORCE)
+
+	if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	endif()
 
 	if(NOT DEFINED VCPKG_ROOT)
 		cmake_path(SET VCPKG_ROOT $ENV{VCPKG_ROOT})
 		message(STATUS "VCPKG_ROOT: " ${VCPKG_ROOT})
 	endif()
+
 	if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 		set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 		if (NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
@@ -52,6 +59,7 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 			message(FATAL_ERROR "Homebrew is not installed or added to the System Environment Variables.")
 		endif()
 	endif()
+
 	if(NOT DEFINED CMAKE_PREFIX_PATH)
 		set(CMAKE_PREFIX_PATH ${HOMEBREW_PREFIX} ${HOMEBREW_PREFIX}/opt/zlib ${HOMEBREW_PREFIX}/opt/openssl@3)
 	endif()

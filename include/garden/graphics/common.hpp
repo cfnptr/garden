@@ -31,7 +31,7 @@ using namespace math;
 /**
  * @brief Optimal sync primitive count.
  */
-constexpr int frameLag = 2;
+constexpr uint8 frameLag = 2;
 /**
  * @brief Nvidia architecture maximum binary size.
  */

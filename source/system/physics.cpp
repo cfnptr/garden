@@ -1026,7 +1026,7 @@ void PhysicsSystem::prepareSimulate()
 		auto threadPool = jobSystem->getThreadPool();
 		auto componentData = components.getData();
 
-		threadPool->addItems(ThreadPool::Task([this, componentData](const ThreadPool::Task& task)
+		threadPool->addItems(ThreadPool::Task([componentData](const ThreadPool::Task& task)
 		{
 			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
 			auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
@@ -1552,7 +1552,6 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 	if (deserializer.beginChild("constraints"))
 	{
 		auto constraintCount = (uint32)deserializer.getArraySize();
-		auto hasConstraints = false;
 
 		for (uint32 i = 0; i < constraintCount; i++)
 		{

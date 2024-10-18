@@ -118,7 +118,7 @@ class SpawnerSystem final : public ComponentSystem<SpawnerComponent>,
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	
 	friend class ecsm::Manager;
-	friend class LinkComponent;
+	friend struct LinkComponent;
 public:
 	/**
 	 * @brief Returns spawner component pool.

@@ -626,7 +626,7 @@ void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
 		}
 		else
 		{
-			instance = VK_NULL_HANDLE;
+			instance = nullptr;
 		}
 		
 		const vk::DeviceSize size = 0;

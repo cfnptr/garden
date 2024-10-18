@@ -408,14 +408,12 @@ bool LightingRenderComponent::destroy()
 LightingRenderSystem::LightingRenderSystem(bool useShadowBuffer, bool useAoBuffer, bool setSingleton) : 
 	Singleton(setSingleton), hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer)
 {
-	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", LightingRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LightingRenderSystem::deinit);
 }
 LightingRenderSystem::~LightingRenderSystem()
 {
-	auto manager = Manager::Instance::get();
-	if (manager->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderSystem::deinit);
@@ -427,7 +425,6 @@ LightingRenderSystem::~LightingRenderSystem()
 //**********************************************************************************************************************
 void LightingRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", LightingRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", LightingRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", LightingRenderSystem::gBufferRecreate);
@@ -486,9 +483,6 @@ void LightingRenderSystem::preHdrRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	if (pipelineView->isReady() && !lightingDescriptorSet)
 	{
@@ -497,7 +491,7 @@ void LightingRenderSystem::preHdrRender()
 		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
 	}
 
-	const auto& systems = manager->getSystems();
+	const auto& systems = Manager::Instance::get()->getSystems();
 	shadowSystems.clear();
 	aoSystems.clear();
 

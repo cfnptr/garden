@@ -182,7 +182,7 @@ static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 //**********************************************************************************************************************
 GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat, bool isFullscreen, 
 	bool useVsync, bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
-	useVsync(useVsync), useTripleBuffering(useTripleBuffering), asyncRecording(useAsyncRecording)
+	asyncRecording(useAsyncRecording), useVsync(useVsync), useTripleBuffering(useTripleBuffering)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEventAfter("Render", "Update");
@@ -289,7 +289,6 @@ void GraphicsSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 	
-	auto manager = Manager::Instance::get();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 		Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
@@ -515,7 +514,7 @@ void GraphicsSystem::update()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
-			GARDEN_LOG_WARN("Out fo date or suboptimal swapchain.");
+			GARDEN_LOG_WARN("Suboptimal swapchain.");
 	}
 
 	updateCurrentFramebuffer(swapchainFramebuffer, depthStencilBuffer, framebufferSize);
@@ -585,7 +584,7 @@ void GraphicsSystem::present()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.present())
-			LogSystem::tryWarn("Out fo date or suboptimal swapchain.");
+			LogSystem::tryWarn("Suboptimal swapchain.");
 		frameIndex++;
 	}
 	else

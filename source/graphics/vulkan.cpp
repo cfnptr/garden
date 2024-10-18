@@ -64,7 +64,7 @@ uint32 Vulkan::graphicsQueueFamilyIndex = 0;
 uint32 Vulkan::transferQueueFamilyIndex = 0;
 uint32 Vulkan::computeQueueFamilyIndex = 0;
 vk::Device Vulkan::device = {};
-VmaAllocator Vulkan::memoryAllocator = VK_NULL_HANDLE;
+VmaAllocator Vulkan::memoryAllocator = nullptr;
 vk::Queue Vulkan::frameQueue = {};
 vk::Queue Vulkan::graphicsQueue = {};
 vk::Queue Vulkan::transferQueue = {};
@@ -631,7 +631,7 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	if (hasMemoryPriority)
 		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
 
-	VmaAllocator allocator = VK_NULL_HANDLE;
+	VmaAllocator allocator = nullptr;
 	auto result = vmaCreateAllocator(&allocatorInfo, &allocator);
 	if (result != VK_SUCCESS)
 		throw runtime_error("Failed to create memory allocator.");

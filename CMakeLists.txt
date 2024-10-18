@@ -173,7 +173,7 @@ set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/incl
 	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash 
 	ecsm-static math-static conf-static pack-static logy-static nets-static 
-	voxy glfw webp zlibstatic png_static tinyexr FastNoise Jolt)
+	voxy glfw webp png_static tinyexr FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -202,7 +202,6 @@ set(LOGY_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(LOGY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/logy)
 
-set(NETS_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(NETS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/nets)
 

@@ -156,15 +156,13 @@ void SpawnerComponent::destroySpawned()
 //**********************************************************************************************************************
 SpawnerSystem::SpawnerSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SpawnerSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", SpawnerSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", SpawnerSystem::update);
 }
 SpawnerSystem::~SpawnerSystem()
 {
-	auto manager = Manager::Instance::get();
-	if (manager->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SpawnerSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", SpawnerSystem::postDeinit);
@@ -201,8 +199,6 @@ void SpawnerSystem::postDeinit()
 //**********************************************************************************************************************
 void SpawnerSystem::update()
 {
-	auto manager = Manager::Instance::get();
-	auto linkSystem = LinkSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	auto currentTime = InputSystem::Instance::get()->getTime();
 	auto componentData = components.getData();
@@ -414,7 +410,6 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Ent
 
 void SpawnerSystem::destroySharedPrefabs()
 {
-	auto manager = Manager::Instance::get();
 	auto linkSystem = LinkSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 
