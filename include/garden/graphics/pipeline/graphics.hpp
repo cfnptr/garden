@@ -294,7 +294,7 @@ private:
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
 		uint64 pipelineVersion, ID<Framebuffer> framebuffer, uint8 subpassIndex) :
 		Pipeline(PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion),
-		framebuffer(framebuffer), subpassIndex(subpassIndex) { }
+		subpassIndex(subpassIndex), framebuffer(framebuffer) { }
 	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
 
 	friend class CommandBuffer;

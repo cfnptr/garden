@@ -72,7 +72,7 @@ void AnimationSystem::postDeinit()
 static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent* animationComponent)
 {
 	auto entity = animationComponent->getEntity();
-	if (!entity || !animationComponent->isPlaying && !animationComponent->active.empty())
+	if (!entity || !animationComponent->isPlaying || !animationComponent->active.empty())
 		return;
 
 	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
@@ -213,7 +213,7 @@ static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponen
 
 	const auto& keyframe = animationView->getKeyframes().rbegin();
 	if (keyframe->first != 0)
-		componentView->frame = randomGenerator() / (randomGenerator.max() / (float)keyframe->first);
+		componentView->frame = (float)(randomGenerator() / (double)(randomGenerator.max() / keyframe->first));
 }
 
 //**********************************************************************************************************************

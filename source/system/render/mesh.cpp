@@ -59,7 +59,6 @@ void MeshRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning())
 	{
-		auto manager = Manager::Instance::get();
 		if (ForwardRenderSystem::Instance::has())
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
@@ -498,9 +497,7 @@ void MeshRenderSystem::renderTranslucent(ThreadSystem* threadSystem, const float
 			auto currentBufferIndex = items[indices[task.getItemOffset()]].bufferIndex;
 			auto meshSystem = bufferData[currentBufferIndex].meshSystem;
 			auto bufferDrawCount = &bufferData[currentBufferIndex].drawCount;
-			auto itemCount = task.getItemCount();
-			auto taskIndex = task.getTaskIndex();
-			auto taskCount = itemCount - task.getItemOffset();
+			auto itemCount = task.getItemCount(), taskIndex = task.getTaskIndex();
 			meshSystem->beginDrawAsync(taskIndex);
 
 			uint32 currentDrawCount = 0;

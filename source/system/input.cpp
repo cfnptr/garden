@@ -23,7 +23,6 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
-	auto manager = Manager::Instance::get();
 	GARDEN_LOG_INFO("Dropped " + to_string(count) + " items on a window.");
 
 	#if GARDEN_EDITOR

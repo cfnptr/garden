@@ -197,13 +197,6 @@ void ResourceSystem::deinit()
 //**********************************************************************************************************************
 void ResourceSystem::dequeuePipelines()
 {
-	#if GARDEN_DEBUG
-	auto hasNewResources = !loadedGraphicsQueue.empty() || !loadedComputeQueue.empty();
-	LogSystem* logSystem = nullptr;
-	if (hasNewResources)
-		logSystem = LogSystem::Instance::tryGet();
-	#endif
-
 	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
 	auto graphicsOccupancy = GraphicsAPI::graphicsPipelinePool.getOccupancy();
 

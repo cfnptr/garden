@@ -63,7 +63,6 @@ void SpawnerEditorSystem::deinit()
 //**********************************************************************************************************************
 static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 {
-	auto linkSystem = LinkSystem::Instance::get();
 	auto spawnerSystem = SpawnerSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::tryGet();

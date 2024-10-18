@@ -415,7 +415,7 @@ namespace
 		map<string, ComponentEntry> nodes;
 		type_index componentType;
 
-		ComponentEntry(type_index _componentType) : componentType(componentType) { }
+		ComponentEntry(type_index componentType) : componentType(componentType) { }
 	};
 }
 

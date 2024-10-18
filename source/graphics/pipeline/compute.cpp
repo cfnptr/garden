@@ -32,8 +32,8 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 	vk::PipelineShaderStageCreateInfo stageInfo({},
 		toVkShaderStage(ShaderStage::Compute), (VkShaderModule)shaders[0], "main",
 		specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
-	vk::ComputePipelineCreateInfo pipelineInfo({}, stageInfo,
-		(VkPipelineLayout)pipelineLayout, VK_NULL_HANDLE, -1);
+	vk::ComputePipelineCreateInfo pipelineInfo({},
+		stageInfo, (VkPipelineLayout)pipelineLayout, {}, -1);
 
 	if (createData.variantCount > 1)
 	{
