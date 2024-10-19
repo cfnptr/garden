@@ -15,6 +15,7 @@
 #include "garden/graphics/swapchain.hpp"
 #include "garden/graphics/vulkan.hpp"
 
+using namespace math;
 using namespace garden::graphics;
 
 static uint32 getBestVkImageCount(const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering)

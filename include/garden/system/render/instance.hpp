@@ -23,8 +23,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 /**
  * @brief General mesh instance rendering system.
  */

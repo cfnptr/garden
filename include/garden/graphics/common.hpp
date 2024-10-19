@@ -25,9 +25,6 @@
 namespace garden::graphics
 {
 
-using namespace std;
-using namespace math;
-
 /**
  * @brief Optimal sync primitive count.
  */

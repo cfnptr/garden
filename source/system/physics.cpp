@@ -40,7 +40,6 @@
 #include "Jolt/Physics/Constraints/FixedConstraint.h"
 #include "Jolt/Physics/Constraints/PointConstraint.h"
 
-using namespace ecsm;
 using namespace garden;
 using namespace garden::physics;
 

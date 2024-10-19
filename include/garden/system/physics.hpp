@@ -35,9 +35,6 @@ namespace garden
 namespace garden::physics
 {
 
-using namespace math;
-using namespace ecsm;
-
 /***********************************************************************************************************************
  * @brief Motion type of a physics body.
  */
@@ -271,9 +268,7 @@ public:
 namespace garden
 {
 
-using namespace math;
-using namespace ecsm;
-using namespace physics;
+using namespace garden::physics;
 
 /***********************************************************************************************************************
  * @brief A rigid body that can be simulated using the physics system.

@@ -45,8 +45,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 enum class Gas : uint8
 {
 	He, Ne, Ar, Kr, Xe, H2, N2, O2, CH4, CO, CO2, Count

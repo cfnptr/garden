@@ -24,8 +24,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 /**
  * @brief Sprite rendering data container.
  */

@@ -25,9 +25,7 @@
 namespace garden::graphics
 {
 
-using namespace std;
 class CommandBuffer;
-
 
 //**********************************************************************************************************************
 struct Command

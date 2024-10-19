@@ -17,7 +17,6 @@
 
 #include <fstream>
 
-using namespace std;
 using namespace garden;
 using namespace garden::graphics;
 

@@ -16,7 +16,6 @@
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
-using namespace std;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************

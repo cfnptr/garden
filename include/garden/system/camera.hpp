@@ -24,9 +24,6 @@
 namespace garden
 {
 
-using namespace math;
-using namespace ecsm;
-
 /**
  * @brief Generic head-mounted display depth.
  */

@@ -24,8 +24,6 @@
 namespace garden::graphics
 {
 
-using namespace std;
-
 class ImGuiData final
 {
 public:

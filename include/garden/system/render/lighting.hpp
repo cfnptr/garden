@@ -25,8 +25,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 // TODO: TODO: check if correct.
 //float iorToReflectance(float transmittedIor, float incidentIor = 1.0)
 //{

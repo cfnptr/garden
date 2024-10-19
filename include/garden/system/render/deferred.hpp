@@ -30,8 +30,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 /**
  * @brief Deferred rendering system.
  * 

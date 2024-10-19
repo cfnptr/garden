@@ -23,8 +23,6 @@
 namespace garden
 {
 
-using namespace ecsm;
-
 /**
  * @brief Animation frame interpolation function.
  */

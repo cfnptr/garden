@@ -54,7 +54,7 @@ static bool Combo(const char* label, T* currentItem, const char* items)
 static bool SliderFloat4(const char* label, float4* value, float min,
 	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
-	return ImGui::SliderFloat4(label, (float*)value, min, max, format, flags);
+	return ImGui::SliderFloat2(label, (float*)value, min, max, format, flags);
 }
 static bool SliderFloat3(const char* label, float4* value, float min,
 	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)

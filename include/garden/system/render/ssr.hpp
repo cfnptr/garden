@@ -22,8 +22,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 //--------------------------------------------------------------------------------------------------
 // Screen Space Reflection
 class SsrRenderSystem final : public System, public IRenderSystem

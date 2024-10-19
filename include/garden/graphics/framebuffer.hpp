@@ -23,8 +23,6 @@
 namespace garden::graphics
 {
 
-using namespace ecsm;
-
 class Pipeline;
 class FramebufferExt;
 

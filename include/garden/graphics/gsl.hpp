@@ -23,9 +23,6 @@
 namespace garden::graphics
 {
 
-using namespace std;
-using namespace math;
-
 /**
  * @brief GSL data types. (Garden Shading Language)
  * @details Data types that can be used to define variables and manipulate data within shaders.

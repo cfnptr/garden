@@ -32,8 +32,6 @@
 namespace garden::graphics
 {
 
-using namespace std;
-
 /**
  * @brief Wrapper around GLSL shader compiler.
  * 

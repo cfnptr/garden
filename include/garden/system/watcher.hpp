@@ -24,8 +24,6 @@
 namespace garden
 {
 
-using namespace ecsm;
-
 //--------------------------------------------------------------------------------------------------
 class WatcherSystem final : public System
 {

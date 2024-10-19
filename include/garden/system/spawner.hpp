@@ -20,7 +20,6 @@
 namespace garden
 {
 
-using namespace ecsm;
 class SpawnerSystem;
 
 enum class SpawnMode : uint8

@@ -17,7 +17,7 @@
 
 #include <set>
 
-using namespace std;
+using namespace math;
 using namespace garden::graphics;
 
 namespace

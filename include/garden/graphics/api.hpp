@@ -26,8 +26,6 @@
 namespace garden::graphics
 {
 
-using namespace garden;
-
 /**
  * @brief Base graphics API class.
  * 

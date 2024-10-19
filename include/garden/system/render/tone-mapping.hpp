@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,25 +11,30 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-/*
+/***********************************************************************************************************************
+ * @file
+ * @brief Tone mapping rendering functions.
+ */
+
+ /*
 #pragma once
 #include "garden/system/render/bloom.hpp"
+
 
 namespace garden
 {
 
-#define LUM_TO_EXP 9.6f // TODO: use constexpr variable instead and move to math library
 
-using namespace garden::graphics;
+constexpr float lumToExp = 9.6f;
+
 
 enum class ToneMapper : uint8
 {
 	ACES, Uchimura, Count
 };
 
-//--------------------------------------------------------------------------------------------------
+
 class ToneMappingRenderSystem final : public System,
 	public IRenderSystem, public IDeferredRenderSystem
 {
@@ -74,6 +78,7 @@ public:
 	void setLuminance(float luminance);
 	void setExposure(float exposure);
 };
+
 
 } // namespace garden
 */

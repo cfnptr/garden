@@ -23,8 +23,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 /**
  * @brief Skybox rendering data container.
  */

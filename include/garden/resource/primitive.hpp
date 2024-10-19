@@ -19,7 +19,6 @@
 namespace garden::primitive
 {
 
-using namespace std;
 using namespace math;
 
 // TODO: BETTER FOR GPU VERTEX CACHING! Change to this vertex format (for counter clockwise culling)

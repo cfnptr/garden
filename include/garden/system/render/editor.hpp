@@ -29,9 +29,6 @@
 namespace garden
 {
 
-using namespace ecsm;
-using namespace garden::graphics;
-
 /**
  * @brief Editor GUI rendering system.
  * 

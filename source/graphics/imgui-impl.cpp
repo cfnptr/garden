@@ -15,7 +15,6 @@
 #include "garden/graphics/imgui-impl.hpp"
 
 #if GARDEN_EDITOR
-using namespace std;
 using namespace garden::graphics;
 
 vk::RenderPass ImGuiData::renderPass = {};

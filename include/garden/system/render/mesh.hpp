@@ -28,8 +28,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 /**
  * @brief Mesh render types.
  */

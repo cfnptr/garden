@@ -26,8 +26,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 /**
  * @brief 9-slice sprite rendering data container.
  */

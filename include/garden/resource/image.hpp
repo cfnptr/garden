@@ -23,9 +23,6 @@
 namespace garden
 {
 
-using namespace std;
-using namespace math;
-
 /**
  * @brief Image file format types.
  */
