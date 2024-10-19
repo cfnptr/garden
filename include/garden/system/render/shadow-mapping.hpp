@@ -26,8 +26,6 @@ namespace garden
 
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: use constexpr variable instead
 
-using namespace garden::graphics;
-
 //--------------------------------------------------------------------------------------------------
 // CSM - Cascade Shadow Mapping
 class ShadowMappingRenderSystem final : public System, public IRenderSystem,

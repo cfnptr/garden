@@ -23,8 +23,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 struct Translucent9SliceComponent final : public NineSliceRenderComponent { };
 struct Translucent9SliceFrame final : public NineSliceAnimationFrame { };
 

@@ -23,8 +23,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 struct CutoutSpriteComponent final : public SpriteRenderComponent
 {
 	float alphaCutoff = 0.5f;

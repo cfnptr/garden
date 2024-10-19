@@ -24,9 +24,6 @@
 namespace garden::graphics
 {
 
-using namespace std;
-using namespace math;
-
 /**
  * @brief Equirectangular image to cubemap converter. 
  */

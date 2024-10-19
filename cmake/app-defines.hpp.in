@@ -18,8 +18,6 @@
 namespace @GARDEN_APP_NAME_LOWERCASE@
 {
 
-using namespace std;
-using namespace math;
 using namespace garden;
 
 constexpr string_view appName = "@GARDEN_APP_NAME@";

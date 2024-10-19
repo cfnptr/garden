@@ -26,7 +26,6 @@
 namespace garden
 {
 
-using namespace ecsm;
 using namespace garden::graphics;
 class GraphicsSystem;
 

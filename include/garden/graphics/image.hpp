@@ -25,9 +25,6 @@
 namespace garden::graphics
 {
 
-using namespace math;
-using namespace ecsm;
-
 class Image;
 class ImageExt;
 class ImageView;

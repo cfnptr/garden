@@ -23,9 +23,6 @@
 namespace garden
 {
 
-using namespace math;
-using namespace ecsm;
-
 /**
  * @brief Contains information about object transformation within the 3D space and nodes.
  * @details Nodes describe ties (connections) between objects in the game world.

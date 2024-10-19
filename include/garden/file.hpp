@@ -24,9 +24,6 @@
 namespace garden
 {
 
-using namespace std;
-using namespace math;
-
 class File final
 {
 public:

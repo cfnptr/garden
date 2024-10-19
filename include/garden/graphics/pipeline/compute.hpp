@@ -23,9 +23,6 @@
 namespace garden::graphics
 {
 
-using namespace std;
-using namespace math;
-using namespace ecsm;
 class ComputePipelineExt;
 
 /**

@@ -19,8 +19,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class AutoExposureEditor final
 {
 	ID<Buffer> readbackBuffer = {};

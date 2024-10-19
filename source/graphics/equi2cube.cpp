@@ -32,7 +32,6 @@
 #include <fstream>
 #include <iostream>
 
-using namespace std;
 using namespace garden;
 using namespace garden::graphics;
 using namespace math::ibl;

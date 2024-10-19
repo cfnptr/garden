@@ -24,8 +24,7 @@
 namespace garden
 {
 
-using namespace math;
-using namespace ecsm;
+using namespace garden::physics;
 class CharacterSystem;
 
 /***********************************************************************************************************************

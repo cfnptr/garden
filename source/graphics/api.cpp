@@ -15,7 +15,7 @@
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan.hpp"
 
-using namespace std;
+using namespace math;
 using namespace garden::graphics;
 
 string GraphicsAPI::appDataName;

@@ -31,8 +31,6 @@ namespace garden
 
 #define AE_HISTOGRAM_SIZE 256 // TODO: use constexpr variable instead of define.
 
-using namespace garden::graphics;
-
 //--------------------------------------------------------------------------------------------------
 // AE - Automatic Exposure aka Eye Light Adaptation
 class AutoExposureRenderSystem final : public System, public IRenderSystem

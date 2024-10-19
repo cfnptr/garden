@@ -26,9 +26,6 @@
 namespace garden
 {
 
-using namespace std;
-using namespace math;
-
 /**
  * @brief An 128bit hash container. (non-cryptographic)
  * 

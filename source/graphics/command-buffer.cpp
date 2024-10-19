@@ -16,7 +16,7 @@
 #include "garden/graphics/vulkan.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 
-using namespace std;
+using namespace math;
 using namespace garden::graphics;
 
 // TODO: separate big functions into smaller ones.

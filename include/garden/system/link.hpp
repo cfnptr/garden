@@ -25,7 +25,6 @@
 namespace garden
 {
 
-using namespace ecsm;
 class LinkSystem;
 
 /**

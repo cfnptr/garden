@@ -19,8 +19,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 class DeferredRenderEditorSystem final : public System
 {
 	enum class DrawMode : uint8

@@ -29,9 +29,6 @@
 namespace garden
 {
 
-using namespace std;
-using namespace math;
-
 /***********************************************************************************************************************
  * @brief Asynchronous task executor.
  * 

@@ -24,8 +24,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 //--------------------------------------------------------------------------------------------------
 // Screen Space Ambient Occlusion
 class SsaoRenderSystem final : public System, public IRenderSystem, public IAoRenderSystem

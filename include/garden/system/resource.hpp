@@ -30,10 +30,6 @@
 namespace garden
 {
 
-using namespace math;
-using namespace ecsm;
-using namespace garden::graphics;
-
 /**
  * @brief Additional image load flags.
  */

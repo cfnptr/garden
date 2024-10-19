@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-// Based on this: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Bloom (light glow) rendering functions.
+ * @details Based on this: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
+ */
 
 /*
 #pragma once
@@ -25,10 +27,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
-//--------------------------------------------------------------------------------------------------
-// Bloom aka Light Glow
 class BloomRenderSystem final : public System,
 	public IRenderSystem, public IDeferredRenderSystem
 {

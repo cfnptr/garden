@@ -21,8 +21,6 @@
 namespace garden
 {
 
-using namespace garden::graphics;
-
 //--------------------------------------------------------------------------------------------------
 // Fast Approximate Anti-Aliasing
 class FxaaRenderSystem final : public System,

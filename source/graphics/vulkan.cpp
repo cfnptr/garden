@@ -36,7 +36,6 @@
 #include <fstream>
 #include <iostream>
 
-using namespace std;
 using namespace mpio;
 using namespace garden;
 using namespace garden::graphics;

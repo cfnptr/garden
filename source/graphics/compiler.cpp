@@ -28,7 +28,6 @@
 #define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.3"
 #endif
 
-using namespace std;
 using namespace garden;
 using namespace garden::graphics;
 

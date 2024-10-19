@@ -32,8 +32,6 @@
 namespace garden
 {
 
-using namespace std;
-using namespace math;
 using namespace ecsm;
 
 /**
