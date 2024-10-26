@@ -12,35 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "bloom/common.gsl"
-#include "common/depth.gsl"
-#include "common/gbuffer.gsl"
+#pragma once
+#include "garden/defines.hpp"
 
-spec const bool USE_THRESHOLD = false;
-spec const bool USE_ANTI_FLICKERING = true;
+#if GARDEN_TRACY_PROFILER
+#include "tracy/Tracy.hpp"
 
-pipelineState
-{
-	faceCulling = off;
-}
-
-in float2 fs.texCoords;
-out float4 fb.color;
-
-uniform sampler2D
-{
-	filter = linear;
-	wrap = clampToEdge;
-} srcTexture;
-
-uniform pushConstants
-{
-	float threshold;
-} pc;
-
-void main()
-{
-	float3 color = downsample(srcTexture, fs.texCoords,
-		pc.threshold, USE_THRESHOLD, USE_ANTI_FLICKERING);
-	fb.color = float4(max(color, 0.0001f), 0.0f);
-}
+#define SET_CPU_ZONE_SCOPED(name) ZoneScopedNS(name, 16)
+#else
+#define SET_CPU_ZONE_SCOPED(name) (void)0
+#endif

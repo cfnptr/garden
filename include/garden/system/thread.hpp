@@ -27,8 +27,8 @@ namespace garden
 
 using namespace ecsm;
 
-/***********************************************************************************************************************
- * @brief Thread pool holder.
+/**
+ * @brief Thread pool holder. (Asynchronous task executor)
  * 
  * @details
  * A thread system is used to manage and reuse a pool of worker threads for executing tasks asynchronously.

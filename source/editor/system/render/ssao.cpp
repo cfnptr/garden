@@ -40,7 +40,7 @@ void SsaoEditor::render()
 		{
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
-				settingsSystem->setBool("useSSAO", system->isEnabled);
+				settingsSystem->setBool("ssao.isEnabled", system->isEnabled);
 		}
 
 		ImGui::DragFloat("Radius", &system->radius, 0.01f, 0.0f, FLT_MAX);

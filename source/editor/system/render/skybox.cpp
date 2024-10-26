@@ -56,7 +56,7 @@ void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpene
 
 	auto componentView = SkyboxRenderSystem::Instance::get()->getComponent(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->drawResource(componentView->cubemap);
+	editorSystem->drawResource(componentView->cubemap, "Cubemap");
 	editorSystem->drawResource(componentView->descriptorSet);
 
 	// TODO: use here editorSystem->drawImageSelector() instead.

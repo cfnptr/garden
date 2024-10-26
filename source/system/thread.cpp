@@ -13,12 +13,22 @@
 // limitations under the License.
 
 #include "garden/system/thread.hpp"
+#include "mpio/os.hpp"
 
+using namespace mpio;
 using namespace garden;
+
+static int getBestForegroundThreadCount()
+{
+	auto cpuName = OS::getCpuName();
+
+	// if (cpuName.find())
+}
 
 //**********************************************************************************************************************
 ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
-	backgroundPool(true, "BG"), foregroundPool(false, "FG")
+	backgroundPool(true, "BG", OS::getLogicalCpuCount()),
+	foregroundPool(false, "FG", OS::getPhysicalCpuCount())
 {
 	mpmt::Thread::setForegroundPriority();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);

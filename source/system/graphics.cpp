@@ -25,6 +25,8 @@
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/resource/primitive.hpp"
+#include "garden/profiler.hpp"
+
 #include "math/matrix/transform.hpp"
 #include "mpio/os.hpp"
 
@@ -167,13 +169,9 @@ void GraphicsSystem::recreateImGui()
 
 static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 {
-	auto bind = Image::Bind::TransferDst | Image::Bind::Fullscreen | Image::Bind::DepthStencilAttachment;
-	#if GARDEN_DEBUG
-	bind |= Image::Bind::Sampled;
-	#endif
-
-	auto depthImage = GraphicsSystem::Instance::get()->createImage(
-		format, bind, { { nullptr } }, size, Image::Strategy::Size);
+	auto depthImage = GraphicsSystem::Instance::get()->createImage(format, 
+		Image::Bind::TransferDst | Image::Bind::DepthStencilAttachment | Image::Bind::Sampled |
+		Image::Bind::Fullscreen, { { nullptr } }, size, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(depthImage, "image.depthBuffer");
 	auto imageView = GraphicsAPI::imagePool.get(depthImage);
 	return imageView->getDefaultView();
@@ -367,24 +365,20 @@ static void updateWindowInput(uint2& framebufferSize, uint2& windowSize, bool& i
 }
 
 //**********************************************************************************************************************
-static void recreateCameraBuffers(vector<vector<ID<Buffer>>>& cameraConstantsBuffers)
+static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	for (uint32 i = 0; i < (uint32)cameraConstantsBuffers.size(); i++)
-		graphicsSystem->destroy(cameraConstantsBuffers[i][0]);
-	cameraConstantsBuffers.clear();
+	graphicsSystem->destroy(cameraConstantsBuffers);
 
 	auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
 	cameraConstantsBuffers.resize(swapchainBufferCount);
 
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
 	{
-		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform,
-			Buffer::Access::SequentialWrite, sizeof(CameraConstants),
-			Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(constantsBuffer,
-			"buffer.uniform.cameraConstants" + to_string(i));
-		cameraConstantsBuffers[i].push_back(constantsBuffer);
+		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform, Buffer::Access::SequentialWrite, 
+			sizeof(CameraConstants), Buffer::Usage::Auto, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
+		cameraConstantsBuffers[i].resize(1); cameraConstantsBuffers[i][0] = constantsBuffer;
 	}
 }
 
@@ -469,6 +463,8 @@ void GraphicsSystem::input()
 }
 void GraphicsSystem::update()
 {
+	SET_CPU_ZONE_SCOPED("Graphics Update");
+
 	SwapchainChanges newSwapchainChanges;
 	newSwapchainChanges.framebufferSize = framebufferSize != Vulkan::swapchain.getFramebufferSize();
 	newSwapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.useTripleBuffering();
@@ -483,6 +479,8 @@ void GraphicsSystem::update()
 	
 	if (swapchainRecreated)
 	{
+		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
+
 		Vulkan::swapchain.recreate(framebufferSize, useVsync, useTripleBuffering);
 
 		if (depthStencilBuffer)
@@ -514,13 +512,17 @@ void GraphicsSystem::update()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
+		{
 			GARDEN_LOG_WARN("Suboptimal swapchain.");
+			isFramebufferSizeValid = false;
+		}
 	}
 
 	updateCurrentFramebuffer(swapchainFramebuffer, depthStencilBuffer, framebufferSize);
 	
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
+		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 		Manager::Instance::get()->runEvent("SwapchainRecreate");
 		swapchainChanges = {};
 		forceRecreateSwapchain = false;
@@ -543,23 +545,26 @@ void GraphicsSystem::update()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		#endif
-	}
 
-	if (renderScale != 1.0f) // TODO: make this optional
-	{
-		startRecording(CommandBufferType::Frame);
-		auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
-		GraphicsAPI::imagePool.get(depthStencilBufferView->getImage())->clear(0.0f, 0x00);
-		stopRecording();
+		if (renderScale != 1.0f) // TODO: make this optional
+		{
+			startRecording(CommandBufferType::Frame);
+			auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
+			GraphicsAPI::imagePool.get(depthStencilBufferView->getImage())->clear(0.0f, 0x00);
+			stopRecording();
+		}
 	}
 }
 void GraphicsSystem::present()
 {
+	SET_CPU_ZONE_SCOPED("Frame Present");
+
 	if (isFramebufferSizeValid)
 	{
 		#if GARDEN_EDITOR
 		startRecording(CommandBufferType::Frame);
 		{
+			SET_CPU_ZONE_SCOPED("ImGui Render");
 			INSERT_GPU_DEBUG_LABEL("ImGui", Color::transparent);
 			ImGui::Render();
 		}
@@ -584,7 +589,7 @@ void GraphicsSystem::present()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.present())
-			LogSystem::tryWarn("Suboptimal swapchain.");
+			GARDEN_LOG_WARN("Suboptimal swapchain.");
 		frameIndex++;
 	}
 	else
@@ -598,6 +603,10 @@ void GraphicsSystem::present()
 	}
 
 	tickIndex++;
+
+	#if GARDEN_TRACY_PROFILER
+	FrameMark;
+	#endif
 }
 
 //**********************************************************************************************************************

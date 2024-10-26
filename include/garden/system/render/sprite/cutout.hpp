@@ -23,16 +23,25 @@
 namespace garden
 {
 
+/**
+ * @brief Cutout sprite rendering data container.
+ */
 struct CutoutSpriteComponent final : public SpriteRenderComponent
 {
 	float alphaCutoff = 0.5f;
 };
+/**
+ * @brief Cutout sprite animation frame container.
+ */
 struct CutoutSpriteFrame final : public SpriteAnimationFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
 };
 
+/**
+ * @brief Cutout sprite rendering system.
+ */
 class CutoutSpriteSystem final : public SpriteRenderCompSystem<
 	CutoutSpriteComponent, CutoutSpriteFrame, false, false>, public Singleton<CutoutSpriteSystem>
 {

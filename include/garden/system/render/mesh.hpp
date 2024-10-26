@@ -29,7 +29,7 @@ namespace garden
 {
 
 /**
- * @brief Mesh render types.
+ * @brief Common mesh render types.
  */
 enum class MeshRenderType : uint8
 {
@@ -155,20 +155,20 @@ protected:
 class MeshRenderSystem final : public System
 {
 public:
-	struct RenderItem
+	struct RenderMesh
 	{
-		MeshRenderComponent* meshRenderView = nullptr;
+		MeshRenderComponent* renderView = nullptr;
 		float4x4 model = float4x4(0.0f);
 		float distance2 = 0.0f;
 	};
-	struct TranslucentItem final : public RenderItem
+	struct TranslucentMesh final : public RenderMesh
 	{
 		uint32 bufferIndex = 0;
 	};
 	struct OpaqueBuffer final
 	{
 		IMeshRenderSystem* meshSystem = nullptr;
-		vector<RenderItem> items;
+		vector<RenderMesh> meshes;
 		vector<uint32> indices;
 		volatile int64 drawCount;
 	};
@@ -180,7 +180,7 @@ public:
 private:
 	vector<OpaqueBuffer> opaqueBuffers;
 	vector<TranslucentBuffer> translucentBuffers;
-	vector<TranslucentItem> translucentItems;
+	vector<TranslucentMesh> translucentMeshes;
 	vector<uint32> translucentIndices;
 	vector<IMeshRenderSystem*> meshSystems;
 	volatile int64 translucentIndex = 0;
@@ -193,7 +193,7 @@ private:
 	 * @brief Creates a new mesh rendering system instance.
 	 * 
 	 * @param useAsyncRecording use multithreaded render commands recording
-	 * @param useAsyncPreparing use multithreaded render items preparing
+	 * @param useAsyncPreparing use multithreaded render meshes preparing
 	 */
 	MeshRenderSystem(bool useAsyncRecording = true, bool useAsyncPreparing = true);
 	/**
@@ -202,7 +202,7 @@ private:
 	~MeshRenderSystem() final;
 
 	void prepareSystems();
-	void prepareItems(ThreadSystem* threadSystem, const float4x4& viewProj, const float3& cameraOffset,
+	void prepareMeshes(ThreadSystem* threadSystem, const float4x4& viewProj, const float3& cameraOffset,
 		uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType);
 	void renderOpaque(ThreadSystem* threadSystem, const float4x4& viewProj);
 	void renderTranslucent(ThreadSystem* threadSystem, const float4x4& viewProj);
@@ -221,11 +221,13 @@ private:
 	friend class SelectorEditorSystem;
 public:
 	/**
-	 * @brief Returns true if mesh render system uses multithreaded render commands recording.
+	 * @brief Use multithreaded command buffer recording.
+	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
 	/**
-	 * @brief Returns true if mesh render system uses multithreaded render items preparing.
+	 * @brief Use multithreaded render meshes preparing.
+	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncPreparing() const noexcept { return asyncPreparing; }
 };

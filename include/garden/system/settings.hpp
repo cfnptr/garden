@@ -65,7 +65,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	friend class ecsm::Manager;
 	friend class SettingsEditor;
 public:
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns settings integer value. (int64)
 	 * @param[in] name target setting name
 	 * @param[out] value reference to the setting value
@@ -224,7 +224,7 @@ public:
 		value = (float2)colorValue;
 	}
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Sets settings integer value. (int64)
 	 * @param[in] name target setting name
 	 * @param value setting value

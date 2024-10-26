@@ -25,10 +25,10 @@ pipelineState
 
 uniform pushConstants
 {
-	float4 gridColor;
+	float4 meshColor;
 	float4 axisColorX;
-	float4 axisColorY;
-	float gridScale;
+	float4 axisColorYZ;
+	float meshScale;
 	bool isHorizontal;
 } pc;
 
@@ -43,15 +43,15 @@ in float3 fs.farPoint;
 out float4 fb.color;
 
 //**********************************************************************************************************************
-float4 grid(float3 fragPos, float3 gridColor, float3 axisColorX, float3 axisColorY, float gridScale, bool isHorizontal)
+float4 grid(float3 fragPos, float3 meshColor, float3 axisColorX, float3 axisColorYZ, float meshScale, bool isHorizontal)
 {
-	float2 coords = (isHorizontal ? fragPos.xz : fragPos.xy) * gridScale;
+	float2 coords = (isHorizontal ? fragPos.xz : fragPos.xy) * meshScale;
 	float2 derivative = fwidth(coords);
 	float2 grid = abs(fract(coords - 0.5f) - 0.5f) / derivative;
 	float line = min(grid.x, grid.y);
 	float2 derMin = min(derivative, float2(1.0f));
-	float4 color = vec4(gridColor, 1.0f - min(line, 1.0f));
-	float scale = 1.0f / gridScale;
+	float4 color = float4(meshColor, 1.0f - min(line, 1.0f));
+	float scale = 1.0f / meshScale;
 
 	if (fragPos.x > -scale * derMin.x && fragPos.x < scale * derMin.x)
 		color.rgb = axisColorX;
@@ -59,12 +59,12 @@ float4 grid(float3 fragPos, float3 gridColor, float3 axisColorX, float3 axisColo
 	if (isHorizontal)
 	{
 		if (fragPos.z > -scale * derMin.y && fragPos.z < scale * derMin.y)
-			color.rgb = axisColorY;
+			color.rgb = axisColorYZ;
 	}
 	else
 	{
 		if (fragPos.y > -scale * derMin.y && fragPos.y < scale * derMin.y)
-			color.rgb = axisColorY;
+			color.rgb = axisColorYZ;
 	}
 	return color;
 }
@@ -77,8 +77,8 @@ void main()
 		discard;
 
 	float3 fragPos = t * (fs.farPoint - fs.nearPoint) + fs.nearPoint;
-	fb.color = grid(fragPos, pc.gridColor.rgb, pc.axisColorX.rgb,
-		pc.axisColorY.rgb, pc.gridScale, pc.isHorizontal);
+	fb.color = grid(fragPos, pc.meshColor.rgb, pc.axisColorX.rgb,
+		pc.axisColorYZ.rgb, pc.meshScale, pc.isHorizontal);
 	if (fb.color.a == 0.0f)
 		discard;
 

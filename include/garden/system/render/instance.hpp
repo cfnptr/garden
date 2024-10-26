@@ -29,7 +29,7 @@ namespace garden
 class InstanceRenderSystem : public System, public IMeshRenderSystem
 {
 protected:
-	vector<vector<ID<Buffer>>> instanceBuffers = {};
+	DescriptorSetBuffers instanceBuffers = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> baseDescriptorSet = {};
 	ID<DescriptorSet> defaultDescriptorSet = {};

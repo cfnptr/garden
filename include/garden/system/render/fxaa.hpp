@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,33 +11,59 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Fast approximate anti-aliasing rendering functions. (FXAA)
+ * @details Based on this: https://github.com/kosua20/Rendu/blob/master/resources/common/shaders/screens/fxaa.frag
+ */
 
 #pragma once
-#include "garden/system/render/deferred.hpp"
+#include "garden/system/graphics.hpp"
 
-/*
 namespace garden
 {
 
-//--------------------------------------------------------------------------------------------------
-// Fast Approximate Anti-Aliasing
-class FxaaRenderSystem final : public System,
-	public IRenderSystem, public IDeferredRenderSystem
+/**
+ * @brief Fast approximate anti-aliasing rendering system. (FXAA)
+ */
+class FxaaRenderSystem final : public System, public Singleton<FxaaRenderSystem>
 {
+public:
+	struct PushConstants final
+	{
+		float2 invFrameSize;
+	};
+private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 
-	void initialize() final;
-	void preSwapchainRender() final;
-	void recreateSwapchain(const SwapchainChanges& changes) final;
+	/**
+	 * @brief Creates a new fast approximate anti-aliasing rendering system instance. (FXAA)
+	 * @param setSingleton set system singleton instance
+	 */
+	FxaaRenderSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroys fast approximate anti-aliasing rendering system instance. (FXAA)
+	 */
+	~FxaaRenderSystem() final;
+
+	void init();
+	void deinit();
+	void preSwapchainRender();
+	void gBufferRecreate();
 
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Is fast approximate anti-aliasing rendering enabled.
+	 */
 	bool isEnabled = true;
 
+	/**
+	 * @brief Returns fast approximate anti-aliasing graphics pipeline.
+	 */
 	ID<GraphicsPipeline> getPipeline();
 };
 
 } // namespace garden
-*/

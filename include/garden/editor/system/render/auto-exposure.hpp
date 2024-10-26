@@ -13,29 +13,38 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/auto-exposure.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-class AutoExposureEditor final
+class AutoExposureRenderEditorSystem final : public System
 {
+	struct PushConstants final
+	{
+		float minLum;
+		float maxLum;
+	};
+
+	vector<float> histogramSamples;
 	ID<Buffer> readbackBuffer = {};
 	ID<GraphicsPipeline> limitsPipeline = {};
 	ID<DescriptorSet> limitsDescriptorSet = {};
-	float* histogramSamples = nullptr;
 	bool visualizeLimits = false;
 	bool showWindow = false;
 
-	AutoExposureEditor(AutoExposureRenderSystem* system);
-	~AutoExposureEditor() final;
+	AutoExposureRenderEditorSystem();
+	~AutoExposureRenderEditorSystem() final;
 
-	void render();
-	void recreateSwapchain(const IRenderSystem::SwapchainChanges& changes);
-	void onBarTool();
+	void init();
+	void deinit();
+	void editorRender();
+	void swapchainRecreate();
+	void gBufferRecreate();
+	void editorBarTool();
 	
-	friend class AutoExposureRenderSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

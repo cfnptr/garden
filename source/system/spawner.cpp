@@ -17,6 +17,8 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
+#include "garden/profiler.hpp"
+
 #include "math/matrix/transform.hpp"
 
 using namespace garden;
@@ -199,6 +201,8 @@ void SpawnerSystem::postDeinit()
 //**********************************************************************************************************************
 void SpawnerSystem::update()
 {
+	SET_CPU_ZONE_SCOPED("Spawners Update");
+
 	auto transformSystem = TransformSystem::Instance::get();
 	auto currentTime = InputSystem::Instance::get()->getTime();
 	auto componentData = components.getData();

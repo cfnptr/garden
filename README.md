@@ -58,6 +58,8 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
 | GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
+| GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
+
 
 ### CMake variables
 

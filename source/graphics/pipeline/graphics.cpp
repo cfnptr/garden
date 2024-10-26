@@ -113,8 +113,8 @@ static vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorCompon
 }
 
 //**********************************************************************************************************************
-GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRecording) :
-	Pipeline(createData, asyncRecording)
+GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, 
+	bool asyncRecording) : Pipeline(createData, asyncRecording)
 {
 	if (createData.variantCount > 1)
 		this->instance = malloc<vk::Pipeline>(createData.variantCount);
@@ -143,8 +143,8 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 		auto stage = stages[i];
 		auto specializationInfo = &specializationInfos[i];
 
-		fillSpecConsts(createData.shaderPath, stage, createData.variantCount,
-			specializationInfo, createData.specConsts, createData.specConstValues);
+		fillSpecConsts(createData.shaderPath, specializationInfo, createData.specConsts, 
+			createData.specConstValues, stage, createData.variantCount);
 
 		stageInfo.stage = toVkShaderStage(stage);
 		stageInfo.module = (VkShaderModule)shaders[i];
@@ -152,8 +152,42 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 		stageInfos[i] = stageInfo;
 	}
 
+	vk::VertexInputBindingDescription bindingDescription;
+	bindingDescription.stride = createData.vertexAttributesSize;
+	bindingDescription.inputRate = vk::VertexInputRate::eVertex;
+
+	vk::PipelineVertexInputStateCreateInfo inputInfo;
+	vector<vk::VertexInputAttributeDescription> inputAttributes(createData.vertexAttributes.size());
+
+	if (!createData.vertexAttributes.empty())
+	{
+		auto vertexAttributes = createData.vertexAttributes.data();
+		for (uint32 i = 0; i < (uint32)inputAttributes.size(); i++)
+		{
+			auto attribute = vertexAttributes[i];
+			auto& inputAttribute = inputAttributes[i];
+			inputAttribute.location = i;
+			inputAttribute.binding = 0;
+			inputAttribute.format = toVkFormat(attribute.type, attribute.format);
+			inputAttribute.offset = attribute.offset;
+		}
+
+		inputInfo.vertexBindingDescriptionCount = 1;
+		inputInfo.pVertexBindingDescriptions = &bindingDescription;
+		inputInfo.vertexAttributeDescriptionCount = (uint32)inputAttributes.size();
+		inputInfo.pVertexAttributeDescriptions = inputAttributes.data();
+		// TODO: allow to specify input rate for an each vertex attribute?
+	}
+
+	vk::PipelineViewportStateCreateInfo viewportInfo;
+	viewportInfo.viewportCount = 1; // TODO: pass it as argument.
+	viewportInfo.scissorCount = 1;
+
+	vk::PipelineMultisampleStateCreateInfo multisampleInfo({},
+		vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
+
 	vk::GraphicsPipelineCreateInfo pipelineInfo({}, (uint32)stageInfos.size(), stageInfos.data(),
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		&inputInfo, nullptr, nullptr, &viewportInfo, nullptr, &multisampleInfo, nullptr, nullptr, nullptr,
 		(VkPipelineLayout)pipelineLayout, nullptr, createData.subpassIndex, nullptr, -1);
 
 	vk::PipelineRenderingCreateInfoKHR dynamicRenderingInfo;
@@ -207,53 +241,43 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 		pipelineInfo.renderPass = (VkRenderPass)createData.renderPass;
 	}
 
-	const auto& stateOverrides = createData.stateOverrides;
-	for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
+	// TODO: pass dynamic states as argument.
+	// Also allow to specify static viewport and scissor.
+	vector<vk::DynamicState> dynamicStates;
+	dynamicStates.push_back(vk::DynamicState::eViewport);
+	dynamicStates.push_back(vk::DynamicState::eScissor);
+	vk::PipelineDynamicStateCreateInfo dynamicInfo;
+
+	if (!dynamicStates.empty())
 	{
-		auto stateSearch = stateOverrides.find(variantIndex);
-		const auto& pipelineState = stateSearch == stateOverrides.end() ?
-			createData.pipelineState : stateSearch->second;
+		dynamicInfo.dynamicStateCount = (uint32)dynamicStates.size();
+		dynamicInfo.pDynamicStates = dynamicStates.data();
+		pipelineInfo.pDynamicState = &dynamicInfo;
+	}
 
-		vk::VertexInputBindingDescription bindingDescription;
-		vk::PipelineVertexInputStateCreateInfo inputInfo;
-		vector<vk::VertexInputAttributeDescription> inputAttributes(createData.vertexAttributes.size());
+	const auto& pipelineStateOverrides = createData.pipelineStateOverrides;
+	const auto& blendStateOverrides = createData.blendStateOverrides;
 
-		if (!createData.vertexAttributes.empty())
+	for (uint8 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
+	{
+		if (variantCount > 1)
 		{
-			auto vertexAttributes = createData.vertexAttributes.data();
-			for (uint32 i = 0; i < (uint32)inputAttributes.size(); i++)
-			{
-				auto attribute = vertexAttributes[i];
-				auto& inputAttribute = inputAttributes[i];
-				inputAttribute.location = i;
-				inputAttribute.binding = 0;
-				inputAttribute.format = toVkFormat(attribute.type, attribute.format);
-				inputAttribute.offset = attribute.offset;
-			}
-
-			bindingDescription.stride = createData.vertexAttributesSize;
-			bindingDescription.inputRate = vk::VertexInputRate::eVertex;
-			inputInfo.vertexBindingDescriptionCount = 1;
-			inputInfo.pVertexBindingDescriptions = &bindingDescription;
-			inputInfo.vertexAttributeDescriptionCount = (uint32)inputAttributes.size();
-			inputInfo.pVertexAttributeDescriptions = inputAttributes.data();
-			// TODO: allow to specify input rate for an each vertex attribute?
+			for (uint32 stageIndex = 0; stageIndex < (uint32)stages.size(); stageIndex++)
+				setVariantIndex(&specializationInfos[stageIndex], variantIndex);
 		}
+
+		auto pipelineStateSearch = pipelineStateOverrides.find(variantIndex);
+		const auto& pipelineState = pipelineStateSearch == pipelineStateOverrides.end() ?
+			createData.pipelineState : pipelineStateSearch->second;
 
 		vk::PipelineInputAssemblyStateCreateInfo assemblyInfo({},
 			toVkPrimitiveTopology(pipelineState.topology), VK_FALSE); // TODO: support primitive restarting
-
-		vk::PipelineViewportStateCreateInfo viewportInfo;
-		viewportInfo.viewportCount = 1; // TODO: pass it as argument.
-		viewportInfo.scissorCount = 1;
 
 		vk::PipelineRasterizationStateCreateInfo rasterizationInfo({},
 			pipelineState.depthClamping, pipelineState.discarding, toVkPolygonMode(pipelineState.polygon),
 			pipelineState.faceCulling ? toVkCullMode(pipelineState.cullFace) : vk::CullModeFlagBits::eNone,
 			toVkFrontFace(pipelineState.frontFace), pipelineState.depthBiasing, pipelineState.depthBiasConstant,
 			pipelineState.depthBiasClamp, pipelineState.depthBiasSlope, 1.0f);
-		vk::PipelineMultisampleStateCreateInfo multisampleInfo({},
-			vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
 
 		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
 		if (createData.depthStencilFormat != Image::Format::Undefined)
@@ -266,10 +290,12 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 			// TODO: stencil testing, depth boundsTesting
 		}
 
-		auto blendStates = createData.blendStates.data();
-		vector<vk::PipelineColorBlendAttachmentState> blendAttachments(createData.blendStates.size());
+		auto blendStateSearch = blendStateOverrides.find(variantIndex);
+		const auto& blendStates = blendStateSearch == blendStateOverrides.end() ?
+			createData.blendStates : blendStateSearch->second;
+		vector<vk::PipelineColorBlendAttachmentState> blendAttachments(blendStates.size());
 
-		for (uint32 i = 0; i < (uint32)blendAttachments.size(); i++)
+		for (uint32 i = 0; i < (uint32)blendStates.size(); i++)
 		{
 			auto blendState = blendStates[i];
 			blendAttachments[i] = vk::PipelineColorBlendAttachmentState(blendState.blending,
@@ -287,26 +313,9 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, bool asyncRec
 
 		vk::PipelineColorBlendStateCreateInfo blendInfo({}, VK_FALSE, {},
 			(uint32)blendAttachments.size(), blendAttachments.data(), blendConstant); // TODO: logical operations
-		
-		// TODO: pass dynamic states as argument.
-		// Also allow to specify static viewport and scissor.
-		vector<vk::DynamicState> dynamicStates; 
-		dynamicStates.push_back(vk::DynamicState::eViewport);
-		dynamicStates.push_back(vk::DynamicState::eScissor);
-		vk::PipelineDynamicStateCreateInfo dynamicInfo;
 
-		if (!dynamicStates.empty())
-		{
-			dynamicInfo.dynamicStateCount = (uint32)dynamicStates.size();
-			dynamicInfo.pDynamicStates = dynamicStates.data();
-			pipelineInfo.pDynamicState = &dynamicInfo;
-		}
-
-		pipelineInfo.pVertexInputState = &inputInfo;
 		pipelineInfo.pInputAssemblyState = &assemblyInfo;
-		pipelineInfo.pViewportState = &viewportInfo;
 		pipelineInfo.pRasterizationState = &rasterizationInfo;
-		pipelineInfo.pMultisampleState = &multisampleInfo;
 		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &blendInfo;
 

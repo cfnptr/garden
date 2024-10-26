@@ -16,6 +16,7 @@
 #include "garden/system/log.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/api.hpp"
+#include "garden/profiler.hpp"
 
 using namespace garden;
 using namespace garden::graphics;
@@ -159,6 +160,8 @@ void InputSystem::preInit()
 }
 void InputSystem::input()
 {
+	SET_CPU_ZONE_SCOPED("Poll Input Events");
+
 	auto window = (GLFWwindow*)GraphicsAPI::window;
 	mouseScroll = float2(0.0f);
 	

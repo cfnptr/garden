@@ -18,6 +18,7 @@
 #include "garden/system/graphics.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/link.hpp"
+#include "garden/profiler.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/infinite-grid.hpp"
@@ -96,6 +97,8 @@ void Controller2DSystem::deinit()
 //**********************************************************************************************************************
 void Controller2DSystem::update()
 {
+	SET_CPU_ZONE_SCOPED("2D Controller Update");
+
 	if (useMouseControll)
 		updateCameraControll();
 

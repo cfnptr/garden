@@ -131,27 +131,28 @@ public:
 	void drawImageSelector(fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
 		ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags = {});
 
-	void drawResource(ID<Buffer> buffer);
-	void drawResource(ID<Image> image);
-	void drawResource(ID<ImageView> imageView);
-	void drawResource(ID<Framebuffer> framebuffer);
-	void drawResource(ID<DescriptorSet> descriptorSet);
-	void drawResource(ID<GraphicsPipeline> graphicsPipeline);
-	void drawResource(ID<ComputePipeline> computePipeline);
+	void drawResource(ID<Buffer> buffer, const char* label = "Buffer");
+	void drawResource(ID<Image> image, const char* label = "Image");
+	void drawResource(ID<ImageView> imageView, const char* label = "ImageView");
+	void drawResource(ID<Framebuffer> framebuffer, const char* label = "Framebuffer");
+	void drawResource(ID<DescriptorSet> descriptorSet, const char* label = "DescriptorSet");
+	void drawResource(ID<GraphicsPipeline> graphicsPipeline, const char* label = "Graphics Pipeline");
+	void drawResource(ID<ComputePipeline> computePipeline, const char* label = "Compute Pipeline");
 
-	void drawResource(const Ref<Buffer>& buffer) { drawResource(ID<Buffer>(buffer)); }
-	void drawResource(const Ref<Image>& image) { drawResource(ID<Image>(image)); }
-	void drawResource(const Ref<ImageView>& imageView) { drawResource(ID<ImageView>(imageView)); }
-	void drawResource(const Ref<Framebuffer>& framebuffer) { drawResource(ID<Framebuffer>(framebuffer)); }
-	void drawResource(const Ref<DescriptorSet>& descriptorSet) { drawResource(ID<DescriptorSet>(descriptorSet)); }
-	void drawResource(const Ref<GraphicsPipeline>& graphicsPipeline)
-	{
-		drawResource(ID<GraphicsPipeline>(graphicsPipeline));
-	}
-	void drawResource(const Ref<ComputePipeline>& computePipeline)
-	{
-		drawResource(ID<ComputePipeline>(computePipeline));
-	}
+	void drawResource(const Ref<Buffer>& buffer, const char* label = "Buffer")
+	{ drawResource(ID<Buffer>(buffer), label); }
+	void drawResource(const Ref<Image>& image, const char* label = "Image")
+	{ drawResource(ID<Image>(image), label); }
+	void drawResource(const Ref<ImageView>& imageView, const char* label = "ImageView")
+	{ drawResource(ID<ImageView>(imageView), label); }
+	void drawResource(const Ref<Framebuffer>& framebuffer, const char* label = "Framebuffer")
+	{ drawResource(ID<Framebuffer>(framebuffer), label); }
+	void drawResource(const Ref<DescriptorSet>& descriptorSet, const char* label = "DescriptorSet")
+	{ drawResource(ID<DescriptorSet>(descriptorSet), label); }
+	void drawResource(const Ref<GraphicsPipeline>& graphicsPipeline, const char* label = "Graphics Pipeline")
+	{ drawResource(ID<GraphicsPipeline>(graphicsPipeline), label); }
+	void drawResource(const Ref<ComputePipeline>& computePipeline, const char* label = "Compute Pipeline")
+	{ drawResource(ID<ComputePipeline>(computePipeline), label); }
 };
 
 } // namespace garden

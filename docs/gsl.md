@@ -26,7 +26,7 @@ With one of these formats: [ f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 |
 ## Pipeline state
 
 Shader parser gets pipeline state from the declared "pipelineState" properties in the shader.
-Also you can override pipeline state when loading pipeline in the code.
+Also you can override pipeline state properties when loading pipeline in the code.
 
 ```
 pipelineState
@@ -165,6 +165,8 @@ instance of the pipeline in runtime. And we can choose which variant to use duri
 * #variantCount X - Specify shader variant count.
 
 ```
+#variantCount 2
+
 #define FIRST_VARIANT 0
 #define SECOND_VARIANT 1
 

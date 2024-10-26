@@ -27,6 +27,10 @@ namespace garden
  * @brief Forward rendering system.
  * 
  * @details
+ * Forward rendering is a traditional technique in graphics engines for rendering scenes, where the 
+ * lighting and shading calculations are done for each object as it is drawn. Unlike deferred rendering, 
+ * which separates geometry and lighting passes, forward rendering performs all the work 
+ * (geometry, lighting, shading) in a single pass for each object.
  * 
  * Registers events: PreForwardRender, ForwardRender, PreSwapchainRender, ColorBufferRecreate.
  */
@@ -61,14 +65,36 @@ class ForwardRenderSystem final : public System, public Singleton<ForwardRenderS
 
 	friend class ecsm::Manager;
 public:
+	/*******************************************************************************************************************
+	 * @brief Is deferred rendering enabled.
+	 */
 	bool isEnabled = true;
+	/**
+	 * @brief Run deferred rendering swapchain pass.
+	 */
 	bool runSwapchainPass = true;
 
+	/**
+	 * @brief Use multithreaded command buffer recording.
+	 * @warning Be careful when writing asynchronous code!
+	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
+	/**
+	 * @brief Use HDR color buffer for forward rendering. (High Dynamic Range)
+	 */
 	bool useHdrColorBuffer() const noexcept { return hdrColorBuffer; }
 
+	/**
+	 * @brief Returns forward color buffer.
+	 */
 	ID<Image> getColorBuffer();
+	/**
+	 * @brief Returns forward depth/stencil buffer.
+	 */
 	ID<Image> getDepthStencilBuffer();
+	/**
+	 * @brief Returns forward framebuffer.
+	 */
 	ID<Framebuffer> getFramebuffer();
 };
 

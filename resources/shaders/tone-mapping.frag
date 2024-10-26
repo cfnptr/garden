@@ -30,7 +30,7 @@ spec const uint32 TONE_MAPPER = ACES_TONE_MAPPER;
 uniform pushConstants
 {
 	uint32 frameIndex;
-	float exposureCoeff;
+	float exposureFactor;
 	float ditherIntensity;
 	float bloomIntensity;
 } pc;
@@ -66,7 +66,7 @@ void main()
 	// TODO: lens dirt? bloomColor + bloomColor * dirtColor * dirtIntensity
 
 	float3 yxyColor = rgbToYxy(hdrColor);
-	yxyColor.x *= luminance.exposure * pc.exposureCoeff;
+	yxyColor.x *= luminance.exposure * pc.exposureFactor;
 	hdrColor = yxyToRgb(yxyColor);
 
 	float3 tonemappedColor;

@@ -25,16 +25,25 @@ namespace garden
 
 using namespace garden::graphics;
 
+/**
+ * @brief Cutout 9-slice sprite rendering data container.
+ */
 struct Cutout9SliceComponent final : public NineSliceRenderComponent
 {
 	float alphaCutoff = 0.5f;
 };
+/**
+ * @brief Cutout 9-slice sprite animation frame container.
+ */
 struct Cutout9SliceFrame final : public NineSliceAnimationFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
 };
 
+/**
+ * @brief Cutout 9-slice sprite rendering system.
+ */
 class Cutout9SliceSystem final : public NineSliceRenderCompSystem<
 	Cutout9SliceComponent, Cutout9SliceFrame, false, false>, public Singleton<Cutout9SliceSystem>
 {

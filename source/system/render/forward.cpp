@@ -15,6 +15,7 @@
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/settings.hpp"
+#include "garden/profiler.hpp"
 
 using namespace garden;
 
@@ -37,9 +38,14 @@ static ID<Image> createDepthStencilBuffer()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto depthBufferView = graphicsSystem->get(graphicsSystem->getDepthStencilBuffer());
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto bind = Image::Bind::DepthStencilAttachment | Image::Bind::Fullscreen;
+
+	#if GARDEN_EDITOR
+	bind |= Image::Bind::TransferSrc;
+	#endif
+
 	auto image = graphicsSystem->createImage(depthBufferView->getFormat(), 
-		Image::Bind::DepthStencilAttachment | Image::Bind::Fullscreen,
-		{ { nullptr } }, framebufferSize, Image::Strategy::Size);
+		bind, { { nullptr } }, framebufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.depth");
 	return image;
 }
@@ -50,9 +56,11 @@ static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthS
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto colorBufferView = graphicsSystem->get(colorBuffer);
 	auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
+
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(colorBufferView->getDefaultView(), clearColorBuffer, false, true), };
 	Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, true, false, true);
+
 	if (depthStencilBuffer)
 		depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 	auto framebuffer = graphicsSystem->createFramebuffer(
@@ -69,8 +77,7 @@ ForwardRenderSystem::ForwardRenderSystem(bool clearColorBuffer,
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreForwardRender");
 	manager->registerEvent("ForwardRender");
-	if (manager->getEventSubscribers("PreSwapchainRender").empty())
-		manager->tryRegisterEvent("PreSwapchainRender"); // Note: can be shared with deferred system.
+	manager->tryRegisterEvent("PreSwapchainRender");
 	manager->registerEvent("ColorBufferRecreate");
 
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ForwardRenderSystem::init);
@@ -86,7 +93,8 @@ ForwardRenderSystem::~ForwardRenderSystem()
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreForwardRender");
 		manager->unregisterEvent("ForwardRender");
-		manager->tryUnregisterEvent("PreSwapchainRender");
+		if (manager->hasEvent("PreSwapchainRender") && !manager->has<DeferredRenderSystem>())
+			manager->unregisterEvent("PreSwapchainRender");
 		manager->unregisterEvent("ColorBufferRecreate");
 	}
 
@@ -115,6 +123,7 @@ void ForwardRenderSystem::deinit()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(framebuffer);
+		graphicsSystem->destroy(depthStencilBuffer);
 		graphicsSystem->destroy(colorBuffer);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ForwardRenderSystem::render);
@@ -125,6 +134,8 @@ void ForwardRenderSystem::deinit()
 //**********************************************************************************************************************
 void ForwardRenderSystem::render()
 {
+	SET_CPU_ZONE_SCOPED("Forward Render");
+
 	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
@@ -143,12 +154,14 @@ void ForwardRenderSystem::render()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
 	{
+		SET_CPU_ZONE_SCOPED("Pre Forward Render");
 		SET_GPU_DEBUG_LABEL("Pre Forward", Color::transparent);
 		manager->runEvent("PreForwardRender");
 	}
 
 	auto framebufferView = graphicsSystem->get(framebuffer);
 	{
+		SET_CPU_ZONE_SCOPED("Forward Render Pass");
 		SET_GPU_DEBUG_LABEL("Forward Pass", Color::transparent);
 		framebufferView->beginRenderPass(float4(0.0f), 0.0f, 0x00, int4(0), asyncRecording);
 		manager->runEvent("ForwardRender");
@@ -156,9 +169,19 @@ void ForwardRenderSystem::render()
 	}
 
 	{
+		SET_CPU_ZONE_SCOPED("Pre Swapchain Render");
 		SET_GPU_DEBUG_LABEL("Pre Swapchain", Color::transparent);
 		manager->runEvent("PreSwapchainRender");
 	}
+
+	#if GARDEN_EDITOR
+	if (depthStencilBuffer)
+	{
+		SET_GPU_DEBUG_LABEL("Copy Swapchain Depth", Color::transparent);
+		auto mainDepthStencilView = graphicsSystem->get(graphicsSystem->getDepthStencilBuffer());
+		Image::blit(depthStencilBuffer, mainDepthStencilView->getImage(), SamplerFilter::Nearest);
+	}
+	#endif
 
 	if (runSwapchainPass)
 	{

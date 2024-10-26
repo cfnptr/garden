@@ -19,7 +19,7 @@
 /*
 #pragma once
 #include "garden/system/render/mesh.hpp"
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 
 namespace garden
 {
@@ -36,10 +36,18 @@ public:
 	{
 		float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT];
 	};
+	struct PushConstants final
+	{
+		float4 farNearPlanes;
+		float4 lightDir;
+		float minBias;
+		float maxBias;
+		float intensity;
+	};
 private:
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
-	vector<vector<ID<Buffer>>> dataBuffers;
+	DescriptorSetBuffers dataBuffers;
 	ID<Image> shadowMap = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
@@ -75,7 +83,7 @@ public:
 
 	ID<Image> getShadowMap();
 	ID<GraphicsPipeline> getPipeline();
-	const vector<vector<ID<Buffer>>>& getDataBuffers();
+	const DescriptorSetBuffers& getDataBuffers();
 	const vector<ID<Framebuffer>>& getFramebuffers();
 
 	int32 getShadowMapSize() const noexcept { return shadowMapSize; }

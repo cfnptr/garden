@@ -21,6 +21,11 @@ namespace garden
 
 class ShadowMappingEditor final
 {
+	struct PushConstants final
+	{
+		float4 farPlanes;
+	};
+
 	ID<GraphicsPipeline> cascadesPipeline = {};
 	ID<DescriptorSet> cascadesDescriptorSet = {};
 	bool visualizeCascades = false;

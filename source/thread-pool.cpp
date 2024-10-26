@@ -14,6 +14,8 @@
 
 #include "garden/thread-pool.hpp"
 #include "garden/defines.hpp"
+#include "garden/profiler.hpp"
+
 #include "mpmt/thread.hpp"
 #include <cmath>
 
@@ -25,46 +27,46 @@ using namespace garden;
 //**********************************************************************************************************************
 void ThreadPool::threadFunction(uint32 index)
 {
-	if (!name.empty())
-	{
-		auto threadName = name + "#" + to_string(index);
-		mpmt::Thread::setName(threadName.c_str());
-	}
+	auto threadName = name.empty() ? "" : name;
+	threadName += "#"; threadName += to_string(index);
+	mpmt::Thread::setName(threadName.c_str());
 
 	if (background)
 		mpmt::Thread::setBackgroundPriority();
 	else
 		mpmt::Thread::setForegroundPriority();
 
-	auto locker = unique_lock(mutex);
-
 	while (isRunning)
 	{
-		while (tasks.empty())
+		unique_lock locker(mutex);
+		workCond.wait(locker, [this]()
 		{
-			if (!isRunning)
-			{
-				locker.unlock();
-				return;
-			}
+			return !tasks.empty() || !isRunning;
+		});
 
-			workCond.wait(locker);
-		}
+		if (!isRunning)
+			return;
 
 		workingCount++;
 		auto task = tasks.front();
 		tasks.pop();
+
+		#if GARDEN_TRACY_PROFILER
+		TracyFiberEnterHint(threadName.c_str(), index);
+		#endif
 
 		locker.unlock();
 		task.threadIndex = index;
 		task.function(task);
 		locker.lock();
 
+		#if GARDEN_TRACY_PROFILER
+		TracyFiberLeave;
+		#endif
+
 		workingCount--;
 		workingCond.notify_all();
 	}
-
-	locker.unlock();
 }
 
 //**********************************************************************************************************************
@@ -75,6 +77,7 @@ ThreadPool::ThreadPool(bool isBackground, const string& name, uint32 threadCount
 	
 	if (threadCount == UINT32_MAX)
 		threadCount = thread::hardware_concurrency();
+
 	this->threads.resize(threadCount);
 
 	for (uint32 i = 0; i < threadCount; i++)
@@ -111,8 +114,8 @@ void ThreadPool::addTask(const Task& task)
 void ThreadPool::addTasks(const vector<Task>& tasks)
 {
 	GARDEN_ASSERT(!tasks.empty());
-	mutex.lock();
 
+	mutex.lock();
 	for (uint32 i = 0; i < (uint32)tasks.size(); i++)
 	{
 		auto task = tasks[i];
@@ -120,8 +123,8 @@ void ThreadPool::addTasks(const vector<Task>& tasks)
 		task.taskIndex = i;
 		this->tasks.push(task);
 	}
-
 	mutex.unlock();
+
 	if (tasks.size() > 1)
 		workCond.notify_all();
 	else
@@ -131,17 +134,16 @@ void ThreadPool::addTasks(const Task& task, uint32 count)
 {
 	GARDEN_ASSERT(task.function);
 	GARDEN_ASSERT(count != 0);
-
 	auto _task = task;
-	mutex.lock();
 
+	mutex.lock();
 	for (uint32 i = 0; i < count; i++)
 	{
 		_task.taskIndex = i;
 		tasks.push(_task); 
 	}
-
 	mutex.unlock();
+
 	if (count > 1)
 		workCond.notify_all();
 	else
@@ -152,25 +154,21 @@ void ThreadPool::addItems(const Task& task, uint32 count)
 {
 	GARDEN_ASSERT(task.function);
 	GARDEN_ASSERT(count != 0);
-
 	auto _task = task;
-	_task.itemCount = count;
+
+	auto taskCount = count > threads.size() ? (uint32)threads.size() : count;
+	auto countPerThread = (uint32)std::ceil((float)count / (float)taskCount);
+
 	mutex.lock();
-
-	auto threadCount = (uint32)threads.size();
-	auto taskCount = (uint32)std::ceil((float)count / (float)threadCount);
-
-	if (taskCount > threadCount)
-		taskCount = threadCount;
-
 	for (uint32 i = 0; i < taskCount; i++)
 	{
 		_task.taskIndex = i;
-		_task.itemOffset = _task.itemCount * i;
+		_task.itemOffset = countPerThread * i;
+		_task.itemCount = std::min(count, _task.itemOffset + countPerThread);
 		tasks.push(_task); 
 	}
-
 	mutex.unlock();
+
 	if (taskCount > 1)
 		workCond.notify_all();
 	else

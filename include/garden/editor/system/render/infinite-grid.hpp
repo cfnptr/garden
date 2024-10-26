@@ -24,10 +24,10 @@ class InfiniteGridEditorSystem final : public System
 public:
 	struct PushConstants final
 	{
-		float4 gridColor;
+		float4 meshColor;
 		float4 axisColorX;
-		float4 axisColorY;
-		float gridScale;
+		float4 axisColorYZ;
+		float meshScale;
 		int32 isHorizontal;
 	};
 private:
@@ -45,10 +45,10 @@ private:
 	
 	friend class ecsm::Manager;
 public:
-	Color gridColor = Color("101010FF");
+	Color meshColor = Color("101010FF");
 	Color axisColorX = Color("FF1010FF");
-	Color axisColorY = Color("1010FFFF");
-	float gridScale = 1.0f;
+	Color axisColorYZ = Color("1010FFFF");
+	float meshScale = 1.0f;
 	bool isHorizontal = true;
 	bool isEnabled = true;
 };

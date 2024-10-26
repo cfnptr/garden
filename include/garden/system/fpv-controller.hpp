@@ -27,7 +27,7 @@ namespace garden
 
 using namespace ecsm;
 
-/***********************************************************************************************************************
+/**
  * @brief General first person view controller.
  */
 class FpvControllerSystem final : public System, public Singleton<FpvControllerSystem>

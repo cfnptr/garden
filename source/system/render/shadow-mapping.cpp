@@ -19,6 +19,8 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 
+// TODO: garden/profiler.hpp
+
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/shadow-mapping.hpp"
 #endif
@@ -26,18 +28,6 @@
 #include <cfloat>
 
 using namespace garden;
-
-namespace
-{
-	struct PushConstants final // TODO: move to the class
-	{
-		float4 farNearPlanes;
-		float4 lightDir;
-		float minBias;
-		float maxBias;
-		float intensity;
-	};
-}
 
 //--------------------------------------------------------------------------------------------------
 static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
@@ -62,7 +52,7 @@ static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shad
 }
 
 //--------------------------------------------------------------------------------------------------
-static void createDataBuffers(vector<vector<ID<Buffer>>>& dataBuffers)
+static void createDataBuffers(DescriptorSetBuffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
@@ -74,7 +64,7 @@ static void createDataBuffers(vector<vector<ID<Buffer>>>& dataBuffers)
 			Buffer::Access::SequentialWrite, sizeof(ShadowMappingRenderSystem::DataBuffer),
 			Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.shadow-mapping.data" + to_string(i));
-		dataBuffers[i].push_back(buffer);
+		dataBuffers[i].resize(1); dataBuffers[i][0] = buffer;
 	}
 }
 
@@ -100,7 +90,7 @@ static void createFramebuffers(const vector<ID<ImageView>>& imageViews,
 //--------------------------------------------------------------------------------------------------
 static ID<GraphicsPipeline> createPipeline()
 {
-	auto lightingSystem = manager->get<LightingRenderSystem>();
+	auto pbrLightingSystem = manager->get<PbrLightingRenderSystem>();
 	lightingSystem->setConsts(true, lightingSystem->getUseAoBuffer());
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(
 		"shadow/mapping", lightingSystem->getShadowFramebuffers()[0]);
@@ -108,7 +98,7 @@ static ID<GraphicsPipeline> createPipeline()
 
 //--------------------------------------------------------------------------------------------------
 static map<string, DescriptorSet::Uniform> getUniforms(
-	ID<Image> shadowMap, const vector<vector<ID<Buffer>>>& dataBuffers)
+	ID<Image> shadowMap, const DescriptorSetBuffers& dataBuffers)
 {
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto shadowMapView = graphicsSystem->get(shadowMap);
@@ -135,7 +125,7 @@ void ShadowMappingRenderSystem::initialize()
 	auto graphicsSystem = getGraphicsSystem();
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getInt("shadowMapSize", shadowMapSize);
+		settingsSystem->getInt("shadowMapping.mapSize", mapSize);
 
 	if (!pipeline)
 		pipeline = createPipeline(getManager());
@@ -357,7 +347,7 @@ ID<GraphicsPipeline> ShadowMappingRenderSystem::getPipeline()
 		pipeline = createPipeline(getManager());
 	return pipeline;
 }
-const vector<vector<ID<Buffer>>>& ShadowMappingRenderSystem::getDataBuffers()
+const DescriptorSetBuffers& ShadowMappingRenderSystem::getDataBuffers()
 {
 	if (dataBuffers.empty())
 		createDataBuffers(getGraphicsSystem(), dataBuffers);

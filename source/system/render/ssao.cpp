@@ -18,6 +18,8 @@
 #include "garden/system/render/ssao.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
+// TODO: garden/profiler.hpp
+
 #include <random>
 
 #if GARDEN_EDITOR
@@ -27,15 +29,6 @@
 #define NOISE_SIZE 4
 
 using namespace garden;
-
-namespace
-{
-	struct PushConstants final // TODO: move to the class
-	{
-		float4x4 uvToView;
-		float4x4 viewToUv;
-	};
-}
 
 //--------------------------------------------------------------------------------------------------
 static ID<Buffer> createSampleBuffer(uint32 sampleCount)
@@ -87,7 +80,7 @@ static ID<GraphicsPipeline> createPipeline(uint32 sampleCount)
 {
 	map<string, Pipeline::SpecConst> specConsts =
 	{ { "SAMPLE_COUNT", Pipeline::SpecConst(sampleCount) } };
-	auto lightingSystem = manager->get<LightingRenderSystem>();
+	auto pbrLightingSystem = manager->get<PbrLightingRenderSystem>();
 	lightingSystem->setConsts(lightingSystem->getUseShadowBuffer(), true);
 	return ResourceSystem::getInstance()->loadGraphicsPipeline("ssao",
 		lightingSystem->getAoFramebuffers()[0], false, true, 0, 0, specConsts);
@@ -124,7 +117,7 @@ void SsaoRenderSystem::initialize()
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getBool("useSSAO", isEnabled);
+		settingsSystem->getBool("ssao.isEnabled", isEnabled);
 
 	if (isEnabled)
 	{

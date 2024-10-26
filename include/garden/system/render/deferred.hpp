@@ -34,6 +34,11 @@ namespace garden
  * @brief Deferred rendering system.
  * 
  * @details
+ * Deferred rendering is a technique used in rendering engines to efficiently manage the rendering of complex 
+ * scenes with many lights and materials. Unlike forward rendering, where each object in the scene is processed 
+ * and shaded for every light in the scene, deferred rendering splits the rendering process into two major stages: 
+ * geometry pass and lighting pass. This approach allows more flexibility in handling multiple lights without the 
+ * significant performance hit typical in forward rendering.
  * 
  * Registers events: PreDeferredRender, DeferredRender, PreHdrRender, HdrRender,
  *   PreLdrRender, LdrRender, PreSwapchainRender, GBufferRecreate.
@@ -46,9 +51,10 @@ public:
 	 */
 	static constexpr uint8 gBufferCount = 3;
 private:
-	ID<Image> gBuffers[gBufferCount] = {};
+	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
 	ID<Image> ldrBuffer = {};
+	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
@@ -74,17 +80,50 @@ private:
 
 	friend class ecsm::Manager;
 public:
+	/*******************************************************************************************************************
+	 * @brief Is deferred rendering enabled.
+	 */
 	bool isEnabled = true;
+	/**
+	 * @brief Run deferred rendering swapchain pass.
+	 */
 	bool runSwapchainPass = true;
 
+	/**
+	 * @brief Use multithreaded command buffer recording.
+	 * @warning Be careful when writing asynchronous code!
+	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
-	ID<Image>* getGBuffers();
+	/**
+	 * @brief Returns deferred G-Buffer array.
+	 * @details It containts encoded deferred rendering data.
+	 */
+	const vector<ID<Image>>& getGBuffers();
+	/**
+	 * @brief Returns deferred HDR buffer. (High Dynamic Range)
+	 */
 	ID<Image> getHdrBuffer();
+	/**
+	 * @brief Returns deferred LDR buffer. (Low Dynamic Range)
+	 */
 	ID<Image> getLdrBuffer();
+	/**
+	 * @brief Returns deferred depth/stencil buffer.
+	 */
+	ID<Image> getDepthStencilBuffer();
 
+	/**
+	 * @brief Returns deferred G-Buffer framebuffer.
+	 */
 	ID<Framebuffer> getGFramebuffer();
+	/**
+	 * @brief Returns deferred HDR framebuffer. (High Dynamic Range)
+	 */
 	ID<Framebuffer> getHdrFramebuffer();
+	/**
+	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
+	 */
 	ID<Framebuffer> getLdrFramebuffer();
 };
 

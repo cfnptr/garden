@@ -19,7 +19,7 @@
 
 /*
 #pragma once
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 
 namespace garden
 {
@@ -28,6 +28,13 @@ namespace garden
 // Screen Space Ambient Occlusion
 class SsaoRenderSystem final : public System, public IRenderSystem, public IAoRenderSystem
 {
+public:
+	struct PushConstants final
+	{
+		float4x4 uvToView;
+		float4x4 viewToUv;
+	};
+private:
 	ID<Buffer> sampleBuffer = {};
 	ID<Image> noiseTexture = {};
 	ID<GraphicsPipeline> pipeline = {};

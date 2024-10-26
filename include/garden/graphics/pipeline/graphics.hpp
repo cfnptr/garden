@@ -263,6 +263,17 @@ public:
 	};
 
 	/**
+	 * @brief Graphics pipeline properties overrides.
+	 * @details It allows to override properties specified in the shader file.
+	 */
+	struct StateOverrides final
+	{
+		map<uint8, GraphicsPipeline::State> pipelineStates;
+		map<string, Pipeline::SamplerState> samplerStates;
+		map<uint8, vector<BlendState>> blendStates;
+	};
+
+	/**
 	 * @brief Graphics pipeline create data container.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
 	 */
@@ -276,7 +287,8 @@ public:
 		vector<VertexAttribute> vertexAttributes;
 		vector<BlendState> blendStates;
 		vector<Image::Format> colorFormats;
-		map<uint8, State> stateOverrides;
+		map<uint8, State> pipelineStateOverrides;
+		map<uint8, vector<BlendState>> blendStateOverrides;
 		void* renderPass = nullptr;
 		State pipelineState = {};
 		uint16 vertexAttributesSize = 0;

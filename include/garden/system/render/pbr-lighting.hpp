@@ -14,13 +14,13 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Lighting rendering functions.
+ * @brief PBR lighting rendering functions. (Physically Based Rendering)
  */
 
 // TODO: I have failed to find good denoiser for shadows. Research this field.
 
 #pragma once
-#include "garden/system/render/deferred.hpp"
+#include "garden/system/graphics.hpp"
 
 namespace garden
 {
@@ -33,14 +33,14 @@ namespace garden
 //}
 
 /**
- * @brief PBR lighting rendering data container.
+ * @brief PBR lighting rendering data container. (Physically Based Rendering)
  */
-struct LightingRenderComponent final : public Component
+struct PbrLightingRenderComponent final : public Component
 {
-	Ref<Image> cubemap = {};               /**< Lighting cubemap image. */
-	Ref<Buffer> sh = {};                   /**< Lighting spherical harmonics buffer. */
-	Ref<Image> specular = {};              /**< Lighting specular cubemap. */
-	Ref<DescriptorSet> descriptorSet = {}; /**< Lighting descriptor set. */
+	Ref<Image> cubemap = {};               /**< PBR lighting cubemap image. */
+	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
+	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
+	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
 
 	bool destroy();
 };
@@ -60,7 +60,7 @@ protected:
 	 */
 	virtual bool shadowRender() = 0;
 
-	friend class LightingRenderSystem;
+	friend class PbrLightingRenderSystem;
 };
 /**
  * @brief Ambient occlusion rendering system interface.
@@ -77,25 +77,16 @@ protected:
 	 */
 	virtual bool aoRender() = 0;
 
-	friend class LightingRenderSystem;
+	friend class PbrLightingRenderSystem;
 };
 
 /***********************************************************************************************************************
- * @brief PBR lighting rendering system.
+ * @brief PBR lighting rendering system. (Physically Based Rendering)
  */
-class LightingRenderSystem final : public ComponentSystem<LightingRenderComponent>, 
-	public Singleton<LightingRenderSystem>
+class PbrLightingRenderSystem final : public ComponentSystem<PbrLightingRenderComponent>, 
+	public Singleton<PbrLightingRenderSystem>
 {
 public:
-	/**
-	 * @brief Lighting rendering shadow buffer count.
-	 */
-	static constexpr uint8 shadowBufferCount = 1;
-	/**
-	 * @brief Lighting rendering AO buffer count. (Ambient Occlusion)
-	 */
-	static constexpr uint8 aoBufferCount = 2;
-
 	struct LightingPC final
 	{
 		float4x4 uvToWorld;
@@ -105,6 +96,15 @@ public:
 	{
 		uint32 count;
 	};
+
+	/**
+	 * @brief PBR lighting rendering shadow buffer count.
+	 */
+	static constexpr uint8 shadowBufferCount = 1;
+	/**
+	 * @brief PBR lighting rendering AO buffer count. (Ambient Occlusion)
+	 */
+	static constexpr uint8 aoBufferCount = 2;
 private:
 	vector<IShadowRenderSystem*> shadowSystems;
 	vector<IAoRenderSystem*> aoSystems;
@@ -122,19 +122,20 @@ private:
 	ID<DescriptorSet> aoDenoiseDescriptorSet = {};
 	bool hasShadowBuffer = false;
 	bool hasAoBuffer = false;
+	uint16 _alignment = 0;
 
 	/**
-	 * @brief Creates a new lighting rendering system instance.
+	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
 	 * 
 	 * @param useShadowBuffer create and use shadow buffer for rendering
-	 * @param useAoBuffer create use ambient occlusion buffer for rendering
+	 * @param useAoBuffer create and use ambient occlusion buffer for rendering
 	 * @param setSingleton set system singleton instance
 	 */
-	LightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false, bool setSingleton = true);
+	PbrLightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false, bool setSingleton = true);
 	/**
-	 * @brief Destroys lighting rendering system instance.
+	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
 	 */
-	~LightingRenderSystem() final;
+	~PbrLightingRenderSystem() final;
 
 	void init();
 	void deinit();
@@ -153,11 +154,11 @@ public:
 	float4 shadowColor = float4(1.0f);
 
 	/**
-	 * @brief Use shadow buffer for lighting rendering.
+	 * @brief Use shadow buffer for PBR lighting rendering.
 	 */
 	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
 	/**
-	 * @brief Use ambient occlusion buffer for lighting rendering.
+	 * @brief Use ambient occlusion buffer for PBR lighting rendering.
 	 */
 	bool useAoBuffer() const noexcept { return hasAoBuffer; }
 	/**
@@ -170,45 +171,45 @@ public:
 	void setConsts(bool useShadowBuffer, bool useAoBuffer);
 
 	/**
-	 * @brief Returns lighting graphics pipeline instance.
+	 * @brief Returns PBR lighting graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getLightingPipeline();
 	/**
-	 * @brief Returns IBL specular graphics pipeline instance. (Image Based Lighting)
+	 * @brief Returns PBR lighting IBL specular graphics pipeline. (Image Based Lighting)
 	 */
 	ID<ComputePipeline> getIblSpecularPipeline();
 	/**
-	 * @brief Returns AO denoise graphics pipeline instance.
+	 * @brief Returns PBR lighting AO denoise graphics pipeline. (Ambient Occlusion)
 	 */
 	ID<GraphicsPipeline> getAoDenoisePipeline();
 
 	/**
-	 * @brief Returns shadow framebuffer array.
+	 * @brief Returns PBR lighting shadow framebuffer array.
 	 */
 	const ID<Framebuffer>* getShadowFramebuffers();
 	/**
-	 * @brief Returns ambient occlusion framebuffer array.
+	 * @brief Returns PBR lighting AO framebuffer array. (Ambient Occlusion)
 	 */
 	const ID<Framebuffer>* getAoFramebuffers();
 
 	/**
-	 * @brief Returns DFG LUT image instance. (DFG Look Up Table)
+	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
 	 */
 	ID<Image> getDfgLUT();
 	/**
-	 * @brief Returns shadow buffer instance.
+	 * @brief Returns PBR lighting shadow buffer.
 	 */
 	ID<Image> getShadowBuffer();
 	/**
-	 * @brief Returns ambient occlusion buffer instance.
+	 * @brief Returns PBR lighting AO buffer. (Ambient Occlusion)
 	 */
 	ID<Image> getAoBuffer();
 	/**
-	 * @brief Returns shadow image view array.
+	 * @brief Returns PBR lighting shadow image view array.
 	 */
 	const ID<ImageView>* getShadowImageViews();
 	/**
-	 * @brief Returns ambient occlusion image view array.
+	 * @brief Returns PBR lighting AO image view array. (Ambient Occlusion)
 	 */
 	const ID<ImageView>* getAoImageViews();
 
@@ -226,7 +227,7 @@ public:
 		Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size);
 
 	/**
-	 * @brief Creates lighting descriptor set.
+	 * @brief Creates PBR lighting descriptor set.
 	 * 
 	 * @param sh spherical harmonics buffer instance
 	 * @param specular specular cubemap instance

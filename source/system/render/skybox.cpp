@@ -17,6 +17,7 @@
 #include "garden/resource/primitive.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/profiler.hpp"
 
 using namespace garden;
 using namespace garden::primitive;
@@ -108,6 +109,8 @@ void SkyboxRenderSystem::imageLoaded()
 //**********************************************************************************************************************
 void SkyboxRenderSystem::hdrRender()
 {
+	SET_CPU_ZONE_SCOPED("Skybox HDR Render");
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!graphicsSystem->camera)
 		return;

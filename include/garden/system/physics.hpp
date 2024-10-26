@@ -373,7 +373,7 @@ public:
 	 */
 	void setCollisionLayer(int32 collisionLayer = (int32)CollisionLayer::Auto);
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Is rigidbody is currently actively simulating (true) or sleeping (false).
 	 * 
 	 * @details 

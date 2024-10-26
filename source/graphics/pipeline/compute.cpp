@@ -25,8 +25,8 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 	auto shaders = createShaders(_code, createData.shaderPath);
 
 	vk::SpecializationInfo specializationInfo;
-	fillSpecConsts(createData.shaderPath, ShaderStage::Compute, createData.variantCount,
-		&specializationInfo, createData.specConsts, createData.specConstValues);
+	fillSpecConsts(createData.shaderPath, &specializationInfo, createData.specConsts, 
+		createData.specConstValues, ShaderStage::Compute, createData.variantCount);
 
 	vk::PipelineShaderStageCreateInfo stageInfo({},
 		toVkShaderStage(ShaderStage::Compute), (VkShaderModule)shaders[0], "main",
@@ -41,6 +41,8 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 
 		for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
 		{
+			if (variantCount > 1)
+				setVariantIndex(&specializationInfo, variantIndex);
 			auto result = Vulkan::device.createComputePipeline(Vulkan::pipelineCache, pipelineInfo);
 			vk::detail::resultCheck(result.result, "vk::Device::createComputePipeline");
 			variants[variantIndex] = result.value;

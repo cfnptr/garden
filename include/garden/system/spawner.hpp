@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Common entity spawning functions.
+ */
+
 #pragma once
 #include "garden/serialize.hpp"
 #include "garden/hash.hpp"
@@ -22,16 +27,15 @@ namespace garden
 
 class SpawnerSystem;
 
+/**
+ * @brief Common entity spawn mode.
+ */
 enum class SpawnMode : uint8
 {
-	OneShot,
-	Manual,
-	Count
+	OneShot, Manual, Count // TODO: add instace pool mode.
 };
 
-// TODO: add instace pool mode.
-
-/***********************************************************************************************************************
+/**
  * @brief Contains information about objects spawn point and spawning mode.
  */
 struct SpawnerComponent final : public Component
@@ -88,7 +92,7 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Provides spawning of pre-defined objects (prefabs) at runtime.
+ * @brief Provides spawning of pre-defined entities (prefabs) at runtime.
  */
 class SpawnerSystem final : public ComponentSystem<SpawnerComponent>, 
 	public Singleton<SpawnerSystem>, public ISerializable
@@ -175,7 +179,7 @@ public:
 		GARDEN_ASSERT(result); // Shared prefab already exist
 	}
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns shared prefab UUID if exist.
 	 *
 	 * @param[in] path target shared prefab path

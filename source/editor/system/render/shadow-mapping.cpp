@@ -21,14 +21,6 @@
 
 using namespace garden;
 
-namespace
-{
-	struct PushConstants final // TODO: move to the class
-	{
-		float4 farPlanes;
-	};
-}
-
 //--------------------------------------------------------------------------------------------------
 static map<string, DescriptorSet::Uniform> getCascadesUniforms()
 {

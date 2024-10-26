@@ -102,7 +102,7 @@ private:
 	condition_variable workingCond = {};
 	vector<thread> threads;
 	queue<Task> tasks;
-	uint32 workingCount = 0;
+	volatile uint32 workingCount = 0;
 	bool background = false;
 	bool isRunning = false;
 
