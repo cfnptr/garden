@@ -164,13 +164,10 @@ static vk::Semaphore createVkSemaphore(vk::Device device)
 	return device.createSemaphore(semaphoreInfo);
 }
 
-static vector<vk::CommandPool> createVkCommandPools(vk::Device device,
-	uint32 queueFamilyIndex, uint32 count, bool isTransient = false)
+static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 queueFamilyIndex, uint32 count)
 {
 	vector<vk::CommandPool> commandPools(count);
 	vk::CommandPoolCreateFlags flags;
-	if (isTransient)
-		flags |= vk::CommandPoolCreateFlagBits::eTransient;
 	vk::CommandPoolCreateInfo commandPoolInfo({}, queueFamilyIndex);
 	for (uint32 i = 0; i < count; i++)
 		commandPools[i] = device.createCommandPool(commandPoolInfo);
@@ -188,15 +185,13 @@ static vector<Swapchain::Buffer> createVkSwapchainBuffers(
 	const auto imageBind = Image::Bind::ColorAttachment | Image::Bind::TransferDst;
 	vector<Swapchain::Buffer> buffers(images.size());
 
-	vk::CommandBufferAllocateInfo commandBufferInfo(
-		graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
+	vk::CommandBufferAllocateInfo commandBufferInfo(graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 	auto commandPoolCount = useThreading ? thread::hardware_concurrency() : 1;
 
 	for (uint32 i = 0; i < (uint32)buffers.size(); i++)
 	{
 		auto& buffer = buffers[i];
-		auto allocateResult = device.allocateCommandBuffers(
-			&commandBufferInfo, &buffer.primaryCommandBuffer);
+		auto allocateResult = device.allocateCommandBuffers(&commandBufferInfo, &buffer.primaryCommandBuffer);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 		
 		#if GARDEN_DEBUG
@@ -318,7 +313,7 @@ bool Swapchain::acquireNextImage()
 	auto result = Vulkan::device.acquireNextImageKHR(instance,
 		UINT64_MAX, imageAcquiredSemaphores[frameIndex], {}, &bufferIndex);
 		
-	if (result == vk::Result::eSuboptimalKHR)
+	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
 		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
@@ -359,7 +354,7 @@ bool Swapchain::present()
 	auto result = Vulkan::frameQueue.presentKHR(&presentInfo); // & is required here.
 	frameIndex = (frameIndex + 1) % frameLag;
 
-	if (result == vk::Result::eSuboptimalKHR)
+	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
 		throw runtime_error("Failed to present image. (error: " + vk::to_string(result) + ")");

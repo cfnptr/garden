@@ -199,19 +199,19 @@ ID<GraphicsPipeline> SpriteRenderSystem::createPipeline()
 		DeferredRenderSystem::Instance::get()->getGFramebuffer() :
 		ForwardRenderSystem::Instance::get()->getFramebuffer();
 
-	map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
+	GraphicsPipeline::StateOverrides stateOverrides;
+	GraphicsPipeline::StateOverrides* stateOverridesPtr = nullptr;
 	if (!linearFilter)
 	{
-		GraphicsPipeline::SamplerState samplerState;
+		Pipeline::SamplerState samplerState;
 		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
 			GraphicsPipeline::SamplerWrap::Repeat;
-		samplerStateOverrides.emplace("colorMap", samplerState);
+		stateOverrides.samplerStates.emplace("colorMap", samplerState);
+		stateOverridesPtr = &stateOverrides;
 	}
 
-	// TODO: add support for overriding blending state, to allow custom blending functions
-
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath,
-		framebuffer, true, true, 0, 0, {}, samplerStateOverrides, {});
+		framebuffer, true, true, 0, 0, {}, stateOverridesPtr);
 }
 
 //**********************************************************************************************************************

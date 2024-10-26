@@ -104,7 +104,9 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	logKernelInfo(this);
 	info("SIMDs: " + string(GARDEN_SIMD_STRING));
 	info("CPU: " + string(OS::getCpuName()));
-	info("Thread count: " + to_string(thread::hardware_concurrency()));
+	info("Logical core count: " + to_string(OS::getLogicalCpuCount()));
+	info("Physical core count: " + to_string(OS::getPhysicalCpuCount()));
+	info("Performance core count: " + to_string(OS::getPerformanceCpuCount()));
 	info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
 	info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
 }

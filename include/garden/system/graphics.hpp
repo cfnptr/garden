@@ -55,12 +55,17 @@ struct SwapchainChanges final
 	bool vsyncState = false;      /**< Is V-Sync state has been changed. */
 };
 
+/*
+ * @brief Descriptor set buffer instances for each swapchain buffer.
+ */
+using DescriptorSetBuffers = vector<vector<ID<Buffer>>>;
+
 /**
- * @brief Graphics GPU resource manager.
+ * @brief Graphics GPU resource and command manager.
  * 
  * @details
- * The system manages the resources of the GPU, which includes allocating and deallocating memory for 
- * images (textures), buffers (vertex, index, uniform...), framebuffers, descriptor sets and 
+ * Graphics system manages the resources of the GPU, which includes allocating and deallocating memory 
+ * for images (textures), buffers (vertex, index, uniform...), framebuffers, descriptor sets and 
  * shader pipelines (programs). It also responsible for recording a set of rendering, computation and 
  * transfer commands in command buffers before submitting them to the GPU for execution.
  * 
@@ -68,10 +73,7 @@ struct SwapchainChanges final
  */
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
-public:
-	using ConstantsBuffer = vector<vector<ID<Buffer>>>;
-private:
-	ConstantsBuffer cameraConstantsBuffers;
+	DescriptorSetBuffers cameraConstantsBuffers;
 	uint2 framebufferSize = uint2(0), windowSize = uint2(0);
 	uint64 frameIndex = 0, tickIndex = 0;
 	ID<Buffer> fullSquareVertices = {};
@@ -160,7 +162,7 @@ public:
 	 */
 	void setRenderScale(float renderScale);
 	/**
-	 * @brief Returns scaled by render scale framebuffer size
+	 * @brief Returns scaled by render scale framebuffer size.
 	 * @details Useful for scaling forward/deferred framebuffer.
 	 */
 	uint2 getScaledFramebufferSize() const noexcept;
@@ -283,7 +285,7 @@ public:
 	 * @brief Returns current render camera constants buffer.
 	 * @details Use it to access common camera properties inside shader. 
 	 */
-	const ConstantsBuffer& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
+	const DescriptorSetBuffers& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
 
 	/**
 	 * @brief Manually signal swapchain changes.
@@ -379,7 +381,6 @@ public:
 	 */
 	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access, const void* data, uint64 size,
 		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default);
-
 	/**
 	 * @brief Creates a new empty buffer instance. (Undefined initial data)
 	 * 
@@ -456,6 +457,27 @@ public:
 	 * @param buffer target buffer instance or null
 	 */
 	void destroy(ID<Buffer> buffer);
+	/**
+	 * @brief Destroys vector with buffer instances.
+	 * @param[in] buffers target vector with buffer instances or/and nulls
+	 */
+	void destroy(const vector<ID<Buffer>>& buffers)
+	{
+		for (auto buffer : buffers)
+			destroy(buffer);
+	}
+	/**
+	 * @brief Destroys descriptor set buffer instances for each swapchain.
+	 * @param[in] dsBuffer target descriptor set buffer instances or/and nulls
+	 */
+	void destroy(const DescriptorSetBuffers& dsBuffer)
+	{
+		for (const auto& buffers : dsBuffer)
+		{
+			for (auto buffer : buffers)
+				destroy(buffer);
+		}
+	}
 
 	/**
 	 * @brief Returns buffer data accessor.
@@ -482,7 +504,6 @@ public:
 	ID<Image> createImage(
 		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined);
-
 	/**
 	 * @brief Creates a new 3D image (texture) instance.
 	 * 
@@ -549,6 +570,15 @@ public:
 	 * @param image target image instance or null
 	 */
 	void destroy(ID<Image> image);
+	/**
+	 * @brief Destroys vector with image instances.
+	 * @param[in] images target vector with image instances or/and nulls
+	 */
+	void destroy(const vector<ID<Image>>& images)
+	{
+		for (auto image : images)
+			destroy(image);
+	}
 
 	/**
 	 * @brief Returns image data accessor.
@@ -580,6 +610,15 @@ public:
 	 * @param imageView target image view instance or null
 	 */
 	void destroy(ID<ImageView> imageView);
+	/**
+	 * @brief Destroys vector with image view instances.
+	 * @param[in] imageViews target vector with image view instances or/and nulls
+	 */
+	void destroy(const vector<ID<ImageView>>& imageViews)
+	{
+		for (auto imageView : imageViews)
+			destroy(imageView);
+	}
 
 	/**
 	 * @brief Returns image view data accessor.
@@ -601,7 +640,6 @@ public:
 	 */
 	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::OutputAttachment>&& colorAttachments,
 		Framebuffer::OutputAttachment depthStencilAttachment = {});
-	
 	/**
 	 * @brief Creates a new framebuffer instance.
 	 * 
@@ -615,6 +653,15 @@ public:
 	 * @param framebuffer target framebuffer instance or null
 	 */
 	void destroy(ID<Framebuffer> framebuffer);
+	/**
+	 * @brief Destroys vector with framebuffer instances.
+	 * @param[in] framebuffers target vector with framebuffer instances or/and nulls
+	 */
+	void destroy(const vector<ID<Framebuffer>>& framebuffers)
+	{
+		for (auto framebuffer : framebuffers)
+			destroy(framebuffer);
+	}
 
 	/**
 	 * @brief Returns framebuffer data accessor.
@@ -632,6 +679,15 @@ public:
 	 * @param graphicsPipeline target graphics pipeline instance or null
 	 */
 	void destroy(ID<GraphicsPipeline> graphicsPipeline);
+	/**
+	 * @brief Destroys vector with graphics pipeline instances.
+	 * @param[in] graphicsPipelines target vector with graphics pipeline instances or/and nulls
+	 */
+	void destroy(const vector<ID<GraphicsPipeline>>& graphicsPipelines)
+	{
+		for (auto graphicsPipeline : graphicsPipelines)
+			destroy(graphicsPipeline);
+	}
 
 	/**
 	 * @brief Returns graphics pipeline data accessor.
@@ -652,6 +708,15 @@ public:
 	 * @param computePipeline target compute pipeline instance or null
 	 */
 	void destroy(ID<ComputePipeline> computePipeline);
+	/**
+	 * @brief Destroys vector with compute pipeline instances.
+	 * @param[in] computePipelines target vector with compute pipeline instances or/and nulls
+	 */
+	void destroy(const vector<ID<ComputePipeline>>& computePipelines)
+	{
+		for (auto computePipeline : computePipelines)
+			destroy(computePipeline);
+	}
 
 	/**
 	 * @brief Returns compute pipeline data accessor.
@@ -691,6 +756,15 @@ public:
 	 * @param descriptorSet target descriptor set instance or null
 	 */
 	void destroy(ID<DescriptorSet> descriptorSet);
+	/**
+	 * @brief Destroys vector with descriptor set instances.
+	 * @param[in] descriptorSets target vector with descriptor set instances or/and nulls
+	 */
+	void destroy(const vector<ID<DescriptorSet>>& descriptorSets)
+	{
+		for (auto descriptorSet : descriptorSets)
+			destroy(descriptorSet);
+	}
 
 	/**
 	 * @brief Returns descriptor set data accessor.

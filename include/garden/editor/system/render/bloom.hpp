@@ -13,25 +13,33 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/bloom.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-class BloomEditor final
+class BloomRenderEditorSystem final : public System
 {
+	struct PushConstants final
+	{
+		float threshold;
+	};
+
 	ID<GraphicsPipeline> thresholdPipeline = {};
 	ID<DescriptorSet> thresholdDescriptorSet = {};
 	bool visualizeThreshold = false;
 	bool showWindow = false;
 
-	BloomEditor(BloomRenderSystem* system);
+	BloomRenderEditorSystem();
+	~BloomRenderEditorSystem() final;
 
-	void render();
-	void onBarTool();
+	void init();
+	void deinit();
+	void editorRender();
+	void editorBarTool();
 	
-	friend class BloomRenderSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

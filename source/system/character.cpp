@@ -15,8 +15,9 @@
 #include "garden/system/character.hpp"
 #include "garden/system/physics-impl.hpp"
 #include "garden/system/transform.hpp"
-#include "math/matrix/transform.hpp"
+#include "garden/profiler.hpp"
 
+#include "math/matrix/transform.hpp"
 #include "Jolt/Physics/PhysicsSystem.h"
 #include "Jolt/Physics/Character/CharacterVirtual.h"
 
@@ -219,6 +220,8 @@ void CharacterComponent::setMass(float mass)
 //**********************************************************************************************************************
 void CharacterComponent::update(float deltaTime, const float3& gravity)
 {
+	SET_CPU_ZONE_SCOPED("Character Update");
+
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
 	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);

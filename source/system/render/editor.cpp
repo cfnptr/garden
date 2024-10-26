@@ -25,6 +25,7 @@
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/editor/system/render/gpu-resource.hpp"
+#include "garden/profiler.hpp"
 
 #include "mpio/os.hpp"
 #include "mpio/directory.hpp"
@@ -330,7 +331,7 @@ void EditorRenderSystem::showOptionsWindow()
 			{
 				deferredSystem->runSwapchainPass = !fxaaSystem->isEnabled;
 				if (settingsSystem)
-					settingsSystem->setBool("useFXAA", fxaaSystem->isEnabled);
+					settingsSystem->setBool("fxaa.isEnabled", fxaaSystem->isEnabled);
 			}
 		}
 		*/
@@ -994,22 +995,22 @@ void EditorRenderSystem::showFileSelector()
 //**********************************************************************************************************************
 void EditorRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
-	manager->registerEventBefore("EditorRender", "Present");
+	Manager::Instance::get()->registerEventBefore("EditorRender", "Present");
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", EditorRenderSystem::editorRender);
 }
 void EditorRenderSystem::deinit()
 {
-	auto manager = Manager::Instance::get();
-	if (manager->isRunning())
+	if (Manager::Instance::get()->isRunning())
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", EditorRenderSystem::editorRender);
-		manager->unregisterEvent("EditorRender");
+		Manager::Instance::get()->unregisterEvent("EditorRender");
 	}
 }
 
 void EditorRenderSystem::editorRender()
 {
+	SET_CPU_ZONE_SCOPED("Editor Render");
+
 	if (!GraphicsSystem::Instance::get()->canRender())
 		return;
 
@@ -1160,50 +1161,46 @@ static void drawResource(const Resource* resource, const char* label,
 		ImGui::EndPopup();
 	}
 }
-void EditorRenderSystem::drawResource(ID<Buffer> buffer)
+void EditorRenderSystem::drawResource(ID<Buffer> buffer, const char* label)
 {
 	auto bufferView = buffer ? GraphicsAPI::bufferPool.get(buffer) : View<Buffer>();
-	::drawResource(*bufferView, "Buffer", ID<Resource>(buffer),
-		GpuResourceEditorSystem::TabType::Buffers);
+	::drawResource(*bufferView, label, ID<Resource>(buffer), GpuResourceEditorSystem::TabType::Buffers);
 }
-void EditorRenderSystem::drawResource(ID<Image> image)
+void EditorRenderSystem::drawResource(ID<Image> image, const char* label)
 {
 	auto imageView = image ? GraphicsAPI::imagePool.get(image) : View<Image>();
-	::drawResource(*imageView, "Image", ID<Resource>(image),
-		GpuResourceEditorSystem::TabType::Images);
+	::drawResource(*imageView, label, ID<Resource>(image), GpuResourceEditorSystem::TabType::Images);
 }
-void EditorRenderSystem::drawResource(ID<ImageView> imageView)
+void EditorRenderSystem::drawResource(ID<ImageView> imageView, const char* label)
 {
 	auto imageViewView = imageView ? GraphicsAPI::imageViewPool.get(imageView) : View<ImageView>();
-	::drawResource(*imageViewView, "Image View", ID<Resource>(imageView),
-		GpuResourceEditorSystem::TabType::ImageViews);
+	::drawResource(*imageViewView, label, ID<Resource>(imageView), GpuResourceEditorSystem::TabType::ImageViews);
 }
-void EditorRenderSystem::drawResource(ID<Framebuffer> framebuffer)
+void EditorRenderSystem::drawResource(ID<Framebuffer> framebuffer, const char* label)
 {
 	auto framebufferView = framebuffer ?
 		GraphicsAPI::framebufferPool.get(framebuffer) : View<Framebuffer>();
-	::drawResource(*framebufferView, "Framebuffer", ID<Resource>(framebuffer),
-		GpuResourceEditorSystem::TabType::Framebuffers);
+	::drawResource(*framebufferView, label, ID<Resource>(framebuffer), GpuResourceEditorSystem::TabType::Framebuffers);
 }
-void EditorRenderSystem::drawResource(ID<DescriptorSet> descriptorSet)
+void EditorRenderSystem::drawResource(ID<DescriptorSet> descriptorSet, const char* label)
 {
 	auto descriptorSetView = descriptorSet ?
 		GraphicsAPI::descriptorSetPool.get(descriptorSet) : View<DescriptorSet>();
-	::drawResource(*descriptorSetView, "Descriptor Set", ID<Resource>(descriptorSet),
+	::drawResource(*descriptorSetView, label, ID<Resource>(descriptorSet),
 		GpuResourceEditorSystem::TabType::DescriptorSets);
 }
-void EditorRenderSystem::drawResource(ID<GraphicsPipeline> graphicsPipeline)
+void EditorRenderSystem::drawResource(ID<GraphicsPipeline> graphicsPipeline, const char* label)
 {
 	auto graphicsPipelineView = graphicsPipeline ? 
 		GraphicsAPI::graphicsPipelinePool.get(graphicsPipeline) : View<GraphicsPipeline>();
-	::drawResource(*graphicsPipelineView, "Graphics Pipeline", ID<Resource>(graphicsPipeline),
+	::drawResource(*graphicsPipelineView, label, ID<Resource>(graphicsPipeline),
 		GpuResourceEditorSystem::TabType::GraphicsPipelines);
 }
-void EditorRenderSystem::drawResource(ID<ComputePipeline> computePipeline)
+void EditorRenderSystem::drawResource(ID<ComputePipeline> computePipeline, const char* label)
 {
 	auto computePipelineView = computePipeline ?
 		GraphicsAPI::computePipelinePool.get(computePipeline) : View<ComputePipeline>();
-	::drawResource(*computePipelineView, "Compute Pipeline", ID<Resource>(computePipeline),
+	::drawResource(*computePipelineView, label, ID<Resource>(computePipeline),
 		GpuResourceEditorSystem::TabType::ComputePipelines);
 }
 #endif

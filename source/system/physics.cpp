@@ -19,9 +19,10 @@
 #include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
 #include "garden/system/log.hpp"
+#include "garden/profiler.hpp"
 #include "garden/base64.hpp"
-#include "math/matrix/transform.hpp"
 
+#include "math/matrix/transform.hpp"
 #include "Jolt/RegisterTypes.h"
 #include "Jolt/Core/Factory.h"
 #include "Jolt/Core/TempAllocator.h"
@@ -1197,6 +1198,8 @@ void PhysicsSystem::interpolateResult(float t)
 
 void PhysicsSystem::simulate()
 {
+	SET_CPU_ZONE_SCOPED("Physics Simulate");
+
 	auto simDeltaTime = 1.0f / (float)(simulationRate + 1);
 	auto deltaTime = (float)InputSystem::Instance::get()->getDeltaTime();
 	deltaTimeAccum += deltaTime;

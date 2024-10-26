@@ -438,8 +438,8 @@ void Pipeline::destroyShaders(const vector<void*>& shaders)
 }
 
 //**********************************************************************************************************************
-void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uint8 variantCount, void* specInfo,
-	const map<string, SpecConst>& specConsts, const map<string, SpecConstValue>& specConstValues)
+void Pipeline::fillSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
+	const map<string, SpecConstValue>& specConstValues, ShaderStage shaderStage, uint8 variantCount)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
 	uint32 dataSize = 0, entryCount = 0;
@@ -467,11 +467,10 @@ void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uin
 	uint32 dataOffset = 0, itemIndex = 0;
 	if (variantCount > 1)
 	{
-		uint32 variantCountValue = variantCount;
 		vk::SpecializationMapEntry entry(0, 0, sizeof(uint32));
 		entries[itemIndex] = entry;
-		memcpy(data, &variantCountValue, sizeof(uint32));
-		itemIndex = 1; dataOffset = sizeof(uint32);
+		dataOffset = sizeof(uint32);
+		itemIndex = 1;
 	}
 
 	for (const auto& pair : specConsts)
@@ -501,6 +500,12 @@ void Pipeline::fillSpecConsts(const fs::path& path, ShaderStage shaderStage, uin
 	info->pMapEntries = entries;
 	info->dataSize = dataSize;
 	info->pData = data;
+}
+void Pipeline::setVariantIndex(void* specInfo, uint8 variantIndex)
+{
+	auto info = (vk::SpecializationInfo*)specInfo;
+	uint32 variantIndexValue = variantIndex;
+	memcpy((void*)info->pData, &variantIndexValue, sizeof(uint32));
 }
 
 //**********************************************************************************************************************

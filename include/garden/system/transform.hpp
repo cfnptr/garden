@@ -79,7 +79,7 @@ public:
 	 */
 	float4x4 calcModel(const float3& cameraPosition = float3(0.0f)) const noexcept;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Sets this entity parent object.
 	 * @details You can pass null to unset the entity parent.
 	 * @param parent target parent entity or null
@@ -145,7 +145,7 @@ public:
 };
 
 /**
- * @brief Contains information about transformation animation frame.
+ * @brief Transform animation frame container.
  */
 struct TransformFrame final : public AnimationFrame
 {

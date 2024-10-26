@@ -18,6 +18,7 @@
 #include "garden/system/graphics.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/link.hpp"
+#include "garden/profiler.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/editor.hpp"
@@ -86,6 +87,7 @@ void FpvControllerSystem::deinit()
 //**********************************************************************************************************************
 void FpvControllerSystem::update()
 {
+	SET_CPU_ZONE_SCOPED("FPV Controller Update");
 	auto rotationQuat = updateCameraRotation();
 	updateCameraControll(rotationQuat);
 	updateCharacterControll();

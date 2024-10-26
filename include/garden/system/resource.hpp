@@ -297,15 +297,12 @@ public:
 	 * @param subpassIndex framebuffer subpass index
 	 * @param maxBindlessCount maximum bindless descriptor count
 	 * @param[in] specConsts specialization constants array or empty
-	 * @param[in] samplerStateOverrides sampler state override array or empty
-	 * @param[in] stateOverrides pipeline state override array or empty
+	 * @param[in] stateOverrides pipeline state overrides or null
 	 */
-	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path,
-		ID<Framebuffer> framebuffer, bool useAsyncRecording = false,
-		bool loadAsync = true, uint8 subpassIndex = 0, uint32 maxBindlessCount = 0,
-		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
-		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {},
-		const map<uint8, GraphicsPipeline::State>& stateOverrides = {});
+	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, ID<Framebuffer> framebuffer, 
+		bool useAsyncRecording = false, bool loadAsync = true, uint8 subpassIndex = 0,
+		uint32 maxBindlessCount = 0, const map<string, Pipeline::SpecConstValue>& specConstValues = {},
+		const GraphicsPipeline::StateOverrides* stateOverrides = nullptr);
 	
 	/**
 	 * @brief Loads compute pipeline from the resource pack shaders.
@@ -321,7 +318,7 @@ public:
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
 		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
-		const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides = {});
+		const map<string, Pipeline::SamplerState>& samplerStateOverrides = {});
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.

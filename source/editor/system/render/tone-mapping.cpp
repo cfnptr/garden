@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,58 +11,78 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/render/tone-mapping.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-ToneMappingEditor::ToneMappingEditor(ToneMappingRenderSystem* system)
+//**********************************************************************************************************************
+ToneMappingRenderEditorSystem::ToneMappingRenderEditorSystem()
 {
-	EditorRenderSystem::getInstance()->registerBarTool([this]() { onBarTool(); });
-	this->system = system;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingRenderEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingRenderEditorSystem::deinit);
+}
+ToneMappingRenderEditorSystem::~ToneMappingRenderEditorSystem()
+{
+	if (Manager::Instance::get()->isRunning())
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingRenderEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingRenderEditorSystem::deinit);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
-static float exposureValue = 1.0f; // TODO: move to class.
+void ToneMappingRenderEditorSystem::init()
+{
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", ToneMappingRenderEditorSystem::editorBarTool);
+}
+void ToneMappingRenderEditorSystem::deinit()
+{
+	if (Manager::Instance::get()->isRunning())
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", ToneMappingRenderEditorSystem::editorBarTool);
+	}
+}
 
-void ToneMappingEditor::render()
+//**********************************************************************************************************************
+void ToneMappingRenderEditorSystem::editorRender()
 {
 	if (!showWindow)
 		return;
 
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
+		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+
 		const auto toneMapperTypes = "ACES\0Uchimura\0\0";
-		if (ImGui::Combo("Tone Mapper", toneMapperType, toneMapperTypes))
-			system->setConsts(system->useBloomBuffer, (ToneMapper)toneMapperType);
+		if (ImGui::Combo("Tone Mapper", &toneMapper, toneMapperTypes))
+			toneMappingSystem->setConsts(toneMappingSystem->getUseBloomBuffer(), toneMapper);
 
-		ImGui::DragFloat("Exposure Coefficient",
-			&system->exposureCoeff, 0.01f, 0.0f, FLT_MAX);
-		ImGui::SliderFloat("Dither Intensity", &system->ditherIntensity, 0.0f, 1.0f);
+		ImGui::DragFloat("Exposure Coefficient", &toneMappingSystem->exposureFactor, 0.01f, 0.0f, FLT_MAX);
+		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
 
-		auto lightingSystem = Manager::getInstance()->get<LightingRenderSystem>();
-		ImGui::ColorEdit4("Shadow Color", &lightingSystem->shadowColor, 
+		auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+		ImGui::ColorEdit4("Shadow Color", &pbrLightingSystem->shadowColor,
 			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 
 		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
 		{
-			ImGui::DragFloat("Value", &exposureValue, 0.01f);
+			ImGui::DragFloat("Value", &exposureLuminance, 0.01f);
 			if (ImGui::Button("Set Exposure"))
-				system->setExposure(exposureValue);
+				toneMappingSystem->setExposure(exposureLuminance);
 			ImGui::SameLine();
 			if (ImGui::Button("Set Luminance"))
-				system->setLuminance(exposureValue);
+				toneMappingSystem->setLuminance(exposureLuminance);
 		}
 	}
 	ImGui::End();
 }
 
-void ToneMappingEditor::onBarTool()
+void ToneMappingRenderEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("Tone Mapping"))
 		showWindow = true;

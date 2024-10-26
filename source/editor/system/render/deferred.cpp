@@ -16,49 +16,29 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/render/deferred.hpp"
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/resource.hpp"
 
 using namespace garden;
 
-namespace
-{
-	struct BufferPC final
-	{
-		float4x4 viewProjInv;
-		int32 drawMode;
-		float showChannelR;
-		float showChannelG;
-		float showChannelB;
-	};
-	struct LightingPC final
-	{
-		float4 baseColor;
-		float4 emissive;
-		float metallic;
-		float roughness;
-		float reflectance;
-	};
-}
-
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Framebuffer> gFramebuffer,
-	ID<Framebuffer> hdrFramebuffer, ID<Image>& shadowPlaceholder)
+static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& shadowPlaceholder)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto gFramebufferView = graphicsSystem->get(gFramebuffer);
-	auto hdrFramebufferView = graphicsSystem->get(hdrFramebuffer);
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	const auto& depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 	
-	auto lightingSystem = LightingRenderSystem::Instance::tryGet();
+	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::tryGet();
 	ID<ImageView> shadowBuffer0, aoBuffer0, aoBuffer1;
 
-	if (lightingSystem)
+	if (pbrLightingSystem)
 	{
-		shadowBuffer0 = lightingSystem->getShadowImageViews()[0];
-		aoBuffer0 = lightingSystem->getAoImageViews()[0];
-		aoBuffer1 = lightingSystem->getAoImageViews()[1];
+		shadowBuffer0 = pbrLightingSystem->getShadowImageViews()[0];
+		aoBuffer0 = pbrLightingSystem->getAoImageViews()[0];
+		aoBuffer1 = pbrLightingSystem->getAoImageViews()[1];
 	}
 	else
 	{
@@ -130,8 +110,7 @@ void DeferredRenderEditorSystem::editorRender()
 {
 	if (!GraphicsSystem::Instance::get()->canRender())
 		return;
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	
 	if (showWindow)
 	{
 		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
@@ -160,13 +139,13 @@ void DeferredRenderEditorSystem::editorRender()
 
 			if (bufferPipeline)
 			{
-				auto pipelineView = graphicsSystem->get(bufferPipeline);
+				auto pipelineView = GraphicsSystem::Instance::get()->get(bufferPipeline);
 				if (!pipelineView->isReady())
 					ImGui::TextDisabled("G-Buffer pipeline is loading...");
 			}
 			if (lightingPipeline)
 			{
-				auto pipelineView = graphicsSystem->get(lightingPipeline);
+				auto pipelineView = GraphicsSystem::Instance::get()->get(lightingPipeline);
 				if (!pipelineView->isReady())
 					ImGui::TextDisabled("Lighting pipeline is loading...");
 			}
@@ -176,6 +155,8 @@ void DeferredRenderEditorSystem::editorRender()
 
 	if ((int)drawMode > (int)DrawMode::Off && (int)drawMode != (int)DrawMode::Lighting)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+
 		if (!bufferPipeline)
 		{
 			bufferPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
@@ -186,10 +167,8 @@ void DeferredRenderEditorSystem::editorRender()
 		if (pipelineView->isReady() && graphicsSystem->camera)
 		{
 			// TODO: we are doing this to get latest buffers. (suboptimal)
-			auto deferredSystem = DeferredRenderSystem::Instance::get();
 			graphicsSystem->destroy(bufferDescriptorSet);
-			auto uniforms = getBufferUniforms(deferredSystem->getGFramebuffer(),
-				deferredSystem->getHdrFramebuffer(), shadowPlaceholder);
+			auto uniforms = getBufferUniforms(shadowPlaceholder);
 			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
 			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
 
@@ -271,10 +250,8 @@ void DeferredRenderEditorSystem::gBufferRecreate()
 {
 	if (bufferDescriptorSet)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		auto descriptorSetView = GraphicsSystem::Instance::get()->get(bufferDescriptorSet);
-		auto uniforms = getBufferUniforms(deferredSystem->getGFramebuffer(),
-			deferredSystem->getHdrFramebuffer(), shadowPlaceholder);
+		auto uniforms = getBufferUniforms(shadowPlaceholder);
 		descriptorSetView->recreate(std::move(uniforms));
 	}
 }

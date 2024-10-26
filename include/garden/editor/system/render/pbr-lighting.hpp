@@ -12,34 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "geometry/common.gsl"
-#include "common/constants.gsl"
+#pragma once
+#include "garden/system/render/editor.hpp"
 
-in float3 vs.position : f32;
-in float3 vs.normal : f32;
-in float2 vs.texCoords : f32;
-
-out float2 fs.texCoords;
-out float3 fs.normal;
-
-uniform pushConstants
+#if GARDEN_EDITOR
+namespace garden
 {
-	float4 baseColor;
-	float4 emissive;
-	float metallic;
-	float roughness;
-	float reflectance;
-	uint32 instanceIndex;
-} pc;
 
-buffer readonly Instance
+class PbrLightingRenderEditorSystem final : public System
 {
-	InstanceData data[];
-} instance;
+	PbrLightingRenderEditorSystem();
+	~PbrLightingRenderEditorSystem() final;
 
-void main()
-{
-	gl.position = instance.data[pc.instanceIndex].mvp * float4(vs.position, 1.0f);
-	fs.normal = calcNormal(instance.data[pc.instanceIndex].model, vs.normal);
-	fs.texCoords = vs.texCoords;
-}
+	void init();
+	void deinit();
+	
+	void onEntityInspector(ID<Entity> entity, bool isOpened);
+	friend class ecsm::Manager;
+public:
+	float inspectorPriority = -0.1f;
+};
+
+} // namespace garden
+#endif

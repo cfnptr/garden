@@ -28,6 +28,23 @@ class DeferredRenderEditorSystem final : public System
 		Shadow, AmbientOcclusion, AmbientOcclusionD, Count
 	};
 
+	struct BufferPC final
+	{
+		float4x4 viewProjInv;
+		int32 drawMode;
+		float showChannelR;
+		float showChannelG;
+		float showChannelB;
+	};
+	struct LightingPC final
+	{
+		float4 baseColor;
+		float4 emissive;
+		float metallic;
+		float roughness;
+		float reflectance;
+	};
+
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
 	ID<GraphicsPipeline> lightingPipeline = {};

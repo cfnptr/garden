@@ -171,7 +171,7 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	/**
+	/*******************************************************************************************************************
 	 * @brief Current time multiplier.
 	 * @details Can be used to simulate slow motion or speed up effects.
 	 */
@@ -261,7 +261,7 @@ public:
 	void setCursorMode(CursorMode mode) noexcept;
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Converts time in seconds to milliseconds.
  * @param time target time in seconds
  */

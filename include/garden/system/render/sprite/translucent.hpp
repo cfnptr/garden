@@ -23,9 +23,18 @@
 namespace garden
 {
 
+/**
+ * @brief Translucent sprite rendering data container.
+ */
 struct TranslucentSpriteComponent final : public SpriteRenderComponent { };
+/**
+ * @brief Translucent sprite animation frame container.
+ */
 struct TranslucentSpriteFrame final : public SpriteAnimationFrame { };
 
+/**
+ * @brief Translucent sprite rendering system.
+ */
 class TranslucentSpriteSystem final : public SpriteRenderCompSystem<
 	TranslucentSpriteComponent, TranslucentSpriteFrame, false, false>, public Singleton<TranslucentSpriteSystem>
 {

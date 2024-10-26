@@ -18,7 +18,7 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>& instanceBuffers)
+static void createInstanceBuffers(uint64 bufferSize, DescriptorSetBuffers& instanceBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
@@ -29,15 +29,8 @@ static void createInstanceBuffers(uint64 bufferSize, vector<vector<ID<Buffer>>>&
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage, Buffer::Access::SequentialWrite,
 			bufferSize, Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.storage.instances" + to_string(i));
-		instanceBuffers[i].push_back(buffer);
+		instanceBuffers[i].resize(1); instanceBuffers[i][0] = buffer;
 	}
-}
-static void destroyInstanceBuffers(vector<vector<ID<Buffer>>>& instanceBuffers)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	for (const auto& sets : instanceBuffers)
-		graphicsSystem->destroy(sets[0]);
-	instanceBuffers.clear();
 }
 
 //**********************************************************************************************************************
@@ -72,7 +65,7 @@ void InstanceRenderSystem::deinit()
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(defaultDescriptorSet);
 		graphicsSystem->destroy(baseDescriptorSet);
-		destroyInstanceBuffers(instanceBuffers);
+		graphicsSystem->destroy(instanceBuffers);
 		graphicsSystem->destroy(pipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InstanceRenderSystem::swapchainRecreate);
@@ -108,7 +101,7 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (graphicsSystem->get(instanceBuffers[0][0])->getBinarySize() < drawCount * getInstanceDataSize())
 	{
-		destroyInstanceBuffers(instanceBuffers);
+		graphicsSystem->destroy(instanceBuffers);
 		createInstanceBuffers(drawCount * getInstanceDataSize(), instanceBuffers);
 
 		graphicsSystem->destroy(baseDescriptorSet);
@@ -143,7 +136,7 @@ void InstanceRenderSystem::swapchainRecreate()
 	if (swapchainChanges.bufferCount)
 	{
 		auto bufferSize = graphicsSystem->get(instanceBuffers[0][0])->getBinarySize();
-		destroyInstanceBuffers(instanceBuffers);
+		graphicsSystem->destroy(instanceBuffers);
 		createInstanceBuffers(bufferSize, instanceBuffers);
 
 		if (baseDescriptorSet)

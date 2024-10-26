@@ -49,7 +49,7 @@ public:
 	/**
 	 * @brief Minimal DLSS output size
 	 */
-	static constexpr int32 minFramebufferSize = 32;
+	static constexpr uint8 minFramebufferSize = 32;
 
 	enum class DestroyResourceType : uint32
 	{

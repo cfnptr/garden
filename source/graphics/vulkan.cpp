@@ -99,6 +99,10 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData)
 {
+	// TODO: investigate this error after driver/SDK updates.
+	if (callbackData->messageIdNumber == -1254218959 || callbackData->messageIdNumber == -2080204129)
+		return VK_FALSE;
+
 	const char* severity;
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 		severity = "VERBOSE";
@@ -113,9 +117,9 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	cout << "VULKAN::" << severity << ": " << callbackData->pMessage << "\n";
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		return VK_FALSE; // Debugging breakpoint
+		return VK_FALSE; // WARNING severity debugging breakpoint
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		return VK_FALSE; // Debugging breakpoint
+		return VK_FALSE; // ERROR severity debugging breakpoint
 	return VK_FALSE;
 }
 #endif
@@ -428,24 +432,25 @@ static vk::Device createVkDevice(
 		computeQueueIndex = 0;
 	}
 
-	vector<float> queuePriorities(std::max(std::max(
-		graphicsQueueCount, transferQueueCount), computeQueueCount), 1.0f);
-
+	vector<float> graphicsQueuePriorities(graphicsQueueCount, 1.0f);
 	vector<vk::DeviceQueueCreateInfo> queueInfos =
 	{
-		vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex,
-			graphicsQueueCount, queuePriorities.data())
+		vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex, 
+			graphicsQueueCount, graphicsQueuePriorities.data())
 	};
 
+	vector<float> transferQueuePriorities(graphicsQueueCount, 0.9f);
 	if (transferQueueCount > 0)
 	{
-		queueInfos.push_back(vk::DeviceQueueCreateInfo({},
-			transferQueueFamilyIndex, transferQueueCount, queuePriorities.data()));
+		queueInfos.push_back(vk::DeviceQueueCreateInfo({}, transferQueueFamilyIndex, 
+			transferQueueCount, transferQueuePriorities.data()));
 	}
+
+	vector<float> computeQueuePriorities(graphicsQueueCount, 1.0f);
 	if (computeQueueCount > 0)
 	{
-		queueInfos.push_back(vk::DeviceQueueCreateInfo({},
-			computeQueueFamilyIndex, computeQueueCount, queuePriorities.data()));
+		queueInfos.push_back(vk::DeviceQueueCreateInfo({}, computeQueueFamilyIndex, 
+			computeQueueCount, computeQueuePriorities.data()));
 	}
 	
 	vector<const char*> extensions =
@@ -637,12 +642,9 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	return allocator;
 }
 
-static vk::CommandPool createVkCommandPool(vk::Device device, uint32 queueFamilyIndex, bool isTransient = false)
+static vk::CommandPool createVkCommandPool(vk::Device device, uint32 queueFamilyIndex)
 {
-	vk::CommandPoolCreateFlags flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	if (isTransient)
-		flags |= vk::CommandPoolCreateFlagBits::eTransient;
-	vk::CommandPoolCreateInfo commandPoolInfo(flags, queueFamilyIndex);
+	vk::CommandPoolCreateInfo commandPoolInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamilyIndex);
 	return device.createCommandPool(commandPoolInfo);
 }
 
@@ -868,7 +870,7 @@ void Vulkan::initialize(const string& appName, const string& appDataName, Versio
 	frameCommandPool = createVkCommandPool(device, graphicsQueueFamilyIndex);
 	graphicsCommandPool = createVkCommandPool(device, graphicsQueueFamilyIndex);
 	transferCommandPool = createVkCommandPool(device, transferQueueFamilyIndex);
-	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex); 
+	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex);
 	descriptorPool = createVkDescriptorPool(device);
 	pipelineCache = createPipelineCache(appDataName, appVersion, 
 		device, deviceProperties, isCacheLoaded);

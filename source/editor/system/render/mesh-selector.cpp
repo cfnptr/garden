@@ -43,7 +43,7 @@ void MeshSelectorEditorSystem::init()
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getColor("meshSelectorColor", aabbColor);
+		settingsSystem->getColor("meshSelector.aabbColor", aabbColor);
 }
 void MeshSelectorEditorSystem::deinit()
 {
@@ -204,7 +204,7 @@ void MeshSelectorEditorSystem::editorSettings()
 		if (ImGui::ColorEdit4("AABB Color", &aabbColor))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("meshSelectorColor", aabbColor);
+				settingsSystem->setColor("meshSelector.aabbColor", aabbColor);
 		}
 
 		ImGui::Unindent();

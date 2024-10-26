@@ -21,7 +21,9 @@
 #include "garden/graphics/compiler.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/json-serialize.hpp"
+#include "garden/profiler.hpp"
 #include "garden/file.hpp"
+
 #include "math/ibl.hpp"
 
 #define TINYEXR_USE_MINIZ 0
@@ -69,7 +71,7 @@ namespace
 		uint64 version = 0;
 		fs::path shaderPath;
 		map<string, Pipeline::SpecConstValue> specConstValues;
-		map<string, GraphicsPipeline::SamplerState> samplerStateOverrides;
+		map<string, Pipeline::SamplerState> samplerStateOverrides;
 		uint32 maxBindlessCount = 0;
 		#if !GARDEN_PACK_RESOURCES
 		fs::path resourcesPath;
@@ -80,7 +82,8 @@ namespace
 	{
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
-		map<uint8, GraphicsPipeline::State> stateOverrides;
+		map<uint8, GraphicsPipeline::State> pipelineStateOverrides;
+		map<uint8, vector<GraphicsPipeline::BlendState>> blendStateOverrides;
 		ID<GraphicsPipeline> instance = {};
 		Image::Format depthStencilFormat = {};
 		uint8 subpassIndex = 0;
@@ -401,6 +404,8 @@ void ResourceSystem::dequeueBuffersAndImages()
 //**********************************************************************************************************************
 void ResourceSystem::input()
 {
+	SET_CPU_ZONE_SCOPED("Resources Update");
+
 	auto manager = Manager::Instance::get();
 	for (auto& buffer : loadedBufferArray)
 	{
@@ -1370,15 +1375,14 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
-	ID<Framebuffer> framebuffer, bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
-	uint32 maxBindlessCount, const map<string, GraphicsPipeline::SpecConstValue>& specConstValues,
-	const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides,
-	const map<uint8, GraphicsPipeline::State>& stateOverrides)
+	ID<Framebuffer> framebuffer,  bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
+	uint32 maxBindlessCount, const map<string, Pipeline::SpecConstValue>& specConstValues,
+	const GraphicsPipeline::StateOverrides* stateOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(framebuffer);
 
-	// TODO: validate specConstValues, stateOverrides and samplerStateOverrides
+	// TODO: validate specConstValues and stateOverrides
 
 	auto& framebufferView = **GraphicsAPI::framebufferPool.get(framebuffer);
 	const auto& subpasses = framebufferView.getSubpasses();
@@ -1435,8 +1439,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->subpassIndex = subpassIndex;
 		data->colorFormats = std::move(colorFormats);
 		data->specConstValues = specConstValues;
-		data->samplerStateOverrides = samplerStateOverrides;
-		data->stateOverrides = stateOverrides;
 		data->instance = pipeline;
 		data->maxBindlessCount = maxBindlessCount;
 		data->depthStencilFormat = depthStencilFormat;
@@ -1446,6 +1448,13 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->resourcesPath = appResourcesPath;
 		data->cachesPath = appCachesPath;
 		#endif
+
+		if (stateOverrides)
+		{
+			data->samplerStateOverrides = stateOverrides->samplerStates;
+			data->pipelineStateOverrides = stateOverrides->pipelineStates;
+			data->blendStateOverrides = stateOverrides->blendStates;
+		}
 		
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
@@ -1457,7 +1466,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.pipelineVersion = data->version;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			pipelineData.colorFormats = std::move(data->colorFormats);
-			pipelineData.stateOverrides = std::move(data->stateOverrides);
+			pipelineData.pipelineStateOverrides = std::move(data->pipelineStateOverrides);
+			pipelineData.blendStateOverrides = std::move(data->blendStateOverrides);
 			pipelineData.renderPass = data->renderPass;
 			pipelineData.subpassIndex = data->subpassIndex;
 			pipelineData.depthStencilFormat = data->depthStencilFormat;
@@ -1494,11 +1504,9 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		Compiler::GraphicsData pipelineData;
 		pipelineData.shaderPath = path;
 		pipelineData.specConstValues = specConstValues;
-		pipelineData.samplerStateOverrides = samplerStateOverrides;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
-		pipelineData.stateOverrides = stateOverrides;
 		pipelineData.renderPass = renderPass;
 		pipelineData.subpassIndex = subpassIndex;
 		pipelineData.depthStencilFormat = depthStencilFormat;
@@ -1510,7 +1518,15 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.cachesPath = appCachesPath;
 		#endif
 
-		if (!loadOrCompileGraphics(pipelineData)) abort();
+		if (stateOverrides)
+		{
+			pipelineData.samplerStateOverrides = stateOverrides->samplerStates;
+			pipelineData.pipelineStateOverrides = stateOverrides->pipelineStates;
+			pipelineData.blendStateOverrides = stateOverrides->blendStates;
+		}
+
+		if (!loadOrCompileGraphics(pipelineData))
+			abort();
 			
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(pipeline);
@@ -1586,7 +1602,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount,
 	const map<string, Pipeline::SpecConstValue>& specConstValues,
-	const map<string, GraphicsPipeline::SamplerState>& samplerStateOverrides)
+	const map<string, Pipeline::SamplerState>& samplerStateOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
@@ -1661,7 +1677,8 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		pipelineData.cachesPath = appCachesPath;
 		#endif
 		
-		if (!loadOrCompileCompute(pipelineData)) abort();
+		if (!loadOrCompileCompute(pipelineData))
+			abort();
 
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = GraphicsAPI::computePipelinePool.get(pipeline);

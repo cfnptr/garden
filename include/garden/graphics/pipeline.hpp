@@ -279,9 +279,9 @@ protected:
 	static vector<void*> createShaders(const vector<vector<uint8>>& code, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);
 
-	static void fillSpecConsts(
-		const fs::path& path, ShaderStage shaderStage, uint8 variantCount, void* specInfo,
-		const map<string, SpecConst>& specConsts, const map<string, SpecConstValue>& specConstValues);
+	static void fillSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
+		const map<string, SpecConstValue>& specConstValues, ShaderStage shaderStage, uint8 variantCount);
+	static void setVariantIndex(void* specInfo, uint8 variantIndex);
 	static void updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 descriptorDataSize);
 
 	friend class PipelineExt;

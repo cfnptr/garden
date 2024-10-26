@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,43 +11,72 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-// Based on this: https://bruop.github.io/exposure/
-//--------------------------------------------------------------------------------------------------
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Automatic exposure (AE) rendering functions. (Eye light adaptation)
+ * 
+ * @details
+ * Based on this: https://bruop.github.io/exposure/
+ * 
+ * Human eye adaptation:
+ *   Full darkness = 20 min.
+ *   Full brightness = 5 min.
+ */
 
 // TODO: possibly can be improved by using more luminance weight at screen center.
 
-/*
 #pragma once
-#include "garden/system/render/deferred.hpp"
-
-// Human eye adaptation:
-// Full darkness - 20 min.
-// Full brightness = 5 min.
+#include "garden/system/graphics.hpp"
 
 namespace garden
 {
 
-#define AE_HISTOGRAM_SIZE 256 // TODO: use constexpr variable instead of define.
-
-//--------------------------------------------------------------------------------------------------
-// AE - Automatic Exposure aka Eye Light Adaptation
-class AutoExposureRenderSystem final : public System, public IRenderSystem
+/**
+ * @brief Automatic exposure (AE) rendering system. (Eye light adaptation)
+ */
+class AutoExposureRenderSystem final : public System, public Singleton<AutoExposureRenderSystem>
 {
+public:
+	struct HistogramPC final
+	{
+		float minLogLum;
+		float invLogLumRange;
+	};
+	struct AveragePC final
+	{
+		float minLogLum;
+		float logLumRange;
+		float pixelCount;
+		float darkAdaptRate;
+		float brightAdaptRate;
+	};
+
+	/**
+	 * @brief Automatic exposure histogram buffer size.
+	 */
+	static constexpr uint16 histogramSize = 256;
+private:
 	ID<ComputePipeline> histogramPipeline = {};
 	ID<ComputePipeline> averagePipeline = {};
 	ID<DescriptorSet> histogramDescriptorSet = {};
 	ID<DescriptorSet> averageDescriptorSet = {};
 	ID<Buffer> histogramBuffer = {};
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new automatic exposure (AE) rendering system instance. (Eye light adaptation)
+	 * @param setSingleton set system singleton instance
+	 */
+	AutoExposureRenderSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroys automatic exposure (AE) rendering system instance. (Eye light adaptation)
+	 */
+	~AutoExposureRenderSystem() final;
 
-	void initialize() final;
-	void terminate() final;
-	void render() final;
-	void recreateSwapchain(const SwapchainChanges& changes) final;
+	void init();
+	void deinit();
+	void render();
+	void gBufferRecreate();
 
 	friend class ecsm::Manager;
 public:
@@ -58,10 +86,18 @@ public:
 	float brightAdaptRate = 3.0f;
 	bool isEnabled = true;
 
+	/**
+	 * @brief Returns automatic exposure histogram compute pipeline.
+	 */
 	ID<ComputePipeline> getHistogramPipeline();
+	/**
+	 * @brief Returns automatic exposure average compute pipeline.
+	 */
 	ID<ComputePipeline> getAveragePipeline();
+	/**
+	 * @brief Returns automatic exposure histogram buffer.
+	 */
 	ID<Buffer> getHistogramBuffer();
 };
 
 } // namespace garden
-*/

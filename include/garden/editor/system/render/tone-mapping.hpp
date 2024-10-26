@@ -13,23 +13,29 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/tone-mapping.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/tone-mapping.hpp"
+
 namespace garden
 {
 
-class ToneMappingEditor final
+class ToneMappingRenderEditorSystem final : public System
 {
-	int toneMapperType = 0;
+	ToneMapper toneMapper = {};
+	float exposureLuminance = 1.0f;
 	bool showWindow = false;
 
-	ToneMappingEditor(ToneMappingRenderSystem* system);
+	ToneMappingRenderEditorSystem();
+	~ToneMappingRenderEditorSystem() final;
 
-	void render();
-	void onBarTool();
-	
-	friend class ToneMappingRenderSystem;
+	void init();
+	void deinit();
+	void editorRender();
+	void editorBarTool();
+
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

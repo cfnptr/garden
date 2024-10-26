@@ -27,7 +27,7 @@ namespace garden
 using namespace garden::physics;
 class CharacterSystem;
 
-/***********************************************************************************************************************
+/**
  * @brief State of the character ground, is he standing on ground or midair, or on steep ground.
  */
 enum class CharacterGround : uint8
@@ -46,7 +46,7 @@ enum class CharacterGround : uint8
 	Count,
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Physics character controller.
  */
 struct CharacterComponent final : public Component
@@ -128,7 +128,7 @@ public:
 	 */
 	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns character linear velocity. (m/s)
 	 */
 	float3 getLinearVelocity() const;

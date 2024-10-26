@@ -14,6 +14,7 @@
 
 #include "garden/graphics/framebuffer.hpp"
 #include "garden/graphics/vulkan.hpp"
+#include "garden/profiler.hpp"
 
 #include <set>
 
@@ -548,6 +549,8 @@ void Framebuffer::setDebugName(const string& name)
 void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCount,
 	float clearDepth, uint32 clearStencil, const int4& region, bool asyncRecording)
 {
+
+
 	GARDEN_ASSERT(!currentFramebuffer);
 	GARDEN_ASSERT(clearColorCount == colorAttachments.size());
 	GARDEN_ASSERT(!clearColors || (clearColors && clearColorCount > 0));

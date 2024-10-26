@@ -17,7 +17,7 @@
 // TODO:
 
 #pragma once
-//#include "garden/system/render/lighting.hpp"
+//#include "garden/system/render/pbr-lighting.hpp"
 
 namespace garden
 {

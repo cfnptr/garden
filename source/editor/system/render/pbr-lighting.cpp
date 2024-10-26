@@ -12,53 +12,53 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/editor/system/render/lighting.hpp"
+#include "garden/editor/system/render/pbr-lighting.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/lighting.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-LightingRenderEditorSystem::LightingRenderEditorSystem()
+PbrLightingRenderEditorSystem::PbrLightingRenderEditorSystem()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", LightingRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LightingRenderEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingRenderEditorSystem::deinit);
 }
-LightingRenderEditorSystem::~LightingRenderEditorSystem()
+PbrLightingRenderEditorSystem::~PbrLightingRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning())
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LightingRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LightingRenderEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderEditorSystem::deinit);
 	}
 }
 
-void LightingRenderEditorSystem::init()
+void PbrLightingRenderEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<LightingRenderComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<PbrLightingRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	},
 	inspectorPriority);
 }
-void LightingRenderEditorSystem::deinit()
+void PbrLightingRenderEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<LightingRenderComponent>();
+	EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingRenderComponent>();
 }
 
 //**********************************************************************************************************************
-void LightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
+void PbrLightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)
 		return;
 
-	auto componentView = LightingRenderSystem::Instance::get()->getComponent(entity);
+	auto componentView = PbrLightingRenderSystem::Instance::get()->getComponent(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->drawResource(componentView->cubemap);
-	editorSystem->drawResource(componentView->sh);
-	editorSystem->drawResource(componentView->specular);
+	editorSystem->drawResource(componentView->cubemap, "Cubemap");
+	editorSystem->drawResource(componentView->sh, "SH");
+	editorSystem->drawResource(componentView->specular, "Speculare");
 	editorSystem->drawResource(componentView->descriptorSet);
 
 	// TODO: allow to select cubemap from file

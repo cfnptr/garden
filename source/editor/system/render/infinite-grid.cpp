@@ -56,10 +56,10 @@ void InfiniteGridEditorSystem::init()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 	{
-		settingsSystem->getFloat("infGridScale", gridScale);
-		settingsSystem->getColor("infGridColor", gridColor);
-		settingsSystem->getColor("infGridColorX", axisColorX);
-		settingsSystem->getColor("infGridColorY", axisColorY);
+		settingsSystem->getFloat("infiniteGrid.meshScale", meshScale);
+		settingsSystem->getColor("infiniteGrid.meshColor", meshColor);
+		settingsSystem->getColor("infiniteGrid.axisColorX", axisColorX);
+		settingsSystem->getColor("infiniteGrid.axisColorYZ", axisColorYZ);
 	}
 }
 void InfiniteGridEditorSystem::deinit()
@@ -104,10 +104,10 @@ void InfiniteGridEditorSystem::editorRender()
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-		pushConstants->gridColor = (float4)gridColor;
+		pushConstants->meshColor = (float4)meshColor;
 		pushConstants->axisColorX = (float4)axisColorX;
-		pushConstants->axisColorY = (float4)axisColorY;
-		pushConstants->gridScale = gridScale;
+		pushConstants->axisColorYZ = (float4)axisColorYZ;
+		pushConstants->meshScale = meshScale;
 		pushConstants->isHorizontal = isHorizontal;
 		pipelineView->pushConstants();
 		pipelineView->drawFullscreen();
@@ -138,26 +138,26 @@ void InfiniteGridEditorSystem::editorSettings()
 		ImGui::Indent();
 		ImGui::Checkbox("Enabled", &isEnabled); ImGui::SameLine();
 		ImGui::Checkbox("Horizontal", &isHorizontal);
-		if (ImGui::DragFloat("Grid Scale", &gridScale, 0.1f))
+		if (ImGui::DragFloat("Mesh Scale", &meshScale, 0.1f))
 		{
 			if (settingsSystem)
-				settingsSystem->setFloat("infGridScale", gridScale);
+				settingsSystem->setFloat("infiniteGrid.meshScale", meshScale);
 		}
-		if (ImGui::ColorEdit4("Grid Color", &gridColor))
+		if (ImGui::ColorEdit4("Mesh Color", &meshColor))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("infGridColor", gridColor);
+				settingsSystem->setColor("infiniteGrid.meshColor", meshColor);
 		}
 		if (ImGui::ColorEdit4("X-Axis Color", &axisColorX))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("infGridColorX", axisColorX);
+				settingsSystem->setColor("infiniteGrid.axisColorX", axisColorX);
 		}
 		auto axisName = isHorizontal ? "Z-Axis Color" : "Y-Axis Color";
-		if (ImGui::ColorEdit4(axisName, &axisColorY))
+		if (ImGui::ColorEdit4(axisName, &axisColorYZ))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("infGridColorY", axisColorY);
+				settingsSystem->setColor("infiniteGrid.axisColorYZ", axisColorYZ);
 		}
 		ImGui::Unindent();
 		ImGui::Spacing();

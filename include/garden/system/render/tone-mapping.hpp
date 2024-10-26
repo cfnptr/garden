@@ -17,33 +17,43 @@
  * @brief Tone mapping rendering functions.
  */
 
- /*
 #pragma once
-#include "garden/system/render/bloom.hpp"
-
+#include "garden/system/graphics.hpp"
 
 namespace garden
 {
 
-
-constexpr float lumToExp = 9.6f;
-
-
+/**
+ * @brief Tone mapping functions.
+ */
 enum class ToneMapper : uint8
 {
 	ACES, Uchimura, Count
 };
 
-
-class ToneMappingRenderSystem final : public System,
-	public IRenderSystem, public IDeferredRenderSystem
+/**
+ * @brief Tone mapping rendering system.
+ */
+class ToneMappingRenderSystem final : public System, public Singleton<ToneMappingRenderSystem>
 {
 public:
-	struct Luminance
+	struct PushConstants final
+	{
+		uint32 frameIndex;
+		float exposureFactor;
+		float ditherIntensity;
+		float bloomIntensity;
+	};
+	struct LuminanceData final
 	{
 		float avgLuminance = 0.0f;
 		float exposure = 0.0f;
 	};
+
+	/**
+	 * @brief Luminance to exposure conversion coefficient.
+	 */
+	static constexpr float lumToExp = 9.6f;
 private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
@@ -52,33 +62,71 @@ private:
 	ToneMapper toneMapper = {};
 	uint16 _alignment1 = 0;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new tone mapping rendering system instance.
+	 *
+	 * @param useShadowBuffer use bloom (light glow) buffer for tone mapping
+	 * @param toneMapper target tone mapping function
+	 * @param setSingleton set system singleton instance
+	 */
+	ToneMappingRenderSystem(bool useBloomBuffer = false, ToneMapper toneMapper = {}, bool setSingleton = true);
+	/**
+	 * @brief Destroys tone mapping rendering system instance.
+	 */
+	~ToneMappingRenderSystem() final;
 
-	void initialize() final;
-	void terminate() final;
-	void render() final;
-	void preLdrRender() final;
-	void ldrRender() final;
-	void recreateSwapchain(const SwapchainChanges& changes) final;
+	void init();
+	void deinit();
+	void preLdrRender();
+	void ldrRender();
+	void gBufferRecreate();
 
 	friend class ecsm::Manager;
 public:
-	float exposureCoeff = 1.0f;
-	float ditherIntensity = (0.5f / 255.0f); // r8g8b8
+	/*******************************************************************************************************************
+	 * @brief Tone mapping exposure factor.
+	 */
+	float exposureFactor = 1.0f;
+	/**
+	 * @brief Image dithering effect intensity. (255 for R8G8B8 format)
+	 */
+	float ditherIntensity = (0.5f / 255.0f);
 
+	/**
+	 * @brief Use bloom (light glow) buffer for tone mapping.
+	 */
 	bool getUseBloomBuffer() const noexcept { return useBloomBuffer; }
+	/**
+	 * @brief Returns current tone mapping function.
+	 */
 	ToneMapper getToneMapper() const noexcept { return toneMapper; }
+	/**
+	 * @brief Sets tone mapping pipeline constants. (Recreates pipeline!)
+	 * 
+	 * @param useBloomBuffer use bloom (light glow) buffer for tone mapping
+	 * @param toneMapper target tone mapping function
+	 */
 	void setConsts(bool useBloomBuffer, ToneMapper toneMapper);
 
+	/**
+	 * @brief Returns tone mapping graphics pipeline.
+	 */
 	ID<GraphicsPipeline> getPipeline();
+	/**
+	 * @brief Returns tone mapping luminance buffer.
+	 */
 	ID<Buffer> getLuminanceBuffer();
 
+	/**
+	 * @brief Sets tone mapping luminance value.
+	 * @param luminance target luminance value
+	 */
 	void setLuminance(float luminance);
+	/**
+	 * @brief Sets tone mapping exposure value.
+	 * @param luminance target exposure value
+	 */
 	void setExposure(float exposure);
 };
 
-
 } // namespace garden
-*/

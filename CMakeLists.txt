@@ -39,6 +39,7 @@ option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
 option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
 option(GARDEN_DEBUG_PACK_RESOURCES "Pack and load resources in the debug build." OFF)
 option(GARDEN_USE_GAPI_VALIDATIONS "Use graphics API validation layers." ON)
+option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
 
 string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 
@@ -151,6 +152,11 @@ if(GARDEN_USE_GAPI_VALIDATIONS)
 else()
 	set(GARDEN_GAPI_VALIDATIONS 0)
 endif()
+if(GARDEN_USE_TRACY_PROFILER)
+	set(GARDEN_TRACY_PROFILER 1)
+else()
+	set(GARDEN_TRACY_PROFILER 0)
+endif()
 
 set(GARDEN_APP_VERSION "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
 
@@ -251,6 +257,13 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
 	set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
 endif()
 add_subdirectory(libraries/jolt/Build)
+
+if(GARDEN_USE_TRACY_PROFILER)
+	set(TRACY_STATIC ON CACHE BOOL "" FORCE)
+	set(TRACY_FIBERS ON CACHE BOOL "" FORCE)
+	add_subdirectory(libraries/tracy)
+	list(APPEND GARDEN_LINK_LIBS Tracy::TracyClient)
+endif()
 
 #***********************************************************************************************************************
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)

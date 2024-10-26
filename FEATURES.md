@@ -10,7 +10,7 @@
 * Gamma Correction (HDR)
 * Tone Mapping (ACES, Uchimura)
 * Automatic Exposure (AE)
-* Light Bloom (Glow)
+* Bloom (Light Glow)
 * Screen Space Ambient Occlusion (SSAO)
 * Fast Approximate Anti-Aliasing (FXAA)
 * Cascade Shadow Mapping (CSM)

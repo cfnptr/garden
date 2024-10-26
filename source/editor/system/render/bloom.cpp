@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,95 +11,109 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/render/bloom.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/bloom.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
 
 using namespace garden;
 
-namespace
+static map<string, DescriptorSet::Uniform> getThresholdUniforms()
 {
-	struct PushConstants final  // TODO: move to the class
-	{
-		float threshold;
-	};
-}
-
-//--------------------------------------------------------------------------------------------------
-static map<string, DescriptorSet::Uniform> getThresholdUniforms(
-	GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
-{
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto hdrFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getHdrFramebuffer());
 	map<string, DescriptorSet::Uniform> uniforms =
-	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(
-			hdrFramebufferView->getColorAttachments()[0].imageView) },
-	};
+	{ { "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) } };
 	return uniforms;
 }
 
-//--------------------------------------------------------------------------------------------------
-BloomEditor::BloomEditor(BloomRenderSystem* system)
+//**********************************************************************************************************************
+BloomRenderEditorSystem::BloomRenderEditorSystem()
 {
-	EditorRenderSystem::getInstance()->registerBarTool([this]() { onBarTool(); });
-	this->system = system;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BloomRenderEditorSystem::deinit);
+}
+BloomRenderEditorSystem::~BloomRenderEditorSystem()
+{
+	if (Manager::Instance::get()->isRunning())
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderEditorSystem::deinit);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void BloomEditor::render()
+void BloomRenderEditorSystem::init()
 {
-	if (!showWindow)
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", BloomRenderEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", BloomRenderEditorSystem::editorBarTool);
+}
+void BloomRenderEditorSystem::deinit()
+{
+	if (Manager::Instance::get()->isRunning())
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", BloomRenderEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", BloomRenderEditorSystem::editorBarTool);
+	}
+}
+
+//**********************************************************************************************************************
+void BloomRenderEditorSystem::editorRender()
+{
+	if (!GraphicsSystem::Instance::get()->canRender())
 		return;
 
-	if (ImGui::Begin("Light Bloom (Glow)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (showWindow)
 	{
-		auto useThreshold = system->useThreshold;
-		auto useAntiFlickering = system->useAntiFlickering;
-
-		if (ImGui::Checkbox("Enabled", &system->isEnabled))
+		if (ImGui::Begin("Bloom (Light Glow)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
-			if (settingsSystem)
-				settingsSystem->setBool("useBloom", system->isEnabled);
-		}
+			auto bloomSystem = BloomRenderSystem::Instance::get();
+			auto useThreshold = bloomSystem->getUseThreshold();
+			auto useAntiFlickering = bloomSystem->getUseAntiFlickering();
 
-		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
+			if (ImGui::Checkbox("Enabled", &bloomSystem->isEnabled))
+			{
+				auto settingsSystem = SettingsSystem::Instance::tryGet();
+				if (settingsSystem)
+					settingsSystem->setBool("bloom.isEnabled", bloomSystem->isEnabled);
+			}
 
-		if (ImGui::Checkbox("Use Anti Flickering", &useAntiFlickering) ||
-			ImGui::Checkbox("Use Threshold", &useThreshold))
-		{
-			system->setConsts(useThreshold, useAntiFlickering);
-		}
+			ImGui::SliderFloat("Intensity", &bloomSystem->intensity, 0.0f, 1.0f);
 
-		ImGui::DragFloat("Threshold", &system->threshold, 0.01f, 0.0f, FLT_MAX);
-		
-		ImGui::Checkbox("Visualize Threshold", &visualizeThreshold);
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Red = less than a threshold");
-			ImGui::EndTooltip();
-		}
+			if (ImGui::Checkbox("Use Anti Flickering", &useAntiFlickering) ||
+				ImGui::Checkbox("Use Threshold", &useThreshold))
+			{
+				bloomSystem->setConsts(useThreshold, useAntiFlickering);
+			}
 
-		if (thresholdPipeline)
-		{
-			auto graphicsSystem = system->getGraphicsSystem();
-			auto pipelineView = graphicsSystem->get(thresholdPipeline);
-			if (!pipelineView->isReady())
-				ImGui::TextDisabled("Threshold pipeline is loading...");
+			ImGui::DragFloat("Threshold", &bloomSystem->threshold, 0.01f, 0.0f, FLT_MAX);
+
+			ImGui::Checkbox("Visualize Threshold", &visualizeThreshold);
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Red = less than a threshold");
+				ImGui::EndTooltip();
+			}
+
+			if (thresholdPipeline)
+			{
+				auto pipelineView = GraphicsSystem::Instance::get()->get(thresholdPipeline);
+				if (!pipelineView->isReady())
+					ImGui::TextDisabled("Threshold pipeline is loading...");
+			}
 		}
+		ImGui::End();
 	}
-	ImGui::End();
 
 	if (visualizeThreshold)
 	{
-		auto graphicsSystem = system->getGraphicsSystem();
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		if (!thresholdPipeline)
 		{
-			thresholdPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			thresholdPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 				"editor/bloom-threshold", graphicsSystem->getSwapchainFramebuffer());
 		}
 		
@@ -109,15 +122,14 @@ void BloomEditor::render()
 		{
 			if (!thresholdDescriptorSet)
 			{
-				auto uniforms = getThresholdUniforms(
-					graphicsSystem, system->getDeferredSystem());
-				thresholdDescriptorSet = graphicsSystem->createDescriptorSet(
-					thresholdPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(thresholdDescriptorSet,
-					"descriptorSet.bloom.editor.threshold");
+				auto uniforms = getThresholdUniforms();
+				thresholdDescriptorSet = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
+				SET_RESOURCE_DEBUG_NAME(thresholdDescriptorSet, "descriptorSet.bloom.editor.threshold");
 			}
 
+			auto bloomSystem = BloomRenderSystem::Instance::get();
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
@@ -126,7 +138,7 @@ void BloomEditor::render()
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(thresholdDescriptorSet);
 				auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-				pushConstants->threshold = system->threshold;
+				pushConstants->threshold = bloomSystem->threshold;
 				pipelineView->pushConstants();
 				pipelineView->drawFullscreen();
 				framebufferView->endRenderPass();
@@ -136,9 +148,9 @@ void BloomEditor::render()
 	}
 }
 
-void BloomEditor::onBarTool()
+void BloomRenderEditorSystem::editorBarTool()
 {
-	if (ImGui::MenuItem("Light Bloom (Glow)"))
+	if (ImGui::MenuItem("Bloom (Light Glow)"))
 		showWindow = true;
 }
 #endif

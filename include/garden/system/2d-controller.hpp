@@ -27,7 +27,7 @@ namespace garden
 
 using namespace ecsm;
 
-/***********************************************************************************************************************
+/**
  * @brief General 2D view controller.
  */
 class Controller2DSystem final : public System, public Singleton<Controller2DSystem>

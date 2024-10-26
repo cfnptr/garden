@@ -18,39 +18,63 @@
  * @details Based on this: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
  */
 
-/*
 #pragma once
-#include "garden/system/render/deferred.hpp"
-
-#define MAX_BLOOM_MIP_COUNT 6 // TODO: use constant
+#include "garden/system/graphics.hpp"
 
 namespace garden
 {
 
-class BloomRenderSystem final : public System,
-	public IRenderSystem, public IDeferredRenderSystem
+/**
+ * @brief Bloom (light glow) rendering functions.
+ */
+class BloomRenderSystem final : public System, public Singleton<BloomRenderSystem>
 {
-	ID<GraphicsPipeline> downsample0Pipeline = {};
+public:
+	struct PushConstants final
+	{
+		float threshold;
+	};
+
+	/**
+	 * @brief Maximum bloom buffer mip level count.
+	 */
+	static constexpr uint8 maxBloomMipCount = 6;
+	/**
+	 * @brief First downsample step shader variant.
+	 */
+	static constexpr uint8 downsample0Variant = 0;
+	/**
+	 * @brief Generic downsample step shader variant.
+	 */
+	static constexpr uint8 downsampleVariant = 1;
+private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
 	ID<GraphicsPipeline> upsamplePipeline = {};
 	ID<Image> bloomBuffer = {};
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
-	vector<uint2> sizeBuffer;
 	bool useThreshold = false;
-	bool useAntiFlickering = true;
+	bool useAntiFlickering = false;
 	uint16 _alignment = 0;
 
-	#if GARDEN_EDITOR
-	void* editor = nullptr;
-	#endif
+	/**
+	 * @brief Creates a new bloom (light glow) rendering system instance.
+	 *
+	 * @param useThreshold use bloom color threshold for rendering
+	 * @param useAntiFlickering use anti flickering algorithm for rendering (anti fireflies)
+	 * @param setSingleton set system singleton instance
+	 */
+	BloomRenderSystem(bool useThreshold = false, bool useAntiFlickering = true, bool setSingleton = true);
+	/**
+	 * @brief Destroys bloom (light glow) rendering system instance.
+	 */
+	~BloomRenderSystem() final;
 
-	void initialize() final;
-	void terminate() final;
-	void render() final;
-	void preLdrRender() final;
-	void recreateSwapchain(const SwapchainChanges& changes) final;
+	void init();
+	void deinit();
+	void preLdrRender();
+	void gBufferRecreate();
 
 	friend class ecsm::Manager;
 public:
@@ -58,16 +82,38 @@ public:
 	float threshold = 0.0f;
 	bool isEnabled = true;
 
+	/**
+	 * @brief Use color threshold for bloom rendering.
+	 */
 	bool getUseThreshold() const noexcept { return useThreshold; }
+	/**
+	 * @brief Use anti flickering algorithm for bloom rendering. (Anti fireflies)
+	 */
 	bool getUseAntiFlickering() const noexcept { return useAntiFlickering; }
+	/**
+	 * @brief Sets bloom pipeline constants. (Recreates pipeline!).
+	 *
+	 * @param useThreshold use shadow buffer for rendering
+	 * @param useAntiFlickering use anti flickering algorithm for rendering (anti fireflies)
+	 */
 	void setConsts(bool useThreshold, bool useAntiFlickering);
 
-	ID<GraphicsPipeline> getDownsample0Pipeline();
+	/**
+	 * @brief Returns bloom downsample graphics pipeline.
+	 */
 	ID<GraphicsPipeline> getDownsamplePipeline();
+	/**
+	 * @brief Returns bloom upwnsample graphics pipeline.
+	 */
 	ID<GraphicsPipeline> getUpsamplePipeline();
+	/**
+	 * @brief Returns bloom buffer.
+	 */
 	ID<Image> getBloomBuffer();
+	/**
+	 * @brief Returns bloom framebuffer array.
+	 */
 	const vector<ID<Framebuffer>>& getFramebuffers();
 };
 
 } // namespace garden
-*/

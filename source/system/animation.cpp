@@ -15,6 +15,7 @@
 #include "garden/system/animation.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/profiler.hpp"
 
 using namespace garden;
 
@@ -164,6 +165,8 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 //**********************************************************************************************************************
 void AnimationSystem::update()
 {
+	SET_CPU_ZONE_SCOPED("Animations Update");
+
 	auto animations = &this->animations;
 	auto componentData = components.getData();
 	auto occupancy = components.getOccupancy();

@@ -102,11 +102,12 @@ void MeshGizmosEditorSystem::init()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 	{
-		settingsSystem->getColor("meshGizmosColor", handleColor);
-		settingsSystem->getColor("meshGizmosColorX", axisColorX);
-		settingsSystem->getColor("meshGizmosColorY", axisColorY);
-		settingsSystem->getColor("meshGizmosColorZ", axisColorZ);
-		settingsSystem->getFloat("meshGizmosFactor", highlighFactor);
+		settingsSystem->getColor("meshGizmos.handleColor", handleColor);
+		settingsSystem->getColor("meshGizmos.axisColorX", axisColorX);
+		settingsSystem->getColor("meshGizmos.axisColorY", axisColorY);
+		settingsSystem->getColor("meshGizmos.axisColorZ", axisColorZ);
+		settingsSystem->getFloat("meshGizmos.highlightFactor", highlightFactor);
+		settingsSystem->getFloat("meshGizmos.patternScale", patternScale);
 	}
 }
 void MeshGizmosEditorSystem::deinit()
@@ -160,8 +161,8 @@ static void addArrowMeshes(vector<GizmosMesh>& gizmosMeshes, const float4x4& mod
 }
 
 //**********************************************************************************************************************
-static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
-	View<GraphicsPipeline> pipelineView, const float4x4& viewProj, bool sortAscend)
+static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes, View<GraphicsPipeline> pipelineView, 
+	const float4x4& viewProj, float patternScale, bool sortAscend)
 {
 	std::function<bool(const GizmosMesh& a, const GizmosMesh& b)> ascending =
 		[](const GizmosMesh& a, const GizmosMesh& b) { return a.distance < b.distance; };
@@ -174,7 +175,7 @@ static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes,
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pushConstants = pipelineView->getPushConstants<MeshGizmosEditorSystem::PushConstants>();
-	pushConstants->renderScale = 0.25f / graphicsSystem->getRenderScale();
+	pushConstants->patternScale = patternScale;
 	
 	for (const auto& mesh : gizmosMeshes)
 	{
@@ -282,7 +283,7 @@ void MeshGizmosEditorSystem::editorRender()
 		{
 			auto& mesh = gizmosMeshes[meshIndex];
 			mesh.model *= scale(float3(1.25f));
-			mesh.color = Color((float4)mesh.color * highlighFactor);
+			mesh.color = Color((float4)mesh.color * highlightFactor);
 
 			if (inputSystem->isMousePressed(MouseButton::Left))
 				dragMode = meshIndex + 1;
@@ -358,8 +359,8 @@ void MeshGizmosEditorSystem::editorRender()
 	{
 		SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
 		framebufferView->beginRenderPass(float4(0.0f));
-		renderGizmosArrows(gizmosMeshes, backPipelineView, cameraConstants.viewProj, false);
-		renderGizmosArrows(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, true);
+		renderGizmosArrows(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
+		renderGizmosArrows(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
 		framebufferView->endRenderPass();
 	}
 	graphicsSystem->stopRecording();
@@ -379,27 +380,32 @@ void MeshGizmosEditorSystem::editorSettings()
 		if (ImGui::ColorEdit4("Handle Color", &handleColor))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("meshGizmosColor", handleColor);
+				settingsSystem->setColor("meshGizmos.handleColor", handleColor);
 		}
 		if (ImGui::ColorEdit4("X-Axis Color", &axisColorX))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("meshGizmosColorX", axisColorX);
+				settingsSystem->setColor("meshGizmos.axisColorX", axisColorX);
 		}
 		if (ImGui::ColorEdit4("Y-Axis Color", &axisColorY))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("meshGizmosColorY", axisColorY);
+				settingsSystem->setColor("meshGizmos.axisColorY", axisColorY);
 		}
 		if (ImGui::ColorEdit4("Z-Axis Color", &axisColorZ))
 		{
 			if (settingsSystem)
-				settingsSystem->setColor("meshGizmosColorZ", axisColorZ);
+				settingsSystem->setColor("meshGizmos.axisColorZ", axisColorZ);
 		}
-		if (ImGui::DragFloat("Highlight Factor", &highlighFactor, 0.1f))
+		if (ImGui::DragFloat("Highlight Factor", &highlightFactor, 0.1f))
 		{
 			if (settingsSystem)
-				settingsSystem->setFloat("meshGizmosFactor", highlighFactor);
+				settingsSystem->setFloat("meshGizmos.highlightFactor", highlightFactor);
+		}
+		if (ImGui::DragFloat("Pattern Scale", &patternScale, 0.01f))
+		{
+			if (settingsSystem)
+				settingsSystem->setFloat("meshGizmos.patternScale", patternScale);
 		}
 		ImGui::Unindent();
 		ImGui::Spacing();

@@ -45,7 +45,7 @@ enum class ProjectionType : uint8
 	Perspective, Orthographic, Count,
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Perspective camera projection properties.
  * 
  * @details
@@ -116,7 +116,7 @@ public:
 	// TODO: add perspective/ortho morphing.
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Contains information about camera animation frame.
  */
 struct CameraFrame final : public AnimationFrame

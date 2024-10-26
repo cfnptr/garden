@@ -722,7 +722,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
 		auto imageFormat = imageView->format;
 
-		if (!isFormatStencilOnly(imageFormat))
+		if (isFormatDepthOnly(imageFormat))
 		{
 			newImageState.layout = (uint32)vk::ImageLayout::eDepthAttachmentOptimal;
 			aspectFlags = vk::ImageAspectFlagBits::eDepth;
@@ -754,7 +754,7 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				clearValues.emplace_back(vk::ClearDepthStencilValue(command.clearDepth, command.clearStencil));
 			}
 		}
-		if (!isFormatDepthOnly(imageFormat))
+		else if (isFormatStencilOnly(imageFormat))
 		{
 			newImageState.layout = (uint32)vk::ImageLayout::eStencilAttachmentOptimal;
 			aspectFlags = vk::ImageAspectFlagBits::eStencil;
@@ -794,11 +794,12 @@ void CommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
 				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				(VkImage)image->instance, vk::ImageSubresourceRange(
-					aspectFlags, imageView->baseMip, imageView->mipCount,
-					imageView->baseLayer, imageView->layerCount));
+				(VkImage)image->instance, vk::ImageSubresourceRange(aspectFlags, 
+					imageView->baseMip, imageView->mipCount, imageView->baseLayer, imageView->layerCount));
 			imageMemoryBarriers.push_back(imageMemoryBarrier);
 		}
+
+		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eLateFragmentTests; // Do not remove!
 		oldImageState = newImageState;
 	}
 

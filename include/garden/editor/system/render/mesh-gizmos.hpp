@@ -26,7 +26,7 @@ public:
 	{
 		float4x4 mvp;
 		float4 color;
-		float renderScale;
+		float patternScale;
 	};
 private:
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
@@ -48,7 +48,8 @@ public:
 	Color axisColorX = Color("FF1010FF");
 	Color axisColorY = Color("10FF10FF");
 	Color axisColorZ = Color("1010FFFF");
-	float highlighFactor = 5.0f;
+	float highlightFactor = 5.0f;
+	float patternScale = 0.25f;
 	bool isEnabled = true;
 };
 
