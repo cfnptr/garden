@@ -471,7 +471,7 @@ void GraphicsSystem::update()
 	newSwapchainChanges.vsyncState = useVsync != Vulkan::swapchain.useVsync();
 
 	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
-		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState);
+		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState || suboptimalSwapchain);
 
 	swapchainChanges.framebufferSize |= newSwapchainChanges.framebufferSize;
 	swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
@@ -501,6 +501,7 @@ void GraphicsSystem::update()
 
 		GARDEN_LOG_INFO("Recreated swapchain. (" + 
 			to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y) + ")");
+		suboptimalSwapchain = false;
 	}
 
 	if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
@@ -513,8 +514,9 @@ void GraphicsSystem::update()
 	{
 		if (!Vulkan::swapchain.acquireNextImage())
 		{
-			GARDEN_LOG_WARN("Suboptimal swapchain.");
 			isFramebufferSizeValid = false;
+			suboptimalSwapchain = true;
+			GARDEN_LOG_WARN("Suboptimal or out of date swapchain.");
 		}
 	}
 
@@ -589,7 +591,11 @@ void GraphicsSystem::present()
 	if (isFramebufferSizeValid)
 	{
 		if (!Vulkan::swapchain.present())
-			GARDEN_LOG_WARN("Suboptimal swapchain.");
+		{
+			isFramebufferSizeValid = false;
+			suboptimalSwapchain = true;
+			GARDEN_LOG_WARN("Suboptimal or out of date swapchain.");
+		}
 		frameIndex++;
 	}
 	else
