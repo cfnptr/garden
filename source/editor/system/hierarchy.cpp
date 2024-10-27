@@ -183,12 +183,12 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 	
 	ImGui::PushID(to_string(*renderEntity).c_str());
 
-	if (!transformView->isActive)
+	if (!transformView->isActive())
 		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
 
 	if (ImGui::TreeNodeEx(debugName.c_str(), flags))
 	{
-		if (!transformView->isActive)
+		if (!transformView->isActive())
 			ImGui::PopStyleColor();
 		updateHierarchyClick(renderEntity);
 
@@ -202,7 +202,7 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 	}
 	else
 	{
-		if (!transformView->isActive)
+		if (!transformView->isActive())
 			ImGui::PopStyleColor();
 		updateHierarchyClick(renderEntity);
 	}

@@ -116,7 +116,7 @@ void SkyboxRenderSystem::hdrRender()
 		return;
 
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
-	if (transformView && !transformView->isActiveWithAncestors())
+	if (transformView && !transformView->isActive())
 		return;
 	
 	auto skyboxView = tryGetComponent(graphicsSystem->camera);

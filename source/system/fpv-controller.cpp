@@ -139,7 +139,7 @@ quat FpvControllerSystem::updateCameraRotation()
 	#endif
 
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
-	if (!transformView || !transformView->isActiveWithAncestors() )
+	if (!transformView || !transformView->isActive() )
 		return quat::identity;
 
 	auto cursorDelta = inputSystem->getCursorDelta();
@@ -161,7 +161,7 @@ void FpvControllerSystem::updateCameraControll(const quat& rotationQuat)
 	#endif
 
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
-	if (!transformView || !transformView->isActiveWithAncestors())
+	if (!transformView || !transformView->isActive())
 		return;
 
 	auto boost = inputSystem->getKeyboardState(KeyboardButton::LeftShift) ? boostFactor : 1.0f;
@@ -226,7 +226,7 @@ void FpvControllerSystem::updateCharacterControll()
 			continue;
 
 		auto transformView = transformSystem->getComponent(i->second);
-		if (transformView && !transformView->isActiveWithAncestors())
+		if (transformView && !transformView->isActive())
 			continue;
 
 		auto position = characterView->getPosition();

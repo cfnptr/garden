@@ -125,7 +125,7 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 		auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
 		if (transformView)
 		{
-			if (!transformView->isActiveWithAncestors())
+			if (!transformView->isActive())
 				continue;
 			model = transformView->calcModel(cameraPosition);
 		}
@@ -178,7 +178,7 @@ static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& c
 		auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
 		if (transformView)
 		{
-			if (!transformView->isActiveWithAncestors())
+			if (!transformView->isActive())
 				continue;
 			model = transformView->calcModel(cameraPosition);
 		}

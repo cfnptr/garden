@@ -1045,7 +1045,7 @@ void PhysicsSystem::prepareSimulate()
 					continue;
 
 				auto body = (JPH::Body*)rigidbodyView->instance;
-				if (transformView->isActiveWithAncestors())
+				if (transformView->isActive())
 				{
 					if (!rigidbodyView->inSimulation)
 					{

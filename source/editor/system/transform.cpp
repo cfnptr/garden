@@ -80,7 +80,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto transformView = transformSystem->getComponent(entity);
-		ImGui::Text("Active: %s", transformView->isActive ? "true" : "false");
+		ImGui::Text("Active (all): %s", transformView->isActive() ? "true" : "false");
 		if (transformView->getParent())
 		{
 			auto parentView = transformSystem->getComponent(transformView->getParent());
@@ -120,7 +120,9 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		return;
 
 	auto transformView = transformSystem->getComponent(entity);
-	ImGui::Checkbox("Active", &transformView->isActive);
+	auto isSelfActive = transformView->isSelfActive();
+	if (ImGui::Checkbox("Active", &isSelfActive))
+		transformView->setActive(isSelfActive);
 
 	auto isBaked = manager->has<BakedTransformComponent>(entity);
 	ImGui::BeginDisabled(isBaked);

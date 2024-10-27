@@ -79,7 +79,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
 	if (transformView)
 	{
-		if (!transformView->isActiveWithAncestors())
+		if (!transformView->isActive())
 			return;
 	}
 
