@@ -105,7 +105,7 @@ void MeshSelectorEditorSystem::editorRender()
 					continue;
 
 				auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
-				if (!transformView->isActiveWithAncestors())
+				if (!transformView->isActive())
 					continue;
 
 				float4x4 model;

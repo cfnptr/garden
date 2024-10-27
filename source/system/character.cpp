@@ -228,7 +228,7 @@ void CharacterComponent::update(float deltaTime, const float3& gravity)
 
 	if (transformView)
 	{
-		if (transformView->isActiveWithAncestors())
+		if (transformView->isActive())
 		{
 			if (!inSimulation)
 			{

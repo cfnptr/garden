@@ -35,15 +35,15 @@ struct TransformComponent final : public Component
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	string debugName;               /**< Object debug name. (Debug and editor only) */
 	#endif
-	bool isActive = true;           /**< Is object should be processed and used by other systems. */
 private:
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
+	ID<Entity>* childs = nullptr;
+	uint64 uid = 0;
 	ID<Entity> parent = {};
 	uint32 childCount = 0;
 	uint32 childCapacity = 0;
-	ID<Entity>* childs = nullptr;
-	uint64 uid = 0;
+	bool selfActive = true;
+	bool ancestorsActive = true;
+	uint16 _alignment = 0;
 
 	/**
 	 * @brief Destroys childs array memory block, if allocated. 
@@ -54,6 +54,32 @@ private:
 	friend class LinearPool<TransformComponent>;
 	friend class ComponentSystem<TransformComponent>;
 public:
+	/**
+	 * @brief Returns true if this entity and it ancestors are active.
+	 * @details Is this object should be processed and used by other systems.
+	 */
+	bool isActive() const noexcept { return selfActive && ancestorsActive; }
+	/**
+	 * @brief Returns true if this entity is self active.
+	 * @details See the @ref isActive().
+	 */
+	bool isSelfActive() const noexcept { return selfActive; }
+	/**
+	 * @brief Returns true if this entity ancestors are active.
+	 * @details See the @ref isActive().
+	 */
+	bool areAncestorsActive() const noexcept { return ancestorsActive; }
+
+	/**
+	 * @brief Sets this entity and it descendants active state.
+	 * @details Is this object should be processed and used by other systems.
+	 * 
+	 * @note
+	 * If this entity has inactive ancestors it will still be in an inactive state.
+	 * This is performance heavy operation if this entity has many descendants.
+	 */
+	void setActive(bool isActive) noexcept;
+
 	/**
 	 * @brief Returns this entity parent object, or null if it is root entity.
 	 * @details Entity parent affects it transformation in the space.
@@ -85,12 +111,22 @@ public:
 	 * @param parent target parent entity or null
 	 */
 	void setParent(ID<Entity> parent);
+
 	/**
 	 * @brief Adds a new child to this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity
+	 * @throw runtime_error if child already has a parent.
 	 */
 	void addChild(ID<Entity> child);
+	/**
+	 * @brief Tries to add a new child to this entity.
+	 * @note It also changes parent of the child entity.
+	 * @param child target child entity
+	 * @return True if child has no parent and was added.
+	 */
+	bool tryAddChild(ID<Entity> child);
+
 	/**
 	 * @brief Returns true if this entity has specified child.
 	 * @param index target child to check
@@ -105,18 +141,34 @@ public:
 		GARDEN_ASSERT(index < childCount);
 		return childs[index];
 	}
+
 	/**
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity
+	 * @throw runtime_error if child not found.
 	 */
 	void removeChild(ID<Entity> child);
 	/**
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param index target child index in the array
+	 * @throw runtime_error if child not found.
 	 */
-	void removeChild(uint32 index);
+	void removeChild(uint32 index)
+	{
+		GARDEN_ASSERT(index < childCount);
+		removeChild(childs[index]);
+	}
+
+	/**
+	 * @brief Tries to remove child from this entity.
+	 * @note It also changes parent of the child entity.
+	 * @param child target child entity
+	 * @return True if child is found and was removed.
+	 */
+	bool tryRemoveChild(ID<Entity> child);
+
 	/**
 	 * @brief Removes all children from this entity.
 	 * @note It also changes parent of the children entities.
@@ -131,13 +183,15 @@ public:
 	/**
 	 * @brief Returns true if this entity has specified ancestor
 	 * @details Including parent, grandparent, great-grandparent...
-	 * @param index target ancestor to check
+	 * @param ancestor target ancestor to check
 	 */
 	bool hasAncestor(ID<Entity> ancestor) const noexcept;
 	/**
-	 * @brief Returns true if entity is active and has no unactive ancestors.
+	 * @brief Returns true if this entity has specified descendant
+	 * @details Including child, grandchild, great-grandchild...
+	 * @param descendant target ancestor to check
 	 */
-	bool isActiveWithAncestors() const noexcept;
+	bool hasDescendant(ID<Entity> descendant) const noexcept;
 	/**
 	 * @brief Returns true if entity or it desscdendants has baked transform.
 	 */

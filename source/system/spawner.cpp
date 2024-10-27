@@ -56,7 +56,8 @@ ID<Entity> SpawnerComponent::loadPrefab()
 		manager->add<DoNotSerializeComponent>(entity);
 
 		auto transformView = TransformSystem::Instance::get()->getComponent(entity);
-		transformView->isActive = false;
+		transformView->setActive(false);
+
 		auto prefabs = LinkSystem::Instance::get()->findEntities("Prefabs");
 		if (prefabs.first != prefabs.second)
 			transformView->setParent(prefabs.first->second);
@@ -122,7 +123,7 @@ void SpawnerComponent::spawn(uint32 count)
 				dupTransformView->setParent({});
 			}
 			
-			dupTransformView->isActive = true;
+			dupTransformView->setActive(true);
 		}
 
 		if (physicsSystem)
@@ -185,7 +186,7 @@ void SpawnerSystem::preInit()
 		manager->add<DoNotSerializeComponent>(prefabs);
 
 	auto transformView = manager->add<TransformComponent>(prefabs);
-	transformView->isActive = false;
+	transformView->setActive(false);
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	transformView->debugName = "Prefabs";
 	#endif
@@ -215,7 +216,7 @@ void SpawnerSystem::update()
 			continue;
 
 		auto transformView = transformSystem->tryGetComponent(componentView->entity);
-		if (transformView && !transformView->isActiveWithAncestors())
+		if (transformView && !transformView->isActive())
 			continue;
 
 		if (componentView->delay != 0.0f)

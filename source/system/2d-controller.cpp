@@ -136,7 +136,7 @@ void Controller2DSystem::updateCameraControll()
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
 	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(camera);
 
-	if (!transformView || !transformView->isActiveWithAncestors() || 
+	if (!transformView || !transformView->isActive() || 
 		!cameraView || cameraView->type != ProjectionType::Orthographic)
 	{
 		return;
@@ -188,7 +188,7 @@ void Controller2DSystem::updateCameraFollowing()
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
 	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
 
-	if (!cameraTransformView || !cameraTransformView->isActiveWithAncestors() ||
+	if (!cameraTransformView || !cameraTransformView->isActive() ||
 		!cameraView || cameraView->type != ProjectionType::Orthographic)
 	{
 		return;
@@ -200,7 +200,7 @@ void Controller2DSystem::updateCameraFollowing()
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
 		auto charTransformView = transformSystem->tryGetComponent(i->second);
-		if (!charTransformView || !charTransformView->isActiveWithAncestors())
+		if (!charTransformView || !charTransformView->isActive())
 			continue;
 
 		auto characterView = characterSystem->tryGetComponent(i->second);
@@ -259,7 +259,7 @@ void Controller2DSystem::updateCharacterControll()
 			continue;
 
 		auto transformView = transformSystem->getComponent(i->second);
-		if (transformView && !transformView->isActiveWithAncestors())
+		if (transformView && !transformView->isActive())
 			continue;
 
 		auto position = characterView->getPosition();
