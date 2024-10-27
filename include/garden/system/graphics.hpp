@@ -90,6 +90,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
+	bool suboptimalSwapchain = false;
 	SwapchainChanges swapchainChanges;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
