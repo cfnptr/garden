@@ -55,3 +55,6 @@
 [submodule "libraries/tinyexr"]
 	path = libraries/tinyexr
 	url = https://github.com/syoyo/tinyexr
+[submodule "libraries/tracy"]
+	path = libraries/tracy
+	url = https://github.com/wolfpld/tracy

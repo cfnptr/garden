@@ -113,6 +113,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)
 * [TinyEXR](https://github.com/syoyo/tinyexr) (BSD-3-Clause license)
+* [Tracy](https://github.com/wolfpld/tracy) (BSD-3-Clause license)
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
 * [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)
