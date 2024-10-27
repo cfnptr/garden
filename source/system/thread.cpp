@@ -21,14 +21,23 @@ using namespace garden;
 static int getBestForegroundThreadCount()
 {
 	auto cpuName = OS::getCpuName();
-
-	// if (cpuName.find())
+	if (cpuName.find("AMD") != string::npos)
+	{
+		// Only one of the two CCXes has additional 3D V-Cache.
+		if (cpuName.find("9 7950X3D") != string::npos || cpuName.find("9 7900X3D") != string::npos ||
+			cpuName.find("9 7945HX3D") != string::npos) 
+		{
+			auto cpuCount = OS::getPhysicalCpuCount();
+			return cpuCount > 1 ? cpuCount / 2 : cpuCount;
+		}
+	}
+	return OS::getPerformanceCpuCount();
 }
 
 //**********************************************************************************************************************
 ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 	backgroundPool(true, "BG", OS::getLogicalCpuCount()),
-	foregroundPool(false, "FG", OS::getPhysicalCpuCount())
+	foregroundPool(false, "FG", getBestForegroundThreadCount())
 {
 	mpmt::Thread::setForegroundPriority();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
