@@ -1031,8 +1031,13 @@ static void calcLoadedImageDim(psize pathCount, uint2 realSize,
 }
 static Image::Type calcLoadedImageType(psize pathCount, uint32 sizeY, ImageLoadFlags flags) noexcept
 {
-	if (pathCount > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType))
-		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
+	if (pathCount > 1)
+	{
+		if (hasAnyFlag(flags, ImageLoadFlags::CubemapType))
+			return Image::Type::Cubemap;
+		if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType))
+			return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
+	}
 	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
 }
 static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcept
@@ -1050,8 +1055,14 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
 
 	if (paths.size() > 1)
+	{
 		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray));
-	
+	}
+	else
+	{
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::CubemapType));
+	}
+
 	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
 

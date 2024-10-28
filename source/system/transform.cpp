@@ -382,6 +382,8 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 			entityStack.push_back(childs[i]);
 		}
 	}
+
+	return false;
 }
 
 //**********************************************************************************************************************

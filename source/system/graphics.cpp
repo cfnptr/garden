@@ -289,7 +289,10 @@ void GraphicsSystem::preInit()
 	
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
+	{
+		GARDEN_LOG_INFO("Foreground thread pool size: " + threadSystem->getForegroundPool().getThreadCount());
 		Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
+	}
 
 	GARDEN_LOG_INFO("GPU: " + string(Vulkan::deviceProperties.properties.deviceName.data()));
 	auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
