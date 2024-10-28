@@ -482,6 +482,7 @@ void GraphicsSystem::update()
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
 		Vulkan::swapchain.recreate(framebufferSize, useVsync, useTripleBuffering);
+		suboptimalSwapchain = false;
 
 		if (depthStencilBuffer)
 		{
@@ -499,9 +500,8 @@ void GraphicsSystem::update()
 		recreateImGui();
 		#endif
 
-		GARDEN_LOG_INFO("Recreated swapchain. (" + 
-			to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y) + ")");
-		suboptimalSwapchain = false;
+		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" + 
+			to_string(framebufferSize.y) + ", " + to_string(Vulkan::swapchain.getBufferCount()) + "B)");
 	}
 
 	if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())

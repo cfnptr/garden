@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/system/thread.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/transform.hpp"
 #include "math/aabb.hpp"
@@ -43,6 +42,17 @@ struct MeshRenderComponent : public Component
 {
 	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
 	bool isEnabled = true; /**< Is mesh should be rendered. */
+protected:
+	bool visible = false;
+public:
+	/**
+	 * @brief Is mesh visible on camera after last frustum culling.
+	 */
+	bool isVisible() const noexcept { return visible; }
+	/**
+	 * @brief Set mesh visible on camera.
+	 */
+	void setVisible(bool isVisible) noexcept { visible = isVisible; }
 };
 
 /**
@@ -155,35 +165,53 @@ protected:
 class MeshRenderSystem final : public System
 {
 public:
-	struct RenderMesh
+	struct OpaqueMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
-		float4x4 model = float4x4(0.0f);
+		float4x3 model = float4x3(0.0f);
 		float distance2 = 0.0f;
+	private:
+		uint32 _alignment = 0;
+	public:
+		bool operator<(const OpaqueMesh& m) const noexcept
+		{
+			return distance2 < m.distance2;
+		}
 	};
-	struct TranslucentMesh final : public RenderMesh
+	struct TranslucentMesh final
 	{
+		MeshRenderComponent* renderView = nullptr;
+		float4x3 model = float4x3(0.0f);
+		float distance2 = 0.0f;
 		uint32 bufferIndex = 0;
+
+		bool operator<(const TranslucentMesh& m) const noexcept
+		{
+			return distance2 > m.distance2;
+		}
 	};
-	struct OpaqueBuffer final
+
+	struct MeshBuffer
 	{
 		IMeshRenderSystem* meshSystem = nullptr;
-		vector<RenderMesh> meshes;
-		vector<uint32> indices;
-		volatile int64 drawCount;
+		atomic<uint32>* drawCount = nullptr;
+
+		MeshBuffer() : drawCount(new atomic<uint32>()) { }
+		~MeshBuffer() { delete drawCount; }
 	};
-	struct TranslucentBuffer final
+	struct OpaqueBuffer final : public MeshBuffer
 	{
-		IMeshRenderSystem* meshSystem = nullptr;
-		volatile int64 drawCount;
+		vector<vector<OpaqueMesh>> threadMeshes;
+		vector<OpaqueMesh> combinedMeshes;
 	};
+	struct TranslucentBuffer final : MeshBuffer { };
 private:
 	vector<OpaqueBuffer> opaqueBuffers;
 	vector<TranslucentBuffer> translucentBuffers;
-	vector<TranslucentMesh> translucentMeshes;
-	vector<uint32> translucentIndices;
+	vector<TranslucentMesh> transCombinedMeshes;
+	vector<vector<TranslucentMesh>> transThreadMeshes;
 	vector<IMeshRenderSystem*> meshSystems;
-	volatile int64 translucentIndex = 0;
+	atomic<uint32> translucentIndex = 0;
 	uint32 opaqueBufferCount = 0;
 	uint32 translucentBufferCount = 0;
 	bool asyncRecording = false;
@@ -202,11 +230,12 @@ private:
 	~MeshRenderSystem() final;
 
 	void prepareSystems();
-	void prepareMeshes(ThreadSystem* threadSystem, const float4x4& viewProj, const float3& cameraOffset,
+	void sortMeshes();
+	void prepareMeshes( const float4x4& viewProj, const float3& cameraOffset,
 		uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType);
-	void renderOpaque(ThreadSystem* threadSystem, const float4x4& viewProj);
-	void renderTranslucent(ThreadSystem* threadSystem, const float4x4& viewProj);
-	void renderShadows(ThreadSystem* threadSystem);
+	void renderOpaque(const float4x4& viewProj);
+	void renderTranslucent(const float4x4& viewProj);
+	void renderShadows();
 
 	void init();
 	void deinit();
