@@ -31,13 +31,6 @@ namespace
 	};
 }
 
-ID<Framebuffer> Framebuffer::currentFramebuffer = {};
-uint32 Framebuffer::currentSubpassIndex = 0;
-vector<ID<Pipeline>> Framebuffer::currentPipelines(thread::hardware_concurrency());
-vector<PipelineType> Framebuffer::currentPipelineTypes(thread::hardware_concurrency());
-vector<ID<Buffer>> Framebuffer::currentVertexBuffers(thread::hardware_concurrency());
-vector<ID<Buffer>> Framebuffer::currentIndexBuffers(thread::hardware_concurrency());
-
 bool Framebuffer::isCurrentRenderPassAsync() noexcept
 {
 	return !Vulkan::secondaryCommandBuffers.empty();

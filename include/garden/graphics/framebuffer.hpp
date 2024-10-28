@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/graphics/image.hpp"
+#include <thread>
 
 namespace garden::graphics
 {
@@ -214,12 +215,12 @@ private:
 	}
 	bool destroy() final;
 
-	static ID<Framebuffer> currentFramebuffer;
-	static uint32 currentSubpassIndex;
-	static vector<ID<Pipeline>> currentPipelines;
-	static vector<PipelineType> currentPipelineTypes;
-	static vector<ID<Buffer>> currentVertexBuffers;
-	static vector<ID<Buffer>> currentIndexBuffers;
+	inline static ID<Framebuffer> currentFramebuffer = {};
+	inline static uint32 currentSubpassIndex = 0;
+	inline static vector<ID<Pipeline>> currentPipelines = vector<ID<Pipeline>>(thread::hardware_concurrency());
+	inline static vector<PipelineType> currentPipelineTypes = vector<PipelineType>(thread::hardware_concurrency());
+	inline static vector<ID<Buffer>> currentVertexBuffers = vector<ID<Buffer>>(thread::hardware_concurrency());
+	inline static vector<ID<Buffer>> currentIndexBuffers = vector<ID<Buffer>>(thread::hardware_concurrency());
 
 	friend class Pipeline;
 	friend class CommandBuffer;
