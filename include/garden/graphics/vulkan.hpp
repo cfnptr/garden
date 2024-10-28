@@ -54,42 +54,42 @@ namespace garden::graphics
 class Vulkan final
 {
 public:
-	static uint32 versionMajor;
-	static uint32 versionMinor;
-	static vk::Instance instance;
-	static vk::DispatchLoaderDynamic dynamicLoader;
-	static vk::PhysicalDevice physicalDevice;
-	static vk::SurfaceKHR surface;
-	static uint32 graphicsQueueFamilyIndex;
-	static uint32 transferQueueFamilyIndex;
-	static uint32 computeQueueFamilyIndex;
-	static vk::Device device;
-	static VmaAllocator memoryAllocator;
-	static vk::Queue frameQueue;
-	static vk::Queue graphicsQueue;
-	static vk::Queue transferQueue;
-	static vk::Queue computeQueue;
-	static vk::CommandPool frameCommandPool;
-	static vk::CommandPool graphicsCommandPool;
-	static vk::CommandPool transferCommandPool;
-	static vk::CommandPool computeCommandPool;
-	static vk::DescriptorPool descriptorPool;
-	static vk::PipelineCache pipelineCache;
-	static vector<vk::CommandBuffer> secondaryCommandBuffers;
-	static vector<bool> secondaryCommandStates;
-	static Swapchain swapchain;
-	static vk::PhysicalDeviceProperties2 deviceProperties;
-	static vk::PhysicalDeviceFeatures2 deviceFeatures;
-	static bool isCacheLoaded;
-	static bool hasMemoryBudget;
-	static bool hasMemoryPriority;
-	static bool hasPageableMemory;
-	static bool hasDynamicRendering;
-	static bool hasDescriptorIndexing;
+	inline static uint32 versionMajor = 0;
+	inline static uint32 versionMinor = 0;
+	inline static vk::Instance instance = {};
+	inline static vk::DispatchLoaderDynamic dynamicLoader = {};
+	inline static vk::PhysicalDevice physicalDevice = {};
+	inline static vk::SurfaceKHR surface = {};
+	inline static uint32 graphicsQueueFamilyIndex = 0;
+	inline static uint32 transferQueueFamilyIndex = 0;
+	inline static uint32 computeQueueFamilyIndex = 0;
+	inline static vk::Device device = {};
+	inline static VmaAllocator memoryAllocator = nullptr;
+	inline static vk::Queue frameQueue = {};
+	inline static vk::Queue graphicsQueue = {};
+	inline static vk::Queue transferQueue = {};
+	inline static vk::Queue computeQueue = {};
+	inline static vk::CommandPool frameCommandPool = {};
+	inline static vk::CommandPool graphicsCommandPool = {};
+	inline static vk::CommandPool transferCommandPool = {};
+	inline static vk::CommandPool computeCommandPool = {};
+	inline static vk::DescriptorPool descriptorPool = {};
+	inline static vk::PipelineCache pipelineCache = {};
+	inline static vector<vk::CommandBuffer> secondaryCommandBuffers = {};
+	inline static vector<bool> secondaryCommandStates = {};
+	inline static Swapchain swapchain = {};
+	inline static vk::PhysicalDeviceProperties2 deviceProperties = {};
+	inline static vk::PhysicalDeviceFeatures2 deviceFeatures = {};
+	inline static bool isCacheLoaded = false;
+	inline static bool hasMemoryBudget = false;
+	inline static bool hasMemoryPriority = false;
+	inline static bool hasPageableMemory = false;
+	inline static bool hasDynamicRendering = false;
+	inline static bool hasDescriptorIndexing = false;
 
 	#if GARDEN_DEBUG
-	static vk::DebugUtilsMessengerEXT debugMessenger;
-	static bool hasDebugUtils;
+	inline static vk::DebugUtilsMessengerEXT debugMessenger = {};
+	inline static bool hasDebugUtils = false;
 	#endif
 
 	// TODO: move rest to api.hpp and make these calls universal.

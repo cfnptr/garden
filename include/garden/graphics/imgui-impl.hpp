@@ -27,8 +27,8 @@ namespace garden::graphics
 class ImGuiData final
 {
 public:
-	static vk::RenderPass renderPass;
-	static vector<vk::Framebuffer> framebuffers;
+	inline static vk::RenderPass renderPass = {};
+	inline static vector<vk::Framebuffer> framebuffers = {};
 };
 
 static void imGuiCheckVkResult(VkResult result)

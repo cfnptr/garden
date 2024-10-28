@@ -254,32 +254,6 @@ void EditorRenderSystem::showAboutWindow()
 			ImGui::Text("Version: %s", appVersion.c_str());
 			ImGui::Text("Creator: %s", appInfoSystem->getCreator().c_str());
 		}
-
-		ImGui::Spacing();
-
-		if (ImGui::CollapsingHeader("System Info"))
-		{
-			ImGui::Text("OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
-			ImGui::Text("SIMDs: %s", GARDEN_SIMD_STRING);
-			auto cpuName = OS::getCpuName();
-			ImGui::Text("CPU: %s", cpuName.c_str());
-			auto ramString = toBinarySizeString(OS::getTotalRamSize());
-			ImGui::Text("RAM: %s", ramString.c_str());
-
-			ImGui::Text("GPU: %s", Vulkan::deviceProperties.properties.deviceName.data());
-			auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
-			auto apiString = to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
-				to_string(VK_API_VERSION_MINOR(apiVersion)) + "." +
-				to_string(VK_API_VERSION_PATCH(apiVersion));
-			ImGui::Text("Device Vulkan API: %s", apiString.c_str());
-
-			auto graphicsSystem = GraphicsSystem::Instance::tryGet();
-			if (graphicsSystem)
-			{
-				auto framebufferSize = graphicsSystem->getFramebufferSize();
-				ImGui::Text("Framebuffer size: %ldx%ld", (long)framebufferSize.x, (long)framebufferSize.y);
-			}
-		}
 	}
 	ImGui::End();
 }

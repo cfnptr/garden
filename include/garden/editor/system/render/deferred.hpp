@@ -59,7 +59,7 @@ class DeferredRenderEditorSystem final : public System
 	bool showChannelB = true;
 	bool showWindow = false;
 
-	static ID<Image> shadowPlaceholder;
+	inline static ID<Image> shadowPlaceholder = {};
 
 	DeferredRenderEditorSystem();
 	~DeferredRenderEditorSystem() final;

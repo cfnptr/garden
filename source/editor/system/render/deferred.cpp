@@ -67,8 +67,6 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& shadowPl
 }
 
 //**********************************************************************************************************************
-ID<Image> DeferredRenderEditorSystem::shadowPlaceholder = {};
-
 DeferredRenderEditorSystem::DeferredRenderEditorSystem()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", DeferredRenderEditorSystem::init);

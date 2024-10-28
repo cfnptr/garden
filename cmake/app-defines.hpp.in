@@ -36,9 +36,9 @@ const fs::path appCachesPath = fs::path("@GARDEN_APP_CACHES_DIR@");
 const fs::path appResourcesPath = fs::path("@GARDEN_APP_RESOURCES_DIR@");
 #endif
 
-static void createAppSystem()
+static void createAppSystem(Manager* manager)
 {
-	Manager::Instance::get()->createSystem<AppInfoSystem>(
+	manager->createSystem<AppInfoSystem>(
 		appName, appNameLowercase, appDescription, appCreator, appCopyright, appVersion
 		#if GARDEN_DEBUG
 		, appCachesPath, appResourcesPath

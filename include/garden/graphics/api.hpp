@@ -64,38 +64,46 @@ public:
 		uint32 count = 0;
 	};
 
-	static string appDataName;
-	static Version appVersion;
-	static void* window;
-	static LinearPool<Buffer> bufferPool;
-	static LinearPool<Image> imagePool;
-	static LinearPool<ImageView> imageViewPool;
-	static LinearPool<Framebuffer> framebufferPool;
-	static LinearPool<GraphicsPipeline> graphicsPipelinePool;
-	static LinearPool<ComputePipeline> computePipelinePool;
-	static LinearPool<DescriptorSet> descriptorSetPool;
-	static uint64 graphicsPipelineVersion;
-	static uint64 computePipelineVersion;
-	static uint64 bufferVersion;
-	static uint64 imageVersion;
-	static vector<DestroyResource> destroyBuffers[frameLag + 1];
-	static map<void*, uint64> renderPasses;
-	static CommandBuffer frameCommandBuffer;
-	static CommandBuffer graphicsCommandBuffer;
-	static CommandBuffer transferCommandBuffer;
-	static CommandBuffer computeCommandBuffer;
-	static CommandBuffer* currentCommandBuffer;
-	static bool isDeviceIntegrated;
-	static bool isRunning;
-	static uint8 fillDestroyIndex;
-	static uint8 flushDestroyIndex;
+	inline static string appDataName = {};
+	inline static Version appVersion = {};
+	inline static void* window = nullptr;
+	inline static LinearPool<Buffer> bufferPool = {};
+	inline static LinearPool<Image> imagePool = {};
+	inline static LinearPool<ImageView> imageViewPool = {};
+	inline static LinearPool<Framebuffer> framebufferPool = {};
+	inline static LinearPool<GraphicsPipeline> graphicsPipelinePool = {};
+	inline static LinearPool<ComputePipeline> computePipelinePool = {};
+	inline static LinearPool<DescriptorSet> descriptorSetPool = {};
+	inline static uint64 graphicsPipelineVersion = 0;
+	inline static uint64 computePipelineVersion = 0;
+	inline static uint64 bufferVersion = 0;
+	inline static uint64 imageVersion = 0;
+	inline static vector<DestroyResource> destroyBuffers[frameLag + 1];
+	inline static map<void*, uint64> renderPasses = {};
+	inline static CommandBuffer frameCommandBuffer = {};
+	inline static CommandBuffer graphicsCommandBuffer = {};
+	inline static CommandBuffer transferCommandBuffer = {};
+	inline static CommandBuffer computeCommandBuffer = {};
+	inline static CommandBuffer* currentCommandBuffer = nullptr;
+	inline static bool isDeviceIntegrated = false;
+	inline static bool isRunning = false;
+	inline static uint8 fillDestroyIndex = 0;
+	inline static uint8 flushDestroyIndex = 1;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	static bool recordGpuTime;
+	inline static bool recordGpuTime = false;
 	#endif
 
-	static void destroyResource(DestroyResourceType type,
-		void* data0, void* data1 = nullptr, uint32 count = 0);
+	inline static void destroyResource(DestroyResourceType type,
+		void* data0, void* data1 = nullptr, uint32 count = 0)
+	{
+		DestroyResource destroyResource;
+		destroyResource.data0 = data0;
+		destroyResource.data1 = data1;
+		destroyResource.type = type;
+		destroyResource.count = count;
+		destroyBuffers[fillDestroyIndex].push_back(destroyResource);
+	}
 };
 
 } // namespace garden::graphics

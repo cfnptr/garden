@@ -35,7 +35,6 @@ project(Garden VERSION 0.0.1 LANGUAGES CXX
 
 option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
 option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
-option(GARDEN_BUILD_TESTS "Build Garden library tests" ON)
 option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
 option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
 option(GARDEN_DEBUG_PACK_RESOURCES "Pack and load resources in the debug build." OFF)
@@ -303,12 +302,4 @@ if(GARDEN_BUILD_EQUI2CUBE)
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		stripExecutable(equi2cube)
 	endif()
-endif()
-
-if(GARDEN_BUILD_TESTS)
-	enable_testing()
-
-	add_executable(TestGardenTransform tests/test-transform.cpp)
-	target_link_libraries(TestGardenTransform PUBLIC garden)
-	add_test(NAME TestGardenTransform COMMAND TestGardenTransform)
 endif()

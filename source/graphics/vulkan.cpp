@@ -53,44 +53,6 @@ constexpr vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding;
 #endif
 
-uint32 Vulkan::versionMajor = 0;
-uint32 Vulkan::versionMinor = 0;
-vk::Instance Vulkan::instance = {};
-vk::DispatchLoaderDynamic Vulkan::dynamicLoader = {};
-vk::PhysicalDevice Vulkan::physicalDevice = {};
-vk::SurfaceKHR Vulkan::surface = {};
-uint32 Vulkan::graphicsQueueFamilyIndex = 0;
-uint32 Vulkan::transferQueueFamilyIndex = 0;
-uint32 Vulkan::computeQueueFamilyIndex = 0;
-vk::Device Vulkan::device = {};
-VmaAllocator Vulkan::memoryAllocator = nullptr;
-vk::Queue Vulkan::frameQueue = {};
-vk::Queue Vulkan::graphicsQueue = {};
-vk::Queue Vulkan::transferQueue = {};
-vk::Queue Vulkan::computeQueue = {};
-vk::CommandPool Vulkan::frameCommandPool = {};
-vk::CommandPool Vulkan::graphicsCommandPool = {};
-vk::CommandPool Vulkan::transferCommandPool = {};
-vk::CommandPool Vulkan::computeCommandPool = {};
-vk::DescriptorPool Vulkan::descriptorPool = {};
-vk::PipelineCache Vulkan::pipelineCache = {};
-vector<vk::CommandBuffer> Vulkan::secondaryCommandBuffers;
-vector<bool> Vulkan::secondaryCommandStates;
-Swapchain Vulkan::swapchain;
-vk::PhysicalDeviceProperties2 Vulkan::deviceProperties = {};
-vk::PhysicalDeviceFeatures2 Vulkan::deviceFeatures = {};
-bool Vulkan::isCacheLoaded = false;
-bool Vulkan::hasMemoryBudget = false;
-bool Vulkan::hasMemoryPriority = false;
-bool Vulkan::hasPageableMemory = false;
-bool Vulkan::hasDynamicRendering = false;
-bool Vulkan::hasDescriptorIndexing = false;
-
-#if GARDEN_DEBUG
-vk::DebugUtilsMessengerEXT Vulkan::debugMessenger = {};
-bool Vulkan::hasDebugUtils = false;
-#endif
-
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
 static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
