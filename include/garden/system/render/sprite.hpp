@@ -30,7 +30,7 @@ namespace garden
 struct SpriteRenderComponent : public MeshRenderComponent
 {
 protected:
-	uint16 _alignment0 = 0;
+	uint8 _alignment = 0;
 public:
 	bool isArray = false;                  /**< Is sprite texture type array. */
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
