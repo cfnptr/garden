@@ -15,13 +15,14 @@
 #include "garden/system/app-info.hpp"
 
 //**********************************************************************************************************************
-namespace @GARDEN_APP_NAME_LOWERCASE@
+namespace @GARDEN_APP_NAMESPACE@
 {
 
 using namespace garden;
 
 constexpr string_view appName = "@GARDEN_APP_NAME@";
 constexpr string_view appNameLowercase = "@GARDEN_APP_NAME_LOWERCASE@";
+constexpr string_view appNamespace = "@GARDEN_APP_NAMESPACE@";
 constexpr string_view appDescription = "@GARDEN_APP_DESCRIPTION@";
 constexpr string_view appCreator = "@GARDEN_APP_CREATOR@";
 constexpr string_view appCopyright = "@GARDEN_APP_COPYRIGHT@";
