@@ -92,7 +92,7 @@ git clone --recursive https://github.com/cfnptr/garden
 
 ## Garden Shading Language (GSL)
 
-Documentation with all GLSL changes is located [here](docs/gsl.md).
+Documentation with all GLSL changes is located [here](docs/GSL.md).
 You can install **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code.
 
 ## Third-party

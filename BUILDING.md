@@ -16,7 +16,7 @@
 2. Launch downloaded Visual Studio installer
 3. Select "Desktop development with C++" before installation
 4. Add "C++ Clang tools for Windows" inside **Installation details** (optional)
-5. Unselect "vcpkg package manager" inside **Installation details** we will use our own
+5. Unselect "vcpkg package manager" inside **Installation details** we will use our own! <---
 6. Finally click **Install** button to begin installation
 
 ## 2. Install Git
@@ -47,8 +47,9 @@ Note! Use appropriate github link if Garden engine is used as a third-party libr
 
 ## 6. Install vcpkg package manager
 
-1. Open **CMD** or **Terminal** app as Administrator. (Right click the app)
+1. Repoen **CMD** or **Terminal** app as Administrator. (Right click the app)
 2. Run ```scripts/update-vcpkg.bat``` command from the repository *scripts/* directory
+3. Reopen **CMD** or **Terminal** app to get updated system environment variables.
 
 Or
 
