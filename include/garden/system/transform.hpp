@@ -116,7 +116,7 @@ public:
 	 * @brief Adds a new child to this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity
-	 * @throw runtime_error if child already has a parent.
+	 * @throw GardenError if child already has a parent.
 	 */
 	void addChild(ID<Entity> child);
 	/**
@@ -146,14 +146,14 @@ public:
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity
-	 * @throw runtime_error if child not found.
+	 * @throw GardenError if child not found.
 	 */
 	void removeChild(ID<Entity> child);
 	/**
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param index target child index in the array
-	 * @throw runtime_error if child not found.
+	 * @throw GardenError if child not found.
 	 */
 	void removeChild(uint32 index)
 	{

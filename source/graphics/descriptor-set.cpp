@@ -351,7 +351,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			continue;
 
 		if (uniforms.find(pair.first) == uniforms.end())
-			throw runtime_error("Missing required pipeline uniform. (" + pair.first + ")");
+			throw GardenError("Missing required pipeline uniform. (" + pair.first + ")");
 
 		for (uint32 i = 0; i < newSetCount; i++)
 		{
@@ -443,7 +443,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 
 	#if GARDEN_DEBUG
 	if (pipelineUniforms.find(name) == pipelineUniforms.end())
-		throw runtime_error("Missing required pipeline uniform. (" + name + ")");
+		throw GardenError("Missing required pipeline uniform. (" + name + ")");
 
 	if (isSamplerType(uniformType) || isImageType(uniformType))
 	{

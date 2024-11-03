@@ -16,6 +16,7 @@
 #include "garden/graphics/vulkan/api.hpp"
 
 using namespace math;
+using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
@@ -135,7 +136,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 	auto result = vmaCreateImage(vulkanAPI->memoryAllocator, &imageInfo,
 		&allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
 	if (result != VK_SUCCESS)
-		throw runtime_error("Failed to allocate image.");
+		throw GardenError("Failed to allocate image.");
 
 	instance = vmaInstance;
 	allocation = vmaAllocation;
@@ -212,7 +213,7 @@ bool Image::destroy()
 			const auto& imageView = imageViewData[i];
 			if (imageView.getImage() != imageInstance)
 				continue;
-			throw runtime_error("Image view is still using destroyed image. (image: " +
+			throw GardenError("Image view is still using destroyed image. (image: " +
 				debugName + ", imageView: " + imageView.getDebugName() + ")");
 		}
 	}
@@ -732,7 +733,7 @@ bool ImageView::destroy()
 					{
 						if (ID<ImageView>(resource) != imageViewInstance)
 							continue;
-						throw runtime_error("Descriptor set is still using destroyed image view. (imageView: " +
+						throw GardenError("Descriptor set is still using destroyed image view. (imageView: " +
 							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
 					}
 				}
@@ -751,13 +752,13 @@ bool ImageView::destroy()
 			{
 				if (attachment.imageView != imageViewInstance)
 					continue;
-				throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
+				throw GardenError("Framebuffer is still using destroyed image view. (imageView: " +
 					debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
 			}
 
 			if (framebuffer.getDepthStencilAttachment().imageView == imageViewInstance)
 			{
-				throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
+				throw GardenError("Framebuffer is still using destroyed image view. (imageView: " +
 					debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
 			}
 		}

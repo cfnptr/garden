@@ -100,12 +100,12 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	auto getInstanceVersion = (PFN_vkEnumerateInstanceVersion)
 		vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion");
 	if (!getInstanceVersion)
-		throw runtime_error("Vulkan API 1.0 is not supported.");
+		throw GardenError("Vulkan API 1.0 is not supported.");
 
 	uint32 installedVersion = 0;
 	auto vkResult = (vk::Result)getInstanceVersion(&installedVersion);
 	if (vkResult != vk::Result::eSuccess)
-		throw runtime_error("Failed to get Vulkan version.");
+		throw GardenError("Failed to get Vulkan version.");
 
 	instanceVersionMajor = VK_API_VERSION_MAJOR(installedVersion);
 	instanceVersionMinor = VK_API_VERSION_MINOR(installedVersion);
@@ -203,7 +203,7 @@ static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance)
 	auto devices = instance.enumeratePhysicalDevices();
 
 	if (devices.empty())
-		throw runtime_error("No suitable physical device.");
+		throw GardenError("No suitable physical device.");
 
 	uint32 targetIndex = 0, targetScore = 0;
 
@@ -241,7 +241,7 @@ static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
 {
 	VkSurfaceKHR surface = nullptr;
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-		throw runtime_error("Failed to create window surface.");
+		throw GardenError("Failed to create window surface.");
 	return vk::SurfaceKHR(surface);
 }
 
@@ -264,7 +264,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 	}
 
 	if (graphicsIndex == UINT32_MAX)
-		throw runtime_error("No Vulkan graphics queue with present.");
+		throw GardenError("No Vulkan graphics queue with present.");
 
 	for (uint32 i = 0; i < (uint32)properties.size(); i++)
 	{
@@ -287,7 +287,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 		}
 
 		if (transferIndex == UINT32_MAX)
-			throw runtime_error("No Vulkan transfer queue.");
+			throw GardenError("No Vulkan transfer queue.");
 	}
 
 	for (uint32 i = 0; i < (uint32)properties.size(); i++)
@@ -323,7 +323,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 			}
 
 			if (computeIndex == UINT32_MAX)
-				throw runtime_error("No Vulkan compute queue.");
+				throw GardenError("No Vulkan compute queue.");
 		}
 	}
 
@@ -592,7 +592,7 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	VmaAllocator allocator = nullptr;
 	auto result = vmaCreateAllocator(&allocatorInfo, &allocator);
 	if (result != VK_SUCCESS)
-		throw runtime_error("Failed to create memory allocator.");
+		throw GardenError("Failed to create memory allocator.");
 	return allocator;
 }
 

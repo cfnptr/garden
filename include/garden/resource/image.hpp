@@ -34,7 +34,7 @@ enum class ImageFileType : uint8
 /**
  * @brief Returns image file type.
  * @param name target file type name
- * @throw runtime_error on unknown image file type.
+ * @throw GardenError on unknown image file type.
  */
 static ImageFileType toImageFileType(string_view name)
 {
@@ -46,7 +46,7 @@ static ImageFileType toImageFileType(string_view name)
 	if (name == "bmp") return ImageFileType::Bmp;
 	if (name == "psd") return ImageFileType::Psd;
 	if (name == "tga") return ImageFileType::Tga;
-	throw runtime_error("Unknown image file type. (name: " + string(name) + ")");
+	throw GardenError("Unknown image file type. (name: " + string(name) + ")");
 }
 
 };

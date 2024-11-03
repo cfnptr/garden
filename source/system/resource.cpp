@@ -137,7 +137,14 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
 	#if GARDEN_PACK_RESOURCES
-	packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
+	try
+	{
+		packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
+	}
+	catch (const exception& e)
+	{
+		throw GardenError("Failed to open \"resources.pack\" file.");
+	}
 	#endif
 	#if GARDEN_EDITOR
 	auto appInfoSystem = AppInfoSystem::Instance::get();
@@ -577,7 +584,7 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 	{
 		auto errorString = string(error);
 		FreeEXRErrorMessage(error);
-		throw runtime_error("Faield to store EXR image. ("
+		throw GardenError("Faield to store EXR image. ("
 			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
 	}
 }
@@ -869,13 +876,13 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 	{
 		int sizeX = 0, sizeY = 0;
 		if (!WebPGetInfo(data, dataSize, &sizeX, &sizeY))
-			throw runtime_error("Invalid WebP image info.");
+			throw GardenError("Invalid WebP image info.");
 		imageSize = uint2(sizeX, sizeY);
 		pixels.resize(sizeof(Color) * imageSize.x * imageSize.y);
 		auto decodeResult = WebPDecodeRGBAInto(data, dataSize,
 			pixels.data(), pixels.size(), (int)(imageSize.x * sizeof(Color)));
 		if (!decodeResult)
-			throw runtime_error("Invalid WebP image data.");
+			throw GardenError("Invalid WebP image data.");
 	}
 	else if (fileType == ImageFileType::Png)
 	{
@@ -884,14 +891,14 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		image.version = PNG_IMAGE_VERSION;
 
 		if (!png_image_begin_read_from_memory(&image, data, dataSize))
-			throw runtime_error("Invalid PNG image info.");
+			throw GardenError("Invalid PNG image info.");
 
 		image.format = PNG_FORMAT_RGBA;
 		imageSize = uint2(image.width, image.height);
 		pixels.resize(PNG_IMAGE_SIZE(image));
 
 		if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
-			throw runtime_error("Invalid PNG image data.");
+			throw GardenError("Invalid PNG image data.");
 	}
 	else if (fileType == ImageFileType::Jpg || fileType == ImageFileType::Bmp ||
 		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga)
@@ -900,7 +907,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		auto pixelData = stbi_load_from_memory(data,
 			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
-			throw runtime_error("Invalid JPG image data.");
+			throw GardenError("Invalid JPG image data.");
 		imageSize = uint2(sizeX, sizeY);
 		pixels.resize(sizeof(Color) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
@@ -917,7 +924,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		{
 			auto errorString = string(error);
 			FreeEXRErrorMessage(error);
-			throw runtime_error(errorString);
+			throw GardenError(errorString);
 		}
 
 		imageSize = uint2(sizeX, sizeY);
@@ -931,7 +938,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		auto pixelData = stbi_loadf_from_memory(data,
 			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
-			throw runtime_error("Invalid HDR image data.");
+			throw GardenError("Invalid HDR image data.");
 		imageSize = uint2(sizeX, sizeY);
 		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
@@ -1328,7 +1335,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 
 	if (!hasVertexShader && !hasFragmentShader)
 	{
-		throw runtime_error("Graphics shader file does not exist or it is ambiguous. ("
+		throw GardenError("Graphics shader file does not exist or it is ambiguous. ("
 			"path: " + data.shaderPath.generic_string() + ")");
 	}
 
@@ -1377,7 +1384,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 		}
 		
 		if (!compileResult)
-			throw runtime_error("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
+			throw GardenError("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
 		GARDEN_LOG_TRACE("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
@@ -1560,7 +1567,10 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		}
 
 		if (!loadOrCompileGraphics(pipelineData))
-			abort();
+		{
+			throw GardenError("Failed to load graphics pipeline. ("
+				"path: " + path.generic_string() + ")");
+		}
 			
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = graphicsAPI->graphicsPipelinePool.get(pipeline);
@@ -1579,7 +1589,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 
 	fs::path computeInputPath;
 	if (!File::tryGetResourcePath(data.resourcesPath, computePath, computeInputPath))
-		throw runtime_error("Compute shader file does not exist, or it is ambiguous.");
+		throw GardenError("Compute shader file does not exist, or it is ambiguous.");
 
 	auto headerPath = "shaders" / data.shaderPath;
 	computePath += ".spv"; headerPath += ".gslh";
@@ -1612,7 +1622,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 		}
 		
 		if (!compileResult)
-			throw runtime_error("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
+			throw GardenError("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
 		GARDEN_LOG_TRACE("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
@@ -1717,7 +1727,10 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		#endif
 		
 		if (!loadOrCompileCompute(pipelineData))
-			abort();
+		{
+			throw GardenError("Failed to load compute pipeline. ("
+				"path: " + path.generic_string() + ")");
+		}
 
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
 		auto pipelineView = graphicsAPI->computePipelinePool.get(pipeline);

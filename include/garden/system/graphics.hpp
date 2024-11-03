@@ -261,8 +261,9 @@ public:
 	 */
 	void setWindowTitle(const string& title);
 	/**
-	 * @brief Sets window icon image.
+	 * @brief Sets window icon images.
 	 * @param paths target icon paths
+	 * @throw GardenError if icons are not supported on a target platform.
 	 */
 	void setWindowIcon(const vector<string>& paths);
 
@@ -368,6 +369,8 @@ public:
 	 * @param size buffer size in bytes
 	 * @param usage buffer preferred usage
 	 * @param strategy buffer allocation strategy
+	 * 
+	 * @throw GardenError if failed to allocate buffer.
 	 */
 	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access, const void* data, uint64 size,
 		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default);
@@ -379,6 +382,8 @@ public:
 	 * @param size buffer size in bytes
 	 * @param usage buffer preferred usage
 	 * @param strategy buffer allocation strategy
+	 * 
+	 * @throw GardenError if failed to allocate buffer.
 	 */
 	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access, uint64 size,
 		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
@@ -396,6 +401,8 @@ public:
 	 * @param offset data array element offset
 	 * @param usage buffer preferred usage
 	 * @param strategy buffer allocation strategy
+	 * 
+	 * @throw GardenError if failed to allocate buffer.
 	 */
 	template<typename T = float>
 	ID<Buffer> createBuffer(
@@ -424,6 +431,8 @@ public:
 	 * @param offset data array element offset
 	 * @param usage buffer preferred usage
 	 * @param strategy buffer allocation strategy
+	 * 
+	 * @throw GardenError if failed to allocate buffer.
 	 */
 	template<typename T = float, psize S>
 	ID<Buffer> createBuffer(
@@ -490,6 +499,8 @@ public:
 	 * @param[in] size image size in pixels
 	 * @param strategy image allocation strategy
 	 * @param dataFormat data array format
+	 * 
+	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
 		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
@@ -503,6 +514,8 @@ public:
 	 * @param[in] size image size in pixels
 	 * @param strategy image allocation strategy
 	 * @param dataFormat data array format
+	 * 
+	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
 		Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
@@ -520,6 +533,8 @@ public:
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
 	 * @param dataFormat data array format
+	 * 
+	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
 		Image::Format format, Image::Bind bind, const Image::Mips& data, uint2 size,
@@ -539,6 +554,8 @@ public:
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
 	 * @param dataFormat data array format
+	 * 
+	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
 		Image::Format format, Image::Bind bind, const Image::Mips& data, int32 size,

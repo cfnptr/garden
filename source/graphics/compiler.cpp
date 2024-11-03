@@ -114,15 +114,21 @@ namespace
 		int8 isLocalSize = 0;
 	};
 
-	class CompileError final : public runtime_error
+	class CompileError final : public GardenError
 	{
+		string errorMessage, word;
+		int32 line = -1;
 	public:
-		CompileError(const string& message, int32 line = -1, const string& word = "") :
-			runtime_error(
-			line < 0 ? "error:" + (word.length() > 0 ?
-				"'" + word + "' : " : " ") + message :
-			to_string(line) + ": error:" + (word.length() > 0 ?
-				"'" + word + "' : " : " ") + message) { }
+		CompileError(const string& errorMessage, int32 line = -1, const string& word = "") noexcept :
+			errorMessage(errorMessage), word(word), line(line)
+		{
+			message = line < 0 ? "error:" + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage :
+				to_string(line) + ": error:" + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage;
+		}
+
+		const string& getErrorMessage() const noexcept { return errorMessage; }
+		const string& getWord() const noexcept { return word; }
+		int32 getLine() const noexcept { return line; }
 	};
 }
 
@@ -368,7 +374,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		uniform.writeAccess = writeAccess;
 
 		if (!uniforms.emplace(lineData.uniformName, uniform).second)
-			throw runtime_error("Failed to emplace uniform.");
+			throw GardenError("Failed to emplace uniform.");
 	}
 	else
 	{
@@ -1265,7 +1271,7 @@ static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& 
 
 	auto result = std::system(command.c_str());
 	if (result != 0)
-		throw runtime_error("_GLSLC");
+		throw GardenError("_GLSLC");
 
 	// On some systems file can be still locked.
 	auto attemptCount = 0;
@@ -2154,15 +2160,15 @@ static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
 	if (dataOffset + Compiler::gslMagicSize + sizeof(gslHeader) > dataSize)
-		throw runtime_error("Invalid GSL header size.");
+		throw GardenError("Invalid GSL header size.");
 	if (memcmp(data + dataOffset, gslMagic.data(), Compiler::gslMagicSize) != 0)
-		throw runtime_error("Invalid GSL header magic value.");
+		throw GardenError("Invalid GSL header magic value.");
 	dataOffset += Compiler::gslMagicSize;
 	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
-		throw runtime_error("Invalid GSL header version or endianness.");
+		throw GardenError("Invalid GSL header version or endianness.");
 	dataOffset += sizeof(gslHeader);
 	if (dataOffset + sizeof(T) > dataSize)
-		throw runtime_error("Invalid GSL header data size.");
+		throw GardenError("Invalid GSL header data size.");
 	values = *(const T*)(data + dataOffset);
 	dataOffset += sizeof(T);
 }
@@ -2174,18 +2180,18 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 	for (uint8 i = 0; i < count; i++)
 	{
 		if (dataOffset + sizeof(uint8) > dataSize)
-			throw runtime_error("Invalid GSL header data size.");
+			throw GardenError("Invalid GSL header data size.");
 		auto nameLength = *(const uint8*)(data + dataOffset);
 		dataOffset += sizeof(uint8);
 		if (dataOffset + nameLength + sizeof(T) > dataSize)
-			throw runtime_error("Invalid GSL header data size.");
+			throw GardenError("Invalid GSL header data size.");
 		string name(nameLength, ' ');
 		memcpy(name.data(), data + dataOffset, nameLength);
 		dataOffset += nameLength;
 		const auto& value = *(const T*)(data + dataOffset);
 		dataOffset += sizeof(T);
 		if (!valueArray.emplace(std::move(name), value).second)
-			throw runtime_error("Invalid GSL header data.");
+			throw GardenError("Invalid GSL header data.");
 	}
 }
 
@@ -2203,9 +2209,9 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	data.packReader->readItemData(headerFilePath, dataBuffer, threadIndex);
 	#else
 	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
-		throw runtime_error("Failed to open header file");
+		throw GardenError("Failed to open header file");
 	if (dataBuffer.empty())
-		throw runtime_error("Header file is empty");
+		throw GardenError("Header file is empty");
 	#endif
 
 	GraphicsGslValues values; uint32 dataOffset = 0;
@@ -2215,7 +2221,7 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	if (dataOffset + values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute) +
 		values.blendStateCount * sizeof(GraphicsPipeline::BlendState) > dataSize)
 	{
-		throw runtime_error("Invalid GSL header data size.");
+		throw GardenError("Invalid GSL header data size.");
 	}
 
 	if (values.vertexAttributeCount > 0)
@@ -2256,7 +2262,7 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	#endif
 
 	if (data.vertexCode.empty() && data.fragmentCode.empty())
-		throw runtime_error("Graphics shader files are empty");
+		throw GardenError("Graphics shader files are empty");
 }
 
 //******************************************************************************************************************
@@ -2272,9 +2278,9 @@ void Compiler::loadComputeShader(ComputeData& data)
 	data.packReader->readItemData(headerFilePath, dataBuffer, threadIndex);
 	#else
 	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
-		throw runtime_error("Failed to open header file");
+		throw GardenError("Failed to open header file");
 	if (dataBuffer.empty())
-		throw runtime_error("Header file is empty");
+		throw GardenError("Header file is empty");
 	#endif
 
 	ComputeGslValues values; uint32 dataOffset = 0; 
@@ -2297,9 +2303,9 @@ void Compiler::loadComputeShader(ComputeData& data)
 	data.packReader->readItemData(computeFilePath, data.code, threadIndex);
 	#else
 	if (!File::tryLoadBinary(data.cachesPath / computeFilePath, data.code))
-		throw runtime_error("Failed to open compute shader file");
+		throw GardenError("Failed to open compute shader file");
 	if (data.code.empty())
-		throw runtime_error("Compute shader file is empty");
+		throw GardenError("Compute shader file is empty");
 	#endif
 }
 

@@ -388,7 +388,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 	{
 		if (createData.maxBindlessCount > 0 && !VulkanAPI::get()->hasDescriptorIndexing)
 		{
-			throw runtime_error("Bindless descriptors are not supported on this GPU. ("
+			throw GardenError("Bindless descriptors are not supported on this GPU. ("
 				"pipeline: )" + createData.shaderPath.generic_string() + ")");
 		}
 
@@ -424,7 +424,7 @@ bool Pipeline::destroy()
 			const auto& descriptorSet = descriptorSetData[i];
 			if (descriptorSet.getPipelineType() != type || descriptorSet.getPipeline() != pipelineInstance)
 				continue;
-			throw runtime_error("Descriptor set is still using destroyed pipeline. (pipeline: " +
+			throw GardenError("Descriptor set is still using destroyed pipeline. (pipeline: " +
 				debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
 		}
 	}
@@ -502,7 +502,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const map<
 		#if GARDEN_DEBUG
 		if (specConstValues.find(pair.first) == specConstValues.end())
 		{
-			throw runtime_error("Missing required pipeline spec const. ("
+			throw GardenError("Missing required pipeline spec const. ("
 				"specConst: " + pair.first + ","
 				"pipelinePath: " + path.generic_string() + ")");
 		}

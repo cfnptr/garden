@@ -299,6 +299,8 @@ public:
 	 * @param maxBindlessCount maximum bindless descriptor count
 	 * @param[in] specConsts specialization constants array or empty
 	 * @param[in] stateOverrides pipeline state overrides or null
+	 * 
+	 * @throw GardenError if failed to load graphics pipeline.
 	 */
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, ID<Framebuffer> framebuffer, 
 		bool useAsyncRecording = false, bool loadAsync = true, uint8 subpassIndex = 0,
@@ -315,6 +317,8 @@ public:
 	 * @param maxBindlessCount maximum bindless descriptor count
 	 * @param[in] specConsts specialization constants array or empty
 	 * @param[in] samplerStateOverrides sampler state override array or empty
+	 * 
+	 * @throw GardenError if failed to load compute pipeline.
 	 */
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,

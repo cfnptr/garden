@@ -17,6 +17,7 @@
 
 using namespace std;
 using namespace math;
+using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
@@ -97,7 +98,7 @@ static void createVkBuffer(Buffer::Bind bind, Buffer::Access access, Buffer::Usa
 	auto result = vmaCreateBuffer(vulkanAPI->memoryAllocator,
 		&bufferInfo, &allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
 	if (result != VK_SUCCESS)
-		throw runtime_error("Failed to allocate GPU buffer.");
+		throw GardenError("Failed to allocate GPU buffer.");
 
 	instance = vmaInstance;
 	allocation = vmaAllocation;
@@ -105,7 +106,7 @@ static void createVkBuffer(Buffer::Bind bind, Buffer::Access access, Buffer::Usa
 	VmaAllocationInfo allocationInfo = {};
 	vmaGetAllocationInfo(vulkanAPI->memoryAllocator, vmaAllocation, &allocationInfo);
 	if (access != Buffer::Access::None && !allocationInfo.pMappedData)
-		throw runtime_error("Failed to map GPU memory.");
+		throw GardenError("Failed to map buffer memory.");
 	map = (uint8*)allocationInfo.pMappedData;
 }
 
@@ -164,7 +165,7 @@ bool Buffer::destroy()
 					{
 						if (ID<Buffer>(resource) != bufferInstance)
 							continue;
-						throw runtime_error("Descriptor set is still using destroyed buffer. (buffer: " +
+						throw GardenError("Descriptor set is still using destroyed buffer. (buffer: " +
 							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
 					}
 				}
@@ -213,7 +214,7 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 		auto result = vmaInvalidateAllocation(VulkanAPI::get()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
 		if (result != VK_SUCCESS)
-			throw runtime_error("Failed to invalidate GPU memory.");
+			throw GardenError("Failed to invalidate buffer memory.");
 	}
 	else abort();
 }
@@ -228,7 +229,7 @@ void Buffer::flush(uint64 size, uint64 offset)
 		auto result = vmaFlushAllocation(VulkanAPI::get()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
 		if (result != VK_SUCCESS)
-			throw runtime_error("Failed to flush GPU memory.");
+			throw GardenError("Failed to flush buffer memory.");
 	}
 	else abort();
 }
@@ -253,7 +254,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 		auto result = vmaMapMemory(vulkanAPI->memoryAllocator,
 			(VmaAllocation)allocation, (void**)&map);
 		if (result != VK_SUCCESS)
-			throw runtime_error("Failed to map GPU memory.");
+			throw GardenError("Failed to map GPU memory.");
 		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
 		flush(size, offset);
 		vmaUnmapMemory(vulkanAPI->memoryAllocator, (VmaAllocation)allocation);

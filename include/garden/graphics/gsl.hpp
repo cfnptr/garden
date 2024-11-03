@@ -210,6 +210,7 @@ constexpr string_view gslUniformTypeNames[(psize)GslUniformType::Count] =
 /***********************************************************************************************************************
  * @brief Returns GSL data type.
  * @param dataType target GSL data type name string (camelCase)
+ * @throw GardenError on unknown GSL data type.
  */
 static GslDataType toGslDataType(string_view dataType)
 {
@@ -238,12 +239,13 @@ static GslDataType toGslDataType(string_view dataType)
 	if (dataType == "float4x2") return GslDataType::Float4x2;
 	if (dataType == "float3x4") return GslDataType::Float3x4;
 	if (dataType == "float4x3") return GslDataType::Float4x3;
-	throw runtime_error("Unknown GSL data type. (" + string(dataType) + ")");
+	throw GardenError("Unknown GSL data type. (" + string(dataType) + ")");
 }
 
 /**
  * @brief Returns GSL data format.
  * @param dataFormat target GSL data format name string (camelCase)
+ * @throw GardenError on unknown GSL data format type.
  */
 static GslDataFormat toGslDataFormat(string_view dataFormat)
 {
@@ -254,12 +256,13 @@ static GslDataFormat toGslDataFormat(string_view dataFormat)
 	if (dataFormat == "u8") return GslDataFormat::U8;
 	if (dataFormat == "u16") return GslDataFormat::U16;
 	if (dataFormat == "u32") return GslDataFormat::U32;
-	throw runtime_error("Unknown GSL data format type. (" + string(dataFormat) + ")");
+	throw GardenError("Unknown GSL data format type. (" + string(dataFormat) + ")");
 }
 
 /***********************************************************************************************************************
  * @brief Returns GSL image format.
  * @param imageFormat target GSL image format name string (camelCase)
+ * @throw GardenError on unknown GSL image format type.
  */
 static GslImageFormat toGslImageFormat(string_view imageFormat)
 {
@@ -287,12 +290,13 @@ static GslImageFormat toGslImageFormat(string_view imageFormat)
 	if (imageFormat == "u8r") return GslImageFormat::U8R;
 	if (imageFormat == "u16r") return GslImageFormat::U16R;
 	if (imageFormat == "u32r") return GslImageFormat::U32R;
-	throw runtime_error("Unknown GSL image format type. (" + string(imageFormat) + ")");
+	throw GardenError("Unknown GSL image format type. (" + string(imageFormat) + ")");
 }
 
 /***********************************************************************************************************************
  * @brief Returns GSL uniform type.
  * @param uniformType target GSL uniform type name string (camelCase)
+ * @throw GardenError on unknown GSL uniform type.
  */
 static GslUniformType toGslUniformType(string_view uniformType)
 {
@@ -341,7 +345,7 @@ static GslUniformType toGslUniformType(string_view uniformType)
 	if (uniformType == "uniformBuffer") return GslUniformType::UniformBuffer;
 	if (uniformType == "storageBuffer") return GslUniformType::StorageBuffer;
 	if (uniformType == "pushConstants") return GslUniformType::PushConstants;
-	throw runtime_error("Unknown GSL uniform type. (" + string(uniformType) + ")");
+	throw GardenError("Unknown GSL uniform type. (" + string(uniformType) + ")");
 }
 
 /***********************************************************************************************************************

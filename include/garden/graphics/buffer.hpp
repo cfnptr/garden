@@ -126,6 +126,8 @@ public:
 	 * 
 	 * @param size memory region size (0 = full buffer size)
 	 * @param offset memory region offset
+	 * 
+	 * @throw GardenError if failed to invalidate buffer memory.
 	 */
 	void invalidate(uint64 size = 0, uint64 offset = 0);
 	/**
@@ -134,6 +136,8 @@ public:
 	 * 
 	 * @param size memory region size (0 = full buffer size)
 	 * @param offset memory region offset
+	 * 
+	 * @throw GardenError if failed to flush buffer memory.
 	 */
 	void flush(uint64 size = 0, uint64 offset = 0);
 
@@ -143,6 +147,8 @@ public:
 	 * @param[in] data target buffer data
 	 * @param size data size in bytes (0 = full buffer size)
 	 * @param offset offset in the buffer in bytes
+	 * 
+	 * @throw GardenError if failed to map buffer memory.
 	 */
 	void writeData(const void* data, uint64 size = 0, uint64 offset = 0);
 	/**
@@ -153,6 +159,8 @@ public:
 	 * @param count array element count (0 = full array size)
 	 * @param arrayOffset offset of the element in the array
 	 * @param bufferOffset offset in the buffer in elements
+	 * 
+	 * @throw GardenError if failed to map buffer memory.
 	 */
 	template<typename T = float>
 	void writeData(const vector<T>& data, psize count = 0, psize arrayOffset = 0, uint64 bufferOffset = 0)
@@ -177,6 +185,8 @@ public:
 	 * @param count array element count (0 = full array size)
 	 * @param arrayOffset offset of the element in the array
 	 * @param bufferOffset offset in the buffer in elements
+	 * 
+	 * @throw GardenError if failed to map buffer memory.
 	 */
 	template<typename T = float, psize S>
 	void writeData(const array<T, S>& data, psize count = 0, psize arrayOffset = 0, uint64 bufferOffset = 0)
