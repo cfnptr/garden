@@ -627,8 +627,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 			string name;
 			#endif
 
-			auto swapchain = dynamic_cast<VulkanSwapchain*>(graphicsAPI->swapchain);
-			swapchain->beginSecondaryCommandBuffers(
+			VulkanAPI::get()->vulkanSwapchain->beginSecondaryCommandBuffers(
 				subpasses.empty() ? nullptr : (VkFramebuffer)instance, 
 				(VkRenderPass)renderPass, graphicsAPI->currentSubpassIndex, 
 				colorAttachments, depthStencilAttachment, name);
@@ -672,7 +671,7 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		auto swapchain = dynamic_cast<VulkanSwapchain*>(graphicsAPI->swapchain);
+		auto swapchain = vulkanAPI->vulkanSwapchain;
 
 		if (!vulkanAPI->secondaryCommandBuffers.empty())
 			swapchain->endSecondaryCommandBuffers();
@@ -715,10 +714,7 @@ void Framebuffer::endRenderPass()
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->secondaryCommandBuffers.empty())
-		{
-			auto swapchain = dynamic_cast<VulkanSwapchain*>(graphicsAPI->swapchain);
-			swapchain->endSecondaryCommandBuffers();
-		}
+			vulkanAPI->vulkanSwapchain->endSecondaryCommandBuffers();
 	}
 	else abort();
 

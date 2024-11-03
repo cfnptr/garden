@@ -268,6 +268,11 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		const auto& pipelineState = pipelineStateSearch == pipelineStateOverrides.end() ?
 			createData.pipelineState : pipelineStateSearch->second;
 
+		#if GARDEN_DEBUG
+		if (pipelineState.depthTesting || pipelineState.depthWriting)
+			GARDEN_ASSERT(createData.depthStencilFormat != Image::Format::Undefined);
+		#endif
+
 		vk::PipelineInputAssemblyStateCreateInfo assemblyInfo({},
 			toVkPrimitiveTopology(pipelineState.topology), VK_FALSE); // TODO: support primitive restarting
 

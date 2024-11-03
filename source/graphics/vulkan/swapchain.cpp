@@ -164,13 +164,13 @@ static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 qu
 }
 
 //**********************************************************************************************************************
-static vector<Swapchain::Buffer*> createVkSwapchainBuffers(VulkanAPI* vulkanAPI,
+static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vulkanAPI,
 	vk::SwapchainKHR swapchain, uint2 framebufferSize, vk::Format surfaceFormat)
 {
 	auto images = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
 	auto imageFormat = toImageFormat(surfaceFormat);
 	const auto imageBind = Image::Bind::ColorAttachment | Image::Bind::TransferDst;
-	vector<Swapchain::Buffer*> buffers(images.size());
+	vector<VulkanSwapchain::VkBuffer*> buffers(images.size());
 	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 
 	for (uint32 i = 0; i < (uint32)buffers.size(); i++)
@@ -204,21 +204,20 @@ static vector<Swapchain::Buffer*> createVkSwapchainBuffers(VulkanAPI* vulkanAPI,
 
 	return buffers;
 }
-static void destroyVkSwapchainBuffers(VulkanAPI* vulkanAPI, const vector<Swapchain::Buffer*>& buffers)
+static void destroyVkSwapchainBuffers(VulkanAPI* vulkanAPI, const vector<VulkanSwapchain::VkBuffer*>& buffers)
 {
 	for (auto buffer : buffers)
 	{
-		auto vkBuffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffer);
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		vulkanAPI->device.destroyQueryPool(vkBuffer->queryPool);
+		vulkanAPI->device.destroyQueryPool(buffer->queryPool);
 		#endif
-		for (auto commandPool : vkBuffer->secondaryCommandPools)
+		for (auto commandPool : buffer->secondaryCommandPools)
 			vulkanAPI->device.destroyCommandPool(commandPool);
-		auto imageView = vulkanAPI->imagePool.get(vkBuffer->colorImage);
+		auto imageView = vulkanAPI->imagePool.get(buffer->colorImage);
 		if (imageView->hasDefaultView())
 			vulkanAPI->imageViewPool.destroy(imageView->getDefaultView());
-		vulkanAPI->imagePool.destroy(vkBuffer->colorImage);
-		delete vkBuffer;
+		vulkanAPI->imagePool.destroy(buffer->colorImage);
+		delete buffer;
 	}
 }
 
@@ -240,11 +239,12 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 
 	vk::Format format;
 	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
-	buffers = createVkSwapchainBuffers(vulkanAPI, instance, framebufferSize, format);
+	vulkanBuffers = createVkSwapchainBuffers(vulkanAPI, instance, framebufferSize, format);
+	buffers.assign(vulkanBuffers.begin(), vulkanBuffers.end());
 }
 VulkanSwapchain::~VulkanSwapchain()
 {
-	destroyVkSwapchainBuffers(vulkanAPI, buffers);
+	destroyVkSwapchainBuffers(vulkanAPI, vulkanBuffers);
 	vulkanAPI->device.destroySwapchainKHR(instance);
 
 	for (uint8 i = 0; i < frameLag; i++)
@@ -259,12 +259,13 @@ VulkanSwapchain::~VulkanSwapchain()
 void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
 	vulkanAPI->device.waitIdle();
-	destroyVkSwapchainBuffers(vulkanAPI, buffers);
+	destroyVkSwapchainBuffers(vulkanAPI, vulkanBuffers);
 
 	vk::Format format;
 	auto newInstance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, instance, format);
 	vulkanAPI->device.destroySwapchainKHR(instance);
-	buffers = createVkSwapchainBuffers(vulkanAPI, newInstance, framebufferSize, format);
+	vulkanBuffers = createVkSwapchainBuffers(vulkanAPI, newInstance, framebufferSize, format);
+	buffers.assign(vulkanBuffers.begin(), vulkanBuffers.end());
 
 	this->framebufferSize = framebufferSize;
 	this->useVsync = useVsync;
@@ -292,7 +293,7 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 		throw GardenError("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
 
-	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
+	auto buffer = vulkanBuffers[bufferIndex];
 	if (threadPool)
 	{
 		threadPool->addTasks(ThreadPool::Task([this, buffer](const ThreadPool::Task& task)
@@ -318,7 +319,7 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 //**********************************************************************************************************************
 void VulkanSwapchain::submit()
 {
-	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
+	auto buffer = vulkanBuffers[bufferIndex];
 	vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	vk::SubmitInfo submitInfo(1, &imageAcquiredSemaphores[frameIndex], &pipelineStage, 
 		1, &buffer->primaryCommandBuffer, 1, &drawCompleteSemaphores[frameIndex]);
@@ -348,7 +349,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 	vulkanAPI->secondaryCommandBuffers.resize(threadCount);
 	vulkanAPI->secondaryCommandStates.resize(threadCount);
 	
-	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
+	auto buffer = vulkanBuffers[bufferIndex];
 	if (buffer->secondaryCommandBufferIndex < buffer->secondaryCommandBuffers.size())
 	{
 		memcpy(vulkanAPI->secondaryCommandBuffers.data(),

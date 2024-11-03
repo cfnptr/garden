@@ -178,7 +178,7 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
-	libraries/ecsm/include libraries/vma/include libraries/stb
+	libraries/ecsm/include libraries/voxy/include libraries/vma/include libraries/stb
 	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash 
 	ecsm-static math-static conf-static pack-static logy-static nets-static 
@@ -259,6 +259,8 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
 	set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
 	set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
 endif()
+set(CPP_EXCEPTIONS_ENABLED ON CACHE BOOL "" FORCE)
+set(CPP_RTTI_ENABLED ON CACHE BOOL "" FORCE)
 add_subdirectory(libraries/jolt/Build)
 
 if(GARDEN_USE_TRACY_PROFILER)
