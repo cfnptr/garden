@@ -52,11 +52,14 @@ public:
 	 * @param[in] data target binary data to hash
 	 * @param size data buffer size in bytes
 	 * @param[in] state hash state (or null)
+	 * 
+	 * @throw GardenError on hash creation error.
 	 */
 	Hash128(const void* data, psize size, State state = nullptr);
 	/**
 	 * @brief Creates a new hash from the base64 encoded string. (non-cryptographic)
 	 * @param base64 target base64 encoded string
+	 * @throw GardenError on hash creation error.
 	 */
 	Hash128(string_view base64);
 
@@ -65,7 +68,9 @@ public:
 	 * 
 	 * @param[in] data target data to hash
 	 * @param[in] state hash state (or null)
-	 * @tparam T vector data type 
+	 * @tparam T vector data type
+	 * 
+	 * @throw GardenError on hash creation error.
 	 */
 	template<typename T>
 	Hash128(const vector<T>& data, State state = nullptr) :
@@ -76,7 +81,9 @@ public:
 	 * @param[in] data target data to hash
 	 * @param[in] state hash state (or null)
 	 * @tparam T array data type 
-	 * @tparam S array element count 
+	 * @tparam S array element count
+	 * 
+	 * @throw GardenError on hash creation error.
 	 */
 	template<typename T, psize S>
 	Hash128(const array<T, S>& data, State state = nullptr) :
@@ -120,6 +127,7 @@ public:
 	/******************************************************************************************************************
 	 * @brief Allocates a new hash state. (non-cryptographic)
 	 * @details You can reuse the same state to improve hashing speed.
+	 * @throw GardenError on hash state creation error.
 	 */
 	static State createState();
 	/**
@@ -131,6 +139,7 @@ public:
 	/**
 	 * @brief Resets hash state to begin a new hash session.
 	 * @param state target hash state
+	 * @throw GardenError on hash state reset error.
 	 */
 	static void resetState(State state);
 	/**
@@ -139,6 +148,8 @@ public:
 	 * @param state hash state to use
 	 * @param[in] data target binary data to hash
 	 * @param size data buffer size in bytes
+	 * 
+	 * @throw GardenError on hash state update error.
 	 */
 	static void updateState(State state, const void* data, psize size);
 	/**
@@ -154,6 +165,8 @@ public:
 	 * @param state hash state to use
 	 * @param[in] data target data to hash
 	 * @tparam T vector data type
+	 * 
+	 * @throw GardenError on hash state update error.
 	 */
 	template<typename T>
 	static void updateState(State state, const vector<T>& data) {
@@ -165,6 +178,8 @@ public:
 	 * @param[in] data target data to hash
 	 * @tparam T array data type 
 	 * @tparam S array element count 
+	 * 
+	 * @throw GardenError on hash state update error.
 	 */
 	template<typename T, psize S>
 	static void updateState(State state, const array<T, S>& data) {

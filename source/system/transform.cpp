@@ -232,7 +232,7 @@ void TransformComponent::addChild(ID<Entity> child)
 	GARDEN_ASSERT(child != entity);
 
 	if (!tryAddChild(child))
-		throw runtime_error("Failed to add child, child already has a parent.");
+		throw GardenError("Failed to add child, child already has a parent.");
 }
 bool TransformComponent::tryAddChild(ID<Entity> child)
 {
@@ -289,7 +289,7 @@ void TransformComponent::removeChild(ID<Entity> child)
 	GARDEN_ASSERT(child != entity);
 
 	if (!tryRemoveChild(child));
-		throw runtime_error("Failed to remove child, not found.");
+		throw GardenError("Failed to remove child, not found.");
 }
 bool TransformComponent::tryRemoveChild(ID<Entity> child)
 {

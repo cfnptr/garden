@@ -62,7 +62,7 @@ void LinkComponent::regenerateUUID()
 	auto result = linkSystem->uuidMap.emplace(uuid, entity);
 	
 	if (!result.second)
-		throw runtime_error("Link UUID collision occured.");
+		throw GardenError("Link UUID collision occured.");
 }
 bool LinkComponent::trySetUUID(const Hash128& uuid)
 {

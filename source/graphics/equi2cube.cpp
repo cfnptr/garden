@@ -86,8 +86,9 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 	{
 		auto errorString = string(error);
 		FreeEXRErrorMessage(error);
-		throw runtime_error("Faield to store EXR image. ("
-			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
+		throw GardenError("Faield to store EXR image. ("
+			"path: " + filePath.generic_string() + ", "
+			"error: " + errorString + ")");
 	}
 }
 
@@ -118,8 +119,9 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		{
 			auto errorString = string(error);
 			FreeEXRErrorMessage(error);
-			throw runtime_error("Failed to load EXR image. ("
-				"path: " + filePath.generic_string() + ", error: " + errorString + ")");
+			throw GardenError("Failed to load EXR image. ("
+				"path: " + filePath.generic_string() + ", "
+				"error: " + errorString + ")");
 		}
 	}
 	else if (extension == ".hdr")
@@ -127,11 +129,11 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		pixels = stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &sizeX, &sizeY, nullptr, 4);
 		if (!pixels)
-			throw runtime_error("Failed to load HDR image. (path: " + filePath.generic_string() + ")");
+			throw GardenError("Failed to load HDR image. (path: " + filePath.generic_string() + ")");
 	}
 	else
 	{
-		throw runtime_error("Unsupported image file extension. ("
+		throw GardenError("Unsupported image file extension. ("
 			"path: " + filePath.generic_string() + ")");
 	}
 
@@ -142,7 +144,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto cubemapSize = equiSize.x / 4;
 	if (equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
-		throw runtime_error("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
+		throw GardenError("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
 
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1u;

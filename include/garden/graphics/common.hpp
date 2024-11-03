@@ -125,13 +125,13 @@ constexpr string_view samplerFilterNames[(psize)SamplerFilter::Count] =
 /**
  * @brief Returns pipeline type.
  * @param pipelineType target pipeline type name (camelCase)
- * @throw runtime_error on unknown pipeline type.
+ * @throw GardenError on unknown pipeline type.
  */
 static PipelineType toPipelineType(string_view pipelineType)
 {
 	if (pipelineType == "graphics") return PipelineType::Graphics;
 	if (pipelineType == "compute") return PipelineType::Compute;
-	throw runtime_error("Unknown pipeline type. (" + string(pipelineType) + ")");
+	throw GardenError("Unknown pipeline type. (" + string(pipelineType) + ")");
 }
 /**
  * @brief Returns pipeline type name string.
@@ -146,13 +146,13 @@ static string_view toString(PipelineType pipelineType) noexcept
 /**
  * @brief Returns sampler filter type.
  * @param samplerFilter target sampler filter name (camelCase)
- * @throw runtime_error on unknown sampler filter type.
+ * @throw GardenError on unknown sampler filter type.
  */
 static SamplerFilter toSamplerFilter(string_view samplerFilter)
 {
 	if (samplerFilter == "nearest") return SamplerFilter::Nearest;
 	if (samplerFilter == "linear") return SamplerFilter::Linear;
-	throw runtime_error("Unknown sampler filter type. (" + string(samplerFilter) + ")");
+	throw GardenError("Unknown sampler filter type. (" + string(samplerFilter) + ")");
 }
 /**
  * @brief Returns sampler filter name string.

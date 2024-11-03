@@ -537,7 +537,7 @@ public:
 /**
  * @brief Returns sampler wrap mode.
  * @param samplerWrap target sampler wrap mode name string (camelCase)
- * @throw runtime_error on unknown sampler wrap mode.
+ * @throw GardenError on unknown sampler wrap mode.
  */
 static Pipeline::SamplerWrap toSamplerWrap(string_view samplerWrap)
 {
@@ -546,12 +546,12 @@ static Pipeline::SamplerWrap toSamplerWrap(string_view samplerWrap)
 	if (samplerWrap == "clampToEdge") return Pipeline::SamplerWrap::ClampToEdge;
 	if (samplerWrap == "clampToBorder") return Pipeline::SamplerWrap::ClampToBorder;
 	if (samplerWrap == "mirrorClampToEdge") return Pipeline::SamplerWrap::MirrorClampToEdge;
-	throw runtime_error("Unknown sampler wrap type. (" + string(samplerWrap) + ")");
+	throw GardenError("Unknown sampler wrap type. (" + string(samplerWrap) + ")");
 }
 /**
  * @brief Returns border color type.
  * @param borderColor target border color name string (camelCase)
- * @throw runtime_error on unknown border color type.
+ * @throw GardenError on unknown border color type.
  */
 static Pipeline::BorderColor toBorderColor(string_view borderColor)
 {
@@ -561,12 +561,12 @@ static Pipeline::BorderColor toBorderColor(string_view borderColor)
 	if (borderColor == "intOpaqueBlack") return Pipeline::BorderColor::IntOpaqueBlack;
 	if (borderColor == "floatOpaqueWhite") return Pipeline::BorderColor::FloatOpaqueWhite;
 	if (borderColor == "intOpaqueWhite") return Pipeline::BorderColor::IntOpaqueWhite;
-	throw runtime_error("Unknown border color type. (" + string(borderColor) + ")");
+	throw GardenError("Unknown border color type. (" + string(borderColor) + ")");
 }
 /**
  * @brief Returns comparison operator type.
  * @param compareOperation target comparison operator name string (camelCase)
- * @throw runtime_error on unknown comparison operator type.
+ * @throw GardenError on unknown comparison operator type.
  */
 static Pipeline::CompareOperation toCompareOperation(string_view compareOperation)
 {
@@ -578,7 +578,7 @@ static Pipeline::CompareOperation toCompareOperation(string_view compareOperatio
 	if (compareOperation == "notEqual") return Pipeline::CompareOperation::NotEqual;
 	if (compareOperation == "greaterOrEqual") return Pipeline::CompareOperation::GreaterOrEqual;
 	if (compareOperation == "always") return Pipeline::CompareOperation::Always;
-	throw runtime_error("Unknown compare operation type. (" + string(compareOperation) + ")");
+	throw GardenError("Unknown compare operation type. (" + string(compareOperation) + ")");
 }
 
 /***********************************************************************************************************************

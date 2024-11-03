@@ -33,7 +33,7 @@ public:
 	 * @param[in] filePath target file path
 	 * @param[out] data binary data buffer
 	 * 
-	 * @throw runtime_error if failed to load file data.
+	 * @throw GardenError if failed to load file data.
 	 */
 	static void loadBinary(const fs::path& filePath, vector<uint8>& data);
 	/**

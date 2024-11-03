@@ -16,11 +16,11 @@
 #include "garden/os.hpp"
 #include "garden/arch.hpp"
 #include "garden/simd.hpp"
+#include "garden/error.hpp"
 
 #include "math/types.hpp"
 #include "math/version.hpp"
 
-#include <stdexcept>
 #include <filesystem>
 #include <string_view>
 
@@ -82,7 +82,7 @@ namespace garden
 	 * @brief Allocates memory blocks.
 	 * @tparam T target element type
 	 * @param elementCount number of elements
-	 * @throw runtime_error if failed to allocate
+	 * @throw GardenError if failed to allocate
 	 */
 	template<typename T>
 	static T* malloc(psize elementCount)
@@ -90,7 +90,7 @@ namespace garden
 		auto memoryBlock = ::malloc(elementCount * sizeof(T));
 		if (!memoryBlock)
 		{
-			throw runtime_error("Failed to allocate memory block. ("
+			throw GardenError("Failed to allocate memory block. ("
 				"size: " + to_string(elementCount * sizeof(T)) + ")");
 		}
 		return (T*)memoryBlock;
@@ -99,7 +99,7 @@ namespace garden
 	 * @brief Allocates an array in memory with elements initialized to 0.
 	 * @tparam T target element type
 	 * @param elementCount number of elements
-	 * @throw runtime_error if failed to allocate
+	 * @throw GardenError if failed to allocate
 	 */
 	template<typename T>
 	static T* calloc(psize elementCount)
@@ -107,7 +107,7 @@ namespace garden
 		auto memoryBlock = ::calloc(elementCount, sizeof(T));
 		if (!memoryBlock)
 		{
-			throw runtime_error("Failed to allocate memory block. ("
+			throw GardenError("Failed to allocate memory block. ("
 				"size: " + to_string(elementCount * sizeof(T)) + ")");
 		}
 		return (T*)memoryBlock;
@@ -117,7 +117,7 @@ namespace garden
 	 * @tparam T target element type
 	 * @param oldMemoryBlock old allocated memory block
 	 * @param elementCount number of elements
-	 * @throw runtime_error if failed to reallocate
+	 * @throw GardenError if failed to reallocate
 	 */
 	template<typename T>
 	static T* realloc(T* oldMemoryBlock, psize elementCount)
@@ -125,7 +125,7 @@ namespace garden
 		auto newMemoryBlock = ::realloc(oldMemoryBlock, elementCount * sizeof(T));
 		if (!newMemoryBlock)
 		{
-			throw runtime_error("Failed to reallocate memory block. ("
+			throw GardenError("Failed to reallocate memory block. ("
 				"size: " + to_string(elementCount * sizeof(T)) + ")");
 		}
 		return (T*)newMemoryBlock;

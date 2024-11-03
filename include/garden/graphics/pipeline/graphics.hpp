@@ -488,7 +488,7 @@ static psize toBinarySize(GraphicsPipeline::Index indexType) noexcept
 /**
  * @brief Returns primitive topology type.
  * @param topology target primitive topology name string (camelCase)
- * @throw runtime_error on unknown primitive topology type.
+ * @throw GardenError on unknown primitive topology type.
  */
 static GraphicsPipeline::Topology toTopology(string_view topology)
 {
@@ -497,48 +497,48 @@ static GraphicsPipeline::Topology toTopology(string_view topology)
 	if (topology == "lineList") return GraphicsPipeline::Topology::LineList;
 	if (topology == "lineStrip") return GraphicsPipeline::Topology::LineStrip;
 	if (topology == "pointList") return GraphicsPipeline::Topology::PointList;
-	throw runtime_error("Unknown pipeline topology type. (" + string(topology) + ")");
+	throw GardenError("Unknown pipeline topology type. (" + string(topology) + ")");
 }
 /**
  * @brief Returns polygon rasterization mode.
  * @param polygon target polygon rasterization mode name string (camelCase)
- * @throw runtime_error on unknown polygon rasterization mode.
+ * @throw GardenError on unknown polygon rasterization mode.
  */
 static GraphicsPipeline::Polygon toPolygon(string_view polygon)
 {
 	if (polygon == "fill") return GraphicsPipeline::Polygon::Fill;
 	if (polygon == "line") return GraphicsPipeline::Polygon::Line;
 	if (polygon == "point") return GraphicsPipeline::Polygon::Point;
-	throw runtime_error("Unknown pipeline polygon type. (" + string(polygon) + ")");
+	throw GardenError("Unknown pipeline polygon type. (" + string(polygon) + ")");
 }
 /**
  * @brief Returns triangle culling mode.
  * @param cullFace target triangle culling mode name string (camelCase)
- * @throw runtime_error on unknown triangle culling mode.
+ * @throw GardenError on unknown triangle culling mode.
  */
 static GraphicsPipeline::CullFace toCullFace(string_view cullFace)
 {
 	if (cullFace == "front") return GraphicsPipeline::CullFace::Front;
 	if (cullFace == "back") return GraphicsPipeline::CullFace::Back;
 	if (cullFace == "frontAndBack") return GraphicsPipeline::CullFace::FrontAndBack;
-	throw runtime_error("Unknown pipeline cull face type. (" + string(cullFace) + ")");
+	throw GardenError("Unknown pipeline cull face type. (" + string(cullFace) + ")");
 }
 /**
  * @brief Returns polygon front-facing orientation.
  * @param frontFace target polygon front-facing orientation name string (camelCase)
- * @throw runtime_error on unknown polygon front-facing orientation.
+ * @throw GardenError on unknown polygon front-facing orientation.
  */
 static GraphicsPipeline::FrontFace toFrontFace(string_view frontFace)
 {
 	if (frontFace == "clockwise") return GraphicsPipeline::FrontFace::Clockwise;
 	if (frontFace == "counterClockwise") return GraphicsPipeline::FrontFace::CounterClockwise;
-	throw runtime_error("Unknown pipeline front face type. (" + string(frontFace) + ")");
+	throw GardenError("Unknown pipeline front face type. (" + string(frontFace) + ")");
 }
 
 /***********************************************************************************************************************
  * @brief Returns framebuffer blending factor.
  * @param blendFactor target framebuffer blending factor name string (camelCase)
- * @throw runtime_error on unknown framebuffer blending factor.
+ * @throw GardenError on unknown framebuffer blending factor.
  */
 static GraphicsPipeline::BlendFactor toBlendFactor(string_view blendFactor)
 {
@@ -561,12 +561,12 @@ static GraphicsPipeline::BlendFactor toBlendFactor(string_view blendFactor)
 	if (blendFactor == "src1Alpha") return GraphicsPipeline::BlendFactor::Src1Alpha;
 	if (blendFactor == "oneMinusSrc1Alpha") return GraphicsPipeline::BlendFactor::OneMinusSrc1Alpha;
 	if (blendFactor == "srcAlphaSaturate") return GraphicsPipeline::BlendFactor::SrcAlphaSaturate;
-	throw runtime_error("Unknown pipeline blend factor type. (" + string(blendFactor) + ")");
+	throw GardenError("Unknown pipeline blend factor type. (" + string(blendFactor) + ")");
 }
 /**
  * @brief Returns framebuffer blending operation.
  * @param blendOperation target framebuffer blending operation name string (camelCase)
- * @throw runtime_error on unknown framebuffer blending operation.
+ * @throw GardenError on unknown framebuffer blending operation.
  */
 static GraphicsPipeline::BlendOperation toBlendOperation(string_view blendOperation)
 {
@@ -575,7 +575,7 @@ static GraphicsPipeline::BlendOperation toBlendOperation(string_view blendOperat
 	if (blendOperation == "reverseSubtract") return GraphicsPipeline::BlendOperation::ReverseSubtract;
 	if (blendOperation == "minimum") return GraphicsPipeline::BlendOperation::Minimum;
 	if (blendOperation == "maximum") return GraphicsPipeline::BlendOperation::Maximum;
-	throw runtime_error("Unknown pipeline blend operation type. (" + string(blendOperation) + ")");
+	throw GardenError("Unknown pipeline blend operation type. (" + string(blendOperation) + ")");
 }
 
 /***********************************************************************************************************************

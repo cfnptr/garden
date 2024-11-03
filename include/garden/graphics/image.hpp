@@ -904,7 +904,7 @@ static psize toBinarySize(Image::Format imageFormat)
 /***********************************************************************************************************************
  * @brief Returns image dimensionality type from the uniform type.
  * @param uniformType target uniform type
- * @throw runtime_error on unsupported uniform type.
+ * @throw GardenError on unsupported uniform type.
  */
 static Image::Type toImageType(GslUniformType uniformType)
 {
@@ -957,7 +957,7 @@ static Image::Type toImageType(GslUniformType uniformType)
 	case GslUniformType::IimageCube:
 	case GslUniformType::UimageCube:
 		return Image::Type::Cubemap;
-	default: throw runtime_error("Unsupported image type. ("
+	default: throw GardenError("Unsupported image type. ("
 		"uniformType: " + to_string((uint8)uniformType) + ")");
 	}
 }

@@ -796,7 +796,7 @@ void GraphicsSystem::setWindowIcon(const vector<string>& paths)
  
 	glfwSetWindowIcon((GLFWwindow*)GraphicsAPI::get()->window, images.size(), images.data());
 	#else
-	throw runtime_error("Window icons are not supported on this platform.");
+	throw GardenError("Window icons are not supported on this platform.");
 	#endif
 }
 
@@ -1308,7 +1308,7 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer)
-		throw runtime_error("Already recording.");
+		throw GardenError("Already recording.");
 	#endif
 	
 	switch (commandBufferType)
@@ -1328,7 +1328,7 @@ void GraphicsSystem::stopRecording()
 {
 	#if GARDEN_DEBUG
 	if (!GraphicsAPI::get()->currentCommandBuffer)
-		throw runtime_error("Not recording.");
+		throw GardenError("Not recording.");
 	#endif
 	GraphicsAPI::get()->currentCommandBuffer = nullptr;
 }

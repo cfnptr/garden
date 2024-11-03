@@ -103,7 +103,7 @@ public:
 		Inspector inspector(onComponent, priority);
 		if (!entityInspectors.emplace(typeid(T), std::move(inspector)).second)
 		{
-			throw runtime_error("This component type is already registered. ("
+			throw GardenError("This component type is already registered. ("
 				"name: " + typeToString<T>() + ")");
 		}
 	}
@@ -112,7 +112,7 @@ public:
 	{
 		if (entityInspectors.erase(typeid(T)) == 0)
 		{
-			throw runtime_error("This component type is not registered. ("
+			throw GardenError("This component type is not registered. ("
 				"name: " + typeToString<T>() + ")");
 		}
 	}

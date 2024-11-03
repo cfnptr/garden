@@ -24,7 +24,7 @@ void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 	inputStream.exceptions(ios::failbit | ios::badbit);
 
 	if (!inputStream.is_open())
-		throw runtime_error("Failed to open binary file. (path: " + filePath.generic_string() + ")");
+		throw GardenError("Failed to open binary file. (path: " + filePath.generic_string() + ")");
 
 	auto fileSize = (psize)inputStream.tellg();
 	data.resize(fileSize);
@@ -33,7 +33,7 @@ void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 
 	inputStream.seekg(0, ios::beg);
 	if (!inputStream.read((char*)data.data(), fileSize))
-		throw runtime_error("Failed to read binary file. (path: " + filePath.generic_string() + ")");
+		throw GardenError("Failed to read binary file. (path: " + filePath.generic_string() + ")");
 }
 
 bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)

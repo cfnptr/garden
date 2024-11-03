@@ -450,7 +450,7 @@ Framebuffer::Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		if (!VulkanAPI::get()->hasDynamicRendering) // TODO: handle this case and use subpass framebuffer.
-			throw runtime_error("Dynamic rendering is not supported on this GPU.");
+			throw GardenError("Dynamic rendering is not supported on this GPU.");
 	}
 	else abort();
 

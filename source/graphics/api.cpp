@@ -46,7 +46,7 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscr
 	auto window = glfwCreateWindow(windowSize.x, windowSize.y,
 		appName.c_str(), primaryMonitor, nullptr);
 	if (!window)
-		throw runtime_error("Failed to create GLFW window.");
+		throw GardenError("Failed to create GLFW window.");
 	this->window = window;
 
 	#if GARDEN_OS_WINDOWS
@@ -81,11 +81,11 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	bool useVsync, bool useTripleBuffering, bool isFullscreen)
 {
 	if (!glfwInit())
-		throw runtime_error("Failed to initialize GLFW.");
+		throw GardenError("Failed to initialize GLFW.");
 
 	glfwSetErrorCallback([](int error_code, const char* description)
 	{
-		throw runtime_error("GLFW::ERROR: " + string(description) + "");
+		throw GardenError("GLFW::ERROR: " + string(description) + "");
 	});
 
 	GARDEN_ASSERT(!apiInstance);

@@ -17,6 +17,7 @@
 #include "garden/profiler.hpp"
 
 using namespace math;
+using namespace garden;
 using namespace garden::graphics;
 
 static uint32 getBestVkImageCount(const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering)
@@ -36,7 +37,7 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 {
 	auto formats = physicalDevice.getSurfaceFormatsKHR(surface);
 	if (formats.empty())
-		throw runtime_error("No suitable surface format.");
+		throw GardenError("No suitable surface format.");
 
 	if (useHDR)
 	{
@@ -100,7 +101,7 @@ static vk::CompositeAlphaFlagBitsKHR getBestVkCompositeAlpha(const vk::SurfaceCa
 		return vk::CompositeAlphaFlagBitsKHR::ePostMultiplied;
 	if (supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eInherit)
 		return vk::CompositeAlphaFlagBitsKHR::eInherit;
-	throw runtime_error("No suitable composite alpha.");
+	throw GardenError("No suitable composite alpha.");
 }
 
 static vk::PresentModeKHR getBestVkPresentMode(
@@ -108,7 +109,7 @@ static vk::PresentModeKHR getBestVkPresentMode(
 {
 	auto modes = physicalDevice.getSurfacePresentModesKHR(surface);
 	if (modes.empty())
-		throw runtime_error("No suitable present mode.");
+		throw GardenError("No suitable present mode.");
 
 	if (useVsync)
 		return vk::PresentModeKHR::eFifo;
@@ -288,7 +289,7 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
-		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
+		throw GardenError("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
 
 	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
@@ -332,7 +333,7 @@ bool VulkanSwapchain::present()
 	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
-		throw runtime_error("Failed to present image. (error: " + vk::to_string(result) + ")");
+		throw GardenError("Failed to present image. (error: " + vk::to_string(result) + ")");
 	return true;
 }
 
