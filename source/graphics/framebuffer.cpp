@@ -621,11 +621,17 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	{
 		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
+			#if GARDEN_DEBUG
+			const auto& name = debugName;
+			#else
+			string name;
+			#endif
+
 			auto swapchain = dynamic_cast<VulkanSwapchain*>(graphicsAPI->swapchain);
-			swapchain->beginSecondaryCommandBuffers(subpasses.empty() ?
-				nullptr : (VkFramebuffer)instance, (VkRenderPass)renderPass,
-				graphicsAPI->currentSubpassIndex, colorAttachments, 
-				depthStencilAttachment, GARDEN_DEBUG ? debugName : string());
+			swapchain->beginSecondaryCommandBuffers(
+				subpasses.empty() ? nullptr : (VkFramebuffer)instance, 
+				(VkRenderPass)renderPass, graphicsAPI->currentSubpassIndex, 
+				colorAttachments, depthStencilAttachment, name);
 		}
 		else abort();
 			
@@ -673,10 +679,16 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 
 		if (asyncRecording)
 		{
-			swapchain->beginSecondaryCommandBuffers(subpasses.empty() ? 
-				nullptr : (VkFramebuffer)instance, (VkRenderPass)renderPass, 
-				graphicsAPI->currentSubpassIndex + 1, colorAttachments, 
-				depthStencilAttachment, GARDEN_DEBUG ? debugName : string());
+			#if GARDEN_DEBUG
+			const auto& name = debugName;
+			#else
+			string name;
+			#endif
+
+			swapchain->beginSecondaryCommandBuffers(
+				subpasses.empty() ? nullptr : (VkFramebuffer)instance, 
+				(VkRenderPass)renderPass, graphicsAPI->currentSubpassIndex + 1, 
+				colorAttachments, depthStencilAttachment, name);
 		}
 	}
 	else abort();
