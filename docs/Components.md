@@ -18,7 +18,7 @@ namespace my::app
 
 usign namespace ecsm;
 
-struct MyCustomComponent final : public Component
+struct MyCustomComponent : public Component
 {
     int someValue = 123;
 };
@@ -39,9 +39,9 @@ functions in the system *.cpp* file `source/system/my-system.cpp`.
 ```cpp
 //...
 
-class MyCustomSystem final : public ComponentSystem<MyCustomComponent, false>
+class MyCustomSystem : public ComponentSystem<MyCustomComponent, false>
 {
-    const string& getComponentName() const final;
+    const string& getComponentName() const override;
     friend class ecsm::Manager;
 };
 
@@ -120,7 +120,7 @@ bypass system lookup inside the **Manager**, which improves performance)
 ```cpp
 //...
 
-class MyCustomSystem final : public ComponentSystem<MyCustomComponent, false>,
+class MyCustomSystem : public ComponentSystem<MyCustomComponent, false>,
     public Singleton<MyCustomSystem>
 
 //...
