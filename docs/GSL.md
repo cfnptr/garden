@@ -65,7 +65,7 @@ pipelineState
 ### Blending
 
 * colorMaskX [ all | none | r | rg | rb | rgba | ... ] - Enable and disable writing of framebuffer color components. (all)
-* blendingX [ on | off] - If enabled, blend the computed fragment color values with the values in the color buffers. (off)
+* blendingX [ on | off ] - If enabled, blend the computed fragment color values with the values in the color buffers. (off)
 * blendOperationX [ add | sub | revSub | min | max ] - Specify the RGB color and alpha blend equation. (add)
 * colorOperationX [ add | sub | revSub | min | max ] - Specify the RGB color blend equation. (add)
 * alphaOperationX [ add | sub | revSub | min | max ] - Specify the alpha blend equation. (add)
@@ -117,7 +117,7 @@ uniform set1 samplerCube someSampler;
 * compareOperation [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value to apply to fetched data before filtering. (less)
 
-Texture wrap [TYPE]: [repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge]
+Texture wrap [TYPE]: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
 
 * #attachmentOffset X - Add offset to the subpassInput index.
 

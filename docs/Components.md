@@ -16,7 +16,7 @@ First, declare a new component in the header file of your system
 namespace my::app
 {
 
-usign namespace ecsm;
+using namespace ecsm;
 
 struct MyCustomComponent : public Component
 {
@@ -137,5 +137,93 @@ myCustomView->someValue = 789;
 
 //...
 ```
+
+
+# How to iterate over components?
+
+To iterate over components in your **ComponentSystem<>** system, you can use 
+two methods: a standard iterator or by obtaining an array and its size.
+
+**Note!** Component container **LinearPool<>** contains both allocated and 
+unallocated components. It is essential to check this by using `component->getEntity()`.
+
+```cpp
+//...
+
+for (auto component : components)
+{
+    if (!component->getEntity())
+        continue;
+
+    // Process your component
+}
+
+//...
+```
+
+Or
+
+```cpp
+//...
+
+auto componentData = components.getData();
+auto componentOccupancy = components.getOccupancy();
+
+for (uint32 i = 0; i < componentOccupancy; i++)
+{
+    auto component = &componentData[i];
+    if (!component->getEntity())
+        continue;
+
+    // Process your component
+}
+
+//...
+```
+
+
+# How to access another system components?
+
+To use components from another system in your own system, first include the other 
+system at the beginning of your file and add `using namespace ...;` of that system.
+
+#### my-system.cpp
+
+```cpp
+#include "my-app/system/my-system.hpp"
+#include "garden/system/transform.hpp"
+
+using namespace garden;
+using namespace my::app;
+
+//...
+```
+
+Now we can get a view of the desired entity component using 
+`AnotherSystem::Instance::get()` or the **Manager**.
+
+```cpp
+//...
+
+auto transformSystem = TransformSystem::Instance::get();
+auto transformView = transformSystem->getComponent(someEntity);
+
+//...
+```
+
+Or
+
+```cpp
+//...
+
+auto manager = Manager::Instance::get();
+auto transformView = manager->get<TransformComponent>(someEntity);
+
+//...
+```
+
+**Note!** It’s better to access a component using the system instance rather than 
+the **Manager**, as this bypasses the system lookup inside, improving performance.
+
 
 #### See also [Systems](docs/Systems.md) tutorial <-
