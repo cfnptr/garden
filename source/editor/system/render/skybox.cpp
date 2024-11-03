@@ -27,7 +27,7 @@ SkyboxRenderEditorSystem::SkyboxRenderEditorSystem()
 }
 SkyboxRenderEditorSystem::~SkyboxRenderEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
@@ -54,10 +54,10 @@ void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpene
 	if (!isOpened)
 		return;
 
-	auto componentView = SkyboxRenderSystem::Instance::get()->getComponent(entity);
+	auto skyboxView = SkyboxRenderSystem::Instance::get()->getComponent(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->drawResource(componentView->cubemap, "Cubemap");
-	editorSystem->drawResource(componentView->descriptorSet);
+	editorSystem->drawResource(skyboxView->cubemap, "Cubemap");
+	editorSystem->drawResource(skyboxView->descriptorSet);
 
 	// TODO: use here editorSystem->drawImageSelector() instead.
 	// But we need to add cubemaps load support to it.

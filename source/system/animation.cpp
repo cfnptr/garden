@@ -50,23 +50,16 @@ AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) :
 	random_device randomDevice;
 	this->randomGenerator = mt19937(randomDevice());
 
-	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", AnimationSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
 }
 AnimationSystem::~AnimationSystem()
 {
-	if (Manager::Instance::get()->isRunning())
-	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", AnimationSystem::postDeinit);
+	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
-	}
+	else
+		components.clear(false);
 
 	unsetSingleton();
-}
-
-void AnimationSystem::postDeinit()
-{
-	components.clear();
 }
 
 //**********************************************************************************************************************
@@ -183,8 +176,8 @@ void AnimationSystem::update()
 			auto itemCount = task.getItemCount();
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				auto componentView = &componentData[i];
-				animateComponent(animations, componentView);
+				auto animationView = &componentData[i];
+				animateComponent(animations, animationView);
 			}
 		}),
 		occupancy);
@@ -194,8 +187,8 @@ void AnimationSystem::update()
 	{
 		for (uint32 i = 0; i < occupancy; i++)
 		{
-			auto componentView = &componentData[i];
-			animateComponent(animations, componentView);
+			auto animationView = &componentData[i];
+			animateComponent(animations, animationView);
 		}
 	}
 }
@@ -247,8 +240,8 @@ void AnimationSystem::disposeComponents()
 //**********************************************************************************************************************
 void AnimationSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto componentView = View<AnimationComponent>(component);
-	const auto& animations = componentView->animations;
+	auto animationView = View<AnimationComponent>(component);
+	const auto& animations = animationView->animations;
 
 	if (!animations.empty())
 	{
@@ -262,19 +255,19 @@ void AnimationSystem::serialize(ISerializer& serializer, const View<Component> c
 		serializer.endChild();
 	}
 	
-	if (!componentView->active.empty())
-		serializer.write("active", componentView->active);
-	if (componentView->frame != 0.0f)
-		serializer.write("frame", componentView->frame);
-	if (!componentView->isPlaying)
+	if (!animationView->active.empty())
+		serializer.write("active", animationView->active);
+	if (animationView->frame != 0.0f)
+		serializer.write("frame", animationView->frame);
+	if (!animationView->isPlaying)
 		serializer.write("isPlaying", false);
-	if (componentView->randomizeStart)
+	if (animationView->randomizeStart)
 		serializer.write("randomizeStart", true);
 }
 void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto componentView = View<AnimationComponent>(component);
-	auto& animations = componentView->animations;
+	auto animationView = View<AnimationComponent>(component);
+	auto& animations = animationView->animations;
 
 	if (deserializer.beginChild("animations"))
 	{
@@ -299,9 +292,9 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 		deserializer.endChild();
 	}
 
-	deserializer.read("active", componentView->active);
-	deserializer.read("frame", componentView->frame);
-	deserializer.read("isPlaying", componentView->isPlaying);
-	deserializer.read("randomizeStart", componentView->randomizeStart);
-	randomizeStartFrame(randomGenerator, componentView);
+	deserializer.read("active", animationView->active);
+	deserializer.read("frame", animationView->frame);
+	deserializer.read("isPlaying", animationView->isPlaying);
+	deserializer.read("randomizeStart", animationView->randomizeStart);
+	randomizeStartFrame(randomGenerator, animationView);
 }

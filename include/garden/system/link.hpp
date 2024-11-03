@@ -81,12 +81,12 @@ class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton
 	random_device randomDevice;
 
 	/**
-	 * @brief Creates a new logging system instance.
+	 * @brief Creates a new link system instance.
 	 * @param setSingleton set system singleton instance
 	 */
 	LinkSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroys logging system instance.
+	 * @brief Destroys link system instance.
 	 */
 	~LinkSystem() final;
 

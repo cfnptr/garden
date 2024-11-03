@@ -15,10 +15,10 @@
 #include "garden/editor/system/graphics.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/graphics/vulkan/api.hpp"
 #include "garden/file.hpp"
 #include "mpio/os.hpp"
 
-using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -29,16 +29,16 @@ GraphicsEditorSystem::GraphicsEditorSystem()
 }
 GraphicsEditorSystem::~GraphicsEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
-	}
 
-	delete[] gpuSortedBuffer;
-	delete[] cpuSortedBuffer;
-	delete[] gpuFpsBuffer;
-	delete[] cpuFpsBuffer;
+		delete[] gpuSortedBuffer;
+		delete[] cpuSortedBuffer;
+		delete[] gpuFpsBuffer;
+		delete[] cpuFpsBuffer;
+	}
 }
 
 void GraphicsEditorSystem::init()
@@ -48,7 +48,7 @@ void GraphicsEditorSystem::init()
 }
 void GraphicsEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
@@ -134,39 +134,52 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 
-		const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-		uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
+		auto graphicsAPI = GraphicsAPI::get();
+		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+		{
+			auto vulkanAPI = VulkanAPI::get();
+			auto swapchainBuffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(
+				vulkanAPI->swapchain->getCurrentBuffer());
+			uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
 
-		auto vkResult = vk::Result::eNotReady;
-		if (swapchainBuffer.isPoolClean)
-		{
-			vkResult = Vulkan::device.getQueryPoolResults(
-				swapchainBuffer.queryPool, 0, 2, sizeof(uint64) * 2, timestamps,
-				(vk::DeviceSize)sizeof(uint64), vk::QueryResultFlagBits::e64);
+			auto vkResult = vk::Result::eNotReady;
+			if (swapchainBuffer->isPoolClean)
+			{
+				vkResult = vulkanAPI->device.getQueryPoolResults(
+					swapchainBuffer->queryPool, 0, 2, sizeof(uint64) * 2, timestamps,
+					(vk::DeviceSize)sizeof(uint64), vk::QueryResultFlagBits::e64);
+			}
+
+			if (vkResult == vk::Result::eSuccess)
+			{
+				auto difference = (double)(timestamps[1] - timestamps[0]) *
+					(double)vulkanAPI->deviceProperties.properties.limits.timestampPeriod;
+				difference /= 1000000000.0;
+				updateHistogram("GPU", gpuFpsBuffer, gpuSortedBuffer, (float)difference);
+			}
 		}
-		
-		if (vkResult == vk::Result::eSuccess)
-		{
-			auto difference = (double)(timestamps[1] - timestamps[0]) *
-				(double)Vulkan::deviceProperties.properties.limits.timestampPeriod;
-			difference /= 1000000000.0;
-			updateHistogram("GPU", gpuFpsBuffer, gpuSortedBuffer, (float)difference);
-		}
+		else abort();
 
 		ImGui::SeparatorText("GPU Information");
-		ImGui::Text("Queue Index Graphics: %lu, Transfer: %lu, Compute: %lu",
-			(unsigned long)Vulkan::graphicsQueueFamilyIndex,
-			(unsigned long)Vulkan::transferQueueFamilyIndex,
-			(unsigned long)Vulkan::computeQueueFamilyIndex);
-		auto isIntegrated = !GraphicsAPI::isDeviceIntegrated;
+		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+		{
+			auto vulkanAPI = VulkanAPI::get();
+			ImGui::Text("Queue Index Graphics: %lu, Transfer: %lu, Compute: %lu",
+				(unsigned long)vulkanAPI->graphicsQueueFamilyIndex,
+				(unsigned long)vulkanAPI->transferQueueFamilyIndex,
+				(unsigned long)vulkanAPI->computeQueueFamilyIndex);
+		}
+		else abort();
+
+		auto isIntegrated = !graphicsAPI->isDeviceIntegrated;
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
-		ImGui::Text("Swapchain Size: %lu", (unsigned long)Vulkan::swapchain.getBufferCount());
+		ImGui::Text("Swapchain Size: %lu", (unsigned long)graphicsAPI->swapchain->getBufferCount());
 		
-		GraphicsAPI::recordGpuTime = true;
+		graphicsAPI->recordGpuTime = true;
 	}
 	else
 	{
-		GraphicsAPI::recordGpuTime = false;
+		GraphicsAPI::get()->recordGpuTime = false;
 	}
 	ImGui::End();
 }
@@ -176,69 +189,74 @@ void GraphicsEditorSystem::showMemoryStatistics()
 {
 	if (ImGui::Begin("Memory Statistics", &memoryStatistics, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		// TODO: CPU RAM usage.
-
-		VmaBudget heapBudgets[VK_MAX_MEMORY_HEAPS];
-		vmaGetHeapBudgets(Vulkan::memoryAllocator, heapBudgets);
-		const VkPhysicalDeviceMemoryProperties* memoryProperties;
-		vmaGetMemoryProperties(Vulkan::memoryAllocator, &memoryProperties);
-		auto memoryHeaps = memoryProperties->memoryHeaps;
-
-		VkDeviceSize deviceAllocationBytes = 0, deviceBlockBytes = 0,
-			hostAllocationBytes = 0, hostBlockBytes = 0, usage = 0, budget = 0;
-		for (uint32 i = 0; i < memoryProperties->memoryHeapCount; i++)
+		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
-			const auto& heapBudget = heapBudgets[i];
-			usage += heapBudget.usage; budget += heapBudget.budget;
+			auto vulkanAPI = VulkanAPI::get();
+			VmaBudget heapBudgets[VK_MAX_MEMORY_HEAPS];
+			vmaGetHeapBudgets(vulkanAPI->memoryAllocator, heapBudgets);
+			const VkPhysicalDeviceMemoryProperties* memoryProperties;
+			vmaGetMemoryProperties(vulkanAPI->memoryAllocator, &memoryProperties);
+			auto memoryHeaps = memoryProperties->memoryHeaps;
 
-			if (memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+			VkDeviceSize deviceAllocationBytes = 0, deviceBlockBytes = 0,
+				hostAllocationBytes = 0, hostBlockBytes = 0, usage = 0, budget = 0;
+			for (uint32 i = 0; i < memoryProperties->memoryHeapCount; i++)
 			{
-				deviceAllocationBytes += heapBudget.statistics.allocationBytes;
-				deviceBlockBytes += heapBudget.statistics.blockBytes;
+				const auto& heapBudget = heapBudgets[i];
+				usage += heapBudget.usage; budget += heapBudget.budget;
+
+				if (memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+				{
+					deviceAllocationBytes += heapBudget.statistics.allocationBytes;
+					deviceBlockBytes += heapBudget.statistics.blockBytes;
+				}
+				else
+				{
+					hostAllocationBytes += heapBudget.statistics.allocationBytes;
+					hostBlockBytes += heapBudget.statistics.blockBytes;
+				}
 			}
-			else
-			{
-				hostAllocationBytes += heapBudget.statistics.allocationBytes;
-				hostBlockBytes += heapBudget.statistics.blockBytes;
-			}
+
+			ImGui::SeparatorText("GPU Memory");
+			ImGui::Text("Allocated: "); ImGui::SameLine();
+			auto gpuInfo =
+				toBinarySizeString(deviceAllocationBytes + hostAllocationBytes) + " / " +
+				toBinarySizeString(deviceBlockBytes + hostBlockBytes);
+			auto fraction = deviceBlockBytes + hostBlockBytes > 0 ?
+				(double)(deviceAllocationBytes + hostAllocationBytes) /
+				(double)(deviceBlockBytes + hostBlockBytes) : 0.0;
+			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+
+			ImGui::Text("Device:    "); ImGui::SameLine();
+			gpuInfo = toBinarySizeString(deviceAllocationBytes) +
+				" / " + toBinarySizeString(deviceBlockBytes);
+			fraction = deviceBlockBytes > 0 ?
+				(double)deviceAllocationBytes / (double)deviceBlockBytes : 0.0;
+			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+
+			ImGui::Text("Host:      "); ImGui::SameLine();
+			gpuInfo = toBinarySizeString(hostAllocationBytes) +
+				" / " + toBinarySizeString(hostBlockBytes);
+			fraction = hostBlockBytes > 0 ?
+				(double)hostAllocationBytes / (double)hostBlockBytes : 0.0;
+			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+
+			ImGui::Text("Real Usage:"); ImGui::SameLine();
+			gpuInfo = toBinarySizeString(usage) + " / " + toBinarySizeString(budget);
+			fraction = hostBlockBytes > 0 ? (double)usage / (double)budget : 0.0;
+			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
 		}
-
-		ImGui::SeparatorText("GPU Memory");
-		ImGui::Text("Allocated: "); ImGui::SameLine();
-		auto gpuInfo =
-			toBinarySizeString(deviceAllocationBytes + hostAllocationBytes) + " / " +
-			toBinarySizeString(deviceBlockBytes + hostBlockBytes);
-		auto fraction = deviceBlockBytes + hostBlockBytes > 0 ?
-			(double)(deviceAllocationBytes + hostAllocationBytes) /
-			(double)(deviceBlockBytes + hostBlockBytes) : 0.0;
-		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
-
-		ImGui::Text("Device:    "); ImGui::SameLine();
-		gpuInfo = toBinarySizeString(deviceAllocationBytes) +
-			" / " + toBinarySizeString(deviceBlockBytes);
-		fraction = deviceBlockBytes > 0 ?
-			(double)deviceAllocationBytes / (double)deviceBlockBytes : 0.0;
-		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
-
-		ImGui::Text("Host:      "); ImGui::SameLine();
-		gpuInfo = toBinarySizeString(hostAllocationBytes) +
-			" / " + toBinarySizeString(hostBlockBytes);
-		fraction = hostBlockBytes > 0 ?
-			(double)hostAllocationBytes / (double)hostBlockBytes : 0.0;
-		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
-
-		ImGui::Text("Real Usage:"); ImGui::SameLine();
-		gpuInfo = toBinarySizeString(usage) + " / " + toBinarySizeString(budget);
-		fraction = hostBlockBytes > 0 ? (double)usage / (double)budget : 0.0;
-		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+		else abort();
 
 		ImGui::SeparatorText("OS Memory");
 		ImGui::Text("RAM:       "); ImGui::SameLine();
-		auto totalRamSize = OS::getTotalRamSize(), freeRamSize = OS::getFreeRamSize();
+		auto totalRamSize = mpio::OS::getTotalRamSize(), freeRamSize = mpio::OS::OS::getFreeRamSize();
 		auto usedRamSize = totalRamSize - freeRamSize;
-		gpuInfo = toBinarySizeString(usedRamSize) + " / " + toBinarySizeString(totalRamSize);
-		fraction = totalRamSize > 0 ? (double)usedRamSize / (double)totalRamSize : 0.0;
+		auto gpuInfo = toBinarySizeString(usedRamSize) + " / " + toBinarySizeString(totalRamSize);
+		auto fraction = totalRamSize > 0 ? (double)usedRamSize / (double)totalRamSize : 0.0;
 		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+
+		// TODO: CPU RAM usage.
 	}
 	ImGui::End();
 }

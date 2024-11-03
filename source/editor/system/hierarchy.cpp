@@ -31,7 +31,7 @@ HierarchyEditorSystem::HierarchyEditorSystem()
 }
 HierarchyEditorSystem::~HierarchyEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HierarchyEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HierarchyEditorSystem::deinit);
@@ -45,7 +45,7 @@ void HierarchyEditorSystem::init()
 }
 void HierarchyEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);

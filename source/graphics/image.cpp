@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "garden/graphics/image.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
+using namespace math;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
@@ -78,16 +79,9 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 }
 
 //**********************************************************************************************************************
-static vector<vk::BufferImageCopy> bufferImageCopies;
-
-Image::Image(Type type, Format format, Bind bind, Strategy strategy,
-	const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
-	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(mipCount * layerCount)
+static void createVkImage(Image::Type type, Image::Format format, Image::Bind bind, Image::Strategy strategy,
+	const uint3& size, uint8 mipCount, uint32 layerCount, void*& instance, void*& allocation)
 {
-	GARDEN_ASSERT(size > 0u);
-	GARDEN_ASSERT(mipCount > 0);
-	GARDEN_ASSERT(layerCount > 0);
-
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.imageType = (VkImageType)toVkImageType(type);
 	imageInfo.format = (VkFormat)toVkFormat(format);
@@ -102,8 +96,10 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	imageInfo.pQueueFamilyIndices = nullptr;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	if (type == Type::Cubemap)
+	if (type == Image::Type::Cubemap)
 		imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+	auto vulkanAPI = VulkanAPI::get();
 
 	#if GARDEN_DEBUG
 	vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
@@ -112,7 +108,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	imageFormatInfo.tiling = vk::ImageTiling(imageInfo.tiling);
 	imageFormatInfo.usage = vk::ImageUsageFlags(imageInfo.usage);
 	imageFormatInfo.flags = vk::ImageCreateFlags(imageInfo.flags);
-	auto imageFormatProperties = Vulkan::physicalDevice.getImageFormatProperties2(imageFormatInfo);
+	auto imageFormatProperties = vulkanAPI->physicalDevice.getImageFormatProperties2(imageFormatInfo);
 	GARDEN_ASSERT(size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width);
 	GARDEN_ASSERT(size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height);
 	GARDEN_ASSERT(size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth);
@@ -125,7 +121,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	allocationCreateInfo.flags = toVmaMemoryStrategy(strategy);
 
-	if (hasAnyFlag(bind, Bind::Fullscreen))
+	if (hasAnyFlag(bind, Image::Bind::Fullscreen))
 	{
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 		allocationCreateInfo.priority = 1.0f;
@@ -135,16 +131,29 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 		allocationCreateInfo.priority = 0.5f;
 	}
 
-	VkImage instance;
-	VmaAllocation allocation;
-
-	auto result = vmaCreateImage(Vulkan::memoryAllocator, &imageInfo,
-		&allocationCreateInfo, &instance, &allocation, nullptr);
+	VkImage vmaInstance; VmaAllocation vmaAllocation;
+	auto result = vmaCreateImage(vulkanAPI->memoryAllocator, &imageInfo,
+		&allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
 	if (result != VK_SUCCESS)
 		throw runtime_error("Failed to allocate image.");
 
-	this->instance = instance;
-	this->allocation = allocation;
+	instance = vmaInstance;
+	allocation = vmaAllocation;
+}
+
+//**********************************************************************************************************************
+Image::Image(Type type, Format format, Bind bind, Strategy strategy,
+	const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
+	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(mipCount * layerCount)
+{
+	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT(mipCount > 0);
+	GARDEN_ASSERT(layerCount > 0);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		createVkImage(type, format, bind, strategy, size, mipCount, layerCount, instance, allocation);
+	else abort();
+
 	this->binarySize = 0;
 	this->type = type;
 	this->format = format;
@@ -172,6 +181,8 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version) : 
 	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), layouts(1)
 {
+	GARDEN_ASSERT(size > 0u);
+
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;
 	this->format = format;
@@ -187,28 +198,38 @@ bool Image::destroy()
 	if (!instance || readyLock > 0)
 		return false;
 
-	#if GARDEN_DEBUG
-	auto imageInstance = GraphicsAPI::imagePool.getID(this);
-	const auto imageViewData = GraphicsAPI::imageViewPool.getData();
-	auto imageViewOccupancy = GraphicsAPI::imageViewPool.getOccupancy();
+	auto graphicsAPI = GraphicsAPI::get();
 
-	for (uint32 i = 0; i < imageViewOccupancy; i++)
+	#if GARDEN_DEBUG
+	if (!graphicsAPI->forceResourceDestroy)
 	{
-		const auto& imageView = imageViewData[i];
-		if (imageView.getImage() != imageInstance)
-			continue;
-		throw runtime_error("Image view is still using destroyed image. (image: " +
-			debugName + ", imageView: " + imageView.getDebugName() + ")");
+		auto imageInstance = graphicsAPI->imagePool.getID(this);
+		const auto imageViewData = graphicsAPI->imageViewPool.getData();
+		auto imageViewOccupancy = graphicsAPI->imageViewPool.getOccupancy();
+
+		for (uint32 i = 0; i < imageViewOccupancy; i++)
+		{
+			const auto& imageView = imageViewData[i];
+			if (imageView.getImage() != imageInstance)
+				continue;
+			throw runtime_error("Image view is still using destroyed image. (image: " +
+				debugName + ", imageView: " + imageView.getDebugName() + ")");
+		}
 	}
 	#endif
-	
-	if (!this->swapchain)
+
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (GraphicsAPI::isRunning)
-			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Image, instance, allocation);
-		else
-			vmaDestroyImage(Vulkan::memoryAllocator, (VkImage)instance, (VmaAllocation)allocation);
+		auto vulkanAPI = VulkanAPI::get();
+		if (!this->swapchain)
+		{
+			if (vulkanAPI->forceResourceDestroy)
+				vmaDestroyImage(vulkanAPI->memoryAllocator, (VkImage)instance, (VmaAllocation)allocation);
+			else
+				vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Image, instance, allocation);
+		}
 	}
+	else abort();
 
 	instance = nullptr;
 	return true;
@@ -220,10 +241,13 @@ ID<ImageView> Image::getDefaultView()
 	if (!defaultView)
 	{
 		GARDEN_ASSERT(instance); // is ready
-		defaultView = GraphicsAPI::imageViewPool.create(true,
-			GraphicsAPI::imagePool.getID(this), type, format, 0, mipCount, 0, layerCount);
+
+		auto graphicsAPI = GraphicsAPI::get();
+		defaultView = graphicsAPI->imageViewPool.create(true,
+			graphicsAPI->imagePool.getID(this), type, format, 0, mipCount, 0, layerCount);
+
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		auto view = GraphicsAPI::imageViewPool.get(defaultView);
+		auto view = graphicsAPI->imageViewPool.get(defaultView);
 		view->setDebugName(debugName + ".defaultView");
 		#endif
 	}
@@ -231,44 +255,53 @@ ID<ImageView> Image::getDefaultView()
 	return defaultView;
 }
 
- bool Image::isSupported(Type type, Format format, Bind bind, const uint3& size, uint8 mipCount, uint32 layerCount)
- {
-	vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
-	imageFormatInfo.format = toVkFormat(format);
-	imageFormatInfo.type = toVkImageType(type);
-	imageFormatInfo.tiling = vk::ImageTiling::eOptimal;
-	imageFormatInfo.usage = toVkImageUsages(bind);
-	if (type == Type::Cubemap)
-		imageFormatInfo.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
+bool Image::isSupported(Type type, Format format, Bind bind, const uint3& size, uint8 mipCount, uint32 layerCount)
+{
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
+		imageFormatInfo.format = toVkFormat(format);
+		imageFormatInfo.type = toVkImageType(type);
+		imageFormatInfo.tiling = vk::ImageTiling::eOptimal;
+		imageFormatInfo.usage = toVkImageUsages(bind);
+		if (type == Type::Cubemap)
+			imageFormatInfo.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
 
-	auto imageFormatProperties = Vulkan::physicalDevice.getImageFormatProperties2(imageFormatInfo);
-	return size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width &&
-		size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height &&
-		size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth &&
-		mipCount <= imageFormatProperties.imageFormatProperties.maxMipLevels && 
-		layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers;
- }
+		auto imageFormatProperties = VulkanAPI::get()->physicalDevice.getImageFormatProperties2(imageFormatInfo);
+		return size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width &&
+			size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height &&
+			size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth &&
+			mipCount <= imageFormatProperties.imageFormatProperties.maxMipLevels &&
+			layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers;
+	}
+	else abort();
+	
+}
 
 #if GARDEN_DEBUG
 void Image::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (!Vulkan::hasDebugUtils || !instance)
-		return;
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils || !instance)
+			return;
 
-	vk::DebugUtilsObjectNameInfoEXT nameInfo(
-		vk::ObjectType::eImage, (uint64)instance, name.c_str());
-	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+	}
+	else abort();
 }
 #endif
 
 void Image::generateMips(SamplerFilter filter)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 
-	auto image = GraphicsAPI::imagePool.getID(this);
+	auto image = GraphicsAPI::get()->imagePool.getID(this);
 	auto mipSize = size;
 
 	for (uint8 i = 1; i < mipCount; i++)
@@ -289,92 +322,96 @@ void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatFloat(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
 	command.clearType = 1;
 	command.regionCount = count;
-	command.image = GraphicsAPI::imagePool.getID(this);
+	command.image = graphicsAPI->imagePool.getID(this);
 	command.color = color;
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
 	}
 }
 void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatInt(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
 	command.clearType = 2;
 	command.regionCount = count;
-	command.image = GraphicsAPI::imagePool.getID(this);
+	command.image = graphicsAPI->imagePool.getID(this);
 	memcpy(&command.color, &color, sizeof(float4));
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
 	}
 }
 void Image::clear(const uint4& color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatInt(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
 	command.clearType = 3;
 	command.regionCount = count;
-	command.image = GraphicsAPI::imagePool.getID(this);
+	command.image = graphicsAPI->imagePool.getID(this);
 	memcpy(&command.color, &color, sizeof(float4));
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
 	}
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatDepthOrStencil(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	auto graphicsAPI = GraphicsAPI::get();
 	
 	ClearImageCommand command;
 	command.regionCount = count;
-	command.image = GraphicsAPI::imagePool.getID(this);
+	command.image = graphicsAPI->imagePool.getID(this);
 	command.color.x = depth;
 	memcpy(&command.color.y, &stencil, sizeof(uint32));
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(command.image);
+		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
 	}
 }
 
@@ -385,14 +422,15 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
-	auto srcView = GraphicsAPI::imagePool.get(source);
+	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-	auto dstView = GraphicsAPI::imagePool.get(destination);
+	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 	GARDEN_ASSERT(toBinarySize(srcView->format) == toBinarySize(dstView->format));
@@ -427,14 +465,14 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		srcView->readyLock++;
 		dstView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(source);
-		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
+		graphicsAPI->currentCommandBuffer->addLockResource(source);
+		graphicsAPI->currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -445,16 +483,17 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
-	auto bufferView = GraphicsAPI::bufferPool.get(source);
-	GARDEN_ASSERT(bufferView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(bufferView->bind, Buffer::Bind::TransferSrc));
+	auto bufferView = graphicsAPI->bufferPool.get(source);
+	GARDEN_ASSERT(ResourceExt::getInstance(**bufferView)); // is ready
+	GARDEN_ASSERT(hasAnyFlag(bufferView->getBind(), Buffer::Bind::TransferSrc));
 	
-	auto imageView = GraphicsAPI::imagePool.get(destination);
+	auto imageView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT(imageView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(imageView->bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(imageView->getBind(), Bind::TransferDst));
 	
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -483,14 +522,14 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	command.buffer = source;
 	command.image = destination;
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		bufferView->readyLock++;
-		imageView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(source);
-		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
+		ResourceExt::getReadyLock(**bufferView)++;
+		ResourceExt::getReadyLock(**imageView)++;
+		graphicsAPI->currentCommandBuffer->addLockResource(source);
+		graphicsAPI->currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -501,16 +540,17 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
-	auto imageView = GraphicsAPI::imagePool.get(source);
+	auto imageView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT(imageView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(imageView->bind, Bind::TransferSrc));
+	GARDEN_ASSERT(hasAnyFlag(imageView->getBind(), Bind::TransferSrc));
 
-	auto bufferView = GraphicsAPI::bufferPool.get(destination);
-	GARDEN_ASSERT(bufferView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(bufferView->bind, Buffer::Bind::TransferDst));
+	auto bufferView = graphicsAPI->bufferPool.get(destination);
+	GARDEN_ASSERT(ResourceExt::getInstance(**bufferView)); // is ready
+	GARDEN_ASSERT(hasAnyFlag(bufferView->getBind(), Buffer::Bind::TransferDst));
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -539,14 +579,14 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	command.buffer = destination;
 	command.image = source;
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		imageView->readyLock++;
-		bufferView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(source);
-		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
+		ResourceExt::getReadyLock(**imageView)++;
+		ResourceExt::getReadyLock(**bufferView)++;
+		graphicsAPI->currentCommandBuffer->addLockResource(source);
+		graphicsAPI->currentCommandBuffer->addLockResource(destination);
 	}
 }
 
@@ -557,14 +597,15 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
-	auto srcView = GraphicsAPI::imagePool.get(source);
+	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-	auto dstView = GraphicsAPI::imagePool.get(destination);
+	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 
@@ -606,32 +647,41 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		srcView->readyLock++;
-		dstView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(source);
-		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
+		ResourceExt::getReadyLock(**srcView)++;
+		ResourceExt::getReadyLock(**dstView)++;
+		graphicsAPI->currentCommandBuffer->addLockResource(source);
+		graphicsAPI->currentCommandBuffer->addLockResource(destination);
 	}
+}
+
+//**********************************************************************************************************************
+static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format format, 
+	uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
+{
+	auto vulkanAPI = VulkanAPI::get();
+	auto imageView = vulkanAPI->imagePool.get(image);
+	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
+		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
+			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
+			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity),
+		// TODO: utilize component swizzle
+		vk::ImageSubresourceRange(toVkImageAspectFlags(format),
+			baseMip, mipCount, baseLayer, layerCount));
+	return (VkImageView)vulkanAPI->device.createImageView(imageViewInfo);
 }
 
 //**********************************************************************************************************************
 ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	Image::Format format, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
-	auto imageView = GraphicsAPI::imagePool.get(image);
-	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)imageView->instance,
-		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
-			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
-			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity),
-			// TODO: utilize component swizzle
-		vk::ImageSubresourceRange(toVkImageAspectFlags(format), 
-			baseMip, mipCount, baseLayer, layerCount));
-	auto instance = Vulkan::device.createImageView(imageViewInfo);
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		this->instance = createVkImageView(image, type, format, baseMip, mipCount, baseLayer, layerCount);
+	else abort();
 
-	this->instance = (VkImageView)instance;
 	this->image = image;
 	this->baseLayer = baseLayer;
 	this->layerCount = layerCount;
@@ -646,84 +696,83 @@ bool ImageView::destroy()
 	if (!instance || readyLock > 0)
 		return false;
 
+	auto graphicsAPI = GraphicsAPI::get();
+
 	#if GARDEN_DEBUG
-	auto imageViewInstance = GraphicsAPI::imageViewPool.getID(this);
-	const auto descriptorSetData = GraphicsAPI::descriptorSetPool.getData();
-	auto descriptorSetOccupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
-
-	for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+	if (!graphicsAPI->forceResourceDestroy)
 	{
-		const auto& descriptorSet = descriptorSetData[i];
-		const std::map<string, Pipeline::Uniform>* uniforms;
-		if (descriptorSet.getPipeline())
-		{
-			if (descriptorSet.getPipelineType() == PipelineType::Graphics)
-			{
-				auto pipeline = GraphicsAPI::graphicsPipelinePool.get(
-					ID<GraphicsPipeline>(descriptorSet.getPipeline()));
-				uniforms = &pipeline->getUniforms();
-			}
-			else if (descriptorSet.getPipelineType() == PipelineType::Compute)
-			{
-				auto pipeline = GraphicsAPI::computePipelinePool.get(
-					ID<ComputePipeline>(descriptorSet.getPipeline()));
-				uniforms = &pipeline->getUniforms();
-			}
-			else abort();
-		}
+		auto imageViewInstance = graphicsAPI->imageViewPool.getID(this);
+		const auto descriptorSetData = graphicsAPI->descriptorSetPool.getData();
+		auto descriptorSetOccupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 
-		const auto& descriptorUniforms = descriptorSet.getUniforms();
-		for (const auto& pair : descriptorUniforms)
+		for (uint32 i = 0; i < descriptorSetOccupancy; i++)
 		{
-			const auto uniform = uniforms->find(pair.first);
-			if (uniform == uniforms->end() || uniform->second.descriptorSetIndex != descriptorSet.getIndex() ||
-				(!isSamplerType(uniform->second.type) && !isImageType(uniform->second.type)))
-			{
+			auto& descriptorSet = descriptorSetData[i];
+			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
-			}
 
-			const auto& resourceSets = pair.second.resourceSets;
-			for (const auto& resourceArray : resourceSets)
+			const auto& descriptorUniforms = descriptorSet.getUniforms();
+			auto pipelineView = graphicsAPI->getPipelineView(
+				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
+			const auto& uniforms = pipelineView->getUniforms();
+
+			for (const auto& pair : descriptorUniforms)
 			{
-				for (auto resource : resourceArray)
+				const auto uniform = uniforms.find(pair.first);
+				if (uniform == uniforms.end() || (!isSamplerType(uniform->second.type) && 
+					!isImageType(uniform->second.type)) || uniform->second.descriptorSetIndex != descriptorSet.getIndex())
 				{
-					if (ID<ImageView>(resource) != imageViewInstance)
-						continue;
-					throw runtime_error("Descriptor set is still using destroyed image view. (imageView: " +
-						debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+					continue;
+				}
+
+				const auto& resourceSets = pair.second.resourceSets;
+				for (const auto& resourceArray : resourceSets)
+				{
+					for (auto resource : resourceArray)
+					{
+						if (ID<ImageView>(resource) != imageViewInstance)
+							continue;
+						throw runtime_error("Descriptor set is still using destroyed image view. (imageView: " +
+							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+					}
 				}
 			}
 		}
-	}
 
-	auto framebufferData = GraphicsAPI::framebufferPool.getData();
-	auto framebufferOccupancy = GraphicsAPI::framebufferPool.getOccupancy();
+		auto framebufferData = graphicsAPI->framebufferPool.getData();
+		auto framebufferOccupancy = graphicsAPI->framebufferPool.getOccupancy();
 
-	for (uint32 i = 0; i < framebufferOccupancy; i++)
-	{
-		const auto& framebuffer = framebufferData[i];
-		const auto& colorAttachments = framebuffer.getColorAttachments();
-
-		for (const auto& attachment : colorAttachments)
+		for (uint32 i = 0; i < framebufferOccupancy; i++)
 		{
-			if (attachment.imageView != imageViewInstance)
-				continue;
-			throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
-				debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
-		}
+			const auto& framebuffer = framebufferData[i];
+			const auto& colorAttachments = framebuffer.getColorAttachments();
 
-		if (framebuffer.getDepthStencilAttachment().imageView == imageViewInstance)
-		{
-			throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
-				debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
+			for (const auto& attachment : colorAttachments)
+			{
+				if (attachment.imageView != imageViewInstance)
+					continue;
+				throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
+					debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
+			}
+
+			if (framebuffer.getDepthStencilAttachment().imageView == imageViewInstance)
+			{
+				throw runtime_error("Framebuffer is still using destroyed image view. (imageView: " +
+					debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
+			}
 		}
 	}
 	#endif
 
-	if (GraphicsAPI::isRunning)
-		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
-	else
-		Vulkan::device.destroyImageView((VkImageView)instance);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (vulkanAPI->forceResourceDestroy)
+			vulkanAPI->device.destroyImageView((VkImageView)instance);
+		else
+			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
+	}
+	else abort();
 
 	instance = nullptr;
 	return true;
@@ -734,11 +783,15 @@ void ImageView::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (!Vulkan::hasDebugUtils)
-		return;
-	
-	vk::DebugUtilsObjectNameInfoEXT nameInfo(
-		vk::ObjectType::eImageView, (uint64)instance, name.c_str());
-	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils)
+			return;
+
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImageView, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+	}
+	else abort();
 }
 #endif

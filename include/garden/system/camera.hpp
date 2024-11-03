@@ -172,11 +172,10 @@ class CameraSystem final : public ComponentSystem<CameraComponent, false>,
 	 */
 	CameraSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroy camera system instance.
+	 * @brief Destroys camera system instance.
 	 */
 	~CameraSystem() final;
 
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
 	void disposeComponents() final;
 	

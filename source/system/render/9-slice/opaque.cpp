@@ -21,7 +21,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 Opaque9SliceSystem::Opaque9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	NineSliceRenderCompSystem("9-slice/opaque", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+	NineSliceRenderCompSystem("9-slice/opaque", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
 Opaque9SliceSystem::~Opaque9SliceSystem() { unsetSingleton(); }
 
 const string& Opaque9SliceSystem::getComponentName() const

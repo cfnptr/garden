@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 #if GARDEN_EDITOR
 #define IMGUI_ENABLE_FREETYPE

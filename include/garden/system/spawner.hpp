@@ -111,7 +111,6 @@ class SpawnerSystem final : public ComponentSystem<SpawnerComponent>,
 	~SpawnerSystem() final;
 
 	void preInit();
-	void postDeinit();
 	void update();
 
 	void copyComponent(View<Component> source, View<Component> destination) final;

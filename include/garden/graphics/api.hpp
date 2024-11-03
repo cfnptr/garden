@@ -19,12 +19,21 @@
 
 #pragma once
 #include "garden/hash.hpp"
+#include "garden/graphics/swapchain.hpp"
 #include "garden/graphics/command-buffer.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
 namespace garden::graphics
 {
+
+/**
+ * @brief Graphics API backend types.
+ */
+enum class GraphicsBackend : uint8
+{
+	VulkanAPI, Count
+};
 
 /**
  * @brief Base graphics API class.
@@ -43,7 +52,7 @@ namespace garden::graphics
  * 
  * @warning Use graphics API directly with caution!
  */
-class GraphicsAPI final
+class GraphicsAPI
 {
 public:
 	/**
@@ -51,11 +60,17 @@ public:
 	 */
 	static constexpr uint8 minFramebufferSize = 32;
 
+	/**
+	 * @brief Destroyable graphics GPU resource types.
+	 */
 	enum class DestroyResourceType : uint32
 	{
 		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
 		Sampler, Framebuffer, ImageView, Image, Buffer, Count
 	};
+	/**
+	 * @brief Graphics resource destroy data container.
+	 */
 	struct DestroyResource final
 	{
 		void* data0 = nullptr;
@@ -63,46 +78,138 @@ public:
 		DestroyResourceType type = {};
 		uint32 count = 0;
 	};
+protected:
+	vector<DestroyResource> destroyBuffers[frameLag + 1];
+	GraphicsBackend backendType = {};
+	uint8 fillDestroyIndex = 0;
+	uint8 flushDestroyIndex = 1;
+	uint8 _alignment0 = 0;
 
-	inline static string appDataName = {};
-	inline static Version appVersion = {};
-	inline static void* window = nullptr;
-	inline static LinearPool<Buffer> bufferPool = {};
-	inline static LinearPool<Image> imagePool = {};
-	inline static LinearPool<ImageView> imageViewPool = {};
-	inline static LinearPool<Framebuffer> framebufferPool = {};
-	inline static LinearPool<GraphicsPipeline> graphicsPipelinePool = {};
-	inline static LinearPool<ComputePipeline> computePipelinePool = {};
-	inline static LinearPool<DescriptorSet> descriptorSetPool = {};
-	inline static uint64 graphicsPipelineVersion = 0;
-	inline static uint64 computePipelineVersion = 0;
-	inline static uint64 bufferVersion = 0;
-	inline static uint64 imageVersion = 0;
-	inline static vector<DestroyResource> destroyBuffers[frameLag + 1];
-	inline static map<void*, uint64> renderPasses = {};
-	inline static CommandBuffer frameCommandBuffer = {};
-	inline static CommandBuffer graphicsCommandBuffer = {};
-	inline static CommandBuffer transferCommandBuffer = {};
-	inline static CommandBuffer computeCommandBuffer = {};
-	inline static CommandBuffer* currentCommandBuffer = nullptr;
-	inline static bool isDeviceIntegrated = false;
-	inline static bool isRunning = false;
-	inline static uint8 fillDestroyIndex = 0;
-	inline static uint8 flushDestroyIndex = 1;
+	inline static GraphicsAPI* apiInstance = nullptr;
+
+	GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen);
+public:
+	virtual ~GraphicsAPI();
+
+	uint32 threadCount = 0;
+	void* window = nullptr;
+	Swapchain* swapchain = nullptr;
+	LinearPool<Buffer> bufferPool;
+	LinearPool<Image> imagePool;
+	LinearPool<ImageView> imageViewPool;
+	LinearPool<Framebuffer> framebufferPool;
+	LinearPool<GraphicsPipeline> graphicsPipelinePool;
+	LinearPool<ComputePipeline> computePipelinePool;
+	LinearPool<DescriptorSet> descriptorSetPool;
+	map<void*, uint64> renderPasses;
+	uint64 graphicsPipelineVersion = 1;
+	uint64 computePipelineVersion = 1;
+	uint64 bufferVersion = 1;
+	uint64 imageVersion = 1;
+	CommandBuffer* frameCommandBuffer;
+	CommandBuffer* graphicsCommandBuffer;
+	CommandBuffer* transferCommandBuffer;
+	CommandBuffer* computeCommandBuffer;
+	CommandBuffer* currentCommandBuffer = nullptr;
+	ID<Framebuffer> currentFramebuffer = {};
+	uint32 currentSubpassIndex = 0;
+	vector<ID<Pipeline>> currentPipelines;
+	vector<PipelineType> currentPipelineTypes;
+	vector<ID<Buffer>> currentVertexBuffers;
+	vector<ID<Buffer>> currentIndexBuffers;
+	bool isCurrentRenderPassAsync = false;
+	bool isDeviceIntegrated = false;
+	bool forceResourceDestroy = false;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	inline static bool recordGpuTime = false;
+	bool recordGpuTime = false;
 	#endif
 
-	inline static void destroyResource(DestroyResourceType type,
-		void* data0, void* data1 = nullptr, uint32 count = 0)
+	/**
+	 * @brief Returns graphics API backend type. 
+	 */
+	GraphicsBackend getBackendType() const noexcept { return backendType; }
+
+	/**
+	 * @brief Returns pipeline pool instance from it pointer.
+	 *
+	 * @param type target pipeline type
+	 * @param[in] pipeline pointer to the pipeline
+	 */
+	ID<Pipeline> getPipeline(PipelineType type, const Pipeline* pipeline) const noexcept
 	{
-		DestroyResource destroyResource;
-		destroyResource.data0 = data0;
-		destroyResource.data1 = data1;
-		destroyResource.type = type;
-		destroyResource.count = count;
-		destroyBuffers[fillDestroyIndex].push_back(destroyResource);
+		if (type == PipelineType::Graphics)
+			return ID<Pipeline>(graphicsPipelinePool.getID((const GraphicsPipeline*)pipeline));
+		else if (type == PipelineType::Compute)
+			return ID<Pipeline>(computePipelinePool.getID((const ComputePipeline*)pipeline));
+		abort();
+	}
+	/**
+	 * @brief Returns pipeline pool view from it ID.
+	 *
+	 * @param type target pipeline type
+	 * @param[in] pipeline pointer to the pipeline
+	 */
+	View<Pipeline> getPipelineView(PipelineType type, ID<Pipeline> pipeline) const noexcept
+	{
+		if (type == PipelineType::Graphics)
+			return View<Pipeline>(graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline)));
+		else if (type == PipelineType::Compute)
+			return View<Pipeline>(computePipelinePool.get(ID<ComputePipeline>(pipeline)));
+		abort();
+	}
+
+	/**
+	 * @brief Calculate rendering operation auto thread count
+	 * @param threadIndex current thread index
+	 */
+	int32 calcAutoThreadCount(int32& threadIndex) const noexcept
+	{
+		if (threadIndex < 0)
+		{
+			threadIndex = 0;
+			return threadCount;
+		}
+		return threadIndex + 1;
+	}
+
+	/**
+	 * @brief Adds graphics resource data to the destroy buffer.
+	 * 
+	 * @param type target GPU resource type
+	 * @param[in,out] data0 first resource data
+	 * @param[in,out] data1 second resource data
+	 * @param count resource data count
+	 */
+	void destroyResource(DestroyResourceType type,
+		void* data0, void* data1 = nullptr, uint32 count = 0);
+	/**
+	 * @brief Actually destroys unused GPU resources.
+	 */
+	virtual void flushDestroyBuffer() = 0;
+
+	/**
+	 * @brief Creates and initializes a new graphics API instance.
+	 */
+	static void initialize(GraphicsBackend backendType, const string& appName, 
+		const string& appDataName, Version appVersion, uint2 windowSize, uint32 threadCount, 
+		bool useVsync, bool useTripleBuffering, bool isFullscreen);
+	/**
+	 * @brief Terminates and destroys graphics API instance.
+	 */
+	static void terminate();
+
+	/**
+	 * @brief Returns true if graphics API is initialized.
+	 */
+	inline static bool isInitialized() noexcept { return apiInstance; }
+	/**
+	 * @brief Returns graphics API instance.
+	 */
+	inline static GraphicsAPI* get() noexcept
+	{
+		GARDEN_ASSERT(apiInstance);
+		return apiInstance;
 	}
 };
 

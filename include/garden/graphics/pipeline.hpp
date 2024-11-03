@@ -279,13 +279,13 @@ protected:
 	static vector<void*> createShaders(const vector<vector<uint8>>& code, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);
 
-	static void fillSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
+	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
 		const map<string, SpecConstValue>& specConstValues, ShaderStage shaderStage, uint8 variantCount);
-	static void setVariantIndex(void* specInfo, uint8 variantIndex);
+	static void setVkVariantIndex(void* specInfo, uint8 variantIndex);
 	static void updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 descriptorDataSize);
+	static bool checkThreadIndex(int32 threadIndex);
 
 	friend class PipelineExt;
-	friend class DescriptorSet;
 public:
 	/*******************************************************************************************************************
 	 * @brief Returns rendering pipeline type.
@@ -358,50 +358,47 @@ public:
 	 * @details See the @ref Pipeline::pushConstants()
 	 * 
 	 * @tparam T type of the structure with data
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 */
 	template<typename T>
-	T* getPushConstantsAsync(int32 taskIndex)
+	T* getPushConstantsAsync(int32 threadIndex)
 	{
 		GARDEN_ASSERT(asyncRecording);
-		GARDEN_ASSERT(taskIndex >= 0);
-		GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
+		GARDEN_ASSERT(checkThreadIndex(threadIndex));
 		GARDEN_ASSERT(pushConstantsSize == sizeof(T)); // Different shader pushConstants size
-		return (T*)(pushConstantsBuffer.data() + pushConstantsSize * taskIndex);
+		return (T*)(pushConstantsBuffer.data() + pushConstantsSize * threadIndex);
 	}
 	/**
 	 * @brief Returns push constants data. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
 	 * 
 	 * @tparam T type of the structure with data
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 */
 	template<typename T>
-	const T* getPushConstantsAsync(int32 taskIndex) const { return getPushConstantsAsync<T>(taskIndex); }
+	const T* getPushConstantsAsync(int32 threadIndex) const { return getPushConstantsAsync<T>(threadIndex); }
 
 	/**
 	 * @brief Returns push constants data. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 */
-	uint8* getPushConstantsAsync(int32 taskIndex)
+	uint8* getPushConstantsAsync(int32 threadIndex)
 	{
 		GARDEN_ASSERT(asyncRecording);
-		GARDEN_ASSERT(taskIndex >= 0);
-		GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
-		return pushConstantsBuffer.data() + pushConstantsSize * taskIndex;
+		GARDEN_ASSERT(checkThreadIndex(threadIndex));
+		return pushConstantsBuffer.data() + pushConstantsSize * threadIndex;
 	}
 	/**
 	 * @brief Returns push constants data. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 */
-	const uint8* getPushConstantsAsync(int32 taskIndex) const
+	const uint8* getPushConstantsAsync(int32 threadIndex) const
 	{
 		GARDEN_ASSERT(asyncRecording);
-		GARDEN_ASSERT(taskIndex >= 0);
-		GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
-		return pushConstantsBuffer.data() + pushConstantsSize * taskIndex;
+		GARDEN_ASSERT(checkThreadIndex(threadIndex));
+		return pushConstantsBuffer.data() + pushConstantsSize * threadIndex;
 	}
 
 	//******************************************************************************************************************
@@ -423,9 +420,9 @@ public:
 	 * @details See the @ref Pipeline::bind()
 	 * 
 	 * @param variant target shaders variant to use or 0 (#variantCount X)
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindAsync(uint8 variant = 0, int32 taskIndex = -1);
+	void bindAsync(uint8 variant = 0, int32 threadIndex = -1);
 
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
@@ -444,9 +441,9 @@ public:
 	 * 
 	 * @param[in] descriptorSetRange target descriptor set range array
 	 * @param rangeCount descriptor set range array size
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 taskIndex = -1);
+	void bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
@@ -488,23 +485,23 @@ public:
 	 * 
 	 * @tparam N descriptor set range array size
 	 * @param[in] descriptorSetRange target descriptor set range array
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
 	template<psize N>
-	void bindDescriptorSetsAsync(const array<DescriptorSet::Range, N>& descriptorSetRange, int32 taskIndex = -1)
+	void bindDescriptorSetsAsync(const array<DescriptorSet::Range, N>& descriptorSetRange, int32 threadIndex = -1)
 	{
-		bindDescriptorSetsAsync(descriptorSetRange.data(), (uint8)N, taskIndex);
+		bindDescriptorSetsAsync(descriptorSetRange.data(), (uint8)N, threadIndex);
 	}
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering. (MT-Safe)
 	 * @details See the @ref Pipeline::bindDescriptorSets()
 	 * 
 	 * @param[in] descriptorSetRange target descriptor set range vector
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindDescriptorSetsAsync(const vector<DescriptorSet::Range>& descriptorSetRange, int32 taskIndex = -1)
+	void bindDescriptorSetsAsync(const vector<DescriptorSet::Range>& descriptorSetRange, int32 threadIndex = -1)
 	{
-		bindDescriptorSetsAsync(descriptorSetRange.data(), (uint8)descriptorSetRange.size(), taskIndex);
+		bindDescriptorSetsAsync(descriptorSetRange.data(), (uint8)descriptorSetRange.size(), threadIndex);
 	}
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering. (MT-Safe)
@@ -512,12 +509,12 @@ public:
 	 * 
 	 * @param descriptorSet target descriptor set
 	 * @param offset descript set offset in the range or 0
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindDescriptorSetAsync(ID<DescriptorSet> descriptorSet, uint32 offset = 0, int32 taskIndex = -1)
+	void bindDescriptorSetAsync(ID<DescriptorSet> descriptorSet, uint32 offset = 0, int32 threadIndex = -1)
 	{
 		DescriptorSet::Range descriptorSetRange(descriptorSet, 1, offset);
-		bindDescriptorSetsAsync(&descriptorSetRange, 1, taskIndex);
+		bindDescriptorSetsAsync(&descriptorSetRange, 1, threadIndex);
 	}
 	
 	/*******************************************************************************************************************
@@ -532,9 +529,9 @@ public:
 	/**
 	 * @brief Pushes specified constants for subsequent rendering. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 */
-	void pushConstantsAsync(int32 taskIndex);
+	void pushConstantsAsync(int32 threadIndex);
 };
 
 /**

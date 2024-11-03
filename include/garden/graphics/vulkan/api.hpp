@@ -14,12 +14,13 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common Vulkan API functions.
+ * @brief Vulkan graphics API functions.
  */
 
 #pragma once
 #include "garden/graphics/api.hpp"
-#include "garden/graphics/swapchain.hpp"
+#include "garden/graphics/vulkan/swapchain.hpp"
+#include "garden/graphics/vulkan/command-buffer.hpp"
 
 namespace garden::graphics
 {
@@ -50,54 +51,88 @@ namespace garden::graphics
  * than older graphics APIs like OpenGL, providing developers with more direct control over GPU operations and 
  * memory management. This approach helps in reducing driver overhead and improving performance, 
  * especially in applications where CPU bottlenecks are a concern.
+ * 
+ * @warning Use Vulkan graphics API directly with caution!
  */
-class Vulkan final
+class VulkanAPI final : public GraphicsAPI
 {
-public:
-	inline static uint32 versionMajor = 0;
-	inline static uint32 versionMinor = 0;
-	inline static vk::Instance instance = {};
-	inline static vk::DispatchLoaderDynamic dynamicLoader = {};
-	inline static vk::PhysicalDevice physicalDevice = {};
-	inline static vk::SurfaceKHR surface = {};
-	inline static uint32 graphicsQueueFamilyIndex = 0;
-	inline static uint32 transferQueueFamilyIndex = 0;
-	inline static uint32 computeQueueFamilyIndex = 0;
-	inline static vk::Device device = {};
-	inline static VmaAllocator memoryAllocator = nullptr;
-	inline static vk::Queue frameQueue = {};
-	inline static vk::Queue graphicsQueue = {};
-	inline static vk::Queue transferQueue = {};
-	inline static vk::Queue computeQueue = {};
-	inline static vk::CommandPool frameCommandPool = {};
-	inline static vk::CommandPool graphicsCommandPool = {};
-	inline static vk::CommandPool transferCommandPool = {};
-	inline static vk::CommandPool computeCommandPool = {};
-	inline static vk::DescriptorPool descriptorPool = {};
-	inline static vk::PipelineCache pipelineCache = {};
-	inline static vector<vk::CommandBuffer> secondaryCommandBuffers = {};
-	inline static vector<bool> secondaryCommandStates = {};
-	inline static Swapchain swapchain = {};
-	inline static vk::PhysicalDeviceProperties2 deviceProperties = {};
-	inline static vk::PhysicalDeviceFeatures2 deviceFeatures = {};
-	inline static bool isCacheLoaded = false;
-	inline static bool hasMemoryBudget = false;
-	inline static bool hasMemoryPriority = false;
-	inline static bool hasPageableMemory = false;
-	inline static bool hasDynamicRendering = false;
-	inline static bool hasDescriptorIndexing = false;
+private:
+	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
+		uint32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen);
+	~VulkanAPI() final;
 
+	friend class GraphicsAPI;
+public:
+	string appDataName;
+	Version appVersion;
+	uint32 versionMajor = 0;
+	uint32 versionMinor = 0;
+	vk::Instance instance;
+	vk::DispatchLoaderDynamic dynamicLoader;
+	vk::PhysicalDevice physicalDevice;
+	vk::SurfaceKHR surface;
+	uint32 graphicsQueueFamilyIndex = 0;
+	uint32 transferQueueFamilyIndex = 0;
+	uint32 computeQueueFamilyIndex = 0;
+	vk::Device device;
+	VmaAllocator memoryAllocator = nullptr;
+	vk::Queue frameQueue;
+	vk::Queue graphicsQueue;
+	vk::Queue transferQueue;
+	vk::Queue computeQueue;
+	vk::CommandPool frameCommandPool;
+	vk::CommandPool graphicsCommandPool;
+	vk::CommandPool transferCommandPool;
+	vk::CommandPool computeCommandPool;
+	vk::DescriptorPool descriptorPool;
+	vk::PipelineCache pipelineCache;
+	vector<vk::CommandBuffer> secondaryCommandBuffers;
+	vector<bool> secondaryCommandStates;
+	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
+	vector<vk::DescriptorSetLayout> descriptorSetLayouts;
+	vector<vk::WriteDescriptorSet> writeDescriptorSets;
+	vector<vk::DescriptorImageInfo> descriptorImageInfos;
+	vector<vk::DescriptorBufferInfo> descriptorBufferInfos;
+	vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
+	vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
+	vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
+	vector<vk::ClearAttachment> clearAttachments;
+	vector<vk::ClearRect> clearAttachmentsRects;
+	vector<vk::ClearValue> clearValues;
+	vector<vk::BufferCopy> bufferCopies;
+	vector<vk::ImageSubresourceRange> imageClears;
+	vector<vk::ImageCopy> imageCopies;
+	vector<vk::BufferImageCopy> bufferImageCopies;
+	vector<vk::ImageBlit> imageBlits;
+	vk::PhysicalDeviceProperties2 deviceProperties;
+	vk::PhysicalDeviceFeatures2 deviceFeatures;
+	bool isCacheLoaded = false;
+	bool hasMemoryBudget = false;
+	bool hasMemoryPriority = false;
+	bool hasPageableMemory = false;
+	bool hasDynamicRendering = false;
+	bool hasDescriptorIndexing = false;
+	
 	#if GARDEN_DEBUG
-	inline static vk::DebugUtilsMessengerEXT debugMessenger = {};
-	inline static bool hasDebugUtils = false;
+	vk::DebugUtilsMessengerEXT debugMessenger;
+	bool hasDebugUtils = false;
 	#endif
 
-	// TODO: move rest to api.hpp and make these calls universal.
+	inline static VulkanAPI* vulkanInstance = nullptr;
 
-	static void initialize(const string& appName, const string& appDataName, Version appVersion,
-		uint2 windowSize, bool isFullscreen, bool useVsync, bool useTripleBuffering, bool useThreading);
-	static void terminate();
-	static void updateDestroyBuffer();
+	/**
+	 * @brief Actually destroys unused GPU resources.
+	 */
+	void flushDestroyBuffer() final;
+
+	/**
+	 * @brief Returns Vulkan graphics API instance.
+	 */
+	inline static VulkanAPI* get() noexcept
+	{
+		GARDEN_ASSERT(vulkanInstance);
+		return vulkanInstance;
+	}
 };
 
 /***********************************************************************************************************************

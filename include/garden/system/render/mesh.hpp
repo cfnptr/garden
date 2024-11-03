@@ -75,9 +75,9 @@ protected:
 	/**
 	 * @brief Begins mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
-	 * @param taskIndex thread pool task index (not thread index!)
+	 * @param threadIndex thread index in the pool
 	 */
-	virtual void beginDrawAsync(int32 taskIndex) { }
+	virtual void beginDrawAsync(int32 threadIndex) { }
 	/**
 	 * @brief Draws mesh item asynchronously.
 	 * @warning Be careful with multithreaded code!
@@ -86,18 +86,18 @@ protected:
 	 * @param[in] viewProj camera view * projection matrix
 	 * @param[in] model mesh model matrix (position, scale, rotation, etc.)
 	 * @param drawIndex mesh item draw index (sorted)
-	 * @param taskIndex thread pool task index (not thread index!)
+	 * @param threadIndex thread index in the pool
 	 */
 	virtual void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
-		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
+		const float4x4& model, uint32 drawIndex, int32 threadIndex) = 0;
 	/**
 	 * @brief Ends mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
 	 * 
 	 * @param[in] drawCount total mesh draw item count
-	 * @param taskIndex thread pool task index (not thread index!)
+	 * @param threadIndex thread index in the pool
 	 */
-	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
+	virtual void endDrawAsync(uint32 drawCount, int32 threadIndex) { }
 	/**
 	 * @brief Finalizes data used for mesh rendering.
 	 * @warning Be careful with multithreaded code!
@@ -165,7 +165,7 @@ protected:
 class MeshRenderSystem final : public System
 {
 public:
-	struct OpaqueMesh final
+	struct alignas(64) OpaqueMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
 		float4x3 model = float4x3(0.0f);
@@ -178,7 +178,7 @@ public:
 			return distance2 < m.distance2;
 		}
 	};
-	struct TranslucentMesh final
+	struct alignas(64) TranslucentMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
 		float4x3 model = float4x3(0.0f);
@@ -243,7 +243,7 @@ private:
 	void forwardRender();
 	void preDeferredRender();
 	void deferredRender();
-	void hdrRender();
+	void translucentRender();
 
 	friend class ecsm::Manager;
 	friend class GizmosEditorSystem;

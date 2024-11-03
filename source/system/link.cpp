@@ -104,7 +104,8 @@ void LinkComponent::setTag(const string& tag)
 LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton) { }
 LinkSystem::~LinkSystem()
 {
-	components.clear(false);
+	if (!Manager::Instance::get()->isRunning)
+		components.clear(false);
 	unsetSingleton();
 }
 
@@ -133,31 +134,31 @@ const string& LinkSystem::getComponentName() const
 //**********************************************************************************************************************
 void LinkSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto componentView = View<LinkComponent>(component);
+	auto linkView = View<LinkComponent>(component);
 
-	if (componentView->uuid)
+	if (linkView->uuid)
 	{
-		componentView->uuid.toBase64(uuidStringCache);
+		linkView->uuid.toBase64(uuidStringCache);
 		serializer.write("uuid", uuidStringCache);
 	}
 
-	if (!componentView->tag.empty())
-		serializer.write("tag", componentView->tag);
+	if (!linkView->tag.empty())
+		serializer.write("tag", linkView->tag);
 }
 void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto componentView = View<LinkComponent>(component);
+	auto linkView = View<LinkComponent>(component);
 
 	if (deserializer.read("uuid", uuidStringCache))
 	{
-		if (!componentView->uuid.fromBase64(uuidStringCache))
+		if (!linkView->uuid.fromBase64(uuidStringCache))
 			GARDEN_LOG_ERROR("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
 
-		auto result = uuidMap.emplace(componentView->uuid, entity);
+		auto result = uuidMap.emplace(linkView->uuid, entity);
 		if (!result.second)
 		{
 			GARDEN_LOG_ERROR("Deserialized entity with already existing link uuid. (uuid: " + uuidStringCache + ")");
-			componentView->uuid = {};
+			linkView->uuid = {};
 		}
 	}
 
@@ -165,7 +166,7 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 	if (deserializer.read("tag", tag))
 	{
 		tagMap.emplace(tag, entity);
-		componentView->tag = std::move(tag);
+		linkView->tag = std::move(tag);
 	}
 }
 

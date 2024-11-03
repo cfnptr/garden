@@ -95,13 +95,7 @@ private:
 		Memory(0, access, usage, strategy, version), bind(bind) { }
 	bool destroy() final;
 
-	friend class Image;
-	friend class Vulkan;
-	friend class Pipeline;
 	friend class BufferExt;
-	friend class DescriptorSet;
-	friend class CommandBuffer;
-	friend class GraphicsPipeline;
 	friend class LinearPool<Buffer>;
 public:
 	/*******************************************************************************************************************

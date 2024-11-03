@@ -55,7 +55,7 @@ AutoExposureRenderEditorSystem::AutoExposureRenderEditorSystem()
 }
 AutoExposureRenderEditorSystem::~AutoExposureRenderEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureRenderEditorSystem::deinit);
@@ -71,7 +71,7 @@ void AutoExposureRenderEditorSystem::init()
 }
 void AutoExposureRenderEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", AutoExposureRenderEditorSystem::swapchainRecreate);

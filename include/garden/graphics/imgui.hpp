@@ -22,7 +22,6 @@
 
 #if GARDEN_EDITOR
 #include "math/color.hpp"
-#include "garden/graphics/vulkan.hpp"
 
 #define IMGUI_ENABLE_FREETYPE
 #include "imgui.h"

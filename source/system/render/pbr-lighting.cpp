@@ -363,6 +363,8 @@ static ID<Image> createDfgLUT()
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("DFG LUT Create");
+
 			auto itemCount = task.getItemCount();
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
@@ -375,6 +377,8 @@ static ID<Image> createDfgLUT()
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("DFG LUT Create");
+
 		auto pixelData = (float2*)pixels; uint32 index = 0;
 		for (int32 y = iblDfgSize - 1; y >= 0; y--)
 		{
@@ -415,10 +419,14 @@ PbrLightingRenderSystem::PbrLightingRenderSystem(bool useShadowBuffer, bool useA
 }
 PbrLightingRenderSystem::~PbrLightingRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderSystem::deinit);
+	}
+	else
+	{
+		components.clear(false);
 	}
 
 	unsetSingleton();
@@ -458,9 +466,7 @@ void PbrLightingRenderSystem::init()
 }
 void PbrLightingRenderSystem::deinit()
 {
-	components.clear();
-
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(iblSpecularPipeline);
@@ -638,7 +644,7 @@ void PbrLightingRenderSystem::hdrRender()
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDescriptorSet);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
-	if (DeferredRenderSystem::Instance::get()->useAsyncRecording())
+	if (Framebuffer::isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0, 0);
 		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
@@ -713,17 +719,6 @@ void PbrLightingRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	const auto sourceView = View<PbrLightingRenderComponent>(source);
-	auto destinationView = View<PbrLightingRenderComponent>(destination);
-	destinationView->destroy();
-
-	destinationView->cubemap = sourceView->cubemap;
-	destinationView->sh = sourceView->sh;
-	destinationView->specular = sourceView->specular;
-	destinationView->descriptorSet = sourceView->descriptorSet;
-}
 const string& PbrLightingRenderSystem::getComponentName() const
 {
 	static const string name = "PBR Lighting";
@@ -898,6 +893,8 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 
 		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("IBL SH Generate");
+
 			calcIblSH(shBufferData, faces, cubemapSize, task.getTaskIndex(),
 				task.getItemOffset(), task.getItemCount());
 		}),
@@ -906,6 +903,8 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("IBL SH Generate");
+
 		bufferCount = 1;
 		shBuffer.resize(shCoefCount);
 		shBufferData = shBuffer.data();
@@ -1030,6 +1029,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("IBL Specular Generate");
+
 			calcIblSpecular(specularMap, countBufferData, cubemapSize,
 				cubemapMipCount, specularMipCount, task.getTaskIndex());
 		}),
@@ -1038,6 +1039,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("IBL Specular Generate");
+
 		for (uint32 i = 0; i < (uint32)countBuffer.size(); i++)
 		{
 			calcIblSpecular(specularMap, countBufferData, cubemapSize,

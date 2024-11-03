@@ -627,7 +627,7 @@ private:
 	 */
 	PhysicsSystem(const Properties& properties = {}, bool setSingleton = true);
 	/**
-	 * @brief Destroy physics system instance.
+	 * @brief Destroys physics system instance.
 	 */
 	~PhysicsSystem() final;
 

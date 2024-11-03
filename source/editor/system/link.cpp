@@ -28,7 +28,7 @@ LinkEditorSystem::LinkEditorSystem()
 }
 LinkEditorSystem::~LinkEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LinkEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LinkEditorSystem::deinit);
@@ -51,7 +51,7 @@ void LinkEditorSystem::deinit()
 {
 	EditorRenderSystem::Instance::get()->unregisterEntityInspector<LinkComponent>();
 
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LinkEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);

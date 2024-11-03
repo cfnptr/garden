@@ -232,7 +232,7 @@ public:
 	 */
 	CharacterSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroy character system instance.
+	 * @brief Destroys character system instance.
 	 */
 	~CharacterSystem() final;
 

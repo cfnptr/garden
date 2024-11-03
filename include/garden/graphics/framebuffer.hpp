@@ -24,7 +24,6 @@
 namespace garden::graphics
 {
 
-class Pipeline;
 class FramebufferExt;
 
 /***********************************************************************************************************************
@@ -215,17 +214,7 @@ private:
 	}
 	bool destroy() final;
 
-	inline static ID<Framebuffer> currentFramebuffer = {};
-	inline static uint32 currentSubpassIndex = 0;
-	inline static vector<ID<Pipeline>> currentPipelines = vector<ID<Pipeline>>(thread::hardware_concurrency());
-	inline static vector<PipelineType> currentPipelineTypes = vector<PipelineType>(thread::hardware_concurrency());
-	inline static vector<ID<Buffer>> currentVertexBuffers = vector<ID<Buffer>>(thread::hardware_concurrency());
-	inline static vector<ID<Buffer>> currentIndexBuffers = vector<ID<Buffer>>(thread::hardware_concurrency());
-
-	friend class Pipeline;
-	friend class CommandBuffer;
 	friend class FramebufferExt;
-	friend class GraphicsPipeline;
 	friend class LinearPool<Framebuffer>;
 public:
 	/*******************************************************************************************************************
@@ -294,14 +283,14 @@ public:
 	 * @brief Returns current render pass framebuffer.
 	 * @details Set by the @ref Framebuffer::beginRenderPass().
 	 */
-	static ID<Framebuffer> getCurrent() noexcept { return currentFramebuffer; }
+	static ID<Framebuffer> getCurrent() noexcept;
 	/**
 	 * @brief Returns current render subpass index.
 	 * @details Changes by the @ref Framebuffer::nextSubpass().
 	 */
-	static uint8 getCurrentSubpassIndex() noexcept { return currentSubpassIndex; }
+	static uint8 getCurrentSubpassIndex() noexcept;
 	/**
-	 * @brief Is rendering with multithreaded commands recording.
+	 * @brief Is current render pass use multithreaded commands recording.
 	 * @details Changes by the @ref Framebuffer::nextSubpass().
 	 */
 	static bool isCurrentRenderPassAsync() noexcept;

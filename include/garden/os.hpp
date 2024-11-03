@@ -18,7 +18,7 @@
  */
 
 #pragma once
-#include <cstdint>
+#include "mpio/os.hpp"
 
 #if _WIN32
 #define GARDEN_OS_WINDOWS 1
@@ -44,3 +44,28 @@
 #if !GARDEN_OS_WINDOWS && !GARDEN_OS_MACOS && !GARDEN_OS_LINUX
 #error Unknown operating system
 #endif
+
+namespace garden
+{
+
+/**
+ * @brief Returns best foreground thread count for a system CPU.
+ */
+static int getBestForegroundThreadCount()
+{
+	auto cpuName = mpio::OS::getCpuName();
+	if (cpuName.find("AMD") != std::string::npos)
+	{
+		// Only one of the two CCXes has additional 3D V-Cache.
+		if (cpuName.find("9 7950X3D") != std::string::npos ||
+			cpuName.find("9 7900X3D") != std::string::npos ||
+			cpuName.find("9 7945HX3D") != std::string::npos)
+		{
+			auto cpuCount = mpio::OS::getPhysicalCpuCount();
+			return cpuCount > 1 ? cpuCount / 2 : cpuCount;
+		}
+	}
+	return mpio::OS::getPerformanceCpuCount();
+}
+
+} // garden

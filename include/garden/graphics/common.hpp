@@ -26,10 +26,6 @@ namespace garden::graphics
 {
 
 /**
- * @brief Optimal sync primitive count.
- */
-constexpr uint8 frameLag = 2;
-/**
  * @brief Nvidia architecture maximum binary size.
  */
 constexpr psize maxPushConstantsSize = 128;

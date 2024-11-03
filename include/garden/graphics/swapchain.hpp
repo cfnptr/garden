@@ -12,74 +12,113 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: add documentation and make generic Swapchain class.
+/***********************************************************************************************************************
+ * @file
+ * @brief Common graphics swapchain functions.
+ */
 
 #pragma once
 #include "garden/thread-pool.hpp"
 #include "garden/graphics/framebuffer.hpp"
 
-#if __APPLE__
-#define VK_ENABLE_BETA_EXTENSIONS
-#endif
-
-#include "vulkan/vulkan.hpp"
-#include "vk_mem_alloc.h"
-
 namespace garden::graphics
 {
 
-class Swapchain final
+/**
+ * @brief Optimal swapchain sync primitive count.
+ */
+constexpr uint8 frameLag = 2;
+
+/**
+ * @brief Base graphics swapchain class.
+ * 
+ * @details
+ * Swapchain is a set of buffers (usually two or more) used to manage the process of displaying rendered images on the 
+ * screen. The swapchain's main role is to ensure smooth rendering and prevent visual artifacts like tearing by 
+ * coordinating the display of frames to the screen. The swapchain contains multiple buffers, one of these buffers is 
+ * actively being displayed on the screen (front buffer), while others are used to prepare or render the next frame 
+ * (back buffers). The rendering pipeline renders frames to a back buffer, and once a frame is complete, the swapchain 
+ * swaps this buffer with the front buffer. This "swap" is where the name comes from. Once the back buffer becomes the 
+ * front buffer, it can be displayed on the screen. Swapchains work with synchronization techniques like vertical 
+ * synchronization (V-Sync) to make sure buffer swapping aligns with the display's refresh rate, preventing screen t
+ * earing. When VSync is enabled, swapping happens at the start of a new refresh cycle.
+ * 
+ * @warning Use graphics swapchain directly with caution!
+ */
+class Swapchain
 {
 public:
-	struct Buffer final
+	/**
+	 * @brief Swapchain buffer data container.
+	 */
+	struct Buffer
 	{
-		vk::CommandBuffer primaryCommandBuffer = {};
 		ID<Image> colorImage = {};
-		uint32 secondaryCommandBufferIndex = 0;
-		vector<vk::CommandPool> secondaryCommandPools;
-		vector<vk::CommandBuffer> secondaryCommandBuffers;
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		vk::QueryPool queryPool = {};
-		uint32 isPoolClean = false;
-		#endif
+		virtual ~Buffer() { }
 	};
-private:
-	uint2 framebufferSize = uint2(0);
-	vk::Fence fences[frameLag];
-	vk::Semaphore imageAcquiredSemaphores[frameLag];
-	vk::Semaphore drawCompleteSemaphores[frameLag];
-	vk::SwapchainKHR instance = {};
-	vector<Buffer> buffers;
+protected:
+	vector<Buffer*> buffers;
 	ThreadPool* threadPool = nullptr;
-	uint32 frameIndex = 0, bufferIndex = 0;
-	bool vsync = false, tripleBuffering = false, useThreading = false;
+	uint2 framebufferSize = uint2(0);
+	uint32 bufferIndex = 0;
+	bool useVsync = false;
+	bool useTripleBuffering = false;
 
-	Swapchain() = default;
-	Swapchain(uint2 framebufferSize, bool useVsync,
-		bool useTripleBuffering, bool useThreading);
-	void destroy();
-
-	friend class Vulkan;
+	Swapchain(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) noexcept : 
+		framebufferSize(framebufferSize), useVsync(useVsync), useTripleBuffering(useTripleBuffering) { }
 public:
-	const vector<Buffer>& getBuffers() const noexcept { return buffers; }
+	/**
+	 * @brief Destroys swapchain instance.
+	 */
+	virtual ~Swapchain() { }
+
+	/**
+	 * @brief Returns swapchain rendering buffers array.
+	 */
+	const vector<Buffer*>& getBuffers() const noexcept { return buffers; }
+	/**
+	 * @brief Returns swapchain rendering buffer count.
+	 */
 	uint32 getBufferCount() const noexcept { return (uint32)buffers.size(); }
-	const Buffer& getCurrentBuffer() const noexcept { return buffers[bufferIndex]; }
+	/**
+	 * @brief Returns current (front) swapchain rendering buffer.
+	 */
+	Buffer* getCurrentBuffer() const noexcept { return buffers[bufferIndex]; }
+	/**
+	 * @brief Returns current (front) swapchain buffer index.
+	 */
 	uint32 getCurrentBufferIndex() const noexcept { return bufferIndex; }
-	uint32 getCurrentFrameIndex() const noexcept { return frameIndex; }
+	/**
+	 * @brief Returns swapchain framebuffer size.
+	 */
 	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
-	bool useVsync() const noexcept { return vsync; }
-	bool useTripleBuffering() const noexcept { return tripleBuffering; }
+	/**
+	 * @brief Returns true if swapchain is using V-sync.
+	 */
+	bool isUseVsync() const noexcept { return useVsync; }
+	/**
+	 * @brief Returns true if swapchain is triple buffering. (3 framebuffers)
+	 */
+	bool isUseTripleBuffering() const noexcept { return useTripleBuffering; }
 
-	void setThreadPool(ThreadPool& threadPool);
-	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering);
-	bool acquireNextImage();
-	void submit();
-	bool present();
-
-	void beginSecondaryCommandBuffers(void* framebuffer, void* renderPass,
-		uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
-		Framebuffer::OutputAttachment depthStencilAttachment, const string& name);
-	void endSecondaryCommandBuffers();
+	/**
+	 * @brief Recreates swapchain rendering buffers.
+	 */
+	virtual void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) = 0;
+	/**
+	 * @brief Acquires next (front) swapchain rendering buffer.
+	 * @param threadPool async recording thread pool instance or null
+	 */
+	virtual bool acquireNextImage(ThreadPool* threadPool) = 0;
+	/**
+	 * @brief Submits current (front) swapchain rendering buffer.
+	 * @param threadPool async recording thread pool instance or null
+	 */
+	virtual void submit() = 0;
+	/**
+	 * @brief Presents current (front) swapchain rendering buffer.
+	 */
+	virtual bool present() = 0;
 };
 
 } // namespace garden::graphics

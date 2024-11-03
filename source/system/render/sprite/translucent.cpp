@@ -21,7 +21,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 TranslucentSpriteSystem::TranslucentSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderCompSystem("sprite/translucent", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+	SpriteRenderCompSystem("sprite/translucent", useDeferredBuffer, useLinearFilter, true), Singleton(setSingleton) { }
 TranslucentSpriteSystem::~TranslucentSpriteSystem() { unsetSingleton(); }
 
 const string& TranslucentSpriteSystem::getComponentName() const

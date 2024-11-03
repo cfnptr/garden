@@ -36,7 +36,7 @@ InfiniteGridEditorSystem::InfiniteGridEditorSystem()
 }
 InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InfiniteGridEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
@@ -64,7 +64,7 @@ void InfiniteGridEditorSystem::init()
 }
 void InfiniteGridEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);

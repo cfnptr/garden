@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/pipeline.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 #include <fstream>
 
@@ -66,10 +66,11 @@ static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor)
 }
 
 //**********************************************************************************************************************
-static vector<void*> createPipelineSamplers(const map<string, Pipeline::SamplerState>& samplerStates, 
-	map<string, void*>& immutableSamplers, const fs::path& pipelinePath,
+static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::SamplerState>& samplerStates,
+	map<string, vk::Sampler>& immutableSamplers, const fs::path& pipelinePath,
 	const map<string, Pipeline::SamplerState>& samplerStateOverrides)
 {
+	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> samplers(samplerStates.size());
 	uint32 i = 0;
 
@@ -79,25 +80,24 @@ static vector<void*> createPipelineSamplers(const map<string, Pipeline::SamplerS
 		auto state = samplerStateSearch == samplerStateOverrides.end() ?
 			it->second : samplerStateSearch->second;
 
-		vk::SamplerCreateInfo samplerInfo({},
-			toVkFilter(state.magFilter), toVkFilter(state.minFilter),
+		vk::SamplerCreateInfo samplerInfo({}, toVkFilter(state.magFilter), toVkFilter(state.minFilter),
 			toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.wrapX),
 			toVkSamplerAddressMode(state.wrapY), toVkSamplerAddressMode(state.wrapZ),
 			state.mipLodBias, state.anisoFiltering, state.maxAnisotropy,
 			state.comparison, toVkCompareOp(state.compareOperation), state.minLod,
 			state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod,
 			toVkBorderColor(state.borderColor), state.unnormCoords);
-		auto sampler = Vulkan::device.createSampler(samplerInfo);
+		auto sampler = vulkanAPI->device.createSampler(samplerInfo);
 		samplers[i] = (VkSampler)sampler;
-		immutableSamplers.emplace(it->first, (VkSampler)sampler);
+		immutableSamplers.emplace(it->first, sampler);
 
 		#if GARDEN_DEBUG
-		if (Vulkan::hasDebugUtils)
+		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "sampler." + pipelinePath.generic_string() + "." + it->first;
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(
 				vk::ObjectType::eSampler, (uint64)(VkSampler)sampler, name.c_str());
-			Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 		}
 		#endif
 	}
@@ -106,12 +106,13 @@ static vector<void*> createPipelineSamplers(const map<string, Pipeline::SamplerS
 }
 
 //**********************************************************************************************************************
-static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
-	const map<string, Pipeline::Uniform>& uniforms, const map<string, void*>& immutableSamplers,
+static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
+	const map<string, Pipeline::Uniform>& uniforms, const map<string, vk::Sampler>& immutableSamplers,
 	const fs::path& pipelinePath, uint32 maxBindlessCount, bool& bindless)
 {
 	bindless = false;
 
+	auto vulkanAPI = VulkanAPI::get();
 	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings;
 	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
 	vector<vector<vk::Sampler>> samplerArrays; 
@@ -148,11 +149,12 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vect
 			if (uniform.arraySize > 0)
 			{
 				if (isSamplerType(uniform.type))
-					descriptorSetBinding.pImmutableSamplers = (vk::Sampler*)&immutableSamplers.at(pair.first);
+					descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(pair.first);
 				descriptorSetBinding.descriptorCount = uniform.arraySize;
 			}
 			else
 			{
+				GARDEN_ASSERT(maxBindlessCount > 0);
 				switch (descriptorSetBinding.descriptorType)
 				{
 				case vk::DescriptorType::eCombinedImageSampler:
@@ -168,16 +170,13 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vect
 
 				if (isSamplerType(uniform.type))
 				{
-					vector<vk::Sampler> samplers(maxBindlessCount,
-						*(vk::Sampler*)&immutableSamplers.at(pair.first));
+					vector<vk::Sampler> samplers(maxBindlessCount, *&immutableSamplers.at(pair.first));
 					samplerArrays.push_back(std::move(samplers));
-					descriptorSetBinding.pImmutableSamplers =
-						samplerArrays[samplerArrays.size() - 1].data();
+					descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
 				}
 
 				descriptorBindingFlags[bindingIndex] =
-					vk::DescriptorBindingFlagBits::eUpdateAfterBind |
-					vk::DescriptorBindingFlagBits::ePartiallyBound;
+					vk::DescriptorBindingFlagBits::eUpdateAfterBind | vk::DescriptorBindingFlagBits::ePartiallyBound;
 				descriptorSetBinding.descriptorCount = maxBindlessCount;
 				isBindless = true;
 			}
@@ -185,13 +184,11 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vect
 			bindingIndex++;
 		}
 
-		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo({},
-			bindingIndex, descriptorSetBindings.data());
+		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo({}, bindingIndex, descriptorSetBindings.data());
 		vk::DescriptorSetLayoutBindingFlagsCreateInfo descriptorSetFlagsInfo;
 
 		if (isBindless)
 		{
-			GARDEN_ASSERT(maxBindlessCount > 0);
 			descriptorSetFlagsInfo.bindingCount = bindingIndex;
 			descriptorSetFlagsInfo.pBindingFlags = descriptorBindingFlags.data();
 			descriptorSetLayoutInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
@@ -213,41 +210,40 @@ static void createDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vect
 				}
 			}
 
-			vk::DescriptorPoolCreateInfo descriptorPoolInfo(
-				vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, maxSetCount,
-				(uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
-			descriptorPools[i] = Vulkan::device.createDescriptorPool(descriptorPoolInfo);
+			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
+				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
+			descriptorPools[i] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
 
 			#if GARDEN_DEBUG
-			if (Vulkan::hasDebugUtils)
+			if (vulkanAPI->hasDebugUtils)
 			{
 				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(i);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorPool,
 					(uint64)(VkSampler)descriptorPools[i], name.c_str());
-				Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 			}
 			#endif
 		}
 
-		descriptorSetLayouts[i] = Vulkan::device.createDescriptorSetLayout(descriptorSetLayoutInfo);
+		descriptorSetLayouts[i] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
 
 		samplerArrays.clear();
 		bindless = isBindless;
 
 		#if GARDEN_DEBUG
-		if (Vulkan::hasDebugUtils)
+		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
 				(uint64)descriptorSetLayouts[i], name.c_str());
-			Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 		}
 		#endif
 	}
 }
 
 //**********************************************************************************************************************
-static vk::PipelineLayout createPipelineLayout(uint16 pushConstantsSize, ShaderStage pushConstantsStages,
+static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, ShaderStage pushConstantsStages,
 	const vector<void*>& descriptorSetLayouts, const fs::path& pipelinePath)
 {
 	vector<vk::PushConstantRange> pushConstantRanges;
@@ -268,15 +264,16 @@ static vk::PipelineLayout createPipelineLayout(uint16 pushConstantsSize, ShaderS
 		pipelineLayoutInfo.pSetLayouts = (const vk::DescriptorSetLayout*)descriptorSetLayouts.data();
 	}
 
-	auto layout = Vulkan::device.createPipelineLayout(pipelineLayoutInfo);
+	auto vulkanAPI = VulkanAPI::get();
+	auto layout = vulkanAPI->device.createPipelineLayout(pipelineLayoutInfo);
 
 	#if GARDEN_DEBUG
-	if (Vulkan::hasDebugUtils)
+	if (vulkanAPI->hasDebugUtils)
 	{
 		auto name = "pipelineLayout." + pipelinePath.generic_string();
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::ePipelineLayout,
 			(uint64)(VkPipelineLayout)layout, name.c_str());
-		Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 	}
 	#endif
 
@@ -284,130 +281,65 @@ static vk::PipelineLayout createPipelineLayout(uint16 pushConstantsSize, ShaderS
 }
 
 //**********************************************************************************************************************
-Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
+static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector<void*>& samplers,
+	const vector<void*>& descriptorSetLayouts, const vector<void*>& descriptorPools, uint8 variantCount)
 {
-	if (createData.maxBindlessCount > 0 && !Vulkan::hasDescriptorIndexing)
-	{
-		throw runtime_error("Bindless descriptors are not supported on this GPU. ("
-			"pipeline: )" + createData.shaderPath.generic_string() + ")");
-	}
-
-	this->uniforms = std::move(createData.uniforms);
-	this->pipelineVersion = createData.pipelineVersion;
-	this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
-	this->pushConstantsSize = createData.pushConstantsSize;
-	this->variantCount = createData.variantCount;
-
-	map<string, void*> immutableSamplers;
-	this->samplers = createPipelineSamplers(createData.samplerStates,
-		immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
-
-	if (createData.descriptorSetCount > 0)
-	{
-		descriptorSetLayouts.resize(createData.descriptorSetCount);
-		descriptorPools.resize(createData.descriptorSetCount);
-	}
-
-	createDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms,
-		immutableSamplers, createData.shaderPath, createData.maxBindlessCount, bindless);
-
-	this->pipelineLayout = createPipelineLayout(pushConstantsSize,
-		createData.pushConstantsStages, descriptorSetLayouts, createData.shaderPath);
-	
-	if (pushConstantsSize > 0)
-	{
-		auto mult = asyncRecording ? thread::hardware_concurrency() : 1;
-		pushConstantsBuffer.resize(pushConstantsSize * mult);
-	}
-}
-
-//**********************************************************************************************************************
-bool Pipeline::destroy()
-{
-	if (!instance || readyLock > 0)
-		return false;
-
-	#if GARDEN_DEBUG
-	ID<Pipeline> pipelineInstance;
-	if (type == PipelineType::Graphics)
-		pipelineInstance = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID((GraphicsPipeline*)this));
-	else if (type == PipelineType::Compute)
-		pipelineInstance = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID((ComputePipeline*)this));
-	else abort();
-
-	const auto descriptorSetData = GraphicsAPI::descriptorSetPool.getData();
-	auto descriptorSetOccupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
-
-	for (uint32 i = 0; i < descriptorSetOccupancy; i++)
-	{
-		const auto& descriptorSet = descriptorSetData[i];
-		if (descriptorSet.getPipelineType() != type || descriptorSet.getPipeline() != pipelineInstance)
-			continue;
-		throw runtime_error("Descriptor set is still using destroyed pipeline. (pipeline: " +
-			debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
-	}
-	#endif
-
-	if (GraphicsAPI::isRunning)
-	{
-		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Pipeline,
-			instance, pipelineLayout, variantCount - 1);
-
-		for (auto descriptorSetLayout : descriptorSetLayouts)
-		{
-			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSetLayout,
-				descriptorSetLayout);
-		}
-		for (auto descriptorPool : descriptorPools)
-		{
-			if (!descriptorPool)
-				continue;
-			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorPool,
-				descriptorPool);
-		}
-
-		for (auto sampler : samplers)
-			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Sampler, sampler);
-	}
-	else
+	auto vulkanAPI = VulkanAPI::get();
+	if (vulkanAPI->forceResourceDestroy)
 	{
 		if (variantCount > 1)
 		{
 			for (uint8 i = 0; i < variantCount; i++)
-				Vulkan::device.destroyPipeline(((VkPipeline*)instance)[i]);
+				vulkanAPI->device.destroyPipeline(((VkPipeline*)instance)[i]);
 			free(instance);
 		}
 		else
 		{
-			Vulkan::device.destroyPipeline((VkPipeline)instance);
+			vulkanAPI->device.destroyPipeline((VkPipeline)instance);
 		}
-		
-		Vulkan::device.destroyPipelineLayout((VkPipelineLayout)pipelineLayout);
+
+		vulkanAPI->device.destroyPipelineLayout((VkPipelineLayout)pipelineLayout);
 
 		for (auto descriptorSetLayout : descriptorSetLayouts)
 		{
-			Vulkan::device.destroyDescriptorSetLayout(vk::DescriptorSetLayout(
+			vulkanAPI->device.destroyDescriptorSetLayout(vk::DescriptorSetLayout(
 				(VkDescriptorSetLayout)descriptorSetLayout));
 		}
 		for (auto descriptorPool : descriptorPools)
 		{
 			if (!descriptorPool)
 				continue;
-			Vulkan::device.destroyDescriptorPool(vk::DescriptorPool(
+			vulkanAPI->device.destroyDescriptorPool(vk::DescriptorPool(
 				(VkDescriptorPool)descriptorPool));
 		}
 
 		for (auto sampler : samplers)
-			Vulkan::device.destroySampler((VkSampler)sampler);
+			vulkanAPI->device.destroySampler((VkSampler)sampler);
 	}
+	else
+	{
+		vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Pipeline,
+			instance, pipelineLayout, variantCount - 1);
 
-	instance = nullptr;
-	return true;
+		for (auto descriptorSetLayout : descriptorSetLayouts)
+			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSetLayout, descriptorSetLayout);
+
+		for (auto descriptorPool : descriptorPools)
+		{
+			if (!descriptorPool)
+				continue;
+			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorPool, descriptorPool);
+		}
+
+		for (auto sampler : samplers)
+			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Sampler, sampler);
+	}
 }
 
 //**********************************************************************************************************************
-vector<void*> Pipeline::createShaders(const vector<vector<uint8>>& code, const fs::path& pipelinePath)
+static vector<void*> createVkShaders(const vector<vector<uint8>>& code, const fs::path& pipelinePath)
 {
+	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> shaders(code.size());
 
 	for (uint8 i = 0; i < (uint8)code.size(); i++)
@@ -416,29 +348,118 @@ vector<void*> Pipeline::createShaders(const vector<vector<uint8>>& code, const f
 		vk::ShaderModuleCreateInfo shaderInfo({},
 	
 		(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
-		shaders[i] = (VkShaderModule)Vulkan::device.createShaderModule(shaderInfo);
+		shaders[i] = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
 
 		#if GARDEN_DEBUG
-		if (Vulkan::hasDebugUtils)
+		if (vulkanAPI->hasDebugUtils)
 		{
 			auto _name = "shaderModule." + pipelinePath.generic_string() + to_string(i);
-			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eShaderModule,
-				(uint64)shaders[i], _name.c_str());
-			Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eShaderModule, (uint64)shaders[i], _name.c_str());
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 		}
 		#endif
 	}
-	
+
 	return shaders;
-}
-void Pipeline::destroyShaders(const vector<void*>& shaders)
-{
-	for (auto shader : shaders)
-		Vulkan::device.destroyShaderModule((VkShaderModule)shader);
 }
 
 //**********************************************************************************************************************
-void Pipeline::fillSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
+Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
+{
+	this->uniforms = std::move(createData.uniforms);
+	this->pipelineVersion = createData.pipelineVersion;
+	this->pushConstantsSize = createData.pushConstantsSize;
+	this->variantCount = createData.variantCount;
+
+	if (createData.descriptorSetCount > 0)
+	{
+		descriptorSetLayouts.resize(createData.descriptorSetCount);
+		descriptorPools.resize(createData.descriptorSetCount);
+	}
+
+	auto graphicsAPI = GraphicsAPI::get();
+	if (pushConstantsSize > 0)
+	{
+		auto threadCount = asyncRecording ? graphicsAPI->threadCount : 1;
+		pushConstantsBuffer.resize(pushConstantsSize * threadCount);
+	}
+
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		if (createData.maxBindlessCount > 0 && !VulkanAPI::get()->hasDescriptorIndexing)
+		{
+			throw runtime_error("Bindless descriptors are not supported on this GPU. ("
+				"pipeline: )" + createData.shaderPath.generic_string() + ")");
+		}
+
+		this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
+
+		map<string, vk::Sampler> immutableSamplers;
+		this->samplers = createVkPipelineSamplers(createData.samplerStates,
+			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
+
+		createVkDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms,
+			immutableSamplers, createData.shaderPath, createData.maxBindlessCount, bindless);
+		this->pipelineLayout = createVkPipelineLayout(pushConstantsSize,
+			createData.pushConstantsStages, descriptorSetLayouts, createData.shaderPath);
+	}
+	else abort();
+}
+
+bool Pipeline::destroy()
+{
+	if (!instance || readyLock > 0)
+		return false;
+
+	#if GARDEN_DEBUG
+	auto graphicsAPI = GraphicsAPI::get();
+	if (!graphicsAPI->forceResourceDestroy)
+	{
+		auto pipelineInstance = graphicsAPI->getPipeline(type, this);
+		const auto descriptorSetData = graphicsAPI->descriptorSetPool.getData();
+		auto descriptorSetOccupancy = graphicsAPI->descriptorSetPool.getOccupancy();
+
+		for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+		{
+			const auto& descriptorSet = descriptorSetData[i];
+			if (descriptorSet.getPipelineType() != type || descriptorSet.getPipeline() != pipelineInstance)
+				continue;
+			throw runtime_error("Descriptor set is still using destroyed pipeline. (pipeline: " +
+				debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+		}
+	}
+	#endif
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		destroyVkPipeline(instance, pipelineLayout, 
+			samplers, descriptorSetLayouts, descriptorPools, variantCount);
+	}
+	else abort();
+
+	instance = nullptr;
+	return true;
+}
+
+vector<void*> Pipeline::createShaders(const vector<vector<uint8>>& code, const fs::path& pipelinePath)
+{
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		return createVkShaders(code, pipelinePath);
+	else abort();
+}
+void Pipeline::destroyShaders(const vector<void*>& shaders)
+{
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		for (auto shader : shaders)
+			vulkanAPI->device.destroyShaderModule((VkShaderModule)shader);
+	}
+	else abort();
+}
+
+//**********************************************************************************************************************
+void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
 	const map<string, SpecConstValue>& specConstValues, ShaderStage shaderStage, uint8 variantCount)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
@@ -501,7 +522,7 @@ void Pipeline::fillSpecConsts(const fs::path& path, void* specInfo, const map<st
 	info->dataSize = dataSize;
 	info->pData = data;
 }
-void Pipeline::setVariantIndex(void* specInfo, uint8 variantIndex)
+void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
 	uint32 variantIndexValue = variantIndex;
@@ -511,34 +532,26 @@ void Pipeline::setVariantIndex(void* specInfo, uint8 variantIndex)
 //**********************************************************************************************************************
 void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
 		auto descriptorSet = descriptorSetRange[i].set;
-		auto dsView = GraphicsAPI::descriptorSetPool.get(descriptorSet);
+		auto dsView = graphicsAPI->descriptorSetPool.get(descriptorSet);
 
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			dsView->readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(descriptorSet);
+			ResourceExt::getReadyLock(**dsView)++;
+			graphicsAPI->currentCommandBuffer->addLockResource(descriptorSet);
 		}
 
-		map<string, Pipeline::Uniform>* pipelineUniforms;
-		if (dsView->pipelineType == PipelineType::Graphics)
-		{
-			pipelineUniforms = &GraphicsAPI::graphicsPipelinePool.get(
-				ID<GraphicsPipeline>(dsView->pipeline))->uniforms;
-		}
-		else if (dsView->pipelineType == PipelineType::Compute)
-		{
-			pipelineUniforms = &GraphicsAPI::computePipelinePool.get(
-				ID<ComputePipeline>(dsView->pipeline))->uniforms;
-		}
-		else abort();
+		auto dsPipelineView = graphicsAPI->getPipelineView(
+			dsView->getPipelineType(), dsView->getPipeline());
+		const auto& pipelineUniforms = dsPipelineView->getUniforms();
+		const auto& dsUniforms = dsView->getUniforms();
 
-		const auto& dsUniforms = dsView->uniforms;
 		for (const auto& dsUniform : dsUniforms)
 		{
-			const auto& pipelineUniform = pipelineUniforms->at(dsUniform.first);
+			const auto& pipelineUniform = pipelineUniforms.at(dsUniform.first);
 			auto uniformType = pipelineUniform.type;
 
 			if (isSamplerType(uniformType) || isImageType(uniformType) ||
@@ -551,15 +564,15 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 						if (!resource)
 							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
 
-						auto imageViewView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resource));
-						auto imageView = GraphicsAPI::imagePool.get(imageViewView->image);
+						auto imageViewView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
+						auto imageView = graphicsAPI->imagePool.get(imageViewView->getImage());
 
-						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+						if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 						{
-							imageViewView->readyLock++;
-							imageView->readyLock++;
-							GraphicsAPI::currentCommandBuffer->addLockResource(ID<ImageView>(resource));
-							GraphicsAPI::currentCommandBuffer->addLockResource(imageViewView->image);
+							ResourceExt::getReadyLock(**imageViewView)++;
+							ResourceExt::getReadyLock(**imageView)++;
+							graphicsAPI->currentCommandBuffer->addLockResource(ID<ImageView>(resource));
+							graphicsAPI->currentCommandBuffer->addLockResource(imageViewView->getImage());
 						}
 					}
 				}
@@ -573,11 +586,11 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 						if (!resource)
 							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
 
-						auto bufferView = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
-						if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+						auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
+						if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 						{
-							bufferView->readyLock++;
-							GraphicsAPI::currentCommandBuffer->addLockResource(ID<Buffer>(resource));
+							ResourceExt::getReadyLock(**bufferView)++;
+							graphicsAPI->currentCommandBuffer->addLockResource(ID<Buffer>(resource));
 						}
 					}
 				}
@@ -587,31 +600,36 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 	}
 }
 
+bool Pipeline::checkThreadIndex(int32 threadIndex)
+{
+	return threadIndex >= 0 && threadIndex < GraphicsAPI::get()->threadCount;
+}
+
 //**********************************************************************************************************************
 void Pipeline::bind(uint8 variant)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(variant < variantCount);
-	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 
-	ID<Pipeline> pipeline;
+	auto graphicsAPI = GraphicsAPI::get();
+	auto pipeline = graphicsAPI->getPipeline(type, this);
+
 	if (type == PipelineType::Graphics)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID((GraphicsPipeline*)this));
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
+			graphicsAPI->currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
 		}
 	}
 	else if (type == PipelineType::Compute)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID((ComputePipeline*)this));
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
+			graphicsAPI->currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
 		}
 	}
 	else abort();
@@ -620,66 +638,62 @@ void Pipeline::bind(uint8 variant)
 	command.pipelineType = type;
 	command.variant = variant;
 	command.pipeline = pipeline;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
 
 //**********************************************************************************************************************
-void Pipeline::bindAsync(uint8 variant, int32 taskIndex)
+void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 {
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(variant < variantCount);
-	GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
-	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 
-	int32 taskCount;
-	if (taskIndex < 0)
-	{
-		taskIndex = 0;
-		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
-	}
-	else
-	{
-		taskCount = taskIndex + 1;
-	}
+	auto graphicsAPI = GraphicsAPI::get();
+	auto pipeline = graphicsAPI->getPipeline(type, this);
 
-	ID<Pipeline> pipeline;
 	if (type == PipelineType::Graphics)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID((GraphicsPipeline*)this));
-		GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		graphicsAPI->currentCommandBuffer->commandMutex.lock();
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
+			graphicsAPI->currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
 		}
-		GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+		graphicsAPI->currentCommandBuffer->commandMutex.unlock();
 	}
 	else if (type == PipelineType::Compute)
 	{
-		pipeline = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID((ComputePipeline*)this));
-		GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		graphicsAPI->currentCommandBuffer->commandMutex.lock();
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
+			graphicsAPI->currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
 		}
-		GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+		graphicsAPI->currentCommandBuffer->commandMutex.unlock();
 	}
 	else abort();
 
-	auto bindPoint = toVkPipelineBindPoint(type);
-	while (taskIndex < taskCount)
+	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (pipeline != Framebuffer::currentPipelines[taskIndex] ||
-			type != Framebuffer::currentPipelineTypes[taskIndex])
+		auto vulkanAPI = VulkanAPI::get();
+		auto bindPoint = toVkPipelineBindPoint(type);
+
+		while (threadIndex < autoThreadCount)
 		{
-			vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[variant] : (VkPipeline)instance;
-			Vulkan::secondaryCommandBuffers[taskIndex].bindPipeline(bindPoint, pipeline);
+			if (pipeline != graphicsAPI->currentPipelines[threadIndex] ||
+				type != graphicsAPI->currentPipelineTypes[threadIndex])
+			{
+				vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[variant] : (VkPipeline)instance;
+				vulkanAPI->secondaryCommandBuffers[threadIndex].bindPipeline(bindPoint, pipeline);
+			}
+			threadIndex++;
 		}
-		taskIndex++;
 	}
+	else abort();
 }
 
 //**********************************************************************************************************************
@@ -688,117 +702,100 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 	GARDEN_ASSERT(rangeCount > 0);
 	GARDEN_ASSERT(descriptorSetRange);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
-	
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
 		auto descriptor = descriptorSetRange[i];
 		GARDEN_ASSERT(descriptor.set);
-		auto descriptorSetView = GraphicsAPI::descriptorSetPool.get(descriptor.set);
+		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
 		GARDEN_ASSERT(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount());
-		
-		auto pipelineType = descriptorSetView->pipelineType;
-		if (pipelineType == PipelineType::Graphics)
-		{
-			GARDEN_ASSERT(ID<GraphicsPipeline>(descriptorSetView->pipeline) ==
-				GraphicsAPI::graphicsPipelinePool.getID(((const GraphicsPipeline*)this)));
-		}
-		else if (pipelineType == PipelineType::Compute)
-		{
-			GARDEN_ASSERT(ID<ComputePipeline>(descriptorSetView->pipeline) ==
-				GraphicsAPI::computePipelinePool.getID(((const ComputePipeline*)this)));
-		}
-		else abort();
+		auto pipeline = graphicsAPI->getPipeline(descriptorSetView->getPipelineType(), this);
+		GARDEN_ASSERT(pipeline == descriptorSetView->getPipeline());
 	}
 	#endif
 	
 	BindDescriptorSetsCommand command;
 	command.rangeCount = rangeCount;
 	command.descriptorSetRange = descriptorSetRange;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
 	updateDescriptorsLock(descriptorSetRange, rangeCount);
 }
 
 //**********************************************************************************************************************
-static thread_local vector<vk::DescriptorSet> descriptorSets; // TODO: move to the Vulkan class.
-
-void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 taskIndex)
+void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 threadIndex)
 {
 	GARDEN_ASSERT(descriptorSetRange);
 	GARDEN_ASSERT(rangeCount > 0);
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
-	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
+	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
 		auto descriptor = descriptorSetRange[i];
 		GARDEN_ASSERT(descriptor.set);
-		auto descriptorSetView = GraphicsAPI::descriptorSetPool.get(descriptor.set);
+		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
 		GARDEN_ASSERT(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount());
-		
-		auto instance = (vk::DescriptorSet*)descriptorSetView->instance;
-		if (descriptorSetView->getSetCount() > 1)
+		auto pipeline = graphicsAPI->getPipeline(descriptorSetView->getPipelineType(), this);
+		GARDEN_ASSERT(pipeline == descriptorSetView->getPipeline());
+	}
+	#endif
+
+	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		auto& vkDescriptorSets = vulkanAPI->bindDescriptorSets[threadIndex];
+
+		for (uint8 i = 0; i < rangeCount; i++)
 		{
-			auto count = descriptor.offset + descriptor.count;
-			for (uint32 j = descriptor.offset; j < count; j++)
-				descriptorSets.push_back(instance[j]);
-		}
-		else
-		{
-			descriptorSets.push_back((VkDescriptorSet)instance);
+			auto descriptor = descriptorSetRange[i];
+			auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
+			auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSetView);
+
+			if (descriptorSetView->getSetCount() > 1)
+			{
+				auto count = descriptor.offset + descriptor.count;
+				for (uint32 j = descriptor.offset; j < count; j++)
+					vkDescriptorSets.push_back(instance[j]);
+			}
+			else
+			{
+				vkDescriptorSets.push_back((VkDescriptorSet)instance);
+			}
 		}
 
-		#if GARDEN_DEBUG
-		auto pipelineType = descriptorSetView->pipelineType;
-		if (pipelineType == PipelineType::Graphics)
+		auto bindPoint = toVkPipelineBindPoint(type);
+		while (threadIndex < autoThreadCount)
 		{
-			GARDEN_ASSERT(ID<GraphicsPipeline>(descriptorSetView->pipeline) ==
-				GraphicsAPI::graphicsPipelinePool.getID(((const GraphicsPipeline*)this)));
+			vulkanAPI->secondaryCommandBuffers[threadIndex++].bindDescriptorSets(
+				bindPoint, (VkPipelineLayout)pipelineLayout, 0, 
+				(uint32)vkDescriptorSets.size(), vkDescriptorSets.data(), 0, nullptr);
 		}
-		else if (pipelineType == PipelineType::Compute)
-		{
-			GARDEN_ASSERT(ID<ComputePipeline>(descriptorSetView->pipeline) ==
-				GraphicsAPI::computePipelinePool.getID(((const ComputePipeline*)this)));
-		}
-		else abort();
-		#endif
-	}
 
-	int32 taskCount;
-	if (taskIndex < 0)
-	{
-		taskIndex = 0;
-		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
+		vkDescriptorSets.clear();
 	}
-	else
-	{
-		taskCount = taskIndex + 1;
-	}
-
-	auto bindPoint = toVkPipelineBindPoint(type);
-	while (taskIndex < taskCount)
-	{
-		Vulkan::secondaryCommandBuffers[taskIndex++].bindDescriptorSets(bindPoint, (VkPipelineLayout)pipelineLayout,
-			0, (uint32)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
-	}
+	else abort();
 
 	BindDescriptorSetsCommand command;
 	command.asyncRecording = true;
 	command.rangeCount = rangeCount;
 	command.descriptorSetRange = descriptorSetRange;
 
-	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	currentCommandBuffer->commandMutex.lock();
+	currentCommandBuffer->addCommand(command);
 	updateDescriptorsLock(descriptorSetRange, rangeCount);
-	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
-
-	descriptorSets.clear();
+	currentCommandBuffer->commandMutex.unlock();
 }
 
 //**********************************************************************************************************************
@@ -806,28 +803,32 @@ void Pipeline::pushConstants()
 {
 	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(!Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 
 	PushConstantsCommand command;
 	command.dataSize = pushConstantsSize;
 	command.shaderStages = pushConstantsMask;
 	command.pipelineLayout = pipelineLayout;
 	command.data = pushConstantsBuffer.data();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }
-void Pipeline::pushConstantsAsync(int32 taskIndex)
+void Pipeline::pushConstantsAsync(int32 threadIndex)
 {
 	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(taskIndex >= 0);
-	GARDEN_ASSERT(taskIndex < (int32)thread::hardware_concurrency());
-	GARDEN_ASSERT(Framebuffer::isCurrentRenderPassAsync());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex >= 0);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 
-	Vulkan::secondaryCommandBuffers[taskIndex].pushConstants(
-		vk::PipelineLayout((VkPipelineLayout)pipelineLayout),
-		(vk::ShaderStageFlags)pushConstantsMask, 0, pushConstantsSize,
-		(const uint8*)pushConstantsBuffer.data() + pushConstantsSize * taskIndex);
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
+			vk::PipelineLayout((VkPipelineLayout)pipelineLayout),
+			(vk::ShaderStageFlags)pushConstantsMask, 0, pushConstantsSize,
+			(const uint8*)pushConstantsBuffer.data() + pushConstantsSize * threadIndex);
+	}
+	else abort();
 }

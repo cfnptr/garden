@@ -29,9 +29,8 @@ namespace garden::graphics
 {
 
 using namespace ecsm;
-
 class Pipeline;
-class GraphicsPipeline;
+class DescriptorSetExt;
 
 /***********************************************************************************************************************
  * @brief Shader resource container.
@@ -65,7 +64,6 @@ public:
 		#if GARDEN_DEBUG
 		type_index type;
 		#endif
-		friend class DescriptorSet;
 	public:
 		/**
 		 * @brief Creates a new descriptor set uniform out of target resource.
@@ -105,6 +103,10 @@ public:
 			#else
 			= default;
 			#endif
+
+		#if GARDEN_DEBUG
+		type_index getDebugType() const noexcept { return type; }
+		#endif
 	};
 
 	/*******************************************************************************************************************
@@ -145,9 +147,6 @@ private:
 		map<string, Uniform>&& uniforms, uint8 index);
 	bool destroy() final;
 
-	friend class Vulkan;
-	friend class Pipeline;
-	friend class CommandBuffer;
 	friend class DescriptorSetExt;
 	friend class LinearPool<DescriptorSet>;
 public:

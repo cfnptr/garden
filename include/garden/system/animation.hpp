@@ -106,11 +106,10 @@ class AnimationSystem final : public ComponentSystem<AnimationComponent>,
 	 */
 	AnimationSystem(bool animateAsync = true, bool setSingleton = true);
 	/**
-	 * @brief Destroy animation system instance.
+	 * @brief Destroys animation system instance.
 	 */
 	~AnimationSystem() final;
 
-	void postDeinit();
 	void update();
 
 	void copyComponent(View<Component> source, View<Component> destination) final;

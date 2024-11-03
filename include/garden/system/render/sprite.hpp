@@ -94,8 +94,10 @@ public:
 		float colorMapLayer;
 	};
 protected:
-	bool deferredBuffer = false;
-	bool linearFilter = false;
+	bool useDeferredBuffer : 1;
+	bool useLinearFilter : 1;
+	bool isTranslucent : 1;
+	uint8 _alignment0 = 0;
 	ID<ImageView> defaultImageView = {};
 	fs::path pipelinePath = {};
 
@@ -105,8 +107,10 @@ protected:
 	 * @param[in] pipelinePath target rendering pipeline path
 	 * @param useDeferredBuffer use deferred or forward rendering buffer
 	 * @param useLinearFilter use linear or nearest texture filter
+	 * @param isTranslucent is sprite using translucent rendering
 	 */
-	SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter);
+	SpriteRenderSystem(const fs::path& pipelinePath, 
+		bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent);
 
 	void init() override;
 	void deinit() override;
@@ -116,15 +120,15 @@ protected:
 
 	bool isDrawReady() override;
 	void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
-		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
+		const float4x4& model, uint32 drawIndex, int32 threadIndex) override;
 
 	uint64 getInstanceDataSize() override;
 	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex);
 	void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
 	ID<GraphicsPipeline> createPipeline() final;
@@ -161,16 +165,15 @@ public:
 /***********************************************************************************************************************
  * @brief Sprite mesh rendering component system.
  */
-template<class C = SpriteRenderComponent, class A = SpriteAnimationFrame,
-	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+template<class C, class A, bool DestroyComponents = true, bool DestroyAnimationFrames = true>
 class SpriteRenderCompSystem : public SpriteRenderSystem
 {
 protected:
 	LinearPool<C, DestroyComponents> components;
 	LinearPool<A, DestroyAnimationFrames> animationFrames;
 
-	SpriteRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) : 
-		SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter) { }
+	SpriteRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
+		bool isTranslucent) : SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter, isTranslucent) { }
 
 	ID<Component> createComponent(ID<Entity> entity) override
 	{
@@ -184,11 +187,11 @@ protected:
 	}
 	void copyComponent(View<Component> source, View<Component> destination) override
 	{
+		const auto sourceView = View<C>(source);
+		auto destinationView = View<C>(destination);
 		if constexpr (DestroyComponents)
-		{
-			auto destinationView = View<C>(destination);
 			destinationView->destroy();
-		}
+		**destinationView = **sourceView;
 	}
 
 	const string& getComponentName() const override

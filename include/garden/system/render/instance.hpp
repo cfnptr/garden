@@ -57,7 +57,7 @@ protected:
 	
 	bool isDrawReady() override;
 	void prepareDraw(const float4x4& viewProj, uint32 drawCount) override;
-	void beginDrawAsync(int32 taskIndex) override;
+	void beginDrawAsync(int32 threadIndex) override;
 	void finalizeDraw(const float4x4& viewProj, uint32 drawCount) override;
 
 	virtual void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
@@ -71,7 +71,7 @@ protected:
 	#endif
 public:
 	/**
-	 * @breif Returns system graphics pipeline.
+	 * @brief Returns system graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getPipeline();
 	/**

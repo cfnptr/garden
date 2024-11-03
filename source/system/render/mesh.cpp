@@ -35,7 +35,7 @@ MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording, bool useAsyncPreparin
 }
 MeshRenderSystem::~MeshRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshRenderSystem::deinit);
@@ -54,12 +54,12 @@ void MeshRenderSystem::init()
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-		ECSM_SUBSCRIBE_TO_EVENT("HdrRender", MeshRenderSystem::hdrRender);
+		ECSM_SUBSCRIBE_TO_EVENT("TranslucentRender", MeshRenderSystem::translucentRender);
 	}
 }
 void MeshRenderSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		if (ForwardRenderSystem::Instance::has())
 		{
@@ -70,7 +70,7 @@ void MeshRenderSystem::deinit()
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", MeshRenderSystem::hdrRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("TranslucentRender", MeshRenderSystem::translucentRender);
 		}
 	}
 }
@@ -468,17 +468,17 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 			{
 				auto meshSystem = opaqueBuffer->meshSystem;
 				const auto& meshes = opaqueBuffer->combinedMeshes;
-				auto itemCount = task.getItemCount(), taskIndex = task.getTaskIndex();
+				auto itemCount = task.getItemCount(), threadIndex = task.getThreadIndex();
 				auto taskCount = itemCount - task.getItemOffset();
 
-				meshSystem->beginDrawAsync(taskIndex);
+				meshSystem->beginDrawAsync(threadIndex);
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
 					const auto& mesh = meshes[j];
 					auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
-					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, taskIndex);
+					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, threadIndex);
 				}
-				meshSystem->endDrawAsync(taskCount, taskIndex);
+				meshSystem->endDrawAsync(taskCount, threadIndex);
 			}),
 			drawCount);
 			threadPool.wait(); // Required
@@ -531,8 +531,8 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 			auto currentBufferIndex = transCombinedMeshes[task.getItemOffset()].bufferIndex;
 			auto meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
 			auto bufferDrawCount = translucentBuffers[currentBufferIndex].drawCount;
-			auto itemCount = task.getItemCount(), taskIndex = task.getTaskIndex();
-			meshSystem->beginDrawAsync(taskIndex);
+			auto itemCount = task.getItemCount(), threadIndex = task.getThreadIndex();
+			meshSystem->beginDrawAsync(threadIndex);
 
 			uint32 currentDrawCount = 0;
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -541,23 +541,23 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 				if (currentBufferIndex != mesh.bufferIndex)
 				{
 					meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
-					meshSystem->endDrawAsync(currentDrawCount, taskIndex);
+					meshSystem->endDrawAsync(currentDrawCount, threadIndex);
 
 					currentBufferIndex = mesh.bufferIndex;
 					currentDrawCount = 0;
 
 					bufferDrawCount = translucentBuffers[currentBufferIndex].drawCount;
 					meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
-					meshSystem->beginDrawAsync(taskIndex);
+					meshSystem->beginDrawAsync(threadIndex);
 				}
 
 				auto drawIndex = bufferDrawCount->fetch_add(1);
 				auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
-				meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, taskIndex);
+				meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, threadIndex);
 				currentDrawCount++;
 			}
 
-			meshSystem->endDrawAsync(currentDrawCount, taskIndex);
+			meshSystem->endDrawAsync(currentDrawCount, threadIndex);
 		}),
 		drawCount);
 		threadPool.wait(); // Required
@@ -700,9 +700,9 @@ void MeshRenderSystem::deferredRender()
 	renderOpaque(cameraConstants.viewProj);
 }
 
-void MeshRenderSystem::hdrRender()
+void MeshRenderSystem::translucentRender()
 {
-	SET_CPU_ZONE_SCOPED("Mesh HDR Render");
+	SET_CPU_ZONE_SCOPED("Mesh Translucent Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!graphicsSystem->camera)

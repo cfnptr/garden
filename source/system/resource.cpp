@@ -148,7 +148,7 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 }
 ResourceSystem::~ResourceSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
@@ -193,15 +193,16 @@ void ResourceSystem::deinit()
 		loadedGraphicsQueue.pop();
 	}
 
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 }
 
 //**********************************************************************************************************************
 void ResourceSystem::dequeuePipelines()
 {
-	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
-	auto graphicsOccupancy = GraphicsAPI::graphicsPipelinePool.getOccupancy();
+	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsPipelines = graphicsAPI->graphicsPipelinePool.getData();
+	auto graphicsOccupancy = graphicsAPI->graphicsPipelinePool.getOccupancy();
 
 	while (loadedGraphicsQueue.size() > 0)
 	{
@@ -216,19 +217,19 @@ void ResourceSystem::dequeuePipelines()
 			}
 			else
 			{
-				GraphicsAPI::isRunning = false;
+				graphicsAPI->forceResourceDestroy = true;
 				PipelineExt::destroy(item.pipeline);
-				GraphicsAPI::isRunning = true;
+				graphicsAPI->forceResourceDestroy = false;
 			}
 			
 			if (item.renderPass)
 			{
-				auto& shareCount = GraphicsAPI::renderPasses.at(item.renderPass);
+				auto& shareCount = graphicsAPI->renderPasses.at(item.renderPass);
 				if (shareCount == 0)
 				{
-					GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
+					graphicsAPI->destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
 						nullptr, item.renderPass);
-					GraphicsAPI::renderPasses.erase(item.renderPass);
+					graphicsAPI->renderPasses.erase(item.renderPass);
 				}
 				else
 				{
@@ -239,8 +240,8 @@ void ResourceSystem::dequeuePipelines()
 		loadedGraphicsQueue.pop();
 	}
 
-	auto computePipelines = GraphicsAPI::computePipelinePool.getData();
-	auto computeOccupancy = GraphicsAPI::computePipelinePool.getOccupancy();
+	auto computePipelines = graphicsAPI->computePipelinePool.getData();
+	auto computeOccupancy = graphicsAPI->computePipelinePool.getOccupancy();
 
 	while (loadedComputeQueue.size() > 0)
 	{
@@ -255,9 +256,9 @@ void ResourceSystem::dequeuePipelines()
 			}
 			else
 			{
-				GraphicsAPI::isRunning = false;
+				graphicsAPI->forceResourceDestroy = true;
 				PipelineExt::destroy(item.pipeline);
-				GraphicsAPI::isRunning = true;
+				graphicsAPI->forceResourceDestroy = false;
 			}
 		}
 		loadedComputeQueue.pop();
@@ -267,6 +268,7 @@ void ResourceSystem::dequeuePipelines()
 //**********************************************************************************************************************
 void ResourceSystem::dequeueBuffersAndImages()
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 
@@ -282,9 +284,9 @@ void ResourceSystem::dequeueBuffersAndImages()
 	while (loadedBufferQueue.size() > 0)
 	{
 		auto& item = loadedBufferQueue.front();
-		if (*item.instance <= GraphicsAPI::bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
+		if (*item.instance <= graphicsAPI->bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
 		{
-			auto& buffer = GraphicsAPI::bufferPool.getData()[*item.instance - 1];
+			auto& buffer = graphicsAPI->bufferPool.getData()[*item.instance - 1];
 			if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
 			{
 				BufferExt::moveInternalObjects(item.buffer, buffer);
@@ -294,21 +296,21 @@ void ResourceSystem::dequeueBuffersAndImages()
 			}
 			else
 			{
-				GraphicsAPI::isRunning = false;
+				graphicsAPI->forceResourceDestroy = true;
 				BufferExt::destroy(item.buffer);
-				GraphicsAPI::isRunning = true;
+				graphicsAPI->forceResourceDestroy = false;
 			}
 			
-			auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+			auto staging = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc,
 				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
 			SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loaded" + to_string(*staging));
 
-			auto stagingView = GraphicsAPI::bufferPool.get(staging);
+			auto stagingView = graphicsAPI->bufferPool.get(staging);
 			BufferExt::moveInternalObjects(item.staging, **stagingView);
 			graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 			Buffer::copy(staging, item.instance);
 			graphicsSystem->stopRecording();
-			GraphicsAPI::bufferPool.destroy(staging);
+			graphicsAPI->bufferPool.destroy(staging);
 
 			loadedBuffer = item.instance;
 			loadedBufferPath = std::move(item.path);
@@ -316,9 +318,9 @@ void ResourceSystem::dequeueBuffersAndImages()
 		}
 		else
 		{
-			GraphicsAPI::isRunning = false;
+			graphicsAPI->forceResourceDestroy = true;
 			BufferExt::destroy(item.staging);
-			GraphicsAPI::isRunning = true;
+			graphicsAPI->forceResourceDestroy = false;
 		}
 		loadedBufferQueue.pop();
 	}
@@ -339,8 +341,8 @@ void ResourceSystem::dequeueBuffersAndImages()
 	}
 	#endif
 
-	auto images = GraphicsAPI::imagePool.getData();
-	auto imageOccupancy = GraphicsAPI::imagePool.getOccupancy();
+	auto images = graphicsAPI->imagePool.getData();
+	auto imageOccupancy = graphicsAPI->imagePool.getOccupancy();
 
 	while (loadedImageQueue.size() > 0)
 	{
@@ -355,16 +357,16 @@ void ResourceSystem::dequeueBuffersAndImages()
 				image.setDebugName(image.getDebugName());
 				#endif
 
-				auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc,
+				auto staging = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc,
 					Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
 				SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
 
-				auto stagingView = GraphicsAPI::bufferPool.get(staging);
+				auto stagingView = graphicsAPI->bufferPool.get(staging);
 				BufferExt::moveInternalObjects(item.staging, **stagingView);
 				graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 				Image::copy(staging, item.instance);
 				graphicsSystem->stopRecording();
-				GraphicsAPI::bufferPool.destroy(staging);
+				graphicsAPI->bufferPool.destroy(staging);
 
 				loadedImage = item.instance;
 				loadedImagePaths = std::move(item.paths);
@@ -372,16 +374,16 @@ void ResourceSystem::dequeueBuffersAndImages()
 			}
 			else
 			{
-				GraphicsAPI::isRunning = false;
+				graphicsAPI->forceResourceDestroy = true;
 				ImageExt::destroy(item.image);
-				GraphicsAPI::isRunning = true;
+				graphicsAPI->forceResourceDestroy = false;
 			}
 		}
 		else
 		{
-			GraphicsAPI::isRunning = false;
+			graphicsAPI->forceResourceDestroy = true;
 			BufferExt::destroy(item.staging);
-			GraphicsAPI::isRunning = true;
+			graphicsAPI->forceResourceDestroy = false;
 		}
 		loadedImageQueue.pop();
 	}
@@ -598,6 +600,8 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	uint2 equiSize, vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, 
 	vector<uint8>& back, vector<uint8>& front, Image::Format format, int32 threadIndex)
 {
+	SET_CPU_ZONE_SCOPED("Cubemap Data Convert");
+
 	vector<float4> floatData; const float4* equiPixels;
 	if (format == Image::Format::SrgbR8G8B8A8)
 	{
@@ -798,6 +802,8 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Cubemap Data Load");
+
 			auto filePath = path.generic_string();
 			switch (task.getTaskIndex())
 			{
@@ -814,6 +820,8 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Cubemap Data Load");
+
 		auto filePath = path.generic_string();
 		loadImageData(filePath + "-nx", left, leftSize, leftFormat, threadIndex);
 		loadImageData(filePath + "-px", right, rightSize, rightFormat, threadIndex);
@@ -1097,11 +1105,12 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		}
 	}
 	
-	auto version = GraphicsAPI::imageVersion++;
-	auto image = GraphicsAPI::imagePool.create(bind, strategy, version);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto version = graphicsAPI->imageVersion++;
+	auto image = graphicsAPI->imagePool.create(bind, strategy, version);
 
 	#if GARDEN_DEBUG
-	auto resource = GraphicsAPI::imagePool.get(image);
+	auto resource = graphicsAPI->imagePool.get(image);
 	if (paths.size() > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray))
 		resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
 	else
@@ -1123,6 +1132,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Image Array Load");
+
 			auto& paths = data->paths;
 			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 			loadImageArrayData(this, paths, pixelArrays, realSize, format, task.getThreadIndex());
@@ -1159,6 +1170,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Image Array Load");
+
 		vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 		loadImageArrayData(this, paths, pixelArrays, realSize, format, -1);
 
@@ -1173,14 +1186,14 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 
 		auto imageInstance = ImageExt::create(type, format, bind, strategy,
 			uint3(imageSize, 1), mipCount, layerCount, 0);
-		auto imageView = GraphicsAPI::imagePool.get(image);
+		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto staging = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+		auto staging = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 			Buffer::Usage::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
 		SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
-		auto stagingView = GraphicsAPI::bufferPool.get(staging);
+		auto stagingView = graphicsAPI->bufferPool.get(staging);
 
 		copyLoadedImageData(pixelArrays, stagingView->getMap(),
 			realSize, imageSize, formatBinarySize, flags);
@@ -1189,7 +1202,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		Image::copy(staging, image);
 		graphicsSystem->stopRecording();
-		GraphicsAPI::bufferPool.destroy(staging);
+		graphicsAPI->bufferPool.destroy(staging);
 
 		LoadedImageItem item;
 		item.paths = paths;
@@ -1395,28 +1408,34 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 
 	// TODO: validate specConstValues and stateOverrides
 
-	auto& framebufferView = **GraphicsAPI::framebufferPool.get(framebuffer);
-	const auto& subpasses = framebufferView.getSubpasses();
+	auto graphicsAPI = GraphicsAPI::get();
+	auto framebufferView = graphicsAPI->framebufferPool.get(framebuffer);
+	const auto& subpasses = framebufferView->getSubpasses();
 
 	GARDEN_ASSERT((subpasses.empty() && subpassIndex == 0) ||
 		(!subpasses.empty() && subpassIndex < subpasses.size()));
 
-	auto version = GraphicsAPI::graphicsPipelineVersion++;
-	auto pipeline = GraphicsAPI::graphicsPipelinePool.create(path,
+	auto version = graphicsAPI->graphicsPipelineVersion++;
+	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path,
 		maxBindlessCount, useAsyncRecording, version, framebuffer, subpassIndex);
 
-	auto renderPass = FramebufferExt::getRenderPass(framebufferView);
-	if (renderPass)
-		GraphicsAPI::renderPasses.at(renderPass)++;
+	void* renderPass = nullptr;
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		renderPass = FramebufferExt::getRenderPass(**framebufferView);
+		if (renderPass)
+			graphicsAPI->renderPasses.at(renderPass)++;
+	}
+	else abort();
 
 	vector<Image::Format> colorFormats;
 	if (subpasses.empty())
 	{
-		const auto& colorAttachments = framebufferView.getColorAttachments();
+		const auto& colorAttachments = framebufferView->getColorAttachments();
 		colorFormats.resize(colorAttachments.size());
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
-			auto attachment = GraphicsAPI::imageViewPool.get(colorAttachments[i].imageView);
+			auto attachment = graphicsAPI->imageViewPool.get(colorAttachments[i].imageView);
 			colorFormats[i] = attachment->getFormat();
 		}
 	}
@@ -1425,7 +1444,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		const auto& outputAttachments = subpasses[subpassIndex].outputAttachments;
 		if (!outputAttachments.empty())
 		{
-			auto attachment = GraphicsAPI::imageViewPool.get(
+			auto attachment = graphicsAPI->imageViewPool.get(
 				outputAttachments[outputAttachments.size() - 1].imageView);
 			colorFormats.resize(isFormatColor(attachment->getFormat()) ?
 				(uint32)outputAttachments.size() : (uint32)outputAttachments.size() - 1);
@@ -1433,10 +1452,10 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	}
 
 	auto depthStencilFormat = Image::Format::Undefined;
-	if (framebufferView.getDepthStencilAttachment().imageView)
+	if (framebufferView->getDepthStencilAttachment().imageView)
 	{
-		auto attachment = GraphicsAPI::imageViewPool.get(
-			framebufferView.getDepthStencilAttachment().imageView);
+		auto attachment = graphicsAPI->imageViewPool.get(
+			framebufferView->getDepthStencilAttachment().imageView);
 		depthStencilFormat = attachment->getFormat();
 	}
 
@@ -1470,6 +1489,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
+
 			Compiler::GraphicsData pipelineData;
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
@@ -1511,6 +1532,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
+
 		vector<uint8> vertexCode, fragmentCode;
 		Compiler::GraphicsData pipelineData;
 		pipelineData.shaderPath = path;
@@ -1540,7 +1563,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			abort();
 			
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
-		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(pipeline);
+		auto pipelineView = graphicsAPI->graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
 	}
@@ -1618,8 +1641,9 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
-	auto version = GraphicsAPI::computePipelineVersion++;
-	auto pipeline = GraphicsAPI::computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto version = graphicsAPI->computePipelineVersion++;
+	auto pipeline = graphicsAPI->computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (loadAsync && threadSystem)
@@ -1640,6 +1664,8 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
+
 			Compiler::ComputeData pipelineData;
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
@@ -1674,6 +1700,8 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
+
 		Compiler::ComputeData pipelineData;
 		pipelineData.shaderPath = path;
 		pipelineData.specConstValues = specConstValues;
@@ -1692,7 +1720,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			abort();
 
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
-		auto pipelineView = GraphicsAPI::computePipelinePool.get(pipeline);
+		auto pipelineView = graphicsAPI->computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + path.generic_string() + ")");
 	}
@@ -2229,6 +2257,8 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Buffer Load");
+
 			auto data = (GeneralBufferLoadData*)task.getArgument();
 			loadModelBuffers(data->model);
 
@@ -2255,6 +2285,8 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Buffer Load");
+
 		auto size = (uint64)(accessor.getCount() * accessor.getBinaryStride());
 		auto bufferInstance = BufferExt::create(bind,
 			access, Buffer::Usage::Auto, strategy, size, 0);
@@ -2311,6 +2343,8 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 		auto& threadPool = threadSystem->getBackgroundPool();
 		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Vertex Buffer Load");
+
 			auto data = (VertexBufferLoadData*)task.getArgument();
 			loadModelBuffers(data->model);
 
@@ -2340,6 +2374,8 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Vertex Buffer Load");
+
 		auto size = primitive.getVertexCount(attributes) *
 			primitive.getBinaryStride(attributes);
 		auto bufferInstance = BufferExt::create(bind,

@@ -35,7 +35,7 @@ Controller2DSystem::Controller2DSystem(bool setSingleton) : Singleton(setSinglet
 }
 Controller2DSystem::~Controller2DSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", Controller2DSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", Controller2DSystem::deinit);
@@ -57,7 +57,7 @@ void Controller2DSystem::init()
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->position = float3(0.0f, 0.0f, -0.5f);
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	transformView->debugName = "MainCamera";
+	transformView->debugName = "Main Camera";
 	#endif
 
 	auto linkView = manager->add<LinkComponent>(camera);
@@ -85,7 +85,7 @@ void Controller2DSystem::init()
 }
 void Controller2DSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		GraphicsSystem::Instance::get()->camera = {};
 		Manager::Instance::get()->destroy(camera);

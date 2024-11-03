@@ -29,7 +29,7 @@ MeshSelectorEditorSystem::MeshSelectorEditorSystem()
 }
 MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
@@ -47,7 +47,7 @@ void MeshSelectorEditorSystem::init()
 }
 void MeshSelectorEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);

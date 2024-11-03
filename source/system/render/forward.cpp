@@ -85,7 +85,7 @@ ForwardRenderSystem::ForwardRenderSystem(bool clearColorBuffer,
 }
 ForwardRenderSystem::~ForwardRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ForwardRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ForwardRenderSystem::deinit);
@@ -119,7 +119,7 @@ void ForwardRenderSystem::init()
 }
 void ForwardRenderSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(framebuffer);

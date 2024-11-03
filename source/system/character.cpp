@@ -321,8 +321,10 @@ CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 }
 CharacterSystem::~CharacterSystem()
 {
-	components.clear(); // Do not remove this!
-	delete (JPH::CharacterVsCharacterCollisionSimple*)charVsCharCollision;
+	if (Manager::Instance::get()->isRunning)
+		delete (JPH::CharacterVsCharacterCollisionSimple*)charVsCharCollision;
+	else
+		components.clear(false);
 	unsetSingleton();
 }
 
@@ -350,32 +352,32 @@ const string& CharacterSystem::getComponentName() const
 //**********************************************************************************************************************
 void CharacterSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto componentView = View<CharacterComponent>(component);
+	auto characterView = View<CharacterComponent>(component);
 
-	if (componentView->shape)
+	if (characterView->shape)
 	{
-		auto mass = componentView->getMass();
+		auto mass = characterView->getMass();
 		if (mass != 70.0f)
 			serializer.write("mass", mass);
 
 		float3 position; quat rotation;
-		componentView->getPosAndRot(position, rotation);
+		characterView->getPosAndRot(position, rotation);
 		if (position != float3(0.0f))
 			serializer.write("position", position);
 		if (rotation != quat::identity)
 			serializer.write("rotation", rotation);
 
-		auto velocity = componentView->getLinearVelocity();
+		auto velocity = characterView->getLinearVelocity();
 		if (velocity != float3(0.0f))
 			serializer.write("linearVelocity", position);
 
 		auto physicsSystem = PhysicsSystem::Instance::get();
-		physicsSystem->serializeDecoratedShape(serializer, componentView->shape);
+		physicsSystem->serializeDecoratedShape(serializer, characterView->shape);
 	}
 }
 void CharacterSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
-	auto componentView = View<CharacterComponent>(component);
+	auto characterView = View<CharacterComponent>(component);
 
 	if (deserializer.read("shapeType", valueStringCache))
 	{
@@ -385,19 +387,19 @@ void CharacterSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 		{
 			auto mass = 70.0f;
 			deserializer.read("mass", mass);
-			componentView->setShape(shape, mass);
+			characterView->setShape(shape, mass);
 
 			auto position = float3(0.0f);
 			deserializer.read("position", position);
 			auto rotation = quat::identity;
 			deserializer.read("rotation", rotation);
 			if (position != float3(0.0f) || rotation != quat::identity)
-				componentView->setPosAndRot(position, rotation);
+				characterView->setPosAndRot(position, rotation);
 
 			auto velocity = float3(0.0f);
 			deserializer.read("linearVelocity", velocity);
 			if (velocity != float3(0.0f))
-				componentView->setLinearVelocity(velocity);
+				characterView->setLinearVelocity(velocity);
 		}
 	}
 }

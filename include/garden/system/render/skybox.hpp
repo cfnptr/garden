@@ -54,14 +54,14 @@ private:
 	 */
 	SkyboxRenderSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroy skybox rendering system instance.
+	 * @brief Destroys skybox rendering system instance.
 	 */
 	~SkyboxRenderSystem() final;
 
 	void init();
 	void deinit();
 	void imageLoaded();
-	void hdrRender();
+	void translucentRender();
 
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;

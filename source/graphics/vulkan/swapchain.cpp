@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/graphics/swapchain.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/swapchain.hpp"
+#include "garden/graphics/vulkan/api.hpp"
+#include "garden/profiler.hpp"
 
 using namespace math;
 using namespace garden::graphics;
@@ -132,36 +133,23 @@ static vk::PresentModeKHR getBestVkPresentMode(
 }
 
 //**********************************************************************************************************************
-static vk::SwapchainKHR createVkSwapchain(vk::PhysicalDevice physicalDevice,
-	vk::Device device, vk::SurfaceKHR surface, uint2 framebufferSize, bool useVsync,
-	bool useTripleBuffering, vk::SwapchainKHR oldSwapchain, vk::Format& format)
+static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize,
+	bool useVsync, bool useTripleBuffering, vk::SwapchainKHR oldSwapchain, vk::Format& format)
 {
-	auto capabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+	auto capabilities = vulkanAPI->physicalDevice.getSurfaceCapabilitiesKHR(vulkanAPI->surface);
 	auto imageCount = getBestVkImageCount(capabilities, useTripleBuffering);
-	auto surfaceFormat = getBestVkSurfaceFormat(physicalDevice, surface, false);
+	auto surfaceFormat = getBestVkSurfaceFormat(vulkanAPI->physicalDevice, vulkanAPI->surface, false);
 	auto surfaceExtent = getBestVkSurfaceExtent(capabilities, framebufferSize);
 	auto surfaceTransform = getBestVkSurfaceTransform(capabilities);
 	auto compositeAlpha = getBestVkCompositeAlpha(capabilities);
-	auto presentMode = getBestVkPresentMode(physicalDevice, surface, useVsync);
+	auto presentMode = getBestVkPresentMode(vulkanAPI->physicalDevice, vulkanAPI->surface, useVsync);
 	format = surfaceFormat.format;
 
-	vk::SwapchainCreateInfoKHR swapchainInfo({}, surface, imageCount, surfaceFormat.format,
+	vk::SwapchainCreateInfoKHR swapchainInfo({}, vulkanAPI->surface, imageCount, surfaceFormat.format,
 		surfaceFormat.colorSpace, surfaceExtent, 1, vk::ImageUsageFlagBits::eColorAttachment | 
 		vk::ImageUsageFlagBits::eTransferDst, vk::SharingMode::eExclusive, {}, 
 		surfaceTransform, compositeAlpha, presentMode, VK_TRUE, oldSwapchain);
-	return device.createSwapchainKHR(swapchainInfo);
-}
-
-static vk::Fence createVkFence(vk::Device device, bool isSignaled = false)
-{
-	vk::FenceCreateInfo fenceInfo(
-		isSignaled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags());
-	return device.createFence(fenceInfo);
-}
-static vk::Semaphore createVkSemaphore(vk::Device device)
-{
-	vk::SemaphoreCreateInfo semaphoreInfo;
-	return device.createSemaphore(semaphoreInfo);
+	return vulkanAPI->device.createSwapchainKHR(swapchainInfo);
 }
 
 static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 queueFamilyIndex, uint32 count)
@@ -175,142 +163,126 @@ static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 qu
 }
 
 //**********************************************************************************************************************
-static vector<Swapchain::Buffer> createVkSwapchainBuffers(
-	vk::Device device, vk::SwapchainKHR swapchain, vk::Format surfaceFormat,
-	vk::CommandPool graphicsCommandPool, LinearPool<Image>& imagePool,
-	uint32 graphicsQueueFamilyIndex, uint2 framebufferSize, bool useThreading)
+static vector<Swapchain::Buffer*> createVkSwapchainBuffers(VulkanAPI* vulkanAPI,
+	vk::SwapchainKHR swapchain, uint2 framebufferSize, vk::Format surfaceFormat)
 {
-	auto images = device.getSwapchainImagesKHR(swapchain);
+	auto images = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
 	auto imageFormat = toImageFormat(surfaceFormat);
 	const auto imageBind = Image::Bind::ColorAttachment | Image::Bind::TransferDst;
-	vector<Swapchain::Buffer> buffers(images.size());
-
-	vk::CommandBufferAllocateInfo commandBufferInfo(graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
-	auto commandPoolCount = useThreading ? thread::hardware_concurrency() : 1;
+	vector<Swapchain::Buffer*> buffers(images.size());
+	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 
 	for (uint32 i = 0; i < (uint32)buffers.size(); i++)
 	{
-		auto& buffer = buffers[i];
-		auto allocateResult = device.allocateCommandBuffers(&commandBufferInfo, &buffer.primaryCommandBuffer);
+		auto buffer = new VulkanSwapchain::VkBuffer();
+		auto allocateResult = vulkanAPI->device.allocateCommandBuffers(&commandBufferInfo, &buffer->primaryCommandBuffer);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 		
 		#if GARDEN_DEBUG
-		if (Vulkan::hasDebugUtils)
+		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
-				(uint64)(VkCommandBuffer)buffer.primaryCommandBuffer, name.c_str());
-			device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+				(uint64)(VkCommandBuffer)buffer->primaryCommandBuffer, name.c_str());
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 		}
 		#endif
 
-		buffer.colorImage = imagePool.create((VkImage)images[i], imageFormat,
+		buffer->colorImage = vulkanAPI->imagePool.create((VkImage)images[i], imageFormat,
 			imageBind, Image::Strategy::Default, framebufferSize, 0);
-		buffer.secondaryCommandPools = createVkCommandPools(
-			device, graphicsQueueFamilyIndex, commandPoolCount);
-
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		auto colorImage = GraphicsAPI::imagePool.get(buffer.colorImage);
-		colorImage->setDebugName("image.swapchain" + to_string(i));	
-		#endif
+		buffer->secondaryCommandPools = createVkCommandPools(vulkanAPI->device, 
+			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
 
 		#if GARDEN_EDITOR
 		vk::QueryPoolCreateInfo queryPoolInfo({}, vk::QueryType::eTimestamp, 2);
-		buffer.queryPool = Vulkan::device.createQueryPool(queryPoolInfo);
+		buffer->queryPool = vulkanAPI->device.createQueryPool(queryPoolInfo);
 		#endif
+
+		buffers[i] = buffer;
 	}
 
 	return buffers;
 }
-static void destroyVkSwapchainBuffers(vk::Device device, LinearPool<Image>& imagePool, 
-	LinearPool<ImageView>& imageViewPool, const vector<Swapchain::Buffer>& buffers)
+static void destroyVkSwapchainBuffers(VulkanAPI* vulkanAPI, const vector<Swapchain::Buffer*>& buffers)
 {
-	for (const auto& buffer : buffers)
+	for (auto buffer : buffers)
 	{
+		auto vkBuffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffer);
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		device.destroyQueryPool(buffer.queryPool);
+		vulkanAPI->device.destroyQueryPool(vkBuffer->queryPool);
 		#endif
-		for (auto commandPool : buffer.secondaryCommandPools)
-			device.destroyCommandPool(commandPool);
-		auto imageView = imagePool.get(buffer.colorImage);
+		for (auto commandPool : vkBuffer->secondaryCommandPools)
+			vulkanAPI->device.destroyCommandPool(commandPool);
+		auto imageView = vulkanAPI->imagePool.get(vkBuffer->colorImage);
 		if (imageView->hasDefaultView())
-			imageViewPool.destroy(imageView->getDefaultView());
-		imagePool.destroy(buffer.colorImage);
+			vulkanAPI->imageViewPool.destroy(imageView->getDefaultView());
+		vulkanAPI->imagePool.destroy(vkBuffer->colorImage);
+		delete vkBuffer;
 	}
 }
 
 //**********************************************************************************************************************
-Swapchain::Swapchain(uint2 framebufferSize, bool useVsync, bool useTripleBuffering, bool useThreading)
+VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bool useVsync,
+	bool useTripleBuffering) : Swapchain(framebufferSize, useVsync, useTripleBuffering)
 {
+	this->vulkanAPI = vulkanAPI;
+
+	vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlagBits::eSignaled);
+	vk::SemaphoreCreateInfo semaphoreInfo;
+
 	for (uint8 i = 0; i < frameLag; i++)
 	{
-		fences[i] = createVkFence(Vulkan::device, true);
-		imageAcquiredSemaphores[i] = createVkSemaphore(Vulkan::device);
-		drawCompleteSemaphores[i] = createVkSemaphore(Vulkan::device);
+		fences[i] = vulkanAPI->device.createFence(fenceInfo);
+		imageAcquiredSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
+		drawCompleteSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
 	}
 
 	vk::Format format;
-
-	instance = createVkSwapchain(Vulkan::physicalDevice, Vulkan::device,
-		Vulkan::surface, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
-	buffers = createVkSwapchainBuffers(Vulkan::device,
-		instance, format, Vulkan::frameCommandPool, GraphicsAPI::imagePool,
-		Vulkan::graphicsQueueFamilyIndex, framebufferSize, useThreading);
-
-	this->framebufferSize = framebufferSize;
-	this->vsync = useVsync;
-	this->tripleBuffering = useTripleBuffering;
-	this->useThreading = useThreading;
+	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
+	buffers = createVkSwapchainBuffers(vulkanAPI, instance, framebufferSize, format);
 }
-void Swapchain::destroy()
+VulkanSwapchain::~VulkanSwapchain()
 {
-	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, GraphicsAPI::imageViewPool, buffers);
-	Vulkan::device.destroySwapchainKHR(instance);
+	destroyVkSwapchainBuffers(vulkanAPI, buffers);
+	vulkanAPI->device.destroySwapchainKHR(instance);
 
 	for (uint8 i = 0; i < frameLag; i++)
 	{
-		Vulkan::device.destroySemaphore(drawCompleteSemaphores[i]);
-		Vulkan::device.destroySemaphore(imageAcquiredSemaphores[i]);
-		Vulkan::device.destroyFence(fences[i]);
+		vulkanAPI->device.destroySemaphore(drawCompleteSemaphores[i]);
+		vulkanAPI->device.destroySemaphore(imageAcquiredSemaphores[i]);
+		vulkanAPI->device.destroyFence(fences[i]);
 	}
-}
-
-void Swapchain::setThreadPool(ThreadPool& threadPool)
-{
-	this->threadPool = &threadPool;
 }
 
 //**********************************************************************************************************************
-void Swapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
+void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
-	Vulkan::device.waitIdle();
+	vulkanAPI->device.waitIdle();
+	destroyVkSwapchainBuffers(vulkanAPI, buffers);
+
 	vk::Format format;
-
-	destroyVkSwapchainBuffers(Vulkan::device, GraphicsAPI::imagePool, GraphicsAPI::imageViewPool, buffers);
-	auto newInstance = createVkSwapchain(Vulkan::physicalDevice, Vulkan::device,
-		Vulkan::surface, framebufferSize, useVsync, useTripleBuffering, instance, format);
-	Vulkan::device.destroySwapchainKHR(instance);
-
-	buffers = createVkSwapchainBuffers(Vulkan::device,
-		newInstance, format, Vulkan::frameCommandPool, GraphicsAPI::imagePool,
-		Vulkan::graphicsQueueFamilyIndex, framebufferSize, useThreading);
+	auto newInstance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, instance, format);
+	vulkanAPI->device.destroySwapchainKHR(instance);
+	buffers = createVkSwapchainBuffers(vulkanAPI, newInstance, framebufferSize, format);
 
 	this->framebufferSize = framebufferSize;
-	this->vsync = useVsync;
-	this->tripleBuffering = useTripleBuffering;
+	this->useVsync = useVsync;
+	this->useTripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
 	this->frameIndex = 0;
 }
 
 //**********************************************************************************************************************
-bool Swapchain::acquireNextImage()
+bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 {
+	SET_CPU_ZONE_SCOPED("Next Image Acquire");
+
 	auto fence = fences[frameIndex];
-	auto waitResult = Vulkan::device.waitForFences(1, &fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
+	auto waitResult = vulkanAPI->device.waitForFences(1, &fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
-	Vulkan::device.resetFences(fence);
+	vulkanAPI->device.resetFences(fence);
 	
-	auto result = Vulkan::device.acquireNextImageKHR(instance,
+	auto result = vulkanAPI->device.acquireNextImageKHR(instance,
 		UINT64_MAX, imageAcquiredSemaphores[frameIndex], {}, &bufferIndex);
 		
 	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
@@ -319,103 +291,103 @@ bool Swapchain::acquireNextImage()
 		throw runtime_error("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
 
-	auto buffer = &buffers[bufferIndex];
-	if (useThreading)
+	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
+	if (threadPool)
 	{
-		threadPool->addTasks(ThreadPool::Task([buffer](const ThreadPool::Task& task)
+		threadPool->addTasks(ThreadPool::Task([this, buffer](const ThreadPool::Task& task)
 		{
-			Vulkan::device.resetCommandPool(buffer->secondaryCommandPools[task.getTaskIndex()]);
+			SET_CPU_ZONE_SCOPED("Command Pool Reset");
+			vulkanAPI->device.resetCommandPool(buffer->secondaryCommandPools[task.getTaskIndex()]);
 		}),
 		(uint32)buffer->secondaryCommandPools.size());
 		threadPool->wait();
 	}
 	else
 	{
-		Vulkan::device.resetCommandPool(buffer->secondaryCommandPools[0]);
+		for (uint32 i = 0; i < buffer->secondaryCommandPools.size(); i++)
+			vulkanAPI->device.resetCommandPool(buffer->secondaryCommandPools[i]);
 	}
 
 	buffer->secondaryCommandBufferIndex = 0;
-	vmaSetCurrentFrameIndex(Vulkan::memoryAllocator, bufferIndex);
+	vmaSetCurrentFrameIndex(vulkanAPI->memoryAllocator, bufferIndex);
+	this->threadPool = threadPool;
 	return true;
 }
 
 //**********************************************************************************************************************
-void Swapchain::submit()
+void VulkanSwapchain::submit()
 {
-	const auto& buffer = buffers[bufferIndex];
+	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
 	vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	vk::SubmitInfo submitInfo(1, &imageAcquiredSemaphores[frameIndex], &pipelineStage, 
-		1, &buffer.primaryCommandBuffer, 1, &drawCompleteSemaphores[frameIndex]);
-	Vulkan::frameQueue.submit(submitInfo, fences[frameIndex]);
+		1, &buffer->primaryCommandBuffer, 1, &drawCompleteSemaphores[frameIndex]);
+	vulkanAPI->frameQueue.submit(submitInfo, fences[frameIndex]);
 }
-bool Swapchain::present()
+bool VulkanSwapchain::present()
 {
 	vk::PresentInfoKHR presentInfo(1, &drawCompleteSemaphores[frameIndex], 1, &instance, &bufferIndex);
-	auto result = Vulkan::frameQueue.presentKHR(&presentInfo); // & is required here.
+	auto result = vulkanAPI->frameQueue.presentKHR(&presentInfo); // & is required here.
 	frameIndex = (frameIndex + 1) % frameLag;
 
 	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
 		return false;
 	else if (result != vk::Result::eSuccess)
 		throw runtime_error("Failed to present image. (error: " + vk::to_string(result) + ")");
-	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
-
 	return true;
 }
 
 //**********************************************************************************************************************
-static vector<vk::Format> colorAttachmentFormats;
-
-void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass, uint8 subpassIndex,
-	const vector<Framebuffer::OutputAttachment>& colorAttachments,
+void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, vk::RenderPass renderPass, 
+	uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
 	Framebuffer::OutputAttachment depthStencilAttachment, const string& name)
 {
-	auto& buffer = buffers[bufferIndex];
-	const auto& secondaryCommandPools = buffer.secondaryCommandPools;
-	auto commandBufferCount = (uint32)secondaryCommandPools.size();
-	Vulkan::secondaryCommandBuffers.resize(commandBufferCount);
-	Vulkan::secondaryCommandStates.resize(commandBufferCount);
+	SET_CPU_ZONE_SCOPED("Secondary Command Buffers Begin");
+
+	auto threadCount = vulkanAPI->threadCount;
+	vulkanAPI->secondaryCommandBuffers.resize(threadCount);
+	vulkanAPI->secondaryCommandStates.resize(threadCount);
 	
-	if (buffer.secondaryCommandBufferIndex < buffer.secondaryCommandBuffers.size())
+	auto buffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(buffers[bufferIndex]);
+	if (buffer->secondaryCommandBufferIndex < buffer->secondaryCommandBuffers.size())
 	{
-		memcpy(Vulkan::secondaryCommandBuffers.data(),
-			buffer.secondaryCommandBuffers.data() + buffer.secondaryCommandBufferIndex,
-			commandBufferCount * sizeof(vk::CommandBuffer));
+		memcpy(vulkanAPI->secondaryCommandBuffers.data(),
+			buffer->secondaryCommandBuffers.data() + buffer->secondaryCommandBufferIndex,
+			threadCount * sizeof(vk::CommandBuffer));
 	}
 	else
 	{
-		buffer.secondaryCommandBuffers.resize(buffer.secondaryCommandBufferIndex + commandBufferCount);
-		auto secondaryCommandBuffers = buffer.secondaryCommandBuffers.data() + buffer.secondaryCommandBufferIndex;
+		const auto& secondaryCommandPools = buffer->secondaryCommandPools;
+		buffer->secondaryCommandBuffers.resize(buffer->secondaryCommandBufferIndex + threadCount);
+		auto secondaryCommandBuffers = buffer->secondaryCommandBuffers.data() + buffer->secondaryCommandBufferIndex;
 		vk::CommandBufferAllocateInfo allocateInfo({}, vk::CommandBufferLevel::eSecondary, 1);
 		
-		for (uint32 i = 0; i < commandBufferCount; i++)
+		for (uint32 i = 0; i < threadCount; i++)
 		{
 			allocateInfo.commandPool = secondaryCommandPools[i];
 			vk::CommandBuffer commandBuffer;
-			auto allocateResult = Vulkan::device.allocateCommandBuffers(&allocateInfo, &commandBuffer);
+			auto allocateResult = vulkanAPI->device.allocateCommandBuffers(&allocateInfo, &commandBuffer);
 			vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 			secondaryCommandBuffers[i] = commandBuffer;
-			Vulkan::secondaryCommandBuffers[i] = commandBuffer;
+			vulkanAPI->secondaryCommandBuffers[i] = commandBuffer;
 
 			#if GARDEN_DEBUG
-			if (Vulkan::hasDebugUtils)
+			if (vulkanAPI->hasDebugUtils)
 			{
 				auto objectName = name + ".secondaryCommandBuffer" + to_string(i);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
 					(uint64)(VkCommandBuffer)commandBuffer, objectName.c_str());
-				Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 			}
 			#endif
 		}
 	}
 
-	buffer.secondaryCommandBufferIndex += commandBufferCount;
+	buffer->secondaryCommandBufferIndex += threadCount;
 
-	for (uint32 i = 0; i < commandBufferCount; i++)
-		Vulkan::secondaryCommandStates[i] = false;
+	for (uint32 i = 0; i < threadCount; i++)
+		vulkanAPI->secondaryCommandStates[i] = false;
 
-	vk::CommandBufferInheritanceInfo inheritanceInfo(
-		(VkRenderPass)renderPass, subpassIndex, (VkFramebuffer)framebuffer, VK_FALSE); // TODO: occlusion query
+	vk::CommandBufferInheritanceInfo inheritanceInfo(renderPass, subpassIndex, framebuffer, VK_FALSE); // TODO: occlusion query
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit |
 		vk::CommandBufferUsageFlagBits::eRenderPassContinue, &inheritanceInfo);
 
@@ -427,13 +399,13 @@ void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass
 
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
-			auto imageView = GraphicsAPI::imageViewPool.get(colorAttachments[i].imageView);
+			auto imageView = vulkanAPI->imageViewPool.get(colorAttachments[i].imageView);
 			colorAttachmentFormats[i] = toVkFormat(imageView->getFormat());
 		}
 
 		if (depthStencilAttachment.imageView)
 		{
-			auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
+			auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
 			auto format = imageView->getFormat();
 
 			if (isFormatDepthOnly(format))
@@ -460,30 +432,33 @@ void Swapchain::beginSecondaryCommandBuffers(void* framebuffer, void* renderPass
 		inheritanceInfo.pNext = &inheritanceRenderingInfo;
 	}
 
-	threadPool->addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
+	threadPool->addTasks(ThreadPool::Task([this, &beginInfo](const ThreadPool::Task& task)
 	{
-		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].begin(beginInfo);
+		SET_CPU_ZONE_SCOPED("Secondary Command Buffer Begin");
+		vulkanAPI->secondaryCommandBuffers[task.getTaskIndex()].begin(beginInfo);
 	}),
-	(uint32)Vulkan::secondaryCommandBuffers.size());
+	threadCount);
 	threadPool->wait();
 }
 
 //**********************************************************************************************************************
-static vector<vk::CommandBuffer> secondaryCommandBuffers;
-
-void Swapchain::endSecondaryCommandBuffers()
+void VulkanSwapchain::endSecondaryCommandBuffers()
 {
-	threadPool->addTasks(ThreadPool::Task([](const ThreadPool::Task& task)
+	SET_CPU_ZONE_SCOPED("Secondary Command Buffers End");
+
+	threadPool->addTasks(ThreadPool::Task([this](const ThreadPool::Task& task)
 	{
-		Vulkan::secondaryCommandBuffers[task.getTaskIndex()].end();
+		SET_CPU_ZONE_SCOPED("Secondary Command Buffer End");
+		vulkanAPI->secondaryCommandBuffers[task.getTaskIndex()].end();
 	}),
-	(uint32)Vulkan::secondaryCommandBuffers.size());
+	(uint32)vulkanAPI->secondaryCommandBuffers.size());
 	threadPool->wait();
 
-	for (uint16 i = 0; i < (uint16)Vulkan::secondaryCommandStates.size(); i++)
+	GARDEN_ASSERT(vulkanAPI->secondaryCommandStates.size() == vulkanAPI->secondaryCommandBuffers.size());
+	for (uint16 i = 0; i < (uint16)vulkanAPI->secondaryCommandBuffers.size(); i++)
 	{
-		if (Vulkan::secondaryCommandStates[i])
-			secondaryCommandBuffers.push_back(Vulkan::secondaryCommandBuffers[i]);
+		if (vulkanAPI->secondaryCommandStates[i])
+			secondaryCommandBuffers.push_back(vulkanAPI->secondaryCommandBuffers[i]);
 	}
 
 	if (!secondaryCommandBuffers.empty())
@@ -491,9 +466,9 @@ void Swapchain::endSecondaryCommandBuffers()
 		ExecuteCommand command;
 		command.bufferCount = (uint16)secondaryCommandBuffers.size();
 		command.buffers = secondaryCommandBuffers.data();
-		GraphicsAPI::currentCommandBuffer->addCommand(command);
+		vulkanAPI->currentCommandBuffer->addCommand(command);
 		secondaryCommandBuffers.clear();
 	}
 
-	Vulkan::secondaryCommandBuffers.clear();
+	vulkanAPI->secondaryCommandBuffers.clear();
 }

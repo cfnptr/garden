@@ -29,7 +29,7 @@ SpriteRenderEditorSystem::SpriteRenderEditorSystem()
 }
 SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpriteRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
@@ -77,36 +77,38 @@ void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool i
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
+		auto opaqueSpriteView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", opaqueSpriteView->isEnabled ? "true" : "false",
+			opaqueSpriteView->colorMapPath.empty() ? "<null>" :
+			opaqueSpriteView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
-		renderComponent(*componentView, typeid(OpaqueSpriteComponent));
+		auto opaqueSpriteView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
+		renderComponent(*opaqueSpriteView, typeid(OpaqueSpriteComponent));
 	}
 }
 void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
+		auto cutoutSpriteView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", cutoutSpriteView->isEnabled ? "true" : "false",
+			cutoutSpriteView->colorMapPath.empty() ? "<null>" :
+			cutoutSpriteView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
-		renderComponent(*componentView, typeid(CutoutSpriteComponent));
+		auto cutoutSpriteView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
+		renderComponent(*cutoutSpriteView, typeid(CutoutSpriteComponent));
 
-		ImGui::SliderFloat("Alpha Cutoff", &componentView->alphaCutoff, 0.0f, 1.0f);
+		ImGui::SliderFloat("Alpha Cutoff", &cutoutSpriteView->alphaCutoff, 0.0f, 1.0f);
 		if (ImGui::BeginPopupContextItem("alphaCutoff"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				componentView->alphaCutoff = 0.5f;
+				cutoutSpriteView->alphaCutoff = 0.5f;
 			ImGui::EndPopup();
 		}
 	}
@@ -115,15 +117,16 @@ void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, b
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto componentView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", componentView->isEnabled ? "true" : "false",
-			componentView->colorMapPath.empty() ? "<null>" : componentView->colorMapPath.generic_string().c_str());
+		auto translucentSpriteView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", translucentSpriteView->isEnabled ? "true" : "false",
+			translucentSpriteView->colorMapPath.empty() ? "<null>" :
+			translucentSpriteView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto componentView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
-		renderComponent(*componentView, typeid(TranslucentSpriteComponent));
+		auto translucentSpriteView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
+		renderComponent(*translucentSpriteView, typeid(TranslucentSpriteComponent));
 	}
 }
 
