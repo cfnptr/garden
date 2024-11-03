@@ -9,6 +9,8 @@ extensible architecture, built-in editor, convenient creation of rendering pipel
 shader language (GSL), and automatic placement of GPU memory barriers, which are necessary in recent 
 graphics APIs. See the [features](FEATURES.md) list.
 
+Also check out the Garden [demo](https://github.com/cfnptr/garden-demo) app.
+
 ## Supported operating systems
 
 * Windows (10/11)
