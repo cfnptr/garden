@@ -13,30 +13,13 @@
 // limitations under the License.
 
 #include "garden/system/thread.hpp"
-#include "mpio/os.hpp"
+#include "garden/os.hpp"
 
-using namespace mpio;
 using namespace garden;
-
-static int getBestForegroundThreadCount()
-{
-	auto cpuName = OS::getCpuName();
-	if (cpuName.find("AMD") != string::npos)
-	{
-		// Only one of the two CCXes has additional 3D V-Cache.
-		if (cpuName.find("9 7950X3D") != string::npos || cpuName.find("9 7900X3D") != string::npos ||
-			cpuName.find("9 7945HX3D") != string::npos) 
-		{
-			auto cpuCount = OS::getPhysicalCpuCount();
-			return cpuCount > 1 ? cpuCount / 2 : cpuCount;
-		}
-	}
-	return OS::getPerformanceCpuCount();
-}
 
 //**********************************************************************************************************************
 ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
-	backgroundPool(true, "BG", OS::getLogicalCpuCount()),
+	backgroundPool(true, "BG", mpio::OS::getLogicalCpuCount()),
 	foregroundPool(false, "FG", getBestForegroundThreadCount())
 {
 	mpmt::Thread::setForegroundPriority();
@@ -44,7 +27,7 @@ ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 }
 ThreadSystem::~ThreadSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
 	unsetSingleton();
 }

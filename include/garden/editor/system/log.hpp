@@ -17,6 +17,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/log.hpp"
+#include <sstream>
 
 namespace garden
 {

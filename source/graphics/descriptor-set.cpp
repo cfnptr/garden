@@ -13,139 +13,88 @@
 // limitations under the License.
 
 #include "garden/graphics/descriptor-set.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
+// TODO: track and log total used sampler/buffer/etc in the application to adjust pool size.
+
+using namespace math;
+using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vector<vk::DescriptorSetLayout> descriptorSetLayouts;
-
-DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, map<string, Uniform>&& uniforms, 
-	uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
+static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, 
+	const map<string, DescriptorSet::Uniform>& uniforms, uint8 index)
 {
-	vk::DescriptorSetLayout descriptorSetLayout;
-	vk::DescriptorPool descriptorPool;
-
-	if (pipelineType == PipelineType::Graphics)
-	{
-		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline));
-		descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
-		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
-	}
-	else if (pipelineType == PipelineType::Compute)
-	{
-		auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(pipeline));
-		descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
-		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
-	}
-	else abort();
-
-	GARDEN_ASSERT(descriptorSetLayout);
+	auto vulkanAPI = VulkanAPI::get();
+	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
+	vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)
+		PipelineExt::getDescriptorSetLayouts(**pipelineView)[index];
+	vk::DescriptorPool descriptorPool = (VkDescriptorPool)PipelineExt::getDescriptorPools(**pipelineView)[index];
 	auto setCount = (uint32)uniforms.begin()->second.resourceSets.size();
+	GARDEN_ASSERT(descriptorSetLayout);
+
 	vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool ?
-		descriptorPool : Vulkan::descriptorPool, setCount);
-	
+		descriptorPool : vulkanAPI->descriptorPool, setCount);
+
+	void* instance = nullptr;
 	if (setCount > 1)
 	{
 		auto descriptorSets = malloc<vk::DescriptorSet>(setCount);
-		this->instance = descriptorSets;
-		descriptorSetLayouts.assign(setCount, descriptorSetLayout);
-		allocateInfo.pSetLayouts = descriptorSetLayouts.data();
-		auto allocateResult = Vulkan::device.allocateDescriptorSets(&allocateInfo, descriptorSets);
+		vulkanAPI->descriptorSetLayouts.assign(setCount, descriptorSetLayout);
+		allocateInfo.pSetLayouts = vulkanAPI->descriptorSetLayouts.data();
+		auto allocateResult = vulkanAPI->device.allocateDescriptorSets(&allocateInfo, descriptorSets);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+		instance = descriptorSets;
 	}
 	else
 	{
 		allocateInfo.pSetLayouts = &descriptorSetLayout;
-		auto allocateResult = Vulkan::device.allocateDescriptorSets(
-			&allocateInfo, (vk::DescriptorSet*)&this->instance);
+		auto allocateResult = vulkanAPI->device.allocateDescriptorSets(&allocateInfo, (vk::DescriptorSet*)&instance);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 	}
-	
-	recreate(std::move(uniforms));
+	return instance;
 }
 
-//**********************************************************************************************************************
-bool DescriptorSet::destroy()
+static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, PipelineType pipelineType, 
+	const map<string, DescriptorSet::Uniform>& uniforms, uint8 index)
 {
-	if (!instance || readyLock > 0)
-		return false;
-
-	if (GraphicsAPI::isRunning)
-	{
-		bool isBindless;
-		if (pipelineType == PipelineType::Graphics)
-		{
-			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(this->pipeline));
-			isBindless = pipelineView->descriptorPools[index];
-		}
-		else if (pipelineType == PipelineType::Compute)
-		{
-			auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(this->pipeline));
-			isBindless = pipelineView->descriptorPools[index];
-		}
-		else abort();
-		
-		if (!isBindless)
-		{
-			GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSet,
-				instance, nullptr, uniforms.begin()->second.resourceSets.size() - 1);
-		}
-		else
-		{
-			if (uniforms.begin()->second.resourceSets.size() > 1)
-				free(instance);
-		}
-	}
-	else
+	auto vulkanAPI = VulkanAPI::get();
+	if (vulkanAPI->forceResourceDestroy)
 	{
 		if (uniforms.begin()->second.resourceSets.size() > 1)
 			free(instance);
 	}
+	else
+	{
+		auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
+		auto isBindless = PipelineExt::getDescriptorPools(**pipelineView)[index];
 
-	instance = nullptr;
-	return true;
+		if (isBindless)
+		{
+			if (uniforms.begin()->second.resourceSets.size() > 1)
+				free(instance);
+		}
+		else
+		{
+			auto setCount = uniforms.begin()->second.resourceSets.size();
+			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSet,
+				instance, nullptr, setCount > 1 ? setCount : 0);
+		}
+	}
 }
 
 //**********************************************************************************************************************
-static vector<vk::WriteDescriptorSet> writeDescriptorSets;
-static vector<vk::DescriptorImageInfo> descriptorImageInfos;
-static vector<vk::DescriptorBufferInfo> descriptorBufferInfos;
-
-void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
+static void recreateVkDescriptorSet(const map<string, DescriptorSet::Uniform>& oldUniforms, 
+	const map<string, DescriptorSet::Uniform>& newUniforms, uint8 index, void*& instance, 
+	vk::DescriptorPool descriptorPool, vk::DescriptorSetLayout descriptorSetLayout,
+	const map<string, Pipeline::Uniform>& pipelineUniforms)
 {
-	GARDEN_ASSERT(this->uniforms.size() == 0 || uniforms.size() == this->uniforms.size());
-
-	vk::DescriptorPool descriptorPool; uint32 maxBindlessCount = 0;
-	const map<string, Pipeline::Uniform>* pipelineUniforms = nullptr;
-
-	if (pipelineType == PipelineType::Graphics)
-	{
-		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(this->pipeline));
-		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
-		maxBindlessCount = pipelineView->maxBindlessCount;
-		pipelineUniforms = &pipelineView->uniforms;
-	}
-	else if (pipelineType == PipelineType::Compute)
-	{
-		auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(this->pipeline));
-		descriptorPool = (VkDescriptorPool)pipelineView->descriptorPools[index];
-		maxBindlessCount = pipelineView->maxBindlessCount;
-		pipelineUniforms = &pipelineView->uniforms;
-	}
-	else abort();
-
+	auto vulkanAPI = VulkanAPI::get();
 	#if GARDEN_DEBUG
-	const auto& firstUniform = uniforms.begin()->second;
-	auto setCount = firstUniform.resourceSets.size();
-
-	for (const auto& pair : uniforms)
+	if (!descriptorPool)
 	{
-		GARDEN_ASSERT(!pair.first.empty());
-		GARDEN_ASSERT(setCount == pair.second.resourceSets.size());
-		
-		if (!descriptorPool)
+		for (const auto& pair : newUniforms)
 		{
 			for (const auto& resourceArray : pair.second.resourceSets)
 			{
@@ -157,75 +106,55 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 	#endif
 
 	// Note: Checks if descriptor set is just now created. 
-	auto oldSetCount = this->uniforms.size() > 0 ?
-		(uint32)this->uniforms.begin()->second.resourceSets.size() : (uint32)0;
-	auto newSetCount = (uint32)uniforms.begin()->second.resourceSets.size();
+	auto oldSetCount = oldUniforms.size() > 0 ? (uint32)oldUniforms.begin()->second.resourceSets.size() : (uint32)0;
+	auto newSetCount = (uint32)newUniforms.begin()->second.resourceSets.size();
 
 	if (oldSetCount != 0 && newSetCount != oldSetCount)
 	{
-		vk::DescriptorSetLayout descriptorSetLayout;
-		if (pipelineType == PipelineType::Graphics)
-		{
-			auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline));
-			descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
-		}
-		else if (pipelineType == PipelineType::Compute)
-		{
-			auto pipelineView = GraphicsAPI::computePipelinePool.get(ID<ComputePipeline>(pipeline));
-			descriptorSetLayout = (VkDescriptorSetLayout)pipelineView->descriptorSetLayouts[index];
-		}
-		else abort();
-
 		vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool ?
-			descriptorPool : Vulkan::descriptorPool, newSetCount);
+			descriptorPool : vulkanAPI->descriptorPool, newSetCount);
 
 		// TODO: We can only allocate or free required array part.
 		// 		 But I'm not sure if it faster or better.
 		if (oldSetCount > 1)
 		{
-			Vulkan::device.freeDescriptorSets(descriptorPool ?
-				descriptorPool : Vulkan::descriptorPool, oldSetCount, (vk::DescriptorSet*)this->instance);
-			this->instance = realloc<vk::DescriptorSet>((vk::DescriptorSet*)this->instance, newSetCount);
+			vulkanAPI->device.freeDescriptorSets(descriptorPool ? descriptorPool : 
+				vulkanAPI->descriptorPool, oldSetCount, (vk::DescriptorSet*)instance);
+			instance = realloc<vk::DescriptorSet>((vk::DescriptorSet*)instance, newSetCount);
 
-			descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
-			allocateInfo.pSetLayouts = descriptorSetLayouts.data();
-			auto allocateResult = Vulkan::device.allocateDescriptorSets(
-				&allocateInfo, (vk::DescriptorSet*)this->instance);
+			vulkanAPI->descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
+			allocateInfo.pSetLayouts = vulkanAPI->descriptorSetLayouts.data();
+			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
+				&allocateInfo, (vk::DescriptorSet*)instance);
 			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 		}
 		else
 		{
-			Vulkan::device.freeDescriptorSets(descriptorPool ?
-				descriptorPool : Vulkan::descriptorPool, 1, (vk::DescriptorSet*)&this->instance);
+			vulkanAPI->device.freeDescriptorSets(descriptorPool ?
+				descriptorPool : vulkanAPI->descriptorPool, 1, (vk::DescriptorSet*)&instance);
 
 			allocateInfo.pSetLayouts = &descriptorSetLayout;
-			auto allocateResult = Vulkan::device.allocateDescriptorSets(
-				&allocateInfo, (vk::DescriptorSet*)&this->instance);
+			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
+				&allocateInfo, (vk::DescriptorSet*)&instance);
 			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 		}
 	}
 
 	vk::WriteDescriptorSet writeDescriptorSet;
-	auto uniformCount = pipelineUniforms->size();
+	auto uniformCount = pipelineUniforms.size();
 	auto bufferSize = uniformCount * newSetCount;
-	auto instances = newSetCount > 1 ?
-		(vk::DescriptorSet*)this->instance : (vk::DescriptorSet*)&this->instance;
-	writeDescriptorSets.reserve(bufferSize);
-	descriptorImageInfos.reserve(bufferSize);
-	descriptorBufferInfos.reserve(bufferSize);
+	auto instances = newSetCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance;
+	vulkanAPI->writeDescriptorSets.reserve(bufferSize);
+	vulkanAPI->descriptorImageInfos.reserve(bufferSize);
+	vulkanAPI->descriptorBufferInfos.reserve(bufferSize);
 
-	for	(const auto& pair : *pipelineUniforms)
+	for	(const auto& pair : pipelineUniforms)
 	{
 		if (pair.second.descriptorSetIndex != index)
 			continue;
 
-		#if GARDEN_DEBUG
-		if (uniforms.find(pair.first) == uniforms.end())
-			throw runtime_error("Missing required pipeline uniform. (" + pair.first + ")");
-		#endif
-
 		const auto& pipelineUniform = pair.second;
-		const auto& dsUniform = uniforms.at(pair.first);
+		const auto& dsUniform = newUniforms.at(pair.first);
 		auto uniformType = pipelineUniform.type;
 		writeDescriptorSet.dstBinding = (uint32)pipelineUniform.bindingIndex;
 		writeDescriptorSet.descriptorType = toVkDescriptorType(uniformType);
@@ -233,55 +162,23 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 		if (isSamplerType(uniformType) || isImageType(uniformType) ||
 			uniformType == GslUniformType::SubpassInput)
 		{
-			GARDEN_ASSERT(dsUniform.type == typeid(ImageView));
-			writeDescriptorSet.pBufferInfo = nullptr;
-
 			vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
 				vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
+			writeDescriptorSet.pBufferInfo = nullptr;
 
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
 				uint32 resourceCount = 0;
 				const auto& resourceArray = dsUniform.resourceSets[i];
 
-				#if GARDEN_DEBUG
-				if (pipelineUniform.arraySize > 0)
-				{
-					GARDEN_ASSERT(resourceArray.size() == pipelineUniform.arraySize);
-				}
-				else
-				{
-					GARDEN_ASSERT(resourceArray.size() == maxBindlessCount);
-				}
-				#endif
-
 				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
 					if (!resourceArray[j])
 						continue;
 
-					auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[j]));
-			
-					#if GARDEN_DEBUG
-					auto image = GraphicsAPI::imagePool.get(imageView->image);
-					if (isSamplerType(uniformType))
-					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
-						GARDEN_ASSERT(toImageType(uniformType) == imageView->type);
-					}
-					else if (isImageType(uniformType))
-					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Storage));
-						GARDEN_ASSERT(toImageType(uniformType) == imageView->type);
-					}
-					else
-					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
-					}
-					#endif
-
-					imageInfo.imageView = (VkImageView)imageView->instance;
-					descriptorImageInfos.push_back(imageInfo);
+					auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resourceArray[j]));
+					imageInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
+					vulkanAPI->descriptorImageInfos.push_back(imageInfo);
 					resourceCount++;
 				}
 				
@@ -290,14 +187,13 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 
 				writeDescriptorSet.dstSet = instances[i];
 				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
-				writeDescriptorSet.pImageInfo = &descriptorImageInfos[(uint32)(
-					descriptorImageInfos.size() - resourceCount)];
-				writeDescriptorSets.push_back(writeDescriptorSet);
+				writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos[(uint32)(
+					vulkanAPI->descriptorImageInfos.size() - resourceCount)];
+				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
 			}
 		}
 		else if (isBufferType(uniformType))
 		{
-			GARDEN_ASSERT(dsUniform.type == typeid(Buffer));
 			writeDescriptorSet.pImageInfo = nullptr;
 
 			for (uint32 i = 0; i < newSetCount; i++)
@@ -305,25 +201,202 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 				uint32 resourceCount = 0;
 				const auto& resourceArray = dsUniform.resourceSets[i];
 
-				#if GARDEN_DEBUG
-				if (pipelineUniform.arraySize > 0)
-				{
-					GARDEN_ASSERT(resourceArray.size() == pipelineUniform.arraySize);
-				}
-				else
-				{
-					GARDEN_ASSERT(resourceArray.size() == maxBindlessCount);
-				}
-				#endif
-
 				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
 					if (!resourceArray[j])
 						continue;
 
-					auto buffer = GraphicsAPI::bufferPool.get(ID<Buffer>(resourceArray[j]));
+					auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resourceArray[j]));
+					// TODO: support part of the buffer mapping?
+					vulkanAPI->descriptorBufferInfos.emplace_back((VkBuffer)
+						ResourceExt::getInstance(**buffer), 0, buffer->getBinarySize());
+					resourceCount++;
+				}
+				
+				if (resourceCount == 0)
+					continue;
 
-					#if GARDEN_DEBUG
+				writeDescriptorSet.dstSet = instances[i];
+				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
+				writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos[(uint32)(
+					vulkanAPI->descriptorBufferInfos.size() - resourceArray.size())];
+				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+			}
+		}
+		else abort();
+	}
+
+	if (!vulkanAPI->writeDescriptorSets.empty())
+	{
+		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
+
+		vulkanAPI->writeDescriptorSets.clear();
+		vulkanAPI->descriptorImageInfos.clear();
+		vulkanAPI->descriptorBufferInfos.clear();
+	}
+}
+
+//**********************************************************************************************************************
+static void updateVkDescriptorSetUniform(void* instance, const Pipeline::Uniform& pipelineUniform, 
+	const DescriptorSet::Uniform& uniform, uint32 elementOffset)
+{
+	auto vulkanAPI = VulkanAPI::get();
+	auto uniformType = pipelineUniform.type;
+
+	vk::WriteDescriptorSet writeDescriptorSet(
+		(VkDescriptorSet)instance, pipelineUniform.bindingIndex, elementOffset, 
+		(uint32)uniform.resourceSets[0].size(), toVkDescriptorType(uniformType));
+
+	if (isSamplerType(uniformType) || isImageType(uniformType))
+	{
+		vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
+			vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
+		writeDescriptorSet.pBufferInfo = nullptr;
+
+		const auto& resourceArray = uniform.resourceSets[0];
+		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
+		{
+			if (!resourceArray[i])
+				continue;
+
+			auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resourceArray[i]));
+			imageInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
+			vulkanAPI->descriptorImageInfos.push_back(imageInfo);
+		}
+
+		writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos[(uint32)(
+			vulkanAPI->descriptorImageInfos.size() - resourceArray.size())];
+	}
+	else if (isBufferType(uniformType))
+	{
+		writeDescriptorSet.pImageInfo = nullptr;
+
+		const auto& resourceArray = uniform.resourceSets[0];
+		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
+		{
+			if (!resourceArray[i])
+				continue;
+
+			auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resourceArray[0]));
+			vulkanAPI->descriptorBufferInfos.emplace_back((VkBuffer)
+				ResourceExt::getInstance(**buffer), 0, buffer->getBinarySize());
+		}
+
+		writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos[(uint32)(
+			vulkanAPI->descriptorBufferInfos.size() - resourceArray.size())];
+	}
+	else abort();
+
+	if (!vulkanAPI->descriptorImageInfos.empty() || !vulkanAPI->descriptorBufferInfos.empty())
+	{
+		vulkanAPI->device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+
+		vulkanAPI->descriptorImageInfos.clear();
+		vulkanAPI->descriptorBufferInfos.clear();
+	}
+}
+
+//**********************************************************************************************************************
+DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, map<string, Uniform>&& uniforms, 
+	uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
+{
+	GARDEN_ASSERT(pipeline);
+	GARDEN_ASSERT(!uniforms.empty());
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		this->instance = createVkDescriptorSet(pipeline, pipelineType, uniforms, index);
+	else abort();
+
+	recreate(std::move(uniforms));
+}
+
+bool DescriptorSet::destroy()
+{
+	if (!instance || readyLock > 0)
+		return false;
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		destroyVkDescriptorSet(instance, pipeline, pipelineType, uniforms, index);
+	else abort();
+
+	instance = nullptr;
+	return true;
+}
+
+//**********************************************************************************************************************
+void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
+{
+	GARDEN_ASSERT(this->uniforms.size() == 0 || uniforms.size() == this->uniforms.size());
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
+	const auto& pipelineUniforms = pipelineView->getUniforms();
+
+	#if GARDEN_DEBUG
+	const auto& firstUniform = uniforms.begin()->second;
+	auto setCount = firstUniform.resourceSets.size();
+
+	for (const auto& pair : uniforms)
+	{
+		GARDEN_ASSERT(!pair.first.empty());
+		GARDEN_ASSERT(setCount == pair.second.resourceSets.size());
+	}
+
+	auto maxBindlessCount = pipelineView->getMaxBindlessCount();
+	auto newSetCount = (uint32)uniforms.begin()->second.resourceSets.size();
+
+	for	(const auto& pair : pipelineUniforms)
+	{
+		if (pair.second.descriptorSetIndex != index)
+			continue;
+
+		if (uniforms.find(pair.first) == uniforms.end())
+			throw runtime_error("Missing required pipeline uniform. (" + pair.first + ")");
+
+		for (uint32 i = 0; i < newSetCount; i++)
+		{
+			const auto& pipelineUniform = pair.second;
+			const auto& dsUniform = uniforms.at(pair.first);
+			const auto& resourceArray = dsUniform.resourceSets[i];
+			auto uniformType = pipelineUniform.type;
+
+			if (pipelineUniform.arraySize > 0)
+			{
+				GARDEN_ASSERT(resourceArray.size() == pipelineUniform.arraySize);
+			}
+			else
+			{
+				GARDEN_ASSERT(resourceArray.size() == maxBindlessCount);
+			}
+
+			for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
+			{
+				if (isSamplerType(uniformType) || isImageType(uniformType) ||
+					uniformType == GslUniformType::SubpassInput)
+				{
+					GARDEN_ASSERT(dsUniform.getDebugType() == typeid(ImageView));
+					auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resourceArray[j]));
+					GARDEN_ASSERT(toImageType(uniformType) == imageView->getType());
+
+					auto image = graphicsAPI->imagePool.get(imageView->getImage());
+					if (isSamplerType(uniformType))
+					{
+						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
+					}
+					else if (isImageType(uniformType))
+					{
+						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Storage));
+					}
+					else
+					{
+						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
+					}
+				}
+				else if (isBufferType(uniformType))
+				{
+					GARDEN_ASSERT(dsUniform.getDebugType() == typeid(Buffer));
+					auto buffer = graphicsAPI->bufferPool.get(ID<Buffer>(resourceArray[j]));
+
 					if (uniformType == GslUniformType::UniformBuffer)
 					{
 						GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Uniform));
@@ -332,34 +405,23 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 					{
 						GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Storage));
 					}
-					#endif
-
-					// TODO: support part of the buffer mapping?
-					descriptorBufferInfos.emplace_back((VkBuffer)buffer->instance, 0, buffer->binarySize);
-					resourceCount++;
 				}
-				
-				if (resourceCount == 0)
-					continue;
-
-				writeDescriptorSet.dstSet = instances[i];
-				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
-				writeDescriptorSet.pBufferInfo = &descriptorBufferInfos[(uint32)(
-					descriptorBufferInfos.size() - resourceArray.size())];
-				writeDescriptorSets.push_back(writeDescriptorSet);
+				else abort();
 			}
 		}
-		else abort();
 	}
+	#endif
 
-	if (!writeDescriptorSets.empty())
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		Vulkan::device.updateDescriptorSets(writeDescriptorSets, {});
-
-		writeDescriptorSets.clear();
-		descriptorImageInfos.clear();
-		descriptorBufferInfos.clear();
+		vk::DescriptorPool descriptorPool = (VkDescriptorPool)
+			PipelineExt::getDescriptorPools(**pipelineView)[index];
+		vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)
+			PipelineExt::getDescriptorSetLayouts(**pipelineView)[index];
+		recreateVkDescriptorSet(this->uniforms, uniforms, index, instance, 
+			descriptorPool, descriptorSetLayout, pipelineUniforms);
 	}
+	else abort();
 
 	this->uniforms = std::move(uniforms);
 }
@@ -369,121 +431,68 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(uniform.resourceSets.size() == 1);
+	// TODO: Maybe allow to specifi target descriptor set index in the DS array?
 
-	uint32 maxBindlessCount = 0;
-	const map<string, Pipeline::Uniform>* pipelineUniforms = nullptr;
-
-	if (pipelineType == PipelineType::Graphics)
-	{
-		auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(
-			ID<GraphicsPipeline>(this->pipeline));
-		GARDEN_ASSERT(pipelineView->bindless);
-		maxBindlessCount = pipelineView->maxBindlessCount;
-		pipelineUniforms = &pipelineView->uniforms;
-	}
-	else if (pipelineType == PipelineType::Compute)
-	{
-		auto pipelineView = GraphicsAPI::computePipelinePool.get(
-			ID<ComputePipeline>(this->pipeline));
-		GARDEN_ASSERT(pipelineView->bindless);
-		maxBindlessCount = pipelineView->maxBindlessCount;
-		pipelineUniforms = &pipelineView->uniforms;
-	}
-	else abort();
-
+	auto graphicsAPI = GraphicsAPI::get();
+	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
+	const auto& pipelineUniforms = pipelineView->getUniforms();
+	auto maxBindlessCount = pipelineView->getMaxBindlessCount();
+	const auto& pipelineUniform = pipelineUniforms.at(name);
+	auto uniformType = pipelineUniform.type;
 	GARDEN_ASSERT(uniform.resourceSets[0].size() + elementOffset <= maxBindlessCount);
 
 	#if GARDEN_DEBUG
-	if (pipelineUniforms->find(name) == pipelineUniforms->end())
+	if (pipelineUniforms.find(name) == pipelineUniforms.end())
 		throw runtime_error("Missing required pipeline uniform. (" + name + ")");
-	#endif
-
-	const auto& pipelineUniform = pipelineUniforms->at(name);
-	auto uniformType = pipelineUniform.type;
-
-	vk::WriteDescriptorSet writeDescriptorSet(
-		(VkDescriptorSet)this->instance, pipelineUniform.bindingIndex, elementOffset, 
-		(uint32)uniform.resourceSets[0].size(), toVkDescriptorType(uniformType));
 
 	if (isSamplerType(uniformType) || isImageType(uniformType))
 	{
-		GARDEN_ASSERT(uniform.type == typeid(ImageView));
-		writeDescriptorSet.pBufferInfo = nullptr;
-
-		vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
-			vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
-
+		GARDEN_ASSERT(uniform.getDebugType() == typeid(ImageView));
 		const auto& resourceArray = uniform.resourceSets[0];
+
 		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
 		{
 			if (!resourceArray[i])
 				continue;
 
-			auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resourceArray[i]));
-			
-			#if GARDEN_DEBUG
-			auto image = GraphicsAPI::imagePool.get(imageView->image);
-			if (isSamplerType(uniformType))
+			if (isSamplerType(uniformType) || isImageType(uniformType))
 			{
-				GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
-			}
-			else
-			{
-				GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Storage));
-			}
-			GARDEN_ASSERT(toImageType(uniformType) == imageView->type);
-			#endif
+				auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resourceArray[i]));
+				GARDEN_ASSERT(toImageType(uniformType) == imageView->getType());
 
-			imageInfo.imageView = (VkImageView)imageView->instance;
-			descriptorImageInfos.push_back(imageInfo);
+				auto image = graphicsAPI->imagePool.get(imageView->getImage());
+				if (isSamplerType(uniformType))
+				{
+					GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
+				}
+				else
+				{
+					GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Storage));
+				}
+			}
+			else if (isBufferType(uniformType))
+			{
+				auto buffer = graphicsAPI->bufferPool.get(ID<Buffer>(resourceArray[0]));
+				if (uniformType == GslUniformType::UniformBuffer)
+				{
+					GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Uniform));
+				}
+				else
+				{
+					GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Storage));
+				}
+			}
+			else abort();
 		}
-
-		writeDescriptorSet.pImageInfo = &descriptorImageInfos[(uint32)(
-			descriptorImageInfos.size() - resourceArray.size())];
 	}
-	else if (isBufferType(uniformType))
-	{
-		GARDEN_ASSERT(uniform.type == typeid(Buffer));
-		writeDescriptorSet.pImageInfo = nullptr;
+	#endif
 
-		const auto& resourceArray = uniform.resourceSets[0];
-		for (uint32 i = 0; i < (uint32)resourceArray.size(); i++)
-		{
-			if (!resourceArray[i])
-				continue;
-
-			auto buffer = GraphicsAPI::bufferPool.get(ID<Buffer>(resourceArray[0]));
-
-			#if GARDEN_DEBUG
-			if (uniformType == GslUniformType::UniformBuffer)
-			{
-				GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Uniform));
-			}
-			else
-			{
-				GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Storage));
-			}
-			#endif
-
-			descriptorBufferInfos.emplace_back((VkBuffer)buffer->instance, 0, buffer->binarySize);
-		}
-
-		writeDescriptorSet.pBufferInfo = &descriptorBufferInfos[(uint32)(
-			descriptorBufferInfos.size() - resourceArray.size())];
-	}
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+		updateVkDescriptorSetUniform(instance, pipelineUniform, uniform, elementOffset);
 	else abort();
 
-	if (!descriptorImageInfos.empty() || !descriptorBufferInfos.empty())
-	{
-		Vulkan::device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
-
-		descriptorImageInfos.clear();
-		descriptorBufferInfos.clear();
-	}
-
-	memcpy(this->uniforms.at(name).resourceSets[0].data() +
-		elementOffset, uniform.resourceSets[0].data(),
-		uniform.resourceSets[0].size() * sizeof(ID<Resource>));
+	memcpy(this->uniforms.at(name).resourceSets[0].data() + elementOffset, 
+		uniform.resourceSets[0].data(), uniform.resourceSets[0].size() * sizeof(ID<Resource>));
 }
 
 #if GARDEN_DEBUG
@@ -492,30 +501,33 @@ void DescriptorSet::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (!Vulkan::hasDebugUtils)
-		return;
-
-	vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSet, 0);
-	auto setCount = (uint32)uniforms.begin()->second.resourceSets.size();
-
-	if (setCount > 1)
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		auto instances = (void**)instance;
-		for	(uint32 i = 0; i < setCount; i++)
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils)
+			return;
+
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSet, 0);
+		auto setCount = (uint32)uniforms.begin()->second.resourceSets.size();
+
+		if (setCount > 1)
 		{
-			nameInfo.objectHandle = (uint64)instances[i];
-			auto itemName = name + to_string(i);
-			nameInfo.pObjectName = itemName.c_str();
-			Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+			auto instances = (void**)instance;
+			for (uint32 i = 0; i < setCount; i++)
+			{
+				nameInfo.objectHandle = (uint64)instances[i];
+				auto itemName = name + to_string(i);
+				nameInfo.pObjectName = itemName.c_str();
+				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			}
+		}
+		else
+		{
+			nameInfo.objectHandle = (uint64)instance;
+			nameInfo.pObjectName = name.c_str();
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
 		}
 	}
-	else
-	{
-		nameInfo.objectHandle = (uint64)instance;
-		nameInfo.pObjectName = name.c_str();
-		Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
-	}
+	else abort();
 }
 #endif
-
-// TODO: track and log total used sampler/buffer/etc in the application to adjust pool size.

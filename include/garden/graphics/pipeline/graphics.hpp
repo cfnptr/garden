@@ -306,7 +306,8 @@ private:
 		subpassIndex(subpassIndex), framebuffer(framebuffer) { }
 	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
 
-	friend class CommandBuffer;
+	void createVkInstance(GraphicsCreateData& createData);
+
 	friend class GraphicsPipelineExt;
 	friend class LinearPool<GraphicsPipeline>;
 public:
@@ -341,9 +342,9 @@ public:
 	 * @details See the @ref GraphicsPipeline::setViewport()
 	 * 
 	 * @param[in] viewport target viewport value (xy = position, zw = size)
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportAsync(const float4& viewport, int32 taskIndex = -1);
+	void setViewportAsync(const float4& viewport, int32 threadIndex = -1);
 
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur.
@@ -360,9 +361,9 @@ public:
 	 * @details See the @ref GraphicsPipeline::setScissor()
 	 * 
 	 * @param[in] scissor target scissor value (xy = offset, zw = extent)
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setScissorAsync(const int4& scissor = int4(0), int32 taskIndex = -1);
+	void setScissorAsync(const int4& scissor = int4(0), int32 threadIndex = -1);
 
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions.
@@ -375,9 +376,9 @@ public:
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
 	 * 
 	 * @param[in] viewportScissor target viewport and scissor value (xy = position, zw = size)
-	 * @param taskIndex index of the thread pool task (-1 = all threads)
+	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportScissorAsync(const float4& viewportScissor = float4(0.0f), int32 taskIndex = -1);
+	void setViewportScissorAsync(const float4& viewportScissor = float4(0.0f), int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Renders primitives to the framebuffer.
@@ -398,14 +399,14 @@ public:
 	 * @brief Renders primitives to the framebuffer. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::draw()
 	 * 
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 * @param vertexBuffer target vertex buffer or null
 	 * @param vertexCount vertex count to draw
 	 * @param instanceCount draw instance count
 	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer, uint32 vertexCount,
+	void drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer, uint32 vertexCount,
 		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 
 	/**
@@ -432,7 +433,7 @@ public:
 	 * @brief Renders primitives based on indices to the framebuffer.
 	 * @details See the @ref GraphicsPipeline::drawIndexed()
 	 * 
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 * @param vertexBuffer target vertex buffer
 	 * @param indexBuffer target index buffer
 	 * @param indexType type of the index data
@@ -442,7 +443,7 @@ public:
 	 * @param instanceOffset draw instance offset or 0
 	 * @param instanceOffset vertex offset in the buffer or 0
 	 */
-	void drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
+	void drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 		ID<Buffer> indexBuffer, Index indexType, uint32 indexCount,
 		uint32 instanceCount = 1, uint32 indexOffset = 0,
 		uint32 instanceOffset = 0, uint32 vertexOffset = 0);
@@ -455,9 +456,9 @@ public:
 	/**
 	 * @brief Renders fullscreen triangle to the framebuffer.
 	 * @details See the @ref GraphicsPipeline::drawFullscreen()
-	 * @param taskIndex index of the thread pool task
+	 * @param threadIndex thread index in the pool
 	 */
-	void drawFullscreenAsync(int32 taskIndex);
+	void drawFullscreenAsync(int32 threadIndex);
 
 	// TODO: Also allow to override blendStates, vertexAttributes separatly.
 	// TODO: Add dynamic and dynamic/static states (viewport/scissor).

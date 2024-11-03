@@ -241,7 +241,7 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 	 */
 	TransformSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroy transformer system instance.
+	 * @brief Destroys transformer system instance.
 	 */
 	~TransformSystem() final;
 
@@ -298,7 +298,7 @@ class BakedTransformSystem final : public ComponentSystem<BakedTransformComponen
 	 */
 	BakedTransformSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroy baked transformer system instance.
+	 * @brief Destroys baked transformer system instance.
 	 */
 	~BakedTransformSystem() final;
 

@@ -21,16 +21,15 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/imgui-impl.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
 
 #include "math/matrix/transform.hpp"
-#include "mpio/os.hpp"
+#include "garden/os.hpp"
 
-using namespace mpio;
 using namespace garden;
 using namespace garden::primitive;
 
@@ -52,65 +51,76 @@ namespace
 	};
 }
 
+// TODO: Separate into an ImGuiSystem
+
 void GraphicsSystem::initializeImGui()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	setImGuiStyle();
 
-	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto window = (GLFWwindow*)graphicsAPI->window;
 
-	vector<Framebuffer::Subpass> subpasses =
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		Framebuffer::Subpass(PipelineType::Graphics, {},
+		auto vulkanAPI = VulkanAPI::get();
+		auto swapchainBuffer = vulkanAPI->swapchain->getCurrentBuffer();
+		auto swapchainImage = vulkanAPI->imagePool.get(swapchainBuffer->colorImage);
+
+		vector<Framebuffer::Subpass> subpasses =
 		{
-			Framebuffer::OutputAttachment(swapchainImage->getDefaultView(), false, true, true)
-		})
-	};
+			Framebuffer::Subpass(PipelineType::Graphics, {},
+			{
+				Framebuffer::OutputAttachment(swapchainImage->getDefaultView(), false, true, true)
+			})
+		};
 
-	// Hack for the ImGui render pass creation.
-	auto imGuiFramebuffer = createFramebuffer(framebufferSize, std::move(subpasses));
-	auto& framebuffer = **GraphicsAPI::framebufferPool.get(imGuiFramebuffer);
-	ImGuiData::renderPass = (VkRenderPass)FramebufferExt::getRenderPass(framebuffer);
-	Vulkan::device.destroyFramebuffer(vk::Framebuffer((VkFramebuffer)ResourceExt::getInstance(framebuffer)));
-	ResourceExt::getInstance(framebuffer) = nullptr;
-	FramebufferExt::getRenderPass(framebuffer) = nullptr;
-	destroy(imGuiFramebuffer);
+		// Hack for the ImGui render pass creation.
+		auto imGuiFramebuffer = createFramebuffer(framebufferSize, std::move(subpasses));
+		auto framebufferView = vulkanAPI->framebufferPool.get(imGuiFramebuffer);
+		ImGuiData::renderPass = (VkRenderPass)FramebufferExt::getRenderPass(**framebufferView);
+		vulkanAPI->device.destroyFramebuffer(vk::Framebuffer((VkFramebuffer)
+			ResourceExt::getInstance(**framebufferView)));
+		ResourceExt::getInstance(**framebufferView) = nullptr;
+		FramebufferExt::getRenderPass(**framebufferView) = nullptr;
+		destroy(imGuiFramebuffer);
 
-	vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
-		1, nullptr, framebufferSize.x, framebufferSize.y, 1);
-	ImGuiData::framebuffers.resize(Vulkan::swapchain.getBufferCount());
+		vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
+			1, nullptr, framebufferSize.x, framebufferSize.y, 1);
+		ImGuiData::framebuffers.resize(vulkanAPI->swapchain->getBufferCount());
 
-	for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
-	{
-		auto colorImage = GraphicsAPI::imagePool.get(Vulkan::swapchain.getBuffers()[i].colorImage);
-		auto& imageView = **GraphicsAPI::imageViewPool.get(colorImage->getDefaultView());
-		framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(imageView);
-		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
+		auto& swapchainBuffers = vulkanAPI->swapchain->getBuffers();
+		for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
+		{
+			auto colorImage = vulkanAPI->imagePool.get(swapchainBuffers[i]->colorImage);
+			auto imageView = vulkanAPI->imageViewPool.get(colorImage->getDefaultView());
+			framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(**imageView);
+			ImGuiData::framebuffers[i] = vulkanAPI->device.createFramebuffer(framebufferInfo);
+		}
+		
+		ImGui_ImplGlfw_InitForVulkan(window, true);
+		ImGui_ImplVulkan_InitInfo init_info = {};
+		init_info.Instance = vulkanAPI->instance;
+		init_info.PhysicalDevice = vulkanAPI->physicalDevice;
+		init_info.Device = vulkanAPI->device;
+		init_info.QueueFamily = vulkanAPI->graphicsQueueFamilyIndex;
+		init_info.Queue = vulkanAPI->frameQueue;
+		init_info.DescriptorPool = vulkanAPI->descriptorPool;
+		init_info.RenderPass = ImGuiData::renderPass;
+		init_info.MinImageCount = 2;
+		init_info.ImageCount = (uint32)ImGuiData::framebuffers.size();
+		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+		init_info.PipelineCache = vulkanAPI->pipelineCache;
+		init_info.Subpass = 0;
+		init_info.UseDynamicRendering = false; // TODO: use it instead of render pass hack.
+		init_info.Allocator = nullptr;
+		init_info.CheckVkResultFn = imGuiCheckVkResult;
+		init_info.MinAllocationSize = 1024 * 1024;
+		ImGui_ImplVulkan_Init(&init_info);
 	}
-
-	auto window = (GLFWwindow*)GraphicsAPI::window;
-	ImGui_ImplGlfw_InitForVulkan(window, true);
-	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = Vulkan::instance;
-	init_info.PhysicalDevice = Vulkan::physicalDevice;
-	init_info.Device = Vulkan::device;
-	init_info.QueueFamily = Vulkan::graphicsQueueFamilyIndex;
-	init_info.Queue = Vulkan::frameQueue;
-	init_info.DescriptorPool = Vulkan::descriptorPool;
-	init_info.RenderPass = ImGuiData::renderPass;
-	init_info.MinImageCount = 2;
-	init_info.ImageCount = (uint32)ImGuiData::framebuffers.size();
-	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	init_info.PipelineCache = Vulkan::pipelineCache;
-	init_info.Subpass = 0;
-	init_info.UseDynamicRendering = false; // TODO: use it instead of render pass hack.
-	init_info.Allocator = nullptr;
-	init_info.CheckVkResultFn = imGuiCheckVkResult;
-	init_info.MinAllocationSize = 1024 * 1024;
-	ImGui_ImplVulkan_Init(&init_info);
-
+	else abort();
+	
 	auto pixelRatioXY = (float2)framebufferSize / windowSize;
 	auto pixelRatio = std::max(pixelRatioXY.x, pixelRatioXY.y);
 	auto contentScaleX = 0.0f, contentScaleY = 0.0f;
@@ -141,29 +151,42 @@ void GraphicsSystem::initializeImGui()
 }
 void GraphicsSystem::terminateImGui()
 {
-	ImGui_ImplVulkan_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	for (auto framebuffer : ImGuiData::framebuffers)
-		Vulkan::device.destroyFramebuffer(framebuffer);
-	Vulkan::device.destroyRenderPass(ImGuiData::renderPass);
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		ImGui_ImplVulkan_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+
+		auto vulkanAPI = VulkanAPI::get();
+		for (auto framebuffer : ImGuiData::framebuffers)
+			vulkanAPI->device.destroyFramebuffer(framebuffer);
+		vulkanAPI->device.destroyRenderPass(ImGuiData::renderPass);
+	}
+	else abort();
+
 	ImGui::DestroyContext();
 }
 void GraphicsSystem::recreateImGui()
 {
-	for (auto framebuffer : ImGuiData::framebuffers)
-		Vulkan::device.destroyFramebuffer(framebuffer);
-
-	vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
-		1, nullptr, framebufferSize.x, framebufferSize.y, 1);
-	ImGuiData::framebuffers.resize(Vulkan::swapchain.getBufferCount());
-
-	for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		auto colorImage = GraphicsAPI::imagePool.get(Vulkan::swapchain.getBuffers()[i].colorImage);
-		auto& imageView = **GraphicsAPI::imageViewPool.get(colorImage->getDefaultView());
-		framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(imageView);
-		ImGuiData::framebuffers[i] = Vulkan::device.createFramebuffer(framebufferInfo);
+		auto vulkanAPI = VulkanAPI::get();
+		for (auto framebuffer : ImGuiData::framebuffers)
+			vulkanAPI->device.destroyFramebuffer(framebuffer);
+
+		vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
+			1, nullptr, framebufferSize.x, framebufferSize.y, 1);
+		ImGuiData::framebuffers.resize(vulkanAPI->swapchain->getBufferCount());
+
+		auto& swapchainBuffers = vulkanAPI->swapchain->getBuffers();
+		for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
+		{
+			auto colorImage = vulkanAPI->imagePool.get(swapchainBuffers[i]->colorImage);
+			auto imageView = vulkanAPI->imageViewPool.get(colorImage->getDefaultView());
+			framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(**imageView);
+			ImGuiData::framebuffers[i] = vulkanAPI->device.createFramebuffer(framebufferInfo);
+		}
 	}
+	else abort();
 }
 #endif
 
@@ -173,7 +196,7 @@ static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 		Image::Bind::TransferDst | Image::Bind::DepthStencilAttachment | Image::Bind::Sampled |
 		Image::Bind::Fullscreen, { { nullptr } }, size, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(depthImage, "image.depthBuffer");
-	auto imageView = GraphicsAPI::imagePool.get(depthImage);
+	auto imageView = GraphicsAPI::get()->imagePool.get(depthImage);
 	return imageView->getDefaultView();
 }
 
@@ -196,11 +219,14 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 		setSingleton();
 
 	auto appInfoSystem = AppInfoSystem::Instance::get();
-	Vulkan::initialize(appInfoSystem->getName(), appInfoSystem->getAppDataName(), appInfoSystem->getVersion(),
-		windowSize, isFullscreen, useVsync, useTripleBuffering, asyncRecording);
+	auto threadCount = getBestForegroundThreadCount();
+
+	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getAppDataName(),
+		appInfoSystem->getVersion(), windowSize, threadCount, useVsync, useTripleBuffering, isFullscreen);
+	auto graphicsAPI = GraphicsAPI::get();
 
 	int sizeX = 0, sizeY = 0;
-	auto window = (GLFWwindow*)GraphicsAPI::window;
+	auto window = (GLFWwindow*)graphicsAPI->window;
 	glfwGetFramebufferSize(window, &sizeX, &sizeY);
 	framebufferSize = uint2(sizeX, sizeY);
 	glfwGetWindowSize(window, &sizeX, &sizeY);
@@ -209,28 +235,29 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 	if (depthStencilFormat != Image::Format::Undefined)
 		depthStencilBuffer = createDepthStencilBuffer(framebufferSize, depthStencilFormat);
 
-	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto swapchainImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
-	swapchainFramebuffer = GraphicsAPI::framebufferPool.create(
+	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
+	auto swapchainImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
+	swapchainFramebuffer = graphicsAPI->framebufferPool.create(
 		framebufferSize, swapchainImage->getDefaultView(), depthStencilBuffer);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
-	auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
+	auto swapchainBufferCount = graphicsAPI->swapchain->getBufferCount();
+	const auto& swapchainBuffers = graphicsAPI->swapchain->getBuffers();
 	cameraConstantsBuffers.resize(swapchainBufferCount);
 
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
 	{
-		auto constantsBuffer = createBuffer(Buffer::Bind::Uniform,
-			Buffer::Access::SequentialWrite, sizeof(CameraConstants),
-			Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(constantsBuffer,
-			"buffer.uniform.cameraConstants" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(swapchainBuffers[i]->colorImage, "image.swapchain" + to_string(i));
+
+		auto constantsBuffer = createBuffer(Buffer::Bind::Uniform, Buffer::Access::SequentialWrite, 
+			sizeof(CameraConstants), Buffer::Usage::Auto, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
 }
 GraphicsSystem::~GraphicsSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		// Note: constants buffers and other resources will destroyed by terminating graphics API.
 
@@ -243,44 +270,68 @@ GraphicsSystem::~GraphicsSystem()
 		manager->unregisterEvent("Render");
 		manager->unregisterEvent("Present");
 		manager->unregisterEvent("SwapchainRecreate");
+
+		#if GARDEN_EDITOR
+		terminateImGui();
+		#endif
+
+		GraphicsAPI::terminate();
 	}
-
-	#if GARDEN_EDITOR
-	terminateImGui();
-	#endif
-
-	Vulkan::terminate();
+	
 	unsetSingleton();
 }
 
 //**********************************************************************************************************************
 static string getDeviceDriverVersion()
 {
-	auto version = Vulkan::deviceProperties.properties.driverVersion;
-	if (Vulkan::deviceProperties.properties.vendorID == 0x10DE) // Nvidia
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		return to_string((version >> 22u) & 0x3FFu) + "." + to_string((version >> 14u) & 0x0FFu) + "." +
-			to_string((version >> 6u) & 0x0ff) + "." + to_string(version & 0x003Fu);
+		auto vulkanAPI = VulkanAPI::get();
+		auto version = vulkanAPI->deviceProperties.properties.driverVersion;
+		if (vulkanAPI->deviceProperties.properties.vendorID == 0x10DE) // Nvidia
+		{
+			return to_string((version >> 22u) & 0x3FFu) + "." + to_string((version >> 14u) & 0x0FFu) + "." +
+				to_string((version >> 6u) & 0x0ff) + "." + to_string(version & 0x003Fu);
+		}
+
+		#if GARDEN_OS_WINDOWS
+		if (vulkanAPI->deviceProperties.properties.vendorID == 0x8086) // Intel
+			return to_string(version >> 14u) + "." + to_string(version & 0x3FFFu);
+		#endif
+
+		if (vulkanAPI->deviceProperties.properties.vendorID == 0x14E4) // Broadcom
+			return to_string(version / 10000) + "." + to_string((version % 10000) / 100);
+
+		if (vulkanAPI->deviceProperties.properties.vendorID == 0x1010) // ImgTec
+		{
+			if (version > 500000000)
+				return "0.0." + to_string(version);
+			else
+				return to_string(version);
+		}
+
+		return to_string(VK_API_VERSION_MAJOR(version)) + "." + to_string(VK_API_VERSION_MINOR(version)) + "." +
+			to_string(VK_API_VERSION_PATCH(version)) + "." + to_string(VK_API_VERSION_VARIANT(version));
 	}
-
-	#if GARDEN_OS_WINDOWS
-	if (Vulkan::deviceProperties.properties.vendorID == 0x8086) // Intel
-		return to_string(version >> 14u) + "." + to_string(version & 0x3FFFu);
-	#endif
-
-	if (Vulkan::deviceProperties.properties.vendorID == 0x14E4) // Broadcom
-		return to_string(version / 10000) + "." + to_string((version % 10000) / 100);
-
-	if (Vulkan::deviceProperties.properties.vendorID == 0x1010) // ImgTec
+	else abort();
+}
+static void logGpuInfo()
+{
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (version > 500000000)
-			return "0.0." + to_string(version);
+		auto vulkanAPI = VulkanAPI::get();
+		GARDEN_LOG_INFO("GPU: " + string(vulkanAPI->deviceProperties.properties.deviceName.data()));
+		auto apiVersion = vulkanAPI->deviceProperties.properties.apiVersion;
+		GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
+			to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
+		GARDEN_LOG_INFO("Driver version: " + getDeviceDriverVersion());
+
+		if (vulkanAPI->isCacheLoaded)
+			GARDEN_LOG_INFO("Loaded existing pipeline cache.");
 		else
-			return to_string(version);
+			GARDEN_LOG_INFO("Created a new pipeline cache.");
 	}
-
-	return to_string(VK_API_VERSION_MAJOR(version)) + "." + to_string(VK_API_VERSION_MINOR(version)) + "." +
-		to_string(VK_API_VERSION_PATCH(version)) + "." + to_string(VK_API_VERSION_VARIANT(version));
+	else abort();
 }
 
 void GraphicsSystem::preInit()
@@ -290,21 +341,12 @@ void GraphicsSystem::preInit()
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 	{
-		GARDEN_LOG_INFO("Foreground thread pool size: " + threadSystem->getForegroundPool().getThreadCount());
-		Vulkan::swapchain.setThreadPool(threadSystem->getForegroundPool());
+		GARDEN_LOG_INFO("Foreground thread pool size: " + 
+			to_string(threadSystem->getForegroundPool().getThreadCount()));
 	}
 
-	GARDEN_LOG_INFO("GPU: " + string(Vulkan::deviceProperties.properties.deviceName.data()));
-	auto apiVersion = Vulkan::deviceProperties.properties.apiVersion;
-	GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
-		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
-	GARDEN_LOG_INFO("Driver version: " + getDeviceDriverVersion());
 	GARDEN_LOG_INFO("Framebuffer size: " + to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
-
-	if (Vulkan::isCacheLoaded)
-		GARDEN_LOG_INFO("Loaded existing pipeline cache.");
-	else
-		GARDEN_LOG_INFO("Created a new pipeline cache.");
+	logGpuInfo();
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -320,9 +362,11 @@ void GraphicsSystem::preInit()
 }
 void GraphicsSystem::preDeinit()
 {
-	Vulkan::device.waitIdle();
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		VulkanAPI::get()->device.waitIdle();
+	else abort();
 
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
 }
 
@@ -354,7 +398,7 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 static void updateWindowInput(uint2& framebufferSize, uint2& windowSize, bool& isFramebufferSizeValid)
 {
 	int sizeX = 0, sizeY = 0;
-	auto window = (GLFWwindow*)GraphicsAPI::window;
+	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	glfwGetFramebufferSize(window, &sizeX, &sizeY);
 
 	isFramebufferSizeValid = sizeX != 0 && sizeY != 0;
@@ -373,7 +417,7 @@ static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(cameraConstantsBuffers);
 
-	auto swapchainBufferCount = Vulkan::swapchain.getBufferCount();
+	auto swapchainBufferCount = GraphicsAPI::get()->swapchain->getBufferCount();
 	cameraConstantsBuffers.resize(swapchainBufferCount);
 
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
@@ -389,12 +433,13 @@ static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 	ID<ImageView> depthStencilBuffer, uint2 framebufferSize)
 {
-	const auto& swapchainBuffer = Vulkan::swapchain.getCurrentBuffer();
-	auto& framebuffer = **GraphicsAPI::framebufferPool.get(swapchainFramebuffer);
-	auto colorImage = GraphicsAPI::imagePool.get(swapchainBuffer.colorImage);
-	FramebufferExt::getSize(framebuffer) = framebufferSize;
-	FramebufferExt::getColorAttachments(framebuffer)[0].imageView = colorImage->getDefaultView();
-	FramebufferExt::getDepthStencilAttachment(framebuffer).imageView = depthStencilBuffer;
+	auto graphicsAPI = GraphicsAPI::get();
+	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
+	auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
+	auto colorImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
+	FramebufferExt::getSize(**framebufferView) = framebufferSize;
+	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = colorImage->getDefaultView();
+	FramebufferExt::getDepthStencilAttachment(**framebufferView).imageView = depthStencilBuffer;
 }
 
 //**********************************************************************************************************************
@@ -462,16 +507,19 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 void GraphicsSystem::input()
 {
 	updateWindowInput(framebufferSize, windowSize, isFramebufferSizeValid);
-	beginSleepClock = isFramebufferSizeValid ? 0.0 : OS::getCurrentClock();
+	beginSleepClock = isFramebufferSizeValid ? 0.0 : mpio::OS::getCurrentClock();
 }
 void GraphicsSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("Graphics Update");
 
+	auto graphicsAPI = GraphicsAPI::get();
+	auto swapchain = graphicsAPI->swapchain;
+
 	SwapchainChanges newSwapchainChanges;
-	newSwapchainChanges.framebufferSize = framebufferSize != Vulkan::swapchain.getFramebufferSize();
-	newSwapchainChanges.bufferCount = useTripleBuffering != Vulkan::swapchain.useTripleBuffering();
-	newSwapchainChanges.vsyncState = useVsync != Vulkan::swapchain.useVsync();
+	newSwapchainChanges.framebufferSize = framebufferSize != swapchain->getFramebufferSize();
+	newSwapchainChanges.bufferCount = useTripleBuffering != swapchain->isUseTripleBuffering();
+	newSwapchainChanges.vsyncState = useVsync != swapchain->isUseVsync();
 
 	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
 		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState || suboptimalSwapchain);
@@ -484,13 +532,13 @@ void GraphicsSystem::update()
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
-		Vulkan::swapchain.recreate(framebufferSize, useVsync, useTripleBuffering);
+		swapchain->recreate(framebufferSize, useVsync, useTripleBuffering);
 		suboptimalSwapchain = false;
 
 		if (depthStencilBuffer)
 		{
-			auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
-			auto depthStencilImageView = GraphicsAPI::imagePool.get(depthStencilBufferView->getImage());
+			auto depthStencilBufferView = graphicsAPI->imageViewPool.get(depthStencilBuffer);
+			auto depthStencilImageView = graphicsAPI->imagePool.get(depthStencilBufferView->getImage());
 			if (framebufferSize != (uint2)depthStencilImageView->getSize())
 			{
 				auto format = depthStencilBufferView->getFormat();
@@ -504,10 +552,10 @@ void GraphicsSystem::update()
 		#endif
 
 		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" + 
-			to_string(framebufferSize.y) + ", " + to_string(Vulkan::swapchain.getBufferCount()) + "B)");
+			to_string(framebufferSize.y) + ", " + to_string(swapchain->getBufferCount()) + "B)");
 	}
 
-	if (Vulkan::swapchain.getBufferCount() != cameraConstantsBuffers.size())
+	if (swapchain->getBufferCount() != cameraConstantsBuffers.size())
 	{
 		recreateCameraBuffers(cameraConstantsBuffers);
 		swapchainChanges.bufferCount = true;
@@ -515,7 +563,8 @@ void GraphicsSystem::update()
 
 	if (isFramebufferSizeValid)
 	{
-		if (!Vulkan::swapchain.acquireNextImage())
+		auto threadSystem = ThreadSystem::Instance::tryGet();
+		if (!swapchain->acquireNextImage(&threadSystem->getForegroundPool()))
 		{
 			isFramebufferSizeValid = false;
 			suboptimalSwapchain = true;
@@ -537,8 +586,8 @@ void GraphicsSystem::update()
 	{
 		prepareCameraConstants(camera, directionalLight,
 			getScaledFramebufferSize(), currentCameraConstants);
-		auto swapchainBufferIndex = Vulkan::swapchain.getCurrentBufferIndex();
-		auto cameraBuffer = GraphicsAPI::bufferPool.get(
+		auto swapchainBufferIndex = swapchain->getCurrentBufferIndex();
+		auto cameraBuffer = graphicsAPI->bufferPool.get(
 			cameraConstantsBuffers[swapchainBufferIndex][0]);
 		cameraBuffer->writeData(&currentCameraConstants);
 	}
@@ -546,7 +595,10 @@ void GraphicsSystem::update()
 	if (isFramebufferSizeValid)
 	{
 		#if GARDEN_EDITOR
-		ImGui_ImplVulkan_NewFrame();
+		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+			ImGui_ImplVulkan_NewFrame();
+		else abort();
+
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		#endif
@@ -554,8 +606,8 @@ void GraphicsSystem::update()
 		if (renderScale != 1.0f) // TODO: make this optional
 		{
 			startRecording(CommandBufferType::Frame);
-			auto depthStencilBufferView = GraphicsAPI::imageViewPool.get(depthStencilBuffer);
-			GraphicsAPI::imagePool.get(depthStencilBufferView->getImage())->clear(0.0f, 0x00);
+			auto depthStencilBufferView = graphicsAPI->imageViewPool.get(depthStencilBuffer);
+			graphicsAPI->imagePool.get(depthStencilBufferView->getImage())->clear(0.0f, 0x00);
 			stopRecording();
 		}
 	}
@@ -564,6 +616,7 @@ void GraphicsSystem::present()
 {
 	SET_CPU_ZONE_SCOPED("Frame Present");
 
+	auto graphicsAPI = GraphicsAPI::get();
 	if (isFramebufferSizeValid)
 	{
 		#if GARDEN_EDITOR
@@ -576,24 +629,24 @@ void GraphicsSystem::present()
 		stopRecording();
 		#endif
 		
-		GraphicsAPI::graphicsCommandBuffer.submit(frameIndex);
-		GraphicsAPI::transferCommandBuffer.submit(frameIndex);
-		GraphicsAPI::computeCommandBuffer.submit(frameIndex);
-		GraphicsAPI::frameCommandBuffer.submit(frameIndex);
+		graphicsAPI->graphicsCommandBuffer->submit();
+		graphicsAPI->transferCommandBuffer->submit();
+		graphicsAPI->computeCommandBuffer->submit();
+		graphicsAPI->frameCommandBuffer->submit();
 	}
 	
-	GraphicsAPI::descriptorSetPool.dispose();
-	GraphicsAPI::computePipelinePool.dispose();
-	GraphicsAPI::graphicsPipelinePool.dispose();
-	GraphicsAPI::framebufferPool.dispose();
-	GraphicsAPI::imageViewPool.dispose();
-	GraphicsAPI::imagePool.dispose();
-	GraphicsAPI::bufferPool.dispose();
-	Vulkan::updateDestroyBuffer();
+	graphicsAPI->descriptorSetPool.dispose();
+	graphicsAPI->computePipelinePool.dispose();
+	graphicsAPI->graphicsPipelinePool.dispose();
+	graphicsAPI->framebufferPool.dispose();
+	graphicsAPI->imageViewPool.dispose();
+	graphicsAPI->imagePool.dispose();
+	graphicsAPI->bufferPool.dispose();
+	graphicsAPI->flushDestroyBuffer();
 
 	if (isFramebufferSizeValid)
 	{
-		if (!Vulkan::swapchain.present())
+		if (!graphicsAPI->swapchain->present())
 		{
 			isFramebufferSizeValid = false;
 			suboptimalSwapchain = true;
@@ -603,7 +656,7 @@ void GraphicsSystem::present()
 	}
 	else
 	{
-		auto endClock = OS::getCurrentClock();
+		auto endClock = mpio::OS::getCurrentClock();
 		auto deltaClock = (endClock - beginSleepClock) * 1000.0;
 		auto delayTime = 1000 / frameRate - (int)deltaClock;
 		if (delayTime > 0)
@@ -635,22 +688,13 @@ uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
 	return max((uint2)(float2(framebufferSize) * renderScale), uint2(1));
 }
 
-bool GraphicsSystem::hasDynamicRendering() const noexcept
-{
-	return Vulkan::hasDynamicRendering;
-}
-bool GraphicsSystem::hasDescriptorIndexing() const noexcept
-{
-	return Vulkan::hasDescriptorIndexing;
-}
-
 uint32 GraphicsSystem::getSwapchainSize() const noexcept
 {
-	return (uint32)Vulkan::swapchain.getBufferCount();
+	return (uint32)GraphicsAPI::get()->swapchain->getBufferCount();
 }
 uint32 GraphicsSystem::getSwapchainIndex() const noexcept
 {
-	return Vulkan::swapchain.getCurrentBufferIndex();
+	return GraphicsAPI::get()->swapchain->getCurrentBufferIndex();
 }
 
 //**********************************************************************************************************************
@@ -684,7 +728,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
-		emptyTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
+		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
 	return emptyTexture;
 }
@@ -696,7 +740,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
-		whiteTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
+		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
 	return whiteTexture;
 }
@@ -708,7 +752,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
-		greenTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
+		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
 	return greenTexture;
 }
@@ -720,7 +764,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
-		normalMapTexture = GraphicsAPI::imagePool.get(texture)->getDefaultView();
+		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
 	return normalMapTexture;
 }
@@ -728,7 +772,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 //**********************************************************************************************************************
 void GraphicsSystem::setWindowTitle(const string& title)
 {
-	glfwSetWindowTitle((GLFWwindow*)GraphicsAPI::window, title.c_str());
+	glfwSetWindowTitle((GLFWwindow*)GraphicsAPI::get()->window, title.c_str());
 }
 
 void GraphicsSystem::setWindowIcon(const vector<string>& paths)
@@ -750,7 +794,7 @@ void GraphicsSystem::setWindowIcon(const vector<string>& paths)
 		images[i] = image;
 	}
  
-	glfwSetWindowIcon((GLFWwindow*)GraphicsAPI::window, images.size(), images.data());
+	glfwSetWindowIcon((GLFWwindow*)GraphicsAPI::get()->window, images.size(), images.data());
 	#else
 	throw runtime_error("Window icons are not supported on this platform.");
 	#endif
@@ -770,27 +814,27 @@ void GraphicsSystem::recreateSwapchain(const SwapchainChanges& changes)
 //**********************************************************************************************************************
 void GraphicsSystem::setDebugName(ID<Buffer> buffer, const string& name)
 {
-	auto resource = GraphicsAPI::bufferPool.get(buffer);
+	auto resource = GraphicsAPI::get()->bufferPool.get(buffer);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Image> image, const string& name)
 {
-	auto resource = GraphicsAPI::imagePool.get(image);
+	auto resource = GraphicsAPI::get()->imagePool.get(image);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<ImageView> imageView, const string& name)
 {
-	auto resource = GraphicsAPI::imageViewPool.get(imageView);
+	auto resource = GraphicsAPI::get()->imageViewPool.get(imageView);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Framebuffer> framebuffer, const string& name)
 {
-	auto resource = GraphicsAPI::framebufferPool.get(framebuffer);
+	auto resource = GraphicsAPI::get()->framebufferPool.get(framebuffer);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string& name)
 {
-	auto resource = GraphicsAPI::descriptorSetPool.get(descriptorSet);
+	auto resource = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
 	resource->setDebugName(name);
 }
 #endif
@@ -806,24 +850,25 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 		GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
 	#endif
 
-	auto buffer = GraphicsAPI::bufferPool.create(bind, access, usage, strategy, size, 0);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto buffer = graphicsAPI->bufferPool.create(bind, access, usage, strategy, size, 0);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
 
 	if (data)
 	{
-		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
+		auto bufferView = graphicsAPI->bufferPool.get(buffer);
 		if (bufferView->isMappable())
 		{
 			bufferView->writeData(data, size);
 		}
 		else
 		{
-			auto stagingBuffer = GraphicsAPI::bufferPool.create(
+			auto stagingBuffer = graphicsAPI->bufferPool.create(
 				Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
 				Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
 			SET_RESOURCE_DEBUG_NAME(stagingBuffer,
 				"buffer.staging" + to_string(*stagingBuffer));
-			auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
+			auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 			stagingBufferView->writeData(data, size);
 
 			if (!isRecording())
@@ -837,7 +882,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 				Buffer::copy(stagingBuffer, buffer);
 			}
 
-			GraphicsAPI::bufferPool.destroy(stagingBuffer);
+			graphicsAPI->bufferPool.destroy(stagingBuffer);
 		}
 	}
 
@@ -845,11 +890,11 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 }
 void GraphicsSystem::destroy(ID<Buffer> buffer)
 {
-	GraphicsAPI::bufferPool.destroy(buffer);
+	GraphicsAPI::get()->bufferPool.destroy(buffer);
 }
 View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
 {
-	return GraphicsAPI::bufferPool.get(buffer);
+	return GraphicsAPI::get()->bufferPool.get(buffer);
 }
 
 //**********************************************************************************************************************
@@ -923,13 +968,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		mipSize = max(mipSize / 2u, uint3(1));
 	}
 
-	auto image = GraphicsAPI::imagePool.create(type, format, bind, strategy, size, mipCount, layerCount, 0);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto image = graphicsAPI->imagePool.create(type, format, bind, strategy, size, mipCount, layerCount, 0);
 	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
 	{
 		GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
-		auto stagingBuffer = GraphicsAPI::bufferPool.create(Buffer::Bind::TransferSrc, 
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc,
 			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, stagingSize, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.imageStaging" + to_string(*stagingBuffer));
 		
@@ -940,12 +986,12 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		}
 		else
 		{
-			targetImage = GraphicsAPI::imagePool.create(type, dataFormat, Image::Bind::TransferDst | 
+			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Bind::TransferDst |
 				Image::Bind::TransferSrc, Image::Strategy::Speed, size, mipCount, layerCount, 0);
 			SET_RESOURCE_DEBUG_NAME(targetImage, "image.staging" + to_string(*targetImage));
 		}
 
-		auto stagingBufferView = GraphicsAPI::bufferPool.get(stagingBuffer);
+		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 		auto stagingMap = stagingBufferView->getMap();
 		vector<Image::CopyBufferRegion> regions(stagingCount);
 		mipSize = size;
@@ -993,7 +1039,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			}
 
 			Image::copy(stagingBuffer, targetImage, regions);
-			GraphicsAPI::bufferPool.destroy(stagingBuffer);
+			graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 			vector<Image::BlitRegion> blitRegions(mipCount);
 			mipSize = size;
@@ -1013,7 +1059,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			Image::blit(targetImage, image, blitRegions);
 			if (shouldEnd)
 				stopRecording();
-			GraphicsAPI::imagePool.destroy(targetImage);
+			graphicsAPI->imagePool.destroy(targetImage);
 		}
 		else
 		{
@@ -1027,7 +1073,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			{
 				Image::copy(stagingBuffer, targetImage, regions);
 			}
-			GraphicsAPI::bufferPool.destroy(stagingBuffer);
+			graphicsAPI->bufferPool.destroy(stagingBuffer);
 		}
 	}
 
@@ -1035,20 +1081,21 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 }
 void GraphicsSystem::destroy(ID<Image> image)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	if (image)
 	{
-		auto imageView = GraphicsAPI::imagePool.get(image);
+		auto imageView = graphicsAPI->imagePool.get(image);
 		GARDEN_ASSERT(!imageView->isSwapchain());
 
-		if (imageView->hasDefaultView() && GraphicsAPI::isRunning)
-			GraphicsAPI::imageViewPool.destroy(imageView->getDefaultView());
+		if (imageView->hasDefaultView() && !graphicsAPI->forceResourceDestroy)
+			graphicsAPI->imageViewPool.destroy(imageView->getDefaultView());
 	}
 	
-	GraphicsAPI::imagePool.destroy(image);
+	graphicsAPI->imagePool.destroy(image);
 }
 View<Image> GraphicsSystem::get(ID<Image> image) const
 {
-	return GraphicsAPI::imagePool.get(image);
+	return GraphicsAPI::get()->imagePool.get(image);
 }
 
 //**********************************************************************************************************************
@@ -1057,7 +1104,8 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 {
 	GARDEN_ASSERT(image);
 
-	auto _image = GraphicsAPI::imagePool.get(image);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto _image = graphicsAPI->imagePool.get(image);
 	GARDEN_ASSERT(ResourceExt::getInstance(**_image));
 	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
@@ -1072,7 +1120,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 	if (type != Image::Type::Texture1DArray && type != Image::Type::Texture2DArray)
 		GARDEN_ASSERT(layerCount == 1);
 
-	auto imageView = GraphicsAPI::imageViewPool.create(false, image,
+	auto imageView = graphicsAPI->imageViewPool.create(false, image,
 		type, format, baseMip, mipCount, baseLayer, layerCount);
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
 	return imageView;
@@ -1081,13 +1129,13 @@ void GraphicsSystem::destroy(ID<ImageView> imageView)
 {
 	#if GARDEN_DEBUG
 	if (imageView)
-		GARDEN_ASSERT(!GraphicsAPI::imageViewPool.get(imageView)->isDefault());
+		GARDEN_ASSERT(!GraphicsAPI::get()->imageViewPool.get(imageView)->isDefault());
 	#endif
-	GraphicsAPI::imageViewPool.destroy(imageView);
+	GraphicsAPI::get()->imageViewPool.destroy(imageView);
 }
 View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
 {
-	return GraphicsAPI::imageViewPool.get(imageView);
+	return GraphicsAPI::get()->imageViewPool.get(imageView);
 }
 
 //**********************************************************************************************************************
@@ -1097,29 +1145,30 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 {
 	GARDEN_ASSERT(size > 0u);
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
+	auto graphicsAPI = GraphicsAPI::get();
 
 	// TODO: we can use attachments with different sizes, but should we?
 	#if GARDEN_DEBUG
 	for	(auto colorAttachment : colorAttachments)
 	{
 		GARDEN_ASSERT(colorAttachment.imageView);
-		auto imageView = GraphicsAPI::imageViewPool.get(colorAttachment.imageView);
+		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
-		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
+		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
 	}
 	if (depthStencilAttachment.imageView)
 	{
-		auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
+		auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
-		auto image = GraphicsAPI::imagePool.get(imageView->getImage());
+		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
 	}
 	#endif
 
-	auto framebuffer = GraphicsAPI::framebufferPool.create(size,
+	auto framebuffer = graphicsAPI->framebufferPool.create(size,
 		std::move(colorAttachments), depthStencilAttachment);
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
@@ -1128,6 +1177,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 {
 	GARDEN_ASSERT(size > 0u);
 	GARDEN_ASSERT(!subpasses.empty());
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	psize outputAttachmentCount = 0;
@@ -1137,8 +1187,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 		{
 			GARDEN_ASSERT(inputAttachment.imageView);
 			GARDEN_ASSERT(inputAttachment.shaderStages != ShaderStage::None);
-			auto imageView = GraphicsAPI::imageViewPool.get(inputAttachment.imageView);
-			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
+			auto imageView = graphicsAPI->imageViewPool.get(inputAttachment.imageView);
+			auto image = graphicsAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
 		}
@@ -1150,8 +1200,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 			GARDEN_ASSERT((!outputAttachment.clear && !outputAttachment.load) ||
 				(outputAttachment.clear && !outputAttachment.load) ||
 				(!outputAttachment.clear && outputAttachment.load));
-			auto imageView = GraphicsAPI::imageViewPool.get(outputAttachment.imageView);
-			auto image = GraphicsAPI::imagePool.get(imageView->getImage());
+			auto imageView = graphicsAPI->imageViewPool.get(outputAttachment.imageView);
+			auto image = graphicsAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 			#if GARDEN_DEBUG
 			if (isFormatColor(imageView->getFormat()))
@@ -1167,7 +1217,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 	GARDEN_ASSERT(outputAttachmentCount > 0);
 	#endif
 
-	auto framebuffer = GraphicsAPI::framebufferPool.create(size, std::move(subpasses));
+	auto framebuffer = graphicsAPI->framebufferPool.create(size, std::move(subpasses));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
@@ -1175,32 +1225,32 @@ void GraphicsSystem::destroy(ID<Framebuffer> framebuffer)
 {
 	#if GARDEN_DEBUG
 	if (framebuffer)
-		GARDEN_ASSERT(!GraphicsAPI::framebufferPool.get(framebuffer)->isSwapchainFramebuffer());
+		GARDEN_ASSERT(!GraphicsAPI::get()->framebufferPool.get(framebuffer)->isSwapchainFramebuffer());
 	#endif
-	GraphicsAPI::framebufferPool.destroy(framebuffer);
+	GraphicsAPI::get()->framebufferPool.destroy(framebuffer);
 }
 View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> framebuffer) const
 {
-	return GraphicsAPI::framebufferPool.get(framebuffer);
+	return GraphicsAPI::get()->framebufferPool.get(framebuffer);
 }
 
 //**********************************************************************************************************************
 void GraphicsSystem::destroy(ID<GraphicsPipeline> graphicsPipeline)
 {
-	GraphicsAPI::graphicsPipelinePool.destroy(graphicsPipeline);
+	GraphicsAPI::get()->graphicsPipelinePool.destroy(graphicsPipeline);
 }
 View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> graphicsPipeline) const
 {
-	return GraphicsAPI::graphicsPipelinePool.get(graphicsPipeline);
+	return GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
 }
 
 void GraphicsSystem::destroy(ID<ComputePipeline> computePipeline)
 {
-	GraphicsAPI::computePipelinePool.destroy(computePipeline);
+	GraphicsAPI::get()->computePipelinePool.destroy(computePipeline);
 }
 View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) const
 {
-	return GraphicsAPI::computePipelinePool.get(computePipeline);
+	return GraphicsAPI::get()->computePipelinePool.get(computePipeline);
 }
 
 //**********************************************************************************************************************
@@ -1211,12 +1261,12 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(graphicsPipeline);
+	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
 	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
 	#endif
 
-	auto descriptorSet = GraphicsAPI::descriptorSetPool.create(
+	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(
 		ID<Pipeline>(graphicsPipeline), PipelineType::Graphics, std::move(uniforms), index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
@@ -1228,57 +1278,59 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = GraphicsAPI::computePipelinePool.get(computePipeline);
+	auto pipelineView = GraphicsAPI::get()->computePipelinePool.get(computePipeline);
 	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
 	#endif
 
-	auto descriptorSet = GraphicsAPI::descriptorSetPool.create(
+	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(
 		ID<Pipeline>(computePipeline), PipelineType::Compute, std::move(uniforms), index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
 void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)
 {
-	GraphicsAPI::descriptorSetPool.destroy(descriptorSet);
+	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
 }
 View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const
 {
-	return GraphicsAPI::descriptorSetPool.get(descriptorSet);
+	return GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
 }
 
 //**********************************************************************************************************************
 bool GraphicsSystem::isRecording() const noexcept
 {
-	return GraphicsAPI::currentCommandBuffer;
+	return GraphicsAPI::get()->currentCommandBuffer;
 }
 void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+
 	#if GARDEN_DEBUG
-	if (GraphicsAPI::currentCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer)
 		throw runtime_error("Already recording.");
 	#endif
 	
 	switch (commandBufferType)
 	{
 	case CommandBufferType::Frame:
-		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::frameCommandBuffer; break;
+		graphicsAPI->currentCommandBuffer = graphicsAPI->frameCommandBuffer; break;
 	case CommandBufferType::Graphics:
-		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::graphicsCommandBuffer; break;
+		graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
 	case CommandBufferType::TransferOnly:
-		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::transferCommandBuffer; break;
+		graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
 	case CommandBufferType::ComputeOnly:
-		GraphicsAPI::currentCommandBuffer = &GraphicsAPI::computeCommandBuffer; break;
+		graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
 	default: abort();
 	}
 }
 void GraphicsSystem::stopRecording()
 {
 	#if GARDEN_DEBUG
-	if (!GraphicsAPI::currentCommandBuffer)
+	if (!GraphicsAPI::get()->currentCommandBuffer)
 		throw runtime_error("Not recording.");
 	#endif
-	GraphicsAPI::currentCommandBuffer = nullptr;
+	GraphicsAPI::get()->currentCommandBuffer = nullptr;
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
@@ -1292,7 +1344,7 @@ void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
 			"editor/wireframe-line", swapchainFramebuffer, false, false);
 	}
 
-	auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(linePipeline);
+	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	auto pushConstants = pipelineView->getPushConstants<LinePC>();
@@ -1311,7 +1363,7 @@ void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 			"editor/aabb-lines", swapchainFramebuffer, false, false);
 	}
 
-	auto pipelineView = GraphicsAPI::graphicsPipelinePool.get(aabbPipeline);
+	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	auto pushConstants = pipelineView->getPushConstants<AabbPC>();

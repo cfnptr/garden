@@ -26,7 +26,7 @@ EcsEditorSystem::EcsEditorSystem()
 }
 EcsEditorSystem::~EcsEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", EcsEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", EcsEditorSystem::deinit);
@@ -40,7 +40,7 @@ void EcsEditorSystem::init()
 }
 void EcsEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", EcsEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);

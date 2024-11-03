@@ -57,14 +57,14 @@ public:
 		float4 texWinBorder = float4(0.0f);
 	};
 protected:
-	NineSliceRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) :
-		SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter) { }
+	NineSliceRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
+		bool isTranslucent) : SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter, isTranslucent) { }
 
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
 	uint64 getInstanceDataSize() override;
 	void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex) override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
@@ -78,16 +78,15 @@ protected:
 /***********************************************************************************************************************
  * @brief 9-slice sprite rendering component system.
  */
-template<class C = NineSliceRenderComponent, class A = NineSliceAnimationFrame,
-	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+template<class C, class A, bool DestroyComponents = true, bool DestroyAnimationFrames = true>
 class NineSliceRenderCompSystem : public NineSliceRenderSystem
 {
 protected:
 	LinearPool<C, DestroyComponents> components;
 	LinearPool<A, DestroyAnimationFrames> animationFrames;
 
-	NineSliceRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter) :
-		NineSliceRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter) { }
+	NineSliceRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
+		bool isTranslucent) : NineSliceRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter, isTranslucent) { }
 
 	ID<Component> createComponent(ID<Entity> entity) override
 	{
@@ -101,11 +100,11 @@ protected:
 	}
 	void copyComponent(View<Component> source, View<Component> destination) override
 	{
+		const auto sourceView = View<C>(source);
+		auto destinationView = View<C>(destination);
 		if constexpr (DestroyComponents)
-		{
-			auto destinationView = View<C>(destination);
 			destinationView->destroy();
-		}
+		**destinationView = **sourceView;
 	}
 
 	const string& getComponentName() const override

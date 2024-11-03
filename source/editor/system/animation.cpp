@@ -29,7 +29,7 @@ AnimationEditorSystem::AnimationEditorSystem()
 }
 AnimationEditorSystem::~AnimationEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AnimationEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AnimationEditorSystem::deinit);
@@ -52,7 +52,7 @@ void AnimationEditorSystem::deinit()
 {
 	EditorRenderSystem::Instance::get()->unregisterEntityInspector<AnimationComponent>();
 
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AnimationEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);

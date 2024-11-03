@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "garden/graphics/buffer.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 using namespace std;
+using namespace math;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
@@ -71,11 +72,9 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUs
 }
 
 //**********************************************************************************************************************
-Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size,
-	uint64 version) : Memory(size, access, usage, strategy, version)
+static void createVkBuffer(Buffer::Bind bind, Buffer::Access access, Buffer::Usage usage, 
+	Buffer::Strategy strategy, uint64 size, void*& instance, void*& allocation, uint8*& map)
 {
-	GARDEN_ASSERT(size > 0);
-
 	VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bufferInfo.size = size;
 	bufferInfo.usage = (VkBufferUsageFlags)toVkBufferUsages(bind);
@@ -88,24 +87,38 @@ Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 
 	allocationCreateInfo.usage = toVmaMemoryUsage(usage);
 	allocationCreateInfo.priority = 0.5f; // TODO: expose this RAM offload priority?
 
-	if (access != Access::None)
+	if (access != Buffer::Access::None)
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
 	// TODO: VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT?
 
-	VkBuffer instance; VmaAllocation allocation;
-	auto result = vmaCreateBuffer(Vulkan::memoryAllocator,
-		&bufferInfo, &allocationCreateInfo, &instance, &allocation, nullptr);
+	auto vulkanAPI = VulkanAPI::get();
+	VkBuffer vmaInstance; VmaAllocation vmaAllocation;
+	auto result = vmaCreateBuffer(vulkanAPI->memoryAllocator,
+		&bufferInfo, &allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
 	if (result != VK_SUCCESS)
 		throw runtime_error("Failed to allocate GPU buffer.");
-	this->instance = instance; this->allocation = allocation;
+
+	instance = vmaInstance;
+	allocation = vmaAllocation;
 
 	VmaAllocationInfo allocationInfo = {};
-	vmaGetAllocationInfo(Vulkan::memoryAllocator, allocation, &allocationInfo);
-	if (access != Access::None && !allocationInfo.pMappedData)
+	vmaGetAllocationInfo(vulkanAPI->memoryAllocator, vmaAllocation, &allocationInfo);
+	if (access != Buffer::Access::None && !allocationInfo.pMappedData)
 		throw runtime_error("Failed to map GPU memory.");
+	map = (uint8*)allocationInfo.pMappedData;
+}
 
-	this->map = (uint8*)allocationInfo.pMappedData;
+//**********************************************************************************************************************
+Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size,
+	uint64 version) : Memory(size, access, usage, strategy, version)
+{
+	GARDEN_ASSERT(size > 0);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		createVkBuffer(bind, access, usage, strategy, size, instance, allocation, map);
+	else abort();
+
 	this->bind = bind;
 }
 
@@ -115,61 +128,60 @@ bool Buffer::destroy()
 	if (!instance || readyLock > 0)
 		return false;
 
+	auto graphicsAPI = GraphicsAPI::get();
+
 	#if GARDEN_DEBUG
-	auto bufferInstance = GraphicsAPI::bufferPool.getID(this);
-	const auto descriptorSetData = GraphicsAPI::descriptorSetPool.getData();
-	auto descriptorSetOccupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
-
-	for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+	if (!graphicsAPI->forceResourceDestroy)
 	{
-		const auto& descriptorSet = descriptorSetData[i];
-		const std::map<string, Pipeline::Uniform>* uniforms;
-		if (descriptorSet.getPipeline())
-		{
-			if (descriptorSet.getPipelineType() == PipelineType::Graphics)
-			{
-				auto pipeline = GraphicsAPI::graphicsPipelinePool.get(
-					ID<GraphicsPipeline>(descriptorSet.getPipeline()));
-				uniforms = &pipeline->getUniforms();
-			}
-			else if (descriptorSet.getPipelineType() == PipelineType::Compute)
-			{
-				auto pipeline = GraphicsAPI::computePipelinePool.get(
-					ID<ComputePipeline>(descriptorSet.getPipeline()));
-				uniforms = &pipeline->getUniforms();
-			}
-			else abort();
-		}
+		auto bufferInstance = graphicsAPI->bufferPool.getID(this);
+		const auto descriptorSetData = graphicsAPI->descriptorSetPool.getData();
+		auto descriptorSetOccupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 
-		const auto& descriptorUniforms = descriptorSet.getUniforms();
-		for (const auto& pair : descriptorUniforms)
+		for (uint32 i = 0; i < descriptorSetOccupancy; i++)
 		{
-			const auto uniform = uniforms->find(pair.first);
-			if (uniform == uniforms->end() || uniform->second.descriptorSetIndex != descriptorSet.getIndex() ||
-				!isBufferType(uniform->second.type))
-			{
+			auto& descriptorSet = descriptorSetData[i];
+			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
-			}
 
-			const auto& resourceSets = pair.second.resourceSets;
-			for (const auto& resourceArray : resourceSets)
+			const auto& descriptorUniforms = descriptorSet.getUniforms();
+			auto pipelineView = graphicsAPI->getPipelineView(
+				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
+			const auto& uniforms = pipelineView->getUniforms();
+
+			for (const auto& pair : descriptorUniforms)
 			{
-				for (auto resource : resourceArray)
+				const auto uniform = uniforms.find(pair.first);
+				if (uniform == uniforms.end() || !isBufferType(uniform->second.type) ||
+					uniform->second.descriptorSetIndex != descriptorSet.getIndex())
 				{
-					if (ID<Buffer>(resource) != bufferInstance)
-						continue;
-					throw runtime_error("Descriptor set is still using destroyed buffer. (buffer: " +
-						debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+					continue;
+				}
+
+				const auto& resourceSets = pair.second.resourceSets;
+				for (const auto& resourceArray : resourceSets)
+				{
+					for (auto resource : resourceArray)
+					{
+						if (ID<Buffer>(resource) != bufferInstance)
+							continue;
+						throw runtime_error("Descriptor set is still using destroyed buffer. (buffer: " +
+							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+					}
 				}
 			}
 		}
 	}
 	#endif
 
-	if (GraphicsAPI::isRunning)
-		GraphicsAPI::destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
-	else
-		vmaDestroyBuffer(Vulkan::memoryAllocator, (VkBuffer)instance, (VmaAllocation)allocation);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (vulkanAPI->forceResourceDestroy)
+			vmaDestroyBuffer(vulkanAPI->memoryAllocator, (VkBuffer)instance, (VmaAllocation)allocation);
+		else
+			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
+	}
+	else abort();
 
 	instance = nullptr;
 	return true;
@@ -181,30 +193,44 @@ bool Buffer::isMappable() const
 	if (map)
 		return true;
 
-	VkMemoryPropertyFlags memoryPropertyFlags;
-	vmaGetAllocationMemoryProperties(Vulkan::memoryAllocator,
-		(VmaAllocation)allocation, &memoryPropertyFlags);
-	return memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		VkMemoryPropertyFlags memoryPropertyFlags;
+		vmaGetAllocationMemoryProperties(VulkanAPI::get()->memoryAllocator,
+			(VmaAllocation)allocation, &memoryPropertyFlags);
+		return memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	}
+	else abort();
 }
 void Buffer::invalidate(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
 	GARDEN_ASSERT(isMappable());
-	auto result = vmaInvalidateAllocation(Vulkan::memoryAllocator,
-		(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
-	if (result != VK_SUCCESS)
-		throw runtime_error("Failed to invalidate GPU memory.");
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto result = vmaInvalidateAllocation(VulkanAPI::get()->memoryAllocator,
+			(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
+		if (result != VK_SUCCESS)
+			throw runtime_error("Failed to invalidate GPU memory.");
+	}
+	else abort();
 }
 void Buffer::flush(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
 	GARDEN_ASSERT(isMappable());
-	auto result = vmaFlushAllocation(Vulkan::memoryAllocator,
-		(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
-	if (result != VK_SUCCESS)
-		throw runtime_error("Failed to flush GPU memory.");
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto result = vmaFlushAllocation(VulkanAPI::get()->memoryAllocator,
+			(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
+		if (result != VK_SUCCESS)
+			throw runtime_error("Failed to flush GPU memory.");
+	}
+	else abort();
 }
 void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 {
@@ -217,18 +243,22 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 	{
 		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
 		flush(size, offset);
+		return;
 	}
-	else
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		uint8* map;
-		auto result = vmaMapMemory(Vulkan::memoryAllocator,
+		auto vulkanAPI = VulkanAPI::get();
+		uint8* map = nullptr;
+		auto result = vmaMapMemory(vulkanAPI->memoryAllocator,
 			(VmaAllocation)allocation, (void**)&map);
 		if (result != VK_SUCCESS)
 			throw runtime_error("Failed to map GPU memory.");
 		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
 		flush(size, offset);
-		vmaUnmapMemory(Vulkan::memoryAllocator, (VmaAllocation)allocation);
+		vmaUnmapMemory(vulkanAPI->memoryAllocator, (VmaAllocation)allocation);
 	}
+	else abort();
 }
 
 #if GARDEN_DEBUG
@@ -237,12 +267,16 @@ void Buffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (!Vulkan::hasDebugUtils || !instance)
-		return;
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils || !instance)
+			return;
 
-	vk::DebugUtilsObjectNameInfoEXT nameInfo(
-		vk::ObjectType::eBuffer, (uint64)instance, name.c_str());
-	Vulkan::device.setDebugUtilsObjectNameEXT(nameInfo, Vulkan::dynamicLoader);
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eBuffer, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+	}
+	else abort();
 }
 #endif
 
@@ -253,20 +287,21 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	GARDEN_ASSERT(size == 0 || size % 4 == 0);
 	GARDEN_ASSERT(size == 0 || size + offset <= binarySize);
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
 	FillBufferCommand command;
-	command.buffer = GraphicsAPI::bufferPool.getID(this);
+	command.buffer = graphicsAPI->bufferPool.getID(this);
 	command.data = data;
 	command.size = size;
 	command.offset = offset;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(command.buffer);
+		graphicsAPI->currentCommandBuffer->addLockResource(command.buffer);
 	}
 }
 
@@ -277,14 +312,15 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
 
-	auto srcView = GraphicsAPI::bufferPool.get(source);
+	auto srcView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
 
-	auto dstView = GraphicsAPI::bufferPool.get(destination);
+	auto dstView = graphicsAPI->bufferPool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
 	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
 	
@@ -313,13 +349,13 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
 		srcView->readyLock++;
 		dstView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(source);
-		GraphicsAPI::currentCommandBuffer->addLockResource(destination);
+		graphicsAPI->currentCommandBuffer->addLockResource(source);
+		graphicsAPI->currentCommandBuffer->addLockResource(destination);
 	}
 }

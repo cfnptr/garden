@@ -23,6 +23,7 @@
 #include "garden/system/camera.hpp"
 #include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
+#include <array>
 
 using namespace garden;
 
@@ -55,27 +56,15 @@ constexpr array<float3, 18> fullArrowVert =
 	float3( 0.0f,  0.5f,  0.0f),
 };
 
-namespace
-{
-	struct GizmosMesh final
-	{
-		float4x4 model = float4x4(0.0f);
-		Color color = Color::black;
-		ID<Buffer> vertexBuffer = {};
-		float distance = 0.0f;
-	};
-}
-
 //**********************************************************************************************************************
 MeshGizmosEditorSystem::MeshGizmosEditorSystem()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
-	
 }
 MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
@@ -112,7 +101,7 @@ void MeshGizmosEditorSystem::init()
 }
 void MeshGizmosEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(fullArrowVertices);
@@ -125,10 +114,10 @@ void MeshGizmosEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void addArrowMeshes(vector<GizmosMesh>& gizmosMeshes, const float4x4& model, ID<Buffer> fullCube,
-	ID<Buffer> fullArrow, Color handleColor, Color axisColorX, Color axisColorY, Color axisColorZ)
+static void addArrowMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, const float4x4& model, 
+	ID<Buffer> fullCube, ID<Buffer> fullArrow, Color handleColor, Color axisColorX, Color axisColorY, Color axisColorZ)
 {
-	GizmosMesh gizmosMesh;
+	MeshGizmosEditorSystem::GizmosMesh gizmosMesh;
 	gizmosMesh.vertexBuffer = fullCube;
 	gizmosMesh.model = model * scale(float3(0.1f, 0.1f, 0.1f));
 	gizmosMesh.color = handleColor;
@@ -161,14 +150,25 @@ static void addArrowMeshes(vector<GizmosMesh>& gizmosMeshes, const float4x4& mod
 }
 
 //**********************************************************************************************************************
-static void renderGizmosArrows(vector<GizmosMesh>& gizmosMeshes, View<GraphicsPipeline> pipelineView, 
-	const float4x4& viewProj, float patternScale, bool sortAscend)
+static void renderGizmosArrows(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, 
+	View<GraphicsPipeline> pipelineView, const float4x4& viewProj, float patternScale, bool sortAscend)
 {
-	std::function<bool(const GizmosMesh& a, const GizmosMesh& b)> ascending =
-		[](const GizmosMesh& a, const GizmosMesh& b) { return a.distance < b.distance; };
-	std::function<bool(const GizmosMesh& a, const GizmosMesh& b)> descending =
-		[](const GizmosMesh& a, const GizmosMesh& b) { return a.distance > b.distance; };
-	sort(gizmosMeshes.begin(), gizmosMeshes.end(), sortAscend ? ascending : descending);
+	if (sortAscend)
+	{
+		sort(gizmosMeshes.begin(), gizmosMeshes.end(), [](
+			const MeshGizmosEditorSystem::GizmosMesh& a, const MeshGizmosEditorSystem::GizmosMesh& b)
+		{
+			return a.distance < b.distance;
+		});
+	}
+	else
+	{
+		sort(gizmosMeshes.begin(), gizmosMeshes.end(), [](
+			const MeshGizmosEditorSystem::GizmosMesh& a, const MeshGizmosEditorSystem::GizmosMesh& b)
+		{
+			return a.distance > b.distance;
+		});
+	}
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
@@ -248,7 +248,6 @@ void MeshGizmosEditorSystem::editorRender()
 	}
 	model = calcModel(translation, rotation, float3(modelScale));
 
-	static vector<GizmosMesh> gizmosMeshes;
 	addArrowMeshes(gizmosMeshes, model, fullCubeVertices, fullArrowVertices,
 		handleColor, axisColorX, axisColorY, axisColorZ);
 	// TODO: scale and rotation gizmos.

@@ -15,13 +15,13 @@
 #include "garden/system/log.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/file.hpp"
+#include "garden/os.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/log.hpp"
 #endif
 
 #include "mpmt/thread.hpp"
-#include "mpio/os.hpp"
 #include <thread>
 #include <chrono>
 
@@ -32,7 +32,6 @@
 #pragma comment(lib, "Version.lib")
 #endif
 
-using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -103,12 +102,12 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
 	logKernelInfo(this);
 	info("SIMDs: " + string(GARDEN_SIMD_STRING));
-	info("CPU: " + string(OS::getCpuName()));
-	info("Logical core count: " + to_string(OS::getLogicalCpuCount()));
-	info("Physical core count: " + to_string(OS::getPhysicalCpuCount()));
-	info("Performance core count: " + to_string(OS::getPerformanceCpuCount()));
-	info("Total RAM size: " + toBinarySizeString(OS::getTotalRamSize()));
-	info("Free RAM size: " + toBinarySizeString(OS::getFreeRamSize()));
+	info("CPU: " + string(mpio::OS::getCpuName()));
+	info("Logical core count: " + to_string(mpio::OS::getLogicalCpuCount()));
+	info("Physical core count: " + to_string(mpio::OS::getPhysicalCpuCount()));
+	info("Performance core count: " + to_string(getBestForegroundThreadCount()));
+	info("Total RAM size: " + toBinarySizeString(mpio::OS::getTotalRamSize()));
+	info("Free RAM size: " + toBinarySizeString(mpio::OS::getFreeRamSize()));
 }
 LogSystem::~LogSystem()
 {

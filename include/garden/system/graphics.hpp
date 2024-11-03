@@ -208,17 +208,6 @@ public:
 	const SwapchainChanges& getSwapchainChanges() const noexcept { return swapchainChanges; }
 
 	/**
-	 * @brief Does GPU support dynamic rendering feature.
-	 * @details See the VK_KHR_dynamic_rendering.
-	 */
-	bool hasDynamicRendering() const noexcept;
-	/**
-	 * @brief Does GPU support descriptor indexing feature.
-	 * @details See the VK_EXT_descriptor_indexing.
-	 */
-	bool hasDescriptorIndexing() const noexcept;
-
-	/**
 	 * @brief Returns current swapchain buffer count.
 	 * @details Triple buffering option affects buffer count.
 	 */

@@ -62,7 +62,7 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 		#endif
 		bool setSingleton = true);
 	/**
-	 * @brief Destroy app info system instance.
+	 * @brief Destroys app info system instance.
 	 */
 	~AppInfoSystem() final;
 	

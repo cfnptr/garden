@@ -30,7 +30,7 @@ SpawnerEditorSystem::SpawnerEditorSystem()
 }
 SpawnerEditorSystem::~SpawnerEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpawnerEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnerEditorSystem::deinit);
@@ -53,7 +53,7 @@ void SpawnerEditorSystem::deinit()
 {
 	EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
 
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);

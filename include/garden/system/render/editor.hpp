@@ -61,6 +61,7 @@ private:
 	fs::path selectedFile;
 	set<string> fileExtensions;
 	std::function<void(const fs::path)> onFileSelect;
+	double lastFps = 0.0;
 	bool demoWindow = false;
 	bool aboutWindow = false;
 	bool optionsWindow = false;

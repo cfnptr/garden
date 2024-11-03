@@ -134,7 +134,7 @@ BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool useAntiFlickering, 
 }
 BloomRenderSystem::~BloomRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderSystem::deinit);
@@ -166,7 +166,7 @@ void BloomRenderSystem::init()
 }
 void BloomRenderSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(upsamplePipeline);

@@ -28,7 +28,15 @@ public:
 		float4 color;
 		float patternScale;
 	};
+	struct GizmosMesh final
+	{
+		float4x4 model = float4x4(0.0f);
+		Color color = Color::black;
+		ID<Buffer> vertexBuffer = {};
+		float distance = 0.0f;
+	};
 private:
+	vector<GizmosMesh> gizmosMeshes;
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
 	ID<GraphicsPipeline> backGizmosPipeline = {};
 	ID<Buffer> fullArrowVertices = {};

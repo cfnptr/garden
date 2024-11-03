@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/common.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 using namespace std;
 using namespace math;
@@ -24,31 +24,39 @@ using namespace garden::graphics;
 void DebugLabel::begin(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer); // Command recording is not started.
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer); // Command recording is not started.
+
 	BeginLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
-	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	currentCommandBuffer->commandMutex.lock();
+	currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->commandMutex.unlock();
 }
 void DebugLabel::end()
 {
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer); // Command recording is not started.
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer); // Command recording is not started.
 	EndLabelCommand command;
-	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	currentCommandBuffer->commandMutex.lock();
+	currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->commandMutex.unlock();
 }
 void DebugLabel::insert(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer); // Command recording is not started.
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer); // Command recording is not started.
+
 	InsertLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
-	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	currentCommandBuffer->commandMutex.lock();
+	currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->commandMutex.unlock();
 }
 #endif

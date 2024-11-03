@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "garden/editor/system/log.hpp"
-#include "mpio/os.hpp"
 #include "mpmt/thread.hpp"
+#include "mpio/os.hpp"
 
 #if GARDEN_EDITOR
 
-using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -29,7 +28,7 @@ LogEditorSystem::LogEditorSystem(bool setSingleton) : Singleton(setSingleton)
 }
 LogEditorSystem::~LogEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
@@ -45,7 +44,7 @@ void LogEditorSystem::init()
 }
 void LogEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
@@ -153,16 +152,16 @@ void LogEditorSystem::log(LogLevel level, const string& message)
 	time_t rawTime;
 	time(&rawTime);
 
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	struct tm timeInfo = *localtime(&rawTime);
-#elif _WIN32
+	#elif _WIN32
 	struct tm timeInfo;
 	if (gmtime_s(&timeInfo, &rawTime) != 0) abort();
-#else
+	#else
 	#error Unknown operating system
-#endif
+	#endif
 
-	double clock = OS::getCurrentClock();
+	double clock = mpio::OS::getCurrentClock();
 	int milliseconds = (int)((clock - floor(clock)) * 1000.0);
 
 	char formattedTime[24];

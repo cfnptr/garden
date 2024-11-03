@@ -27,7 +27,7 @@ CameraEditorSystem::CameraEditorSystem()
 }
 CameraEditorSystem::~CameraEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CameraEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CameraEditorSystem::deinit);
@@ -53,7 +53,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
+		auto cameraView = CameraSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Projection: %s", cameraView->type ==
 			ProjectionType::Perspective ? "Perspective" : "Orthographic");
 		ImGui::EndTooltip();
@@ -62,7 +62,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
+	auto cameraView = CameraSystem::Instance::get()->getComponent(entity);
 	if (cameraView->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraView->p.perspective.fieldOfView);

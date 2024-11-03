@@ -227,7 +227,7 @@ bool ShadowMappingRenderSystem::prepareShadowRender(uint32 passIndex,
 	if (!camera || !directionalLight)
 		return false;
 
-	auto cameraView = getManager()->get<CameraComponent>(camera);
+	auto cameraView = CameraSystem::Instance::get()->getComponent(camera);
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	
 	auto nearPlane = cameraView->p.perspective.nearPlane;

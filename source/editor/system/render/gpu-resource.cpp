@@ -15,6 +15,7 @@
 #include "garden/editor/system/render/gpu-resource.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/graphics/vulkan/api.hpp"
 #include "garden/file.hpp"
 
 using namespace garden;
@@ -30,7 +31,7 @@ GpuResourceEditorSystem::GpuResourceEditorSystem()
 }
 GpuResourceEditorSystem::~GpuResourceEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GpuResourceEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GpuResourceEditorSystem::deinit);
@@ -44,7 +45,7 @@ void GpuResourceEditorSystem::init()
 }
 void GpuResourceEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
@@ -103,19 +104,20 @@ static void renderSearch(string& searchString, bool& searchCaseSensitive)
 }
 
 //**********************************************************************************************************************
-static void getAllocationInfo(VmaAllocationInfo& allocationInfo, 
+static void getVkAllocationInfo(VmaAllocationInfo& allocationInfo, 
 	vk::MemoryType& memoryType, vk::MemoryHeap& memoryHeap, Memory& memory)
 {
 	auto allocation = (VmaAllocation)MemoryExt::getAllocation(memory);
 	if (allocation)
 	{
-		vmaGetAllocationInfo(Vulkan::memoryAllocator, allocation, &allocationInfo);
-		auto memoryProperties = Vulkan::physicalDevice.getMemoryProperties2();
+		auto vulkanAPI = VulkanAPI::get();
+		vmaGetAllocationInfo(vulkanAPI->memoryAllocator, allocation, &allocationInfo);
+		auto memoryProperties = vulkanAPI->physicalDevice.getMemoryProperties2();
 		memoryType = memoryProperties.memoryProperties.memoryTypes[allocationInfo.memoryType];
 		memoryHeap = memoryProperties.memoryProperties.memoryHeaps[memoryType.heapIndex];
 	}
 }
-static void renderMemoryDetails(const VmaAllocationInfo& allocationInfo, 
+static void renderVkMemoryDetails(const VmaAllocationInfo& allocationInfo, 
 	const vk::MemoryType& memoryType, const vk::MemoryHeap& memoryHeap, const Memory& memory)
 {
 	ImGui::TextWrapped("Binary size: %s", toBinarySizeString(memory.getBinarySize()).c_str());
@@ -134,16 +136,16 @@ static void renderMemoryDetails(const VmaAllocationInfo& allocationInfo,
 //**********************************************************************************************************************
 static void renderBuffers(uint32& selectedItem, string& searchString, bool& searchCaseSensitive)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	auto buffers = graphicsAPI->bufferPool.getData();
+
 	string bufferName;
-	auto buffers = GraphicsAPI::bufferPool.getData();
-	renderItemList(GraphicsAPI::bufferPool.getCount(),
-		GraphicsAPI::bufferPool.getOccupancy(),
-		selectedItem, searchString, searchCaseSensitive,
-		buffers, sizeof(Buffer), bufferName, "Buffer ");
+	renderItemList(graphicsAPI->bufferPool.getCount(), graphicsAPI->bufferPool.getOccupancy(),
+		selectedItem, searchString, searchCaseSensitive, buffers, sizeof(Buffer), bufferName, "Buffer ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::bufferPool.getCount() == 0 || selectedItem >= GraphicsAPI::bufferPool.getOccupancy() ||
-		ResourceExt::getInstance(buffers[selectedItem]) == nullptr)
+	if (graphicsAPI->bufferPool.getCount() == 0 || selectedItem >= graphicsAPI->bufferPool.getOccupancy() ||
+		!ResourceExt::getInstance(buffers[selectedItem]))
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -152,15 +154,19 @@ static void renderBuffers(uint32& selectedItem, string& searchString, bool& sear
 	}
 
 	auto& buffer = buffers[selectedItem];
-	auto isMappable = buffer.isMappable();
-	VmaAllocationInfo allocationInfo = {};
-	vk::MemoryType memoryType = {}; vk::MemoryHeap memoryHeap = {};
-	getAllocationInfo(allocationInfo, memoryType, memoryHeap, buffer);
-
 	ImGui::SeparatorText(bufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Bind types: { %s }", toStringList(buffer.getBind()).c_str());
-	renderMemoryDetails(allocationInfo, memoryType, memoryHeap, buffer);
+
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		VmaAllocationInfo allocationInfo = {};
+		vk::MemoryType memoryType = {}; vk::MemoryHeap memoryHeap = {};
+		getVkAllocationInfo(allocationInfo, memoryType, memoryHeap, buffer);
+		renderVkMemoryDetails(allocationInfo, memoryType, memoryHeap, buffer);
+	}
+
+	auto isMappable = buffer.isMappable();
 	ImGui::Checkbox("Mappable", &isMappable);
 	ImGui::Spacing();
 
@@ -174,16 +180,16 @@ static void renderBuffers(uint32& selectedItem, string& searchString, bool& sear
 static void renderImages(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	auto images = graphicsAPI->imagePool.getData();
+
 	string imageName;
-	auto images = GraphicsAPI::imagePool.getData();
-	renderItemList(GraphicsAPI::imagePool.getCount(),
-		GraphicsAPI::imagePool.getOccupancy(),
-		selectedItem, searchString, searchCaseSensitive,
-		images, sizeof(Image), imageName, "Image ");
+	renderItemList(graphicsAPI->imagePool.getCount(), graphicsAPI->imagePool.getOccupancy(),
+		selectedItem, searchString, searchCaseSensitive, images, sizeof(Image), imageName, "Image ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::imagePool.getCount() == 0 || selectedItem >= GraphicsAPI::imagePool.getOccupancy() ||
-		ResourceExt::getInstance(images[selectedItem]) == nullptr)
+	if (graphicsAPI->imagePool.getCount() == 0 || selectedItem >= graphicsAPI->imagePool.getOccupancy() ||
+		!ResourceExt::getInstance(images[selectedItem]))
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -192,11 +198,6 @@ static void renderImages(uint32& selectedItem, string& searchString,
 	}
 
 	auto& image = images[selectedItem];
-	auto isSwapchain = image.isSwapchain();
-	VmaAllocationInfo allocationInfo = {};
-	vk::MemoryType memoryType = {}; vk::MemoryHeap memoryHeap = {};
-	getAllocationInfo(allocationInfo, memoryType, memoryHeap, image);
-
 	ImGui::SeparatorText(imageName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
@@ -206,7 +207,17 @@ static void renderImages(uint32& selectedItem, string& searchString,
 		(long)image.getSize().y, (long)image.getSize().z);
 	ImGui::TextWrapped("Layer count: %lu", (unsigned long)image.getLayerCount());
 	ImGui::TextWrapped("Mip count: %lu", (unsigned long)image.getMipCount());
-	renderMemoryDetails(allocationInfo, memoryType, memoryHeap, image);
+
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		VmaAllocationInfo allocationInfo = {};
+		vk::MemoryType memoryType = {}; vk::MemoryHeap memoryHeap = {};
+		getVkAllocationInfo(allocationInfo, memoryType, memoryHeap, image);
+		renderVkMemoryDetails(allocationInfo, memoryType, memoryHeap, image);
+	}
+	else abort();
+	
+	auto isSwapchain = image.isSwapchain();
 	ImGui::Checkbox("Swapchain", &isSwapchain);
 	ImGui::Spacing();
 
@@ -214,9 +225,9 @@ static void renderImages(uint32& selectedItem, string& searchString,
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		const auto imageViews = GraphicsAPI::imageViewPool.getData();
-		auto occupancy = GraphicsAPI::imageViewPool.getOccupancy();
-		auto selectedImage = GraphicsAPI::imagePool.getID(&image);
+		const auto imageViews = graphicsAPI->imageViewPool.getData();
+		auto occupancy = graphicsAPI->imageViewPool.getOccupancy();
+		auto selectedImage = graphicsAPI->imagePool.getID(&image);
 
 		auto isAny = false;
 		for (uint32 i = 0; i < occupancy; i++)
@@ -264,16 +275,16 @@ static void renderImages(uint32& selectedItem, string& searchString,
 static void renderImageViews(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	const auto imageViews = graphicsAPI->imageViewPool.getData();
+
 	string imageViewName;
-	const auto imageViews = GraphicsAPI::imageViewPool.getData();
-	renderItemList(GraphicsAPI::imageViewPool.getCount(),
-		GraphicsAPI::imageViewPool.getOccupancy(),
-		selectedItem, searchString, searchCaseSensitive,
-		imageViews, sizeof(ImageView), imageViewName, "Image View ");
+	renderItemList(graphicsAPI->imageViewPool.getCount(), graphicsAPI->imageViewPool.getOccupancy(),
+		selectedItem, searchString, searchCaseSensitive, imageViews, sizeof(ImageView), imageViewName, "Image View ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::imageViewPool.getCount() == 0 || selectedItem >= GraphicsAPI::imageViewPool.getOccupancy() ||
-		ResourceExt::getInstance(imageViews[selectedItem]) == nullptr)
+	if (graphicsAPI->imageViewPool.getCount() == 0 || selectedItem >= graphicsAPI->imageViewPool.getOccupancy() ||
+		!ResourceExt::getInstance(imageViews[selectedItem]))
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -285,7 +296,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 	string imageName;
 	if (imageView.getImage())
 	{
-		auto image = GraphicsAPI::imagePool.get(imageView.getImage());
+		auto image = graphicsAPI->imagePool.get(imageView.getImage());
 		imageName = image->getDebugName().empty() ? "Image " +
 			to_string(*imageView.getImage()) : image->getDebugName();
 	}
@@ -307,9 +318,9 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		const auto framebuffers = GraphicsAPI::framebufferPool.getData();
-		auto occupancy = GraphicsAPI::framebufferPool.getOccupancy();
-		auto selectedImageView = GraphicsAPI::imageViewPool.getID(&imageView);
+		const auto framebuffers = graphicsAPI->framebufferPool.getData();
+		auto occupancy = graphicsAPI->framebufferPool.getOccupancy();
+		auto selectedImageView = graphicsAPI->imageViewPool.getID(&imageView);
 
 		auto isAny = false;
 		for (uint32 i = 0; i < occupancy; i++)
@@ -384,16 +395,16 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	auto framebuffers = graphicsAPI->framebufferPool.getData();
+
 	string framebufferName;
-	auto framebuffers = GraphicsAPI::framebufferPool.getData();
-	renderItemList(GraphicsAPI::framebufferPool.getCount(),
-		GraphicsAPI::framebufferPool.getOccupancy(),
-		selectedItem, searchString, searchCaseSensitive, framebuffers,
-		sizeof(Framebuffer), framebufferName, "Framebuffer ");
+	renderItemList(graphicsAPI->framebufferPool.getCount(), graphicsAPI->framebufferPool.getOccupancy(), selectedItem,
+		searchString, searchCaseSensitive, framebuffers, sizeof(Framebuffer), framebufferName, "Framebuffer ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::framebufferPool.getCount() == 0 || selectedItem >= GraphicsAPI::framebufferPool.getOccupancy() ||
-		ResourceExt::getInstance(framebuffers[selectedItem]) == nullptr)
+	if (graphicsAPI->framebufferPool.getCount() == 0 || selectedItem >= graphicsAPI->framebufferPool.getOccupancy() ||
+		!ResourceExt::getInstance(framebuffers[selectedItem]))
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -403,7 +414,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 
 	const auto& framebuffer = framebuffers[selectedItem];
 	ImGui::SeparatorText(framebufferName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)*GraphicsAPI::framebufferPool.getID(&framebuffer));
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)*graphicsAPI->framebufferPool.getID(&framebuffer));
 	ImGui::TextWrapped("Size: %ldx%ld", (long)framebuffer.getSize().x, (long)framebuffer.getSize().y);
 	ImGui::Spacing();
 
@@ -415,7 +426,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
 			auto attachment = colorAttachments[i];
-			auto imageView = GraphicsAPI::imageViewPool.get(attachment.imageView);
+			auto imageView = graphicsAPI->imageViewPool.get(attachment.imageView);
 			auto viewName = imageView->getDebugName().empty() ? "Image View " +
 				to_string(*attachment.imageView) : imageView->getDebugName();
 			ImGui::SeparatorText(to_string(i).c_str());
@@ -450,7 +461,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 		auto depthStencilAttachment = framebuffer.getDepthStencilAttachment();
 		if (depthStencilAttachment.imageView)
 		{
-			auto imageView = GraphicsAPI::imageViewPool.get(depthStencilAttachment.imageView);
+			auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);
 			auto viewName = imageView->getDebugName().empty() ? "Image View " +
 				to_string(*depthStencilAttachment.imageView) : imageView->getDebugName();
 			ImGui::Text("%s", viewName.c_str());
@@ -508,17 +519,17 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
+
 	string descriptorSetName;
-	auto descriptorSets = GraphicsAPI::descriptorSetPool.getData();
-	renderItemList(GraphicsAPI::descriptorSetPool.getCount(),
-		GraphicsAPI::descriptorSetPool.getOccupancy(),
-		selectedItem, searchString, searchCaseSensitive, descriptorSets,
-		sizeof(DescriptorSet), descriptorSetName, "Descriptor Set ");
+	renderItemList(graphicsAPI->descriptorSetPool.getCount(), graphicsAPI->descriptorSetPool.getOccupancy(), selectedItem,
+		searchString, searchCaseSensitive, descriptorSets, sizeof(DescriptorSet), descriptorSetName, "Descriptor Set ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::descriptorSetPool.getCount() == 0 ||
-		selectedItem >= GraphicsAPI::descriptorSetPool.getOccupancy() ||
-		ResourceExt::getInstance(descriptorSets[selectedItem]) == nullptr)
+	if (graphicsAPI->descriptorSetPool.getCount() == 0 ||
+		selectedItem >= graphicsAPI->descriptorSetPool.getOccupancy() ||
+		!ResourceExt::getInstance(descriptorSets[selectedItem]))
 	{
 		ImGui::TextWrapped("None");
 		ImGui::EndChild();
@@ -527,26 +538,14 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	}
 
 	const auto& descriptorSet = descriptorSets[selectedItem];
-	string pipelineName; const std::map<string, Pipeline::Uniform>* uniforms;
+	const std::map<string, Pipeline::Uniform>* uniforms = nullptr; string pipelineName;
 	if (descriptorSet.getPipeline())
 	{
-		if (descriptorSet.getPipelineType() == PipelineType::Graphics)
-		{
-			auto pipeline = GraphicsAPI::graphicsPipelinePool.get(
-				ID<GraphicsPipeline>(descriptorSet.getPipeline()));
-			pipelineName = pipeline->getDebugName().empty() ? "Graphics Pipeline " +
-				to_string(*descriptorSet.getPipeline()) : pipeline->getDebugName();
-			uniforms = &pipeline->getUniforms();
-		}
-		else if (descriptorSet.getPipelineType() == PipelineType::Compute)
-		{
-			auto pipeline = GraphicsAPI::computePipelinePool.get(
-				ID<ComputePipeline>(descriptorSet.getPipeline()));
-			pipelineName = pipeline->getDebugName().empty() ? "Compute Pipeline " +
-				to_string(*descriptorSet.getPipeline()) : pipeline->getDebugName();
-			uniforms = &pipeline->getUniforms();
-		}
-		else abort();
+		auto pipelineView = graphicsAPI->getPipelineView(
+			descriptorSet.getPipelineType(), descriptorSet.getPipeline());
+		pipelineName = pipelineView->getDebugName().empty() ? "Pipeline " +
+			to_string(*descriptorSet.getPipeline()) : pipelineView->getDebugName();
+		uniforms = &pipelineView->getUniforms();
 	}
 
 	ImGui::SeparatorText(descriptorSetName.c_str());
@@ -584,7 +583,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
-							auto bufferView = GraphicsAPI::bufferPool.get(ID<Buffer>(resource));
+							auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 							auto imageViewName = bufferView->getDebugName().empty() ? "Buffer " +
 								to_string(*resource) : bufferView->getDebugName();
 							ImGui::PushID(to_string(i + 1).c_str());
@@ -616,7 +615,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
-							auto imageView = GraphicsAPI::imageViewPool.get(ID<ImageView>(resource));
+							auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
 							auto imageViewName = imageView->getDebugName().empty() ? "Image View " +
 								to_string(*resource) : imageView->getDebugName();
 							ImGui::PushID(to_string(*resource).c_str());
@@ -709,8 +708,9 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		const auto descriptorSets = GraphicsAPI::descriptorSetPool.getData();
-		auto occupancy = GraphicsAPI::descriptorSetPool.getOccupancy();
+		auto graphicsAPI = GraphicsAPI::get();
+		const auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
+		auto occupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 
 		auto isAny = false;
 		for (uint32 i = 0; i < occupancy; i++)
@@ -758,17 +758,18 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsPipelines = graphicsAPI->graphicsPipelinePool.getData();
+
 	string graphicsPipelineName;
-	auto graphicsPipelines = GraphicsAPI::graphicsPipelinePool.getData();
-	renderItemList(GraphicsAPI::graphicsPipelinePool.getCount(),
-		GraphicsAPI::graphicsPipelinePool.getOccupancy(),
+	renderItemList(graphicsAPI->graphicsPipelinePool.getCount(), graphicsAPI->graphicsPipelinePool.getOccupancy(),
 		selectedItem, searchString, searchCaseSensitive, graphicsPipelines,
 		sizeof(GraphicsPipeline), graphicsPipelineName, "Graphics Pipeline ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::graphicsPipelinePool.getCount() == 0 ||
-		selectedItem >= GraphicsAPI::graphicsPipelinePool.getOccupancy() ||
-		ResourceExt::getInstance(graphicsPipelines[selectedItem]) == nullptr)
+	if (graphicsAPI->graphicsPipelinePool.getCount() == 0 ||
+		selectedItem >= graphicsAPI->graphicsPipelinePool.getOccupancy() ||
+		!ResourceExt::getInstance(graphicsPipelines[selectedItem]))
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -780,7 +781,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 	string framebufferName;
 	if (graphicsPipeline.getFramebuffer())
 	{
-		auto framebuffer = GraphicsAPI::framebufferPool.get(graphicsPipeline.getFramebuffer());
+		auto framebuffer = graphicsAPI->framebufferPool.get(graphicsPipeline.getFramebuffer());
 		framebufferName = framebuffer->getDebugName().empty() ? "Framebuffer " +
 			to_string(*graphicsPipeline.getFramebuffer()) : framebuffer->getDebugName();
 	}
@@ -789,7 +790,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Framebuffer: %s", framebufferName.c_str());
 	ImGui::TextWrapped("Subpass index: %lu", (unsigned long)graphicsPipeline.getSubpassIndex());
-	auto instance = ID<Pipeline>(GraphicsAPI::graphicsPipelinePool.getID(&graphicsPipeline));
+	auto instance = ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(&graphicsPipeline));
 	renderPipelineDetails(graphicsPipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();
 	ImGui::EndChild();
@@ -800,17 +801,18 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 static void renderComputePipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	auto computePipelines = graphicsAPI->computePipelinePool.getData();
+
 	string computePipelineName;
-	auto computePipelines = GraphicsAPI::computePipelinePool.getData();
-	renderItemList(GraphicsAPI::computePipelinePool.getCount(),
-		GraphicsAPI::computePipelinePool.getOccupancy(),
+	renderItemList(graphicsAPI->computePipelinePool.getCount(), graphicsAPI->computePipelinePool.getOccupancy(),
 		selectedItem, searchString, searchCaseSensitive, computePipelines,
 		sizeof(ComputePipeline), computePipelineName, "Compute Pipeline ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (GraphicsAPI::computePipelinePool.getCount() == 0 ||
-		selectedItem >= GraphicsAPI::computePipelinePool.getOccupancy() ||
-		ResourceExt::getInstance(computePipelines[selectedItem]) == nullptr)
+	if (graphicsAPI->computePipelinePool.getCount() == 0 ||
+		selectedItem >= graphicsAPI->computePipelinePool.getOccupancy() ||
+		!ResourceExt::getInstance(computePipelines[selectedItem]))
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -823,7 +825,7 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Local size: %ldx%ldx%ld", (long)computePipeline.getLocalSize().x,
 		(long)computePipeline.getLocalSize().y, (long)computePipeline.getLocalSize().z);
-	auto instance = ID<Pipeline>(GraphicsAPI::computePipelinePool.getID(&computePipeline));
+	auto instance = ID<Pipeline>(graphicsAPI->computePipelinePool.getID(&computePipeline));
 	renderPipelineDetails(computePipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();
 	ImGui::EndChild();

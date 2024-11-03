@@ -60,7 +60,8 @@ private:
 		Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
 	ComputePipeline(ComputeCreateData& createData, bool useAsyncRecording);
 
-	friend class CommandBuffer;
+	void createVkInstance(ComputeCreateData& createData);
+
 	friend class ComputePipelineExt;
 	friend class LinearPool<ComputePipeline>;
 public:

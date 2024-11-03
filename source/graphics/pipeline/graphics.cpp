@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/pipeline/graphics.hpp"
-#include "garden/graphics/vulkan.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 using namespace garden::graphics;
 
@@ -113,18 +113,16 @@ static vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorCompon
 }
 
 //**********************************************************************************************************************
-GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, 
-	bool asyncRecording) : Pipeline(createData, asyncRecording)
+void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 {
-	if (createData.variantCount > 1)
-		this->instance = malloc<vk::Pipeline>(createData.variantCount);
-
+	auto vulkanAPI = VulkanAPI::get();
 	vector<ShaderStage> stages; vector<vector<uint8>> code;
+
 	if (!createData.vertexCode.empty())
 	{
 		stages.push_back(ShaderStage::Vertex);
 		code.push_back(std::move(createData.vertexCode));
-		
+
 	}
 	if (!createData.fragmentCode.empty())
 	{
@@ -143,7 +141,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 		auto stage = stages[i];
 		auto specializationInfo = &specializationInfos[i];
 
-		fillSpecConsts(createData.shaderPath, specializationInfo, createData.specConsts, 
+		fillVkSpecConsts(createData.shaderPath, specializationInfo, createData.specConsts,
 			createData.specConstValues, stage, createData.variantCount);
 
 		stageInfo.stage = toVkShaderStage(stage);
@@ -161,7 +159,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 
 	if (!createData.vertexAttributes.empty())
 	{
-		auto vertexAttributes = createData.vertexAttributes.data();
+		const auto& vertexAttributes = createData.vertexAttributes;
 		for (uint32 i = 0; i < (uint32)inputAttributes.size(); i++)
 		{
 			auto attribute = vertexAttributes[i];
@@ -198,7 +196,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 		const auto& colorFormats = createData.colorFormats;
 
 		// Different shader output and framebuffer attachment count.
-		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size()); 
+		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size());
 
 		if (!colorFormats.empty())
 		{
@@ -224,16 +222,16 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 			}
 			else
 			{
-				dynamicRenderingInfo.depthAttachmentFormat = 
+				dynamicRenderingInfo.depthAttachmentFormat =
 					dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
 			}
 		}
 		else
 		{
-			dynamicRenderingInfo.depthAttachmentFormat = 
+			dynamicRenderingInfo.depthAttachmentFormat =
 				dynamicRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
 		}
-		
+
 		pipelineInfo.pNext = &dynamicRenderingInfo;
 	}
 	else
@@ -263,7 +261,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 		if (variantCount > 1)
 		{
 			for (uint32 stageIndex = 0; stageIndex < (uint32)stages.size(); stageIndex++)
-				setVariantIndex(&specializationInfos[stageIndex], variantIndex);
+				setVkVariantIndex(&specializationInfos[stageIndex], variantIndex);
 		}
 
 		auto pipelineStateSearch = pipelineStateOverrides.find(variantIndex);
@@ -319,7 +317,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &blendInfo;
 
-		auto result = Vulkan::device.createGraphicsPipeline(Vulkan::pipelineCache, pipelineInfo);
+		auto result = vulkanAPI->device.createGraphicsPipeline(vulkanAPI->pipelineCache, pipelineInfo);
 		vk::detail::resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
 		if (createData.variantCount > 1)
@@ -338,11 +336,23 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 }
 
 //**********************************************************************************************************************
+GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, 
+	bool asyncRecording) : Pipeline(createData, asyncRecording)
+{
+	if (createData.variantCount > 1)
+		this->instance = malloc<vk::Pipeline>(createData.variantCount);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		createVkInstance(createData);
+	else abort();
+}
+
+//**********************************************************************************************************************
 void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 {
 	GARDEN_ASSERT(framebuffer);
 	#if GARDEN_DEBUG
-	auto framebufferView = GraphicsAPI::framebufferPool.get(framebuffer);
+	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
 	GARDEN_ASSERT(framebufferView->getSubpasses().empty());
 	#endif
 	this->framebuffer = framebuffer;
@@ -351,214 +361,205 @@ void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 void GraphicsPipeline::setViewport(const float4& viewport)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (!Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is asynchronous.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
 	SetViewportCommand command;
 	if (viewport == float4(0.0f))
 	{
-		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 		command.viewport = float4(float2(0.0f), framebufferView->getSize());
 	}
 	else
 	{
 		command.viewport = viewport;
 	}
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 taskIndex)
+void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 threadIndex)
 {
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is not asynchronous.");
-	GARDEN_ASSERT(taskIndex < 0 || taskIndex < Vulkan::secondaryCommandBuffers.size());
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
-	int32 taskCount;
-	if (taskIndex < 0)
+	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		taskIndex = 0;
-		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
-	}
-	else
-	{
-		taskCount = taskIndex + 1;
-	}
+		auto vulkanAPI = VulkanAPI::get();
+		vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
 
-	vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
+		if (viewport == float4(0.0f))
+		{
+			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
+			auto framebufferSize = framebufferView->getSize();
+			vkViewport.width = framebufferSize.x;
+			vkViewport.height = framebufferSize.y;
+		}
 
-	if (viewport == float4(0.0f))
-	{
-		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-		auto framebufferSize = framebufferView->getSize();
-		vkViewport.width = framebufferSize.x;
-		vkViewport.height = framebufferSize.y;
+		while (threadIndex < autoThreadCount)
+			vulkanAPI->secondaryCommandBuffers[threadIndex++].setViewport(0, 1, &vkViewport);
 	}
-
-	while (taskIndex < taskCount)
-		Vulkan::secondaryCommandBuffers[taskIndex++].setViewport(0, 1, &vkViewport);
+	else abort();
 }
 
 //**********************************************************************************************************************
 void GraphicsPipeline::setScissor(const int4& scissor)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (!Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is asynchronous.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
 	SetScissorCommand command;
 	if (scissor == int4(0))
 	{
-		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 		command.scissor = int4(int2(0), framebufferView->getSize());
 	}
 	else
 	{
 		command.scissor = scissor;
 	}
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 taskIndex)
+void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 threadIndex)
 {
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 	
 	#if GARDEN_DEBUG
-	if (Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is not asynchronous.");
-	GARDEN_ASSERT(taskIndex < 0 || taskIndex < Vulkan::secondaryCommandBuffers.size());
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
-	int32 taskCount;
-	if (taskIndex < 0)
+	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		taskIndex = 0;
-		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
-	}
-	else
-	{
-		taskCount = taskIndex + 1;
-	}
+		auto vulkanAPI = VulkanAPI::get();
+		vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
 
-	vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
+		if (scissor == int4(0))
+		{
+			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
+			auto framebufferSize = framebufferView->getSize();
+			vkScissor.extent.width = (uint32)framebufferSize.x;
+			vkScissor.extent.height = (uint32)framebufferSize.y;
+		}
 
-	if (scissor == int4(0))
-	{
-		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-		auto framebufferSize = framebufferView->getSize();
-		vkScissor.extent.width = (uint32)framebufferSize.x;
-		vkScissor.extent.height = (uint32)framebufferSize.y;
+		while (threadIndex < autoThreadCount)
+			vulkanAPI->secondaryCommandBuffers[threadIndex++].setScissor(0, 1, &vkScissor);
 	}
-
-	while (taskIndex < taskCount)
-		Vulkan::secondaryCommandBuffers[taskIndex++].setScissor(0, 1, &vkScissor);
+	else abort();
 }
 
 //**********************************************************************************************************************
 void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (!Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is asynchronous.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
 	SetViewportScissorCommand command;
 	if (viewportScissor == float4(0.0f))
 	{
-		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
+		auto framebufferView = graphicsAPI->framebufferPool.get(GraphicsAPI::get()->currentFramebuffer);
 		command.viewportScissor = float4(float2(0.0f), framebufferView->getSize());
 	}
 	else
 	{
 		command.viewportScissor = viewportScissor;
 	}
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, int32 taskIndex)
+void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, int32 threadIndex)
 {
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 	
 	#if GARDEN_DEBUG
-	if (Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is not asynchronous.");
-	GARDEN_ASSERT(taskIndex < 0 || taskIndex < Vulkan::secondaryCommandBuffers.size());
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
-	int32 taskCount;
-	if (taskIndex < 0)
+	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		taskIndex = 0;
-		taskCount = (uint32)Vulkan::secondaryCommandBuffers.size();
-	}
-	else
-	{
-		taskCount = taskIndex + 1;
-	}
+		auto vulkanAPI = VulkanAPI::get();
+		vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
+			viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
+		vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
+			{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
 
-	vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
-		viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
-	vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
-		{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
+		if (viewportScissor == float4(0.0f))
+		{
+			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
+			auto framebufferSize = framebufferView->getSize();
+			vkViewport.width = framebufferSize.x;
+			vkViewport.height = framebufferSize.y;
+			vkScissor.extent.width = (uint32)framebufferSize.x;
+			vkScissor.extent.height = (uint32)framebufferSize.y;
+		}
 
-	if (viewportScissor == float4(0.0f))
-	{
-		auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-		auto framebufferSize = framebufferView->getSize();
-		vkViewport.width = framebufferSize.x;
-		vkViewport.height = framebufferSize.y;
-		vkScissor.extent.width = (uint32)framebufferSize.x;
-		vkScissor.extent.height = (uint32)framebufferSize.y;
+		while (threadIndex < autoThreadCount)
+		{
+			auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex++];
+			secondaryCommandBuffer.setViewport(0, 1, &vkViewport);
+			secondaryCommandBuffer.setScissor(0, 1, &vkScissor);
+		}
 	}
-
-	while (taskIndex < taskCount)
-	{
-		auto secondaryCommandBuffer = Vulkan::secondaryCommandBuffers[taskIndex++];
-		secondaryCommandBuffer.setViewport(0, 1, &vkViewport);
-		secondaryCommandBuffer.setScissor(0, 1, &vkScissor);
-	}
+	else abort();
 }
 
 //**********************************************************************************************************************
@@ -568,15 +569,16 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 	GARDEN_ASSERT(vertexCount > 0);
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (!Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is asynchronous.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
 	DrawCommand command;
@@ -585,81 +587,89 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 	command.vertexOffset = vertexOffset;
 	command.instanceOffset = instanceOffset;
 	command.vertexBuffer = vertexBuffer;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
 	if (vertexBuffer)
 	{
-		auto vertexBufferView = GraphicsAPI::bufferPool.get(vertexBuffer);
-		GARDEN_ASSERT(vertexBufferView->instance); // is ready
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffer);
+		GARDEN_ASSERT(ResourceExt::getInstance(**vertexBufferView)); // is ready
+
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			vertexBufferView->readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
+			ResourceExt::getReadyLock(**vertexBufferView)++;
+			graphicsAPI->currentCommandBuffer->addLockResource(vertexBuffer);
 		}
 	}
 }
 
 //**********************************************************************************************************************
-void GraphicsPipeline::drawAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
+void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 	uint32 vertexCount, uint32 instanceCount, uint32 vertexOffset, uint32 instanceOffset)
 {
 	GARDEN_ASSERT(vertexCount > 0);
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(taskIndex >= 0);
-	GARDEN_ASSERT(taskIndex < Vulkan::secondaryCommandBuffers.size());
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex >= 0);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is not async.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
-	auto secondaryCommandBuffer = Vulkan::secondaryCommandBuffers[taskIndex];
 	View<Buffer> vertexBufferView;
-
-	if (vertexBuffer != Framebuffer::currentVertexBuffers[taskIndex])
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		vk::Buffer instance;
-		if (vertexBuffer)
-		{
-			vertexBufferView = GraphicsAPI::bufferPool.get(vertexBuffer);
-			GARDEN_ASSERT(vertexBufferView->instance); // is ready
-			instance = (VkBuffer)vertexBufferView->instance;
-		}
-		else
-		{
-			instance = nullptr;
-		}
-		
-		const vk::DeviceSize size = 0;
-		secondaryCommandBuffer.bindVertexBuffers(0, 1, (vk::Buffer*)&instance, &size);
-		Framebuffer::currentVertexBuffers[taskIndex] = vertexBuffer;
-	}
+		auto vulkanAPI = VulkanAPI::get();
+		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
 
-	secondaryCommandBuffer.draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
-	Vulkan::secondaryCommandStates[taskIndex] = true;
+		if (vertexBuffer != vulkanAPI->currentVertexBuffers[threadIndex])
+		{
+			vk::Buffer instance;
+			if (vertexBuffer)
+			{
+				vertexBufferView = vulkanAPI->bufferPool.get(vertexBuffer);
+				GARDEN_ASSERT(ResourceExt::getInstance(**vertexBufferView)); // is ready
+				instance = (VkBuffer)ResourceExt::getInstance(**vertexBufferView);
+			}
+			else
+			{
+				instance = nullptr;
+			}
+
+			const vk::DeviceSize size = 0;
+			secondaryCommandBuffer.bindVertexBuffers(0, 1, (vk::Buffer*)&instance, &size);
+			vulkanAPI->currentVertexBuffers[threadIndex] = vertexBuffer;
+		}
+
+		secondaryCommandBuffer.draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
+		vulkanAPI->secondaryCommandStates[threadIndex] = true;
+	}
+	else abort();
 
 	DrawCommand command;
 	command.asyncRecording = true;
 	command.vertexBuffer = vertexBuffer;
 
-	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	currentCommandBuffer->commandMutex.lock();
+	currentCommandBuffer->addCommand(command);
 	if (vertexBuffer)
 	{
-		if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+		if (currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			vertexBufferView->readyLock++;
-			GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
+			ResourceExt::getReadyLock(**vertexBufferView)++;
+			currentCommandBuffer->addLockResource(vertexBuffer);
 		}
 	}
-	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+	currentCommandBuffer->commandMutex.unlock();
 }
 
 //**********************************************************************************************************************
@@ -671,21 +681,21 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 	GARDEN_ASSERT(indexCount > 0);
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
 
-	auto vertexBufferView = GraphicsAPI::bufferPool.get(vertexBuffer);
-	auto indexBufferView = GraphicsAPI::bufferPool.get(indexBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffer);
+	auto indexBufferView = graphicsAPI->bufferPool.get(indexBuffer);
+	GARDEN_ASSERT(ResourceExt::getInstance(**vertexBufferView)); // is ready
+	GARDEN_ASSERT(ResourceExt::getInstance(**indexBufferView)); // is ready
+	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
 
 	#if GARDEN_DEBUG
-	if (!Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is asynchronous.");
-	GARDEN_ASSERT(vertexBufferView->instance); // is ready
-	GARDEN_ASSERT(indexBufferView->instance); // is ready
-	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
 	DrawIndexedCommand command;
@@ -697,19 +707,19 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 	command.vertexOffset = vertexOffset;
 	command.vertexBuffer = vertexBuffer;
 	command.indexBuffer = indexBuffer;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		vertexBufferView->readyLock++;
-		indexBufferView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
-		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
+		ResourceExt::getReadyLock(**vertexBufferView)++;
+		ResourceExt::getReadyLock(**indexBufferView)++;
+		graphicsAPI->currentCommandBuffer->addLockResource(vertexBuffer);
+		graphicsAPI->currentCommandBuffer->addLockResource(indexBuffer);
 	}
 }
 
 //**********************************************************************************************************************
-void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer,
+void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 	ID<Buffer> indexBuffer, Index indexType, uint32 indexCount, uint32 instanceCount,
 	uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
 {
@@ -719,98 +729,112 @@ void GraphicsPipeline::drawIndexedAsync(int32 taskIndex, ID<Buffer> vertexBuffer
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(taskIndex >= 0);
-	GARDEN_ASSERT(taskIndex < Vulkan::secondaryCommandBuffers.size());
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex >= 0);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
 
-	auto vertexBufferView = GraphicsAPI::bufferPool.get(vertexBuffer);
-	auto indexBufferView = GraphicsAPI::bufferPool.get(indexBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffer);
+	auto indexBufferView = graphicsAPI->bufferPool.get(indexBuffer);
+	GARDEN_ASSERT(ResourceExt::getInstance(**vertexBufferView)); // is ready
+	GARDEN_ASSERT(ResourceExt::getInstance(**indexBufferView)); // is ready
+	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
 	
 	#if GARDEN_DEBUG
-	if (Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is not async.");
-	GARDEN_ASSERT(vertexBufferView->instance); // is ready
-	GARDEN_ASSERT(indexBufferView->instance); // is ready
-	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
-	auto secondaryCommandBuffer = Vulkan::secondaryCommandBuffers[taskIndex];
-	const vk::DeviceSize size = 0;
-
-	if (vertexBuffer != Framebuffer::currentVertexBuffers[taskIndex])
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		secondaryCommandBuffer.bindVertexBuffers(0, 1, (vk::Buffer*)&vertexBufferView->instance, &size);
-		Framebuffer::currentVertexBuffers[taskIndex] = vertexBuffer;
-	}
-	if (indexBuffer != Framebuffer::currentIndexBuffers[taskIndex])
-	{
-		secondaryCommandBuffer.bindIndexBuffer((VkBuffer)indexBufferView->instance,
-			(vk::DeviceSize)(indexOffset * toBinarySize(indexType)), toVkIndexType(indexType));
-		Framebuffer::currentIndexBuffers[taskIndex] = indexBuffer;
-	}
+		auto vulkanAPI = VulkanAPI::get();
+		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
+		const vk::DeviceSize size = 0;
 
-	secondaryCommandBuffer.drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
-	Vulkan::secondaryCommandStates[taskIndex] = true;
+		if (vertexBuffer != vulkanAPI->currentVertexBuffers[threadIndex])
+		{
+			vk::Buffer vkBuffer = (VkBuffer)ResourceExt::getInstance(**vertexBufferView);
+			secondaryCommandBuffer.bindVertexBuffers(0, 1, &vkBuffer, &size);
+			vulkanAPI->currentVertexBuffers[threadIndex] = vertexBuffer;
+		}
+		if (indexBuffer != vulkanAPI->currentIndexBuffers[threadIndex])
+		{
+			secondaryCommandBuffer.bindIndexBuffer((VkBuffer)ResourceExt::getInstance(**indexBufferView),
+				(vk::DeviceSize)(indexOffset * toBinarySize(indexType)), toVkIndexType(indexType));
+			vulkanAPI->currentIndexBuffers[threadIndex] = indexBuffer;
+		}
+
+		secondaryCommandBuffer.drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+		vulkanAPI->secondaryCommandStates[threadIndex] = true;
+	}
+	else abort();
 
 	DrawIndexedCommand command;
 	command.asyncRecording = true;
 	command.vertexBuffer = vertexBuffer;
 	command.indexBuffer = indexBuffer;
 
-	GraphicsAPI::currentCommandBuffer->commandMutex.lock();
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
-	if (GraphicsAPI::currentCommandBuffer != &GraphicsAPI::frameCommandBuffer)
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	currentCommandBuffer->commandMutex.lock();
+	currentCommandBuffer->addCommand(command);
+	if (currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		vertexBufferView->readyLock++;
-		indexBufferView->readyLock++;
-		GraphicsAPI::currentCommandBuffer->addLockResource(vertexBuffer);
-		GraphicsAPI::currentCommandBuffer->addLockResource(indexBuffer);
+		ResourceExt::getReadyLock(**vertexBufferView)++;
+		ResourceExt::getReadyLock(**indexBufferView)++;
+		currentCommandBuffer->addLockResource(vertexBuffer);
+		currentCommandBuffer->addLockResource(indexBuffer);
 	}
-	GraphicsAPI::currentCommandBuffer->commandMutex.unlock();
+	currentCommandBuffer->commandMutex.unlock();
 }
 
 //**********************************************************************************************************************
 void GraphicsPipeline::drawFullscreen()
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (!Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is async.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 	
 	DrawCommand command;
 	command.vertexCount = 3;
 	command.instanceCount = 1;
-	GraphicsAPI::currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::drawFullscreenAsync(int32 taskIndex)
+void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(asyncRecording);
-	GARDEN_ASSERT(taskIndex >= 0);
-	GARDEN_ASSERT(taskIndex < Vulkan::secondaryCommandBuffers.size());
-	GARDEN_ASSERT(Framebuffer::getCurrent());
-	GARDEN_ASSERT(GraphicsAPI::currentCommandBuffer);
+	GARDEN_ASSERT(threadIndex >= 0);
+	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
+
+	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
-	if (Vulkan::secondaryCommandBuffers.empty())
-		throw runtime_error("Current render pass is not async.");
-	auto framebufferView = GraphicsAPI::framebufferPool.get(Framebuffer::getCurrent());
-	GARDEN_ASSERT(!framebufferView->renderPass || framebuffer == Framebuffer::getCurrent());
-	GARDEN_ASSERT(subpassIndex == Framebuffer::getCurrentSubpassIndex());
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 
-	auto secondaryCommandBuffer = Vulkan::secondaryCommandBuffers[taskIndex];
-	secondaryCommandBuffer.draw(3, 1, 0, 0);
-	Vulkan::secondaryCommandStates[taskIndex] = true;
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
+		secondaryCommandBuffer.draw(3, 1, 0, 0);
+		vulkanAPI->secondaryCommandStates[threadIndex] = true;
+	}
+	else abort();
 }

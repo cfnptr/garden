@@ -143,9 +143,7 @@ private:
 	void hdrRender();
 	void gBufferRecreate();
 
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
-
 	friend class ecsm::Manager;
 public:
 	/*******************************************************************************************************************

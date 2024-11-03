@@ -21,14 +21,14 @@ using namespace garden;
 
 //**********************************************************************************************************************
 CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderCompSystem("sprite/cutout", useDeferredBuffer, useLinearFilter), Singleton(setSingleton) { }
+	SpriteRenderCompSystem("sprite/cutout", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
 CutoutSpriteSystem::~CutoutSpriteSystem() { unsetSingleton(); }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
 {
 	SpriteRenderSystem::setPushConstants(spriteRenderView,
-		pushConstants, viewProj, model, drawIndex, taskIndex);
+		pushConstants, viewProj, model, drawIndex, threadIndex);
 	auto cutoutSpriteView = (CutoutSpriteComponent*)spriteRenderView;
 	auto cutoutPushConstants = (CutoutPushConstants*)pushConstants;
 	cutoutPushConstants->alphaCutoff = cutoutSpriteView->alphaCutoff;
@@ -51,23 +51,23 @@ const string& CutoutSpriteSystem::getComponentName() const
 void CutoutSpriteSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
-	auto componentView = View<CutoutSpriteComponent>(component);
-	if (componentView->alphaCutoff != 0.5f)
-		serializer.write("alphaCutoff", componentView->alphaCutoff);
+	auto cutoutSpriteView = View<CutoutSpriteComponent>(component);
+	if (cutoutSpriteView->alphaCutoff != 0.5f)
+		serializer.write("alphaCutoff", cutoutSpriteView->alphaCutoff);
 }
 void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
 {
 	SpriteRenderSystem::deserialize(deserializer, entity, component);
-	auto componentView = View<CutoutSpriteComponent>(component);
-	deserializer.read("alphaCutoff", componentView->alphaCutoff);
+	auto cutoutSpriteView = View<CutoutSpriteComponent>(component);
+	deserializer.read("alphaCutoff", cutoutSpriteView->alphaCutoff);
 }
 
 void CutoutSpriteSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
-	auto frameView = View<CutoutSpriteFrame>(frame);
-	if (frameView->animateAlphaCutoff)
-		serializer.write("alphaCutoff", frameView->alphaCutoff);
+	auto cutoutFrameView = View<CutoutSpriteFrame>(frame);
+	if (cutoutFrameView->animateAlphaCutoff)
+		serializer.write("alphaCutoff", cutoutFrameView->alphaCutoff);
 }
 ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deserializer)
 {
@@ -88,9 +88,9 @@ void CutoutSpriteSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
-	auto componentView = View<CutoutSpriteComponent>(component);
+	auto cutoutSpriteView = View<CutoutSpriteComponent>(component);
 	auto frameA = View<CutoutSpriteFrame>(a);
 	auto frameB = View<CutoutSpriteFrame>(b);
 	if (frameA->animateAlphaCutoff)
-		componentView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
+		cutoutSpriteView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
 }

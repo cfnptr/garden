@@ -50,7 +50,7 @@ FxaaRenderSystem::FxaaRenderSystem(bool setSingleton) : Singleton(setSingleton)
 }
 FxaaRenderSystem::~FxaaRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FxaaRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FxaaRenderSystem::deinit);
@@ -78,7 +78,7 @@ void FxaaRenderSystem::init()
 }
 void FxaaRenderSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		GraphicsSystem::Instance::get()->destroy(pipeline);
 

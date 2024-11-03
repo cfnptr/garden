@@ -27,7 +27,7 @@ ToneMappingRenderEditorSystem::ToneMappingRenderEditorSystem()
 }
 ToneMappingRenderEditorSystem::~ToneMappingRenderEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingRenderEditorSystem::deinit);
@@ -41,7 +41,7 @@ void ToneMappingRenderEditorSystem::init()
 }
 void ToneMappingRenderEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", ToneMappingRenderEditorSystem::editorBarTool);

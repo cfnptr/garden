@@ -30,7 +30,7 @@ PhysicsEditorSystem::PhysicsEditorSystem()
 }
 PhysicsEditorSystem::~PhysicsEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
@@ -64,7 +64,7 @@ void PhysicsEditorSystem::deinit()
 	editorSystem->unregisterEntityInspector<RigidbodyComponent>();
 	editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
 }
 

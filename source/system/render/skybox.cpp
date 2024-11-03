@@ -38,10 +38,14 @@ SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSinglet
 }
 SkyboxRenderSystem::~SkyboxRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderSystem::deinit);
+	}
+	else
+	{
+		components.clear(false);
 	}
 
 	unsetSingleton();
@@ -58,14 +62,14 @@ static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording());
+		"skybox", deferredSystem->getTranslucentFramebuffer(), deferredSystem->useAsyncRecording());
 	return skyboxPipeline;
 }
 
 void SkyboxRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", SkyboxRenderSystem::hdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("TranslucentRender", SkyboxRenderSystem::translucentRender);
 
 	if (!pipeline)
 		pipeline = createPipeline();
@@ -75,14 +79,12 @@ void SkyboxRenderSystem::init()
 }
 void SkyboxRenderSystem::deinit()
 {
-	components.clear();
-
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		GraphicsSystem::Instance::get()->destroy(pipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", SkyboxRenderSystem::hdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("TranslucentRender", SkyboxRenderSystem::translucentRender);
 	}
 }
 
@@ -107,9 +109,9 @@ void SkyboxRenderSystem::imageLoaded()
 }
 
 //**********************************************************************************************************************
-void SkyboxRenderSystem::hdrRender()
+void SkyboxRenderSystem::translucentRender()
 {
-	SET_CPU_ZONE_SCOPED("Skybox HDR Render");
+	SET_CPU_ZONE_SCOPED("Skybox Translucent Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!graphicsSystem->camera)
@@ -129,11 +131,10 @@ void SkyboxRenderSystem::hdrRender()
 	if (!pipelineView->isReady() || !fullCubeView->isReady() || !cubemapView->isReady())
 		return;
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
-	if (deferredSystem->useAsyncRecording())
+	if (Framebuffer::isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0, 0);
 		pipelineView->setViewportScissorAsync(float4(0.0f), 0);

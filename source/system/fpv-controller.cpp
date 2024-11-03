@@ -35,7 +35,7 @@ FpvControllerSystem::FpvControllerSystem(bool setSingleton) : Singleton(setSingl
 }
 FpvControllerSystem::~FpvControllerSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FpvControllerSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FpvControllerSystem::deinit);
@@ -57,7 +57,7 @@ void FpvControllerSystem::init()
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->position = float3(0.0f, 2.0f, -2.0f);
 	#if GARDEN_DEBUG | GARDEN_EDITOR
-	transformView->debugName = "MainCamera";
+	transformView->debugName = "Main Camera";
 	#endif
 
 	auto linkView = manager->add<LinkComponent>(camera);
@@ -75,7 +75,7 @@ void FpvControllerSystem::init()
 }
 void FpvControllerSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		GraphicsSystem::Instance::get()->camera = {};
 		Manager::Instance::get()->destroy(camera);

@@ -31,7 +31,7 @@ TransformEditorSystem::TransformEditorSystem(bool setSingleton) : Singleton(setS
 }
 TransformEditorSystem::~TransformEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);

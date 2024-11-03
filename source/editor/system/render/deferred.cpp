@@ -74,7 +74,7 @@ DeferredRenderEditorSystem::DeferredRenderEditorSystem()
 }
 DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderEditorSystem::deinit);
@@ -92,7 +92,7 @@ void DeferredRenderEditorSystem::init()
 }
 void DeferredRenderEditorSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
@@ -213,7 +213,7 @@ void DeferredRenderEditorSystem::deferredRender()
 	{
 		SET_GPU_DEBUG_LABEL("Lighting Visualizer", Color::transparent);
 
-		if (DeferredRenderSystem::Instance::get()->useAsyncRecording())
+		if (Framebuffer::isCurrentRenderPassAsync())
 		{
 			pipelineView->bindAsync(0, 0);
 			pipelineView->setViewportScissorAsync(float4(0.0f), 0);

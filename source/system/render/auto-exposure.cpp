@@ -76,7 +76,7 @@ AutoExposureRenderSystem::AutoExposureRenderSystem(bool setSingleton) : Singleto
 }
 AutoExposureRenderSystem::~AutoExposureRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureRenderSystem::deinit);
@@ -99,7 +99,7 @@ void AutoExposureRenderSystem::init()
 }
 void AutoExposureRenderSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(averagePipeline);

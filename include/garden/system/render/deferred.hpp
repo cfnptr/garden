@@ -40,8 +40,12 @@ namespace garden
  * geometry pass and lighting pass. This approach allows more flexibility in handling multiple lights without the 
  * significant performance hit typical in forward rendering.
  * 
- * Registers events: PreDeferredRender, DeferredRender, PreHdrRender, HdrRender,
- *   PreLdrRender, LdrRender, PreSwapchainRender, GBufferRecreate.
+ * Registers events:
+ *   PreDeferredRender, DeferredRender, 
+ *   PreHdrRender, HdrRender, 
+ *   PreTranslucentRender, TranslucentRender, 
+ *   PreLdrRender, LdrRender, 
+ *   PreSwapchainRender, GBufferRecreate.
  */
 class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>
 {
@@ -57,8 +61,8 @@ private:
 	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
+	ID<Framebuffer> translucentFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
-	ID<Framebuffer> toneMappingFramebuffer = {};
 	bool asyncRecording = false;
 
 	/**
@@ -121,6 +125,10 @@ public:
 	 * @brief Returns deferred HDR framebuffer. (High Dynamic Range)
 	 */
 	ID<Framebuffer> getHdrFramebuffer();
+	/**
+	 * @brief Returns deferred translucent framebuffer.
+	 */
+	ID<Framebuffer> getTranslucentFramebuffer();
 	/**
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */

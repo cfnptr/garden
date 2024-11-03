@@ -20,14 +20,13 @@
 #pragma once
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+
 #include <mutex>
+#include <unordered_map>
 
 namespace garden::graphics
 {
 
-class CommandBuffer;
-
-//**********************************************************************************************************************
 struct Command
 {
 	enum class Type : uint8
@@ -43,13 +42,12 @@ struct Command
 
 		Count
 	};
-private:
+
 	uint32 thisSize = 0;
 	uint32 lastSize = 0;
 	Type type = {};
-public:
-	friend class CommandBuffer;
-	Command(Type type) noexcept : type(type) { }
+
+	constexpr Command(Type type) noexcept : type(type) { }
 };
 
 //**********************************************************************************************************************
@@ -62,7 +60,7 @@ struct BeginRenderPassCommandBase : public Command
 	float clearDepth = 0.0f;
 	uint32 clearStencil = 0x00;
 	int4 region = int4(0);
-	BeginRenderPassCommandBase() noexcept : Command(Type::BeginRenderPass) { }
+	constexpr BeginRenderPassCommandBase() noexcept : Command(Type::BeginRenderPass) { }
 };
 struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 {
@@ -72,13 +70,13 @@ struct NextSubpassCommand final : public Command
 {
 	uint8 asyncRecording = false;
 	uint16 _alignment = 0;
-	NextSubpassCommand() noexcept : Command(Type::NextSubpass) { }
+	constexpr NextSubpassCommand() noexcept : Command(Type::NextSubpass) { }
 };
 struct ExecuteCommandBase : public Command
 {
 	uint8 _alignment = 0;
 	uint16 bufferCount = 0;
-	ExecuteCommandBase() noexcept : Command(Type::Execute) { }
+	constexpr ExecuteCommandBase() noexcept : Command(Type::Execute) { }
 };
 struct ExecuteCommand final : public ExecuteCommandBase
 {
@@ -88,7 +86,7 @@ struct EndRenderPassCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	EndRenderPassCommand() noexcept : Command(Type::EndRenderPass) { }
+	constexpr EndRenderPassCommand() noexcept : Command(Type::EndRenderPass) { }
 };
 
 //**********************************************************************************************************************
@@ -98,7 +96,7 @@ struct ClearAttachmentsCommandBase : public Command
 	uint16 _alignment = 0;
 	uint32 regionCount = 0;
 	ID<Framebuffer> framebuffer = {};
-	ClearAttachmentsCommandBase() noexcept : Command(Type::ClearAttachments) { }
+	constexpr ClearAttachmentsCommandBase() noexcept : Command(Type::ClearAttachments) { }
 };
 struct ClearAttachmentsCommand final : public ClearAttachmentsCommandBase
 {
@@ -111,14 +109,14 @@ struct BindPipelineCommand final : public Command
 	uint8 variant = 0;
 	uint8 _alignment = 0;
 	ID<Pipeline> pipeline = {};
-	BindPipelineCommand() noexcept : Command(Type::BindPipeline) { }
+	constexpr BindPipelineCommand() noexcept : Command(Type::BindPipeline) { }
 };
 struct BindDescriptorSetsCommandBase : public Command
 {
 	uint8 asyncRecording = false;
 	uint8 rangeCount = 0;
 	uint8 _alignment = 0;
-	BindDescriptorSetsCommandBase() noexcept : Command(Type::BindDescriptorSets) { }
+	constexpr BindDescriptorSetsCommandBase() noexcept : Command(Type::BindDescriptorSets) { }
 };
 struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 {
@@ -132,7 +130,7 @@ struct PushConstantsCommandBase : public Command
 	uint16 dataSize = 0;
 	uint32 shaderStages = 0;
 	void* pipelineLayout = nullptr;
-	PushConstantsCommandBase() noexcept : Command(Type::PushConstants) { }
+	constexpr PushConstantsCommandBase() noexcept : Command(Type::PushConstants) { }
 };
 struct PushConstantsCommand final : public PushConstantsCommandBase
 {
@@ -143,21 +141,21 @@ struct SetViewportCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewport = float4(0.0f);
-	SetViewportCommand() noexcept : Command(Type::SetViewport) { }
+	constexpr SetViewportCommand() noexcept : Command(Type::SetViewport) { }
 };
 struct SetScissorCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	int4 scissor = int4(0);
-	SetScissorCommand() noexcept : Command(Type::SetScissor) { }
+	constexpr SetScissorCommand() noexcept : Command(Type::SetScissor) { }
 };
 struct SetViewportScissorCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewportScissor = float4(0.0f);
-	SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
+	constexpr SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
 
 //**********************************************************************************************************************
@@ -170,7 +168,7 @@ struct DrawCommand final : public Command
 	uint32 vertexOffset = 0;
 	uint32 instanceOffset = 0;
 	ID<Buffer> vertexBuffer = {};
-	DrawCommand() noexcept : Command(Type::Draw) { }
+	constexpr DrawCommand() noexcept : Command(Type::Draw) { }
 };
 struct DrawIndexedCommand final : public Command
 {
@@ -184,14 +182,14 @@ struct DrawIndexedCommand final : public Command
 	uint32 vertexOffset = 0;
 	ID<Buffer> vertexBuffer = {};
 	ID<Buffer> indexBuffer = {};
-	DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }
+	constexpr DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }
 };
 struct DispatchCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	uint3 groupCount = uint3(0);
-	DispatchCommand() noexcept : Command(Type::Dispatch) { }
+	constexpr DispatchCommand() noexcept : Command(Type::Dispatch) { }
 };
 
 //**********************************************************************************************************************
@@ -203,7 +201,7 @@ struct FillBufferCommand final : public Command
 	uint32 data = 0;
 	uint64 size = 0;
 	uint64 offset = 0;
-	FillBufferCommand() noexcept : Command(Type::FillBuffer) { }
+	constexpr FillBufferCommand() noexcept : Command(Type::FillBuffer) { }
 };
 struct CopyBufferCommandBase : public Command
 {
@@ -212,7 +210,7 @@ struct CopyBufferCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Buffer> source = {};
 	ID<Buffer> destination = {};
-	CopyBufferCommandBase() noexcept : Command(Type::CopyBuffer) { }
+	constexpr CopyBufferCommandBase() noexcept : Command(Type::CopyBuffer) { }
 };
 struct CopyBufferCommand final : public CopyBufferCommandBase
 {
@@ -227,7 +225,7 @@ struct ClearImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Image> image = {};
 	float4 color = float4(0.0f);
-	ClearImageCommandBase() noexcept : Command(Type::ClearImage) { }
+	constexpr ClearImageCommandBase() noexcept : Command(Type::ClearImage) { }
 };
 struct ClearImageCommand final : public ClearImageCommandBase
 {
@@ -240,7 +238,7 @@ struct CopyImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Image> source = {};
 	ID<Image> destination = {};
-	CopyImageCommandBase() noexcept : Command(Type::CopyImage) { }
+	constexpr CopyImageCommandBase() noexcept : Command(Type::CopyImage) { }
 };
 struct CopyImageCommand final : public CopyImageCommandBase
 {
@@ -253,7 +251,7 @@ struct CopyBufferImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Buffer> buffer = {};
 	ID<Image> image = {};
-	CopyBufferImageCommandBase() noexcept : Command(Type::CopyBufferImage) { }
+	constexpr CopyBufferImageCommandBase() noexcept : Command(Type::CopyBufferImage) { }
 };
 struct CopyBufferImageCommand final : public CopyBufferImageCommandBase
 {
@@ -266,7 +264,7 @@ struct BlitImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Image> source = {};
 	ID<Image> destination = {};
-	BlitImageCommandBase() noexcept : Command(Type::BlitImage) { }
+	constexpr BlitImageCommandBase() noexcept : Command(Type::BlitImage) { }
 };
 struct BlitImageCommand final : public BlitImageCommandBase
 {
@@ -279,8 +277,8 @@ struct BeginLabelCommandBase : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	Color color = Color::transparent;
-	BeginLabelCommandBase() noexcept : Command(Type::BeginLabel) { }
+	Color color = Color((uint8)0);
+	constexpr BeginLabelCommandBase() noexcept : Command(Type::BeginLabel) { }
 };
 struct BeginLabelCommand final : public BeginLabelCommandBase
 {
@@ -290,14 +288,14 @@ struct EndLabelCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	EndLabelCommand() noexcept : Command(Type::EndLabel) { }
+	constexpr EndLabelCommand() noexcept : Command(Type::EndLabel) { }
 };
 struct InsertLabelCommandBase : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	Color color = Color::transparent;
-	InsertLabelCommandBase() noexcept : Command(Type::InsertLabel) { }
+	Color color = Color((uint8)0);
+	constexpr InsertLabelCommandBase() noexcept : Command(Type::InsertLabel) { }
 };
 struct InsertLabelCommand final : public InsertLabelCommandBase
 {
@@ -305,13 +303,13 @@ struct InsertLabelCommand final : public InsertLabelCommandBase
 };
 #endif
 
-static psize alignSize(psize size, psize alignment = 4) noexcept
+constexpr psize alignSize(psize size, psize alignment = 4) noexcept
 {
 	return (size + (alignment - 1)) & ~(alignment - 1);
 }
 
 /***********************************************************************************************************************
- * @brief Rendering commands recorder.
+ * @brief Base rendering commands recorder.
  * 
  * @details
  * Command buffer is a fundamental object used to record commands that can be submitted to the GPU for execution. 
@@ -319,7 +317,7 @@ static psize alignSize(psize size, psize alignment = 4) noexcept
  * and more. Command buffers are a key part of engine design to allow for explicit, low-level control over the GPU, 
  * providing both flexibility and the potential for significant performance optimizations.
  */
-class CommandBuffer final
+class CommandBuffer
 {
 public:
 	struct ImageSubresource final
@@ -344,13 +342,11 @@ public:
 	};
 
 	typedef pair<ID<Resource>, ResourceType> LockResource;
-private:
-	void* instance = nullptr;
-	void* fence = nullptr;
+protected:
 	uint8* data = nullptr;
 	psize size = 0, capacity = 16;
-	map<ImageSubresource, ImageState> imageStates; // TODO: maybe use unordered_map or faster hashtables?
-	map<ID<Buffer>, BufferState> bufferStates;
+	map<ImageSubresource, ImageState> imageStates;
+	unordered_map<ID<Buffer>, BufferState, IdHash<Buffer>> bufferStates;
 	vector<LockResource> lockedResources;
 	vector<LockResource> lockingResources;
 	uint32 lastSize = 0;
@@ -359,55 +355,59 @@ private:
 	bool hasAnyCommand = false;
 	bool isRunning = false;
 
-	#if GARDEN_DEBUG
-	uint64 frameIndex = 0;
-	#endif
-
 	ImageState& getImageState(ID<Image> image, uint32 mip, uint32 layer);
 	BufferState& getBufferState(ID<Buffer> buffer);
 
 	Command* allocateCommand(uint32 size);
+	void processCommands();
+	void updateImageStates();
 
-	void addDescriptorSetBarriers(const DescriptorSet::Range* descriptorSetRange,
-		uint32 rangeCount, uint32& oldStage, uint32& newStage);
-	void processPipelineBarriers(uint32 oldStage, uint32 newStage);
-
-	void processCommand(const BeginRenderPassCommand& command);
-	void processCommand(const NextSubpassCommand& command);
-	void processCommand(const ExecuteCommand& command);
-	void processCommand(const EndRenderPassCommand& command);
-	void processCommand(const ClearAttachmentsCommand& command);
-	void processCommand(const BindPipelineCommand& command);
-	void processCommand(const BindDescriptorSetsCommand& command);
-	void processCommand(const PushConstantsCommand& command);
-	void processCommand(const SetViewportCommand& command);
-	void processCommand(const SetScissorCommand& command);
-	void processCommand(const SetViewportScissorCommand& command);
-	void processCommand(const DrawCommand& command);
-	void processCommand(const DrawIndexedCommand& command);
-	void processCommand(const DispatchCommand& command);
-	void processCommand(const FillBufferCommand& command);
-	void processCommand(const CopyBufferCommand& command);
-	void processCommand(const ClearImageCommand& command);
-	void processCommand(const CopyImageCommand& command);
-	void processCommand(const CopyBufferImageCommand& command);
-	void processCommand(const BlitImageCommand& command);
+	virtual void processCommand(const BeginRenderPassCommand& command) = 0;
+	virtual void processCommand(const NextSubpassCommand& command) = 0;
+	virtual void processCommand(const ExecuteCommand& command) = 0;
+	virtual void processCommand(const EndRenderPassCommand& command) = 0;
+	virtual void processCommand(const ClearAttachmentsCommand& command) = 0;
+	virtual void processCommand(const BindPipelineCommand& command) = 0;
+	virtual void processCommand(const BindDescriptorSetsCommand& command) = 0;
+	virtual void processCommand(const PushConstantsCommand& command) = 0;
+	virtual void processCommand(const SetViewportCommand& command) = 0;
+	virtual void processCommand(const SetScissorCommand& command) = 0;
+	virtual void processCommand(const SetViewportScissorCommand& command) = 0;
+	virtual void processCommand(const DrawCommand& command) = 0;
+	virtual void processCommand(const DrawIndexedCommand& command) = 0;
+	virtual void processCommand(const DispatchCommand& command) = 0;
+	virtual void processCommand(const FillBufferCommand& command) = 0;
+	virtual void processCommand(const CopyBufferCommand& command) = 0;
+	virtual void processCommand(const ClearImageCommand& command) = 0;
+	virtual void processCommand(const CopyImageCommand& command) = 0;
+	virtual void processCommand(const CopyBufferImageCommand& command) = 0;
+	virtual void processCommand(const BlitImageCommand& command) = 0;
 
 	#if GARDEN_DEBUG
-	void processCommand(const BeginLabelCommand& command);
-	void processCommand(const EndLabelCommand& command);
-	void processCommand(const InsertLabelCommand& command);
+	virtual void processCommand(const BeginLabelCommand& command) = 0;
+	virtual void processCommand(const EndLabelCommand& command) = 0;
+	virtual void processCommand(const InsertLabelCommand& command) = 0;
 	#endif
 
 	void flushLockedResources(vector<LockResource>& lockedResources);
-	friend class Vulkan;
 public:
-	//******************************************************************************************************************
+	/*******************************************************************************************************************
+	 * @brief Create a new command buffer instance.
+	 */
+	CommandBuffer(CommandBufferType type);
+	/**
+	 * @brief Destroys command buffer instance.
+	 */
+	virtual ~CommandBuffer();
+
+	/**
+	 * @brief Asynchronous command recording mutex.
+	 */
 	mutex commandMutex;
 
-	void initialize(CommandBufferType type);
-	void terminate();
-
+	/**
+	 * @brief Return command buffer type.
+	 */
 	CommandBufferType getType() const noexcept { return type; }
 
 	void addCommand(const BeginRenderPassCommand& command);
@@ -437,7 +437,10 @@ public:
 	void addCommand(const InsertLabelCommand& command);
 	#endif
 
-	void submit(uint64 frameIndex);
+	/**
+	 * @brief Submits recorded command to the GPU.
+	 */
+	virtual void submit() = 0;
 
 	void addLockResource(ID<Buffer> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Buffer); }

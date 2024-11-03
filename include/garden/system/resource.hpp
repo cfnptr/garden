@@ -147,7 +147,7 @@ public:
 	 * @param[out] data image pixel data container
 	 * @param[out] size loaded image size in pixels
 	 * @param[out] format loaded image data format
-	 * @param threadIndex thread index the pool (-1 = single threaded)
+	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
 	void loadImageData(const fs::path& path, vector<uint8>& data,
 		uint2& size, Image::Format& format, int32 threadIndex = -1) const;

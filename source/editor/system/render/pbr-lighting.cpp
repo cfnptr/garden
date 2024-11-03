@@ -27,7 +27,7 @@ PbrLightingRenderEditorSystem::PbrLightingRenderEditorSystem()
 }
 PbrLightingRenderEditorSystem::~PbrLightingRenderEditorSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderEditorSystem::deinit);
@@ -54,12 +54,12 @@ void PbrLightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool is
 	if (!isOpened)
 		return;
 
-	auto componentView = PbrLightingRenderSystem::Instance::get()->getComponent(entity);
+	auto pbrLightingView = PbrLightingRenderSystem::Instance::get()->getComponent(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->drawResource(componentView->cubemap, "Cubemap");
-	editorSystem->drawResource(componentView->sh, "SH");
-	editorSystem->drawResource(componentView->specular, "Speculare");
-	editorSystem->drawResource(componentView->descriptorSet);
+	editorSystem->drawResource(pbrLightingView->cubemap, "Cubemap");
+	editorSystem->drawResource(pbrLightingView->sh, "SH");
+	editorSystem->drawResource(pbrLightingView->specular, "Speculare");
+	editorSystem->drawResource(pbrLightingView->descriptorSet);
 
 	// TODO: allow to select cubemap from file
 }

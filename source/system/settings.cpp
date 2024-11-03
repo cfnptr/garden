@@ -21,7 +21,6 @@
 #include "mpio/directory.hpp"
 #include <iostream>
 
-using namespace mpio;
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -32,18 +31,18 @@ SettingsSystem::SettingsSystem(bool setSingleton) : Singleton(setSingleton)
 }
 SettingsSystem::~SettingsSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", SettingsSystem::postDeinit);
-	}
 
-	delete (conf::Reader*)confReader;
+		delete (conf::Reader*)confReader;
 
-	for (const auto& pair : items)
-	{
-		if (pair.second.type == Type::String)
-			delete (char*)pair.second.data;
+		for (const auto& pair : items)
+		{
+			if (pair.second.type == Type::String)
+				delete (char*)pair.second.data;
+		}
 	}
 
 	unsetSingleton();
@@ -55,7 +54,7 @@ void SettingsSystem::preInit()
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	try
 	{
-		auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
+		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
 		confReader = new conf::Reader(appDataPath / "settings.txt");
 		GARDEN_LOG_INFO("Loaded settings file.");
 	}
@@ -69,7 +68,7 @@ void SettingsSystem::postDeinit()
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	try
 	{
-		auto appDataPath = Directory::getAppDataPath(appInfoSystem->getAppDataName());
+		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
 		conf::Writer confWriter(appDataPath / "settings.txt");
 
 		confWriter.writeComment(appInfoSystem->getName() +

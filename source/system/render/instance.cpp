@@ -42,7 +42,7 @@ InstanceRenderSystem::InstanceRenderSystem(bool useBaseDS, bool useDefaultDS) :
 }
 InstanceRenderSystem::~InstanceRenderSystem()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InstanceRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InstanceRenderSystem::deinit);
@@ -60,7 +60,7 @@ void InstanceRenderSystem::init()
 }
 void InstanceRenderSystem::deinit()
 {
-	if (Manager::Instance::get()->isRunning())
+	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(defaultDescriptorSet);
@@ -115,10 +115,10 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 	pipelineView = graphicsSystem->get(pipeline);
 	instanceMap = instanceBufferView->getMap();
 }
-void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
+void InstanceRenderSystem::beginDrawAsync(int32 threadIndex)
 {
-	pipelineView->bindAsync(0, taskIndex);
-	pipelineView->setViewportScissorAsync(float4(0.0f), taskIndex);
+	pipelineView->bindAsync(0, threadIndex);
+	pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
 }
 void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCount)
 {

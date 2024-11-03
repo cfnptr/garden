@@ -25,9 +25,9 @@
 namespace garden::graphics
 {
 
-class Image;
-class ImageExt;
 class ImageView;
+class ImageExt;
+class ImageViewExt;
 
 /**
  * @brief Graphics image (texture) storage.
@@ -206,12 +206,7 @@ private:
 	Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version);
 	bool destroy() final;
 
-	friend class Vulkan;
-	friend class Pipeline;
 	friend class ImageExt;
-	friend class ImageView;
-	friend class Swapchain;
-	friend class CommandBuffer;
 	friend class LinearPool<Image>;
 public:
 	/*******************************************************************************************************************
@@ -747,11 +742,7 @@ class ImageView final : public Resource
 		uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount);
 	bool destroy() final;
 
-	friend class Pipeline;
-	friend class Framebuffer;
 	friend class ImageViewExt;
-	friend class DescriptorSet;
-	friend class CommandBuffer;
 	friend class LinearPool<ImageView>;
 public:
 	/**
