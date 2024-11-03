@@ -138,8 +138,7 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
-			auto swapchainBuffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(
-				vulkanAPI->swapchain->getCurrentBuffer());
+			auto swapchainBuffer = vulkanAPI->vulkanSwapchain->getCurrentVkBuffer();
 			uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
 
 			auto vkResult = vk::Result::eNotReady;

@@ -57,6 +57,7 @@ public:
 private:
 	uint16 _alignment = 0;
 	VulkanAPI* vulkanAPI = nullptr;
+	vector<VkBuffer*> vulkanBuffers;
 	vector<vk::Format> colorAttachmentFormats;
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
 	vk::Fence fences[frameLag];
@@ -71,6 +72,8 @@ private:
 
 	friend class VulkanAPI;
 public:
+	VkBuffer* getCurrentVkBuffer() const noexcept { return vulkanBuffers[bufferIndex]; }
+
 	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) final;
 	bool acquireNextImage(ThreadPool* threadPool) final;
 	void submit() final;

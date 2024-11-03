@@ -339,8 +339,8 @@ void VulkanCommandBuffer::submit()
 	SET_CPU_ZONE_SCOPED("Command Buffer Submit");
 
 	auto vulkanAPI = VulkanAPI::get();
-	auto swapchain = dynamic_cast<VulkanSwapchain*>(vulkanAPI->swapchain);
-	auto swapchainBuffer = dynamic_cast<VulkanSwapchain::VkBuffer*>(swapchain->getCurrentBuffer());
+	auto swapchain = vulkanAPI->vulkanSwapchain;
+	auto swapchainBuffer = swapchain->getCurrentVkBuffer();
 
 	vk::Queue queue;
 	if (type == CommandBufferType::Frame)

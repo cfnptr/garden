@@ -288,7 +288,7 @@ void TransformComponent::removeChild(ID<Entity> child)
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
 
-	if (!tryRemoveChild(child));
+	if (!tryRemoveChild(child))
 		throw GardenError("Failed to remove child, not found.");
 }
 bool TransformComponent::tryRemoveChild(ID<Entity> child)

@@ -63,6 +63,7 @@ private:
 
 	friend class GraphicsAPI;
 public:
+	VulkanSwapchain* vulkanSwapchain = nullptr;
 	string appDataName;
 	Version appVersion;
 	uint32 versionMajor = 0;

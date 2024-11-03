@@ -790,7 +790,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 
 	int sizeX = 0, sizeY = 0;
 	glfwGetFramebufferSize((GLFWwindow*)window, &sizeX, &sizeY);
-	swapchain = new VulkanSwapchain(this, uint2(sizeX, sizeY), useVsync, useTripleBuffering);
+	swapchain = vulkanSwapchain = new VulkanSwapchain(this, uint2(sizeX, sizeY), useVsync, useTripleBuffering);
 
 	frameCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::Frame);
 	graphicsCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::Graphics);
@@ -804,6 +804,9 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 //**********************************************************************************************************************
 VulkanAPI::~VulkanAPI()
 {
+	// Should be set here, to destroy resources.
+	forceResourceDestroy = false;
+
 	delete computeCommandBuffer;
 	delete transferCommandBuffer;
 	delete graphicsCommandBuffer;
