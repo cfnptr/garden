@@ -224,6 +224,3 @@ auto transformView = manager->get<TransformComponent>(someEntity);
 
 **Note!** It’s better to access a component using the system instance rather than 
 the **Manager**, as this bypasses the system lookup inside, improving performance.
-
-
-#### See also [Systems](docs/Systems.md) tutorial <-

@@ -63,10 +63,10 @@ AnimationSystem::~AnimationSystem()
 }
 
 //**********************************************************************************************************************
-static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent* animationComponent)
+static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent& animationComp)
 {
-	auto entity = animationComponent->getEntity();
-	if (!entity || !animationComponent->isPlaying || !animationComponent->active.empty())
+	auto entity = animationComp.getEntity();
+	if (!entity || !animationComp.isPlaying || !animationComp.active.empty())
 		return;
 
 	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
@@ -76,8 +76,8 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 			return;
 	}
 
-	const auto& componentAnimations = animationComponent->getAnimations();
-	auto searchResult = componentAnimations.find(animationComponent->active);
+	const auto& componentAnimations = animationComp.getAnimations();
+	auto searchResult = componentAnimations.find(animationComp.active);
 	if (searchResult == componentAnimations.end())
 		return;
 
@@ -86,19 +86,18 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	if (keyframes.empty())
 		return;
 
-	auto keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
+	auto keyframeB = keyframes.lower_bound((int32)ceil(animationComp.frame));
 	if (keyframeB == keyframes.end())
 	{
 		if (!animationView->isLooped && keyframes.size() > 1)
 		{
-			animationComponent->isPlaying = false;
+			animationComp.isPlaying = false;
 			return;
 		}
 
 		keyframeB--;
-		animationComponent->frame = keyframeB->first == 0 ? 0.0f :
-			fmod(animationComponent->frame, (float)keyframeB->first);
-		keyframeB = keyframes.lower_bound((int32)ceil(animationComponent->frame));
+		animationComp.frame = keyframeB->first == 0 ? 0.0f : fmod(animationComp.frame, (float)keyframeB->first);
+		keyframeB = keyframes.lower_bound((int32)ceil(animationComp.frame));
 		GARDEN_ASSERT(keyframeB != keyframes.end()); // Something went wrong :(
 	}
 
@@ -123,7 +122,7 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 	}
 	else
 	{
-		auto currentFrame = animationComponent->frame;
+		auto currentFrame = animationComp.frame;
 		auto frameA = keyframeA->first, frameB = keyframeB->first;
 		auto frameDiff = frameB - frameA;
 		auto t = frameDiff == 0 ? 1.0f : (currentFrame - frameA) / (float)frameDiff;
@@ -148,11 +147,11 @@ static void animateComponent(const LinearPool<Animation>* animations, AnimationC
 
 	if (!animationView->isLooped && keyframes.size() == 1)
 	{
-		animationComponent->isPlaying = false;
+		animationComp.isPlaying = false;
 		return;
 	}
 
-	animationComponent->frame += InputSystem::Instance::get()->getDeltaTime() * animationView->frameRate;
+	animationComp.frame += InputSystem::Instance::get()->getDeltaTime() * animationView->frameRate;
 }
 
 //**********************************************************************************************************************
@@ -160,36 +159,30 @@ void AnimationSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("Animations Update");
 
+	if (components.getCount() == 0)
+		return;
+
 	auto animations = &this->animations;
 	auto componentData = components.getData();
-	auto occupancy = components.getOccupancy();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 
 	if (animateAsync && threadSystem)
 	{
-		if (occupancy == 0)
-			return;
-
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
 		{
 			auto itemCount = task.getItemCount();
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-			{
-				auto animationView = &componentData[i];
-				animateComponent(animations, animationView);
-			}
+				animateComponent(animations, componentData[i]);
 		}),
-		occupancy);
+		components.getOccupancy());
 		threadPool.wait();
 	}
 	else
 	{
-		for (uint32 i = 0; i < occupancy; i++)
-		{
-			auto animationView = &componentData[i];
-			animateComponent(animations, animationView);
-		}
+		auto componentOccupancy = components.getOccupancy();
+		for (uint32 i = 0; i < componentOccupancy; i++)
+			animateComponent(animations, componentData[i]);
 	}
 }
 

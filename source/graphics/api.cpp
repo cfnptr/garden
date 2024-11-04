@@ -27,7 +27,7 @@
 #endif
 #endif
 
-using namespace garden::graphics;
+using namespace garden;
 
 GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen)
 {

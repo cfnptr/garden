@@ -204,31 +204,28 @@ void SpawnerSystem::update()
 
 	auto transformSystem = TransformSystem::Instance::get();
 	auto currentTime = InputSystem::Instance::get()->getTime();
-	auto componentData = components.getData();
-	auto occupancy = components.getOccupancy();
 
-	for (uint32 i = 0; i < occupancy; i++)
+	for (auto& spawner : components)
 	{
-		auto spawnerView = &componentData[i];
-		if (!spawnerView->isActive || (spawnerView->path.empty() && !spawnerView->prefab))
+		if (!spawner.getEntity() || !spawner.isActive || (spawner.path.empty() && !spawner.prefab))
 			continue;
 
-		auto transformView = transformSystem->tryGetComponent(spawnerView->entity);
+		auto transformView = transformSystem->tryGetComponent(spawner.getEntity());
 		if (transformView && !transformView->isActive())
 			continue;
 
-		if (spawnerView->delay != 0.0f)
+		if (spawner.delay != 0.0f)
 		{
-			if (spawnerView->delayTime > currentTime)
+			if (spawner.delayTime > currentTime)
 				continue;
 		}
 
-		auto mode = spawnerView->mode;
+		auto mode = spawner.mode;
 		if (mode == SpawnMode::OneShot)
 		{
-			auto difference = (int64)spawnerView->maxCount - spawnerView->spawnedEntities.size();
+			auto difference = (int64)spawner.maxCount - spawner.spawnedEntities.size();
 			if (difference > 0)
-				spawnerView->spawn(difference);
+				spawner.spawn(difference);
 		}
 	}
 }

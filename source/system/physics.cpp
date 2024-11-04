@@ -839,7 +839,7 @@ void RigidbodyComponent::destroyAllConstraints()
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
 	auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
-	auto hasEntities = Manager::Instance::get()->getEntities().getOccupancy() > 0; // Detecting termination cleanup
+	auto hasEntities = Manager::Instance::get()->getEntities().getCount() > 0; // Detecting termination cleanup
 
 	for (auto i = constraints.rbegin(); i != constraints.rend(); i++)
 	{

@@ -22,7 +22,7 @@
 #include "garden/graphics/vulkan/swapchain.hpp"
 #include "garden/graphics/vulkan/command-buffer.hpp"
 
-namespace garden::graphics
+namespace garden
 {
 
 #ifndef VK_DS_POOL_COMBINED_SAMPLER_COUNT

@@ -416,14 +416,14 @@ bool Pipeline::destroy()
 	if (!graphicsAPI->forceResourceDestroy)
 	{
 		auto pipelineInstance = graphicsAPI->getPipeline(type, this);
-		const auto descriptorSetData = graphicsAPI->descriptorSetPool.getData();
-		auto descriptorSetOccupancy = graphicsAPI->descriptorSetPool.getOccupancy();
-
-		for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+		for (auto& descriptorSet : graphicsAPI->descriptorSetPool)
 		{
-			const auto& descriptorSet = descriptorSetData[i];
-			if (descriptorSet.getPipelineType() != type || descriptorSet.getPipeline() != pipelineInstance)
+			if (!ResourceExt::getInstance(descriptorSet) || descriptorSet.getPipelineType() != type ||
+				descriptorSet.getPipeline() != pipelineInstance)
+			{
 				continue;
+			}
+
 			throw GardenError("Descriptor set is still using destroyed pipeline. (pipeline: " +
 				debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
 		}

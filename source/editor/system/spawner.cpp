@@ -67,22 +67,19 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::tryGet();
 	const auto& components = spawnerSystem->getComponents();
-	auto occupancy = components.getOccupancy();
-	auto componentData = components.getData();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	for (uint32 i = 0; i < occupancy; i++)
+	for (const auto& spawner : components)
 	{
-		auto spawnerView = &componentData[i];
-		if (!spawnerView->getEntity())
+		if (!spawner.getEntity())
 			continue;
 
-		auto entity = spawnerView->getEntity();
+		auto entity = spawner.getEntity();
 		if (!searchString.empty())
 		{
-			if (!find(spawnerView->path.generic_string(), searchString, *entity, searchCaseSensitive) &&
-				!find(spawnerView->prefab.toBase64(), searchString, *entity, searchCaseSensitive))
+			if (!find(spawner.path.generic_string(), searchString, *entity, searchCaseSensitive) &&
+				!find(spawner.prefab.toBase64(), searchString, *entity, searchCaseSensitive))
 			{
 				continue;
 			}
@@ -103,17 +100,17 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 		{
 			name = "Entity " + to_string(*entity);
 		}
-		if (!spawnerView->path.empty() || spawnerView->prefab)
+		if (!spawner.path.empty() || spawner.prefab)
 		{
 			name += " (";
-			if (!spawnerView->path.empty())
+			if (!spawner.path.empty())
 			{
-				name += spawnerView->path.generic_string();
-				if (spawnerView->prefab)
+				name += spawner.path.generic_string();
+				if (spawner.prefab)
 					name += ", ";
 			}
-			if (spawnerView->prefab)
-				name += spawnerView->prefab.toBase64();
+			if (spawner.prefab)
+				name += spawner.prefab.toBase64();
 			name += ")";
 		}
 		if (ImGui::TreeNodeEx(name.c_str(), flags))

@@ -93,18 +93,15 @@ void SkyboxRenderSystem::imageLoaded()
 	auto resourceSystem = ResourceSystem::Instance::get();
 	auto image = resourceSystem->getLoadedImage();
 	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
-	auto componentData = components.getData();
-	auto occupancy = components.getOccupancy();
 	Ref<DescriptorSet> descriptorSet = {};
 
-	for (uint32 i = 0; i < occupancy; i++)
+	for (auto& skybox : components)
 	{
-		auto skyboxView = &componentData[i];
-		if (skyboxView->cubemap != image || skyboxView->descriptorSet)
+		if (skybox.cubemap != image || skybox.descriptorSet)
 			continue;
 		if (!descriptorSet)
 			descriptorSet = createSharedDS(imagePath.generic_string(), image);
-		skyboxView->descriptorSet = descriptorSet;
+		skybox.descriptorSet = descriptorSet;
 	}
 }
 

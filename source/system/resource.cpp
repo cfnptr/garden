@@ -1899,14 +1899,11 @@ void ResourceSystem::clearScene()
 	auto manager = Manager::Instance::get();
 	auto transformSystem = TransformSystem::Instance::tryGet();
 	const auto& entities = manager->getEntities();
-	auto entityOccupancy = entities.getOccupancy();
-	auto entityData = entities.getData();
 
-	for (uint32 i = 0; i < entityOccupancy; i++)
+	for (const auto& entity : entities)
 	{
-		auto entityView = &entityData[i];
-		auto entityID = entities.getID(entityView);
-		if (entityView->getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
+		auto entityID = entities.getID(&entity);
+		if (entity.getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
 			continue;
 
 		if (transformSystem)
@@ -1952,19 +1949,16 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 	serializer.write("version", appVersion.toString3());
 	serializer.beginChild("entities");
 	
-	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
 	const auto& entities = manager->getEntities();
-	auto entityOccupancy = entities.getOccupancy();
-	auto entityData = entities.getData();
+	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
 
-	for (uint32 i = 0; i < entityOccupancy; i++)
+	for (const auto& entity : entities)
 	{
-		const auto entityView = &entityData[i];
-		auto instance = entities.getID(entityView);
-		const auto& components = entityView->getComponents();
-
+		const auto& components = entity.getComponents();
 		if (components.empty())
 			continue;
+
+		auto instance = entities.getID(&entity);
 
 		View<TransformComponent> transformView = {};
 		if (transformSystem)
