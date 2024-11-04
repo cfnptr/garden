@@ -27,10 +27,13 @@
 #include "vulkan/vulkan.hpp"
 #include "vk_mem_alloc.h"
 
+namespace garden
+{
+	class VulkanAPI;
+}
+
 namespace garden::graphics
 {
-
-class VulkanAPI;
 
 /**
  * @brief Vulkan API swapchain class.

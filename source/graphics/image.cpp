@@ -205,13 +205,9 @@ bool Image::destroy()
 	if (!graphicsAPI->forceResourceDestroy)
 	{
 		auto imageInstance = graphicsAPI->imagePool.getID(this);
-		const auto imageViewData = graphicsAPI->imageViewPool.getData();
-		auto imageViewOccupancy = graphicsAPI->imageViewPool.getOccupancy();
-
-		for (uint32 i = 0; i < imageViewOccupancy; i++)
+		for (auto& imageView : graphicsAPI->imageViewPool)
 		{
-			const auto& imageView = imageViewData[i];
-			if (imageView.getImage() != imageInstance)
+			if (!ResourceExt::getInstance(imageView) || imageView.getImage() != imageInstance)
 				continue;
 			throw GardenError("Image view is still using destroyed image. (image: " +
 				debugName + ", imageView: " + imageView.getDebugName() + ")");
@@ -703,12 +699,8 @@ bool ImageView::destroy()
 	if (!graphicsAPI->forceResourceDestroy)
 	{
 		auto imageViewInstance = graphicsAPI->imageViewPool.getID(this);
-		const auto descriptorSetData = graphicsAPI->descriptorSetPool.getData();
-		auto descriptorSetOccupancy = graphicsAPI->descriptorSetPool.getOccupancy();
-
-		for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+		for (auto& descriptorSet : graphicsAPI->descriptorSetPool)
 		{
-			auto& descriptorSet = descriptorSetData[i];
 			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
 
@@ -740,14 +732,12 @@ bool ImageView::destroy()
 			}
 		}
 
-		auto framebufferData = graphicsAPI->framebufferPool.getData();
-		auto framebufferOccupancy = graphicsAPI->framebufferPool.getOccupancy();
-
-		for (uint32 i = 0; i < framebufferOccupancy; i++)
+		for (auto& framebuffer : graphicsAPI->framebufferPool)
 		{
-			const auto& framebuffer = framebufferData[i];
-			const auto& colorAttachments = framebuffer.getColorAttachments();
+			if (!ResourceExt::getInstance(framebuffer))
+				continue;
 
+			const auto& colorAttachments = framebuffer.getColorAttachments();
 			for (const auto& attachment : colorAttachments)
 			{
 				if (attachment.imageView != imageViewInstance)

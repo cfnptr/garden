@@ -24,8 +24,10 @@
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
-namespace garden::graphics
+namespace garden
 {
+
+using namespace garden::graphics;
 
 /**
  * @brief Graphics API backend types.

@@ -18,7 +18,7 @@
 #include "garden/profiler.hpp"
 
 using namespace math;
-using namespace garden::graphics;
+using namespace garden;
 
 //**********************************************************************************************************************
 static vk::CommandBuffer createVkCommandBuffer(vk::Device device, vk::CommandPool commandPool)

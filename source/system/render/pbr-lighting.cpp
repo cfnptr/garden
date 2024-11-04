@@ -739,14 +739,13 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	graphicsSystem->destroy(lightingDescriptorSet);
 	lightingDescriptorSet = {};
 
-	auto pbrLightingComponents = components.getData();
-	auto pbrLightingOccupancy = components.getOccupancy();
-	for (uint32 i = 0; i < pbrLightingOccupancy; i++)
+	for (auto& pbrLighting : components)
 	{
-		auto pbrLightingView = &pbrLightingComponents[i];
-		if (pbrLightingView->descriptorSet.isLastRef())
-			graphicsSystem->destroy(ID<DescriptorSet>(pbrLightingView->descriptorSet));
-		pbrLightingView->descriptorSet = {};
+		if (!pbrLighting.getEntity())
+			continue;
+		if (pbrLighting.descriptorSet.isLastRef())
+			graphicsSystem->destroy(ID<DescriptorSet>(pbrLighting.descriptorSet));
+		pbrLighting.descriptorSet = {};
 	}
 
 	if (this->hasShadowBuffer != useShadowBuffer)

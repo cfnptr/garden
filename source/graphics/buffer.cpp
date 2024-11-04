@@ -135,12 +135,8 @@ bool Buffer::destroy()
 	if (!graphicsAPI->forceResourceDestroy)
 	{
 		auto bufferInstance = graphicsAPI->bufferPool.getID(this);
-		const auto descriptorSetData = graphicsAPI->descriptorSetPool.getData();
-		auto descriptorSetOccupancy = graphicsAPI->descriptorSetPool.getOccupancy();
-
-		for (uint32 i = 0; i < descriptorSetOccupancy; i++)
+		for (auto& descriptorSet : graphicsAPI->descriptorSetPool)
 		{
-			auto& descriptorSet = descriptorSetData[i];
 			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
 

@@ -27,7 +27,6 @@
 #include <iostream>
 
 using namespace garden;
-using namespace garden::graphics;
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
