@@ -33,8 +33,6 @@
 using namespace garden;
 using namespace garden::primitive;
 
-#if GARDEN_EDITOR
-//**********************************************************************************************************************
 namespace
 {
 	struct LinePC
@@ -51,16 +49,18 @@ namespace
 	};
 }
 
-// TODO: Separate into an ImGuiSystem
-
-void GraphicsSystem::initializeImGui()
+#if GARDEN_EDITOR
+//**********************************************************************************************************************
+static void initializeImGui() // TODO: Separate into an ImGuiSystem
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	setImGuiStyle();
 
 	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto window = (GLFWwindow*)graphicsAPI->window;
+	auto framebufferSize = graphicsAPI->swapchain->getFramebufferSize();
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -77,14 +77,14 @@ void GraphicsSystem::initializeImGui()
 		};
 
 		// Hack for the ImGui render pass creation.
-		auto imGuiFramebuffer = createFramebuffer(framebufferSize, std::move(subpasses));
+		auto imGuiFramebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(subpasses));
 		auto framebufferView = vulkanAPI->framebufferPool.get(imGuiFramebuffer);
 		ImGuiData::renderPass = (VkRenderPass)FramebufferExt::getRenderPass(**framebufferView);
 		vulkanAPI->device.destroyFramebuffer(vk::Framebuffer((VkFramebuffer)
 			ResourceExt::getInstance(**framebufferView)));
 		ResourceExt::getInstance(**framebufferView) = nullptr;
 		FramebufferExt::getRenderPass(**framebufferView) = nullptr;
-		destroy(imGuiFramebuffer);
+		graphicsSystem->destroy(imGuiFramebuffer);
 
 		vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
 			1, nullptr, framebufferSize.x, framebufferSize.y, 1);
@@ -99,7 +99,7 @@ void GraphicsSystem::initializeImGui()
 			ImGuiData::framebuffers[i] = vulkanAPI->device.createFramebuffer(framebufferInfo);
 		}
 		
-		ImGui_ImplGlfw_InitForVulkan(window, true);
+		ImGui_ImplGlfw_InitForVulkan(window, false);
 		ImGui_ImplVulkan_InitInfo init_info = {};
 		init_info.Instance = vulkanAPI->instance;
 		init_info.PhysicalDevice = vulkanAPI->physicalDevice;
@@ -121,15 +121,16 @@ void GraphicsSystem::initializeImGui()
 	}
 	else abort();
 	
+	auto inputSystem = InputSystem::Instance::get();
+	auto windowSize = inputSystem->getWindowSize();
+	auto contentScale = inputSystem->getContentScale();
 	auto pixelRatioXY = (float2)framebufferSize / windowSize;
 	auto pixelRatio = std::max(pixelRatioXY.x, pixelRatioXY.y);
-	auto contentScaleX = 0.0f, contentScaleY = 0.0f;
-	glfwGetWindowContentScale(window, &contentScaleX, &contentScaleY);
-	auto contentScale = std::max(contentScaleX, contentScaleY);
+	auto fontScale = std::max(contentScale.x, contentScale.y);
 
 	auto& io = ImGui::GetIO();
 	const auto fontPath = "fonts/dejavu-bold.ttf";
-	const auto fontSize = 14.0f * contentScale;
+	const auto fontSize = 14.0f * fontScale;
 
 	#if GARDEN_DEBUG
 	auto fontString = (GARDEN_RESOURCES_PATH / fontPath).generic_string();
@@ -146,10 +147,20 @@ void GraphicsSystem::initializeImGui()
 
 	io.FontGlobalScale = 1.0f / pixelRatio;
 	io.DisplayFramebufferScale = ImVec2(pixelRatioXY.x, pixelRatioXY.y);
-
 	// TODO: dynamically detect when system scale is changed or moved to another monitor and recreate fonts.
+
+	auto& platformIO = ImGui::GetPlatformIO();
+	platformIO.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text)
+	{
+		InputSystem::Instance::get()->setClipboard(text);
+	};
+	platformIO.Platform_GetClipboardTextFn = [](ImGuiContext*)
+	{
+		auto inputSystem = InputSystem::Instance::get();
+		return inputSystem->getClipboard().empty() ? nullptr : inputSystem->getClipboard().c_str();
+	};
 }
-void GraphicsSystem::terminateImGui()
+static void terminateImGui()
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -165,20 +176,22 @@ void GraphicsSystem::terminateImGui()
 
 	ImGui::DestroyContext();
 }
-void GraphicsSystem::recreateImGui()
+static void recreateImGui()
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
+		auto framebufferSize = vulkanAPI->swapchain->getFramebufferSize();
+
 		for (auto framebuffer : ImGuiData::framebuffers)
 			vulkanAPI->device.destroyFramebuffer(framebuffer);
 
 		vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
 			1, nullptr, framebufferSize.x, framebufferSize.y, 1);
-		ImGuiData::framebuffers.resize(vulkanAPI->swapchain->getBufferCount());
-
 		auto& swapchainBuffers = vulkanAPI->swapchain->getBuffers();
-		for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
+		ImGuiData::framebuffers.resize(swapchainBuffers.size());
+
+		for (uint32 i = 0; i < (uint32)swapchainBuffers.size(); i++)
 		{
 			auto colorImage = vulkanAPI->imagePool.get(swapchainBuffers[i]->colorImage);
 			auto imageView = vulkanAPI->imageViewPool.get(colorImage->getDefaultView());
@@ -223,22 +236,18 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 
 	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getAppDataName(),
 		appInfoSystem->getVersion(), windowSize, threadCount, useVsync, useTripleBuffering, isFullscreen);
-	auto graphicsAPI = GraphicsAPI::get();
 
-	int sizeX = 0, sizeY = 0;
-	auto window = (GLFWwindow*)graphicsAPI->window;
-	glfwGetFramebufferSize(window, &sizeX, &sizeY);
-	framebufferSize = uint2(sizeX, sizeY);
-	glfwGetWindowSize(window, &sizeX, &sizeY);
-	this->windowSize = uint2(sizeX, sizeY);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
+	auto swapchainImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
+	auto swapchainImageView = swapchainImage->getDefaultView();
+	auto framebufferSize = (uint2)swapchainImage->getSize();
 
 	if (depthStencilFormat != Image::Format::Undefined)
 		depthStencilBuffer = createDepthStencilBuffer(framebufferSize, depthStencilFormat);
 
-	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
-	auto swapchainImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
 	swapchainFramebuffer = graphicsAPI->framebufferPool.create(
-		framebufferSize, swapchainImage->getDefaultView(), depthStencilBuffer);
+		framebufferSize, swapchainImageView, depthStencilBuffer);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	auto swapchainBufferCount = graphicsAPI->swapchain->getBufferCount();
@@ -282,71 +291,57 @@ GraphicsSystem::~GraphicsSystem()
 }
 
 //**********************************************************************************************************************
-static string getDeviceDriverVersion()
+static string getVkDeviceDriverVersion()
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto vulkanAPI = VulkanAPI::get();
+	auto version = vulkanAPI->deviceProperties.properties.driverVersion;
+	if (vulkanAPI->deviceProperties.properties.vendorID == 0x10DE) // Nvidia
 	{
-		auto vulkanAPI = VulkanAPI::get();
-		auto version = vulkanAPI->deviceProperties.properties.driverVersion;
-		if (vulkanAPI->deviceProperties.properties.vendorID == 0x10DE) // Nvidia
-		{
-			return to_string((version >> 22u) & 0x3FFu) + "." + to_string((version >> 14u) & 0x0FFu) + "." +
-				to_string((version >> 6u) & 0x0ff) + "." + to_string(version & 0x003Fu);
-		}
-
-		#if GARDEN_OS_WINDOWS
-		if (vulkanAPI->deviceProperties.properties.vendorID == 0x8086) // Intel
-			return to_string(version >> 14u) + "." + to_string(version & 0x3FFFu);
-		#endif
-
-		if (vulkanAPI->deviceProperties.properties.vendorID == 0x14E4) // Broadcom
-			return to_string(version / 10000) + "." + to_string((version % 10000) / 100);
-
-		if (vulkanAPI->deviceProperties.properties.vendorID == 0x1010) // ImgTec
-		{
-			if (version > 500000000)
-				return "0.0." + to_string(version);
-			else
-				return to_string(version);
-		}
-
-		return to_string(VK_API_VERSION_MAJOR(version)) + "." + to_string(VK_API_VERSION_MINOR(version)) + "." +
-			to_string(VK_API_VERSION_PATCH(version)) + "." + to_string(VK_API_VERSION_VARIANT(version));
+		return to_string((version >> 22u) & 0x3FFu) + "." + to_string((version >> 14u) & 0x0FFu) + "." +
+			to_string((version >> 6u) & 0x0ff) + "." + to_string(version & 0x003Fu);
 	}
-	else abort();
-}
-static void logGpuInfo()
-{
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		GARDEN_LOG_INFO("GPU: " + string(vulkanAPI->deviceProperties.properties.deviceName.data()));
-		auto apiVersion = vulkanAPI->deviceProperties.properties.apiVersion;
-		GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
-			to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
-		GARDEN_LOG_INFO("Driver version: " + getDeviceDriverVersion());
 
-		if (vulkanAPI->isCacheLoaded)
-			GARDEN_LOG_INFO("Loaded existing pipeline cache.");
+	#if GARDEN_OS_WINDOWS
+	if (vulkanAPI->deviceProperties.properties.vendorID == 0x8086) // Intel
+		return to_string(version >> 14u) + "." + to_string(version & 0x3FFFu);
+	#endif
+
+	if (vulkanAPI->deviceProperties.properties.vendorID == 0x14E4) // Broadcom
+		return to_string(version / 10000) + "." + to_string((version % 10000) / 100);
+
+	if (vulkanAPI->deviceProperties.properties.vendorID == 0x1010) // ImgTec
+	{
+		if (version > 500000000)
+			return "0.0." + to_string(version);
 		else
-			GARDEN_LOG_INFO("Created a new pipeline cache.");
+			return to_string(version);
 	}
-	else abort();
+
+	return to_string(VK_API_VERSION_MAJOR(version)) + "." + to_string(VK_API_VERSION_MINOR(version)) + "." +
+		to_string(VK_API_VERSION_PATCH(version)) + "." + to_string(VK_API_VERSION_VARIANT(version));
+}
+static void logVkGpuInfo()
+{
+	auto vulkanAPI = VulkanAPI::get();
+	GARDEN_LOG_INFO("GPU: " + string(vulkanAPI->deviceProperties.properties.deviceName.data()));
+	auto apiVersion = vulkanAPI->deviceProperties.properties.apiVersion;
+	GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
+		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
+	GARDEN_LOG_INFO("Driver version: " + getVkDeviceDriverVersion());
+
+	if (vulkanAPI->isCacheLoaded)
+		GARDEN_LOG_INFO("Loaded existing pipeline cache.");
+	else
+		GARDEN_LOG_INFO("Created a new pipeline cache.");
 }
 
 void GraphicsSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
-	
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (threadSystem)
-	{
-		GARDEN_LOG_INFO("Foreground thread pool size: " + 
-			to_string(threadSystem->getForegroundPool().getThreadCount()));
-	}
 
-	GARDEN_LOG_INFO("Framebuffer size: " + to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
-	logGpuInfo();
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		logVkGpuInfo();
+	else abort();
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -394,24 +389,6 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 	return view;
 }
 
-//**********************************************************************************************************************
-static void updateWindowInput(uint2& framebufferSize, uint2& windowSize, bool& isFramebufferSizeValid)
-{
-	int sizeX = 0, sizeY = 0;
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
-	glfwGetFramebufferSize(window, &sizeX, &sizeY);
-
-	isFramebufferSizeValid = sizeX != 0 && sizeY != 0;
-	if (isFramebufferSizeValid)
-		framebufferSize = uint2(sizeX, sizeY);
-
-	glfwGetWindowSize(window, &sizeX, &sizeY);
-
-	if (sizeX != 0 && sizeY != 0)
-		windowSize = uint2(sizeX, sizeY);
-}
-
-//**********************************************************************************************************************
 static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -429,7 +406,6 @@ static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 	}
 }
 
-//**********************************************************************************************************************
 static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 	ID<ImageView> depthStencilBuffer, uint2 framebufferSize)
 {
@@ -504,10 +480,107 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 }
 
 //**********************************************************************************************************************
+static int getKeyboardMods(InputSystem* inputSystem)
+{
+	int mods = 0;
+	if (inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightShift))
+		mods |= GLFW_MOD_SHIFT;
+	if (inputSystem->getKeyboardState(KeyboardButton::LeftControl) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightControl))
+		mods |= GLFW_MOD_CONTROL;
+	if (inputSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightAlt))
+		mods |= GLFW_MOD_ALT;
+	if (inputSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightSuper))
+		mods |= GLFW_MOD_SUPER;
+	// TODO: check caps lock if enabled GLFW_LOCK_KEY_MODS input mode
+	return mods;
+}
+
+#if GARDEN_EDITOR
+extern ImGuiKey ImGui_ImplGlfw_KeyToImGuiKey(int keycode, int scancode);
+
+static void updateImGuiKeyModifiers(InputSystem* inutSystem, ImGuiIO& io)
+{
+	io.AddKeyEvent(ImGuiMod_Ctrl, inutSystem->getKeyboardState(KeyboardButton::LeftControl) || 
+		inutSystem->getKeyboardState(KeyboardButton::RightControl));
+	io.AddKeyEvent(ImGuiMod_Shift, inutSystem->getKeyboardState(KeyboardButton::LeftShift) ||
+		inutSystem->getKeyboardState(KeyboardButton::RightShift));
+	io.AddKeyEvent(ImGuiMod_Alt, inutSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
+		inutSystem->getKeyboardState(KeyboardButton::RightAlt));
+	io.AddKeyEvent(ImGuiMod_Super, inutSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
+		inutSystem->getKeyboardState(KeyboardButton::RightSuper));
+}
+
+// WARNING! Check for changes in the underlying ImGui functions to prevent possible race conditions!
+static void updateImGuiGlfwInput() 
+{
+	auto inputSystem = InputSystem::Instance::get();
+	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
+	auto cursorPos = inputSystem->getCursorPosition();
+	ImGui_ImplGlfw_CursorPosCallback(window, cursorPos.x, cursorPos.y);
+
+	// TODO: ImGui_ImplGlfw_CursorEnterCallback(nullptr, ...);
+	// On window focus change: io.AddFocusEvent(focused != 0);
+
+	auto& io = ImGui::GetIO();
+	auto mouseScroll = inputSystem->getMouseScroll();
+	io.AddMouseWheelEvent(mouseScroll.x, mouseScroll.y);
+
+	for (uint8 i = 0; i < keyboardButtonCount; i++)
+	{
+		auto button = allKeyboardButtons[i];
+
+		int action = -1;
+		if (inputSystem->isKeyboardPressed(button))
+			action = GLFW_PRESS;
+		else if (inputSystem->isKeyboardReleased(button))
+			action = GLFW_RELEASE;
+
+		if (action != -1)
+		{
+			updateImGuiKeyModifiers(inputSystem, io);
+			auto scancode = glfwGetKeyScancode((int)button);
+			auto imgui_key = ImGui_ImplGlfw_KeyToImGuiKey((int)button, scancode);
+			io.AddKeyEvent(imgui_key, (action == GLFW_PRESS));
+			io.SetKeyEventNativeData(imgui_key, (int)button, scancode); // To support legacy indexing (<1.87 user code)
+		}
+	}
+	for (int i = 0; i < (int)MouseButton::Last + 1; i++)
+	{
+		int action = -1;
+		if (inputSystem->isMousePressed((MouseButton)i))
+			action = GLFW_PRESS;
+		else if (inputSystem->isMouseReleased((MouseButton)i))
+			action = GLFW_RELEASE;
+
+		if (action != -1)
+		{
+			updateImGuiKeyModifiers(inputSystem, io);
+			if (i >= 0 && i < ImGuiMouseButton_COUNT)
+				io.AddMouseButtonEvent(i, action == GLFW_PRESS);
+		}
+	}
+
+	const auto& keyboardChars = inputSystem->getKeyboardChars32();
+	for (psize i = 0; i < keyboardChars.size(); i++)
+		io.AddInputCharacter(keyboardChars[i]);
+}
+#endif
+
+//**********************************************************************************************************************
 void GraphicsSystem::input()
 {
-	updateWindowInput(framebufferSize, windowSize, isFramebufferSizeValid);
+	auto inputSystem = InputSystem::Instance::get();
+	auto windowFramebufferSize = inputSystem->getFramebufferSize();
+	isFramebufferSizeValid = windowFramebufferSize.x > 0 && windowFramebufferSize.y > 0;
 	beginSleepClock = isFramebufferSizeValid ? 0.0 : mpio::OS::getCurrentClock();
+
+	#if GARDEN_EDITOR
+	updateImGuiGlfwInput();
+	#endif
 }
 void GraphicsSystem::update()
 {
@@ -515,14 +588,15 @@ void GraphicsSystem::update()
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto swapchain = graphicsAPI->swapchain;
+	auto inputSystem = InputSystem::Instance::get();
 
 	SwapchainChanges newSwapchainChanges;
-	newSwapchainChanges.framebufferSize = framebufferSize != swapchain->getFramebufferSize();
+	newSwapchainChanges.framebufferSize = inputSystem->getFramebufferSize() != swapchain->getFramebufferSize();
 	newSwapchainChanges.bufferCount = useTripleBuffering != swapchain->isUseTripleBuffering();
 	newSwapchainChanges.vsyncState = useVsync != swapchain->isUseVsync();
 
 	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
-		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState || suboptimalSwapchain);
+		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState || outOfDateSwapchain);
 
 	swapchainChanges.framebufferSize |= newSwapchainChanges.framebufferSize;
 	swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
@@ -532,8 +606,9 @@ void GraphicsSystem::update()
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
-		swapchain->recreate(framebufferSize, useVsync, useTripleBuffering);
-		suboptimalSwapchain = false;
+		swapchain->recreate(inputSystem->getFramebufferSize(), useVsync, useTripleBuffering);
+		auto framebufferSize = swapchain->getFramebufferSize();
+		outOfDateSwapchain = false;
 
 		if (depthStencilBuffer)
 		{
@@ -551,7 +626,7 @@ void GraphicsSystem::update()
 		recreateImGui();
 		#endif
 
-		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" + 
+		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
 			to_string(framebufferSize.y) + ", " + to_string(swapchain->getBufferCount()) + "B)");
 	}
 
@@ -567,12 +642,13 @@ void GraphicsSystem::update()
 		if (!swapchain->acquireNextImage(&threadSystem->getForegroundPool()))
 		{
 			isFramebufferSizeValid = false;
-			suboptimalSwapchain = true;
-			GARDEN_LOG_WARN("Suboptimal or out of date swapchain.");
+			outOfDateSwapchain = true;
+			GARDEN_LOG_DEBUG("Out of date swapchain.");
 		}
 	}
 
-	updateCurrentFramebuffer(swapchainFramebuffer, depthStencilBuffer, framebufferSize);
+	updateCurrentFramebuffer(swapchainFramebuffer, 
+		depthStencilBuffer, swapchain->getFramebufferSize());
 	
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
@@ -586,9 +662,8 @@ void GraphicsSystem::update()
 	{
 		prepareCameraConstants(camera, directionalLight,
 			getScaledFramebufferSize(), currentCameraConstants);
-		auto swapchainBufferIndex = swapchain->getCurrentBufferIndex();
 		auto cameraBuffer = graphicsAPI->bufferPool.get(
-			cameraConstantsBuffers[swapchainBufferIndex][0]);
+			cameraConstantsBuffers[swapchain->getCurrentBufferIndex()][0]);
 		cameraBuffer->writeData(&currentCameraConstants);
 	}
 
@@ -649,8 +724,8 @@ void GraphicsSystem::present()
 		if (!graphicsAPI->swapchain->present())
 		{
 			isFramebufferSizeValid = false;
-			suboptimalSwapchain = true;
-			GARDEN_LOG_WARN("Suboptimal or out of date swapchain.");
+			outOfDateSwapchain = true;
+			GARDEN_LOG_DEBUG("Out of date swapchain.");
 		}
 		frameIndex++;
 	}
@@ -683,8 +758,14 @@ void GraphicsSystem::setRenderScale(float renderScale)
 	swapchainChanges.framebufferSize = true;
 	recreateSwapchain(swapchainChanges);
 }
+
+uint2 GraphicsSystem::getFramebufferSize() const noexcept
+{
+	return GraphicsAPI::get()->swapchain->getFramebufferSize();
+}
 uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
 {
+	auto framebufferSize = GraphicsAPI::get()->swapchain->getFramebufferSize();
 	return max((uint2)(float2(framebufferSize) * renderScale), uint2(1));
 }
 

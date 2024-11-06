@@ -80,6 +80,7 @@ static string getCurrentDate()
 //**********************************************************************************************************************
 LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : Singleton(setSingleton)
 {
+	mpmt::Thread::setName("MAIN");
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 
 	try
@@ -94,7 +95,6 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 			level, GARDEN_DEBUG ? true : false, rotationTime);
 	}
 
-	mpmt::Thread::setName("MAIN");
 	info("Started logging system. (UTC+0)");
 	info("Date: " + getCurrentDate());
 	info(appInfoSystem->getName() + " [v" + appInfoSystem->getVersion().toString3() + "]");

@@ -72,14 +72,16 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 }
 
 //**********************************************************************************************************************
-static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, uint2 framebufferSize)
+static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, uint2& framebufferSize)
 {
 	if (capabilities.currentExtent.width == UINT32_MAX)
 	{
-		return vk::Extent2D(
+		framebufferSize = uint2(
 			clamp(framebufferSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
 			clamp(framebufferSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
+		return vk::Extent2D(framebufferSize.x, framebufferSize.y);
 	}
+	framebufferSize = uint2(capabilities.currentExtent.width, capabilities.currentExtent.height);
 	return capabilities.currentExtent;
 }
 
@@ -134,7 +136,7 @@ static vk::PresentModeKHR getBestVkPresentMode(
 }
 
 //**********************************************************************************************************************
-static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize,
+static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2& framebufferSize,
 	bool useVsync, bool useTripleBuffering, vk::SwapchainKHR oldSwapchain, vk::Format& format)
 {
 	auto capabilities = vulkanAPI->physicalDevice.getSurfaceCapabilitiesKHR(vulkanAPI->surface);
@@ -223,7 +225,7 @@ static void destroyVkSwapchainBuffers(VulkanAPI* vulkanAPI, const vector<VulkanS
 
 //**********************************************************************************************************************
 VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bool useVsync,
-	bool useTripleBuffering) : Swapchain(framebufferSize, useVsync, useTripleBuffering)
+	bool useTripleBuffering) : Swapchain(useVsync, useTripleBuffering)
 {
 	this->vulkanAPI = vulkanAPI;
 
@@ -241,6 +243,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
 	vulkanBuffers = createVkSwapchainBuffers(vulkanAPI, instance, framebufferSize, format);
 	buffers.assign(vulkanBuffers.begin(), vulkanBuffers.end());
+	this->framebufferSize = framebufferSize;
 }
 VulkanSwapchain::~VulkanSwapchain()
 {
@@ -287,11 +290,10 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 	auto result = vulkanAPI->device.acquireNextImageKHR(instance,
 		UINT64_MAX, imageAcquiredSemaphores[frameIndex], {}, &bufferIndex);
 		
-	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
+	if (result == vk::Result::eErrorOutOfDateKHR)
 		return false;
-	else if (result != vk::Result::eSuccess)
+	else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 		throw GardenError("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
-	// TODO: recreate surface and swapchain on vk::Result::eErrorSurfaceLostKHR 
 
 	auto buffer = vulkanBuffers[bufferIndex];
 	if (threadPool)
@@ -331,9 +333,9 @@ bool VulkanSwapchain::present()
 	auto result = vulkanAPI->frameQueue.presentKHR(&presentInfo); // & is required here.
 	frameIndex = (frameIndex + 1) % frameLag;
 
-	if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
+	if (result == vk::Result::eErrorOutOfDateKHR)
 		return false;
-	else if (result != vk::Result::eSuccess)
+	else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 		throw GardenError("Failed to present image. (error: " + vk::to_string(result) + ")");
 	return true;
 }

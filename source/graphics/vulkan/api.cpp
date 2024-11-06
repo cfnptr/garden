@@ -15,7 +15,6 @@
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "mpio/directory.hpp"
-#include "GLFW/glfw3.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -49,13 +48,6 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData)
 {
-	// TODO: investigate this error after driver/SDK updates.
-	if (callbackData->messageIdNumber == -1254218959 || callbackData->messageIdNumber == -2080204129 ||
-		callbackData->messageIdNumber == 774851941)
-	{
-		return VK_FALSE;
-	}
-
 	const char* severity;
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 		severity = "VERBOSE";

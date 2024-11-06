@@ -223,7 +223,7 @@ void MeshGizmosEditorSystem::editorRender()
 	auto cameraPosition = (float3)cameraConstants.cameraPos;
 	auto model = transformView->calcModel(cameraPosition);
 	
-	auto windowSize = graphicsSystem->getWindowSize();
+	auto windowSize = inputSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();
 	auto rotation = (inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
 		inputSystem->getKeyboardState(KeyboardButton::RightShift)) &&

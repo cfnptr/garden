@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/thread.hpp"
+#include "garden/system/log.hpp"
 #include "garden/os.hpp"
 
 using namespace garden;
@@ -22,18 +23,24 @@ ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 	backgroundPool(true, "BG", mpio::OS::getLogicalCpuCount()),
 	foregroundPool(false, "FG", getBestForegroundThreadCount())
 {
-	mpmt::Thread::setForegroundPriority();
+	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ThreadSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 }
 ThreadSystem::~ThreadSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ThreadSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
+	}
 	unsetSingleton();
 }
 
+void ThreadSystem::preInit()
+{
+	GARDEN_LOG_INFO("Foreground thread pool size: " + to_string(foregroundPool.getThreadCount()));
+}
 void ThreadSystem::preDeinit()
 {
-	backgroundPool.removeAll();
 	backgroundPool.wait();
 }

@@ -64,8 +64,8 @@ void Controller2DSystem::init()
 	linkView->setTag("MainCamera");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto windowSize = graphicsSystem->getWindowSize();
-	auto aspectRatio = (float)windowSize.x / (float)windowSize.y;
+	auto framebufferSize = graphicsSystem->getFramebufferSize();
+	auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
 	const auto defaultSize = 2.0f;
 
 	auto cameraView = manager->add<CameraComponent>(camera);
@@ -145,7 +145,7 @@ void Controller2DSystem::updateCameraControll()
 	if (inputSystem->getMouseState(MouseButton::Right))
 	{
 		auto cursorDelta = inputSystem->getCursorDelta();
-		auto windowSize = (float2)GraphicsSystem::Instance::get()->getWindowSize();
+		auto windowSize = (float2)inputSystem->getWindowSize();
 		auto othoSize = float2(
 			cameraView->p.orthographic.width.y - cameraView->p.orthographic.width.x,
 			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);

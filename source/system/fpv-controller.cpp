@@ -64,11 +64,11 @@ void FpvControllerSystem::init()
 	linkView->setTag("MainCamera");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto windowSize = graphicsSystem->getWindowSize();
+	auto framebufferSize = graphicsSystem->getFramebufferSize();
 
 	auto cameraView = manager->add<CameraComponent>(camera);
 	cameraView->type = ProjectionType::Perspective;
-	cameraView->p.perspective.aspectRatio = (float)windowSize.x / (float)windowSize.y;
+	cameraView->p.perspective.aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
 
 	GARDEN_ASSERT(!graphicsSystem->camera); // Several main cameras detected!
 	graphicsSystem->camera = camera;

@@ -58,7 +58,7 @@ enum class KeyboardButton : int
  */
 enum class MouseButton : int
 {
-	N1 = 0, N2 = 1, N3 = 2, N4 = 3, N5 = 4, N6 = 5, N7 = 6, N8 = 7, Count = 8,
+	N1 = 0, N2 = 1, N3 = 2, N4 = 3, N5 = 4, N6 = 5, N7 = 6, N8 = 7,
 	Last = N8, Left = N1, Right = N2, Middle = N3
 };
 
@@ -125,7 +125,7 @@ constexpr KeyboardButton allKeyboardButtons[keyboardButtonCount] =
  * The input system is responsible for detecting user actions (e.g., key presses, mouse movements, 
  * touch gestures) and translating these into variables or events within a game or application.
  * 
- * Registers events: Input, FileDrop.
+ * Registers events: Input, Output, FileDrop.
  */
 class InputSystem final : public System, public Singleton<InputSystem>
 {
@@ -143,15 +143,32 @@ public:
 	 */
 	static constexpr uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
 private:
+	mutex inputLocker;
+	vector<bool> newKeyboardStates;
 	vector<bool> lastKeyboardStates;
+	vector<bool> currentKeyboardStates;
+	vector<bool> newMouseStates;
 	vector<bool> lastMouseStates;
-	vector<fs::path> fileDropPaths;
-	float2 cursorPosition = float2(0.0f);
+	vector<bool> currentMouseStates;
+	vector<uint32> newKeyboardChars;
+	vector<uint32> currentKeyboardChars;
+	vector<fs::path> newFileDrops;
+	vector<fs::path> currentFileDrops;
+	string lastClipboard;
+	string currentClipboard;
+	uint2 framebufferSize = uint2(0);
+	uint2 windowSize = uint2(0);
+	float2 contentScale = float2(0.0);
+	float2 newCursorPos = float2(0.0f);
+	float2 currentCursorPos = float2(0.0f);
 	float2 cursorDelta = float2(0.0f);
-	float2 mouseScroll = float2(0.0f);
+	float2 accumMouseScroll = float2(0.0f);
+	float2 newMouseScroll = float2(0.0f);
+	float2 currentMouseScroll = float2(0.0f);
 	double time = 0.0, systemTime = 0.0, deltaTime = 0.0;
-	CursorMode cursorMode = CursorMode::Default;
 	const fs::path* currentFileDropPath = nullptr;
+	CursorMode newCursorMode = CursorMode::Default;
+	CursorMode currentCursorMode = CursorMode::Default;
 
 	/**
 	 * @brief Creates a new input system instance.
@@ -165,9 +182,13 @@ private:
 
 	void preInit();
 	void input();
+	void output();
 
-	static void onFileDrop(void* window, int count, const char** paths);
+	static void onKeyboardButton(void* window, int key, int scancode, int action, int mods);
 	static void onMouseScroll(void* window, double offsetX, double offsetY);
+	static void onFileDrop(void* window, int count, const char** paths);
+	static void onKeyboardChar(void* window, unsigned int codepoint);
+	static void renderThread();
 
 	friend class ecsm::Manager;
 public:
@@ -194,10 +215,26 @@ public:
 	double getDeltaTime() const noexcept { return deltaTime; }
 
 	/**
+	 * @brief Returns current window framebuffer size in pixels.
+	 * @details It can change when window is resized or minified.
+	 */
+	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
+	/**
+	 * @brief Returns current window size in units.
+	 * @note It can differ from the framebuffer size! (eg. on macOS)
+	 */
+	uint2 getWindowSize() const noexcept { return windowSize; }
+	/**
+	 * @brief Returns current windows content scale factor.
+	 * @details It can change by the display settings.
+	 */
+	float2 getContentScale() const noexcept { return contentScale; }
+
+	/**
 	 * @brief Returns current cursor position in the window. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
 	 */
-	float2 getCursorPosition() const noexcept { return cursorPosition; }
+	float2 getCursorPosition() const noexcept { return currentCursorPos; }
 	/**
 	 * @brief Returns current cursor delta position in the window. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
@@ -208,57 +245,107 @@ public:
 	 * @brief Returns current mouse delta scroll. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
 	 */
-	float2 getMouseScroll() const noexcept { return mouseScroll; }
-
-	/**
-	 * @brief Returns current dropped file path. 
-	 * @note Use it on "FileDrop" event.
-	 */
-	const fs::path& getCurrentFileDropPath() const noexcept { return *currentFileDropPath; }
+	float2 getMouseScroll() const noexcept { return currentMouseScroll; }
 
 	/**
 	 * @brief Returns true if keyboard button has been pressed.
 	 * @param button target keyboard button
 	 */
-	bool isKeyboardPressed(KeyboardButton button) const noexcept;
+	bool isKeyboardPressed(KeyboardButton button) const noexcept
+	{
+		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
+		return !lastKeyboardStates[(int)button] && currentKeyboardStates[(int)button];
+	}
 	/**
 	 * @brief Returns true if keyboard button has been released.
 	 * @param button target keyboard button
 	 */
-	bool isKeyboardReleased(KeyboardButton button) const noexcept;
+	bool isKeyboardReleased(KeyboardButton button) const noexcept
+	{
+		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
+		return lastKeyboardStates[(int)button] && !currentKeyboardStates[(int)button];
+	}
 
 	/**
 	 * @brief Returns true if mouse button has been pressed.
 	 * @param button target mouse button
 	 */
-	bool isMousePressed(MouseButton button) const noexcept;
+	bool isMousePressed(MouseButton button) const noexcept
+	{
+		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
+		return !lastMouseStates[(int)button] && currentMouseStates[(int)button];
+	}
 	/**
 	 * @brief Returns true if mouse button has been released.
 	 * @param button target mouse button
 	 */
-	bool isMouseReleased(MouseButton button) const noexcept;
+	bool isMouseReleased(MouseButton button) const noexcept
+	{
+		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
+		return lastMouseStates[(int)button] && !currentMouseStates[(int)button];
+	}
 
 	/**
 	 * @brief Returns true if keyboard button is in pressed state.
 	 * @param button target keyboard button
 	 */
-	bool getKeyboardState(KeyboardButton button) const noexcept;
+	bool getKeyboardState(KeyboardButton button) const noexcept
+	{
+		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
+		return currentKeyboardStates[(int)button];
+	}
 	/**
 	 * @brief Returns true if mouse button is in pressed state.
 	 * @param button target keyboard button
 	 */
-	bool getMouseState(MouseButton button) const noexcept;
+	bool getMouseState(MouseButton button) const noexcept
+	{
+		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
+		return currentMouseStates[(int)button];
+	}
 
 	/**
 	 * @brief Returns current mouse cursor mode.
 	 * @details Useful for hiding mouse cursor.
 	 */
-	CursorMode getCursorMode() const noexcept { return cursorMode; }
+	CursorMode getCursorMode() const noexcept { return newCursorMode; }
 	/**
 	 * @brief Sets mouse cursor mode.
 	 * @param mode target cursor mode
 	 */
-	void setCursorMode(CursorMode mode) noexcept;
+	void setCursorMode(CursorMode mode) noexcept { newCursorMode = mode; }
+
+	/**
+	 * @brief Returns current clipboard string.
+	 */
+	const string& getClipboard() const noexcept { return currentClipboard; }
+	/**
+	 * @brief Sets clipboard string.
+	 */
+	void setClipboard(string_view clipboard) noexcept { currentClipboard = clipboard; }
+
+	/**
+	 * @brief Returns current keyboard text input array. (UTF-32 encoded)
+	 */
+	const vector<uint32>& getKeyboardChars32() const noexcept { return currentKeyboardChars; }
+	/**
+	 * @brief Returns current keyboard text input array. (UTF-8 encoded)
+	 */
+	const string& getKeyboardChars() const noexcept { abort(); } // TODO: decode UTF-32 buffer
+
+	/**
+	 * @brief Returns current dropped file path.
+	 * @note Use it on "FileDrop" event.
+	 */
+	const fs::path& getCurrentFileDropPath() const noexcept { return *currentFileDropPath; }
+
+	/**
+	 * @brief Creates and starts separate render thread.
+	 * 
+	 * @param manager global manager instance
+	 * @param renderThread returned render thread
+	 */
+	static void startRenderThread();
 };
 
 /***********************************************************************************************************************

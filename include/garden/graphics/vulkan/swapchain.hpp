@@ -73,7 +73,7 @@ private:
 		bool useVsync, bool useTripleBuffering);
 	~VulkanSwapchain() final;
 
-	friend class VulkanAPI;
+	friend class garden::VulkanAPI;
 public:
 	VkBuffer* getCurrentVkBuffer() const noexcept { return vulkanBuffers[bufferIndex]; }
 

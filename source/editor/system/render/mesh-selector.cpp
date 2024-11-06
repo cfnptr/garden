@@ -76,7 +76,7 @@ void MeshSelectorEditorSystem::editorRender()
 	if (updateSelector && !isSkipped)
 	{
 		const auto& systems = manager->getSystems();
-		auto windowSize = graphicsSystem->getWindowSize();
+		auto windowSize = inputSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
 		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);

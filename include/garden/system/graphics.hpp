@@ -74,7 +74,6 @@ using DescriptorSetBuffers = vector<vector<ID<Buffer>>>;
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
 	DescriptorSetBuffers cameraConstantsBuffers;
-	uint2 framebufferSize = uint2(0), windowSize = uint2(0);
 	uint64 frameIndex = 0, tickIndex = 0;
 	ID<Buffer> fullSquareVertices = {};
 	ID<Buffer> fullCubeVertices = {};
@@ -90,7 +89,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
-	bool suboptimalSwapchain = false;
+	bool outOfDateSwapchain = false;
 	SwapchainChanges swapchainChanges;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -116,12 +115,6 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * @brief Destroys graphics system instance.
 	 */
 	~GraphicsSystem() final;
-
-	#if GARDEN_EDITOR
-	void initializeImGui();
-	void terminateImGui();
-	void recreateImGui();
-	#endif
 
 	void preInit();
 	void preDeinit();
@@ -162,6 +155,12 @@ public:
 	 * @note It signals swapchain size change.
 	 */
 	void setRenderScale(float renderScale);
+
+	/**
+	 * @brief Returns swapchain framebuffer size.
+	 * @note It may differ from the input framebuffer size.
+	 */
+	uint2 getFramebufferSize() const noexcept;
 	/**
 	 * @brief Returns scaled by render scale framebuffer size.
 	 * @details Useful for scaling forward/deferred framebuffer.
@@ -178,17 +177,6 @@ public:
 	 * @details Each tick is a update function call by the manager.
 	 */
 	uint64 getTickIndex() const noexcept { return tickIndex; }
-
-	/**
-	 * @brief Returns current framebuffer size in pixels.
-	 * @details It can change when window or swapchain is resized.
-	 */
-	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
-	/**
-	 * @brief Returns current window size in units.
-	 * @note It can differ from the framebuffer size! (e.g on macOS)
-	 */
-	uint2 getWindowSize() const noexcept { return windowSize; }
 
 	/**
 	 * @brief Returns true if frame can be rendered on current tick.
@@ -217,6 +205,12 @@ public:
 	 * @details It changes after each framebuffer present on the screen.
 	 */
 	uint32 getSwapchainIndex() const noexcept;
+
+	/**
+	 * @brief Returns true if current swapchain is out of date.
+	 * @details Swapchain will be recreated on next frame with valid framebuffer size.
+	 */
+	bool isOutOfDateSwapchain() const noexcept { return outOfDateSwapchain; }
 
 	/*******************************************************************************************************************
 	 * @brief Returns full cube vertex buffer.
