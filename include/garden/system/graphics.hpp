@@ -250,18 +250,6 @@ public:
 	ID<ImageView> getDepthStencilBuffer() const noexcept { return depthStencilBuffer; }
 
 	/**
-	 * @brief Sets window title. (UTF-8)
-	 * @param title target title string
-	 */
-	void setWindowTitle(const string& title);
-	/**
-	 * @brief Sets window icon images.
-	 * @param paths target icon paths
-	 * @throw GardenError if icons are not supported on a target platform.
-	 */
-	void setWindowIcon(const vector<string>& paths);
-
-	/**
 	 * @brief Returns current swapchain framebuffer.
 	 * @warning Swapchain framebuffer image can be reallocated on swapchain resize.
 	 */

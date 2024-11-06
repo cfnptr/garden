@@ -154,6 +154,8 @@ private:
 	vector<uint32> currentKeyboardChars;
 	vector<fs::path> newFileDrops;
 	vector<fs::path> currentFileDrops;
+	vector<string> windowIconPaths;
+	string windowTitle;
 	string lastClipboard;
 	string currentClipboard;
 	uint2 framebufferSize = uint2(0);
@@ -169,6 +171,14 @@ private:
 	const fs::path* currentFileDropPath = nullptr;
 	CursorMode newCursorMode = CursorMode::Default;
 	CursorMode currentCursorMode = CursorMode::Default;
+	bool cursorInWindow = false;
+	bool newCursorEnter = false;
+	bool lastCursorEnter = false;
+	bool currentCursorEnter = false;
+	bool windowInFocus = false;
+	bool newWindowFocus = false;
+	bool lastWindowFocus = false;
+	bool currentWindowFocus = false;
 
 	/**
 	 * @brief Creates a new input system instance.
@@ -188,8 +198,10 @@ private:
 	static void onMouseScroll(void* window, double offsetX, double offsetY);
 	static void onFileDrop(void* window, int count, const char** paths);
 	static void onKeyboardChar(void* window, unsigned int codepoint);
-	static void renderThread();
+	static void onCursorEnter(void* window, int entered);
+	static void onWindowFocus(void* window, int focused);
 
+	static void renderThread();
 	friend class ecsm::Manager;
 public:
 	/*******************************************************************************************************************
@@ -231,6 +243,19 @@ public:
 	float2 getContentScale() const noexcept { return contentScale; }
 
 	/**
+	 * @brief Returns true if windows is currently in focus.
+	 */
+	bool isWindowInFocus() const noexcept { return windowInFocus; }
+	/**
+	 * @brief Returns true if window has gained focus.
+	 */
+	bool isWindowFocused() const noexcept { return lastWindowFocus != currentWindowFocus && currentWindowFocus; }
+	/**
+	 * @brief Returns true if window has lost focus.
+	 */
+	bool isWindowUnfocused() const noexcept { return lastWindowFocus != currentWindowFocus && !currentWindowFocus; }
+
+	/**
 	 * @brief Returns current cursor position in the window. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
 	 */
@@ -240,6 +265,19 @@ public:
 	 * @details Useful for implementing FPS controller, inventory.
 	 */
 	float2 getCursorDelta() const noexcept { return cursorDelta; }
+
+	/**
+	 * @brief Returns true if cursor is directly over the window content area.
+	 */
+	bool isCursorInWindow() const noexcept { return cursorInWindow; }
+	/**
+	 * @brief Returns true if cursor has entered the window content area.
+	 */
+	bool isCursorEntered() const noexcept { return lastCursorEnter != currentCursorEnter && currentCursorEnter; }
+	/**
+	 * @brief Returns true if cursor has leaved the window content area.
+	 */
+	bool isCursorLeaved() const noexcept { return lastCursorEnter != currentCursorEnter && !currentCursorEnter; }
 
 	/**
 	 * @brief Returns current mouse delta scroll. (in units)
@@ -316,11 +354,24 @@ public:
 	void setCursorMode(CursorMode mode) noexcept { newCursorMode = mode; }
 
 	/**
+	 * @brief Sets window title. (UTF-8)
+	 * @param title target title string
+	 */
+	void setWindowTitle(string_view title) noexcept { windowTitle = title; }
+	/**
+	 * @brief Sets window icon images.
+	 * @param paths target icon paths
+	 * @throw GardenError if icons are not supported on a target platform.
+	 */
+	void setWindowIcon(const vector<string>& paths);
+
+	/**
 	 * @brief Returns current clipboard string.
 	 */
 	const string& getClipboard() const noexcept { return currentClipboard; }
 	/**
 	 * @brief Sets clipboard string.
+	 * @param clipboard target clipboard string
 	 */
 	void setClipboard(string_view clipboard) noexcept { currentClipboard = clipboard; }
 

@@ -517,15 +517,24 @@ static void updateImGuiKeyModifiers(InputSystem* inutSystem, ImGuiIO& io)
 // WARNING! Check for changes in the underlying ImGui functions to prevent possible race conditions!
 static void updateImGuiGlfwInput() 
 {
+	auto& io = ImGui::GetIO();
 	auto inputSystem = InputSystem::Instance::get();
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	auto cursorPos = inputSystem->getCursorPosition();
 	ImGui_ImplGlfw_CursorPosCallback(window, cursorPos.x, cursorPos.y);
 
-	// TODO: ImGui_ImplGlfw_CursorEnterCallback(nullptr, ...);
-	// On window focus change: io.AddFocusEvent(focused != 0);
+	if (inputSystem->isCursorEntered())
+		ImGui_ImplGlfw_CursorEnterCallback(window, true);
+	else if (inputSystem->isCursorLeaved())
+		ImGui_ImplGlfw_CursorEnterCallback(window, false);
 
-	auto& io = ImGui::GetIO();
+	if (inputSystem->isWindowFocused())
+		io.AddFocusEvent(true);
+	else if (inputSystem->isWindowUnfocused())
+		io.AddFocusEvent(false);
+
+	// TODO: Check if we need ImGui_ImplGlfw_MonitorCallback() after docking branch merge.
+	
 	auto mouseScroll = inputSystem->getMouseScroll();
 	io.AddMouseWheelEvent(mouseScroll.x, mouseScroll.y);
 
@@ -567,6 +576,29 @@ static void updateImGuiGlfwInput()
 	const auto& keyboardChars = inputSystem->getKeyboardChars32();
 	for (psize i = 0; i < keyboardChars.size(); i++)
 		io.AddInputCharacter(keyboardChars[i]);
+}
+static void imGuiNewFrame()
+{
+	auto& io = ImGui::GetIO();
+	auto inputSystem = InputSystem::get();
+
+	auto windowSize = inputSystem->getWindowSize();
+	auto framebufferSize = inputSystem->getFramebufferSize();
+	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
+
+	if (windowSize.x > 0 && windowSize.y > 0)
+	{
+		io.DisplayFramebufferScale = ImVec2((float)framebufferSize.x / windowSize.x, 
+			(float)framebufferSize.y / windowSize.y);
+	}
+
+	io.DeltaTime = inputSystem->getDeltaTime();
+
+	// TODO: implement these if required for something:
+	//
+	// ImGui_ImplGlfw_UpdateMouseData();
+	// ImGui_ImplGlfw_UpdateMouseCursor();
+	// ImGui_ImplGlfw_UpdateGamepads();
 }
 #endif
 
@@ -674,7 +706,7 @@ void GraphicsSystem::update()
 			ImGui_ImplVulkan_NewFrame();
 		else abort();
 
-		ImGui_ImplGlfw_NewFrame();
+		imGuiNewFrame();
 		ImGui::NewFrame();
 		#endif
 
@@ -848,37 +880,6 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
 	return normalMapTexture;
-}
-
-//**********************************************************************************************************************
-void GraphicsSystem::setWindowTitle(const string& title)
-{
-	glfwSetWindowTitle((GLFWwindow*)GraphicsAPI::get()->window, title.c_str());
-}
-
-void GraphicsSystem::setWindowIcon(const vector<string>& paths)
-{
-	#if GARDEN_OS_WINDOWS
-	vector<vector<uint8>> imageData(paths.size());
-	vector<GLFWimage> images(paths.size());
-	auto resourceSystem = ResourceSystem::Instance::get();
-
-	for (psize i = 0; i < paths.size(); i++)
-	{
-		uint2 size; Image::Format format;
-		resourceSystem->loadImageData(paths[i], imageData[i], size, format);
-
-		GLFWimage image;
-		image.width = size.x;
-		image.height = size.y;
-		image.pixels = imageData[i].data();
-		images[i] = image;
-	}
- 
-	glfwSetWindowIcon((GLFWwindow*)GraphicsAPI::get()->window, images.size(), images.data());
-	#else
-	throw GardenError("Window icons are not supported on this platform.");
-	#endif
 }
 
 //**********************************************************************************************************************

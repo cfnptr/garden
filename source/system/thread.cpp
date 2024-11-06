@@ -23,6 +23,8 @@ ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 	backgroundPool(true, "BG", mpio::OS::getLogicalCpuCount()),
 	foregroundPool(false, "FG", getBestForegroundThreadCount())
 {
+	mpmt::Thread::setMain();
+
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ThreadSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 }
