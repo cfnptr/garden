@@ -15,6 +15,7 @@
 #include "garden/system/input.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/graphics.hpp"
+#include "garden/system/resource.hpp"
 #include "garden/graphics/glfw.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/profiler.hpp"
@@ -57,12 +58,10 @@ void InputSystem::onKeyboardButton(void* window, int key, int scancode, int acti
 	if (key == GLFW_KEY_F11 && action == GLFW_PRESS)
 		updateWindowMode();
 }
-
 void InputSystem::onMouseScroll(void* window, double offsetX, double offsetY)
 {
 	InputSystem::Instance::get()->accumMouseScroll += float2((float)offsetX, (float)offsetY);
 }
-
 void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
 	GARDEN_LOG_INFO("Dropped " + to_string(count) + " items on a window.");
@@ -111,10 +110,17 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 	for (int i = 0; i < count; i++)
 		inputSystem->newFileDrops.push_back(paths[i]);
 }
-
 void InputSystem::onKeyboardChar(void* window, unsigned int codepoint)
 {
 	InputSystem::Instance::get()->newKeyboardChars.push_back(codepoint);
+}
+void InputSystem::onCursorEnter(void* window, int entered)
+{
+	InputSystem::Instance::get()->newCursorEnter = entered;
+}
+void InputSystem::onWindowFocus(void* window, int focused)
+{
+	InputSystem::Instance::get()->newWindowFocus = focused;
 }
 
 void InputSystem::renderThread()
@@ -167,6 +173,7 @@ void InputSystem::preInit()
 	glfwSetScrollCallback(window, (GLFWscrollfun)InputSystem::onMouseScroll);
 	glfwSetDropCallback(window, (GLFWdropfun)InputSystem::onFileDrop);
 	glfwSetCharCallback(window, (GLFWcharfun)InputSystem::onKeyboardChar);
+	glfwSetCursorEnterCallback(window, (GLFWcursorenterfun)InputSystem::onCursorEnter);
 
 	int width = 0.0, height = 0.0;
 	glfwGetFramebufferSize(window, &width, &height);
@@ -218,6 +225,11 @@ void InputSystem::preInit()
 //**********************************************************************************************************************
 void InputSystem::input()
 {
+	#if GARDEN_DEBUG
+	if (mpmt::Thread::isCurrentMain())
+		throw GardenError("Expected to run on a render thread."); // See the startRenderThread()
+	#endif
+
 	inputLocker.lock();
 
 	if (GraphicsSystem::Instance::get()->isOutOfDateSwapchain())
@@ -268,6 +280,9 @@ void InputSystem::input()
 }
 void InputSystem::output()
 {
+	lastCursorEnter = currentCursorEnter;
+	lastWindowFocus = currentWindowFocus;
+
 	currentKeyboardChars.clear();
 	currentFileDrops.clear();
 
@@ -277,6 +292,15 @@ void InputSystem::output()
 
 	inputLocker.unlock();
 	glfwPostEmptyEvent();
+}
+
+void InputSystem::setWindowIcon(const vector<string>& paths)
+{
+	#if GARDEN_OS_WINDOWS
+	windowIconPaths = paths;
+	#else
+	throw GardenError("Window icons are not supported on this platform.");
+	#endif
 }
 
 //**********************************************************************************************************************
@@ -304,6 +328,9 @@ void InputSystem::startRenderThread()
 		glfwGetWindowContentScale(window,
 			&inputSystem->contentScale.x, &inputSystem->contentScale.y);
 
+		inputSystem->windowInFocus = glfwGetWindowAttrib(window, GLFW_FOCUSED);
+		inputSystem->currentWindowFocus = inputSystem->newWindowFocus;
+
 		auto& newKeyboardStates = inputSystem->newKeyboardStates;
 		for (uint8 i = 0; i < keyboardButtonCount; i++)
 		{
@@ -326,13 +353,16 @@ void InputSystem::startRenderThread()
 		glfwGetCursorPos(window, &x, &y);
 		inputSystem->newCursorPos = float2((float)x, (float)y);
 
+		inputSystem->cursorInWindow = glfwGetWindowAttrib(window, GLFW_HOVERED);
+		inputSystem->currentCursorEnter = inputSystem->newCursorEnter;
+
 		if (inputSystem->currentCursorMode != inputSystem->newCursorMode)
 		{
 			glfwSetInputMode(window, GLFW_CURSOR, (int)inputSystem->newCursorMode);
 			inputSystem->currentCursorMode = inputSystem->newCursorMode;
 		}
 
-		inputSystem->newMouseScroll = inputSystem->accumMouseScroll;
+		inputSystem->newMouseScroll += inputSystem->accumMouseScroll;
 		inputSystem->accumMouseScroll = 0.0f;
 
 		if (inputSystem->currentClipboard != inputSystem->lastClipboard)
@@ -352,6 +382,34 @@ void InputSystem::startRenderThread()
 			{
 				inputSystem->lastClipboard = inputSystem->currentClipboard = "";
 			}
+		}
+
+		if (inputSystem->windowTitle != "")
+		{
+			glfwSetWindowTitle(window, inputSystem->windowTitle.c_str());
+			inputSystem->windowTitle = "";
+		}
+
+		if (!inputSystem->windowIconPaths.empty())
+		{
+			const auto& paths = inputSystem->windowIconPaths;
+			vector<vector<uint8>> imageData(paths.size());
+			vector<GLFWimage> images(paths.size());
+			auto resourceSystem = ResourceSystem::Instance::get();
+
+			for (psize i = 0; i < paths.size(); i++)
+			{
+				uint2 size; Image::Format format;
+				resourceSystem->loadImageData(paths[i], imageData[i], size, format);
+
+				GLFWimage image;
+				image.width = size.x;
+				image.height = size.y;
+				image.pixels = imageData[i].data();
+				images[i] = image;
+			}
+
+			glfwSetWindowIcon(window, images.size(), images.data());
 		}
 
 		if (!inputSystem->newFileDrops.empty())
