@@ -49,9 +49,7 @@ class ThreadSystem final : public System, public Singleton<ThreadSystem>
 	 */
 	~ThreadSystem() final;
 
-	/**
-	 * @brief Calling before deinit to remove all unfinished tasks.
-	 */
+	void preInit();
 	void preDeinit();
 
 	friend class ecsm::Manager;

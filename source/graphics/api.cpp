@@ -14,7 +14,8 @@
 
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "GLFW/glfw3.h"
+#include "garden/graphics/glfw.hpp"
+#include "garden/system/log.hpp"
 
 #if GARDEN_OS_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -35,11 +36,17 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscr
 	if (isFullscreen)
 	{
 		auto primaryMonitor = glfwGetPrimaryMonitor();
-		auto videoMode = glfwGetVideoMode(primaryMonitor);
-		glfwWindowHint(GLFW_REFRESH_RATE, videoMode->refreshRate);
-		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-		windowSize.x = videoMode->width;
-		windowSize.y = videoMode->height;
+		if (primaryMonitor)
+		{
+			auto videoMode = glfwGetVideoMode(primaryMonitor);
+			if (videoMode)
+			{
+				glfwWindowHint(GLFW_REFRESH_RATE, videoMode->refreshRate);
+				glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+				windowSize.x = videoMode->width;
+				windowSize.y = videoMode->height;
+			}
+		}
 	}
 	
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -85,7 +92,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 
 	glfwSetErrorCallback([](int error_code, const char* description)
 	{
-		throw GardenError("GLFW::ERROR: " + string(description) + "");
+		GARDEN_LOG_ERROR("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
 	});
 
 	GARDEN_ASSERT(!apiInstance);

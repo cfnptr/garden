@@ -64,8 +64,8 @@ protected:
 	bool useVsync = false;
 	bool useTripleBuffering = false;
 
-	Swapchain(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) noexcept : 
-		framebufferSize(framebufferSize), useVsync(useVsync), useTripleBuffering(useTripleBuffering) { }
+	Swapchain(bool useVsync, bool useTripleBuffering) noexcept : 
+		useVsync(useVsync), useTripleBuffering(useTripleBuffering) { }
 public:
 	/**
 	 * @brief Destroys swapchain instance.
