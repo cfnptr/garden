@@ -16,6 +16,7 @@ pipelineState
 {
 	depthTesting = on;
 	depthCompare = greaterOrEqual;
+	frontFace = clockwise;
 }
 
 in float3 fs.texCoords;

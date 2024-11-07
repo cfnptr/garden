@@ -48,6 +48,13 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData)
 {
+	// TODO: investigate this error after driver/SDK updates.
+	if (callbackData->messageIdNumber == -1254218959 || callbackData->messageIdNumber == -2080204129 ||
+		callbackData->messageIdNumber == 774851941)
+	{
+		return VK_FALSE;
+	}
+
 	const char* severity;
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 		severity = "VERBOSE";
@@ -61,10 +68,11 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 		severity = "UNKNOWN";
 	cout << "VULKAN::" << severity << ": " << callbackData->pMessage << "\n";
 
+	// Debugginh break points \/
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		return VK_FALSE; // WARNING severity debugging breakpoint
+		return VK_FALSE; // warning
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		return VK_FALSE; // ERROR severity debugging breakpoint
+		return VK_FALSE; // ERROR
 	return VK_FALSE;
 }
 #endif

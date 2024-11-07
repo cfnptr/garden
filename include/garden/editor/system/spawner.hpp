@@ -36,7 +36,7 @@ class SpawnerEditorSystem final : public System
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
 public:
-	float inspectorPriority = -0.6f;
+	float inspectorPriority = 0.6f;
 };
 
 } // namespace garden

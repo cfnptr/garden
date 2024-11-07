@@ -100,7 +100,7 @@ public:
 	template<typename T = Component>
 	void registerEntityInspector(OnComponent onComponent, float priority = 0.0f)
 	{
-		Inspector inspector(onComponent, priority);
+		Inspector inspector(onComponent, -priority);
 		if (!entityInspectors.emplace(typeid(T), std::move(inspector)).second)
 		{
 			throw GardenError("This component type is already registered. ("

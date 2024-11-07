@@ -27,9 +27,9 @@
 
 using namespace garden;
 
-// TODO: change winding order, and use better quad layout
+// TODO: rewrite with winding arrow order CCW
 
-constexpr array<float3, 18> fullArrowVert =
+constexpr array<float3, 18> arrowVertices =
 {
 	// -X side
 	float3(-0.5f, -0.5f, -0.5f),
@@ -84,9 +84,9 @@ void MeshGizmosEditorSystem::init()
 	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", swapchainFramebuffer);
 	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", swapchainFramebuffer);
 
-	fullArrowVertices = graphicsSystem->createBuffer(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
-		Buffer::Access::None, fullArrowVert, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(fullArrowVertices, "buffer.vertex.gizmos.arrow");
+	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
+		Buffer::Access::None, arrowVertices, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(arrowVertexBuffer, "buffer.vertex.gizmos.arrow");
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -104,7 +104,7 @@ void MeshGizmosEditorSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(fullArrowVertices);
+		graphicsSystem->destroy(arrowVertexBuffer);
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
 
@@ -115,15 +115,15 @@ void MeshGizmosEditorSystem::deinit()
 
 //**********************************************************************************************************************
 static void addArrowMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, const float4x4& model, 
-	ID<Buffer> fullCube, ID<Buffer> fullArrow, Color handleColor, Color axisColorX, Color axisColorY, Color axisColorZ)
+	ID<Buffer> cubeBuffer, ID<Buffer> arrowBuffer, Color handleColor, Color axisColorX, Color axisColorY, Color axisColorZ)
 {
 	MeshGizmosEditorSystem::GizmosMesh gizmosMesh;
-	gizmosMesh.vertexBuffer = fullCube;
+	gizmosMesh.vertexBuffer = cubeBuffer;
 	gizmosMesh.model = model * scale(float3(0.1f, 0.1f, 0.1f));
 	gizmosMesh.color = handleColor;
 	gizmosMeshes.push_back(gizmosMesh);
 
-	gizmosMesh.vertexBuffer = fullArrow;
+	gizmosMesh.vertexBuffer = arrowBuffer;
 	gizmosMesh.model = model * translate(float3(0.9f, 0.0f, 0.0f)) *
 		rotate(quat(radians(90.0f), float3::back)) * scale(float3(0.1f, 0.2f, 0.1f));
 	gizmosMesh.color = axisColorX;
@@ -137,7 +137,7 @@ static void addArrowMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMes
 	gizmosMesh.color = axisColorZ;
 	gizmosMeshes.push_back(gizmosMesh);
 
-	gizmosMesh.vertexBuffer = fullCube;
+	gizmosMesh.vertexBuffer = cubeBuffer;
 	gizmosMesh.model = model * translate(float3(0.425f, 0.0f, 0.0f)) * scale(float3(0.75f, 0.05f, 0.05f));
 	gizmosMesh.color = axisColorX;
 	gizmosMeshes.push_back(gizmosMesh);
@@ -207,14 +207,14 @@ void MeshGizmosEditorSystem::editorRender()
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
-	auto fullCubeVertices = graphicsSystem->getFullCubeVertices();
-	auto fullCubeView = graphicsSystem->get(fullCubeVertices);
-	auto fullArrowView = graphicsSystem->get(fullArrowVertices);
+	auto cubeVertexBuffer = graphicsSystem->getCubeVertexBuffer();
+	auto cubeVertexView = graphicsSystem->get(cubeVertexBuffer);
+	auto arrowVertexView = graphicsSystem->get(arrowVertexBuffer);
 
 	// TODO: check for selection freeze problem.
 
 	if (!transformView || transformView->hasBakedWithDescendants() || !frontPipelineView->isReady() ||
-		!backPipelineView->isReady() || !fullCubeView->isReady() || !fullArrowView->isReady())
+		!backPipelineView->isReady() || !cubeVertexView->isReady() || !arrowVertexView->isReady())
 	{
 		return;
 	}
@@ -248,7 +248,7 @@ void MeshGizmosEditorSystem::editorRender()
 	}
 	model = calcModel(translation, rotation, float3(modelScale));
 
-	addArrowMeshes(gizmosMeshes, model, fullCubeVertices, fullArrowVertices,
+	addArrowMeshes(gizmosMeshes, model, cubeVertexBuffer, arrowVertexBuffer,
 		handleColor, axisColorX, axisColorY, axisColorZ);
 	// TODO: scale and rotation gizmos.
 	

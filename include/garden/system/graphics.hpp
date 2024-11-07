@@ -75,8 +75,8 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
 	DescriptorSetBuffers cameraConstantsBuffers;
 	uint64 frameIndex = 0, tickIndex = 0;
-	ID<Buffer> fullSquareVertices = {};
-	ID<Buffer> fullCubeVertices = {};
+	ID<Buffer> cubeVertexBuffer = {};
+	ID<Buffer> quadVertexBuffer = {};
 	ID<ImageView> emptyTexture = {};
 	ID<ImageView> whiteTexture = {};
 	ID<ImageView> greenTexture = {};
@@ -213,15 +213,15 @@ public:
 	bool isOutOfDateSwapchain() const noexcept { return outOfDateSwapchain; }
 
 	/*******************************************************************************************************************
-	 * @brief Returns full cube vertex buffer.
+	 * @brief Returns cube vertex buffer.
 	 * @details Allocates if it is not created yet.
 	 */
-	ID<Buffer> getFullCubeVertices();
+	ID<Buffer> getCubeVertexBuffer();
 	/**
-	 * @brief Returns full square vertex buffer.
+	 * @brief Returns quad vertex buffer.
 	 * @details Allocates if it is not created yet.
 	 */
-	ID<Buffer> getFullSquareVertices();
+	ID<Buffer> getQuadVertexBuffer();
 
 	/**
 	 * @brief Returns empty texture image view. (0, 0, 0, 0)

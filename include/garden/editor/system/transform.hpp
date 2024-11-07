@@ -38,7 +38,7 @@ class TransformEditorSystem final : public System, public Singleton<TransformEdi
 	friend class ecsm::Manager;
 	friend class TransformSystem;
 public:
-	float inspectorPriority = -0.9f;
+	float inspectorPriority = 0.9f;
 };
 
 } // namespace garden
