@@ -851,7 +851,6 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 	uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
 {
 	auto sh = shBufferData + taskIndex * shCoefCount;
-	auto invCubemapSize = cubemapSize - 1;
 	auto invDim = 1.0f / cubemapSize;
 	float shb[shCoefCount];
 
@@ -863,8 +862,7 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 			auto y = i / cubemapSize, x = i - y * cubemapSize;
 			auto st = coordsToST(uint2(x, y), invDim);
 			auto dir = stToDir(st, face);
-			// TODO: check if inversion is required, or just use pixels[i].
-			auto color = pixels[(invCubemapSize - y) * cubemapSize + x];
+			auto color = pixels[y * cubemapSize + x];
 			color *= calcSolidAngle(st, invDim);
 			computeShBasis(dir, shb);
 

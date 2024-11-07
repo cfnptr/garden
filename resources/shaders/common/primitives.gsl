@@ -22,8 +22,32 @@ const float2 quadVertices[6] = float2[]
 );
 const float2 quadTexCoords[6] = float2[]
 (
-	float2(0.0f, 1.0f), float2(1.0f, 1.0f), float2(0.0f, 0.0f),
-	float2(0.0f, 0.0f), float2(1.0f, 1.0f), float2(1.0f, 0.0f)
+	float2(0.0f, 0.0f), float2(1.0f, 0.0f), float2(0.0f, 1.0f),
+	float2(0.0f, 1.0f), float2(1.0f, 0.0f), float2(1.0f, 1.0f)
 );
+
+const float3 cubeVertices[36] = float3[]
+(
+	// -Y side
+	float3(-0.5f, -0.5f,  0.5f), float3( 0.5f, -0.5f,  0.5f), float3(-0.5f, -0.5f, -0.5f),
+	float3(-0.5f, -0.5f, -0.5f), float3( 0.5f, -0.5f,  0.5f), float3( 0.5f, -0.5f, -0.5f),
+	// -Z side
+	float3(-0.5f, -0.5f, -0.5f), float3( 0.5f, -0.5f, -0.5f), float3(-0.5f,  0.5f, -0.5f),
+	float3(-0.5f,  0.5f, -0.5f), float3( 0.5f, -0.5f, -0.5f), float3( 0.5f,  0.5f, -0.5f),
+	// +X side
+	float3( 0.5f, -0.5f, -0.5f), float3( 0.5f, -0.5f,  0.5f), float3( 0.5f,  0.5f, -0.5f),
+	float3( 0.5f,  0.5f, -0.5f), float3( 0.5f, -0.5f,  0.5f), float3( 0.5f,  0.5f,  0.5f),
+	// +Z side
+	float3( 0.5f, -0.5f,  0.5f), float3(-0.5f, -0.5f,  0.5f), float3( 0.5f,  0.5f,  0.5f),
+	float3( 0.5f,  0.5f,  0.5f), float3(-0.5f, -0.5f,  0.5f), float3(-0.5f,  0.5f,  0.5f),
+	// -X side
+	float3(-0.5f, -0.5f,  0.5f), float3(-0.5f, -0.5f, -0.5f), float3(-0.5f,  0.5f,  0.5f),
+	float3(-0.5f,  0.5f,  0.5f), float3(-0.5f, -0.5f, -0.5f), float3(-0.5f,  0.5f, -0.5f),
+	// +Y side
+	float3(-0.5f,  0.5f, -0.5f), float3( 0.5f,  0.5f, -0.5f), float3(-0.5f,  0.5f,  0.5f),
+	float3(-0.5f,  0.5f,  0.5f), float3( 0.5f,  0.5f, -0.5f), float3( 0.5f,  0.5f,  0.5f)
+);
+
+// Use quadTexCoords for cube and % operator for other sides.
 
 #endif // PRIMITIVES_GSL

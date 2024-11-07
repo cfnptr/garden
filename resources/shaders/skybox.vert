@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/constants.gsl"
+#include "common/primitives.gsl"
 
-in float3 vs.position : f32;
 out float3 fs.texCoords;
 
 uniform pushConstants
@@ -24,8 +23,9 @@ uniform pushConstants
 
 void main()
 {
-	float4 position = pc.viewProj * float4(vs.position, 1.0f);
+	float3 vertexPos = cubeVertices[gl.vertexIndex];
+	float4 position = pc.viewProj * float4(vertexPos, 1.0f);
 	// Puts skybox on the far plane. (reversed Z depth)
 	gl.position = float4(position.xy, 0.0f, position.w);
-	fs.texCoords = vs.position * 2.0f;
+	fs.texCoords = vertexPos * 2.0f;
 }

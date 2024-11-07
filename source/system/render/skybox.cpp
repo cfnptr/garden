@@ -73,9 +73,6 @@ void SkyboxRenderSystem::init()
 
 	if (!pipeline)
 		pipeline = createPipeline();
-
-	// Do not optimize this, we need to instantiate shared buffer outside rendering.
-	fullCubeVertices = GraphicsSystem::Instance::get()->getFullCubeVertices();
 }
 void SkyboxRenderSystem::deinit()
 {
@@ -123,9 +120,8 @@ void SkyboxRenderSystem::translucentRender()
 		return;
 
 	auto pipelineView = graphicsSystem->get(pipeline);
-	auto fullCubeView = graphicsSystem->get(fullCubeVertices);
 	auto cubemapView = graphicsSystem->get(skyboxView->cubemap);
-	if (!pipelineView->isReady() || !fullCubeView->isReady() || !cubemapView->isReady())
+	if (!pipelineView->isReady() || !cubemapView->isReady())
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
@@ -139,7 +135,7 @@ void SkyboxRenderSystem::translucentRender()
 		auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(0);
 		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstantsAsync(0);
-		pipelineView->drawAsync(0, fullCubeVertices, fullCubeVertCount);
+		pipelineView->drawAsync(0, {}, cubeVertexCount);
 	}
 	else
 	{
@@ -149,7 +145,7 @@ void SkyboxRenderSystem::translucentRender()
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstants();
-		pipelineView->draw(fullCubeVertices, fullCubeVertCount);
+		pipelineView->draw({}, cubeVertexCount);
 	}
 }
 

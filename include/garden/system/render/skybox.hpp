@@ -46,7 +46,6 @@ public:
 	};
 private:
 	ID<GraphicsPipeline> pipeline = {};
-	ID<Buffer> fullCubeVertices = {};
 
 	/**
 	 * @brief Creates a new skybox rendering system instance.

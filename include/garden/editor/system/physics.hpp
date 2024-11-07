@@ -66,8 +66,8 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	float rigidbodyInspectorPriority = -0.8f;
-	float characterInspectorPriority = -0.75f;
+	float rigidbodyInspectorPriority = 0.8f;
+	float characterInspectorPriority = 0.75f;
 	Color rigidbodyAabbColor = Color::green;
 	Color characterAabbColor = Color("00FF7FFF");
 	bool isEnabled = true;

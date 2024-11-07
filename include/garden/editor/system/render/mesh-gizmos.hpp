@@ -39,7 +39,7 @@ private:
 	vector<GizmosMesh> gizmosMeshes;
 	ID<GraphicsPipeline> frontGizmosPipeline = {};
 	ID<GraphicsPipeline> backGizmosPipeline = {};
-	ID<Buffer> fullArrowVertices = {};
+	ID<Buffer> arrowVertexBuffer = {};
 	uint32 dragMode = 0;
 
 	MeshGizmosEditorSystem();

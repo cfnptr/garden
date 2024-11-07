@@ -111,19 +111,6 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 }
 
 //**********************************************************************************************************************
-bool SpriteRenderSystem::isDrawReady()
-{
-	if (!InstanceRenderSystem::isDrawReady())
-		return false;
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto vertexBufferView = graphicsSystem->get(graphicsSystem->getFullSquareVertices());
-
-	if (!vertexBufferView->isReady())
-		return false;
-
-	return true;
-}
 void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
 {

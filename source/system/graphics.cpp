@@ -580,19 +580,10 @@ static void updateImGuiGlfwInput()
 static void imGuiNewFrame()
 {
 	auto& io = ImGui::GetIO();
-	auto inputSystem = InputSystem::get();
-
-	auto windowSize = inputSystem->getWindowSize();
-	auto framebufferSize = inputSystem->getFramebufferSize();
-	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
-
-	if (windowSize.x > 0 && windowSize.y > 0)
-	{
-		io.DisplayFramebufferScale = ImVec2((float)framebufferSize.x / windowSize.x, 
-			(float)framebufferSize.y / windowSize.y);
-	}
-
-	io.DeltaTime = inputSystem->getDeltaTime();
+	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
+	io.DisplaySize = ImVec2(framebufferSize.x / io.DisplayFramebufferScale.x, 
+		framebufferSize.y / io.DisplayFramebufferScale.y);
+	io.DeltaTime = InputSystem::get()->getDeltaTime();
 
 	// TODO: implement these if required for something:
 	//
@@ -811,27 +802,26 @@ uint32 GraphicsSystem::getSwapchainIndex() const noexcept
 }
 
 //**********************************************************************************************************************
-ID<Buffer> GraphicsSystem::getFullSquareVertices()
+ID<Buffer> GraphicsSystem::getCubeVertexBuffer()
 {
-	if (!fullSquareVertices)
+	if (!cubeVertexBuffer)
 	{
-		fullSquareVertices = createBuffer(Buffer::Bind::Vertex |
-			Buffer::Bind::TransferDst, Buffer::Access::None, fullSquareVert2D);
-		SET_RESOURCE_DEBUG_NAME(fullSquareVertices, "buffer.vertex.fullSquare");
+		cubeVertexBuffer = createBuffer(Buffer::Bind::Vertex |
+			Buffer::Bind::TransferDst, Buffer::Access::None, cubeVertices);
+		SET_RESOURCE_DEBUG_NAME(cubeVertexBuffer, "buffer.vertex.cube");
 	}
-	return fullSquareVertices;
+	return cubeVertexBuffer;
 }
-ID<Buffer> GraphicsSystem::getFullCubeVertices()
+ID<Buffer> GraphicsSystem::getQuadVertexBuffer()
 {
-	if (!fullCubeVertices)
+	if (!quadVertexBuffer)
 	{
-		fullCubeVertices = createBuffer(Buffer::Bind::Vertex |
-			Buffer::Bind::TransferDst, Buffer::Access::None, fullCubeVert);
-		SET_RESOURCE_DEBUG_NAME(fullCubeVertices, "buffer.vertex.fullCube");
+		quadVertexBuffer = createBuffer(Buffer::Bind::Vertex |
+			Buffer::Bind::TransferDst, Buffer::Access::None, quadVertices);
+		SET_RESOURCE_DEBUG_NAME(quadVertexBuffer, "buffer.vertex.quad");
 	}
-	return fullCubeVertices;
+	return quadVertexBuffer;
 }
-
 
 ID<ImageView> GraphicsSystem::getEmptyTexture()
 {

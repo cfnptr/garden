@@ -410,6 +410,7 @@ void InputSystem::startRenderThread()
 			}
 
 			glfwSetWindowIcon(window, images.size(), images.data());
+			inputSystem->windowIconPaths.clear();
 		}
 
 		if (!inputSystem->newFileDrops.empty())

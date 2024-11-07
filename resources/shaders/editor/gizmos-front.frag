@@ -16,7 +16,6 @@ pipelineState
 {
 	depthTesting = on;
 	depthWriting = on;
-	frontFace = clockwise;
 }
 
 uniform pushConstants

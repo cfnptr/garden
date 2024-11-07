@@ -479,10 +479,10 @@ static int32 getImageFilePath(const fs::path& appCachesPath, const fs::path& app
 {
 	auto imagePath = fs::path("images") / path;
 	filePath = appCachesPath / imagePath;
-	filePath += ".exr";
 
-	int32 fileCount = fs::exists(filePath) ? 1 : 0;
+	filePath += ".exr";
 	fileType = ImageFileType::Exr;
+	int32 fileCount = fs::exists(filePath) ? 1 : 0;
 
 	for (uint8 i = 0; i < imageFileExtCount; i++)
 	{
@@ -520,12 +520,12 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	ImageFileType fileType;
 	vector<uint8> dataBuffer;
 
+	#if GARDEN_PACK_RESOURCES
 	if (threadIndex < 0)
 		threadIndex = 0;
 	else
 		threadIndex++;
 
-	#if GARDEN_PACK_RESOURCES
 	auto imagePath = fs::path("images") / path;
 	uint64 itemIndex = 0;
 
@@ -949,6 +949,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 	switch (fileType)
 	{
 	case garden::ImageFileType::Exr:
+	case garden::ImageFileType::Hdr:
 		format = Image::Format::SfloatR32G32B32A32;
 		break;
 	default:
