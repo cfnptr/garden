@@ -92,7 +92,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 
 	glfwSetErrorCallback([](int error_code, const char* description)
 	{
-		GARDEN_LOG_ERROR("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
+		throw GardenError("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
 	});
 
 	GARDEN_ASSERT(!apiInstance);

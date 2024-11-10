@@ -212,7 +212,7 @@ void Controller2DSystem::updateCameraFollowing()
 		auto posOffset = float2(cameraWidth.y - cameraWidth.x, 
 			cameraHeight.y - cameraHeight.x) * followCenter;
 		auto newPosition = lerpDelta((float2)cameraTransformView->position,
-			(float2)characterView->getPosition() + posOffset, 1.0f - followFactor, deltaTime);
+			(float2)characterView->getPosition() + posOffset, 1.0f - followLerpFactor, deltaTime);
 		cameraTransformView->position.x = newPosition.x;
 		cameraTransformView->position.y = newPosition.y;
 		break;

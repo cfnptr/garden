@@ -64,7 +64,7 @@ public:
 	float horizontalFactor = 0.99999f;
 	float jumpSpeed = 4.0f;
 	float followThreshold = 0.6f;
-	float followFactor = 0.8f;
+	float followLerpFactor = 0.8f;
 	float2 followCenter = float2(0.0f, 0.25f);
 	bool useMouseControll = GARDEN_DEBUG ? true : false;
 	bool useDoubleJump = true;
