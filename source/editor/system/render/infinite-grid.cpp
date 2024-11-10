@@ -105,8 +105,16 @@ void InfiniteGridEditorSystem::editorRender()
 		pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 		pushConstants->meshColor = (float4)meshColor;
-		pushConstants->axisColorX = (float4)axisColorX;
-		pushConstants->axisColorYZ = (float4)axisColorYZ;
+		if (isHorizontal)
+		{
+			pushConstants->axisColorX = (float4)axisColorYZ;
+			pushConstants->axisColorYZ = (float4)axisColorX;
+		}
+		else
+		{
+			pushConstants->axisColorX = (float4)axisColorX;
+			pushConstants->axisColorYZ = (float4)axisColorYZ;
+		}
 		pushConstants->meshScale = meshScale;
 		pushConstants->isHorizontal = isHorizontal;
 		pipelineView->pushConstants();

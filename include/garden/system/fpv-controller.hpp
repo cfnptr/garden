@@ -35,6 +35,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	ID<Entity> camera = {};
 	float2 rotation = float2(0.0f);
 	float3 velocity = float3(0.0f);
+	float boostAccum = 1.0f;
 	bool isLastJumping = false;
 
 	/**
@@ -60,9 +61,9 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 public:
 	string characterEntityTag = "MainCharacter";
 	float mouseSensitivity = 1.0f;
-	float moveSpeed = 1.0f;
-	float moveLerpFactor = 20.0f;
-	float boostFactor = 10.0f;
+	float moveSpeed = 2.0f;
+	float moveLerpFactor = 0.99999f;
+	float boostFactor = 2.0f;
 	float horizontalSpeed = 2.0f;
 	float horizontalFactor = 0.99999f;
 	float jumpSpeed = 4.0f;

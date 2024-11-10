@@ -202,7 +202,10 @@ void InputSystem::preInit()
 		newMouseStates[i] = lastMouseStates[i] = currentMouseStates[i] = state;
 	}
 
+	auto currentCallback = glfwSetErrorCallback(nullptr);
 	auto clipboard = glfwGetClipboardString(nullptr);
+	glfwSetErrorCallback(currentCallback);
+
 	if (clipboard)
 		lastClipboard = currentClipboard = clipboard;
 
@@ -372,7 +375,10 @@ void InputSystem::startRenderThread()
 		}
 		else
 		{
+			auto currentCallback = glfwSetErrorCallback(nullptr);
 			auto clipboard = glfwGetClipboardString(nullptr);
+			glfwSetErrorCallback(currentCallback);
+
 			if (clipboard)
 			{
 				if (clipboard != inputSystem->currentClipboard)

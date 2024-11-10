@@ -153,36 +153,45 @@ quat FpvControllerSystem::updateCameraRotation()
 //**********************************************************************************************************************
 void FpvControllerSystem::updateCameraControll(const quat& rotationQuat)
 {
-	auto inputSystem = InputSystem::Instance::get();
-
-	#if GARDEN_EDITOR
-	if (!inputSystem->getMouseState(MouseButton::Right))
-		return;
-	#endif
-
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
 	if (!transformView || !transformView->isActive())
 		return;
 
-	auto boost = inputSystem->getKeyboardState(KeyboardButton::LeftShift) ? boostFactor : 1.0f;
-	float3 flyDirection;
-
-	if (inputSystem->getKeyboardState(KeyboardButton::A))
-		flyDirection.x = -moveSpeed;
-	else if (inputSystem->getKeyboardState(KeyboardButton::D))
-		flyDirection.x = moveSpeed;
-	if (inputSystem->getKeyboardState(KeyboardButton::Q) || inputSystem->getKeyboardState(KeyboardButton::LeftControl))
-		flyDirection.y = -moveSpeed;
-	else if (inputSystem->getKeyboardState(KeyboardButton::E) || inputSystem->getKeyboardState(KeyboardButton::Space))
-		flyDirection.y = moveSpeed;
-	if (inputSystem->getKeyboardState(KeyboardButton::S))
-		flyDirection.z = -moveSpeed;
-	else if (inputSystem->getKeyboardState(KeyboardButton::W))
-		flyDirection.z = moveSpeed;
-	flyDirection = (flyDirection * boost) * rotationQuat;
-
+	auto inputSystem = InputSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
-	velocity = lerp(velocity, flyDirection, std::min(deltaTime * moveLerpFactor, 1.0f));
+	auto flyVector = float3(0.0f);
+
+	#if GARDEN_EDITOR
+	if (inputSystem->getMouseState(MouseButton::Right))
+	#endif
+	{
+		float boost = 1.0f;
+		if (inputSystem->getKeyboardState(KeyboardButton::LeftShift))
+		{
+			boost = boostFactor * boostAccum;
+			boostAccum += deltaTime * boostFactor;
+		}
+		else
+		{
+			boostAccum = 1.0f;
+		}
+
+		if (inputSystem->getKeyboardState(KeyboardButton::A))
+			flyVector.x = -moveSpeed;
+		else if (inputSystem->getKeyboardState(KeyboardButton::D))
+			flyVector.x = moveSpeed;
+		if (inputSystem->getKeyboardState(KeyboardButton::Q) || inputSystem->getKeyboardState(KeyboardButton::LeftControl))
+			flyVector.y = -moveSpeed;
+		else if (inputSystem->getKeyboardState(KeyboardButton::E) || inputSystem->getKeyboardState(KeyboardButton::Space))
+			flyVector.y = moveSpeed;
+		if (inputSystem->getKeyboardState(KeyboardButton::S))
+			flyVector.z = -moveSpeed;
+		else if (inputSystem->getKeyboardState(KeyboardButton::W))
+			flyVector.z = moveSpeed;
+		flyVector = (flyVector * boost) * rotationQuat;
+	}
+
+	velocity = lerpDelta(velocity, flyVector, 1.0f - moveLerpFactor, deltaTime);
 	transformView->position += velocity * deltaTime;
 }
 
