@@ -2239,6 +2239,44 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 }
 #endif
 
+/* TODO:
+	for (int i = 0; i < count; i++)
+	{
+		auto path = fs::path(paths[i]).generic_string(); 
+		auto length = path.length();
+		if (length < 8)
+			continue;
+
+		psize pathOffset = 0;
+		auto cmpPath = (GARDEN_RESOURCES_PATH / "scenes").generic_string();
+		if (length > cmpPath.length())
+		{
+			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
+				pathOffset = cmpPath.length() + 1;
+		}
+		cmpPath = (GARDEN_APP_RESOURCES_PATH / "scenes").generic_string();
+		if (length > cmpPath.length())
+		{
+			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
+				pathOffset = cmpPath.length() + 1;
+		}
+
+		if (memcmp(path.c_str() + (length - 5), "scene", 5) == 0)
+		{
+			fs::path filePath = path.c_str() + pathOffset; filePath.replace_extension();
+			try
+			{
+				ResourceSystem::getInstance()->loadScene(filePath);
+			}
+			catch (const exception& e)
+			{
+				GARDEN_LOG_ERROR("Failed to load scene. (error: " + string(e.what()) + ")");
+			}
+			break;
+		}
+	}
+*/
+
 //--------------------------------------------------------------------------------------------------
 /* TODO: refactor
 Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor accessor,

@@ -66,61 +66,13 @@ void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
 	GARDEN_LOG_INFO("Dropped " + to_string(count) + " items on a window.");
 
-	#if GARDEN_EDITOR
-	/* TODO: move these to the resources system
-	for (int i = 0; i < count; i++)
-	{
-		auto path = fs::path(paths[i]).generic_string(); 
-		auto length = path.length();
-		if (length < 8)
-			continue;
-
-		psize pathOffset = 0;
-		auto cmpPath = (GARDEN_RESOURCES_PATH / "scenes").generic_string();
-		if (length > cmpPath.length())
-		{
-			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
-				pathOffset = cmpPath.length() + 1;
-		}
-		cmpPath = (GARDEN_APP_RESOURCES_PATH / "scenes").generic_string();
-		if (length > cmpPath.length())
-		{
-			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
-				pathOffset = cmpPath.length() + 1;
-		}
-
-		if (memcmp(path.c_str() + (length - 5), "scene", 5) == 0)
-		{
-			fs::path filePath = path.c_str() + pathOffset; filePath.replace_extension();
-			try
-			{
-				ResourceSystem::getInstance()->loadScene(filePath);
-			}
-			catch (const exception& e)
-			{
-				GARDEN_LOG_ERROR("Failed to load scene. (error: " + string(e.what()) + ")");
-			}
-			break;
-		}
-	}
-	*/
-	#endif
-
 	auto inputSystem = InputSystem::Instance::get();
 	for (int i = 0; i < count; i++)
-		inputSystem->newFileDrops.push_back(paths[i]);
+		inputSystem->accumFileDrops.push_back(paths[i]);
 }
 void InputSystem::onKeyboardChar(void* window, unsigned int codepoint)
 {
-	InputSystem::Instance::get()->newKeyboardChars.push_back(codepoint);
-}
-void InputSystem::onCursorEnter(void* window, int entered)
-{
-	InputSystem::Instance::get()->newCursorEnter = entered;
-}
-void InputSystem::onWindowFocus(void* window, int focused)
-{
-	InputSystem::Instance::get()->newWindowFocus = focused;
+	InputSystem::Instance::get()->accumKeyboardChars.push_back(codepoint);
 }
 
 void InputSystem::renderThread()
@@ -134,10 +86,10 @@ void InputSystem::renderThread()
 InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 	newKeyboardStates((psize)KeyboardButton::Last + 1, false),
 	lastKeyboardStates((psize)KeyboardButton::Last + 1, false),
-	currentKeyboardStates((psize)KeyboardButton::Last + 1, false),
+	currKeyboardStates((psize)KeyboardButton::Last + 1, false),
 	newMouseStates((psize)MouseButton::Last + 1, false),
 	lastMouseStates((psize)MouseButton::Last + 1, false),
-	currentMouseStates((psize)MouseButton::Last + 1, false)
+	currMouseStates((psize)MouseButton::Last + 1, false)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEventBefore("Input", "Update");
@@ -169,37 +121,39 @@ void InputSystem::preInit()
 {
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	glfwSetKeyCallback(window, (GLFWkeyfun)InputSystem::onKeyboardButton);
-	// glfwSetMouseButtonCallback(window, (GLFWmousebuttonfun)InputSystem::onMouseButton);
 	glfwSetScrollCallback(window, (GLFWscrollfun)InputSystem::onMouseScroll);
 	glfwSetDropCallback(window, (GLFWdropfun)InputSystem::onFileDrop);
 	glfwSetCharCallback(window, (GLFWcharfun)InputSystem::onKeyboardChar);
-	glfwSetCursorEnterCallback(window, (GLFWcursorenterfun)InputSystem::onCursorEnter);
 
 	int width = 0.0, height = 0.0;
 	glfwGetFramebufferSize(window, &width, &height);
-	framebufferSize = uint2((uint32)width, (uint32)height);
+	newFramebufferSize = currFramebufferSize = uint2((uint32)width, (uint32)height);
 
 	glfwGetWindowSize(window, &width, &height);
-	windowSize = uint2((uint32)width, (uint32)height);
+	newWindowSize = currWindowSize = uint2((uint32)width, (uint32)height);
 
-	glfwGetWindowContentScale(window, &contentScale.x, &contentScale.y);
+	glfwGetWindowContentScale(window, &currContentScale.x, &currContentScale.y);
+	newContentScale = currContentScale;
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos(window, &x, &y);
-	newCursorPos = currentCursorPos = float2((float)x, (float)y);
-	newCursorMode = currentCursorMode = (CursorMode)glfwGetInputMode(window, GLFW_CURSOR);
+	newCursorPos = currCursorPos = float2((float)x, (float)y);
+
+	newCursorMode = currCursorMode = (CursorMode)glfwGetInputMode(window, GLFW_CURSOR);
+	newCursorInWindow = lastCursorInWindow = currCursorInWindow = glfwGetWindowAttrib(window, GLFW_HOVERED);
+	newWindowInFocus = lastWindowInFocus = currWindowInFocus = glfwGetWindowAttrib(window, GLFW_FOCUSED);
 
 	for (uint8 i = 0; i < keyboardButtonCount; i++)
 	{
 		auto button = (int)allKeyboardButtons[i];
 		auto state = glfwGetKey(window, button);
-		newKeyboardStates[button] = lastKeyboardStates[button] = currentKeyboardStates[button] = state;
+		newKeyboardStates[button] = lastKeyboardStates[button] = currKeyboardStates[button] = state;
 	}
 
 	for (int i = 0; i < (int)MouseButton::Last + 1; i++)
 	{
 		auto state = glfwGetMouseButton(window, i);
-		newMouseStates[i] = lastMouseStates[i] = currentMouseStates[i] = state;
+		newMouseStates[i] = lastMouseStates[i] = currMouseStates[i] = state;
 	}
 
 	auto currentCallback = glfwSetErrorCallback(nullptr);
@@ -207,7 +161,7 @@ void InputSystem::preInit()
 	glfwSetErrorCallback(currentCallback);
 
 	if (clipboard)
-		lastClipboard = currentClipboard = clipboard;
+		newClipboard = lastClipboard = currClipboard = clipboard;
 
 	auto primaryMonitor = glfwGetPrimaryMonitor();
 	if (primaryMonitor)
@@ -220,9 +174,10 @@ void InputSystem::preInit()
 		}
 	}
 
-	GARDEN_LOG_INFO("Window size: " + to_string(windowSize.x) + "x" + to_string(windowSize.y));
-	GARDEN_LOG_INFO("Framebuffer size: " + to_string(framebufferSize.x) + "x" + to_string(framebufferSize.y));
-	GARDEN_LOG_INFO("Content scale: " + to_string(contentScale.x) + "x" + to_string(contentScale.y));
+	GARDEN_LOG_INFO("Window size: " + to_string(currWindowSize.x) + "x" + to_string(currWindowSize.y));
+	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + "x" + to_string(currFramebufferSize.y));
+	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + "x" + to_string(currContentScale.y));
+	systemTime = glfwGetTime();
 }
 
 //**********************************************************************************************************************
@@ -230,10 +185,10 @@ void InputSystem::input()
 {
 	#if GARDEN_DEBUG
 	if (mpmt::Thread::isCurrentMain())
-		throw GardenError("Expected to run on a render thread."); // See the startRenderThread()
+		throw GardenError("Expected to run on a render thread."); // See the startRenderThread().
 	#endif
 
-	inputLocker.lock();
+	eventLocker.lock();
 
 	if (GraphicsSystem::Instance::get()->isOutOfDateSwapchain())
 	{
@@ -242,65 +197,95 @@ void InputSystem::input()
 			auto vulkanAPI = VulkanAPI::get();
 			auto surfaceCapabilities = vulkanAPI->physicalDevice.getSurfaceCapabilitiesKHR(vulkanAPI->surface);
 			if (surfaceCapabilities.currentExtent != UINT32_MAX &&
-				(surfaceCapabilities.currentExtent.width != framebufferSize.x ||
-				surfaceCapabilities.currentExtent.height != framebufferSize.y))
+				(surfaceCapabilities.currentExtent.width != newFramebufferSize.x ||
+				surfaceCapabilities.currentExtent.height != newFramebufferSize.y))
 			{
-				framebufferSize = uint2(surfaceCapabilities.currentExtent.width,
+				auto pixelRatio = (float2)newWindowSize / newFramebufferSize;
+				newFramebufferSize = uint2(surfaceCapabilities.currentExtent.width,
 					surfaceCapabilities.currentExtent.height);
+				newWindowSize = (uint2)((float2)newFramebufferSize * pixelRatio);
 			}
 		}
 		else abort();
 	}
 
-	swap(currentKeyboardStates, lastKeyboardStates);
-	copy(newKeyboardStates.begin(), newKeyboardStates.end(), currentKeyboardStates.begin());
-	swap(currentMouseStates, lastMouseStates);
-	copy(newMouseStates.begin(), newMouseStates.end(), currentMouseStates.begin());
-
-	cursorDelta = newCursorPos - currentCursorPos;
-	currentCursorPos = newCursorPos;
-	
-	currentMouseScroll = newMouseScroll;
+	currFramebufferSize = newFramebufferSize;
+	currWindowSize = newWindowSize;
+	currContentScale = newContentScale;
+	cursorDelta = newCursorPos - currCursorPos;
+	currCursorPos = newCursorPos;
+	currMouseScroll = newMouseScroll;
 	newMouseScroll = 0.0f;
+	lastCursorInWindow = currCursorInWindow;
+	currCursorInWindow = newCursorInWindow;
+	lastWindowInFocus = currWindowInFocus;
+	currWindowInFocus = newWindowInFocus;
+
+	swap(currKeyboardStates, lastKeyboardStates);
+	copy(newKeyboardStates.begin(), newKeyboardStates.end(), currKeyboardStates.begin());
+	swap(currMouseStates, lastMouseStates);
+	copy(newMouseStates.begin(), newMouseStates.end(), currMouseStates.begin());
+
+	swap(newKeyboardChars, currKeyboardChars);
+	if (!newKeyboardChars.empty())
+		newKeyboardChars.clear();
+	swap(newFileDrops, currFileDrops);
+
+	if (currClipboard != newClipboard)
+		newClipboard = currClipboard;
+
+	eventLocker.unlock();
 
 	auto currentTime = glfwGetTime();
 	deltaTime = (currentTime - systemTime) * timeMultiplier;
 	time += deltaTime;
 	systemTime = currentTime;
-	
-	if (!currentFileDrops.empty())
+
+	if (!currFileDrops.empty())
 	{
 		const auto& subscribers = Manager::Instance::get()->getEventSubscribers("FileDrop");
-		for (const auto& path : currentFileDrops)
+		for (const auto& path : currFileDrops)
 		{
-			currentFileDropPath = &path;
+			currFileDropPath = &path;
 			for (const auto& onFileDrop : subscribers)
 				onFileDrop();
 		}
-		currentFileDropPath = nullptr;
-		currentFileDrops.clear();
+		currFileDropPath = nullptr;
+		currFileDrops.clear();
 	}
 }
 void InputSystem::output()
 {
-	lastCursorEnter = currentCursorEnter;
-	lastWindowFocus = currentWindowFocus;
+	eventLocker.lock();
 
-	currentKeyboardChars.clear();
-	currentFileDrops.clear();
+	currCursorMode = newCursorMode;
+
+	if (newWindowTitle != "")
+	{
+		swap(currWindowTitle, newWindowTitle);
+		newWindowTitle = "";
+	}
+	if (!newWindowIconPaths.empty())
+	{
+		swap(currWindowIconPaths, newWindowIconPaths);
+		newWindowIconPaths.clear();
+	}
+
+	if (newClipboard != currClipboard)
+		currClipboard = newClipboard;
 
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	if (glfwWindowShouldClose(window))
 		Manager::Instance::get()->isRunning = false;
 
-	inputLocker.unlock();
+	eventLocker.unlock();
 	glfwPostEmptyEvent();
 }
 
 void InputSystem::setWindowIcon(const vector<string>& paths)
 {
 	#if GARDEN_OS_WINDOWS
-	windowIconPaths = paths;
+	newWindowIconPaths = paths;
 	#else
 	throw GardenError("Window icons are not supported on this platform.");
 	#endif
@@ -319,20 +304,42 @@ void InputSystem::startRenderThread()
 	{
 		glfwWaitEvents();
 
-		inputSystem->inputLocker.lock();
+		int framebufferX = 0.0, framebufferY = 0.0;
+		glfwGetFramebufferSize(window, &framebufferX, &framebufferY);
+		int windowX = 0.0, windowY = 0.0;
+		glfwGetWindowSize(window, &windowX, &windowY);
+		float contentX = 0.0f, contentY = 0.0f;
+		glfwGetWindowContentScale(window, &contentX, &contentY);
+		double cursorX = 0.0, cursorY = 0.0;
+		glfwGetCursorPos(window, &cursorX, &cursorY);
 
-		int width = 0.0, height = 0.0;
-		glfwGetFramebufferSize(window, &width, &height);
-		inputSystem->framebufferSize = uint2((uint32)width, (uint32)height);
+		auto cursorInWindow = (bool)glfwGetWindowAttrib(window, GLFW_HOVERED);
+		auto windowInFocus = (bool)glfwGetWindowAttrib(window, GLFW_FOCUSED);
 
-		glfwGetWindowSize(window, &width, &height);
-		inputSystem->windowSize = uint2((uint32)width, (uint32)height);
+		auto cursorMode = (CursorMode)glfwGetInputMode(window, GLFW_CURSOR);
+		int newCursorMode = -1;
 
-		glfwGetWindowContentScale(window,
-			&inputSystem->contentScale.x, &inputSystem->contentScale.y);
+		auto currentCallback = glfwSetErrorCallback(nullptr);
+		auto clipboard = glfwGetClipboardString(nullptr);
+		glfwSetErrorCallback(currentCallback);
+		string newClipboard; auto hasNewClipboard = false;
 
-		inputSystem->windowInFocus = glfwGetWindowAttrib(window, GLFW_FOCUSED);
-		inputSystem->currentWindowFocus = inputSystem->newWindowFocus;
+		string newWindowTitle = "";
+		vector<vector<uint8>> imageData; vector<GLFWimage> images;
+
+		inputSystem->eventLocker.lock();
+
+		inputSystem->newFramebufferSize = uint2((uint32)framebufferX, (uint32)framebufferY);
+		inputSystem->newWindowSize = uint2((uint32)windowX, (uint32)windowY);
+		inputSystem->newContentScale = float2(contentX, contentY);
+		inputSystem->newCursorPos = float2((float)cursorX, (float)cursorY);
+		inputSystem->newMouseScroll += inputSystem->accumMouseScroll;
+		inputSystem->accumMouseScroll = 0.0f;
+		inputSystem->newCursorInWindow = cursorInWindow;
+		inputSystem->newWindowInFocus = windowInFocus;
+
+		if (inputSystem->currCursorMode != cursorMode)
+			newCursorMode = (int)inputSystem->currCursorMode;
 
 		auto& newKeyboardStates = inputSystem->newKeyboardStates;
 		for (uint8 i = 0; i < keyboardButtonCount; i++)
@@ -341,67 +348,51 @@ void InputSystem::startRenderThread()
 			newKeyboardStates[button] = glfwGetKey(window, button);
 		}
 
-		if (!inputSystem->newKeyboardChars.empty())
-		{
-			inputSystem->currentKeyboardChars.insert(inputSystem->currentKeyboardChars.end(),
-				inputSystem->newKeyboardChars.begin(), inputSystem->newKeyboardChars.end());
-			inputSystem->newKeyboardChars.clear();
-		}
-
 		auto& newMouseStates = inputSystem->newMouseStates;
 		for (int i = 0; i < (int)MouseButton::Last + 1; i++)
 			newMouseStates[i] = glfwGetMouseButton(window, i);
 
-		double x = 0.0, y = 0.0;
-		glfwGetCursorPos(window, &x, &y);
-		inputSystem->newCursorPos = float2((float)x, (float)y);
-
-		inputSystem->cursorInWindow = glfwGetWindowAttrib(window, GLFW_HOVERED);
-		inputSystem->currentCursorEnter = inputSystem->newCursorEnter;
-
-		if (inputSystem->currentCursorMode != inputSystem->newCursorMode)
+		if (!inputSystem->accumKeyboardChars.empty())
 		{
-			glfwSetInputMode(window, GLFW_CURSOR, (int)inputSystem->newCursorMode);
-			inputSystem->currentCursorMode = inputSystem->newCursorMode;
+			inputSystem->newKeyboardChars.insert(inputSystem->newKeyboardChars.end(),
+				inputSystem->accumKeyboardChars.begin(), inputSystem->accumKeyboardChars.end());
+			inputSystem->accumKeyboardChars.clear();
 		}
 
-		inputSystem->newMouseScroll += inputSystem->accumMouseScroll;
-		inputSystem->accumMouseScroll = 0.0f;
-
-		if (inputSystem->currentClipboard != inputSystem->lastClipboard)
+		if (inputSystem->currClipboard != inputSystem->lastClipboard)
 		{
-			glfwSetClipboardString(nullptr, inputSystem->currentClipboard.c_str());
-			inputSystem->lastClipboard = inputSystem->currentClipboard;
+			newClipboard = inputSystem->lastClipboard = inputSystem->currClipboard;
+			hasNewClipboard = true;
 		}
 		else
 		{
-			auto currentCallback = glfwSetErrorCallback(nullptr);
-			auto clipboard = glfwGetClipboardString(nullptr);
-			glfwSetErrorCallback(currentCallback);
-
 			if (clipboard)
 			{
-				if (clipboard != inputSystem->currentClipboard)
-					inputSystem->lastClipboard = inputSystem->currentClipboard = clipboard;
+				if (inputSystem->currClipboard != clipboard)
+					inputSystem->lastClipboard = inputSystem->currClipboard = clipboard;
 			}
-			else if (inputSystem->currentClipboard != "")
+			else if (inputSystem->currClipboard != "")
 			{
-				inputSystem->lastClipboard = inputSystem->currentClipboard = "";
+				inputSystem->lastClipboard = inputSystem->currClipboard = "";
 			}
 		}
 
-		if (inputSystem->windowTitle != "")
+		if (!inputSystem->accumFileDrops.empty())
 		{
-			glfwSetWindowTitle(window, inputSystem->windowTitle.c_str());
-			inputSystem->windowTitle = "";
+			inputSystem->newFileDrops.insert(inputSystem->newFileDrops.end(),
+				inputSystem->accumFileDrops.begin(), inputSystem->accumFileDrops.end());
+			inputSystem->accumFileDrops.clear();
 		}
 
-		if (!inputSystem->windowIconPaths.empty())
+		if (inputSystem->currWindowTitle != "")
+			swap(newWindowTitle, inputSystem->currWindowTitle);
+
+		if (!inputSystem->currWindowIconPaths.empty())
 		{
-			const auto& paths = inputSystem->windowIconPaths;
-			vector<vector<uint8>> imageData(paths.size());
-			vector<GLFWimage> images(paths.size());
 			auto resourceSystem = ResourceSystem::Instance::get();
+			const auto& paths = inputSystem->currWindowIconPaths;
+			imageData.resize(paths.size());
+			images.resize(paths.size());
 
 			for (psize i = 0; i < paths.size(); i++)
 			{
@@ -415,18 +406,19 @@ void InputSystem::startRenderThread()
 				images[i] = image;
 			}
 
+			inputSystem->currWindowIconPaths.clear();
+		}
+
+		inputSystem->eventLocker.unlock();
+
+		if (newCursorMode != -1)
+			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode);
+		if (hasNewClipboard)
+			glfwSetClipboardString(nullptr, newClipboard.c_str());
+		if (newWindowTitle != "")
+			glfwSetWindowTitle(window, newWindowTitle.c_str());
+		if (!images.empty())
 			glfwSetWindowIcon(window, images.size(), images.data());
-			inputSystem->windowIconPaths.clear();
-		}
-
-		if (!inputSystem->newFileDrops.empty())
-		{
-			inputSystem->currentFileDrops.insert(inputSystem->currentFileDrops.end(),
-				inputSystem->newFileDrops.begin(), inputSystem->newFileDrops.end());
-			inputSystem->newFileDrops.clear();
-		}
-
-		inputSystem->inputLocker.unlock();
 	}
 
 	glfwHideWindow(window);
