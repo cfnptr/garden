@@ -121,16 +121,13 @@ static void initializeImGui() // TODO: Separate into an ImGuiSystem
 	}
 	else abort();
 	
+	auto& io = ImGui::GetIO();
+	const auto fontPath = "fonts/dejavu-bold.ttf";
 	auto inputSystem = InputSystem::Instance::get();
 	auto windowSize = inputSystem->getWindowSize();
 	auto contentScale = inputSystem->getContentScale();
-	auto pixelRatioXY = (float2)framebufferSize / windowSize;
-	auto pixelRatio = std::max(pixelRatioXY.x, pixelRatioXY.y);
-	auto fontScale = std::max(contentScale.x, contentScale.y);
-
-	auto& io = ImGui::GetIO();
-	const auto fontPath = "fonts/dejavu-bold.ttf";
-	const auto fontSize = 14.0f * fontScale;
+	auto pixelRatio = (float2)framebufferSize / windowSize;
+	auto fontSize = 14.0f * std::max(contentScale.x, contentScale.y);
 
 	#if GARDEN_DEBUG
 	auto fontString = (GARDEN_RESOURCES_PATH / fontPath).generic_string();
@@ -145,8 +142,8 @@ static void initializeImGui() // TODO: Separate into an ImGuiSystem
 	io.Fonts->AddFontFromMemoryTTF(fontData, fontDataSize, fontSize);
 	#endif
 
-	io.FontGlobalScale = 1.0f / pixelRatio;
-	io.DisplayFramebufferScale = ImVec2(pixelRatioXY.x, pixelRatioXY.y);
+	io.FontGlobalScale = 1.0f / std::max(pixelRatio.x, pixelRatio.y);
+	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
 	// TODO: dynamically detect when system scale is changed or moved to another monitor and recreate fonts.
 
 	auto& platformIO = ImGui::GetPlatformIO();
@@ -581,8 +578,10 @@ static void imGuiNewFrame()
 {
 	auto& io = ImGui::GetIO();
 	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
-	io.DisplaySize = ImVec2(framebufferSize.x / io.DisplayFramebufferScale.x, 
-		framebufferSize.y / io.DisplayFramebufferScale.y);
+	auto windowSize = InputSystem::Instance::get()->getWindowSize();
+	auto pixelRatio = (float2)framebufferSize / windowSize;
+	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
+	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
 	io.DeltaTime = InputSystem::get()->getDeltaTime();
 
 	// TODO: implement these if required for something:

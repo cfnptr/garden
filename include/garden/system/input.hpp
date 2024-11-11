@@ -143,42 +143,48 @@ public:
 	 */
 	static constexpr uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
 private:
-	mutex inputLocker;
+	mutex eventLocker;
 	vector<bool> newKeyboardStates;
 	vector<bool> lastKeyboardStates;
-	vector<bool> currentKeyboardStates;
+	vector<bool> currKeyboardStates;
 	vector<bool> newMouseStates;
 	vector<bool> lastMouseStates;
-	vector<bool> currentMouseStates;
+	vector<bool> currMouseStates;
+	vector<uint32> accumKeyboardChars;
 	vector<uint32> newKeyboardChars;
-	vector<uint32> currentKeyboardChars;
+	vector<uint32> currKeyboardChars;
+	vector<fs::path> accumFileDrops;
 	vector<fs::path> newFileDrops;
-	vector<fs::path> currentFileDrops;
-	vector<string> windowIconPaths;
-	string windowTitle;
+	vector<fs::path> currFileDrops;
+	vector<string> newWindowIconPaths;
+	vector<string> currWindowIconPaths;
+	string newWindowTitle;
+	string currWindowTitle;
+	string newClipboard;
 	string lastClipboard;
-	string currentClipboard;
-	uint2 framebufferSize = uint2(0);
-	uint2 windowSize = uint2(0);
-	float2 contentScale = float2(0.0);
+	string currClipboard;
+	uint2 newFramebufferSize = uint2(0);
+	uint2 currFramebufferSize = uint2(0);
+	uint2 newWindowSize = uint2(0);
+	uint2 currWindowSize = uint2(0);
+	float2 newContentScale = float2(0.0);
+	float2 currContentScale = float2(0.0);
 	float2 newCursorPos = float2(0.0f);
-	float2 currentCursorPos = float2(0.0f);
+	float2 currCursorPos = float2(0.0f);
 	float2 cursorDelta = float2(0.0f);
 	float2 accumMouseScroll = float2(0.0f);
 	float2 newMouseScroll = float2(0.0f);
-	float2 currentMouseScroll = float2(0.0f);
+	float2 currMouseScroll = float2(0.0f);
 	double time = 0.0, systemTime = 0.0, deltaTime = 0.0;
-	const fs::path* currentFileDropPath = nullptr;
+	const fs::path* currFileDropPath = nullptr;
 	CursorMode newCursorMode = CursorMode::Default;
-	CursorMode currentCursorMode = CursorMode::Default;
-	bool cursorInWindow = false;
-	bool newCursorEnter = false;
-	bool lastCursorEnter = false;
-	bool currentCursorEnter = false;
-	bool windowInFocus = false;
-	bool newWindowFocus = false;
-	bool lastWindowFocus = false;
-	bool currentWindowFocus = false;
+	CursorMode currCursorMode = CursorMode::Default;
+	bool newCursorInWindow = false;
+	bool lastCursorInWindow = false;
+	bool currCursorInWindow = false;
+	bool newWindowInFocus = false;
+	bool lastWindowInFocus = false;
+	bool currWindowInFocus = false;
 
 	/**
 	 * @brief Creates a new input system instance.
@@ -198,8 +204,6 @@ private:
 	static void onMouseScroll(void* window, double offsetX, double offsetY);
 	static void onFileDrop(void* window, int count, const char** paths);
 	static void onKeyboardChar(void* window, unsigned int codepoint);
-	static void onCursorEnter(void* window, int entered);
-	static void onWindowFocus(void* window, int focused);
 
 	static void renderThread();
 	friend class ecsm::Manager;
@@ -230,36 +234,36 @@ public:
 	 * @brief Returns current window framebuffer size in pixels.
 	 * @details It can change when window is resized or minified.
 	 */
-	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
+	uint2 getFramebufferSize() const noexcept { return currFramebufferSize; }
 	/**
 	 * @brief Returns current window size in units.
 	 * @note It can differ from the framebuffer size! (eg. on macOS)
 	 */
-	uint2 getWindowSize() const noexcept { return windowSize; }
+	uint2 getWindowSize() const noexcept { return currWindowSize; }
 	/**
 	 * @brief Returns current windows content scale factor.
 	 * @details It can change by the display settings.
 	 */
-	float2 getContentScale() const noexcept { return contentScale; }
+	float2 getContentScale() const noexcept { return currContentScale; }
 
 	/**
 	 * @brief Returns true if windows is currently in focus.
 	 */
-	bool isWindowInFocus() const noexcept { return windowInFocus; }
+	bool isWindowInFocus() const noexcept { return currWindowInFocus; }
 	/**
 	 * @brief Returns true if window has gained focus.
 	 */
-	bool isWindowFocused() const noexcept { return lastWindowFocus != currentWindowFocus && currentWindowFocus; }
+	bool isWindowFocused() const noexcept { return lastWindowInFocus != currWindowInFocus && currWindowInFocus; }
 	/**
 	 * @brief Returns true if window has lost focus.
 	 */
-	bool isWindowUnfocused() const noexcept { return lastWindowFocus != currentWindowFocus && !currentWindowFocus; }
+	bool isWindowUnfocused() const noexcept { return lastWindowInFocus != currWindowInFocus && !currWindowInFocus; }
 
 	/**
 	 * @brief Returns current cursor position in the window. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
 	 */
-	float2 getCursorPosition() const noexcept { return currentCursorPos; }
+	float2 getCursorPosition() const noexcept { return currCursorPos; }
 	/**
 	 * @brief Returns current cursor delta position in the window. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
@@ -269,21 +273,21 @@ public:
 	/**
 	 * @brief Returns true if cursor is directly over the window content area.
 	 */
-	bool isCursorInWindow() const noexcept { return cursorInWindow; }
+	bool isCursorInWindow() const noexcept { return currCursorInWindow; }
 	/**
 	 * @brief Returns true if cursor has entered the window content area.
 	 */
-	bool isCursorEntered() const noexcept { return lastCursorEnter != currentCursorEnter && currentCursorEnter; }
+	bool isCursorEntered() const noexcept { return lastCursorInWindow != currCursorInWindow && currCursorInWindow; }
 	/**
 	 * @brief Returns true if cursor has leaved the window content area.
 	 */
-	bool isCursorLeaved() const noexcept { return lastCursorEnter != currentCursorEnter && !currentCursorEnter; }
+	bool isCursorLeaved() const noexcept { return lastCursorInWindow != currCursorInWindow && !currCursorInWindow; }
 
 	/**
 	 * @brief Returns current mouse delta scroll. (in units)
 	 * @details Useful for implementing FPS controller, inventory.
 	 */
-	float2 getMouseScroll() const noexcept { return currentMouseScroll; }
+	float2 getMouseScroll() const noexcept { return currMouseScroll; }
 
 	/**
 	 * @brief Returns true if keyboard button has been pressed.
@@ -292,7 +296,7 @@ public:
 	bool isKeyboardPressed(KeyboardButton button) const noexcept
 	{
 		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
-		return !lastKeyboardStates[(int)button] && currentKeyboardStates[(int)button];
+		return !lastKeyboardStates[(int)button] && currKeyboardStates[(int)button];
 	}
 	/**
 	 * @brief Returns true if keyboard button has been released.
@@ -301,7 +305,7 @@ public:
 	bool isKeyboardReleased(KeyboardButton button) const noexcept
 	{
 		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
-		return lastKeyboardStates[(int)button] && !currentKeyboardStates[(int)button];
+		return lastKeyboardStates[(int)button] && !currKeyboardStates[(int)button];
 	}
 
 	/**
@@ -311,7 +315,7 @@ public:
 	bool isMousePressed(MouseButton button) const noexcept
 	{
 		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
-		return !lastMouseStates[(int)button] && currentMouseStates[(int)button];
+		return !lastMouseStates[(int)button] && currMouseStates[(int)button];
 	}
 	/**
 	 * @brief Returns true if mouse button has been released.
@@ -320,7 +324,7 @@ public:
 	bool isMouseReleased(MouseButton button) const noexcept
 	{
 		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
-		return lastMouseStates[(int)button] && !currentMouseStates[(int)button];
+		return lastMouseStates[(int)button] && !currMouseStates[(int)button];
 	}
 
 	/**
@@ -330,7 +334,7 @@ public:
 	bool getKeyboardState(KeyboardButton button) const noexcept
 	{
 		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
-		return currentKeyboardStates[(int)button];
+		return currKeyboardStates[(int)button];
 	}
 	/**
 	 * @brief Returns true if mouse button is in pressed state.
@@ -339,7 +343,7 @@ public:
 	bool getMouseState(MouseButton button) const noexcept
 	{
 		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
-		return currentMouseStates[(int)button];
+		return currMouseStates[(int)button];
 	}
 
 	/**
@@ -357,7 +361,7 @@ public:
 	 * @brief Sets window title. (UTF-8)
 	 * @param title target title string
 	 */
-	void setWindowTitle(string_view title) noexcept { windowTitle = title; }
+	void setWindowTitle(string_view title) noexcept { newWindowTitle = title; }
 	/**
 	 * @brief Sets window icon images.
 	 * @param paths target icon paths
@@ -368,17 +372,17 @@ public:
 	/**
 	 * @brief Returns current clipboard string.
 	 */
-	const string& getClipboard() const noexcept { return currentClipboard; }
+	const string& getClipboard() const noexcept { return newClipboard; }
 	/**
 	 * @brief Sets clipboard string.
 	 * @param clipboard target clipboard string
 	 */
-	void setClipboard(string_view clipboard) noexcept { currentClipboard = clipboard; }
+	void setClipboard(string_view clipboard) noexcept { newClipboard = clipboard; }
 
 	/**
 	 * @brief Returns current keyboard text input array. (UTF-32 encoded)
 	 */
-	const vector<uint32>& getKeyboardChars32() const noexcept { return currentKeyboardChars; }
+	const vector<uint32>& getKeyboardChars32() const noexcept { return currKeyboardChars; }
 	/**
 	 * @brief Returns current keyboard text input array. (UTF-8 encoded)
 	 */
@@ -388,7 +392,7 @@ public:
 	 * @brief Returns current dropped file path.
 	 * @note Use it on "FileDrop" event.
 	 */
-	const fs::path& getCurrentFileDropPath() const noexcept { return *currentFileDropPath; }
+	const fs::path& getCurrentFileDropPath() const noexcept { return *currFileDropPath; }
 
 	/**
 	 * @brief Creates and starts separate render thread.

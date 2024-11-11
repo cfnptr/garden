@@ -16,14 +16,14 @@
 function(stripExecutable STRIP_TARGET)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
-			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET} executable..."
+			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
 			COMMAND objcopy --only-keep-debug "$<TARGET_FILE:${STRIP_TARGET}>" 
 				"$<TARGET_FILE_NAME:${STRIP_TARGET}>.debug"
 			COMMAND strip ARGS --strip-all "$<TARGET_FILE:${STRIP_TARGET}>")
 			# TODO: objcopy --add-gnu-debuglink=myprogram.debug myprogram
 	elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
-			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET} executable..."
+			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
 			COMMAND strip ARGS "$<TARGET_FILE:${STRIP_TARGET}>")
 			# TODO: objcopy alternative on arm
 	endif()
