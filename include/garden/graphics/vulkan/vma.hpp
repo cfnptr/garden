@@ -14,5 +14,19 @@
 
 // Note: no pragma once here.
 
-#define GLFW_INCLUDE_NONE
-#include "GLFW/glfw3.h"
+#if __APPLE__
+#define VK_ENABLE_BETA_EXTENSIONS
+#endif
+
+#include "vulkan/vulkan.hpp"
+
+#if __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullability-completeness"
+#endif
+
+#include "vk_mem_alloc.h"
+
+#if __clang__
+#pragma clang diagnostic pop
+#endif

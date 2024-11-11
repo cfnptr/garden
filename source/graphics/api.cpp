@@ -14,7 +14,7 @@
 
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/glfw.hpp"
+#include "garden/graphics/glfw.hpp" // Do not move it.
 #include "garden/system/log.hpp"
 
 #if GARDEN_OS_WINDOWS
