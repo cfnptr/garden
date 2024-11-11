@@ -57,6 +57,11 @@ AutoExposureRenderEditorSystem::~AutoExposureRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(limitsDescriptorSet);
+		graphicsSystem->destroy(limitsPipeline);
+		graphicsSystem->destroy(readbackBuffer);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureRenderEditorSystem::deinit);
 	}
@@ -191,6 +196,9 @@ void AutoExposureRenderEditorSystem::editorRender()
 
 			auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+			pushConstants->minLum = std::exp2(autoExposureSystem->minLogLum);
+			pushConstants->maxLum = std::exp2(autoExposureSystem->maxLogLum);
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
@@ -199,9 +207,6 @@ void AutoExposureRenderEditorSystem::editorRender()
 				pipelineView->bind();
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(limitsDescriptorSet);
-				auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-				pushConstants->minLum = std::exp2(autoExposureSystem->minLogLum);
-				pushConstants->maxLum = std::exp2(autoExposureSystem->maxLogLum);
 				pipelineView->pushConstants();
 				pipelineView->drawFullscreen();
 				framebufferView->endRenderPass();

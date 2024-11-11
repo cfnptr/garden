@@ -94,7 +94,8 @@ public:
 	};
 	struct SpecularPC final
 	{
-		uint32 count;
+		uint32 imageSize;
+		uint32 itemCount;
 	};
 
 	/**

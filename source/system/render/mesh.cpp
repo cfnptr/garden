@@ -468,17 +468,18 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 			{
 				auto meshSystem = opaqueBuffer->meshSystem;
 				const auto& meshes = opaqueBuffer->combinedMeshes;
-				auto itemCount = task.getItemCount(), threadIndex = task.getThreadIndex();
+				auto itemCount = task.getItemCount();
+				auto taskIndex = task.getThreadIndex(); // Using task index to preserve items order.
 				auto taskCount = itemCount - task.getItemOffset();
 
-				meshSystem->beginDrawAsync(threadIndex);
+				meshSystem->beginDrawAsync(taskIndex);
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
 					const auto& mesh = meshes[j];
 					auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
-					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, threadIndex);
+					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, taskIndex);
 				}
-				meshSystem->endDrawAsync(taskCount, threadIndex);
+				meshSystem->endDrawAsync(taskCount, taskIndex);
 			}),
 			drawCount);
 			threadPool.wait(); // Required
@@ -531,8 +532,9 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 			auto currentBufferIndex = transCombinedMeshes[task.getItemOffset()].bufferIndex;
 			auto meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
 			auto bufferDrawCount = translucentBuffers[currentBufferIndex].drawCount;
-			auto itemCount = task.getItemCount(), threadIndex = task.getThreadIndex();
-			meshSystem->beginDrawAsync(threadIndex);
+			auto itemCount = task.getItemCount();
+			auto taskIndex = task.getThreadIndex(); // Using task index to preserve items order.
+			meshSystem->beginDrawAsync(taskIndex);
 
 			uint32 currentDrawCount = 0;
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -541,23 +543,23 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 				if (currentBufferIndex != mesh.bufferIndex)
 				{
 					meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
-					meshSystem->endDrawAsync(currentDrawCount, threadIndex);
+					meshSystem->endDrawAsync(currentDrawCount, taskIndex);
 
 					currentBufferIndex = mesh.bufferIndex;
 					currentDrawCount = 0;
 
 					bufferDrawCount = translucentBuffers[currentBufferIndex].drawCount;
 					meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
-					meshSystem->beginDrawAsync(threadIndex);
+					meshSystem->beginDrawAsync(taskIndex);
 				}
 
 				auto drawIndex = bufferDrawCount->fetch_add(1);
 				auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
-				meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, threadIndex);
+				meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, taskIndex);
 				currentDrawCount++;
 			}
 
-			meshSystem->endDrawAsync(currentDrawCount, threadIndex);
+			meshSystem->endDrawAsync(currentDrawCount, taskIndex);
 		}),
 		drawCount);
 		threadPool.wait(); // Required

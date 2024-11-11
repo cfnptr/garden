@@ -334,56 +334,35 @@ public:
 	bool isBindless() const noexcept { return bindless; }
 
 	/*******************************************************************************************************************
-	 * @brief Returns push constants data.
-	 * @details See the @ref Pipeline::pushConstants()
-	 * @tparam T type of the structure with data
-	 */
-	template<typename T>
-	T* getPushConstants()
-	{
-		GARDEN_ASSERT(!asyncRecording);
-		GARDEN_ASSERT(pushConstantsSize == sizeof(T));  // Different shader pushConstants size
-		return (T*)pushConstantsBuffer.data();
-	}
-	/**
-	 * @brief Returns constant push constants data.
-	 * @details See the @ref Pipeline::pushConstants()
-	 * @tparam T type of the structure with data
-	 */
-	template<typename T>
-	const T* getPushConstants() const { return getPushConstants<T>(); }
-	
-	/**
 	 * @brief Returns push constants data. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
 	 * 
-	 * @tparam T type of the structure with data
 	 * @param threadIndex thread index in the pool
+	 * @tparam T type of the structure with data
 	 */
 	template<typename T>
-	T* getPushConstantsAsync(int32 threadIndex)
+	T* getPushConstants(int32 threadIndex = 0)
 	{
-		GARDEN_ASSERT(asyncRecording);
 		GARDEN_ASSERT(checkThreadIndex(threadIndex));
-		GARDEN_ASSERT(pushConstantsSize == sizeof(T)); // Different shader pushConstants size
+		GARDEN_ASSERT(pushConstantsSize == sizeof(T));  // Different shader pushConstants size
 		return (T*)(pushConstantsBuffer.data() + pushConstantsSize * threadIndex);
 	}
 	/**
-	 * @brief Returns push constants data. (MT-Safe)
+	 * @brief Returns constant push constants data. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
 	 * 
-	 * @tparam T type of the structure with data
 	 * @param threadIndex thread index in the pool
+	 * @tparam T type of the structure with data
 	 */
 	template<typename T>
-	const T* getPushConstantsAsync(int32 threadIndex) const { return getPushConstantsAsync<T>(threadIndex); }
+	const T* getPushConstants(int32 threadIndex = 0) const { return getPushConstants<T>(); }
 
 	/**
 	 * @brief Returns push constants data. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
 	 * @param threadIndex thread index in the pool
 	 */
-	uint8* getPushConstantsAsync(int32 threadIndex)
+	uint8* getPushConstants(int32 threadIndex = 0)
 	{
 		GARDEN_ASSERT(asyncRecording);
 		GARDEN_ASSERT(checkThreadIndex(threadIndex));
@@ -394,7 +373,7 @@ public:
 	 * @details See the @ref Pipeline::pushConstants()
 	 * @param threadIndex thread index in the pool
 	 */
-	const uint8* getPushConstantsAsync(int32 threadIndex) const
+	const uint8* getPushConstants(int32 threadIndex = 0) const
 	{
 		GARDEN_ASSERT(asyncRecording);
 		GARDEN_ASSERT(checkThreadIndex(threadIndex));
@@ -422,7 +401,7 @@ public:
 	 * @param variant target shaders variant to use or 0 (#variantCount X)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindAsync(uint8 variant = 0, int32 threadIndex = -1);
+	void bindAsync(uint8 variant, int32 threadIndex = -1);
 
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
@@ -511,7 +490,7 @@ public:
 	 * @param offset descript set offset in the range or 0
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindDescriptorSetAsync(ID<DescriptorSet> descriptorSet, uint32 offset = 0, int32 threadIndex = -1)
+	void bindDescriptorSetAsync(ID<DescriptorSet> descriptorSet, uint32 offset, int32 threadIndex = -1)
 	{
 		DescriptorSet::Range descriptorSetRange(descriptorSet, 1, offset);
 		bindDescriptorSetsAsync(&descriptorSetRange, 1, threadIndex);

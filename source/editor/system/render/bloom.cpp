@@ -41,6 +41,10 @@ BloomRenderEditorSystem::~BloomRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(thresholdDescriptorSet);
+		graphicsSystem->destroy(thresholdPipeline);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderEditorSystem::deinit);
 	}
@@ -129,6 +133,8 @@ void BloomRenderEditorSystem::editorRender()
 
 			auto bloomSystem = BloomRenderSystem::Instance::get();
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+			pushConstants->threshold = bloomSystem->threshold;
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
@@ -137,8 +143,6 @@ void BloomRenderEditorSystem::editorRender()
 				pipelineView->bind();
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(thresholdDescriptorSet);
-				auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-				pushConstants->threshold = bloomSystem->threshold;
 				pipelineView->pushConstants();
 				pipelineView->drawFullscreen();
 				framebufferView->endRenderPass();

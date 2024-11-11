@@ -122,7 +122,7 @@ static ID<Framebuffer> createTranslucentFramebuffer(ID<Image> hdrBuffer, ID<Imag
 	auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), false, false, true) };
+	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), false, true, true) };
 	Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, false, true, true);
 
 	if (depthStencilBuffer)
@@ -283,7 +283,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("HDR Render Pass");
 		SET_GPU_DEBUG_LABEL("HDR Pass", Color::transparent);
 		framebufferView = graphicsSystem->get(hdrFramebuffer);
-		framebufferView->beginRenderPass(float4(0.0f), 0.0f, 0, int4(0), asyncRecording);
+		framebufferView->beginRenderPass(float4(0.0f));
 		manager->runEvent("HdrRender");
 		framebufferView->endRenderPass();
 	}
@@ -313,7 +313,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("LDR Render Pass");
 		SET_GPU_DEBUG_LABEL("LDR Pass", Color::transparent);
 		framebufferView = graphicsSystem->get(ldrFramebuffer);
-		framebufferView->beginRenderPass(float4(0.0f), asyncRecording);
+		framebufferView->beginRenderPass(float4(0.0f));
 		manager->runEvent("LdrRender");
 		framebufferView->endRenderPass();
 	}
@@ -382,6 +382,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		framebufferView->update(framebufferSize, &colorAttachment, 1);
 
 		framebufferView = graphicsSystem->get(translucentFramebuffer);
+		colorAttachment.load = true;
 		auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
 		Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, false, true, true);
 		if (depthStencilBuffer)

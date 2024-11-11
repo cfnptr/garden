@@ -75,9 +75,9 @@ protected:
 	/**
 	 * @brief Begins mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
-	 * @param threadIndex thread index in the pool
+	 * @param taskIndex task index in the thread pool
 	 */
-	virtual void beginDrawAsync(int32 threadIndex) { }
+	virtual void beginDrawAsync(int32 taskIndex) { }
 	/**
 	 * @brief Draws mesh item asynchronously.
 	 * @warning Be careful with multithreaded code!
@@ -86,18 +86,18 @@ protected:
 	 * @param[in] viewProj camera view * projection matrix
 	 * @param[in] model mesh model matrix (position, scale, rotation, etc.)
 	 * @param drawIndex mesh item draw index (sorted)
-	 * @param threadIndex thread index in the pool
+	 * @param taskIndex task index in the thread pool
 	 */
 	virtual void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
-		const float4x4& model, uint32 drawIndex, int32 threadIndex) = 0;
+		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
 	/**
 	 * @brief Ends mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
 	 * 
 	 * @param[in] drawCount total mesh draw item count
-	 * @param threadIndex thread index in the pool
+	 * @param taskIndex task index in the thread pool
 	 */
-	virtual void endDrawAsync(uint32 drawCount, int32 threadIndex) { }
+	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
 	/**
 	 * @brief Finalizes data used for mesh rendering.
 	 * @warning Be careful with multithreaded code!
@@ -231,7 +231,7 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes( const float4x4& viewProj, const float3& cameraOffset,
+	void prepareMeshes(const float4x4& viewProj, const float3& cameraOffset,
 		uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType);
 	void renderOpaque(const float4x4& viewProj);
 	void renderTranslucent(const float4x4& viewProj);

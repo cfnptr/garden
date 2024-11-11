@@ -614,8 +614,8 @@ void GraphicsSystem::update()
 
 	SwapchainChanges newSwapchainChanges;
 	newSwapchainChanges.framebufferSize = inputSystem->getFramebufferSize() != swapchain->getFramebufferSize();
-	newSwapchainChanges.bufferCount = useTripleBuffering != swapchain->isUseTripleBuffering();
-	newSwapchainChanges.vsyncState = useVsync != swapchain->isUseVsync();
+	newSwapchainChanges.bufferCount = useTripleBuffering != swapchain->useTripleBuffering();
+	newSwapchainChanges.vsyncState = useVsync != swapchain->useVsync();
 
 	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
 		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState || outOfDateSwapchain);
@@ -791,6 +791,19 @@ uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
 	return max((uint2)(float2(framebufferSize) * renderScale), uint2(1));
 }
 
+ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
+{
+	return GraphicsAPI::get()->currentFramebuffer;
+}
+uint8 GraphicsSystem::getCurrentSubpassIndex() const noexcept
+{
+	return GraphicsAPI::get()->currentSubpassIndex;
+}
+bool GraphicsSystem::isCurrentRenderPassAsync() const noexcept
+{
+	return GraphicsAPI::get()->isCurrentRenderPassAsync;
+}
+
 uint32 GraphicsSystem::getSwapchainSize() const noexcept
 {
 	return (uint32)GraphicsAPI::get()->swapchain->getBufferCount();
@@ -798,6 +811,11 @@ uint32 GraphicsSystem::getSwapchainSize() const noexcept
 uint32 GraphicsSystem::getSwapchainIndex() const noexcept
 {
 	return GraphicsAPI::get()->swapchain->getCurrentBufferIndex();
+}
+
+uint32 GraphicsSystem::getThreadCount() const noexcept
+{
+	return GraphicsAPI::get()->threadCount;
 }
 
 //**********************************************************************************************************************
@@ -1416,13 +1434,14 @@ void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
 	auto pushConstants = pipelineView->getPushConstants<LinePC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;
 	pushConstants->startPoint = float4(startPoint, 1.0f);
 	pushConstants->endPoint = float4(endPoint, 1.0f);
+
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
 	pipelineView->pushConstants();
 	pipelineView->draw({}, 24);
 }
@@ -1435,11 +1454,12 @@ void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
 	auto pushConstants = pipelineView->getPushConstants<AabbPC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;
+
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
 	pipelineView->pushConstants();
 	pipelineView->draw({}, 24);
 }

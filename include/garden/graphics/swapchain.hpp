@@ -61,11 +61,11 @@ protected:
 	ThreadPool* threadPool = nullptr;
 	uint2 framebufferSize = uint2(0);
 	uint32 bufferIndex = 0;
-	bool useVsync = false;
-	bool useTripleBuffering = false;
+	bool vsync = false;
+	bool tripleBuffering = false;
 
 	Swapchain(bool useVsync, bool useTripleBuffering) noexcept : 
-		useVsync(useVsync), useTripleBuffering(useTripleBuffering) { }
+		vsync(useVsync), tripleBuffering(useTripleBuffering) { }
 public:
 	/**
 	 * @brief Destroys swapchain instance.
@@ -95,11 +95,11 @@ public:
 	/**
 	 * @brief Returns true if swapchain is using V-sync.
 	 */
-	bool isUseVsync() const noexcept { return useVsync; }
+	bool useVsync() const noexcept { return vsync; }
 	/**
 	 * @brief Returns true if swapchain is triple buffering. (3 framebuffers)
 	 */
-	bool isUseTripleBuffering() const noexcept { return useTripleBuffering; }
+	bool useTripleBuffering() const noexcept { return tripleBuffering; }
 
 	/**
 	 * @brief Recreates swapchain rendering buffers.

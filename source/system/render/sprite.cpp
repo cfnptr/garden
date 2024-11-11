@@ -112,21 +112,21 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 
 //**********************************************************************************************************************
 void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
 	auto instanceData = (InstanceData*)(instanceMap + getInstanceDataSize() * drawIndex);
-	setInstanceData(spriteRenderView, instanceData, viewProj, model, drawIndex, threadIndex);
+	setInstanceData(spriteRenderView, instanceData, viewProj, model, drawIndex, taskIndex);
 
 	DescriptorSet::Range descriptorSetRange[8]; uint8 descriptorSetCount = 0;
 	setDescriptorSetRange(meshRenderView, descriptorSetRange, descriptorSetCount, 8);
-	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, threadIndex);
 
-	auto pushConstants = (PushConstants*)pipelineView->getPushConstantsAsync(threadIndex);
-	setPushConstants(spriteRenderView, pushConstants, viewProj, model, drawIndex, threadIndex);
-	pipelineView->pushConstantsAsync(threadIndex);
+	auto pushConstants = (PushConstants*)pipelineView->getPushConstants(taskIndex);
+	setPushConstants(spriteRenderView, pushConstants, viewProj, model, drawIndex, taskIndex);
 
-	pipelineView->drawAsync(threadIndex, {}, 6);
+	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
+	pipelineView->pushConstantsAsync(taskIndex);
+	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 
 //**********************************************************************************************************************
@@ -135,7 +135,7 @@ uint64 SpriteRenderSystem::getInstanceDataSize()
 	return (uint64)sizeof(InstanceData);
 }
 void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	instanceData->mvp = viewProj * model;
 	instanceData->colorFactor = spriteRenderView->colorFactor;
@@ -152,7 +152,7 @@ void SpriteRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderVi
 		(ID<DescriptorSet>)spriteRenderView->descriptorSet : defaultDescriptorSet);
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
+	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	pushConstants->instanceIndex = drawIndex;
 	pushConstants->colorMapLayer = spriteRenderView->colorMapLayer;

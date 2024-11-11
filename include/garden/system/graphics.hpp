@@ -167,6 +167,22 @@ public:
 	 */
 	uint2 getScaledFramebufferSize() const noexcept;
 
+	/**
+	 * @brief Returns current render pass framebuffer.
+	 * @details Set by the @ref Framebuffer::beginRenderPass().
+	 */
+	ID<Framebuffer> getCurrentFramebuffer() const noexcept;
+	/**
+	 * @brief Returns current render subpass index.
+	 * @details Changes by the @ref Framebuffer::nextSubpass().
+	 */
+	uint8 getCurrentSubpassIndex() const noexcept;
+	/**
+	 * @brief Is current render pass use multithreaded commands recording.
+	 * @details Changes by the @ref Framebuffer::nextSubpass().
+	 */
+	bool isCurrentRenderPassAsync() const noexcept;
+
 	/*******************************************************************************************************************
 	 * @brief Returns current frame index since the application launch.
 	 * @details It does not count frames when the window is minimized.
@@ -205,6 +221,12 @@ public:
 	 * @details It changes after each framebuffer present on the screen.
 	 */
 	uint32 getSwapchainIndex() const noexcept;
+
+	/**
+	 * @brief Returns current swapchain asynchronous thread count.
+	 * @details Useful for an async rendering commands.
+	 */
+	uint32 getThreadCount() const noexcept;
 
 	/**
 	 * @brief Returns true if current swapchain is out of date.

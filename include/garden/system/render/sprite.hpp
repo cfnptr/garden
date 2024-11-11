@@ -119,15 +119,15 @@ protected:
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
 	void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
-		const float4x4& model, uint32 drawIndex, int32 threadIndex) override;
+		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	uint64 getInstanceDataSize() override;
 	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex);
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
 		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex);
+		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
 	ID<GraphicsPipeline> createPipeline() final;

@@ -152,22 +152,24 @@ void AutoExposureRenderSystem::render()
 		auto histogramView = graphicsSystem->get(histogramBuffer);
 		histogramView->fill(0);
 
-		histogramPipelineView->bind();
-		histogramPipelineView->bindDescriptorSet(histogramDescriptorSet);
 		auto histogramPC = histogramPipelineView->getPushConstants<HistogramPC>();
 		histogramPC->minLogLum = minLogLum;
 		histogramPC->invLogLumRange = 1.0f / logLumRange;
+
+		histogramPipelineView->bind();
+		histogramPipelineView->bindDescriptorSet(histogramDescriptorSet);
 		histogramPipelineView->pushConstants();
 		histogramPipelineView->dispatch(uint3(framebufferSize, 1));
 
-		averagePipelineView->bind();
-		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
 		auto averagePC = averagePipelineView->getPushConstants<AveragePC>();
 		averagePC->minLogLum = minLogLum;
 		averagePC->logLumRange = logLumRange;
 		averagePC->pixelCount = (float)framebufferSize.x * framebufferSize.y;
 		averagePC->darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
 		averagePC->brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
+
+		averagePipelineView->bind();
+		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
 		averagePipelineView->pushConstants();
 		averagePipelineView->dispatch(uint3(1));
 	}

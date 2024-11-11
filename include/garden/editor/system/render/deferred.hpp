@@ -45,9 +45,10 @@ class DeferredRenderEditorSystem final : public System
 		float reflectance;
 	};
 
+	ID<Image> shadowPlaceholder = {};
 	ID<GraphicsPipeline> bufferPipeline = {};
+	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
-	ID<GraphicsPipeline> lightingPipeline = {};
 	float4 baseColorOverride = float4(1.0f);
 	float4 emissiveOverride = float4(0.0f);
 	float metallicOverride = 0.0f;
@@ -59,8 +60,6 @@ class DeferredRenderEditorSystem final : public System
 	bool showChannelB = true;
 	bool showWindow = false;
 
-	inline static ID<Image> shadowPlaceholder = {};
-
 	DeferredRenderEditorSystem();
 	~DeferredRenderEditorSystem() final;
 
@@ -68,6 +67,8 @@ class DeferredRenderEditorSystem final : public System
 	void deinit();
 	void editorRender();
 	void deferredRender();
+	void preLdrRender();
+	void ldrRender();
 	void gBufferRecreate();
 	void editorBarTool();
 	

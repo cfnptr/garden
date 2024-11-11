@@ -318,10 +318,6 @@ bool ShadowMappingRenderSystem::shadowRender()
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	dataBufferView->flush();
 
-	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->farNearPlanes = float4(
 		cameraConstants.nearPlane / farPlanes, cameraConstants.nearPlane);
@@ -329,6 +325,11 @@ bool ShadowMappingRenderSystem::shadowRender()
 	pushConstants->minBias = minBias;
 	pushConstants->maxBias = maxBias;
 	pushConstants->intensity = intensity;
+
+	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
 	pipelineView->pushConstants();
 	pipelineView->drawFullscreen();
 	return true;

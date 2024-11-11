@@ -639,33 +639,20 @@ void PbrLightingRenderSystem::hdrRender()
 		0.0f, 0.0f, 0.0f,  1.0f
 	);
 
-	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	DescriptorSet::Range descriptorSetRange[2];
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDescriptorSet);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
-	if (Framebuffer::isCurrentRenderPassAsync())
-	{
-		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
-		pipelineView->bindDescriptorSetsAsync(descriptorSetRange, 2, 0);
-		auto pushConstants = pipelineView->getPushConstantsAsync<LightingPC>(0);
-		pushConstants->uvToWorld = cameraConstants.viewProjInv * uvToNDC;
-		pushConstants->shadowColor = float4((float3)shadowColor * shadowColor.w, 0.0f);
-		pipelineView->pushConstantsAsync(0);
-		pipelineView->drawFullscreenAsync(0);
-	}
-	else
-	{
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSets(descriptorSetRange, 2);
-		auto pushConstants = pipelineView->getPushConstants<LightingPC>();
-		pushConstants->uvToWorld = cameraConstants.viewProjInv * uvToNDC;
-		pushConstants->shadowColor = float4((float3)shadowColor * shadowColor.w, 0.0f);
-		pipelineView->pushConstants();
-		pipelineView->drawFullscreen();
-	}
+	auto pushConstants = pipelineView->getPushConstants<LightingPC>();
+	pushConstants->uvToWorld = cameraConstants.viewProjInv * uvToNDC;
+	pushConstants->shadowColor = float4((float3)shadowColor * shadowColor.w, 0.0f);
+
+	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSets(descriptorSetRange, 2);
+	pipelineView->pushConstants();
+	pipelineView->drawFullscreen();
 }
 
 //**********************************************************************************************************************
@@ -1010,7 +997,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	specularCacheSize *= sizeof(SpecularItem);
 
 	auto cpuSpecularCache = graphicsSystem->createBuffer(
-		Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
+		Buffer::Bind::TransferSrc, Buffer::Access::RandomReadWrite,
 		specularCacheSize, Buffer::Usage::Auto, Buffer::Strategy::Speed);
 	SET_RESOURCE_DEBUG_NAME(cpuSpecularCache,
 		"buffer.storage.lighting.cpuSpecularCache" + to_string(*cpuSpecularCache));
@@ -1045,10 +1032,10 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		}
 	}
 
-	SET_GPU_DEBUG_LABEL("IBL Specular Generation", Color::transparent);
-	cpuSpecularCacheView->flush();
-		
+	cpuSpecularCacheView->flush();	
 	specularCacheSize = 0;
+
+	SET_GPU_DEBUG_LABEL("IBL Specular Generation", Color::transparent);
 	for (uint32 i = 0; i < (uint32)gpuSpecularCaches.size(); i++)
 	{
 		auto cacheSize = countBuffer[i] * sizeof(SpecularItem);
@@ -1063,23 +1050,23 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		bufferCopyRegion.size = cacheSize;
 		bufferCopyRegion.srcOffset = specularCacheSize;
 		Buffer::copy(cpuSpecularCache, gpuSpecularCache, bufferCopyRegion);
-		specularCacheSize += calcSampleCount(i + 1) * sizeof(SpecularItem);
+		specularCacheSize += (uint64)calcSampleCount(i + 1) * sizeof(SpecularItem);
 	}
 
 	Image::CopyImageRegion imageCopyRegion;
-	imageCopyRegion.extent = uint3(cubemapSize, cubemapSize, 1);
 	imageCopyRegion.layerCount = 6;
 	Image::copy(cubemap, specular, imageCopyRegion);
 
 	auto pipelineView = graphicsSystem->get(iblSpecularPipeline);
+	auto pushConstants = pipelineView->getPushConstants<PbrLightingRenderSystem::SpecularPC>();
 	pipelineView->bind();
 
 	cubemapSize /= 2;
-	for (uint8 i = 1; i < specularMipCount; i++)
+	for (uint8 i = 0; i < (uint32)gpuSpecularCaches.size(); i++)
 	{
 		auto iblSpecularView = graphicsSystem->createImageView(specular,
-			Image::Type::Texture2DArray, cubemapFormat, i, 1, 0, 6);
-		auto gpuSpecularCache = gpuSpecularCaches[i - 1];
+			Image::Type::Texture2DArray, cubemapFormat, i + 1, 1, 0, 6);
+		auto gpuSpecularCache = gpuSpecularCaches[i];
 		map<string, DescriptorSet::Uniform> iblSpecularUniforms =
 		{
 			{ "cubemap", DescriptorSet::Uniform(defaultCubemapView) },
@@ -1092,9 +1079,10 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 			"descriptorSet.lighting.iblSpecular" + to_string(*iblSpecularDescriptorSet));
 		pipelineView->bindDescriptorSet(iblSpecularDescriptorSet);
 
-		auto pushConstants = pipelineView->getPushConstants<PbrLightingRenderSystem::SpecularPC>();
-		pushConstants->count = countBuffer[i - 1];
+		pushConstants->imageSize = cubemapSize;
+		pushConstants->itemCount = countBuffer[i];
 		pipelineView->pushConstants();
+
 		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
 
 		graphicsSystem->destroy(iblSpecularDescriptorSet);
