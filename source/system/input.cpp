@@ -16,8 +16,8 @@
 #include "garden/system/log.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/graphics/glfw.hpp"
 #include "garden/graphics/vulkan/api.hpp"
+#include "garden/graphics/glfw.hpp" // Do not move it.
 #include "garden/profiler.hpp"
 #include "mpmt/thread.hpp"
 

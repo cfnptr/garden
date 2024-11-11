@@ -22,8 +22,8 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/graphics/vulkan/api.hpp"
+#include "garden/graphics/glfw.hpp" // Do not move it.
 #include "garden/graphics/imgui-impl.hpp"
-#include "garden/graphics/glfw.hpp"
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
 

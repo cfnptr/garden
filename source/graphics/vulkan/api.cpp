@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/glfw.hpp"
 #include "mpio/directory.hpp"
 
 #define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
+#include "garden/graphics/vulkan/vma.hpp"
+#include "garden/graphics/glfw.hpp"
 
 #include <array>
 #include <vector>

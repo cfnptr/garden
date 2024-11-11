@@ -19,13 +19,7 @@
 
 #pragma once
 #include "garden/graphics/swapchain.hpp"
-
-#if __APPLE__
-#define VK_ENABLE_BETA_EXTENSIONS
-#endif
-
-#include "vulkan/vulkan.hpp"
-#include "vk_mem_alloc.h"
+#include "garden/graphics/vulkan/vma.hpp"
 
 namespace garden
 {
