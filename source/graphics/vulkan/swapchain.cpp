@@ -271,8 +271,8 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 	buffers.assign(vulkanBuffers.begin(), vulkanBuffers.end());
 
 	this->framebufferSize = framebufferSize;
-	this->useVsync = useVsync;
-	this->useTripleBuffering = useTripleBuffering;
+	this->vsync = useVsync;
+	this->tripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
 	this->frameIndex = 0;
 }

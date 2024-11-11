@@ -125,25 +125,24 @@ void SkyboxRenderSystem::translucentRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	auto threadIndex = graphicsSystem->getThreadCount() - 1;
+	auto pushConstants = pipelineView->getPushConstants<PushConstants>(threadIndex);
+	pushConstants->viewProj = cameraConstants.viewProj;
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
-	if (Framebuffer::isCurrentRenderPassAsync())
+	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
-		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
-		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
-		auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(0);
-		pushConstants->viewProj = cameraConstants.viewProj;
-		pipelineView->pushConstantsAsync(0);
-		pipelineView->drawAsync(0, {}, cubeVertexCount);
+		pipelineView->bindAsync(0, threadIndex);
+		pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
+		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, threadIndex);
+		pipelineView->pushConstantsAsync(threadIndex);
+		pipelineView->drawAsync(threadIndex, {}, cubeVertexCount);
 	}
 	else
 	{
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(ID<DescriptorSet>(skyboxView->descriptorSet));
-		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-		pushConstants->viewProj = cameraConstants.viewProj;
 		pipelineView->pushConstants();
 		pipelineView->draw({}, cubeVertexCount);
 	}

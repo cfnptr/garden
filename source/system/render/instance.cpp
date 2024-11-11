@@ -115,10 +115,10 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 	pipelineView = graphicsSystem->get(pipeline);
 	instanceMap = instanceBufferView->getMap();
 }
-void InstanceRenderSystem::beginDrawAsync(int32 threadIndex)
+void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 {
-	pipelineView->bindAsync(0, threadIndex);
-	pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
+	pipelineView->bindAsync(0, taskIndex);
+	pipelineView->setViewportScissorAsync(float4(0.0f), taskIndex);
 }
 void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCount)
 {

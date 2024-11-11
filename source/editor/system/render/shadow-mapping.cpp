@@ -114,6 +114,9 @@ void ShadowMappingEditor::render()
 
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+			pushConstants->farPlanes = float4(cameraConstants.nearPlane / system->farPlanes, 0.0f);
+
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
@@ -121,9 +124,6 @@ void ShadowMappingEditor::render()
 				pipelineView->bind();
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(cascadesDescriptorSet);
-				auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-				pushConstants->farPlanes = float4(
-					cameraConstants.nearPlane / system->farPlanes, 0.0f);
 				pipelineView->pushConstants();
 				pipelineView->drawFullscreen();
 				framebufferView->endRenderPass();

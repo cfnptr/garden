@@ -66,6 +66,11 @@ MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(arrowVertexBuffer);
+		graphicsSystem->destroy(backGizmosPipeline);
+		graphicsSystem->destroy(frontGizmosPipeline);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 	}

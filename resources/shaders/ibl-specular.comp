@@ -36,17 +36,17 @@ buffer readonly Cache
 
 uniform pushConstants
 {
-	uint32 count;
+	uint32 imageSize;
+	uint32 itemCount;
 } pc;
 
 //**********************************************************************************************************************
 void main()
 {
-	uint2 specularSize = imageSize(specular).xy;
-	if (any(greaterThanEqual(gl.globalInvocationID.xy, specularSize)))
+	if (any(greaterThanEqual(gl.globalInvocationID.xy, uint2(pc.imageSize))))
 		return;
 
-	float3 dir = coordsToDir(gl.globalInvocationID, 1.0f / specularSize.x);
+	float3 dir = coordsToDir(gl.globalInvocationID, 1.0f / pc.imageSize);
 
 	float3x3 r;
 	float3 up = abs(dir.z) < 0.999f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
@@ -57,7 +57,7 @@ void main()
 	// TODO: try to add blue noise random rotation. It may improve quality.
 
 	float3 li = float3(0.0f);
-	for (uint32 i = 0; i < pc.count; i++)
+	for (uint32 i = 0; i < pc.itemCount; i++)
 	{
 		CacheItem item = cache.items[i];
 		float3 l = r * item.l.xyz;

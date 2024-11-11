@@ -79,14 +79,14 @@ DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderEditorSystem::deinit);
 	}
-	
-	shadowPlaceholder = {};
 }
 
 void DeferredRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
 	ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DeferredRenderEditorSystem::preLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", DeferredRenderEditorSystem::ldrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
 }
@@ -94,13 +94,19 @@ void DeferredRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(bufferDescriptorSet);
+		graphicsSystem->destroy(pbrLightingPipeline);
+		graphicsSystem->destroy(bufferPipeline);
+		graphicsSystem->destroy(shadowPlaceholder);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", DeferredRenderEditorSystem::preLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", DeferredRenderEditorSystem::ldrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
 	}
-	
-	shadowPlaceholder = {};
 }
 
 //**********************************************************************************************************************
@@ -141,57 +147,14 @@ void DeferredRenderEditorSystem::editorRender()
 				if (!pipelineView->isReady())
 					ImGui::TextDisabled("G-Buffer pipeline is loading...");
 			}
-			if (lightingPipeline)
+			if (pbrLightingPipeline)
 			{
-				auto pipelineView = GraphicsSystem::Instance::get()->get(lightingPipeline);
+				auto pipelineView = GraphicsSystem::Instance::get()->get(pbrLightingPipeline);
 				if (!pipelineView->isReady())
-					ImGui::TextDisabled("Lighting pipeline is loading...");
+					ImGui::TextDisabled("PBR lighting pipeline is loading...");
 			}
 		}
 		ImGui::End();
-	}
-
-	if ((int)drawMode > (int)DrawMode::Off && (int)drawMode != (int)DrawMode::Lighting)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-
-		if (!bufferPipeline)
-		{
-			bufferPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-				"editor/gbuffer-data", graphicsSystem->getSwapchainFramebuffer());
-		}
-
-		auto pipelineView = graphicsSystem->get(bufferPipeline);
-		if (pipelineView->isReady() && graphicsSystem->camera)
-		{
-			// TODO: we are doing this to get latest buffers. (suboptimal)
-			graphicsSystem->destroy(bufferDescriptorSet);
-			auto uniforms = getBufferUniforms(shadowPlaceholder);
-			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
-
-			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-
-			graphicsSystem->startRecording(CommandBufferType::Frame);
-			{
-				SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
-				framebufferView->beginRenderPass(float4(0.0f));
-				pipelineView->bind();
-				pipelineView->setViewportScissor();
-				pipelineView->bindDescriptorSet(bufferDescriptorSet);
-				auto pushConstants = pipelineView->getPushConstants<BufferPC>();
-				pushConstants->viewProjInv = cameraConstants.viewProjInv;
-				pushConstants->drawMode = (int32)drawMode;
-				pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
-				pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
-				pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
-				pipelineView->pushConstants();
-				pipelineView->drawFullscreen();
-				framebufferView->endRenderPass();
-			}
-			graphicsSystem->stopRecording();
-		}
 	}
 }
 
@@ -201,45 +164,96 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (drawMode != DrawMode::Lighting)
 		return;
 
-	if (!lightingPipeline)
+	if (!pbrLightingPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		lightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("editor/pbr-lighting", 
-			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true);
+		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("editor/pbr-lighting",
+			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording());
 	}
 
-	auto pipelineView = GraphicsSystem::Instance::get()->get(lightingPipeline);
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(pbrLightingPipeline);
+
 	if (pipelineView->isReady())
 	{
-		SET_GPU_DEBUG_LABEL("Lighting Visualizer", Color::transparent);
+		auto threadIndex = graphicsSystem->getThreadCount() - 1;
+		auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
+		pushConstants->baseColor = baseColorOverride;
+		pushConstants->emissive = emissiveOverride;
+		pushConstants->metallic = metallicOverride;
+		pushConstants->roughness = roughnessOverride;
+		pushConstants->reflectance = reflectanceOverride;
 
-		if (Framebuffer::isCurrentRenderPassAsync())
+		SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
+		if (graphicsSystem->isCurrentRenderPassAsync())
 		{
-			pipelineView->bindAsync(0, 0);
-			pipelineView->setViewportScissorAsync(float4(0.0f), 0);
-			auto pushConstants = pipelineView->getPushConstantsAsync<LightingPC>(0);
-			pushConstants->baseColor = baseColorOverride;
-			pushConstants->emissive = emissiveOverride;
-			pushConstants->metallic = metallicOverride;
-			pushConstants->roughness = roughnessOverride;
-			pushConstants->reflectance = reflectanceOverride;
-			pipelineView->pushConstantsAsync(0);
-			pipelineView->drawFullscreenAsync(0);
-			// TODO: also support translucent overrides.
+			pipelineView->bindAsync(0, threadIndex);
+			pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
+			pipelineView->pushConstantsAsync(threadIndex);
+			pipelineView->drawFullscreenAsync(threadIndex);
+			
 		}
 		else
 		{
 			pipelineView->bind();
 			pipelineView->setViewportScissor();
-			auto pushConstants = pipelineView->getPushConstants<LightingPC>();
-			pushConstants->baseColor = baseColorOverride;
-			pushConstants->emissive = emissiveOverride;
-			pushConstants->metallic = metallicOverride;
-			pushConstants->roughness = roughnessOverride;
-			pushConstants->reflectance = reflectanceOverride;
 			pipelineView->pushConstants();
 			pipelineView->drawFullscreen();
+			// TODO: also support translucent overrides.
 		}
+	}
+}
+
+//**********************************************************************************************************************
+void DeferredRenderEditorSystem::preLdrRender()
+{
+	if ((int)drawMode == (int)DrawMode::Off || (int)drawMode == (int)DrawMode::Lighting)
+		return;
+
+	if (!bufferPipeline)
+	{
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		bufferPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+			"editor/gbuffer-data", deferredSystem->getLdrFramebuffer());
+	}
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(bufferPipeline);
+
+	if (pipelineView->isReady())
+	{
+		if (!bufferDescriptorSet)
+		{
+			auto uniforms = getBufferUniforms(shadowPlaceholder);
+			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
+		}
+	}
+}
+void DeferredRenderEditorSystem::ldrRender()
+{
+	if ((int)drawMode == (int)DrawMode::Off || (int)drawMode == (int)DrawMode::Lighting)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(bufferPipeline);
+
+	if (pipelineView->isReady() && graphicsSystem->camera)
+	{
+		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+		auto pushConstants = pipelineView->getPushConstants<BufferPC>();
+		pushConstants->viewProjInv = cameraConstants.viewProjInv;
+		pushConstants->drawMode = (int32)drawMode;
+		pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
+		pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
+		pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
+
+		SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(bufferDescriptorSet);
+		pipelineView->pushConstants();
+		pipelineView->drawFullscreen();
 	}
 }
 

@@ -200,17 +200,17 @@ bool SsaoRenderSystem::aoRender()
 	);
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-
-	SET_GPU_DEBUG_LABEL("SSAO", Color::transparent);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->uvToView = cameraConstants.projInverse * uvToNDC;
 	pushConstants->uvToView[0][3] = radius;
 	pushConstants->uvToView[1][3] = -bias;
 	pushConstants->uvToView[3][3] = intensity;
 	pushConstants->viewToUv = ndcToUV * cameraConstants.projection;
+
+	SET_GPU_DEBUG_LABEL("SSAO", Color::transparent);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 	pipelineView->pushConstants();
 	pipelineView->drawFullscreen();
 	return true;

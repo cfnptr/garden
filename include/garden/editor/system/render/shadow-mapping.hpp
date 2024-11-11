@@ -32,6 +32,10 @@ class ShadowMappingEditor final
 	bool showWindow = false;
 
 	ShadowMappingEditor(ShadowMappingRenderSystem* system);
+	// TODO:
+	//auto graphicsSystem = GraphicsSystem::Instance::get();
+	// graphicsSystem->destroy(cascadesDescriptorSet);
+	// graphicsSystem->destroy(cascadesPipeline);
 
 	void render();
 	void onBarTool();

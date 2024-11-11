@@ -74,7 +74,7 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneM
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("tone-mapping",
-		deferredSystem->getLdrFramebuffer(), false, true, 0, 0, specConsts);
+		deferredSystem->getLdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConsts);
 }
 
 //**********************************************************************************************************************
@@ -147,34 +147,18 @@ void ToneMappingRenderSystem::ldrRender()
 		return;
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
+	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+	pushConstants->frameIndex = (uint32)graphicsSystem->getFrameIndex();
+	pushConstants->exposureFactor = exposureFactor;
+	pushConstants->ditherIntensity = ditherIntensity;
+	pushConstants->bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
 
 	SET_GPU_DEBUG_LABEL("Tone Mapping", Color::transparent);
-	if (Framebuffer::isCurrentRenderPassAsync())
-	{
-		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
-		pipelineView->bindDescriptorSetAsync(descriptorSet, 0, 0);
-		auto pushConstants = pipelineView->getPushConstantsAsync<PushConstants>(0);
-		pushConstants->frameIndex = (uint32)graphicsSystem->getFrameIndex();
-		pushConstants->exposureFactor = exposureFactor;
-		pushConstants->ditherIntensity = ditherIntensity;
-		pushConstants->bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
-		pipelineView->pushConstantsAsync(0);
-		pipelineView->drawFullscreenAsync(0);
-	}
-	else
-	{
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(descriptorSet);
-		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-		pushConstants->frameIndex = (uint32)graphicsSystem->getFrameIndex();
-		pushConstants->exposureFactor = exposureFactor;
-		pushConstants->ditherIntensity = ditherIntensity;
-		pushConstants->bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
-		pipelineView->pushConstants();
-		pipelineView->drawFullscreen();
-	}
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(descriptorSet);
+	pipelineView->pushConstants();
+	pipelineView->drawFullscreen();
 }
 
 //**********************************************************************************************************************

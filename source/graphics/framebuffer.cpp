@@ -567,20 +567,6 @@ void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 	this->size = size;
 }
 
-//**********************************************************************************************************************
-ID<Framebuffer> Framebuffer::getCurrent() noexcept
-{
-	return GraphicsAPI::get()->currentFramebuffer;
-}
-uint8 Framebuffer::getCurrentSubpassIndex() noexcept
-{
-	return GraphicsAPI::get()->currentSubpassIndex;
-}
-bool Framebuffer::isCurrentRenderPassAsync() noexcept
-{
-	return GraphicsAPI::get()->isCurrentRenderPassAsync;
-}
-
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
 void Framebuffer::setDebugName(const string& name)
@@ -634,14 +620,12 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 				colorAttachments, depthStencilAttachment, name);
 		}
 		else abort();
-			
+
 		for (uint32 i = 0; i < graphicsAPI->threadCount; i++)
 		{
 			graphicsAPI->currentPipelines[i] = {}; graphicsAPI->currentPipelineTypes[i] = {};
 			graphicsAPI->currentVertexBuffers[i] = graphicsAPI->currentIndexBuffers[i] = {};
 		}
-
-		graphicsAPI->isCurrentRenderPassAsync = true;
 	}
 
 	BeginRenderPassCommand command;
@@ -659,6 +643,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 		readyLock++;
 		graphicsAPI->currentCommandBuffer->addLockResource(command.framebuffer);
 	}
+
+	graphicsAPI->isCurrentRenderPassAsync = asyncRecording;
 }
 
 //**********************************************************************************************************************
@@ -702,6 +688,7 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 	NextSubpassCommand command;
 	command.asyncRecording = asyncRecording;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
+
 	graphicsAPI->isCurrentRenderPassAsync = asyncRecording;
 	graphicsAPI->currentSubpassIndex++;
 }

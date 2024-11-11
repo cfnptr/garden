@@ -279,22 +279,6 @@ public:
 	 */
 	void recreate(uint2 size, const vector<SubpassImages>& subpasses);
 
-	/**
-	 * @brief Returns current render pass framebuffer.
-	 * @details Set by the @ref Framebuffer::beginRenderPass().
-	 */
-	static ID<Framebuffer> getCurrent() noexcept;
-	/**
-	 * @brief Returns current render subpass index.
-	 * @details Changes by the @ref Framebuffer::nextSubpass().
-	 */
-	static uint8 getCurrentSubpassIndex() noexcept;
-	/**
-	 * @brief Is current render pass use multithreaded commands recording.
-	 * @details Changes by the @ref Framebuffer::nextSubpass().
-	 */
-	static bool isCurrentRenderPassAsync() noexcept;
-
 	#if GARDEN_DEBUG
 	/**
 	 * @brief Sets framebuffer debug name. (Debug Only)

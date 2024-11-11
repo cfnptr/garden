@@ -38,6 +38,10 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(descriptorSet);
+		graphicsSystem->destroy(pipeline);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InfiniteGridEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
 	}
@@ -98,11 +102,6 @@ void InfiniteGridEditorSystem::editorRender()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
  	{
-		SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
-		framebufferView->beginRenderPass(float4(0.0f));
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 		auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 		pushConstants->meshColor = (float4)meshColor;
 		if (isHorizontal)
@@ -117,6 +116,12 @@ void InfiniteGridEditorSystem::editorRender()
 		}
 		pushConstants->meshScale = meshScale;
 		pushConstants->isHorizontal = isHorizontal;
+
+		SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
+		framebufferView->beginRenderPass(float4(0.0f));
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
 		pipelineView->pushConstants();
 		pipelineView->drawFullscreen();
 		framebufferView->endRenderPass();
