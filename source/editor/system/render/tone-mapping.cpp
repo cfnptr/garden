@@ -51,7 +51,7 @@ void ToneMappingRenderEditorSystem::deinit()
 //**********************************************************************************************************************
 void ToneMappingRenderEditorSystem::editorRender()
 {
-	if (!showWindow)
+	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
 		return;
 
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))

@@ -1083,7 +1083,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			const auto& mipData = data[mip];
 			auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
-			for (uint32 layer = 0; layer < layerCount; layer++)
+			for (uint32 layer = 0; layer < (uint32)mipData.size(); layer++)
 			{
 				auto layerData = mipData[layer];
 				if (!layerData)
