@@ -97,7 +97,7 @@ public:
 		return memcmp(this, &h, sizeof(uint64) * 2) < 0; }
 
 	/**
-	 * @brief Returns true if hash is not all zeros.
+	 * @brief Returns true if hash is not all zeros, otheriwe false.
 	 */
 	explicit operator bool() const noexcept { return low64 | high64; }
 

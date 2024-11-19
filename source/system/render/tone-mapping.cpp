@@ -23,12 +23,12 @@ using namespace garden;
 static ID<Buffer> createLuminanceBuffer()
 {
 	#if GARDEN_EDITOR
-	const auto bind = Buffer::Bind::TransferSrc;
+	constexpr auto bind = Buffer::Bind::TransferSrc;
 	#else
-	const auto bind = Buffer::Bind::None;
+	constexpr auto bind = Buffer::Bind::None;
 	#endif
 
-	const float data[2] = { 1.0f / ToneMappingRenderSystem::lumToExp, 1.0f };
+	constexpr float data[2] = { 1.0f / ToneMappingRenderSystem::lumToExp, 1.0f };
 	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::Storage | 
 		Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind, Buffer::Access::None, data, 
 		sizeof(ToneMappingRenderSystem::LuminanceData), Buffer::Usage::PreferGPU, Buffer::Strategy::Size);

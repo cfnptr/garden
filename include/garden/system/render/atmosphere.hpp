@@ -90,12 +90,12 @@ static float calcMolarMass(const vector<pair<float, Gas>>& gases) noexcept // g/
 		molarMass += (double)gasToMolarMass(pair.second) * pair.first;
 	return (float)molarMass;
 }
-static double calcMolecularDensity(float density, float molarMass) noexcept
+static constexpr double calcMolecularDensity(float density, float molarMass) noexcept
 {
-	const auto avogadro = 6.02214076e+23;
+	constexpr auto avogadro = 6.02214076e+23;
 	return ((double)density / (double)molarMass) * avogadro;
 }
-static float calcRayleighScattering(float wavelength,
+static constexpr float calcRayleighScattering(float wavelength,
 	float airIOR, double molecularDensity) noexcept
 {
 	auto w = (double)wavelength * 1e-9;
@@ -105,7 +105,7 @@ static float calcRayleighScattering(float wavelength,
 	auto d = 3.0 * m * (w * w * w * w);
 	return (float)(n / d);
 }
-static float3 calcRayleighScattering(float airIOR, double molecularDensity) noexcept
+static constexpr float3 calcRayleighScattering(float airIOR, double molecularDensity) noexcept
 {
 	return float3(
 		calcRayleighScattering(WAVELENGTH_R, airIOR, molecularDensity),

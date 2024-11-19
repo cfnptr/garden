@@ -175,33 +175,35 @@ void ResourceSystem::init()
 }
 void ResourceSystem::deinit()
 {
-	while (loadedImageQueue.size() > 0)
-	{
-		auto& item = loadedImageQueue.front();
-		BufferExt::destroy(item.staging);
-		ImageExt::destroy(item.image);
-		loadedImageQueue.pop();
-	}
-	while (loadedBufferQueue.size() > 0)
-	{
-		auto& item = loadedBufferQueue.front();
-		BufferExt::destroy(item.staging);
-		BufferExt::destroy(item.buffer);
-		loadedBufferQueue.pop();
-	}
-	while (loadedComputeQueue.size() > 0)
-	{
-		PipelineExt::destroy(loadedComputeQueue.front().pipeline);
-		loadedComputeQueue.pop();
-	}
-	while (loadedGraphicsQueue.size() > 0)
-	{
-		PipelineExt::destroy(loadedGraphicsQueue.front().pipeline);
-		loadedGraphicsQueue.pop();
-	}
-
 	if (Manager::Instance::get()->isRunning)
+	{
+		while (loadedImageQueue.size() > 0)
+		{
+			auto& item = loadedImageQueue.front();
+			BufferExt::destroy(item.staging);
+			ImageExt::destroy(item.image);
+			loadedImageQueue.pop();
+		}
+		while (loadedBufferQueue.size() > 0)
+		{
+			auto& item = loadedBufferQueue.front();
+			BufferExt::destroy(item.staging);
+			BufferExt::destroy(item.buffer);
+			loadedBufferQueue.pop();
+		}
+		while (loadedComputeQueue.size() > 0)
+		{
+			PipelineExt::destroy(loadedComputeQueue.front().pipeline);
+			loadedComputeQueue.pop();
+		}
+		while (loadedGraphicsQueue.size() > 0)
+		{
+			PipelineExt::destroy(loadedGraphicsQueue.front().pipeline);
+			loadedGraphicsQueue.pop();
+		}
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
+	}
 }
 
 //**********************************************************************************************************************
@@ -619,7 +621,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+			threadPool.addItems([&](const ThreadPool::Task& task)
 			{
 				auto itemCount = task.getItemCount();
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -627,7 +629,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 					auto srcColor = (float4)srcData[i];
 					dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
 				}
-			}),
+			},
 			(uint32)floatData.size());
 			threadPool.wait();
 		}
@@ -665,7 +667,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+		threadPool.addItems([&](const ThreadPool::Task& task)
 		{
 			auto sizeXY = cubemapSize * cubemapSize;
 			auto itemCount = task.getItemCount();
@@ -681,7 +683,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 				Equi2Cube::convert(coords, cubemapSize, equiSize,
 					equiSizeMinus1, equiPixels, cubePixels, invDim);
 			}
-		}),
+		},
 		cubemapSize * cubemapSize * 6);
 		threadPool.wait();
 	}
@@ -771,7 +773,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
+			threadPool.addTasks([&](const ThreadPool::Task& task)
 			{
 				switch (task.getTaskIndex())
 				{
@@ -783,7 +785,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 					case 5: writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front); break;
 					default: abort();
 				}
-			}), 6);
+			}, 6);
 			threadPool.wait();
 		}
 		else
@@ -807,7 +809,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
+		threadPool.addTasks([&](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Cubemap Data Load");
 
@@ -822,7 +824,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			case 5: loadImageData(filePath + "-pz", front, frontSize, frontFormat, task.getThreadIndex()); break;
 			default: abort();
 			}
-		}), 6);
+		}, 6);
 		threadPool.wait();
 	}
 	else
@@ -1137,8 +1139,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		data->maxMipCount = maxMipCount;
 		data->flags = flags;
 
-		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Image Array Load");
 
@@ -1174,7 +1175,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			queueLocker.lock();
 			loadedImageQueue.push(std::move(item));
 			queueLocker.unlock();
-		}));
+		});
 	}
 	else
 	{
@@ -1494,8 +1495,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			data->blendStateOverrides = stateOverrides->blendStates;
 		}
 		
-		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
@@ -1536,7 +1536,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			queueLocker.lock();
 			loadedGraphicsQueue.push(std::move(item));
 			queueLocker.unlock();
-		}));
+		});
 	}
 	else
 	{
@@ -1672,8 +1672,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		data->cachesPath = appCachesPath;
 		#endif
 
-		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
 
@@ -1707,7 +1706,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			queueLocker.lock();
 			loadedComputeQueue.push(std::move(item));
 			queueLocker.unlock();
-		}));
+		});
 	}
 	else
 	{
@@ -2300,8 +2299,7 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 		data->access = access;
 		data->strategy = strategy;
 
-		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Buffer Load");
 
@@ -2327,7 +2325,8 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 			queueLocker.lock();
 			bufferQueue.push(std::move(item));
 			queueLocker.unlock();
-		}, data));
+		},
+		data);
 	}
 	else
 	{
@@ -2386,8 +2385,7 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 		data->access = access;
 		data->strategy = strategy;
 
-		auto& threadPool = threadSystem->getBackgroundPool();
-		threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Vertex Buffer Load");
 
@@ -2416,7 +2414,8 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 			queueLocker.lock();
 			bufferQueue.push(std::move(item));
 			queueLocker.unlock();
-		}, data));
+		},
+		data);
 	}
 	else
 	{

@@ -66,10 +66,13 @@ void SpriteRenderEditorSystem::init()
 }
 void SpriteRenderEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
-	editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
-	editorSystem->tryUnregisterEntityInspector<TranslucentSpriteComponent>();
+	if (Manager::Instance::get()->isRunning)
+	{
+		auto editorSystem = EditorRenderSystem::Instance::get();
+		editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
+		editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
+		editorSystem->tryUnregisterEntityInspector<TranslucentSpriteComponent>();
+	}
 }
 
 //**********************************************************************************************************************

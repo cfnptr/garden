@@ -51,10 +51,10 @@ void SpawnerEditorSystem::init()
 }
 void SpawnerEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
-
 	if (Manager::Instance::get()->isRunning)
 	{
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 	}
@@ -306,7 +306,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		spawnerView->maxCount = (uint32)std::max(maxCount, 0);
 	ImGui::DragFloat("Delay", &spawnerView->delay);
 
-	const auto modes = "One Shot\0Manual\00";
+	constexpr auto modes = "One Shot\0Manual\00";
 	ImGui::Combo("Mode", &spawnerView->mode, modes);
 
 	if (ImGui::CollapsingHeader("Spawned Entities"))

@@ -218,7 +218,7 @@ protected:
 	friend class ecsm::Manager;
 public:
 	/**
-	 * @brief Returns true if entity or it ancestors has DoNotSerialize component.
+	 * @brief Does the entity or its ancestors have a DoNotSerialize component.
 	 * @param entity target entity with component
 	 */
 	bool hasOrAncestors(ID<Entity> entity) const;

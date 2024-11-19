@@ -45,7 +45,8 @@ void PbrLightingRenderEditorSystem::init()
 }
 void PbrLightingRenderEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingRenderComponent>();
+	if (Manager::Instance::get()->isRunning)
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingRenderComponent>();
 }
 
 //**********************************************************************************************************************

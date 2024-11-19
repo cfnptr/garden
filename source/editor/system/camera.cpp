@@ -45,7 +45,8 @@ void CameraEditorSystem::init()
 }
 void CameraEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<CameraComponent>();
+	if (Manager::Instance::get()->isRunning)
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<CameraComponent>();
 }
 
 //**********************************************************************************************************************
@@ -119,7 +120,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 	else abort();
 
-	const auto types = "Perspective\0Orthographic\00";
+	constexpr auto types = "Perspective\0Orthographic\00";
 	if (ImGui::Combo("Type", &cameraView->type, types))
 	{
 		if (cameraView->type == ProjectionType::Perspective)

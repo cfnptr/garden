@@ -1316,7 +1316,7 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 	const vector<fs::path>& includePaths, Compiler::GraphicsData& data,
 	uint8& bindingIndex, int8& outIndex, uint16& pushConstantsSize, uint8& variantCount)
 {
-	const auto shaderStage = ShaderStage::Vertex;
+	constexpr auto shaderStage = ShaderStage::Vertex;
 	auto filePath = data.shaderPath; filePath += ".vert";
 	auto inputFilePath = inputPath / filePath;
 	auto outputFilePath = outputPath / filePath;
@@ -1594,7 +1594,7 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 	const vector<fs::path>& includePaths, Compiler::GraphicsData& data,
 	uint8& bindingIndex, int8& inIndex, uint16& pushConstantsSize, uint8& variantCount)
 {
-	const auto shaderStage = ShaderStage::Fragment;
+	constexpr auto shaderStage = ShaderStage::Fragment;
 	auto filePath = data.shaderPath; filePath += ".frag";
 	auto inputFilePath = inputPath / filePath;
 	auto outputFilePath = outputPath / filePath;
@@ -1931,7 +1931,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 	const fs::path& outputPath, const vector<fs::path>& includePaths, ComputeData& data)
 {
 	GARDEN_ASSERT(!data.shaderPath.empty());
-	const auto shaderStage = ShaderStage::Compute;
+	constexpr auto shaderStage = ShaderStage::Compute;
 	auto filePath = data.shaderPath; filePath += ".comp";
 	auto inputFilePath = inputPath / filePath;
 	auto outputFilePath = outputPath / filePath;

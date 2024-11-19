@@ -121,11 +121,11 @@ protected:
 		// Add reference to job because we're adding the job to the queue
 		inJob->AddRef();
 
-		threadPool->addTask(ThreadPool::Task([inJob](const ThreadPool::Task& task)
+		threadPool->addTask([inJob](const ThreadPool::Task& task)
 		{
 			inJob->Execute();
 			inJob->Release();
-		}));
+		});
 	}
 	void QueueJobs(Job** inJobs, JPH::uint inNumJobs) final
 	{
@@ -139,11 +139,11 @@ protected:
 			// Add reference to job because we're adding the job to the queue
 			job->AddRef();
 
-			taskArray[i] = ThreadPool::Task([job](const ThreadPool::Task& task)
+			taskArray[i] = [job](const ThreadPool::Task& task)
 			{
 				job->Execute();
 				job->Release();
-			});
+			};
 		}
 
 		threadPool->addTasks(taskArray);
@@ -1028,7 +1028,7 @@ void PhysicsSystem::prepareSimulate()
 		auto threadPool = jobSystem->getThreadPool();
 		auto componentData = components.getData();
 
-		threadPool->addItems(ThreadPool::Task([componentData](const ThreadPool::Task& task)
+		threadPool->addItems([componentData](const ThreadPool::Task& task)
 		{
 			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
 			auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
@@ -1077,7 +1077,7 @@ void PhysicsSystem::prepareSimulate()
 				transformView->position = rigidbodyView->lastPosition = toFloat3(position);
 				transformView->rotation = rigidbodyView->lastRotation = toQuat(rotation);
 			}
-		}),
+		},
 		components.getOccupancy());
 		threadPool->wait();
 	}
@@ -1171,7 +1171,7 @@ void PhysicsSystem::interpolateResult(float t)
 		auto threadPool = jobSystem->getThreadPool();
 		auto componentData = components.getData();
 
-		threadPool->addItems(ThreadPool::Task([componentData, t](const ThreadPool::Task& task)
+		threadPool->addItems([componentData, t](const ThreadPool::Task& task)
 		{
 			auto characterSystem = CharacterSystem::Instance::tryGet();
 			auto transformSystem = TransformSystem::Instance::get();
@@ -1196,7 +1196,7 @@ void PhysicsSystem::interpolateResult(float t)
 				transformView->position = lerp(rigidbodyView->lastPosition, position, t);
 				transformView->rotation = slerp(rigidbodyView->lastRotation, rotation, t);
 			}
-		}),
+		},
 		components.getOccupancy());
 		threadPool->wait();
 	}

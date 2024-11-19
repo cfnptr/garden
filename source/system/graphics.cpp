@@ -122,7 +122,7 @@ static void initializeImGui() // TODO: Separate into an ImGuiSystem
 	else abort();
 	
 	auto& io = ImGui::GetIO();
-	const auto fontPath = "fonts/dejavu-bold.ttf";
+	constexpr auto fontPath = "fonts/dejavu-bold.ttf";
 	auto inputSystem = InputSystem::Instance::get();
 	auto windowSize = inputSystem->getWindowSize();
 	auto contentScale = inputSystem->getContentScale();
@@ -157,6 +157,8 @@ static void initializeImGui() // TODO: Separate into an ImGuiSystem
 		return inputSystem->getClipboard().empty() ? nullptr : inputSystem->getClipboard().c_str();
 	};
 }
+
+//**********************************************************************************************************************
 static void terminateImGui()
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -198,8 +200,104 @@ static void recreateImGui()
 	}
 	else abort();
 }
+
+//**********************************************************************************************************************
+extern ImGuiKey ImGui_ImplGlfw_KeyToImGuiKey(int keycode, int scancode);
+
+static void updateImGuiKeyModifiers(InputSystem* inutSystem, ImGuiIO& io)
+{
+	io.AddKeyEvent(ImGuiMod_Ctrl, inutSystem->getKeyboardState(KeyboardButton::LeftControl) || 
+		inutSystem->getKeyboardState(KeyboardButton::RightControl));
+	io.AddKeyEvent(ImGuiMod_Shift, inutSystem->getKeyboardState(KeyboardButton::LeftShift) ||
+		inutSystem->getKeyboardState(KeyboardButton::RightShift));
+	io.AddKeyEvent(ImGuiMod_Alt, inutSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
+		inutSystem->getKeyboardState(KeyboardButton::RightAlt));
+	io.AddKeyEvent(ImGuiMod_Super, inutSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
+		inutSystem->getKeyboardState(KeyboardButton::RightSuper));
+}
+
+// WARNING! Check for changes in the underlying ImGui functions to prevent possible race conditions!
+static void updateImGuiGlfwInput() 
+{
+	auto& io = ImGui::GetIO();
+	auto inputSystem = InputSystem::Instance::get();
+	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
+	auto cursorPos = inputSystem->getCursorPosition();
+	ImGui_ImplGlfw_CursorPosCallback(window, cursorPos.x, cursorPos.y);
+
+	if (inputSystem->isCursorEntered())
+		ImGui_ImplGlfw_CursorEnterCallback(window, true);
+	else if (inputSystem->isCursorLeaved())
+		ImGui_ImplGlfw_CursorEnterCallback(window, false);
+
+	if (inputSystem->isWindowFocused())
+		io.AddFocusEvent(true);
+	else if (inputSystem->isWindowUnfocused())
+		io.AddFocusEvent(false);
+
+	// TODO: Check if we need ImGui_ImplGlfw_MonitorCallback() after docking branch merge.
+	
+	auto mouseScroll = inputSystem->getMouseScroll();
+	io.AddMouseWheelEvent(mouseScroll.x, mouseScroll.y);
+
+	for (uint8 i = 0; i < keyboardButtonCount; i++)
+	{
+		auto button = allKeyboardButtons[i];
+
+		int action = -1;
+		if (inputSystem->isKeyboardPressed(button))
+			action = GLFW_PRESS;
+		else if (inputSystem->isKeyboardReleased(button))
+			action = GLFW_RELEASE;
+
+		if (action != -1)
+		{
+			updateImGuiKeyModifiers(inputSystem, io);
+			auto scancode = glfwGetKeyScancode((int)button);
+			auto imgui_key = ImGui_ImplGlfw_KeyToImGuiKey((int)button, scancode);
+			io.AddKeyEvent(imgui_key, (action == GLFW_PRESS));
+			io.SetKeyEventNativeData(imgui_key, (int)button, scancode); // To support legacy indexing (<1.87 user code)
+		}
+	}
+	for (int i = 0; i < (int)MouseButton::Last + 1; i++)
+	{
+		int action = -1;
+		if (inputSystem->isMousePressed((MouseButton)i))
+			action = GLFW_PRESS;
+		else if (inputSystem->isMouseReleased((MouseButton)i))
+			action = GLFW_RELEASE;
+
+		if (action != -1)
+		{
+			updateImGuiKeyModifiers(inputSystem, io);
+			if (i >= 0 && i < ImGuiMouseButton_COUNT)
+				io.AddMouseButtonEvent(i, action == GLFW_PRESS);
+		}
+	}
+
+	const auto& keyboardChars = inputSystem->getKeyboardChars32();
+	for (psize i = 0; i < keyboardChars.size(); i++)
+		io.AddInputCharacter(keyboardChars[i]);
+}
+static void imGuiNewFrame()
+{
+	auto& io = ImGui::GetIO();
+	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
+	auto windowSize = InputSystem::Instance::get()->getWindowSize();
+	auto pixelRatio = (float2)framebufferSize / windowSize;
+	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
+	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
+	io.DeltaTime = InputSystem::get()->getDeltaTime();
+
+	// TODO: implement these if required for something:
+	//
+	// ImGui_ImplGlfw_UpdateMouseData();
+	// ImGui_ImplGlfw_UpdateMouseCursor();
+	// ImGui_ImplGlfw_UpdateGamepads();
+}
 #endif
 
+//**********************************************************************************************************************
 static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 {
 	auto depthImage = GraphicsSystem::Instance::get()->createImage(format, 
@@ -210,7 +308,6 @@ static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 	return imageView->getDefaultView();
 }
 
-//**********************************************************************************************************************
 GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat, bool isFullscreen, 
 	bool useVsync, bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
 	asyncRecording(useAsyncRecording), useVsync(useVsync), useTripleBuffering(useTripleBuffering)
@@ -344,7 +441,7 @@ void GraphicsSystem::preInit()
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("useVsync", useVsync);
-		settingsSystem->getInt("frameRate", frameRate);
+		settingsSystem->getInt("maxFPS", maxFPS);
 		settingsSystem->getFloat("renderScale", renderScale);
 	}
 
@@ -476,121 +573,15 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	cameraConstants.frameSizeInv2 = cameraConstants.frameSizeInv * 2.0f;
 }
 
-//**********************************************************************************************************************
-static int getKeyboardMods(InputSystem* inputSystem)
+static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
 {
-	int mods = 0;
-	if (inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightShift))
-		mods |= GLFW_MOD_SHIFT;
-	if (inputSystem->getKeyboardState(KeyboardButton::LeftControl) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightControl))
-		mods |= GLFW_MOD_CONTROL;
-	if (inputSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightAlt))
-		mods |= GLFW_MOD_ALT;
-	if (inputSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightSuper))
-		mods |= GLFW_MOD_SUPER;
-	// TODO: check caps lock if enabled GLFW_LOCK_KEY_MODS input mode
-	return mods;
+	auto endClock = mpio::OS::getCurrentClock();
+	auto deltaClock = (endClock - beginSleepClock) * 1000.0;
+	auto delayTime = 1000 / (int)maxFPS - (int)deltaClock;
+	if (delayTime > 0)
+		this_thread::sleep_for(chrono::milliseconds(delayTime));
+	// TODO: use loop with empty cycles to improve sleep precision.
 }
-
-#if GARDEN_EDITOR
-extern ImGuiKey ImGui_ImplGlfw_KeyToImGuiKey(int keycode, int scancode);
-
-static void updateImGuiKeyModifiers(InputSystem* inutSystem, ImGuiIO& io)
-{
-	io.AddKeyEvent(ImGuiMod_Ctrl, inutSystem->getKeyboardState(KeyboardButton::LeftControl) || 
-		inutSystem->getKeyboardState(KeyboardButton::RightControl));
-	io.AddKeyEvent(ImGuiMod_Shift, inutSystem->getKeyboardState(KeyboardButton::LeftShift) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightShift));
-	io.AddKeyEvent(ImGuiMod_Alt, inutSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightAlt));
-	io.AddKeyEvent(ImGuiMod_Super, inutSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightSuper));
-}
-
-// WARNING! Check for changes in the underlying ImGui functions to prevent possible race conditions!
-static void updateImGuiGlfwInput() 
-{
-	auto& io = ImGui::GetIO();
-	auto inputSystem = InputSystem::Instance::get();
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
-	auto cursorPos = inputSystem->getCursorPosition();
-	ImGui_ImplGlfw_CursorPosCallback(window, cursorPos.x, cursorPos.y);
-
-	if (inputSystem->isCursorEntered())
-		ImGui_ImplGlfw_CursorEnterCallback(window, true);
-	else if (inputSystem->isCursorLeaved())
-		ImGui_ImplGlfw_CursorEnterCallback(window, false);
-
-	if (inputSystem->isWindowFocused())
-		io.AddFocusEvent(true);
-	else if (inputSystem->isWindowUnfocused())
-		io.AddFocusEvent(false);
-
-	// TODO: Check if we need ImGui_ImplGlfw_MonitorCallback() after docking branch merge.
-	
-	auto mouseScroll = inputSystem->getMouseScroll();
-	io.AddMouseWheelEvent(mouseScroll.x, mouseScroll.y);
-
-	for (uint8 i = 0; i < keyboardButtonCount; i++)
-	{
-		auto button = allKeyboardButtons[i];
-
-		int action = -1;
-		if (inputSystem->isKeyboardPressed(button))
-			action = GLFW_PRESS;
-		else if (inputSystem->isKeyboardReleased(button))
-			action = GLFW_RELEASE;
-
-		if (action != -1)
-		{
-			updateImGuiKeyModifiers(inputSystem, io);
-			auto scancode = glfwGetKeyScancode((int)button);
-			auto imgui_key = ImGui_ImplGlfw_KeyToImGuiKey((int)button, scancode);
-			io.AddKeyEvent(imgui_key, (action == GLFW_PRESS));
-			io.SetKeyEventNativeData(imgui_key, (int)button, scancode); // To support legacy indexing (<1.87 user code)
-		}
-	}
-	for (int i = 0; i < (int)MouseButton::Last + 1; i++)
-	{
-		int action = -1;
-		if (inputSystem->isMousePressed((MouseButton)i))
-			action = GLFW_PRESS;
-		else if (inputSystem->isMouseReleased((MouseButton)i))
-			action = GLFW_RELEASE;
-
-		if (action != -1)
-		{
-			updateImGuiKeyModifiers(inputSystem, io);
-			if (i >= 0 && i < ImGuiMouseButton_COUNT)
-				io.AddMouseButtonEvent(i, action == GLFW_PRESS);
-		}
-	}
-
-	const auto& keyboardChars = inputSystem->getKeyboardChars32();
-	for (psize i = 0; i < keyboardChars.size(); i++)
-		io.AddInputCharacter(keyboardChars[i]);
-}
-static void imGuiNewFrame()
-{
-	auto& io = ImGui::GetIO();
-	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
-	auto windowSize = InputSystem::Instance::get()->getWindowSize();
-	auto pixelRatio = (float2)framebufferSize / windowSize;
-	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
-	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
-	io.DeltaTime = InputSystem::get()->getDeltaTime();
-
-	// TODO: implement these if required for something:
-	//
-	// ImGui_ImplGlfw_UpdateMouseData();
-	// ImGui_ImplGlfw_UpdateMouseCursor();
-	// ImGui_ImplGlfw_UpdateGamepads();
-}
-#endif
 
 //**********************************************************************************************************************
 void GraphicsSystem::input()
@@ -743,7 +734,12 @@ void GraphicsSystem::present()
 
 	if (isFramebufferSizeValid)
 	{
-		if (!graphicsAPI->swapchain->present())
+		if (graphicsAPI->swapchain->present())
+		{
+			if (!useVsync)
+				limitFrameRate(beginSleepClock, maxFPS);
+		}
+		else
 		{
 			isFramebufferSizeValid = false;
 			outOfDateSwapchain = true;
@@ -753,12 +749,7 @@ void GraphicsSystem::present()
 	}
 	else
 	{
-		auto endClock = mpio::OS::getCurrentClock();
-		auto deltaClock = (endClock - beginSleepClock) * 1000.0;
-		auto delayTime = 1000 / frameRate - (int)deltaClock;
-		if (delayTime > 0)
-			this_thread::sleep_for(chrono::milliseconds(delayTime));
-		// TODO: use loop with empty cycles to improve sleep precision.
+		limitFrameRate(beginSleepClock, maxFPS);
 	}
 
 	tickIndex++;

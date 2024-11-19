@@ -51,7 +51,8 @@ void TransformEditorSystem::init()
 }
 void TransformEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<TransformComponent>();
+	if (Manager::Instance::get()->isRunning)
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<TransformComponent>();
 }
 
 //**********************************************************************************************************************

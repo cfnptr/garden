@@ -648,7 +648,7 @@ namespace
 static vk::PipelineCache createPipelineCache(const string& appDataName, Version appVersion,
 	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, bool& isLoaded)
 {
-	const auto cacheHeaderSize = sizeof(PipelineCacheHeader) - sizeof(VkPipelineCacheHeaderVersionOne);
+	constexpr auto cacheHeaderSize = sizeof(PipelineCacheHeader) - sizeof(VkPipelineCacheHeaderVersionOne);
 	auto path = mpio::Directory::getAppDataPath(appDataName) / "caches/shaders";
 	ifstream inputStream(path, ios::in | ios::binary | ios::ate);
 	vector<uint8> fileData;

@@ -132,7 +132,7 @@ public:
 	const unordered_map<string, Hash128>& getSharedPrefabs() const noexcept { return sharedPrefabs; }
 
 	/**
-	 * @brief Returns true if has shared prefab.
+	 * @brief Is shared prefab exists.
 	 * @param[in] path target shared prefab path
 	 */
 	bool hasSharedPrefab(const string& path) const { return sharedPrefabs.find(path) != sharedPrefabs.end(); }

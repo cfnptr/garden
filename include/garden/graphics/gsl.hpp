@@ -523,28 +523,28 @@ static psize toBinarySize(GslDataFormat dataFormat) noexcept
 }
 
 /***********************************************************************************************************************
- * @brief Returns true if GSL uniform type is sampler, otherwise false.
+ * @brief Is the GSL uniform type a sampler.
  * @param uniformType target GSL uniform type
  */
-static bool isSamplerType(GslUniformType uniformType) noexcept
+static constexpr bool isSamplerType(GslUniformType uniformType) noexcept
 {
 	return (uint8)GslUniformType::Sampler1D <= (uint8)uniformType &&
 		(uint8)uniformType <= (uint8)GslUniformType::Sampler2DArrayShadow;
 }
 /**
- * @brief Returns true if GSL uniform type is image, otherwise false.
+ * @brief Is the GSL uniform type an image.
  * @param uniformType target GSL uniform type
  */
-static bool isImageType(GslUniformType uniformType) noexcept
+static constexpr bool isImageType(GslUniformType uniformType) noexcept
 {
 	return (uint8)GslUniformType::Image1D <= (uint8)uniformType &&
 		(uint8)uniformType <= (uint8)GslUniformType::Uimage2DArray;
 }
 /**
- * @brief Returns true if GSL uniform type is buffer, otherwise false.
+ * @brief Is the GSL uniform type a buffer.
  * @param uniformType target GSL uniform type
  */
-static bool isBufferType(GslUniformType uniformType) noexcept
+static constexpr bool isBufferType(GslUniformType uniformType) noexcept
 {
 	return uniformType == GslUniformType::UniformBuffer ||
 		uniformType == GslUniformType::StorageBuffer;

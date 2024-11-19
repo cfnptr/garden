@@ -84,14 +84,20 @@ bool InstanceRenderSystem::isDrawReady()
 	if (!baseDescriptorSet && useBaseDS)
 	{
 		auto uniforms = getBaseUniforms();
-		baseDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
+		if (!uniforms.empty())
+		{
+			baseDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
+		}
 	}
 	if (!defaultDescriptorSet && useDefaultDS)
 	{
 		auto uniforms = getDefaultUniforms();
-		defaultDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms), 1);
-		SET_RESOURCE_DEBUG_NAME(defaultDescriptorSet, "descriptorSet.instance.default");
+		if (!uniforms.empty())
+		{
+			defaultDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms), 1);
+			SET_RESOURCE_DEBUG_NAME(defaultDescriptorSet, "descriptorSet.instance.default");
+		}
 	}
 	
 	return true;

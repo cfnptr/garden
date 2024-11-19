@@ -55,17 +55,17 @@ private:
 	friend class ComponentSystem<TransformComponent>;
 public:
 	/**
-	 * @brief Returns true if this entity and it ancestors are active.
+	 * @brief Is this entity and its ancestors active.
 	 * @details Is this object should be processed and used by other systems.
 	 */
 	bool isActive() const noexcept { return selfActive && ancestorsActive; }
 	/**
-	 * @brief Returns true if this entity is self active.
+	 * @brief Is this entity self active.
 	 * @details See the @ref isActive().
 	 */
 	bool isSelfActive() const noexcept { return selfActive; }
 	/**
-	 * @brief Returns true if this entity ancestors are active.
+	 * @brief Are this entity ancestors active.
 	 * @details See the @ref isActive().
 	 */
 	bool areAncestorsActive() const noexcept { return ancestorsActive; }
@@ -128,7 +128,7 @@ public:
 	bool tryAddChild(ID<Entity> child);
 
 	/**
-	 * @brief Returns true if this entity has specified child.
+	 * @brief Does this entity have the specified child.
 	 * @param index target child to check
 	 */
 	bool hasChild(ID<Entity> child) const noexcept;
@@ -181,19 +181,19 @@ public:
 	void shrinkChilds();
 
 	/**
-	 * @brief Returns true if this entity has specified ancestor
+	 * @brief Does this entity have the specified ancestor.
 	 * @details Including parent, grandparent, great-grandparent...
 	 * @param ancestor target ancestor to check
 	 */
 	bool hasAncestor(ID<Entity> ancestor) const noexcept;
 	/**
-	 * @brief Returns true if this entity has specified descendant
+	 * @brief Does this entity have the specified descendant.
 	 * @details Including child, grandchild, great-grandchild...
 	 * @param descendant target ancestor to check
 	 */
 	bool hasDescendant(ID<Entity> descendant) const noexcept;
 	/**
-	 * @brief Returns true if entity or it desscdendants has baked transform.
+	 * @brief Does this entity or its desscdendants have baked transform.
 	 */
 	bool hasBakedWithDescendants() const noexcept;
 };

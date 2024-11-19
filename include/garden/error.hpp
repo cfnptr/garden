@@ -55,4 +55,4 @@ public:
 	const string& getMessage() const noexcept { return message; }
 };
 
-} // garden
+} // namespace garden

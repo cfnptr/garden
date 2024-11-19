@@ -203,7 +203,7 @@ static bool ColorEdit3(const char* label, Color* color, ImGuiColorEditFlags flag
 	return result;
 }
 
-}; // ImGui
+}; // namespace ImGui
 
 namespace garden
 {
@@ -228,5 +228,5 @@ static bool find(const string& haystack, const string& needle, uint32 id, bool c
 	return id == needleID || find(haystack, needle, caseSensitive);
 }
 
-}; // garden
+}; // namespace garden
 #endif

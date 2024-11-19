@@ -247,15 +247,15 @@ public:
 	float2 getContentScale() const noexcept { return currContentScale; }
 
 	/**
-	 * @brief Returns true if windows is currently in focus.
+	 * @brief Is windows currently in focus.
 	 */
 	bool isWindowInFocus() const noexcept { return currWindowInFocus; }
 	/**
-	 * @brief Returns true if window has gained focus.
+	 * @brief Has the window been focused.
 	 */
 	bool isWindowFocused() const noexcept { return lastWindowInFocus != currWindowInFocus && currWindowInFocus; }
 	/**
-	 * @brief Returns true if window has lost focus.
+	 * @brief Has the window been unfocused.
 	 */
 	bool isWindowUnfocused() const noexcept { return lastWindowInFocus != currWindowInFocus && !currWindowInFocus; }
 
@@ -271,15 +271,15 @@ public:
 	float2 getCursorDelta() const noexcept { return cursorDelta; }
 
 	/**
-	 * @brief Returns true if cursor is directly over the window content area.
+	 * @brief Is cursor directly over the window content area.
 	 */
 	bool isCursorInWindow() const noexcept { return currCursorInWindow; }
 	/**
-	 * @brief Returns true if cursor has entered the window content area.
+	 * @brief Has cursor entered the window content area.
 	 */
 	bool isCursorEntered() const noexcept { return lastCursorInWindow != currCursorInWindow && currCursorInWindow; }
 	/**
-	 * @brief Returns true if cursor has leaved the window content area.
+	 * @brief Has cursor leaved the window content area.
 	 */
 	bool isCursorLeaved() const noexcept { return lastCursorInWindow != currCursorInWindow && !currCursorInWindow; }
 
@@ -290,7 +290,7 @@ public:
 	float2 getMouseScroll() const noexcept { return currMouseScroll; }
 
 	/**
-	 * @brief Returns true if keyboard button has been pressed.
+	 * @brief Has the keyboard button been pressed.
 	 * @param button target keyboard button
 	 */
 	bool isKeyboardPressed(KeyboardButton button) const noexcept
@@ -299,7 +299,7 @@ public:
 		return !lastKeyboardStates[(int)button] && currKeyboardStates[(int)button];
 	}
 	/**
-	 * @brief Returns true if keyboard button has been released.
+	 * @brief Has the keyboard button been released.
 	 * @param button target keyboard button
 	 */
 	bool isKeyboardReleased(KeyboardButton button) const noexcept
@@ -309,7 +309,7 @@ public:
 	}
 
 	/**
-	 * @brief Returns true if mouse button has been pressed.
+	 * @brief Has the mouse button been pressed.
 	 * @param button target mouse button
 	 */
 	bool isMousePressed(MouseButton button) const noexcept
@@ -318,7 +318,7 @@ public:
 		return !lastMouseStates[(int)button] && currMouseStates[(int)button];
 	}
 	/**
-	 * @brief Returns true if mouse button has been released.
+	 * @brief Has the mouse button been released.
 	 * @param button target mouse button
 	 */
 	bool isMouseReleased(MouseButton button) const noexcept
@@ -328,7 +328,7 @@ public:
 	}
 
 	/**
-	 * @brief Returns true if keyboard button is in pressed state.
+	 * @brief Is keyboard button in the pressed state.
 	 * @param button target keyboard button
 	 */
 	bool getKeyboardState(KeyboardButton button) const noexcept
@@ -337,7 +337,7 @@ public:
 		return currKeyboardStates[(int)button];
 	}
 	/**
-	 * @brief Returns true if mouse button is in pressed state.
+	 * @brief Is mouse button in the pressed state.
 	 * @param button target keyboard button
 	 */
 	bool getMouseState(MouseButton button) const noexcept
@@ -407,21 +407,21 @@ public:
  * @brief Converts time in seconds to milliseconds.
  * @param time target time in seconds
  */
-static double timeToMilliseconds(double time) noexcept { return time * 1000.0; }
+static constexpr double timeToMilliseconds(double time) noexcept { return time * 1000.0; }
 /**
  * @brief Converts time in seconds to minutes.
  * @param time target time in seconds
  */
-static double timeToMinutes(double time) noexcept { return time / 60.0; }
+static constexpr double timeToMinutes(double time) noexcept { return time / 60.0; }
 /**
  * @brief Converts time in seconds to hours.
  * @param time target time in seconds
  */
-static double timeToHours(double time) noexcept { return time / 3600.0; }
+static constexpr double timeToHours(double time) noexcept { return time / 3600.0; }
 /**
  * @brief Converts time in seconds to days.
  * @param time target time in seconds
  */
-static double timeToDays(double time) noexcept { return time / 86400.0; }
+static constexpr double timeToDays(double time) noexcept { return time / 86400.0; }
 
 } // namespace garden

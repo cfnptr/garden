@@ -68,4 +68,4 @@ static int getBestForegroundThreadCount()
 	return mpio::OS::getPerformanceCpuCount();
 }
 
-} // garden
+} // namespace garden

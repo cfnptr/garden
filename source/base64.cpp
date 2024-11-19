@@ -49,7 +49,7 @@
 
 #define CHARPAD '='
 
-static const char e0[256] = {
+static constexpr char e0[256] = {
  'A',  'A',  'A',  'A',  'B',  'B',  'B',  'B',  'C',  'C',
  'C',  'C',  'D',  'D',  'D',  'D',  'E',  'E',  'E',  'E',
  'F',  'F',  'F',  'F',  'G',  'G',  'G',  'G',  'H',  'H',
@@ -77,7 +77,7 @@ static const char e0[256] = {
  '8',  '8',  '8',  '8',  '9',  '9',  '9',  '9',  '-',  '-',
  '-',  '-',  '_',  '_',  '_',  '_'
 };
-static const char e1[256] = {
+static constexpr char e1[256] = {
  'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',
  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',
  'U',  'V',  'W',  'X',  'Y',  'Z',  'a',  'b',  'c',  'd',
@@ -105,7 +105,7 @@ static const char e1[256] = {
  'w',  'x',  'y',  'z',  '0',  '1',  '2',  '3',  '4',  '5',
  '6',  '7',  '8',  '9',  '-',  '_'
 };
-static const char e2[256] = {
+static constexpr char e2[256] = {
  'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',
  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',
  'U',  'V',  'W',  'X',  'Y',  'Z',  'a',  'b',  'c',  'd',
@@ -135,7 +135,7 @@ static const char e2[256] = {
 };
 #if !GARDEN_LITTLE_ENDIAN
 /* SPECIAL DECODE TABLES FOR BIG ENDIAN (IBM/MOTOROLA/SUN) CPUS */
-static const uint32_t d0[256] = {
+static constexpr uint32_t d0[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -180,7 +180,7 @@ static const uint32_t d0[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff
 };
-static const uint32_t d1[256] = {
+static constexpr uint32_t d1[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -225,7 +225,7 @@ static const uint32_t d1[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff
 };
-static const uint32_t d2[256] = {
+static constexpr uint32_t d2[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -270,7 +270,7 @@ static const uint32_t d2[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff
 };
-static const uint32_t d3[256] = {
+static constexpr uint32_t d3[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -317,7 +317,7 @@ static const uint32_t d3[256] = {
 };
 #else
 /* SPECIAL DECODE TABLES FOR LITTLE ENDIAN (INTEL) CPUS */
-static const uint32_t d0[256] = {
+static constexpr uint32_t d0[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -362,7 +362,7 @@ static const uint32_t d0[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff
 };
-static const uint32_t d1[256] = {
+static constexpr uint32_t d1[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -407,7 +407,7 @@ static const uint32_t d1[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff
 };
-static const uint32_t d2[256] = {
+static constexpr uint32_t d2[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
@@ -452,7 +452,7 @@ static const uint32_t d2[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff
 };
-static const uint32_t d3[256] = {
+static constexpr uint32_t d3[256] = {
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,
 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff, 0x01ffffff,

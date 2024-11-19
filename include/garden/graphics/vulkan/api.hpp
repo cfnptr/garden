@@ -433,4 +433,4 @@ static vk::IndexType toVkIndexType(GraphicsPipeline::Index indexType) noexcept
 	}
 }
 
-} // namespace garden::graphics
+} // namespace garden

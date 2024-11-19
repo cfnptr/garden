@@ -68,10 +68,13 @@ void NineSliceRenderEditorSystem::init()
 }
 void NineSliceRenderEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
-	editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
-	editorSystem->tryUnregisterEntityInspector<Translucent9SliceComponent>();
+	if (Manager::Instance::get()->isRunning)
+	{
+		auto editorSystem = EditorRenderSystem::Instance::get();
+		editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
+		editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
+		editorSystem->tryUnregisterEntityInspector<Translucent9SliceComponent>();
+	}
 }
 
 //**********************************************************************************************************************

@@ -24,7 +24,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 {
-	const auto bufferFormat = Image::Format::UfloatB10G11R11;
+	constexpr auto bufferFormat = Image::Format::UfloatB10G11R11;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto bloomBufferSize =  max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 	auto mipCount = std::min(BloomRenderSystem::maxBloomMipCount, (uint8)calcMipCount(bloomBufferSize));

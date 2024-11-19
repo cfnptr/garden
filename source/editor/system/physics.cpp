@@ -60,12 +60,14 @@ void PhysicsEditorSystem::init()
 }
 void PhysicsEditorSystem::deinit()
 {
-	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->unregisterEntityInspector<RigidbodyComponent>();
-	editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
-
 	if (Manager::Instance::get()->isRunning)
+	{
+		auto editorSystem = EditorRenderSystem::Instance::get();
+		editorSystem->unregisterEntityInspector<RigidbodyComponent>();
+		editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
+	}
 }
 
 //**********************************************************************************************************************
@@ -272,7 +274,7 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 
 	ImGui::PopID();
 
-	const auto sTypes = "None\0Custom\0Box\00";
+	constexpr auto sTypes = "None\0Custom\0Box\00";
 	if (ImGui::Combo("Type", &shapeType, sTypes) || isChanged)
 	{
 		switch (shapeType)
@@ -300,7 +302,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	ImGui::PushID("constraints");
 
 	ImGui::BeginDisabled(!rigidbodyView->getShape());
-	const auto cTypes = "Fixed\0Point\00";
+	constexpr auto cTypes = "Fixed\0Point\00";
 	ImGui::Combo("Type", &cached.constraintType, cTypes);
 
 	auto name = cached.constraintTarget ? "Entity " + to_string(*cached.constraintTarget) : "";
@@ -710,7 +712,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	ImGui::EndDisabled();
 
 	ImGui::BeginDisabled(shape && !rigidbodyView->canBeKinematicOrDynamic());
-	const auto mTypes = "Static\0Kinematic\0Dynamic\00";
+	constexpr auto mTypes = "Static\0Kinematic\0Dynamic\00";
 	if (shape)
 		cached.motionType = rigidbodyView->getMotionType();
 	if (ImGui::Combo("Motion Type", &cached.motionType, mTypes))
@@ -805,7 +807,7 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 
 	// TODO: shape rotation
 
-	const auto sTypes = "None\0Custom\0Box\00";
+	constexpr auto sTypes = "None\0Custom\0Box\00";
 	if ((ImGui::Combo("Type", &shapeType, sTypes) || isChanged))
 	{
 		cached.characterConvexRad = max(cached.characterConvexRad, 0.0f);

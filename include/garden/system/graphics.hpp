@@ -133,9 +133,9 @@ public:
 	 */
 	ID<Entity> directionalLight = {};
 	/**
-	 * @brief Target frame rate. (FPS)
+	 * @brief Frames per second limit.
 	 */
-	uint16 frameRate = 60;
+	uint16 maxFPS = 60;
 	/**
 	 * @brief Vertical synchronization state. (V-Sync)
 	 */
@@ -195,7 +195,7 @@ public:
 	uint64 getTickIndex() const noexcept { return tickIndex; }
 
 	/**
-	 * @brief Returns true if frame can be rendered on current tick.
+	 * @brief Can a frame be rendered on the current tick.
 	 * @details In some cases we can't render to the window. (ex. it may be hidden) 
 	 */
 	bool canRender() const noexcept { return isFramebufferSizeValid; }
@@ -229,7 +229,7 @@ public:
 	uint32 getThreadCount() const noexcept;
 
 	/**
-	 * @brief Returns true if current swapchain is out of date.
+	 * @brief Is current swapchain out of date.
 	 * @details Swapchain will be recreated on next frame with valid framebuffer size.
 	 */
 	bool isOutOfDateSwapchain() const noexcept { return outOfDateSwapchain; }
@@ -796,7 +796,7 @@ public:
 	//******************************************************************************************************************
 
 	/**
-	 * @brief Returns true if current command buffer is in the recording state.
+	 * @brief Is current command buffer in the recording state.
 	 * @note You should finish commands recording before ending this frame.
 	 */
 	bool isRecording() const noexcept;

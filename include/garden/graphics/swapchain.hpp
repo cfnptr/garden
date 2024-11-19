@@ -93,11 +93,11 @@ public:
 	 */
 	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
 	/**
-	 * @brief Returns true if swapchain is using V-sync.
+	 * @brief Does swapchain use vertical synchronization. (V-Sync)
 	 */
 	bool useVsync() const noexcept { return vsync; }
 	/**
-	 * @brief Returns true if swapchain is triple buffering. (3 framebuffers)
+	 * @brief Does swapchain use triple buffering. (3 framebuffers)
 	 */
 	bool useTripleBuffering() const noexcept { return tripleBuffering; }
 

@@ -120,7 +120,7 @@ public:
 	 */
 	void setPosAndRot(const float3& position, const quat& rotation);
 	/**
-	 * @brief Returns true if character position and rotation differs from specified values.
+	 * @brief Are character position and rotation differ from the specified values.
 	 * @note It also checks if values are far enought to count it as changed.
 	 *
 	 * @param[in] position target character position

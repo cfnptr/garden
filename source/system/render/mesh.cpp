@@ -260,13 +260,12 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 
 		if (threadSystem)
 		{
-			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addTask(ThreadPool::Task([opaqueBuffer](const ThreadPool::Task& task) // Do not optimize args!
+			threadSystem->getForegroundPool().addTask([opaqueBuffer](const ThreadPool::Task& task) // Do not optimize args!
 			{
 				SET_CPU_ZONE_SCOPED("Opaque Meshes Sort");
 				auto& meshes = opaqueBuffer->combinedMeshes;
 				std::sort(meshes.begin(), meshes.begin() + opaqueBuffer->drawCount->load());
-			}));
+			});
 		}
 		else
 		{
@@ -279,12 +278,11 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 	{
 		if (threadSystem)
 		{
-			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addTask(ThreadPool::Task([this](const ThreadPool::Task& task)
+			threadSystem->getForegroundPool().addTask([this](const ThreadPool::Task& task)
 			{
 				SET_CPU_ZONE_SCOPED("Translucent Meshes Sort");
 				std::sort(transCombinedMeshes.begin(), transCombinedMeshes.begin() + translucentIndex.load());
-			}));
+			});
 		}
 		else
 		{
@@ -362,12 +360,12 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj, const float3& cam
 				if (opaqueBuffer->threadMeshes.size() < threadPool.getThreadCount())
 					opaqueBuffer->threadMeshes.resize(threadPool.getThreadCount());
 
-				threadPool.addItems(ThreadPool::Task([&cameraOffset, &cameraPosition, 
-					frustumPlanes, opaqueBuffer](const ThreadPool::Task& task) // Do not optimize args!
+				threadPool.addItems([&cameraOffset, &cameraPosition, frustumPlanes, opaqueBuffer]
+					(const ThreadPool::Task& task) // Do not optimize args!
 				{
 					prepareOpaqueMeshes(cameraOffset, cameraPosition, frustumPlanes, opaqueBuffer, 
 						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), true);
-				}),
+				},
 				componentPool.getOccupancy());
 			}
 			else
@@ -393,14 +391,13 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj, const float3& cam
 
 			if (threadSystem)
 			{
-				auto& threadPool = threadSystem->getForegroundPool();
-				threadPool.addItems(ThreadPool::Task([this, &cameraOffset, &cameraPosition, frustumPlanes, 
-					translucentBuffer, bufferIndex](const ThreadPool::Task& task) // Do not optimize args!
+				threadSystem->getForegroundPool().addItems([this, &cameraOffset, &cameraPosition, 
+					frustumPlanes, translucentBuffer, bufferIndex](const ThreadPool::Task& task) // Do not optimize args!
 				{
 					prepareTranslucentMeshes(cameraOffset, cameraPosition, frustumPlanes, translucentBuffer, 
 						transCombinedMeshes.data(), transThreadMeshes, translucentIndex, bufferIndex, 
 						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), true);
-				}),
+				},
 				componentPool.getOccupancy());
 			}
 			else
@@ -418,10 +415,7 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj, const float3& cam
 	}		
 
 	if (threadSystem)
-	{
-		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.wait();
-	}
+		threadSystem->getForegroundPool().wait();
 
 	#if GARDEN_EDITOR
 	if (graphicsEditorSystem)
@@ -439,10 +433,7 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj, const float3& cam
 	sortMeshes();
 
 	if (threadSystem)
-	{
-		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.wait();
-	}
+		threadSystem->getForegroundPool().wait();
 }
 
 //**********************************************************************************************************************
@@ -464,7 +455,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 		if (threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addItems(ThreadPool::Task([opaqueBuffer, &viewProj](const ThreadPool::Task& task)
+			threadPool.addItems([opaqueBuffer, &viewProj](const ThreadPool::Task& task)
 			{
 				auto meshSystem = opaqueBuffer->meshSystem;
 				const auto& meshes = opaqueBuffer->combinedMeshes;
@@ -480,7 +471,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, taskIndex);
 				}
 				meshSystem->endDrawAsync(taskCount, taskIndex);
-			}),
+			},
 			drawCount);
 			threadPool.wait(); // Required
 		}
@@ -527,7 +518,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems(ThreadPool::Task([this, &viewProj](const ThreadPool::Task& task)
+		threadPool.addItems([this, &viewProj](const ThreadPool::Task& task)
 		{
 			auto currentBufferIndex = transCombinedMeshes[task.getItemOffset()].bufferIndex;
 			auto meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
@@ -560,7 +551,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 			}
 
 			meshSystem->endDrawAsync(currentDrawCount, taskIndex);
-		}),
+		},
 		drawCount);
 		threadPool.wait(); // Required
 	}

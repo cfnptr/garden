@@ -21,8 +21,8 @@ using namespace garden;
 //**********************************************************************************************************************
 static void createGBuffers(vector<ID<Image>>& gBuffers)
 {
-	const auto binds = Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen;
-	const auto strategy = Image::Strategy::Size;
+	constexpr auto binds = Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen;
+	constexpr auto strategy = Image::Strategy::Size;
 	const Image::Mips mips = { { nullptr } };
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();

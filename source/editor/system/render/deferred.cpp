@@ -119,7 +119,7 @@ void DeferredRenderEditorSystem::editorRender()
 	{
 		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			const auto modes = "Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0Emissive\0Normal\0"
+			constexpr auto modes = "Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0Emissive\0Normal\0"
 				"World Position\0Depth\0Lighting\0Shadow\0Ambient Occlusion\0Ambient Occlusion (D)\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
