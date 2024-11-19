@@ -58,7 +58,7 @@ void ToneMappingRenderEditorSystem::editorRender()
 	{
 		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
 
-		const auto toneMapperTypes = "ACES\0Uchimura\0\0";
+		constexpr auto toneMapperTypes = "ACES\0Uchimura\0\0";
 		if (ImGui::Combo("Tone Mapper", &toneMapper, toneMapperTypes))
 			toneMappingSystem->setConsts(toneMappingSystem->getUseBloomBuffer(), toneMapper);
 

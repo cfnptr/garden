@@ -50,10 +50,10 @@ void AnimationEditorSystem::init()
 }
 void AnimationEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<AnimationComponent>();
-
 	if (Manager::Instance::get()->isRunning)
 	{
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<AnimationComponent>();
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AnimationEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
 	}

@@ -184,14 +184,14 @@ bool SsaoRenderSystem::aoRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.ssao");
 	}
 
-	const auto uvToNDC = float4x4
+	constexpr auto uvToNDC = float4x4
 	(
 		2.0f, 0.0f, 0.0f, -1.0f,
 		0.0f, 2.0f, 0.0f, -1.0f,
 		0.0f, 0.0f, 1.0f,  0.0f,
 		0.0f, 0.0f, 0.0f,  1.0f
 	);
-	const auto ndcToUV = float4x4
+	constexpr auto ndcToUV = float4x4
 	(
 		0.5f, 0.0f, 0.0f, 0.5f,
 		0.0f, 0.5f, 0.0f, 0.5f,

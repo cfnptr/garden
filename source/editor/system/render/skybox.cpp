@@ -45,7 +45,8 @@ void SkyboxRenderEditorSystem::init()
 }
 void SkyboxRenderEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<SkyboxRenderComponent>();
+	if (Manager::Instance::get()->isRunning)
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SkyboxRenderComponent>();
 }
 
 //--------------------------------------------------------------------------------------------------

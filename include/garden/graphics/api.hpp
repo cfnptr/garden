@@ -202,7 +202,7 @@ public:
 	static void terminate();
 
 	/**
-	 * @brief Returns true if graphics API is initialized.
+	 * @brief Is graphics API initialized.
 	 */
 	inline static bool isInitialized() noexcept { return apiInstance; }
 	/**
@@ -215,4 +215,4 @@ public:
 	}
 };
 
-} // namespace garden::graphics
+} // namespace garden

@@ -120,7 +120,7 @@ static void computeKi()
 #endif
 
 //**********************************************************************************************************************
-static float pow5(float x) noexcept
+static constexpr float pow5(float x) noexcept
 {
 	float x2 = x * x;
 	return x2 * x2 * x;
@@ -172,7 +172,7 @@ static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
 
 static float mipToLinearRoughness(uint8 lodCount, uint8 mip) noexcept
 {
-	const auto a = 2.0f, b = -1.0f;
+	constexpr auto a = 2.0f, b = -1.0f;
 	auto lod = clamp((float)mip / (lodCount - 1), 0.0f, 1.0f);
 	auto perceptualRoughness = clamp((sqrt(
 		a * a + 4.0f * b * lod) - a) / (2.0f * b), 0.0f, 1.0f);
@@ -361,7 +361,7 @@ static ID<Image> createDfgLUT()
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+		threadPool.addItems([&](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("DFG LUT Create");
 
@@ -371,7 +371,7 @@ static ID<Image> createDfgLUT()
 				auto y = i / iblDfgSize, x = i - y * iblDfgSize;
 				pixels[i] = dfvMultiscatter(x, (iblDfgSize - 1) - y);
 			}
-		}),
+		},
 		iblDfgSize * iblDfgSize);
 		threadPool.wait();
 	}
@@ -631,7 +631,7 @@ void PbrLightingRenderSystem::hdrRender()
 	}
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	const auto uvToNDC = float4x4
+	constexpr auto uvToNDC = float4x4
 	(
 		2.0f, 0.0f, 0.0f, -1.0f,
 		0.0f, 2.0f, 0.0f, -1.0f,
@@ -875,13 +875,13 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 		shBuffer.resize(bufferCount * shCoefCount);
 		shBufferData = shBuffer.data();
 
-		threadPool.addItems(ThreadPool::Task([&](const ThreadPool::Task& task)
+		threadPool.addItems([&](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL SH Generate");
 
 			calcIblSH(shBufferData, faces, cubemapSize, task.getTaskIndex(),
 				task.getItemOffset(), task.getItemCount());
-		}),
+		},
 		cubemapSize * cubemapSize);
 		threadPool.wait();
 	}
@@ -942,7 +942,7 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 
 		if (nol > 0.0f)
 		{
-			const auto k = 1.0f; // log4(4.0f);
+			constexpr auto k = 1.0f; // log4(4.0f);
 			auto pdf = ggx(noh, roughness) / 4.0f;
 			auto omegaS = 1.0f / (sampleCount * pdf);
 			auto level = log4(omegaS) - logOmegaP + k;
@@ -1011,13 +1011,13 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addTasks(ThreadPool::Task([&](const ThreadPool::Task& task)
+		threadPool.addTasks([&](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL Specular Generate");
 
 			calcIblSpecular(specularMap, countBufferData, cubemapSize,
 				cubemapMipCount, specularMipCount, task.getTaskIndex());
-		}),
+		},
 		(uint32)countBuffer.size());
 		threadPool.wait();
 	}

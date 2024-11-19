@@ -19,9 +19,9 @@
  * @details
  * 
  * G-Buffer structure:
- * 0. SrgbR8G8B8A8     (Base Color, Metallic)
- * 1. UnormA2B10G10R10 (Encoded Normal, Reflectance)
- * 2. UnormR8G8B8A8    (Emissive, Roughness)
+ *   0. SrgbR8G8B8A8     (Base Color, Metallic)
+ *   1. UnormA2B10G10R10 (Encoded Normal, Reflectance)
+ *   2. UnormR8G8B8A8    (Emissive, Roughness)
  */
 
 #pragma once

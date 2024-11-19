@@ -60,12 +60,12 @@ protected:
 	friend class ResourceExt;
 public:
 	/**
-	 * @brief Returns true if resource is ready for graphics rendering.
+	 * @brief Is resource fully ready for graphics rendering.
 	 * @details Graphics resource is loaded and transferred.
 	 */
 	bool isReady() const noexcept { return instance && readyLock < 1; }
 	/**
-	 * @brief Returns true if resource is fully loaded.
+	 * @brief Is resource loaded. (Does not include ongoing transfers)
 	 * @warning This doesn't takes into account if resource is fully transferred!
 	 */
 	bool isLoaded() const noexcept { return instance; }

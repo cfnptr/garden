@@ -66,7 +66,7 @@ void Controller2DSystem::init()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getFramebufferSize();
 	auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
-	const auto defaultSize = 2.0f;
+	constexpr auto defaultSize = 2.0f;
 
 	auto cameraView = manager->add<CameraComponent>(camera);
 	cameraView->type = ProjectionType::Orthographic;

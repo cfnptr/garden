@@ -48,9 +48,9 @@ public:
 	class Task final
 	{
 	public:
-		using OnTask = std::function<void(const Task& task)>;
+		using Function = std::function<void(const Task& task)>;
 	private:
-		OnTask function = {};
+		Function function = {};
 		uint32 threadIndex = 0;
 		uint32 taskIndex = 0;
 		uint32 itemOffset = 0;
@@ -63,16 +63,19 @@ public:
 		Task() = default;
 		/**
 		 * @brief Creates a new task data.
-		 * @param[in] function target function that should be executed by a thread
 		 * @warning You should manually synchronize data access and prevent race conditions!
+		 * 
+		 * @param[in] function target function that should be executed by a thread
+		 * @tparam T target function or lambda type
 		 */
-		Task(const OnTask& function) noexcept : function(function) { }
+		template<class T>
+		Task(const T& function) noexcept : function(function) { }
 
 		/**
 		 * @brief Returns function that should be executed by a thread
 		 * @details This function is mainly useful for debugging purposes.
 		 */
-		OnTask getFunction() const noexcept { return function; }
+		Function getFunction() const noexcept { return function; }
 
 		/**
 		 * @brief Returns current thread index in the pool.
@@ -137,7 +140,7 @@ public:
 	 */
 	uint32 getThreadCount() const noexcept { return (uint32)threads.size(); }
 	/**
-	 * @brief Returns true if threads have background priority. (MT-Safe)
+	 * @brief Does threads have a background priority. (MT-Safe)
 	 * @details This affects how threads are scheduled for execution by the scheduler.
 	 */
 	bool isBackground() const noexcept { return background; }

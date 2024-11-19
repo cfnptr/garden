@@ -29,7 +29,6 @@ out float4 fb.color;
 uniform sampler2D
 {
 	filter = linear;
-	wrap = clampToEdge;
 } srcTexture;
 
 void main()

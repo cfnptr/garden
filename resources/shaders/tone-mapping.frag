@@ -46,7 +46,6 @@ uniform sampler2D hdrBuffer;
 uniform sampler2D
 {
 	filter = linear;
-	wrap = clampToEdge;
 } bloomBuffer;
 
 in float2 fs.texCoords;

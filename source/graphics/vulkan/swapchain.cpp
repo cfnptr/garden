@@ -171,7 +171,7 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 {
 	auto images = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
 	auto imageFormat = toImageFormat(surfaceFormat);
-	const auto imageBind = Image::Bind::ColorAttachment | Image::Bind::TransferDst;
+	constexpr auto imageBind = Image::Bind::ColorAttachment | Image::Bind::TransferDst;
 	vector<VulkanSwapchain::VkBuffer*> buffers(images.size());
 	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 
@@ -298,11 +298,11 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 	auto buffer = vulkanBuffers[bufferIndex];
 	if (threadPool)
 	{
-		threadPool->addTasks(ThreadPool::Task([this, buffer](const ThreadPool::Task& task)
+		threadPool->addTasks([this, buffer](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Command Pool Reset");
 			vulkanAPI->device.resetCommandPool(buffer->secondaryCommandPools[task.getTaskIndex()]);
-		}),
+		},
 		(uint32)buffer->secondaryCommandPools.size());
 		threadPool->wait();
 	}
@@ -436,11 +436,11 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 		inheritanceInfo.pNext = &inheritanceRenderingInfo;
 	}
 
-	threadPool->addTasks(ThreadPool::Task([this, &beginInfo](const ThreadPool::Task& task)
+	threadPool->addTasks([this, &beginInfo](const ThreadPool::Task& task)
 	{
 		SET_CPU_ZONE_SCOPED("Secondary Command Buffer Begin");
 		vulkanAPI->secondaryCommandBuffers[task.getTaskIndex()].begin(beginInfo);
-	}),
+	},
 	threadCount);
 	threadPool->wait();
 }
@@ -450,11 +450,11 @@ void VulkanSwapchain::endSecondaryCommandBuffers()
 {
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers End");
 
-	threadPool->addTasks(ThreadPool::Task([this](const ThreadPool::Task& task)
+	threadPool->addTasks([this](const ThreadPool::Task& task)
 	{
 		SET_CPU_ZONE_SCOPED("Secondary Command Buffer End");
 		vulkanAPI->secondaryCommandBuffers[task.getTaskIndex()].end();
-	}),
+	},
 	(uint32)vulkanAPI->secondaryCommandBuffers.size());
 	threadPool->wait();
 

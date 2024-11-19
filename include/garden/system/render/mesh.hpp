@@ -62,7 +62,7 @@ class IMeshRenderSystem
 {
 protected:
 	/**
-	 * @brief Returns true if system is ready for rendering. (All resources loaded, etc.)
+	 * @brief Is mesh system ready for rendering. (All resources loaded, etc.)
 	 */
 	virtual bool isDrawReady() { return true; }
 	/**

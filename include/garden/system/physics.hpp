@@ -258,7 +258,7 @@ public:
 	 */
 	uint64 getRefCount() const;
 	/**
-	 * @brief Returns true if this is last shape reference.
+	 * @brief Is this the last shape reference.
 	 */
 	bool isLastRef() const;
 };
@@ -414,7 +414,7 @@ public:
 	void setSensor(bool isSensor);
 
 	/**
-	 * @brief Returns true if kinematic objects can collide with other kinematic or static objects.
+	 * @brief Can kinematic objects collide with other kinematic or static objects.
 	 * @details See the @ref setKinematicVsStatic().
 	 */
 	bool isKinematicVsStatic() const;
@@ -464,7 +464,7 @@ public:
 	 */
 	void setPosAndRot(const float3& position, const quat& rotation, bool activate = true);
 	/**
-	 * @brief Returns true if rigidbody position and rotation differs from specified values.
+	 * @brief Are rigidbody position and rotation differ from specified values.
 	 * @note It also checks if values are far enought to count it as changed.
 	 *
 	 * @param[in] position target rigidbody position
@@ -540,7 +540,7 @@ public:
 	void destroyAllConstraints();
 
 	/**
-	 * @brief Returns true if constraint is enabled and used in simulation.
+	 * @brief Is constraint enabled and used in the simulation.
 	 * @param index target constraint index in the array
 	 */
 	bool isConstraintEnabled(uint32 index) const;
@@ -783,7 +783,7 @@ public:
 	 */
 	void disableCollision(uint16 collisionLayer1, uint16 collisionLayer2);
 	/**
-	 * @brief Returns true if collision between two rigidbody layers is enabled.
+	 * @brief Is collision enabled between the specified rigidbody layers.
 	 */
 	bool isCollisionEnabled(uint16 collisionLayer1, uint16 collisionLayer2) const;
 

@@ -52,4 +52,4 @@ static JPH::Quat toQuat(const quat& q) noexcept
 	return JPH::Quat(q.x, q.y, q.z, q.w);
 }
 
-}
+} // namespace garden::physics

@@ -73,61 +73,63 @@
 
 namespace garden
 {
-	using namespace std;
-	using namespace math;
 
-	namespace fs = std::filesystem;
+using namespace std;
+using namespace math;
 
-	/***************************************************************************************************************
-	 * @brief Allocates memory blocks.
-	 * @tparam T target element type
-	 * @param elementCount number of elements
-	 * @throw GardenError if failed to allocate
-	 */
-	template<typename T>
-	static T* malloc(psize elementCount)
+namespace fs = std::filesystem;
+
+/***************************************************************************************************************
+ * @brief Allocates memory blocks.
+ * @tparam T target element type
+ * @param elementCount number of elements
+ * @throw GardenError if failed to allocate
+ */
+template<typename T>
+static T* malloc(psize elementCount)
+{
+	auto memoryBlock = ::malloc(elementCount * sizeof(T));
+	if (!memoryBlock)
 	{
-		auto memoryBlock = ::malloc(elementCount * sizeof(T));
-		if (!memoryBlock)
-		{
-			throw GardenError("Failed to allocate memory block. ("
-				"size: " + to_string(elementCount * sizeof(T)) + ")");
-		}
-		return (T*)memoryBlock;
+		throw GardenError("Failed to allocate memory block. ("
+			"size: " + to_string(elementCount * sizeof(T)) + ")");
 	}
-	/**
-	 * @brief Allocates an array in memory with elements initialized to 0.
-	 * @tparam T target element type
-	 * @param elementCount number of elements
-	 * @throw GardenError if failed to allocate
-	 */
-	template<typename T>
-	static T* calloc(psize elementCount)
-	{
-		auto memoryBlock = ::calloc(elementCount, sizeof(T));
-		if (!memoryBlock)
-		{
-			throw GardenError("Failed to allocate memory block. ("
-				"size: " + to_string(elementCount * sizeof(T)) + ")");
-		}
-		return (T*)memoryBlock;
-	}
-	/**
-	 * @brief Reallocates memory blocks.
-	 * @tparam T target element type
-	 * @param oldMemoryBlock old allocated memory block
-	 * @param elementCount number of elements
-	 * @throw GardenError if failed to reallocate
-	 */
-	template<typename T>
-	static T* realloc(T* oldMemoryBlock, psize elementCount)
-	{
-		auto newMemoryBlock = ::realloc(oldMemoryBlock, elementCount * sizeof(T));
-		if (!newMemoryBlock)
-		{
-			throw GardenError("Failed to reallocate memory block. ("
-				"size: " + to_string(elementCount * sizeof(T)) + ")");
-		}
-		return (T*)newMemoryBlock;
-	}
+	return (T*)memoryBlock;
 }
+/**
+ * @brief Allocates an array in memory with elements initialized to 0.
+ * @tparam T target element type
+ * @param elementCount number of elements
+ * @throw GardenError if failed to allocate
+ */
+template<typename T>
+static T* calloc(psize elementCount)
+{
+	auto memoryBlock = ::calloc(elementCount, sizeof(T));
+	if (!memoryBlock)
+	{
+		throw GardenError("Failed to allocate memory block. ("
+			"size: " + to_string(elementCount * sizeof(T)) + ")");
+	}
+	return (T*)memoryBlock;
+}
+/**
+ * @brief Reallocates memory blocks.
+ * @tparam T target element type
+ * @param oldMemoryBlock old allocated memory block
+ * @param elementCount number of elements
+ * @throw GardenError if failed to reallocate
+ */
+template<typename T>
+static T* realloc(T* oldMemoryBlock, psize elementCount)
+{
+	auto newMemoryBlock = ::realloc(oldMemoryBlock, elementCount * sizeof(T));
+	if (!newMemoryBlock)
+	{
+		throw GardenError("Failed to reallocate memory block. ("
+			"size: " + to_string(elementCount * sizeof(T)) + ")");
+	}
+	return (T*)newMemoryBlock;
+}
+
+} // namespace garden

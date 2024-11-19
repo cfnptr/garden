@@ -32,7 +32,7 @@ using namespace garden;
 //--------------------------------------------------------------------------------------------------
 static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
-	const auto shadowFormat = Image::Format::UnormD16;
+	constexpr auto shadowFormat = Image::Format::UnormD16;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::DepthStencilAttachment |
 		Image::Bind::Sampled, { Image::Layers(SHADOW_MAP_CASCADE_COUNT) },

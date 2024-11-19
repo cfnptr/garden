@@ -319,7 +319,7 @@ void EditorRenderSystem::showOptionsWindow()
 		else if (renderScale <= 1.5f) renderScaleType = 3;
 		else renderScaleType = 4;
 
-		const auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";
+		constexpr auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";
 		if (ImGui::Combo("Render Scale", &renderScaleType, renderScaleTypes))
 		{
 			switch (renderScaleType)
@@ -337,12 +337,12 @@ void EditorRenderSystem::showOptionsWindow()
 				settingsSystem->setFloat("renderScale", renderScale);
 		}
 
-		auto frameRate = (int)graphicsSystem->frameRate;
-		if (ImGui::DragInt("Frame Rate", &frameRate, 1, 1, UINT16_MAX))
+		auto frameRate = (int)graphicsSystem->maxFPS;
+		if (ImGui::DragInt("Max FPS", &frameRate, 1, 1, UINT16_MAX))
 		{
-			graphicsSystem->frameRate = (uint16)frameRate;
+			graphicsSystem->maxFPS = (uint16)frameRate;
 			if (settingsSystem)
-				settingsSystem->setInt("frameRate", frameRate);
+				settingsSystem->setInt("maxFPS", frameRate);
 		}
 		ImGui::Spacing();
 

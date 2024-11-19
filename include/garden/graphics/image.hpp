@@ -251,13 +251,13 @@ public:
 	 */
 	ID<ImageView> getDefaultView();
 	/**
-	 * @brief Returns true if image has default view instance
+	 * @brief Does image have a default view instance.
 	 * @note Default image view instance is created on a first getter call.
 	 */
 	bool hasDefaultView() const noexcept { return (bool)defaultView; }
 
 	/**
-	 * @brief Returns true if specified image properties are supported by the GPU.
+	 * @brief Are specified image properties supported by the GPU.
 	 * 
 	 * @param type image dimensionality
 	 * @param format image data format
@@ -796,71 +796,71 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Returns true if image data format is color, otherwise false.
+ * @brief Is the image data format a color.
  * @param formatType target image format
  */
-static bool isFormatColor(Image::Format formatType)
+static constexpr bool isFormatColor(Image::Format formatType)
 {
 	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
 		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
 }
 /**
- * @brief Returns true if image data format is depth only, otherwise false.
+ * @brief Is the image data format a depth only.
  * @param formatType target image format
  */
-static bool isFormatDepthOnly(Image::Format formatType)
+static constexpr bool isFormatDepthOnly(Image::Format formatType)
 {
 	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
 		(uint8)formatType <= (uint8)Image::Format::SfloatD32;
 }
 /**
- * @brief Returns true if image data format is stencil only, otherwise false.
+ * @brief Is the image data format a stencil only.
  * @param formatType target image format
  */
-static bool isFormatStencilOnly(Image::Format formatType)
+static constexpr bool isFormatStencilOnly(Image::Format formatType)
 {
 	return false; // TODO:
 }
 /**
- * @brief Returns true if image data format is depth/stencil, otherwise false.
+ * @brief Is the image data format a combined depth/stencil.
  * @param formatType target image format
  */
-static bool isFormatDepthStencil(Image::Format formatType)
+static constexpr bool isFormatDepthStencil(Image::Format formatType)
 {
 	return (uint8)Image::Format::UnormD24UintS8 <= (uint8)formatType &&
 		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
 }
 /**
- * @brief Returns true if image data format is depth or stencil, otherwise false.
+ * @brief Is the image data format a depth or stencil.
  * @param formatType target image format
  */
-static bool isFormatDepthOrStencil(Image::Format formatType)
+static constexpr bool isFormatDepthOrStencil(Image::Format formatType)
 {
 	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
 		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
 }
 /**
- * @brief Returns true if image data format is floating point, otherwise false.
+ * @brief Is the image data format a floating point.
  * @param formatType target image format
  */
-static bool isFormatFloat(Image::Format formatType)
+static constexpr bool isFormatFloat(Image::Format formatType)
 {
 	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
 		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
 }
 /**
- * @brief Returns true if image data format is signed integer, otherwise false.
+ * @brief Is the image data format a signed integer.
  * @param formatType target image format
  */
-static bool isFormatInt(Image::Format formatType)
+static constexpr bool isFormatInt(Image::Format formatType)
 {
 	return false; // TODO:
 }
 /**
- * @brief Returns true if image data format is unsigned integer, otherwise false.
+ * @brief Is the image data format an unsigned integer.
  * @param formatType target image format
  */
-static bool isFormatUint(Image::Format formatType)
+static constexpr bool isFormatUint(Image::Format formatType)
 {
 	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
 		(uint8)formatType <= (uint8)Image::Format::UintR32;

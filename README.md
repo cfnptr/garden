@@ -124,3 +124,8 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)
 * [xxHash](https://github.com/Cyan4973/xxHash) (BSD-2-Clause license)
 * [zlib](https://github.com/madler/zlib) (zlib license)
+
+
+## Physically Based Materials
+
+![Material chart](https://google.github.io/filament/images/material_chart.jpg)

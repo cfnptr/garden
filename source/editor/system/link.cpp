@@ -49,10 +49,10 @@ void LinkEditorSystem::init()
 }
 void LinkEditorSystem::deinit()
 {
-	EditorRenderSystem::Instance::get()->unregisterEntityInspector<LinkComponent>();
-
 	if (Manager::Instance::get()->isRunning)
 	{
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<LinkComponent>();
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LinkEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 	}
