@@ -300,9 +300,6 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
-		{ "gBuffer0", DescriptorSet::Uniform(colorAttachments[0].imageView) },
-		{ "gBuffer1", DescriptorSet::Uniform(colorAttachments[1].imageView) },
-		{ "gBuffer2", DescriptorSet::Uniform(colorAttachments[2].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ? // TODO: [1]
 			shadowImageViews[0] : graphicsSystem->getWhiteTexture()) },
@@ -310,6 +307,9 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 			aoImageViews[1] : graphicsSystem->getWhiteTexture()) },
 		{ "dfgLUT", DescriptorSet::Uniform(graphicsSystem->get(dfgLUT)->getDefaultView()) }
 	};
+
+	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView));
 
 	return uniforms;
 }

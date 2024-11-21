@@ -80,7 +80,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> emptyTexture = {};
 	ID<ImageView> whiteTexture = {};
 	ID<ImageView> greenTexture = {};
-	ID<ImageView> normalMapTexture = {};
+	ID<ImageView> normalsMapTexture = {};
 	ID<ImageView> depthStencilBuffer = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
 	CameraConstants currentCameraConstants = {};
@@ -261,10 +261,10 @@ public:
 	 */
 	ID<ImageView> getGreenTexture();
 	/**
-	 * @brief Returns white texture image view. (127, 127, 255, 255)
+	 * @brief Returns normals texture image view. (127, 127, 255, 255)
 	 * @details Allocates if it is not created yet.
 	 */
-	ID<ImageView> getNormalMapTexture();
+	ID<ImageView> getNormalsMapTexture();
 	/**
 	 * @brief Returns depth/stencil buffer image view.
 	 * @details It is created if depthBufferFormat is not Undefined during system initialization.

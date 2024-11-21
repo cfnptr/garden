@@ -22,27 +22,36 @@ pipelineState
 }
 
 #define OFF_DRAW_MODE 0
-#define HDR_DRAW_MODE 1
-#define BASE_COLOR_DRAW_MODE 2
+#define BASE_COLOR_DRAW_MODE 1
+#define OPACITY_TRANSMISSION_DRAW_MODE 2
 #define METALLIC_DRAW_MODE 3
 #define ROUGHNESS_DRAW_MODE 4
-#define REFLECTANCE_DRAW_MODE 5
-#define EMISSIVE_DRAW_MODE 6
-#define NORMAL_DRAW_MODE 7
-#define WORLD_POSITION_DRAW_MODE 8
-#define DEPTH_DRAW_MODE 9
-#define LIGHTING_DRAW_MODE 10
-#define SHADOW_DRAW_MODE 11
-#define AMBIENT_OCCLUSION_DRAW_MODE 12
-#define AMBIENT_OCCLUSION_D_DRAW_MODE 13
-#define DRAW_MODE_COUNT 14
+#define MATERIAL_AO_DRAW_MODE 5
+#define REFLECTANCE_DRAW_MODE 6
+#define NORMALS_DRAW_MODE 7
+#define CLEAR_COAT_DRAW_MODE 8
+#define EMISSIVE_COLOR_DRAW_MODE 9
+#define EXPOSURE_WEIGHT_DRAW_MODE 10
+#define SUBSURFACE_COLOR_DRAW_MODE 11
+#define THICKNESS_DRAW_MODE 12
+#define LIGHTING_DRAW_MODE 13
+#define HDR_DRAW_MODE 14
+#define DEPTH_DRAW_MODE 15
+#define WORLD_POSITION_DRAW_MODE 16
+#define SHADOWS_DRAW_MODE 17
+#define GLOBAL_AO_DRAW_MODE 18
+#define DENOISED_GLOBAL_AO_DRAW_MODE 19
+#define DRAW_MODE_COUNT 20
 
 in float2 fs.texCoords;
 out float4 fb.color;
 
-uniform sampler2D gBuffer0;
-uniform sampler2D gBuffer1;
-uniform sampler2D gBuffer2;
+uniform sampler2D g0;
+uniform sampler2D g1;
+uniform sampler2D g2;
+uniform sampler2D g3;
+uniform sampler2D g4;
+
 uniform sampler2D hdrBuffer;
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer0;
@@ -61,40 +70,65 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	if (pc.drawMode == HDR_DRAW_MODE)
+	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, fs.texCoords);
+
+	if (pc.drawMode == BASE_COLOR_DRAW_MODE)
+	{
+		fb.color = float4(gBuffer.baseColor.rgb, 1.0f);
+	}
+	else if (pc.drawMode == OPACITY_TRANSMISSION_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.baseColor.a), 1.0f);
+	}
+	else if (pc.drawMode == METALLIC_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.metallic), 1.0f);
+	}
+	else if (pc.drawMode == ROUGHNESS_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.roughness), 1.0f);
+	}
+	else if (pc.drawMode == MATERIAL_AO_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.ambientOcclusion), 1.0f);
+	}
+	else if (pc.drawMode == REFLECTANCE_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.reflectance), 1.0f);
+	}
+	else if (pc.drawMode == NORMALS_DRAW_MODE)
+	{
+		fb.color = float4(gBuffer.normal * 0.5f + 0.5f, 1.0f);
+	}
+	else if (pc.drawMode == CLEAR_COAT_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.clearCoat), 1.0f);
+	}
+	else if (pc.drawMode == EMISSIVE_COLOR_DRAW_MODE)
+	{
+		fb.color = float4(gBuffer.emissiveColor, 1.0f);
+	}
+	else if (pc.drawMode == EXPOSURE_WEIGHT_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.exposureWeight), 1.0f);
+	}
+	else if (pc.drawMode == SUBSURFACE_COLOR_DRAW_MODE)
+	{
+		fb.color = float4(gBuffer.subsurfaceColor, 1.0f);
+	}
+	else if (pc.drawMode == THICKNESS_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.thickness), 1.0f);
+	}
+	else if (pc.drawMode == HDR_DRAW_MODE)
 	{
 		float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
 		fb.color = float4(gammaCorrection(hdrColor), 1.0f);
 	}
-	else if (pc.drawMode == BASE_COLOR_DRAW_MODE)
+	else if (pc.drawMode == DEPTH_DRAW_MODE)
 	{
-		float3 baseColor = decodeBaseColor(texture(gBuffer0, fs.texCoords));
-		fb.color = float4(baseColor, 1.0f);
-	}
-	else if (pc.drawMode == METALLIC_DRAW_MODE)
-	{
-		float metallic = decodeMetallic(texture(gBuffer0, fs.texCoords));
-		fb.color = float4(float3(metallic), 1.0f);
-	}
-	else if (pc.drawMode == ROUGHNESS_DRAW_MODE)
-	{
-		float roughness = decodeRoughness(texture(gBuffer2, fs.texCoords));
-		fb.color = float4(float3(roughness), 1.0f);
-	}
-	else if (pc.drawMode == REFLECTANCE_DRAW_MODE)
-	{
-		float reflectance = decodeReflectance(texture(gBuffer1, fs.texCoords));
-		fb.color = float4(float3(reflectance), 1.0f);
-	}
-	else if (pc.drawMode == EMISSIVE_DRAW_MODE)
-	{
-		float3 emissive = decodeEmissive(texture(gBuffer2, fs.texCoords));
-		fb.color = float4(emissive, 1.0f);
-	}
-	else if (pc.drawMode == NORMAL_DRAW_MODE)
-	{
-		float3 normal = decodeNormal(texture(gBuffer1, fs.texCoords));
-		fb.color = float4(normal * 0.5f + 0.5f, 1.0f);
+		float depth = texture(depthBuffer, fs.texCoords).r;
+		fb.color = float4(float3(pow(depth, (1.0f / 2.0f))), 1.0f);
 	}
 	else if (pc.drawMode == WORLD_POSITION_DRAW_MODE)
 	{
@@ -102,25 +136,20 @@ void main()
 		float3 worldPos = calcWorldPosition(depth, fs.texCoords, pc.viewProjInv);
 		fb.color = float4(log(abs(worldPos) + float3(1.0f)) * 0.1f, 1.0f);
 	}
-	else if (pc.drawMode == DEPTH_DRAW_MODE)
-	{
-		float depth = texture(depthBuffer, fs.texCoords).r;
-		fb.color = float4(float3(pow(depth, (1.0f / 2.0f))), 1.0f);
-	}
-	else if (pc.drawMode == SHADOW_DRAW_MODE)
+	else if (pc.drawMode == SHADOWS_DRAW_MODE)
 	{
 		float shadow = texture(shadowBuffer0, fs.texCoords).r;
-		fb.color = float4(shadow, shadow, shadow, 1.0f);
+		fb.color = float4(float3(shadow), 1.0f);
 	}
-	else if (pc.drawMode == AMBIENT_OCCLUSION_DRAW_MODE)
+	else if (pc.drawMode == GLOBAL_AO_DRAW_MODE)
 	{
 		float ao = texture(aoBuffer0, fs.texCoords).r;
-		fb.color = float4(ao, ao, ao, 1.0f);
+		fb.color = float4(float3(ao), 1.0f);
 	}
-	else if (pc.drawMode == AMBIENT_OCCLUSION_D_DRAW_MODE)
+	else if (pc.drawMode == DENOISED_GLOBAL_AO_DRAW_MODE)
 	{
 		float ao = texture(aoBuffer1, fs.texCoords).r;
-		fb.color = float4(ao, ao, ao, 1.0f);
+		fb.color = float4(float3(ao), 1.0f);
 	}
 	else
 	{

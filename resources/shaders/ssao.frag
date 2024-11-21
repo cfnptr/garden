@@ -28,7 +28,7 @@ pipelineState
 in float2 fs.texCoords;
 out float4 fb.ao;
 
-uniform sampler2D gBuffer1;
+uniform sampler2D gBufferNormals;
 uniform sampler2D depthBuffer;
 
 uniform sampler2D
@@ -63,10 +63,10 @@ void main()
 
 	float4 viewPos = uvToView * float4(fs.texCoords, depth, 1.0f);
 	viewPos.xyz /= viewPos.w;
-	float3 normal = decodeNormal(texture(gBuffer1, fs.texCoords));
+	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
 	normal = normalize(float3x3(cc.view) * normal);
 
-	float2 noiseScale = textureSize(gBuffer1, 0) * (1.0f / NOISE_SIZE);
+	float2 noiseScale = textureSize(gBufferNormals, 0) * (1.0f / NOISE_SIZE);
 	float3 random = texture(noise, fs.texCoords * noiseScale).xyz;
 
 	float3 tangent = normalize(random - normal * dot(random, normal));

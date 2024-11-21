@@ -25,7 +25,7 @@ pipelineState
 in float2 fs.texCoords;
 out float4 fb.shadow;
 
-uniform sampler2D gBuffer1;
+uniform sampler2D gBufferNormals;
 uniform sampler2D depthBuffer;
 
 uniform sampler2DArrayShadow
@@ -63,7 +63,7 @@ void main()
 	if (lightCoords.z < 0.0f)
 		discard;
 
-	float3 normal = decodeNormal(texture(gBuffer1, fs.texCoords));
+	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
 	float bias = max((dot(normal, pc.lightDir.xyz) + 1.0f) * pc.maxBias, pc.minBias);
 	bias /= (pc.farNearPlanes.w / pc.farNearPlanes[cascadeID]) * 0.5f;
 	lightCoords.z += bias;

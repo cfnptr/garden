@@ -18,8 +18,8 @@
 #ifndef BRDF_GSL
 #define BRDF_GSL
 
-#include "ibl.gsl"
-#include "math.gsl"
+#include "common/ibl.gsl"
+#include "common/math.gsl"
 
 float ggx(float noh, float roughness)
 {

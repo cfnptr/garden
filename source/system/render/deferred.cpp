@@ -23,17 +23,25 @@ static void createGBuffers(vector<ID<Image>>& gBuffers)
 {
 	constexpr auto binds = Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen;
 	constexpr auto strategy = Image::Strategy::Size;
+	constexpr Image::Format formats[DeferredRenderSystem::gBufferCount]
+	{
+		Image::Format::SrgbR8G8B8A8,
+		Image::Format::UnormR8G8B8A8,
+		Image::Format::UnormA2B10G10R10,
+		Image::Format::SrgbR8G8B8A8,
+		Image::Format::SrgbR8G8B8A8,
+	};
+
 	const Image::Mips mips = { { nullptr } };
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	gBuffers.resize(DeferredRenderSystem::gBufferCount);
 
-	gBuffers[0] = graphicsSystem->createImage(Image::Format::SrgbR8G8B8A8, binds, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(gBuffers[0], "image.deferred.gBuffer0");
-	gBuffers[1] = graphicsSystem->createImage(Image::Format::UnormA2B10G10R10, binds, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(gBuffers[1], "image.deferred.gBuffer1");
-	gBuffers[2] = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, binds, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(gBuffers[2], "image.deferred.gBuffer2");
+	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+	{
+		gBuffers[i] = graphicsSystem->createImage(formats[i], binds, mips, framebufferSize, strategy);
+		SET_RESOURCE_DEBUG_NAME(gBuffers[i], "image.deferred.gBuffer" + to_string(i));
+	}
 }
 
 static ID<Image> createDepthStencilBuffer()
@@ -79,18 +87,15 @@ static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<I
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	auto gBuffer0View = graphicsSystem->get(gBuffers[0]);
-	auto gBuffer1View = graphicsSystem->get(gBuffers[1]);
-	auto gBuffer2View = graphicsSystem->get(gBuffers[2]);
 	auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
-
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{
-		Framebuffer::OutputAttachment(gBuffer0View->getDefaultView(), false, false, true),
-		Framebuffer::OutputAttachment(gBuffer1View->getDefaultView(), false, false, true),
-		Framebuffer::OutputAttachment(gBuffer2View->getDefaultView(), false, false, true),
-	};
 	Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, true, false, true);
+
+	vector<Framebuffer::OutputAttachment> colorAttachments(DeferredRenderSystem::gBufferCount);
+	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+	{
+		auto gBufferView = graphicsSystem->get(gBuffers[i]);
+		colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView->getDefaultView(), false, false, true);
+	}
 
 	if (depthStencilBuffer)
 		depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
@@ -267,7 +272,8 @@ void DeferredRenderSystem::render()
 	{
 		SET_CPU_ZONE_SCOPED("Deferred Render Pass");
 		SET_GPU_DEBUG_LABEL("Deferred Pass", Color::transparent);
-		float4 clearColors[gBufferCount] = { float4(0.0f), float4(0.0f), float4(0.0f) };
+		constexpr float4 clearColors[gBufferCount] = 
+		{ float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f) };
 		framebufferView->beginRenderPass(clearColors, gBufferCount, 0.0f, 0x00, int4(0), asyncRecording);
 		manager->runEvent("DeferredRender");
 		framebufferView->endRenderPass();
@@ -390,13 +396,12 @@ void DeferredRenderSystem::swapchainRecreate()
 		framebufferView->update(framebufferSize, &colorAttachment, 1, depthStencilAttachment);
 
 		framebufferView = graphicsSystem->get(gFramebuffer);
-		auto gBuffer0View = graphicsSystem->get(gBuffers[0]);
-		auto gBuffer1View = graphicsSystem->get(gBuffers[1]);
-		auto gBuffer2View = graphicsSystem->get(gBuffers[2]);
 		Framebuffer::OutputAttachment colorAttachments[gBufferCount];
-		colorAttachments[0] = Framebuffer::OutputAttachment(gBuffer0View->getDefaultView(), false, false, true);
-		colorAttachments[1] = Framebuffer::OutputAttachment(gBuffer1View->getDefaultView(), false, false, true);
-		colorAttachments[2] = Framebuffer::OutputAttachment(gBuffer2View->getDefaultView(), false, false, true);
+		for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+		{
+			auto gBufferView = graphicsSystem->get(gBuffers[i]);
+			colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView->getDefaultView(), false, false, true);
+		}
 		depthStencilAttachment.clear = true;
 		depthStencilAttachment.load = false;
 		framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);

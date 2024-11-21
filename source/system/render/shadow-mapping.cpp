@@ -108,8 +108,8 @@ static map<string, DescriptorSet::Uniform> getUniforms(
 	
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
-		{ "gBuffer1", DescriptorSet::Uniform(
-			colorAttachments[1].imageView, 1, swapchainSize) },
+		{ "gBufferNormals", DescriptorSet::Uniform(
+			colorAttachments[DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },
 		{ "depthBuffer", DescriptorSet::Uniform(
 			depthStencilAttachment.imageView, 1, swapchainSize) },
 		{ "shadowMap", DescriptorSet::Uniform(

@@ -14,7 +14,6 @@
 
 #include "common/pbr.gsl"
 #include "common/depth.gsl"
-#include "common/gbuffer.gsl"
 #include "common/constants.gsl"
 
 pipelineState
@@ -28,9 +27,12 @@ out float4 fb.hdr;
 spec const bool USE_SHADOW_BUFFER = false;
 spec const bool USE_AO_BUFFER = false;
 
-uniform sampler2D gBuffer0;
-uniform sampler2D gBuffer1;
-uniform sampler2D gBuffer2;
+uniform sampler2D g0;
+uniform sampler2D g1;
+uniform sampler2D g2;
+uniform sampler2D g3;
+uniform sampler2D g4;
+
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer;
 uniform sampler2D aoBuffer;
@@ -62,28 +64,18 @@ void main()
 	if (depth < FLOAT_EPS6)
 		discard;
 
-	float4 gData0 = texture(gBuffer0, fs.texCoords);
-	float4 gData1 = texture(gBuffer1, fs.texCoords);
-	float4 gData2 = texture(gBuffer2, fs.texCoords);
-	float shadow = USE_SHADOW_BUFFER ? texture(shadowBuffer, fs.texCoords).r : 1.0f;
-	float ambientOcclusion = USE_AO_BUFFER ? texture(aoBuffer, fs.texCoords).r : 1.0f;
-	float4 worldPos = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
-	float3 viewDir = calcViewDirection(worldPos.xyz / worldPos.w);
+	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, fs.texCoords);
+	float4 shadow = float4(pc.shadowColor.rgb, 
+		USE_SHADOW_BUFFER ? texture(shadowBuffer, fs.texCoords).r : 1.0f);
+	float ao = USE_AO_BUFFER ? texture(aoBuffer, fs.texCoords).r : 1.0f;
+	gBuffer.ambientOcclusion *= ao; // TODO: or maybe we can utilize filament micro/macro AO?
 
-	PbrMaterial pbrMaterial; // TODO: define emissive strength in candela, lumens or wats.
-	pbrMaterial.baseColor = decodeBaseColor(gData0);
-	pbrMaterial.metallic = decodeMetallic(gData0);
-	pbrMaterial.roughness = decodeRoughness(gData2);
-	pbrMaterial.reflectance = decodeReflectance(gData1);
-	pbrMaterial.ambientOcclusion = ambientOcclusion;
-	pbrMaterial.viewDirection = viewDir;
-	pbrMaterial.normal = decodeNormal(gData1);
-	pbrMaterial.shadow = shadow;
-	pbrMaterial.shadowColor = pc.shadowColor.rgb;
+	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
+	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);
 
 	float3 hdrColor = float3(0.0f);
-	hdrColor += evaluateIBL(pbrMaterial, dfgLUT, data.sh, specular);
-	hdrColor += decodeEmissive(gData2);
+	hdrColor += evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, data.sh, specular);
+	hdrColor += gBuffer.emissiveColor * gBuffer.exposureWeight; // TODO: ... * pc.luminance; 
 
 	float obstruction = depth < (1.0f - FLOAT_EPS6) ? 1.0f : 0.0f;
 	fb.hdr = float4(hdrColor * obstruction, 1.0f);
