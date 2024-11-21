@@ -54,15 +54,16 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& shadowPl
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
-		{ "gBuffer0", DescriptorSet::Uniform(colorAttachments[0].imageView) },
-		{ "gBuffer1", DescriptorSet::Uniform(colorAttachments[1].imageView) },
-		{ "gBuffer2", DescriptorSet::Uniform(colorAttachments[2].imageView) },
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
 		{ "shadowBuffer0", DescriptorSet::Uniform(shadowBuffer0) },
 		{ "aoBuffer0", DescriptorSet::Uniform(aoBuffer0) },
 		{ "aoBuffer1", DescriptorSet::Uniform(aoBuffer1) },
 	};
+
+	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView));
+
 	return uniforms;
 }
 
@@ -119,19 +120,25 @@ void DeferredRenderEditorSystem::editorRender()
 	{
 		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			constexpr auto modes = "Off\0HDR\0Base Color\0Metallic\0Roughness\0Reflectance\0Emissive\0Normal\0"
-				"World Position\0Depth\0Lighting\0Shadow\0Ambient Occlusion\0Ambient Occlusion (D)\0\0";
+			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
+				"Reflectance\0Normals\0Clear Coat\0Emissive Color\0Exposure Weight\0Subsurface Color\0Thickness\0"
+				"Lighting\0HDR\0Depth\0World Position\0Shadows\0Global AO\0Denoised Global AO\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
 			if (drawMode == DrawMode::Lighting)
 			{
 				ImGui::SeparatorText("Overrides");
-				ImGui::ColorEdit3("Base Color", &baseColorOverride);
-				ImGui::ColorEdit3("Emissive", &emissiveOverride,
-					ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-				ImGui::SliderFloat("Metallic", &metallicOverride, 0.0f, 1.0f);
-				ImGui::SliderFloat("Roughness", &roughnessOverride, 0.0f, 1.0f);
-				ImGui::SliderFloat("Reflectance", &reflectanceOverride, 0.0f, 1.0f);
+				ImGui::ColorEdit3("Base Color", &colorOverride);
+				ImGui::SliderFloat("Opaque / Transmission", &colorOverride.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Metallic", &mraorOverride.x, 0.0f, 1.0f);
+				ImGui::SliderFloat("Roughness", &mraorOverride.y, 0.0f, 1.0f);
+				ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.z, 0.0f, 1.0f);
+				ImGui::SliderFloat("Reflectance", &mraorOverride.w, 0.0f, 1.0f);
+				ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
+				ImGui::SliderFloat("Exposure Weight", &emissiveOverride.w, 0.0f, 1.0f);
+				ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
+				ImGui::SliderFloat("Thickness", &subsurfaceOverride.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Clear Coat", &clearCoatOverride, 0.0f, 1.0f);
 			}
 			else if ((int)drawMode > (int)DrawMode::Off)
 			{
@@ -178,11 +185,11 @@ void DeferredRenderEditorSystem::deferredRender()
 	{
 		auto threadIndex = graphicsSystem->getThreadCount() - 1;
 		auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
-		pushConstants->baseColor = baseColorOverride;
+		pushConstants->color = colorOverride;
+		pushConstants->mraor = mraorOverride;
 		pushConstants->emissive = emissiveOverride;
-		pushConstants->metallic = metallicOverride;
-		pushConstants->roughness = roughnessOverride;
-		pushConstants->reflectance = reflectanceOverride;
+		pushConstants->subsurface = emissiveOverride;
+		pushConstants->clearCoat = clearCoatOverride;
 
 		SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
 		if (graphicsSystem->isCurrentRenderPassAsync())

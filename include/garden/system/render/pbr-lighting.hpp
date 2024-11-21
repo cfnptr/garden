@@ -25,13 +25,6 @@
 namespace garden
 {
 
-// TODO: TODO: check if correct.
-//float iorToReflectance(float transmittedIor, float incidentIor = 1.0)
-//{
-// float f0 = sqrt((transmittedIor - incidentIor) / (transmittedIor + incidentIor));
-// return sqrt(f0 / 0.16);
-//}
-
 /**
  * @brief PBR lighting rendering data container. (Physically Based Rendering)
  */

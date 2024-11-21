@@ -15,6 +15,19 @@
 #ifndef COLOR_SPACE_GSL
 #define COLOR_SPACE_GSL
 
+float3 rgbToSrgb(float3 rgb)
+{
+	float3 l = fma(pow(rgb, float3(1.0f / 2.4f)), float3(1.055f), float3(-0.055f));
+	float3 h = rgb * 12.92f;
+	return mix(l, h, float3(lessThanEqual(rgb, float3(0.0031308f))));
+}
+float3 srgbToRgb(float3 srgb)
+{
+	float3 l = pow((srgb + 0.055f) * (1.0f / 1.055f), float3(2.4f));
+	float3 h = srgb * (1.0f / 12.92f);
+	return mix(l, h, lessThanEqual(srgb, float3(0.04045f)));
+}
+
 float3 rgbToXyz(float3 rgb)
 {
 	const float3x3 m = float3x3
@@ -43,11 +56,8 @@ float3 xyzToYxy(float3 xyz)
 }
 float3 yxyToXyz(float3 yxy)
 {
-	float3 xyz;
-	xyz.x = yxy.x * yxy.y / yxy.z;
-	xyz.y = yxy.x;
-	xyz.z = yxy.x * (1.0f - yxy.y - yxy.z) / yxy.z;
-	return xyz;
+	return float3(yxy.x * yxy.y / yxy.z, yxy.x, 
+		yxy.x * (1.0f - yxy.y - yxy.z) / yxy.z);
 }
 
 float3 rgbToYxy(float3 rgb) { return xyzToYxy(rgbToXyz(rgb)); }

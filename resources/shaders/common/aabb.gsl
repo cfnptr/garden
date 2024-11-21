@@ -17,7 +17,7 @@
 #ifndef AABB_GSL
 #define AABB_GSL
 
-#include "ray.gsl"
+#include "common/ray.gsl"
 
 struct Aabb
 {

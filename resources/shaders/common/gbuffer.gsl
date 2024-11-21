@@ -15,8 +15,45 @@
 #ifndef GBUFFER_GSL
 #define GBUFFER_GSL
 
-#include "math.gsl"
+// TODO: add sheen G-Buffer?
 
+#include "common/math.gsl"
+
+#define G_BUFFER_COUNT 5
+
+#define BASE_COLOR_G_BUFFER 0
+#define OPACITY_G_BUFFER 0
+#define METALLIC_G_BUFFER 1
+#define ROUGHNESS_G_BUFFER 1
+#define AO_G_BUFFER 1
+#define REFLECTANCE_G_BUFFER 1
+#define NORMALS_G_BUFFER 2
+#define CLEAR_COAT_G_BUFFER 2
+#define EMISSIVE_G_BUFFER 3
+#define EXP_WEIGHT_G_BUFFER 3
+#define SUBSURFACE_G_BUFFER 4
+#define THICKNESS_G_BUFFER 4
+
+struct GBufferData
+{
+	float4 g[G_BUFFER_COUNT];
+};
+struct GBufferValues
+{
+	float4 baseColor;
+	float metallic;
+	float roughness;
+	float ambientOcclusion;
+	float reflectance;
+	float3 normal;
+	float clearCoat;
+	float3 emissiveColor;
+	float exposureWeight;
+	float3 subsurfaceColor;
+	float thickness;
+};
+
+//**********************************************************************************************************************
 // Signed Octahedron Normal Encoding (R10G10B10A2)
 // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
 
@@ -41,25 +78,78 @@ float3 decodeNormalOct(float3 encoded)
 }
 
 //**********************************************************************************************************************
-float4 encodeGBuffer0(float3 baseColor, float metallic)
+float4 encodeGBuffer0(float4 baseColor)
 {
-	return float4(baseColor.r, baseColor.g, baseColor.b, metallic);
+	return baseColor;
 }
-float4 encodeGBuffer1(float3 normal, float reflectance)
+float4 encodeGBuffer1(float metallic, float roughness, float ambientOcclusion, float reflectance)
+{
+	return float4(metallic, roughness, ambientOcclusion, reflectance);
+}
+float4 encodeGBuffer2(float3 normal, float clearCoat)
 {
 	float3 encodedNormal = encodeNormalOct(normal);
-	return float4(encodedNormal.x, encodedNormal.y, reflectance, encodedNormal.z);
+	return float4(clearCoat, encodedNormal.x, encodedNormal.y, encodedNormal.z);
 }
-float4 encodeGBuffer2(float3 emissive, float roughness)
+float4 encodeGBuffer3(float3 emissiveColor, float exposureWeight)
 {
-	return float4(emissive * (1.0f / 25.5f), roughness);
+	return float4(emissiveColor, exposureWeight);
+}
+float4 encodeGBuffer4(float3 subsurfaceColor, float thickness)
+{
+	return float4(subsurfaceColor, thickness);
 }
 
-float3 decodeBaseColor(float4 gData0) { return gData0.rgb; }
-float decodeMetallic(float4 gData0) { return gData0.a; }
-float3 decodeNormal(float4 gData1) { return decodeNormalOct(float3(gData1.x, gData1.y, gData1.w)); }
-float decodeRoughness(float4 gData2) { return gData2.a; }
-float3 decodeEmissive(float4 gData2) { return gData2.rgb * 25.5f; }
-float decodeReflectance(float4 gData1) { return gData1.z; }
+void encodeGBufferValues(GBufferValues values, out float4 g0, out float4 g1, out float4 g2, out float4 g3, out float4 g4)
+{
+	g0 = encodeGBuffer0(values.baseColor);
+	g1 = encodeGBuffer1(values.metallic, values.roughness, values.ambientOcclusion, values.reflectance);
+	g2 = encodeGBuffer2(values.normal, values.clearCoat);
+	g3 = encodeGBuffer3(values.emissiveColor, values.exposureWeight);
+	g4 = encodeGBuffer4(values.subsurfaceColor, values.thickness);
+}
+
+//**********************************************************************************************************************
+GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
+{
+	GBufferData data;
+	data.g[0] = texture(s0, texCoords);
+	data.g[1] = texture(s1, texCoords);
+	data.g[2] = texture(s2, texCoords);
+	data.g[3] = texture(s3, texCoords);
+	data.g[4] = texture(s4, texCoords);
+	return data;
+}
+
+float4 decodeBaseColor(GBufferData data) { return data.g[BASE_COLOR_G_BUFFER]; }
+float decodeMetallic(GBufferData data) { return data.g[METALLIC_G_BUFFER].r; }
+float decodeRoughness(GBufferData data) { return data.g[ROUGHNESS_G_BUFFER].g; }
+float decodeAmbientOcclusion(GBufferData data) { return data.g[AO_G_BUFFER].b; }
+float decodeReflectance(GBufferData data) { return data.g[REFLECTANCE_G_BUFFER].a; }
+float3 decodeNormal(GBufferData data) { return decodeNormalOct(data.g[NORMALS_G_BUFFER].gba); }
+float decodeClearCoat(GBufferData data) { return data.g[CLEAR_COAT_G_BUFFER].r; }
+float3 decodeEmissiveColor(GBufferData data) { return data.g[EMISSIVE_G_BUFFER].rgb; }
+float decodeExposureWeight(GBufferData data) { return data.g[EXP_WEIGHT_G_BUFFER].a; }
+float3 decodeSubsurfaceColor(GBufferData data) { return data.g[SUBSURFACE_G_BUFFER].rgb; }
+float decodeThickness(GBufferData data) { return data.g[THICKNESS_G_BUFFER].a; }
+
+GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
+{
+	GBufferData data = decodeGBufferData(s0, s1, s2, s3, s4, texCoords);
+
+	GBufferValues values;
+	values.baseColor = decodeBaseColor(data);
+	values.metallic = decodeMetallic(data);
+	values.roughness = decodeRoughness(data);
+	values.ambientOcclusion = decodeAmbientOcclusion(data);
+	values.reflectance = decodeReflectance(data);
+	values.normal = decodeNormal(data);
+	values.clearCoat = decodeClearCoat(data);
+	values.emissiveColor = decodeEmissiveColor(data);
+	values.exposureWeight = decodeExposureWeight(data);
+	values.subsurfaceColor = decodeSubsurfaceColor(data);
+	values.thickness = decodeThickness(data);
+	return values;
+}
 
 #endif // GBUFFER_GSL

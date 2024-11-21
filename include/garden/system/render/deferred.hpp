@@ -19,9 +19,11 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbR8G8B8A8     (Base Color, Metallic)
- *   1. UnormA2B10G10R10 (Encoded Normal, Reflectance)
- *   2. UnormR8G8B8A8    (Emissive, Roughness)
+ *   0. SrgbR8G8B8A8     (Base Color, Opacity/Transmission)
+ *   1. UnormR8G8B8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
+ *   2. UnormA2B10G10R10 (Encoded Normals, Clear Coat)
+ *   3. SrgbR8G8B8A8     (Emissive, Exposure Weight)
+ *   4. SrgbR8G8B8A8     (Subsurface Color, Thickness)
  */
 
 #pragma once
@@ -52,8 +54,22 @@ class DeferredRenderSystem final : public System, public Singleton<DeferredRende
 public:
 	/**
 	 * @brief Deferred rendering G-Buffer count.
+	 * @details See the deferred.hpp header.
 	 */
-	static constexpr uint8 gBufferCount = 3;
+	static constexpr uint8 gBufferCount = 5;
+
+	static constexpr uint8 baseColorGBuffer = 0;   /**< Index of the G-Buffer with encoded base color. */
+	static constexpr uint8 opacityGBuffer = 0;     /**< Index of the G-Buffer with encoded opacity or transmission. */
+	static constexpr uint8 metallicGBuffer = 1;    /**< Index of the G-Buffer with encoded metallic. */
+	static constexpr uint8 roughnessGBuffer = 1;   /**< Index of the G-Buffer with encoded roughness. */
+	static constexpr uint8 materialAoGBuffer = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
+	static constexpr uint8 reflectanceGBuffer = 1; /**< Index of the G-Buffer with encoded reflectance. */
+	static constexpr uint8 normalsGBuffer = 2;     /**< Index of the G-Buffer with encoded normals. */
+	static constexpr uint8 clearCoatGBuffer = 2;   /**< Index of the G-Buffer with encoded clear coat. */
+	static constexpr uint8 emissiveGBuffer = 3;    /**< Index of the G-Buffer with encoded emissive color. */
+	static constexpr uint8 expWeightGBuffer = 3;   /**< Index of the G-Buffer with encoded exposure weight. */
+	static constexpr uint8 subsurfaceGBuffer = 4;  /**< Index of the G-Buffer with encoded subsurface color. */
+	static constexpr uint8 thicknessGBuffer = 4;   /**< Index of the G-Buffer with encoded thickness. */
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};

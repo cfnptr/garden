@@ -867,17 +867,17 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 	}
 	return greenTexture;
 }
-ID<ImageView> GraphicsSystem::getNormalMapTexture()
+ID<ImageView> GraphicsSystem::getNormalsMapTexture()
 {
-	if (!normalMapTexture)
+	if (!normalsMapTexture)
 	{
 		const Color data[1] = { Color(127, 127, 255, 255) };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
-		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
-		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
+		SET_RESOURCE_DEBUG_NAME(texture, "image.normalsMapTexture");
+		normalsMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
-	return normalMapTexture;
+	return normalsMapTexture;
 }
 
 //**********************************************************************************************************************

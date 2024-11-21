@@ -17,25 +17,37 @@
 pipelineState
 {
 	faceCulling = off;
-	colorMask1 = b;
+	colorMask2 = r;
 }
 
-out float4 fb.gBuffer0;
-out float4 fb.gBuffer1;
-out float4 fb.gBuffer2;
+out float4 fb.g0;
+out float4 fb.g1;
+out float4 fb.g2;
+out float4 fb.g3;
+out float4 fb.g4;
 
 uniform pushConstants
 {
-	float4 baseColor;
+	float4 color;
+	float4 mraor;
 	float4 emissive;
-	float metallic;
-	float roughness;
-	float reflectance;
+	float4 subsurface;
+	float clearCoat;
 } pc;
 
 void main()
 {
-	fb.gBuffer0 = encodeGBuffer0(pc.baseColor.rgb, pc.metallic); 
-	fb.gBuffer1 = float4(0.0f, 0.0f, pc.reflectance, 0.0f);
-	fb.gBuffer2 = encodeGBuffer2(pc.emissive.rgb, pc.roughness);
+	GBufferValues values;
+	values.baseColor = pc.color;
+	values.metallic = pc.mraor.r;
+	values.roughness = pc.mraor.g;
+	values.ambientOcclusion = pc.mraor.b;
+	values.reflectance = pc.mraor.a;
+	values.normal = float3(0.0f); // Using color mask here
+	values.clearCoat = pc.clearCoat;
+	values.emissiveColor = pc.emissive.rgb;
+	values.exposureWeight = pc.emissive.a;
+	values.subsurfaceColor = pc.subsurface.rgb;
+	values.thickness = pc.subsurface.a;
+	encodeGBufferValues(values, fb.g0, fb.g1, fb.g2, fb.g3, fb.g4);
 }

@@ -85,7 +85,7 @@ void SettingsSystem::postDeinit()
 			case Type::Bool: confWriter.write(pair.first, *((bool*)&pair.second.data)); break;
 			case Type::String: confWriter.write(pair.first, *((const char*)&pair.second.data)); break;
 			case Type::Color:
-				hex = Color((uint32)pair.second.data).toHex();
+				hex = Color((uint32)pair.second.data).toHex4();
 				confWriter.write(pair.first, hex);
 				break;
 			default: abort();
