@@ -262,7 +262,7 @@ public:
 	 * @param type image dimensionality
 	 * @param format image data format
 	 * @param bind image bind type
-	 * @param[in] size image size in pixels
+	 * @param[in] size image size in texels
 	 * @param mipCount image mip level count
 	 * @param layerCount image array layer count
 	 */
