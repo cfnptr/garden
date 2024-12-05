@@ -185,6 +185,7 @@ private:
 	bool newWindowInFocus = false;
 	bool lastWindowInFocus = false;
 	bool currWindowInFocus = false;
+	bool hasNewClipboard = false;
 
 	/**
 	 * @brief Creates a new input system instance.
@@ -377,7 +378,11 @@ public:
 	 * @brief Sets clipboard string.
 	 * @param clipboard target clipboard string
 	 */
-	void setClipboard(string_view clipboard) noexcept { newClipboard = clipboard; }
+	void setClipboard(string_view clipboard) noexcept
+	{
+		newClipboard = clipboard;
+		hasNewClipboard = true;
+	}
 
 	/**
 	 * @brief Returns current keyboard text input array. (UTF-32 encoded)

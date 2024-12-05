@@ -31,7 +31,7 @@ pipelineState
 #define NORMALS_DRAW_MODE 7
 #define CLEAR_COAT_DRAW_MODE 8
 #define EMISSIVE_COLOR_DRAW_MODE 9
-#define EXPOSURE_WEIGHT_DRAW_MODE 10
+#define EMISSIVE_FACTOR_DRAW_MODE 10
 #define SUBSURFACE_COLOR_DRAW_MODE 11
 #define THICKNESS_DRAW_MODE 12
 #define LIGHTING_DRAW_MODE 13
@@ -98,7 +98,8 @@ void main()
 	}
 	else if (pc.drawMode == NORMALS_DRAW_MODE)
 	{
-		fb.color = float4(gBuffer.normal * 0.5f + 0.5f, 1.0f);
+		float3 normal = gBuffer.normal * 0.5f + 0.5f;
+		fb.color = float4(pow(normal, float3(DEFAULT_GAMMA)), 1.0f);
 	}
 	else if (pc.drawMode == CLEAR_COAT_DRAW_MODE)
 	{
@@ -108,9 +109,9 @@ void main()
 	{
 		fb.color = float4(gBuffer.emissiveColor, 1.0f);
 	}
-	else if (pc.drawMode == EXPOSURE_WEIGHT_DRAW_MODE)
+	else if (pc.drawMode == EMISSIVE_FACTOR_DRAW_MODE)
 	{
-		fb.color = float4(float3(gBuffer.exposureWeight), 1.0f);
+		fb.color = float4(float3(gBuffer.emissiveFactor), 1.0f);
 	}
 	else if (pc.drawMode == SUBSURFACE_COLOR_DRAW_MODE)
 	{

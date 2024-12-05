@@ -55,6 +55,7 @@ uniform pushConstants
 {
 	float4x4 uvToWorld;
 	float4 shadowColor;
+	float emissiveMult;
 } pc;
 
 //**********************************************************************************************************************
@@ -68,14 +69,14 @@ void main()
 	float4 shadow = float4(pc.shadowColor.rgb, 
 		USE_SHADOW_BUFFER ? texture(shadowBuffer, fs.texCoords).r : 1.0f);
 	float ao = USE_AO_BUFFER ? texture(aoBuffer, fs.texCoords).r : 1.0f;
-	gBuffer.ambientOcclusion *= ao; // TODO: or maybe we can utilize filament micro/macro AO?
+	gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, ao); // TODO: or maybe we can utilize filament micro/macro AO?
 
 	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
 	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);
 
 	float3 hdrColor = float3(0.0f);
 	hdrColor += evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, data.sh, specular);
-	hdrColor += gBuffer.emissiveColor * gBuffer.exposureWeight; // TODO: ... * pc.luminance; 
+	hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.emissiveMult;
 
 	float obstruction = depth < (1.0f - FLOAT_EPS6) ? 1.0f : 0.0f;
 	fb.hdr = float4(hdrColor * obstruction, 1.0f);

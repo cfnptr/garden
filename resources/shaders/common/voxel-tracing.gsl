@@ -1,0 +1,119 @@
+// Copyright 2022-2024 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based on this: https://github.com/cgyurgyik/fast-voxel-traversal-algorithm/blob/master/overview/FastVoxelTraversalOverview.md
+
+#ifndef VOXEL_TRACING_GSL
+#define VOXEL_TRACING_GSL
+
+#include "common/ray.gsl"
+#include "common/aabb.gsl"
+
+struct VoxelTraceConsts
+{
+	Ray ray;
+	float3 voxelSize;
+	int3 rayStep;
+	float3 rayDirInv;
+	float3 tDelta;
+};
+struct VoxelTraceData
+{
+	float3 traceOrigin;
+	int3 voxelPosition;
+	float3 tMax;
+};
+struct VoxelTraceResult
+{
+	float3 hitPoint;
+	int3 hitPosition;
+};
+
+VoxelTraceConsts computeVoxelTraceConsts(Ray ray, float3 voxelSize)
+{
+	VoxelTraceConsts consts;
+	consts.ray = ray;
+	consts.voxelSize = voxelSize;
+	consts.rayStep = int3(sign(ray.direction));
+	consts.rayDirInv = 1.0f / ray.direction;
+	consts.tDelta = abs(consts.rayDirInv);
+	return consts;
+}
+void updateVoxelTraceData(VoxelTraceConsts consts, inout VoxelTraceData data)
+{
+	data.voxelPosition = int3(data.traceOrigin);
+	data.tMax = mix(data.traceOrigin - data.voxelPosition, 
+		(data.voxelPosition + 1) - data.traceOrigin,
+		greaterThan(consts.rayStep, int3(0))) * consts.tDelta;
+}
+
+void advanceVoxelTrace(VoxelTraceConsts consts, inout VoxelTraceData data)
+{
+	if (data.tMax.x < data.tMax.y)
+	{
+		if (data.tMax.x < data.tMax.z)
+		{
+			data.voxelPosition.x += consts.rayStep.x;
+			data.tMax.x += consts.tDelta.x;
+		}
+		else
+		{
+			data.voxelPosition.z += consts.rayStep.z;
+			data.tMax.z += consts.tDelta.z;
+		}
+	}
+	else
+	{
+		if (data.tMax.y < data.tMax.z)
+		{
+			data.voxelPosition.y += consts.rayStep.y;
+			data.tMax.y += consts.tDelta.y; 
+		}
+		else
+		{
+			data.voxelPosition.z += consts.rayStep.z;
+			data.tMax.z += consts.tDelta.z;
+		}
+	}
+}
+void raycastVoxel(VoxelTraceConsts consts, inout VoxelTraceData data)
+{
+	float3 aabbMin = data.voxelPosition * consts.voxelSize;
+	Aabb aabb = Aabb(aabbMin, aabbMin + consts.voxelSize);
+	float tAabb = raycast1I(aabb, Ray(consts.ray.origin, consts.rayDirInv));
+	data.traceOrigin = fma(consts.ray.direction, float3(max(tAabb, 0.0f)), consts.ray.origin);
+}
+float3 computeVoxelNormal(VoxelTraceData data)
+{
+	float3 normal = data.traceOrigin - (float3(data.voxelPosition) + 0.5f);
+	float3 absNormal = abs(normal);
+	float maxNormal = max(max(absNormal.x, absNormal.y), absNormal.z);
+	if (maxNormal == absNormal.x) normal = float3(sign(normal.x), 0.0f, 0.0f);
+	else if (maxNormal == absNormal.y) normal = float3(0.0f, sign(normal.y), 0.0f);
+	else normal = float3(0.0f, 0.0f, sign(normal.z));
+	return normal;
+}
+
+VoxelTraceData raycastVoxel(Ray ray, float3 voxelSize)
+{
+	VoxelTraceData data;
+	data.traceOrigin = ray.origin;
+	VoxelTraceConsts consts = computeVoxelTraceConsts(ray, voxelSize);
+	updateVoxelTraceData(consts, data);
+	advanceVoxelTrace(consts, data);
+	raycastVoxel(consts, data);
+	return data;
+}
+
+#endif // VOXEL_TRACING_GSL

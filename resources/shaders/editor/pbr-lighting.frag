@@ -46,7 +46,7 @@ void main()
 	values.normal = float3(0.0f); // Using color mask here
 	values.clearCoat = pc.clearCoat;
 	values.emissiveColor = pc.emissive.rgb;
-	values.exposureWeight = pc.emissive.a;
+	values.emissiveFactor = pc.emissive.a;
 	values.subsurfaceColor = pc.subsurface.rgb;
 	values.thickness = pc.subsurface.a;
 	encodeGBufferValues(values, fb.g0, fb.g1, fb.g2, fb.g3, fb.g4);

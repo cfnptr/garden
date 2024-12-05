@@ -19,10 +19,10 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbR8G8B8A8     (Base Color, Opacity/Transmission)
+ *   0. SrgbR8G8B8A8     (Base Color, TODO: clear coat rouggness)
  *   1. UnormR8G8B8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
  *   2. UnormA2B10G10R10 (Encoded Normals, Clear Coat)
- *   3. SrgbR8G8B8A8     (Emissive, Exposure Weight)
+ *   3. SrgbR8G8B8A8     (Emissive Color and Factor)
  *   4. SrgbR8G8B8A8     (Subsurface Color, Thickness)
  */
 
@@ -66,8 +66,8 @@ public:
 	static constexpr uint8 reflectanceGBuffer = 1; /**< Index of the G-Buffer with encoded reflectance. */
 	static constexpr uint8 normalsGBuffer = 2;     /**< Index of the G-Buffer with encoded normals. */
 	static constexpr uint8 clearCoatGBuffer = 2;   /**< Index of the G-Buffer with encoded clear coat. */
-	static constexpr uint8 emissiveGBuffer = 3;    /**< Index of the G-Buffer with encoded emissive color. */
-	static constexpr uint8 expWeightGBuffer = 3;   /**< Index of the G-Buffer with encoded exposure weight. */
+	static constexpr uint8 emColorGBuffer = 3;     /**< Index of the G-Buffer with encoded emissive color. */
+	static constexpr uint8 emFactorGBuffer = 3;    /**< Index of the G-Buffer with encoded emissive factor. */
 	static constexpr uint8 subsurfaceGBuffer = 4;  /**< Index of the G-Buffer with encoded subsurface color. */
 	static constexpr uint8 thicknessGBuffer = 4;   /**< Index of the G-Buffer with encoded thickness. */
 private:
