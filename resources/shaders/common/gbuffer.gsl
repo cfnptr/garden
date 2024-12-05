@@ -29,8 +29,8 @@
 #define REFLECTANCE_G_BUFFER 1
 #define NORMALS_G_BUFFER 2
 #define CLEAR_COAT_G_BUFFER 2
-#define EMISSIVE_G_BUFFER 3
-#define EXP_WEIGHT_G_BUFFER 3
+#define EM_COLOR_G_BUFFER 3
+#define EM_FACTOR_G_BUFFER 3
 #define SUBSURFACE_G_BUFFER 4
 #define THICKNESS_G_BUFFER 4
 
@@ -48,7 +48,7 @@ struct GBufferValues
 	float3 normal;
 	float clearCoat;
 	float3 emissiveColor;
-	float exposureWeight;
+	float emissiveFactor;
 	float3 subsurfaceColor;
 	float thickness;
 };
@@ -91,9 +91,9 @@ float4 encodeGBuffer2(float3 normal, float clearCoat)
 	float3 encodedNormal = encodeNormalOct(normal);
 	return float4(clearCoat, encodedNormal.x, encodedNormal.y, encodedNormal.z);
 }
-float4 encodeGBuffer3(float3 emissiveColor, float exposureWeight)
+float4 encodeGBuffer3(float3 emissiveColor, float emissiveFactor)
 {
-	return float4(emissiveColor, exposureWeight);
+	return float4(emissiveColor, emissiveFactor);
 }
 float4 encodeGBuffer4(float3 subsurfaceColor, float thickness)
 {
@@ -105,7 +105,7 @@ void encodeGBufferValues(GBufferValues values, out float4 g0, out float4 g1, out
 	g0 = encodeGBuffer0(values.baseColor);
 	g1 = encodeGBuffer1(values.metallic, values.roughness, values.ambientOcclusion, values.reflectance);
 	g2 = encodeGBuffer2(values.normal, values.clearCoat);
-	g3 = encodeGBuffer3(values.emissiveColor, values.exposureWeight);
+	g3 = encodeGBuffer3(values.emissiveColor, values.emissiveFactor);
 	g4 = encodeGBuffer4(values.subsurfaceColor, values.thickness);
 }
 
@@ -128,8 +128,8 @@ float decodeAmbientOcclusion(GBufferData data) { return data.g[AO_G_BUFFER].b; }
 float decodeReflectance(GBufferData data) { return data.g[REFLECTANCE_G_BUFFER].a; }
 float3 decodeNormal(GBufferData data) { return decodeNormalOct(data.g[NORMALS_G_BUFFER].gba); }
 float decodeClearCoat(GBufferData data) { return data.g[CLEAR_COAT_G_BUFFER].r; }
-float3 decodeEmissiveColor(GBufferData data) { return data.g[EMISSIVE_G_BUFFER].rgb; }
-float decodeExposureWeight(GBufferData data) { return data.g[EXP_WEIGHT_G_BUFFER].a; }
+float3 decodeEmissiveColor(GBufferData data) { return data.g[EM_COLOR_G_BUFFER].rgb; }
+float decodeEmissiveFactor(GBufferData data) { return data.g[EM_FACTOR_G_BUFFER].a; }
 float3 decodeSubsurfaceColor(GBufferData data) { return data.g[SUBSURFACE_G_BUFFER].rgb; }
 float decodeThickness(GBufferData data) { return data.g[THICKNESS_G_BUFFER].a; }
 
@@ -146,7 +146,7 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, samp
 	values.normal = decodeNormal(data);
 	values.clearCoat = decodeClearCoat(data);
 	values.emissiveColor = decodeEmissiveColor(data);
-	values.exposureWeight = decodeExposureWeight(data);
+	values.emissiveFactor = decodeEmissiveFactor(data);
 	values.subsurfaceColor = decodeSubsurfaceColor(data);
 	values.thickness = decodeThickness(data);
 	return values;

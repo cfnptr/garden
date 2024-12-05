@@ -121,7 +121,7 @@ void DeferredRenderEditorSystem::editorRender()
 		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
-				"Reflectance\0Normals\0Clear Coat\0Emissive Color\0Exposure Weight\0Subsurface Color\0Thickness\0"
+				"Reflectance\0Normals\0Clear Coat\0Emissive Color\0Emissive Factor\0Subsurface Color\0Thickness\0"
 				"Lighting\0HDR\0Depth\0World Position\0Shadows\0Global AO\0Denoised Global AO\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
@@ -135,7 +135,7 @@ void DeferredRenderEditorSystem::editorRender()
 				ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.z, 0.0f, 1.0f);
 				ImGui::SliderFloat("Reflectance", &mraorOverride.w, 0.0f, 1.0f);
 				ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
-				ImGui::SliderFloat("Exposure Weight", &emissiveOverride.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Emissive Factor", &emissiveOverride.w, 0.0f, 1.0f);
 				ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
 				ImGui::SliderFloat("Thickness", &subsurfaceOverride.w, 0.0f, 1.0f);
 				ImGui::SliderFloat("Clear Coat", &clearCoatOverride, 0.0f, 1.0f);

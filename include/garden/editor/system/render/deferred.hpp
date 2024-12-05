@@ -24,7 +24,7 @@ class DeferredRenderEditorSystem final : public System
 	enum class DrawMode : uint8
 	{
 		Off, BaseColor, OpacityTransmission, Metallic, Roughness, MaterialAO, Reflectance,
-		Normals, ClearCoat, EmissiveColor, ExposureWeight, SubsurfaceColor, Thickness,
+		Normals, ClearCoat, EmissiveColor, EmissiveFactor, SubsurfaceColor, Thickness,
 		Lighting, HDR, Depth, WorldPosition, Shadows, GlobalAO, DenoisedGlobalAO, Count
 	};
 

@@ -110,6 +110,11 @@ float3 gtaoMultiBounce(float visibility, float3 albedo)
 	return max(float3(visibility), ((visibility * a + b) * visibility + c) * visibility);
 }
 
+float3 computeReflectedVector(float linearRoughness, float3 normal, float3 reflected)
+{
+	return mix(reflected, normal, linearRoughness * linearRoughness);
+}
+
 //**********************************************************************************************************************
 float3 specularLobe(float noh, float nov, float nol, float loh, float3 f0, float roughness)
 {
@@ -125,11 +130,28 @@ float3 diffuseLobe(float3 baseColor, float metallic)
 	return computeDiffuseColor(baseColor, metallic) * lambert();
 }
 
-float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float roughness)
+float iblRoughnessOneLevel(samplerCube iblSpecular)
 {
-	float lod = (textureQueryLevels(iblSpecular) - 1) * roughness * (2.0f - roughness);
+	return textureQueryLevels(iblSpecular) - 1;
+}
+float perceptualRoughnessToLod(samplerCube iblSpecular, float perceptualRoughness)
+{
+	// The mapping below is a quadratic fit for log2(perceptualRoughness) + iblRoughnessOneLevel when
+	// iblRoughnessOneLevel is 4. We found empirically that this mapping works very well for
+	// a 256 cubemap with 5 levels used. But also scales well for other iblRoughnessOneLevel values.
+	return iblRoughnessOneLevel(iblSpecular) * perceptualRoughness * (2.0 - perceptualRoughness);
+}
+float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float perceptualRoughness)
+{
+	float lod = perceptualRoughnessToLod(iblSpecular, perceptualRoughness);
 	return textureLod(iblSpecular, r, lod).rgb;
 }
+float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float roughness, float offset)
+{
+	float lod = iblRoughnessOneLevel(iblSpecular) * roughness;
+	return textureLod(iblSpecular, r, lod + offset).rgb;
+}
+
 float3 diffuseIrradiance(float3 normal, const float4 iblSH[SH_COEF_COUNT])
 {
 	return max(iblSH[0].xyz +

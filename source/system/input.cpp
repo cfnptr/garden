@@ -271,8 +271,11 @@ void InputSystem::output()
 		newWindowIconPaths.clear();
 	}
 
-	if (newClipboard != currClipboard)
+	if (hasNewClipboard && newClipboard != currClipboard)
+	{
 		currClipboard = newClipboard;
+		hasNewClipboard = false;
+	}
 
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	if (glfwWindowShouldClose(window))

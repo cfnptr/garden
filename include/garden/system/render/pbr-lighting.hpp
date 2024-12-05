@@ -84,6 +84,7 @@ public:
 	{
 		float4x4 uvToWorld;
 		float4 shadowColor;
+		float emissiveMult;
 	};
 	struct SpecularPC final
 	{
@@ -144,6 +145,10 @@ public:
 	 * @brief Shadow color factor. (RGBA)
 	 */
 	float4 shadowColor = float4(1.0f);
+	/**
+	 * @brief Emissive color multiplier. (Max brightness)
+	 */
+	float emissiveMult = 100.0f;
 
 	/**
 	 * @brief Use shadow buffer for PBR lighting rendering.
