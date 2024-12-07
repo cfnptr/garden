@@ -19,12 +19,14 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbR8G8B8A8     (Base Color, TODO: clear coat rouggness)
+ *   0. SrgbR8G8B8A8     (Base Color, A8_unused)
  *   1. UnormR8G8B8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
- *   2. UnormA2B10G10R10 (Encoded Normals, Clear Coat)
+ *   2. UnormA2B10G10R10 (Encoded Normals, R10_unused)
  *   3. SrgbR8G8B8A8     (Emissive Color and Factor)
  *   4. SrgbR8G8B8A8     (Subsurface Color, Thickness)
  */
+
+// TODO: clear coat and sheen rendering. Make emissive, subsurface buffer creation optional.
 
 #pragma once
 #include "garden/system/graphics.hpp"
