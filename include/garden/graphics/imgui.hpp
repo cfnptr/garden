@@ -19,8 +19,6 @@
 
 #pragma once
 #include "garden/defines.hpp"
-
-#if GARDEN_EDITOR
 #include "math/color.hpp"
 
 #define IMGUI_ENABLE_FREETYPE
@@ -230,4 +228,3 @@ static bool find(const string& haystack, const string& needle, uint32 id, bool c
 }
 
 }; // namespace garden
-#endif
