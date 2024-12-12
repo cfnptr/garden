@@ -120,11 +120,11 @@ quat FpvControllerSystem::updateCameraRotation()
 
 	if (!inputSystem->getMouseState(MouseButton::Right))
 	{
-		if (inputSystem->getCursorMode() != CursorMode::Default &&
+		if (inputSystem->getCursorMode() != CursorMode::Normal &&
 			inputSystem->isMouseReleased(MouseButton::Right))
 		{
 			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-			inputSystem->setCursorMode(CursorMode::Default);
+			inputSystem->setCursorMode(CursorMode::Normal);
 		}
 		return quat::identity;
 	}

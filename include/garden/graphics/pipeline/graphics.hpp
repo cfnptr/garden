@@ -336,7 +336,7 @@ public:
 	 * @brief Specifies the region of the framebuffer where the rendering will occur.
 	 * @param[in] viewport target viewport (xy = position, zw = size)
 	 */
-	void setViewport(const float4& viewport);
+	void setViewport(const float4& viewport = float4(0.0f));
 	/**
 	 * @brief Specifies the region of the framebuffer where the rendering will occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport()
@@ -344,7 +344,7 @@ public:
 	 * @param[in] viewport target viewport value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportAsync(const float4& viewport, int32 threadIndex = -1);
+	void setViewportAsync(const float4& viewport = float4(0.0f), int32 threadIndex = -1);
 
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur.
@@ -368,6 +368,7 @@ public:
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions.
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
+	 * 
 	 * @param[in] viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 */
 	void setViewportScissor(const float4& viewportScissor = float4(0.0f));
@@ -423,12 +424,12 @@ public:
 	 * @param indexCount index count to draw
 	 * @param instanceCount draw instance count
 	 * @param indexOffset index offset in the buffer or 0
+	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
-	 * @param instanceOffset vertex offset in the buffer or 0
 	 */
 	void drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer,
 		Index indexType, uint32 indexCount, uint32 instanceCount = 1,
-		uint32 indexOffset = 0, uint32 instanceOffset = 0, uint32 vertexOffset = 0);
+		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
 	 * @details See the @ref GraphicsPipeline::drawIndexed()
@@ -440,13 +441,13 @@ public:
 	 * @param indexCount index count to draw
 	 * @param instanceCount draw instance count
 	 * @param indexOffset index offset in the buffer or 0
+	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
-	 * @param instanceOffset vertex offset in the buffer or 0
 	 */
 	void drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 		ID<Buffer> indexBuffer, Index indexType, uint32 indexCount,
 		uint32 instanceCount = 1, uint32 indexOffset = 0,
-		uint32 instanceOffset = 0, uint32 vertexOffset = 0);
+		uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 
 	/**
 	 * @brief Renders fullscreen triangle to the framebuffer.

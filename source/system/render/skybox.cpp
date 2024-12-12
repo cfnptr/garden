@@ -136,7 +136,7 @@ void SkyboxRenderSystem::translucentRender()
 		pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
 		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, threadIndex);
 		pipelineView->pushConstantsAsync(threadIndex);
-		pipelineView->drawAsync(threadIndex, {}, cubeVertexCount);
+		pipelineView->drawAsync(threadIndex, {}, primitive::cubeVertices.size());
 	}
 	else
 	{
@@ -144,7 +144,7 @@ void SkyboxRenderSystem::translucentRender()
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(ID<DescriptorSet>(skyboxView->descriptorSet));
 		pipelineView->pushConstants();
-		pipelineView->draw({}, cubeVertexCount);
+		pipelineView->draw({}, primitive::cubeVertices.size());
 	}
 }
 

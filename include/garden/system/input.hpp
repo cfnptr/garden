@@ -30,7 +30,7 @@ using namespace ecsm;
 /***********************************************************************************************************************
  * @brief Keyboard button key codes. (GLFW)
  */
-enum class KeyboardButton : int
+enum class KeyboardButton : int16
 {
 	Unknown = -1,
 	Space = 32, Apostrophe = 39, Comma = 44, Minus = 45, Period = 46, Slash = 47,
@@ -56,7 +56,7 @@ enum class KeyboardButton : int
 /**
  * @brief Mouse button key codes. (GLFW)
  */
-enum class MouseButton : int
+enum class MouseButton : uint8
 {
 	N1 = 0, N2 = 1, N3 = 2, N4 = 3, N5 = 4, N6 = 5, N7 = 6, N8 = 7,
 	Last = N8, Left = N1, Right = N2, Middle = N3
@@ -65,16 +65,17 @@ enum class MouseButton : int
 /**
  * @brief Mouse cursor visibility modes. (GLFW)
  */
-enum class CursorMode : int
+enum class CursorMode : uint8
 {
-	Default = 0x00034001, Hidden = 0x00034002, Locked = 0x00034003,
+	Normal = 0, Hidden = 1, Locked = 2, Count = 3
 };
 /**
  * @brief Mouse cursor visual types. (GLFW)
  */
 enum class CursorType : uint8
 {
-	Default = 0, Ibeam = 1, Crosshair = 2, Hand = 3, Hresize = 4, Vresize = 5, Count = 6,
+	Default = 0, Arrow = 1, Ibeam = 2, Crosshair = 3, PointingHand = 4, ResizeEW = 5, 
+	ResizeNS = 6, ResizeNWSE = 7, ResizeNESW = 8, ResizeAll = 9, NotAllowed = 10, Count = 11,
 };
 
 /***********************************************************************************************************************
@@ -144,6 +145,7 @@ public:
 	static constexpr uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
 private:
 	mutex eventLocker;
+	vector<void*> standardCursors;
 	vector<bool> newKeyboardStates;
 	vector<bool> lastKeyboardStates;
 	vector<bool> currKeyboardStates;
@@ -177,8 +179,10 @@ private:
 	float2 currMouseScroll = float2(0.0f);
 	double time = 0.0, systemTime = 0.0, deltaTime = 0.0;
 	const fs::path* currFileDropPath = nullptr;
-	CursorMode newCursorMode = CursorMode::Default;
-	CursorMode currCursorMode = CursorMode::Default;
+	CursorMode newCursorMode = CursorMode::Normal;
+	CursorMode currCursorMode = CursorMode::Normal;
+	CursorType newCursorType = CursorType::Default;
+	CursorType currCursorType = CursorType::Default;
 	bool newCursorInWindow = false;
 	bool lastCursorInWindow = false;
 	bool currCursorInWindow = false;
@@ -198,6 +202,7 @@ private:
 	~InputSystem() final;
 
 	void preInit();
+	void deinit();
 	void input();
 	void output();
 
@@ -296,8 +301,8 @@ public:
 	 */
 	bool isKeyboardPressed(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
-		return !lastKeyboardStates[(int)button] && currKeyboardStates[(int)button];
+		GARDEN_ASSERT((int16)button >= 0 && (int16)button <= (int16)KeyboardButton::Last);
+		return !lastKeyboardStates[(int16)button] && currKeyboardStates[(int16)button];
 	}
 	/**
 	 * @brief Has the keyboard button been released.
@@ -305,7 +310,7 @@ public:
 	 */
 	bool isKeyboardReleased(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
+		GARDEN_ASSERT((int16)button >= 0 && (int16)button <= (int16)KeyboardButton::Last);
 		return lastKeyboardStates[(int)button] && !currKeyboardStates[(int)button];
 	}
 
@@ -315,8 +320,8 @@ public:
 	 */
 	bool isMousePressed(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
-		return !lastMouseStates[(int)button] && currMouseStates[(int)button];
+		GARDEN_ASSERT((uint8)button <= (uint8)MouseButton::Last);
+		return !lastMouseStates[(uint8)button] && currMouseStates[(uint8)button];
 	}
 	/**
 	 * @brief Has the mouse button been released.
@@ -324,8 +329,8 @@ public:
 	 */
 	bool isMouseReleased(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
-		return lastMouseStates[(int)button] && !currMouseStates[(int)button];
+		GARDEN_ASSERT((uint8)button <= (uint8)MouseButton::Last);
+		return lastMouseStates[(uint8)button] && !currMouseStates[(uint8)button];
 	}
 
 	/**
@@ -334,8 +339,8 @@ public:
 	 */
 	bool getKeyboardState(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)KeyboardButton::Last);
-		return currKeyboardStates[(int)button];
+		GARDEN_ASSERT((int16)button >= 0 && (int16)button <= (int16)KeyboardButton::Last);
+		return currKeyboardStates[(int16)button];
 	}
 	/**
 	 * @brief Is mouse button in the pressed state.
@@ -343,8 +348,8 @@ public:
 	 */
 	bool getMouseState(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT((int)button >= 0 && (int)button <= (int)MouseButton::Last);
-		return currMouseStates[(int)button];
+		GARDEN_ASSERT((uint8)button <= (uint8)MouseButton::Last);
+		return currMouseStates[(uint8)button];
 	}
 
 	/**
@@ -356,7 +361,27 @@ public:
 	 * @brief Sets mouse cursor mode.
 	 * @param mode target cursor mode
 	 */
-	void setCursorMode(CursorMode mode) noexcept { newCursorMode = mode; }
+	void setCursorMode(CursorMode mode) noexcept
+	{
+		GARDEN_ASSERT((uint8)mode < (uint8)CursorMode::Count);
+		newCursorMode = mode;
+	}
+
+	/**
+	 * @brief Returns current mouse cursor type.
+	 */
+	CursorType getCursorType() const noexcept { return newCursorType; }
+	/**
+	 * @brief Sets mouse cursor mode.
+	 * @param mode target cursor mode
+	 */
+	void setCursorType(CursorType type) noexcept
+	{
+		GARDEN_ASSERT((uint8)type < (uint8)CursorType::Count);
+		newCursorType = type;
+	}
+
+	// TODO: allow to create custom image cursor.
 
 	/**
 	 * @brief Sets window title. (UTF-8)

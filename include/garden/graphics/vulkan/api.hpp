@@ -214,6 +214,8 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 		case 1:
 			switch (format)
 			{
+			case GslDataFormat::F8: return vk::Format::eR8Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16Unorm;
 			case GslDataFormat::F32: return vk::Format::eR32Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16Sint;
@@ -227,6 +229,8 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 		case 2:
 			switch (format)
 			{
+			case GslDataFormat::F8: return vk::Format::eR8G8Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16G16Unorm;
 			case GslDataFormat::F32: return vk::Format::eR32G32Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8G8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16G16Sint;
@@ -240,6 +244,8 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 		case 3:
 			switch (format)
 			{
+			case GslDataFormat::F8: return vk::Format::eR8G8B8Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16G16B16Unorm;
 			case GslDataFormat::F32: return vk::Format::eR32G32B32Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8G8B8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16G16B16Sint;
@@ -253,6 +259,8 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 		case 4:
 			switch (format)
 			{
+			case GslDataFormat::F8: return vk::Format::eR8G8B8A8Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16G16B16A16Unorm;
 			case GslDataFormat::F32: return vk::Format::eR32G32B32A32Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8G8B8A8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16G16B16A16Sint;

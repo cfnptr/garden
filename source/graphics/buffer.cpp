@@ -208,7 +208,7 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto result = vmaInvalidateAllocation(VulkanAPI::get()->memoryAllocator,
-			(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
+			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
 		if (result != VK_SUCCESS)
 			throw GardenError("Failed to invalidate buffer memory.");
 	}
@@ -223,7 +223,7 @@ void Buffer::flush(uint64 size, uint64 offset)
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto result = vmaFlushAllocation(VulkanAPI::get()->memoryAllocator,
-			(VmaAllocation)allocation, offset, size == 0 ? this->binarySize : size);
+			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
 		if (result != VK_SUCCESS)
 			throw GardenError("Failed to flush buffer memory.");
 	}

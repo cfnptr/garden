@@ -178,8 +178,8 @@ struct DrawIndexedCommand final : public Command
 	uint32 indexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 indexOffset = 0;
-	uint32 instanceOffset = 0;
 	uint32 vertexOffset = 0;
+	uint32 instanceOffset = 0;
 	ID<Buffer> vertexBuffer = {};
 	ID<Buffer> indexBuffer = {};
 	constexpr DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }

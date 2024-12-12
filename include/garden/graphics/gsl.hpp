@@ -67,6 +67,8 @@ enum class GslDataType : uint8
  */
 enum class GslDataFormat : uint8
 {
+	F8,   /**< 8-bit normalized unsigned integer format. */
+	F16,  /**< 16-bit normalized unsigned integer format. */
 	F32,  /**< 32-bit floating point format. (IEEE-754) */
 	I8,   /**< 8-bit signed integer format. (1 byte) */
 	I16,  /**< 16-bit signed integer format. (2 bytes) */
@@ -180,7 +182,7 @@ constexpr string_view gslDataTypeNames[(psize)GslDataType::Count] =
  */
 constexpr string_view gslDataFormatNames[(psize)GslDataFormat::Count] =
 {
-	"f32", "i8", "i16", "i32", "u8", "u16", "u32"
+	"f8", "f16", "f32", "i8", "i16", "i32", "u8", "u16", "u32"
 };
 /**
  * @brief GSL image format name strings. (camelCase)
@@ -249,6 +251,8 @@ static GslDataType toGslDataType(string_view dataType)
  */
 static GslDataFormat toGslDataFormat(string_view dataFormat)
 {
+	if (dataFormat == "f8") return GslDataFormat::F8;
+	if (dataFormat == "f16") return GslDataFormat::F16;
 	if (dataFormat == "f32") return GslDataFormat::F32;
 	if (dataFormat == "i8") return GslDataFormat::I8;
 	if (dataFormat == "i16") return GslDataFormat::I16;
@@ -511,6 +515,8 @@ static psize toBinarySize(GslDataFormat dataFormat) noexcept
 {
 	switch (dataFormat)
 	{
+	case GslDataFormat::F8: return sizeof(uint8);
+	case GslDataFormat::F16: return sizeof(uint16);
 	case GslDataFormat::F32: return sizeof(float);
 	case GslDataFormat::I8: return sizeof(int8);
 	case GslDataFormat::I16: return sizeof(int16);

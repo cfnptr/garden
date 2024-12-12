@@ -23,7 +23,6 @@
 #include "garden/system/transform.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/glfw.hpp" // Do not move it.
-#include "garden/graphics/imgui-impl.hpp"
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
 
@@ -49,254 +48,6 @@ namespace
 	};
 }
 
-#if GARDEN_EDITOR
-//**********************************************************************************************************************
-static void initializeImGui() // TODO: Separate into an ImGuiSystem
-{
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	setImGuiStyle();
-
-	auto graphicsAPI = GraphicsAPI::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto window = (GLFWwindow*)graphicsAPI->window;
-	auto framebufferSize = graphicsAPI->swapchain->getFramebufferSize();
-
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		auto swapchainBuffer = vulkanAPI->swapchain->getCurrentBuffer();
-		auto swapchainImage = vulkanAPI->imagePool.get(swapchainBuffer->colorImage);
-
-		vector<Framebuffer::Subpass> subpasses =
-		{
-			Framebuffer::Subpass(PipelineType::Graphics, {},
-			{
-				Framebuffer::OutputAttachment(swapchainImage->getDefaultView(), false, true, true)
-			})
-		};
-
-		// Hack for the ImGui render pass creation.
-		auto imGuiFramebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(subpasses));
-		auto framebufferView = vulkanAPI->framebufferPool.get(imGuiFramebuffer);
-		ImGuiData::renderPass = (VkRenderPass)FramebufferExt::getRenderPass(**framebufferView);
-		vulkanAPI->device.destroyFramebuffer(vk::Framebuffer((VkFramebuffer)
-			ResourceExt::getInstance(**framebufferView)));
-		ResourceExt::getInstance(**framebufferView) = nullptr;
-		FramebufferExt::getRenderPass(**framebufferView) = nullptr;
-		graphicsSystem->destroy(imGuiFramebuffer);
-
-		vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
-			1, nullptr, framebufferSize.x, framebufferSize.y, 1);
-		ImGuiData::framebuffers.resize(vulkanAPI->swapchain->getBufferCount());
-
-		auto& swapchainBuffers = vulkanAPI->swapchain->getBuffers();
-		for (uint32 i = 0; i < (uint32)ImGuiData::framebuffers.size(); i++)
-		{
-			auto colorImage = vulkanAPI->imagePool.get(swapchainBuffers[i]->colorImage);
-			auto imageView = vulkanAPI->imageViewPool.get(colorImage->getDefaultView());
-			framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(**imageView);
-			ImGuiData::framebuffers[i] = vulkanAPI->device.createFramebuffer(framebufferInfo);
-		}
-		
-		ImGui_ImplGlfw_InitForVulkan(window, false);
-		ImGui_ImplVulkan_InitInfo init_info = {};
-		init_info.Instance = vulkanAPI->instance;
-		init_info.PhysicalDevice = vulkanAPI->physicalDevice;
-		init_info.Device = vulkanAPI->device;
-		init_info.QueueFamily = vulkanAPI->graphicsQueueFamilyIndex;
-		init_info.Queue = vulkanAPI->frameQueue;
-		init_info.DescriptorPool = vulkanAPI->descriptorPool;
-		init_info.RenderPass = ImGuiData::renderPass;
-		init_info.MinImageCount = 2;
-		init_info.ImageCount = (uint32)ImGuiData::framebuffers.size();
-		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-		init_info.PipelineCache = vulkanAPI->pipelineCache;
-		init_info.Subpass = 0;
-		init_info.UseDynamicRendering = false; // TODO: use it instead of render pass hack.
-		init_info.Allocator = nullptr;
-		init_info.CheckVkResultFn = imGuiCheckVkResult;
-		init_info.MinAllocationSize = 1024 * 1024;
-		ImGui_ImplVulkan_Init(&init_info);
-	}
-	else abort();
-	
-	auto& io = ImGui::GetIO();
-	constexpr auto fontPath = "fonts/dejavu-bold.ttf";
-	auto inputSystem = InputSystem::Instance::get();
-	auto windowSize = inputSystem->getWindowSize();
-	auto contentScale = inputSystem->getContentScale();
-	auto pixelRatio = (float2)framebufferSize / windowSize;
-	auto fontSize = 14.0f * std::max(contentScale.x, contentScale.y);
-
-	#if GARDEN_DEBUG
-	auto fontString = (GARDEN_RESOURCES_PATH / fontPath).generic_string();
-	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), fontSize);
-	GARDEN_ASSERT(fontResult);
-	#else
-	auto& packReader = ResourceSystem::Instance::get()->getPackReader();
-	auto fontIndex = packReader.getItemIndex(fontPath);
-	auto fontDataSize = packReader.getItemDataSize(fontIndex);
-	auto fontData = malloc<uint8>(fontDataSize);
-	packReader.readItemData(fontIndex, fontData);
-	io.Fonts->AddFontFromMemoryTTF(fontData, fontDataSize, fontSize);
-	#endif
-
-	io.FontGlobalScale = 1.0f / std::max(pixelRatio.x, pixelRatio.y);
-	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
-	// TODO: dynamically detect when system scale is changed or moved to another monitor and recreate fonts.
-
-	auto& platformIO = ImGui::GetPlatformIO();
-	platformIO.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text)
-	{
-		InputSystem::Instance::get()->setClipboard(text);
-	};
-	platformIO.Platform_GetClipboardTextFn = [](ImGuiContext*)
-	{
-		auto inputSystem = InputSystem::Instance::get();
-		return inputSystem->getClipboard().empty() ? nullptr : inputSystem->getClipboard().c_str();
-	};
-}
-
-//**********************************************************************************************************************
-static void terminateImGui()
-{
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		ImGui_ImplVulkan_Shutdown();
-		ImGui_ImplGlfw_Shutdown();
-
-		auto vulkanAPI = VulkanAPI::get();
-		for (auto framebuffer : ImGuiData::framebuffers)
-			vulkanAPI->device.destroyFramebuffer(framebuffer);
-		vulkanAPI->device.destroyRenderPass(ImGuiData::renderPass);
-	}
-	else abort();
-
-	ImGui::DestroyContext();
-}
-static void recreateImGui()
-{
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		auto framebufferSize = vulkanAPI->swapchain->getFramebufferSize();
-
-		for (auto framebuffer : ImGuiData::framebuffers)
-			vulkanAPI->device.destroyFramebuffer(framebuffer);
-
-		vk::FramebufferCreateInfo framebufferInfo({}, ImGuiData::renderPass,
-			1, nullptr, framebufferSize.x, framebufferSize.y, 1);
-		auto& swapchainBuffers = vulkanAPI->swapchain->getBuffers();
-		ImGuiData::framebuffers.resize(swapchainBuffers.size());
-
-		for (uint32 i = 0; i < (uint32)swapchainBuffers.size(); i++)
-		{
-			auto colorImage = vulkanAPI->imagePool.get(swapchainBuffers[i]->colorImage);
-			auto imageView = vulkanAPI->imageViewPool.get(colorImage->getDefaultView());
-			framebufferInfo.pAttachments = (vk::ImageView*)&ResourceExt::getInstance(**imageView);
-			ImGuiData::framebuffers[i] = vulkanAPI->device.createFramebuffer(framebufferInfo);
-		}
-	}
-	else abort();
-}
-
-//**********************************************************************************************************************
-extern ImGuiKey ImGui_ImplGlfw_KeyToImGuiKey(int keycode, int scancode);
-
-static void updateImGuiKeyModifiers(InputSystem* inutSystem, ImGuiIO& io)
-{
-	io.AddKeyEvent(ImGuiMod_Ctrl, inutSystem->getKeyboardState(KeyboardButton::LeftControl) || 
-		inutSystem->getKeyboardState(KeyboardButton::RightControl));
-	io.AddKeyEvent(ImGuiMod_Shift, inutSystem->getKeyboardState(KeyboardButton::LeftShift) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightShift));
-	io.AddKeyEvent(ImGuiMod_Alt, inutSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightAlt));
-	io.AddKeyEvent(ImGuiMod_Super, inutSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightSuper));
-}
-
-// WARNING! Check for changes in the underlying ImGui functions to prevent possible race conditions!
-static void updateImGuiGlfwInput() 
-{
-	auto& io = ImGui::GetIO();
-	auto inputSystem = InputSystem::Instance::get();
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
-	auto cursorPos = inputSystem->getCursorPosition();
-	ImGui_ImplGlfw_CursorPosCallback(window, cursorPos.x, cursorPos.y);
-
-	if (inputSystem->isCursorEntered())
-		ImGui_ImplGlfw_CursorEnterCallback(window, true);
-	else if (inputSystem->isCursorLeaved())
-		ImGui_ImplGlfw_CursorEnterCallback(window, false);
-
-	if (inputSystem->isWindowFocused())
-		io.AddFocusEvent(true);
-	else if (inputSystem->isWindowUnfocused())
-		io.AddFocusEvent(false);
-
-	// TODO: Check if we need ImGui_ImplGlfw_MonitorCallback() after docking branch merge.
-	
-	auto mouseScroll = inputSystem->getMouseScroll();
-	io.AddMouseWheelEvent(mouseScroll.x, mouseScroll.y);
-
-	for (uint8 i = 0; i < keyboardButtonCount; i++)
-	{
-		auto button = allKeyboardButtons[i];
-
-		int action = -1;
-		if (inputSystem->isKeyboardPressed(button))
-			action = GLFW_PRESS;
-		else if (inputSystem->isKeyboardReleased(button))
-			action = GLFW_RELEASE;
-
-		if (action != -1)
-		{
-			updateImGuiKeyModifiers(inputSystem, io);
-			auto scancode = glfwGetKeyScancode((int)button);
-			auto imgui_key = ImGui_ImplGlfw_KeyToImGuiKey((int)button, scancode);
-			io.AddKeyEvent(imgui_key, (action == GLFW_PRESS));
-			io.SetKeyEventNativeData(imgui_key, (int)button, scancode); // To support legacy indexing (<1.87 user code)
-		}
-	}
-	for (int i = 0; i < (int)MouseButton::Last + 1; i++)
-	{
-		int action = -1;
-		if (inputSystem->isMousePressed((MouseButton)i))
-			action = GLFW_PRESS;
-		else if (inputSystem->isMouseReleased((MouseButton)i))
-			action = GLFW_RELEASE;
-
-		if (action != -1)
-		{
-			updateImGuiKeyModifiers(inputSystem, io);
-			if (i >= 0 && i < ImGuiMouseButton_COUNT)
-				io.AddMouseButtonEvent(i, action == GLFW_PRESS);
-		}
-	}
-
-	const auto& keyboardChars = inputSystem->getKeyboardChars32();
-	for (psize i = 0; i < keyboardChars.size(); i++)
-		io.AddInputCharacter(keyboardChars[i]);
-}
-static void imGuiNewFrame()
-{
-	auto& io = ImGui::GetIO();
-	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
-	auto windowSize = InputSystem::Instance::get()->getWindowSize();
-	auto pixelRatio = (float2)framebufferSize / windowSize;
-	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
-	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
-	io.DeltaTime = InputSystem::get()->getDeltaTime();
-
-	// TODO: implement these if required for something:
-	//
-	// ImGui_ImplGlfw_UpdateMouseData();
-	// ImGui_ImplGlfw_UpdateMouseCursor();
-	// ImGui_ImplGlfw_UpdateGamepads();
-}
-#endif
-
 //**********************************************************************************************************************
 static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
 {
@@ -320,7 +71,6 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", GraphicsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
-	ECSM_SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
 	if (_setSingleton)
 		setSingleton();
@@ -367,16 +117,11 @@ GraphicsSystem::~GraphicsSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
 
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Render");
 		manager->unregisterEvent("Present");
 		manager->unregisterEvent("SwapchainRecreate");
-
-		#if GARDEN_EDITOR
-		terminateImGui();
-		#endif
 
 		GraphicsAPI::terminate();
 	}
@@ -432,6 +177,7 @@ static void logVkGpuInfo()
 void GraphicsSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
+	ECSM_SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		logVkGpuInfo();
@@ -444,10 +190,6 @@ void GraphicsSystem::preInit()
 		settingsSystem->getInt("maxFPS", maxFPS);
 		settingsSystem->getFloat("renderScale", renderScale);
 	}
-
-	#if GARDEN_EDITOR
-	initializeImGui();
-	#endif
 }
 void GraphicsSystem::preDeinit()
 {
@@ -456,7 +198,10 @@ void GraphicsSystem::preDeinit()
 	else abort();
 
 	if (Manager::Instance::get()->isRunning)
+	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
+	}
 }
 
 //**********************************************************************************************************************
@@ -590,10 +335,6 @@ void GraphicsSystem::input()
 	auto windowFramebufferSize = inputSystem->getFramebufferSize();
 	isFramebufferSizeValid = windowFramebufferSize.x > 0 && windowFramebufferSize.y > 0;
 	beginSleepClock = isFramebufferSizeValid ? 0.0 : mpio::OS::getCurrentClock();
-
-	#if GARDEN_EDITOR
-	updateImGuiGlfwInput();
-	#endif
 }
 void GraphicsSystem::update()
 {
@@ -634,10 +375,6 @@ void GraphicsSystem::update()
 				depthStencilBuffer = createDepthStencilBuffer(framebufferSize, format);
 			}
 		}
-
-		#if GARDEN_EDITOR
-		recreateImGui();
-		#endif
 
 		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
 			to_string(framebufferSize.y) + ", " + to_string(swapchain->getBufferCount()) + "B)");
@@ -682,15 +419,6 @@ void GraphicsSystem::update()
 
 	if (isFramebufferSizeValid)
 	{
-		#if GARDEN_EDITOR
-		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
-			ImGui_ImplVulkan_NewFrame();
-		else abort();
-
-		imGuiNewFrame();
-		ImGui::NewFrame();
-		#endif
-
 		if (renderScale != 1.0f) // TODO: make this optional
 		{
 			startRecording(CommandBufferType::Frame);
@@ -707,16 +435,6 @@ void GraphicsSystem::present()
 	auto graphicsAPI = GraphicsAPI::get();
 	if (isFramebufferSizeValid)
 	{
-		#if GARDEN_EDITOR
-		startRecording(CommandBufferType::Frame);
-		{
-			SET_CPU_ZONE_SCOPED("ImGui Render");
-			INSERT_GPU_DEBUG_LABEL("ImGui", Color::transparent);
-			ImGui::Render();
-		}
-		stopRecording();
-		#endif
-		
 		graphicsAPI->graphicsCommandBuffer->submit();
 		graphicsAPI->transferCommandBuffer->submit();
 		graphicsAPI->computeCommandBuffer->submit();

@@ -22,8 +22,8 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/graphics/api.hpp"
 #include "garden/graphics/glfw.hpp"
-#include "garden/graphics/imgui-impl.hpp"
 #include "garden/editor/system/render/gpu-resource.hpp"
 #include "garden/profiler.hpp"
 

@@ -679,7 +679,7 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 
 //**********************************************************************************************************************
 void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer, Index indexType,
-	uint32 indexCount, uint32 instanceCount, uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
+	uint32 indexCount, uint32 instanceCount, uint32 indexOffset, uint32 vertexOffset, uint32 instanceOffset)
 {
 	GARDEN_ASSERT(vertexBuffer);
 	GARDEN_ASSERT(indexBuffer);
@@ -708,8 +708,8 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 	command.indexCount = indexCount;
 	command.instanceCount = instanceCount;
 	command.indexOffset = indexOffset;
-	command.instanceOffset = instanceOffset;
 	command.vertexOffset = vertexOffset;
+	command.instanceOffset = instanceOffset;
 	command.vertexBuffer = vertexBuffer;
 	command.indexBuffer = indexBuffer;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
@@ -726,7 +726,7 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 //**********************************************************************************************************************
 void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 	ID<Buffer> indexBuffer, Index indexType, uint32 indexCount, uint32 instanceCount,
-	uint32 indexOffset, uint32 instanceOffset, uint32 vertexOffset)
+	uint32 indexOffset, uint32 vertexOffset, uint32 instanceOffset)
 {
 	GARDEN_ASSERT(vertexBuffer);
 	GARDEN_ASSERT(indexBuffer);

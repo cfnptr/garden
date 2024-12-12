@@ -14,7 +14,6 @@
 
 #include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/imgui-impl.hpp"
 #include "garden/profiler.hpp"
 
 using namespace math;
@@ -184,7 +183,7 @@ static void addBufferBarrier(const CommandBuffer::BufferState& oldBufferState,
 	auto vulkanAPI = VulkanAPI::get();
 	auto bufferView = vulkanAPI->bufferPool.get(buffer);
 	addBufferBarrier(oldBufferState, newBufferState, (VkBuffer)
-		ResourceExt::getInstance(**bufferView), bufferView->getBinarySize());
+		ResourceExt::getInstance(**bufferView), VK_WHOLE_SIZE);
 }
 
 //**********************************************************************************************************************
@@ -398,10 +397,10 @@ void VulkanCommandBuffer::submit()
 	{
 		auto imageView = vulkanAPI->imagePool.get(swapchainBuffer->colorImage);
 		auto vkImage = (VkImage)ResourceExt::getInstance(**imageView);
+		auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
 
 		if (!hasAnyCommand)
 		{
-			auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
 			ImageState newImageState;
 			newImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
 			newImageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
@@ -421,44 +420,6 @@ void VulkanCommandBuffer::submit()
 				vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
 		}
 
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		{
-			auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
-			ImageState newImageState;
-			// We adding read barrier because we loading buffer pixels.
-			newImageState.access = (uint32)(vk::AccessFlagBits::eColorAttachmentRead |
-				vk::AccessFlagBits::eColorAttachmentWrite);
-			newImageState.layout = (uint32)vk::ImageLayout::eColorAttachmentOptimal;
-			newImageState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
-
-			if (!isSameState(oldImageState, newImageState))
-			{
-				auto oldPipelineStage = (vk::PipelineStageFlagBits)oldImageState.stage;
-				if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
-					oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
-				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
-					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
-					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-					vkImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-				instance.pipelineBarrier(oldPipelineStage,
-					vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
-				newImageState.layout = (uint32)vk::ImageLayout::eGeneral;
-			}
-			oldImageState = newImageState;
-
-			auto drawData = ImGui::GetDrawData();
-			auto framebufferSize = swapchain->getFramebufferSize();
-			auto extent = vk::Extent2D((uint32)framebufferSize.x, (uint32)framebufferSize.y);
-			vk::RenderPassBeginInfo beginInfo(ImGuiData::renderPass,
-				ImGuiData::framebuffers[swapchain->getCurrentBufferIndex()], vk::Rect2D({}, extent));
-			instance.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
-			ImGui_ImplVulkan_RenderDrawData(drawData, instance);
-			instance.endRenderPass();
-		}
-		#endif
-
-		auto& oldImageState = getImageState(swapchainBuffer->colorImage, 0, 0);
 		ImageState newImageState;
 		newImageState.access = (uint32)vk::AccessFlagBits::eNone;
 		newImageState.layout = (uint32)vk::ImageLayout::ePresentSrcKHR;
@@ -920,20 +881,20 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		vk::ClearValue clearValue;
 		if (isFormatFloat(format))
 		{
-			memcpy(clearValue.color.float32.data(), &attachment.color.floatValue, sizeof(float) * 4);
+			memcpy(clearValue.color.float32.data(), &attachment.clearColor.floatValue, sizeof(float) * 4);
 		}
 		else if (isFormatInt(format))
 		{
-			memcpy(clearValue.color.int32.data(), &attachment.color.intValue, sizeof(int32) * 4);
+			memcpy(clearValue.color.int32.data(), &attachment.clearColor.intValue, sizeof(int32) * 4);
 		}
 		else if (isFormatUint(format))
 		{
-			memcpy(clearValue.color.uint32.data(), &attachment.color.uintValue, sizeof(uint32) * 4);
+			memcpy(clearValue.color.uint32.data(), &attachment.clearColor.uintValue, sizeof(uint32) * 4);
 		}
 		else
 		{
-			clearValue.depthStencil.depth = attachment.color.deptStencilValue.depth;
-			clearValue.depthStencil.stencil = attachment.color.deptStencilValue.stencil;
+			clearValue.depthStencil.depth = attachment.clearColor.deptStencilValue.depth;
+			clearValue.depthStencil.stencil = attachment.clearColor.deptStencilValue.stencil;
 		}
 
 		vulkanAPI->clearAttachments[i] = vk::ClearAttachment(
@@ -1155,8 +1116,8 @@ void VulkanCommandBuffer::processCommand(const FillBufferCommand& command)
 
 	if (!isSameState(oldBufferState, newBufferState))
 	{
-		addBufferBarrier(oldBufferState, newBufferState, vkBuffer, command.size == 0 ? 
-			bufferView->getBinarySize() : command.size, command.offset);
+		addBufferBarrier(oldBufferState, newBufferState, vkBuffer, 
+			command.size == 0 ? VK_WHOLE_SIZE : command.size, command.offset);
 	}
 	oldBufferState = newBufferState;
 
@@ -1196,14 +1157,14 @@ void VulkanCommandBuffer::processCommand(const CopyBufferCommand& command)
 		oldPipelineStage |= oldSrcBufferState.stage;
 
 		if (!isSameState(oldSrcBufferState, newSrcBufferState))
-			addBufferBarrier(oldSrcBufferState, newSrcBufferState, vkSrcBuffer, srcBuffer->getBinarySize());
+			addBufferBarrier(oldSrcBufferState, newSrcBufferState, vkSrcBuffer, VK_WHOLE_SIZE);
 		oldSrcBufferState = newSrcBufferState;
 
 		auto& oldDstBufferState = getBufferState(command.destination);
 		oldPipelineStage |= oldDstBufferState.stage;
 
 		if (!isSameState(oldDstBufferState, newDstBufferState))
-			addBufferBarrier(oldDstBufferState, newDstBufferState, vkDstBuffer, dstBuffer->getBinarySize());
+			addBufferBarrier(oldDstBufferState, newDstBufferState, vkDstBuffer, VK_WHOLE_SIZE);
 		oldDstBufferState = newDstBufferState;
 	}
 
@@ -1418,7 +1379,7 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		oldPipelineStage |= oldBufferState.stage;
 
 		if (!isSameState(oldBufferState, newBufferState))
-			addBufferBarrier(oldBufferState, newBufferState, vkBuffer, buffer->getBinarySize());
+			addBufferBarrier(oldBufferState, newBufferState, vkBuffer, VK_WHOLE_SIZE);
 		oldBufferState = newBufferState;
 
 		for (uint32 j = 0; j < imageSubresource.layerCount; j++)
