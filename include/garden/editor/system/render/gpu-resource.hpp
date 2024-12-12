@@ -30,6 +30,7 @@ public:
 private:
 	string searchString;
 	uint32 selectedItem = 0;
+	int imageMip = 0, imageLayer = 0;
 	bool showWindow = false;
 	bool searchCaseSensitive = false;
 	TabType openNextTab = TabType::None;

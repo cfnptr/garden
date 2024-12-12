@@ -97,16 +97,14 @@ InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 	manager->registerEvent("FileDrop");
 
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
-	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
-	ECSM_SUBSCRIBE_TO_EVENT("Output", InputSystem::output);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InputSystem::deinit);
 }
 InputSystem::~InputSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Output", InputSystem::output);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InputSystem::deinit);
 
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Input");
@@ -119,6 +117,9 @@ InputSystem::~InputSystem()
 //**********************************************************************************************************************
 void InputSystem::preInit()
 {
+	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
+	ECSM_SUBSCRIBE_TO_EVENT("Output", InputSystem::output);
+
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	glfwSetKeyCallback(window, (GLFWkeyfun)InputSystem::onKeyboardButton);
 	glfwSetScrollCallback(window, (GLFWscrollfun)InputSystem::onMouseScroll);
@@ -139,7 +140,7 @@ void InputSystem::preInit()
 	glfwGetCursorPos(window, &x, &y);
 	newCursorPos = currCursorPos = float2((float)x, (float)y);
 
-	newCursorMode = currCursorMode = (CursorMode)glfwGetInputMode(window, GLFW_CURSOR);
+	newCursorMode = currCursorMode = (CursorMode)(glfwGetInputMode(window, GLFW_CURSOR) - 0x00034001);
 	newCursorInWindow = lastCursorInWindow = currCursorInWindow = glfwGetWindowAttrib(window, GLFW_HOVERED);
 	newWindowInFocus = lastWindowInFocus = currWindowInFocus = glfwGetWindowAttrib(window, GLFW_FOCUSED);
 
@@ -163,6 +164,10 @@ void InputSystem::preInit()
 	if (clipboard)
 		newClipboard = lastClipboard = currClipboard = clipboard;
 
+	standardCursors.resize((uint8)CursorType::Count - 1);
+	for (uint8 i = 0; i < (uint8)standardCursors.size(); i++)
+		standardCursors[i] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR + i);
+
 	auto primaryMonitor = glfwGetPrimaryMonitor();
 	if (primaryMonitor)
 	{
@@ -178,6 +183,18 @@ void InputSystem::preInit()
 	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + "x" + to_string(currFramebufferSize.y));
 	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + "x" + to_string(currContentScale.y));
 	systemTime = glfwGetTime();
+}
+void InputSystem::deinit()
+{
+	if (Manager::Instance::get()->isRunning)
+	{
+		for (uint8 i = 0; i < (uint8)standardCursors.size(); i++)
+			glfwDestroyCursor((GLFWcursor*)standardCursors[i]);
+		standardCursors.clear();
+
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Output", InputSystem::output);
+	}
 }
 
 //**********************************************************************************************************************
@@ -319,8 +336,8 @@ void InputSystem::startRenderThread()
 		auto cursorInWindow = (bool)glfwGetWindowAttrib(window, GLFW_HOVERED);
 		auto windowInFocus = (bool)glfwGetWindowAttrib(window, GLFW_FOCUSED);
 
-		auto cursorMode = (CursorMode)glfwGetInputMode(window, GLFW_CURSOR);
-		int newCursorMode = -1;
+		auto cursorMode = (CursorMode)(glfwGetInputMode(window, GLFW_CURSOR) - 0x00034001);
+		int newCursorMode = -1, newCursorType = -1;
 
 		auto currentCallback = glfwSetErrorCallback(nullptr);
 		auto clipboard = glfwGetClipboardString(nullptr);
@@ -343,6 +360,11 @@ void InputSystem::startRenderThread()
 
 		if (inputSystem->currCursorMode != cursorMode)
 			newCursorMode = (int)inputSystem->currCursorMode;
+		if (inputSystem->currCursorType != inputSystem->newCursorType)
+		{
+			newCursorType = (int)inputSystem->newCursorType;
+			inputSystem->currCursorType = inputSystem->newCursorType;
+		}
 
 		auto& newKeyboardStates = inputSystem->newKeyboardStates;
 		for (uint8 i = 0; i < keyboardButtonCount; i++)
@@ -415,7 +437,13 @@ void InputSystem::startRenderThread()
 		inputSystem->eventLocker.unlock();
 
 		if (newCursorMode != -1)
-			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode);
+			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
+		if (newCursorType != -1)
+		{
+			glfwSetCursor(window, newCursorType == (int)CursorType::Default ?
+				nullptr : (GLFWcursor*)inputSystem->standardCursors[newCursorType - 1]);
+		}
+
 		if (hasNewClipboard)
 			glfwSetClipboardString(nullptr, newClipboard.c_str());
 		if (newWindowTitle != "")

@@ -22,9 +22,6 @@ namespace garden::primitive
 using namespace math;
 
 //**********************************************************************************************************************
-constexpr uint8 quadVertexCount = 6;
-constexpr uint8 cubeVertexCount = 36;
-
 constexpr array<float2, 6> quadVertices =
 {
 	float2(-0.5f, -0.5f), float2(0.5f, -0.5f), float2(-0.5f,  0.5f),

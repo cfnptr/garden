@@ -141,7 +141,7 @@ public:
 		SamplerWrap wrapY = SamplerWrap::ClampToEdge;                 /**< Addressing mode for V coordinates outside [0,1) */
 		SamplerWrap wrapZ = SamplerWrap::ClampToEdge;                 /**< Addressing mode for W coordinates outside [0,1) */
 		CompareOperation compareOperation = CompareOperation::Less;   /**< Comparison operator to apply to fetched data/ */
-		float maxAnisotropy = 0.0f;                                   /**< Anisotropy value clamp used by the sampler. */
+		float maxAnisotropy = 1.0f;                                   /**< Anisotropy value clamp used by the sampler. */
 		float mipLodBias = 0.0f;                                      /**< Bias to be added to mipmap LOD calculation. */
 		float minLod = 0.0f;                                          /**< Used to clamp the minimum of the computed LOD value. */
 		float maxLod = INFINITY;                                      /**< Used to clamp the maximum of the computed LOD value. */

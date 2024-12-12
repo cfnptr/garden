@@ -180,7 +180,12 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 		auto buffer = new VulkanSwapchain::VkBuffer();
 		auto allocateResult = vulkanAPI->device.allocateCommandBuffers(&commandBufferInfo, &buffer->primaryCommandBuffer);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
-		
+
+		buffer->colorImage = vulkanAPI->imagePool.create((VkImage)images[i], imageFormat,
+			imageBind, Image::Strategy::Default, framebufferSize, 0);
+		buffer->secondaryCommandPools = createVkCommandPools(vulkanAPI->device, 
+			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
+
 		#if GARDEN_DEBUG
 		if (vulkanAPI->hasDebugUtils)
 		{
@@ -188,13 +193,10 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
 				(uint64)(VkCommandBuffer)buffer->primaryCommandBuffer, name.c_str());
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			auto imageView = vulkanAPI->imagePool.get(buffer->colorImage);
+			ResourceExt::getDebugName(**imageView) = name;
 		}
 		#endif
-
-		buffer->colorImage = vulkanAPI->imagePool.create((VkImage)images[i], imageFormat,
-			imageBind, Image::Strategy::Default, framebufferSize, 0);
-		buffer->secondaryCommandPools = createVkCommandPools(vulkanAPI->device, 
-			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
 
 		#if GARDEN_EDITOR
 		vk::QueryPoolCreateInfo queryPoolInfo({}, vk::QueryType::eTimestamp, 2);

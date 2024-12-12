@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/mesh-selector.hpp"
+#include "garden/resource/primitive.hpp"
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/settings.hpp"
@@ -119,16 +120,18 @@ void MeshGizmosEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void addArrowMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, const float4x4& model, 
+static void addGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, const float4x4& model, 
 	ID<Buffer> cubeBuffer, ID<Buffer> arrowBuffer, Color handleColor, Color axisColorX, Color axisColorY, Color axisColorZ)
 {
 	MeshGizmosEditorSystem::GizmosMesh gizmosMesh;
 	gizmosMesh.vertexBuffer = cubeBuffer;
+	gizmosMesh.vertexCount = primitive::cubeVertices.size();
 	gizmosMesh.model = model * scale(float3(0.1f, 0.1f, 0.1f));
 	gizmosMesh.color = handleColor;
 	gizmosMeshes.push_back(gizmosMesh);
 
 	gizmosMesh.vertexBuffer = arrowBuffer;
+	gizmosMesh.vertexCount = arrowVertices.size();
 	gizmosMesh.model = model * translate(float3(0.9f, 0.0f, 0.0f)) *
 		rotate(quat(radians(90.0f), float3::back)) * scale(float3(0.1f, 0.2f, 0.1f));
 	gizmosMesh.color = axisColorX;
@@ -143,6 +146,7 @@ static void addArrowMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMes
 	gizmosMeshes.push_back(gizmosMesh);
 
 	gizmosMesh.vertexBuffer = cubeBuffer;
+	gizmosMesh.vertexCount = primitive::cubeVertices.size();
 	gizmosMesh.model = model * translate(float3(0.425f, 0.0f, 0.0f)) * scale(float3(0.75f, 0.05f, 0.05f));
 	gizmosMesh.color = axisColorX;
 	gizmosMeshes.push_back(gizmosMesh);
@@ -155,7 +159,7 @@ static void addArrowMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMes
 }
 
 //**********************************************************************************************************************
-static void renderGizmosArrows(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, 
+static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, 
 	View<GraphicsPipeline> pipelineView, const float4x4& viewProj, float patternScale, bool sortAscend)
 {
 	if (sortAscend)
@@ -188,7 +192,7 @@ static void renderGizmosArrows(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 		pushConstants->mvp = viewProj * mesh.model;
 		pushConstants->color = (float4)mesh.color;
 		pipelineView->pushConstants();
-		pipelineView->draw(mesh.vertexBuffer, (uint32)(bufferView->getBinarySize() / sizeof(float3)));
+		pipelineView->draw(mesh.vertexBuffer, mesh.vertexCount);
 	}
 }
 
@@ -232,7 +236,7 @@ void MeshGizmosEditorSystem::editorRender()
 	auto cursorPosition = inputSystem->getCursorPosition();
 	auto rotation = (inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
 		inputSystem->getKeyboardState(KeyboardButton::RightShift)) &&
-		inputSystem->getCursorMode() == CursorMode::Default ?
+		inputSystem->getCursorMode() == CursorMode::Normal ?
 		quat::identity : extractQuat(extractRotation(model));
 	auto translation = getTranslation(model);
 
@@ -253,11 +257,11 @@ void MeshGizmosEditorSystem::editorRender()
 	}
 	model = calcModel(translation, rotation, float3(modelScale));
 
-	addArrowMeshes(gizmosMeshes, model, cubeVertexBuffer, arrowVertexBuffer,
+	addGizmosMeshes(gizmosMeshes, model, cubeVertexBuffer, arrowVertexBuffer,
 		handleColor, axisColorX, axisColorY, axisColorZ);
 	// TODO: scale and rotation gizmos.
 	
-	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Default)
+	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal)
 	{
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
 		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
@@ -363,8 +367,8 @@ void MeshGizmosEditorSystem::editorRender()
 	{
 		SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
 		framebufferView->beginRenderPass(float4(0.0f));
-		renderGizmosArrows(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
-		renderGizmosArrows(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
+		renderGizmosMeshes(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
+		renderGizmosMeshes(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
 		framebufferView->endRenderPass();
 	}
 	graphicsSystem->stopRecording();

@@ -99,7 +99,7 @@ void main()
 	else if (pc.drawMode == NORMALS_DRAW_MODE)
 	{
 		float3 normal = gBuffer.normal * 0.5f + 0.5f;
-		fb.color = float4(pow(normal, float3(DEFAULT_GAMMA)), 1.0f);
+		fb.color = float4(gammaCorrection(normal, DEFAULT_GAMMA), 1.0f);
 	}
 	else if (pc.drawMode == CLEAR_COAT_DRAW_MODE)
 	{

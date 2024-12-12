@@ -177,8 +177,8 @@ static void renderBuffers(uint32& selectedItem, string& searchString, bool& sear
 }
 
 //**********************************************************************************************************************
-static void renderImages(uint32& selectedItem, string& searchString,
-	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
+static void renderImages(uint32& selectedItem, string& searchString, bool& searchCaseSensitive, 
+	GpuResourceEditorSystem::TabType& openNextTab, int& imageMip, int& imageLayer)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto images = graphicsAPI->imagePool.getData();
@@ -198,6 +198,28 @@ static void renderImages(uint32& selectedItem, string& searchString,
 	}
 
 	auto& image = images[selectedItem];
+	if (hasAnyFlag(image.getBind(), Image::Bind::Sampled) && image.isReady())
+	{
+		imageMip = std::min(imageMip, (int)image.getMipCount() - 1);
+		imageLayer = std::min(imageLayer, (int)image.getLayerCount() - 1);
+
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto imageView = graphicsSystem->createImageView(
+			graphicsAPI->imagePool.getID(&image), Image::Type::Texture2D,
+			Image::Format::Undefined, imageMip, 1, imageLayer, 1);
+		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.editor.gpuResource.tmp");
+		graphicsSystem->destroy(imageView); // TODO: suboptimal solution
+
+		auto size = image.getSize();
+		auto aspectRatio = (float)size.y / size.x;
+		ImGui::Image(*imageView, ImVec2(256.0f, 256.0f * aspectRatio));
+
+		if (image.getMipCount() > 1)
+			ImGui::SliderInt("Mip", &imageMip, 0, image.getMipCount() - 1);
+		if (image.getLayerCount() > 1)
+			ImGui::SliderInt("Layer", &imageLayer, 0, image.getLayerCount() - 1);
+	}
+
 	ImGui::SeparatorText(imageName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
@@ -293,14 +315,24 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 	}
 
 	const auto& imageView = imageViews[selectedItem];
+	auto isDefault = imageView.isDefault();
+
 	string imageName;
 	if (imageView.getImage())
 	{
 		auto image = graphicsAPI->imagePool.get(imageView.getImage());
 		imageName = image->getDebugName().empty() ? "Image " +
 			to_string(*imageView.getImage()) : image->getDebugName();
+
+		if (hasAnyFlag(image->getBind(), Image::Bind::Sampled) && image->isReady())
+		{
+			auto size = image->getSize();
+			auto aspectRatio = (float)size.y / size.x;
+
+			if (imageView.getType() == Image::Type::Texture2D)
+				ImGui::Image(selectedItem + 1, ImVec2(256.0f, 256.0f * aspectRatio));
+		}
 	}
-	auto isDefault = imageView.isDefault();
 
 	ImGui::SeparatorText(imageViewName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
@@ -854,7 +886,7 @@ void GpuResourceEditorSystem::editorRender()
 			if (ImGui::BeginTabItem("Images", nullptr, openNextTab == 
 				TabType::Images ? ImGuiTabItemFlags_SetSelected : 0))
 			{
-				renderImages(selectedItem, searchString, searchCaseSensitive, openNextTab);
+				renderImages(selectedItem, searchString, searchCaseSensitive, openNextTab, imageMip, imageLayer);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Image Views", nullptr, openNextTab == 

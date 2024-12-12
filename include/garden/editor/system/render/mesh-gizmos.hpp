@@ -33,6 +33,7 @@ public:
 		float4x4 model = float4x4(0.0f);
 		Color color = Color::black;
 		ID<Buffer> vertexBuffer = {};
+		uint32 vertexCount = 0;
 		float distance = 0.0f;
 	};
 private:

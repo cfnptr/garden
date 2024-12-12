@@ -107,6 +107,15 @@ public:
 	 * @param[in] resource target resource instance
 	 */
 	static uint32& getReadyLock(Resource& resource) noexcept { return resource.readyLock; }
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Returns resource debug name.
+	 * @warning In most cases you should use @ref Resource functions.
+	 * @param[in] resource target resource instance
+	 */
+	static string& getDebugName(Resource& resource) noexcept { return resource.debugName; }
+	#endif
 };
 
 } // namespace garden::graphics

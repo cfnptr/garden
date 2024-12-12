@@ -24,6 +24,7 @@
 #include "math/color.hpp"
 
 #define IMGUI_ENABLE_FREETYPE
+#define IMGUI_DISABLE_DEFAULT_FONT
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 

@@ -104,6 +104,17 @@ public:
 };
 
 /**
+ * @brief Aligns memory size to the specified alignment.
+ * 
+ * @param size memory size in bytes
+ * @param alignment target memory alignment in bytes
+ */
+constexpr uint64 alignMemorySize(uint64 size, uint64 alignment) noexcept
+{
+	return (size + alignment - 1) & ~(alignment - 1);
+}
+
+/**
  * @brief Memory access name strings.
  */
 constexpr string_view memoryAccessNames[(psize)Memory::Access::Count] =

@@ -173,8 +173,8 @@ public:
 	 */
 	struct ClearAttachment final
 	{
-		uint32 index = 0;      /**< Framebuffer attachment index. */
-		ClearColor color = {}; /**< Attachment clear color. (infill) */
+		uint32 index = 0;           /**< Framebuffer attachment index. */
+		ClearColor clearColor = {}; /**< Attachment clear color. (infill) */
 	};
 	/**
 	 * @brief Attachment clear region description.
@@ -427,10 +427,26 @@ public:
 	/**
 	 * @brief Clears framebuffer attachment content.
 	 * @details See the @ref Framebuffer::clearAttachments().
-	 * @param attachments framebuffer attachment
+	 * @param attachments target framebuffer attachment
 	 */
 	void clearAttachment(ClearAttachment attachment)
 	{ ClearRegion region; clearAttachments(&attachment, 1, &region, 1); }
+
+	/**
+	 * @brief Clears framebuffer depth/stencil attachment content.
+	 * @details See the @ref Framebuffer::clearAttachments().
+	 * 
+	 * @param depth attachment depth clear value
+	 * @param stencil attachment stencil clear value
+	 */
+	void clearDepthStencilAttachment(float depth = 0.0f, uint32 stencil = 0x00)
+	{
+		ClearAttachment attachment;
+		attachment.index = (uint32)colorAttachments.size();
+		attachment.clearColor.deptStencilValue.depth = depth;
+		attachment.clearColor.deptStencilValue.stencil = stencil;
+		clearAttachment(attachment);
+	}
 };
 
 /***********************************************************************************************************************

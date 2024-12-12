@@ -70,7 +70,7 @@ void MeshSelectorEditorSystem::editorRender()
 	auto selectedEntity = editorSystem->selectedEntity;
 
 	auto updateSelector = !ImGui::GetIO().WantCaptureMouse && !lastDragging &&
-		inputSystem->getCursorMode() == CursorMode::Default && inputSystem->isMouseReleased(MouseButton::Left);
+		inputSystem->getCursorMode() == CursorMode::Normal && inputSystem->isMouseReleased(MouseButton::Left);
 	lastDragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
 
 	if (updateSelector && !isSkipped)

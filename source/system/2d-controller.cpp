@@ -129,7 +129,7 @@ void Controller2DSystem::updateCameraControll()
 	auto inputSystem = InputSystem::Instance::get();
 
 	#if GARDEN_EDITOR
-	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Default)
+	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Normal)
 		return;
 	#endif
 

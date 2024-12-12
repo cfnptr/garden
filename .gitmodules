@@ -18,7 +18,7 @@
 	url = https://github.com/Cyan4973/xxHash
 [submodule "libraries/imgui"]
 	path = libraries/imgui
-	url = https://github.com/cfnptr/imgui
+	url = https://github.com/ocornut/imgui
 [submodule "libraries/stb"]
 	path = libraries/stb
 	url = https://github.com/nothings/stb

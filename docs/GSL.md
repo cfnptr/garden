@@ -31,7 +31,8 @@ Also you can override pipeline state properties when loading pipeline in the cod
 ```
 pipelineState
 {
-    depthTesting = off;
+    depthTesting = on;
+	depthWriting = on;
     faceCulling = on;
 }
 ```
@@ -95,7 +96,7 @@ Shader parser gets sampler state from the properties, writen inside sampler decl
 ```
 uniform sampler2D
 {
-    filter = nearest;
+    filter = linear;
 } samplerName;
 
 uniform set1 samplerCube someSampler;
