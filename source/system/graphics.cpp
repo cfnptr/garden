@@ -32,7 +32,7 @@
 using namespace garden;
 using namespace garden::primitive;
 
-namespace
+namespace garden::graphics
 {
 	struct LinePC
 	{

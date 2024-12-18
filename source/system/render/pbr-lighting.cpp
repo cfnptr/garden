@@ -30,7 +30,7 @@ using namespace math::sh;
 using namespace math::ibl;
 using namespace math::brdf;
 
-namespace
+namespace garden::graphics
 {
 	struct SpecularItem final
 	{
@@ -339,7 +339,7 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 	};
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("pbr-lighting", 
-		deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording(), false, 0, 0, specConstValues);
+		deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConstValues);
 }
 static ID<ComputePipeline> createIblSpecularPipeline()
 {

@@ -17,13 +17,4 @@
  * @brief Common noise generation functions.
  */
 
-#if __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnan-infinity-disabled"
-#endif
-
 #include "FastNoise/FastNoise.h"
-
-#if __clang__
-#pragma clang diagnostic pop
-#endif

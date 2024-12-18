@@ -21,8 +21,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 		add_compile_options(/GL)
 	endif()
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
-	add_compile_options(-march=haswell)
-	add_compile_options(-Wno-unused-function)
+	add_compile_options(-march=haswell -Wno-unused-function -Wno-unused-private-field 
+		-Wno-reorder-ctor -Wno-switch-default -Wno-nan-infinity-disabled)
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(-flto)

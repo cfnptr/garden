@@ -34,7 +34,7 @@ using namespace garden::graphics;
 //******************************************************************************************************************
 constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
-namespace
+namespace garden::graphics
 {
 	struct GslValues
 	{
@@ -64,7 +64,7 @@ namespace
 
 #if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
 //******************************************************************************************************************
-namespace
+namespace garden::graphics
 {
 	struct FileData
 	{

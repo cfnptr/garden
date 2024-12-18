@@ -58,3 +58,6 @@
 [submodule "libraries/tracy"]
 	path = libraries/tracy
 	url = https://github.com/wolfpld/tracy
+[submodule "libraries/plan"]
+	path = libraries/plan
+	url = https://github.com/cfnptr/plan

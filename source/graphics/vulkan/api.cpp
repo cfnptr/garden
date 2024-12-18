@@ -630,7 +630,7 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 }
 
 //**********************************************************************************************************************
-namespace
+namespace garden::graphics
 {
 	struct PipelineCacheHeader final
 	{
