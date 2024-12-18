@@ -54,7 +54,7 @@ constexpr ImageFileType imageFileTypes[] =
 };
 
 //**********************************************************************************************************************
-namespace
+namespace garden::graphics
 {
 	struct ImageLoadData final
 	{

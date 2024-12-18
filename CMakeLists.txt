@@ -18,8 +18,12 @@ cmake_minimum_required(VERSION 3.24)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
 endif()
+
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug|Release|RelWithDebInfo|MinSizeRel")
-	message("CMAKE_BUILD_TYPE is not declared. Possibly missing CMakeSettings.json file.")
+	# Check if VS Code option "Set Build Type On Multi Config" is enabled.
+	message(FATAL_ERROR "CMAKE_BUILD_TYPE is not declared!")
+else()
+	message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 endif()
 
 if(TARGET garden)
@@ -280,17 +284,13 @@ endif()
 #***********************************************************************************************************************
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)
 
-if(GARDEN_EDITOR)
-	file(GLOB IMGUI_SOURCES libraries/imgui/*.cpp)
-	file(GLOB IMGUI_MISC_SOURCES libraries/imgui/misc/cpp/*.cpp)
-	list(APPEND GARDEN_INCLUDE_DIRS
-		libraries/imgui libraries/imgui/backends)
-	list(APPEND GARDEN_SOURCES ${IMGUI_SOURCES} ${IMGUI_MISC_SOURCES}
-		libraries/imgui/backends/imgui_impl_glfw.cpp
-		libraries/imgui/backends/imgui_impl_vulkan.cpp)
-endif()
+file(GLOB IMGUI_SOURCES libraries/imgui/*.cpp)
+file(GLOB IMGUI_MISC_SOURCES libraries/imgui/misc/cpp/*.cpp)
 
-#***********************************************************************************************************************
+# file(GLOB IMNODE_SOURCES libraries/imnode/*.cpp)
+# list(APPEND GARDEN_INCLUDE_DIRS libraries/imgui libraries/imnode)
+# list(APPEND GARDEN_SOURCES ${IMGUI_SOURCES} ${IMGUI_MISC_SOURCES} ${IMNODE_SOURCES})
+
 add_library(garden STATIC ${GARDEN_SOURCES})
 target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})

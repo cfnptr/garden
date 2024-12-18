@@ -158,7 +158,6 @@ static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2& framebuff
 static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 queueFamilyIndex, uint32 count)
 {
 	vector<vk::CommandPool> commandPools(count);
-	vk::CommandPoolCreateFlags flags;
 	vk::CommandPoolCreateInfo commandPoolInfo({}, queueFamilyIndex);
 	for (uint32 i = 0; i < count; i++)
 		commandPools[i] = device.createCommandPool(commandPoolInfo);

@@ -12,18 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-#if __clang__ // TODO: remove after msvc clang update
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wswitch-default"
-#endif
-
 #include "Jolt/Jolt.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
-
-#if __clang__
-#pragma clang diagnostic pop
-#endif
 
 namespace garden::physics
 {

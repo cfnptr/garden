@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief ImGui extensions.
+ * @brief Common immediate GUI functions. (ImGui)
  */
 
 #pragma once

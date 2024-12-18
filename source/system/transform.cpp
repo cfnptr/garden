@@ -78,7 +78,6 @@ void TransformComponent::setActive(bool isActive) noexcept
 
 	selfActive = isActive; // Do not move this setter!
 
-	auto manager = Manager::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	entityStack.push_back(entity);
 
@@ -359,7 +358,6 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 	if (!childs)
 		return false;
 
-	auto manager = Manager::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	entityStack.push_back(entity);
 

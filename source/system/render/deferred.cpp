@@ -110,7 +110,6 @@ static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer, ID<Image> depth
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	auto hdrBufferView = graphicsSystem->get(hdrBuffer);
-	auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), false, false, true) };

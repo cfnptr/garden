@@ -22,7 +22,7 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
-namespace
+namespace garden::graphics
 {
 	struct ImageViewState final
 	{
