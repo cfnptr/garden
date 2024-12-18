@@ -61,3 +61,6 @@
 [submodule "libraries/plan"]
 	path = libraries/plan
 	url = https://github.com/cfnptr/plan
+[submodule "libraries/imnode"]
+	path = libraries/imnode
+	url = https://github.com/thedmd/imgui-node-editor
