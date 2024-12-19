@@ -19,7 +19,7 @@ Input attributes format can be specified using this syntax:
 in float3 vs.variableName : f32;
 ```
 
-With one of these formats: [ f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64 ]
+With one of these formats: [ f8 | f16 | f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64 ]
 
 * #attributeOffset X - Add offset to the vertex attributes. (in bytes)
 
@@ -32,7 +32,7 @@ Also you can override pipeline state properties when loading pipeline in the cod
 pipelineState
 {
     depthTesting = on;
-	depthWriting = on;
+    depthWriting = on;
     faceCulling = on;
 }
 ```
