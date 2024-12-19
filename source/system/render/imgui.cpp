@@ -223,7 +223,7 @@ void ImGuiRenderSystem::preInit()
 	#ifdef _WIN32
 	mainViewport->PlatformHandleRaw = glfwGetWin32Window((GLFWwindow*)graphicsAPI->window);
 	#elif defined(__APPLE__)
-	mainViewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow(bd->Window);
+	mainViewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow((GLFWwindow*)graphicsAPI->window);
 	#else
     IM_UNUSED(mainViewport);
 	#endif
