@@ -64,7 +64,7 @@ enum class PipelineType : uint8
 };
 
 /**
- * @brief Texture sampling method type.
+ * @brief Texture (image) sampling method type.
  * 
  * @details
  * Method used by the GPU to determine the color of a texture sample based on the texture coordinates 

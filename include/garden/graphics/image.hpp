@@ -871,7 +871,7 @@ static constexpr bool isFormatUint(Image::Format formatType)
  * @param imageFormat target image data format
  * @warning Same size is not guaranteed on the GPU!
  */
-static psize toBinarySize(Image::Format imageFormat)
+static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 {
 	switch (imageFormat)
 	{
@@ -897,7 +897,7 @@ static psize toBinarySize(Image::Format imageFormat)
 	case Image::Format::SfloatD32: return 4;
 	case Image::Format::UnormD24UintS8: return 4;
 	case Image::Format::SfloatD32Uint8S: return 5;
-	default: abort();
+	default: return 0;
 	}
 }
 

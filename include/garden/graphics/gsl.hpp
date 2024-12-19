@@ -475,7 +475,7 @@ static uint8 toLocationOffset(GslDataType dataType) noexcept
  * @brief Returns GSL data type binary size in bytes.
  * @param dataType target GSL data type
  */
-static psize toBinarySize(GslDataType dataType) noexcept
+static constexpr psize toBinarySize(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
@@ -504,14 +504,14 @@ static psize toBinarySize(GslDataType dataType) noexcept
 	case GslDataType::Float4x2: return sizeof(float) * 4 * 2;
 	case GslDataType::Float3x4: return sizeof(float) * 3 * 4;
 	case GslDataType::Float4x3: return sizeof(float) * 4 * 3;
-	default: abort();
+	default: return 0;
 	}
 }
 /**
  * @brief Returns GSL data format binary size in bytes.
  * @param dataFormat target GSL data format
  */
-static psize toBinarySize(GslDataFormat dataFormat) noexcept
+static constexpr psize toBinarySize(GslDataFormat dataFormat) noexcept
 {
 	switch (dataFormat)
 	{
@@ -524,7 +524,7 @@ static psize toBinarySize(GslDataFormat dataFormat) noexcept
 	case GslDataFormat::U8: return sizeof(uint8);
 	case GslDataFormat::U16: return sizeof(uint16);
 	case GslDataFormat::U32: return sizeof(uint32);
-	default: abort();
+	default: return 0;
 	}
 }
 

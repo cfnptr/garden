@@ -476,13 +476,13 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(GraphicsPipeline::ColorComponent)
  * @brief Returns index buffer indices type size in bytes.
  * @param indexType target index buffer indices type
  */
-static psize toBinarySize(GraphicsPipeline::Index indexType) noexcept
+static constexpr psize toBinarySize(GraphicsPipeline::Index indexType) noexcept
 {
 	switch (indexType)
 	{
 	case GraphicsPipeline::Index::Uint16: return sizeof(uint16);
 	case GraphicsPipeline::Index::Uint32: return sizeof(uint32);
-	default: abort();
+	default: return 0;
 	}
 }
 
