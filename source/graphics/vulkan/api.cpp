@@ -502,6 +502,7 @@ static vk::Device createVkDevice(
 	deviceFeatures.features = vk::PhysicalDeviceFeatures();
 	deviceFeatures.features.independentBlend = VK_TRUE;
 	deviceFeatures.features.depthClamp = VK_TRUE;
+	deviceFeatures.features.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.pNext = nullptr;
 	void** lastPNext = &deviceFeatures.pNext;
 
