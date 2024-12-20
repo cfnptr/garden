@@ -91,7 +91,7 @@ Alpha blending example: Oa = sa * Sa + da * Da.
 
 ## Sampler
 
-Shader parser gets sampler state from the properties, writen inside sampler declaration block.
+Shader parser gets sampler state from the properties, written inside sampler declaration block.
 
 ```
 uniform sampler2D
@@ -136,7 +136,7 @@ TODO: support r11f_g11f_b10f, rgba16, rgba16_snorm...
 
 ## Compute Shader
 
-Compute shader local group size is specified a lot simplier:
+Compute shader local group size is specified a lot simpler:
 
 ```
 localSize = 16, 16, 1;

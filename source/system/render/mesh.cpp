@@ -460,7 +460,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj)
 				auto meshSystem = opaqueBuffer->meshSystem;
 				const auto& meshes = opaqueBuffer->combinedMeshes;
 				auto itemCount = task.getItemCount();
-				auto taskIndex = task.getThreadIndex(); // Using task index to preserve items order.
+				auto taskIndex = task.getTaskIndex(); // Using task index to preserve items order.
 				auto taskCount = itemCount - task.getItemOffset();
 
 				meshSystem->beginDrawAsync(taskIndex);
@@ -524,7 +524,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj)
 			auto meshSystem = translucentBuffers[currentBufferIndex].meshSystem;
 			auto bufferDrawCount = translucentBuffers[currentBufferIndex].drawCount;
 			auto itemCount = task.getItemCount();
-			auto taskIndex = task.getThreadIndex(); // Using task index to preserve items order.
+			auto taskIndex = task.getTaskIndex(); // Using task index to preserve items order.
 			meshSystem->beginDrawAsync(taskIndex);
 
 			uint32 currentDrawCount = 0;
