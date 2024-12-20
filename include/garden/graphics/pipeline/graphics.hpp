@@ -183,11 +183,11 @@ public:
 	enum class ColorComponent : uint8
 	{
 		None = 0x00, /**< All color components in memory are unmodified. */
-		R = 0x01,    /**< R value is written to the color attachment. Otherwise, the value in memory is unmodified. */
-		G = 0x02,    /**< G value is written to the color attachment. Otherwise, the value in memory is unmodified. */
-		B = 0x04,    /**< B value is written to the color attachment. Otherwise, the value in memory is unmodified. */
-		A = 0x08,    /**< A value is written to the color attachment. Otherwise, the value in memory is unmodified. */
-		All = 0x0F,  /**<  All components are written to the color attachment. */
+		R    = 0x01, /**< R value is written to the color attachment. Otherwise, the value in memory is unmodified. */
+		G    = 0x02, /**< G value is written to the color attachment. Otherwise, the value in memory is unmodified. */
+		B    = 0x04, /**< B value is written to the color attachment. Otherwise, the value in memory is unmodified. */
+		A    = 0x08, /**< A value is written to the color attachment. Otherwise, the value in memory is unmodified. */
+		All  = 0x0F, /**<  All components are written to the color attachment. */
 	};
 
 	/*******************************************************************************************************************
@@ -461,7 +461,7 @@ public:
 	 */
 	void drawFullscreenAsync(int32 threadIndex);
 
-	// TODO: Also allow to override blendStates, vertexAttributes separatly.
+	// TODO: Also allow to override blendStates, vertexAttributes separately.
 	// TODO: Add dynamic and dynamic/static states (viewport/scissor).
 };
 

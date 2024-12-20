@@ -535,10 +535,10 @@ static bool renderInspectorWindowPopup(const unordered_map<type_index,
 			}
 			ImGui::EndMenu();
 		}
-		auto transfomView = manager->tryGet<TransformComponent>(selectedEntity);
-		if (ImGui::MenuItem("Select Parent", nullptr, false, transfomView && transfomView->getParent()))
+		auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
+		if (ImGui::MenuItem("Select Parent", nullptr, false, transformView && transformView->getParent()))
 		{
-			selectedEntity = transfomView->getParent();
+			selectedEntity = transformView->getParent();
 			ImGui::EndPopup();
 			return false;
 		}
@@ -883,9 +883,9 @@ void EditorRenderSystem::showFileSelector()
 					continue;
 				}
 
-				auto lenght = entry.path().filename().generic_string().length();
-				if (lenght > longestFilename)
-					longestFilename = lenght;
+				auto length = entry.path().filename().generic_string().length();
+				if (length > longestFilename)
+					longestFilename = length;
 			}
 			
 			if (longestFilename > 0)
@@ -1116,14 +1116,14 @@ void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Re
 static void drawResource(const Resource* resource, const char* label,
 	ID<Resource> instance, GpuResourceEditorSystem::TabType tabType)
 {
-	string buffereViewName;
+	string bufferViewName;
 	if (resource)
 	{
-		buffereViewName = resource->getDebugName().empty() ?
+		bufferViewName = resource->getDebugName().empty() ?
 			to_string(*instance) : resource->getDebugName();
 	}
 
-	ImGui::InputText(label, &buffereViewName, ImGuiInputTextFlags_ReadOnly);
+	ImGui::InputText(label, &bufferViewName, ImGuiInputTextFlags_ReadOnly);
 
 	if (ImGui::BeginPopupContextItem())
 	{

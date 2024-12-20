@@ -51,14 +51,14 @@ enum class MotionType : uint8
  */
 enum class AllowedDOF : uint8
 {
-	None = 0b000000,                                   /**< No degrees of freedom are allowed. (Use a static body instead) */
-	All = 0b111111,                                    /**< All degrees of freedom are allowed */
-	TranslationX = 0b000001,                           /**< Body can move in world space X axis */
-	TranslationY = 0b000010,                           /**< Body can move in world space Y axis */
-	TranslationZ = 0b000100,                           /**< Body can move in world space Z axis */
-	RotationX = 0b001000,                              /**< Body can rotate around world space X axis  */
-	RotationY = 0b010000,                              /**< Body can rotate around world space Y axis */
-	RotationZ = 0b100000,                              /**< Body can rotate around world space Z axis */
+	None         = 0b000000, /**< No degrees of freedom are allowed. (Use a static body instead) */
+	All          = 0b111111, /**< All degrees of freedom are allowed */
+	TranslationX = 0b000001, /**< Body can move in world space X axis */
+	TranslationY = 0b000010, /**< Body can move in world space Y axis */
+	TranslationZ = 0b000100, /**< Body can move in world space Z axis */
+	RotationX    = 0b001000, /**< Body can rotate around world space X axis  */
+	RotationY    = 0b010000, /**< Body can rotate around world space Y axis */
+	RotationZ    = 0b100000, /**< Body can rotate around world space Z axis */
 	Plane2D = TranslationX | TranslationY | RotationZ, /**< Body can only move in X and Y axis and rotate around Z axis */
 };
 
@@ -160,12 +160,12 @@ enum class ConstraintType : uint8
  */
 enum class CollisionLayer : int8
 {
-	Auto = -1,
-	NonMoving = 0,
-	Moving = 1,
-	Sensor = 2,   /**< Sensors only collide with Moving objects */
-	HqDebris = 3, /**< High quality debris collides with Moving and NonMoving but not with any debris */
-	LqDebris = 4, /**< Low quality debris only collides with NonMoving */
+	Auto         = -1,
+	NonMoving    = 0,
+	Moving       = 1,
+	Sensor       = 2,   /**< Sensors only collide with Moving objects */
+	HqDebris     = 3, /**< High quality debris collides with Moving and NonMoving but not with any debris */
+	LqDebris     = 4, /**< Low quality debris only collides with NonMoving */
 	DefaultCount = 5,
 	// You can add your own object layers
 };
@@ -182,12 +182,12 @@ enum class CollisionLayer : int8
  */
 enum class BroadPhaseLayer : int8
 {
-	Auto = -1,
-	NonMoving = 0,
-	Moving = 1,
-	Sensor = 2,
-	LqDebris = 3,
-	DefaultCount = 4,
+	Auto         = -1,
+	NonMoving    =  0,
+	Moving       =  1,
+	Sensor       =  2,
+	LqDebris     =  3, // low quality
+	DefaultCount =  4,
 	// You can add your own broad phase layers
 };
 
@@ -425,11 +425,11 @@ public:
 	void setKinematicVsStatic(bool isKinematicVsStatic);
 
 	/*******************************************************************************************************************
-	 * @brief Returns rigidbody position in the phyics simulation world.
+	 * @brief Returns rigidbody position in the physics simulation world.
 	 */
 	float3 getPosition() const;
 	/**
-	 * @brief Sets rigidbody position in the phyics simulation world.
+	 * @brief Sets rigidbody position in the physics simulation world.
 	 * 
 	 * @param[in] position target rigidbody position
 	 * @param activate is rigidbody should be activated
@@ -437,11 +437,11 @@ public:
 	void setPosition(const float3& position, bool activate = true);
 
 	/**
-	 * @brief Returns rigidbody rotation in the phyics simulation world.
+	 * @brief Returns rigidbody rotation in the physics simulation world.
 	 */
 	quat getRotation() const;
 	/**
-	 * @brief Sets rigidbody rotation in the phyics simulation world.
+	 * @brief Sets rigidbody rotation in the physics simulation world.
 	 *
 	 * @param[in] rotation target rigidbody rotation
 	 * @param activate is rigidbody should be activated
@@ -449,14 +449,14 @@ public:
 	void setRotation(const quat& rotation, bool activate = true);
 
 	/**
-	 * @brief Returns rigidbody position and rotation in the phyics simulation world.
+	 * @brief Returns rigidbody position and rotation in the physics simulation world.
 	 * 
 	 * @param[out] position rigidbody position
 	 * @param[out] rotation rigidbody rotation
 	 */
 	void getPosAndRot(float3& position, quat& rotation) const;
 	/**
-	 * @brief Sets rigidbody position and rotation in the phyics simulation world.
+	 * @brief Sets rigidbody position and rotation in the physics simulation world.
 	 *
 	 * @param[in] position target rigidbody position
 	 * @param[in] rotation target rigidbody rotation
@@ -465,7 +465,7 @@ public:
 	void setPosAndRot(const float3& position, const quat& rotation, bool activate = true);
 	/**
 	 * @brief Are rigidbody position and rotation differ from specified values.
-	 * @note It also checks if values are far enought to count it as changed.
+	 * @note It also checks if values are far enough to count it as changed.
 	 *
 	 * @param[in] position target rigidbody position
 	 * @param[in] rotation target rigidbody rotation
@@ -550,7 +550,7 @@ public:
 	 */
 	void setConstraintEnabled(uint32 index, bool isEnabled);
 
-	// TODO: implement notifiers of shape changes, we should do it manulally for constraints
+	// TODO: implement notifiers of shape changes, we should do it manually for constraints
 };
 
 /***********************************************************************************************************************
@@ -622,7 +622,7 @@ private:
 	/**
 	 * @brief Creates a new physics system instance.
 	 * 
-	 * @param properties target pshysics simulation properties
+	 * @param properties target physics simulation properties
 	 * @param setSingleton set system singleton instance
 	 */
 	PhysicsSystem(const Properties& properties = {}, bool setSingleton = true);
@@ -769,7 +769,7 @@ public:
 	 * @brief Sets rigidbody world space position and rotation from a transform.
 	 * @details It also sets world transform for all rigidbody descendants.
 	 *
-	 * @param entity target rigidbody enity instance
+	 * @param entity target rigidbody entity instance
 	 * @param activate are rigidbodies should be activated
 	 */
 	void setWorldTransformRecursive(ID<Entity> entity, bool activate = true);
