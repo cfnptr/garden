@@ -64,13 +64,13 @@ public:
 	 */
 	enum class Bind : uint8
 	{
-		None = 0x00,        /**< No buffer usage specified, zero mask. */
+		None        = 0x00, /**< No buffer usage specified, zero mask. */
 		TransferSrc = 0x01, /**< Buffer can be used as the source of a transfer command. */
 		TransferDst = 0x02, /**< Buffer can be used as the destination of a transfer command. */
-		Vertex = 0x04,      /**< Buffer can be used by a graphics rendering command. */
-		Index = 0x08,       /**< Buffer can be used by a graphics rendering command. */
-		Uniform = 0x10,     /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
-		Storage = 0x20      /**< Buffer can be used in a descriptor set. */
+		Vertex      = 0x04, /**< Buffer can be used by a graphics rendering command. */
+		Index       = 0x08, /**< Buffer can be used by a graphics rendering command. */
+		Uniform     = 0x10, /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
+		Storage     = 0x20  /**< Buffer can be used in a descriptor set. */
 	};
 
 	/**

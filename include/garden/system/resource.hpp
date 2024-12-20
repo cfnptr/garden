@@ -35,13 +35,13 @@ namespace garden
  */
 enum class ImageLoadFlags : uint8
 {
-	None = 0x00,        /**< No additional image load flags. */
-	LoadSync = 0x01,    /**< Load image synchronously. (Blocking call) */
-	LoadShared = 0x02,  /**< Load and share instance on second load call. */
-	LoadArray = 0x04,   /**< Load as image array. (Slice to layers) */
-	ArrayType = 0x08,   /**< Load with array image type. (Texture2DArray) */
+	None        = 0x00, /**< No additional image load flags. */
+	LoadSync    = 0x01, /**< Load image synchronously. (Blocking call) */
+	LoadShared  = 0x02, /**< Load and share instance on second load call. */
+	LoadArray   = 0x04, /**< Load as image array. (Slice to layers) */
+	ArrayType   = 0x08, /**< Load with array image type. (Texture2DArray) */
 	CubemapType = 0x10, /**< Load with cubemap image type. (Cubemap) */
-	LinearData = 0x20   /**< Load image data in linear color space. */
+	LinearData  = 0x20  /**< Load image data in linear color space. */
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
@@ -194,7 +194,7 @@ public:
 	 * @param bind image bind type (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
-	 * @param flags additinoal image load flags
+	 * @param flags additional image load flags
 	 */
 	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Bind bind, uint8 maxMipCount = 1,
 		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None);
@@ -207,7 +207,7 @@ public:
 	 * @param bind image bind type (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
-	 * @param flags additinoal image load flags
+	 * @param flags additional image load flags
 	 */
 	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 1,
 		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None)
@@ -254,7 +254,7 @@ public:
 	void destroyShared(const Ref<Buffer>& buffer);
 
 	/**
-	 * @brief Returns current loaded buffer isntance.
+	 * @brief Returns current loaded buffer instance.
 	 * @details Useful inside "BufferLoaded" event.
 	 */
 	ID<Buffer> getLoadedBuffer() const noexcept { return loadedBuffer; }
