@@ -655,7 +655,7 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 		}
 
 		secondaryCommandBuffer.draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
-		vulkanAPI->secondaryCommandStates[threadIndex] = true;
+		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
 	else abort();
 
@@ -773,7 +773,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuff
 		}
 
 		secondaryCommandBuffer.drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
-		vulkanAPI->secondaryCommandStates[threadIndex] = true;
+		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
 	else abort();
 
@@ -839,7 +839,7 @@ void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 		auto vulkanAPI = VulkanAPI::get();
 		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
 		secondaryCommandBuffer.draw(3, 1, 0, 0);
-		vulkanAPI->secondaryCommandStates[threadIndex] = true;
+		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
 	else abort();
 }

@@ -807,6 +807,9 @@ VulkanAPI::~VulkanAPI()
 	// Should be set here, to destroy resources.
 	forceResourceDestroy = false;
 
+	for (uint32 i = 0; i < (uint32)secondaryCommandStates.size(); i++)
+		delete secondaryCommandStates[i];
+
 	delete computeCommandBuffer;
 	delete transferCommandBuffer;
 	delete graphicsCommandBuffer;

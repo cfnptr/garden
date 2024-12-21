@@ -21,8 +21,8 @@
 
 #include <queue>
 #include <mutex>
-#include <vector>
 #include <thread>
+#include <vector>
 #include <functional>
 #include <condition_variable>
 
@@ -105,7 +105,7 @@ private:
 	condition_variable workingCond = {};
 	vector<thread> threads;
 	queue<Task> tasks;
-	volatile uint32 workingCount = 0;
+	uint32 workingCount = 0;
 	bool background = false;
 	bool isRunning = false;
 
