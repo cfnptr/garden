@@ -275,7 +275,7 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 	this->vsync = useVsync;
 	this->tripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
-	this->frameIndex = 0;
+	// Do not reset frameIndex here, temporal systems use it.
 }
 
 //**********************************************************************************************************************
@@ -349,8 +349,17 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers Begin");
 
 	auto threadCount = vulkanAPI->threadCount;
-	vulkanAPI->secondaryCommandBuffers.resize(threadCount);
-	vulkanAPI->secondaryCommandStates.resize(threadCount);
+	if (vulkanAPI->secondaryCommandBuffers.size() != threadCount)
+	{
+		vulkanAPI->secondaryCommandBuffers.resize(threadCount);
+
+		auto& secondaryCommandStates = vulkanAPI->secondaryCommandStates;
+		for (uint32 i = 0; i < (uint32)secondaryCommandStates.size(); i++)
+			delete secondaryCommandStates[i];
+		secondaryCommandStates.resize(threadCount);
+		for (uint32 i = 0; i < threadCount; i++)
+			secondaryCommandStates[i] = new atomic<bool>(false);
+	}
 	
 	auto buffer = vulkanBuffers[bufferIndex];
 	if (buffer->secondaryCommandBufferIndex < buffer->secondaryCommandBuffers.size())
@@ -388,9 +397,6 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 	}
 
 	buffer->secondaryCommandBufferIndex += threadCount;
-
-	for (uint32 i = 0; i < threadCount; i++)
-		vulkanAPI->secondaryCommandStates[i] = false;
 
 	vk::CommandBufferInheritanceInfo inheritanceInfo(renderPass, subpassIndex, framebuffer, VK_FALSE); // TODO: occlusion query
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit |
@@ -459,11 +465,16 @@ void VulkanSwapchain::endSecondaryCommandBuffers()
 	(uint32)vulkanAPI->secondaryCommandBuffers.size());
 	threadPool->wait();
 
-	GARDEN_ASSERT(vulkanAPI->secondaryCommandStates.size() == vulkanAPI->secondaryCommandBuffers.size());
-	for (uint16 i = 0; i < (uint16)vulkanAPI->secondaryCommandBuffers.size(); i++)
+	auto commandBufferCount = (uint32)vulkanAPI->secondaryCommandBuffers.size();
+	GARDEN_ASSERT(vulkanAPI->secondaryCommandStates.size() == commandBufferCount);
+
+	for (uint32 i = 0; i < commandBufferCount; i++)
 	{
-		if (vulkanAPI->secondaryCommandStates[i])
+		if (vulkanAPI->secondaryCommandStates[i]->load())
+		{
 			secondaryCommandBuffers.push_back(vulkanAPI->secondaryCommandBuffers[i]);
+			vulkanAPI->secondaryCommandStates[i]->store(false);
+		}
 	}
 
 	if (!secondaryCommandBuffers.empty())

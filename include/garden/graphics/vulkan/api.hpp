@@ -88,9 +88,7 @@ public:
 	vk::DescriptorPool descriptorPool;
 	vk::PipelineCache pipelineCache;
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
-	// Using uint8 because of MT! vector<bool> uses bitmask, 
-	// which results in rase conditions. Tricky thing, hah.
-	vector<uint8> secondaryCommandStates; 
+	vector<atomic_bool*> secondaryCommandStates;
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
 	vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 	vector<vk::WriteDescriptorSet> writeDescriptorSets;
