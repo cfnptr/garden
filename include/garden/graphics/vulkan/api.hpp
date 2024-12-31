@@ -88,7 +88,7 @@ public:
 	vk::DescriptorPool descriptorPool;
 	vk::PipelineCache pipelineCache;
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
-	vector<atomic_bool*> secondaryCommandStates;
+	vector<atomic_bool*> secondaryCommandStates; // We need atomic here!
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
 	vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 	vector<vk::WriteDescriptorSet> writeDescriptorSets;
