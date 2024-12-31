@@ -376,8 +376,8 @@ void GraphicsSystem::update()
 			}
 		}
 
-		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
-			to_string(framebufferSize.y) + ", " + to_string(swapchain->getBufferCount()) + "B)");
+		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + " x " +
+			to_string(framebufferSize.y) + " px, " + to_string(swapchain->getBufferCount()) + "B)");
 	}
 
 	if (swapchain->getBufferCount() != cameraConstantsBuffers.size())

@@ -174,14 +174,15 @@ void InputSystem::preInit()
 		auto videoMode = glfwGetVideoMode(primaryMonitor);
 		if (videoMode)
 		{
-			GARDEN_LOG_INFO("Monitor resolution: " + to_string(videoMode->width) + "x" + to_string(videoMode->height));
-			GARDEN_LOG_INFO("Monitor refresh rate: " + to_string(videoMode->refreshRate));
+			GARDEN_LOG_INFO("Monitor resolution: " + to_string(videoMode->width) + 
+				"x" + to_string(videoMode->height) + " sc");
+			GARDEN_LOG_INFO("Monitor refresh rate: " + to_string(videoMode->refreshRate) + " Hz");
 		}
 	}
 
-	GARDEN_LOG_INFO("Window size: " + to_string(currWindowSize.x) + "x" + to_string(currWindowSize.y));
-	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + "x" + to_string(currFramebufferSize.y));
-	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + "x" + to_string(currContentScale.y));
+	GARDEN_LOG_INFO("Window size: " + to_string(currWindowSize.x) + " x " + to_string(currWindowSize.y) + " sc");
+	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + " x " + to_string(currFramebufferSize.y) + " px");
+	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + " x " + to_string(currContentScale.y));
 	systemTime = glfwGetTime();
 }
 void InputSystem::deinit()
