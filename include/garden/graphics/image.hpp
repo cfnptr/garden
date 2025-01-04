@@ -185,7 +185,6 @@ public:
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;
 private:
-	//******************************************************************************************************************
 	Type type = {};
 	Format format = {};
 	Bind bind = {};
@@ -196,9 +195,6 @@ private:
 	uint32 layerCount = 0;
 	ID<ImageView> defaultView = {};
 
-	// Note: Use GraphicsSystem to create, destroy and access images.
-	
-	Image() = default;
 	Image(Type type, Format format, Bind bind, Strategy strategy,
 		const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version);
 	Image(Bind bind, Strategy strategy, uint64 version) noexcept :
@@ -210,6 +206,12 @@ private:
 	friend class LinearPool<Image>;
 public:
 	/*******************************************************************************************************************
+	 * @brief Creates a new empty image data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access images.
+	 */
+	Image() = default;
+
+	/**
 	 * @brief Returns image size in texels.
 	 * @details Unused image size dimensions always have size of 1.
 	 */
@@ -735,9 +737,6 @@ class ImageView final : public Resource
 	Image::Format format = {};
 	bool _default = false;
 
-	// Note: Use GraphicsSystem to create, destroy and access image views.
-
-	ImageView() = default;
 	ImageView(bool isDefault, ID<Image> image, Image::Type type, Image::Format format,
 		uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount);
 	bool destroy() final;
@@ -745,6 +744,12 @@ class ImageView final : public Resource
 	friend class ImageViewExt;
 	friend class LinearPool<ImageView>;
 public:
+	/*******************************************************************************************************************
+	 * @brief Creates a new empty image view data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access image views.
+	 */
+	ImageView() = default;
+
 	/**
 	 * @brief Returns parent image.
 	 * @details See the @ref Image.

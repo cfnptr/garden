@@ -52,13 +52,15 @@ protected:
 	string debugName = UNNAMED_RESOURCE;
 	#endif
 
-	// Note: Use GraphicsSystem to create, destroy and access graphics resources.
-
-	Resource() = default;
 	virtual bool destroy() = 0;
-
 	friend class ResourceExt;
 public:
+	/*******************************************************************************************************************
+	 * @brief Creates a new empty resource data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access graphics resources.
+	 */
+	Resource() = default;
+
 	/**
 	 * @brief Is resource fully ready for graphics rendering.
 	 * @details Graphics resource is loaded and transferred.

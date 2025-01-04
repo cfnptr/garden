@@ -190,6 +190,8 @@ static void addBufferBarrier(const CommandBuffer::BufferState& oldBufferState,
 void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* descriptorSetRange,
 	uint32 rangeCount, uint32& oldStage, uint32& newStage)
 {
+	SET_CPU_ZONE_SCOPED("Descriptor Set Barriers Add");
+
 	// also add to the shaders noncoherent tag to skip sync if different buffer or image parts.
 	auto vulkanAPI = VulkanAPI::get();
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
@@ -214,6 +216,8 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 
 			if (isSamplerType(uniform.type) || isImageType(uniform.type))
 			{
+				SET_CPU_ZONE_SCOPED("Sampler/Image Barriers Process");
+
 				ImageState newImageState;
 				newImageState.stage = (uint32)toVkPipelineStages(uniform.shaderStages);
 
@@ -270,6 +274,8 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 			}
 			else if (isBufferType(uniform.type))
 			{
+				SET_CPU_ZONE_SCOPED("Buffer Barriers Process");
+
 				BufferState newBufferState;
 				newBufferState.stage = (uint32)toVkPipelineStages(uniform.shaderStages);
 
@@ -311,6 +317,8 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processPipelineBarriers(uint32 oldStage, uint32 newStage)
 {
+	SET_CPU_ZONE_SCOPED("Pipeline Barriers Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	if (vulkanAPI->imageMemoryBarriers.empty() && vulkanAPI->bufferMemoryBarriers.empty())
 		return;
@@ -464,6 +472,8 @@ void VulkanCommandBuffer::submit()
 //**********************************************************************************************************************
 void VulkanCommandBuffer::addRenderPassBarriers(psize offset, uint32& oldPipelineStage, uint32& newPipelineStage)
 {
+	SET_CPU_ZONE_SCOPED("Render Pass Barriers Add");
+
 	while (offset < size)
 	{
 		auto subCommand = (const Command*)(data + offset);
@@ -552,6 +562,8 @@ static bool findLastSubpassInput(const vector<Framebuffer::Subpass>& subpasses,
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("BeginRenderPass Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto framebuffer = vulkanAPI->framebufferPool.get(command.framebuffer);
 	const auto& colorAttachments = framebuffer->getColorAttachments();
@@ -809,6 +821,8 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const NextSubpassCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("NextSubpass Command Process");
+
 	instance.nextSubpass(command.asyncRecording ?
 		vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
 
@@ -822,12 +836,16 @@ void VulkanCommandBuffer::processCommand(const NextSubpassCommand& command)
 
 void VulkanCommandBuffer::processCommand(const ExecuteCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("Execute Command Process");
+
 	instance.executeCommands(command.bufferCount, (const vk::CommandBuffer*)
 		((const uint8*)&command + sizeof(ExecuteCommandBase)));
 }
 
 void VulkanCommandBuffer::processCommand(const EndRenderPassCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("EndRenderPass Command Process");
+
 	if (noSubpass)
 	{
 		if (VulkanAPI::get()->versionMinor < 3)
@@ -844,6 +862,8 @@ void VulkanCommandBuffer::processCommand(const EndRenderPassCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("ClearAttachments Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto framebufferView = vulkanAPI->framebufferPool.get(command.framebuffer);
 	const auto& colorAttachments = framebufferView->getColorAttachments();
@@ -930,6 +950,8 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BindPipelineCommand& command)
 {	
+	SET_CPU_ZONE_SCOPED("BindPipeline Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	if (command.pipeline != vulkanAPI->currentPipelines[0] || 
 		command.pipelineType != vulkanAPI->currentPipelineTypes[0])
@@ -947,6 +969,8 @@ void VulkanCommandBuffer::processCommand(const BindPipelineCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("BindDescriptorSets Command Process");
+
 	if (command.asyncRecording)
 		return;
 
@@ -985,12 +1009,16 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const PushConstantsCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("PushConstants Command Process");
+
 	instance.pushConstants((VkPipelineLayout)command.pipelineLayout, (vk::ShaderStageFlags)command.shaderStages,
 		0, command.dataSize, (const uint8*)&command + sizeof(PushConstantsCommandBase));
 }
 
 void VulkanCommandBuffer::processCommand(const SetViewportCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("SetViewport Command Process");
+
 	vk::Viewport viewport(command.viewport.x, command.viewport.y,
 		command.viewport.z, command.viewport.w, 0.0f, 1.0f); // TODO: depth
 	instance.setViewport(0, 1, &viewport); // TODO: multiple viewports
@@ -998,6 +1026,8 @@ void VulkanCommandBuffer::processCommand(const SetViewportCommand& command)
 
 void VulkanCommandBuffer::processCommand(const SetScissorCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("SetScissor Command Process");
+
 	vk::Rect2D scissor({ command.scissor.x, command.scissor.y },
 		{ (uint32)command.scissor.z, (uint32)command.scissor.w });
 	instance.setScissor(0, 1, &scissor); // TODO: multiple scissors
@@ -1005,6 +1035,8 @@ void VulkanCommandBuffer::processCommand(const SetScissorCommand& command)
 
 void VulkanCommandBuffer::processCommand(const SetViewportScissorCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("SetViewportScissor Command Process");
+
 	vk::Viewport viewport(command.viewportScissor.x, command.viewportScissor.y,
 		command.viewportScissor.z, command.viewportScissor.w, 0.0f, 1.0f);
 	vk::Rect2D scissor(
@@ -1017,6 +1049,8 @@ void VulkanCommandBuffer::processCommand(const SetViewportScissorCommand& comman
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const DrawCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("Draw Command Process");
+
 	if (command.asyncRecording)
 		return;
 
@@ -1039,6 +1073,8 @@ void VulkanCommandBuffer::processCommand(const DrawCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const DrawIndexedCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("DrawIndexed Command Process");
+
 	if (command.asyncRecording)
 		return;
 
@@ -1070,6 +1106,8 @@ void VulkanCommandBuffer::processCommand(const DrawIndexedCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("Dispatch Command Process");
+
 	auto commandBufferData = (const uint8*)&command;
 	auto offset = (int64)(commandBufferData - data) - (int64)command.lastSize;
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
@@ -1103,6 +1141,8 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const FillBufferCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("FillBuffer Command Process");
+
 	auto bufferView = VulkanAPI::get()->bufferPool.get(command.buffer);
 	auto vkBuffer = (VkBuffer)ResourceExt::getInstance(**bufferView);
 	uint32 oldPipelineStage = 0, newPipelineStage = (uint32)vk::PipelineStageFlagBits::eTransfer;
@@ -1128,6 +1168,8 @@ void VulkanCommandBuffer::processCommand(const FillBufferCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const CopyBufferCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("CopyBuffer Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto srcBuffer = vulkanAPI->bufferPool.get(command.source);
 	auto dstBuffer = vulkanAPI->bufferPool.get(command.destination);
@@ -1175,6 +1217,8 @@ void VulkanCommandBuffer::processCommand(const CopyBufferCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("ClearImage Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto image = vulkanAPI->imagePool.get(command.image);
 	auto vkImage = (VkImage)ResourceExt::getInstance(**image);
@@ -1248,6 +1292,8 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("CopyImage Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto srcImage = vulkanAPI->imagePool.get(command.source);
 	auto dstImage = vulkanAPI->imagePool.get(command.destination);
@@ -1330,6 +1376,8 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("CopyBufferImage Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto buffer = vulkanAPI->bufferPool.get(command.buffer);
 	auto image = vulkanAPI->imagePool.get(command.image);
@@ -1414,6 +1462,8 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("BlitImage Command Process");
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto srcImage = vulkanAPI->imagePool.get(command.source);
 	auto dstImage = vulkanAPI->imagePool.get(command.destination);
@@ -1508,6 +1558,8 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BeginLabelCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("BeginLabel Command Process");
+
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
 	auto floatColor = (float4)command.color;
 	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
@@ -1516,10 +1568,13 @@ void VulkanCommandBuffer::processCommand(const BeginLabelCommand& command)
 }
 void VulkanCommandBuffer::processCommand(const EndLabelCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("EndLabel Command Process");
 	instance.endDebugUtilsLabelEXT(VulkanAPI::get()->dynamicLoader);
 }
 void VulkanCommandBuffer::processCommand(const InsertLabelCommand& command)
 {
+	SET_CPU_ZONE_SCOPED("InsertLabel Command Process");
+
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
 	auto floatColor = (float4)command.color;
 	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };

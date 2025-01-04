@@ -73,15 +73,17 @@ protected:
 	Usage usage = {};
 	Strategy strategy = {};
 
-	// Note: Use GraphicsSystem to create, destroy and access memory resources.
-
-	Memory() = default;
 	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
 		binarySize(binarySize), version(version), access(access), usage(usage), strategy(strategy) { }
-
 	friend class MemoryExt;
 public:
 	/*******************************************************************************************************************
+	 * @brief Creates a new empty memory data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access memory resources.
+	 */
+	Memory() = default;
+
+	/**
 	 * @brief Returns resource allocated memory size in bytes.
 	 * @note The real allocated memory block size on GPU can differ.
 	 */

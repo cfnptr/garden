@@ -53,9 +53,6 @@ private:
 	uint8 _alignment = 0;
 	uint3 localSize = uint3(0);
 
-	// Note: Use GraphicsSystem to create, destroy and access compute pipelines.
-
-	ComputePipeline() = default;
 	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
 		Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
 	ComputePipeline(ComputeCreateData& createData, bool useAsyncRecording);
@@ -65,6 +62,12 @@ private:
 	friend class ComputePipelineExt;
 	friend class LinearPool<ComputePipeline>;
 public:
+	/**
+	 * @brief Creates a new empty compute pipeline data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access compute pipelines.
+	 */
+	ComputePipeline() = default;
+
 	/**
 	 * @brief Returns shader local work group size.
 	 * @details It is also available in the shader: gl.workGroupSize

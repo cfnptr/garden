@@ -129,8 +129,8 @@ protected:
 	}
 	void QueueJobs(Job** inJobs, JPH::uint inNumJobs) final
 	{
-		static thread_local vector<ThreadPool::Task> taskArray;
-		taskArray.resize(inNumJobs);
+		static thread_local vector<ThreadPool::Task::Function> functions;
+		functions.resize(inNumJobs);
 
 		for (JPH::uint i = 0; i < inNumJobs; i++)
 		{
@@ -139,14 +139,14 @@ protected:
 			// Add reference to job because we're adding the job to the queue
 			job->AddRef();
 
-			taskArray[i] = [job](const ThreadPool::Task& task)
+			functions[i] = [job](const ThreadPool::Task& task)
 			{
 				job->Execute();
 				job->Release();
 			};
 		}
 
-		threadPool->addTasks(taskArray);
+		threadPool->addTasks(functions);
 	}
 	void FreeJob(Job* inJob) final
 	{

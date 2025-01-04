@@ -120,6 +120,8 @@ void CommandBuffer::processCommands()
 
 void CommandBuffer::updateImageStates()
 {
+	SET_CPU_ZONE_SCOPED("Image States Update");
+
 	auto graphicsAPI = GraphicsAPI::get();
 	for (auto pair : imageStates)
 	{
@@ -134,6 +136,8 @@ void CommandBuffer::updateImageStates()
 //**********************************************************************************************************************
 void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lockedResources)
 {
+	SET_CPU_ZONE_SCOPED("Locked Resources Flush");
+
 	auto graphicsAPI = GraphicsAPI::get();
 	for (const auto& pair : lockedResources)
 	{

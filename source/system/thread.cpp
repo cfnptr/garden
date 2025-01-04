@@ -20,7 +20,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
-	backgroundPool(true, "BG", mpio::OS::getLogicalCpuCount()),
+	backgroundPool(true, "BG", mpio::OS::getPhysicalCpuCount()),
 	foregroundPool(false, "FG", getBestForegroundThreadCount())
 {
 	mpmt::Thread::setMain();
@@ -40,6 +40,7 @@ ThreadSystem::~ThreadSystem()
 
 void ThreadSystem::preInit()
 {
+	GARDEN_LOG_INFO("Background thread pool size: " + to_string(backgroundPool.getThreadCount()));
 	GARDEN_LOG_INFO("Foreground thread pool size: " + to_string(foregroundPool.getThreadCount()));
 }
 void ThreadSystem::preDeinit()

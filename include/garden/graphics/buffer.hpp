@@ -86,10 +86,7 @@ public:
 private:
 	Bind bind = {};
 	uint8* map = nullptr;
-	
-	// Note: Use GraphicsSystem to create, destroy and access buffers.
 
-	Buffer() = default;
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size, uint64 version);
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
 		Memory(0, access, usage, strategy, version), bind(bind) { }
@@ -99,6 +96,12 @@ private:
 	friend class LinearPool<Buffer>;
 public:
 	/*******************************************************************************************************************
+	 * @brief Creates a new empty buffer data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access buffers.
+	 */
+	Buffer() = default;
+
+	/**
 	 * @brief Returns buffer bind type.
 	 * @details Buffer bind type helps to optimize it usage inside the driver.
 	 */

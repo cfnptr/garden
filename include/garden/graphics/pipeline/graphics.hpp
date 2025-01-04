@@ -297,9 +297,6 @@ private:
 	uint8 subpassIndex = 0;
 	ID<Framebuffer> framebuffer = {};
 
-	// Note: Use GraphicsSystem to create, destroy and access graphics pipelines.
-	
-	GraphicsPipeline() = default;
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
 		uint64 pipelineVersion, ID<Framebuffer> framebuffer, uint8 subpassIndex) :
 		Pipeline(PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion),
@@ -311,7 +308,13 @@ private:
 	friend class GraphicsPipelineExt;
 	friend class LinearPool<GraphicsPipeline>;
 public:
-	/*******************************************************************************************************************
+	/**
+	 * @brief Creates a new empty graphics pipeline data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access graphics pipelines.
+	 */
+	GraphicsPipeline() = default;
+
+	/**
 	 * @brief Returns graphics pipeline parent framebuffer.
 	 * @note We can use graphics pipeline only inside this framebuffer.
 	 */

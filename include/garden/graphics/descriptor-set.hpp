@@ -140,9 +140,6 @@ private:
 	PipelineType pipelineType = {};
 	uint8 index = 0;
 
-	// Note: Use GraphicsSystem to create, destroy and access descriptor sets.
-
-	DescriptorSet() = default;
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 		map<string, Uniform>&& uniforms, uint8 index);
 	bool destroy() final;
@@ -150,6 +147,12 @@ private:
 	friend class DescriptorSetExt;
 	friend class LinearPool<DescriptorSet>;
 public:
+	/*******************************************************************************************************************
+	 * @brief Creates a new empty descriptor set data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access descriptor sets.
+	 */
+	DescriptorSet() = default;
+
 	/**
 	 * @brief Returns descriptor set parent pipeline.
 	 * @note Can be used only with parent pipeline.

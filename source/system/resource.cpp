@@ -209,6 +209,8 @@ void ResourceSystem::deinit()
 //**********************************************************************************************************************
 void ResourceSystem::dequeuePipelines()
 {
+	SET_CPU_ZONE_SCOPED("Loaded Pipelines Dequeue");
+
 	auto graphicsAPI = GraphicsAPI::get();
 	auto graphicsPipelines = graphicsAPI->graphicsPipelinePool.getData();
 	auto graphicsOccupancy = graphicsAPI->graphicsPipelinePool.getOccupancy();
@@ -277,6 +279,8 @@ void ResourceSystem::dequeuePipelines()
 //**********************************************************************************************************************
 void ResourceSystem::dequeueBuffersAndImages()
 {
+	SET_CPU_ZONE_SCOPED("Loaded Buffers/Images Dequeue");
+
 	auto graphicsAPI = GraphicsAPI::get();
 	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -415,7 +419,7 @@ void ResourceSystem::dequeueBuffersAndImages()
 //**********************************************************************************************************************
 void ResourceSystem::input()
 {
-	SET_CPU_ZONE_SCOPED("Resources Update");
+	SET_CPU_ZONE_SCOPED("Loaded Resources Update");
 
 	auto manager = Manager::Instance::get();
 	for (auto& buffer : loadedBufferArray)
@@ -425,6 +429,7 @@ void ResourceSystem::input()
 		manager->runEvent("BufferLoaded");
 	}
 	loadedBufferArray.clear();
+	
 	for (auto& image : loadedImageArray)
 	{
 		loadedImage = image.instance;
