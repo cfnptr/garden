@@ -44,6 +44,12 @@
 #define GARDEN_SIMD_SSE3 0
 #endif
 
+#if __SSSE3__
+#define GARDEN_SIMD_SSSE3 1
+#else
+#define GARDEN_SIMD_SSSE3 0
+#endif
+
 #if __SSE4_1__
 #define GARDEN_SIMD_SSE4_1 1
 #else

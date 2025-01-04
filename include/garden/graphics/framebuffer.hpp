@@ -189,7 +189,6 @@ public:
 	};
 
 private:
-	//******************************************************************************************************************
 	void* renderPass = nullptr;
 	vector<Subpass> subpasses;
 	vector<OutputAttachment> colorAttachments;
@@ -197,9 +196,6 @@ private:
 	OutputAttachment depthStencilAttachment = {};
 	bool isSwapchain = false;
 
-	// Note: Use GraphicsSystem to create, destroy and access framebuffers.
-
-	Framebuffer() = default;
 	Framebuffer(uint2 size, vector<Subpass>&& subpasses);
 	Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments,
 		OutputAttachment depthStencilAttachment);
@@ -218,6 +214,12 @@ private:
 	friend class LinearPool<Framebuffer>;
 public:
 	/*******************************************************************************************************************
+	 * @brief Creates a new empty framebuffer data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access framebuffers.
+	 */
+	Framebuffer() = default;
+
+	/**
 	 * @brief Returns framebuffer size in texels.
 	 * @details All attachments should have this size.
 	 */

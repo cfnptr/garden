@@ -180,9 +180,9 @@ void InputSystem::preInit()
 		}
 	}
 
-	GARDEN_LOG_INFO("Window size: " + to_string(currWindowSize.x) + " x " + to_string(currWindowSize.y) + " sc");
-	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + " x " + to_string(currFramebufferSize.y) + " px");
-	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + " x " + to_string(currContentScale.y));
+	GARDEN_LOG_INFO("Window size: " + to_string(currWindowSize.x) + "x" + to_string(currWindowSize.y) + " sc");
+	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + "x" + to_string(currFramebufferSize.y) + " px");
+	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + "x" + to_string(currContentScale.y));
 	systemTime = glfwGetTime();
 }
 void InputSystem::deinit()

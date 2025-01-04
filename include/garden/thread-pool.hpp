@@ -19,7 +19,7 @@
 #pragma once
 #include "garden/defines.hpp"
 
-#include <queue>
+#include <map>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -51,31 +51,33 @@ public:
 		using Function = std::function<void(const Task& task)>;
 	private:
 		Function function = {};
+		float priority = 0.0f;
 		uint32 threadIndex = 0;
 		uint32 taskIndex = 0;
 		uint32 itemOffset = 0;
 		uint32 itemCount = 0;
+
+		template<class T>
+		Task(const T& function, float priority = 0.0f) noexcept : 
+			function(function), priority(priority) { }
+
 		friend class ThreadPool;
 	public:
 		/**
-		 * @brief Creates empty task data.
+		 * @brief Creates a new empty task data container.
 		 */
 		Task() = default;
-		/**
-		 * @brief Creates a new task data.
-		 * @warning You should manually synchronize data access and prevent race conditions!
-		 * 
-		 * @param[in] function target function that should be executed by a thread
-		 * @tparam T target function or lambda type
-		 */
-		template<class T>
-		Task(const T& function) noexcept : function(function) { }
-
+		
 		/**
 		 * @brief Returns function that should be executed by a thread
 		 * @details This function is mainly useful for debugging purposes.
 		 */
 		Function getFunction() const noexcept { return function; }
+		/**
+		 * @brief Returns task execution priority in the pool.
+		 * @details You can use this inside a task function.
+		 */
+		float getPriority() const noexcept { return priority; }
 
 		/**
 		 * @brief Returns current thread index in the pool.
@@ -99,12 +101,14 @@ public:
 		uint32 getItemCount() const noexcept { return itemCount; }
 	};
 private:
+	using TaskQueue = multimap<float, Task, std::greater<float>>;
+
 	string name;
 	std::mutex mutex = {};
 	condition_variable workCond = {};
 	condition_variable workingCond = {};
 	vector<thread> threads;
-	queue<Task> tasks;
+	TaskQueue taskQueue;
 	uint32 workingCount = 0;
 	bool background = false;
 	bool isRunning = false;
@@ -121,7 +125,8 @@ public:
 	ThreadPool(bool isBackground = false, const string& name = "", uint32 threadCount = UINT32_MAX);
 	/**
 	 * @brief Destroys thread pool. (Blocking)
-	 * @details Waits until running tasks are completed. Pending tasks are dropped.
+	 * @details Waits until all running tasks are completed.
+	 * @warning Pending queue tasks will be dropped!
 	 */
 	~ThreadPool();
 
@@ -145,42 +150,52 @@ public:
 	 */
 	bool isBackground() const noexcept { return background; }
 	/**
-	 * @brief Returns curent pending task count. (MT-Safe)
-     * @details Locks mutex inside to get current count.
+	 * @brief Returns curent task queue pending task count. (MT-Safe)
+     * @details Locks mutex inside to get current task count.
 	 */
 	uint32 getPendingTaskCount();
 
 	/**
-	 * @brief Adds a new task to the pending queue. (MT-Safe)
-	 * @param[in] task target task 
-	 */
-	void addTask(const Task& task);
-	/**
-	 * @brief Adds a new tasks to the pending queue. (MT-Safe)
-	 * @param[in] tasks target task array
-	 */
-	void addTasks(const vector<Task>& tasks);
-	/**
-	 * @brief Adds a new task count to the pending queue. (MT-Safe)
+	 * @brief Adds a new task to the pending task queue. (MT-Safe)
+	 * @warning You should manually synchronize data access and prevent race conditions!
 	 * 
-	 * @param[in] task target task
-	 * @param count task instance count
+	 * @param[in] function target task function
+	 * @param priority task execution priority
 	 */
-	void addTasks(const Task& task, uint32 count);
+	void addTask(const Task::Function& function, float priority = 0.0f);
 	/**
-	 * @brief Adds a new items to the pending queue. (MT-Safe)
+	 * @brief Adds new tasks to the pending task queue. (MT-Safe)
+	 * @warning You should manually synchronize data access and prevent race conditions!
+	 * 
+	 * @param[in] functions target task function array
+	 * @param priority tasks execution priority
+	 */
+	void addTasks(const vector<Task::Function>& functions, float priority = 0.0f);
+	/**
+	 * @brief Adds a new task count to the pending task queue. (MT-Safe)
+	 * @warning You should manually synchronize data access and prevent race conditions!
+	 * 
+	 * @param[in] task target task function
+	 * @param count task instance count
+	 * @param priority tasks execution priority
+	 */
+	void addTasks(const Task::Function& function, uint32 count, float priority = 0.0f);
+	/**
+	 * @brief Adds a new items to the pending task queue. (MT-Safe)
+	 * @warning You should manually synchronize data access and prevent race conditions!
 	 * 
 	 * @details
 	 * This function distributes items among all threads in the pool, and creates 
 	 * a number of tasks equal to the number of threads in the pool.
 	 * 
-	 * @param[in] task target task
-	 * @param count item count
+	 * @param[in] task target task function
+	 * @param count target item count
+	 * @param priority tasks execution priority
 	 */
-	void addItems(const Task& task, uint32 count);
+	void addItems(const Task::Function& task, uint32 count, float priority = 0.0f);
 
 	/**
-	 * @brief Waits until all pending and running tasks in the pool are completed. (Blocking)
+	 * @brief Waits until all pending in the queue and running tasks are completed. (Blocking)
 	 * @details Use it wait until all running and pending tasks are completed.
 	 */
 	void wait();

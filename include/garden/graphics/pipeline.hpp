@@ -258,9 +258,6 @@ protected:
 	bool asyncRecording = false;
 	bool bindless = false;
 
-	// Note: Use GraphicsSystem to create, destroy and access pipelines.
-
-	Pipeline() = default;
 	Pipeline(CreateData& createData, bool useAsyncRecording);
 	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, 
 		uint64 pipelineVersion) : pipelinePath(path), pipelineVersion(pipelineVersion),
@@ -287,6 +284,12 @@ protected:
 
 	friend class PipelineExt;
 public:
+	/*******************************************************************************************************************
+	 * @brief Creates a new empty pipeline data container.
+	 * @note Use @ref GraphicsSystem to create, destroy and access pipelines.
+	 */
+	Pipeline() = default;
+
 	/*******************************************************************************************************************
 	 * @brief Returns rendering pipeline type.
 	 * @details General Pipeline class contains shared functional between all pipeline types.
