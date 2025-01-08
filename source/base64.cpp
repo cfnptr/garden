@@ -7,7 +7,7 @@
  * Version 1.3 -- 17-Mar-2006
  * http://modp.com/release/base64
  *
- * Copyright &copy; 2005-2024  Nick Galbreath -- nickg [at] modp [dot] com
+ * Copyright &copy; 2005-2025  Nick Galbreath -- nickg [at] modp [dot] com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
