@@ -26,17 +26,17 @@ namespace garden
 /**
  * @brief Translucent 9-slice sprite rendering data container.
  */
-struct Translucent9SliceComponent final : public NineSliceRenderComponent { };
+struct Trans9SliceComponent final : public NineSliceRenderComponent { };
 /**
  * @brief Translucent 9-slice sprite animation frame container.
  */
-struct Translucent9SliceFrame final : public NineSliceAnimationFrame { };
+struct Trans9SliceFrame final : public NineSliceAnimationFrame { };
 
 /**
  * @brief Translucent 9-slice sprite rendering system.
  */
-class Translucent9SliceSystem final : public NineSliceRenderCompSystem<
-	Translucent9SliceComponent, Translucent9SliceFrame, false, false>, public Singleton<Translucent9SliceSystem>
+class Trans9SliceSystem final : public NineSliceRenderCompSystem<
+	Trans9SliceComponent, Trans9SliceFrame, false, false>, public Singleton<Trans9SliceSystem>
 {
 	/**
 	 * @brief Creates a new translucent 9-slice rendering system instance.
@@ -45,11 +45,11 @@ class Translucent9SliceSystem final : public NineSliceRenderCompSystem<
 	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	Translucent9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	Trans9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys translucent 9-slice rendering system instance.
 	 */
-	~Translucent9SliceSystem() final;
+	~Trans9SliceSystem() final;
 
 	const string& getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;

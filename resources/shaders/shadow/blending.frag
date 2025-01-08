@@ -20,7 +20,7 @@ pipelineState
 	dstBlendFactor0 = zero;
 }
 
-in float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.hdr;
 
 uniform sampler2D shadowBuffer;

@@ -43,7 +43,7 @@ pipelineState
 #define DENOISED_GLOBAL_AO_DRAW_MODE 19
 #define DRAW_MODE_COUNT 20
 
-in float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.color;
 
 uniform sampler2D g0;

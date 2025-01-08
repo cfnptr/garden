@@ -391,6 +391,10 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj, const float3& cam
 
 			if (threadSystem)
 			{
+				auto& threadPool = threadSystem->getForegroundPool();
+				if (transThreadMeshes.size() < threadPool.getThreadCount())
+					transThreadMeshes.resize(threadPool.getThreadCount());
+
 				threadSystem->getForegroundPool().addItems([this, &cameraOffset, &cameraPosition, 
 					frustumPlanes, translucentBuffer, bufferIndex](const ThreadPool::Task& task) // Do not optimize args!
 				{

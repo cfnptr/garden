@@ -20,16 +20,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-TranslucentSpriteSystem::TranslucentSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
+TransSpriteSystem::TransSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
 	SpriteRenderCompSystem("sprite/translucent", useDeferredBuffer, useLinearFilter, true), Singleton(setSingleton) { }
-TranslucentSpriteSystem::~TranslucentSpriteSystem() { unsetSingleton(); }
+TransSpriteSystem::~TransSpriteSystem() { unsetSingleton(); }
 
-const string& TranslucentSpriteSystem::getComponentName() const
+const string& TransSpriteSystem::getComponentName() const
 {
 	static const string name = "Translucent Sprite";
 	return name;
 }
-MeshRenderType TranslucentSpriteSystem::getMeshRenderType() const
+MeshRenderType TransSpriteSystem::getMeshRenderType() const
 {
 	return MeshRenderType::Translucent;
 }

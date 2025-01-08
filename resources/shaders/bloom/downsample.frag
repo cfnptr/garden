@@ -27,7 +27,7 @@ pipelineState
 	faceCulling = off;
 }
 
-in float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.color;
 
 uniform sampler2D

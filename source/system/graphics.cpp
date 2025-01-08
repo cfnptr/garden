@@ -1062,6 +1062,8 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
 	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
+
+	// TODO: check if all items initialized if not using bindless.
 	#endif
 
 	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(
@@ -1079,6 +1081,8 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	auto pipelineView = GraphicsAPI::get()->computePipelinePool.get(computePipeline);
 	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
 	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
+
+	// TODO: check if all items initialized if not using bindless.
 	#endif
 
 	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(

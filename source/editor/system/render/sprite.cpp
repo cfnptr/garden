@@ -55,12 +55,12 @@ void SpriteRenderEditorSystem::init()
 			onCutoutEntityInspector(entity, isOpened);
 		});
 	}
-	if (TranslucentSpriteSystem::Instance::has())
+	if (TransSpriteSystem::Instance::has())
 	{
-		editorSystem->registerEntityInspector<TranslucentSpriteComponent>(
+		editorSystem->registerEntityInspector<TransSpriteComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
-			onTranslucentEntityInspector(entity, isOpened);
+			onTransEntityInspector(entity, isOpened);
 		});
 	}
 }
@@ -71,7 +71,7 @@ void SpriteRenderEditorSystem::deinit()
 		auto editorSystem = EditorRenderSystem::Instance::get();
 		editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
 		editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
-		editorSystem->tryUnregisterEntityInspector<TranslucentSpriteComponent>();
+		editorSystem->tryUnregisterEntityInspector<TransSpriteComponent>();
 	}
 }
 
@@ -116,20 +116,20 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 		}
 	}
 }
-void SpriteRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
+void SpriteRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto translucentSpriteView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", translucentSpriteView->isEnabled ? "true" : "false",
-			translucentSpriteView->colorMapPath.empty() ? "<null>" :
-			translucentSpriteView->colorMapPath.generic_string().c_str());
+		auto transSpriteView = TransSpriteSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", transSpriteView->isEnabled ? "true" : "false",
+			transSpriteView->colorMapPath.empty() ? "<null>" :
+			transSpriteView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto translucentSpriteView = TranslucentSpriteSystem::Instance::get()->getComponent(entity);
-		renderComponent(*translucentSpriteView, typeid(TranslucentSpriteComponent));
+		auto transSpriteView = TransSpriteSystem::Instance::get()->getComponent(entity);
+		renderComponent(*transSpriteView, typeid(TransSpriteComponent));
 	}
 }
 

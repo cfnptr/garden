@@ -34,7 +34,7 @@ uniform pushConstants
 	float2 invFrameSize;
 } pc;
 
-in float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.ldr;
 
 uniform sampler2D

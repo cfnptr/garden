@@ -31,7 +31,7 @@ class NineSliceRenderEditorSystem final : public System
 
 	void onOpaqueEntityInspector(ID<Entity> entity, bool isOpened);
 	void onCutoutEntityInspector(ID<Entity> entity, bool isOpened);
-	void onTranslucentEntityInspector(ID<Entity> entity, bool isOpened);
+	void onTransEntityInspector(ID<Entity> entity, bool isOpened);
 
 	friend class ecsm::Manager;
 public:

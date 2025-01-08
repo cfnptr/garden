@@ -75,6 +75,7 @@ protected:
 
 /***********************************************************************************************************************
  * @brief PBR lighting rendering system. (Physically Based Rendering)
+ * @details Registers events: ShadowRecreate.
  */
 class PbrLightingRenderSystem final : public ComponentSystem<PbrLightingRenderComponent>, 
 	public Singleton<PbrLightingRenderSystem>
@@ -83,8 +84,7 @@ public:
 	struct LightingPC final
 	{
 		float4x4 uvToWorld;
-		float4 shadowColor;
-		float emissiveMult;
+		float4 shadowEmissive;
 	};
 	struct SpecularPC final
 	{
@@ -144,7 +144,7 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Shadow color factor. (RGBA)
 	 */
-	float4 shadowColor = float4(1.0f);
+	float3 shadowColor = float3(1.0f);
 	/**
 	 * @brief Emissive color multiplier. (Max brightness)
 	 */
@@ -228,8 +228,9 @@ public:
 	 * 
 	 * @param sh spherical harmonics buffer instance
 	 * @param specular specular cubemap instance
+	 * @param pipeline target descriptor set pipeline ({} = lighting)
 	 */
-	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular);
+	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, ID<GraphicsPipeline> pipeline = {});
 };
 
 } // namespace garden
