@@ -35,37 +35,3 @@
 * Config File Reader / Writer
 * Resource Pack Reader / Writer
 * Equi To Cube Map Converter
-
-## Planned Features
-
-- [ ] Procedural Atmosphere (Sky)
-- [ ] Screen Space Reflections (SSR)
-- [ ] Motion Blur
-- [ ] Vignette Post-Process
-- [ ] Depth Of Field (DOF)
-- [ ] Physical Based Camera
-- [ ] Screen Space Shadows (SSS)
-- [ ] Froxel Culled Lights
-- [ ] GPU Occlusion Culling
-- [ ] Chromatic Abberation
-- [ ] Lens Flare / Glare
-- [ ] Color Grading (ACES)
-- [ ] Lens Distortion
-- [ ] God Rays
-- [ ] Volumetric Smoke / Clouds
-- [ ] Soft / Point Shadows
-- [ ] Translucent Shadow Maps
-- [ ] Vulkan Memory Aliasing
-- [ ] Particles / Trails
-- [ ] 2D Tile Maps (9-sliced)
-- [ ] Nvidia DLSS Support
-- [ ] Nvidia Reflex Support
-- [ ] AMD FSR Support
-- [ ] Physics Support (Jolt)
-- [ ] Hardware Ray-Tracing
-- [ ] Ray-Traced Shadows
-- [ ] HDR Monitor Support
-- [ ] Virtual Reality Support
-- [ ] Consoles Support
-- [ ] Mobile Devices Support
-- [ ] Texture atlas packing
