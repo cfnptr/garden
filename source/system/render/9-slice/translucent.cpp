@@ -20,16 +20,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Translucent9SliceSystem::Translucent9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
+Trans9SliceSystem::Trans9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
 	NineSliceRenderCompSystem("9-slice/translucent", useDeferredBuffer, useLinearFilter, true), Singleton(setSingleton) { }
-Translucent9SliceSystem::~Translucent9SliceSystem() { unsetSingleton(); }
+Trans9SliceSystem::~Trans9SliceSystem() { unsetSingleton(); }
 
-const string& Translucent9SliceSystem::getComponentName() const
+const string& Trans9SliceSystem::getComponentName() const
 {
 	static const string name = "Translucent 9-Slice";
 	return name;
 }
-MeshRenderType Translucent9SliceSystem::getMeshRenderType() const
+MeshRenderType Trans9SliceSystem::getMeshRenderType() const
 {
 	return MeshRenderType::Translucent;
 }

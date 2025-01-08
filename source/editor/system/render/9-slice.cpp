@@ -57,12 +57,12 @@ void NineSliceRenderEditorSystem::init()
 			onCutoutEntityInspector(entity, isOpened);
 		});
 	}
-	if (Translucent9SliceSystem::Instance::has())
+	if (Trans9SliceSystem::Instance::has())
 	{
-		editorSystem->registerEntityInspector<Translucent9SliceComponent>(
+		editorSystem->registerEntityInspector<Trans9SliceComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
-			onTranslucentEntityInspector(entity, isOpened);
+			onTransEntityInspector(entity, isOpened);
 		});
 	}
 }
@@ -73,7 +73,7 @@ void NineSliceRenderEditorSystem::deinit()
 		auto editorSystem = EditorRenderSystem::Instance::get();
 		editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
 		editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
-		editorSystem->tryUnregisterEntityInspector<Translucent9SliceComponent>();
+		editorSystem->tryUnregisterEntityInspector<Trans9SliceComponent>();
 	}
 }
 
@@ -118,20 +118,20 @@ void NineSliceRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, boo
 		}
 	}
 }
-void NineSliceRenderEditorSystem::onTranslucentEntityInspector(ID<Entity> entity, bool isOpened)
+void NineSliceRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto translucent9SliceView = Translucent9SliceSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", translucent9SliceView->isEnabled ? "true" : "false",
-			translucent9SliceView->colorMapPath.empty() ? "<null>" : 
-			translucent9SliceView->colorMapPath.generic_string().c_str());
+		auto trans9SliceView = Trans9SliceSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", trans9SliceView->isEnabled ? "true" : "false",
+			trans9SliceView->colorMapPath.empty() ? "<null>" : 
+			trans9SliceView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
 	if (isOpened)
 	{
-		auto translucent9SliceView = Translucent9SliceSystem::Instance::get()->getComponent(entity);
-		renderComponent(*translucent9SliceView, typeid(Translucent9SliceComponent));
+		auto trans9SliceView = Trans9SliceSystem::Instance::get()->getComponent(entity);
+		renderComponent(*trans9SliceView, typeid(Trans9SliceComponent));
 	}
 }
 

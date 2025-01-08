@@ -14,18 +14,17 @@
 
 #include "common/pbr.gsl"
 #include "common/depth.gsl"
-#include "common/constants.gsl"
+
+spec const bool USE_SHADOW_BUFFER = false;
+spec const bool USE_AO_BUFFER = false;
 
 pipelineState
 {
 	faceCulling = off;
 }
 
-in float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.hdr;
-
-spec const bool USE_SHADOW_BUFFER = false;
-spec const bool USE_AO_BUFFER = false;
 
 uniform sampler2D g0;
 uniform sampler2D g1;
@@ -48,14 +47,13 @@ uniform set1 samplerCube
 } specular;
 uniform set1 IblData
 {
-	float4 sh[SH_COEF_COUNT];
-} data;
+	float4 data[SH_COEF_COUNT];
+} sh;
 
 uniform pushConstants
 {
 	float4x4 uvToWorld;
-	float4 shadowColor;
-	float emissiveMult;
+	float4 shadowEmissive;
 } pc;
 
 //**********************************************************************************************************************
@@ -66,7 +64,7 @@ void main()
 		discard;
 
 	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, fs.texCoords);
-	float4 shadow = float4(pc.shadowColor.rgb, 
+	float4 shadow = float4(pc.shadowEmissive.rgb, 
 		USE_SHADOW_BUFFER ? texture(shadowBuffer, fs.texCoords).r : 1.0f);
 	float ao = USE_AO_BUFFER ? texture(aoBuffer, fs.texCoords).r : 1.0f;
 	gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, ao); // TODO: or maybe we can utilize filament micro/macro AO?
@@ -75,8 +73,8 @@ void main()
 	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);
 
 	float3 hdrColor = float3(0.0f);
-	hdrColor += evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, data.sh, specular);
-	hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.emissiveMult;
+	hdrColor += evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
+	hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.shadowEmissive.a;
 
 	float obstruction = depth < (1.0f - FLOAT_EPS6) ? 1.0f : 0.0f;
 	fb.hdr = float4(hdrColor * obstruction, 1.0f);

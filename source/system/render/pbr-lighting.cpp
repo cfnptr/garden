@@ -414,6 +414,7 @@ bool PbrLightingRenderComponent::destroy()
 PbrLightingRenderSystem::PbrLightingRenderSystem(bool useShadowBuffer, bool useAoBuffer, bool setSingleton) :
 	Singleton(setSingleton), hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer)
 {
+	Manager::Instance::get()->registerEvent("ShadowRecreate");
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingRenderSystem::deinit);
 }
@@ -423,6 +424,7 @@ PbrLightingRenderSystem::~PbrLightingRenderSystem()
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderSystem::deinit);
+		Manager::Instance::get()->unregisterEvent("ShadowRecreate");
 	}
 	else
 	{
@@ -645,8 +647,7 @@ void PbrLightingRenderSystem::hdrRender()
 
 	auto pushConstants = pipelineView->getPushConstants<LightingPC>();
 	pushConstants->uvToWorld = cameraConstants.viewProjInv * uvToNDC;
-	pushConstants->shadowColor = float4((float3)shadowColor * shadowColor.w, 0.0f);
-	pushConstants->emissiveMult = emissiveMult;
+	pushConstants->shadowEmissive = float4(shadowColor, emissiveMult);
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	pipelineView->bind();
@@ -690,6 +691,8 @@ void PbrLightingRenderSystem::gBufferRecreate()
 			Framebuffer::OutputAttachment colorAttachment(shadowImageViews[i], true, false, true);
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
 		}
+
+		Manager::Instance::get()->runEvent("ShadowRecreate");
 	}
 
 	if (lightingDescriptorSet)
@@ -811,26 +814,30 @@ ID<Image> PbrLightingRenderSystem::getDfgLUT()
 }
 ID<Image> PbrLightingRenderSystem::getShadowBuffer()
 {
-	if (!shadowBuffer)
+	if (!shadowBuffer && hasShadowBuffer)
 		shadowBuffer = createShadowBuffer(shadowImageViews);
 	return shadowBuffer;
 }
 ID<Image> PbrLightingRenderSystem::getAoBuffer()
 {
-	if (!aoBuffer)
+	if (!aoBuffer && hasAoBuffer)
 		aoBuffer = createAoBuffer(aoImageViews);
 	return aoBuffer;
 }
 const ID<ImageView>* PbrLightingRenderSystem::getShadowImageViews()
 {
-	if (!shadowBuffer)
+	if (!shadowBuffer && hasShadowBuffer)
 		shadowBuffer = createShadowBuffer(shadowImageViews);
+	if (!shadowImageViews[0] && hasShadowBuffer)
+		createShadowFramebuffers(shadowFramebuffers, shadowImageViews);
 	return shadowImageViews;
 }
 const ID<ImageView>* PbrLightingRenderSystem::getAoImageViews()
 {
-	if (!aoBuffer)
+	if (!aoBuffer && hasAoBuffer)
 		aoBuffer = createAoBuffer(aoImageViews);
+	if (!aoImageViews[0] && hasAoBuffer)
+		createAoFramebuffers(shadowFramebuffers, shadowImageViews);
 	return aoImageViews;
 }
 
@@ -1136,7 +1143,8 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh, ID<Image> specular)
+Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh, 
+	ID<Image> specular, ID<GraphicsPipeline> pipeline)
 {
 	GARDEN_ASSERT(sh);
 	GARDEN_ASSERT(specular);
@@ -1146,10 +1154,11 @@ Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh, I
 
 	map<string, DescriptorSet::Uniform> iblUniforms =
 	{ 
-		{ "data", DescriptorSet::Uniform(sh) },
+		{ "sh", DescriptorSet::Uniform(sh) },
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 
-	auto descritptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(iblUniforms), 1);
-	return Ref<DescriptorSet>(descritptorSet);
+	auto descriptorSet = graphicsSystem->createDescriptorSet(
+		pipeline ? pipeline : lightingPipeline, std::move(iblUniforms), 1);
+	return Ref<DescriptorSet>(descriptorSet);
 }

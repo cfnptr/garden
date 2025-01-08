@@ -19,13 +19,13 @@
 #define ACES_TONE_MAPPER 0
 #define UCHIMURA_TONE_MAPPER 1
 
+spec const bool USE_BLOOM_BUFFER = true;
+spec const uint32 TONE_MAPPER = ACES_TONE_MAPPER;
+
 pipelineState
 {
 	faceCulling = off;
 }
-
-spec const bool USE_BLOOM_BUFFER = true;
-spec const uint32 TONE_MAPPER = ACES_TONE_MAPPER;
 
 uniform pushConstants
 {
@@ -48,7 +48,7 @@ uniform sampler2D
 	filter = linear;
 } bloomBuffer;
 
-in float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.ldr;
 
 //**********************************************************************************************************************

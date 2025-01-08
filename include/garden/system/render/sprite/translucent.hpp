@@ -26,17 +26,17 @@ namespace garden
 /**
  * @brief Translucent sprite rendering data container.
  */
-struct TranslucentSpriteComponent final : public SpriteRenderComponent { };
+struct TransSpriteComponent final : public SpriteRenderComponent { };
 /**
  * @brief Translucent sprite animation frame container.
  */
-struct TranslucentSpriteFrame final : public SpriteAnimationFrame { };
+struct TransSpriteFrame final : public SpriteAnimationFrame { };
 
 /**
  * @brief Translucent sprite rendering system.
  */
-class TranslucentSpriteSystem final : public SpriteRenderCompSystem<
-	TranslucentSpriteComponent, TranslucentSpriteFrame, false, false>, public Singleton<TranslucentSpriteSystem>
+class TransSpriteSystem final : public SpriteRenderCompSystem<
+	TransSpriteComponent, TransSpriteFrame, false, false>, public Singleton<TransSpriteSystem>
 {
 	/**
 	 * @brief Creates a new translucent sprite rendering system instance.
@@ -45,11 +45,11 @@ class TranslucentSpriteSystem final : public SpriteRenderCompSystem<
 	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	TranslucentSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	TransSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys opaque translucent rendering system instance.
 	 */
-	~TranslucentSpriteSystem() final;
+	~TransSpriteSystem() final;
 
 	const string& getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;

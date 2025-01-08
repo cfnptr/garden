@@ -66,7 +66,7 @@ void ToneMappingRenderEditorSystem::editorRender()
 		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
 
 		auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
-		ImGui::ColorEdit4("Shadow Color", &pbrLightingSystem->shadowColor,
+		ImGui::ColorEdit3("Shadow Color", &pbrLightingSystem->shadowColor,
 			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 
 		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
