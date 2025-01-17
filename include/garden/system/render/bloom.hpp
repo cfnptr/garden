@@ -42,11 +42,15 @@ public:
 	/**
 	 * @brief First downsample step shader variant.
 	 */
-	static constexpr uint8 downsample0Variant = 0;
+	static constexpr uint8 downsampleFirstVariant = 0;
+	/**
+	 * @brief 6x6 downsample step shader variant.
+	 */
+	static constexpr uint8 downsample6x6Variant = 1;
 	/**
 	 * @brief Generic downsample step shader variant.
 	 */
-	static constexpr uint8 downsampleVariant = 1;
+	static constexpr uint8 downsampleBaseVariant = 2;
 private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
 	ID<GraphicsPipeline> upsamplePipeline = {};
@@ -103,7 +107,7 @@ public:
 	 */
 	ID<GraphicsPipeline> getDownsamplePipeline();
 	/**
-	 * @brief Returns bloom upwnsample graphics pipeline.
+	 * @brief Returns bloom upsample graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getUpsamplePipeline();
 	/**
