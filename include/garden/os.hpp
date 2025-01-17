@@ -57,7 +57,9 @@ static int getBestForegroundThreadCount()
 	if (cpuName.find("AMD") != std::string::npos)
 	{
 		// Only one of the two CCXes has additional 3D V-Cache.
-		if (cpuName.find("9 7950X3D") != std::string::npos ||
+		if (cpuName.find("9 9950X3D") != std::string::npos ||
+			cpuName.find("9 9900X3D") != std::string::npos ||
+			cpuName.find("9 7950X3D") != std::string::npos ||
 			cpuName.find("9 7900X3D") != std::string::npos ||
 			cpuName.find("9 7945HX3D") != std::string::npos)
 		{
