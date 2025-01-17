@@ -191,7 +191,7 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
 				(uint64)(VkCommandBuffer)buffer->primaryCommandBuffer, name.c_str());
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 			auto imageView = vulkanAPI->imagePool.get(buffer->colorImage);
 			ResourceExt::getDebugName(**imageView) = name;
 		}
@@ -390,7 +390,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 				auto objectName = name + ".secondaryCommandBuffer" + to_string(i);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
 					(uint64)(VkCommandBuffer)commandBuffer, objectName.c_str());
-				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 			}
 			#endif
 		}

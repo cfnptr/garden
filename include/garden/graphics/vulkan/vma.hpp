@@ -14,6 +14,9 @@
 
 // Note: no pragma once here.
 
+#include "volk.h"
+#undef VK_NO_PROTOTYPES
+
 #if __APPLE__
 #define VK_ENABLE_BETA_EXTENSIONS
 #endif

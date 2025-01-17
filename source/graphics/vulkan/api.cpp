@@ -16,8 +16,9 @@
 #include "mpio/directory.hpp"
 
 #define VMA_IMPLEMENTATION
+#define VOLK_IMPLEMENTATION
 #include "garden/graphics/vulkan/vma.hpp"
-#include "garden/graphics/glfw.hpp"
+#include "garden/graphics/glfw.hpp" // Do not move it.
 
 #include <array>
 #include <vector>
@@ -42,10 +43,10 @@ constexpr vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
-static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-	const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
+	vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
+	const vk::DebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData)
 {
 	// TODO: investigate this error after driver/SDK updates.
@@ -56,22 +57,22 @@ static VkBool32 VKAPI_CALL vkDebugMessengerCallback(
 	}
 
 	const char* severity;
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose)
 		severity = "VERBOSE";
-	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+	else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
 		severity = "INFO";
-	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
 		severity = "WARNING";
-	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
 		severity = "ERROR";
 	else
 		severity = "UNKNOWN";
 	cout << "VULKAN::" << severity << ": " << callbackData->pMessage << "\n";
 
-	// Debugginh break points \/
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	// Debuging break points \/
+	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
 		return VK_FALSE; // warning
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
 		return VK_FALSE; // ERROR
 	return VK_FALSE;
 }
@@ -181,18 +182,19 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	#endif
 
 	vk::InstanceCreateInfo instanceInfo(flags, &appInfo, layers, extensions, instanceInfoNext);
-	return vk::createInstance(instanceInfo);
+	auto instance = vk::createInstance(instanceInfo);
+	volkLoadInstance(instance);
+	return instance;
 }
 
 #if GARDEN_DEBUG
-static vk::DebugUtilsMessengerEXT createVkDebugMessenger(
-	vk::Instance instance, const vk::DispatchLoaderDynamic& dynamicLoader)
+static vk::DebugUtilsMessengerEXT createVkDebugMessenger(vk::Instance instance)
 {
 	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
 	debugUtilsInfo.messageSeverity = debugMessageSeverity;
 	debugUtilsInfo.messageType = debugMessageType;
 	debugUtilsInfo.pfnUserCallback = vkDebugMessengerCallback;
-	return instance.createDebugUtilsMessengerEXT(debugUtilsInfo, nullptr, dynamicLoader);
+	return instance.createDebugUtilsMessengerEXT(debugUtilsInfo, nullptr);
 }
 #endif
 
@@ -542,36 +544,9 @@ static vk::Device createVkDevice(
 	}
 
 	vk::DeviceCreateInfo deviceInfo({}, queueInfos, {}, extensions, {}, &deviceFeatures);
-	return physicalDevice.createDevice(deviceInfo);
-}
-
-//**********************************************************************************************************************
-static void updateVkDynamicLoader(uint32 versionMajor, uint32 versionMinor,
-	vk::Device device, vk::DispatchLoaderDynamic& dynamicLoader)
-{
-	PFN_vkVoidFunction pointer;
-
-	if (versionMinor < 3)
-	{
-		pointer = vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR");
-		if (pointer) dynamicLoader.vkCmdBeginRenderingKHR =
-			PFN_vkCmdBeginRenderingKHR(pointer);
-		pointer = vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR");
-		if (pointer) dynamicLoader.vkCmdEndRenderingKHR =
-			PFN_vkCmdEndRenderingKHR(pointer);
-	}
-
-	#if GARDEN_DEBUG
-	pointer = vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
-	if (pointer) dynamicLoader.vkSetDebugUtilsObjectNameEXT =
-		PFN_vkSetDebugUtilsObjectNameEXT(pointer);
-	pointer = vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT");
-	if (pointer) dynamicLoader.vkCmdBeginDebugUtilsLabelEXT =
-		PFN_vkCmdBeginDebugUtilsLabelEXT(pointer);
-	pointer = vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT");
-	if (pointer) dynamicLoader.vkCmdEndDebugUtilsLabelEXT =
-		PFN_vkCmdEndDebugUtilsLabelEXT(pointer);
-	#endif
+	auto device = physicalDevice.createDevice(deviceInfo);
+	volkLoadDevice(device);
+	return device;
 }
 
 //**********************************************************************************************************************
@@ -751,14 +726,15 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	uint32 graphicsQueueMaxCount = 0, transferQueueMaxCount = 0, computeQueueMaxCount = 0;
 	uint32 frameQueueIndex = 0, graphicsQueueIndex = 0, transferQueueIndex = 0, computeQueueIndex = 0;
 
+	if (volkInitialize() != VK_SUCCESS)
+		throw GardenError("Failed to load Vulkan loader.");
+
 	#if GARDEN_DEBUG
 	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, hasDebugUtils);
-	dynamicLoader = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 	if (hasDebugUtils)
-		debugMessenger = createVkDebugMessenger(instance, dynamicLoader);
+		debugMessenger = createVkDebugMessenger(instance);
 	#else
 	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor);
-	dynamicLoader = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 	#endif
 	
 	physicalDevice = getBestPhysicalDevice(instance);
@@ -774,7 +750,6 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 		transferQueueFamilyIndex, computeQueueFamilyIndex, graphicsQueueMaxCount, transferQueueMaxCount, 
 		computeQueueMaxCount,frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex,
 		hasMemoryBudget, hasMemoryPriority, hasPageableMemory, hasDynamicRendering, hasDescriptorIndexing);
-	updateVkDynamicLoader(versionMajor, versionMinor, device, dynamicLoader);
 	memoryAllocator = createVmaMemoryAllocator(versionMajor, versionMinor,
 		instance, physicalDevice, device, hasMemoryBudget, hasMemoryPriority);
 	frameQueue = device.getQueue(graphicsQueueFamilyIndex, frameQueueIndex);
@@ -845,7 +820,7 @@ VulkanAPI::~VulkanAPI()
 
 	#if GARDEN_DEBUG
 	if (hasDebugUtils)
-		instance.destroy(debugMessenger, nullptr, dynamicLoader);
+		instance.destroy(debugMessenger, nullptr);
 	#endif
 
 	instance.destroy();

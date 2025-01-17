@@ -191,7 +191,7 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/voxy/include libraries/vma/include libraries/stb
 	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan nlohmann_json::nlohmann_json xxHash::xxhash 
+set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash 
 	ecsm-static math-static conf-static pack-static logy-static nets-static 
 	voxy glfw webp png_static tinyexr FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
@@ -201,6 +201,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 find_package(Vulkan REQUIRED)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_XLIB_KHR)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+endif()
+add_subdirectory(libraries/volk)
 
 set(ECSM_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(ECSM_BUILD_TESTS OFF CACHE BOOL "" FORCE)

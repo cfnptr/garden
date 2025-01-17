@@ -518,14 +518,14 @@ void DescriptorSet::setDebugName(const string& name)
 				nameInfo.objectHandle = (uint64)instances[i];
 				auto itemName = name + to_string(i);
 				nameInfo.pObjectName = itemName.c_str();
-				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 			}
 		}
 		else
 		{
 			nameInfo.objectHandle = (uint64)instance;
 			nameInfo.pObjectName = name.c_str();
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 	}
 	else abort();

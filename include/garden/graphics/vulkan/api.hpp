@@ -69,7 +69,6 @@ public:
 	uint32 versionMajor = 0;
 	uint32 versionMinor = 0;
 	vk::Instance instance;
-	vk::DispatchLoaderDynamic dynamicLoader;
 	vk::PhysicalDevice physicalDevice;
 	vk::SurfaceKHR surface;
 	uint32 graphicsQueueFamilyIndex = 0;

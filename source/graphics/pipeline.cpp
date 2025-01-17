@@ -97,7 +97,7 @@ static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::Sample
 			auto name = "sampler." + pipelinePath.generic_string() + "." + it->first;
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(
 				vk::ObjectType::eSampler, (uint64)(VkSampler)sampler, name.c_str());
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
 	}
@@ -220,7 +220,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(i);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorPool,
 					(uint64)(VkSampler)descriptorPools[i], name.c_str());
-				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 			}
 			#endif
 		}
@@ -236,7 +236,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
 				(uint64)descriptorSetLayouts[i], name.c_str());
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
 	}
@@ -273,7 +273,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Shade
 		auto name = "pipelineLayout." + pipelinePath.generic_string();
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::ePipelineLayout,
 			(uint64)(VkPipelineLayout)layout, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 	}
 	#endif
 
@@ -355,7 +355,7 @@ static vector<void*> createVkShaders(const vector<vector<uint8>>& code, const fs
 		{
 			auto _name = "shaderModule." + pipelinePath.generic_string() + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eShaderModule, (uint64)shaders[i], _name.c_str());
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
 	}

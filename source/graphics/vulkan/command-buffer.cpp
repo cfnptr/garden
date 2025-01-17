@@ -61,7 +61,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 		{
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
 				(uint64)(VkCommandBuffer)instance, name);
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 	}
 	#endif
@@ -751,7 +751,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
 
 		if (vulkanAPI->versionMinor < 3)
-			instance.beginRenderingKHR(renderingInfo, vulkanAPI->dynamicLoader);
+			instance.beginRenderingKHR(renderingInfo);
 		else 
 			instance.beginRendering(renderingInfo);
 	}
@@ -849,7 +849,7 @@ void VulkanCommandBuffer::processCommand(const EndRenderPassCommand& command)
 	if (noSubpass)
 	{
 		if (VulkanAPI::get()->versionMinor < 3)
-			instance.endRenderingKHR(VulkanAPI::get()->dynamicLoader);
+			instance.endRenderingKHR();
 		else
 			instance.endRendering();
 	}
@@ -1564,12 +1564,12 @@ void VulkanCommandBuffer::processCommand(const BeginLabelCommand& command)
 	auto floatColor = (float4)command.color;
 	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
-	instance.beginDebugUtilsLabelEXT(debugLabel, VulkanAPI::get()->dynamicLoader);
+	instance.beginDebugUtilsLabelEXT(debugLabel);
 }
 void VulkanCommandBuffer::processCommand(const EndLabelCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("EndLabel Command Process");
-	instance.endDebugUtilsLabelEXT(VulkanAPI::get()->dynamicLoader);
+	instance.endDebugUtilsLabelEXT();
 }
 void VulkanCommandBuffer::processCommand(const InsertLabelCommand& command)
 {
@@ -1579,6 +1579,6 @@ void VulkanCommandBuffer::processCommand(const InsertLabelCommand& command)
 	auto floatColor = (float4)command.color;
 	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
-	instance.beginDebugUtilsLabelEXT(debugLabel, VulkanAPI::get()->dynamicLoader);
+	instance.beginDebugUtilsLabelEXT(debugLabel);
 }
 #endif
