@@ -436,7 +436,7 @@ public:
 	 * @brief Clears image region with specified color.
 	 * @details See the @ref Image::clear().
 	 *
-	 * @param[in] color unsinged integer color for clearing
+	 * @param[in] color unsigned integer color for clearing
 	 * @param[in] region target image region
 	 */
 	void clear(const uint4& color, const ClearRegion& region) { clear(color, &region, 1); }
@@ -706,7 +706,7 @@ public:
 	static void blit(ID<Image> source, ID<Image> destination, SamplerFilter filter = SamplerFilter::Nearest)
 	{ BlitRegion region; blit(source, destination, &region, 1, filter); }
 
-	// TODO: add support of self copying and bliting if regions not overlapping.
+	// TODO: add support of self copying and blitting if regions not overlapping.
 };
 
 /**

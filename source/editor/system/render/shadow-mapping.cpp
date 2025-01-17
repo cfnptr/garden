@@ -63,7 +63,7 @@ void ShadowMappingEditor::render()
 
 		ImGui::DragFloat("Z-Axis Offset Coefficient", &system->zCoeff, 0.01f);
 		ImGui::SliderFloat3("Cascade Split Coefficients",
-			&system->splitCoefs, 0.0f, 1.0f);
+			&system->splitCoeffs, 0.0f, 1.0f);
 
 		ImGui::Checkbox("Visualize Cascades", &visualizeCascades);
 		if (ImGui::BeginItemTooltip())
@@ -73,9 +73,9 @@ void ShadowMappingEditor::render()
 		}
 
 		ImGui::Text("Cascade distances: %f, %f, %f",
-			system->splitCoefs[0] * system->farPlane,
-			system->splitCoefs[1] * system->farPlane,
-			system->splitCoefs[2] * system->farPlane);
+			system->splitCoeffs[0] * system->farPlane,
+			system->splitCoeffs[1] * system->farPlane,
+			system->splitCoeffs[2] * system->farPlane);
 
 		// TODO: set shadow map size, also set it in the settings
 

@@ -231,9 +231,9 @@ bool ShadowMappingRenderSystem::prepareShadowRender(uint32 passIndex,
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	
 	auto nearPlane = cameraView->p.perspective.nearPlane;
-	auto farPlane = nearPlane + this->farPlane * splitCoefs[passIndex];
+	auto farPlane = nearPlane + this->farPlane * splitCoeffs[passIndex];
 	if (passIndex > 0)
-		nearPlane += this->farPlane * splitCoefs[passIndex - 1];
+		nearPlane += this->farPlane * splitCoeffs[passIndex - 1];
 	farPlanes[passIndex] = farPlane;
 
 	viewProj = calcLightViewProj(cameraView->p.perspective.fieldOfView,
@@ -271,10 +271,10 @@ void ShadowMappingRenderSystem::recreateSwapchain(const SwapchainChanges& change
 	if ((changes.framebufferSize || changes.bufferCount) && descriptorSet)
 	{
 		auto graphicsSystem = getGraphicsSystem();
-		auto uniforms = getUniforms(getManager(),
-			graphicsSystem, shadowMap, dataBuffers);
-		auto descriptorSetView = graphicsSystem->get(descriptorSet);
-		descriptorSetView->recreate(std::move(uniforms));
+		graphicsSystem->destroy(descriptorSet);
+		auto uniforms = getUniforms(graphicsSystem, shadowMap, dataBuffers);
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shadow-mapping");
 	}
 }
 

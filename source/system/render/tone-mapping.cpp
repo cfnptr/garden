@@ -111,6 +111,7 @@ void ToneMappingRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 		graphicsSystem->destroy(luminanceBuffer);
 
@@ -166,9 +167,11 @@ void ToneMappingRenderSystem::gBufferRecreate()
 {
 	if (descriptorSet)
 	{
-		auto descriptorSetView = GraphicsSystem::Instance::get()->get(descriptorSet);
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(descriptorSet);
 		auto uniforms = getUniforms(luminanceBuffer, useBloomBuffer);
-		descriptorSetView->recreate(std::move(uniforms));
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
 	}
 }
 
@@ -177,14 +180,15 @@ void ToneMappingRenderSystem::setConsts(bool useBloomBuffer, ToneMapper toneMapp
 	if (this->useBloomBuffer == useBloomBuffer && this->toneMapper == toneMapper)
 		return;
 
-	this->useBloomBuffer = useBloomBuffer; this->toneMapper = toneMapper;
+	this->useBloomBuffer = useBloomBuffer;
+	this->toneMapper = toneMapper;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(descriptorSet);
+	descriptorSet = {};
 
 	if (pipeline)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		descriptorSet = {};
-
 		graphicsSystem->destroy(pipeline);
 		pipeline = createPipeline(useBloomBuffer, toneMapper);
 	}

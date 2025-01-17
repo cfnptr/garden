@@ -45,7 +45,7 @@ class DeferredRenderEditorSystem final : public System
 		float clearCoat;
 	};
 
-	ID<Image> shadowPlaceholder = {};
+	ID<Image> blackPlaceholder = {};
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};

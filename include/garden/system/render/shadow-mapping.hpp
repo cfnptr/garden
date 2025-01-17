@@ -74,7 +74,7 @@ private:
 	
 	friend class ecsm::Manager;
 public:
-	float3 splitCoefs = float3(0.05f, 0.2f, 0.75f); // 100% in sum
+	float3 splitCoeffs = float3(0.05f, 0.2f, 0.75f); // 100% in sum
 	float intensity = 0.75f;
 	float farPlane = 100.0f;
 	float minBias = 0.001f;

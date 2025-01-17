@@ -102,7 +102,8 @@ void AutoExposureRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(averagePipeline);
+		graphicsSystem->destroy(averageDescriptorSet);
+		graphicsSystem->destroy(histogramDescriptorSet);
 		graphicsSystem->destroy(histogramPipeline);
 		graphicsSystem->destroy(histogramBuffer);
 
@@ -181,9 +182,11 @@ void AutoExposureRenderSystem::gBufferRecreate()
 {
 	if (histogramDescriptorSet)
 	{
-		auto descriptorSetView = GraphicsSystem::Instance::get()->get(histogramDescriptorSet);
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(histogramDescriptorSet);
 		auto uniforms = getHistogramUniforms(histogramBuffer);
-		descriptorSetView->recreate(std::move(uniforms));
+		histogramDescriptorSet = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.auto-exposure.histogram");
 	}
 }
 

@@ -303,10 +303,7 @@ private:
 	friend class LinearPool<RigidbodyComponent>;
 	friend class ComponentSystem<RigidbodyComponent>;
 public:
-	/**
-	 * @brief Rigidbody events listener name.
-	 */
-	string eventListener;
+	string eventListener; /**< Rigidbody events listener name. */
 
 	/**
 	 * @brief Returns rigidbody constraint array.

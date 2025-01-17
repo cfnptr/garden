@@ -58,7 +58,7 @@ float3 evaluateDirectLight(GBufferValues gBuffer, DirectLight directLight, float
 
 //**********************************************************************************************************************
 float3 evaluateIBL(GBufferValues gBuffer, float4 shadow, float3 viewDirection, 
-	sampler2D dfgLUT, const float4 iblSH[SH_COEF_COUNT], samplerCube iblSpecular)
+	sampler2D dfgLUT, const float4 iblSH[SH_COEFF_COUNT], samplerCube iblSpecular)
 {
 	float3 shadowColor = shadow.rgb * shadow.a;
 	float roughness = max(gBuffer.roughness, 0.045f); // Perceptual.

@@ -124,26 +124,11 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 
 	friend class ecsm::Manager;
 public:
-	/*******************************************************************************************************************
-	 * @brief Current main render camera.
-	 */
-	ID<Entity> camera = {};
-	/**
-	 * @brief Current main directional light. (sun)
-	 */
-	ID<Entity> directionalLight = {};
-	/**
-	 * @brief Frames per second limit.
-	 */
-	uint16 maxFPS = 60;
-	/**
-	 * @brief Vertical synchronization state. (V-Sync)
-	 */
-	bool useVsync = false;
-	/**
-	 * @brief Swapchain triple buffering state.
-	 */
-	bool useTripleBuffering = false;
+	ID<Entity> camera = {};           /**< Current main render camera. */
+	ID<Entity> directionalLight = {}; /**< Current main directional light. (Sun) */
+	uint16 maxFPS = 60;               /**< Frames per second limit. */
+	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
+	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
 
 	/**
 	 * @brief Returns frame render scale.

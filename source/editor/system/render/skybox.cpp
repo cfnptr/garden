@@ -36,6 +36,8 @@ SkyboxRenderEditorSystem::~SkyboxRenderEditorSystem()
 
 void SkyboxRenderEditorSystem::init()
 {
+	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", SkyboxRenderEditorSystem::editorSettings);
+
 	EditorRenderSystem::Instance::get()->registerEntityInspector<SkyboxRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
@@ -46,10 +48,25 @@ void SkyboxRenderEditorSystem::init()
 void SkyboxRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SkyboxRenderComponent>();
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", SkyboxRenderEditorSystem::editorSettings);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
+void SkyboxRenderEditorSystem::editorSettings()
+{
+	if (ImGui::CollapsingHeader("Skybox"))
+	{
+		auto skyboxSystem = SkyboxRenderSystem::Instance::get();
+
+		ImGui::Indent();
+		ImGui::Checkbox("Enabled", &skyboxSystem->isEnabled);
+		ImGui::Unindent();
+		ImGui::Spacing();
+	}
+}
+
 void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)

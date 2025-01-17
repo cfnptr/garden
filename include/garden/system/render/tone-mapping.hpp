@@ -83,14 +83,8 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	/*******************************************************************************************************************
-	 * @brief Tone mapping exposure factor.
-	 */
 	float exposureFactor = 1.0f;
-	/**
-	 * @brief Image dithering effect intensity. (255 for R8G8B8 format)
-	 */
-	float ditherIntensity = (0.5f / 255.0f);
+	float ditherIntensity = (0.5f / 255.0f); /**< (255 for R8G8B8 format) */
 
 	/**
 	 * @brief Use bloom (light glow) buffer for tone mapping.

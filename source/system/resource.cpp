@@ -591,7 +591,7 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 	{
 		auto errorString = string(error);
 		FreeEXRErrorMessage(error);
-		throw GardenError("Faield to store EXR image. ("
+		throw GardenError("Failed to store EXR image. ("
 			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
 	}
 }
@@ -985,7 +985,7 @@ static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::
 			{
 				auto pixels = (float4*)pixelArrays[i].data();
 				for (uint32 i = 0; i < count; i++)
-					pixels[i] = float4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkboard pattern?
+					pixels[i] = float4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkerboard pattern?
 			}
 			else
 			{
@@ -1277,9 +1277,9 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<Graphi
 	GARDEN_ASSERT(graphicsPipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	auto searchrResult = sharedDescriptorSets.find(hash);
-	if (searchrResult != sharedDescriptorSets.end())
-		return searchrResult->second;
+	auto searchResult = sharedDescriptorSets.find(hash);
+	if (searchResult != sharedDescriptorSets.end())
+		return searchResult->second;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), index);
@@ -1297,9 +1297,9 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<Comput
 	GARDEN_ASSERT(computePipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	auto searchrResult = sharedDescriptorSets.find(hash);
-	if (searchrResult != sharedDescriptorSets.end())
-		return searchrResult->second;
+	auto searchResult = sharedDescriptorSets.find(hash);
+	if (searchResult != sharedDescriptorSets.end())
+		return searchResult->second;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), index);
@@ -2281,7 +2281,6 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	}
 */
 
-//--------------------------------------------------------------------------------------------------
 /* TODO: refactor
 Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor accessor,
 	Buffer::Bind bind, Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)

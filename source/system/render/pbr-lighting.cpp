@@ -43,7 +43,7 @@ namespace garden::graphics
 	};
 }
 
-#if 0 // Used to precompute Ki coefs.
+#if 0 // Used to precompute Ki coeffs.
 //**********************************************************************************************************************
 static uint32 factorial(uint32 x)
 {
@@ -92,7 +92,7 @@ static double computeTruncatedCosSh(uint32 l)
 //**********************************************************************************************************************
 static void computeKi()
 {
-	double ki[shCoefCount];
+	double ki[shCoeffCount];
 
 	for (uint32 l = 0; l < shBandCount; l++)
 	{
@@ -114,7 +114,7 @@ static void computeKi()
 		}
 	}
 
-	for (uint32 i = 0; i < shCoefCount; i++)
+	for (uint32 i = 0; i < shCoeffCount; i++)
 		cout << i << ". " << setprecision(36) << ki[i] << "\n";
 }
 #endif
@@ -188,10 +188,11 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto shadowBufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
-		graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
+		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
+		Image::Bind::TransferDst, mips, shadowBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadow.buffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
@@ -217,7 +218,7 @@ static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowIma
 static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
@@ -240,10 +241,11 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto aoBufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Bind::ColorAttachment |
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferDst, mips,
-		graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
+		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
+		Image::Bind::TransferDst, mips, aoBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.ao.buffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
@@ -269,7 +271,7 @@ static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
@@ -471,6 +473,8 @@ void PbrLightingRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(aoDenoiseDescriptorSet);
+		graphicsSystem->destroy(lightingDescriptorSet);
 		graphicsSystem->destroy(iblSpecularPipeline);
 		graphicsSystem->destroy(lightingPipeline);
 		graphicsSystem->destroy(aoDenoisePipeline);
@@ -478,6 +482,7 @@ void PbrLightingRenderSystem::deinit()
 		destroyAoBuffer(aoBuffer, aoImageViews);
 		destroyShadowFramebuffers(aoFramebuffers);
 		destroyShadowBuffer(shadowBuffer, shadowImageViews);
+		graphicsSystem->destroy(dfgLUT);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingRenderSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", PbrLightingRenderSystem::hdrRender);
@@ -661,7 +666,7 @@ void PbrLightingRenderSystem::hdrRender()
 void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 
 	if (aoBuffer)
 	{
@@ -697,15 +702,15 @@ void PbrLightingRenderSystem::gBufferRecreate()
 
 	if (lightingDescriptorSet)
 	{
-		auto descriptorSetView = graphicsSystem->get(lightingDescriptorSet);
+		graphicsSystem->destroy(lightingDescriptorSet);
 		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
-		descriptorSetView->recreate(std::move(uniforms));
+		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
 	}
 	if (aoDenoiseDescriptorSet)
 	{
-		auto descriptorSetView = graphicsSystem->get(aoDenoiseDescriptorSet);
+		graphicsSystem->destroy(aoDenoiseDescriptorSet);
 		auto uniforms = getAoDenoiseUniforms(aoImageViews);
-		descriptorSetView->recreate(std::move(uniforms));
+		aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
 	}
 }
 
@@ -722,9 +727,8 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	if (this->hasShadowBuffer == useShadowBuffer && this->hasAoBuffer == useAoBuffer)
 		return;
 
-	this->hasShadowBuffer = useShadowBuffer; this->hasAoBuffer = useAoBuffer;
-	if (!lightingPipeline)
-		return;
+	this->hasShadowBuffer = useShadowBuffer;
+	this->hasAoBuffer = useAoBuffer;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(lightingDescriptorSet);
@@ -768,8 +772,11 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 		}
 	}
 
-	graphicsSystem->destroy(lightingPipeline);
-	lightingPipeline = createLightingPipeline(useShadowBuffer, useAoBuffer);
+	if (lightingPipeline)
+	{
+		graphicsSystem->destroy(lightingPipeline);
+		lightingPipeline = createLightingPipeline(useShadowBuffer, useAoBuffer);
+	}
 }
 
 //**********************************************************************************************************************
@@ -845,9 +852,9 @@ const ID<ImageView>* PbrLightingRenderSystem::getAoImageViews()
 static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemapSize, 
 	uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
 {
-	auto sh = shBufferData + taskIndex * shCoefCount;
+	auto sh = shBufferData + taskIndex * shCoeffCount;
 	auto invDim = 1.0f / cubemapSize;
-	float shb[shCoefCount];
+	float shb[shCoeffCount];
 
 	for (uint8 face = 0; face < 6; face++)
 	{
@@ -861,7 +868,7 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 			color *= calcSolidAngle(st, invDim);
 			computeShBasis(dir, shb);
 
-			for (uint32 j = 0; j < shCoefCount; j++)
+			for (uint32 j = 0; j < shCoeffCount; j++)
 				sh[j] += color * shb[j];
 		}
 	}
@@ -880,7 +887,7 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
 		bufferCount = threadPool.getThreadCount();
-		shBuffer.resize(bufferCount * shCoefCount);
+		shBuffer.resize(bufferCount * shCoeffCount);
 		shBufferData = shBuffer.data();
 
 		threadPool.addItems([&](const ThreadPool::Task& task)
@@ -898,7 +905,7 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 		SET_CPU_ZONE_SCOPED("IBL SH Generate");
 
 		bufferCount = 1;
-		shBuffer.resize(shCoefCount);
+		shBuffer.resize(shCoeffCount);
 		shBufferData = shBuffer.data();
 		calcIblSH(shBufferData, faces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
 	}
@@ -907,13 +914,13 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	{
 		for (uint32 i = 1; i < bufferCount; i++)
 		{
-			auto data = shBufferData + i * shCoefCount;
-			for (uint32 j = 0; j < shCoefCount; j++)
+			auto data = shBufferData + i * shCoeffCount;
+			for (uint32 j = 0; j < shCoeffCount; j++)
 				shBufferData[j] += data[j];
 		}
 	}
 
-	for (uint32 i = 0; i < shCoefCount; i++)
+	for (uint32 i = 0; i < shCoeffCount; i++)
 		shBufferData[i] *= ki[i];
 	
 	deringingSH(shBufferData);
@@ -921,7 +928,7 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 
 	// TODO: check if final SH is the same as debug in release build.
 	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
-		Buffer::Access::None, shBufferData, shCoefCount * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
+		Buffer::Access::None, shBufferData, shCoeffCount * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************

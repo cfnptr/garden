@@ -42,7 +42,7 @@ enum class CharacterGround : uint8
 	NotSupported,
 	/**< Character is in the air and is not touching anything. */
 	InAir,
-	/**< Character ground ctate count. */
+	/**< Character ground state count. */
 	Count,
 };
 
@@ -63,10 +63,7 @@ private:
 	friend class LinearPool<CharacterComponent>;
 	friend class ComponentSystem<CharacterComponent>;
 public:
-	/**
-	 * @brief Character collision layer index.
-	 */
-	uint16 collisionLayer = (uint16)CollisionLayer::Moving;
+	uint16 collisionLayer = (uint16)CollisionLayer::Moving; /**< Character collision layer index. */
 
 	/**
 	 * @brief Returns character shape instance.
@@ -86,34 +83,34 @@ public:
 	void setShape(ID<Shape> shape, float mass = 70.0f, float maxPenetrationDepth = FLT_MAX);
 
 	/**
-	 * @brief Returns character position in the phyics simulation world.
+	 * @brief Returns character position in the physics simulation world.
 	 */
 	float3 getPosition() const;
 	/**
-	 * @brief Sets character position in the phyics simulation world.
+	 * @brief Sets character position in the physics simulation world.
 	 * @param[in] position target character position
 	 */
 	void setPosition(const float3& position);
 
 	/**
-	 * @brief Returns character rotation in the phyics simulation world.
+	 * @brief Returns character rotation in the physics simulation world.
 	 */
 	quat getRotation() const;
 	/**
-	 * @brief Sets character rotation in the phyics simulation world.
+	 * @brief Sets character rotation in the physics simulation world.
 	 * @param[in] rotation target character rotation
 	 */
 	void setRotation(const quat& rotation);
 
 	/**
-	 * @brief Returns character position and rotation in the phyics simulation world.
+	 * @brief Returns character position and rotation in the physics simulation world.
 	 *
 	 * @param[out] position character position
 	 * @param[out] rotation character rotation
 	 */
 	void getPosAndRot(float3& position, quat& rotation) const;
 	/**
-	 * @brief Sets character position and rotation in the phyics simulation world.
+	 * @brief Sets character position and rotation in the physics simulation world.
 	 *
 	 * @param[in] position target character position
 	 * @param[in] rotation target character rotation
@@ -121,7 +118,7 @@ public:
 	void setPosAndRot(const float3& position, const quat& rotation);
 	/**
 	 * @brief Are character position and rotation differ from the specified values.
-	 * @note It also checks if values are far enought to count it as changed.
+	 * @note It also checks if values are far enough to count it as changed.
 	 *
 	 * @param[in] position target character position
 	 * @param[in] rotation target character rotation
@@ -144,11 +141,11 @@ public:
 	CharacterGround getGroundState() const;
 
 	/**
-	 * @brief Returns characater mass. (kg)
+	 * @brief Returns character mass. (kg)
 	 */
 	float getMass() const;
 	/**
-	 * @brief Sets characater mass. (kg)
+	 * @brief Sets character mass. (kg)
 	 * @param mass target character mass
 	 */
 	void setMass(float mass);
@@ -249,7 +246,7 @@ public:
 	 * @brief Sets character world space position and rotation from a transform.
 	 * @details It also sets world transform for all character descendants.
 	 *
-	 * @param entity target character enity instance
+	 * @param entity target character entity instance
 	 */
 	void setWorldTransformRecursive(ID<Entity> entity);
 };

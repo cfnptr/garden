@@ -232,9 +232,11 @@ void AutoExposureRenderEditorSystem::gBufferRecreate()
 {
 	if (limitsDescriptorSet)
 	{
-		auto limitsDescriptorSetView = GraphicsSystem::Instance::get()->get(limitsDescriptorSet);
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(limitsDescriptorSet);
 		auto uniforms = getLimitsUniforms();
-		limitsDescriptorSetView->recreate(std::move(uniforms));
+		limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.auto-exposure.editor.limits");
 	}
 }
 

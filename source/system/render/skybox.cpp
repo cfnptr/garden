@@ -107,6 +107,9 @@ void SkyboxRenderSystem::translucentRender()
 {
 	SET_CPU_ZONE_SCOPED("Skybox Translucent Render");
 
+	if (!isEnabled)
+		return;
+		
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!graphicsSystem->camera)
 		return;
@@ -125,18 +128,17 @@ void SkyboxRenderSystem::translucentRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	auto threadIndex = graphicsSystem->getThreadCount() - 1;
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>(threadIndex);
+	auto pushConstants = pipelineView->getPushConstants<PushConstants>(0);
 	pushConstants->viewProj = cameraConstants.viewProj;
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
-		pipelineView->bindAsync(0, threadIndex);
-		pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
-		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, threadIndex);
-		pipelineView->pushConstantsAsync(threadIndex);
-		pipelineView->drawAsync(threadIndex, {}, primitive::cubeVertices.size());
+		pipelineView->bindAsync(0, 0);
+		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
+		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
+		pipelineView->pushConstantsAsync(0);
+		pipelineView->drawAsync(0, {}, primitive::cubeVertices.size());
 	}
 	else
 	{
@@ -176,6 +178,6 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(const string& path, ID<Ima
 	{ { "cubemap", DescriptorSet::Uniform(cubemapView->getDefaultView()) } };
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), pipeline, std::move(uniforms));
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptoSet.shared." + path);
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + path);
 	return descriptorSet;
 }
