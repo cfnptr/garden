@@ -16,8 +16,9 @@
 #include "common/gbuffer.gsl"
 #include "common/tone-mapping.gsl"
 
-#variantCount 2
-#define DOWNSAMPLE_0_VARIANT 0
+#variantCount 3
+#define DOWNSAMPLE_FIRST_VARIANT 0
+#define DOWNSAMPLE_6X6_VARIANT 1
 
 spec const bool USE_THRESHOLD = false;
 spec const bool USE_ANTI_FLICKERING = true;
@@ -100,15 +101,46 @@ float3 downsample(sampler2D srcTexture, float2 texCoords, float threshold, bool 
 	return color;
 }
 
+//**********************************************************************************************************************
+float3 downsample6x6(sampler2D srcTexture, float2 texCoords)
+{
+	const float o  = 1.5f + 0.261629f;
+	const float wa = 7.46602f / 32.0f;
+	const float wb = 1.0f - wa * 2.0f;
+	const float wab = wa * wb;
+	const float waa = wa * wa;
+	const float wbb = wb * wb;
+
+	float2 size = textureSize(srcTexture, 0);
+	size = (1.0f / size) * o;
+
+	float3 c  = texture(srcTexture, texCoords + float2(0.0f            )).rgb;
+	float3 l  = texture(srcTexture, texCoords + float2(-size.x,    0.0f)).rgb;
+	float3 r  = texture(srcTexture, texCoords + float2( size.x,    0.0f)).rgb;
+	float3 b  = texture(srcTexture, texCoords + float2(   0.0f, -size.y)).rgb;
+	float3 t  = texture(srcTexture, texCoords + float2(   0.0f,  size.y)).rgb;
+	float3 lb = texture(srcTexture, texCoords + float2(-size.x, -size.y)).rgb;
+	float3 rb = texture(srcTexture, texCoords + float2( size.x, -size.y)).rgb;
+	float3 lt = texture(srcTexture, texCoords + float2(-size.x,  size.y)).rgb;
+	float3 rt = texture(srcTexture, texCoords + float2( size.x,  size.y)).rgb;
+
+	return (c * wbb + (l * wab + (r * wab + (b * wab + (t * wab + 
+		(lb * waa + (rb * waa + (lt * waa + (rt * waa)))))))));
+}
+
 void main()
 {
 	float3 color;
 
-	if (gsl.variant == DOWNSAMPLE_0_VARIANT)
+	if (gsl.variant == DOWNSAMPLE_FIRST_VARIANT)
 	{
 		color = downsample(srcTexture, fs.texCoords,
 			pc.threshold, USE_THRESHOLD, USE_ANTI_FLICKERING);
 		color = max(color, 0.0001f);
+	}
+	else if (gsl.variant == DOWNSAMPLE_6X6_VARIANT)
+	{
+		color = downsample6x6(srcTexture, fs.texCoords);
 	}
 	else
 	{

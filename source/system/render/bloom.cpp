@@ -48,12 +48,10 @@ static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 	return image;
 }
 
-//**********************************************************************************************************************
 static void createBloomFramebuffers(const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	framebufferSize = max(framebufferSize / 2u, uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
 	auto mipCount = (uint8)imageViews.size();
 	framebuffers.resize(mipCount);
 
@@ -104,7 +102,6 @@ static void createBloomDescriptorSets(ID<Image> bloomBuffer,
 	}
 }
 
-//**********************************************************************************************************************
 static ID<GraphicsPipeline> createDownsamplePipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
@@ -224,17 +221,21 @@ void BloomRenderSystem::preLdrRender()
 
 		SET_GPU_DEBUG_LABEL("Downsample", Color::transparent);
 		framebufferView->beginRenderPass(float4(0.0f));
-		downsamplePipelineView->bind(downsample0Variant);
+		downsamplePipelineView->bind(downsampleFirstVariant);
 		downsamplePipelineView->setViewportScissor();
 		downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
 		downsamplePipelineView->pushConstants();
 		downsamplePipelineView->drawFullscreen();
 		framebufferView->endRenderPass();
 
-		downsamplePipelineView->bind(downsampleVariant);
 		for (uint8 i = 1; i < mipCount; i++)
 		{
+			framebufferView = graphicsSystem->get(framebuffers[i - 1]);
+			auto framebufferSize = framebufferView->getSize();
+
 			framebufferView = graphicsSystem->get(framebuffers[i]);
+			downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
+				downsampleBaseVariant : downsample6x6Variant);
 			framebufferView->beginRenderPass(float4(0.0f));
 			downsamplePipelineView->setViewportScissor();
 			downsamplePipelineView->bindDescriptorSet(descriptorSets[i]);
@@ -285,7 +286,6 @@ void BloomRenderSystem::gBufferRecreate()
 	}
 }
 
-//**********************************************************************************************************************
 void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
 {
 	if (this->useThreshold == useThreshold && this->useAntiFlickering == useAntiFlickering)
@@ -294,13 +294,13 @@ void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
 	this->useThreshold = useThreshold;
 	this->useAntiFlickering = useAntiFlickering;
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(descriptorSets);
+	descriptorSets.clear();
+	
 	if (downsamplePipeline)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSets);
-		descriptorSets.clear();
 		graphicsSystem->destroy(downsamplePipeline);
-
 		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold, useAntiFlickering);
 	}
 }
