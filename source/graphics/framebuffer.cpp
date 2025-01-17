@@ -580,10 +580,10 @@ void Framebuffer::setDebugName(const string& name)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		nameInfo.objectType = vk::ObjectType::eRenderPass;
 		nameInfo.objectHandle = (uint64)renderPass;
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 	}
 	else abort();
 }

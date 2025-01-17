@@ -287,7 +287,7 @@ void Image::setDebugName(const string& name)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 	}
 	else abort();
 }
@@ -301,16 +301,24 @@ void Image::generateMips(SamplerFilter filter)
 	auto image = GraphicsAPI::get()->imagePool.getID(this);
 	auto mipSize = size;
 
-	for (uint8 i = 1; i < mipCount; i++)
+	for (uint8 mip = 1; mip < mipCount; mip++)
 	{
 		Image::BlitRegion region;
 		region.srcExtent = mipSize;
 		mipSize = max(mipSize / 2u, uint3(1));
 		region.dstExtent = mipSize;
-		region.layerCount = layerCount;
-		region.srcMipLevel = i - 1;
-		region.dstMipLevel = i;
-		Image::blit(image, image, region, filter);
+		region.layerCount = 1;
+		region.srcMipLevel = mip - 1;
+		region.dstMipLevel = mip;
+
+		// Note: We should not blit all layers in one mip,
+		//       because result differs across GPUs.
+		
+		for (uint8 layer = 0; layer < layerCount; layer++)
+		{
+			region.srcBaseLayer = region.dstBaseLayer = layer;
+			Image::blit(image, image, region, filter);
+		}
 	}
 }
 
@@ -781,7 +789,7 @@ void ImageView::setDebugName(const string& name)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImageView, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 	}
 	else abort();
 }

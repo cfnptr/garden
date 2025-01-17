@@ -271,7 +271,7 @@ void Buffer::setDebugName(const string& name)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eBuffer, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo, vulkanAPI->dynamicLoader);
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 	}
 	else abort();
 }

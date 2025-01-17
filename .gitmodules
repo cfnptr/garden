@@ -61,3 +61,6 @@
 [submodule "libraries/plan"]
 	path = libraries/plan
 	url = https://github.com/cfnptr/plan
+[submodule "libraries/volk"]
+	path = libraries/volk
+	url = https://github.com/zeux/volk

@@ -120,6 +120,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [Tracy](https://github.com/wolfpld/tracy) (BSD-3-Clause license)
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
+* [volk](https://github.com/zeux/volk) (MIT license)
 * [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)
 * [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)
 * [xxHash](https://github.com/Cyan4973/xxHash) (BSD-2-Clause license)
