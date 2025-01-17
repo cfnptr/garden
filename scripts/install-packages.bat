@@ -15,4 +15,11 @@ IF NOT %ERRORLEVEL% == 0 (
     EXIT /B %ERRORLEVEL%
 )
 
+vcpkg upgrade --no-dry-run
+
+IF NOT %ERRORLEVEL% == 0 (
+    ECHO vcpkg failed to upgrade required packages.
+    EXIT /B %ERRORLEVEL%
+)
+
 EXIT /B 0
