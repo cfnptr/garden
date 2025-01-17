@@ -102,14 +102,8 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	/*******************************************************************************************************************
-	 * @brief Is deferred rendering enabled.
-	 */
-	bool isEnabled = true;
-	/**
-	 * @brief Run deferred rendering swapchain pass.
-	 */
-	bool runSwapchainPass = true;
+	bool isEnabled = true;        /**< Is deferred rendering enabled. */
+	bool runSwapchainPass = true; /**< Run deferred rendering swapchain pass. */
 
 	/**
 	 * @brief Use multithreaded command buffer recording.

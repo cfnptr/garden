@@ -36,14 +36,8 @@ enum class AnimationFunc : uint8
  */
 struct AnimationFrame
 {
-	/**
-	 * @brief Interpolation function coefficient. (Depends on function type)
-	 */
-	float coeff = 1.0f;
-	/**
-	 * @brief Animation frame interpolation function type.
-	 */
-	AnimationFunc funcType = {};
+	float coeff = 1.0f;          /**< Interpolation function coefficient. (Depends on function type) */
+	AnimationFunc funcType = {}; /**< Animation frame interpolation function type. */
 
 	/**
 	 * @brief Destroys animation frame data.

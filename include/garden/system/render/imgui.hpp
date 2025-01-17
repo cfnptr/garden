@@ -65,10 +65,7 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	/**
-	 * @brief Is immediate mode GUI rendering enabled.
-	 */
-	bool isEnabled = true;
+	bool isEnabled = true; /**< Is immediate mode GUI rendering enabled. */
 
 	/**
 	 * @brief Returns immediate mode GUI graphics pipeline.

@@ -55,10 +55,7 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	/**
-	 * @brief Is fast approximate anti-aliasing rendering enabled.
-	 */
-	bool isEnabled = true;
+	bool isEnabled = true; /**< Is fast approximate anti-aliasing rendering enabled. */
 
 	/**
 	 * @brief Returns fast approximate anti-aliasing graphics pipeline.

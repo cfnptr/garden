@@ -22,7 +22,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& shadowPlaceholder)
+static void getBlackPlaceholder(ID<Image>& blackPlaceholder)
+{
+	if (!blackPlaceholder)
+	{
+		blackPlaceholder = GraphicsSystem::Instance::get()->createImage(Image::Format::UnormR8,
+			Image::Bind::Sampled, { { nullptr } }, uint2(1), Image::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(blackPlaceholder, "image.editor.deferred.blackPlaceholder");
+	}
+}
+
+static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPlaceholder)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -42,14 +52,16 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& shadowPl
 	}
 	else
 	{
-		if (!shadowPlaceholder)
-		{
-			shadowPlaceholder = graphicsSystem->createImage(Image::Format::UnormR8,
-				Image::Bind::Sampled, { { nullptr } }, uint2(1), Image::Strategy::Size);
-			SET_RESOURCE_DEBUG_NAME(shadowPlaceholder, "image.shadowPlaceholder");
-		}
-		auto imageView = graphicsSystem->get(shadowPlaceholder);
-		shadowBuffer0 = aoBuffer0 = aoBuffer1 = imageView->getDefaultView();
+		getBlackPlaceholder(blackPlaceholder);
+		auto imageView = graphicsSystem->get(blackPlaceholder);
+		aoBuffer0 = aoBuffer1 = imageView->getDefaultView();
+	}
+
+	if (!shadowBuffer0)
+	{
+		getBlackPlaceholder(blackPlaceholder);
+		auto imageView = graphicsSystem->get(blackPlaceholder);
+		shadowBuffer0 = imageView->getDefaultView();
 	}
 
 	map<string, DescriptorSet::Uniform> uniforms =
@@ -99,7 +111,7 @@ void DeferredRenderEditorSystem::deinit()
 		graphicsSystem->destroy(bufferDescriptorSet);
 		graphicsSystem->destroy(pbrLightingPipeline);
 		graphicsSystem->destroy(bufferPipeline);
-		graphicsSystem->destroy(shadowPlaceholder);
+		graphicsSystem->destroy(blackPlaceholder);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
@@ -231,7 +243,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 	{
 		if (!bufferDescriptorSet)
 		{
-			auto uniforms = getBufferUniforms(shadowPlaceholder);
+			auto uniforms = getBufferUniforms(blackPlaceholder);
 			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
 			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
 		}
@@ -269,9 +281,11 @@ void DeferredRenderEditorSystem::gBufferRecreate()
 {
 	if (bufferDescriptorSet)
 	{
-		auto descriptorSetView = GraphicsSystem::Instance::get()->get(bufferDescriptorSet);
-		auto uniforms = getBufferUniforms(shadowPlaceholder);
-		descriptorSetView->recreate(std::move(uniforms));
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(bufferDescriptorSet);
+		auto uniforms = getBufferUniforms(blackPlaceholder);
+		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
 	}
 }
 

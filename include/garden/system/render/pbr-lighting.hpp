@@ -141,14 +141,8 @@ private:
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;
 public:
-	/*******************************************************************************************************************
-	 * @brief Shadow color factor. (RGBA)
-	 */
 	float3 shadowColor = float3(1.0f);
-	/**
-	 * @brief Emissive color multiplier. (Max brightness)
-	 */
-	float emissiveMult = 100.0f;
+	float emissiveMult = 100.0f; /**< (Max brightness) */
 
 	/**
 	 * @brief Use shadow buffer for PBR lighting rendering.

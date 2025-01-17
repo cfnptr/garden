@@ -152,7 +152,7 @@ float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float roughness, f
 	return textureLod(iblSpecular, r, lod + offset).rgb;
 }
 
-float3 diffuseIrradiance(float3 normal, const float4 iblSH[SH_COEF_COUNT])
+float3 diffuseIrradiance(float3 normal, const float4 iblSH[SH_COEFF_COUNT])
 {
 	return max(iblSH[0].xyz +
 		iblSH[1].xyz * (normal.y) + iblSH[2].xyz * (normal.z) + iblSH[3].xyz * (normal.x) +

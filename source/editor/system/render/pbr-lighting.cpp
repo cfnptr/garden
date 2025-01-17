@@ -59,7 +59,7 @@ void PbrLightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool is
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	editorSystem->drawResource(pbrLightingView->cubemap, "Cubemap");
 	editorSystem->drawResource(pbrLightingView->sh, "SH");
-	editorSystem->drawResource(pbrLightingView->specular, "Speculare");
+	editorSystem->drawResource(pbrLightingView->specular, "Specular");
 	editorSystem->drawResource(pbrLightingView->descriptorSet);
 
 	// TODO: allow to select cubemap from file

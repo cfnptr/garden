@@ -94,7 +94,6 @@ private:
 	friend class HierarchyEditorSystem;
 public:
 	ID<Entity> selectedEntity;
-
 	bool exportScene = false;
 
 	template<typename T = Component>

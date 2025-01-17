@@ -65,6 +65,8 @@ private:
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;
 public:
+	bool isEnabled = true; /**< Is skybox rendering enabled. */
+
 	/**
 	 * @brief Returns skybox graphics pipeline.
 	 */

@@ -19,19 +19,16 @@
 namespace garden
 {
 
-class SkyboxRenderEditorSystem final : public System
+class FxaaRenderEditorSystem final : public System
 {
-	SkyboxRenderEditorSystem();
-	~SkyboxRenderEditorSystem() final;
+	FxaaRenderEditorSystem();
+	~FxaaRenderEditorSystem() final;
 
 	void init();
 	void deinit();
 	void editorSettings();
 
-	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
-public:
-	float inspectorPriority = 0.1f;
 };
 
 } // namespace garden

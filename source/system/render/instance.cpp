@@ -147,9 +147,11 @@ void InstanceRenderSystem::swapchainRecreate()
 
 		if (baseDescriptorSet)
 		{
+			auto graphicsSystem = GraphicsSystem::Instance::get();
+			graphicsSystem->destroy(baseDescriptorSet);
 			auto uniforms = getBaseUniforms();
-			auto descriptorSetView = graphicsSystem->get(baseDescriptorSet);
-			descriptorSetView->recreate(std::move(uniforms));
+			baseDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet.instance.base");
 		}
 	}
 }

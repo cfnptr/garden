@@ -23,7 +23,7 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/graphics/api.hpp"
-#include "garden/graphics/glfw.hpp"
+#include "garden/graphics/glfw.hpp" // Do not move it.
 #include "garden/editor/system/render/gpu-resource.hpp"
 #include "garden/profiler.hpp"
 
@@ -291,22 +291,6 @@ void EditorRenderSystem::showOptionsWindow()
 
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
-
-		/* TODO: move to the fxaa editor
-		auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
-		auto fxaaSystem = FxaaRenderSystem::Instance::tryGet();
-
-		if (fxaaSystem && deferredSystem)
-		{
-			ImGui::SameLine();
-			if (ImGui::Checkbox("FXAA", &fxaaSystem->isEnabled))
-			{
-				deferredSystem->runSwapchainPass = !fxaaSystem->isEnabled;
-				if (settingsSystem)
-					settingsSystem->setBool("fxaa.isEnabled", fxaaSystem->isEnabled);
-			}
-		}
-		*/
 
 		auto renderScale = 1.0f;
 		if (settingsSystem)

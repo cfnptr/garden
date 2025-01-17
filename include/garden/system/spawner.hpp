@@ -32,7 +32,7 @@ class SpawnerSystem;
  */
 enum class SpawnMode : uint8
 {
-	OneShot, Manual, Count // TODO: add instace pool mode.
+	OneShot, Manual, Count // TODO: add instance pool mode.
 };
 
 /**
@@ -40,13 +40,13 @@ enum class SpawnMode : uint8
  */
 struct SpawnerComponent final : public Component
 {
-	fs::path path = {};   /**< Target prefab scene path */
-	Hash128 prefab = {};  /**< Target runtime prefab object UUID */
-	uint32 maxCount = 1;  /**< Maximal automatic object spawn count */
-	float delay = 0.0f;   /**< Delay before next object spawn (seconds) */
-	SpawnMode mode = {};  /**< Automatic object spawn mode */
-	bool isActive = true; /**< Is spawn component active */
-	bool spawnAsChild = true;  /**< Spawn object as a spawner entity child */
+	fs::path path = {};       /**< Target prefab scene path */
+	Hash128 prefab = {};      /**< Target runtime prefab object UUID */
+	uint32 maxCount = 1;      /**< Maximal automatic object spawn count */
+	float delay = 0.0f;       /**< Delay before next object spawn (seconds) */
+	SpawnMode mode = {};      /**< Automatic object spawn mode */
+	bool isActive = true;     /**< Is spawn component active */
+	bool spawnAsChild = true; /**< Spawn object as a spawner entity child */
 private:
 	uint8 _alignment = 0;
 	double delayTime = 0.0;
@@ -59,11 +59,11 @@ private:
 	friend class ComponentSystem<SpawnerComponent>;
 public:
 	/**
-	 * @brief Returns spawned enitity array.
+	 * @brief Returns spawned entity array.
 	 */
 	const vector<Hash128>& getSpawnedEntities() const noexcept { return spawnedEntities; }
 	/**
-	 * @brief Returns spawned enitity count.
+	 * @brief Returns spawned entity count.
 	 * @note Some of the spawned entities may be already destroyed.
 	 */
 	uint32 getSpawnedCount() const noexcept { return (uint32)spawnedEntities.size(); }
@@ -85,7 +85,7 @@ public:
 	void spawn(uint32 count = 1);
 
 	/**
-	 * @brief Destroys all existing spawned entites.
+	 * @brief Destroys all existing spawned entities.
 	 * @note Some of the spawned entities may be already destroyed.
 	 */
 	void destroySpawned();

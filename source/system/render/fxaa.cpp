@@ -80,6 +80,7 @@ void FxaaRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		DeferredRenderSystem::Instance::get()->runSwapchainPass = true;
 		GraphicsSystem::Instance::get()->destroy(pipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreSwapchainRender", FxaaRenderSystem::preSwapchainRender);
@@ -129,9 +130,11 @@ void FxaaRenderSystem::gBufferRecreate()
 {
 	if (descriptorSet)
 	{
-		auto descriptorSetView = GraphicsSystem::Instance::get()->get(descriptorSet);
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(descriptorSet);
 		auto uniforms = getUniforms();
-		descriptorSetView->recreate(std::move(uniforms));
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
 }
 
