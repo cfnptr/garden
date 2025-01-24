@@ -19,6 +19,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
+#include <cfloat>
 
 #include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
@@ -232,7 +233,7 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 		center += (float3)frustumCorners[i];
 	center *= (1.0f / 8.0f);
 
-	auto lightView = lookAt(center, center + lightDir);
+	auto lightView = lookAt(center - lightDir, center);
 	auto minimum = float3(FLT_MAX), maximum = float3(-FLT_MAX);
 
 	for (uint8 i = 0; i < 8; i++)
@@ -252,11 +253,14 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 	else
 		maximum.z *= zCoeff;
 
-	auto unitsPerTexel = (maximum - minimum) / 2048.0f;
-	minimum = float3(floor(minimum / unitsPerTexel) * unitsPerTexel);
-	maximum = float3(floor(maximum / unitsPerTexel) * unitsPerTexel);
-	
-	cameraOffset = lightDir * minimum.z + center;
+	cameraOffset = -(lightDir * minimum.z + center);
+
+	auto texelSize = (maximum.x - minimum.x) / 2048.0f;
+	minimum.x = floor(minimum.x / texelSize) * texelSize;
+	minimum.y = floor(minimum.y / texelSize) * texelSize;
+	maximum.x = floor(maximum.x / texelSize) * texelSize;
+	maximum.y = floor(maximum.y / texelSize) * texelSize;
+
 	auto lightProj = calcOrthoProjRevZ(float2(minimum.x, maximum.x),
 		float2(minimum.y, maximum.y), float2(minimum.z, maximum.z));
 	return lightProj * lightView;
@@ -273,9 +277,6 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, 
 	if (!cameraView)
 		return false;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-
-
 	auto farPlane = distance;
 	if (passIndex < cascadeCount - 1)
 		farPlane *= cascadeSplits[passIndex];
@@ -287,6 +288,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, 
 	if (passIndex > 0)
 		nearPlane += distance * cascadeSplits[passIndex - 1];
 
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	viewProj = calcLightViewProj(cameraConstants.view, (float3)cameraConstants.lightDir, cameraOffset,
 		cameraView->p.perspective.fieldOfView, cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff);
 
