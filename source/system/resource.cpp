@@ -1541,7 +1541,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			queueLocker.lock();
 			loadedGraphicsQueue.push(std::move(item));
 			queueLocker.unlock();
-		});
+		},
+		pipelineTaskPriority);
 	}
 	else
 	{
@@ -1711,7 +1712,8 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 			queueLocker.lock();
 			loadedComputeQueue.push(std::move(item));
 			queueLocker.unlock();
-		});
+		},
+		pipelineTaskPriority);
 	}
 	else
 	{

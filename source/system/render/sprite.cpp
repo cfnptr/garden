@@ -34,7 +34,7 @@ void SpriteRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
 	#if GARDEN_DEBUG
-	setInstancesBuffersName(pipelinePath.generic_string());
+	debugResourceName = pipelinePath.generic_string();
 	#endif
 }
 void SpriteRenderSystem::deinit()
@@ -85,7 +85,6 @@ void SpriteRenderSystem::imageLoaded()
 	}
 }
 
-//**********************************************************************************************************************
 void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	auto destinationView = View<SpriteRenderComponent>(destination);
@@ -115,21 +114,24 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
-	auto instanceData = (InstanceData*)(instanceMap + getInstanceDataSize() * drawIndex);
-	setInstanceData(spriteRenderView, instanceData, viewProj, model, drawIndex, taskIndex);
+	if (!spriteRenderView->descriptorSet)
+		return;
 
-	DescriptorSet::Range descriptorSetRange[8]; uint8 descriptorSetCount = 0;
-	setDescriptorSetRange(meshRenderView, descriptorSetRange, descriptorSetCount, 8);
+	DescriptorSet::Range dsRange[2];
+	dsRange[0] = DescriptorSet::Range(descriptorSet, 1, swapchainIndex);
+	dsRange[1] = DescriptorSet::Range((ID<DescriptorSet>)spriteRenderView->descriptorSet);
+
+	auto instanceData = (InstanceData*)(instanceMap + drawIndex * getInstanceDataSize());
+	setInstanceData(spriteRenderView, instanceData, viewProj, model, drawIndex, taskIndex);
 
 	auto pushConstants = (PushConstants*)pipelineView->getPushConstants(taskIndex);
 	setPushConstants(spriteRenderView, pushConstants, viewProj, model, drawIndex, taskIndex);
 
-	pipelineView->bindDescriptorSetsAsync(descriptorSetRange, descriptorSetCount, taskIndex);
+	pipelineView->bindDescriptorSetsAsync(dsRange, 2, taskIndex);
 	pipelineView->pushConstantsAsync(taskIndex);
 	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 
-//**********************************************************************************************************************
 uint64 SpriteRenderSystem::getInstanceDataSize()
 {
 	return (uint64)sizeof(InstanceData);
@@ -140,16 +142,6 @@ void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView
 	instanceData->mvp = viewProj * model;
 	instanceData->colorFactor = spriteRenderView->colorFactor;
 	instanceData->sizeOffset = float4(spriteRenderView->uvSize, spriteRenderView->uvOffset);
-}
-void SpriteRenderSystem::setDescriptorSetRange(MeshRenderComponent* meshRenderView,
-	DescriptorSet::Range* range, uint8& index, uint8 capacity)
-{
-	InstanceRenderSystem::setDescriptorSetRange(meshRenderView, range, index, capacity);
-
-	GARDEN_ASSERT(index < capacity);
-	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
-	range[index++] = DescriptorSet::Range(spriteRenderView->descriptorSet ?
-		(ID<DescriptorSet>)spriteRenderView->descriptorSet : defaultDescriptorSet);
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
@@ -165,24 +157,7 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<Ima
 	{ { "colorMap", DescriptorSet::Uniform(colorMap) } };
 	return spriteUniforms;
 }
-map<string, DescriptorSet::Uniform> SpriteRenderSystem::getDefaultUniforms()
-{
-	auto whiteTexture = GraphicsSystem::Instance::get()->getWhiteTexture();
-	if (!defaultImageView)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto imageView = graphicsSystem->get(whiteTexture);
-		defaultImageView = graphicsSystem->createImageView(
-			imageView->getImage(), Image::Type::Texture2DArray);
-		SET_RESOURCE_DEBUG_NAME(defaultImageView, 
-			"image.whiteTexture.arrayView." + pipelinePath.generic_string());
-	}
-
-	map<string, DescriptorSet::Uniform> defaultUniforms =
-	{ { "colorMap", DescriptorSet::Uniform(defaultImageView) } };
-	return defaultUniforms;
-}
-ID<GraphicsPipeline> SpriteRenderSystem::createPipeline()
+ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 {
 	ID<Framebuffer> framebuffer;
 	if (useDeferredBuffer)
@@ -409,7 +384,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Ima
 
 	auto uniforms = getSpriteUniforms(imageView->getDefaultView());
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
-		Hash128::digestState(hashState), getPipeline(), std::move(uniforms), 1);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptoSet.shared." + path);
+		Hash128::digestState(hashState), getBasePipeline(), std::move(uniforms), 1);
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + path);
 	return descriptorSet;
 }

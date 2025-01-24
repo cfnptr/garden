@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Rigid body physics functions.
+ * @brief Rigid body physics simulation functions.
  * @details See the Jolt physics docs: https://jrouwe.github.io/JoltPhysics/index.html
  */
 

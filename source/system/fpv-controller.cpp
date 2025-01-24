@@ -89,8 +89,8 @@ void FpvControllerSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("FPV Controller Update");
 	auto rotationQuat = updateCameraRotation();
-	updateCameraControll(rotationQuat);
-	updateCharacterControll();
+	updateCameraControl(rotationQuat);
+	updateCharacterControl();
 }
 
 void FpvControllerSystem::swapchainRecreate()
@@ -151,7 +151,7 @@ quat FpvControllerSystem::updateCameraRotation()
 }
 
 //**********************************************************************************************************************
-void FpvControllerSystem::updateCameraControll(const quat& rotationQuat)
+void FpvControllerSystem::updateCameraControl(const quat& rotationQuat)
 {
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
 	if (!transformView || !transformView->isActive())
@@ -196,7 +196,7 @@ void FpvControllerSystem::updateCameraControll(const quat& rotationQuat)
 }
 
 //**********************************************************************************************************************
-void FpvControllerSystem::updateCharacterControll()
+void FpvControllerSystem::updateCharacterControl()
 {
 	#if GARDEN_EDITOR
 	auto editorSystem = EditorRenderSystem::Instance::tryGet();

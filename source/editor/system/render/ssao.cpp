@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,49 +11,74 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
 #include "garden/editor/system/render/ssao.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/ssao.hpp"
 #include "garden/system/settings.hpp"
 
 using namespace garden;
 
-//--------------------------------------------------------------------------------------------------
-SsaoEditor::SsaoEditor(SsaoRenderSystem* system)
+//**********************************************************************************************************************
+SsaoRenderEditorSystem::SsaoRenderEditorSystem()
 {
-	EditorRenderSystem::getInstance()->registerBarTool([this]() { onBarTool(); });
-	this->system = system;
+	ECSM_SUBSCRIBE_TO_EVENT("Init", SsaoRenderEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SsaoRenderEditorSystem::deinit);
+}
+SsaoRenderEditorSystem::~SsaoRenderEditorSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SsaoRenderEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SsaoRenderEditorSystem::deinit);
+	}
 }
 
-//--------------------------------------------------------------------------------------------------
-void SsaoEditor::render()
+void SsaoRenderEditorSystem::init()
 {
-	if (!showWindow)
+	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", SsaoRenderEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", SsaoRenderEditorSystem::editorBarTool);
+}
+void SsaoRenderEditorSystem::deinit()
+{
+	if (Manager::Instance::get()->isRunning)
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", SsaoRenderEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SsaoRenderEditorSystem::editorBarTool);
+	}
+}
+
+void SsaoRenderEditorSystem::editorRender()
+{
+	if (!GraphicsSystem::Instance::get()->canRender())
 		return;
 
-	if (ImGui::Begin("SSAO (Ambient Occlusion)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (showWindow)
 	{
-		if (ImGui::Checkbox("Enabled", &system->isEnabled))
+		if (ImGui::Begin("SSAO (Ambient Occlusion)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
-			if (settingsSystem)
-				settingsSystem->setBool("ssao.isEnabled", system->isEnabled);
+			auto ssaoSystem = SsaoRenderSystem::Instance::get();
+			if (ImGui::Checkbox("Enabled", &ssaoSystem->isEnabled))
+			{
+				auto settingsSystem = SettingsSystem::Instance::tryGet();
+				if (settingsSystem)
+					settingsSystem->setBool("ssao.isEnabled", ssaoSystem->isEnabled);
+			}
+
+			ImGui::DragFloat("Radius", &ssaoSystem->radius, 0.01f, 0.0f, FLT_MAX);
+			ImGui::SliderFloat("Bias", &ssaoSystem->bias, 0.0f, 1.0f);
+			ImGui::SliderFloat("Intensity", &ssaoSystem->intensity, 0.0f, 1.0f);
+
+			int sampleCount = ssaoSystem->getSampleCount();
+			if (ImGui::InputInt("Sample Count", &sampleCount))
+				ssaoSystem->setConsts(std::abs(sampleCount));
 		}
-
-		ImGui::DragFloat("Radius", &system->radius, 0.01f, 0.0f, FLT_MAX);
-		ImGui::SliderFloat("Bias", &system->bias, 0.0f, 1.0f);
-		ImGui::SliderFloat("Intensity", &system->intensity, 0.0f, 1.0f);
-
-		int sampleCount = system->sampleCount;
-		if (ImGui::InputInt("Sample Count", &sampleCount))
-			system->setConsts(std::abs(sampleCount));
+		ImGui::End();
 	}
-	ImGui::End();
 }
 
-void SsaoEditor::onBarTool()
+void SsaoRenderEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("SSAO (Ambient Occlusion)"))
 		showWindow = true;

@@ -39,43 +39,14 @@ struct PbrLightingRenderComponent final : public Component
 };
 
 /**
- * @brief Shadow rendering system interface.
- */
-class IShadowRenderSystem
-{
-protected:
-	/**
-	 * @brief Prepares system for shadow rendering.
-	 */
-	virtual void preShadowRender() { }
-	/**
-	 * @brief Renders system shadows.
-	 */
-	virtual bool shadowRender() = 0;
-
-	friend class PbrLightingRenderSystem;
-};
-/**
- * @brief Ambient occlusion rendering system interface.
- */
-class IAoRenderSystem
-{
-protected:
-	/**
-	 * @brief Prepares system for ambient occlusion rendering.
-	 */
-	virtual void preAoRender() { }
-	/**
-	 * @brief Renders system ambient occlusion.
-	 */
-	virtual bool aoRender() = 0;
-
-	friend class PbrLightingRenderSystem;
-};
-
-/***********************************************************************************************************************
  * @brief PBR lighting rendering system. (Physically Based Rendering)
- * @details Registers events: ShadowRecreate.
+ * 
+ * @details
+ * PBR is a rendering technique designed to simulate how light interacts with surfaces in a realistic manner. It is 
+ * based on physical principles, taking into account material properties such as roughness, metallicity, albedo 
+ * color, as well as the characteristics of light sources.
+ * 
+ * Registers events: PreShadowRender, ShadowRender, ShadowRecreate, PreAoRender, AoRender, AoRecreate.
  */
 class PbrLightingRenderSystem final : public ComponentSystem<PbrLightingRenderComponent>, 
 	public Singleton<PbrLightingRenderSystem>
@@ -101,8 +72,6 @@ public:
 	 */
 	static constexpr uint8 aoBufferCount = 2;
 private:
-	vector<IShadowRenderSystem*> shadowSystems;
-	vector<IAoRenderSystem*> aoSystems;
 	ID<Image> dfgLUT = {};
 	ID<Image> shadowBuffer = {};
 	ID<Image> aoBuffer = {};
@@ -117,7 +86,8 @@ private:
 	ID<DescriptorSet> aoDenoiseDescriptorSet = {};
 	bool hasShadowBuffer = false;
 	bool hasAoBuffer = false;
-	uint16 _alignment = 0;
+	bool hasAnyShadow = false;
+	bool hasAnyAO = false;
 
 	/**
 	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
@@ -144,7 +114,7 @@ public:
 	float3 shadowColor = float3(1.0f);
 	float emissiveMult = 100.0f; /**< (Max brightness) */
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Use shadow buffer for PBR lighting rendering.
 	 */
 	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
@@ -225,6 +195,17 @@ public:
 	 * @param pipeline target descriptor set pipeline ({} = lighting)
 	 */
 	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, ID<GraphicsPipeline> pipeline = {});
+
+	/**
+	 * @brief Marks that there is rendered shadow data on the current frame.
+	 * @details See the @ref useShadowBuffer().
+	 */
+	void markAnyShadow() noexcept { hasAnyShadow = true; }
+	/**
+	 * @brief Marks that there is rendered AO data on the current frame.
+	 * @details See the @ref useAoBuffer().
+	 */
+	void markAnyAO() noexcept { hasAnyAO = true; }
 };
 
 } // namespace garden

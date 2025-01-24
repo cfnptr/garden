@@ -40,7 +40,6 @@ class AutoExposureRenderEditorSystem final : public System
 	void init();
 	void deinit();
 	void editorRender();
-	void swapchainRecreate();
 	void gBufferRecreate();
 	void editorBarTool();
 	

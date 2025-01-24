@@ -13,22 +13,25 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/system/render/ssao.hpp"
+#include "garden/system/render/editor.hpp"
 
 #if GARDEN_EDITOR
 namespace garden
 {
 
-class SsaoEditor final
+class SsaoRenderEditorSystem final : public System
 {
 	bool showWindow = false;
 
-	SsaoEditor(SsaoRenderSystem* system);
+	SsaoRenderEditorSystem();
+	~SsaoRenderEditorSystem();
 
-	void render();
-	void onBarTool();
+	void init();
+	void deinit();
+	void editorRender();
+	void editorBarTool();
 	
-	friend class SsaoRenderSystem;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden

@@ -12,12 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/fullscreen.gsl"
+#pragma once
+#include "garden/system/render/editor.hpp"
 
-out float2 fs.texCoords;
-
-void main()
+#if GARDEN_EDITOR
+namespace garden
 {
-	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
-	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
-}
+
+class CsmRenderEditorSystem final : public System
+{
+	struct PushConstants final
+	{
+		float4 farPlanes;
+	};
+
+	ID<GraphicsPipeline> cascadesPipeline = {};
+	ID<DescriptorSet> cascadesDescriptorSet = {};
+	bool visualizeCascades = false;
+	bool showWindow = false;
+
+	CsmRenderEditorSystem();
+	~CsmRenderEditorSystem();
+
+	void init();
+	void deinit();
+	void editorRender();
+	void editorBarTool();
+	
+	friend class ecsm::Manager;
+};
+
+} // namespace garden
+#endif

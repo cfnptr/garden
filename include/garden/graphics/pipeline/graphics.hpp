@@ -464,6 +464,27 @@ public:
 	 */
 	void drawFullscreenAsync(int32 threadIndex);
 
+	/**
+	 * @brief Set depth bias factors and clamp dynamically.
+	 * @details Useful for shadow mapping.
+	 * 
+	 * @param constantFactor scalar factor controlling the constant depth value added to each fragment
+	 * @param clamp maximum (or minimum) depth bias of a fragment
+	 * @param slopeFactor scalar factor applied to a fragment’s slope in depth bias calculations
+	 */
+	static void setDepthBias(float constantFactor, float clamp, float slopeFactor);
+
+	/**
+	 * @brief Set depth bias factors and clamp dynamically.
+	 * @details See the @ref GraphicsPipeline::setDepthBias()
+	 * 
+	 * @param constantFactor scalar factor controlling the constant depth value added to each fragment
+	 * @param clamp maximum (or minimum) depth bias of a fragment
+	 * @param slopeFactor scalar factor applied to a fragment’s slope in depth bias calculations
+	 * @param threadIndex thread index in the pool (-1 = all threads)
+	 */
+	static void setDepthBiasAsync(float constantFactor, float clamp, float slopeFactor, int32 threadIndex = -1);
+
 	// TODO: Also allow to override blendStates, vertexAttributes separately.
 	// TODO: Add dynamic and dynamic/static states (viewport/scissor).
 };

@@ -99,10 +99,10 @@ void Controller2DSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("2D Controller Update");
 
-	if (useMouseControll)
-		updateCameraControll();
+	if (useMouseControl)
+		updateCameraControl();
 
-	updateCharacterControll();
+	updateCharacterControl();
 	updateCameraFollowing();
 }
 
@@ -124,7 +124,7 @@ void Controller2DSystem::swapchainRecreate()
 }
 
 //**********************************************************************************************************************
-void Controller2DSystem::updateCameraControll()
+void Controller2DSystem::updateCameraControl()
 {
 	auto inputSystem = InputSystem::Instance::get();
 
@@ -146,10 +146,10 @@ void Controller2DSystem::updateCameraControll()
 	{
 		auto cursorDelta = inputSystem->getCursorDelta();
 		auto windowSize = (float2)inputSystem->getWindowSize();
-		auto othoSize = float2(
+		auto orthoSize = float2(
 			cameraView->p.orthographic.width.y - cameraView->p.orthographic.width.x,
 			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
-		auto offset = cursorDelta / (windowSize / othoSize);
+		auto offset = cursorDelta / (windowSize / orthoSize);
 		offset = (float2x2)transformView->calcModel() * offset;
 
 		transformView->position.x -= offset.x;
@@ -220,7 +220,7 @@ void Controller2DSystem::updateCameraFollowing()
 }
 
 //**********************************************************************************************************************
-void Controller2DSystem::updateCharacterControll()
+void Controller2DSystem::updateCharacterControl()
 {
 	#if GARDEN_EDITOR
 	auto editorSystem = EditorRenderSystem::Instance::tryGet();

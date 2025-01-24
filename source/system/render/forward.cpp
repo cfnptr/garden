@@ -237,9 +237,11 @@ void ForwardRenderSystem::swapchainRecreate()
 		if (depthStencilBuffer)
 			depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 		framebufferView->update(framebufferSize, &colorAttachment, 1, depthStencilAttachment);
-
-		Manager::Instance::get()->runEvent("ColorBufferRecreate");
 	}
+
+	// Forward system notifies both framebufferSize and bufferCount changes!
+	if (swapchainChanges.framebufferSize || swapchainChanges.bufferCount)
+		Manager::Instance::get()->runEvent("ColorBufferRecreate");
 }
 
 //**********************************************************************************************************************

@@ -26,6 +26,13 @@ namespace garden
 
 /**
  * @brief Fast approximate anti-aliasing rendering system. (FXAA)
+ * 
+ * @details
+ * FXAA is a post-processing anti-aliasing technique used to reduce the jagged edges (aliasing) on rendered 
+ * objects in real-time applications, such as video games. Unlike traditional anti-aliasing methods, such as MSAA 
+ * (Multisample Anti-Aliasing), which operate on geometry or during rasterization, FXAA is a post-processing filter 
+ * applied to the final rendered image. It analyzes the image for high-contrast edges (where aliasing occurs) and 
+ * smooths them by blending colors along those edges.
  */
 class FxaaRenderSystem final : public System, public Singleton<FxaaRenderSystem>
 {

@@ -188,7 +188,7 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto shadowBufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
+	auto shadowBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
@@ -218,7 +218,7 @@ static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowIma
 static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
@@ -241,7 +241,7 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto aoBufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
+	auto aoBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
@@ -271,7 +271,7 @@ static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
@@ -416,7 +416,14 @@ bool PbrLightingRenderComponent::destroy()
 PbrLightingRenderSystem::PbrLightingRenderSystem(bool useShadowBuffer, bool useAoBuffer, bool setSingleton) :
 	Singleton(setSingleton), hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer)
 {
-	Manager::Instance::get()->registerEvent("ShadowRecreate");
+	auto manager = Manager::Instance::get();
+	manager->registerEvent("PreShadowRender");
+	manager->registerEvent("ShadowRender");
+	manager->registerEvent("ShadowRecreate");
+	manager->registerEvent("PreAoRender");
+	manager->registerEvent("AoRender");
+	manager->registerEvent("AoRecreate");
+
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingRenderSystem::deinit);
 }
@@ -426,7 +433,14 @@ PbrLightingRenderSystem::~PbrLightingRenderSystem()
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderSystem::deinit);
-		Manager::Instance::get()->unregisterEvent("ShadowRecreate");
+
+		auto manager = Manager::Instance::get();
+		manager->unregisterEvent("PreShadowRender");
+		manager->unregisterEvent("ShadowRender");
+		manager->unregisterEvent("ShadowRecreate");
+		manager->unregisterEvent("PreAoRender");
+		manager->unregisterEvent("AoRender");
+		manager->unregisterEvent("AoRecreate");
 	}
 	else
 	{
@@ -499,6 +513,8 @@ void PbrLightingRenderSystem::preHdrRender()
 	if (!graphicsSystem->camera)
 		return;
 
+	hasAnyShadow = hasAnyAO = false;
+
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	if (pipelineView->isReady() && !lightingDescriptorSet)
 	{
@@ -507,50 +523,39 @@ void PbrLightingRenderSystem::preHdrRender()
 		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
 	}
 
-	const auto& systems = Manager::Instance::get()->getSystems();
-	shadowSystems.clear();
-	aoSystems.clear();
-
-	for (const auto& pair : systems)
+	auto manager = Manager::Instance::get();
+	if (hasShadowBuffer)
 	{
-		auto shadowSystem = dynamic_cast<IShadowRenderSystem*>(pair.second);
-		if (shadowSystem)
-			shadowSystems.push_back(shadowSystem);
-		auto aoSystem = dynamic_cast<IAoRenderSystem*>(pair.second);
-		if (aoSystem)
-			aoSystems.push_back(aoSystem);
+		SET_CPU_ZONE_SCOPED("Pre Shadow Render");
+		SET_GPU_DEBUG_LABEL("Pre Shadow", Color::transparent);
+		manager->runEvent("PreShadowRender");
+	}
+	if (hasAoBuffer)
+	{
+		SET_CPU_ZONE_SCOPED("Pre AO Render");
+		SET_GPU_DEBUG_LABEL("Pre AO", Color::transparent);
+		manager->runEvent("PreAoRender");
 	}
 
-	auto hasAnyShadow = false, hasAnyAO = false;
-	if (hasShadowBuffer && !shadowSystems.empty())
+	if (hasShadowBuffer && manager->isEventHasSubscribers("ShadowRender"))
 	{
-		SET_GPU_DEBUG_LABEL("Pre Shadow Pass", Color::transparent);
-		for (auto shadowSystem : shadowSystems)
-			shadowSystem->preShadowRender();
-	}
-	if (hasAoBuffer && !aoSystems.empty())
-	{
-		SET_GPU_DEBUG_LABEL("Pre AO Pass", Color::transparent);
-		for (auto aoSystem : aoSystems)
-			aoSystem->preAoRender();
-	}
+		SET_CPU_ZONE_SCOPED("Shadow Render Pass");
 
-	if (hasShadowBuffer && !shadowSystems.empty())
-	{
 		if (!shadowBuffer)
 			shadowBuffer = createShadowBuffer(shadowImageViews);
 		if (!shadowFramebuffers[0])
 			createShadowFramebuffers(shadowFramebuffers, shadowImageViews);
-
+		
 		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 		auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
 		framebufferView->beginRenderPass(float4(1.0f));
-		for (auto shadowSystem : shadowSystems)
-			hasAnyShadow |= shadowSystem->shadowRender();
+		manager->runEvent("ShadowRender");
 		framebufferView->endRenderPass();
 	}
-	if (hasAoBuffer && !aoSystems.empty())
+	if (hasAoBuffer && manager->isEventHasSubscribers("ShadowRender"))
 	{
+		SET_CPU_ZONE_SCOPED("AO Render Pass");
+
 		if (!aoBuffer)
 			aoBuffer = createAoBuffer(aoImageViews);
 		if (!aoFramebuffers[0])
@@ -561,11 +566,11 @@ void PbrLightingRenderSystem::preHdrRender()
 		SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
 		auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
 		framebufferView->beginRenderPass(float4(1.0f));
-		for (auto aoSystem : aoSystems)
-			hasAnyAO |= aoSystem->aoRender();
+		manager->runEvent("AoRender");
 		framebufferView->endRenderPass();
 	}
 
+	// TODO: shadow buffer denoise pass.
 	if (shadowBuffer && !hasAnyShadow)
 	{
 		auto imageView = graphicsSystem->get(shadowBuffer);
@@ -666,7 +671,7 @@ void PbrLightingRenderSystem::hdrRender()
 void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
 
 	if (aoBuffer)
 	{
@@ -681,6 +686,8 @@ void PbrLightingRenderSystem::gBufferRecreate()
 			Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], true, false, true);
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
 		}
+
+		Manager::Instance::get()->runEvent("AoRecreate");
 	}
 
 	if (shadowBuffer)

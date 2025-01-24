@@ -94,12 +94,12 @@ public:
 		float colorMapLayer;
 	};
 protected:
-	bool useDeferredBuffer : 1;
-	bool useLinearFilter : 1;
-	bool isTranslucent : 1;
-	uint8 _alignment0 = 0;
-	ID<ImageView> defaultImageView = {};
 	fs::path pipelinePath = {};
+	ID<ImageView> defaultImageView = {};
+	bool useDeferredBuffer = false;
+	bool useLinearFilter = false;
+	bool isTranslucent = false;
+	uint8 _alignment0 = 0;
 
 	/**
 	 * @brief Creates a new sprite render system instance.
@@ -124,13 +124,10 @@ protected:
 	uint64 getInstanceDataSize() override;
 	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
-	void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
-		DescriptorSet::Range* range, uint8& index, uint8 capacity) override;
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
-	map<string, DescriptorSet::Uniform> getDefaultUniforms() override;
-	ID<GraphicsPipeline> createPipeline() final;
+	ID<GraphicsPipeline> createBasePipeline() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
@@ -153,7 +150,7 @@ public:
 	virtual psize getAnimationFrameSize() const = 0;
 
 	/**
-	 * @brief Creates shared sprite descriptor set.
+	 * @brief Creates shared base sprite descriptor set.
 	 * 
 	 * @param path sprite resource path
 	 * @param image sprite texture instance

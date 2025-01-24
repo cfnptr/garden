@@ -110,6 +110,30 @@ void encodeGBufferValues(GBufferValues values, out float4 g0, out float4 g1, out
 }
 
 //**********************************************************************************************************************
+float4 decodeBaseColor(float4 gBufferData) { return gBufferData; }
+float decodeMetallic(float4 gBufferData) { return gBufferData.r; }
+float decodeRoughness(float4 gBufferData) { return gBufferData.g; }
+float decodeAmbientOcclusion(float4 gBufferData) { return gBufferData.b; }
+float decodeReflectance(float4 gBufferData) { return gBufferData.a; }
+float3 decodeNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba); }
+float decodeClearCoat(float4 gBufferData) { return gBufferData.r; }
+float3 decodeEmissiveColor(float4 gBufferData) { return gBufferData.rgb; }
+float decodeEmissiveFactor(float4 gBufferData) { return gBufferData.a; }
+float3 decodeSubsurfaceColor(float4 gBufferData) { return gBufferData.rgb; }
+float decodeThickness(float4 gBufferData) { return gBufferData.a; }
+
+float4 decodeBaseColor(GBufferData data) { return decodeBaseColor(data.g[BASE_COLOR_G_BUFFER]); }
+float decodeMetallic(GBufferData data) { return decodeMetallic(data.g[METALLIC_G_BUFFER]); }
+float decodeRoughness(GBufferData data) { return decodeRoughness(data.g[ROUGHNESS_G_BUFFER]); }
+float decodeAmbientOcclusion(GBufferData data) { return decodeAmbientOcclusion(data.g[AO_G_BUFFER]); }
+float decodeReflectance(GBufferData data) { return decodeReflectance(data.g[REFLECTANCE_G_BUFFER]); }
+float3 decodeNormal(GBufferData data) { return decodeNormal(data.g[NORMALS_G_BUFFER]); }
+float decodeClearCoat(GBufferData data) { return decodeClearCoat(data.g[CLEAR_COAT_G_BUFFER]); }
+float3 decodeEmissiveColor(GBufferData data) { return decodeEmissiveColor(data.g[EM_COLOR_G_BUFFER]); }
+float decodeEmissiveFactor(GBufferData data) { return decodeEmissiveFactor(data.g[EM_FACTOR_G_BUFFER]); }
+float3 decodeSubsurfaceColor(GBufferData data) { return decodeSubsurfaceColor(data.g[SUBSURFACE_G_BUFFER]); }
+float decodeThickness(GBufferData data) { return decodeThickness(data.g[THICKNESS_G_BUFFER]); }
+
 GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
 {
 	GBufferData data;
@@ -120,18 +144,6 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2
 	data.g[4] = texture(s4, texCoords);
 	return data;
 }
-
-float4 decodeBaseColor(GBufferData data) { return data.g[BASE_COLOR_G_BUFFER]; }
-float decodeMetallic(GBufferData data) { return data.g[METALLIC_G_BUFFER].r; }
-float decodeRoughness(GBufferData data) { return data.g[ROUGHNESS_G_BUFFER].g; }
-float decodeAmbientOcclusion(GBufferData data) { return data.g[AO_G_BUFFER].b; }
-float decodeReflectance(GBufferData data) { return data.g[REFLECTANCE_G_BUFFER].a; }
-float3 decodeNormal(GBufferData data) { return decodeNormalOct(data.g[NORMALS_G_BUFFER].gba); }
-float decodeClearCoat(GBufferData data) { return data.g[CLEAR_COAT_G_BUFFER].r; }
-float3 decodeEmissiveColor(GBufferData data) { return data.g[EM_COLOR_G_BUFFER].rgb; }
-float decodeEmissiveFactor(GBufferData data) { return data.g[EM_FACTOR_G_BUFFER].a; }
-float3 decodeSubsurfaceColor(GBufferData data) { return data.g[SUBSURFACE_G_BUFFER].rgb; }
-float decodeThickness(GBufferData data) { return data.g[THICKNESS_G_BUFFER].a; }
 
 GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
 {

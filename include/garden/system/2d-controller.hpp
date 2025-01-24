@@ -47,9 +47,9 @@ class Controller2DSystem final : public System, public Singleton<Controller2DSys
 	 */
 	~Controller2DSystem() final;
 
-	void updateCameraControll();
+	void updateCameraControl();
 	void updateCameraFollowing();
-	void updateCharacterControll();
+	void updateCharacterControl();
 
 	void init();
 	void deinit();
@@ -66,7 +66,7 @@ public:
 	float followThreshold = 0.6f;
 	float followLerpFactor = 0.8f;
 	float2 followCenter = float2(0.0f, 0.25f);
-	bool useMouseControll = GARDEN_DEBUG ? true : false;
+	bool useMouseControl = GARDEN_DEBUG ? true : false;
 	bool useDoubleJump = true;
 
 	bool isDoubleJumped() const noexcept { return !canDoubleJump; }

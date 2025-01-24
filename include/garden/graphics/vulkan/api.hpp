@@ -58,7 +58,7 @@ class VulkanAPI final : public GraphicsAPI
 {
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
-		uint32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen);
+		int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen);
 	~VulkanAPI() final;
 
 	friend class GraphicsAPI;
