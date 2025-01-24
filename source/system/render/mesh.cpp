@@ -111,7 +111,6 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)componentPool.getData();
-	auto hasCameraOffset = cameraOffset != float3(0.0f);
 
 	MeshRenderSystem::OpaqueMesh* meshes = nullptr;
 	if (useThreading)
@@ -163,8 +162,7 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 		MeshRenderSystem::OpaqueMesh opaqueMesh;
 		opaqueMesh.renderView = meshRenderView;
 		opaqueMesh.model = (float4x3)model;
-		opaqueMesh.distance2 = hasCameraOffset ?
-			length2(getTranslation(model) + cameraOffset) : length2(getTranslation(model));
+		opaqueMesh.distance2 = length2(getTranslation(model) + cameraOffset);
 		meshes[drawIndex++] = opaqueMesh;
 	}
 
@@ -191,7 +189,6 @@ static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& c
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)componentPool.getData();
 	auto drawCount = translucentBuffer->drawCount;
-	auto hasCameraOffset = cameraOffset != float3(0.0f);
 
 	MeshRenderSystem::TranslucentMesh* meshes = nullptr;
 	if (useThreading)
@@ -239,8 +236,7 @@ static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& c
 		MeshRenderSystem::TranslucentMesh translucentMesh;
 		translucentMesh.renderView = meshRenderView;
 		translucentMesh.model = (float4x3)model;
-		translucentMesh.distance2 = hasCameraOffset ?
-			length2(getTranslation(model) + cameraOffset) : length2(getTranslation(model));
+		translucentMesh.distance2 = length2(getTranslation(model) + cameraOffset);
 		translucentMesh.bufferIndex = bufferIndex;
 		meshes[drawIndex++] = translucentMesh;
 	}
@@ -629,7 +625,6 @@ void MeshRenderSystem::renderShadows()
 			if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 				continue;
 
-			cameraOffset = -cameraOffset;
 			prepareMeshes(viewProj, cameraOffset, Plane::frustumCount, true);
 
 			shadowSystem->beginShadowRender(i, MeshRenderType::Opaque);
