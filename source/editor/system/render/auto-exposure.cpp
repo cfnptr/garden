@@ -57,11 +57,6 @@ AutoExposureRenderEditorSystem::~AutoExposureRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(limitsDescriptorSet);
-		graphicsSystem->destroy(limitsPipeline);
-		graphicsSystem->destroy(readbackBuffer);
-
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureRenderEditorSystem::deinit);
 	}
@@ -70,7 +65,6 @@ AutoExposureRenderEditorSystem::~AutoExposureRenderEditorSystem()
 void AutoExposureRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
-	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", AutoExposureRenderEditorSystem::swapchainRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", AutoExposureRenderEditorSystem::editorBarTool);
 }
@@ -78,8 +72,12 @@ void AutoExposureRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(limitsDescriptorSet);
+		graphicsSystem->destroy(limitsPipeline);
+		graphicsSystem->destroy(readbackBuffer);
+		
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", AutoExposureRenderEditorSystem::swapchainRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AutoExposureRenderEditorSystem::editorBarTool);
 	}
@@ -217,7 +215,7 @@ void AutoExposureRenderEditorSystem::editorRender()
 }
 
 //**********************************************************************************************************************
-void AutoExposureRenderEditorSystem::swapchainRecreate()
+void AutoExposureRenderEditorSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
@@ -227,9 +225,7 @@ void AutoExposureRenderEditorSystem::swapchainRecreate()
 		graphicsSystem->destroy(readbackBuffer);
 		readbackBuffer = createReadbackBuffer();
 	}
-}
-void AutoExposureRenderEditorSystem::gBufferRecreate()
-{
+
 	if (limitsDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();

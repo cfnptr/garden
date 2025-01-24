@@ -404,9 +404,11 @@ void DeferredRenderSystem::swapchainRecreate()
 		depthStencilAttachment.clear = true;
 		depthStencilAttachment.load = false;
 		framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
-
-		Manager::Instance::get()->runEvent("GBufferRecreate");
 	}
+
+	// Deferred system notifies both framebufferSize and bufferCount changes!
+	if (swapchainChanges.framebufferSize || swapchainChanges.bufferCount)
+		Manager::Instance::get()->runEvent("GBufferRecreate");
 }
 
 //**********************************************************************************************************************

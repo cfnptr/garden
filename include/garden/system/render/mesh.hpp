@@ -32,7 +32,9 @@ namespace garden
  */
 enum class MeshRenderType : uint8
 {
-	Opaque, Translucent, OpaqueShadow, TranslucentShadow, Count
+	Opaque,      /**< Blocks all light from passing through. (Faster to compute) */
+	Translucent, /**< Allows some light to pass through, enabling partial transparency. */
+	Count        /**< Common mesh render type count. */
 };
 
 /***********************************************************************************************************************
@@ -63,15 +65,17 @@ class IMeshRenderSystem
 protected:
 	/**
 	 * @brief Is mesh system ready for rendering. (All resources loaded, etc.)
+	 * @param isShadowPass is current pass shadow only
 	 */
-	virtual bool isDrawReady() { return true; }
+	virtual bool isDrawReady(bool isShadowPass) = 0;
 	/**
 	 * @brief Prepares data required for mesh rendering.
 	 *
 	 * @param[in] viewProj camera view * projection matrix
-	 * @param[in] drawCount total mesh draw item count
+	 * @param drawCount total mesh draw item count
+	 * @param isShadowPass is current pass shadow only
 	 */
-	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount) { }
+	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
 	/**
 	 * @brief Begins mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
@@ -94,7 +98,7 @@ protected:
 	 * @brief Ends mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
 	 * 
-	 * @param[in] drawCount total mesh draw item count
+	 * @param drawCount total mesh draw item count
 	 * @param taskIndex task index in the thread pool
 	 */
 	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
@@ -103,9 +107,10 @@ protected:
 	 * @warning Be careful with multithreaded code!
 	 * 
 	 * @param[in] viewProj camera view * projection matrix
-	 * @param[in] drawCount total mesh draw item count
+	 * @param drawCount total mesh draw item count
+	 * @param isShadowPass is current pass shadow only
 	 */
-	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount) { }
+	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
 
 	friend class MeshRenderSystem;
 public:
@@ -162,7 +167,7 @@ protected:
 /***********************************************************************************************************************
  * @brief General mesh rendering system.
  */
-class MeshRenderSystem final : public System
+class MeshRenderSystem final : public System, public Singleton<MeshRenderSystem>
 {
 public:
 	struct alignas(64) OpaqueMesh final
@@ -222,8 +227,9 @@ private:
 	 * 
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param useAsyncPreparing use multithreaded render meshes preparing
+	 * @param setSingleton set system singleton instance
 	 */
-	MeshRenderSystem(bool useAsyncRecording = true, bool useAsyncPreparing = true);
+	MeshRenderSystem(bool useAsyncRecording = true, bool useAsyncPreparing = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys mesh rendering system instance.
 	 */
@@ -231,10 +237,10 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes(const float4x4& viewProj, const float3& cameraOffset,
-		uint8 frustumPlaneCount, MeshRenderType opaqueType, MeshRenderType translucentType);
-	void renderOpaque(const float4x4& viewProj);
-	void renderTranslucent(const float4x4& viewProj);
+	void prepareMeshes(const float4x4& viewProj, const float3& cameraOffset, 
+		uint8 frustumPlaneCount, bool isShadowPass);
+	void renderOpaque(const float4x4& viewProj, bool isShadowPass);
+	void renderTranslucent(const float4x4& viewProj, bool isShadowPass);
 	void renderShadows();
 
 	void init();

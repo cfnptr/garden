@@ -357,7 +357,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 		for (uint32 i = 0; i < (uint32)secondaryCommandStates.size(); i++)
 			delete secondaryCommandStates[i];
 		secondaryCommandStates.resize(threadCount);
-		for (uint32 i = 0; i < threadCount; i++)
+		for (int32 i = 0; i < threadCount; i++)
 			secondaryCommandStates[i] = new atomic<bool>(false);
 	}
 	
@@ -375,7 +375,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 		auto secondaryCommandBuffers = buffer->secondaryCommandBuffers.data() + buffer->secondaryCommandBufferIndex;
 		vk::CommandBufferAllocateInfo allocateInfo({}, vk::CommandBufferLevel::eSecondary, 1);
 		
-		for (uint32 i = 0; i < threadCount; i++)
+		for (int32 i = 0; i < threadCount; i++)
 		{
 			allocateInfo.commandPool = secondaryCommandPools[i];
 			vk::CommandBuffer commandBuffer;

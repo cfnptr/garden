@@ -41,10 +41,6 @@ BloomRenderEditorSystem::~BloomRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(thresholdDescriptorSet);
-		graphicsSystem->destroy(thresholdPipeline);
-
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderEditorSystem::deinit);
 	}
@@ -59,6 +55,10 @@ void BloomRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(thresholdDescriptorSet);
+		graphicsSystem->destroy(thresholdPipeline);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", BloomRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", BloomRenderEditorSystem::editorBarTool);
 	}

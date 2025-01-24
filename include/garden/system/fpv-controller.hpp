@@ -49,8 +49,8 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	~FpvControllerSystem() final;
 
 	quat updateCameraRotation();
-	void updateCameraControll(const quat& rotationQuat);
-	void updateCharacterControll();
+	void updateCameraControl(const quat& rotationQuat);
+	void updateCharacterControl();
 
 	void init();
 	void deinit();

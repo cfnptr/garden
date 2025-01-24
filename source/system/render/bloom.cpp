@@ -19,6 +19,9 @@
 #include "garden/system/settings.hpp"
 #include "garden/profiler.hpp"
 
+// TODO: further improve bloom using these approaches: https://github.com/google/filament/commit/9f62dc2f2f531999aebdfabcf848696c7edaccfa
+// We can use downsample2x to improve bloom quality by increasing it resolution.
+
 using namespace garden;
 
 //**********************************************************************************************************************

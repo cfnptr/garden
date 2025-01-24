@@ -710,7 +710,7 @@ static void destroyPipelineCache(const string& appDataName, Version appVersion, 
 
 //**********************************************************************************************************************
 VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
-	uint32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen) : 
+	int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen) : 
 	GraphicsAPI(appName, windowSize, isFullscreen)
 {
 	this->backendType = GraphicsBackend::VulkanAPI;

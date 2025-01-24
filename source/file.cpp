@@ -21,7 +21,7 @@ using namespace garden;
 void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 {
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
-	inputStream.exceptions(ios::failbit | ios::badbit);
+	// No need to set stream exception bits.
 
 	if (!inputStream.is_open())
 		throw GardenError("Failed to open binary file. (path: " + filePath.generic_string() + ")");

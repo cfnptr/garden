@@ -1,4 +1,3 @@
-//--------------------------------------------------------------------------------------------------
 // Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//--------------------------------------------------------------------------------------------------
 
-// TODO:
+/***********************************************************************************************************************
+ * @file
+ * @brief Screen space reflections rendering functions.
+ * 
+ * @details Based on this: TODO
+ */
 
 #pragma once
 //#include "garden/system/render/pbr-lighting.hpp"
@@ -22,9 +25,16 @@
 namespace garden
 {
 
-//--------------------------------------------------------------------------------------------------
-// Screen Space Reflection
-class SsrRenderSystem final : public System, public IRenderSystem
+/**
+ * @brief Screen space reflections rendering system. (SSR)
+ * 
+ * @details
+ * SSR is a real-time rendering technique used to approximate reflections in 3D scenes by using information already 
+ * present in the rendered frame, specifically the screen space data. It provides realistic reflections without the 
+ * need to ray trace the entire scene. But SSR can only reflect objects visible in the current view. Anything outside 
+ * the camera's view or occluded cannot be reflected, leading to artifacts or incomplete reflections.
+ */
+class SsrRenderSystem final : public System
 {
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};

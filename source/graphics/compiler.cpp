@@ -2258,11 +2258,12 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 		data.packReader->readItemData(itemIndex, data.fragmentCode, threadIndex);
 	#else
 	File::loadBinary(data.cachesPath / vertexFilePath, data.vertexCode);
-	File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
+	if (fs::exists(data.cachesPath / fragmentFilePath)) // It's allowed to have only vertex shader.
+		File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
 	#endif
 
-	if (data.vertexCode.empty() && data.fragmentCode.empty())
-		throw GardenError("Graphics shader files are empty");
+	if (data.vertexCode.empty())
+		throw GardenError("Graphics vertex shader file is empty");
 }
 
 //******************************************************************************************************************

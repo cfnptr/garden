@@ -25,7 +25,6 @@ pipelineState
 in noperspective float2 fs.texCoords;
 out float4 fb.shadow;
 
-uniform sampler2D gBufferNormals;
 uniform sampler2D depthBuffer;
 
 uniform sampler2DArrayShadow
@@ -43,10 +42,7 @@ uniform DataBuffer
 uniform pushConstants
 {
 	float4 farNearPlanes;
-	float4 lightDir;
-	float minBias;
-	float maxBias;
-	float intensity;
+	float4 lightDirIntens;
 } pc;
 
 //**********************************************************************************************************************
@@ -62,11 +58,6 @@ void main()
 	float3 lightCoords = lightProj.xyz / lightProj.w;
 	if (lightCoords.z < 0.0f)
 		discard;
-
-	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
-	float bias = max((dot(normal, pc.lightDir.xyz) + 1.0f) * pc.maxBias, pc.minBias);
-	bias /= (pc.farNearPlanes.w / pc.farNearPlanes[cascadeID]) * 0.5f;
-	lightCoords.z += bias;
 
 	float2 texelSize = 1.0f / textureSize(shadowMap, 0).xy;
 	float shadow = 0.0f;
@@ -84,5 +75,5 @@ void main()
 		discard;
 
 	shadow *= (1.0f / 9.0f);
-	fb.shadow = float4(1.0f - shadow * pc.intensity, 0.0f, 0.0f, 0.0f);
+	fb.shadow = float4(1.0f - shadow * pc.lightDirIntens.w, 0.0f, 0.0f, 0.0f);
 }

@@ -136,7 +136,6 @@ void InfiniteGridEditorSystem::swapchainRecreate()
 
 	if (swapchainChanges.bufferCount && descriptorSet)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);
 		auto uniforms = getUniforms();
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));

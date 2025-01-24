@@ -139,6 +139,8 @@ protected:
 	
 	friend class ecsm::Manager;
 public:
+	float pipelineTaskPriority = 10.0f; /**< Background pipeline loading tasks priority. */
+
 	/*******************************************************************************************************************
 	 * @brief Loads image data (pixels) from the resource pack.
 	 * @note Loads from the images directory in debug build.

@@ -30,54 +30,60 @@ class InstanceRenderSystem : public System, public IMeshRenderSystem
 {
 protected:
 	DescriptorSetBuffers instanceBuffers = {};
-	ID<GraphicsPipeline> pipeline = {};
+	DescriptorSetBuffers shadowInstanceBuffers = {};
+	ID<GraphicsPipeline> basePipeline = {};
+	ID<GraphicsPipeline> shadowPipeline = {};
 	ID<DescriptorSet> baseDescriptorSet = {};
-	ID<DescriptorSet> defaultDescriptorSet = {};
+	ID<DescriptorSet> shadowDescriptorSet = {};
 	uint32 swapchainIndex = 0;
+	uint32 shadowDrawIndex = 0;
+	ID<DescriptorSet> descriptorSet = {};
 	View<GraphicsPipeline> pipelineView = {};
 	uint8* instanceMap = nullptr;
-	bool useBaseDS = false;
-	bool useDefaultDS = false;
 
 	/**
-	 * @brief Creates a new instance rendering system instance.
-	 * 
-	 * @param useBaseDS use base descriptor set
-	 * @param useDefaultDS use default descriptor set
+	 * @brief Creates a new mesh instance rendering system instance.
 	 */
-	InstanceRenderSystem(bool useBaseDS = true, bool useDefaultDS = true);
+	InstanceRenderSystem();
 	/**
-	 * @brief Destroys instance rendering system instance.
+	 * @brief Destroys mesh instance rendering system instance.
 	 */
 	~InstanceRenderSystem() override;
 
 	virtual void init();
 	virtual void deinit();
-	virtual void swapchainRecreate();
+	virtual void gBufferRecreate();
 	
-	bool isDrawReady() override;
-	void prepareDraw(const float4x4& viewProj, uint32 drawCount) override;
+	bool isDrawReady(bool isShadowPass) override;
+	void prepareDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
 	void beginDrawAsync(int32 taskIndex) override;
-	void finalizeDraw(const float4x4& viewProj, uint32 drawCount) override;
+	void finalizeDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
 
-	virtual void setDescriptorSetRange(MeshRenderComponent* meshRenderView,
-		DescriptorSet::Range* range, uint8& index, uint8 capacity);
 	virtual map<string, DescriptorSet::Uniform> getBaseUniforms();
-	virtual map<string, DescriptorSet::Uniform> getDefaultUniforms() { return {}; }
-	virtual ID<GraphicsPipeline> createPipeline() = 0;
-
-	#if GARDEN_DEBUG
-	void setInstancesBuffersName(const string& debugName);
-	#endif
+	virtual map<string, DescriptorSet::Uniform> getShadowUniforms();
+	virtual ID<GraphicsPipeline> createBasePipeline() = 0;
+	virtual ID<GraphicsPipeline> createShadowPipeline() { return {}; }
 public:
+	#if GARDEN_DEBUG
+	string debugResourceName = "instance";
+	#endif
+
 	/**
-	 * @brief Returns system graphics pipeline.
+	 * @brief Returns mesh instance base graphics pipeline.
 	 */
-	ID<GraphicsPipeline> getPipeline();
+	ID<GraphicsPipeline> getBasePipeline();
 	/**
-	 * @brief Returns system mesh instance data size in bytes.
+	 * @brief Returns mesh instance shadow graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getShadowPipeline();
+	/**
+	 * @brief Returns mesh instance data size in bytes.
 	 */
 	virtual uint64 getInstanceDataSize() = 0;
+	/**
+	 * @brief Returns mesh shadow instance data size in bytes.
+	 */
+	virtual uint64 getShadowInstanceDataSize() { return 0; }
 };
 
 } // namespace garden

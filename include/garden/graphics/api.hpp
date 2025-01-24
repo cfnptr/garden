@@ -93,7 +93,7 @@ protected:
 public:
 	virtual ~GraphicsAPI();
 
-	uint32 threadCount = 0;
+	int32 threadCount = 0;
 	void* window = nullptr;
 	Swapchain* swapchain = nullptr;
 	LinearPool<Buffer> bufferPool;
