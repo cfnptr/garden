@@ -178,8 +178,7 @@ void CsmRenderSystem::shadowRender()
 	dataBufferView->flush();
 
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->farNearPlanes = float4(cameraConstants.nearPlane / farPlanes, cameraConstants.nearPlane);
-	pushConstants->lightDirIntens = float4((float3)cameraConstants.lightDir, intensity);
+	pushConstants->farPlanesIntens = float4(cameraConstants.nearPlane / farPlanes, intensity);
 
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
 	pipelineView->bind();
@@ -254,13 +253,6 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 		maximum.z *= zCoeff;
 
 	cameraOffset = -(lightDir * minimum.z + center);
-
-	auto texelSize = (maximum.x - minimum.x) / 2048.0f;
-	minimum.x = floor(minimum.x / texelSize) * texelSize;
-	minimum.y = floor(minimum.y / texelSize) * texelSize;
-	maximum.x = floor(maximum.x / texelSize) * texelSize;
-	maximum.y = floor(maximum.y / texelSize) * texelSize;
-
 	auto lightProj = calcOrthoProjRevZ(float2(minimum.x, maximum.x),
 		float2(minimum.y, maximum.y), float2(minimum.z, maximum.z));
 	return lightProj * lightView;
@@ -277,16 +269,13 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, 
 	if (!cameraView)
 		return false;
 
+	auto nearPlane = cameraView->p.perspective.nearPlane;
+	if (passIndex > 0)
+		nearPlane = distance * cascadeSplits[passIndex - 1];
 	auto farPlane = distance;
 	if (passIndex < cascadeCount - 1)
 		farPlane *= cascadeSplits[passIndex];
-
-	auto nearPlane = cameraView->p.perspective.nearPlane;
-	farPlane += nearPlane;
 	farPlanes[passIndex] = farPlane;
-
-	if (passIndex > 0)
-		nearPlane += distance * cascadeSplits[passIndex - 1];
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	viewProj = calcLightViewProj(cameraConstants.view, (float3)cameraConstants.lightDir, cameraOffset,

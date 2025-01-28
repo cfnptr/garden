@@ -48,8 +48,7 @@ public:
 	};
 	struct PushConstants final
 	{
-		float4 farNearPlanes;
-		float4 lightDirIntens;
+		float4 farPlanesIntens;
 	};
 private:
 	vector<ID<ImageView>> imageViews;

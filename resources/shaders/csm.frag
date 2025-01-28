@@ -41,18 +41,17 @@ uniform DataBuffer
 
 uniform pushConstants
 {
-	float4 farNearPlanes;
-	float4 lightDirIntens;
+	float4 farPlanesIntens;
 } pc;
 
 //**********************************************************************************************************************
 void main()
 {
 	float pixelDepth = texture(depthBuffer, fs.texCoords).r;
-	if (pixelDepth < pc.farNearPlanes.z)
+	if (pixelDepth < pc.farPlanesIntens.z)
 		discard;
 
-	float2 steps = step(pc.farNearPlanes.xy, float2(pixelDepth));
+	float2 steps = step(pc.farPlanesIntens.xy, float2(pixelDepth));
 	uint32 cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y);
 	float4 lightProj = data.lightSpace[cascadeID] * float4(fs.texCoords, pixelDepth, 1.0f);
 	float3 lightCoords = lightProj.xyz / lightProj.w;
@@ -75,5 +74,5 @@ void main()
 		discard;
 
 	shadow *= (1.0f / 9.0f);
-	fb.shadow = float4(1.0f - shadow * pc.lightDirIntens.w, 0.0f, 0.0f, 0.0f);
+	fb.shadow = float4(1.0f - shadow * pc.farPlanesIntens.w, 0.0f, 0.0f, 0.0f);
 }
