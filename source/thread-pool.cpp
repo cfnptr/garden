@@ -86,13 +86,7 @@ ThreadPool::ThreadPool(bool isBackground, const string& name, uint32 threadCount
 }
 ThreadPool::~ThreadPool()
 {
-	mutex.lock();
-	isRunning = false;
-	mutex.unlock();
-	workCond.notify_all();
-
-	for (auto& thread : threads)
-		thread.join();
+	stop();
 }
 
 uint32 ThreadPool::getPendingTaskCount()
@@ -107,6 +101,7 @@ uint32 ThreadPool::getPendingTaskCount()
 void ThreadPool::addTask(const Task::Function& function, float priority)
 {
 	GARDEN_ASSERT(function);
+	GARDEN_ASSERT(isRunning);
 	auto task = Task(function, priority);
 	mutex.lock();
 	taskQueue.emplace(priority, task);
@@ -116,6 +111,7 @@ void ThreadPool::addTask(const Task::Function& function, float priority)
 void ThreadPool::addTasks(const vector<Task::Function>& functions, float priority)
 {
 	GARDEN_ASSERT(!functions.empty());
+	GARDEN_ASSERT(isRunning);
 
 	mutex.lock();
 	for (uint32 i = 0; i < (uint32)taskQueue.size(); i++)
@@ -136,6 +132,7 @@ void ThreadPool::addTasks(const Task::Function& function, uint32 count, float pr
 {
 	GARDEN_ASSERT(function);
 	GARDEN_ASSERT(count != 0);
+	GARDEN_ASSERT(isRunning);
 	auto task = Task(function, priority);
 
 	mutex.lock();
@@ -150,12 +147,12 @@ void ThreadPool::addTasks(const Task::Function& function, uint32 count, float pr
 		workCond.notify_all();
 	else
 		workCond.notify_one();
-	
 }
 void ThreadPool::addItems(const Task::Function& function, uint32 count, float priority)
 {
 	GARDEN_ASSERT(function);
 	GARDEN_ASSERT(count != 0);
+	GARDEN_ASSERT(isRunning);
 
 	auto task = Task(function, priority);
 	auto taskCount = count > threads.size() ? (uint32)threads.size() : count;
@@ -180,6 +177,7 @@ void ThreadPool::addItems(const Task::Function& function, uint32 count, float pr
 //**********************************************************************************************************************
 void ThreadPool::wait()
 {
+	GARDEN_ASSERT(isRunning);
 	auto locker = unique_lock(mutex);
 	while (!taskQueue.empty() || workingCount > 0)
 		workingCond.wait(locker);
@@ -190,4 +188,18 @@ void ThreadPool::removeAll()
 	mutex.lock();
 	taskQueue.clear();
 	mutex.unlock();
+}
+void ThreadPool::stop()
+{
+	mutex.lock();
+	auto shouldJoin = isRunning;
+	isRunning = false;
+	mutex.unlock();
+	
+	if (shouldJoin)
+	{
+		workCond.notify_all();
+		for (auto& thread : threads)
+			thread.join();
+	}
 }

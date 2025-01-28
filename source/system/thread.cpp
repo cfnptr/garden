@@ -45,5 +45,5 @@ void ThreadSystem::preInit()
 }
 void ThreadSystem::preDeinit()
 {
-	backgroundPool.wait();
+	backgroundPool.stop();
 }

@@ -14,6 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
+ * @brief Common thread pool functions.
  */
 
 #pragma once
@@ -204,6 +205,10 @@ public:
 	 * @details Locks mutex inside to clear the queue.
 	 */
 	void removeAll();
+	/**
+	 * @brief Stops thread pool tasks execution and joins all threads.
+	 */
+	void stop();
 };
 
 } // namespace garden
