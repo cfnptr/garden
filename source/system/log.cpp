@@ -111,7 +111,8 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 }
 LogSystem::~LogSystem()
 {
-	info("Stopped logging system.");
+	// Using logger here to prevent use after free of other systems.
+	logger.log(INFO_LOG_LEVEL, "Stopped logging system."); 
 	unsetSingleton();
 }
 

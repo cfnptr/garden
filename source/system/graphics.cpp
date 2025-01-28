@@ -332,8 +332,9 @@ static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
 void GraphicsSystem::input()
 {
 	auto inputSystem = InputSystem::Instance::get();
-	auto windowFramebufferSize = inputSystem->getFramebufferSize();
-	isFramebufferSizeValid = windowFramebufferSize.x > 0 && windowFramebufferSize.y > 0;
+	auto windowSize = inputSystem->getWindowSize();
+	auto framebufferSize = inputSystem->getFramebufferSize();
+	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 &&framebufferSize.x > 0 && framebufferSize.y > 0;
 	beginSleepClock = isFramebufferSizeValid ? 0.0 : mpio::OS::getCurrentClock();
 }
 void GraphicsSystem::update()
@@ -448,10 +449,11 @@ void GraphicsSystem::present()
 	graphicsAPI->imageViewPool.dispose();
 	graphicsAPI->imagePool.dispose();
 	graphicsAPI->bufferPool.dispose();
-	graphicsAPI->flushDestroyBuffer();
 
 	if (isFramebufferSizeValid)
 	{
+		graphicsAPI->flushDestroyBuffer();
+
 		if (graphicsAPI->swapchain->present())
 		{
 			if (!useVsync)
