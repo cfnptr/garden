@@ -19,7 +19,7 @@ pipelineState
 }
 
 in float4 fs.color;
-in noperspective float2 fs.texCoords;
+in float2 fs.texCoords;
 
 out float4 fb.color;
 

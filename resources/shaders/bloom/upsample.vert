@@ -14,7 +14,7 @@
 
 #include "common/fullscreen.gsl"
 
-out float2 fs.texCoords;
+out noperspective float2 fs.texCoords;
 
 void main()
 {
