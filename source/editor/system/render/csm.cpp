@@ -91,10 +91,8 @@ void CsmRenderEditorSystem::editorRender()
 			auto graphicsSystem = GraphicsSystem::Instance::get();
 			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 
-			ImGui::Text("Cascade Far Planes: %f, %f, %f",
-				csmSystem->cascadeSplits.x * csmSystem->distance + cameraConstants.nearPlane,
-				csmSystem->cascadeSplits.y * csmSystem->distance + cameraConstants.nearPlane,
-				csmSystem->distance + cameraConstants.nearPlane);
+			ImGui::Text("Cascade Far Planes: %f, %f, %f", csmSystem->cascadeSplits.x * csmSystem->distance, 
+				csmSystem->cascadeSplits.y * csmSystem->distance, csmSystem->distance);
 
 			// TODO: set shadow map size, also set it in the settings
 
