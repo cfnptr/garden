@@ -114,7 +114,7 @@ protected:
 	#if GARDEN_PACK_RESOURCES
 	pack::Reader packReader;
 	#endif
-	#if GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path appResourcesPath;
 	fs::path appCachesPath;
 	Version appVersion;

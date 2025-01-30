@@ -146,7 +146,7 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 		throw GardenError("Failed to open \"resources.pack\" file.");
 	}
 	#endif
-	#if GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
@@ -716,15 +716,13 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
-
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	Image::Format format;
-
+	
 	#if !GARDEN_PACK_RESOURCES
 	auto filePath = appCachesPath / "images" / path;
 	auto cacheFilePath = filePath.generic_string();
 
-	fs::path inputFilePath; ImageFileType inputFileType;
+	fs::path inputFilePath; ImageFileType inputFileType; Image::Format format;
 	auto fileCount = getImageFilePath(appCachesPath, appResourcesPath, path, inputFilePath, inputFileType);
 
 	if (fileCount == 0)

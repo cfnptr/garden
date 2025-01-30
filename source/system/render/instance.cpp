@@ -29,6 +29,7 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSetBuffers& insta
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage, Buffer::Access::SequentialWrite,
 			bufferSize, Buffer::Usage::Auto, Buffer::Strategy::Size);
+		#if GARDEN_DEBUG
 		if (isShadow)
 		{
 			SET_RESOURCE_DEBUG_NAME(buffer, "buffer.storage." + 
@@ -39,6 +40,7 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSetBuffers& insta
 			SET_RESOURCE_DEBUG_NAME(buffer, "buffer.storage." + 
 				system->debugResourceName + ".instances" + to_string(i));
 		}
+		#endif
 		instanceBuffers[i].resize(1); instanceBuffers[i][0] = buffer;
 	}
 }
@@ -103,7 +105,9 @@ bool InstanceRenderSystem::isDrawReady(bool isShadowPass)
 				return false;
 
 			shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+			#if GARDEN_DEBUG
 			SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+			#endif
 		}
 	}
 	else
@@ -118,7 +122,9 @@ bool InstanceRenderSystem::isDrawReady(bool isShadowPass)
 				return false;
 
 			baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+			#if GARDEN_DEBUG
 			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+			#endif
 		}
 	}
 	return true;
@@ -143,7 +149,9 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 				graphicsSystem->destroy(shadowDescriptorSet);
 				auto uniforms = getShadowUniforms();
 				shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+				#if GARDEN_DEBUG
 				SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+				#endif
 			}
 		}
 
@@ -165,7 +173,9 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 				graphicsSystem->destroy(baseDescriptorSet);
 				auto uniforms = getBaseUniforms();
 				baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+				#if GARDEN_DEBUG
 				SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+				#endif
 			}
 		}
 
@@ -226,14 +236,18 @@ void InstanceRenderSystem::gBufferRecreate()
 			graphicsSystem->destroy(baseDescriptorSet);
 			auto uniforms = getBaseUniforms();
 			baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+			#if GARDEN_DEBUG
 			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+			#endif
 		}
 		if (shadowDescriptorSet)
 		{
 			graphicsSystem->destroy(shadowDescriptorSet);
 			auto uniforms = getShadowUniforms();
 			shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+			#if GARDEN_DEBUG
 			SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+			#endif
 		}
 	}
 }
