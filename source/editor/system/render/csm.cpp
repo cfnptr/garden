@@ -88,9 +88,6 @@ void CsmRenderEditorSystem::editorRender()
 				ImGui::EndTooltip();
 			}
 
-			auto graphicsSystem = GraphicsSystem::Instance::get();
-			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-
 			ImGui::Text("Cascade Far Planes: %f, %f, %f", csmSystem->cascadeSplits.x * csmSystem->distance, 
 				csmSystem->cascadeSplits.y * csmSystem->distance, csmSystem->distance);
 

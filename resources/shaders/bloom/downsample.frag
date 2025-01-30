@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "bloom/common.gsl"
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
-#include "common/tone-mapping.gsl"
 
 #variantCount 3
 #define DOWNSAMPLE_FIRST_VARIANT 0
@@ -40,93 +40,6 @@ uniform pushConstants
 {
 	float threshold;
 } pc;
-
-float3 box4x4(float3 s0, float3 s1, float3 s2, float3 s3)
-{
-	return (s0 + s1 + s2 + s3) * 0.25f;
-}
-float3 box4x4Karis(float3 s0, float3 s1, float3 s2, float3 s3)
-{
-	// Karis's luma weighted average
-	float w0 = 1.0f / (1.0f + rgbToLuma(s0));
-	float w1 = 1.0f / (1.0f + rgbToLuma(s1));
-	float w2 = 1.0f / (1.0f + rgbToLuma(s2));
-	float w3 = 1.0f / (1.0f + rgbToLuma(s3));
-	return (s0 * w0 + s1 * w1 + s2 * w2 + s3 * w3) * (1.0f / (w0 + w1 + w2 + w3));
-}
-
-// TODO: we can compute karis average only once for each box4x4.
-
-//**********************************************************************************************************************
-float3 downsample(sampler2D srcTexture, float2 texCoords, float threshold, bool useThreshold, bool antiFlickering)
-{
-	float3 c   = texture(srcTexture, texCoords).rgb;
-
-	float3 lt  = textureOffset(srcTexture, texCoords, int2(-1, -1)).rgb;
-	float3 rt  = textureOffset(srcTexture, texCoords, int2( 1, -1)).rgb;
-	float3 rb  = textureOffset(srcTexture, texCoords, int2( 1,  1)).rgb;
-	float3 lb  = textureOffset(srcTexture, texCoords, int2(-1,  1)).rgb;
-
-	float3 lt2 = textureOffset(srcTexture, texCoords, int2(-2, -2)).rgb;
-	float3 rt2 = textureOffset(srcTexture, texCoords, int2( 2, -2)).rgb;
-	float3 rb2 = textureOffset(srcTexture, texCoords, int2( 2,  2)).rgb;
-	float3 lb2 = textureOffset(srcTexture, texCoords, int2(-2,  2)).rgb;
-
-	float3 l   = textureOffset(srcTexture, texCoords, int2(-2,  0)).rgb;
-	float3 t   = textureOffset(srcTexture, texCoords, int2( 0, -2)).rgb;
-	float3 r   = textureOffset(srcTexture, texCoords, int2( 2,  0)).rgb;
-	float3 b   = textureOffset(srcTexture, texCoords, int2( 0,  2)).rgb;
-
-	float3 c0, c1;
-	if (antiFlickering) // Anti fireflies
-	{
-		c0  = box4x4Karis(lt, rt, rb, lb);
-		c1  = box4x4Karis(c,  l,  t,  lt2);
-		c1 += box4x4Karis(c,  r,  t,  rt2);
-		c1 += box4x4Karis(c,  r,  b,  rb2);
-		c1 += box4x4Karis(c,  l,  b,  lb2);
-	}
-	else
-	{
-		c0  = box4x4(lt, rt, rb, lb);
-		c1  = box4x4(c,  l,  t,  lt2);
-		c1 += box4x4(c,  r,  t,  rt2);
-		c1 += box4x4(c,  r,  b,  rb2);
-		c1 += box4x4(c,  l,  b,  lb2);
-	}
-
-	float3 color = c0 * 0.5f + c1 * 0.125f;
-	if (useThreshold)
-		color = any(lessThan(color, float3(threshold))) ? float3(0.0f) : color;
-	return color;
-}
-
-//**********************************************************************************************************************
-float3 downsample6x6(sampler2D srcTexture, float2 texCoords)
-{
-	const float o  = 1.5f + 0.261629f;
-	const float wa = 7.46602f / 32.0f;
-	const float wb = 1.0f - wa * 2.0f;
-	const float wab = wa * wb;
-	const float waa = wa * wa;
-	const float wbb = wb * wb;
-
-	float2 size = textureSize(srcTexture, 0);
-	size = (1.0f / size) * o;
-
-	float3 c  = texture(srcTexture, texCoords + float2(0.0f            )).rgb;
-	float3 l  = texture(srcTexture, texCoords + float2(-size.x,    0.0f)).rgb;
-	float3 r  = texture(srcTexture, texCoords + float2( size.x,    0.0f)).rgb;
-	float3 b  = texture(srcTexture, texCoords + float2(   0.0f, -size.y)).rgb;
-	float3 t  = texture(srcTexture, texCoords + float2(   0.0f,  size.y)).rgb;
-	float3 lb = texture(srcTexture, texCoords + float2(-size.x, -size.y)).rgb;
-	float3 rb = texture(srcTexture, texCoords + float2( size.x, -size.y)).rgb;
-	float3 lt = texture(srcTexture, texCoords + float2(-size.x,  size.y)).rgb;
-	float3 rt = texture(srcTexture, texCoords + float2( size.x,  size.y)).rgb;
-
-	return (c * wbb + (l * wab + (r * wab + (b * wab + (t * wab + 
-		(lb * waa + (rb * waa + (lt * waa + (rt * waa)))))))));
-}
 
 void main()
 {

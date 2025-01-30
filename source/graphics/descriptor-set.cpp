@@ -431,20 +431,19 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(uniform.resourceSets.size() == 1);
-	// TODO: Maybe allow to specifi target descriptor set index in the DS array?
+	// TODO: Maybe allow to specific target descriptor set index in the DS array?
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
 	const auto& pipelineUniforms = pipelineView->getUniforms();
-	auto maxBindlessCount = pipelineView->getMaxBindlessCount();
 	const auto& pipelineUniform = pipelineUniforms.at(name);
-	auto uniformType = pipelineUniform.type;
-	GARDEN_ASSERT(uniform.resourceSets[0].size() + elementOffset <= maxBindlessCount);
+	GARDEN_ASSERT(uniform.resourceSets[0].size() + elementOffset <= pipelineView->getMaxBindlessCount());
 
 	#if GARDEN_DEBUG
 	if (pipelineUniforms.find(name) == pipelineUniforms.end())
 		throw GardenError("Missing required pipeline uniform. (" + name + ")");
 
+	auto uniformType = pipelineUniform.type;
 	if (isSamplerType(uniformType) || isImageType(uniformType))
 	{
 		GARDEN_ASSERT(uniform.getDebugType() == typeid(ImageView));

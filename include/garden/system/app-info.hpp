@@ -39,7 +39,7 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 	string copyright;
 	Version version;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path cachesPath;
 	fs::path resourcesPath;
 	#endif
@@ -112,7 +112,7 @@ public:
 		#endif
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Returns application caches path. (Debug Only)
 	 * @details See the GARDEN_APP_CACHES_DIR.
