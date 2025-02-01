@@ -69,6 +69,7 @@ static ID<GraphicsPipeline> createPipeline(uint32 sampleCount)
 {
 	map<string, Pipeline::SpecConstValue> specConsts = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+	GARDEN_ASSERT(pbrLightingSystem->useAoBuffer());
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("ssao",
 		pbrLightingSystem->getAoFramebuffers()[0], false, true, 0, 0, specConsts);
 }

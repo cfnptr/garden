@@ -842,16 +842,12 @@ const ID<ImageView>* PbrLightingRenderSystem::getShadowImageViews()
 {
 	if (!shadowBuffer && hasShadowBuffer)
 		shadowBuffer = createShadowBuffer(shadowImageViews);
-	if (!shadowImageViews[0] && hasShadowBuffer)
-		createShadowFramebuffers(shadowFramebuffers, shadowImageViews);
 	return shadowImageViews;
 }
 const ID<ImageView>* PbrLightingRenderSystem::getAoImageViews()
 {
 	if (!aoBuffer && hasAoBuffer)
 		aoBuffer = createAoBuffer(aoImageViews);
-	if (!aoImageViews[0] && hasAoBuffer)
-		createAoFramebuffers(shadowFramebuffers, shadowImageViews);
 	return aoImageViews;
 }
 
