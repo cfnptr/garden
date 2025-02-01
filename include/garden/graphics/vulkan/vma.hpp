@@ -14,12 +14,12 @@
 
 // Note: no pragma once here.
 
-#include "volk.h"
-#undef VK_NO_PROTOTYPES
-
 #if __APPLE__
 #define VK_ENABLE_BETA_EXTENSIONS
 #endif
+
+#include "volk.h"
+#undef VK_NO_PROTOTYPES
 
 #include "vulkan/vulkan.hpp"
 
@@ -32,4 +32,11 @@
 
 #if __clang__
 #pragma clang diagnostic pop
+#endif
+
+// Xlib why? Why you globally define these values?!
+#ifdef _X11_XLIB_H_
+#undef None
+#undef Always
+#undef Bool
 #endif
