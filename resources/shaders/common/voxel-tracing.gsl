@@ -96,12 +96,10 @@ void raycastVoxel(VoxelTraceConsts consts, inout VoxelTraceData data)
 }
 float3 computeVoxelNormal(VoxelTraceData data)
 {
-	float3 normal = data.traceOrigin - (float3(data.voxelPosition) + 0.5f);
-	float3 absNormal = abs(normal);
-	float maxNormal = max(max(absNormal.x, absNormal.y), absNormal.z);
-	if (maxNormal == absNormal.x) normal = float3(sign(normal.x), 0.0f, 0.0f);
-	else if (maxNormal == absNormal.y) normal = float3(0.0f, sign(normal.y), 0.0f);
-	else normal = float3(0.0f, 0.0f, sign(normal.z));
+	float3 normal;
+	float3 surfacePos = data.traceOrigin - (float3(data.voxelPosition) + 0.5f);
+	int32 index = getLowest(abs(abs(surfacePos) - 0.5f));
+	normal[index] = surfacePos[index] > 0.0f ? 1.0f : -1.0f;
 	return normal;
 }
 
