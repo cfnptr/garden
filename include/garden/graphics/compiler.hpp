@@ -26,6 +26,12 @@
 #include "pack/reader.hpp"
 #endif
 
+#if GARDEN_OS_MACOS
+#define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.2"
+#else
+#define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.4"
+#endif
+
 #include <map>
 #include <sstream>
 
