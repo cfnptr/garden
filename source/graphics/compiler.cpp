@@ -22,12 +22,6 @@
 #include <windows.h>
 #endif
 
-#if GARDEN_OS_MACOS
-#define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.2"
-#else
-#define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.3"
-#endif
-
 using namespace garden;
 using namespace garden::graphics;
 
