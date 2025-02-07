@@ -37,14 +37,14 @@ ToneMappingRenderEditorSystem::~ToneMappingRenderEditorSystem()
 void ToneMappingRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", ToneMappingRenderEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", ToneMappingRenderEditorSystem::editorBarToolPP);
 }
 void ToneMappingRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", ToneMappingRenderEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", ToneMappingRenderEditorSystem::editorBarToolPP);
 	}
 }
 
@@ -82,9 +82,9 @@ void ToneMappingRenderEditorSystem::editorRender()
 	ImGui::End();
 }
 
-void ToneMappingRenderEditorSystem::editorBarTool()
+void ToneMappingRenderEditorSystem::editorBarToolPP()
 {
-	if (ImGui::MenuItem("Tone Mapping"))
+	if (ImGui::MenuItem("Tone Mapping (HDR)"))
 		showWindow = true;
 }
 #endif

@@ -178,10 +178,7 @@ public:
 	private:
 		uint32 _alignment = 0;
 	public:
-		bool operator<(const OpaqueMesh& m) const noexcept
-		{
-			return distance2 < m.distance2;
-		}
+		bool operator<(const OpaqueMesh& m) const noexcept { return distance2 < m.distance2; }
 	};
 	struct alignas(64) TranslucentMesh final
 	{
@@ -190,10 +187,7 @@ public:
 		float distance2 = 0.0f;
 		uint32 bufferIndex = 0;
 
-		bool operator<(const TranslucentMesh& m) const noexcept
-		{
-			return distance2 > m.distance2;
-		}
+		bool operator<(const TranslucentMesh& m) const noexcept { return distance2 > m.distance2; }
 	};
 
 	struct MeshBuffer

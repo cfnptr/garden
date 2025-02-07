@@ -19,15 +19,15 @@
 	float4x4 view;           \
 	float4x4 projection;     \
 	float4x4 viewProj;       \
-	float4x4 viewInverse;    \
-	float4x4 projInverse;    \
-	float4x4 viewProjInv;    \
+	float4x4 inverseView;    \
+	float4x4 inverseProj;    \
+	float4x4 invViewProj;    \
 	float4 cameraPos;        \
 	float4 viewDir;          \
 	float4 lightDir;         \
 	float2 frameSize;        \
-	float2 frameSizeInv;     \
-	float2 frameSizeInv2;    \
+	float2 invFrameSize;     \
+	float2 invFrameSize2;    \
 	float nearPlane;
 
 #endif // CONSTANTS_GSL

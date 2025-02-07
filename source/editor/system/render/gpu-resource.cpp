@@ -463,14 +463,15 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 				to_string(*attachment.imageView) : imageView->getDebugName();
 			ImGui::SeparatorText(to_string(i).c_str());
 			ImGui::Text("%s", viewName.c_str());
+			ImGui::PushID(viewName.c_str());
+
 			auto value = attachment.clear;
 			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
 			value = attachment.load;
 			ImGui::Checkbox("Load", &value); ImGui::SameLine();
 			value = attachment.store;
 			ImGui::Checkbox("Store", &value); ImGui::SameLine();
-
-			ImGui::PushID(viewName.c_str());
+			
 			if (ImGui::Button("Select image view")) 
 			{
 				openNextTab = GpuResourceEditorSystem::TabType::ImageViews;
@@ -497,6 +498,8 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			auto viewName = imageView->getDebugName().empty() ? "Image View " +
 				to_string(*depthStencilAttachment.imageView) : imageView->getDebugName();
 			ImGui::Text("%s", viewName.c_str());
+			ImGui::PushID(viewName.c_str());
+
 			auto value = depthStencilAttachment.clear;
 			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
 			value = depthStencilAttachment.load;
@@ -504,7 +507,6 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			value = depthStencilAttachment.store;
 			ImGui::Checkbox("Store", &value); ImGui::SameLine();
 
-			ImGui::PushID(viewName.c_str());
 			if (ImGui::Button("Select image view"))
 			{
 				openNextTab = GpuResourceEditorSystem::TabType::ImageViews;
@@ -703,7 +705,7 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 	ImGui::TextWrapped("Variant count: %lu", (unsigned long)pipeline.getVariantCount());
 	ImGui::TextWrapped("Push constants size: %s", toBinarySizeString(pipeline.getPushConstantsSize()).c_str());
 	ImGui::TextWrapped("Max bindless count: %lu", (unsigned long)pipeline.getMaxBindlessCount());
-	ImGui::Checkbox("Async recording", &useAsyncRecording);
+	ImGui::Checkbox("Async Recording", &useAsyncRecording); ImGui::SameLine();
 	ImGui::Checkbox("Bindless", &isBindless);
 	ImGui::Spacing();
 
@@ -723,8 +725,12 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 			ImGui::TextWrapped("Binding index: %lu", (unsigned long)uniform.bindingIndex);
 			ImGui::TextWrapped("Descriptor set index: %lu", (unsigned long)uniform.descriptorSetIndex);
 			ImGui::TextWrapped("Array size: %lu", (unsigned long)uniform.arraySize);
-			ImGui::Checkbox("Read access", &readAccess); ImGui::SameLine();
-			ImGui::Checkbox("Write access", &writeAccess);
+
+			ImGui::PushID(pair.first.c_str());
+			ImGui::Text("Access:"); ImGui::SameLine();
+			ImGui::Checkbox("Read", &readAccess); ImGui::SameLine();
+			ImGui::Checkbox("Write", &writeAccess);
+			ImGui::PopID();
 		}
 
 		if (uniforms.empty())

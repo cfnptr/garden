@@ -163,7 +163,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndTooltip();
 	}
 
-	if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f))
+	if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f, 0.0f, 0.0f, "%.3f°"))
 	{
 		auto difference = newEulerAngles - oldEulerAngles;
 		transformView->rotation *= quat(radians(difference));

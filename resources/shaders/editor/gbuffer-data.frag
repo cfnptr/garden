@@ -60,7 +60,7 @@ uniform sampler2D aoBuffer1;
 
 uniform pushConstants
 {
-	float4x4 viewProjInv;
+	float4x4 invViewProj;
 	int32 drawMode;
 	float showChannelR;
 	float showChannelG;
@@ -134,7 +134,7 @@ void main()
 	else if (pc.drawMode == WORLD_POSITION_DRAW_MODE)
 	{
 		float depth = texture(depthBuffer, fs.texCoords).r;
-		float3 worldPos = calcWorldPosition(depth, fs.texCoords, pc.viewProjInv);
+		float3 worldPos = calcWorldPosition(depth, fs.texCoords, pc.invViewProj);
 		fb.color = float4(log(abs(worldPos) + float3(1.0f)) * 0.1f, 1.0f);
 	}
 	else if (pc.drawMode == SHADOWS_DRAW_MODE)

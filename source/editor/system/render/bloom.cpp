@@ -49,7 +49,7 @@ BloomRenderEditorSystem::~BloomRenderEditorSystem()
 void BloomRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", BloomRenderEditorSystem::editorRender);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", BloomRenderEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", BloomRenderEditorSystem::editorBarToolPP);
 }
 void BloomRenderEditorSystem::deinit()
 {
@@ -60,7 +60,7 @@ void BloomRenderEditorSystem::deinit()
 		graphicsSystem->destroy(thresholdPipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", BloomRenderEditorSystem::editorRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", BloomRenderEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", BloomRenderEditorSystem::editorBarToolPP);
 	}
 }
 
@@ -152,7 +152,7 @@ void BloomRenderEditorSystem::editorRender()
 	}
 }
 
-void BloomRenderEditorSystem::editorBarTool()
+void BloomRenderEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("Bloom (Light Glow)"))
 		showWindow = true;

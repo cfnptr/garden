@@ -262,8 +262,8 @@ void MeshGizmosEditorSystem::editorRender()
 	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal)
 	{
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
-		auto globalDirection = cameraConstants.viewProjInv * float4(ndcPosition, 0.0001f, 1.0f);
+		auto globalOrigin = cameraConstants.invViewProj * float4(ndcPosition, 1.0f, 1.0f);
+		auto globalDirection = cameraConstants.invViewProj * float4(ndcPosition, 0.0001f, 1.0f);
 		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
 		globalDirection = float4((float3)globalDirection / globalDirection.w - (float3)globalOrigin, globalDirection.w);
 		
@@ -303,16 +303,16 @@ void MeshGizmosEditorSystem::editorRender()
 	{
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalLastPos = (float3)(cameraConstants.viewProjInv * float4(ndcPosition, 0.0f, 1.0f));
+		auto globalLastPos = (float3)(cameraConstants.invViewProj * float4(ndcPosition, 0.0f, 1.0f));
 		cursorPosition += inputSystem->getCursorDelta();
 		ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalNewPos = (float3)(cameraConstants.viewProjInv * float4(ndcPosition, 0.0f, 1.0f));
+		auto globalNewPos = (float3)(cameraConstants.invViewProj * float4(ndcPosition, 0.0f, 1.0f));
 
 		if (dragMode != 1)
 		{
-			auto modelInv = (float3x3)inverse(calcModel(translation, rotation));
-			globalLastPos = modelInv * globalLastPos;
-			globalNewPos = modelInv * globalNewPos;
+			auto invModel = (float3x3)inverse(calcModel(translation, rotation));
+			globalLastPos = invModel * globalLastPos;
+			globalNewPos = invModel * globalNewPos;
 		}
 
 		auto cursorTrans = (globalNewPos - globalLastPos); 

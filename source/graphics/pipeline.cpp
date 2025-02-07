@@ -644,8 +644,8 @@ void Pipeline::bind(uint8 variant)
 //**********************************************************************************************************************
 void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 {
-	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(variant < variantCount);
 	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
 	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
@@ -699,9 +699,9 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 //**********************************************************************************************************************
 void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
 {
-	GARDEN_ASSERT(rangeCount > 0);
-	GARDEN_ASSERT(descriptorSetRange);
 	GARDEN_ASSERT(instance); // is ready
+	GARDEN_ASSERT(descriptorSetRange);
+	GARDEN_ASSERT(rangeCount > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	auto graphicsAPI = GraphicsAPI::get();
@@ -729,10 +729,10 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 //**********************************************************************************************************************
 void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 threadIndex)
 {
+	GARDEN_ASSERT(instance); // is ready
+	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(descriptorSetRange);
 	GARDEN_ASSERT(rangeCount > 0);
-	GARDEN_ASSERT(asyncRecording);
-	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
 	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
@@ -801,8 +801,8 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 //**********************************************************************************************************************
 void Pipeline::pushConstants()
 {
-	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(instance); // is ready
+	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 
@@ -815,9 +815,9 @@ void Pipeline::pushConstants()
 }
 void Pipeline::pushConstantsAsync(int32 threadIndex)
 {
-	GARDEN_ASSERT(pushConstantsSize > 0);
-	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(instance); // is ready
+	GARDEN_ASSERT(asyncRecording);
+	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(threadIndex >= 0);
 	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
 	GARDEN_ASSERT(GraphicsAPI::get()->isCurrentRenderPassAsync);

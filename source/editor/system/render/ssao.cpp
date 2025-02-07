@@ -38,14 +38,14 @@ SsaoRenderEditorSystem::~SsaoRenderEditorSystem()
 void SsaoRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", SsaoRenderEditorSystem::editorRender);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", SsaoRenderEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", SsaoRenderEditorSystem::editorBarToolPP);
 }
 void SsaoRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", SsaoRenderEditorSystem::editorRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SsaoRenderEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", SsaoRenderEditorSystem::editorBarToolPP);
 	}
 }
 
@@ -78,7 +78,7 @@ void SsaoRenderEditorSystem::editorRender()
 	}
 }
 
-void SsaoRenderEditorSystem::editorBarTool()
+void SsaoRenderEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("SSAO (Ambient Occlusion)"))
 		showWindow = true;

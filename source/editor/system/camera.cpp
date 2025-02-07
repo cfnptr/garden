@@ -67,7 +67,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (cameraView->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraView->p.perspective.fieldOfView);
-		if (ImGui::DragFloat("Filed Of View", &fov, 0.1f, 0.0f, FLT_MAX))
+		if (ImGui::DragFloat("Filed Of View", &fov, 0.1f, 0.0f, FLT_MAX, "%.3f°"))
 			cameraView->p.perspective.fieldOfView = radians(fov);
 		if (ImGui::BeginPopupContextItem("fieldOfView"))
 		{

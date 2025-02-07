@@ -67,7 +67,7 @@ public:
 	 */
 	bool isReady() const noexcept { return instance && readyLock < 1; }
 	/**
-	 * @brief Is resource loaded. (Does not include ongoing transfers)
+	 * @brief Is resource loaded. (Does not include ongoing transfers!)
 	 * @warning This doesn't takes into account if resource is fully transferred!
 	 */
 	bool isLoaded() const noexcept { return instance; }

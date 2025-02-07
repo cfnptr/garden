@@ -66,8 +66,8 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 //**********************************************************************************************************************
 void ComputePipeline::dispatch(const uint3& count, bool isGlobalCount)
 {
-	GARDEN_ASSERT(count > 0u);
 	GARDEN_ASSERT(instance); // is ready
+	GARDEN_ASSERT((count > 0u).areAllTrue());
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);

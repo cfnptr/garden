@@ -66,7 +66,7 @@ void AutoExposureRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", AutoExposureRenderEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AutoExposureRenderEditorSystem::editorBarToolPP);
 }
 void AutoExposureRenderEditorSystem::deinit()
 {
@@ -79,7 +79,7 @@ void AutoExposureRenderEditorSystem::deinit()
 		
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AutoExposureRenderEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", AutoExposureRenderEditorSystem::editorBarToolPP);
 	}
 }
 
@@ -236,7 +236,7 @@ void AutoExposureRenderEditorSystem::gBufferRecreate()
 	}
 }
 
-void AutoExposureRenderEditorSystem::editorBarTool()
+void AutoExposureRenderEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("Automatic Exposure (AE)"))
 		showWindow = true;

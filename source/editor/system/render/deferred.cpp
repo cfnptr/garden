@@ -261,7 +261,7 @@ void DeferredRenderEditorSystem::ldrRender()
 	{
 		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 		auto pushConstants = pipelineView->getPushConstants<BufferPC>();
-		pushConstants->viewProjInv = cameraConstants.viewProjInv;
+		pushConstants->invViewProj = cameraConstants.invViewProj;
 		pushConstants->drawMode = (int32)drawMode;
 		pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
 		pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;

@@ -147,7 +147,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
 	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(mipCount * layerCount)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(mipCount > 0);
 	GARDEN_ASSERT(layerCount > 0);
 
@@ -182,7 +182,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version) : 
 	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), layouts(1)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;
@@ -458,9 +458,9 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 		else
 		{
 			auto mipImageSize = calcSizeAtMip(srcView->size, region.srcMipLevel);
-			GARDEN_ASSERT(region.extent + region.srcOffset <= mipImageSize);
+			GARDEN_ASSERT((region.extent + region.srcOffset <= mipImageSize).areAllTrue());
 			mipImageSize = calcSizeAtMip(srcView->size, region.dstMipLevel);
-			GARDEN_ASSERT(region.extent + region.dstOffset <= mipImageSize);
+			GARDEN_ASSERT((region.extent + region.dstOffset <= mipImageSize).areAllTrue());
 		}
 	}
 	#endif
@@ -514,7 +514,7 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 		else
 		{
 			auto mipImageSize = calcSizeAtMip(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT(region.imageExtent + region.imageOffset <= mipImageSize);
+			GARDEN_ASSERT((region.imageExtent + region.imageOffset <= mipImageSize).areAllTrue());
 		}
 
 		// TODO: check out of buffer/image bounds.
@@ -571,7 +571,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 		else
 		{
 			auto mipImageSize = calcSizeAtMip(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT(region.imageExtent + region.imageOffset <= mipImageSize);
+			GARDEN_ASSERT((region.imageExtent + region.imageOffset <= mipImageSize).areAllTrue());
 		}
 
 		// TODO: check out of buffer/image bounds.
@@ -630,7 +630,7 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 		else
 		{
 			auto mipImageSize = calcSizeAtMip(srcView->size, region.srcMipLevel);
-			GARDEN_ASSERT(region.srcExtent + region.srcOffset <= mipImageSize);
+			GARDEN_ASSERT((region.srcExtent + region.srcOffset <= mipImageSize).areAllTrue());
 		}
 		if (region.dstExtent == 0u)
 		{
@@ -639,7 +639,7 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 		else
 		{
 			auto mipImageSize = calcSizeAtMip(dstView->size, region.dstMipLevel);
-			GARDEN_ASSERT(region.dstExtent + region.dstOffset <= mipImageSize);
+			GARDEN_ASSERT((region.dstExtent + region.dstOffset <= mipImageSize).areAllTrue());
 		}
 
 		// TODO: take into account format texel size.

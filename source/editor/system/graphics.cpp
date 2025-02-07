@@ -95,9 +95,11 @@ static void updateHistogram(const char* name, float* sampleBuffer, float* sorted
 }
 
 //**********************************************************************************************************************
-void GraphicsEditorSystem::showPerformanceStatistics()
+void GraphicsEditorSystem::showPerformanceStats()
 {
-	if (ImGui::Begin("Performance Statistics", &performanceStatistics, ImGuiWindowFlags_AlwaysAutoResize))
+	// TODO: show triangle and primitive draw count.
+
+	if (ImGui::Begin("Performance Stats", &performanceStats, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		if (!cpuFpsBuffer)
 		{
@@ -163,7 +165,7 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
-			ImGui::Text("Queue Index Graphics: %lu, Transfer: %lu, Compute: %lu",
+			ImGui::Text("Queues: %lu, %lu, %lu. (Graphics, Transfer, Compute)",
 				(unsigned long)vulkanAPI->graphicsQueueFamilyIndex,
 				(unsigned long)vulkanAPI->transferQueueFamilyIndex,
 				(unsigned long)vulkanAPI->computeQueueFamilyIndex);
@@ -184,9 +186,9 @@ void GraphicsEditorSystem::showPerformanceStatistics()
 }
 
 //**********************************************************************************************************************
-void GraphicsEditorSystem::showMemoryStatistics()
+void GraphicsEditorSystem::showMemoryStats()
 {
-	if (ImGui::Begin("Memory Statistics", &memoryStatistics, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Memory Stats", &memoryStats, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
@@ -266,16 +268,16 @@ void GraphicsEditorSystem::editorRender()
 	if (!GraphicsSystem::Instance::get()->canRender())
 		return;
 
-	if (performanceStatistics)
-		showPerformanceStatistics();
-	if (memoryStatistics)
-		showMemoryStatistics();
+	if (performanceStats)
+		showPerformanceStats();
+	if (memoryStats)
+		showMemoryStats();
 }
 void GraphicsEditorSystem::editorBarTool()
 {
-	if (ImGui::MenuItem("Performance Statistics"))
-		performanceStatistics = true;
-	if (ImGui::MenuItem("Memory Statistics"))
-		memoryStatistics = true;
+	if (ImGui::MenuItem("Performance Stats"))
+		performanceStats = true;
+	if (ImGui::MenuItem("Memory Stats (CPU/GPU)"))
+		memoryStats = true;
 }
 #endif
