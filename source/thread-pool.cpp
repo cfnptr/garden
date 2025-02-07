@@ -114,7 +114,7 @@ void ThreadPool::addTasks(const vector<Task::Function>& functions, float priorit
 	GARDEN_ASSERT(isRunning);
 
 	mutex.lock();
-	for (uint32 i = 0; i < (uint32)taskQueue.size(); i++)
+	for (uint32 i = 0; i < (uint32)functions.size(); i++)
 	{
 		auto task = Task(functions[i], priority);
 		task.taskIndex = i;
@@ -161,9 +161,13 @@ void ThreadPool::addItems(const Task::Function& function, uint32 count, float pr
 	mutex.lock();
 	for (uint32 i = 0; i < taskCount; i++)
 	{
-		task.taskIndex = i;
 		task.itemOffset = countPerThread * i;
 		task.itemCount = std::min(count, task.itemOffset + countPerThread);
+
+		if (task.itemOffset >= task.itemCount)
+			continue;
+
+		task.taskIndex = i;
 		taskQueue.emplace(priority, task); 
 	}
 	mutex.unlock();
