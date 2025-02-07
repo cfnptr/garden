@@ -705,7 +705,7 @@ public:
 	uint16 simulationRate = 60;       /**< Simulation update count per second. */
 	float cascadeLagThreshold = 0.1f; /**< Underperforming simulation frames threshold to try recover performance. */
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	float statsLogRate = 10.0f;       /**< Simulation debug stats log rate in seconds. */
 	bool logBroadPhaseStats = false;  /**< Log simulation broad phase debug stats. */
 	bool logNarrowPhaseStats = false; /**< Log simulation narrow phase debug stats. */
