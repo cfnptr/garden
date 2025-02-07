@@ -431,16 +431,16 @@ static ImGuiKey keyToImGuiKey(int keycode, int scancode)
 }
 
 //**********************************************************************************************************************
-static void updateImGuiKeyModifiers(InputSystem* inutSystem, ImGuiIO& io)
+static void updateImGuiKeyModifiers(InputSystem* inputSystem, ImGuiIO& io)
 {
-	io.AddKeyEvent(ImGuiMod_Ctrl, inutSystem->getKeyboardState(KeyboardButton::LeftControl) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightControl));
-	io.AddKeyEvent(ImGuiMod_Shift, inutSystem->getKeyboardState(KeyboardButton::LeftShift) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightShift));
-	io.AddKeyEvent(ImGuiMod_Alt, inutSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightAlt));
-	io.AddKeyEvent(ImGuiMod_Super, inutSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
-		inutSystem->getKeyboardState(KeyboardButton::RightSuper));
+	io.AddKeyEvent(ImGuiMod_Ctrl, inputSystem->getKeyboardState(KeyboardButton::LeftControl) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightControl));
+	io.AddKeyEvent(ImGuiMod_Shift, inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightShift));
+	io.AddKeyEvent(ImGuiMod_Alt, inputSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightAlt));
+	io.AddKeyEvent(ImGuiMod_Super, inputSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
+		inputSystem->getKeyboardState(KeyboardButton::RightSuper));
 }
 
 void ImGuiRenderSystem::input()

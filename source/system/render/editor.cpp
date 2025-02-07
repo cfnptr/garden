@@ -41,6 +41,7 @@ EditorRenderSystem::EditorRenderSystem(bool setSingleton) : Singleton(setSinglet
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
+	manager->registerEvent("EditorBarToolPP");
 	manager->registerEvent("EditorBar");
 	manager->registerEvent("EditorSettings");
 
@@ -60,6 +61,7 @@ EditorRenderSystem::~EditorRenderSystem()
 		manager->unregisterEvent("EditorBarFile");
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
+		manager->unregisterEvent("EditorBarToolPP");
 		manager->unregisterEvent("EditorBar");
 		manager->unregisterEvent("EditorSettings");
 	}
@@ -144,15 +146,23 @@ void EditorRenderSystem::showMainMenuBar()
 	}
 	if (ImGui::BeginMenu("Tools"))
 	{
-		const auto& subscribers = manager->getEventSubscribers("EditorBarTool");
-		if (subscribers.empty())
+		const auto& toolSubscribers = manager->getEventSubscribers("EditorBarTool");
+		if (toolSubscribers.empty())
 		{
 			ImGui::TextDisabled("Nothing here");
 		}
 		else
 		{
-			for (const auto& onBarTool : subscribers)
+			for (const auto& onBarTool : toolSubscribers)
 				onBarTool();
+			
+			const auto& ppSubscribers = manager->getEventSubscribers("EditorBarToolPP");
+			if (!ppSubscribers.empty() && ImGui::BeginMenu("Post-Processing"))
+			{
+				for (const auto& onBarToolPP : ppSubscribers)
+					onBarToolPP();
+				ImGui::EndMenu();
+			}
 		}
 		ImGui::EndMenu();
 	}

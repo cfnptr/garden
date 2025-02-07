@@ -326,8 +326,10 @@ public:
 		uint32 mip = 0;
 		uint32 layer = 0;
 
-		bool operator<(ImageSubresource v) const noexcept {
-			return memcmp(this, &v, sizeof(ImageSubresource)) < 0; }
+		bool operator<(ImageSubresource v) const noexcept
+		{
+			return memcmp(this, &v, sizeof(ImageSubresource)) < 0;
+		}
 	};
 	struct ImageState final
 	{

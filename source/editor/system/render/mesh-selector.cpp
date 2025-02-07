@@ -79,8 +79,8 @@ void MeshSelectorEditorSystem::editorRender()
 		auto windowSize = inputSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = cameraConstants.viewProjInv * float4(ndcPosition, 1.0f, 1.0f);
-		auto globalDirection = cameraConstants.viewProjInv * float4(ndcPosition, 0.0001f, 1.0f);
+		auto globalOrigin = cameraConstants.invViewProj * float4(ndcPosition, 1.0f, 1.0f);
+		auto globalDirection = cameraConstants.invViewProj * float4(ndcPosition, 0.0001f, 1.0f);
 		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
 		globalDirection = float4((float3)globalDirection / globalDirection.w - (float3)globalOrigin, globalDirection.w);
 

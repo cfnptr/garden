@@ -38,7 +38,7 @@ namespace garden
  * models and textures, scripting behavior, testing the game within the editor, and designing user interfaces.
  * 
  * Registers events: EditorStart, EditorStop, EditorRender, EditorBarFile, 
- *   EditorBarCreate, EditorBarTool, EditorBar, EditorSettings.
+ *   EditorBarCreate, EditorBarTool, EditorBarToolPP, EditorBar, EditorSettings.
  */
 class EditorRenderSystem final : public System, public Singleton<EditorRenderSystem>
 {

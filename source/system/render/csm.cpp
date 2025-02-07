@@ -161,6 +161,9 @@ void CsmRenderSystem::shadowRender()
 {
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
 
+	if (intensity <= 0.0f)
+		return;
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
@@ -213,7 +216,7 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 	float fieldOfView, float aspectRatio, float nearPlane, float farPlane, float zCoeff) noexcept
 {
 	auto proj = calcPerspProjRevZ(fieldOfView, aspectRatio, nearPlane, farPlane);
-	auto viewProjInv = inverse(proj * view);
+	auto invViewProj = inverse(proj * view);
 
 	uint8 cornerIndex = 0; float4 frustumCorners[8];
 	for (uint8 z = 0; z < 2; z++)
@@ -222,7 +225,7 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 		{
 			for (uint8 x = 0; x < 2; x++)
 			{
-				auto corner = viewProjInv * float4(x * 2.0f - 1.0f, y * 2.0f - 1.0f, z, 1.0f);
+				auto corner = invViewProj * float4(x * 2.0f - 1.0f, y * 2.0f - 1.0f, z, 1.0f);
 				frustumCorners[cornerIndex++] = corner / corner.w;
 			}
 		}
@@ -263,7 +266,7 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, float3& cameraOffset)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera || !graphicsSystem->directionalLight)
+	if (intensity <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
 		return false;
 
 	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
@@ -300,7 +303,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	auto data = (DataBuffer*)dataBufferView->getMap();
-	data->lightSpace[passIndex] = ndcToCoords * viewProj * cameraConstants.viewProjInv * coordsToNDC;
+	data->lightSpace[passIndex] = ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC;
 	return true;
 }
 

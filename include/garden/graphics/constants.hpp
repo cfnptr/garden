@@ -29,15 +29,15 @@ struct CameraConstants final
 	float4x4 view = float4x4(0.0f);        /**< View matrix. */
 	float4x4 projection = float4x4(0.0f);  /**< Projection matrix. */
 	float4x4 viewProj = float4x4(0.0f);    /**< View * projection matrix. */
-	float4x4 viewInverse = float4x4(0.0f); /**< Inverse view matrix. */
-	float4x4 projInverse = float4x4(0.0f); /**< Inverse projection matrix. */
-	float4x4 viewProjInv = float4x4(0.0f); /**< Inverse view * projection matrix. */
+	float4x4 inverseView = float4x4(0.0f); /**< Inverse view matrix. */
+	float4x4 inverseProj = float4x4(0.0f); /**< Inverse projection matrix. */
+	float4x4 invViewProj = float4x4(0.0f); /**< Inverse view * projection matrix. */
 	float4 cameraPos = float4(0.0f);       /**< Camera position in world space. */
 	float4 viewDir = float4(0.0f);         /**< View direction in world space. */
 	float4 lightDir = float4(0.0f);        /**< Light direction in world space. */
 	float2 frameSize = float2(0.0f);       /**< Frame size in pixels. */
-	float2 frameSizeInv = float2(0.0f);    /**< Inverse frame size in pixels. */
-	float2 frameSizeInv2 = float2(0.0f);   /**< Inverse frame size * 2 in pixels. */
+	float2 invFrameSize = float2(0.0f);    /**< Inverse frame size in pixels. */
+	float2 invFrameSize2 = float2(0.0f);   /**< Inverse frame size * 2 in pixels. */
 	float nearPlane = 0.0f;                /**< Near frustum plane. */
 };
 

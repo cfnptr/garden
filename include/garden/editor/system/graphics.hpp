@@ -28,8 +28,8 @@ private:
 	float* gpuFpsBuffer = nullptr;
 	float* cpuSortedBuffer = nullptr;
 	float* gpuSortedBuffer = nullptr;
-	bool performanceStatistics = false;
-	bool memoryStatistics = false;
+	bool performanceStats = false;
+	bool memoryStats = false;
 
 	GraphicsEditorSystem();
 	~GraphicsEditorSystem() final;
@@ -39,8 +39,8 @@ private:
 	void editorRender();
 	void editorBarTool();
 
-	void showPerformanceStatistics();
-	void showMemoryStatistics();
+	void showPerformanceStats();
+	void showMemoryStats();
 
 	friend class ecsm::Manager;
 public:

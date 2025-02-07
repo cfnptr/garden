@@ -420,7 +420,7 @@ static void recreateVkFramebuffer(uint2 size, const vector<Framebuffer::SubpassI
 //**********************************************************************************************************************
 Framebuffer::Framebuffer(uint2 size, vector<Subpass>&& subpasses)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(!subpasses.empty());
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -446,7 +446,7 @@ Framebuffer::Framebuffer(uint2 size, vector<Subpass>&& subpasses)
 Framebuffer::Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments,
 	OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -480,7 +480,7 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 	uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment)
 {
 	GARDEN_ASSERT(subpasses.empty());
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(colorAttachmentCount > 0 || depthStencilAttachment.imageView);
 
 	#if GARDEN_DEBUG
@@ -520,7 +520,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 	OutputAttachment depthStencilAttachment)
 {
 	GARDEN_ASSERT(subpasses.empty());
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 
 	#if GARDEN_DEBUG
@@ -554,7 +554,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 //**********************************************************************************************************************
 void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(subpasses.size() == this->subpasses.size());
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)

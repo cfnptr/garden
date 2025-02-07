@@ -48,7 +48,7 @@ CsmRenderEditorSystem::~CsmRenderEditorSystem()
 void CsmRenderEditorSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", CsmRenderEditorSystem::editorRender);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", CsmRenderEditorSystem::editorBarTool);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", CsmRenderEditorSystem::editorBarToolPP);
 }
 void CsmRenderEditorSystem::deinit()
 {
@@ -59,7 +59,7 @@ void CsmRenderEditorSystem::deinit()
 		graphicsSystem->destroy(cascadesPipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", CsmRenderEditorSystem::editorRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", CsmRenderEditorSystem::editorBarTool);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", CsmRenderEditorSystem::editorBarToolPP);
 	}
 }
 
@@ -144,7 +144,7 @@ void CsmRenderEditorSystem::editorRender()
 	}
 }
 
-void CsmRenderEditorSystem::editorBarTool()
+void CsmRenderEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("Cascade Shadow Mapping (CSM)"))
 		showWindow = true;

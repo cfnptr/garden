@@ -839,7 +839,7 @@ bool JsonDeserializer::read(string_view name, Aabb& value)
 		read("max", max);
 		endChild();
 
-		if (min <= max)
+		if ((min <= max).areAllTrue())
 		{
 			value.set(min, max);
 			return true;

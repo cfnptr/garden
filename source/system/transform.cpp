@@ -154,7 +154,7 @@ float4x4 TransformComponent::calcModel(const float3& cameraPosition) const noexc
 		nextParent = nextTransformView->parent;
 	}
 
-	setTranslation(model, getTranslation(model) - cameraPosition);
+	addTranslation(model, -cameraPosition);
 	return model;
 }
 

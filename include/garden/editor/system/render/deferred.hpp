@@ -30,7 +30,7 @@ class DeferredRenderEditorSystem final : public System
 
 	struct BufferPC final
 	{
-		float4x4 viewProjInv;
+		float4x4 invViewProj;
 		int32 drawMode;
 		float showChannelR;
 		float showChannelG;

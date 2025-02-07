@@ -95,11 +95,11 @@ public:
 	const float3& getFarPlanes() const noexcept { return farPlanes; }
 
 	/**
-	 * @brief Returns shadow map size in pixels across one axis.
+	 * @brief Returns shadow map size in pixels along one axis.
 	 */
 	uint32 getShadowMapSize() const noexcept { return shadowMapSize; }
 	/**
-	 * @brief Sets shadow map size in pixels across one axis.
+	 * @brief Sets shadow map size in pixels along one axis.
 	 */
 	void setShadowMapSize(uint32 size);
 

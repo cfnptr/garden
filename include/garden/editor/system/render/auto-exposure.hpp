@@ -41,7 +41,7 @@ class AutoExposureRenderEditorSystem final : public System
 	void deinit();
 	void editorRender();
 	void gBufferRecreate();
-	void editorBarTool();
+	void editorBarToolPP();
 	
 	friend class ecsm::Manager;
 };

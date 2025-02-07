@@ -289,9 +289,9 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	}
 
 	cameraConstants.viewProj = cameraConstants.projection * cameraConstants.view;
-	cameraConstants.viewInverse = inverse(cameraConstants.view);
-	cameraConstants.projInverse = inverse(cameraConstants.projection);
-	cameraConstants.viewProjInv = inverse(cameraConstants.viewProj);
+	cameraConstants.inverseView = inverse(cameraConstants.view);
+	cameraConstants.inverseProj = inverse(cameraConstants.projection);
+	cameraConstants.invViewProj = inverse(cameraConstants.viewProj);
 	auto viewDir = cameraConstants.view * float4(float3::front, 1.0f);
 	cameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
 
@@ -314,8 +314,8 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	}
 
 	cameraConstants.frameSize = scaledFramebufferSize;
-	cameraConstants.frameSizeInv = 1.0f / (float2)scaledFramebufferSize;
-	cameraConstants.frameSizeInv2 = cameraConstants.frameSizeInv * 2.0f;
+	cameraConstants.invFrameSize = 1.0f / (float2)scaledFramebufferSize;
+	cameraConstants.invFrameSize2 = cameraConstants.invFrameSize * 2.0f;
 }
 
 static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
@@ -703,7 +703,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
 	GARDEN_ASSERT(!data.empty());
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 
 	auto mipCount = (uint8)data.size();
 	auto layerCount = (uint32)data[0].size();
@@ -943,7 +943,7 @@ View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	vector<Framebuffer::OutputAttachment>&& colorAttachments, Framebuffer::OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -975,7 +975,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 }
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses)
 {
-	GARDEN_ASSERT(size > 0u);
+	GARDEN_ASSERT((size > 0u).areAllTrue());
 	GARDEN_ASSERT(!subpasses.empty());
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -1158,7 +1158,7 @@ void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->pushConstants();
-	pipelineView->draw({}, 24);
+	pipelineView->draw({}, 2);
 }
 void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
 {

@@ -89,12 +89,9 @@ public:
 	Hash128(const array<T, S>& data, State state = nullptr) :
 		Hash128(data.data(), S * sizeof(T), state) { }
 
-	bool operator==(const Hash128& h) const noexcept { 
-		return low64 == h.low64 && high64 == h.high64; }
-	bool operator!=(const Hash128& h) const noexcept {
-		return low64 != h.low64 || high64 != h.high64; }
-	bool operator<(const Hash128& h) const noexcept { 
-		return memcmp(this, &h, sizeof(uint64) * 2) < 0; }
+	bool operator==(const Hash128& h) const noexcept { return low64 == h.low64 && high64 == h.high64; }
+	bool operator!=(const Hash128& h) const noexcept { return low64 != h.low64 || high64 != h.high64; }
+	bool operator<(const Hash128& h) const noexcept { return memcmp(this, &h, sizeof(uint64) * 2) < 0; }
 
 	/**
 	 * @brief Returns true if hash is not all zeros, otherwise false.

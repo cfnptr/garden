@@ -203,7 +203,7 @@ void SsaoRenderSystem::aoRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->uvToView = cameraConstants.projInverse * uvToNDC;
+	pushConstants->uvToView = cameraConstants.inverseProj * uvToNDC;
 	pushConstants->uvToView[0][3] = radius;
 	pushConstants->uvToView[1][3] = -bias;
 	pushConstants->uvToView[3][3] = intensity;
