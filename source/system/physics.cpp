@@ -30,10 +30,12 @@
 #include "Jolt/Core/JobSystemWithBarrier.h"
 #include "Jolt/Physics/PhysicsSettings.h"
 #include "Jolt/Physics/PhysicsSystem.h"
+#include "Jolt/Physics/Collision/NarrowPhaseStats.h"
 #include "Jolt/Physics/Collision/ObjectLayerPairFilterTable.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayerInterfaceTable.h"
 #include "Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h"
 #include "Jolt/Physics/Collision/Shape/BoxShape.h"
+#include "Jolt/Physics/Collision/Shape/EmptyShape.h"
 #include "Jolt/Physics/Collision/Shape/SphereShape.h"
 #include "Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h"
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
@@ -62,7 +64,7 @@ static bool AssertFailedImpl(const char* inExpression, const char* inMessage, co
 		inExpression + ") " + (inMessage != nullptr ? inMessage : ""));
 	return true;
 };
-#endif // JPH_ENABLE_ASSERTS
+#endif
 
 //**********************************************************************************************************************
 class GardenJobSystem final : public JPH::JobSystemWithBarrier
@@ -294,17 +296,35 @@ ShapeType Shape::getType() const
 ShapeSubType Shape::getSubType() const
 {
 	GARDEN_ASSERT(instance);
-	static_assert((uint32)ShapeSubType::UserConvex8 == (uint32)JPH::EShapeSubType::UserConvex8,
+	static_assert((uint32)ShapeSubType::Empty == (uint32)JPH::EShapeSubType::Empty,
 		"ShapeSubType does not map to the EShapeSubType");
 	auto instance = (const JPH::Shape*)this->instance;
 	return (ShapeSubType)instance->GetSubType();
+}
+
+float3 Shape::getCenterOfMass() const
+{
+	auto instance = (const JPH::Shape*)this->instance;
+	return toFloat3(instance->GetCenterOfMass());
+}
+float Shape::getVolume() const
+{
+	auto instance = (const JPH::Shape*)this->instance;
+	return instance->GetVolume();
+}
+void Shape::getMassProperties(float& mass, float4x4& inertia) const
+{
+	auto instance = (const JPH::Shape*)this->instance;
+	auto massProperties = instance->GetMassProperties();
+	mass = massProperties.mMass;
+	inertia = toFloat4x4(massProperties.mInertia);
 }
 
 float Shape::getDensity() const
 {
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetType() == JPH::EShapeType::Convex);
-	auto convexInstance = (const JPH::BoxShape*)this->instance;
+	auto convexInstance = (const JPH::ConvexShape*)this->instance;
 	return convexInstance->GetDensity();
 }
 
@@ -448,7 +468,7 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 			auto body = bodyInterface->CreateBody(settings);
 			if (inSimulation)
 			{
-				bodyInterface->AddBody(body->GetID(), activate && inSimulation ?
+				bodyInterface->AddBody(body->GetID(), activate ?
 					JPH::EActivation::Activate : JPH::EActivation::DontActivate);
 			}
 
@@ -470,6 +490,25 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 }
 
 //**********************************************************************************************************************
+void RigidbodyComponent::setInSimulation(bool inSimulation)
+{
+	if (this->inSimulation == inSimulation)
+		return;
+
+	if (instance)
+	{
+		auto body = (JPH::Body*)instance;
+		auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::Instance::get()->bodyInterface;
+
+		if (inSimulation)
+			bodyInterface->AddBody(body->GetID(), JPH::EActivation::Activate);
+		else
+			bodyInterface->RemoveBody(body->GetID());
+	}
+	
+	this->inSimulation = inSimulation;
+}
+
 bool RigidbodyComponent::canBeKinematicOrDynamic() const
 {
 	if (!shape)
@@ -492,6 +531,7 @@ uint8 RigidbodyComponent::getBroadPhaseLayer() const
 	return (uint8)body->GetBroadPhaseLayer().GetValue();
 }
 
+//**********************************************************************************************************************
 MotionType RigidbodyComponent::getMotionType() const
 {
 	if (!shape)
@@ -501,6 +541,9 @@ MotionType RigidbodyComponent::getMotionType() const
 }
 void RigidbodyComponent::setMotionType(MotionType motionType, bool activate)
 {
+	if (!shape)
+		return;
+
 	if (getMotionType() == motionType)
 	{
 		if (activate && inSimulation)
@@ -512,18 +555,15 @@ void RigidbodyComponent::setMotionType(MotionType motionType, bool activate)
 		return;
 	}
 
-	if (instance)
+	if (getMotionType() == MotionType::Static && motionType != MotionType::Static)
 	{
-		if (getMotionType() == MotionType::Static && motionType != MotionType::Static)
-		{
-			GARDEN_ASSERT(canBeKinematicOrDynamic());
-		}
-
-		auto body = (JPH::Body*)instance;
-		auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::Instance::get()->bodyInterface;
-		bodyInterface->SetMotionType(body->GetID(), (JPH::EMotionType)motionType,
-			activate && inSimulation ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+		GARDEN_ASSERT(canBeKinematicOrDynamic());
 	}
+
+	auto body = (JPH::Body*)instance;
+	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::Instance::get()->bodyInterface;
+	bodyInterface->SetMotionType(body->GetID(), (JPH::EMotionType)motionType,
+		activate && inSimulation ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
 }
 
 uint16 RigidbodyComponent::getCollisionLayer() const
@@ -547,6 +587,7 @@ void RigidbodyComponent::setCollisionLayer(int32 collisionLayer)
 	bodyInterface->SetObjectLayer(body->GetID(), (JPH::ObjectLayer)collisionLayer);
 }
 
+//**********************************************************************************************************************
 bool RigidbodyComponent::isActive() const
 {
 	if (!shape)
@@ -903,14 +944,57 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 	// Create a factory, this class is responsible for creating instances of classes 
 	// based on their name or hash and is mainly used for deserialization of saved data.
 	JPH::Factory::sInstance = new JPH::Factory();
+}
+PhysicsSystem::~PhysicsSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+	{
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", PhysicsSystem::preInit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", PhysicsSystem::postInit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Simulate", PhysicsSystem::simulate);
 
-	// TODO: register custom shapes, and our own default material
+		auto manager = Manager::Instance::get();
+		manager->unregisterEvent("Simulate");
+
+		delete (GardenJobSystem*)jobSystem;
+		delete (JPH::PhysicsSystem*)physicsInstance;
+		delete (GardenContactListener*)contactListener;
+		delete (GardenBodyActivationListener*)bodyListener;
+		delete (JPH::ObjectVsBroadPhaseLayerFilterTable*)objVsBpLayerFilter;
+		delete (JPH::BroadPhaseLayerInterfaceTable*)bpLayerInterface;
+		delete (JPH::ObjectLayerPairFilterTable*)objVsObjLayerFilter;
+		#ifdef JPH_DISABLE_TEMP_ALLOCATOR
+		delete (JPH::TempAllocatorMalloc*)tempAllocator;
+		#else
+		delete (JPH::TempAllocatorImpl*)tempAllocator;
+		#endif	
+		delete JPH::Factory::sInstance;
+	}
+	else
+	{
+		components.clear(false);
+		shapes.clear(false);
+	}
+
+	JPH::UnregisterTypes();
+	JPH::Factory::sInstance = nullptr;
+	unsetSingleton();
+}	
+
+//**********************************************************************************************************************
+void PhysicsSystem::preInit()
+{
+	// Note! You should register all custom physics shapes before this function call.
 
 	// Register all physics types with the factory and install their collision handlers with the CollisionDispatch class.
 	JPH::RegisterTypes();
 
 	// We need a temp allocator for temporary allocations during the physics update.
+	#ifdef JPH_DISABLE_TEMP_ALLOCATOR
+	auto tempAllocator = new JPH::TempAllocatorMalloc();
+	#else
 	auto tempAllocator = new JPH::TempAllocatorImpl(properties.tempBufferSize);
+	#endif	
 	this->tempAllocator = tempAllocator;
 
 	// Create class that filters object vs object layers
@@ -943,7 +1027,7 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 	bpLayerInterface->SetBroadPhaseLayerName(JPH::BroadPhaseLayer((uint8)BroadPhaseLayer::Moving), "Moving");
 	bpLayerInterface->SetBroadPhaseLayerName(JPH::BroadPhaseLayer((uint8)BroadPhaseLayer::Sensor), "Sensor");
 	bpLayerInterface->SetBroadPhaseLayerName(JPH::BroadPhaseLayer((uint8)BroadPhaseLayer::LqDebris), "LqDebris");
-	#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
+	#endif
 
 	// Create class that filters object vs broadphase layers
 	auto objVsBpLayerFilter = new JPH::ObjectVsBroadPhaseLayerFilterTable(*bpLayerInterface, 
@@ -970,45 +1054,9 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 
 	bodyInterface = &physicsInstance->GetBodyInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
 	lockInterface = &physicsInstance->GetBodyLockInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
-}
-PhysicsSystem::~PhysicsSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", PhysicsSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", PhysicsSystem::postInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Simulate", PhysicsSystem::simulate);
-
-		auto manager = Manager::Instance::get();
-		manager->unregisterEvent("Simulate");
-
-		delete (GardenJobSystem*)jobSystem;
-		delete (JPH::PhysicsSystem*)physicsInstance;
-		delete (GardenContactListener*)contactListener;
-		delete (GardenBodyActivationListener*)bodyListener;
-		delete (JPH::ObjectVsBroadPhaseLayerFilterTable*)objVsBpLayerFilter;
-		delete (JPH::BroadPhaseLayerInterfaceTable*)bpLayerInterface;
-		delete (JPH::ObjectLayerPairFilterTable*)objVsObjLayerFilter;
-		delete (JPH::TempAllocatorImpl*)tempAllocator;
-		delete JPH::Factory::sInstance;
-	}
-	else
-	{
-		components.clear(false);
-		shapes.clear(false);
-	}
-
-	JPH::UnregisterTypes();
-	JPH::Factory::sInstance = nullptr;
-	unsetSingleton();
-}	
-
-//**********************************************************************************************************************
-void PhysicsSystem::preInit()
-{
-	auto threadPool = &ThreadSystem::Instance::get()->getForegroundPool();
 
 	// We need a job system that will execute physics jobs on multiple threads.
+	auto threadPool = &ThreadSystem::Instance::get()->getForegroundPool();
 	auto jobSystem = new GardenJobSystem(threadPool);
 	this->jobSystem = jobSystem;
 }
@@ -1206,8 +1254,9 @@ void PhysicsSystem::simulate()
 {
 	SET_CPU_ZONE_SCOPED("Physics Simulate");
 
+	auto inputSystem = InputSystem::Instance::get();
+	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto simDeltaTime = 1.0f / (float)(simulationRate + 1);
-	auto deltaTime = (float)InputSystem::Instance::get()->getDeltaTime();
 	deltaTimeAccum += deltaTime;
 
 	if (deltaTimeAccum >= simDeltaTime)
@@ -1235,7 +1284,31 @@ void PhysicsSystem::simulate()
 		}
 
 		for (uint32 i = 0; i < stepCount; i++)
+		{
 			physicsInstance->Update(deltaTimeAccum, collisionSteps, tempAllocator, jobSystem);
+
+			#ifndef JPH_DISABLE_TEMP_ALLOCATOR
+			GARDEN_ASSERT(static_cast<JPH::TempAllocatorImpl*>(tempAllocator)->IsEmpty());
+			#endif
+		}
+
+		#if GARDEN_DEBUG && defined(JPH_TRACK_BROADPHASE_STATS)
+		static auto lastBroadphaseTime = 0.0;
+		if (logBroadPhaseStats && lastBroadphaseTime < inputSystem->getTime())
+		{
+			physicsInstance->ReportBroadphaseStats();
+			lastBroadphaseTime = inputSystem->getTime() + statsLogRate;
+		}
+		#endif
+
+		#if GARDEN_DEBUG && defined(JPH_TRACK_NARROWPHASE_STATS)
+		static auto lastNarrowphaseTime = 0.0;
+		if (logNarrowPhaseStats && lastNarrowphaseTime < inputSystem->getTime())
+		{
+			JPH::NarrowPhaseStat::sReportStats();
+			lastNarrowphaseTime = inputSystem->getTime() + statsLogRate;
+		}
+		#endif
 
 		processSimulate();
 		deltaTimeAccum = 0.0f;
@@ -1631,10 +1704,34 @@ void PhysicsSystem::setGravity(const float3& gravity) const noexcept
 	physicsInstance->SetGravity(toVec3(gravity));
 }
 
+ID<Shape> PhysicsSystem::createEmptyShape(const float3& centerOfMass)
+{
+	auto emptyShape = new JPH::EmptyShape(toVec3(centerOfMass));
+	auto instance = shapes.create(emptyShape);
+	emptyShape->SetUserData((JPH::uint64)*instance);
+	return instance;
+}
+ID<Shape> PhysicsSystem::createSharedEmptyShape(const float3& centerOfMass)
+{
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, &centerOfMass, sizeof(float3));
+	auto hash = Hash128::digestState(hashState);
+
+	auto searchResult = sharedEmptyShapes.find(hash);
+	if (searchResult != sharedEmptyShapes.end())
+		return searchResult->second;
+
+	auto instance = createEmptyShape(centerOfMass);
+	auto emplaceResult = sharedEmptyShapes.emplace(hash, instance);
+	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	return instance;
+}
+
 //**********************************************************************************************************************
 ID<Shape> PhysicsSystem::createBoxShape(const float3& halfExtent, float convexRadius, float density)
 {
-	GARDEN_ASSERT(halfExtent >= convexRadius);
+	GARDEN_ASSERT((halfExtent >= convexRadius).areAllTrue());
 	GARDEN_ASSERT(convexRadius >= 0.0f);
 	GARDEN_ASSERT(density > 0.0f);
 
@@ -1648,7 +1745,7 @@ ID<Shape> PhysicsSystem::createBoxShape(const float3& halfExtent, float convexRa
 
 ID<Shape> PhysicsSystem::createSharedBoxShape(const float3& halfExtent, float convexRadius, float density)
 {
-	GARDEN_ASSERT(halfExtent >= convexRadius);
+	GARDEN_ASSERT((halfExtent >= convexRadius).areAllTrue());
 	GARDEN_ASSERT(convexRadius >= 0.0f);
 	GARDEN_ASSERT(density > 0.0f);
 
@@ -1663,10 +1760,10 @@ ID<Shape> PhysicsSystem::createSharedBoxShape(const float3& halfExtent, float co
 	if (searchResult != sharedBoxShapes.end())
 		return searchResult->second;
 
-	auto boxShape = createBoxShape(halfExtent, convexRadius, density);
-	auto emplaceResult = sharedBoxShapes.emplace(hash, boxShape);
+	auto instance = createBoxShape(halfExtent, convexRadius, density);
+	auto emplaceResult = sharedBoxShapes.emplace(hash, instance);
 	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
-	return boxShape;
+	return instance;
 }
 
 //**********************************************************************************************************************
@@ -1696,10 +1793,39 @@ ID<Shape> PhysicsSystem::createSharedRotTransShape(ID<Shape> innerShape, const f
 	if (searchResult != sharedRotTransShapes.end())
 		return searchResult->second;
 
-	auto rotaTransShape = createRotTransShape(innerShape, position, rotation);
-	auto emplaceResult = sharedRotTransShapes.emplace(hash, rotaTransShape);
+	auto instance = createRotTransShape(innerShape, position, rotation);
+	auto emplaceResult = sharedRotTransShapes.emplace(hash, instance);
 	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
-	return rotaTransShape;
+	return instance;
+}
+
+//**********************************************************************************************************************
+ID<Shape> PhysicsSystem::createCustomShape(void* shapeInstance)
+{
+	GARDEN_ASSERT(shapeInstance);
+	auto customShape = (JPH::Shape*)shapeInstance;
+	customShape->AddRef();
+	auto instance = shapes.create(shapeInstance);
+	customShape->SetUserData((JPH::uint64)*instance);
+	return instance;
+}
+ID<Shape> PhysicsSystem::createSharedCustomShape(void* shapeInstance)
+{
+	GARDEN_ASSERT(shapeInstance);
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, shapeInstance, sizeof(void*));
+	auto hash = Hash128::digestState(hashState);
+
+	auto searchResult = sharedCustomShapes.find(hash);
+	if (searchResult != sharedCustomShapes.end())
+		return searchResult->second;
+
+	auto instance = createCustomShape(shapeInstance);
+	auto emplaceResult = sharedCustomShapes.emplace(hash, instance);
+	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	return instance;
 }
 
 //**********************************************************************************************************************
@@ -1817,7 +1943,17 @@ void PhysicsSystem::destroyShared(ID<Shape> shape)
 		return;
 
 	auto subType = shapeView->getSubType();
-	if (subType == ShapeSubType::Box)
+	if (subType == ShapeSubType::Empty)
+	{
+		for (auto i = sharedEmptyShapes.begin(); i != sharedEmptyShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedEmptyShapes.erase(i);
+			break;
+		}
+	}
+	else if (subType == ShapeSubType::Box)
 	{
 		for (auto i = sharedBoxShapes.begin(); i != sharedBoxShapes.end(); i++)
 		{
@@ -1834,6 +1970,16 @@ void PhysicsSystem::destroyShared(ID<Shape> shape)
 			if (i->second != shape)
 				continue;
 			sharedRotTransShapes.erase(i);
+			break;
+		}
+	}
+	else
+	{
+		for (auto i = sharedCustomShapes.begin(); i != sharedCustomShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedCustomShapes.erase(i);
 			break;
 		}
 	}

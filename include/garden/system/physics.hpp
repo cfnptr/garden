@@ -142,6 +142,11 @@ enum class ShapeSubType : uint8
 	UserConvex6,
 	UserConvex7,
 	UserConvex8,
+
+	// Other shapes
+	Plane,
+	TaperedCylinder,
+	Empty,
 	Count
 };
 
@@ -163,7 +168,7 @@ enum class CollisionLayer : int8
 	Auto         = -1,
 	NonMoving    = 0,
 	Moving       = 1,
-	Sensor       = 2,   /**< Sensors only collide with Moving objects */
+	Sensor       = 2, /**< Sensors only collide with Moving objects */
 	HqDebris     = 3, /**< High quality debris collides with Moving and NonMoving but not with any debris */
 	LqDebris     = 4, /**< Low quality debris only collides with NonMoving */
 	DefaultCount = 5,
@@ -221,10 +226,26 @@ public:
 	ShapeSubType getSubType() const;
 
 	/**
+	 * @brief Returns shape center of mass.
+	 */
+	float3 getCenterOfMass() const;
+	/**
+	 * @brief Returns shape volume. (m^3)
+	 * @note Compound shapes volume may be incorrect since child shapes can overlap which is not accounted for.
+	 */
+	float getVolume() const;
+	/**
+	 * @brief Returns shape mass properties.
+	 * 
+	 * @param[in] mass a mass of the shape (kg)
+	 * @param[in] inertia an inertia tensor of the shape (kg / m^2)
+	 */
+	void getMassProperties(float& mass, float4x4& inertia) const;
+	
+	/**
 	 * @brief Returns shape density. (kg / m^3)
 	 */
 	float getDensity() const;
-
 	// TODO: allow to set density. But we should then invalidate shared shapes.
 
 	/**
@@ -261,6 +282,12 @@ public:
 	 * @brief Is this the last shape reference.
 	 */
 	bool isLastRef() const;
+
+	/**
+	 * @brief Retruns shape internal instance.
+	 * @warning Use only if you know what you are doing!
+	 */
+	void* getInstance() const noexcept { return instance; }
 };
 
 } // namespace garden::physics
@@ -333,6 +360,18 @@ public:
 		bool activate = true, bool allowDynamicOrKinematic = false, AllowedDOF allowedDOF = AllowedDOF::All);
 
 	/**
+	 * @brief Returns true if rigidbody should be used in the physics simulation system.
+	 * @note This value is controlled by the transform isActive if transform component added to the entity.
+	 */
+	bool isInSimulation() const noexcept { return inSimulation; }
+	/**
+	 * @brief Adds or removes rigidbody to/from the physics simulation system.
+	 * @details See the isInSimulation() for details.
+	 * @param inSimulation add or remove from the simulation
+	 */
+	void setInSimulation(bool inSimulation);
+
+	/**
 	 * @brief Allow to change static motion type to the dynamic or kinematic.
 	 */
 	bool canBeKinematicOrDynamic() const;
@@ -393,7 +432,7 @@ public:
 	void deactivate();
 
 	/**
-	 * @brief Is this rigidbody reports contacts with other rigidbodies.
+	 * @brief Is rigidbody reports contacts with other rigidbodies.
 	 *
 	 * @details
 	 * Any detected penetrations will however not be resolved. Sensors can be used to implement triggers that
@@ -547,11 +586,18 @@ public:
 	 */
 	void setConstraintEnabled(uint32 index, bool isEnabled);
 
+	/**
+	 * @brief Retruns rigidbody internal instance.
+	 * @warning Use only if you know what you are doing!
+	 */
+	void* getInstance() const noexcept { return instance; }
+
 	// TODO: implement notifiers of shape changes, we should do it manually for constraints
 };
 
 /***********************************************************************************************************************
  * @brief Provides an approximate simulation of rigid body dynamics (including collision detection).
+ * @details Registers events: Simulate.
  */
 class PhysicsSystem final : public ComponentSystem<RigidbodyComponent>, 
 	public Singleton<PhysicsSystem>, public ISerializable
@@ -588,8 +634,10 @@ private:
 
 	Properties properties;
 	LinearPool<Shape> shapes;
+	map<Hash128, ID<Shape>> sharedEmptyShapes;
 	map<Hash128, ID<Shape>> sharedBoxShapes;
 	map<Hash128, ID<Shape>> sharedRotTransShapes;
+	map<Hash128, ID<Shape>> sharedCustomShapes;
 	vector<Event> bodyEvents;
 	vector<ID<Entity>> entityStack;
 	set<ID<Entity>> serializedConstraints;
@@ -652,18 +700,16 @@ private:
 	friend struct CharacterComponent;
 	friend class CharacterSystem;
 public:
-	/*******************************************************************************************************************
-	 * @brief Collision step count during simulation step.
-	 */
-	int32 collisionSteps = 1;
-	/**
-	 * @brief Simulation update count per second.
-	 */
-	uint16 simulationRate = 60;
-	/**
-	 * @brief Underperforming simulation frames threshold to try recover performance.
-	 */
-	float cascadeLagThreshold = 0.1f;
+	/******************************************************************************************************************/
+	int32 collisionSteps = 1;         /**< Collision step count during simulation step. */
+	uint16 simulationRate = 60;       /**< Simulation update count per second. */
+	float cascadeLagThreshold = 0.1f; /**< Underperforming simulation frames threshold to try recover performance. */
+
+	#if GARDEN_DEBUG
+	float statsLogRate = 10.0f;       /**< Simulation debug stats log rate in seconds. */
+	bool logBroadPhaseStats = false;  /**< Log simulation broad phase debug stats. */
+	bool logNarrowPhaseStats = false; /**< Log simulation narrow phase debug stats. */
+	#endif
 
 	/**
 	 * @brief Returns physics system creation properties
@@ -708,6 +754,16 @@ public:
 	void setGravity(const float3& gravity) const noexcept;
 
 	/*******************************************************************************************************************
+	 * @brief Creates a new empty shape instance.
+	 */
+	ID<Shape> createEmptyShape(const float3& centerOfMass = float3(0.0f));
+	/**
+	 * @brief Creates a new shared box shape instance.
+	 * @details See the @ref createEmptyShape().
+	 */
+	ID<Shape> createSharedEmptyShape(const float3& centerOfMass = float3(0.0f));
+
+	/**
 	 * @brief Creates a new box shape instance.
 	 * 
 	 * @details
@@ -751,6 +807,18 @@ public:
 	 */
 	ID<Shape> createSharedRotTransShape(ID<Shape> innerShape, 
 		const float3& position, const quat& rotation = quat::identity);
+
+	/**
+	 * @brief Creates a new custom shape instance.
+	 * @param[in] shapeInstance target custom shape instance
+	 */
+	ID<Shape> createCustomShape(void* shapeInstance);
+	/**
+	 * @brief Creates a new shared custom shape instance.
+	 * @details See the @ref createCustomShape().
+	 * @param[in] shapeInstance target custom shape instance
+	 */
+	ID<Shape> createSharedCustomShape(void* shapeInstance);
 
 	/*******************************************************************************************************************
 	 * @brief Improves collision detection performance. (Expensive operation!)
@@ -812,6 +880,12 @@ public:
 	 * @param shape target shape instance or null
 	 */
 	void destroyShared(ID<Shape> shape);
+
+	/**
+	 * @brief Returns physics system internal instance.
+	 * @warning Use only if you know what you are doing!
+	 */
+	void* getInstance() const noexcept { return physicsInstance; }
 };
 
 } // namespace garden

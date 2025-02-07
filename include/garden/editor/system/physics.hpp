@@ -24,16 +24,14 @@ namespace garden
 class PhysicsEditorSystem final : public System
 {
 public:
-	struct Cached final
+	struct RigidbodyCache final
 	{
-		float3 rigidbodyShapePos = float3(0.0f);
-		float3 rigidbodyHalfExt = float3(0.5f);
-		float rigidbodyConvexRad = 0.05f;
-		float rigidbodyDensity = 1000.0f;
-		int rigidbodyCollLayer = -1;
-		float3 characterShapePos = float3(0.0f);
-		float3 characterShapeSize = float3(0.5f, 1.75f, 0.5f);
-		float characterConvexRad = 0.05f;
+		float3 centerOfMass = float3(0.0f);
+		float3 shapePosition = float3(0.0f);
+		float3 halfExtent = float3(0.5f);
+		float convexRadius = 0.05f;
+		float density = 1000.0f;
+		int collisionLayer = -1;
 		float3 thisConstraintPoint = float3(0.0f);
 		float3 otherConstraintPoint = float3(0.0f);
 		ID<Entity> constraintTarget = {};
@@ -43,8 +41,17 @@ public:
 		ConstraintType constraintType = {};
 		AllowedDOF allowedDOF = {};
 	};
+	struct CharacterCache final
+	{
+		float3 centerOfMass = float3(0.0f);
+		float3 shapePosition = float3(0.0f);
+		float3 shapeSize = float3(0.5f, 1.75f, 0.5f);
+		float convexRadius = 0.05f;
+	};
 private:
-	Cached cached = {};
+	void* debugRenderer = nullptr;
+	RigidbodyCache rigidbodyCache = {};
+	CharacterCache characterCache = {};
 	float3 oldRigidbodyEulerAngles = float3(0.0f);
 	float3 newRigidbodyEulerAngles = float3(0.0f);
 	quat oldRigidbodyRotation = quat::identity;
@@ -53,6 +60,7 @@ private:
 	quat oldCharacterRotation = quat::identity;
 	ID<Entity> rigidbodySelectedEntity = {};
 	ID<Entity> characterSelectedEntity = {};
+	bool showWindow = false;
 
 	PhysicsEditorSystem();
 	~PhysicsEditorSystem() final;
@@ -60,17 +68,23 @@ private:
 	void init();
 	void deinit();
 	void editorRender();
+	void editorBarTool();
 
 	void onRigidbodyInspector(ID<Entity> entity, bool isOpened);
 	void onCharacterInspector(ID<Entity> entity, bool isOpened);
 
 	friend class ecsm::Manager;
 public:
+	bool drawBodies = false;
+	bool drawBoundingBox = false;
+	bool drawCenterOfMass = false;
+	bool drawConstraints = false;
+	bool drawConstraintLimits = false;
+	bool drawConstraintRefFrame = false;
 	float rigidbodyInspectorPriority = 0.8f;
 	float characterInspectorPriority = 0.75f;
 	Color rigidbodyAabbColor = Color::green;
 	Color characterAabbColor = Color("00FF7FFF");
-	bool isEnabled = true;
 };
 
 } // namespace garden
