@@ -118,7 +118,7 @@ static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer, ID<Image> depth
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.hdr");
 	return framebuffer;
 }
-static ID<Framebuffer> createTranslucentFramebuffer(ID<Image> hdrBuffer, ID<Image> depthStencilBuffer)
+static ID<Framebuffer> createMetaHdrFramebuffer(ID<Image> hdrBuffer, ID<Image> depthStencilBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
@@ -133,7 +133,7 @@ static ID<Framebuffer> createTranslucentFramebuffer(ID<Image> hdrBuffer, ID<Imag
 		depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		framebufferSize, std::move(colorAttachments), depthStencilAttachment);
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.translucent");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.metaHdr");
 	return framebuffer;
 }
 static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
@@ -159,10 +159,10 @@ DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording, bool setSingl
 	manager->registerEvent("DeferredRender");
 	manager->registerEvent("PreHdrRender");
 	manager->registerEvent("HdrRender");
+	manager->registerEvent("PreMetaHdrRender");
+	manager->registerEvent("MetaHdrRender");
 	manager->registerEvent("PreLdrRender");
 	manager->registerEvent("LdrRender");
-	manager->registerEvent("PreTranslucentRender");
-	manager->registerEvent("TranslucentRender");
 	manager->tryRegisterEvent("PreSwapchainRender");
 	manager->registerEvent("GBufferRecreate");
 
@@ -181,8 +181,8 @@ DeferredRenderSystem::~DeferredRenderSystem()
 		manager->unregisterEvent("DeferredRender");
 		manager->unregisterEvent("PreHdrRender");
 		manager->unregisterEvent("HdrRender");
-		manager->unregisterEvent("PreTranslucentRender");
-		manager->unregisterEvent("TranslucentRender");
+		manager->unregisterEvent("PreMetaHdrRender");
+		manager->unregisterEvent("MetaHdrRender");
 		manager->unregisterEvent("PreLdrRender");
 		manager->unregisterEvent("LdrRender");
 		if (manager->hasEvent("PreSwapchainRender") && !manager->has<ForwardRenderSystem>())
@@ -215,8 +215,8 @@ void DeferredRenderSystem::init()
 		gFramebuffer = createGFramebuffer(gBuffers, depthStencilBuffer);
 	if (!hdrFramebuffer)
 		hdrFramebuffer = createHdrFramebuffer(hdrBuffer, depthStencilBuffer);
-	if (!translucentFramebuffer)
-		translucentFramebuffer = createTranslucentFramebuffer(hdrBuffer, depthStencilBuffer);
+	if (!metaHdrFramebuffer)
+	metaHdrFramebuffer = createMetaHdrFramebuffer(hdrBuffer, depthStencilBuffer);
 	if (!ldrFramebuffer)
 		ldrFramebuffer = createLdrFramebuffer(ldrBuffer);
 }
@@ -226,7 +226,7 @@ void DeferredRenderSystem::deinit()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(ldrFramebuffer);
-		graphicsSystem->destroy(translucentFramebuffer);
+		graphicsSystem->destroy(metaHdrFramebuffer);
 		graphicsSystem->destroy(hdrFramebuffer);
 		graphicsSystem->destroy(gFramebuffer);
 		graphicsSystem->destroy(depthStencilBuffer);
@@ -294,17 +294,17 @@ void DeferredRenderSystem::render()
 	}
 
 	{
-		SET_CPU_ZONE_SCOPED("Pre Translucent Render");
-		SET_GPU_DEBUG_LABEL("Pre Translucent", Color::transparent);
-		manager->runEvent("PreTranslucentRender");
+		SET_CPU_ZONE_SCOPED("Pre Meta HDR Render");
+		SET_GPU_DEBUG_LABEL("Pre Meta HDR", Color::transparent);
+		manager->runEvent("PreMetaHdrRender");
 	}
 
 	{
-		SET_CPU_ZONE_SCOPED("Translucent Render Pass");
-		SET_GPU_DEBUG_LABEL("Translucent Pass", Color::transparent);
-		framebufferView = graphicsSystem->get(translucentFramebuffer);
+		SET_CPU_ZONE_SCOPED("Meta HDR Render Pass");
+		SET_GPU_DEBUG_LABEL("Meta HDR Pass", Color::transparent);
+		framebufferView = graphicsSystem->get(metaHdrFramebuffer);
 		framebufferView->beginRenderPass(float4(0.0f), 0.0f, 0, int4(0), asyncRecording);
-		manager->runEvent("TranslucentRender");
+		manager->runEvent("MetaHdrRender");
 		framebufferView->endRenderPass();
 	}
 
@@ -386,7 +386,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		colorAttachment.imageView = hdrBufferView->getDefaultView();
 		framebufferView->update(framebufferSize, &colorAttachment, 1);
 
-		framebufferView = graphicsSystem->get(translucentFramebuffer);
+		framebufferView = graphicsSystem->get(metaHdrFramebuffer);
 		colorAttachment.load = true;
 		auto mainDepthStencilBuffer = graphicsSystem->getDepthStencilBuffer();
 		Framebuffer::OutputAttachment depthStencilAttachment(mainDepthStencilBuffer, false, true, true);
@@ -452,11 +452,11 @@ ID<Framebuffer> DeferredRenderSystem::getHdrFramebuffer()
 		hdrFramebuffer = createHdrFramebuffer(getHdrBuffer(), getDepthStencilBuffer());
 	return hdrFramebuffer;
 }
-ID<Framebuffer> DeferredRenderSystem::getTranslucentFramebuffer()
+ID<Framebuffer> DeferredRenderSystem::getMetaHdrFramebuffer()
 {
-	if (!translucentFramebuffer)
-		translucentFramebuffer = createTranslucentFramebuffer(getHdrBuffer(), getDepthStencilBuffer());
-	return translucentFramebuffer;
+	if (!metaHdrFramebuffer)
+		metaHdrFramebuffer = createMetaHdrFramebuffer(getHdrBuffer(), getDepthStencilBuffer());
+	return metaHdrFramebuffer;
 }
 ID<Framebuffer> DeferredRenderSystem::getLdrFramebuffer()
 {

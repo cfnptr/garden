@@ -62,14 +62,14 @@ static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getTranslucentFramebuffer(), deferredSystem->useAsyncRecording());
+		"skybox", deferredSystem->getMetaHdrFramebuffer(), deferredSystem->useAsyncRecording());
 	return skyboxPipeline;
 }
 
 void SkyboxRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-	ECSM_SUBSCRIBE_TO_EVENT("TranslucentRender", SkyboxRenderSystem::translucentRender);
+	ECSM_SUBSCRIBE_TO_EVENT("MetaHdrRender", SkyboxRenderSystem::metaHdrRender);
 
 	if (!pipeline)
 		pipeline = createPipeline();
@@ -81,7 +81,7 @@ void SkyboxRenderSystem::deinit()
 		GraphicsSystem::Instance::get()->destroy(pipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("TranslucentRender", SkyboxRenderSystem::translucentRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaHdrRender", SkyboxRenderSystem::metaHdrRender);
 	}
 }
 
@@ -103,9 +103,9 @@ void SkyboxRenderSystem::imageLoaded()
 }
 
 //**********************************************************************************************************************
-void SkyboxRenderSystem::translucentRender()
+void SkyboxRenderSystem::metaHdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Skybox Translucent Render");
+	SET_CPU_ZONE_SCOPED("Skybox Meta HDR Render");
 
 	if (!isEnabled)
 		return;

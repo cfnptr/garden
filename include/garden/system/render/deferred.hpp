@@ -47,7 +47,7 @@ namespace garden
  * Registers events:
  *   PreDeferredRender, DeferredRender, 
  *   PreHdrRender, HdrRender, 
- *   PreTranslucentRender, TranslucentRender, 
+ *   PreMetaHdrRender, MetaHdrRender, 
  *   PreLdrRender, LdrRender, 
  *   PreSwapchainRender, GBufferRecreate.
  */
@@ -79,7 +79,7 @@ private:
 	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
-	ID<Framebuffer> translucentFramebuffer = {};
+	ID<Framebuffer> metaHdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
 	bool asyncRecording = false;
 
@@ -138,9 +138,9 @@ public:
 	 */
 	ID<Framebuffer> getHdrFramebuffer();
 	/**
-	 * @brief Returns deferred translucent framebuffer.
+	 * @brief Returns deferred meta HDR framebuffer. (HDR + Depth)
 	 */
-	ID<Framebuffer> getTranslucentFramebuffer();
+	ID<Framebuffer> getMetaHdrFramebuffer();
 	/**
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */

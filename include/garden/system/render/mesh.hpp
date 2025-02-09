@@ -243,7 +243,7 @@ private:
 	void forwardRender();
 	void preDeferredRender();
 	void deferredRender();
-	void translucentRender();
+	void metaHdrRender();
 
 	friend class ecsm::Manager;
 	friend class GizmosEditorSystem;
