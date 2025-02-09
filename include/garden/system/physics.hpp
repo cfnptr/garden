@@ -655,6 +655,7 @@ private:
 	void* contactListener = nullptr;
 	void* bodyInterface = nullptr;
 	const void* lockInterface = nullptr;
+	const void* narrowPhaseQuery = nullptr;
 	ID<Entity> thisBody = {};
 	ID<Entity> otherBody = {};
 	float deltaTimeAccum = 0.0f;
@@ -821,11 +822,81 @@ public:
 	ID<Shape> createSharedCustomShape(void* shapeInstance);
 
 	/*******************************************************************************************************************
+	 * @brief Returns shape instance view.
+	 * @param shape target shape instance
+	 */
+	View<Shape> get(ID<Shape> shape) const noexcept { return shapes.get(shape); }
+
+	/**
+	 * Destroys shape instance.
+	 * @param shape target shape instance or null
+	 */
+	void destroy(ID<Shape> shape) { shapes.destroy(shape); }
+	/**
+	 * Destroys shared shape if it's the last one.
+	 * @param shape target shape instance or null
+	 */
+	void destroyShared(ID<Shape> shape);
+
+	/*******************************************************************************************************************
 	 * @brief Improves collision detection performance. (Expensive operation!)
 	 */
 	void optimizeBroadPhase();
 
 	/**
+	 * @brief Casts a ray to find the closest object hit.
+	 * @return True if found an object hit.
+	 * 
+	 * @param[in] ray target ray to cast
+	 * @param maxDistance maximum ray cast distance
+	 */
+	bool castRay(const Ray& ray, float maxDistance = 1000.0f);
+	/**
+	 * @brief Casts a ray to find the closest object hit.
+	 * @return True if found an object hit.
+	 * 
+	 * @param[in] ray target ray to cast
+	 * @param[out] entity hit object entity
+	 * @param maxDistance maximum ray cast distance
+	 */
+	bool castRay(const Ray& ray, ID<Entity>& entity, float maxDistance = 1000.0f);
+	/**
+	 * @brief Casts a ray to find the closest object hit.
+	 * @return True if found an object hit.
+	 * 
+	 * @param[in] ray target ray to cast
+	 * @param[out] entity hit object entity
+	 * @param[out] hitPoint object hit point
+	 * @param maxDistance maximum ray cast distance
+	 */
+	bool castRay(const Ray& ray, ID<Entity>& entity, float3& hitPoint, float maxDistance = 1000.0f);
+	/**
+	 * @brief Casts a ray to find the closest object hit.
+	 * @return True if found an object hit.
+	 * 
+	 * @param[in] ray target ray to cast
+	 * @param[out] entity hit object entity
+	 * @param[out] subShapeID hit object sub shape ID
+	 * @param[out] hitPoint object hit point
+	 * @param maxDistance maximum ray cast distance
+	 */
+	bool castRay(const Ray& ray, ID<Entity>& entity, uint32& subShapeID, 
+		float3& hitPoint, float maxDistance = 1000.0f);
+	/**
+	 * @brief Casts a ray to find the closest object hit.
+	 * @return True if found an object hit.
+	 * 
+	 * @param[in] ray target ray to cast
+	 * @param[out] hitPoint object hit point
+	 * @param[out] entity hit object entity
+	 * @param[out] subShapeID hit object sub shape ID
+	 * @param[out] normal hit surface normal vector
+	 * @param maxDistance maximum ray cast distance
+	 */
+	bool castRay(const Ray& ray, ID<Entity>& entity, uint32& subShapeID, 
+		float3& hitPoint, float3& normal, float maxDistance = 1000.0f);
+
+	/*******************************************************************************************************************
 	 * @brief Wakes up rigidbody if it's sleeping.
 	 * @details It also wakes up all rigidbody descendants.
 	 */
@@ -863,23 +934,6 @@ public:
 	 */
 	void setBroadPhaseLayerName(uint8 broadPhaseLayer, const string& debugName);
 	#endif
-
-	/*******************************************************************************************************************
-	 * @brief Returns shape instance view.
-	 * @param shape target shape instance
-	 */
-	View<Shape> get(ID<Shape> shape) const noexcept { return shapes.get(shape); }
-
-	/**
-	 * Destroys shape instance.
-	 * @param shape target shape instance or null
-	 */
-	void destroy(ID<Shape> shape) { shapes.destroy(shape); }
-	/**
-	 * Destroys shared shape if it's the last one.
-	 * @param shape target shape instance or null
-	 */
-	void destroyShared(ID<Shape> shape);
 
 	/**
 	 * @brief Returns physics system internal instance.

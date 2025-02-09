@@ -68,6 +68,7 @@ void PhysicsDebugRenderer::drawLines(const float4x4& viewProj)
 	pushConstants->mvp = viewProj;
 
 	pipelineView->bind();
+	pipelineView->setViewportScissor();
 	pipelineView->pushConstants();
 	pipelineView->draw(linesBuffer, (uint32)lines.size() * 2);
 	graphicsSystem->destroy(linesBuffer);
@@ -94,6 +95,7 @@ void PhysicsDebugRenderer::drawTriangles(const float4x4& viewProj)
 	pushConstants->mvp = viewProj;
 
 	pipelineView->bind();
+	pipelineView->setViewportScissor();
 	pipelineView->pushConstants();
 	pipelineView->draw(trianglesBuffer, (uint32)triangles.size());
 	graphicsSystem->destroy(trianglesBuffer);
