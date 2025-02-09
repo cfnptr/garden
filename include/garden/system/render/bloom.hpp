@@ -38,7 +38,7 @@ public:
 	/**
 	 * @brief Maximum bloom buffer mip level count.
 	 */
-	static constexpr uint8 maxBloomMipCount = 6;
+	static constexpr uint8 maxBloomMipCount = 7;
 	/**
 	 * @brief First downsample step shader variant.
 	 */
