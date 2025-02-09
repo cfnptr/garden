@@ -163,7 +163,7 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 	if (useDeferredBuffer)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		framebuffer = isTranslucent ? deferredSystem->getTranslucentFramebuffer() : 
+		framebuffer = isTranslucent ? deferredSystem->getMetaHdrFramebuffer() : 
 			deferredSystem->getGFramebuffer();
 	}
 	else

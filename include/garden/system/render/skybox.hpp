@@ -60,7 +60,7 @@ private:
 	void init();
 	void deinit();
 	void imageLoaded();
-	void translucentRender();
+	void metaHdrRender();
 
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;

@@ -54,7 +54,7 @@ void MeshRenderSystem::init()
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-		ECSM_SUBSCRIBE_TO_EVENT("TranslucentRender", MeshRenderSystem::translucentRender);
+		ECSM_SUBSCRIBE_TO_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
 	}
 }
 void MeshRenderSystem::deinit()
@@ -70,7 +70,7 @@ void MeshRenderSystem::deinit()
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("TranslucentRender", MeshRenderSystem::translucentRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
 		}
 	}
 }
@@ -695,9 +695,9 @@ void MeshRenderSystem::deferredRender()
 	renderOpaque(cameraConstants.viewProj, false);
 }
 
-void MeshRenderSystem::translucentRender()
+void MeshRenderSystem::metaHdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Mesh Translucent Render");
+	SET_CPU_ZONE_SCOPED("Mesh Meta HDR Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!graphicsSystem->camera)
