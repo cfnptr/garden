@@ -292,7 +292,7 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	cameraConstants.inverseView = inverse(cameraConstants.view);
 	cameraConstants.inverseProj = inverse(cameraConstants.projection);
 	cameraConstants.invViewProj = inverse(cameraConstants.viewProj);
-	auto viewDir = cameraConstants.view * float4(float3::front, 1.0f);
+	auto viewDir = cameraConstants.inverseView * float4(float3::front, 1.0f);
 	cameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
 
 	if (directionalLight)

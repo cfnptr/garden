@@ -30,6 +30,8 @@
 #include "Jolt/Core/JobSystemWithBarrier.h"
 #include "Jolt/Physics/PhysicsSettings.h"
 #include "Jolt/Physics/PhysicsSystem.h"
+#include "Jolt/Physics/Collision/RayCast.h"
+#include "Jolt/Physics/Collision/CastResult.h"
 #include "Jolt/Physics/Collision/NarrowPhaseStats.h"
 #include "Jolt/Physics/Collision/ObjectLayerPairFilterTable.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayerInterfaceTable.h"
@@ -1054,6 +1056,7 @@ void PhysicsSystem::preInit()
 
 	bodyInterface = &physicsInstance->GetBodyInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
 	lockInterface = &physicsInstance->GetBodyLockInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
+	narrowPhaseQuery = &physicsInstance->GetNarrowPhaseQueryNoLock(); // Version that does not lock the bodies, use with great care!
 
 	// We need a job system that will execute physics jobs on multiple threads.
 	auto threadPool = &ThreadSystem::Instance::get()->getForegroundPool();
@@ -1829,12 +1832,174 @@ ID<Shape> PhysicsSystem::createSharedCustomShape(void* shapeInstance)
 }
 
 //**********************************************************************************************************************
+void PhysicsSystem::destroyShared(ID<Shape> shape)
+{
+	if (!shape)
+		return;
+
+	auto shapeView = shapes.get(shape);
+	if (shapeView->getRefCount() > 2)
+		return;
+
+	auto subType = shapeView->getSubType();
+	if (subType == ShapeSubType::Empty)
+	{
+		for (auto i = sharedEmptyShapes.begin(); i != sharedEmptyShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedEmptyShapes.erase(i);
+			break;
+		}
+	}
+	else if (subType == ShapeSubType::Box)
+	{
+		for (auto i = sharedBoxShapes.begin(); i != sharedBoxShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedBoxShapes.erase(i);
+			break;
+		}
+	}
+	else if (subType == ShapeSubType::RotatedTranslated)
+	{
+		for (auto i = sharedRotTransShapes.begin(); i != sharedRotTransShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedRotTransShapes.erase(i);
+			break;
+		}
+	}
+	else
+	{
+		for (auto i = sharedCustomShapes.begin(); i != sharedCustomShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedCustomShapes.erase(i);
+			break;
+		}
+	}
+
+	if (shapeView->isLastRef())
+		destroy(ID<Shape>(shape));
+}
+
 void PhysicsSystem::optimizeBroadPhase()
 {
 	auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
 	physicsInstance->OptimizeBroadPhase();
 }
 
+//**********************************************************************************************************************
+class ActiveBodyFilter final : public JPH::BodyFilter
+{
+	const JPH::BodyLockInterface* lockInterface = nullptr;
+public:
+	ActiveBodyFilter(const JPH::BodyLockInterface* lockInterface) : lockInterface(lockInterface) { }
+
+	bool ShouldCollide(const JPH::BodyID &inBodyID) const final
+	{
+		JPH::BodyLockRead lock(*lockInterface, inBodyID);
+		return lock.Succeeded() && lock.GetBody().IsInBroadPhase();
+	}
+};
+
+//**********************************************************************************************************************
+static bool castRay(const void* _lockInterface, const void* _narrowPhaseQuery, 
+	const JPH::RRayCast& rayCast, JPH::RayCastResult& result)
+{
+	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)_narrowPhaseQuery;
+	return narrowPhaseQuery->CastRay(rayCast, result, {}, {}, 
+		ActiveBodyFilter((const JPH::BodyLockInterface*)_lockInterface));
+	// TODO: allow to check against all rigidbodies, even out of simulation.
+}
+static ID<Entity> getRayCastEntity(const void* _lockInterface, const JPH::BodyID& bodyID)
+{
+	ID<Entity> entity = {};
+	auto& lockInterface = *((const JPH::BodyLockInterface*)_lockInterface);
+	JPH::BodyLockRead lock(lockInterface, bodyID);
+	if (lock.Succeeded())
+		*entity = (uint32)lock.GetBody().GetUserData();
+	return entity;
+}
+
+bool PhysicsSystem::castRay(const Ray& ray, float maxDistance)
+{
+	JPH::RayCastResult rayCastResult;
+	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
+	return ::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult);
+}
+bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, float maxDistance)
+{
+	JPH::RayCastResult rayCastResult;
+	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
+	if (!::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult))
+		return false;
+
+	entity = getRayCastEntity(lockInterface, rayCastResult.mBodyID);
+	return true;
+}
+bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, float3& hitPoint, float maxDistance)
+{
+	JPH::RayCastResult rayCastResult;
+	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
+	if (!::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult))
+		return false;
+
+	entity = getRayCastEntity(lockInterface, rayCastResult.mBodyID);
+	hitPoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
+	return true;
+}
+bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, 
+	uint32& subShapeID, float3& hitPoint, float maxDistance)
+{
+	JPH::RayCastResult rayCastResult;
+	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
+	if (!::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult))
+		return false;
+
+	entity = getRayCastEntity(lockInterface, rayCastResult.mBodyID);
+	subShapeID = rayCastResult.mSubShapeID2.GetValue();
+	hitPoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
+	return true;
+}
+bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, 
+	uint32& subShapeID, float3& hitPoint, float3& normal, float maxDistance)
+{
+	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
+
+	JPH::RayCastResult rayCastResult;
+	if (!narrowPhaseQuery->CastRay(rayCast, rayCastResult, {}, {}, 
+		ActiveBodyFilter((const JPH::BodyLockInterface*)lockInterface)))
+	{
+		return false;
+	}
+
+	subShapeID = rayCastResult.mSubShapeID2.GetValue();
+	hitPoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
+
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	JPH::BodyLockRead lock(lockInterface, rayCastResult.mBodyID);
+	if (lock.Succeeded())
+	{
+		auto& body = lock.GetBody();
+		normal = toFloat3(body.GetWorldSpaceSurfaceNormal(
+			rayCastResult.mSubShapeID2, rayCast.GetPointOnRay(rayCastResult.mFraction)));
+		*entity = (uint32)body.GetUserData();
+	}
+	else
+	{
+		normal = float3(0.0f);
+		entity = {};
+	}
+	return true;
+}
+
+//**********************************************************************************************************************
 void PhysicsSystem::activateRecursive(ID<Entity> entity)
 {
 	GARDEN_ASSERT(entity);
@@ -1891,6 +2056,7 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 	}
 }
 
+//**********************************************************************************************************************
 void PhysicsSystem::enableCollision(uint16 collisionLayer1, uint16 collisionLayer2)
 {
 	GARDEN_ASSERT(collisionLayer1 < properties.collisionLayerCount);
@@ -1931,59 +2097,3 @@ void PhysicsSystem::setBroadPhaseLayerName(uint8 broadPhaseLayer, const string& 
 	#endif
 }
 #endif
-
-//**********************************************************************************************************************
-void PhysicsSystem::destroyShared(ID<Shape> shape)
-{
-	if (!shape)
-		return;
-
-	auto shapeView = shapes.get(shape);
-	if (shapeView->getRefCount() > 2)
-		return;
-
-	auto subType = shapeView->getSubType();
-	if (subType == ShapeSubType::Empty)
-	{
-		for (auto i = sharedEmptyShapes.begin(); i != sharedEmptyShapes.end(); i++)
-		{
-			if (i->second != shape)
-				continue;
-			sharedEmptyShapes.erase(i);
-			break;
-		}
-	}
-	else if (subType == ShapeSubType::Box)
-	{
-		for (auto i = sharedBoxShapes.begin(); i != sharedBoxShapes.end(); i++)
-		{
-			if (i->second != shape)
-				continue;
-			sharedBoxShapes.erase(i);
-			break;
-		}
-	}
-	else if (subType == ShapeSubType::RotatedTranslated)
-	{
-		for (auto i = sharedRotTransShapes.begin(); i != sharedRotTransShapes.end(); i++)
-		{
-			if (i->second != shape)
-				continue;
-			sharedRotTransShapes.erase(i);
-			break;
-		}
-	}
-	else
-	{
-		for (auto i = sharedCustomShapes.begin(); i != sharedCustomShapes.end(); i++)
-		{
-			if (i->second != shape)
-				continue;
-			sharedCustomShapes.erase(i);
-			break;
-		}
-	}
-
-	if (shapeView->isLastRef())
-		destroy(ID<Shape>(shape));
-}
