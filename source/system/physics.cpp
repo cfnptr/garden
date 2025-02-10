@@ -33,6 +33,8 @@
 #include "Jolt/Physics/Collision/RayCast.h"
 #include "Jolt/Physics/Collision/CastResult.h"
 #include "Jolt/Physics/Collision/NarrowPhaseStats.h"
+#include "Jolt/Physics/Collision/CollidePointResult.h"
+#include "Jolt/Physics/Collision/CollisionCollectorImpl.h"
 #include "Jolt/Physics/Collision/ObjectLayerPairFilterTable.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayerInterfaceTable.h"
 #include "Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h"
@@ -1907,94 +1909,123 @@ public:
 	}
 };
 
-//**********************************************************************************************************************
-static bool castRay(const void* _lockInterface, const void* _narrowPhaseQuery, 
-	const JPH::RRayCast& rayCast, JPH::RayCastResult& result)
-{
-	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)_narrowPhaseQuery;
-	return narrowPhaseQuery->CastRay(rayCast, result, {}, {}, 
-		ActiveBodyFilter((const JPH::BodyLockInterface*)_lockInterface));
-	// TODO: allow to check against all rigidbodies, even out of simulation.
-}
-static ID<Entity> getRayCastEntity(const void* _lockInterface, const JPH::BodyID& bodyID)
-{
-	ID<Entity> entity = {};
-	auto& lockInterface = *((const JPH::BodyLockInterface*)_lockInterface);
-	JPH::BodyLockRead lock(lockInterface, bodyID);
-	if (lock.Succeeded())
-		*entity = (uint32)lock.GetBody().GetUserData();
-	return entity;
-}
+static const JPH::BodyFilter defaultBodyFilter;
 
-bool PhysicsSystem::castRay(const Ray& ray, float maxDistance)
+bool PhysicsSystem::castRay(const Ray& ray, RayCastHit& hit, float maxDistance, bool castInactive)
 {
-	JPH::RayCastResult rayCastResult;
-	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
-	return ::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult);
-}
-bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, float maxDistance)
-{
-	JPH::RayCastResult rayCastResult;
-	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
-	if (!::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult))
-		return false;
+	GARDEN_ASSERT(ray.getDirection() != float3(0.0f));
+	GARDEN_ASSERT(maxDistance > 0.0f);
 
-	entity = getRayCastEntity(lockInterface, rayCastResult.mBodyID);
-	return true;
-}
-bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, float3& hitPoint, float maxDistance)
-{
-	JPH::RayCastResult rayCastResult;
-	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
-	if (!::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult))
-		return false;
-
-	entity = getRayCastEntity(lockInterface, rayCastResult.mBodyID);
-	hitPoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
-	return true;
-}
-bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, 
-	uint32& subShapeID, float3& hitPoint, float maxDistance)
-{
-	JPH::RayCastResult rayCastResult;
-	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
-	if (!::castRay(lockInterface, narrowPhaseQuery, rayCast, rayCastResult))
-		return false;
-
-	entity = getRayCastEntity(lockInterface, rayCastResult.mBodyID);
-	subShapeID = rayCastResult.mSubShapeID2.GetValue();
-	hitPoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
-	return true;
-}
-bool PhysicsSystem::castRay(const Ray& ray, ID<Entity>& entity, 
-	uint32& subShapeID, float3& hitPoint, float3& normal, float maxDistance)
-{
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
 	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
 
 	JPH::RayCastResult rayCastResult;
 	if (!narrowPhaseQuery->CastRay(rayCast, rayCastResult, {}, {}, 
-		ActiveBodyFilter((const JPH::BodyLockInterface*)lockInterface)))
+		castInactive ? defaultBodyFilter : activeBodyFilter))
 	{
 		return false;
 	}
 
-	subShapeID = rayCastResult.mSubShapeID2.GetValue();
-	hitPoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
+	hit.subShapeID = rayCastResult.mSubShapeID2.GetValue();
+	hit.surfacePoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
 
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
 	JPH::BodyLockRead lock(lockInterface, rayCastResult.mBodyID);
 	if (lock.Succeeded())
 	{
 		auto& body = lock.GetBody();
-		normal = toFloat3(body.GetWorldSpaceSurfaceNormal(
+		hit.surfaceNormal = toFloat3(body.GetWorldSpaceSurfaceNormal(
 			rayCastResult.mSubShapeID2, rayCast.GetPointOnRay(rayCastResult.mFraction)));
-		*entity = (uint32)body.GetUserData();
+		*hit.entity = (uint32)body.GetUserData();
 	}
-	else
+	return true;
+}
+bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxDistance, bool sortHits, bool castInactive)
+{
+	GARDEN_ASSERT(ray.getDirection() != float3(0.0f));
+	GARDEN_ASSERT(maxDistance > 0.0f);
+
+	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
+	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
+
+	static const JPH::RayCastSettings settings;
+	JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
+	narrowPhaseQuery->CastRay(rayCast, settings, collector, {}, {}, 
+		castInactive ? defaultBodyFilter : activeBodyFilter);
+	if (!collector.HadHit())
+		return false;
+	
+	if (sortHits)
+		collector.Sort();
+	
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	auto& collectorHits = collector.mHits;
+	hits.resize(collectorHits.size());
+
+	for (psize i = 0; i < hits.size(); i++)
 	{
-		normal = float3(0.0f);
-		entity = {};
+		auto hit = hits[i];
+		auto collectorHit = collectorHits[i];
+		hit.subShapeID = collectorHit.mSubShapeID2.GetValue();
+		hit.surfacePoint = toFloat3(rayCast.GetPointOnRay(collectorHit.mFraction));
+
+		JPH::BodyLockRead lock(lockInterface, collectorHit.mBodyID);
+		if (lock.Succeeded())
+		{
+			auto& body = lock.GetBody();
+			hit.surfaceNormal = toFloat3(body.GetWorldSpaceSurfaceNormal(
+				collectorHit.mSubShapeID2, rayCast.GetPointOnRay(collectorHit.mFraction)));
+			*hit.entity = (uint32)body.GetUserData();
+		}
+	}
+	return true;
+}
+
+//**********************************************************************************************************************
+bool PhysicsSystem::collidePoint(const float3& point, ShapeHit& hit, bool collideInactive)
+{
+	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
+
+	JPH::AnyHitCollisionCollector<JPH::CollidePointCollector> collector;
+	narrowPhaseQuery->CollidePoint(toVec3(point), collector, {}, {}, 
+		collideInactive ? defaultBodyFilter : activeBodyFilter);
+	if (!collector.HadHit())
+		return false;
+
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	JPH::BodyLockRead lock(lockInterface, collector.mHit.mBodyID);
+	if (lock.Succeeded())
+		*hit.entity = (uint32)lock.GetBody().GetUserData();
+	hit.subShapeID = collector.mHit.mSubShapeID2.GetValue();
+	return true;
+}
+bool PhysicsSystem::collidePoint(const float3& point, vector<ShapeHit>& hits, bool collideInactive)
+{
+	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
+
+	JPH::AllHitCollisionCollector<JPH::CollidePointCollector> collector;
+	narrowPhaseQuery->CollidePoint(toVec3(point), collector, {}, {}, 
+		collideInactive ? defaultBodyFilter : activeBodyFilter);
+	if (!collector.HadHit())
+		return false;
+	
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	auto& collectorHits = collector.mHits;
+	hits.resize(collectorHits.size());
+
+	for (psize i = 0; i < hits.size(); i++)
+	{
+		auto hit = hits[i];
+		auto collectorHit = collectorHits[i];
+		hit.subShapeID = collectorHit.mSubShapeID2.GetValue();
+
+		JPH::BodyLockRead lock(lockInterface, collectorHit.mBodyID);
+		if (lock.Succeeded())
+			*hit.entity = (uint32)lock.GetBody().GetUserData();
 	}
 	return true;
 }

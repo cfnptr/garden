@@ -290,6 +290,23 @@ public:
 	void* getInstance() const noexcept { return instance; }
 };
 
+/**
+ * @brief Shape hit information container.
+ */
+struct ShapeHit
+{
+	ID<Entity> entity = {}; /**< Hit shape entity instance. */
+	uint32 subShapeID = 0;  /**< Hit shape sub-shape ID. */
+};
+/**
+ * @brief Ray cast hit information container.
+ */
+struct RayCastHit : public ShapeHit
+{
+	float3 surfacePoint = float3(0.0f);  /**< Hit shape surface point in the world space. */
+	float3 surfaceNormal = float3(0.0f); /**< Hit shape surface normal vector. */
+};
+
 } // namespace garden::physics
 
 namespace garden
@@ -603,6 +620,9 @@ class PhysicsSystem final : public ComponentSystem<RigidbodyComponent>,
 	public Singleton<PhysicsSystem>, public ISerializable
 {
 public:
+	/**
+	 * @brief Physics simulation system properties.
+	 */
 	struct Properties final
 	{
 		uint32 tempBufferSize = 10 * 1024 * 1024; // 10mb
@@ -615,6 +635,10 @@ public:
 
 		Properties() { }
 	};
+
+	/**
+	 * @brief Physics simulation event container
+	 */
 	struct Event final
 	{
 		uint32 data1 = 0;
@@ -844,57 +868,46 @@ public:
 	void optimizeBroadPhase();
 
 	/**
-	 * @brief Casts a ray to find the closest object hit.
-	 * @return True if found an object hit.
+	 * @brief Casts a ray to find the closest rigidbody shape hit.
+	 * @return True if found a rigidbody shape hit.
 	 * 
 	 * @param[in] ray target ray to cast
+	 * @param[out] hit rigidbody shape hit information
 	 * @param maxDistance maximum ray cast distance
+	 * @param castInactive also cast inactive rigidbodies
 	 */
-	bool castRay(const Ray& ray, float maxDistance = 1000.0f);
+	bool castRay(const Ray& ray, RayCastHit& hit, float maxDistance = 1000.0f, bool castInactive = false);
 	/**
-	 * @brief Casts a ray to find the closest object hit.
-	 * @return True if found an object hit.
+	 * @brief Casts a ray to find all rigidbody shape hits.
+	 * @return True if found rigidbody shape hits.
 	 * 
 	 * @param[in] ray target ray to cast
-	 * @param[out] entity hit object entity
+	 * @param[out] hits rigidbody shape hit information array
 	 * @param maxDistance maximum ray cast distance
+	 * @param sortHits order hits on closest first
+	 * @param castInactive also cast inactive rigidbodies
 	 */
-	bool castRay(const Ray& ray, ID<Entity>& entity, float maxDistance = 1000.0f);
+	bool castRay(const Ray& ray, vector<RayCastHit>& hits, float maxDistance = 1000.0f, 
+		bool sortHits = false, bool castInactive = false);
+
 	/**
-	 * @brief Casts a ray to find the closest object hit.
-	 * @return True if found an object hit.
+	 * @brief Checks if point is inside any rigidbody shape.
+	 * @return True if found a rigidbody shape hit.
 	 * 
-	 * @param[in] ray target ray to cast
-	 * @param[out] entity hit object entity
-	 * @param[out] hitPoint object hit point
-	 * @param maxDistance maximum ray cast distance
-	 */
-	bool castRay(const Ray& ray, ID<Entity>& entity, float3& hitPoint, float maxDistance = 1000.0f);
+	 * @param[in] point target point to collide
+	 * @param[out] hit rigidbody shape hit information
+	 * @param collideInactive also collide inactive rigidbodies
+	 */	
+	bool collidePoint(const float3& point, ShapeHit& hit, bool collideInactive = false);
 	/**
-	 * @brief Casts a ray to find the closest object hit.
-	 * @return True if found an object hit.
+	 * @brief Checks if point is inside any rigidbody shape.
+	 * @return True if found rigidbody shape hits.
 	 * 
-	 * @param[in] ray target ray to cast
-	 * @param[out] entity hit object entity
-	 * @param[out] subShapeID hit object sub shape ID
-	 * @param[out] hitPoint object hit point
-	 * @param maxDistance maximum ray cast distance
-	 */
-	bool castRay(const Ray& ray, ID<Entity>& entity, uint32& subShapeID, 
-		float3& hitPoint, float maxDistance = 1000.0f);
-	/**
-	 * @brief Casts a ray to find the closest object hit.
-	 * @return True if found an object hit.
-	 * 
-	 * @param[in] ray target ray to cast
-	 * @param[out] hitPoint object hit point
-	 * @param[out] entity hit object entity
-	 * @param[out] subShapeID hit object sub shape ID
-	 * @param[out] normal hit surface normal vector
-	 * @param maxDistance maximum ray cast distance
-	 */
-	bool castRay(const Ray& ray, ID<Entity>& entity, uint32& subShapeID, 
-		float3& hitPoint, float3& normal, float maxDistance = 1000.0f);
+	 * @param[in] point target point to collide
+	 * @param[out] hits rigidbody shape hit information array
+	 * @param collideInactive also collide inactive rigidbodies
+	 */	
+	bool collidePoint(const float3& point, vector<ShapeHit>& hits, bool collideInactive = false);
 
 	/*******************************************************************************************************************
 	 * @brief Wakes up rigidbody if it's sleeping.
