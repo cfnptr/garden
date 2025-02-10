@@ -66,6 +66,7 @@ static int getBestForegroundThreadCount()
 			auto cpuCount = mpio::OS::getPhysicalCpuCount();
 			return cpuCount > 1 ? cpuCount / 2 : cpuCount;
 		}
+		// TODO: Maybe we can detect CCX count? Also support server AMD CPUs.
 	}
 	return mpio::OS::getPerformanceCpuCount();
 }
