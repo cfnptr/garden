@@ -48,6 +48,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	 */
 	~FpvControllerSystem() final;
 
+	void updateMouseLock();
 	quat updateCameraRotation();
 	void updateCameraControl(const quat& rotationQuat);
 	void updateCharacterControl();
@@ -67,6 +68,7 @@ public:
 	float horizontalSpeed = 2.0f;
 	float horizontalFactor = 0.99999f;
 	float jumpSpeed = 4.0f;
+	bool isMouseLocked = false;
 };
 
 } // namespace garden
