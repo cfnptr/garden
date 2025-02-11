@@ -88,6 +88,7 @@ void FpvControllerSystem::deinit()
 void FpvControllerSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("FPV Controller Update");
+	updateMouseLock();
 	auto rotationQuat = updateCameraRotation();
 	updateCameraControl(rotationQuat);
 	updateCharacterControl();
@@ -109,40 +110,43 @@ void FpvControllerSystem::swapchainRecreate()
 	}
 }
 
+void FpvControllerSystem::updateMouseLock()
+{
+	auto inputSystem = InputSystem::Instance::get();
+	if (inputSystem->isKeyboardPressed(KeyboardButton::Tab)) // TODO: && get the exact button from the input system
+		isMouseLocked = !isMouseLocked;
+
+	if (isMouseLocked)
+	{
+		if (inputSystem->getCursorMode() != CursorMode::Locked)
+		{
+			#if GARDEN_EDITOR
+			ImGui::SetWindowFocus(nullptr);
+			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+			#endif
+			inputSystem->setCursorMode(CursorMode::Locked);
+		}
+	}
+	else
+	{
+		if (inputSystem->getCursorMode() != CursorMode::Normal)
+		{
+			#if GARDEN_EDITOR
+			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+			#endif
+			inputSystem->setCursorMode(CursorMode::Normal);
+		}
+	}
+}
+
 //**********************************************************************************************************************
 quat FpvControllerSystem::updateCameraRotation()
 {
-	auto inputSystem = InputSystem::Instance::get();
-
-	#if GARDEN_EDITOR
-	if (ImGui::GetIO().WantCaptureMouse)
-		return quat::identity;
-
-	if (!inputSystem->getMouseState(MouseButton::Right))
-	{
-		if (inputSystem->getCursorMode() != CursorMode::Normal &&
-			inputSystem->isMouseReleased(MouseButton::Right))
-		{
-			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-			inputSystem->setCursorMode(CursorMode::Normal);
-		}
-		return quat::identity;
-	}
-
-	if (inputSystem->getCursorMode() != CursorMode::Locked &&
-		inputSystem->isMousePressed(MouseButton::Right))
-	{
-		ImGui::SetWindowFocus(nullptr);
-		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
-		inputSystem->setCursorMode(CursorMode::Locked);
-	}
-	#endif
-
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
-	if (!transformView || !transformView->isActive() )
+	if (!isMouseLocked || !transformView || !transformView->isActive() )
 		return quat::identity;
 
-	auto cursorDelta = inputSystem->getCursorDelta();
+	auto cursorDelta = InputSystem::Instance::get()->getCursorDelta();
 	rotation += cursorDelta * mouseSensitivity * radians(0.1f);
 	rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
 	auto rotationQuat = quat(rotation.y, float3::left) * quat(rotation.x, float3::bottom);
@@ -161,9 +165,7 @@ void FpvControllerSystem::updateCameraControl(const quat& rotationQuat)
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto flyVector = float3(0.0f);
 
-	#if GARDEN_EDITOR
-	if (inputSystem->getMouseState(MouseButton::Right))
-	#endif
+	if (isMouseLocked)
 	{
 		float boost = 1.0f;
 		if (inputSystem->getKeyboardState(KeyboardButton::LeftShift))

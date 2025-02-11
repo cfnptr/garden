@@ -85,14 +85,13 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 
 	try
 	{
-		this->logger = logy::Logger(appInfoSystem->getAppDataName(),
-			level, GARDEN_DEBUG ? true : false, rotationTime);
+		this->logger = logy::Logger(appInfoSystem->getAppDataName(), level, (bool)GARDEN_DEBUG, rotationTime);
 	}
 	catch (exception& e)
 	{
 		auto tmpPath = fs::path(std::tmpnam(nullptr));
-		this->logger = logy::Logger(appInfoSystem->getAppDataName() / tmpPath.filename(),
-			level, GARDEN_DEBUG ? true : false, rotationTime);
+		this->logger = logy::Logger(appInfoSystem->getAppDataName() / 
+			tmpPath.filename(), level, (bool)GARDEN_DEBUG, rotationTime);
 	}
 
 	info("Started logging system. (UTC+0)");

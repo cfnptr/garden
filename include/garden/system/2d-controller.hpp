@@ -66,7 +66,7 @@ public:
 	float followThreshold = 0.6f;
 	float followLerpFactor = 0.8f;
 	float2 followCenter = float2(0.0f, 0.25f);
-	bool useMouseControl = GARDEN_DEBUG ? true : false;
+	bool useMouseControl = (bool)GARDEN_DEBUG;
 	bool useDoubleJump = true;
 
 	bool isDoubleJumped() const noexcept { return !canDoubleJump; }
