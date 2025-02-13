@@ -219,6 +219,8 @@ public:
 	}
 };
 
+// TODO: add CharacterContactListener
+
 //**********************************************************************************************************************
 class GardenBodyActivationListener final : public JPH::BodyActivationListener
 {
@@ -285,7 +287,7 @@ bool Shape::destroy()
 			physicsSystem->destroyShared(innerShape);
 	}
 
-	instance = nullptr;
+	this->instance = nullptr;
 	return true;
 }
 

@@ -75,7 +75,7 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	bool drawBodies = false;
+	bool drawShapes = false;
 	bool drawBoundingBox = false;
 	bool drawCenterOfMass = false;
 	bool drawConstraints = false;

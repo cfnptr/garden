@@ -161,7 +161,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		(float4*)front.data(), (float4*)back.data(),
 	};
 
-	for (uint8 face = 0; face < 6; face++)
+	for (uint32 face = 0; face < 6; face++)
 	{
 		auto cubePixels = cubePixelArray[face];
 		for (uint32 y = 0; y < cubemapSize; y++)

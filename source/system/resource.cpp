@@ -694,7 +694,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	}
 	else
 	{
-		for (uint8 face = 0; face < 6; face++)
+		for (uint32 face = 0; face < 6; face++)
 		{
 			auto cubePixels = cubePixelArray[face];
 			for (int32 y = 0; y < cubemapSize; y++)
