@@ -605,6 +605,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			}
 
 			ImGui::SeparatorText(pair.first.c_str());
+			ImGui::PushID(pair.first.c_str());
 
 			auto type = uniform->second.type;
 			const auto& resourceSets = pair.second.resourceSets;
@@ -638,7 +639,6 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 						ImGui::TreePop();
 					}
 				}
-				
 			}
 			else if (isSamplerType(type) || isImageType(type))
 			{
@@ -671,6 +671,8 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 					}
 				}
 			}
+
+			ImGui::PopID();
 		}
 
 		if (descriptorUniforms.empty())

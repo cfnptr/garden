@@ -219,11 +219,11 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 	auto invViewProj = inverse(proj * view);
 
 	uint8 cornerIndex = 0; float4 frustumCorners[8];
-	for (uint8 z = 0; z < 2; z++)
+	for (int z = 0; z < 2; z++)
 	{
-		for (uint8 y = 0; y < 2; y++)
+		for (int y = 0; y < 2; y++)
 		{
-			for (uint8 x = 0; x < 2; x++)
+			for (int x = 0; x < 2; x++)
 			{
 				auto corner = invViewProj * float4(x * 2.0f - 1.0f, y * 2.0f - 1.0f, z, 1.0f);
 				frustumCorners[cornerIndex++] = corner / corner.w;
@@ -232,14 +232,14 @@ static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, 
 	}
 
 	auto center = float3(0.0f);
-	for (uint8 i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 		center += (float3)frustumCorners[i];
 	center *= (1.0f / 8.0f);
 
 	auto lightView = lookAt(center - lightDir, center);
 	auto minimum = float3(FLT_MAX), maximum = float3(-FLT_MAX);
 
-	for (uint8 i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		auto trf = lightView * frustumCorners[i];
 		minimum = min(minimum, (float3)trf);

@@ -37,7 +37,7 @@ namespace garden
  * including video games and interactive media. It encompasses tools for building scenes, managing digital assets like 
  * models and textures, scripting behavior, testing the game within the editor, and designing user interfaces.
  * 
- * Registers events: EditorStart, EditorStop, EditorRender, EditorBarFile, 
+ * Registers events: EditorPlayStart, EditorPlayStop, EditorRender, EditorBarFile, 
  *   EditorBarCreate, EditorBarTool, EditorBarToolPP, EditorBar, EditorSettings.
  */
 class EditorRenderSystem final : public System, public Singleton<EditorRenderSystem>

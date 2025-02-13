@@ -94,21 +94,32 @@ void PhysicsEditorSystem::editorRender()
 			if (ImGui::DragInt("Simulation Rate", &simulationRate))
 				physicsSystem->simulationRate = clamp(simulationRate, 1, (int)UINT16_MAX);
 			ImGui::SliderFloat("Cascade Lag Threshold", &physicsSystem->cascadeLagThreshold, 0.0f, 1.0f);
-		
-			ImGui::SeparatorText("Stats Logging");
-			ImGui::Checkbox("Log Broadphase", &physicsSystem->logBroadPhaseStats); ImGui::SameLine();
-			ImGui::Checkbox("Log Narrowphase", &physicsSystem->logNarrowPhaseStats);
-			ImGui::DragFloat("Stats Log Rate", &physicsSystem->statsLogRate, 1.0f, 0.0f, 0.0f, "%.3f s");
+			ImGui::Spacing();
 
-			ImGui::SeparatorText("Bodies Visualization");
-			ImGui::Checkbox("Draw", &drawBodies); ImGui::SameLine();
-			ImGui::Checkbox("Bounding Box", &drawBoundingBox); ImGui::SameLine();
-			ImGui::Checkbox("Center Of Mass", &drawCenterOfMass);
+			if (ImGui::CollapsingHeader("Visualization"))
+			{
+				ImGui::SeparatorText("Bodies");
+				ImGui::Checkbox("Shapes", &drawShapes); ImGui::SameLine();
+				ImGui::Checkbox("Bounding Box", &drawBoundingBox); ImGui::SameLine();
+				ImGui::Checkbox("Center Of Mass", &drawCenterOfMass);
+				ImGui::Spacing();
 
-			ImGui::SeparatorText("Constraints Visualization");
-			ImGui::Checkbox("Constraints", &drawConstraints); ImGui::SameLine();
-			ImGui::Checkbox("Constraint Limits", &drawConstraintLimits); ImGui::SameLine();
-			ImGui::Checkbox("Constraint Reference Frame", &drawConstraintRefFrame);
+				ImGui::SeparatorText("Constraints");
+				ImGui::Checkbox("Constraints", &drawConstraints); ImGui::SameLine();
+				ImGui::Checkbox("Constraint Limits", &drawConstraintLimits); ImGui::SameLine();
+				ImGui::Checkbox("Constraint Reference Frame", &drawConstraintRefFrame);
+				ImGui::Spacing();
+			}
+
+			if (ImGui::CollapsingHeader("Stats Logging"))
+			{
+				ImGui::Checkbox("Log Broadphase", &physicsSystem->logBroadPhaseStats); ImGui::SameLine();
+				ImGui::Checkbox("Log Narrowphase", &physicsSystem->logNarrowPhaseStats);
+				ImGui::DragFloat("Stats Log Rate", &physicsSystem->statsLogRate, 1.0f, 0.0f, 0.0f, "%.3f s");
+				ImGui::Spacing();
+			}
+
+			// TODO: visualize collision matrix and other physics settings.
 
 			if (debugRenderer)
 			{
@@ -119,7 +130,7 @@ void PhysicsEditorSystem::editorRender()
 		ImGui::End();
 	}
 
-	if (drawBodies || drawConstraints || drawConstraintLimits || drawConstraintRefFrame)
+	if (drawShapes || drawConstraints || drawConstraintLimits || drawConstraintRefFrame)
 	{
 		if (!debugRenderer)
 			debugRenderer = new PhysicsDebugRenderer();
@@ -135,7 +146,7 @@ void PhysicsEditorSystem::editorRender()
 		drawSettings.mDrawBoundingBox = drawBoundingBox;
 		drawSettings.mDrawCenterOfMassTransform = drawCenterOfMass;
 
-		if (drawBodies)
+		if (drawShapes)
 			instance->DrawBodies(drawSettings, renderer);
 		if (drawConstraints)
 			instance->DrawConstraints(renderer);
@@ -781,7 +792,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto rotation = radians(newRigidbodyEulerAngles);
-		ImGui::Text("Rotation in degrees\nRadians: %.3f, %.3f, %.3f",
+		ImGui::Text("Rotation in degrees.\nRadians: %.3f, %.3f, %.3f",
 			rotation.x, rotation.y, rotation.z);
 		ImGui::EndTooltip();
 	}
@@ -1071,7 +1082,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	if (ImGui::DragFloat3("Rotation", &newCharacterEulerAngles, 0.3f))
+	if (ImGui::DragFloat3("Rotation", &newCharacterEulerAngles, 0.3f, 0.0f, 0.0f, "%.3f°"))
 	{
 		auto difference = newCharacterEulerAngles - oldCharacterEulerAngles;
 		rotation *= quat(radians(difference));
@@ -1087,7 +1098,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::BeginItemTooltip())
 	{
 		auto rotation = radians(newCharacterEulerAngles);
-		ImGui::Text("Rotation in degrees\nRadians: %.3f, %.3f, %.3f",
+		ImGui::Text("Rotation in degrees.\nRadians: %.3f, %.3f, %.3f",
 			rotation.x, rotation.y, rotation.z);
 		ImGui::EndTooltip();
 	}

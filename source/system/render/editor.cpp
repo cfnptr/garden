@@ -36,8 +36,8 @@ using namespace garden;
 EditorRenderSystem::EditorRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
-	manager->registerEvent("EditorStart");
-	manager->registerEvent("EditorStop");
+	manager->registerEvent("EditorPlayStart");
+	manager->registerEvent("EditorPlayStop");
 	manager->registerEvent("EditorBarFile");
 	manager->registerEvent("EditorBarCreate");
 	manager->registerEvent("EditorBarTool");
@@ -56,8 +56,8 @@ EditorRenderSystem::~EditorRenderSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", EditorRenderSystem::deinit);
 
 		auto manager = Manager::Instance::get();
-		manager->unregisterEvent("EditorStart");
-		manager->unregisterEvent("EditorStop");
+		manager->unregisterEvent("EditorPlayStart");
+		manager->unregisterEvent("EditorPlayStop");
 		manager->unregisterEvent("EditorBarFile");
 		manager->unregisterEvent("EditorBarCreate");
 		manager->unregisterEvent("EditorBarTool");
@@ -167,11 +167,7 @@ void EditorRenderSystem::showMainMenuBar()
 		ImGui::EndMenu();
 	}
 
-	{
-		const auto& subscribers = manager->getEventSubscribers("EditorBar");
-		for (const auto& onBar : subscribers)
-			onBar();
-	}
+	manager->runEvent("EditorBar");
 
 	auto playText = playing ? "Stop []" : "Play |>";
 	auto textSize = ImGui::CalcTextSize(playText);
@@ -191,22 +187,7 @@ void EditorRenderSystem::showMainMenuBar()
 	}
 
 	if (ImGui::Button(playText))
-	{
-		if (playing)
-		{
-			const auto& subscribers = manager->getEventSubscribers("EditorStop");
-			for (const auto& onStop : subscribers)
-				onStop();
-			playing = false;
-		}
-		else
-		{
-			const auto& subscribers = manager->getEventSubscribers("EditorStart");
-			for (const auto& onStart : subscribers)
-				onStart();
-			playing = true;
-		}
-	}
+		setPlaying(!playing);
 	ImGui::PopStyleColor(3);
 	
 	auto stats = "[E: " + to_string(manager->getEntities().getCount());
@@ -1003,10 +984,15 @@ void EditorRenderSystem::setPlaying(bool isPlaying)
 	if (this->playing == isPlaying)
 		return;
 
-	if (this->playing)
+	if (playing)
 	{
-		abort();
-		// TODO:
+		Manager::Instance::get()->runEvent("EditorPlayStop");
+		this->playing = false;
+	}
+	else
+	{
+		Manager::Instance::get()->runEvent("EditorPlayStart");
+		this->playing = true;
 	}
 }
 

@@ -32,18 +32,15 @@ class CharacterSystem;
  */
 enum class CharacterGround : uint8
 {
-	/**< Character is on the ground and can move freely. */
-	OnGround,
+	OnGround, /**< Character is on the ground and can move freely. */
 	/**< Character is on a slope that is too steep and can't climb up any further. 
 	     The caller should start applying downward velocity if sliding from the slope is desired. */
 	OnSteepGround,
 	/**< Character is touching an object, but is not supported by it and should fall. 
 	     The getGroundXXX functions will return information about the touched object. */
 	NotSupported,
-	/**< Character is in the air and is not touching anything. */
-	InAir,
-	/**< Character ground state count. */
-	Count,
+	InAir, /**< Character is in the air and is not touching anything. */
+	Count, /**< Character ground state count. */
 };
 
 /***********************************************************************************************************************
@@ -75,12 +72,14 @@ public:
 	 * @details
 	 * It also creates character instance if it doesn't already exists,
 	 * and adds it to the physics simulation if transform is active.
+	 * 
+	 * @note Make sure the shape is made so that the bottom of the shape is at (0, 0, 0)!
 	 *
 	 * @param shape target shape instance or null
-	 * @param mass character mass (kg). Used to push down objects with gravity when the character is standing on top.
-	 * @param maxPenetrationDepth max penetration we're willing to accept after the switch (if not FLT_MAX).
+	 * @param mass character mass (kg). Used to push down objects with gravity when the character is standing on top
+	 * @param maxPenetrationDepth max penetration we're willing to accept after the switch (if not FLT_MAX)
 	 */
-	void setShape(ID<Shape> shape, float mass = 70.0f, float maxPenetrationDepth = FLT_MAX);
+	void setShape(ID<Shape> shape, float mass = 70.0f,  float maxPenetrationDepth = FLT_MAX);
 
 	/**
 	 * @brief Returns character position in the physics simulation world.

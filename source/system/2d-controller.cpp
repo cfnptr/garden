@@ -236,6 +236,7 @@ void Controller2DSystem::updateCharacterControl()
 	auto transformSystem = TransformSystem::Instance::get();
 	auto characterSystem = CharacterSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
+	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 	auto gravity = PhysicsSystem::Instance::get()->getGravity();
 
 	auto horizontalVelocity = 0.0f;
@@ -244,13 +245,11 @@ void Controller2DSystem::updateCharacterControl()
 	{
 		horizontalVelocity = -horizontalSpeed;
 	}
-	else if (inputSystem->getKeyboardState(KeyboardButton::D) ||
+	if (inputSystem->getKeyboardState(KeyboardButton::D) ||
 		inputSystem->getKeyboardState(KeyboardButton::Right))
 	{
-		horizontalVelocity = horizontalSpeed;
+		horizontalVelocity += horizontalSpeed;
 	}
-
-	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
@@ -258,7 +257,7 @@ void Controller2DSystem::updateCharacterControl()
 		if (!characterView || !characterView->getShape())
 			continue;
 
-		auto transformView = transformSystem->getComponent(i->second);
+		auto transformView = transformSystem->tryGetComponent(i->second);
 		if (transformView && !transformView->isActive())
 			continue;
 
@@ -268,7 +267,7 @@ void Controller2DSystem::updateCharacterControl()
 
 		auto linearVelocity = characterView->getLinearVelocity();
 		linearVelocity.x = lerpDelta(linearVelocity.x,
-			horizontalVelocity, 1.0f - horizontalFactor, deltaTime);
+			horizontalVelocity, 1.0f - horizontalLerpFactor, deltaTime);
 
 		if (characterView->getGroundState() == CharacterGround::OnGround)
 		{

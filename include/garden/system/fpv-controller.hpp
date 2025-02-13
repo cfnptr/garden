@@ -36,7 +36,6 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	float2 rotation = float2(0.0f);
 	float3 velocity = float3(0.0f);
 	float boostAccum = 1.0f;
-	bool isLastJumping = false;
 
 	/**
 	 * @brief Creates a new first person view controller system instance.
@@ -65,9 +64,7 @@ public:
 	float moveSpeed = 2.0f;
 	float moveLerpFactor = 0.99999f;
 	float boostFactor = 2.0f;
-	float horizontalSpeed = 2.0f;
-	float horizontalFactor = 0.99999f;
-	float jumpSpeed = 4.0f;
+	float jumpSpeed = 5.0f;
 	bool isMouseLocked = false;
 };
 

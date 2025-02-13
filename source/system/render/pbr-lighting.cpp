@@ -712,12 +712,14 @@ void PbrLightingRenderSystem::gBufferRecreate()
 		graphicsSystem->destroy(lightingDescriptorSet);
 		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
 		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
 	}
 	if (aoDenoiseDescriptorSet)
 	{
 		graphicsSystem->destroy(aoDenoiseDescriptorSet);
 		auto uniforms = getAoDenoiseUniforms(aoImageViews);
 		aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.ao-denoise");
 	}
 }
 
@@ -859,7 +861,7 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 	auto invDim = 1.0f / cubemapSize;
 	float shb[shCoeffCount];
 
-	for (uint8 face = 0; face < 6; face++)
+	for (uint32 face = 0; face < 6; face++)
 	{
 		auto pixels = faces[face];
 		for (uint32 i = itemOffset; i < itemCount; i++)

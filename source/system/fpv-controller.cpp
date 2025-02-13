@@ -157,6 +157,12 @@ quat FpvControllerSystem::updateCameraRotation()
 //**********************************************************************************************************************
 void FpvControllerSystem::updateCameraControl(const quat& rotationQuat)
 {
+	#if GARDEN_EDITOR
+	auto editorSystem = EditorRenderSystem::Instance::tryGet();
+	if (editorSystem && editorSystem->isPlaying())
+		return;
+	#endif
+
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
 	if (!transformView || !transformView->isActive())
 		return;
@@ -214,21 +220,29 @@ void FpvControllerSystem::updateCharacterControl()
 	auto transformSystem = TransformSystem::Instance::get();
 	auto characterSystem = CharacterSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
-	auto gravity = PhysicsSystem::Instance::get()->getGravity();
-
-	auto horizontalVelocity = 0.0f;
-	if (inputSystem->getKeyboardState(KeyboardButton::A) ||
-		inputSystem->getKeyboardState(KeyboardButton::Left))
-	{
-		horizontalVelocity = -horizontalSpeed;
-	}
-	else if (inputSystem->getKeyboardState(KeyboardButton::D) ||
-		inputSystem->getKeyboardState(KeyboardButton::Right))
-	{
-		horizontalVelocity = horizontalSpeed;
-	}
-
 	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
+	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
+	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
+
+	auto velocity = float3(0.0f);
+	if (inputSystem->getKeyboardState(KeyboardButton::W))
+		velocity = (float3)cameraConstants.viewDir;
+	if (inputSystem->getKeyboardState(KeyboardButton::S))
+		velocity -= (float3)cameraConstants.viewDir;
+	if (inputSystem->getKeyboardState(KeyboardButton::D))
+		velocity += (float3)(cameraConstants.inverseView * float4(float3::right, 1.0f));
+	if (inputSystem->getKeyboardState(KeyboardButton::A))
+		velocity -= (float3)(cameraConstants.inverseView * float4(float3::right, 1.0f));
+	
+	if (velocity != float3(0.0f))
+	{
+		velocity.y = 0.0f;
+		velocity = normalize(velocity);
+		velocity *= moveSpeed;
+	}
+
+	if (inputSystem->getKeyboardState(KeyboardButton::LeftShift))
+		velocity *= boostFactor;
 
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
@@ -236,17 +250,13 @@ void FpvControllerSystem::updateCharacterControl()
 		if (!characterView || !characterView->getShape())
 			continue;
 
-		auto transformView = transformSystem->getComponent(i->second);
+		auto transformView = transformSystem->tryGetComponent(i->second);
 		if (transformView && !transformView->isActive())
 			continue;
 
-		auto position = characterView->getPosition();
-		if (position.z != 0.0f)
-			characterView->setPosition(float3(position.x, position.y, 0.0f));
-
 		auto linearVelocity = characterView->getLinearVelocity();
-		linearVelocity.x = lerpDelta(linearVelocity.x,
-			horizontalVelocity, 1.0f - horizontalFactor, deltaTime);
+		linearVelocity.x = lerpDelta(linearVelocity.x, velocity.x, 1.0f - moveLerpFactor, deltaTime);
+		linearVelocity.z = lerpDelta(linearVelocity.z, velocity.z, 1.0f - moveLerpFactor, deltaTime);
 
 		if (characterView->getGroundState() == CharacterGround::OnGround)
 			linearVelocity.y = isJumping ? jumpSpeed : 0.0f;
@@ -256,6 +266,4 @@ void FpvControllerSystem::updateCharacterControl()
 		characterView->setLinearVelocity(linearVelocity);
 		characterView->update(deltaTime, gravity);
 	}
-
-	isLastJumping = isJumping;
 }

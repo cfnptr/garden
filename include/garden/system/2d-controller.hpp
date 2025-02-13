@@ -61,7 +61,7 @@ public:
 	string characterEntityTag = "MainCharacter";
 	float scrollSensitivity = 1.0f;
 	float horizontalSpeed = 2.0f;
-	float horizontalFactor = 0.99999f;
+	float horizontalLerpFactor = 0.99999f;
 	float jumpSpeed = 4.0f;
 	float followThreshold = 0.6f;
 	float followLerpFactor = 0.8f;

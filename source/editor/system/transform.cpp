@@ -140,7 +140,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (isBaked)
 			ImGui::Text("Disabled due to BakedTransformComponent!");
 		auto translation = getTranslation(transformView->calcModel());
-		ImGui::Text("Position of the entity\nGlobal: %.1f, %.1f, %.1f",
+		ImGui::Text("Position of the entity.\nGlobal: %.1f, %.1f, %.1f",
 			translation.x, translation.y, translation.z);
 		ImGui::EndTooltip();
 	}
@@ -159,7 +159,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (isBaked)
 			ImGui::Text("Disabled due to BakedTransformComponent!");
 		auto scale = extractScale(transformView->calcModel());
-		ImGui::Text("Scale of the entity\nGlobal: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
+		ImGui::Text("Scale of the entity.\nGlobal: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
 		ImGui::EndTooltip();
 	}
 
@@ -182,7 +182,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::Text("Disabled due to BakedTransformComponent!");
 		auto rotation = radians(newEulerAngles);
 		auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).toEulerAngles());
-		ImGui::Text("Rotation in degrees\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
+		ImGui::Text("Rotation in degrees.\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
 			rotation.x, rotation.y, rotation.z, global.x, global.y, global.z);
 		ImGui::EndTooltip();
 	}

@@ -59,10 +59,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 	auto transformSystem = TransformSystem::Instance::get();
 
 	if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && ImGui::IsItemHovered(ImGuiHoveredFlags_None))
-	{
-		auto editorSystem = EditorRenderSystem::Instance::get();
-		editorSystem->selectedEntity = renderEntity;
-	}
+		EditorRenderSystem::Instance::get()->selectedEntity = renderEntity;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
@@ -96,6 +93,7 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 				auto newTransformView = manager->add<TransformComponent>(entity);
 				newTransformView->setParent(renderEntity);
 			}
+			EditorRenderSystem::Instance::get()->selectedEntity = entity;
 		}
 		if (ImGui::MenuItem("Duplicate Entity", nullptr, false, !manager->has<DoNotDuplicateComponent>(renderEntity)))
 		{
@@ -105,7 +103,9 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			{
 				auto duplicateTransformView = transformSystem->getComponent(duplicate);
 				duplicateTransformView->setParent(entityTransformView->getParent());
+				duplicateTransformView->debugName += " " + to_string(*duplicate);
 			}
+			EditorRenderSystem::Instance::get()->selectedEntity = duplicate;
 		}
 		if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(renderEntity)))
 		{
@@ -219,13 +219,20 @@ void HierarchyEditorSystem::editorRender()
 
 	if (ImGui::Begin("Entity Hierarchy", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
+		auto editorSystem = EditorRenderSystem::Instance::get();
 		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 		{
 			if (ImGui::MenuItem("Create Entity"))
 			{
 				auto manager = Manager::Instance::get();
 				auto entity = manager->createEntity();
-				manager->add<TransformComponent>(entity);
+				auto transformView = manager->add<TransformComponent>(entity);
+				if (GraphicsSystem::Instance::get()->camera)
+				{
+					const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
+					transformView->position = (float3)cameraConstants.cameraPos + (float3)cameraConstants.viewDir;
+				}
+				editorSystem->selectedEntity = entity;
 			}
 			ImGui::EndPopup();
 		}
@@ -267,9 +274,7 @@ void HierarchyEditorSystem::editorRender()
 
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto editorSystem = EditorRenderSystem::Instance::get();
 		const auto& components = TransformSystem::Instance::get()->getComponents();
-
 		if (searchString.empty())
 		{
 			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!

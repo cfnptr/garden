@@ -28,6 +28,9 @@ using namespace garden::physics;
 //**********************************************************************************************************************
 bool CharacterComponent::destroy()
 {
+	if (!instance)
+		return true;
+	
 	if (instance)
 	{
 		auto instance = (JPH::CharacterVirtual*)this->instance;
@@ -35,6 +38,7 @@ bool CharacterComponent::destroy()
 			CharacterSystem::Instance::get()->charVsCharCollision;
 		charVsCharCollision->Remove(instance);
 		delete instance;
+		PhysicsSystem::Instance::get()->destroyShared(shape);
 
 		this->shape = {};
 		this->instance = nullptr;
@@ -93,6 +97,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 			JPH::CharacterVirtualSettings settings;
 			settings.mShape = (JPH::Shape*)shapeView->instance;
 			settings.mMass = mass;
+			settings.mEnhancedInternalEdgeRemoval = true;
 			auto instance = new JPH::CharacterVirtual(&settings, toVec3(position),
 				toQuat(rotation), (JPH::uint64)*entity, physicsInstance);
 			this->instance = instance;
