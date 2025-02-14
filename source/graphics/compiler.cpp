@@ -1260,8 +1260,8 @@ static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& 
 	auto command = "glslc --target-env=" GARDEN_VULKAN_SHADER_VERSION_STRING 
 		" -c -O \"" + filePath.generic_string() +
 		"\" -o \"" + filePath.generic_string() + ".spv\"";
-	for (psize i = 0; i < includePaths.size(); i++)
-		command += " -I \"" + includePaths[i].generic_string() + "\"";
+	for (auto& path : includePaths)
+		command += " -I \"" + path.generic_string() + "\"";
 
 	auto result = std::system(command.c_str());
 	if (result != 0)

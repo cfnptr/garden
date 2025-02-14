@@ -103,6 +103,9 @@ constexpr const char* GARDEN_SIMD_STRING = ""
 	#if GARDEN_SIMD_SSE3
 	"SSE3 "
 	#endif
+	#if GARDEN_SIMD_SSSE3
+	"SSSE3 "
+	#endif
 	#if GARDEN_SIMD_SSE4_1
 	"SSE4_1 "
 	#endif
@@ -120,5 +123,8 @@ constexpr const char* GARDEN_SIMD_STRING = ""
 	#endif
 	#if GARDEN_SIMD_AVX512F
 	"AVX512F "
+	#endif
+	#if GARDEN_SIMD_NEON
+	"NEON "
 	#endif
 ;

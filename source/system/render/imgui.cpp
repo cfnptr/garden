@@ -91,9 +91,9 @@ static void setImGuiStyle()
 	colors[ImGuiCol_TabActive] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
 	colors[ImGuiCol_TabUnfocused] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f); // TODO: where it used?
 	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_PlotHistogram] = ImVec4(0.969f, 0.510f, 0.106f, 1.0f);
+	colors[ImGuiCol_PlotHistogram] = ImVec4(0.42f, 0.6f, 0.33, 1.0f);
 	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.976f, 0.627f, 0.318f, 1.0f);
-	colors[ImGuiCol_PlotLines] = ImVec4(0.969f, 0.510f, 0.106f, 1.0f); // TODO:
+	colors[ImGuiCol_PlotLines] = ImVec4(0.42f, 0.6f, 0.33, 1.0f); // TODO:
 	colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.976f, 0.627f, 0.318f, 1.0f); // TODO:
 	colors[ImGuiCol_TableHeaderBg] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f);
 	colors[ImGuiCol_TableBorderStrong] = ImVec4(0.267f, 0.267f, 0.267f, 1.0f);
@@ -507,8 +507,8 @@ void ImGuiRenderSystem::input()
 	}
 
 	const auto& keyboardChars = inputSystem->getKeyboardChars32();
-	for (psize i = 0; i < keyboardChars.size(); i++)
-		io.AddInputCharacter(keyboardChars[i]);
+	for (auto keyboardChar : keyboardChars)
+		io.AddInputCharacter(keyboardChar);
 }
 
 //**********************************************************************************************************************

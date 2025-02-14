@@ -309,8 +309,8 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 	}
 	else
 	{
-		for (uint32 i = 0; i < buffer->secondaryCommandPools.size(); i++)
-			vulkanAPI->device.resetCommandPool(buffer->secondaryCommandPools[i]);
+		for (auto secondaryCommandPool : buffer->secondaryCommandPools)
+			vulkanAPI->device.resetCommandPool(secondaryCommandPool);
 	}
 
 	buffer->secondaryCommandBufferIndex = 0;
@@ -354,8 +354,8 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 		vulkanAPI->secondaryCommandBuffers.resize(threadCount);
 
 		auto& secondaryCommandStates = vulkanAPI->secondaryCommandStates;
-		for (uint32 i = 0; i < (uint32)secondaryCommandStates.size(); i++)
-			delete secondaryCommandStates[i];
+		for (auto secondaryCommandState : secondaryCommandStates)
+			delete secondaryCommandState;
 		secondaryCommandStates.resize(threadCount);
 		for (int32 i = 0; i < threadCount; i++)
 			secondaryCommandStates[i] = new atomic<bool>(false);
