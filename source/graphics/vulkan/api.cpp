@@ -596,8 +596,8 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 	};
 	
 	uint32 maxSetCount = 0;
-	for (uint32 i = 0; i < (uint32)sizes.size(); i++)
-		maxSetCount += sizes[i].descriptorCount;
+	for (auto& size : sizes)
+		maxSetCount += size.descriptorCount;
 
 	vk::DescriptorPoolCreateInfo descriptorPoolInfo(
 		vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
@@ -782,8 +782,8 @@ VulkanAPI::~VulkanAPI()
 	// Should be set here, to destroy resources.
 	forceResourceDestroy = false;
 
-	for (uint32 i = 0; i < (uint32)secondaryCommandStates.size(); i++)
-		delete secondaryCommandStates[i];
+	for (auto secondaryCommandState : secondaryCommandStates)
+		delete secondaryCommandState;
 
 	delete computeCommandBuffer;
 	delete transferCommandBuffer;

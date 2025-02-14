@@ -1171,11 +1171,9 @@ void PhysicsSystem::processSimulate()
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
 	string eventName;
 
-	for (psize i = 0; i < bodyEvents.size(); i++)
+	for (auto& bodyEvent : bodyEvents)
 	{
-		auto bodyEvent = bodyEvents[i];
 		ID<Entity> entity1 = {}, entity2 = {};
-
 		if (bodyEvent.eventType == BodyEvent::Exited)
 		{
 			{
@@ -1487,9 +1485,8 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 	{
 		serializer.beginChild("constraints");
 		const auto& constraints = rigidbodyView->constraints;
-		for (uint32 i = 0; i < (uint32)constraints.size(); i++)
+		for (auto& constraint : constraints)
 		{
-			const auto& constraint = constraints[i];
 			auto searchResult = serializedConstraints.find(constraint.otherBody);
 			if (searchResult != serializedConstraints.end())
 				continue;

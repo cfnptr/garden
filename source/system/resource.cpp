@@ -982,14 +982,14 @@ static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::
 			if (format == Image::Format::SfloatR32G32B32A32)
 			{
 				auto pixels = (float4*)pixelArrays[i].data();
-				for (uint32 i = 0; i < count; i++)
-					pixels[i] = float4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkerboard pattern?
+				for (uint32 j = 0; j < count; j++)
+					pixels[j] = float4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkerboard pattern?
 			}
 			else
 			{
 				auto pixels = (Color*)pixelArrays[i].data();
-				for (uint32 i = 0; i < count; i++)
-					pixels[i] = Color::magenta;
+				for (uint32 j = 0; j < count; j++)
+					pixels[j] = Color::magenta;
 			}
 		}
 	}
@@ -1018,9 +1018,8 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 	}
 	else
 	{
-		for (uint32 i = 0; i < (uint32)pixelArrays.size(); i++)
+		for (auto& pixels : pixelArrays)
 		{
-			const auto& pixels = pixelArrays[i];
 			memcpy(stagingMap + mapOffset, pixels.data(), pixels.size());
 			mapOffset += pixels.size();
 		}
@@ -2368,8 +2367,8 @@ Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Pri
 
 	#if GARDEN_DEBUG
 	auto hasAnyAttribute = false;
-	for (psize i = 0; i < attributes.size(); i++)
-		hasAnyAttribute |= primitive.getAttributeIndex(attributes[i]) >= 0;
+	for (auto attribute : attributes)
+		hasAnyAttribute |= primitive.getAttributeIndex(attribute) >= 0;
 	GARDEN_ASSERT(hasAnyAttribute);
 	#endif
 

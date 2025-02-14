@@ -33,27 +33,27 @@ using namespace garden;
 constexpr array<float3, 18> arrowVertices =
 {
 	// -X side
-	float3(-0.5f, -0.5f, -0.5f),
 	float3(-0.5f, -0.5f,  0.5f),
+	float3(-0.5f, -0.5f, -0.5f),
 	float3( 0.0f,  0.5f,  0.0f),
 	// -Z side
 	float3(-0.5f, -0.5f, -0.5f),
+	float3( 0.5f, -0.5f, -0.5f),
 	float3( 0.0f,  0.5f, -0.0f),
-	float3( 0.5f, -0.5f, -0.5f),
 	// -Y side
-	float3(-0.5f, -0.5f, -0.5f),
+	float3( 0.5f, -0.5f,  0.5f),
 	float3( 0.5f, -0.5f, -0.5f),
-	float3( 0.5f, -0.5f,  0.5f),
 	float3(-0.5f, -0.5f, -0.5f),
-	float3( 0.5f, -0.5f,  0.5f),
+	float3(-0.5f, -0.5f, -0.5f),
 	float3(-0.5f, -0.5f,  0.5f),
-	// +X side
 	float3( 0.5f, -0.5f,  0.5f),
+	// +X side
 	float3( 0.5f, -0.5f, -0.5f),
+	float3( 0.5f, -0.5f,  0.5f),
 	float3( 0.0f,  0.5f, -0.0f),
 	// +Z side
-	float3(-0.5f, -0.5f,  0.5f),
 	float3( 0.5f, -0.5f,  0.5f),
+	float3(-0.5f, -0.5f,  0.5f),
 	float3( 0.0f,  0.5f,  0.0f),
 };
 

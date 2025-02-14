@@ -74,7 +74,8 @@ void FxaaRenderSystem::init()
 			pipeline = createPipeline();
 	}
 
-	DeferredRenderSystem::Instance::get()->runSwapchainPass = false;
+	if (isEnabled)
+		DeferredRenderSystem::Instance::get()->runSwapchainPass = false;
 }
 void FxaaRenderSystem::deinit()
 {

@@ -322,7 +322,7 @@ static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
 {
 	auto endClock = mpio::OS::getCurrentClock();
 	auto deltaClock = (endClock - beginSleepClock) * 1000.0;
-	auto delayTime = 1000 / (int)maxFPS - (int)deltaClock;
+	auto delayTime = 1000 / (int)maxFPS - (int)deltaClock - 1;
 	if (delayTime > 0)
 		this_thread::sleep_for(chrono::milliseconds(delayTime));
 	// TODO: use loop with empty cycles to improve sleep precision.
@@ -335,7 +335,7 @@ void GraphicsSystem::input()
 	auto windowSize = inputSystem->getWindowSize();
 	auto framebufferSize = inputSystem->getFramebufferSize();
 	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 &&framebufferSize.x > 0 && framebufferSize.y > 0;
-	beginSleepClock = isFramebufferSizeValid ? 0.0 : mpio::OS::getCurrentClock();
+	beginSleepClock = mpio::OS::getCurrentClock();
 }
 void GraphicsSystem::update()
 {
@@ -993,9 +993,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
 		}
 
-		for (uint32 i = 0; i < (uint32)subpass.outputAttachments.size(); i++)
+		for (auto outputAttachment : subpass.outputAttachments)
 		{
-			auto outputAttachment = subpass.outputAttachments[i];
 			GARDEN_ASSERT(outputAttachment.imageView);
 			GARDEN_ASSERT((!outputAttachment.clear && !outputAttachment.load) ||
 				(outputAttachment.clear && !outputAttachment.load) ||
