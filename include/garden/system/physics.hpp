@@ -377,6 +377,15 @@ public:
 		bool activate = true, bool allowDynamicOrKinematic = false, AllowedDOF allowedDOF = AllowedDOF::All);
 
 	/**
+	 * @brief Notifies all physics systems that a shape has changed. (Usable for custom shapes)
+	 * 
+	 * @param[in] previousCenterOfMass center of mass of the shape before the alterations
+	 * @param updateMassProperties are mass and inertia tensor should be recalculated
+	 * @param activate is rigidbody should be activated
+	 */
+	void notifyShapeChanged(const float3& previousCenterOfMass, bool updateMassProperties, bool activate);
+
+	/**
 	 * @brief Returns true if rigidbody should be used in the physics simulation system.
 	 * @note This value is controlled by the transform isActive if transform component added to the entity.
 	 */

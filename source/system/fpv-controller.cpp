@@ -229,11 +229,16 @@ void FpvControllerSystem::updateCharacterControl()
 		velocity = (float3)cameraConstants.viewDir;
 	if (inputSystem->getKeyboardState(KeyboardButton::S))
 		velocity -= (float3)cameraConstants.viewDir;
+	if (velocity != float3(0.0f))
+	{
+		velocity.y = 0.0f;
+		velocity = normalize(velocity);
+	}
+
 	if (inputSystem->getKeyboardState(KeyboardButton::D))
 		velocity += (float3)(cameraConstants.inverseView * float4(float3::right, 1.0f));
 	if (inputSystem->getKeyboardState(KeyboardButton::A))
 		velocity -= (float3)(cameraConstants.inverseView * float4(float3::right, 1.0f));
-	
 	if (velocity != float3(0.0f))
 	{
 		velocity.y = 0.0f;
