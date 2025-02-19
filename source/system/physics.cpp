@@ -496,6 +496,19 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 }
 
 //**********************************************************************************************************************
+void RigidbodyComponent::notifyShapeChanged(const float3& previousCenterOfMass, bool updateMassProperties, bool activate)
+{
+	if (!shape)
+		return;
+
+	auto body = (JPH::Body*)instance;
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
+	
+	bodyInterface->NotifyShapeChanged(body->GetID(), toVec3(previousCenterOfMass), 
+		updateMassProperties, activate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+}
+
 void RigidbodyComponent::setInSimulation(bool inSimulation)
 {
 	if (this->inSimulation == inSimulation)
