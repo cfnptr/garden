@@ -44,7 +44,8 @@ If you want, you can freely disable it and compile for any other architecture, i
 
 * C++17 compiler
 * [Git 2.39+](https://git-scm.com)
-* [CMake 3.24+](https://cmake.org)
+* [CMake 3.25+](https://cmake.org)
+* [Vulkan SDK 1.4+](https://vulkan.lunarg.com/)
 * [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
 * [brew](https://brew.sh/) (macOS only)
 

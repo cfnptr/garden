@@ -51,8 +51,7 @@ void main()
 
 	for (uint32 cutoff = (256 >> 1); cutoff > 0; cutoff >>= 1)
 	{
-		if (localIndex < cutoff)
-			histogramShared[localIndex] += histogramShared[localIndex + cutoff];
+		histogramShared[localIndex] += localIndex < cutoff ? histogramShared[localIndex + cutoff] : 0;
 		barrier();
 	}
 
