@@ -33,7 +33,7 @@ bool TransformComponent::destroy()
 	if (parent)
 	{
 		auto parentTransformView = TransformSystem::Instance::get()->getComponent(parent);
-		auto parentChildCount = parentTransformView->childCount;
+		auto parentChildCount = parentTransformView->childCount();
 		auto parentChilds = parentTransformView->childs;
 
 		for (uint32 i = 0; i < parentChildCount; i++)
@@ -43,7 +43,7 @@ bool TransformComponent::destroy()
 			for (uint32 j = i + 1; j < parentChildCount; j++)
 				parentChilds[j - 1] = parentChilds[j];
 
-			parentTransformView->childCount--;
+			parentTransformView->childCount()--;
 			parent = {};
 			ancestorsActive = true;
 			goto REMOVED_FROM_PARENT;
@@ -57,7 +57,9 @@ REMOVED_FROM_PARENT:
 	if (childs)
 	{
 		auto transformSystem = TransformSystem::Instance::get();
-		for (uint32 i = 0; i < childCount; i++)
+		auto thisChildCount = childCount();
+
+		for (uint32 i = 0; i < thisChildCount; i++)
 		{
 			auto childTransformView = transformSystem->getComponent(childs[i]);
 			childTransformView->parent = {};
@@ -95,7 +97,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 			if (!transformView->selfActive)
 				continue;
 
-			auto childCount = transformView->childCount;
+			auto childCount = transformView->childCount();
 			auto childs = transformView->childs;
 
 			for (uint32 i = 0; i < childCount; i++)
@@ -115,7 +117,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 			entityStack.pop_back();
 
 			auto transformView = transformSystem->getComponent(entity);
-			auto childCount = transformView->childCount;
+			auto childCount = transformView->childCount();
 			auto childs = transformView->childs;
 
 			for (uint32 i = 0; i < childCount; i++)
@@ -130,17 +132,17 @@ void TransformComponent::setActive(bool isActive) noexcept
 }
 
 //**********************************************************************************************************************
-float4x4 TransformComponent::calcModel(const float3& cameraPosition) const noexcept
+f32x4x4 TransformComponent::calcModel(f32x4 cameraPosition) const noexcept
 {
 	auto transformSystem = TransformSystem::Instance::get();
-	auto model = ::calcModel(position, rotation, this->scale);
+	auto model = ::calcModel(posChildCount, rotation, scaleChildCap);
 
 	// TODO: rethink this architecture, we should't access physics system from here :(
 	auto rigidbodyComponent = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
 	if (rigidbodyComponent && rigidbodyComponent->getMotionType() != MotionType::Static &&
 		!Manager::Instance::get()->has<CharacterComponent>(entity))
 	{
-		setTranslation(model, position - cameraPosition);
+		setTranslation(model, scaleChildCap - cameraPosition);
 		return model;
 	}
 
@@ -148,14 +150,13 @@ float4x4 TransformComponent::calcModel(const float3& cameraPosition) const noexc
 	while (nextParent)
 	{
 		auto nextTransformView = transformSystem->getComponent(nextParent);
-		auto parentModel = ::calcModel(nextTransformView->position,
-			nextTransformView->rotation, nextTransformView->scale);
+		auto parentModel = ::calcModel(nextTransformView->posChildCount,
+			nextTransformView->rotation, nextTransformView->scaleChildCap);
 		model = parentModel * model;
 		nextParent = nextTransformView->parent;
 	}
 
-	addTranslation(model, -cameraPosition);
-	return model;
+	return ::translate(-cameraPosition, model);
 }
 
 void TransformComponent::setParent(ID<Entity> parent)
@@ -175,7 +176,7 @@ void TransformComponent::setParent(ID<Entity> parent)
 	if (this->parent)
 	{
 		auto parentTransformView = TransformSystem::Instance::get()->getComponent(this->parent);
-		auto parentChildCount = parentTransformView->childCount;
+		auto parentChildCount = parentTransformView->childCount();
 		auto parentChilds = parentTransformView->childs;
 
 		for (uint32 i = 0; i < parentChildCount; i++)
@@ -184,7 +185,7 @@ void TransformComponent::setParent(ID<Entity> parent)
 				continue;
 			for (uint32 j = i + 1; j < parentChildCount; j++)
 				parentChilds[j - 1] = parentChilds[j];
-			parentTransformView->childCount--;
+			parentTransformView->childCount()--;
 			goto REMOVED_FROM_PARENT;
 		}
 
@@ -196,24 +197,24 @@ REMOVED_FROM_PARENT:
 	if (parent)
 	{
 		auto parentTransformView = TransformSystem::Instance::get()->getComponent(parent);
-		if (parentTransformView->childCount == parentTransformView->childCapacity)
+		if (parentTransformView->childCount() == parentTransformView->childCapacity())
 		{
 			if (parentTransformView->childs)
 			{
-				auto newCapacity = parentTransformView->childCapacity * 2;
+				auto newCapacity = parentTransformView->childCapacity() * 2;
 				auto newChilds = realloc<ID<Entity>>(parentTransformView->childs, newCapacity);
 				parentTransformView->childs = newChilds;
-				parentTransformView->childCapacity = newCapacity;
+				parentTransformView->childCapacity() = newCapacity;
 			}
 			else
 			{
 				auto childs = malloc<ID<Entity>>(1);
 				parentTransformView->childs = childs;
-				parentTransformView->childCapacity = 1;
+				parentTransformView->childCapacity() = 1;
 			}
 		}
 
-		parentTransformView->childs[parentTransformView->childCount++] = entity;
+		parentTransformView->childs[parentTransformView->childCount()++] = entity;
 		ancestorsActive = parentTransformView->selfActive && parentTransformView->ancestorsActive;
 	}
 	else
@@ -247,23 +248,23 @@ bool TransformComponent::tryAddChild(ID<Entity> child)
 	GARDEN_ASSERT(!hasAncestor(child));
 	#endif
 
-	if (childCount == childCapacity)
+	if (childCount() == childCapacity())
 	{
 		if (childs)
 		{
-			auto newCapacity = childCapacity * 2;
+			auto newCapacity = childCapacity() * 2;
 			auto newChilds = realloc<ID<Entity>>(childs, newCapacity);
 			childs = newChilds;
-			childCapacity = newCapacity;
+			childCapacity() = newCapacity;
 		}
 		else
 		{
 			childs = malloc<ID<Entity>>(1);
-			childCapacity = 1;
+			childCapacity() = 1;
 		}
 	}
 
-	childs[childCount++] = entity;
+	childs[childCount()++] = entity;
 	childTransformView->parent = entity;
 	childTransformView->ancestorsActive = selfActive && ancestorsActive;
 	return true;
@@ -273,11 +274,14 @@ bool TransformComponent::hasChild(ID<Entity> child) const noexcept
 {
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
-	for (uint32 i = 0; i < childCount; i++)
+
+	auto thisChildCount = getChildCount();
+	for (uint32 i = 0; i < thisChildCount; i++)
 	{
 		if (childs[i] == child)
 			return true;
 	}
+
 	return false;
 }
 
@@ -295,18 +299,19 @@ bool TransformComponent::tryRemoveChild(ID<Entity> child)
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
 
-	for (uint32 i = 0; i < childCount; i++)
+	auto thisChildCount = childCount();
+	for (uint32 i = 0; i < thisChildCount; i++)
 	{
 		if (childs[i] != entity)
 			continue;
-		for (uint32 j = i + 1; j < childCount; j++)
+		for (uint32 j = i + 1; j < thisChildCount; j++)
 			childs[j - 1] = childs[j];
 
 		auto childTransformView = TransformSystem::Instance::get()->getComponent(child);
 		childTransformView->parent = {};
 		childTransformView->ancestorsActive = true;
 
-		childCount--;
+		childCount()--;
 		return true;
 	}
 
@@ -315,20 +320,23 @@ bool TransformComponent::tryRemoveChild(ID<Entity> child)
 void TransformComponent::removeAllChilds()
 {
 	auto transformSystem = TransformSystem::Instance::get();
-	for (uint32 i = 0; i < childCount; i++)
+	auto thisChildCount = childCount();
+
+	for (uint32 i = 0; i < thisChildCount; i++)
 	{
 		auto childTransformView = transformSystem->getComponent(childs[i]);
 		childTransformView->parent = {};
 		childTransformView->ancestorsActive = true;
 	}
-	childCount = 0;
+
+	childCount() = 0;
 }
 void TransformComponent::shrinkChilds()
 {
 	if (!childs)
 		return;
 
-	auto newChilds = realloc<ID<Entity>>(childs, childCount);
+	auto newChilds = realloc<ID<Entity>>(childs, childCount());
 	childs = newChilds;
 }
 
@@ -367,17 +375,17 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 		entityStack.pop_back();
 
 		auto transformView = transformSystem->getComponent(entity);
-		auto childCount = transformView->childCount;
-		auto childs = transformView->childs;
+		auto transformChildCount = transformView->childCount();
+		auto transformChilds = transformView->childs;
 		
-		for (uint32 i = 0; i < childCount; i++)
+		for (uint32 i = 0; i < transformChildCount; i++)
 		{
-			if (childs[i] == descendant)
+			if (transformChilds[i] == descendant)
 			{
 				entityStack.clear();
 				return true;
 			}
-			entityStack.push_back(childs[i]);
+			entityStack.push_back(transformChilds[i]);
 		}
 	}
 
@@ -403,11 +411,11 @@ bool TransformComponent::hasBakedWithDescendants() const noexcept
 		}
 
 		auto transformView = transformSystem->getComponent(entity);
-		auto childCount = transformView->getChildCount();
-		auto childs = transformView->getChilds();
+		auto transformChildCount = transformView->childCount();
+		auto transformChilds = transformView->getChilds();
 		
-		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push_back(childs[i]);
+		for (uint32 i = 0; i < transformChildCount; i++)
+			entityStack.push_back(transformChilds[i]);
 	}
 
 	return false;
@@ -438,8 +446,10 @@ void TransformSystem::copyComponent(View<Component> source, View<Component> dest
 	auto destinationView = View<TransformComponent>(destination);
 	destinationView->destroy();
 
-	destinationView->position = sourceView->position;
-	destinationView->scale = sourceView->scale;
+	destinationView->posChildCount = sourceView->posChildCount;
+	destinationView->childCount() = 0;
+	destinationView->scaleChildCap = sourceView->scaleChildCap;
+	destinationView->childCapacity() = 0;
 	destinationView->rotation = sourceView->rotation;
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	destinationView->debugName = sourceView->debugName;
@@ -480,12 +490,12 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 	uidStringCache.resize(uidStringCache.length() - 1);
 	serializer.write("uid", uidStringCache);
 
-	if (transformView->position != float3(0.0f))
-		serializer.write("position", transformView->position);
+	if (f32x4(transformView->posChildCount, 0.0f) != f32x4::zero)
+		serializer.write("position", (float3)transformView->posChildCount);
 	if (transformView->rotation != quat::identity)
 		serializer.write("rotation", transformView->rotation);
-	if (transformView->scale != float3(1.0f))
-		serializer.write("scale", transformView->scale);
+	if (f32x4(transformView->scaleChildCap, 0.0f) != f32x4::one)
+		serializer.write("scale", (float3)transformView->scaleChildCap);
 	if (!transformView->selfActive)
 		serializer.write("selfActive", false);
 
@@ -531,9 +541,14 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 		}
 	}
 
-	deserializer.read("position", transformView->position);
-	deserializer.read("rotation", transformView->rotation);
-	deserializer.read("scale", transformView->scale);
+	auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
+	deserializer.read("position", f32x4Value, 3);
+	transformView->setPosition(f32x4Value);
+	deserializer.read("rotation", rotation);
+	transformView->setRotation(rotation);
+	f32x4Value = f32x4::one;
+	deserializer.read("scale", f32x4Value, 3);
+	transformView->setScale(f32x4Value);
 	deserializer.read("selfActive", transformView->selfActive);
 
 	if (deserializer.read("parent", uidStringCache) &&
@@ -579,17 +594,17 @@ void TransformSystem::serializeAnimation(ISerializer& serializer, View<Animation
 {
 	auto transformFrameView = View<TransformFrame>(frame);
 	if (transformFrameView->animatePosition)
-		serializer.write("position", transformFrameView->position);
+		serializer.write("position", (float3)transformFrameView->position);
 	if (transformFrameView->animateScale)
-		serializer.write("scale", transformFrameView->scale);
+		serializer.write("scale", (float3)transformFrameView->scale);
 	if (transformFrameView->animateRotation)
 		serializer.write("rotation", transformFrameView->rotation);
 }
 ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserializer)
 {
 	TransformFrame frame;
-	frame.animatePosition = deserializer.read("position", frame.position);
-	frame.animateScale = deserializer.read("scale", frame.scale);
+	frame.animatePosition = deserializer.read("position", frame.position, 3);
+	frame.animateScale = deserializer.read("scale", frame.scale, 3);
 	frame.animateRotation = deserializer.read("rotation", frame.rotation);
 	
 	if (frame.animatePosition || frame.animateScale || frame.animateRotation)
@@ -609,9 +624,9 @@ void TransformSystem::animateAsync(View<Component> component, View<AnimationFram
 	auto frameB = View<TransformFrame>(b);
 
 	if (frameA->animatePosition)
-		transformView->position = lerp(frameA->position, frameB->position, t);
+		transformView->setPosition(lerp(frameA->position, frameB->position, t));
 	if (frameA->animateScale)
-		transformView->scale = lerp(frameA->scale, frameB->scale, t);
+		transformView->setScale(lerp(frameA->scale, frameB->scale, t));
 	if (frameA->animateRotation)
 		transformView->rotation = slerp(frameA->rotation, frameB->rotation, t);
 }
@@ -637,13 +652,13 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 		return;
 	}
 
-	auto childCount = transformView->childCount;
-	auto childs = transformView->childs;
-	transformView->childCount = 0;
+	auto transformChildCount = transformView->childCount();
+	auto transformChilds = transformView->childs;
+	transformView->childCount() = 0;
 	transformView->selfActive = false;
 
-	for (uint32 i = 0; i < childCount; i++)
-		entityStack.push_back(childs[i]);
+	for (uint32 i = 0; i < transformChildCount; i++)
+		entityStack.push_back(transformChilds[i]);
 
 	while (!entityStack.empty())
 	{
@@ -654,14 +669,14 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 			continue;
 
 		transformView = getComponent(entity);
-		childCount = transformView->childCount;
-		childs = transformView->childs;
+		transformChildCount = transformView->childCount();
+		transformChilds = transformView->childs;
 
-		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push_back(childs[i]);
+		for (uint32 i = 0; i < transformChildCount; i++)
+			entityStack.push_back(transformChilds[i]);
 
 		transformView->parent = {};
-		transformView->childCount = 0;
+		transformView->childCount() = 0;
 		transformView->selfActive = false;
 		transformView->ancestorsActive = true;		
 		manager->destroy(entity);
@@ -695,12 +710,12 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 			continue;
 
 		entityTransformView = getComponent(pair.first);
-		auto childCount = entityTransformView->childCount;
-		auto childs = entityTransformView->childs;
+		auto entityChildCount = entityTransformView->childCount();
+		auto entityChilds = entityTransformView->childs;
 
-		for (uint32 i = 0; i < childCount; i++)
+		for (uint32 i = 0; i < entityChildCount; i++)
 		{
-			auto child = childs[i];
+			auto child = entityChilds[i];
 			auto duplicate = manager->duplicate(child);
 			duplicateTransformView = getComponent(duplicate);
 			duplicateTransformView->setParent(pair.second);

@@ -66,7 +66,7 @@ private:
 	~CutoutSpriteSystem() final;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex) final;
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex) final;
 
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;

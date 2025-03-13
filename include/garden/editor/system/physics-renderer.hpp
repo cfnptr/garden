@@ -49,17 +49,17 @@ private:
 	ID<Buffer> trianglesBuffer = {};
 	JPH::RVec3 cameraPosition;
 public:
-	void setCameraPosition(const float3& cameraPosition)
+	void setCameraPosition(f32x4 cameraPosition)
 	{
 		this->cameraPosition = toRVec3(cameraPosition);
 		SetCameraPos(this->cameraPosition);
 	}
 
 	bool isReady();
-	void drawLines(const float4x4& viewProj);
-	void drawTriangles(const float4x4& viewProj);
+	void drawLines(const f32x4x4& viewProj);
+	void drawTriangles(const f32x4x4& viewProj);
 	void preDraw();
-	void draw(const float4x4& viewProj);
+	void draw(const f32x4x4& viewProj);
 
 	void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) final;
 	void DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, 

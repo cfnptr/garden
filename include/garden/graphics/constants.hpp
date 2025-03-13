@@ -26,19 +26,19 @@ using namespace math;
  */
 struct CameraConstants final
 {
-	float4x4 view = float4x4(0.0f);        /**< View matrix. */
-	float4x4 projection = float4x4(0.0f);  /**< Projection matrix. */
-	float4x4 viewProj = float4x4(0.0f);    /**< View * projection matrix. */
-	float4x4 inverseView = float4x4(0.0f); /**< Inverse view matrix. */
-	float4x4 inverseProj = float4x4(0.0f); /**< Inverse projection matrix. */
-	float4x4 invViewProj = float4x4(0.0f); /**< Inverse view * projection matrix. */
-	float4 cameraPos = float4(0.0f);       /**< Camera position in world space. */
-	float4 viewDir = float4(0.0f);         /**< View direction in world space. */
-	float4 lightDir = float4(0.0f);        /**< Light direction in world space. */
-	float2 frameSize = float2(0.0f);       /**< Frame size in pixels. */
-	float2 invFrameSize = float2(0.0f);    /**< Inverse frame size in pixels. */
-	float2 invFrameSize2 = float2(0.0f);   /**< Inverse frame size * 2 in pixels. */
-	float nearPlane = 0.0f;                /**< Near frustum plane. */
+	f32x4x4 view = f32x4x4::zero;         /**< View matrix. */
+	f32x4x4 projection = f32x4x4::zero;   /**< Projection matrix. */
+	f32x4x4 viewProj = f32x4x4::zero;     /**< View * projection matrix. */
+	f32x4x4 inverseView = f32x4x4::zero;  /**< Inverse view matrix. */
+	f32x4x4 inverseProj = f32x4x4::zero;  /**< Inverse projection matrix. */
+	f32x4x4 invViewProj = f32x4x4::zero;  /**< Inverse view * projection matrix. */
+	f32x4 cameraPos = f32x4::zero;        /**< Camera position in world space. */
+	f32x4 viewDir = f32x4::zero;          /**< View direction in world space. */
+	f32x4 lightDir = f32x4::zero;         /**< Light direction in world space. */
+	float2 frameSize = float2::zero;      /**< Frame size in pixels. */
+	float2 invFrameSize = float2::zero;   /**< Inverse frame size in pixels. */
+	float2 invFrameSizeSq = float2::zero; /**< Inverse frame size * 2 in pixels. */
+	float nearPlane = 0.0f;               /**< Near frustum plane. */
 };
 
 } // namespace garden::graphics

@@ -55,9 +55,9 @@ protected:
 	virtual void gBufferRecreate();
 	
 	bool isDrawReady(bool isShadowPass) override;
-	void prepareDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
 	void beginDrawAsync(int32 taskIndex) override;
-	void finalizeDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
+	void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
 
 	virtual map<string, DescriptorSet::Uniform> getBaseUniforms();
 	virtual map<string, DescriptorSet::Uniform> getShadowUniforms();

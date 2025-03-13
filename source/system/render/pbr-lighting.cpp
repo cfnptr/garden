@@ -34,12 +34,12 @@ namespace garden::graphics
 {
 	struct SpecularItem final
 	{
-		float4 l = float4(0.0f);
-		float4 nolMip = float4(0.0f);
+		f32x4 l = f32x4::zero;
+		f32x4 nolMip = f32x4::zero;
 
-		constexpr SpecularItem(const float3& l, float nol, float mip) noexcept :
-			l(float4(l, 0.0f)), nolMip(float4(nol, mip, 0.0f, 0.0f)) { }
-		constexpr SpecularItem() = default;
+		SpecularItem(f32x4 l, float nol, float mip) noexcept :
+			l(l, 0.0f), nolMip(nol, mip, 0.0f, 0.0f) { }
+		SpecularItem() = default;
 	};
 }
 
@@ -141,7 +141,7 @@ static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
 {
 	auto nov = clamp((x + 0.5f) / iblDfgSize, 0.0f, 1.0f);
 	auto coord = clamp((iblDfgSize - y + 0.5f) / iblDfgSize, 0.0f, 1.0f);
-	auto v = float3(sqrt(1.0f - nov * nov), 0.0f, nov);
+	auto v = f32x4(sqrt(1.0f - nov * nov), 0.0f, nov);
 	auto invSampleCount = 1.0f / SPECULAR_SAMPLE_COUNT;
 	auto linearRoughness = coord * coord;
 
@@ -151,11 +151,11 @@ static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
 	{
 		auto u = hammersley(i, invSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
-		auto voh = dot(v, h);
+		auto voh = dot3(v, h);
 		auto l = 2.0f * voh * h - v;
 		voh = clamp(voh, 0.0f, 1.0f);
-		auto nol = clamp(l.z, 0.0f, 1.0f);
-		auto noh = clamp(h.z, 0.0f, 1.0f);
+		auto nol = clamp(l.getZ(), 0.0f, 1.0f);
+		auto noh = clamp(h.getZ(), 0.0f, 1.0f);
 
 		if (nol > 0.0f)
 		{
@@ -188,7 +188,7 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto shadowBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
+	auto shadowBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
@@ -218,7 +218,7 @@ static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowIma
 static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const ID<ImageView>* shadowImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
@@ -241,7 +241,7 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto aoBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
+	auto aoBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
@@ -271,7 +271,7 @@ static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews)
 static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
@@ -548,7 +548,7 @@ void PbrLightingRenderSystem::preHdrRender()
 		
 		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 		auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
-		framebufferView->beginRenderPass(float4(1.0f));
+		framebufferView->beginRenderPass(f32x4::one);
 		manager->runEvent("ShadowRender");
 		framebufferView->endRenderPass();
 	}
@@ -565,7 +565,7 @@ void PbrLightingRenderSystem::preHdrRender()
 
 		SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
 		auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
-		framebufferView->beginRenderPass(float4(1.0f));
+		framebufferView->beginRenderPass(f32x4::one);
 		manager->runEvent("AoRender");
 		framebufferView->endRenderPass();
 	}
@@ -574,7 +574,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	if (shadowBuffer && !hasAnyShadow)
 	{
 		auto imageView = graphicsSystem->get(shadowBuffer);
-		imageView->clear(float4(1.0f));
+		imageView->clear(f32x4::one);
 	}
 
 	if (hasAnyAO)
@@ -591,7 +591,7 @@ void PbrLightingRenderSystem::preHdrRender()
 
 			SET_GPU_DEBUG_LABEL("AO Denoise Pass", Color::transparent);
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[1]);
-			framebufferView->beginRenderPass(float4(1.0f));
+			framebufferView->beginRenderPass(f32x4::one);
 			aoPipelineView->bind();
 			aoPipelineView->setViewportScissor();
 			aoPipelineView->bindDescriptorSet(aoDenoiseDescriptorSet);
@@ -602,7 +602,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	else if (aoBuffer)
 	{
 		auto imageView = graphicsSystem->get(aoBuffer);
-		imageView->clear(float4(1.0f));
+		imageView->clear(f32x4::one);
 	}
 }
 
@@ -643,7 +643,7 @@ void PbrLightingRenderSystem::hdrRender()
 	}
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	constexpr auto uvToNDC = float4x4
+	static const auto uvToNDC = f32x4x4
 	(
 		2.0f, 0.0f, 0.0f, -1.0f,
 		0.0f, 2.0f, 0.0f, -1.0f,
@@ -656,8 +656,8 @@ void PbrLightingRenderSystem::hdrRender()
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
 	auto pushConstants = pipelineView->getPushConstants<LightingPC>();
-	pushConstants->uvToWorld = cameraConstants.invViewProj * uvToNDC;
-	pushConstants->shadowEmissive = float4(shadowColor, emissiveMult);
+	pushConstants->uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
+	pushConstants->shadowEmissive = (float4)f32x4(shadowColor, emissiveMult);
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	pipelineView->bind();
@@ -671,7 +671,7 @@ void PbrLightingRenderSystem::hdrRender()
 void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2(1));
+	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
 
 	if (aoBuffer)
 	{
@@ -854,7 +854,7 @@ const ID<ImageView>* PbrLightingRenderSystem::getAoImageViews()
 }
 
 //**********************************************************************************************************************
-static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemapSize, 
+static void calcIblSH(f32x4* shBufferData, const f32x4** faces, uint32 cubemapSize, 
 	uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
 {
 	auto sh = shBufferData + taskIndex * shCoeffCount;
@@ -883,9 +883,8 @@ static void calcIblSH(float4* shBufferData, const float4** faces, uint32 cubemap
 static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	const vector<const void*>& _pixels, uint32 cubemapSize, Buffer::Strategy strategy)
 {
-	auto faces = (const float4**)_pixels.data();
-	vector<float4> shBuffer;
-	float4* shBufferData;
+	auto faces = (const f32x4**)_pixels.data();
+	vector<f32x4> shBuffer;
 	uint32 bufferCount;
 
 	if (threadSystem)
@@ -893,9 +892,9 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 		auto& threadPool = threadSystem->getForegroundPool();
 		bufferCount = threadPool.getThreadCount();
 		shBuffer.resize(bufferCount * shCoeffCount);
-		shBufferData = shBuffer.data();
+		auto shBufferData = shBuffer.data();
 
-		threadPool.addItems([&](const ThreadPool::Task& task)
+		threadPool.addItems([shBufferData, faces, cubemapSize](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL SH Generate");
 
@@ -911,10 +910,10 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 
 		bufferCount = 1;
 		shBuffer.resize(shCoeffCount);
-		shBufferData = shBuffer.data();
-		calcIblSH(shBufferData, faces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
+		calcIblSH(shBuffer.data(), faces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
 	}
 
+	auto shBufferData = shBuffer.data();
 	if (bufferCount > 1)
 	{
 		for (uint32 i = 1; i < bufferCount; i++)
@@ -933,7 +932,7 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 
 	// TODO: check if final SH is the same as debug in release build.
 	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
-		Buffer::Access::None, shBufferData, shCoeffCount * sizeof(float4), Buffer::Usage::PreferGPU, strategy);
+		Buffer::Access::None, shBuffer, 0, 0, Buffer::Usage::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************
@@ -956,9 +955,9 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 	{
 		auto u = hammersley(i, invSampleCount);
 		auto h = importanceSamplingNdfDggx(u, roughness);
-		auto noh = h.z, noh2 = h.z * h.z;
+		auto noh = h.getZ(), noh2 = noh * noh;
 		auto nol = 2.0f * noh2 - 1.0f;
-		auto l = float3(2.0f * noh * h.x, 2.0f * noh * h.y, nol);
+		auto l = f32x4(2.0f * noh * h.getX(), 2.0f * noh * h.getY(), nol);
 
 		if (nol > 0.0f)
 		{
@@ -974,14 +973,14 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 
 	auto invWeight = 1.0f / weight;
 	for (uint32 i = 0; i < count; i++)
-		map[i].nolMip.x *= invWeight;
+		map[i].nolMip.floats.x *= invWeight;
 		
 	qsort(map, count, sizeof(SpecularItem), [](const void* a, const void* b)
 	{
 		auto aa = (const SpecularItem*)a; auto bb = (const SpecularItem*)b;
-		if (aa->nolMip.x < bb->nolMip.x)
+		if (aa->nolMip.getX() < bb->nolMip.getX())
 			return -1;
-		if (aa->nolMip.x > bb->nolMip.x)
+		if (aa->nolMip.getX() > bb->nolMip.getX())
 			return 1;
 		return 0;
 	});
@@ -995,7 +994,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto cubemapView = graphicsSystem->get(cubemap);
-	auto cubemapSize = cubemapView->getSize().x;
+	auto cubemapSize = cubemapView->getSize().getX();
 	auto cubemapFormat = cubemapView->getFormat();
 	auto cubemapMipCount = cubemapView->getMipCount();
 	auto defaultCubemapView = cubemapView->getDefaultView();
@@ -1007,9 +1006,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	for (uint8 i = 0; i < specularMipCount; i++)
 		mips[i] = Image::Layers(6);
 
-	auto specular = graphicsSystem->createImage(Image::Type::Cubemap,
-		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::Storage | 
-		Image::Bind::Sampled, mips, uint3(cubemapSize, cubemapSize, 1), strategy);
+	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | 
+		Image::Bind::Storage | Image::Bind::Sampled, mips, uint2(cubemapSize), strategy);
 
 	uint64 specularCacheSize = 0;
 	for (uint8 i = 1; i < specularMipCount; i++)
@@ -1103,7 +1101,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		pushConstants->itemCount = countBuffer[i];
 		pipelineView->pushConstants();
 
-		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
+		pipelineView->dispatch(u32x4(cubemapSize, cubemapSize, 6));
 
 		graphicsSystem->destroy(iblSpecularDescriptorSet);
 		graphicsSystem->destroy(iblSpecularView);
@@ -1135,9 +1133,8 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
 
-	cubemap = Ref<Image>(graphicsSystem->createImage(Image::Type::Cubemap,
-		Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | Image::Bind::TransferSrc |
-		Image::Bind::Sampled, mips, uint3(size, 1), strategy, Image::Format::SfloatR32G32B32A32));
+	cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | 
+		Image::Bind::TransferSrc | Image::Bind::Sampled, mips, size, strategy, Image::Format::SfloatR32G32B32A32));
 	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);

@@ -81,12 +81,12 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 
 //**********************************************************************************************************************
 static void createVkImage(Image::Type type, Image::Format format, Image::Bind bind, Image::Strategy strategy,
-	const uint3& size, uint8 mipCount, uint32 layerCount, void*& instance, void*& allocation)
+	u32x4 size, uint8 mipCount, uint32 layerCount, void*& instance, void*& allocation)
 {
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.imageType = (VkImageType)toVkImageType(type);
 	imageInfo.format = (VkFormat)toVkFormat(format);
-	imageInfo.extent = { size.x, size.y, size.z };
+	imageInfo.extent = { size.getX(), size.getY(), size.getZ() };
 	imageInfo.mipLevels = mipCount;
 	imageInfo.arrayLayers = layerCount;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -110,9 +110,9 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 	imageFormatInfo.usage = vk::ImageUsageFlags(imageInfo.usage);
 	imageFormatInfo.flags = vk::ImageCreateFlags(imageInfo.flags);
 	auto imageFormatProperties = vulkanAPI->physicalDevice.getImageFormatProperties2(imageFormatInfo);
-	GARDEN_ASSERT(size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width);
-	GARDEN_ASSERT(size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height);
-	GARDEN_ASSERT(size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth);
+	GARDEN_ASSERT(size.getX() <= imageFormatProperties.imageFormatProperties.maxExtent.width);
+	GARDEN_ASSERT(size.getY() <= imageFormatProperties.imageFormatProperties.maxExtent.height);
+	GARDEN_ASSERT(size.getZ() <= imageFormatProperties.imageFormatProperties.maxExtent.depth);
 	GARDEN_ASSERT(mipCount <= imageFormatProperties.imageFormatProperties.maxMipLevels);
 	GARDEN_ASSERT(layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers);
 	GARDEN_ASSERT(imageInfo.samples <= (VkSampleCountFlags)imageFormatProperties.imageFormatProperties.sampleCounts);
@@ -144,10 +144,10 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 
 //**********************************************************************************************************************
 Image::Image(Type type, Format format, Bind bind, Strategy strategy,
-	const uint3& size, uint8 mipCount, uint32 layerCount, uint64 version) :
+	u32x4 size, uint8 mipCount, uint32 layerCount, uint64 version) :
 	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(mipCount * layerCount)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 	GARDEN_ASSERT(mipCount > 0);
 	GARDEN_ASSERT(layerCount > 0);
 
@@ -162,7 +162,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	this->swapchain = false;
 	this->mipCount = mipCount;
 	this->size = size;
-	this->layerCount = layerCount;
+	this->size.setW(layerCount);
 
 	auto mipSize = size;
 	auto formatBinarySize = (uint64)toBinarySize(format);
@@ -170,8 +170,8 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 	for (uint8 i = 0; i < mipCount; i++)
 	{
 		this->binarySize += formatBinarySize *
-			mipSize.x * mipSize.y * mipSize.z * layerCount;
-		mipSize = max(mipSize / 2u, uint3(1));
+			mipSize.getX() * mipSize.getY() * mipSize.getZ() * layerCount;
+		mipSize = max(mipSize / 2u, u32x4::one);
 	}
 
 	for (auto& layout : this->layouts)
@@ -182,7 +182,7 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy,
 Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version) : 
 	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), layouts(1)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;
@@ -190,8 +190,7 @@ Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 
 	this->bind = bind;
 	this->mipCount = 1;
 	this->swapchain = true;
-	this->size = uint3(size, 1);
-	this->layerCount = 1;
+	this->size = u32x4(size.x, size.y, 1, 1);
 	this->layouts[0] = (uint32)vk::ImageLayout::eUndefined;
 }
 bool Image::destroy()
@@ -241,7 +240,7 @@ ID<ImageView> Image::getDefaultView()
 
 		auto graphicsAPI = GraphicsAPI::get();
 		defaultView = graphicsAPI->imageViewPool.create(true,
-			graphicsAPI->imagePool.getID(this), type, format, 0, mipCount, 0, layerCount);
+			graphicsAPI->imagePool.getID(this), type, format, 0, mipCount, 0, size.getW());
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		auto view = graphicsAPI->imageViewPool.get(defaultView);
@@ -252,7 +251,7 @@ ID<ImageView> Image::getDefaultView()
 	return defaultView;
 }
 
-bool Image::isSupported(Type type, Format format, Bind bind, const uint3& size, uint8 mipCount, uint32 layerCount)
+bool Image::isSupported(Type type, Format format, Bind bind, uint3 size, uint8 mipCount, uint32 layerCount)
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -304,9 +303,9 @@ void Image::generateMips(SamplerFilter filter)
 	for (uint8 mip = 1; mip < mipCount; mip++)
 	{
 		Image::BlitRegion region;
-		region.srcExtent = mipSize;
-		mipSize = max(mipSize / 2u, uint3(1));
-		region.dstExtent = mipSize;
+		region.srcExtent = (uint3)mipSize;
+		mipSize = max(mipSize / 2u, u32x4::one);
+		region.dstExtent = (uint3)mipSize;
 		region.layerCount = 1;
 		region.srcMipLevel = mip - 1;
 		region.dstMipLevel = mip;
@@ -314,6 +313,7 @@ void Image::generateMips(SamplerFilter filter)
 		// Note: We should not blit all layers in one mip,
 		//       because result differs across GPUs.
 		
+		auto layerCount = size.getW();
 		for (uint8 layer = 0; layer < layerCount; layer++)
 		{
 			region.srcBaseLayer = region.dstBaseLayer = layer;
@@ -323,7 +323,7 @@ void Image::generateMips(SamplerFilter filter)
 }
 
 //**********************************************************************************************************************
-void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
+void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
@@ -337,7 +337,7 @@ void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 	command.clearType = 1;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
-	command.color = color;
+	command.color = (float4)color;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -347,7 +347,7 @@ void Image::clear(const float4& color, const ClearRegion* regions, uint32 count)
 		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
 	}
 }
-void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
+void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
@@ -361,7 +361,7 @@ void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 	command.clearType = 2;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
-	memcpy(&command.color, &color, sizeof(float4));
+	*(i32x4*)&command.color = color;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -371,7 +371,7 @@ void Image::clear(const int4& color, const ClearRegion* regions, uint32 count)
 		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
 	}
 }
-void Image::clear(const uint4& color, const ClearRegion* regions, uint32 count)
+void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
@@ -385,7 +385,7 @@ void Image::clear(const uint4& color, const ClearRegion* regions, uint32 count)
 	command.clearType = 3;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
-	memcpy(&command.color, &color, sizeof(float4));
+	*(u32x4*)&command.color = color;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -409,7 +409,7 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
 	command.color.x = depth;
-	memcpy(&command.color.y, &stencil, sizeof(uint32));
+	*(uint32*)&command.color.y = stencil;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -444,23 +444,23 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->layerCount);
-		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->layerCount);
+		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->size.getW());
+		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->size.getW());
 		GARDEN_ASSERT(region.srcMipLevel <= srcView->mipCount);
 		GARDEN_ASSERT(region.dstMipLevel <= dstView->mipCount);
-		GARDEN_ASSERT((region.extent == 0u && region.srcOffset == 0u) || region.extent != 0u);
+		GARDEN_ASSERT((region.extent == uint3::zero && region.srcOffset == uint3::zero) || region.extent != uint3::zero);
 
-		if (region.extent == 0u)
+		if (region.extent == uint3::zero)
 		{
-			GARDEN_ASSERT(region.srcOffset == 0u);
-			GARDEN_ASSERT(region.dstOffset == 0u);
+			GARDEN_ASSERT(region.srcOffset == uint3::zero);
+			GARDEN_ASSERT(region.dstOffset == uint3::zero);
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip(srcView->size, region.srcMipLevel);
-			GARDEN_ASSERT((region.extent + region.srcOffset <= mipImageSize).areAllTrue());
-			mipImageSize = calcSizeAtMip(srcView->size, region.dstMipLevel);
-			GARDEN_ASSERT((region.extent + region.dstOffset <= mipImageSize).areAllTrue());
+			auto mipImageSize = calcSizeAtMip3(srcView->size, region.srcMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.extent + region.srcOffset <= (uint3)mipImageSize));
+			mipImageSize = calcSizeAtMip3(srcView->size, region.dstMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.extent + region.dstOffset <= (uint3)mipImageSize));
 		}
 	}
 	#endif
@@ -504,17 +504,17 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->layerCount);
+		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->size.getW());
 		GARDEN_ASSERT(region.imageMipLevel <= imageView->mipCount);
 
-		if (region.imageExtent == 0u)
+		if (region.imageExtent == uint3::zero)
 		{
-			GARDEN_ASSERT(region.imageOffset == 0u);
+			GARDEN_ASSERT(region.imageOffset == uint3::zero);
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT((region.imageExtent + region.imageOffset <= mipImageSize).areAllTrue());
+			auto mipImageSize = calcSizeAtMip3(imageView->size, region.imageMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= (uint3)mipImageSize));
 		}
 
 		// TODO: check out of buffer/image bounds.
@@ -561,17 +561,17 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->layerCount);
+		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->size.getW());
 		GARDEN_ASSERT(region.imageMipLevel <= imageView->mipCount);
 
-		if (region.imageExtent == 0u)
+		if (region.imageExtent == uint3::zero)
 		{
-			GARDEN_ASSERT(region.imageOffset == 0u);
+			GARDEN_ASSERT(region.imageOffset == uint3::zero);
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT((region.imageExtent + region.imageOffset <= mipImageSize).areAllTrue());
+			auto mipImageSize = calcSizeAtMip3(imageView->size, region.imageMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= (uint3)mipImageSize));
 		}
 
 		// TODO: check out of buffer/image bounds.
@@ -618,28 +618,28 @@ void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regi
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->layerCount);
-		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->layerCount);
+		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->size.getW());
+		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->size.getW());
 		GARDEN_ASSERT(region.srcMipLevel <= srcView->mipCount);
 		GARDEN_ASSERT(region.dstMipLevel <= dstView->mipCount);
 
-		if (region.srcExtent == 0u)
+		if (region.srcExtent == uint3::zero)
 		{
-			GARDEN_ASSERT(region.srcOffset == 0u);
+			GARDEN_ASSERT(region.srcOffset == uint3::zero);
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip(srcView->size, region.srcMipLevel);
-			GARDEN_ASSERT((region.srcExtent + region.srcOffset <= mipImageSize).areAllTrue());
+			auto mipImageSize = calcSizeAtMip3(srcView->size, region.srcMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.srcExtent + region.srcOffset <= (uint3)mipImageSize));
 		}
-		if (region.dstExtent == 0u)
+		if (region.dstExtent == uint3::zero)
 		{
-			GARDEN_ASSERT(region.dstOffset == 0u);
+			GARDEN_ASSERT(region.dstOffset == uint3::zero);
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip(dstView->size, region.dstMipLevel);
-			GARDEN_ASSERT((region.dstExtent + region.dstOffset <= mipImageSize).areAllTrue());
+			auto mipImageSize = calcSizeAtMip3(dstView->size, region.dstMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.dstExtent + region.dstOffset <= (uint3)mipImageSize));
 		}
 
 		// TODO: take into account format texel size.

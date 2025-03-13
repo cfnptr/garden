@@ -19,7 +19,6 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
-#include <cfloat>
 
 #include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
@@ -182,7 +181,7 @@ void CsmRenderSystem::shadowRender()
 	dataBufferView->flush();
 
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->farPlanesIntens = float4(cameraConstants.nearPlane / farPlanes, intensity);
+	pushConstants->farPlanesIntens = (float4)f32x4(cameraConstants.nearPlane / farPlanes, intensity);
 
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
 	pipelineView->bind();
@@ -212,58 +211,51 @@ uint32 CsmRenderSystem::getShadowPassCount()
 	return cascadeCount;
 }
 
-static float4x4 calcLightViewProj(const float4x4& view, const float3& lightDir, float3& cameraOffset, 
+static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cameraOffset, 
 	float fieldOfView, float aspectRatio, float nearPlane, float farPlane, float zCoeff) noexcept
 {
-	auto proj = calcPerspProjRevZ(fieldOfView, aspectRatio, nearPlane, farPlane);
-	auto invViewProj = inverse(proj * view);
+	auto proj = (f32x4x4)calcPerspProjRevZ(fieldOfView, aspectRatio, nearPlane, farPlane);
+	auto invViewProj = inverse4x4(proj * view);
 
-	uint8 cornerIndex = 0; float4 frustumCorners[8];
+	f32x4 frustumCorners[8]; uint8 cornerIndex = 0;
 	for (int z = 0; z < 2; z++)
 	{
 		for (int y = 0; y < 2; y++)
 		{
 			for (int x = 0; x < 2; x++)
 			{
-				auto corner = invViewProj * float4(x * 2.0f - 1.0f, y * 2.0f - 1.0f, z, 1.0f);
-				frustumCorners[cornerIndex++] = corner / corner.w;
+				auto corner = invViewProj * f32x4(x * 2.0f - 1.0f, y * 2.0f - 1.0f, z, 1.0f);
+				frustumCorners[cornerIndex++] = corner / corner.getW();
 			}
 		}
 	}
 
-	auto center = float3(0.0f);
+	auto center = f32x4::zero;
 	for (int i = 0; i < 8; i++)
-		center += (float3)frustumCorners[i];
+		center += frustumCorners[i];
 	center *= (1.0f / 8.0f);
 
 	auto lightView = lookAt(center - lightDir, center);
-	auto minimum = float3(FLT_MAX), maximum = float3(-FLT_MAX);
+	auto minimum = f32x4::max, maximum = f32x4::minusMax;
 
 	for (int i = 0; i < 8; i++)
 	{
 		auto trf = lightView * frustumCorners[i];
-		minimum = min(minimum, (float3)trf);
-		maximum = max(maximum, (float3)trf);
+		minimum = min(minimum, trf);
+		maximum = max(maximum, trf);
 	}
 
-	if (minimum.z < 0.0f)
-		minimum.z *= zCoeff;
-	else
-		minimum.z /= zCoeff;
+	minimum.setZ(minimum.getZ() < 0.0f ? minimum.getZ() * zCoeff : minimum.getZ() / zCoeff);
+	maximum.setZ(maximum.getZ() < 0.0f ? maximum.getZ() / zCoeff : maximum.getZ() * zCoeff);
 
-	if (maximum.z < 0.0f)
-		maximum.z /= zCoeff;
-	else
-		maximum.z *= zCoeff;
-
-	cameraOffset = -(lightDir * minimum.z + center);
-	auto lightProj = calcOrthoProjRevZ(float2(minimum.x, maximum.x),
-		float2(minimum.y, maximum.y), float2(minimum.z, maximum.z));
+	cameraOffset = -(lightDir * minimum.getZ() + center);
+	auto lightProj = (f32x4x4)calcOrthoProjRevZ(float2(minimum.getX(), maximum.getX()),
+		float2(minimum.getY(), maximum.getY()), float2(minimum.getZ(), maximum.getZ()));
 	return lightProj * lightView;
 }
 
 //**********************************************************************************************************************
-bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, float3& cameraOffset)
+bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (intensity <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
@@ -282,17 +274,17 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, 
 	farPlanes[passIndex] = farPlane;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	viewProj = calcLightViewProj(cameraConstants.view, (float3)cameraConstants.lightDir, cameraOffset,
+	viewProj = calcLightViewProj(cameraConstants.view, cameraConstants.lightDir, cameraOffset,
 		cameraView->p.perspective.fieldOfView, cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff);
 
-	const float4x4 ndcToCoords
+	const f32x4x4 ndcToCoords
 	(
 		0.5f, 0.0f, 0.0f, 0.5f,
 		0.0f, 0.5f, 0.0f, 0.5f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f
 	);
-	const float4x4 coordsToNDC
+	const f32x4x4 coordsToNDC
 	(
 		2.0f, 0.0f, 0.0f, -1.0f,
 		0.0f, 2.0f, 0.0f, -1.0f,
@@ -303,7 +295,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, float4x4& viewProj, 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	auto data = (DataBuffer*)dataBufferView->getMap();
-	data->lightSpace[passIndex] = ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC;
+	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
 	return true;
 }
 
@@ -315,7 +307,7 @@ void CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 
 	auto asyncRecording = MeshRenderSystem::Instance::get()->useAsyncRecording();
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffers[passIndex]);
-	framebufferView->beginRenderPass(nullptr, 0, 0.0f, 0, int4(0), asyncRecording);
+	framebufferView->beginRenderPass(nullptr, 0, 0.0f, 0, i32x4::zero, asyncRecording);
 	GraphicsPipeline::setDepthBiasAsync(biasConstantFactor, 0.0f, biasSlopeFactor);
 }
 void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderType)

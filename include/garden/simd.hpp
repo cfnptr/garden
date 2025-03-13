@@ -86,6 +86,18 @@
 #define GARDEN_SIMD_AVX512F 0
 #endif
 
+#if __AVX512VL__
+#define GARDEN_SIMD_AVX512VL 1
+#else
+#define GARDEN_SIMD_AVX512VL 0
+#endif
+
+#if __AVX512DQ__
+#define GARDEN_SIMD_AVX512DQ 1
+#else
+#define GARDEN_SIMD_AVX512DQ 0
+#endif
+
 #if __ARM_NEON
 #define GARDEN_SIMD_NEON 1
 #else
@@ -123,6 +135,12 @@ constexpr const char* GARDEN_SIMD_STRING = ""
 	#endif
 	#if GARDEN_SIMD_AVX512F
 	"AVX512F "
+	#endif
+	#if GARDEN_SIMD_AVX512VL
+	"AVX512VL "
+	#endif
+	#if GARDEN_SIMD_AVX512DQ
+	"AVX512DQ "
 	#endif
 	#if GARDEN_SIMD_NEON
 	"NEON "

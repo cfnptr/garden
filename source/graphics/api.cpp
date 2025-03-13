@@ -19,7 +19,6 @@
 
 #if GARDEN_OS_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
-#define NOMINMAX
 #include "GLFW/glfw3native.h"
 #pragma comment (lib, "Dwmapi")
 #include <dwmapi.h>

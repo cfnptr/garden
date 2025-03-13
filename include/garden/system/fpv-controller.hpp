@@ -32,9 +32,9 @@ using namespace ecsm;
  */
 class FpvControllerSystem final : public System, public Singleton<FpvControllerSystem>
 {
+	f32x4 velocity = f32x4::zero;
+	float2 rotation = float2::zero;
 	ID<Entity> camera = {};
-	float2 rotation = float2(0.0f);
-	float3 velocity = float3(0.0f);
 	float boostAccum = 1.0f;
 
 	/**
@@ -49,7 +49,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 
 	void updateMouseLock();
 	quat updateCameraRotation();
-	void updateCameraControl(const quat& rotationQuat);
+	void updateCameraControl(quat rotationQuat);
 	void updateCharacterControl();
 
 	void init();

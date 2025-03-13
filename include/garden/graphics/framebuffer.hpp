@@ -162,8 +162,8 @@ public:
 	 */
 	union ClearColor final
 	{
-		float4 floatValue = float4(0.0f);   /**< Floating point clear color. */
-		int4 intValue;                      /**< Signed integer clear color. */
+		float4 floatValue = float4::zero;     /**< Floating point clear color. */
+		int4 intValue;                     /**< Signed integer clear color. */
 		uint4 uintValue;                    /**< Unsigned integer clear color. */
 		DepthStencilValue deptStencilValue; /**< Depth/stencil clear value. */
 	};
@@ -182,17 +182,17 @@ public:
 	 */
 	struct ClearRegion final
 	{
-		uint2 offset = uint2(0); /**< Region offset in texels. */
-		uint2 extent = uint2(0); /**< Region extent in texels. */
-		uint32 baseLayer = 0;  /**< Image base array layer. */
-		uint32 layerCount = 0; /**< Image array layer count. */
+		uint2 offset = uint2::zero; /**< Region offset in texels. */
+		uint2 extent = uint2::zero; /**< Region extent in texels. */
+		uint32 baseLayer = 0;       /**< Image base array layer. */
+		uint32 layerCount = 0;      /**< Image array layer count. */
 	};
 
 private:
 	void* renderPass = nullptr;
 	vector<Subpass> subpasses;
 	vector<OutputAttachment> colorAttachments;
-	uint2 size = uint2(0);
+	uint2 size = uint2::zero;
 	OutputAttachment depthStencilAttachment = {};
 	bool isSwapchain = false;
 
@@ -251,7 +251,7 @@ public:
 	bool isSwapchainFramebuffer() const noexcept { return isSwapchain; }
 
 	/*******************************************************************************************************************
-	 * @brief Updates framebufer attachments.
+	 * @brief Updates framebuffer attachments.
 	 * @note This operation is fast when dynamic rendering is supported.
 	 * 
 	 * @param size a new framebuffer size in texels
@@ -262,7 +262,7 @@ public:
 	void update(uint2 size, const OutputAttachment* colorAttachments,
 		uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment = {});
 	/**
-	 * @brief Updates framebufer attachments.
+	 * @brief Updates framebuffer attachments.
 	 * @note This operation is fast when dynamic rendering is supported.
 	 * 
 	 * @param size a new framebuffer size in texels
@@ -307,11 +307,11 @@ public:
 	 * @param clearColorCount clear color array size or 0
 	 * @param clearDepth clear depth value or 0
 	 * @param clearStencil clear stencil value or 0
-	 * @param[in] region rendering region (0 = full size)
+	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
-	void beginRenderPass(const float4* clearColors = nullptr, uint8 clearColorCount = 0, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, const int4& region = int4(0), bool asyncRecording = false);
+	void beginRenderPass(const f32x4* clearColors = nullptr, uint8 clearColorCount = 0, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false);
 	
 	/**
 	 * @brief Begins framebuffer rendering pass.
@@ -321,12 +321,12 @@ public:
 	 * @param[in] clearColors attachment clear color array
 	 * @param clearDepth clear depth value or 0
 	 * @param clearStencil clear stencil value or 0
-	 * @param[in] region rendering region (0 = full size)
+	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
 	template<psize N>
-	void beginRenderPass(const array<float4, N>& clearColors, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, const int4& region = int4(0), bool asyncRecording = false)
+	void beginRenderPass(const array<f32x4, N>& clearColors, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false)
 	{ beginRenderPass(clearColors.data(), (uint8)N, clearDepth, clearStencil, region, asyncRecording); }
 	/**
 	 * @brief Begins framebuffer rendering pass.
@@ -335,11 +335,11 @@ public:
 	 * @param[in] clearColors attachment clear color vector
 	 * @param clearDepth clear depth value or 0
 	 * @param clearStencil clear stencil value or 0
-	 * @param[in] region rendering region (0 = full size)
+	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
-	void beginRenderPass(const vector<float4>& clearColors, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, const int4& region = int4(0), bool asyncRecording = false)
+	void beginRenderPass(const vector<f32x4>& clearColors, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false)
 	{
 		beginRenderPass(clearColors.data(), (uint8)clearColors.size(),
 			clearDepth, clearStencil, region, asyncRecording);
@@ -351,11 +351,11 @@ public:
 	 * @param[in] clearColor attachment clear color
 	 * @param clearDepth clear depth value or 0
 	 * @param clearStencil clear stencil value or 0
-	 * @param[in] region rendering region (0 = full size)
+	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
-	void beginRenderPass(const float4& clearColor, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, const int4& region = int4(0), bool asyncRecording = false)
+	void beginRenderPass(const f32x4& clearColor, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false)
 	{ beginRenderPass(&clearColor, 1, clearDepth, clearStencil, region, asyncRecording); }
 	
 	/*******************************************************************************************************************

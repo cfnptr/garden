@@ -25,6 +25,7 @@
 #include "garden/file.hpp"
 
 #include "math/ibl.hpp"
+#include "math/tone-mapping.hpp"
 
 #define TINYEXR_USE_MINIZ 0
 #define TINYEXR_USE_STB_ZLIB 0
@@ -458,9 +459,9 @@ static void loadMissingImage(vector<uint8>& data, uint2& size, Image::Format& fo
 }
 static void loadMissingImageFloat(vector<uint8>& data, uint2& size, Image::Format& format)
 {
-	const float4 colorMagenta = (float4)Color::magenta; const float4 colorBlack = (float4)Color::black;
-	data.resize(sizeof(float4) * 16);
-	auto pixels = (float4*)data.data();
+	const f32x4 colorMagenta = (f32x4)Color::magenta; const f32x4 colorBlack = (f32x4)Color::black;
+	data.resize(sizeof(f32x4) * 16);
+	auto pixels = (f32x4*)data.data();
 	pixels[0] = colorMagenta; pixels[1] = colorBlack;    pixels[2] = colorMagenta;  pixels[3] = colorBlack;
 	pixels[4] = colorBlack;   pixels[5] = colorMagenta;  pixels[6] = colorBlack;    pixels[7] = colorMagenta;
 	pixels[8] = colorMagenta; pixels[9] = colorBlack;    pixels[10] = colorMagenta; pixels[11] = colorBlack;
@@ -599,13 +600,13 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 
 static void clampFloatImageData(vector<uint8>& equiData)
 {
-	auto pixelData = (float4*)equiData.data();
-	auto pixelCount = equiData.size() / sizeof(float4);
+	auto pixelData = (f32x4*)equiData.data();
+	auto pixelCount = equiData.size() / sizeof(f32x4);
 
 	for (psize i = 0; i < pixelCount; i++)
 	{
 		auto pixel = pixelData[i];
-		pixelData[i] = min(pixel, float4(65504.0f));
+		pixelData[i] = min(pixel, f32x4(65504.0f));
 	}
 }
 
@@ -616,9 +617,10 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 {
 	SET_CPU_ZONE_SCOPED("Cubemap Data Convert");
 
-	vector<float4> floatData; const float4* equiPixels;
+	vector<f32x4> floatData; const f32x4* equiPixels;
 	if (format == Image::Format::SrgbR8G8B8A8)
 	{
+		static const auto gammaCorrection = f32x4(2.2f);
 		floatData.resize(equiData.size() / sizeof(Color));
 		auto dstData = floatData.data();
 		auto srcData = (const Color*)equiData.data();
@@ -630,10 +632,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 			{
 				auto itemCount = task.getItemCount();
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-				{
-					auto srcColor = (float4)srcData[i];
-					dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
-				}
+					dstData[i] = fastGammaCorrection((f32x4)srcData[i]);
 			},
 			(uint32)floatData.size());
 			threadPool.wait();
@@ -641,32 +640,29 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 		else
 		{
 			for (uint32 i = 0; i < (uint32)floatData.size(); i++)
-			{
-				auto srcColor = (float4)srcData[i];
-				dstData[i] = float4(pow((float3)srcColor, float3(2.2f)), srcColor.w);
-			}
+				dstData[i] = fastGammaCorrection((f32x4)srcData[i]);
 		}
 
 		equiPixels = floatData.data();
 	}
 	else
 	{
-		equiPixels = (float4*)equiData.data();
+		equiPixels = (f32x4*)equiData.data();
 	}
 
 	auto cubemapSize = equiSize.x / 4;
 	auto invDim = 1.0f / cubemapSize;
-	auto equiSizeMinus1 = equiSize - 1u;
-	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
+	auto equiSizeMinus1 = equiSize - uint2::one;
+	auto pixelsSize = sizeof(f32x4) * cubemapSize * cubemapSize;
 	left.resize(pixelsSize); right.resize(pixelsSize);
 	bottom.resize(pixelsSize); top.resize(pixelsSize);
 	back.resize(pixelsSize); front.resize(pixelsSize);
 
-	float4* cubePixelArray[6] =
+	f32x4* cubePixelArray[6] =
 	{
-		(float4*)right.data(), (float4*)left.data(),
-		(float4*)top.data(), (float4*)bottom.data(),
-		(float4*)front.data(), (float4*)back.data(),
+		(f32x4*)right.data(), (f32x4*)left.data(),
+		(f32x4*)top.data(), (f32x4*)bottom.data(),
+		(f32x4*)front.data(), (f32x4*)back.data(),
 	};
 
 	if (threadIndex < 0 && threadSystem)
@@ -933,7 +929,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		}
 
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
+		pixels.resize(sizeof(f32x4) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		free(pixelData);
 	}
@@ -945,7 +941,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		if (!pixelData)
 			throw GardenError("Invalid HDR image data.");
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
+		pixels.resize(sizeof(f32x4) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
 	}
@@ -981,9 +977,9 @@ static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::
 
 			if (format == Image::Format::SfloatR32G32B32A32)
 			{
-				auto pixels = (float4*)pixelArrays[i].data();
+				auto pixels = (f32x4*)pixelArrays[i].data();
 				for (uint32 j = 0; j < count; j++)
-					pixels[j] = float4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkerboard pattern?
+					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); // TODO: or maybe use checkerboard pattern?
 			}
 			else
 			{
@@ -1161,7 +1157,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			ImageQueueItem item =
 			{
 				ImageExt::create(type, format, data->bind, data->strategy, 
-					uint3(imageSize, 1), mipCount, layerCount, data->version),
+					u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
 					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0),
 				std::move(paths),
@@ -1196,7 +1192,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
 
 		auto imageInstance = ImageExt::create(type, format, bind, strategy,
-			uint3(imageSize, 1), mipCount, layerCount, 0);
+			u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 

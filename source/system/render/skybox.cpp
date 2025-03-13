@@ -129,13 +129,13 @@ void SkyboxRenderSystem::metaHdrRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>(0);
-	pushConstants->viewProj = cameraConstants.viewProj;
+	pushConstants->viewProj = (float4x4)cameraConstants.viewProj;
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4(0.0f), 0);
+		pipelineView->setViewportScissorAsync(f32x4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
 		pipelineView->pushConstantsAsync(0);
 		pipelineView->drawAsync(0, {}, primitive::cubeVertices.size());

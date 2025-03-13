@@ -60,7 +60,7 @@ struct PerspectiveProjection final
 	float nearPlane = defaultHmdDepth;
 private:
 	float _alignment0 = 0.0f;
-	float2 _alignment1 = float2(0.0f);
+	float2 _alignment1 = float2::zero;
 };
 /**
  * @brief Orthographic camera projection properties.
@@ -106,7 +106,7 @@ public:
 	 * @brief Calculates camera projection matrix.
 	 * @details See the @ref calcPerspProjInfRevZ().
 	 */
-	float4x4 calcProjection() const noexcept;
+	f32x4x4 calcProjection() const noexcept;
 	/**
 	 * @brief Returns camera projection matrix near plane.
 	 * @details Handles projection type inside.

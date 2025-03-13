@@ -64,15 +64,15 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 }
 
 //**********************************************************************************************************************
-void ComputePipeline::dispatch(const uint3& count, bool isGlobalCount)
+void ComputePipeline::dispatch(u32x4 count, bool isGlobalCount)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT((count > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(count > u32x4::zero));
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
 
 	DispatchCommand command;
-	command.groupCount = isGlobalCount ? (uint3)ceil((float3)count / (float3)localSize) : count;
+	command.groupCount = (uint3)(isGlobalCount ? (u32x4)ceil((f32x4)count / (f32x4)localSize) : count);
 	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }

@@ -46,12 +46,12 @@ public:
 	{
 		uint8 _alignment0 = 0;
 		uint16 _alignment1 = 0;
-		uint3 localSize = uint3(0);
+		uint3 localSize = uint3::zero;
 		vector<uint8> code;
 	};
 private:
-	uint8 _alignment = 0;
-	uint3 localSize = uint3(0);
+	uint16 _alignment = 0;
+	uint3 localSize = uint3::zero;
 
 	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
 		Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
@@ -72,16 +72,16 @@ public:
 	 * @brief Returns shader local work group size.
 	 * @details It is also available in the shader: gl.workGroupSize
 	 */
-	const uint3& getLocalSize() const noexcept { return localSize; }
+	u32x4 getLocalSize() const noexcept { return (u32x4)localSize; }
 
 	//******************************************************************************************************************
 	// Render commands
 	//******************************************************************************************************************
 
 	/**
-	 * @brief Executes compute shader with specified work group size.
+	 * @brief Executes compute shader with specified 3D work group size.
 	 * 
-	 * @param[in] count work group size
+	 * @param count work group size
 	 * @param isGlobalCount is work group size in global space
 	 * 
 	 * @details
@@ -93,7 +93,15 @@ public:
      *     gl.localInvocationID.y * gl.workGroupSize.x + gl.localInvocationID.x;
 	 * gl.globalInvocationID = gl.workGroupID * gl.workGroupSize + gl.localInvocationID;
 	 */
-	void dispatch(const uint3& count, bool isGlobalCount = true);
+	void dispatch(u32x4 count, bool isGlobalCount = true);
+	/**
+	 * @brief Executes compute shader with specified 2D work group size.
+	 * @details See the @ref dispatch().
+	 * 
+	 * @param count work group size
+	 * @param isGlobalCount is work group size in global space
+	 */
+	void dispatch(uint2 count, bool isGlobalCount = true) { dispatch(u32x4(count.x, count.y, 1), isGlobalCount); }
 };
 
 /***********************************************************************************************************************
@@ -106,7 +114,7 @@ public:
 	/**
 	 * @brief Returns shader local work group size.
 	 * @warning In most cases you should use @ref ComputePipeline functions.
-	 * @param[in] buffer target buffer instance
+	 * @param[in] pipeline target compute pipeline instance
 	 */
 	static uint3& getLocalSize(ComputePipeline& pipeline) noexcept { return pipeline.localSize; }
 

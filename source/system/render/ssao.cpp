@@ -28,15 +28,15 @@ static ID<Buffer> createSampleBuffer(uint32 sampleCount)
 {
 	uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
 	default_random_engine generator;
-	vector<float4> ssaoKernel(sampleCount);
+	vector<f32x4> ssaoKernel(sampleCount);
 
 	for (uint32 i = 0; i < sampleCount; i++)
 	{
-		auto sample = normalize(float3(randomFloats(generator) * 2.0f - 1.0f,
+		auto sample = normalize3(f32x4(randomFloats(generator) * 2.0f - 1.0f,
 			randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator) * 2.0f - 1.0f));
 		auto scale = (float)i / sampleCount;
 		scale = lerp(0.1f, 1.0f, scale * scale);
-		ssaoKernel[i] = float4(sample * scale * randomFloats(generator), 0.0f);
+		ssaoKernel[i] = f32x4(sample * scale * randomFloats(generator), 0.0f);
 	}
 
 	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::Uniform | Buffer::Bind::TransferDst, 
@@ -48,13 +48,13 @@ static ID<Image> createNoiseTexture()
 {
 	uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
 	default_random_engine generator;
-	vector<float4> ssaoNoise(NOISE_SIZE * NOISE_SIZE);
+	vector<f32x4> ssaoNoise(NOISE_SIZE * NOISE_SIZE);
 
 	for (uint32 i = 0; i < NOISE_SIZE * NOISE_SIZE; i++)
 	{
-		auto noise = float3(randomFloats(generator) * 2.0f - 1.0f,
+		auto noise = f32x4(randomFloats(generator) * 2.0f - 1.0f,
 			randomFloats(generator) * 2.0f - 1.0f, 0.0f);
-		ssaoNoise[i] = float4(noise, 0.0f);
+		ssaoNoise[i] = f32x4(noise, 0.0f);
 	}
 
 	auto texture = GraphicsSystem::Instance::get()->createImage(Image::Format::SfloatR16G16B16A16,
@@ -186,14 +186,14 @@ void SsaoRenderSystem::aoRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.ssao");
 	}
 
-	constexpr auto uvToNDC = float4x4
+	static const auto uvToNDC = f32x4x4
 	(
 		2.0f, 0.0f, 0.0f, -1.0f,
 		0.0f, 2.0f, 0.0f, -1.0f,
 		0.0f, 0.0f, 1.0f,  0.0f,
 		0.0f, 0.0f, 0.0f,  1.0f
 	);
-	constexpr auto ndcToUV = float4x4
+	static const auto ndcToUV = f32x4x4
 	(
 		0.5f, 0.0f, 0.0f, 0.5f,
 		0.0f, 0.5f, 0.0f, 0.5f,
@@ -203,11 +203,11 @@ void SsaoRenderSystem::aoRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->uvToView = cameraConstants.inverseProj * uvToNDC;
+	pushConstants->uvToView = (float4x4)(cameraConstants.inverseProj * uvToNDC);
 	pushConstants->uvToView[0][3] = radius;
 	pushConstants->uvToView[1][3] = -bias;
 	pushConstants->uvToView[3][3] = intensity;
-	pushConstants->viewToUv = ndcToUV * cameraConstants.projection;
+	pushConstants->viewToUv = (float4x4)(ndcToUV * cameraConstants.projection);
 
 	SET_GPU_DEBUG_LABEL("SSAO", Color::transparent);
 	pipelineView->bind();

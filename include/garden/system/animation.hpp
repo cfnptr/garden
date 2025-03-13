@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Object animations system.
+ * @brief Entity animations system.
  */
 
 // TODO: add bezier curves support and also lerped transitions between different animations.
@@ -29,7 +29,7 @@ namespace garden
 class AnimationSystem;
 
 /***********************************************************************************************************************
- * @brief Object animations container.
+ * @brief Entity animations container.
  */
 struct AnimationComponent final : public Component
 {
@@ -89,7 +89,7 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Handles object properties animation.
+ * @brief Handles entity properties animation.
  */
 class AnimationSystem final : public ComponentSystem<AnimationComponent>, 
 	public Singleton<AnimationSystem>, public ISerializable

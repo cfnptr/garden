@@ -36,15 +36,15 @@ namespace garden::graphics
 {
 	struct LinePC
 	{
-		float4x4 mvp;
-		float4 color;
-		float4 startPoint;
-		float4 endPoint;
+		f32x4x4 mvp;
+		f32x4 color;
+		f32x4 startPoint;
+		f32x4 endPoint;
 	};
 	struct AabbPC
 	{
-		float4x4 mvp;
-		float4 color;
+		f32x4x4 mvp;
+		f32x4 color;
 	};
 }
 
@@ -205,12 +205,12 @@ void GraphicsSystem::preDeinit()
 }
 
 //**********************************************************************************************************************
-static float4x4 calcView(const TransformComponent* transform)
+static f32x4x4 calcView(const TransformComponent* transform)
 {
-	return rotate(normalize(transform->rotation)) * translate(
-		scale(transform->scale), -transform->position);
+	return rotate(normalize(transform->getRotation())) * translate(
+		scale(transform->getScale()), -transform->getPosition());
 }
-static float4x4 calcRelativeView(const TransformComponent* transform)
+static f32x4x4 calcRelativeView(const TransformComponent* transform)
 {
 	auto view = calcView(transform);
 	auto nextParent = transform->getParent();
@@ -219,8 +219,8 @@ static float4x4 calcRelativeView(const TransformComponent* transform)
 	while (nextParent)
 	{
 		auto nextTransformView = transformSystem->getComponent(nextParent);
-		auto parentModel = ::calcModel(nextTransformView->position,
-			nextTransformView->rotation, nextTransformView->scale);
+		auto parentModel = calcModel(nextTransformView->getPosition(),
+			nextTransformView->getRotation(), nextTransformView->getScale());
 		view = parentModel * view;
 		nextParent = nextTransformView->getParent();
 	}
@@ -267,13 +267,14 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	if (transformView)
 	{
 		cameraConstants.view = calcRelativeView(*transformView);
-		setTranslation(cameraConstants.view, float3(0.0f));
-		cameraConstants.cameraPos = float4(transformView->position, 0.0f);
+		setTranslation(cameraConstants.view, f32x4::zero);
+		cameraConstants.cameraPos = transformView->getPosition();
+		cameraConstants.cameraPos.fixW();
 	}
 	else
 	{
-		cameraConstants.view = float4x4::identity;
-		cameraConstants.cameraPos = 0.0f;
+		cameraConstants.view = f32x4x4::identity;
+		cameraConstants.cameraPos = f32x4::zero;
 	}
 
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
@@ -284,38 +285,34 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	}
 	else
 	{
-		cameraConstants.projection = float4x4::identity;
+		cameraConstants.projection = f32x4x4::identity;
 		cameraConstants.nearPlane = defaultHmdDepth;
 	}
 
 	cameraConstants.viewProj = cameraConstants.projection * cameraConstants.view;
-	cameraConstants.inverseView = inverse(cameraConstants.view);
-	cameraConstants.inverseProj = inverse(cameraConstants.projection);
-	cameraConstants.invViewProj = inverse(cameraConstants.viewProj);
-	auto viewDir = cameraConstants.inverseView * float4(float3::front, 1.0f);
-	cameraConstants.viewDir = float4(normalize((float3)viewDir), 0.0f);
+	cameraConstants.inverseView = inverse4x4(cameraConstants.view);
+	cameraConstants.inverseProj = inverse4x4(cameraConstants.projection);
+	cameraConstants.invViewProj = inverse4x4(cameraConstants.viewProj);
+	cameraConstants.viewDir = normalize3(cameraConstants.inverseView * f32x4(f32x4::front, 1.0f));
+	cameraConstants.viewDir.fixW();
 
 	if (directionalLight)
 	{
 		auto lightTransformView = manager->tryGet<TransformComponent>(directionalLight);
 		if (lightTransformView)
-		{
-			auto lightDir = lightTransformView->rotation * float3::front;
-			cameraConstants.lightDir = float4(normalize(lightDir), 0.0f);
-		}
+			cameraConstants.lightDir = normalize3(lightTransformView->getRotation() * f32x4::front);
 		else
-		{
-			cameraConstants.lightDir = float4(float3::bottom, 0.0f);
-		}
+			cameraConstants.lightDir = f32x4::bottom;
 	}
 	else
 	{
-		cameraConstants.lightDir = float4(float3::bottom, 0.0f);
+		cameraConstants.lightDir = f32x4::bottom;
 	}
+	cameraConstants.lightDir.fixW();
 
 	cameraConstants.frameSize = scaledFramebufferSize;
 	cameraConstants.invFrameSize = 1.0f / (float2)scaledFramebufferSize;
-	cameraConstants.invFrameSize2 = cameraConstants.invFrameSize * 2.0f;
+	cameraConstants.invFrameSizeSq = cameraConstants.invFrameSize * 2.0f;
 }
 
 static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
@@ -499,7 +496,7 @@ uint2 GraphicsSystem::getFramebufferSize() const noexcept
 uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
 {
 	auto framebufferSize = GraphicsAPI::get()->swapchain->getFramebufferSize();
-	return max((uint2)(float2(framebufferSize) * renderScale), uint2(1));
+	return max((uint2)(float2(framebufferSize) * renderScale), uint2::one);
 }
 
 ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
@@ -557,7 +554,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 	{
 		const Color data[1] = { Color::transparent };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -569,7 +566,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 	{
 		const Color data[1] = { Color::white };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -581,7 +578,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 	{
 		const Color data[1] = { Color::green };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -593,7 +590,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 	{
 		const Color data[1] = { Color(127, 127, 255, 255) };
 		auto texture = createImage(Image::Format::UnormR8G8B8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2(1));
+			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -699,11 +696,11 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
 
 //**********************************************************************************************************************
 ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Bind bind,
-	const Image::Mips& data, const uint3& size, Image::Strategy strategy, Image::Format dataFormat)
+	const Image::Mips& data, u32x4 size, Image::Strategy strategy, Image::Format dataFormat)
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
 	GARDEN_ASSERT(!data.empty());
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
 	auto mipCount = (uint8)data.size();
 	auto layerCount = (uint32)data[0].size();
@@ -711,13 +708,13 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	#if GARDEN_DEBUG
 	if (type == Image::Type::Texture1D)
 	{
-		GARDEN_ASSERT(size.y == 1);
-		GARDEN_ASSERT(size.z == 1);
+		GARDEN_ASSERT(size.getY() == 1);
+		GARDEN_ASSERT(size.getZ() == 1);
 		GARDEN_ASSERT(layerCount == 1);
 	}
 	else if (type == Image::Type::Texture2D)
 	{
-		GARDEN_ASSERT(size.z == 1);
+		GARDEN_ASSERT(size.getZ() == 1);
 		GARDEN_ASSERT(layerCount == 1);
 	}
 	else if (type == Image::Type::Texture3D)
@@ -726,19 +723,19 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	}
 	else if (type == Image::Type::Texture1DArray)
 	{
-		GARDEN_ASSERT(size.y == 1);
-		GARDEN_ASSERT(size.z == 1);
+		GARDEN_ASSERT(size.getY() == 1);
+		GARDEN_ASSERT(size.getZ() == 1);
 		GARDEN_ASSERT(layerCount >= 1);
 	}
 	else if (type == Image::Type::Texture2DArray)
 	{
-		GARDEN_ASSERT(size.z == 1);
+		GARDEN_ASSERT(size.getZ() == 1);
 		GARDEN_ASSERT(layerCount >= 1);
 	}
 	else if (type == Image::Type::Cubemap)
 	{
-		GARDEN_ASSERT(size.x == size.y);
-		GARDEN_ASSERT(size.z == 1);
+		GARDEN_ASSERT(size.getX() == size.getY());
+		GARDEN_ASSERT(size.getZ() == 1);
 		GARDEN_ASSERT(layerCount == 6);
 	}
 	else abort();
@@ -755,7 +752,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];
-		auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
+		auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY() * mipSize.getZ();
 
 		for (auto layerData : mipData)
 		{
@@ -765,7 +762,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			stagingCount++;
 		}
 
-		mipSize = max(mipSize / 2u, uint3(1));
+		mipSize = max(mipSize / 2u, u32x4::one);
 	}
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -801,7 +798,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
 			const auto& mipData = data[mip];
-			auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
+			auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY() * mipSize.getZ();
 
 			for (uint32 layer = 0; layer < (uint32)mipData.size(); layer++)
 			{
@@ -811,7 +808,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 				Image::CopyBufferRegion region;
 				region.bufferOffset = stagingOffset;
-				region.imageExtent = mipSize;
+				region.imageExtent = (uint3)mipSize;
 				region.imageBaseLayer = layer;
 				region.imageLayerCount = 1;
 				region.imageMipLevel = mip;
@@ -821,7 +818,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				stagingOffset += binarySize;
 			}
 
-			mipSize = max(mipSize / 2u, uint3(1));
+			mipSize = max(mipSize / 2u, u32x4::one);
 		}
 
 		GARDEN_ASSERT(stagingCount == copyIndex);
@@ -847,13 +844,13 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			for (uint8 i = 0; i < mipCount; i++)
 			{
 				Image::BlitRegion region;
-				region.srcExtent = mipSize;
-				region.dstExtent = mipSize;
+				region.srcExtent = (uint3)mipSize;
+				region.dstExtent = (uint3)mipSize;
 				region.layerCount = layerCount;
 				region.srcMipLevel = i;
 				region.dstMipLevel = i;
 				blitRegions[i] = region;
-				mipSize = max(mipSize / 2u, uint3(1));
+				mipSize = max(mipSize / 2u, u32x4::one);
 			}
 
 			Image::blit(targetImage, image, blitRegions);
@@ -943,7 +940,7 @@ View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	vector<Framebuffer::OutputAttachment>&& colorAttachments, Framebuffer::OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -975,7 +972,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 }
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(!subpasses.empty());
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -1138,8 +1135,7 @@ void GraphicsSystem::stopRecording()
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
-void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
-	const float3& endPoint, const float4& color)
+void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoint, f32x4 color)
 {
 	if (!linePipeline)
 	{
@@ -1151,15 +1147,15 @@ void GraphicsSystem::drawLine(const float4x4& mvp, const float3& startPoint,
 	auto pushConstants = pipelineView->getPushConstants<LinePC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;
-	pushConstants->startPoint = float4(startPoint, 1.0f);
-	pushConstants->endPoint = float4(endPoint, 1.0f);
+	pushConstants->startPoint = f32x4(startPoint, 1.0f);
+	pushConstants->endPoint = f32x4(endPoint, 1.0f);
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->pushConstants();
 	pipelineView->draw({}, 2);
 }
-void GraphicsSystem::drawAabb(const float4x4& mvp, const float4& color)
+void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 {
 	if (!aabbPipeline)
 	{

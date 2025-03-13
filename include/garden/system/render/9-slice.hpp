@@ -31,8 +31,8 @@ namespace garden
  */
 struct NineSliceRenderComponent : public SpriteRenderComponent
 {
-	float2 textureBorder = float2(0.0f);
-	float2 windowBorder = float2(0.0f);
+	float2 textureBorder = float2::zero;
+	float2 windowBorder = float2::zero;
 };
 
 /**
@@ -40,8 +40,8 @@ struct NineSliceRenderComponent : public SpriteRenderComponent
  */
 struct NineSliceAnimationFrame : public SpriteAnimationFrame
 {
-	float2 textureBorder = float2(0.0f);
-	float2 windowBorder = float2(0.0f);
+	float2 textureBorder = float2::zero;
+	float2 windowBorder = float2::zero;
 	bool animateTextureBorder = false;
 	bool animateWindowBorder = false;
 };
@@ -54,7 +54,7 @@ class NineSliceRenderSystem : public SpriteRenderSystem
 public:
 	struct NineSliceInstanceData : public InstanceData
 	{
-		float4 texWinBorder = float4(0.0f);
+		f32x4 texWinBorder = f32x4::zero;
 	};
 protected:
 	NineSliceRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
@@ -64,7 +64,7 @@ protected:
 
 	uint64 getInstanceDataSize() override;
 	void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex) override;
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex) override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;

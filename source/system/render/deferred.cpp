@@ -271,9 +271,9 @@ void DeferredRenderSystem::render()
 	{
 		SET_CPU_ZONE_SCOPED("Deferred Render Pass");
 		SET_GPU_DEBUG_LABEL("Deferred Pass", Color::transparent);
-		constexpr float4 clearColors[gBufferCount] = 
-		{ float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f) };
-		framebufferView->beginRenderPass(clearColors, gBufferCount, 0.0f, 0x00, int4(0), asyncRecording);
+		const f32x4 clearColors[gBufferCount] = 
+		{ f32x4::zero, f32x4::zero, f32x4::zero, f32x4::zero, f32x4::zero };
+		framebufferView->beginRenderPass(clearColors, gBufferCount, 0.0f, 0x00, i32x4::zero, asyncRecording);
 		manager->runEvent("DeferredRender");
 		framebufferView->endRenderPass();
 	}
@@ -288,7 +288,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("HDR Render Pass");
 		SET_GPU_DEBUG_LABEL("HDR Pass", Color::transparent);
 		framebufferView = graphicsSystem->get(hdrFramebuffer);
-		framebufferView->beginRenderPass(float4(0.0f));
+		framebufferView->beginRenderPass(f32x4::zero);
 		manager->runEvent("HdrRender");
 		framebufferView->endRenderPass();
 	}
@@ -303,7 +303,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("Meta HDR Render Pass");
 		SET_GPU_DEBUG_LABEL("Meta HDR Pass", Color::transparent);
 		framebufferView = graphicsSystem->get(metaHdrFramebuffer);
-		framebufferView->beginRenderPass(float4(0.0f), 0.0f, 0, int4(0), asyncRecording);
+		framebufferView->beginRenderPass(f32x4::zero, 0.0f, 0, i32x4::zero, asyncRecording);
 		manager->runEvent("MetaHdrRender");
 		framebufferView->endRenderPass();
 	}
@@ -318,7 +318,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("LDR Render Pass");
 		SET_GPU_DEBUG_LABEL("LDR Pass", Color::transparent);
 		framebufferView = graphicsSystem->get(ldrFramebuffer);
-		framebufferView->beginRenderPass(float4(0.0f));
+		framebufferView->beginRenderPass(f32x4::zero);
 		manager->runEvent("LdrRender");
 		framebufferView->endRenderPass();
 	}

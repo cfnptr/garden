@@ -51,7 +51,7 @@ namespace garden::graphics
 	struct ComputeGslValues final : public GslValues
 	{
 		uint8 _alignment = 0;
-		uint3 localSize = uint3(0);
+		uint3 localSize = uint3::zero;
 		// should be aligned.
 	};
 }
@@ -2100,7 +2100,7 @@ bool Compiler::compileComputeShader(const fs::path& inputPath,
 			fileData.outputFileStream << "\n";
 	}
 
-	if (data.localSize == 0u)
+	if (data.localSize == uint3::zero)
 		throw CompileError("undeclared work group localSize");
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);

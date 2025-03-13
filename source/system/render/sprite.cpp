@@ -111,7 +111,7 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 
 //**********************************************************************************************************************
 void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
 	if (!spriteRenderView->descriptorSet)
@@ -137,14 +137,15 @@ uint64 SpriteRenderSystem::getInstanceDataSize()
 	return (uint64)sizeof(InstanceData);
 }
 void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
-	instanceData->mvp = viewProj * model;
-	instanceData->colorFactor = spriteRenderView->colorFactor;
-	instanceData->sizeOffset = float4(spriteRenderView->uvSize, spriteRenderView->uvOffset);
+	instanceData->mvp = (float4x4)(viewProj * model);
+	instanceData->colorFactor = (float4)spriteRenderView->colorFactor;
+	auto uvSize = spriteRenderView->uvSize, uvOffset = spriteRenderView->uvOffset;
+	instanceData->sizeOffset = float4(uvSize.x, uvSize.y, uvOffset.x, uvOffset.y);
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	pushConstants->instanceIndex = drawIndex;
 	pushConstants->colorMapLayer = spriteRenderView->colorMapLayer;
@@ -198,11 +199,11 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 		serializer.write("isEnabled", false);
 	if (spriteRenderView->colorMapLayer != 0.0f)
 		serializer.write("colorMapLayer", spriteRenderView->colorMapLayer);
-	if (spriteRenderView->colorFactor != float4(1.0f))
-		serializer.write("colorFactor", spriteRenderView->colorFactor);
-	if (spriteRenderView->uvSize != float2(1.0f))
+	if (spriteRenderView->colorFactor != f32x4::one)
+		serializer.write("colorFactor", (float4)spriteRenderView->colorFactor);
+	if (spriteRenderView->uvSize != float2::one)
 		serializer.write("uvSize", spriteRenderView->uvSize);
-	if (spriteRenderView->uvOffset != float2(0.0f))
+	if (spriteRenderView->uvOffset != float2::zero)
 		serializer.write("uvOffset", spriteRenderView->uvOffset);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -248,7 +249,7 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 	if (spriteFrameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)spriteFrameView->isEnabled);
 	if (spriteFrameView->animateColorFactor)
-		serializer.write("colorFactor", spriteFrameView->colorFactor);
+		serializer.write("colorFactor", (float4)spriteFrameView->colorFactor);
 	if (spriteFrameView->animateUvSize)
 		serializer.write("uvSize", spriteFrameView->uvSize);
 	if (spriteFrameView->animateUvOffset)

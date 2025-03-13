@@ -21,7 +21,6 @@
 #include "garden/defines.hpp"
 
 #if GARDEN_OS_WINDOWS && !GARDEN_DEBUG
-#define NOMINMAX
 #include <windows.h>
 
 /**

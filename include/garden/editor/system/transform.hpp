@@ -21,8 +21,8 @@ namespace garden
 
 class TransformEditorSystem final : public System, public Singleton<TransformEditorSystem>
 {
-	float3 oldEulerAngles = float3(0.0f);
-	float3 newEulerAngles = float3(0.0f);
+	f32x4 oldEulerAngles = f32x4::zero;
+	f32x4 newEulerAngles = f32x4::zero;
 	quat oldRotation = quat::identity;
 	ID<Entity> selectedEntity = {};
 

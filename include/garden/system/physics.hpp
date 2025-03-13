@@ -228,7 +228,7 @@ public:
 	/**
 	 * @brief Returns shape center of mass.
 	 */
-	float3 getCenterOfMass() const;
+	f32x4 getCenterOfMass() const;
 	/**
 	 * @brief Returns shape volume. (m^3)
 	 * @note Compound shapes volume may be incorrect since child shapes can overlap which is not accounted for.
@@ -237,10 +237,10 @@ public:
 	/**
 	 * @brief Returns shape mass properties.
 	 * 
-	 * @param[in] mass a mass of the shape (kg)
-	 * @param[in] inertia an inertia tensor of the shape (kg / m^2)
+	 * @param[out] mass a mass of the shape (kg)
+	 * @param[out] inertia an inertia tensor of the shape (kg / m^2)
 	 */
-	void getMassProperties(float& mass, float4x4& inertia) const;
+	void getMassProperties(float& mass, f32x4x4& inertia) const;
 	
 	/**
 	 * @brief Returns shape density. (kg / m^3)
@@ -251,7 +251,7 @@ public:
 	/**
 	 * @brief Returns box shape half extent.
 	 */
-	float3 getBoxHalfExtent() const;
+	f32x4 getBoxHalfExtent() const;
 	/**
 	 * @brief Returns box shape convex radius.
 	 */
@@ -264,7 +264,7 @@ public:
 	/**
 	 * @brief Returns rotated/translated shape position.
 	 */
-	float3 getPosition() const;
+	f32x4 getPosition() const;
 	/**
 	 * @brief Returns rotated/translated shape rotation.
 	 */
@@ -272,7 +272,7 @@ public:
 	/**
 	 * @brief Returns rotated/translated shape position and rotation.
 	 */
-	void getPosAndRot(float3& position, quat& rotation) const;
+	void getPosAndRot(f32x4& position, quat& rotation) const;
 
 	/**
 	 * @brief Returns current shape reference count.
@@ -303,8 +303,8 @@ struct ShapeHit
  */
 struct RayCastHit : public ShapeHit
 {
-	float3 surfacePoint = float3(0.0f);  /**< Hit shape surface point in the world space. */
-	float3 surfaceNormal = float3(0.0f); /**< Hit shape surface normal vector. */
+	f32x4 surfacePoint = f32x4::zero;  /**< Hit shape surface point in the world space. */
+	f32x4 surfaceNormal = f32x4::zero; /**< Hit shape surface normal vector. */
 };
 
 } // namespace garden::physics
@@ -331,11 +331,11 @@ public:
 	};
 private:
 	ID<Shape> shape = {};
-	void* instance = nullptr;
-	vector<Constraint> constraints;
-	uint64 uid = 0;
-	float3 lastPosition = float3(0.0f);
+	f32x4 lastPosition = f32x4::zero;
 	quat lastRotation = quat::identity;
+	vector<Constraint> constraints;
+	void* instance = nullptr;
+	uint64 uid = 0;
 	bool inSimulation = true;
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
@@ -379,11 +379,11 @@ public:
 	/**
 	 * @brief Notifies all physics systems that a shape has changed. (Usable for custom shapes)
 	 * 
-	 * @param[in] previousCenterOfMass center of mass of the shape before the alterations
+	 * @param previousCenterOfMass center of mass of the shape before the alterations
 	 * @param updateMassProperties are mass and inertia tensor should be recalculated
 	 * @param activate is rigidbody should be activated
 	 */
-	void notifyShapeChanged(const float3& previousCenterOfMass, bool updateMassProperties, bool activate);
+	void notifyShapeChanged(f32x4 previousCenterOfMass, bool updateMassProperties, bool activate);
 
 	/**
 	 * @brief Returns true if rigidbody should be used in the physics simulation system.
@@ -489,14 +489,14 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Returns rigidbody position in the physics simulation world.
 	 */
-	float3 getPosition() const;
+	f32x4 getPosition() const;
 	/**
 	 * @brief Sets rigidbody position in the physics simulation world.
 	 * 
-	 * @param[in] position target rigidbody position
+	 * @param position target rigidbody position
 	 * @param activate is rigidbody should be activated
 	 */
-	void setPosition(const float3& position, bool activate = true);
+	void setPosition(f32x4 position, bool activate = true);
 
 	/**
 	 * @brief Returns rigidbody rotation in the physics simulation world.
@@ -505,10 +505,10 @@ public:
 	/**
 	 * @brief Sets rigidbody rotation in the physics simulation world.
 	 *
-	 * @param[in] rotation target rigidbody rotation
+	 * @param rotation target rigidbody rotation
 	 * @param activate is rigidbody should be activated
 	 */
-	void setRotation(const quat& rotation, bool activate = true);
+	void setRotation(quat rotation, bool activate = true);
 
 	/**
 	 * @brief Returns rigidbody position and rotation in the physics simulation world.
@@ -516,64 +516,64 @@ public:
 	 * @param[out] position rigidbody position
 	 * @param[out] rotation rigidbody rotation
 	 */
-	void getPosAndRot(float3& position, quat& rotation) const;
+	void getPosAndRot(f32x4& position, quat& rotation) const;
 	/**
 	 * @brief Sets rigidbody position and rotation in the physics simulation world.
 	 *
-	 * @param[in] position target rigidbody position
-	 * @param[in] rotation target rigidbody rotation
+	 * @param position target rigidbody position
+	 * @param rotation target rigidbody rotation
 	 * @param activate is rigidbody should be activated
 	 */
-	void setPosAndRot(const float3& position, const quat& rotation, bool activate = true);
+	void setPosAndRot(f32x4 position, quat rotation, bool activate = true);
 	/**
 	 * @brief Are rigidbody position and rotation differ from specified values.
 	 * @note It also checks if values are far enough to count it as changed.
 	 *
-	 * @param[in] position target rigidbody position
-	 * @param[in] rotation target rigidbody rotation
+	 * @param position target rigidbody position
+	 * @param rotation target rigidbody rotation
 	 */
-	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
+	bool isPosAndRotChanged(f32x4 position, quat rotation) const;
 
 	/*******************************************************************************************************************
 	 * @brief Returns world space linear velocity of the center of mass. (m/s)
 	 */
-	float3 getLinearVelocity() const;
+	f32x4 getLinearVelocity() const;
 	/**
 	 * @brief Sets world space linear velocity of the center of mass. (m/s)
-	 * @param[in] velocity target linear velocity
+	 * @param velocity target linear velocity
 	 */
-	void setLinearVelocity(const float3& velocity);
+	void setLinearVelocity(f32x4 velocity);
 
 	/**
 	 * @brief Returns world space angular velocity of the center of mass. (rad/s)
 	 */
-	float3 getAngularVelocity() const;
+	f32x4 getAngularVelocity() const;
 	/**
 	 * @brief Sets world space angular velocity of the center of mass. (rad/s)
-	 * @param[in] velocity target angular velocity
+	 * @param velocity target angular velocity
 	 */
-	void setAngularVelocity(const float3& velocity);
+	void setAngularVelocity(f32x4 velocity);
 
 	/**
 	 * @brief Returns velocity of point (in world space, e.g. on the surface of the body) of the body. (m/s)
-	 * @param[in] point target velocity point
+	 * @param point target velocity point
 	 */
-	float3 getPointVelocity(const float3& point) const;
+	f32x4 getPointVelocity(f32x4 point) const;
 	/**
 	 * @brief Returns velocity of point (in center of mass space, e.g. on the surface of the body) of the body. (m/s)
-	 * @param[in] point target velocity point
+	 * @param point target velocity point
 	 */
-	float3 getPointVelocityCOM(const float3& point) const;
+	f32x4 getPointVelocityCOM(f32x4 point) const;
 
 	/**
 	 * @brief Set velocity of rigidbody such that it will be positioned at position/rotation in deltaTime.
 	 * @note It will activate rigidbody if needed.
 	 *
-	 * @param[in] position target rigidbody position
-	 * @param[in] rotation target rigidbody rotation
+	 * @param position target rigidbody position
+	 * @param rotation target rigidbody rotation
 	 * @param deltaTime target delta time in seconds
 	 */
-	void moveKinematic(const float3& position, const quat& rotation, float deltaTime);
+	void moveKinematic(f32x4 position, quat rotation, float deltaTime);
 
 	/**
 	 * @brief Sets rigidbody world space position and rotation from a transform.
@@ -586,11 +586,11 @@ public:
 	 *
 	 * @param otherBody target rigidbody to attach to or null (null = world)
 	 * @param type bodies connection type
-	 * @param[in] thisBodyPoint bodies connection type
-	 * @param[in] otherBodyPoint bodies connection type
+	 * @param thisBodyPoint bodies connection type
+	 * @param otherBodyPoint bodies connection type
 	 */
 	void createConstraint(ID<Entity> otherBody, ConstraintType type, 
-		const float3& thisBodyPoint = float3(FLT_MAX), const float3& otherBodyPoint = float3(FLT_MAX));
+		f32x4 thisBodyPoint = f32x4::max, f32x4 otherBodyPoint = f32x4::max);
 	/**
 	 * @brief Destroys constraint between two rigidbodies.
 	 * @param index target constraint index in the array
@@ -780,22 +780,22 @@ public:
 	/**
 	 * @brief Returns global gravity vector.
 	 */
-	float3 getGravity() const noexcept;
+	f32x4 getGravity() const noexcept;
 	/**
 	 * @brief Sets global gravity vector.
-	 * @param[in] gravity target gravity vector
+	 * @param gravity target gravity vector
 	 */
-	void setGravity(const float3& gravity) const noexcept;
+	void setGravity(f32x4 gravity) const noexcept;
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new empty shape instance.
 	 */
-	ID<Shape> createEmptyShape(const float3& centerOfMass = float3(0.0f));
+	ID<Shape> createEmptyShape(f32x4 centerOfMass = f32x4::zero);
 	/**
 	 * @brief Creates a new shared box shape instance.
 	 * @details See the @ref createEmptyShape().
 	 */
-	ID<Shape> createSharedEmptyShape(const float3& centerOfMass = float3(0.0f));
+	ID<Shape> createSharedEmptyShape(f32x4 centerOfMass = f32x4::zero);
 
 	/**
 	 * @brief Creates a new box shape instance.
@@ -804,20 +804,20 @@ public:
 	 * Internally the convex radius will be subtracted from the half 
 	 * extent so the total box will not grow with the convex radius.
 	 * 
-	 * @param[in] halfExtent half edge length
+	 * @param halfExtent half edge length
 	 * @param convexRadius box convex radius
 	 * @param density box density (kg / m^3)
 	 */
-	ID<Shape> createBoxShape(const float3& halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
+	ID<Shape> createBoxShape(f32x4 halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
 	/**
 	 * @brief Creates a new shared box shape instance.
 	 * @details See the @ref createBoxShape().
 	 *
-	 * @param[in] halfExtent half edge length
+	 * @param halfExtent half edge length
 	 * @param convexRadius box convex radius
 	 * @param density box density (kg / m^3)
 	 */
-	ID<Shape> createSharedBoxShape(const float3& halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
+	ID<Shape> createSharedBoxShape(f32x4 halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
 
 	/**
 	 * @brief Creates a new rotated/translated shape instance.
@@ -825,22 +825,21 @@ public:
 	 * @note It destroys inner shape if no more refs left.
 	 *
 	 * @param innerShape target inner shape instance
-	 * @param[in] position shape translation
-	 * @param[in] rotation shape rotation
+	 * @param position shape translation
+	 * @param rotation shape rotation
 	 */
-	ID<Shape> createRotTransShape(ID<Shape> innerShape,
-		const float3& position, const quat& rotation = quat::identity);
+	ID<Shape> createRotTransShape(ID<Shape> innerShape, f32x4 position, quat rotation = quat::identity);
 	/**
 	 * @brief Creates a new shared rotated/translated shape instance.
 	 * @details See the @ref createRotTransShape().
 	 * @note It destroys inner shape if no more refs left.
 	 *
-	 * @param[in] halfExtent half edge length
-	 * @param[in] position shape translation
-	 * @param[in] rotation shape rotation
+	 * @param innerShape target inner shape instance
+	 * @param halfExtent half edge length
+	 * @param position shape translation
+	 * @param rotation shape rotation
 	 */
-	ID<Shape> createSharedRotTransShape(ID<Shape> innerShape, 
-		const float3& position, const quat& rotation = quat::identity);
+	ID<Shape> createSharedRotTransShape(ID<Shape> innerShape, f32x4 position, quat rotation = quat::identity);
 
 	/**
 	 * @brief Creates a new custom shape instance.
@@ -903,20 +902,20 @@ public:
 	 * @brief Checks if point is inside any rigidbody shape.
 	 * @return True if found a rigidbody shape hit.
 	 * 
-	 * @param[in] point target point to collide
+	 * @param point target point to collide
 	 * @param[out] hit rigidbody shape hit information
 	 * @param collideInactive also collide inactive rigidbodies
 	 */	
-	bool collidePoint(const float3& point, ShapeHit& hit, bool collideInactive = false);
+	bool collidePoint(f32x4 point, ShapeHit& hit, bool collideInactive = false);
 	/**
 	 * @brief Checks if point is inside any rigidbody shape.
 	 * @return True if found rigidbody shape hits.
 	 * 
-	 * @param[in] point target point to collide
+	 * @param point target point to collide
 	 * @param[out] hits rigidbody shape hit information array
 	 * @param collideInactive also collide inactive rigidbodies
 	 */	
-	bool collidePoint(const float3& point, vector<ShapeHit>& hits, bool collideInactive = false);
+	bool collidePoint(f32x4 point, vector<ShapeHit>& hits, bool collideInactive = false);
 
 	/*******************************************************************************************************************
 	 * @brief Wakes up rigidbody if it's sleeping.

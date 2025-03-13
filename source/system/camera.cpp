@@ -17,15 +17,15 @@
 
 using namespace garden;
 
-float4x4 CameraComponent::calcProjection() const noexcept
+f32x4x4 CameraComponent::calcProjection() const noexcept
 {
 	if (type == ProjectionType::Perspective)
 	{
-		return calcPerspProjInfRevZ(p.perspective.fieldOfView,
+		return (f32x4x4)calcPerspProjInfRevZ(p.perspective.fieldOfView,
 			p.perspective.aspectRatio, p.perspective.nearPlane);
 	}
 	
-	return calcOrthoProjRevZ(p.orthographic.width,
+	return (f32x4x4)calcOrthoProjRevZ(p.orthographic.width,
 		p.orthographic.height, p.orthographic.depth);
 }
 float CameraComponent::getNearPlane() const noexcept

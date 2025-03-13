@@ -231,7 +231,7 @@ struct DebugLabel
 	 * @param[in] name target region name
 	 * @param color label color in the profiler
 	 */
-	DebugLabel(const string& name, const Color& color) { begin(name, color); }
+	DebugLabel(const string& name, Color color) { begin(name, color); }
 	/**
 	 * @brief Ends command buffer label region.
 	 * @note Use { } to set multiple labels in the same function.

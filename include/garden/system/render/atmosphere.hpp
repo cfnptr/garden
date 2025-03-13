@@ -63,14 +63,14 @@ class AtmosphereRenderSystem final : public System, public IRenderSystem
 	
 	friend class ecsm::Manager;
 public:
+	f32x4 rayleighScattering = f32x4(5.802f, 13.558f, 33.1f);
+	f32x4 ozoneAbsorption = f32x4(0.65f, 1.881f, 0.085f);
 	float planetRadius = EARTH_RADIUS;
 	float atmosphereHeight = EARTH_ATMOSPHERE_HEIGHT;
-	float3 rayleighScattering = float3(5.802f, 13.558f, 33.1f);
 	float rayleighAbsorption = 0.0f;
 	float mieScattering = 3.996f;
 	float mieAbsorption = 4.4f;
 	float ozoneScattering = 0.0f;
-	float3 ozoneAbsorption = float3(0.65f, 1.881f, 0.085f);
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ static constexpr float3 calcRayleighScattering(float airIOR, double molecularDen
 	return float3(
 		calcRayleighScattering(WAVELENGTH_R, airIOR, molecularDensity),
 		calcRayleighScattering(WAVELENGTH_G, airIOR, molecularDensity),
-		calcRayleighScattering(WAVELENGTH_B, airIOR, molecularDensity));
+		calcRayleighScattering(WAVELENGTH_B, airIOR, molecularDensity)); // TODO: vectorize
 }
 
 //--------------------------------------------------------------------------------------------------

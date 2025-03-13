@@ -26,14 +26,14 @@ class PhysicsEditorSystem final : public System
 public:
 	struct RigidbodyCache final
 	{
-		float3 centerOfMass = float3(0.0f);
-		float3 shapePosition = float3(0.0f);
-		float3 halfExtent = float3(0.5f);
+		f32x4 centerOfMass = f32x4::zero;
+		f32x4 shapePosition = f32x4::zero;
+		f32x4 halfExtent = f32x4(0.5f);
+		f32x4 thisConstraintPoint = f32x4::zero;
+		f32x4 otherConstraintPoint = f32x4::zero;
 		float convexRadius = 0.05f;
 		float density = 1000.0f;
 		int collisionLayer = -1;
-		float3 thisConstraintPoint = float3(0.0f);
-		float3 otherConstraintPoint = float3(0.0f);
 		ID<Entity> constraintTarget = {};
 		bool autoConstraintPoints = true;
 		bool isSensor = false;
@@ -43,21 +43,21 @@ public:
 	};
 	struct CharacterCache final
 	{
-		float3 centerOfMass = float3(0.0f);
-		float3 shapePosition = float3(0.0f);
-		float3 shapeSize = float3(0.5f, 1.75f, 0.5f);
+		f32x4 centerOfMass = f32x4::zero;
+		f32x4 shapePosition = f32x4::zero;
+		f32x4 shapeSize = f32x4(0.5f, 1.75f, 0.5f);
 		float convexRadius = 0.05f;
 	};
 private:
+	f32x4 oldRigidbodyEulerAngles = f32x4::zero;
+	f32x4 newRigidbodyEulerAngles = f32x4::zero;
+	quat oldRigidbodyRotation = quat::identity;
+	f32x4 oldCharacterEulerAngles = f32x4::zero;
+	f32x4 newCharacterEulerAngles = f32x4::zero;
+	quat oldCharacterRotation = quat::identity;
 	void* debugRenderer = nullptr;
 	RigidbodyCache rigidbodyCache = {};
 	CharacterCache characterCache = {};
-	float3 oldRigidbodyEulerAngles = float3(0.0f);
-	float3 newRigidbodyEulerAngles = float3(0.0f);
-	quat oldRigidbodyRotation = quat::identity;
-	float3 oldCharacterEulerAngles = float3(0.0f);
-	float3 newCharacterEulerAngles = float3(0.0f);
-	quat oldCharacterRotation = quat::identity;
 	ID<Entity> rigidbodySelectedEntity = {};
 	ID<Entity> characterSelectedEntity = {};
 	bool showWindow = false;

@@ -118,7 +118,7 @@ void InfiniteGridEditorSystem::editorRender()
 		pushConstants->isHorizontal = isHorizontal;
 
 		SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
-		framebufferView->beginRenderPass(float4(0.0f));
+		framebufferView->beginRenderPass(f32x4::zero);
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());

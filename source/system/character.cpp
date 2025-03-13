@@ -85,12 +85,12 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 		}
 		else
 		{
-			auto position = float3(0.0f); auto rotation = quat::identity;
+			auto position = f32x4::zero; auto rotation = quat::identity;
 			auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
 			if (transformView)
 			{
-				position = transformView->position;
-				rotation = transformView->rotation;
+				position = transformView->getPosition();
+				rotation = transformView->getRotation();
 			}
 
 			auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
@@ -131,14 +131,14 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 }
 
 //**********************************************************************************************************************
-float3 CharacterComponent::getPosition() const
+f32x4 CharacterComponent::getPosition() const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto instance = (const JPH::CharacterVirtual*)this->instance;
-	return toFloat3(instance->GetPosition());
+	return toF32x4(instance->GetPosition());
 }
-void CharacterComponent::setPosition(const float3& position)
+void CharacterComponent::setPosition(f32x4 position)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
@@ -152,34 +152,34 @@ quat CharacterComponent::getRotation() const
 	auto instance = (const JPH::CharacterVirtual*)this->instance;
 	return toQuat(instance->GetRotation());
 }
-void CharacterComponent::setRotation(const quat& rotation)
+void CharacterComponent::setRotation(quat rotation)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
 	instance->SetRotation(toQuat(rotation));
 }
 
-void CharacterComponent::getPosAndRot(float3& position, quat& rotation) const
+void CharacterComponent::getPosAndRot(f32x4& position, quat& rotation) const
 {
 	if (!shape)
 	{
-		position = float3(0.0f);
+		position = f32x4::zero;
 		rotation = quat::identity;
 		return;
 	}
 
 	auto instance = (const JPH::CharacterVirtual*)this->instance;
-	position = toFloat3(instance->GetPosition());
+	position = toF32x4(instance->GetPosition());
 	rotation = toQuat(instance->GetRotation());
 }
-void CharacterComponent::setPosAndRot(const float3& position, const quat& rotation)
+void CharacterComponent::setPosAndRot(f32x4 position, quat rotation)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
 	instance->SetPosition(toVec3(position));
 	instance->SetRotation(toQuat(rotation));
 }
-bool CharacterComponent::isPosAndRotChanged(const float3& position, const quat& rotation) const
+bool CharacterComponent::isPosAndRotChanged(f32x4 position, quat rotation) const
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (const JPH::CharacterVirtual*)this->instance;
@@ -187,14 +187,14 @@ bool CharacterComponent::isPosAndRotChanged(const float3& position, const quat& 
 }
 
 //**********************************************************************************************************************
-float3 CharacterComponent::getLinearVelocity() const
+f32x4 CharacterComponent::getLinearVelocity() const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto instance = (const JPH::CharacterVirtual*)this->instance;
-	return toFloat3(instance->GetLinearVelocity());
+	return toF32x4(instance->GetLinearVelocity());
 }
-void CharacterComponent::setLinearVelocity(const float3& velocity)
+void CharacterComponent::setLinearVelocity(f32x4 velocity)
 {
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
@@ -223,7 +223,7 @@ void CharacterComponent::setMass(float mass)
 }
 
 //**********************************************************************************************************************
-void CharacterComponent::update(float deltaTime, const float3& gravity)
+void CharacterComponent::update(float deltaTime, f32x4 gravity)
 {
 	SET_CPU_ZONE_SCOPED("Character Update");
 
@@ -281,24 +281,24 @@ void CharacterComponent::update(float deltaTime, const float3& gravity)
 	
 	if (transformView)
 	{
-		float3 position; quat rotation;
+		f32x4 position; quat rotation;
 		getPosAndRot(position, rotation);
 
 		if (transformView->getParent())
 		{
 			auto parentView = TransformSystem::Instance::get()->getComponent(transformView->getParent());
 			auto model = parentView->calcModel();
-			position = (float3)(inverse(model) * float4(position, 1.0f));
+			position = inverse4x4(model) * f32x4(position, 1.0f);
 			rotation *= inverse(extractQuat(extractRotation(model)));
 		}
 
-		transformView->position = position;
-		transformView->rotation = rotation;
+		transformView->setPosition(position);
+		transformView->setRotation(rotation);
 	}
 
 	if (rigidbodyView && rigidbodyView->instance)
 	{
-		float3 position; quat rotation;
+		f32x4 position; quat rotation;
 		getPosAndRot(position, rotation);
 
 		if (rigidbodyView->isPosAndRotChanged(position, rotation))
@@ -343,7 +343,7 @@ void CharacterSystem::copyComponent(View<Component> source, View<Component> dest
 	destinationView->inSimulation = sourceView->inSimulation;
 	destinationView->setShape(sourceView->shape, sourceView->getMass());
 
-	float3 position; quat rotation;
+	f32x4 position; quat rotation;
 	sourceView->getPosAndRot(position, rotation);
 	destinationView->setPosAndRot(position, rotation);
 	destinationView->setLinearVelocity(sourceView->getLinearVelocity());
@@ -365,16 +365,16 @@ void CharacterSystem::serialize(ISerializer& serializer, const View<Component> c
 		if (mass != 70.0f)
 			serializer.write("mass", mass);
 
-		float3 position; quat rotation;
+		f32x4 position; quat rotation;
 		characterView->getPosAndRot(position, rotation);
-		if (position != float3(0.0f))
-			serializer.write("position", position);
+		if (position != f32x4::zero)
+			serializer.write("position", (float3)position);
 		if (rotation != quat::identity)
 			serializer.write("rotation", rotation);
 
 		auto velocity = characterView->getLinearVelocity();
-		if (velocity != float3(0.0f))
-			serializer.write("linearVelocity", position);
+		if (velocity != f32x4::zero)
+			serializer.write("linearVelocity", (float3)position);
 
 		auto physicsSystem = PhysicsSystem::Instance::get();
 		physicsSystem->serializeDecoratedShape(serializer, characterView->shape);
@@ -394,17 +394,16 @@ void CharacterSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 			deserializer.read("mass", mass);
 			characterView->setShape(shape, mass);
 
-			auto position = float3(0.0f);
-			deserializer.read("position", position);
-			auto rotation = quat::identity;
+			auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
+			deserializer.read("position", f32x4Value, 3);
 			deserializer.read("rotation", rotation);
-			if (position != float3(0.0f) || rotation != quat::identity)
-				characterView->setPosAndRot(position, rotation);
+			if (f32x4Value != f32x4::zero || rotation != quat::identity)
+				characterView->setPosAndRot(f32x4Value, rotation);
 
-			auto velocity = float3(0.0f);
-			deserializer.read("linearVelocity", velocity);
-			if (velocity != float3(0.0f))
-				characterView->setLinearVelocity(velocity);
+			f32x4Value = f32x4::zero;
+			deserializer.read("linearVelocity", f32x4Value, 3);
+			if (f32x4Value != f32x4::zero)
+				characterView->setLinearVelocity(f32x4Value);
 		}
 	}
 }

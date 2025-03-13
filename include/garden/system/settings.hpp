@@ -193,6 +193,18 @@ public:
 	 * @param[out] value reference to the setting value
 	 * @return Setting value if exists, otherwise adds and returns initial value.
 	 */
+	void getColor(const string& name, f32x4& value)
+	{
+		auto colorValue = (Color)value;
+		getColor(name, colorValue);
+		value = (f32x4)colorValue;
+	}
+	/**
+	 * @brief Returns settings color value.
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
 	void getColor(const string& name, float4& value)
 	{
 		auto colorValue = (Color)value;
@@ -304,13 +316,19 @@ public:
 	 * @param[in] name target setting name
 	 * @param value setting value
 	 */
-	void setColor(const string& name, const float4& value) { setColor(name, (Color)value); }
+	void setColor(const string& name, f32x4 value) { setColor(name, (Color)value); }
 	/**
 	 * @brief Sets settings color value.
 	 * @param[in] name target setting name
 	 * @param value setting value
 	 */
-	void setColor(const string& name, const float3& value) { setColor(name, (Color)value); }
+	void setColor(const string& name, float4 value) { setColor(name, (Color)value); }
+	/**
+	 * @brief Sets settings color value.
+	 * @param[in] name target setting name
+	 * @param value setting value
+	 */
+	void setColor(const string& name, float3 value) { setColor(name, (Color)value); }
 	/**
 	 * @brief Sets settings color value.
 	 * @param[in] name target setting name

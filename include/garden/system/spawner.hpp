@@ -36,17 +36,17 @@ enum class SpawnMode : uint8
 };
 
 /**
- * @brief Contains information about objects spawn point and spawning mode.
+ * @brief Contains information about entity spawn points and spawning mode.
  */
 struct SpawnerComponent final : public Component
 {
-	fs::path path = {};       /**< Target prefab scene path */
-	Hash128 prefab = {};      /**< Target runtime prefab object UUID */
-	uint32 maxCount = 1;      /**< Maximal automatic object spawn count */
-	float delay = 0.0f;       /**< Delay before next object spawn (seconds) */
-	SpawnMode mode = {};      /**< Automatic object spawn mode */
-	bool isActive = true;     /**< Is spawn component active */
-	bool spawnAsChild = true; /**< Spawn object as a spawner entity child */
+	fs::path path = {};       /**< Target prefab scene path. */
+	Hash128 prefab = {};      /**< Target runtime prefab entity UUID. */
+	uint32 maxCount = 1;      /**< Maximal automatic entity spawn count. */
+	float delay = 0.0f;       /**< Delay before next entity spawn. (seconds) */
+	SpawnMode mode = {};      /**< Automatic entity spawn mode. */
+	bool isActive = true;     /**< Is spawn component active. */
+	bool spawnAsChild = true; /**< Spawn entity as a spawner entity child. */
 private:
 	uint8 _alignment = 0;
 	double delayTime = 0.0;

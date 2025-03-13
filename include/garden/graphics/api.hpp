@@ -150,7 +150,7 @@ public:
 	 * @brief Returns pipeline pool view from it ID.
 	 *
 	 * @param type target pipeline type
-	 * @param[in] pipeline pointer to the pipeline
+	 * @param pipeline target pipeline instance
 	 */
 	View<Pipeline> getPipelineView(PipelineType type, ID<Pipeline> pipeline) const noexcept
 	{

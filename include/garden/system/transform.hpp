@@ -24,23 +24,18 @@ namespace garden
 {
 
 /**
- * @brief Contains information about object transformation within the 3D space and nodes.
- * @details Nodes describe ties (connections) between objects in the game world.
+ * @brief Contains information about entity transformation within the 3D space and nodes.
+ * @details Nodes describe ties (connections) between entities in the game world.
  */
 struct TransformComponent final : public Component
 {
-	float3 position = float3(0.0f); /**< Object position in the 3D space relative to the parent. */
-	float3 scale = float3(1.0f);    /**< Object scale in the 3D space relative to the parent. */
-	quat rotation = quat::identity; /**< Object rotation in the 3D space relative to the parent. */
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	string debugName;               /**< Object debug name. (Debug and editor only) */
-	#endif
 private:
-	ID<Entity>* childs = nullptr;
-	uint64 uid = 0;
 	ID<Entity> parent = {};
-	uint32 childCount = 0;
-	uint32 childCapacity = 0;
+	uint64 uid = 0;
+	f32x4 posChildCount = f32x4::zero;
+	f32x4 scaleChildCap = f32x4(1.0f, 1.0f, 1.0f, 0.0f);
+	quat rotation = quat::identity;
+	ID<Entity>* childs = nullptr;
 	bool selfActive = true;
 	bool ancestorsActive = true;
 	uint16 _alignment = 0;
@@ -50,13 +45,56 @@ private:
 	 */
 	bool destroy();
 
+	uint32& childCount() noexcept { return posChildCount.uints.w; }
+	uint32& childCapacity() noexcept { return scaleChildCap.uints.w; }
+
 	friend class TransformSystem;
 	friend class LinearPool<TransformComponent>;
 	friend class ComponentSystem<TransformComponent>;
 public:
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	string debugName; /**< Entity debug name. (Debug and editor only) */
+	#endif
+
+	/**
+	 * @brief Returns entity position in the 3D space relative to the parent.
+	 */
+	f32x4 getPosition() const noexcept { return posChildCount; }
+	/**
+	 * @brief Sets entity position in the 3D space relative to the parent.
+	 * @param position target entity position in 3D space
+	 */
+	void setPosition(f32x4 position) noexcept
+	{
+		posChildCount = f32x4(position, posChildCount.getW());
+	}
+
+	/**
+	 * @brief Returns entity scale in the 3D space relative to the parent.
+	 */
+	f32x4 getScale() const noexcept { return scaleChildCap; }
+	/**
+	 * @brief Sets entity scale in the 3D space relative to the parent.
+	 * @param scale target entity scale in 3D space
+	 */
+	void setScale(f32x4 scale) noexcept
+	{
+		scaleChildCap = f32x4(scale, scaleChildCap.getW());
+	}
+
+	/**
+	 * @brief Returns entity rotation in the 3D space relative to the parent.
+	 */
+	quat getRotation() const noexcept { return rotation; }
+	/**
+	 * @brief Sets entity rotation in the 3D space relative to the parent.
+	 * @param rotation target entity rotation in 3D space
+	 */
+	void setRotation(quat rotation) noexcept { this->rotation = rotation; }
+
 	/**
 	 * @brief Is this entity and its ancestors active.
-	 * @details Is this object should be processed and used by other systems.
+	 * @details Is this entity should be processed and used by other systems.
 	 */
 	bool isActive() const noexcept { return selfActive && ancestorsActive; }
 	/**
@@ -72,7 +110,7 @@ public:
 
 	/**
 	 * @brief Sets this entity and it descendants active state.
-	 * @details Is this object should be processed and used by other systems.
+	 * @details Is this entity should be processed and used by other systems.
 	 * 
 	 * @note
 	 * If this entity has inactive ancestors it will still be in an inactive state.
@@ -89,7 +127,12 @@ public:
 	 * @brief Returns this entity children count.
 	 * @details Use it to iterate over children array.
 	 */
-	uint32 getChildCount() const noexcept { return childCount; }
+	uint32 getChildCount() const noexcept { return posChildCount.uints.w; }
+	/**
+	 * @brief Returns this entity children array capacity.
+	 * @details Use it to shrink children array when it's too big.
+	 */
+	uint32 getChildCapacity() const noexcept { return scaleChildCap.uints.w; }
 	/**
 	 * @brief Returns this entity children array, or null if no children.
 	 * @details Use it to iterate over entity children.
@@ -97,13 +140,35 @@ public:
 	const ID<Entity>* getChilds() const noexcept { return childs; }
 
 	/**
+	 * @brief Translates this entity by the specified translation.
+	 * @param translation target entity translation
+	 */
+	void translate(f32x4 translation) noexcept
+	{
+		posChildCount = f32x4(posChildCount + translation, posChildCount.getW());
+	}
+	/**
+	 * @brief Scales this entity by the specified scale.
+	 * @param scale target entity scale
+	 */
+	void scale(f32x4 scale) noexcept
+	{
+		scaleChildCap = f32x4(scaleChildCap * scale, scaleChildCap.getW());
+	}
+	/**
+	 * @brief Rotates this entity by the specified rotation.
+	 * @param rotation target entity rotation
+	 */
+	void rotate(quat rotation) noexcept { this->rotation *= rotation; }
+
+	/**
 	 * @brief Calculates entity model matrix from it position, scale and rotation.
 	 * @note It also takes into account parent and grandparents transforms.
 	 * 
 	 * @param cameraPosition rendering camera position or zero
-	 * @return Object model 4x4 float matrix.
+	 * @return Entity model 4x4 float matrix.
 	 */
-	float4x4 calcModel(const float3& cameraPosition = float3(0.0f)) const noexcept;
+	f32x4x4 calcModel(f32x4 cameraPosition = f32x4::zero) const noexcept;
 
 	/*******************************************************************************************************************
 	 * @brief Sets this entity parent object.
@@ -138,7 +203,7 @@ public:
 	 */
 	ID<Entity> getChild(uint32 index)
 	{
-		GARDEN_ASSERT(index < childCount);
+		GARDEN_ASSERT(index < childCount());
 		return childs[index];
 	}
 
@@ -157,7 +222,7 @@ public:
 	 */
 	void removeChild(uint32 index)
 	{
-		GARDEN_ASSERT(index < childCount);
+		GARDEN_ASSERT(index < childCount());
 		removeChild(childs[index]);
 	}
 
@@ -193,7 +258,7 @@ public:
 	 */
 	bool hasDescendant(ID<Entity> descendant) const noexcept;
 	/**
-	 * @brief Does this entity or its desscdendants have baked transform.
+	 * @brief Does this entity or its descendants have baked transform.
 	 */
 	bool hasBakedWithDescendants() const noexcept;
 };
@@ -206,13 +271,13 @@ struct TransformFrame final : public AnimationFrame
 	bool animatePosition = false;
 	bool animateScale = false;
 	bool animateRotation = false;
-	float3 position = float3(0.0f);
-	float3 scale = float3(1.0f);
+	f32x4 position = f32x4::zero;
+	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
 };
 
 /***********************************************************************************************************************
- * @brief Handles object transformations in the 3D space.
+ * @brief Handles entity transformations in the 3D space.
  * 
  * @details
  * Fundamental aspect of the engine architecture that handles the 

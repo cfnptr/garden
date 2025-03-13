@@ -98,8 +98,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (entity)
 		{
 			auto transformView = transformSystem->getComponent(entity);
-			oldEulerAngles = newEulerAngles = degrees(transformView->rotation.toEulerAngles());
-			oldRotation = transformView->rotation;
+			oldRotation = transformView->getRotation();
+			oldEulerAngles = newEulerAngles = degrees(oldRotation.extractEulerAngles());
 		}
 
 		selectedEntity = entity;
@@ -109,10 +109,10 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (entity)
 		{
 			auto transformView = transformSystem->getComponent(entity);
-			if (oldRotation != transformView->rotation)
+			if (oldRotation != transformView->getRotation())
 			{
-				oldEulerAngles = newEulerAngles = degrees(transformView->rotation.toEulerAngles());
-				oldRotation = transformView->rotation;
+				oldRotation = transformView->getRotation();
+				oldEulerAngles = newEulerAngles = degrees(oldRotation.extractEulerAngles());
 			}
 		}
 	}
@@ -128,11 +128,13 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto isBaked = manager->has<BakedTransformComponent>(entity);
 	ImGui::BeginDisabled(isBaked);
 
-	ImGui::DragFloat3("Position", &transformView->position, 0.01f);
+	auto f32x4Value = transformView->getPosition();
+	if (ImGui::DragFloat3("Position", &f32x4Value, 0.01f))
+		transformView->setPosition(f32x4Value);
 	if (ImGui::BeginPopupContextItem("position"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			transformView->position = float3(0.0f);
+			transformView->setPosition(f32x4::zero);
 		ImGui::EndPopup();
 	}
 	if (ImGui::BeginItemTooltip())
@@ -141,17 +143,18 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::Text("Disabled due to BakedTransformComponent!");
 		auto translation = getTranslation(transformView->calcModel());
 		ImGui::Text("Position of the entity.\nGlobal: %.1f, %.1f, %.1f",
-			translation.x, translation.y, translation.z);
+			translation.getX(), translation.getY(), translation.getZ());
 		ImGui::EndTooltip();
 	}
 
-	ImGui::DragFloat3("Scale", &transformView->scale, 0.01f, 0.0001f, FLT_MAX);
-	transformView->scale = max(transformView->scale, float3(0.0001f));
+	f32x4Value = transformView->getScale();
+	if (ImGui::DragFloat3("Scale", &f32x4Value, 0.01f, 0.0001f, FLT_MAX))
+		transformView->setScale(max(f32x4Value, f32x4(0.0001f)));
 
 	if (ImGui::BeginPopupContextItem("scale"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			transformView->scale = float3(1.0f);
+			transformView->setScale(f32x4::one);
 		ImGui::EndPopup();
 	}
 	if (ImGui::BeginItemTooltip())
@@ -159,21 +162,22 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (isBaked)
 			ImGui::Text("Disabled due to BakedTransformComponent!");
 		auto scale = extractScale(transformView->calcModel());
-		ImGui::Text("Scale of the entity.\nGlobal: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
+		ImGui::Text("Scale of the entity.\nGlobal: %.3f, %.3f, %.3f", 
+			scale.getX(), scale.getY(), scale.getZ());
 		ImGui::EndTooltip();
 	}
 
 	if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f, 0.0f, 0.0f, "%.3f°"))
 	{
 		auto difference = newEulerAngles - oldEulerAngles;
-		transformView->rotation *= quat(radians(difference));
-		transformView->rotation = normalize(transformView->rotation);
+		transformView->rotate(fromEulerAngles(radians(difference)));
+		transformView->setRotation(normalize(transformView->getRotation()));
 		oldEulerAngles = newEulerAngles;
 	}
 	if (ImGui::BeginPopupContextItem("rotation"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			transformView->rotation = quat::identity;
+			transformView->setRotation(quat::identity);
 		ImGui::EndPopup();
 	}
 	if (ImGui::BeginItemTooltip())
@@ -181,9 +185,9 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		if (isBaked)
 			ImGui::Text("Disabled due to BakedTransformComponent!");
 		auto rotation = radians(newEulerAngles);
-		auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).toEulerAngles());
+		auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).extractEulerAngles());
 		ImGui::Text("Rotation in degrees.\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
-			rotation.x, rotation.y, rotation.z, global.x, global.y, global.z);
+			rotation.getX(), rotation.getY(), rotation.getZ(), global.getX(), global.getY(), global.getZ());
 		ImGui::EndTooltip();
 	}
 

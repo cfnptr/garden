@@ -19,7 +19,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common objects search functions.
+ * @brief Common entity search functions.
  */
 
 namespace garden
@@ -28,7 +28,7 @@ namespace garden
 class LinkSystem;
 
 /**
- * @brief Object universally unique identifier (UUID) and/or tag container.
+ * @brief Entity universally unique identifier (UUID) and/or tag container.
  */
 struct LinkComponent final : public Component
 {
@@ -71,7 +71,7 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Handles fast objects search by unique identifier or tag.
+ * @brief Handles fast entity search by unique identifier or tag.
  */
 class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton<LinkSystem>, public ISerializable
 {

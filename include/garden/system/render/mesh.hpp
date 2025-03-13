@@ -75,7 +75,7 @@ protected:
 	 * @param drawCount total mesh draw item count
 	 * @param isShadowPass is current pass shadow only
 	 */
-	virtual void prepareDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
+	virtual void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
 	/**
 	 * @brief Begins mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
@@ -92,8 +92,8 @@ protected:
 	 * @param drawIndex mesh item draw index (sorted)
 	 * @param taskIndex task index in the thread pool
 	 */
-	virtual void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
-		const float4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
+	virtual void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
+		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
 	/**
 	 * @brief Ends mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
@@ -110,7 +110,7 @@ protected:
 	 * @param drawCount total mesh draw item count
 	 * @param isShadowPass is current pass shadow only
 	 */
-	virtual void finalizeDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
+	virtual void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
 
 	friend class MeshRenderSystem;
 public:
@@ -142,10 +142,10 @@ protected:
 	 * @brief Prepares all required data for mesh shadow rendering.
 	 * 
 	 * @param passIndex shadow render pass index
-	 * @param[in] viewProj camera view * projection matrix
-	 * @param[in] cameraOffset camera offset in the space
+	 * @param[out] viewProj camera view * projection matrix
+	 * @param[out] cameraOffset camera offset in 3D space
 	 */
-	virtual bool prepareShadowRender(uint32 passIndex, float4x4& viewProj, float3& cameraOffset) = 0;
+	virtual bool prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset) = 0;
 	/**
 	 * @brief Begins mesh shadow pass rendering.
 	 * 
@@ -174,20 +174,20 @@ public:
 	{
 		MeshRenderComponent* renderView = nullptr;
 		float4x3 model = float4x3(0.0f);
-		float distance2 = 0.0f;
+		float distanceSq = 0.0f;
 	private:
 		uint32 _alignment = 0;
 	public:
-		bool operator<(const OpaqueMesh& m) const noexcept { return distance2 < m.distance2; }
+		bool operator<(const OpaqueMesh& m) const noexcept { return distanceSq < m.distanceSq; }
 	};
 	struct alignas(64) TranslucentMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
 		float4x3 model = float4x3(0.0f);
-		float distance2 = 0.0f;
+		float distanceSq = 0.0f;
 		uint32 bufferIndex = 0;
 
-		bool operator<(const TranslucentMesh& m) const noexcept { return distance2 > m.distance2; }
+		bool operator<(const TranslucentMesh& m) const noexcept { return distanceSq > m.distanceSq; }
 	};
 
 	struct MeshBuffer
@@ -231,10 +231,10 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes(const float4x4& viewProj, const float3& cameraOffset, 
+	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, 
 		uint8 frustumPlaneCount, bool isShadowPass);
-	void renderOpaque(const float4x4& viewProj, bool isShadowPass);
-	void renderTranslucent(const float4x4& viewProj, bool isShadowPass);
+	void renderOpaque(const f32x4x4& viewProj, bool isShadowPass);
+	void renderTranslucent(const f32x4x4& viewProj, bool isShadowPass);
 	void renderShadows();
 
 	void init();

@@ -55,7 +55,7 @@ void Controller2DSystem::init()
 	manager->add<DoNotSerializeComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
-	transformView->position = float3(0.0f, 0.0f, -0.5f);
+	transformView->setPosition(f32x4(0.0f, 0.0f, -0.5f));
 	#if GARDEN_DEBUG | GARDEN_EDITOR
 	transformView->debugName = "Main Camera";
 	#endif
@@ -151,9 +151,7 @@ void Controller2DSystem::updateCameraControl()
 			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
 		auto offset = cursorDelta / (windowSize / orthoSize);
 		offset = (float2x2)transformView->calcModel() * offset;
-
-		transformView->position.x -= offset.x;
-		transformView->position.y += offset.y;
+		transformView->translate(f32x4(-offset.x, offset.y, 0.0f));
 	}
 
 	auto mouseScrollY = inputSystem->getMouseScroll().y;
@@ -211,10 +209,10 @@ void Controller2DSystem::updateCameraFollowing()
 		auto cameraHeight = cameraView->p.orthographic.height;
 		auto posOffset = float2(cameraWidth.y - cameraWidth.x, 
 			cameraHeight.y - cameraHeight.x) * followCenter;
-		auto newPosition = lerpDelta((float2)cameraTransformView->position,
+		auto newPosition = lerpDelta((float2)cameraTransformView->getPosition(),
 			(float2)characterView->getPosition() + posOffset, 1.0f - followLerpFactor, deltaTime);
-		cameraTransformView->position.x = newPosition.x;
-		cameraTransformView->position.y = newPosition.y;
+		cameraTransformView->setPosition(f32x4(newPosition.x, newPosition.y, 
+			cameraTransformView->getPosition().getZ()));
 		break;
 	}
 }
@@ -262,26 +260,26 @@ void Controller2DSystem::updateCharacterControl()
 			continue;
 
 		auto position = characterView->getPosition();
-		if (position.z != 0.0f)
-			characterView->setPosition(float3(position.x, position.y, 0.0f));
+		if (position.getZ() != 0.0f)
+			characterView->setPosition(f32x4(position.getX(), position.getY(), 0.0f));
 
 		auto linearVelocity = characterView->getLinearVelocity();
-		linearVelocity.x = lerpDelta(linearVelocity.x,
-			horizontalVelocity, 1.0f - horizontalLerpFactor, deltaTime);
+		linearVelocity.setX(lerpDelta(linearVelocity.getX(),
+			horizontalVelocity, 1.0f - horizontalLerpFactor, deltaTime));
 
 		if (characterView->getGroundState() == CharacterGround::OnGround)
 		{
-			linearVelocity.y = isJumping ? jumpSpeed : 0.0f;
+			linearVelocity.setY(isJumping ? jumpSpeed : 0.0f);
 			canDoubleJump = true;
 		}
 		else
 		{
 			if (useDoubleJump && isJumping && canDoubleJump && !isLastJumping)
 			{
-				linearVelocity.y = jumpSpeed;
+				linearVelocity.setY(jumpSpeed);
 				canDoubleJump = false;
 			}
-			linearVelocity.y += gravity.y * deltaTime;
+			linearVelocity.setY(linearVelocity.getY() + gravity.getY() * deltaTime);
 		}
 
 		characterView->setLinearVelocity(linearVelocity);

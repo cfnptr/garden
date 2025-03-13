@@ -64,7 +64,7 @@ struct BeginRenderPassCommandBase : public Command
 };
 struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 {
-	const float4* clearColors = nullptr;
+	const f32x4* clearColors = nullptr;
 };
 struct NextSubpassCommand final : public Command
 {
@@ -224,7 +224,7 @@ struct ClearImageCommandBase : public Command
 	uint16 _alignment = 0;
 	uint32 regionCount = 0;
 	ID<Image> image = {};
-	float4 color = float4(0.0f);
+	float4 color = float4(0);
 	constexpr ClearImageCommandBase() noexcept : Command(Type::ClearImage) { }
 };
 struct ClearImageCommand final : public ClearImageCommandBase
