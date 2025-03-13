@@ -163,7 +163,7 @@ void ForwardRenderSystem::render()
 	{
 		SET_CPU_ZONE_SCOPED("Forward Render Pass");
 		SET_GPU_DEBUG_LABEL("Forward Pass", Color::transparent);
-		framebufferView->beginRenderPass(float4(0.0f), 0.0f, 0x00, int4(0), asyncRecording);
+		framebufferView->beginRenderPass(f32x4::zero, 0.0f, 0x00, i32x4::zero, asyncRecording);
 		manager->runEvent("ForwardRender");
 		framebufferView->endRenderPass();
 	}

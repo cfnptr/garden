@@ -308,22 +308,22 @@ ShapeSubType Shape::getSubType() const
 	return (ShapeSubType)instance->GetSubType();
 }
 
-float3 Shape::getCenterOfMass() const
+f32x4 Shape::getCenterOfMass() const
 {
 	auto instance = (const JPH::Shape*)this->instance;
-	return toFloat3(instance->GetCenterOfMass());
+	return toF32x4(instance->GetCenterOfMass());
 }
 float Shape::getVolume() const
 {
 	auto instance = (const JPH::Shape*)this->instance;
 	return instance->GetVolume();
 }
-void Shape::getMassProperties(float& mass, float4x4& inertia) const
+void Shape::getMassProperties(float& mass, f32x4x4& inertia) const
 {
 	auto instance = (const JPH::Shape*)this->instance;
 	auto massProperties = instance->GetMassProperties();
 	mass = massProperties.mMass;
-	inertia = toFloat4x4(massProperties.mInertia);
+	inertia = toF32x4x4(massProperties.mInertia);
 }
 
 float Shape::getDensity() const
@@ -335,13 +335,13 @@ float Shape::getDensity() const
 }
 
 //**********************************************************************************************************************
-float3 Shape::getBoxHalfExtent() const
+f32x4 Shape::getBoxHalfExtent() const
 {
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Box);
 	auto boxInstance = (const JPH::BoxShape*)this->instance;
-	return toFloat3(boxInstance->GetHalfExtent());
+	return toF32x4(boxInstance->GetHalfExtent());
 }
 float Shape::getBoxConvexRadius() const
 {
@@ -363,13 +363,13 @@ ID<Shape> Shape::getInnerShape() const
 	ID<Shape> id; *id = (uint32)innerInstance->GetUserData();
 	return id;
 }
-float3 Shape::getPosition() const
+f32x4 Shape::getPosition() const
 {
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::RotatedTranslated);
 	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
-	return toFloat3(rotTransInstance->GetPosition());
+	return toF32x4(rotTransInstance->GetPosition());
 }
 quat Shape::getRotation() const
 {
@@ -379,13 +379,13 @@ quat Shape::getRotation() const
 	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
 	return toQuat(rotTransInstance->GetRotation());
 }
-void Shape::getPosAndRot(float3& position, quat& rotation) const
+void Shape::getPosAndRot(f32x4& position, quat& rotation) const
 {
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::RotatedTranslated);
 	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
-	position = toFloat3(rotTransInstance->GetPosition());
+	position = toF32x4(rotTransInstance->GetPosition());
 	rotation = toQuat(rotTransInstance->GetRotation());
 }
 
@@ -451,12 +451,12 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 		}
 		else
 		{
-			auto position = float3(0.0f); auto rotation = quat::identity;
+			auto position = f32x4::zero; auto rotation = quat::identity;
 			auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
 			if (transformView)
 			{
-				position = this->lastPosition = transformView->position;
-				rotation = this->lastRotation = transformView->rotation;
+				position = this->lastPosition = transformView->getPosition();
+				rotation = this->lastRotation = transformView->getRotation();
 			}
 
 			if (collisionLayer < 0 || collisionLayer >= physicsSystem->properties.collisionLayerCount)
@@ -496,7 +496,7 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 }
 
 //**********************************************************************************************************************
-void RigidbodyComponent::notifyShapeChanged(const float3& previousCenterOfMass, bool updateMassProperties, bool activate)
+void RigidbodyComponent::notifyShapeChanged(f32x4 previousCenterOfMass, bool updateMassProperties, bool activate)
 {
 	if (!shape)
 		return;
@@ -660,14 +660,14 @@ void RigidbodyComponent::setKinematicVsStatic(bool isKinematicVsStatic)
 }
 
 //**********************************************************************************************************************
-float3 RigidbodyComponent::getPosition() const
+f32x4 RigidbodyComponent::getPosition() const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto body = (const JPH::Body*)instance;
-	return toFloat3(body->GetPosition());
+	return toF32x4(body->GetPosition());
 }
-void RigidbodyComponent::setPosition(const float3& position, bool activate)
+void RigidbodyComponent::setPosition(f32x4 position, bool activate)
 {
 	GARDEN_ASSERT(shape);
 	auto body = (JPH::Body*)instance;
@@ -684,7 +684,7 @@ quat RigidbodyComponent::getRotation() const
 	auto body = (const JPH::Body*)instance;
 	return toQuat(body->GetRotation());
 }
-void RigidbodyComponent::setRotation(const quat& rotation, bool activate)
+void RigidbodyComponent::setRotation(quat rotation, bool activate)
 {
 	GARDEN_ASSERT(shape);
 	auto body = (JPH::Body*)instance;
@@ -694,20 +694,20 @@ void RigidbodyComponent::setRotation(const quat& rotation, bool activate)
 	lastRotation = rotation;
 }
 
-void RigidbodyComponent::getPosAndRot(float3& position, quat& rotation) const
+void RigidbodyComponent::getPosAndRot(f32x4& position, quat& rotation) const
 {
 	if (!shape)
 	{
-		position = float3(0.0f);
+		position = f32x4::zero;
 		rotation = quat::identity;
 		return;
 	}
 
 	auto body = (const JPH::Body*)instance;
-	position = toFloat3(body->GetPosition());
+	position = toF32x4(body->GetPosition());
 	rotation = toQuat(body->GetRotation());
 }
-void RigidbodyComponent::setPosAndRot(const float3& position, const quat& rotation, bool activate)
+void RigidbodyComponent::setPosAndRot(f32x4 position, quat rotation, bool activate)
 {
 	GARDEN_ASSERT(shape);
 	auto body = (JPH::Body*)instance;
@@ -717,7 +717,7 @@ void RigidbodyComponent::setPosAndRot(const float3& position, const quat& rotati
 	lastPosition = position;
 	lastRotation = rotation;
 }
-bool RigidbodyComponent::isPosAndRotChanged(const float3& position, const quat& rotation) const
+bool RigidbodyComponent::isPosAndRotChanged(f32x4 position, quat rotation) const
 {
 	GARDEN_ASSERT(shape);
 	auto body = (const JPH::Body*)instance;
@@ -725,14 +725,14 @@ bool RigidbodyComponent::isPosAndRotChanged(const float3& position, const quat& 
 }
 
 //**********************************************************************************************************************
-float3 RigidbodyComponent::getLinearVelocity() const
+f32x4 RigidbodyComponent::getLinearVelocity() const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto body = (const JPH::Body*)instance;
-	return toFloat3(body->GetLinearVelocity());
+	return toF32x4(body->GetLinearVelocity());
 }
-void RigidbodyComponent::setLinearVelocity(const float3& velocity)
+void RigidbodyComponent::setLinearVelocity(f32x4 velocity)
 {
 	GARDEN_ASSERT(shape);
 	GARDEN_ASSERT(getMotionType() != MotionType::Static);
@@ -740,14 +740,14 @@ void RigidbodyComponent::setLinearVelocity(const float3& velocity)
 	body->SetLinearVelocity(toVec3(velocity));
 }
 
-float3 RigidbodyComponent::getAngularVelocity() const
+f32x4 RigidbodyComponent::getAngularVelocity() const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto body = (const JPH::Body*)instance;
-	return toFloat3(body->GetAngularVelocity());
+	return toF32x4(body->GetAngularVelocity());
 }
-void RigidbodyComponent::setAngularVelocity(const float3& velocity)
+void RigidbodyComponent::setAngularVelocity(f32x4 velocity)
 {
 	GARDEN_ASSERT(shape);
 	GARDEN_ASSERT(getMotionType() != MotionType::Static);
@@ -755,22 +755,22 @@ void RigidbodyComponent::setAngularVelocity(const float3& velocity)
 	body->SetAngularVelocity(toVec3(velocity));
 }
 
-float3 RigidbodyComponent::getPointVelocity(const float3& point) const
+f32x4 RigidbodyComponent::getPointVelocity(f32x4 point) const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto body = (const JPH::Body*)instance;
-	return toFloat3(body->GetPointVelocity(toVec3(point)));
+	return toF32x4(body->GetPointVelocity(toVec3(point)));
 }
-float3 RigidbodyComponent::getPointVelocityCOM(const float3& point) const
+f32x4 RigidbodyComponent::getPointVelocityCOM(f32x4 point) const
 {
 	if (!shape)
-		return float3(0.0f);
+		return f32x4::zero;
 	auto body = (JPH::Body*)instance;
-	return toFloat3(body->GetPointVelocityCOM(toVec3(point)));
+	return toF32x4(body->GetPointVelocityCOM(toVec3(point)));
 }
 
-void RigidbodyComponent::moveKinematic(const float3& position, const quat& rotation, float deltaTime)
+void RigidbodyComponent::moveKinematic(f32x4 position, quat rotation, float deltaTime)
 {
 	GARDEN_ASSERT(shape);
 	GARDEN_ASSERT(getMotionType() != MotionType::Static);
@@ -788,8 +788,8 @@ void RigidbodyComponent::setWorldTransform(bool activate)
 }
 
 //**********************************************************************************************************************
-static JPH::RVec3 calcOtherPoint(ID<Entity> otherBody, const float3& otherBodyPoint,
-	const float3& thisBodyPoint, RigidbodyComponent* thisView)
+static JPH::RVec3 calcOtherPoint(ID<Entity> otherBody, f32x4 otherBodyPoint,
+	f32x4 thisBodyPoint, RigidbodyComponent* thisView)
 {
 	if (otherBody)
 		return toRVec3(otherBodyPoint);
@@ -797,8 +797,8 @@ static JPH::RVec3 calcOtherPoint(ID<Entity> otherBody, const float3& otherBodyPo
 		return toRVec3(thisView->getPosition() + thisView->getRotation() * (otherBodyPoint + thisBodyPoint));
 }
 
-void RigidbodyComponent::createConstraint(ID<Entity> otherBody, ConstraintType type,
-	const float3& thisBodyPoint, const float3& otherBodyPoint)
+void RigidbodyComponent::createConstraint(ID<Entity> otherBody, 
+	ConstraintType type, f32x4 thisBodyPoint, f32x4 otherBodyPoint)
 {
 	GARDEN_ASSERT(shape);
 	GARDEN_ASSERT(otherBody != entity);
@@ -822,7 +822,7 @@ void RigidbodyComponent::createConstraint(ID<Entity> otherBody, ConstraintType t
 	if (type == ConstraintType::Fixed)
 	{
 		JPH::FixedConstraintSettings settings;
-		if (thisBodyPoint == float3(FLT_MAX) || otherBodyPoint == float3(FLT_MAX))
+		if (thisBodyPoint == f32x4::max || otherBodyPoint == f32x4::max)
 		{
 			if (otherBody)
 				settings.mAutoDetectPoint = true;
@@ -839,7 +839,7 @@ void RigidbodyComponent::createConstraint(ID<Entity> otherBody, ConstraintType t
 	else if (type == ConstraintType::Point)
 	{
 		JPH::PointConstraintSettings settings;
-		if (thisBodyPoint == float3(FLT_MAX) || otherBodyPoint == float3(FLT_MAX))
+		if (thisBodyPoint == f32x4::max || otherBodyPoint == f32x4::max)
 		{
 			if (!otherBody)
 				settings.mPoint2 = toRVec3(getPosition());
@@ -1142,8 +1142,8 @@ void PhysicsSystem::prepareSimulate()
 
 				JPH::RVec3 position = {}; JPH::Quat rotation = {};
 				bodyInterface.GetPositionAndRotation(body->GetID(), position, rotation);
-				transformView->position = rigidbodyView->lastPosition = toFloat3(position);
-				transformView->rotation = rigidbodyView->lastRotation = toQuat(rotation);
+				transformView->setPosition(rigidbodyView->lastPosition = toF32x4(position));
+				transformView->setRotation(rigidbodyView->lastRotation = toQuat(rotation));
 			}
 		},
 		components.getOccupancy());
@@ -1257,10 +1257,10 @@ void PhysicsSystem::interpolateResult(float t)
 				if (!transformView)
 					continue;
 
-				float3 position; quat rotation;
+				f32x4 position; quat rotation;
 				rigidbodyView->getPosAndRot(position, rotation);
-				transformView->position = lerp(rigidbodyView->lastPosition, position, t);
-				transformView->rotation = slerp(rigidbodyView->lastRotation, rotation, t);
+				transformView->setPosition(lerp(rigidbodyView->lastPosition, position, t));
+				transformView->setRotation(slerp(rigidbodyView->lastRotation, rotation, t));
 			}
 		},
 		components.getOccupancy());
@@ -1354,7 +1354,7 @@ void PhysicsSystem::copyComponent(View<Component> source, View<Component> destin
 	destinationView->setSensor(sourceView->isSensor());
 	destinationView->setKinematicVsStatic(sourceView->isKinematicVsStatic());
 
-	float3 position; quat rotation;
+	f32x4 position; quat rotation;
 	sourceView->getPosAndRot(position, rotation);
 	destinationView->setPosAndRot(position, rotation, isActive);
 
@@ -1387,8 +1387,8 @@ static void serializeShape(ISerializer& serializer, View<Shape> shapeView, bool 
 	if (subType == ShapeSubType::Box)
 	{
 		auto halfExtent = shapeView->getBoxHalfExtent();
-		if (halfExtent != float3(0.5f))
-			serializer.write(isInner ? "innerHalfExtent" : "halfExtent", halfExtent);
+		if (halfExtent != f32x4(0.5f))
+			serializer.write(isInner ? "innerHalfExtent" : "halfExtent", (float3)halfExtent);
 		auto convexRadius = shapeView->getBoxConvexRadius();
 		if (convexRadius != 0.05f)
 			serializer.write(isInner ? "innerConvexRadius" : "convexRadius", convexRadius);
@@ -1401,10 +1401,10 @@ void PhysicsSystem::serializeDecoratedShape(ISerializer& serializer, ID<Shape> s
 	auto subType = shapeView->getSubType();
 	if (subType == ShapeSubType::RotatedTranslated)
 	{
-		float3 position; quat rotation;
+		f32x4 position; quat rotation;
 		shapeView->getPosAndRot(position, rotation);
-		if (position != float3(0.0f))
-			serializer.write("shapePosition", position);
+		if (position != f32x4::zero)
+			serializer.write("shapePosition", (float3)position);
 		if (rotation != quat::identity)
 			serializer.write("shapeRotation", rotation);
 		serializer.write("shapeType", string_view("RotatedTranslated"));
@@ -1460,19 +1460,19 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 			serializer.write("isKinematicVsStatic", true);
 		serializer.write("collisionLayer", rigidbodyView->getCollisionLayer());
 
-		float3 position; quat rotation;
+		f32x4 position; quat rotation;
 		rigidbodyView->getPosAndRot(position, rotation);
-		if (position != float3(0.0f))
-			serializer.write("position", position);
+		if (position != f32x4::zero)
+			serializer.write("position", (float3)position);
 		if (rotation != quat::identity)
 			serializer.write("rotation", rotation);
 
 		auto velocity = rigidbodyView->getLinearVelocity();
-		if (velocity != float3(0.0f))
-			serializer.write("linearVelocity", position);
+		if (velocity != f32x4::zero)
+			serializer.write("linearVelocity", (float3)position);
 		velocity = rigidbodyView->getAngularVelocity();
-		if (velocity != float3(0.0f))
-			serializer.write("angularVelocity", position);
+		if (velocity != f32x4::zero)
+			serializer.write("angularVelocity",(float3) position);
 
 		if (motionType != MotionType::Static && rigidbodyView->getAllowedDOF() != AllowedDOF::All)
 		{
@@ -1541,8 +1541,8 @@ static ID<Shape> deserializeShape(IDeserializer& deserializer, const string& sha
 {
 	if (shapeType == "Box")
 	{
-		float3 halfExtent(0.5f); float convexRadius = 0.05f;
-		deserializer.read(isInner ? "innerHalfExtent" : "halfExtent", halfExtent);
+		f32x4 halfExtent(0.5f); float convexRadius = 0.05f;
+		deserializer.read(isInner ? "innerHalfExtent" : "halfExtent", halfExtent, 3);
 		deserializer.read(isInner ? "innerConvexRadius" : "convexRadius", convexRadius);
 		return PhysicsSystem::Instance::get()->createSharedBoxShape(halfExtent, convexRadius);
 	}
@@ -1557,8 +1557,8 @@ ID<Shape> PhysicsSystem::deserializeDecoratedShape(IDeserializer& deserializer, 
 		auto innerShape = deserializeShape(deserializer, valueStringCache, true);
 		if (!innerShape)
 			return {};
-		auto position = float3(0.0f);
-		deserializer.read("shapePosition", position);
+		auto position = f32x4::zero;
+		deserializer.read("shapePosition", position, 3);
 		auto rotation = quat::identity;
 		deserializer.read("shapeRotation", rotation);
 		return PhysicsSystem::Instance::get()->createSharedRotTransShape(innerShape, position, rotation);
@@ -1629,21 +1629,20 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 			if (deserializer.read("isKinematicVsStatic", boolValue))
 				rigidbodyView->setKinematicVsStatic(boolValue);
 
-			auto position = float3(0.0f);
-			deserializer.read("position", position);
-			auto rotation = quat::identity;
+			auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
+			deserializer.read("position", f32x4Value, 3);
 			deserializer.read("rotation", rotation);
-			if (position != float3(0.0f) || rotation != quat::identity)
-				rigidbodyView->setPosAndRot(position, rotation, isActive);
+			if (f32x4Value != f32x4::zero || rotation != quat::identity)
+				rigidbodyView->setPosAndRot(f32x4Value, rotation, isActive);
 
-			auto velocity = float3(0.0f);
-			deserializer.read("linearVelocity", velocity);
-			if (velocity != float3(0.0f))
-				rigidbodyView->setLinearVelocity(velocity);
-			velocity = float3(0.0f);
-			deserializer.read("angularVelocity", velocity);
-			if (velocity != float3(0.0f))
-				rigidbodyView->setAngularVelocity(velocity);
+			f32x4Value = f32x4::zero;
+			deserializer.read("linearVelocity", f32x4Value, 3);
+			if (f32x4Value != f32x4::zero)
+				rigidbodyView->setLinearVelocity(f32x4Value);
+			f32x4Value = f32x4::zero;
+			deserializer.read("angularVelocity", f32x4Value, 3);
+			if (f32x4Value != f32x4::zero)
+				rigidbodyView->setAngularVelocity(f32x4Value);
 		}
 	}
 
@@ -1710,25 +1709,25 @@ void PhysicsSystem::postDeserialize(IDeserializer& deserializer)
 }
 
 //**********************************************************************************************************************
-float3 PhysicsSystem::getGravity() const noexcept
+f32x4 PhysicsSystem::getGravity() const noexcept
 {
 	auto physicsInstance = (const JPH::PhysicsSystem*)this->physicsInstance;
-	return toFloat3(physicsInstance->GetGravity());
+	return toF32x4(physicsInstance->GetGravity());
 }
-void PhysicsSystem::setGravity(const float3& gravity) const noexcept
+void PhysicsSystem::setGravity(f32x4 gravity) const noexcept
 {
 	auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
 	physicsInstance->SetGravity(toVec3(gravity));
 }
 
-ID<Shape> PhysicsSystem::createEmptyShape(const float3& centerOfMass)
+ID<Shape> PhysicsSystem::createEmptyShape(f32x4 centerOfMass)
 {
 	auto emptyShape = new JPH::EmptyShape(toVec3(centerOfMass));
 	auto instance = shapes.create(emptyShape);
 	emptyShape->SetUserData((JPH::uint64)*instance);
 	return instance;
 }
-ID<Shape> PhysicsSystem::createSharedEmptyShape(const float3& centerOfMass)
+ID<Shape> PhysicsSystem::createSharedEmptyShape(f32x4 centerOfMass)
 {
 	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
@@ -1746,9 +1745,9 @@ ID<Shape> PhysicsSystem::createSharedEmptyShape(const float3& centerOfMass)
 }
 
 //**********************************************************************************************************************
-ID<Shape> PhysicsSystem::createBoxShape(const float3& halfExtent, float convexRadius, float density)
+ID<Shape> PhysicsSystem::createBoxShape(f32x4 halfExtent, float convexRadius, float density)
 {
-	GARDEN_ASSERT((halfExtent >= convexRadius).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(halfExtent >= convexRadius));
 	GARDEN_ASSERT(convexRadius >= 0.0f);
 	GARDEN_ASSERT(density > 0.0f);
 
@@ -1760,9 +1759,9 @@ ID<Shape> PhysicsSystem::createBoxShape(const float3& halfExtent, float convexRa
 	return instance;
 }
 
-ID<Shape> PhysicsSystem::createSharedBoxShape(const float3& halfExtent, float convexRadius, float density)
+ID<Shape> PhysicsSystem::createSharedBoxShape(f32x4 halfExtent, float convexRadius, float density)
 {
-	GARDEN_ASSERT((halfExtent >= convexRadius).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(halfExtent >= convexRadius));
 	GARDEN_ASSERT(convexRadius >= 0.0f);
 	GARDEN_ASSERT(density > 0.0f);
 
@@ -1784,7 +1783,7 @@ ID<Shape> PhysicsSystem::createSharedBoxShape(const float3& halfExtent, float co
 }
 
 //**********************************************************************************************************************
-ID<Shape> PhysicsSystem::createRotTransShape(ID<Shape> innerShape, const float3& position, const quat& rotation)
+ID<Shape> PhysicsSystem::createRotTransShape(ID<Shape> innerShape, f32x4 position, quat rotation)
 {
 	GARDEN_ASSERT(innerShape);
 	auto innerView = get(innerShape);
@@ -1795,7 +1794,7 @@ ID<Shape> PhysicsSystem::createRotTransShape(ID<Shape> innerShape, const float3&
 	rotTransShape->SetUserData((JPH::uint64)*instance);
 	return instance;
 }
-ID<Shape> PhysicsSystem::createSharedRotTransShape(ID<Shape> innerShape, const float3& position, const quat& rotation)
+ID<Shape> PhysicsSystem::createSharedRotTransShape(ID<Shape> innerShape, f32x4 position, quat rotation)
 {
 	GARDEN_ASSERT(innerShape);
 
@@ -1925,7 +1924,7 @@ static const JPH::BodyFilter defaultBodyFilter;
 
 bool PhysicsSystem::castRay(const Ray& ray, RayCastHit& hit, float maxDistance, bool castInactive)
 {
-	GARDEN_ASSERT(ray.getDirection() != float3(0.0f));
+	GARDEN_ASSERT(ray.getDirection() != f32x4::zero);
 	GARDEN_ASSERT(maxDistance > 0.0f);
 
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
@@ -1940,14 +1939,14 @@ bool PhysicsSystem::castRay(const Ray& ray, RayCastHit& hit, float maxDistance, 
 	}
 
 	hit.subShapeID = rayCastResult.mSubShapeID2.GetValue();
-	hit.surfacePoint = toFloat3(rayCast.GetPointOnRay(rayCastResult.mFraction));
+	hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(rayCastResult.mFraction));
 
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
 	JPH::BodyLockRead lock(lockInterface, rayCastResult.mBodyID);
 	if (lock.Succeeded())
 	{
 		auto& body = lock.GetBody();
-		hit.surfaceNormal = toFloat3(body.GetWorldSpaceSurfaceNormal(
+		hit.surfaceNormal = toF32x4(body.GetWorldSpaceSurfaceNormal(
 			rayCastResult.mSubShapeID2, rayCast.GetPointOnRay(rayCastResult.mFraction)));
 		*hit.entity = (uint32)body.GetUserData();
 	}
@@ -1955,7 +1954,7 @@ bool PhysicsSystem::castRay(const Ray& ray, RayCastHit& hit, float maxDistance, 
 }
 bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxDistance, bool sortHits, bool castInactive)
 {
-	GARDEN_ASSERT(ray.getDirection() != float3(0.0f));
+	GARDEN_ASSERT(ray.getDirection() != f32x4::zero);
 	GARDEN_ASSERT(maxDistance > 0.0f);
 
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
@@ -1981,13 +1980,13 @@ bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxD
 		auto hit = hits[i];
 		auto collectorHit = collectorHits[i];
 		hit.subShapeID = collectorHit.mSubShapeID2.GetValue();
-		hit.surfacePoint = toFloat3(rayCast.GetPointOnRay(collectorHit.mFraction));
+		hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(collectorHit.mFraction));
 
 		JPH::BodyLockRead lock(lockInterface, collectorHit.mBodyID);
 		if (lock.Succeeded())
 		{
 			auto& body = lock.GetBody();
-			hit.surfaceNormal = toFloat3(body.GetWorldSpaceSurfaceNormal(
+			hit.surfaceNormal = toF32x4(body.GetWorldSpaceSurfaceNormal(
 				collectorHit.mSubShapeID2, rayCast.GetPointOnRay(collectorHit.mFraction)));
 			*hit.entity = (uint32)body.GetUserData();
 		}
@@ -1996,7 +1995,7 @@ bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxD
 }
 
 //**********************************************************************************************************************
-bool PhysicsSystem::collidePoint(const float3& point, ShapeHit& hit, bool collideInactive)
+bool PhysicsSystem::collidePoint(f32x4 point, ShapeHit& hit, bool collideInactive)
 {
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
 	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
@@ -2014,7 +2013,7 @@ bool PhysicsSystem::collidePoint(const float3& point, ShapeHit& hit, bool collid
 	hit.subShapeID = collector.mHit.mSubShapeID2.GetValue();
 	return true;
 }
-bool PhysicsSystem::collidePoint(const float3& point, vector<ShapeHit>& hits, bool collideInactive)
+bool PhysicsSystem::collidePoint(f32x4 point, vector<ShapeHit>& hits, bool collideInactive)
 {
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
 	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);

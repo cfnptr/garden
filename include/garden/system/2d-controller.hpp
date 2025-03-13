@@ -33,7 +33,7 @@ using namespace ecsm;
 class Controller2DSystem final : public System, public Singleton<Controller2DSystem>
 {
 	ID<Entity> camera = {};
-	float2 followTarget = float2(0.0f);
+	float2 followTarget = float2::zero;
 	bool canDoubleJump = true;
 	bool isLastJumping = false;
 

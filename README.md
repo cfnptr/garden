@@ -37,7 +37,7 @@ At least GPU with Vulkan API 1.1 support.
 * AMD [Excavator](https://en.wikipedia.org/wiki/Excavator_(microarchitecture)) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) processor and newer
 
-These requirements are based on the support of the **AVX2** instruction set.
+These requirements are based on the support of the [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) instruction set in the x86 architecture.
 If you want, you can freely disable it and compile for any other architecture, including **ARM**.
 
 ## Build requirements ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)

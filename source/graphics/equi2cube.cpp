@@ -41,15 +41,15 @@ using namespace math::ibl;
 // x = 1.0 / (Pi * 2), y =  1.0 / Pi
 constexpr float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
 
-static float2 toSphericalMapUV(const float3& v)
+static float2 toSphericalMapUV(float3 v)
 {
 	auto st = float2(atan2(v.x, v.z), asin(-v.y));
 	return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
 }
-static float4 filterCubeMap(float2 coords, const float4* pixels, uint2 sizeMinus1, uint32 sizeX)
+static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX)
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
-	auto coords1 = min(coords0 + 1u, sizeMinus1);
+	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
 	auto uv = coords - coords0;
 	auto invUV = 1.0f - uv;
 
@@ -58,12 +58,12 @@ static float4 filterCubeMap(float2 coords, const float4* pixels, uint2 sizeMinus
 	auto s2 = pixels[coords1.y * sizeX + coords0.x];
 	auto s3 = pixels[coords1.y * sizeX + coords1.x];
 
-	return (invUV.x * invUV.y) * s0 + (uv.x * invUV.y) * s1 +
-		(invUV.x * uv.y) * s2 + (uv.x * uv.y) * s3;
+	return s0 * (invUV.x * invUV.y) + s1 * (uv.x * invUV.y) +
+		s2 * (invUV.x * uv.y) + s3 * (uv.x * uv.y);
 }
 
-void Equi2Cube::convert(const uint3& coords, uint32 cubemapSize, uint2 equiSize,
-	uint2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim)
+void Equi2Cube::convert(uint3 coords, uint32 cubemapSize, uint2 equiSize,
+	uint2 equiSizeMinus1, const f32x4* equiPixels, f32x4* cubePixels, float invDim)
 {
 	auto dir = coordsToDir(coords, invDim);
 	auto uv = toSphericalMapUV(dir);
@@ -138,7 +138,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 
 	equiSize = uint2((uint32)sizeX, (uint32)sizeY);
-	equiData.resize(sizeof(float4) * equiSize.x * equiSize.y);
+	equiData.resize(sizeof(f32x4) * equiSize.x * equiSize.y);
 	memcpy(equiData.data(), pixels, equiData.size());
 	free(pixels);
 
@@ -148,17 +148,17 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1u;
-	auto equiPixels = (float4*)equiData.data();
-	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
+	auto equiPixels = (f32x4*)equiData.data();
+	auto pixelsSize = sizeof(f32x4) * cubemapSize * cubemapSize;
 
 	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
 		top(pixelsSize), back(pixelsSize), front(pixelsSize);
 
-	float4* cubePixelArray[6] =
+	f32x4* cubePixelArray[6] =
 	{
-		(float4*)right.data(), (float4*)left.data(),
-		(float4*)top.data(), (float4*)bottom.data(),
-		(float4*)front.data(), (float4*)back.data(),
+		(f32x4*)right.data(), (f32x4*)left.data(),
+		(f32x4*)top.data(), (f32x4*)bottom.data(),
+		(f32x4*)front.data(), (f32x4*)back.data(),
 	};
 
 	for (uint32 face = 0; face < 6; face++)

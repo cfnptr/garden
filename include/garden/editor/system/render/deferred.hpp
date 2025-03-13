@@ -45,14 +45,14 @@ class DeferredRenderEditorSystem final : public System
 		float clearCoat;
 	};
 
+	f32x4 colorOverride = f32x4::one;
+	f32x4 mraorOverride = f32x4(0.0f, 1.0f, 1.0f, 0.5f);
+	f32x4 emissiveOverride = f32x4::zero;
+	f32x4 subsurfaceOverride = f32x4::zero;
 	ID<Image> blackPlaceholder = {};
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
-	float4 colorOverride = float4(1.0f);
-	float4 mraorOverride = float4(0.0f, 1.0f, 1.0f, 0.5f);
-	float4 emissiveOverride = float4(0.0f);
-	float4 subsurfaceOverride = float4(0.0f);
 	float clearCoatOverride = 1.0f;
 	DrawMode drawMode = DrawMode::Off;
 	bool showChannelR = true;

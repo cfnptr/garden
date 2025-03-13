@@ -36,9 +36,9 @@ public:
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
 	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
-	float4 colorFactor = float4(1.0f);     /**< Texture color multiplier. */
-	float2 uvSize = float2(1.0f);          /**< Texture UV size. */
-	float2 uvOffset = float2(0.0f);        /**< Texture UV offset. */
+	f32x4 colorFactor = f32x4::one;        /**< Texture color multiplier. */
+	float2 uvSize = float2::one;           /**< Texture UV size. */
+	float2 uvOffset = float2::zero;        /**< Texture UV offset. */
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = {};            /**< Color map texture path. */
@@ -61,12 +61,12 @@ struct SpriteAnimationFrame : public AnimationFrame
 protected:
 	uint16 _alignment0 = 0;
 public:
-	float4 colorFactor = float4(1.0f);
-	float2 uvSize = float2(1.0f);
-	float2 uvOffset = float2(0.0f);
-	float colorMapLayer = 0.0f;
+	float2 uvSize = float2::one;
+	float2 uvOffset = float2::zero;
+	f32x4 colorFactor = f32x4::one;
 	Ref<Image> colorMap = {};
 	Ref<DescriptorSet> descriptorSet = {};
+	float colorMapLayer = 0.0f;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = {};
@@ -84,9 +84,9 @@ class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable, pu
 public:
 	struct InstanceData
 	{
-		float4x4 mvp = float4x4(0.0f);
-		float4 colorFactor = float4(0.0f);
-		float4 sizeOffset = float4(0.0f);
+		float4x4 mvp = float4x4::zero;
+		float4 colorFactor = float4::zero;
+		float4 sizeOffset = float4::zero;
 	};
 	struct PushConstants
 	{
@@ -118,14 +118,14 @@ protected:
 
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
-	void drawAsync(MeshRenderComponent* meshRenderView, const float4x4& viewProj,
-		const float4x4& model, uint32 drawIndex, int32 taskIndex) override;
+	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
+		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
 	uint64 getInstanceDataSize() override;
 	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 taskIndex);
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
 	ID<GraphicsPipeline> createBasePipeline() final;
 

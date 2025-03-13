@@ -100,7 +100,7 @@ void MeshRenderSystem::prepareSystems()
 }
 
 //**********************************************************************************************************************
-static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& cameraPosition, 
+static void prepareOpaqueMeshes(f32x4 cameraOffset, f32x4 cameraPosition, 
 	const Plane* frustumPlanes, MeshRenderSystem::OpaqueBuffer* opaqueBuffer, uint32 itemOffset, 
 	uint32 itemCount, uint32 threadIndex, bool isShadowPass, bool useThreading)
 {
@@ -132,7 +132,7 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 		if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 			continue;
 
-		float4x4 model;
+		f32x4x4 model;
 		const auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
 		if (transformView)
 		{
@@ -142,7 +142,7 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 		}
 		else
 		{
-			model = float4x4::identity;
+			model = f32x4x4::identity;
 		}
 
 		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, Plane::frustumCount))
@@ -162,7 +162,7 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 		MeshRenderSystem::OpaqueMesh opaqueMesh;
 		opaqueMesh.renderView = meshRenderView;
 		opaqueMesh.model = (float4x3)model;
-		opaqueMesh.distance2 = length2(getTranslation(model) + cameraOffset);
+		opaqueMesh.distanceSq = lengthSq3(getTranslation(model) + cameraOffset);
 		meshes[drawIndex++] = opaqueMesh;
 	}
 
@@ -175,7 +175,7 @@ static void prepareOpaqueMeshes(const float3& cameraOffset, const float3& camera
 }
 
 //**********************************************************************************************************************
-static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& cameraPosition,
+static void prepareTranslucentMeshes(f32x4 cameraOffset, f32x4 cameraPosition,
 	const Plane* frustumPlanes, MeshRenderSystem::TranslucentBuffer* translucentBuffer, 
 	MeshRenderSystem::TranslucentMesh* combinedMeshes, vector<vector<MeshRenderSystem::TranslucentMesh>>& threadMeshes,
 	atomic<uint32>& translucentIndex, uint32 bufferIndex, uint32 itemOffset, 
@@ -210,7 +210,7 @@ static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& c
 		if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 			continue;
 
-		float4x4 model;
+		f32x4x4 model;
 		const auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
 		if (transformView)
 		{
@@ -220,7 +220,7 @@ static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& c
 		}
 		else
 		{
-			model = float4x4::identity;
+			model = f32x4x4::identity;
 		}
 
 		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, Plane::frustumCount))
@@ -236,7 +236,7 @@ static void prepareTranslucentMeshes(const float3& cameraOffset, const float3& c
 		MeshRenderSystem::TranslucentMesh translucentMesh;
 		translucentMesh.renderView = meshRenderView;
 		translucentMesh.model = (float4x3)model;
-		translucentMesh.distance2 = length2(getTranslation(model) + cameraOffset);
+		translucentMesh.distanceSq = lengthSq3(getTranslation(model) + cameraOffset);
 		translucentMesh.bufferIndex = bufferIndex;
 		meshes[drawIndex++] = translucentMesh;
 	}
@@ -293,8 +293,8 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 }
 
 //**********************************************************************************************************************
-void MeshRenderSystem::prepareMeshes(const float4x4& viewProj, 
-	const float3& cameraOffset, uint8 frustumPlaneCount, bool isShadowPass)
+void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, 
+	f32x4 cameraOffset, uint8 frustumPlaneCount, bool isShadowPass)
 {
 	SET_CPU_ZONE_SCOPED("Meshes Prepare");
 
@@ -328,7 +328,7 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj,
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	auto cameraPosition = (float3)cameraConstants.cameraPos;
+	auto cameraPosition = cameraConstants.cameraPos;
 	uint32 opaqueBufferIndex = 0, translucentBufferIndex = 0;
 	Plane frustumPlanes[Plane::frustumCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
@@ -442,7 +442,7 @@ void MeshRenderSystem::prepareMeshes(const float4x4& viewProj,
 }
 
 //**********************************************************************************************************************
-void MeshRenderSystem::renderOpaque(const float4x4& viewProj, bool isShadowPass)
+void MeshRenderSystem::renderOpaque(const f32x4x4& viewProj, bool isShadowPass)
 {
 	SET_CPU_ZONE_SCOPED("Opaque Mesh Render");
 
@@ -472,7 +472,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj, bool isShadowPass)
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
 					const auto& mesh = meshes[j];
-					auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
+					auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
 					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, taskIndex);
 				}
 				meshSystem->endDrawAsync(taskCount, taskIndex);
@@ -487,7 +487,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj, bool isShadowPass)
 			for (uint32 j = 0; j < drawCount; j++)
 			{
 				const auto& mesh = meshes[j];
-				auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
+				auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
 				meshSystem->drawAsync(mesh.renderView, viewProj, model, j, -1);
 			}
 			meshSystem->endDrawAsync(drawCount, -1);
@@ -498,7 +498,7 @@ void MeshRenderSystem::renderOpaque(const float4x4& viewProj, bool isShadowPass)
 }
 
 //**********************************************************************************************************************
-void MeshRenderSystem::renderTranslucent(const float4x4& viewProj, bool isShadowPass)
+void MeshRenderSystem::renderTranslucent(const f32x4x4& viewProj, bool isShadowPass)
 {
 	SET_CPU_ZONE_SCOPED("Translucent Mesh Render");
 
@@ -550,7 +550,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj, bool isShadow
 				}
 
 				auto drawIndex = bufferDrawCount->fetch_add(1);
-				auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
+				auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
 				meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, taskIndex);
 				currentDrawCount++;
 			}
@@ -585,7 +585,7 @@ void MeshRenderSystem::renderTranslucent(const float4x4& viewProj, bool isShadow
 			}
 
 			auto drawIndex = bufferDrawCount->fetch_add(1);
-			auto model = float4x4(mesh.model, 0.0f, 0.0f, 0.0f, 1.0f);
+			auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
 			meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, -1);
 			currentDrawCount++;
 		}
@@ -621,7 +621,7 @@ void MeshRenderSystem::renderShadows()
 		auto passCount = shadowSystem->getShadowPassCount();
 		for (uint32 i = 0; i < passCount; i++)
 		{
-			float4x4 viewProj; float3 cameraOffset;
+			f32x4x4 viewProj; f32x4 cameraOffset;
 			if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 				continue;
 
@@ -651,7 +651,7 @@ void MeshRenderSystem::preForwardRender()
 	renderShadows();
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	prepareMeshes(cameraConstants.viewProj, float3(0.0f), Plane::frustumCount - 2, false);
+	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, false);
 }
 
 void MeshRenderSystem::forwardRender()
@@ -680,7 +680,7 @@ void MeshRenderSystem::preDeferredRender()
 	renderShadows();
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	prepareMeshes(cameraConstants.viewProj, float3(0.0f), Plane::frustumCount - 2, false);
+	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, false);
 }
 
 void MeshRenderSystem::deferredRender()

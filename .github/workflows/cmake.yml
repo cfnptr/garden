@@ -64,6 +64,12 @@ jobs:
         echo "VULKAN_SDK=${{env.SDK_PATH}}/$vulkanVersion" >> $GITHUB_ENV
         echo "${{env.SDK_PATH}}/$vulkanVersion/Bin" >> $GITHUB_PATH
 
+    - name: Set Ubuntu swap space
+      if: matrix.os == 'ubuntu-latest'
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 10
+
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build
 

@@ -175,15 +175,15 @@ public:
 	struct SpecConstInt32 { GslDataType type = {}; int32 value = 0; };
 	struct SpecConstUint32 { GslDataType type = {}; uint32 value = 0; };
 	struct SpecConstFloat { GslDataType type = {}; float value = 0.0f; };
-	struct SpecConstInt2 { GslDataType type = {}; int2 value = int2(0); };
-	struct SpecConstUint2 { GslDataType type = {}; uint2 value = uint2(0); };
-	struct SpecConstFloat2 { GslDataType type = {}; float2 value = float2(0.0f); };
-	struct SpecConstInt3 { GslDataType type = {}; int3 value = int3(0); };
-	struct SpecConstUint3 { GslDataType type = {}; uint3 value = uint3(0); };
-	struct SpecConstFloat3 { GslDataType type = {}; float3 value = float3(0.0f); };
-	struct SpecConstInt4 { GslDataType type = {}; int4 value = int4(0); };
-	struct SpecConstUint4 { GslDataType type = {}; uint4 value = uint4(0); };
-	struct SpecConstFloat4 { GslDataType type = {}; float4 value = float4(0.0f); };
+	struct SpecConstInt2 { GslDataType type = {}; int2 value = int2::zero; };
+	struct SpecConstUint2 { GslDataType type = {}; uint2 value = uint2::zero; };
+	struct SpecConstFloat2 { GslDataType type = {}; float2 value = float2::zero; };
+	struct SpecConstInt3 { GslDataType type = {}; int3 value = int3::zero; };
+	struct SpecConstUint3 { GslDataType type = {}; uint3 value = uint3::zero; };
+	struct SpecConstFloat3 { GslDataType type = {}; float3 value = float3::zero; };
+	struct SpecConstInt4 { GslDataType type = {}; int4 value = int4::zero; };
+	struct SpecConstUint4 { GslDataType type = {}; uint4 value = uint4::zero; };
+	struct SpecConstFloat4 { GslDataType type = {}; float4 value = float4::zero; };
 
 	/**
 	 * @brief Specialization constant variable container.
@@ -203,10 +203,10 @@ public:
 		SpecConstUint3 constUint3;   /**< 3D 32-bit unsigned integer specialization constant variable. */
 		SpecConstFloat3 constFloat3; /**< 3D 32-bit floating point specialization constant variable. */
 		SpecConstInt4 constInt4;     /**< 4D 32-bit signed integer specialization constant variable. */
-		SpecConstUint4 constUint4;     /**< 4D 32-bit signed integer specialization constant variable. */
+		SpecConstUint4 constUint4;   /**< 4D 32-bit signed integer specialization constant variable. */
 		SpecConstFloat4 constFloat4; /**< 4D 32-bit floating point specialization constant variable. */
 
-		SpecConstValue() { constInt4.value = int4(0); }
+		SpecConstValue() { constInt4.value = int4::zero; }
 		SpecConstValue(bool value) { constBool.value = value; constBool.type = GslDataType::Bool; }
 		SpecConstValue(int32 value) { constInt32.value = value; constBool.type = GslDataType::Int32; }
 		SpecConstValue(uint32 value) { constUint32.value = value; constBool.type = GslDataType::Uint32; }
@@ -214,12 +214,12 @@ public:
 		SpecConstValue(int2 value) { constInt2.value = value; constBool.type = GslDataType::Int2; }
 		SpecConstValue(uint2 value) { constInt2.value = value; constBool.type = GslDataType::Uint2; }
 		SpecConstValue(float2 value) { constFloat2.value = value; constBool.type = GslDataType::Float2; }
-		SpecConstValue(const int3& value) { constInt3.value = value; constBool.type = GslDataType::Int3; }
-		SpecConstValue(const uint3& value) { constInt3.value = value; constBool.type = GslDataType::Uint3; }
-		SpecConstValue(const float3& value) { constFloat3.value = value; constBool.type = GslDataType::Float3; }
-		SpecConstValue(const int4& value) { constInt4.value = value; constBool.type = GslDataType::Int4; }
-		SpecConstValue(const uint4& value) { constInt4.value = value; constBool.type = GslDataType::Uint4; }
-		SpecConstValue(const float4& value) { constFloat4.value = value; constBool.type = GslDataType::Float4; }
+		SpecConstValue(int3 value) { constInt3.value = value; constBool.type = GslDataType::Int3; }
+		SpecConstValue(uint3 value) { constInt3.value = value; constBool.type = GslDataType::Uint3; }
+		SpecConstValue(float3 value) { constFloat3.value = value; constBool.type = GslDataType::Float3; }
+		SpecConstValue(int4 value) { constInt4.value = value; constBool.type = GslDataType::Int4; }
+		SpecConstValue(uint4 value) { constInt4.value = value; constBool.type = GslDataType::Uint4; }
+		SpecConstValue(float4 value) { constFloat4.value = value; constBool.type = GslDataType::Float4; }
 	};
 
 	/*******************************************************************************************************************

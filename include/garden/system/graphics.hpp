@@ -33,14 +33,14 @@ class GraphicsSystem;
 /**
  * @brief Sets GPU resource debug name. (visible in GPU profiler)
  * @param resource target resource instance
- * @param[in] name object debug name
+ * @param[in] name resource debug name
  */
 #define SET_RESOURCE_DEBUG_NAME(resource, name) GraphicsSystem::Instance::get()->setDebugName(resource, name)
 #else
 /**
  * @brief Sets GPU resource debug name. (visible in GPU profiler)
- * @param resource target resource
- * @param name debug name
+ * @param resource target resource instance
+ * @param[in] name resource debug name
  */
 #define SET_RESOURCE_DEBUG_NAME(resource, name) (void)0
 #endif
@@ -109,8 +109,10 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize,
-		Image::Format depthStencilFormat = Image::Format::SfloatD32, bool isFullscreen = !GARDEN_DEBUG,
-		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true, bool setSingleton = true);
+		Image::Format depthStencilFormat = Image::Format::SfloatD32, 
+		bool isFullscreen = !GARDEN_DEBUG & !GARDEN_OS_LINUX,
+		bool useVsync = true, bool useTripleBuffering = true, 
+		bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys graphics system instance.
 	 */
@@ -277,39 +279,39 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Sets buffer debug name. (visible in GPU profiler)
 	 * @param buffer target buffer instance
-	 * @param[in] name object debug name
+	 * @param[in] name buffer debug name
 	 */
 	void setDebugName(ID<Buffer> buffer, const string& name);
 	/**
 	 * @brief Sets buffer debug name. (visible in GPU profiler)
 	 * @param buffer target buffer instance
-	 * @param[in] name object debug name
+	 * @param[in] name buffer debug name
 	 */
 	void setDebugName(const Ref<Buffer>& buffer, const string& name) { setDebugName(ID<Buffer>(buffer), name); }
 
 	/**
 	 * @brief Sets image debug name. (visible in GPU profiler)
 	 * @param image target image instance
-	 * @param[in] name object debug name
+	 * @param[in] name image debug name
 	 */
 	void setDebugName(ID<Image> image, const string& name);
 	/**
 	 * @brief Sets image debug name. (visible in GPU profiler)
 	 * @param image target image instance
-	 * @param[in] name object debug name
+	 * @param[in] name image debug name
 	 */
 	void setDebugName(const Ref<Image>& image, const string& name) { setDebugName(ID<Image>(image), name); }
 
 	/**
 	 * @brief Sets image debug name. (visible in GPU profiler)
 	 * @param imageView target image view instance
-	 * @param[in] name object debug name
+	 * @param[in] name image view debug name
 	 */
 	void setDebugName(ID<ImageView> imageView, const string& name);
 	/**
 	 * @brief Sets image debug name. (visible in GPU profiler)
 	 * @param imageView target image view instance
-	 * @param[in] name object debug name
+	 * @param[in] name image view debug name
 	 */
 	void setDebugName(const Ref<ImageView>& imageView, const string& name)
 	{
@@ -319,13 +321,13 @@ public:
 	/**
 	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
 	 * @param framebuffer target framebuffer instance
-	 * @param[in] name object debug name
+	 * @param[in] name framebuffer debug name
 	 */
 	void setDebugName(ID<Framebuffer> framebuffer, const string& name);
 	/**
 	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
 	 * @param instance target framebuffer instance
-	 * @param[in] name object debug name
+	 * @param[in] name framebuffer debug name
 	 */
 	void setDebugName(const Ref<Framebuffer>& framebuffer, const string& name)
 	{
@@ -335,13 +337,13 @@ public:
 	/**
 	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
 	 * @param descriptorSet target descriptor set instance
-	 * @param[in] name  objectdebug name
+	 * @param[in] name descriptor set debug name
 	 */
 	void setDebugName(ID<DescriptorSet> descriptorSet, const string& name);
 	/**
 	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
 	 * @param descriptorSet target descriptor set instance
-	 * @param[in] name  objectdebug name
+	 * @param[in] name descriptor set debug name
 	 */
 	void setDebugName(const Ref<DescriptorSet>& descriptorSet, const string& name)
 	{
@@ -485,14 +487,14 @@ public:
 	 * @param format image data format
 	 * @param bind image bind type
 	 * @param[in] data image data (mips, layers)
-	 * @param[in] size image size in pixels
+	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
 	 * @param dataFormat data array format
 	 * 
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
+		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, u32x4 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined);
 	/**
 	 * @brief Creates a new 3D image (texture) instance.
@@ -500,21 +502,21 @@ public:
 	 * @param format image data format
 	 * @param bind image bind type
 	 * @param[in] data image data (mips, layers)
-	 * @param[in] size image size in pixels
+	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
 	 * @param dataFormat data array format
 	 * 
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, const uint3& size,
+		Image::Format format, Image::Bind bind, const Image::Mips& data, u32x4 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		return createImage(Image::Type::Texture3D, format, bind, data, size, strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new 2D image (texture) instance.
-	 * @details Automatically detects if image is has array type.
+	 * @details Automatically detects if image has array type.
 	 * 
 	 * @param format image data format
 	 * @param bind image bind type
@@ -531,11 +533,11 @@ public:
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture2DArray : Image::Type::Texture2D;
-		return createImage(imageType, format, bind, data, uint3(size, 1), strategy, dataFormat);
+		return createImage(imageType, format, bind, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new 1D image (texture) instance.
-	 * @details Automatically detects if image is has array type.
+	 * @details Automatically detects if image has array type.
 	 * 
 	 * @param format image data format
 	 * @param bind image bind type
@@ -552,7 +554,26 @@ public:
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture1DArray : Image::Type::Texture1D;
-		return createImage(imageType, format, bind, data, uint3(size, 1, 1), strategy, dataFormat);
+		return createImage(imageType, format, bind, data, u32x4(size, 1, 1), strategy, dataFormat);
+	}
+	/**
+	 * @brief Creates a new cubemap image (texture) instance.
+	 * 
+	 * @param format image data format
+	 * @param bind image bind type
+	 * @param[in] data image data (mips, layers)
+	 * @param size image size in pixels
+	 * @param strategy image allocation strategy
+	 * @param dataFormat data array format
+	 * 
+	 * @throw GardenError if failed to allocate image.
+	 */
+	ID<Image> createCubemap(
+		Image::Format format, Image::Bind bind, const Image::Mips& data, uint2 size,
+		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
+	{
+		GARDEN_ASSERT(!data.empty());
+		return createImage(Image::Type::Cubemap, format, bind, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
 	}
 
 	/* 
@@ -801,19 +822,18 @@ public:
 	 * @brief Draws line wireframe. (Debug Only)
 	 * 
 	 * @param[in] mvp line model view projection matrix
-	 * @param[in] startPoint line beginning point
-	 * @param[in] endPoint line ending point
-	 * @param[in] color line wireframe color
+	 * @param startPoint line beginning point
+	 * @param endPoint line ending point
+	 * @param color line wireframe color
 	 */
-	void drawLine(const float4x4& mvp, const float3& startPoint,
-		const float3& endPoint, const float4& color = float4(1.0f));
+	void drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoint, f32x4 color = f32x4::one);
 	/**
 	 * @brief Draws axis aligned bounding box wireframe. (Debug Only)
 	 * 
 	 * @param[in] mvp box model view projection matrix
-	 * @param[in] color box wireframe color
+	 * @param color box wireframe color
 	 */
-	void drawAabb(const float4x4& mvp, const float4& color = float4(1.0f));
+	void drawAabb(const f32x4x4& mvp, f32x4 color = f32x4::one);
 	#endif
 
 	//******************************************************************************************************************

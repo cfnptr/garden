@@ -51,13 +51,13 @@ public:
 		float4 farPlanesIntens;
 	};
 private:
+	f32x4 farPlanes = f32x4::zero;
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	DescriptorSetBuffers dataBuffers;
 	ID<Image> shadowMap = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
-	float3 farPlanes = float3(0.0f);
 	uint32 shadowMapSize = 2048;
 
 	/**
@@ -76,7 +76,7 @@ private:
 	void gBufferRecreate();
 
 	uint32 getShadowPassCount() final;
-	bool prepareShadowRender(uint32 passIndex, float4x4& viewProj, float3& cameraOffset) final;
+	bool prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset) final;
 	void beginShadowRender(uint32 passIndex, MeshRenderType renderType) final;
 	void endShadowRender(uint32 passIndex, MeshRenderType renderType) final;
 	
@@ -92,7 +92,7 @@ public:
 	/**
 	 * @brief Returns frustum far planes for each shadow map cascade.
 	 */
-	const float3& getFarPlanes() const noexcept { return farPlanes; }
+	f32x4 getFarPlanes() const noexcept { return farPlanes; }
 
 	/**
 	 * @brief Returns shadow map size in pixels along one axis.

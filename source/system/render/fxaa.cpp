@@ -114,10 +114,10 @@ void FxaaRenderSystem::preSwapchainRender()
 
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->invFrameSize = float2(1.0f) / graphicsSystem->getFramebufferSize();
+	pushConstants->invFrameSize = float2::one / graphicsSystem->getFramebufferSize();
 
 	SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
-	framebufferView->beginRenderPass(float4(0.0f));
+	framebufferView->beginRenderPass(f32x4::zero);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);

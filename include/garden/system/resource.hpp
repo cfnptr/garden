@@ -81,7 +81,7 @@ protected:
 		Image image;
 		Buffer staging;
 		vector<fs::path> paths = {};
-		uint2 realSize = uint2(0);
+		uint2 realSize = uint2::zero;
 		ID<Image> instance = {};
 	};
 	struct LoadedBufferItem

@@ -168,15 +168,15 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		auto colorMapView = GraphicsSystem::Instance::get()->get(componentView->colorMap);
 		auto imageSize = colorMapView->getSize();
 
-		if (imageSize.x > imageSize.y)
+		if (imageSize.getX() > imageSize.getY())
 		{
-			transformView->scale.x = componentView->uvSize.x *
-				transformView->scale.y * ((float)imageSize.x / imageSize.y);
+			transformView->scale(f32x4(componentView->uvSize.x * transformView->getScale().getY() * 
+				((float)imageSize.getX() / imageSize.getY()), 1.0f, 1.0f));
 		}
 		else
 		{
-			transformView->scale.y = componentView->uvSize.y *
-				transformView->scale.x * ((float)imageSize.y / imageSize.x);
+			transformView->scale(f32x4(1.0f, componentView->uvSize.y * transformView->getScale().getX() * 
+				((float)imageSize.getY() / imageSize.getX()), 1.0f));
 		}
 	}
 	ImGui::EndDisabled();
@@ -188,20 +188,22 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		maxColorMapLayer = colorMapView->getLayerCount() - 1;
 	}
 
-	auto& aabb = componentView->aabb;
-	ImGui::DragFloat3("Min AABB", (float3*)&aabb.getMin(), 0.01f);
+	auto aabbMin = componentView->aabb.getMin(), aabbMax = componentView->aabb.getMax();
+	if (ImGui::DragFloat3("Min AABB", &aabbMin, 0.01f))
+		componentView->aabb.trySet(aabbMin, aabbMax);
 	if (ImGui::BeginPopupContextItem("minAabb"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			aabb = Aabb::one;
+			componentView->aabb = Aabb::one;
 		ImGui::EndPopup();
 	}
 
-	ImGui::DragFloat3("Max AABB", (float3*)&aabb.getMax(), 0.01f);
+	if (ImGui::DragFloat3("Max AABB", &aabbMax, 0.01f))
+		componentView->aabb.trySet(aabbMin, aabbMax);
 	if (ImGui::BeginPopupContextItem("maxAabb"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			aabb = Aabb::one;
+			componentView->aabb = Aabb::one;
 		ImGui::EndPopup();
 	}
 
@@ -209,7 +211,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	if (ImGui::BeginPopupContextItem("uvSize"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->uvSize = float2(1.0f);
+			componentView->uvSize = float2::one;
 		ImGui::EndPopup();
 	}
 
@@ -217,7 +219,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	if (ImGui::BeginPopupContextItem("uvOffset"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->uvOffset = float2(0.0f);
+			componentView->uvOffset = float2::zero;
 		ImGui::EndPopup();
 	}
 
@@ -233,7 +235,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	if (ImGui::BeginPopupContextItem("colorFactor"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->colorFactor = float4(1.0f);
+			componentView->colorFactor = f32x4::one;
 		ImGui::EndPopup();
 	}
 }

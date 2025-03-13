@@ -70,15 +70,15 @@ public:
 	void write(string_view name, double value) final;
 	void write(string_view name, string_view value) final;
 	void write(string_view name, int2 value) final;
-	void write(string_view name, const int3& value) final;
-	void write(string_view name, const int4& value) final;
+	void write(string_view name, int3 value) final;
+	void write(string_view name, int4 value) final;
 	void write(string_view name, uint2 value) final;
-	void write(string_view name, const uint3& value) final;
-	void write(string_view name, const uint4& value) final;
+	void write(string_view name, uint3 value) final;
+	void write(string_view name, uint4 value) final;
 	void write(string_view name, float2 value) final;
-	void write(string_view name, const float3& value) final;
-	void write(string_view name, const float4& value) final;
-	void write(string_view name, const quat& value) final;
+	void write(string_view name, float3 value) final;
+	void write(string_view name, float4 value) final;
+	void write(string_view name, quat value) final;
 	void write(string_view name, const float2x2& value) final;
 	void write(string_view name, const float3x3& value) final;
 	void write(string_view name, const float4x4& value) final;
@@ -151,6 +151,7 @@ public:
 	bool read(string_view name, float3x3& value) final;
 	bool read(string_view name, float4x4& value) final;
 	bool read(string_view name, Aabb& value) final;
+	bool read(string_view name, f32x4& value, uint8 components = 4) final;
 };
 
 } // namespace garden

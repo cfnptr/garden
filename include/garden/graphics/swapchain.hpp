@@ -59,7 +59,7 @@ public:
 protected:
 	vector<Buffer*> buffers;
 	ThreadPool* threadPool = nullptr;
-	uint2 framebufferSize = uint2(0);
+	uint2 framebufferSize = uint2::zero;
 	uint32 bufferIndex = 0;
 	bool vsync = false;
 	bool tripleBuffering = false;

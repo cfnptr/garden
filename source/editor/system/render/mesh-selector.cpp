@@ -66,7 +66,7 @@ void MeshSelectorEditorSystem::editorRender()
 	auto transformSystem = TransformSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	auto cameraPosition = (float3)cameraConstants.cameraPos;
+	auto cameraPosition = cameraConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 
 	auto updateSelector = !ImGui::GetIO().WantCaptureMouse && !lastDragging &&
@@ -79,12 +79,12 @@ void MeshSelectorEditorSystem::editorRender()
 		auto windowSize = inputSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = cameraConstants.invViewProj * float4(ndcPosition, 1.0f, 1.0f);
-		auto globalDirection = cameraConstants.invViewProj * float4(ndcPosition, 0.0001f, 1.0f);
-		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
-		globalDirection = float4((float3)globalDirection / globalDirection.w - (float3)globalOrigin, globalDirection.w);
+		auto globalOrigin = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
+		auto globalDirection = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
+		globalOrigin /= globalOrigin.getW(); globalDirection /= globalDirection.getW();
+		globalDirection -= globalOrigin;
 
-		auto newDist2 = FLT_MAX;
+		auto newDistSq = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;
 
 		for (const auto& pair : systems)
@@ -108,25 +108,18 @@ void MeshSelectorEditorSystem::editorRender()
 				if (!transformView->isActive())
 					continue;
 
-				float4x4 model;
-				if (transformView)
-					model = transformView->calcModel(cameraPosition);
-				else
-					model = float4x4::identity;
-
-				auto modelInverse = inverse(model);
-				auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
-				auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
-				auto ray = Ray((float3)localOrigin, (float3)localDirection);
+				auto model = transformView ? transformView->calcModel(cameraPosition) : f32x4x4::identity;
+				auto modelInverse = inverse4x4(model);
+				auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), multiply3x3(modelInverse, globalDirection));
 				auto points = raycast2(meshRenderView->aabb, ray);
 				if (points.x < 0.0f || !isAabbIntersected(points))
 					continue;
 			
-				auto dist2 = distance2((float3)globalOrigin, getTranslation(model));
-				if (dist2 < newDist2 && meshRenderView->getEntity() != selectedEntity)
+				auto distSq = distanceSq3(globalOrigin, getTranslation(model));
+				if (distSq < newDistSq && meshRenderView->getEntity() != selectedEntity)
 				{
 					newSelected = meshRenderView->getEntity();
-					newDist2 = dist2;
+					newDistSq = distSq;
 					newAabb = meshRenderView->aabb;
 				}
 			}
@@ -183,8 +176,8 @@ void MeshSelectorEditorSystem::editorRender()
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
-				framebufferView->beginRenderPass(float4(0.0f));
-				graphicsSystem->drawAabb(mvp, (float4)aabbColor);
+				framebufferView->beginRenderPass(f32x4::zero);
+				graphicsSystem->drawAabb(mvp, (f32x4)aabbColor);
 				framebufferView->endRenderPass();
 			}
 			graphicsSystem->stopRecording();

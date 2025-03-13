@@ -27,7 +27,7 @@ static void getBlackPlaceholder(ID<Image>& blackPlaceholder)
 	if (!blackPlaceholder)
 	{
 		blackPlaceholder = GraphicsSystem::Instance::get()->createImage(Image::Format::UnormR8,
-			Image::Bind::Sampled, { { nullptr } }, uint2(1), Image::Strategy::Size);
+			Image::Bind::Sampled, { { nullptr } }, uint2::one, Image::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(blackPlaceholder, "image.editor.deferred.blackPlaceholder");
 	}
 }
@@ -141,15 +141,15 @@ void DeferredRenderEditorSystem::editorRender()
 			{
 				ImGui::SeparatorText("Overrides");
 				ImGui::ColorEdit3("Base Color", &colorOverride);
-				ImGui::SliderFloat("Opaque / Transmission", &colorOverride.w, 0.0f, 1.0f);
-				ImGui::SliderFloat("Metallic", &mraorOverride.x, 0.0f, 1.0f);
-				ImGui::SliderFloat("Roughness", &mraorOverride.y, 0.0f, 1.0f);
-				ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.z, 0.0f, 1.0f);
-				ImGui::SliderFloat("Reflectance", &mraorOverride.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Opaque / Transmission", &colorOverride.floats.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Metallic", &mraorOverride.floats.x, 0.0f, 1.0f);
+				ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
+				ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);
+				ImGui::SliderFloat("Reflectance", &mraorOverride.floats.w, 0.0f, 1.0f);
 				ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
-				ImGui::SliderFloat("Emissive Factor", &emissiveOverride.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Emissive Factor", &emissiveOverride.floats.w, 0.0f, 1.0f);
 				ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
-				ImGui::SliderFloat("Thickness", &subsurfaceOverride.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Thickness", &subsurfaceOverride.floats.w, 0.0f, 1.0f);
 				ImGui::SliderFloat("Clear Coat", &clearCoatOverride, 0.0f, 1.0f);
 			}
 			else if ((int)drawMode > (int)DrawMode::Off)
@@ -197,17 +197,17 @@ void DeferredRenderEditorSystem::deferredRender()
 	{
 		auto threadIndex = graphicsSystem->getThreadCount() - 1;
 		auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
-		pushConstants->color = colorOverride;
-		pushConstants->mraor = mraorOverride;
-		pushConstants->emissive = emissiveOverride;
-		pushConstants->subsurface = emissiveOverride;
+		pushConstants->color = (float4)colorOverride;
+		pushConstants->mraor = (float4)mraorOverride;
+		pushConstants->emissive = (float4)emissiveOverride;
+		pushConstants->subsurface = (float4)emissiveOverride;
 		pushConstants->clearCoat = clearCoatOverride;
 
 		SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
 		if (graphicsSystem->isCurrentRenderPassAsync())
 		{
 			pipelineView->bindAsync(0, threadIndex);
-			pipelineView->setViewportScissorAsync(float4(0.0f), threadIndex);
+			pipelineView->setViewportScissorAsync(f32x4::zero, threadIndex);
 			pipelineView->pushConstantsAsync(threadIndex);
 			pipelineView->drawFullscreenAsync(threadIndex);
 			
@@ -261,7 +261,7 @@ void DeferredRenderEditorSystem::ldrRender()
 	{
 		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 		auto pushConstants = pipelineView->getPushConstants<BufferPC>();
-		pushConstants->invViewProj = cameraConstants.invViewProj;
+		pushConstants->invViewProj = (float4x4)cameraConstants.invViewProj;
 		pushConstants->drawMode = (int32)drawMode;
 		pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
 		pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;

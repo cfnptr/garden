@@ -37,7 +37,7 @@ float calcDepth(float3 worldPos, float4x4 viewProj)
 float calcDepthSafe(float3 worldPos, float4x4 viewProj)
 {
 	float4 position = viewProj * float4(worldPos, 1.0f);
-	position.z /= position.w != 0.0f ? position.w : 1.0f
+	position.z /= position.w != 0.0f ? position.w : 1.0f;
 	return position.z;
 }
 

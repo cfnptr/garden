@@ -79,17 +79,17 @@ public:
 	 * @param mass character mass (kg). Used to push down objects with gravity when the character is standing on top
 	 * @param maxPenetrationDepth max penetration we're willing to accept after the switch (if not FLT_MAX)
 	 */
-	void setShape(ID<Shape> shape, float mass = 70.0f,  float maxPenetrationDepth = FLT_MAX);
+	void setShape(ID<Shape> shape, float mass = 70.0f, float maxPenetrationDepth = FLT_MAX);
 
 	/**
 	 * @brief Returns character position in the physics simulation world.
 	 */
-	float3 getPosition() const;
+	f32x4 getPosition() const;
 	/**
 	 * @brief Sets character position in the physics simulation world.
-	 * @param[in] position target character position
+	 * @param position target character position
 	 */
-	void setPosition(const float3& position);
+	void setPosition(f32x4 position);
 
 	/**
 	 * @brief Returns character rotation in the physics simulation world.
@@ -97,9 +97,9 @@ public:
 	quat getRotation() const;
 	/**
 	 * @brief Sets character rotation in the physics simulation world.
-	 * @param[in] rotation target character rotation
+	 * @param rotation target character rotation
 	 */
-	void setRotation(const quat& rotation);
+	void setRotation(quat rotation);
 
 	/**
 	 * @brief Returns character position and rotation in the physics simulation world.
@@ -107,32 +107,32 @@ public:
 	 * @param[out] position character position
 	 * @param[out] rotation character rotation
 	 */
-	void getPosAndRot(float3& position, quat& rotation) const;
+	void getPosAndRot(f32x4& position, quat& rotation) const;
 	/**
 	 * @brief Sets character position and rotation in the physics simulation world.
 	 *
-	 * @param[in] position target character position
-	 * @param[in] rotation target character rotation
+	 * @param position target character position
+	 * @param rotation target character rotation
 	 */
-	void setPosAndRot(const float3& position, const quat& rotation);
+	void setPosAndRot(f32x4 position, quat rotation);
 	/**
 	 * @brief Are character position and rotation differ from the specified values.
 	 * @note It also checks if values are far enough to count it as changed.
 	 *
-	 * @param[in] position target character position
-	 * @param[in] rotation target character rotation
+	 * @param position target character position
+	 * @param rotation target character rotation
 	 */
-	bool isPosAndRotChanged(const float3& position, const quat& rotation) const;
+	bool isPosAndRotChanged(f32x4 position, quat rotation) const;
 
 	/*******************************************************************************************************************
 	 * @brief Returns character linear velocity. (m/s)
 	 */
-	float3 getLinearVelocity() const;
+	f32x4 getLinearVelocity() const;
 	/**
 	 * @brief Sets character linear velocity. (m/s)
-	 * @param[in] velocity target linear velocity
+	 * @param velocity target linear velocity
 	 */
-	void setLinearVelocity(const float3& velocity);
+	void setLinearVelocity(f32x4 velocity);
 
 	/**
 	 * @brief Returns current character ground state.
@@ -159,9 +159,9 @@ public:
 	 * adjusting the velocity and/or the max slope angle accordingly every frame.
 	 *
 	 * @param deltaTime time step to simulate
-	 * @param[in] gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
+	 * @param gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
 	 */
-	void update(float deltaTime, const float3& gravity);
+	void update(float deltaTime, f32x4 gravity);
 	/**
 	 * @brief This function combines Update, StickToFloor and WalkStairs.
 	 *
@@ -172,9 +172,6 @@ public:
 	 *  - When on OnGround and not moving away from ground: velocity = GetGroundVelocity() + horizontal speed as 
 	 *    input by player + optional vertical jump velocity + delta time * gravity
 	 *  - Else: velocity = current vertical velocity + horizontal speed as input by player + delta time * gravity
-	 *
-	 * @param deltaTime time step to simulate
-	 * @param[in] gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
 	 */
 	void extendedUpdate();
 

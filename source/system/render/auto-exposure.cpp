@@ -160,7 +160,7 @@ void AutoExposureRenderSystem::render()
 		histogramPipelineView->bind();
 		histogramPipelineView->bindDescriptorSet(histogramDescriptorSet);
 		histogramPipelineView->pushConstants();
-		histogramPipelineView->dispatch(uint3(framebufferSize, 1));
+		histogramPipelineView->dispatch(framebufferSize);
 
 		auto averagePC = averagePipelineView->getPushConstants<AveragePC>();
 		averagePC->minLogLum = minLogLum;
@@ -172,7 +172,7 @@ void AutoExposureRenderSystem::render()
 		averagePipelineView->bind();
 		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
 		averagePipelineView->pushConstants();
-		averagePipelineView->dispatch(uint3(1));
+		averagePipelineView->dispatch(u32x4::one);
 	}
 	graphicsSystem->stopRecording();
 }

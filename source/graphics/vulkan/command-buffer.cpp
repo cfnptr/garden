@@ -569,7 +569,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	const auto& colorAttachments = framebuffer->getColorAttachments();
 	auto colorAttachmentCount = (uint32)colorAttachments.size();
 	auto commandBufferData = (const uint8*)&command;
-	auto clearColors = (const float4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
+	auto clearColors = (const f32x4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 
 	noSubpass = framebuffer->getSubpasses().empty();
@@ -606,11 +606,9 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (colorAttachment.clear)
 			{
-				auto clearColor = clearColors[i];
 				array<float, 4> color;
+				*(f32x4*)color.data() = clearColors[i];
 				loadOperation = vk::AttachmentLoadOp::eClear;
-				color[0] = clearColor.x; color[1] = clearColor.y;
-				color[2] = clearColor.z; color[3] = clearColor.w;
 				clearValue = vk::ClearValue(vk::ClearColorValue(color));
 			}
 			else if (colorAttachment.load)
@@ -630,10 +628,8 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		}
 		else
 		{
-			auto clearColor = clearColors[i];
 			array<float, 4> color;
-			color[0] = clearColor.x; color[1] = clearColor.y;
-			color[2] = clearColor.z; color[3] = clearColor.w;
+			*(f32x4*)color.data() = clearColors[i];
 			vulkanAPI->clearValues.emplace_back(vk::ClearColorValue(color));
 		}
 	}
@@ -926,7 +922,7 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		auto region = regions[i];
 		
 		vk::Rect2D rect({ (int32)region.offset.x, (int32)region.offset.y }, {});
-		if (region.extent == 0u)
+		if (region.extent == uint2::zero)
 		{
 			auto size = framebufferView->getSize();
 			rect.extent.width = size.x;
@@ -1328,10 +1324,10 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 		vk::Offset3D dstOffset(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
 		vk::Extent3D extent;
 
-		if (region.extent == 0u)
+		if (region.extent == uint3::zero)
 		{
-			auto mipImageSize = calcSizeAtMip(srcImage->getSize(), region.srcMipLevel);
-			extent = vk::Extent3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
+			auto mipImageSize = calcSizeAtMip3(srcImage->getSize(), region.srcMipLevel);
+			extent = vk::Extent3D(mipImageSize.getX(), mipImageSize.getY(), mipImageSize.getZ());
 		}
 		else
 		{
@@ -1410,10 +1406,10 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		vk::Offset3D dstOffset(region.imageOffset.x, region.imageOffset.y, region.imageOffset.z);
 		vk::Extent3D dstExtent;
 		
-		if (region.imageExtent == 0u)
+		if (region.imageExtent == uint3::zero)
 		{
-			auto mipImageSize = calcSizeAtMip(image->getSize(), region.imageMipLevel);
-			dstExtent = vk::Extent3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
+			auto mipImageSize = calcSizeAtMip3(image->getSize(), region.imageMipLevel);
+			dstExtent = vk::Extent3D(mipImageSize.getX(), mipImageSize.getY(), mipImageSize.getZ());
 		}
 		else
 		{
@@ -1499,19 +1495,19 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 		array<vk::Offset3D, 2> dstBounds;
 		dstBounds[0] = vk::Offset3D(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
 
-		if (region.srcExtent == 0u)
+		if (region.srcExtent == uint3::zero)
 		{
-			auto mipImageSize = calcSizeAtMip(srcImage->getSize(), region.srcMipLevel);
-			srcBounds[1] = vk::Offset3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
+			auto mipImageSize = calcSizeAtMip3(srcImage->getSize(), region.srcMipLevel);
+			srcBounds[1] = vk::Offset3D(mipImageSize.getX(), mipImageSize.getY(), mipImageSize.getZ());
 		}
 		else
 		{
 			srcBounds[1] = vk::Offset3D(region.srcExtent.x, region.srcExtent.y, region.srcExtent.z);
 		}
-		if (region.dstExtent == 0u)
+		if (region.dstExtent == uint3::zero)
 		{
-			auto mipImageSize = calcSizeAtMip(dstImage->getSize(), region.dstMipLevel);
-			dstBounds[1] = vk::Offset3D(mipImageSize.x, mipImageSize.y, mipImageSize.z);
+			auto mipImageSize = calcSizeAtMip3(dstImage->getSize(), region.dstMipLevel);
+			dstBounds[1] = vk::Offset3D(mipImageSize.getX(), mipImageSize.getY(), mipImageSize.getZ());
 		}
 		else
 		{
@@ -1561,8 +1557,8 @@ void VulkanCommandBuffer::processCommand(const BeginLabelCommand& command)
 	SET_CPU_ZONE_SCOPED("BeginLabel Command Process");
 
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
-	auto floatColor = (float4)command.color;
-	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
+	array<float, 4> values;
+	*(float4*)values.data() = (float4)command.color;
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
 	instance.beginDebugUtilsLabelEXT(debugLabel);
 }
@@ -1576,8 +1572,8 @@ void VulkanCommandBuffer::processCommand(const InsertLabelCommand& command)
 	SET_CPU_ZONE_SCOPED("InsertLabel Command Process");
 
 	auto name = (const char*)&command + sizeof(BeginLabelCommandBase);
-	auto floatColor = (float4)command.color;
-	array<float, 4> values = { floatColor.x, floatColor.y, floatColor.z, floatColor.w };
+	array<float, 4> values;
+	*(float4*)values.data() = (float4)command.color;
 	vk::DebugUtilsLabelEXT debugLabel(name, values);
 	instance.beginDebugUtilsLabelEXT(debugLabel);
 }

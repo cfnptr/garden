@@ -131,7 +131,7 @@ bool InstanceRenderSystem::isDrawReady(bool isShadowPass)
 }
 
 //**********************************************************************************************************************
-void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass)
+void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	swapchainIndex = graphicsSystem->getSwapchainIndex();
@@ -189,9 +189,9 @@ void InstanceRenderSystem::prepareDraw(const float4x4& viewProj, uint32 drawCoun
 void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
-	pipelineView->setViewportScissorAsync(float4(0.0f), taskIndex);
+	pipelineView->setViewportScissorAsync(f32x4::zero, taskIndex);
 }
-void InstanceRenderSystem::finalizeDraw(const float4x4& viewProj, uint32 drawCount, bool isShadowPass)
+void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass)
 {
 	ID<Buffer> instanceBuffer; uint64 dataBinarySize;
 	if (isShadowPass)

@@ -663,7 +663,7 @@ void ImGuiRenderSystem::present()
 		-1.0f - drawData->DisplayPos.y * pushConstants->scale.y);
 
 	BEGIN_GPU_DEBUG_LABEL("ImGui", Color::transparent);
-	framebufferView->beginRenderPass(float4(0.0f));
+	framebufferView->beginRenderPass(f32x4::zero);
 	pipelineView->bind();
 	pipelineView->setViewport();
 	pipelineView->pushConstants();
@@ -691,7 +691,7 @@ void ImGuiRenderSystem::present()
 			if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
 				continue;
 
-			pipelineView->setScissor(int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y));
+			pipelineView->setScissor(i32x4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y));
 
 			ID<DescriptorSet> descriptorSet;
 			if (cmd.TextureId == *defaultFontTexture)

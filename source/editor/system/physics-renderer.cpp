@@ -48,7 +48,7 @@ bool PhysicsDebugRenderer::isReady()
 }
 
 //**********************************************************************************************************************
-void PhysicsDebugRenderer::drawLines(const float4x4& viewProj)
+void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 {
 	if (lines.empty())
 		return;
@@ -65,7 +65,7 @@ void PhysicsDebugRenderer::drawLines(const float4x4& viewProj)
 		return;
 
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->mvp = viewProj;
+	pushConstants->mvp = (float4x4)viewProj;
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
@@ -75,7 +75,7 @@ void PhysicsDebugRenderer::drawLines(const float4x4& viewProj)
 	linesBuffer = {};
 	lines.clear();
 }
-void PhysicsDebugRenderer::drawTriangles(const float4x4& viewProj)
+void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 {
 	if (triangles.empty())
 		return;
@@ -92,7 +92,7 @@ void PhysicsDebugRenderer::drawTriangles(const float4x4& viewProj)
 		return;
 
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->mvp = viewProj;
+	pushConstants->mvp = (float4x4)viewProj;
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
@@ -110,7 +110,7 @@ void PhysicsDebugRenderer::preDraw()
 	if (!triangles.empty())
 		trianglesBuffer = createVertexBuffer(triangles.size() * sizeof(Triangle), triangles.data());
 }
-void PhysicsDebugRenderer::draw(const float4x4& viewProj)
+void PhysicsDebugRenderer::draw(const f32x4x4& viewProj)
 {
 	drawLines(viewProj);
 	drawTriangles(viewProj);

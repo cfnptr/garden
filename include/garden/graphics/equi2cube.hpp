@@ -30,8 +30,8 @@ namespace garden::graphics
 class Equi2Cube final
 {
 public:
-	static void convert(const uint3& coords, uint32 cubemapSize, uint2 equiSize,
-		uint2 equiSizeMinus1, const float4* equiPixels, float4* cubePixels, float invDim);
+	static void convert(uint3 coords, uint32 cubemapSize, uint2 equiSize,
+		uint2 equiSizeMinus1, const f32x4* equiPixels, f32x4* cubePixels, float invDim);
 
 	#if GARDEN_DEBUG || defined(EQUI2CUBE)
 	/**

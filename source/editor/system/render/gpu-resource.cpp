@@ -198,6 +198,8 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	}
 
 	auto& image = images[selectedItem];
+	auto size = image.getSize();
+
 	if (hasAnyFlag(image.getBind(), Image::Bind::Sampled) && image.isReady())
 	{
 		imageMip = std::min(imageMip, (int)image.getMipCount() - 1);
@@ -210,8 +212,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.editor.gpuResource.tmp");
 		graphicsSystem->destroy(imageView); // TODO: suboptimal solution
 
-		auto size = image.getSize();
-		auto aspectRatio = (float)size.y / size.x;
+		auto aspectRatio = (float)size.getY() / size.getX();
 		ImGui::Image(*imageView, ImVec2(256.0f, 256.0f * aspectRatio));
 
 		if (image.getMipCount() > 1)
@@ -225,8 +226,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(image.getFormat()).data());
 	ImGui::TextWrapped("Bind types: { %s }", toStringList(image.getBind()).c_str());
-	ImGui::TextWrapped("Image size: %ldx%ldx%ld", (long)image.getSize().x,
-		(long)image.getSize().y, (long)image.getSize().z);
+	ImGui::TextWrapped("Image size: %ldx%ldx%ld", (long)size.getX(), (long)size.getY(), (long)size.getZ());
 	ImGui::TextWrapped("Layer count: %lu", (unsigned long)image.getLayerCount());
 	ImGui::TextWrapped("Mip count: %lu", (unsigned long)image.getMipCount());
 
@@ -327,8 +327,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 		if (hasAnyFlag(image->getBind(), Image::Bind::Sampled) && image->isReady())
 		{
 			auto size = image->getSize();
-			auto aspectRatio = (float)size.y / size.x;
-
+			auto aspectRatio = (float)size.getY() / size.getX();
 			if (imageView.getType() == Image::Type::Texture2D)
 				ImGui::Image(selectedItem + 1, ImVec2(256.0f, 256.0f * aspectRatio));
 		}
@@ -861,10 +860,12 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 	}
 
 	const auto& computePipeline = computePipelines[selectedItem];
+	auto localSize = computePipeline.getLocalSize();
+
 	ImGui::SeparatorText(computePipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Local size: %ldx%ldx%ld", (long)computePipeline.getLocalSize().x,
-		(long)computePipeline.getLocalSize().y, (long)computePipeline.getLocalSize().z);
+	ImGui::TextWrapped("Local size: %ldx%ldx%ld", 
+		(long)localSize.getX(), (long)localSize.getY(), (long)localSize.getZ());
 	auto instance = ID<Pipeline>(graphicsAPI->computePipelinePool.getID(&computePipeline));
 	renderPipelineDetails(computePipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();

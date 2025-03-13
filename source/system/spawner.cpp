@@ -101,9 +101,9 @@ void SpawnerComponent::spawn(uint32 count)
 			{
 				if (transformSystem->hasComponent(entity))
 				{
-					dupTransformView->position = float3(0.0f);
-					dupTransformView->scale = float3(1.0f);
-					dupTransformView->rotation = float3(0.0f);
+					dupTransformView->setPosition(f32x4::zero);
+					dupTransformView->setScale(f32x4::one);
+					dupTransformView->setRotation(quat::identity);
 					dupTransformView->setParent(entity);
 				}
 				else
@@ -117,8 +117,11 @@ void SpawnerComponent::spawn(uint32 count)
 				if (thisTransformView)
 				{
 					auto model = thisTransformView->calcModel();
-					extractTransform(model, dupTransformView->position,
-						dupTransformView->scale, dupTransformView->rotation);
+					f32x4 position, scale; quat rotation;
+					extractTransform(model, position, rotation, scale);
+					dupTransformView->setPosition(position);
+					dupTransformView->setScale(scale);
+					dupTransformView->setRotation(rotation);
 				}
 				dupTransformView->setParent({});
 			}

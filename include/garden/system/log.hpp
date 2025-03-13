@@ -43,6 +43,10 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_TRACE(message) LogSystem::tryTrace(message)
 #else
+/**
+ * @brief Writes trace message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
 #define GARDEN_LOG_TRACE(message) (void)0
 #endif
 
@@ -53,6 +57,10 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_DEBUG(message) LogSystem::tryDebug(message)
 #else
+/**
+ * @brief Writes debug message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
 #define GARDEN_LOG_DEBUG(message) (void)0
 #endif
 
@@ -63,6 +71,10 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_INFO(message) LogSystem::tryInfo(message)
 #else
+/**
+ * @brief Writes information message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
 #define GARDEN_LOG_INFO(message) (void)0
 #endif
 
@@ -73,6 +85,10 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_WARN(message) LogSystem::tryWarn(message)
 #else
+/**
+ * @brief Writes warning message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
 #define GARDEN_LOG_WARN(message) (void)0
 #endif
 
@@ -83,6 +99,10 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_ERROR(message) LogSystem::tryError(message)
 #else
+/**
+ * @brief Writes error message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
 #define GARDEN_LOG_ERROR(message) (void)0
 #endif
 
@@ -93,6 +113,10 @@ using namespace ecsm;
  */
 #define GARDEN_LOG_FATAL(message) LogSystem::tryFatal(message)
 #else
+/**
+ * @brief Writes fatal message to the log if system exist. (MT-Safe)
+ * @param[in] message target logging message
+ */
 #define GARDEN_LOG_FATAL(message) (void)0
 #endif
 

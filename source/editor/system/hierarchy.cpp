@@ -69,17 +69,17 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 		auto cameraTransformView = transformSystem->tryGetComponent(graphicsSystem->camera);
 		if (entityTransformView && cameraTransformView)
 		{
-			auto model = entityTransformView->calcModel();
-			cameraTransformView->position = getTranslation(model);
-
+			auto position = getTranslation(entityTransformView->calcModel());
 			auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
+
 			if (cameraView)
 			{
-				if (cameraView->type == ProjectionType::Perspective)
-					cameraTransformView->position += float3(0.0f, 0.0f, -2.0f) * cameraTransformView->rotation;
-				else
-					cameraTransformView->position.z = -0.5f;
+				position = cameraView->type == ProjectionType::Perspective ? 
+					position + f32x4(0.0f, 0.0f, -2.0f) * cameraTransformView->getRotation() :
+					f32x4(position.getX(), position.getY(), -0.5f);
 			}
+
+			cameraTransformView->setPosition(position);
 		}
 	}
 
@@ -230,7 +230,7 @@ void HierarchyEditorSystem::editorRender()
 				if (GraphicsSystem::Instance::get()->camera)
 				{
 					const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
-					transformView->position = (float3)cameraConstants.cameraPos + (float3)cameraConstants.viewDir;
+					transformView->setPosition(cameraConstants.cameraPos + cameraConstants.viewDir);
 				}
 				editorSystem->selectedEntity = entity;
 			}

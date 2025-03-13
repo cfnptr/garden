@@ -236,7 +236,7 @@ public:
 		float depthBiasConstant = 0.0f;                            /**< Depth bias constant value. */
 		float depthBiasClamp = 0.0f;                               /**< Depth bias clamp value. */
 		float depthBiasSlope = 0.0f;                               /**< Depth bias slope value. */
-		float4 blendConstant = float4(0.0f);                       /**< Blending operations constant color. */
+		float4 blendConstant = float4::zero;                       /**< Blending operations constant color. */
 		CullFace cullFace = CullFace::Back;                        /**< Triangle culling mode. */
 		FrontFace frontFace = FrontFace::CounterClockwise;         /**< Polygon front-facing orientation. */
 		uint16 _alignment = 0;                                     /**< [structure alignment] */
@@ -337,52 +337,52 @@ public:
 
 	/**
 	 * @brief Specifies the region of the framebuffer where the rendering will occur.
-	 * @param[in] viewport target viewport (xy = position, zw = size)
+	 * @param viewport target viewport (xy = position, zw = size)
 	 */
-	void setViewport(const float4& viewport = float4(0.0f));
+	void setViewport(f32x4 viewport = f32x4::zero);
 	/**
 	 * @brief Specifies the region of the framebuffer where the rendering will occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport()
 	 * 
-	 * @param[in] viewport target viewport value (xy = position, zw = size)
+	 * @param viewport target viewport value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportAsync(const float4& viewport = float4(0.0f), int32 threadIndex = -1);
+	void setViewportAsync(f32x4 viewport = f32x4::zero, int32 threadIndex = -1);
 
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur.
-	 * @param[in] scissor target scissor value (xy = offset, zw = extent)
+	 * @param scissor target scissor value (xy = offset, zw = extent)
 	 * 
 	 * @details
 	 * Any drawing operation outside this scissor rectangle is clipped and will not appear in the final image.
 	 * This command is used in conjunction with the viewport setting to further restrict rendering to a specific 
 	 * region of the screen, enabling more precise control over where graphics are drawn.
 	 */
-	void setScissor(const int4& scissor = int4(0));
+	void setScissor(i32x4 scissor = i32x4::zero);
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setScissor()
 	 * 
-	 * @param[in] scissor target scissor value (xy = offset, zw = extent)
+	 * @param scissor target scissor value (xy = offset, zw = extent)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setScissorAsync(const int4& scissor = int4(0), int32 threadIndex = -1);
+	void setScissorAsync(i32x4 scissor = i32x4::zero, int32 threadIndex = -1);
 
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions.
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
 	 * 
-	 * @param[in] viewportScissor target viewport and scissor value (xy = position, zw = size)
+	 * @param viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 */
-	void setViewportScissor(const float4& viewportScissor = float4(0.0f));
+	void setViewportScissor(f32x4 viewportScissor = f32x4::zero);
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
 	 * 
-	 * @param[in] viewportScissor target viewport and scissor value (xy = position, zw = size)
+	 * @param viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportScissorAsync(const float4& viewportScissor = float4(0.0f), int32 threadIndex = -1);
+	void setViewportScissorAsync(f32x4 viewportScissor = f32x4::zero, int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Renders primitives to the framebuffer.

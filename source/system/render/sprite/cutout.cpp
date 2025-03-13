@@ -25,7 +25,7 @@ CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFil
 CutoutSpriteSystem::~CutoutSpriteSystem() { unsetSingleton(); }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
 {
 	SpriteRenderSystem::setPushConstants(spriteRenderView,
 		pushConstants, viewProj, model, drawIndex, threadIndex);

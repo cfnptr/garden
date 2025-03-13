@@ -201,7 +201,7 @@ void AutoExposureRenderEditorSystem::editorRender()
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
-				framebufferView->beginRenderPass(float4(0.0f));
+				framebufferView->beginRenderPass(f32x4::zero);
 				pipelineView->bind();
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(limitsDescriptorSet);

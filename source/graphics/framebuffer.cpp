@@ -420,7 +420,7 @@ static void recreateVkFramebuffer(uint2 size, const vector<Framebuffer::SubpassI
 //**********************************************************************************************************************
 Framebuffer::Framebuffer(uint2 size, vector<Subpass>&& subpasses)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(!subpasses.empty());
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -446,7 +446,7 @@ Framebuffer::Framebuffer(uint2 size, vector<Subpass>&& subpasses)
 Framebuffer::Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments,
 	OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -480,7 +480,7 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 	uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment)
 {
 	GARDEN_ASSERT(subpasses.empty());
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(colorAttachmentCount > 0 || depthStencilAttachment.imageView);
 
 	#if GARDEN_DEBUG
@@ -520,7 +520,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 	OutputAttachment depthStencilAttachment)
 {
 	GARDEN_ASSERT(subpasses.empty());
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 
 	#if GARDEN_DEBUG
@@ -554,7 +554,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 //**********************************************************************************************************************
 void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 {
-	GARDEN_ASSERT((size > 0u).areAllTrue());
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(subpasses.size() == this->subpasses.size());
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -590,14 +590,14 @@ void Framebuffer::setDebugName(const string& name)
 #endif
 
 //**********************************************************************************************************************
-void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCount,
-	float clearDepth, uint32 clearStencil, const int4& region, bool asyncRecording)
+void Framebuffer::beginRenderPass(const f32x4* clearColors, uint8 clearColorCount,
+	float clearDepth, uint32 clearStencil, i32x4 region, bool asyncRecording)
 {
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(clearColorCount == colorAttachments.size());
 	GARDEN_ASSERT(!clearColors || (clearColors && clearColorCount > 0));
-	GARDEN_ASSERT(region.x + region.z <= size.x);
-	GARDEN_ASSERT(region.y + region.w <= size.y);
+	GARDEN_ASSERT(region.getX() + region.getZ() <= size.x);
+	GARDEN_ASSERT(region.getY() + region.getW() <= size.y);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	
 	auto graphicsAPI = GraphicsAPI::get();
@@ -634,7 +634,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	command.framebuffer = graphicsAPI->framebufferPool.getID(this);
 	command.clearDepth = clearDepth;
 	command.clearStencil = clearStencil;
-	command.region = region == 0 ? int4(0, 0, size.x, size.y) : region;
+	command.region = region == i32x4::zero ? int4(0, 0, size.x, size.y) : (int4)region;
 	command.clearColors = clearColors;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 

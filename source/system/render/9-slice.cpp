@@ -32,12 +32,12 @@ uint64 NineSliceRenderSystem::getInstanceDataSize()
 	return (uint64)sizeof(NineSliceInstanceData);
 }
 void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
-	const float4x4& viewProj, const float4x4& model, uint32 drawIndex, int32 threadIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
 {
 	auto nineSliceRenderView = (NineSliceRenderComponent*)spriteRenderView;
 	auto nineSliceInstanceData = (NineSliceInstanceData*)instanceData;
 
-	auto imageSize = float2(1.0f); // White texture size
+	auto imageSize = float2::one; // White texture size
 	if (nineSliceRenderView->colorMap)
 	{
 		auto imageView = GraphicsSystem::Instance::get()->get(nineSliceRenderView->colorMap);
@@ -47,9 +47,11 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 
 	SpriteRenderSystem::setInstanceData(spriteRenderView,
 		instanceData, viewProj, model, drawIndex, threadIndex);
-	nineSliceInstanceData->texWinBorder = float4(
-		nineSliceRenderView->textureBorder / imageSize,
-		nineSliceRenderView->windowBorder / scale);
+
+	auto textureBorder = nineSliceRenderView->textureBorder;
+	auto windowBorder = nineSliceRenderView->windowBorder;
+	nineSliceInstanceData->texWinBorder = f32x4(textureBorder.x, textureBorder.y, 
+		windowBorder.x, windowBorder.y) / f32x4(imageSize.x, imageSize.y, scale.x, scale.y);
 }
 
 //**********************************************************************************************************************
@@ -57,9 +59,9 @@ void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Compon
 {
 	SpriteRenderSystem::serialize(serializer, component);
 	auto nineSliceView = View<NineSliceRenderComponent>(component);
-	if (nineSliceView->textureBorder != float2(0.0f))
+	if (nineSliceView->textureBorder != float2::zero)
 		serializer.write("textureBorder", nineSliceView->textureBorder);
-	if (nineSliceView->windowBorder != float2(0.0f))
+	if (nineSliceView->windowBorder != float2::zero)
 		serializer.write("windowBorder", nineSliceView->windowBorder);
 }
 void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)

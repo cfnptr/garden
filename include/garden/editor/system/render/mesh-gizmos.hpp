@@ -30,7 +30,7 @@ public:
 	};
 	struct GizmosMesh final
 	{
-		float4x4 model = float4x4(0.0f);
+		f32x4x4 model = f32x4x4::zero;
 		Color color = Color::black;
 		ID<Buffer> vertexBuffer = {};
 		uint32 vertexCount = 0;

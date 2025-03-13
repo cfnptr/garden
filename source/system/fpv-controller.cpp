@@ -55,7 +55,7 @@ void FpvControllerSystem::init()
 	manager->add<DoNotSerializeComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
-	transformView->position = float3(0.0f, 2.0f, -2.0f);
+	transformView->setPosition(f32x4(0.0f, 2.0f, -2.0f));
 	#if GARDEN_DEBUG | GARDEN_EDITOR
 	transformView->debugName = "Main Camera";
 	#endif
@@ -149,13 +149,13 @@ quat FpvControllerSystem::updateCameraRotation()
 	auto cursorDelta = InputSystem::Instance::get()->getCursorDelta();
 	rotation += cursorDelta * mouseSensitivity * radians(0.1f);
 	rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
-	auto rotationQuat = quat(rotation.y, float3::left) * quat(rotation.x, float3::bottom);
-	transformView->rotation = rotationQuat;
-	return rotationQuat;
+	auto cameraRotation = quat(rotation.y, f32x4::left) * quat(rotation.x, f32x4::bottom);
+	transformView->setRotation(cameraRotation);
+	return cameraRotation;
 }
 
 //**********************************************************************************************************************
-void FpvControllerSystem::updateCameraControl(const quat& rotationQuat)
+void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 {
 	#if GARDEN_EDITOR
 	auto editorSystem = EditorRenderSystem::Instance::tryGet();
@@ -169,7 +169,7 @@ void FpvControllerSystem::updateCameraControl(const quat& rotationQuat)
 
 	auto inputSystem = InputSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
-	auto flyVector = float3(0.0f);
+	auto flyVector = f32x4::zero;
 
 	if (isMouseLocked)
 	{
@@ -185,22 +185,22 @@ void FpvControllerSystem::updateCameraControl(const quat& rotationQuat)
 		}
 
 		if (inputSystem->getKeyboardState(KeyboardButton::A))
-			flyVector.x = -moveSpeed;
+			flyVector.setX(-moveSpeed);
 		else if (inputSystem->getKeyboardState(KeyboardButton::D))
-			flyVector.x = moveSpeed;
+			flyVector.setX(moveSpeed);
 		if (inputSystem->getKeyboardState(KeyboardButton::Q) || inputSystem->getKeyboardState(KeyboardButton::LeftControl))
-			flyVector.y = -moveSpeed;
+			flyVector.setY(-moveSpeed);
 		else if (inputSystem->getKeyboardState(KeyboardButton::E) || inputSystem->getKeyboardState(KeyboardButton::Space))
-			flyVector.y = moveSpeed;
+			flyVector.setY(moveSpeed);
 		if (inputSystem->getKeyboardState(KeyboardButton::S))
-			flyVector.z = -moveSpeed;
+			flyVector.setZ(-moveSpeed);
 		else if (inputSystem->getKeyboardState(KeyboardButton::W))
-			flyVector.z = moveSpeed;
-		flyVector = (flyVector * boost) * rotationQuat;
+			flyVector.setZ(moveSpeed);
+		flyVector = (flyVector * boost) * cameraRotation;
 	}
 
 	velocity = lerpDelta(velocity, flyVector, 1.0f - moveLerpFactor, deltaTime);
-	transformView->position += velocity * deltaTime;
+	transformView->translate(velocity * deltaTime);
 }
 
 //**********************************************************************************************************************
@@ -224,25 +224,25 @@ void FpvControllerSystem::updateCharacterControl()
 	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
 	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
 
-	auto velocity = float3(0.0f);
+	auto velocity = f32x4::zero;
 	if (inputSystem->getKeyboardState(KeyboardButton::W))
-		velocity = (float3)cameraConstants.viewDir;
+		velocity = cameraConstants.viewDir;
 	if (inputSystem->getKeyboardState(KeyboardButton::S))
-		velocity -= (float3)cameraConstants.viewDir;
-	if (velocity != float3(0.0f))
+		velocity -= cameraConstants.viewDir;
+	if (velocity != f32x4::zero)
 	{
-		velocity.y = 0.0f;
-		velocity = normalize(velocity);
+		velocity.setY(0.0f);
+		velocity = normalize3(velocity);
 	}
 
 	if (inputSystem->getKeyboardState(KeyboardButton::D))
-		velocity += (float3)(cameraConstants.inverseView * float4(float3::right, 1.0f));
+		velocity += cameraConstants.inverseView * f32x4(f32x4::right, 1.0f);
 	if (inputSystem->getKeyboardState(KeyboardButton::A))
-		velocity -= (float3)(cameraConstants.inverseView * float4(float3::right, 1.0f));
-	if (velocity != float3(0.0f))
+		velocity -= cameraConstants.inverseView * f32x4(f32x4::right, 1.0f);
+	if (velocity != f32x4::zero)
 	{
-		velocity.y = 0.0f;
-		velocity = normalize(velocity);
+		velocity.setY(0.0f);
+		velocity = normalize3(velocity);
 		velocity *= moveSpeed;
 	}
 
@@ -260,13 +260,13 @@ void FpvControllerSystem::updateCharacterControl()
 			continue;
 
 		auto linearVelocity = characterView->getLinearVelocity();
-		linearVelocity.x = lerpDelta(linearVelocity.x, velocity.x, 1.0f - moveLerpFactor, deltaTime);
-		linearVelocity.z = lerpDelta(linearVelocity.z, velocity.z, 1.0f - moveLerpFactor, deltaTime);
+		linearVelocity.setX(lerpDelta(linearVelocity.getX(), velocity.getX(), 1.0f - moveLerpFactor, deltaTime));
+		linearVelocity.setZ(lerpDelta(linearVelocity.getZ(), velocity.getZ(), 1.0f - moveLerpFactor, deltaTime));
 
 		if (characterView->getGroundState() == CharacterGround::OnGround)
-			linearVelocity.y = isJumping ? jumpSpeed : 0.0f;
+			linearVelocity.setY(isJumping ? jumpSpeed : 0.0f);
 		else
-			linearVelocity.y += gravity.y * deltaTime;
+			linearVelocity.setY(linearVelocity.getY() + gravity.getY() * deltaTime);
 
 		characterView->setLinearVelocity(linearVelocity);
 		characterView->update(deltaTime, gravity);

@@ -15,6 +15,7 @@
 #pragma once
 #include "math/color.hpp"
 #include "math/matrix.hpp"
+#include "math/quaternion.hpp"
 
 #include "Jolt/Jolt.h"
 #include "Jolt/Core/Color.h"
@@ -37,57 +38,30 @@ namespace BroadPhaseLayers
 	constexpr JPH::uint NUM_LAYERS(2);
 };
 
-static float3 toFloat3(const JPH::Vec3& v) noexcept
-{
-	return float3(v.GetX(), v.GetY(), v.GetZ());
-}
-static float4 toFloat4(const JPH::Vec4& v) noexcept
-{
-	return float4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
-}
-static uint4 toUint4(const JPH::UVec4& v) noexcept
-{
-	return uint4(v.GetX(), v.GetY(), v.GetZ(), v.GetW());
-}
-static quat toQuat(const JPH::Quat& q) noexcept
-{
-	return quat(q.GetX(), q.GetY(), q.GetZ(), q.GetW());
-}
+static f32x4 toF32x4(const JPH::Vec3& v) noexcept { return f32x4(v.mValue); }
+static f32x4 toF32x4(const JPH::Vec4& v) noexcept { return f32x4(v.mValue); }
+static u32x4 toU32x4(const JPH::UVec4& v) noexcept { return u32x4(v.mValue); }
+static quat toQuat(const JPH::Quat& q) noexcept { return quat(q.mValue.mValue); }
 
-static JPH::Vec3 toVec3(const float3& v) noexcept
-{
-	return JPH::Vec3(v.x, v.y, v.z);
-}
-static JPH::RVec3 toRVec3(const float3& v) noexcept
-{
-	return JPH::RVec3(v.x, v.y, v.z);
-}
-static JPH::Vec4 toVec4(const float4& v) noexcept
-{
-	return JPH::Vec4(v.x, v.y, v.z, v.w);
-}
-static JPH::UVec4 toUVec4(const uint4& v) noexcept
-{
-	return JPH::UVec4(v.x, v.y, v.z, v.w);
-}
-static JPH::Quat toQuat(const quat& q) noexcept
-{
-	return JPH::Quat(q.x, q.y, q.z, q.w);
-}
+static JPH::Vec3 toVec3(f32x4 v) noexcept { return JPH::Vec3(v.getX(), v.getY(), v.getZ()); } // Fixing W
+static JPH::RVec3 toRVec3(f32x4 v) noexcept { return JPH::RVec3(v.getX(), v.getY(), v.getZ()); } // Fixing W
+static JPH::Vec4 toVec4(f32x4 v) noexcept { return JPH::Vec4(v.data); }
+static JPH::UVec4 toUVec4(u32x4 v) noexcept { return JPH::UVec4(v.data); }
+static JPH::Quat toQuat(quat q) noexcept { return JPH::Quat(q.data); }
 
-static float4x4 toFloat4x4(const JPH::Mat44& m) noexcept
+static f32x4x4 toF32x4x4(const JPH::Mat44& m) noexcept
 {
-	return float4x4(toFloat4(m.GetColumn4(0)), toFloat4(m.GetColumn4(1)),
-		toFloat4(m.GetColumn4(2)), toFloat4(m.GetColumn4(3)));
+	return f32x4x4(toF32x4(m.GetColumn4(0)), toF32x4(m.GetColumn4(1)),
+		toF32x4(m.GetColumn4(2)), toF32x4(m.GetColumn4(3)));
 }
-static JPH::Mat44 toMat44(const float4x4& m) noexcept
+static JPH::Mat44 toMat44(const f32x4x4& m) noexcept
 {
 	return JPH::Mat44(toVec4(m.c0), toVec4(m.c1), toVec4(m.c2), toVec4(m.c3));
 }
 
-static math::Color toMathColor(JPH::Color color) noexcept
+static math::Color toMathColor(JPH::ColorArg color) noexcept
 {
-	return math::Color(color.r, color.g, color.b, color.a);
+	return *((const math::Color*)&color.mU32);
 }
 
 } // namespace garden::physics

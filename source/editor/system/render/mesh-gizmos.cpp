@@ -120,47 +120,46 @@ void MeshGizmosEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static void addGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, const float4x4& model, 
+static void addGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, const f32x4x4& model, 
 	ID<Buffer> cubeBuffer, ID<Buffer> arrowBuffer, Color handleColor, Color axisColorX, Color axisColorY, Color axisColorZ)
 {
 	MeshGizmosEditorSystem::GizmosMesh gizmosMesh;
 	gizmosMesh.vertexBuffer = cubeBuffer;
 	gizmosMesh.vertexCount = primitive::cubeVertices.size();
-	gizmosMesh.model = model * scale(float3(0.1f, 0.1f, 0.1f));
+	gizmosMesh.model = scale(model, f32x4(0.1f, 0.1f, 0.1f));
 	gizmosMesh.color = handleColor;
 	gizmosMeshes.push_back(gizmosMesh);
 
 	gizmosMesh.vertexBuffer = arrowBuffer;
 	gizmosMesh.vertexCount = arrowVertices.size();
-	gizmosMesh.model = model * translate(float3(0.9f, 0.0f, 0.0f)) *
-		rotate(quat(radians(90.0f), float3::back)) * scale(float3(0.1f, 0.2f, 0.1f));
+	gizmosMesh.model = translate(model, f32x4(0.9f, 0.0f, 0.0f)) *
+		rotate(quat(radians(90.0f), f32x4::back)) * scale(f32x4(0.1f, 0.2f, 0.1f));
 	gizmosMesh.color = axisColorX;
 	gizmosMeshes.push_back(gizmosMesh);
-	gizmosMesh.model = model * translate(float3(0.0f, 0.9f, 0.0f)) *
-		scale(float3(0.1f, 0.2f, 0.1f));
+	gizmosMesh.model = scale(translate(model, f32x4(0.0f, 0.9f, 0.0f)), f32x4(0.1f, 0.2f, 0.1f));
 	gizmosMesh.color = axisColorY;
 	gizmosMeshes.push_back(gizmosMesh);
-	gizmosMesh.model = model * translate(float3(0.0f, 0.0f, 0.9f)) *
-		rotate(quat(radians(90.0f), float3::right)) * scale(float3(0.1f, 0.2f, 0.1f));
+	gizmosMesh.model = translate(model, f32x4(0.0f, 0.0f, 0.9f)) *
+		rotate(quat(radians(90.0f), f32x4::right)) * scale(f32x4(0.1f, 0.2f, 0.1f));
 	gizmosMesh.color = axisColorZ;
 	gizmosMeshes.push_back(gizmosMesh);
 
 	gizmosMesh.vertexBuffer = cubeBuffer;
 	gizmosMesh.vertexCount = primitive::cubeVertices.size();
-	gizmosMesh.model = model * translate(float3(0.425f, 0.0f, 0.0f)) * scale(float3(0.75f, 0.05f, 0.05f));
+	gizmosMesh.model = scale(translate(model, f32x4(0.425f, 0.0f, 0.0f)), f32x4(0.75f, 0.05f, 0.05f));
 	gizmosMesh.color = axisColorX;
 	gizmosMeshes.push_back(gizmosMesh);
-	gizmosMesh.model = model * translate(float3(0.0f, 0.425f, 0.0f)) * scale(float3(0.05f, 0.75f, 0.05f));
+	gizmosMesh.model = scale(translate(model, f32x4(0.0f, 0.425f, 0.0f)), f32x4(0.05f, 0.75f, 0.05f));
 	gizmosMesh.color = axisColorY;
 	gizmosMeshes.push_back(gizmosMesh);
-	gizmosMesh.model = model * translate(float3(0.0f, 0.0f, 0.425f)) * scale(float3(0.05f, 0.05f, 0.75f));
+	gizmosMesh.model = scale(translate(model, f32x4(0.0f, 0.0f, 0.425f)), f32x4(0.05f, 0.05f, 0.75f));
 	gizmosMesh.color = axisColorZ;
 	gizmosMeshes.push_back(gizmosMesh);
 }
 
 //**********************************************************************************************************************
 static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmosMeshes, 
-	View<GraphicsPipeline> pipelineView, const float4x4& viewProj, float patternScale, bool sortAscend)
+	View<GraphicsPipeline> pipelineView, const f32x4x4& viewProj, float patternScale, bool sortAscend)
 {
 	if (sortAscend)
 	{
@@ -187,7 +186,7 @@ static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 	
 	for (const auto& mesh : gizmosMeshes)
 	{
-		pushConstants->mvp = viewProj * mesh.model;
+		pushConstants->mvp = (float4x4)(viewProj * mesh.model);
 		pushConstants->color = (float4)mesh.color;
 		pipelineView->pushConstants();
 		pipelineView->draw(mesh.vertexBuffer, mesh.vertexCount);
@@ -227,8 +226,7 @@ void MeshGizmosEditorSystem::editorRender()
 	}
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-	auto cameraPosition = (float3)cameraConstants.cameraPos;
-	auto model = transformView->calcModel(cameraPosition);
+	auto model = transformView->calcModel(cameraConstants.cameraPos);
 	
 	auto windowSize = inputSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();
@@ -244,8 +242,8 @@ void MeshGizmosEditorSystem::editorRender()
 	{
 		if (cameraView->type == ProjectionType::Perspective)
 		{
-			if (translation != float3(0.0f))
-				modelScale *= length(translation);
+			if (f32x4(translation, 0.0f) != f32x4::zero)
+				modelScale *= length3(translation);
 		}
 		else
 		{
@@ -253,7 +251,7 @@ void MeshGizmosEditorSystem::editorRender()
 				cameraView->p.orthographic.height.x) * 0.5f;
 		}
 	}
-	model = calcModel(translation, rotation, float3(modelScale));
+	model = calcModel(translation, rotation, f32x4(modelScale));
 
 	addGizmosMeshes(gizmosMeshes, model, cubeVertexBuffer, arrowVertexBuffer,
 		handleColor, axisColorX, axisColorY, axisColorZ);
@@ -262,33 +260,31 @@ void MeshGizmosEditorSystem::editorRender()
 	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal)
 	{
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = cameraConstants.invViewProj * float4(ndcPosition, 1.0f, 1.0f);
-		auto globalDirection = cameraConstants.invViewProj * float4(ndcPosition, 0.0001f, 1.0f);
-		globalOrigin = float4((float3)globalOrigin / globalOrigin.w, globalOrigin.w);
-		globalDirection = float4((float3)globalDirection / globalDirection.w - (float3)globalOrigin, globalDirection.w);
+		auto globalOrigin = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
+		auto globalDirection = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
+		globalOrigin /= globalOrigin.getW();
+		globalDirection = globalDirection / globalDirection.getW() - globalOrigin;
 		
-		float newDist2 = FLT_MAX; uint32 meshIndex = 0;
+		float newDistSq = FLT_MAX; uint32 meshIndex = 0;
 		for (uint32 i = 0; i < 4; i++)
 		{
-			auto modelInverse = inverse(gizmosMeshes[i].model);
-			auto localOrigin = modelInverse * float4((float3)globalOrigin, 1.0f);
-			auto localDirection = (float3x3)modelInverse * (float3)globalDirection;
-			auto ray = Ray((float3)localOrigin, (float3)localDirection);
+			auto modelInverse = inverse4x4(gizmosMeshes[i].model);
+			auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), multiply3x3(modelInverse, globalDirection));
 			if (!raycast(Aabb::two, ray))
 				continue;
 
-			auto dist2 = distance2((float3)globalOrigin, getTranslation(gizmosMeshes[i].model));
-			if (dist2 < newDist2)
+			auto distSq = distanceSq3(globalOrigin, getTranslation(gizmosMeshes[i].model));
+			if (distSq < newDistSq)
 			{
 				meshIndex = i;
-				newDist2 = dist2;
+				newDistSq = distSq;
 			}
 		}
 
-		if (newDist2 != FLT_MAX)
+		if (newDistSq != FLT_MAX)
 		{
 			auto& mesh = gizmosMeshes[meshIndex];
-			mesh.model *= scale(float3(1.25f));
+			mesh.model = scale(mesh.model, f32x4(1.25f));
 			mesh.color = Color((float4)mesh.color * highlightFactor);
 
 			if (inputSystem->isMousePressed(MouseButton::Left))
@@ -297,44 +293,45 @@ void MeshGizmosEditorSystem::editorRender()
 	}
 
 	for (auto& mesh : gizmosMeshes)
-		mesh.distance = length2(getTranslation(mesh.model));
+		mesh.distance = lengthSq3(getTranslation(mesh.model));
 
 	if (dragMode != 0)
 	{
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalLastPos = (float3)(cameraConstants.invViewProj * float4(ndcPosition, 0.0f, 1.0f));
+		auto globalLastPos = cameraConstants.invViewProj * 
+			f32x4(ndcPosition.x, ndcPosition.y, 0.0f, 1.0f);
 		cursorPosition += inputSystem->getCursorDelta();
 		ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalNewPos = (float3)(cameraConstants.invViewProj * float4(ndcPosition, 0.0f, 1.0f));
+		auto globalNewPos = cameraConstants.invViewProj * 
+			f32x4(ndcPosition.x, ndcPosition.y, 0.0f, 1.0f);
 
 		if (dragMode != 1)
 		{
-			auto invModel = (float3x3)inverse(calcModel(translation, rotation));
-			globalLastPos = invModel * globalLastPos;
-			globalNewPos = invModel * globalNewPos;
+			auto invModel = inverseTransRot(calcModel(translation, rotation));
+			globalLastPos = multiply3x3(invModel, globalLastPos);
+			globalNewPos = multiply3x3(invModel, globalNewPos);
 		}
 
 		auto cursorTrans = (globalNewPos - globalLastPos); 
 		switch (dragMode)
 		{
-		case 2: cursorTrans.y = cursorTrans.z = 0.0f; break;
-		case 3: cursorTrans.x = cursorTrans.z = 0.0f; break;
-		case 4: cursorTrans.x = cursorTrans.y = 0.0f; break;
+		case 2: cursorTrans.floats.y = cursorTrans.floats.z = 0.0f; break;
+		case 3: cursorTrans.floats.x = cursorTrans.floats.z = 0.0f; break;
+		case 4: cursorTrans.floats.x = cursorTrans.floats.y = 0.0f; break;
 		}
 
 		if (dragMode != 1 && !inputSystem->getKeyboardState(KeyboardButton::LeftShift) &&
 			!inputSystem->getKeyboardState(KeyboardButton::RightShift))
 		{
-			cursorTrans = (float3x3)rotate(transformView->rotation) * cursorTrans;
+			cursorTrans = multiply3x3(rotate(transformView->getRotation()), cursorTrans);
 		}
 
 		// TODO: Fix non-uniform transformation in perspective projection,
 		//       take into account perspective distortion if possible.
 		if (cameraView->type == ProjectionType::Perspective)
-			cursorTrans *= length(translation);
-
-		transformView->position += cursorTrans;
+			cursorTrans *= length3(translation);
+		transformView->translate(cursorTrans);
 
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
 		if (rigidbodyView && rigidbodyView->getShape())
@@ -364,7 +361,7 @@ void MeshGizmosEditorSystem::editorRender()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
-		framebufferView->beginRenderPass(float4(0.0f));
+		framebufferView->beginRenderPass(f32x4::zero);
 		renderGizmosMeshes(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
 		renderGizmosMeshes(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
 		framebufferView->endRenderPass();

@@ -374,7 +374,7 @@ void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 	this->framebuffer = framebuffer;
 }
 
-void GraphicsPipeline::setViewport(const float4& viewport)
+void GraphicsPipeline::setViewport(f32x4 viewport)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
@@ -386,18 +386,18 @@ void GraphicsPipeline::setViewport(const float4& viewport)
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
 	SetViewportCommand command;
-	if (viewport == float4(0.0f))
+	if (viewport == f32x4::zero)
 	{
 		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
-		command.viewport = float4(float2(0.0f), framebufferView->getSize());
+		command.viewport = float4(float2::zero, framebufferView->getSize());
 	}
 	else
 	{
-		command.viewport = viewport;
+		command.viewport = (float4)viewport;
 	}
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 threadIndex)
+void GraphicsPipeline::setViewportAsync(f32x4 viewport, int32 threadIndex)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(asyncRecording);
@@ -413,9 +413,9 @@ void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 threadInde
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
+		vk::Viewport vkViewport(viewport.getX(), viewport.getY(), viewport.getZ(), viewport.getW(), 0.0f, 1.0f); // TODO: support custom depth range.
 
-		if (viewport == float4(0.0f))
+		if (viewport == f32x4::zero)
 		{
 			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
 			auto framebufferSize = framebufferView->getSize();
@@ -430,7 +430,7 @@ void GraphicsPipeline::setViewportAsync(const float4& viewport, int32 threadInde
 }
 
 //**********************************************************************************************************************
-void GraphicsPipeline::setScissor(const int4& scissor)
+void GraphicsPipeline::setScissor(i32x4 scissor)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
@@ -441,18 +441,18 @@ void GraphicsPipeline::setScissor(const int4& scissor)
 	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	SetScissorCommand command;
-	if (scissor == int4(0))
+	if (scissor == i32x4::zero)
 	{
 		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
-		command.scissor = int4(int2(0), framebufferView->getSize());
+		command.scissor = int4(int2::zero, framebufferView->getSize());
 	}
 	else
 	{
-		command.scissor = scissor;
+		command.scissor = (int4)scissor;
 	}
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 threadIndex)
+void GraphicsPipeline::setScissorAsync(i32x4 scissor, int32 threadIndex)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(asyncRecording);
@@ -468,9 +468,9 @@ void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 threadIndex)
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
+		vk::Rect2D vkScissor({ scissor.getX(), scissor.getY() }, { (uint32)scissor.getZ(), (uint32)scissor.getW() });
 
-		if (scissor == int4(0))
+		if (scissor == i32x4::zero)
 		{
 			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
 			auto framebufferSize = framebufferView->getSize();
@@ -485,7 +485,7 @@ void GraphicsPipeline::setScissorAsync(const int4& scissor, int32 threadIndex)
 }
 
 //**********************************************************************************************************************
-void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
+void GraphicsPipeline::setViewportScissor(f32x4 viewportScissor)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
@@ -496,18 +496,18 @@ void GraphicsPipeline::setViewportScissor(const float4& viewportScissor)
 	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	SetViewportScissorCommand command;
-	if (viewportScissor == float4(0.0f))
+	if (viewportScissor == f32x4::zero)
 	{
 		auto framebufferView = graphicsAPI->framebufferPool.get(GraphicsAPI::get()->currentFramebuffer);
-		command.viewportScissor = float4(float2(0.0f), framebufferView->getSize());
+		command.viewportScissor = float4(float2::zero, framebufferView->getSize());
 	}
 	else
 	{
-		command.viewportScissor = viewportScissor;
+		command.viewportScissor = (float4)viewportScissor;
 	}
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, int32 threadIndex)
+void GraphicsPipeline::setViewportScissorAsync(f32x4 viewportScissor, int32 threadIndex)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(asyncRecording);
@@ -523,12 +523,12 @@ void GraphicsPipeline::setViewportScissorAsync(const float4& viewportScissor, in
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
-			viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
-		vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
-			{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
+		vk::Viewport vkViewport(viewportScissor.getX(), viewportScissor.getY(),
+			viewportScissor.getZ(), viewportScissor.getW(), 0.0f, 1.0f); // TODO: support custom depth range.
+		vk::Rect2D vkScissor({ (int32)viewportScissor.getX(), (int32)viewportScissor.getY() },
+			{ (uint32)viewportScissor.getZ(), (uint32)viewportScissor.getW() });
 
-		if (viewportScissor == float4(0.0f))
+		if (viewportScissor == f32x4::zero)
 		{
 			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
 			auto framebufferSize = framebufferView->getSize();
