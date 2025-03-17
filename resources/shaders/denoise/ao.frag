@@ -39,5 +39,5 @@ void main()
 	}
 	
 	result *= 1.0f / (RADIUS * RADIUS * RADIUS * RADIUS);
-	fb.color = float4(result, 0.0f, 0.0f, 0.0f);
+	fb.color = float4(result);
 }

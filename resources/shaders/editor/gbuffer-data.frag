@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define USE_EMISSIVE_BUFFER true
+#define USE_SUB_SURFACE_SCATTERING true
+
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
 #include "common/tone-mapping.gsl"
@@ -28,20 +31,22 @@ pipelineState
 #define ROUGHNESS_DRAW_MODE 4
 #define MATERIAL_AO_DRAW_MODE 5
 #define REFLECTANCE_DRAW_MODE 6
-#define NORMALS_DRAW_MODE 7
-#define CLEAR_COAT_DRAW_MODE 8
-#define EMISSIVE_COLOR_DRAW_MODE 9
-#define EMISSIVE_FACTOR_DRAW_MODE 10
-#define SUBSURFACE_COLOR_DRAW_MODE 11
-#define THICKNESS_DRAW_MODE 12
-#define LIGHTING_DRAW_MODE 13
-#define HDR_DRAW_MODE 14
-#define DEPTH_DRAW_MODE 15
-#define WORLD_POSITION_DRAW_MODE 16
-#define SHADOWS_DRAW_MODE 17
-#define GLOBAL_AO_DRAW_MODE 18
-#define DENOISED_GLOBAL_AO_DRAW_MODE 19
-#define DRAW_MODE_COUNT 20
+#define CLEAR_COAT_DRAW_MODE 7
+#define CLEAR_COAT_ROUGHNESS_DRAW_MODE 8
+#define NORMALS_DRAW_MODE 9
+#define G_SHADOWS_COAT_DRAW_MODE 10
+#define EMISSIVE_COLOR_DRAW_MODE 11
+#define EMISSIVE_FACTOR_DRAW_MODE 12
+#define SUBSURFACE_COLOR_DRAW_MODE 13
+#define THICKNESS_DRAW_MODE 14
+#define LIGHTING_DRAW_MODE 15
+#define HDR_DRAW_MODE 16
+#define DEPTH_DRAW_MODE 17
+#define WORLD_POSITION_DRAW_MODE 18
+#define SHADOWS_DRAW_MODE 19
+#define GLOBAL_AO_DRAW_MODE 20
+#define DENOISED_GLOBAL_AO_DRAW_MODE 21
+#define DRAW_MODE_COUNT 22
 
 in noperspective float2 fs.texCoords;
 out float4 fb.color;
@@ -51,6 +56,7 @@ uniform sampler2D g1;
 uniform sampler2D g2;
 uniform sampler2D g3;
 uniform sampler2D g4;
+uniform sampler2D g5;
 
 uniform sampler2D hdrBuffer;
 uniform sampler2D depthBuffer;
@@ -70,9 +76,13 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, fs.texCoords);
+	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g5, fs.texCoords);
 
-	if (pc.drawMode == BASE_COLOR_DRAW_MODE)
+	if (pc.drawMode == OFF_DRAW_MODE)
+	{
+		discard;
+	}
+	else if (pc.drawMode == BASE_COLOR_DRAW_MODE)
 	{
 		fb.color = float4(gBuffer.baseColor.rgb, 1.0f);
 	}
@@ -96,14 +106,22 @@ void main()
 	{
 		fb.color = float4(float3(gBuffer.reflectance), 1.0f);
 	}
+	else if (pc.drawMode == CLEAR_COAT_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.clearCoat), 1.0f);
+	}
+	else if (pc.drawMode == CLEAR_COAT_ROUGHNESS_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.clearCoatRoughness), 1.0f);
+	}
 	else if (pc.drawMode == NORMALS_DRAW_MODE)
 	{
 		float3 normal = gBuffer.normal * 0.5f + 0.5f;
 		fb.color = float4(gammaCorrection(normal, DEFAULT_GAMMA), 1.0f);
 	}
-	else if (pc.drawMode == CLEAR_COAT_DRAW_MODE)
+	else if (pc.drawMode == G_SHADOWS_COAT_DRAW_MODE)
 	{
-		fb.color = float4(float3(gBuffer.clearCoat), 1.0f);
+		fb.color = float4(float3(gBuffer.shadow), 1.0f);
 	}
 	else if (pc.drawMode == EMISSIVE_COLOR_DRAW_MODE)
 	{

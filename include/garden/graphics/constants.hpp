@@ -35,10 +35,12 @@ struct CameraConstants final
 	f32x4 cameraPos = f32x4::zero;        /**< Camera position in world space. */
 	f32x4 viewDir = f32x4::zero;          /**< View direction in world space. */
 	f32x4 lightDir = f32x4::zero;         /**< Light direction in world space. */
+	f32x4 shadowColor = f32x4::zero;      /**< Shadow color and intensity. */
 	float2 frameSize = float2::zero;      /**< Frame size in pixels. */
 	float2 invFrameSize = float2::zero;   /**< Inverse frame size in pixels. */
 	float2 invFrameSizeSq = float2::zero; /**< Inverse frame size * 2 in pixels. */
 	float nearPlane = 0.0f;               /**< Near frustum plane. */
+	float emissiveCoeff = 0.0f;           /**< Produces maximum brightness. */
 };
 
 } // namespace garden::graphics

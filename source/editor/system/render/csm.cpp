@@ -74,7 +74,14 @@ void CsmRenderEditorSystem::editorRender()
 		auto csmSystem = CsmRenderSystem::Instance::get();
 		if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::SliderFloat("Intensity", &csmSystem->intensity, 0.0f, 1.0f);
+			auto graphicsSystem = GraphicsSystem::Instance::get();
+			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+			auto shadowColor = cameraConstants.shadowColor;
+			if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
+				graphicsSystem->setShadowColor(shadowColor);
+			if (ImGui::SliderFloat("Alpha", &shadowColor.floats.w, 0.0f, 1.0f))
+				graphicsSystem->setShadowColor(shadowColor);
+
 			ImGui::DragFloat("Distance", &csmSystem->distance, 1.0f);
 			ImGui::DragFloat("Constant Factor", &csmSystem->biasConstantFactor, 0.001f);
 			ImGui::DragFloat("Slope Factor", &csmSystem->biasSlopeFactor, 0.0001f);
@@ -95,7 +102,7 @@ void CsmRenderEditorSystem::editorRender()
 
 			if (cascadesPipeline)
 			{
-				auto pipelineView = GraphicsSystem::Instance::get()->get(cascadesPipeline);
+				auto pipelineView = graphicsSystem->get(cascadesPipeline);
 				if (!pipelineView->isReady())
 					ImGui::TextDisabled("Cascades pipeline is loading...");
 			}

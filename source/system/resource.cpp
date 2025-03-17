@@ -1442,6 +1442,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		colorFormats.resize(colorAttachments.size());
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
+			if (!colorAttachments[i].imageView)
+			{
+				colorFormats[i] = Image::Format::Undefined;
+				continue;
+			}
+			
 			auto attachment = graphicsAPI->imageViewPool.get(colorAttachments[i].imageView);
 			colorFormats[i] = attachment->getFormat();
 		}

@@ -85,7 +85,7 @@ void PhysicsEditorSystem::editorRender()
 	auto physicsSystem = PhysicsSystem::Instance::get();
 	if (showWindow)
 	{
-		if (ImGui::Begin("Physics Simulation", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))
+		if (ImGui::Begin("Physics Simulation", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			int collisionSteps = physicsSystem->collisionSteps;
 			if (ImGui::DragInt("Collision Steps", &collisionSteps))

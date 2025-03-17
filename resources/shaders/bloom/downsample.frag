@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "bloom/common.gsl"
-#include "common/gbuffer.gsl"
-
 #variantCount 3
 #define DOWNSAMPLE_FIRST_VARIANT 0
 #define DOWNSAMPLE_6X6_VARIANT 1
 
 spec const bool USE_THRESHOLD = false;
 spec const bool USE_ANTI_FLICKERING = true;
+
+#include "bloom/common.gsl"
 
 pipelineState
 {

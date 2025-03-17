@@ -19,17 +19,18 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static void createGBuffers(vector<ID<Image>>& gBuffers)
+static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool useSSS)
 {
 	constexpr auto binds = Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen;
 	constexpr auto strategy = Image::Strategy::Size;
-	constexpr Image::Format formats[DeferredRenderSystem::gBufferCount]
+	Image::Format formats[DeferredRenderSystem::gBufferCount]
 	{
 		Image::Format::SrgbR8G8B8A8,
 		Image::Format::UnormR8G8B8A8,
+		Image::Format::UnormR8G8B8A8,
 		Image::Format::UnormA2B10G10R10,
-		Image::Format::SrgbR8G8B8A8,
-		Image::Format::SrgbR8G8B8A8,
+		useEmissive ? Image::Format::SrgbR8G8B8A8 : Image::Format::Undefined,
+		useSSS ? Image::Format::SrgbR8G8B8A8 : Image::Format::Undefined,
 	};
 
 	const Image::Mips mips = { { nullptr } };
@@ -39,6 +40,12 @@ static void createGBuffers(vector<ID<Image>>& gBuffers)
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
 	{
+		if (formats[i] == Image::Format::Undefined)
+		{
+			gBuffers[i] = {};
+			continue;
+		}
+
 		gBuffers[i] = graphicsSystem->createImage(formats[i], binds, mips, framebufferSize, strategy);
 		SET_RESOURCE_DEBUG_NAME(gBuffers[i], "image.deferred.gBuffer" + to_string(i));
 	}
@@ -93,6 +100,12 @@ static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<I
 	vector<Framebuffer::OutputAttachment> colorAttachments(DeferredRenderSystem::gBufferCount);
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
 	{
+		if (!gBuffers[i])
+		{
+			colorAttachments[i] = {};
+			continue;
+		}
+
 		auto gBufferView = graphicsSystem->get(gBuffers[i]);
 		colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView->getDefaultView(), false, false, true);
 	}
@@ -151,8 +164,8 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 }
 
 //**********************************************************************************************************************
-DeferredRenderSystem::DeferredRenderSystem(bool useAsyncRecording, bool setSingleton) : 
-	Singleton(setSingleton), asyncRecording(useAsyncRecording)
+DeferredRenderSystem::DeferredRenderSystem(bool useEmissive, bool useSSS, bool useAsyncRecording, bool setSingleton) : 
+	Singleton(setSingleton), emissive(useEmissive), sss(useSSS), asyncRecording(useAsyncRecording)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreDeferredRender");
@@ -203,7 +216,7 @@ void DeferredRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 
 	if (gBuffers.empty())
-		createGBuffers(gBuffers);
+		createGBuffers(gBuffers, emissive, sss);
 	if (!hdrBuffer)
 		hdrBuffer = createHdrBuffer();
 	if (!ldrBuffer)
@@ -363,7 +376,7 @@ void DeferredRenderSystem::swapchainRecreate()
 	if (swapchainChanges.framebufferSize)
 	{
 		graphicsSystem->destroy(gBuffers);
-		createGBuffers(gBuffers);
+		createGBuffers(gBuffers, emissive, sss);
 		graphicsSystem->destroy(hdrBuffer);
 		hdrBuffer = createHdrBuffer();
 		graphicsSystem->destroy(ldrBuffer);
@@ -398,6 +411,12 @@ void DeferredRenderSystem::swapchainRecreate()
 		Framebuffer::OutputAttachment colorAttachments[gBufferCount];
 		for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
 		{
+			if (!gBuffers[i])
+			{
+				colorAttachments[i] = {};
+				continue;
+			}
+
 			auto gBufferView = graphicsSystem->get(gBuffers[i]);
 			colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView->getDefaultView(), false, false, true);
 		}
@@ -415,7 +434,7 @@ void DeferredRenderSystem::swapchainRecreate()
 const vector<ID<Image>>& DeferredRenderSystem::getGBuffers()
 {
 	if (gBuffers.empty())
-		createGBuffers(gBuffers);
+		createGBuffers(gBuffers, emissive, sss);
 	return gBuffers;
 }
 ID<Image> DeferredRenderSystem::getHdrBuffer()

@@ -25,9 +25,11 @@
 	float4 cameraPos;        \
 	float4 viewDir;          \
 	float4 lightDir;         \
+	float4 shadowColor;      \
 	float2 frameSize;        \
 	float2 invFrameSize;     \
 	float2 invFrameSize2;    \
-	float nearPlane;
+	float nearPlane;         \
+	float emissiveCoeff;
 
 #endif // CONSTANTS_GSL

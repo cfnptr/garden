@@ -98,6 +98,9 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 	const auto& swapchainBuffers = graphicsAPI->swapchain->getBuffers();
 	cameraConstantsBuffers.resize(swapchainBufferCount);
 
+	setShadowColor(f32x4(1.0f, 1.0f, 1.0f, 0.25f));
+	setEmissiveCoeff(100.0f);
+
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
 	{
 		SET_RESOURCE_DEBUG_NAME(swapchainBuffers[i]->colorImage, "image.swapchain" + to_string(i));
@@ -946,15 +949,21 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 
 	// TODO: we can use attachments with different sizes, but should we?
 	#if GARDEN_DEBUG
+	uint32 validColorAttachCount = 0;
 	for	(auto colorAttachment : colorAttachments)
 	{
-		GARDEN_ASSERT(colorAttachment.imageView);
+		if (!colorAttachment.imageView)
+			continue;
+
 		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
+		validColorAttachCount++;
 	}
+	GARDEN_ASSERT((!colorAttachments.empty() && validColorAttachCount > 0) || colorAttachments.empty());
+
 	if (depthStencilAttachment.imageView)
 	{
 		auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);

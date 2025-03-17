@@ -14,13 +14,16 @@
 
 // Based on this: https://lettier.github.io/3d-game-shaders-for-beginners/ssao.html
 
-#include "common/gbuffer.gsl"
-#include "common/constants.gsl"
-
 #define NOISE_SIZE 4
 
-// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
+#define USE_EMISSIVE_BUFFER false
+#define USE_SUB_SURFACE_SCATTERING false
+
 spec const uint32 SAMPLE_COUNT = 32;
+// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
+
+#include "common/gbuffer.gsl"
+#include "common/constants.gsl"
 
 pipelineState
 {

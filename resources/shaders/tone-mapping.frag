@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/random.gsl"
-#include "common/color-space.gsl"
-#include "common/tone-mapping.gsl"
-
 #define ACES_TONE_MAPPER 0
 #define UCHIMURA_TONE_MAPPER 1
 
 spec const bool USE_BLOOM_BUFFER = true;
 spec const uint32 TONE_MAPPER = ACES_TONE_MAPPER;
+
+#include "common/random.gsl"
+#include "common/color-space.gsl"
+#include "common/tone-mapping.gsl"
 
 pipelineState
 {
