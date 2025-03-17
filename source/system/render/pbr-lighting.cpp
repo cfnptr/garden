@@ -45,11 +45,11 @@ namespace garden::graphics
 
 #if 0 // Used to precompute Ki coeffs.
 //**********************************************************************************************************************
-static uint32 factorial(uint32 x)
+static uint32 factorial(uint32 x) noexcept
 {
 	return x == 0 ? 1 : x * factorial(x - 1);
 }
-static double factorial(int32 n, int32 d)
+static double factorial(int32 n, int32 d) noexcept
 {
 	d = max(1, d); n = max(1, n);
 
@@ -69,12 +69,12 @@ static double factorial(int32 n, int32 d)
 	}
 	return r;
 }
-static double computeKml(int32 m, int32 l)
+static double computeKml(int32 m, int32 l) noexcept
 {
 	auto k = (2 * l + 1) * factorial(l - m, l + m);
 	return sqrt(k) * (M_2_SQRTPI * 0.25);
 }
-static double computeTruncatedCosSh(uint32 l)
+static double computeTruncatedCosSh(uint32 l) noexcept
 {
 	if (l == 0)
 		return M_PI;
@@ -90,7 +90,7 @@ static double computeTruncatedCosSh(uint32 l)
 }
 
 //**********************************************************************************************************************
-static void computeKi()
+static void computeKi() noexcept
 {
 	double ki[shCoeffCount];
 
@@ -192,7 +192,7 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
-		Image::Bind::TransferDst, mips, shadowBufferSize, Image::Strategy::Size);
+		Image::Bind::Storage | Image::Bind::TransferDst, mips, shadowBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadow.buffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
@@ -245,7 +245,7 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
-		Image::Bind::TransferDst, mips, aoBufferSize, Image::Strategy::Size);
+		Image::Bind::Storage | Image::Bind::TransferDst, mips, aoBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.ao.buffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
@@ -419,9 +419,11 @@ PbrLightingRenderSystem::PbrLightingRenderSystem(bool useShadowBuffer, bool useA
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreShadowRender");
 	manager->registerEvent("ShadowRender");
+	manager->registerEvent("PostShadowRender");
 	manager->registerEvent("ShadowRecreate");
 	manager->registerEvent("PreAoRender");
 	manager->registerEvent("AoRender");
+	manager->registerEvent("PostAoRender");
 	manager->registerEvent("AoRecreate");
 
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderSystem::init);
@@ -437,9 +439,11 @@ PbrLightingRenderSystem::~PbrLightingRenderSystem()
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreShadowRender");
 		manager->unregisterEvent("ShadowRender");
+		manager->unregisterEvent("PostShadowRender");
 		manager->unregisterEvent("ShadowRecreate");
 		manager->unregisterEvent("PreAoRender");
 		manager->unregisterEvent("AoRender");
+		manager->unregisterEvent("PostAoRender");
 		manager->unregisterEvent("AoRecreate");
 	}
 	else
@@ -570,6 +574,19 @@ void PbrLightingRenderSystem::preHdrRender()
 		framebufferView->endRenderPass();
 	}
 
+	if (hasShadowBuffer)
+	{
+		SET_CPU_ZONE_SCOPED("Post Shadow Render");
+		SET_GPU_DEBUG_LABEL("Post Shadow", Color::transparent);
+		manager->runEvent("PostShadowRender");
+	}
+	if (hasAoBuffer)
+	{
+		SET_CPU_ZONE_SCOPED("Post AO Render");
+		SET_GPU_DEBUG_LABEL("Post AO", Color::transparent);
+		manager->runEvent("PostAoRender");
+	}
+
 	// TODO: shadow buffer denoise pass.
 	if (shadowBuffer && !hasAnyShadow)
 	{
@@ -672,11 +689,13 @@ void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
+	auto aoRecreate = false, shadowRecreate = false;
 
 	if (aoBuffer)
 	{
 		destroyAoBuffer(aoBuffer, aoImageViews);
 		aoBuffer = createAoBuffer(aoImageViews);
+		aoRecreate = true;
 	}
 	if (aoFramebuffers[0])
 	{
@@ -686,14 +705,14 @@ void PbrLightingRenderSystem::gBufferRecreate()
 			Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], true, false, true);
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
 		}
-
-		Manager::Instance::get()->runEvent("AoRecreate");
+		aoRecreate = true;
 	}
 
 	if (shadowBuffer)
 	{
 		destroyShadowBuffer(shadowBuffer, shadowImageViews);
 		shadowBuffer = createShadowBuffer(shadowImageViews);
+		shadowRecreate = true;
 	}
 	if (shadowFramebuffers[0])
 	{
@@ -703,8 +722,7 @@ void PbrLightingRenderSystem::gBufferRecreate()
 			Framebuffer::OutputAttachment colorAttachment(shadowImageViews[i], true, false, true);
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
 		}
-
-		Manager::Instance::get()->runEvent("ShadowRecreate");
+		shadowRecreate = true;
 	}
 
 	if (lightingDescriptorSet)
@@ -721,6 +739,11 @@ void PbrLightingRenderSystem::gBufferRecreate()
 		aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.ao-denoise");
 	}
+
+	if (aoRecreate)
+		Manager::Instance::get()->runEvent("AoRecreate");
+	if (shadowRecreate)
+		Manager::Instance::get()->runEvent("ShadowRecreate");
 }
 
 //**********************************************************************************************************************

@@ -41,12 +41,12 @@ using namespace math::ibl;
 // x = 1.0 / (Pi * 2), y =  1.0 / Pi
 constexpr float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
 
-static float2 toSphericalMapUV(float3 v)
+static float2 toSphericalMapUV(float3 v) noexcept
 {
 	auto st = float2(atan2(v.x, v.z), asin(-v.y));
 	return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
 }
-static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX)
+static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
 	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
@@ -63,7 +63,7 @@ static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1,
 }
 
 void Equi2Cube::convert(uint3 coords, uint32 cubemapSize, uint2 equiSize,
-	uint2 equiSizeMinus1, const f32x4* equiPixels, f32x4* cubePixels, float invDim)
+	uint2 equiSizeMinus1, const f32x4* equiPixels, f32x4* cubePixels, float invDim) noexcept
 {
 	auto dir = coordsToDir(coords, invDim);
 	auto uv = toSphericalMapUV(dir);

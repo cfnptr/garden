@@ -21,7 +21,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind)
+static constexpr vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind) noexcept
 {
 	vk::BufferUsageFlags flags;
 	if (hasAnyFlag(bufferBind, Buffer::Bind::TransferSrc))
@@ -38,7 +38,7 @@ static vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind)
 		flags |= vk::BufferUsageFlagBits::eStorageBuffer;
 	return flags;
 }
-static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::Access memoryAccess)
+static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::Access memoryAccess) noexcept
 {
 	switch (memoryAccess)
 	{
@@ -51,7 +51,7 @@ static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::Access memoryAccess
 	default: abort();
 	}
 }
-static VmaMemoryUsage toVmaMemoryUsage(Buffer::Usage memoryUsage)
+static VmaMemoryUsage toVmaMemoryUsage(Buffer::Usage memoryUsage) noexcept
 {
 	switch (memoryUsage)
 	{
@@ -61,7 +61,7 @@ static VmaMemoryUsage toVmaMemoryUsage(Buffer::Usage memoryUsage)
 	default: abort();
 	}
 }
-static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUsage)
+static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUsage) noexcept
 {
 	switch (memoryUsage)
 	{

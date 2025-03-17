@@ -789,7 +789,7 @@ void RigidbodyComponent::setWorldTransform(bool activate)
 
 //**********************************************************************************************************************
 static JPH::RVec3 calcOtherPoint(ID<Entity> otherBody, f32x4 otherBodyPoint,
-	f32x4 thisBodyPoint, RigidbodyComponent* thisView)
+	f32x4 thisBodyPoint, RigidbodyComponent* thisView) noexcept
 {
 	if (otherBody)
 		return toRVec3(otherBodyPoint);

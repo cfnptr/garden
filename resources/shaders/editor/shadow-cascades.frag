@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
+
 pipelineState
 {
 	faceCulling = off;

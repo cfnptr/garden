@@ -46,7 +46,8 @@ struct PbrLightingRenderComponent final : public Component
  * based on physical principles, taking into account material properties such as roughness, metallicity, albedo 
  * color, as well as the characteristics of light sources.
  * 
- * Registers events: PreShadowRender, ShadowRender, ShadowRecreate, PreAoRender, AoRender, AoRecreate.
+ * Registers events: PreShadowRender, ShadowRender, PostShadowRender ShadowRecreate, 
+ * 	                 PreAoRender, AoRender, PostAoRender, AoRecreate.
  */
 class PbrLightingRenderSystem final : public ComponentSystem<PbrLightingRenderComponent>, 
 	public Singleton<PbrLightingRenderSystem>

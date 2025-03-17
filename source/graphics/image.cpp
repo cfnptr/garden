@@ -20,7 +20,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vk::ImageType toVkImageType(Image::Type imageType)
+static vk::ImageType toVkImageType(Image::Type imageType) noexcept
 {
 	switch (imageType)
 	{
@@ -36,7 +36,7 @@ static vk::ImageType toVkImageType(Image::Type imageType)
 	default: abort();
 	}
 }
-static vk::ImageViewType toVkImageViewType(Image::Type imageType)
+static vk::ImageViewType toVkImageViewType(Image::Type imageType) noexcept
 {
 	switch (imageType)
 	{
@@ -49,7 +49,7 @@ static vk::ImageViewType toVkImageViewType(Image::Type imageType)
 		default: abort();
 	}
 }
-static vk::ImageUsageFlags toVkImageUsages(Image::Bind imageBind)
+static constexpr vk::ImageUsageFlags toVkImageUsages(Image::Bind imageBind) noexcept
 {
 	vk::ImageUsageFlags flags;
 	if (hasAnyFlag(imageBind, Image::Bind::TransferSrc))
@@ -68,7 +68,7 @@ static vk::ImageUsageFlags toVkImageUsages(Image::Bind imageBind)
 		flags |= vk::ImageUsageFlagBits::eInputAttachment;
 	return flags;
 }
-static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsage)
+static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsage) noexcept
 {
 	switch (memoryUsage)
 	{
@@ -329,7 +329,7 @@ void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatFloat(format));
+	GARDEN_ASSERT(isFormatFloat(format) || isFormatNorm(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -377,7 +377,7 @@ void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatInt(format));
+	GARDEN_ASSERT(isFormatUint(format));
 	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 

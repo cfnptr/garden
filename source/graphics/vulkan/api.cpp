@@ -78,7 +78,7 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 }
 #endif
 
-static bool hasExtension(const vector<const char*>& extensions, const char* extension)
+static bool hasExtension(const vector<const char*>& extensions, const char* extension) noexcept
 {
 	for (auto check : extensions)
 	{

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "common/primitives.gsl"
+spec const float FAR_DEPTH_VALUE = 0.0f;
 
 out float3 fs.texCoords;
 
@@ -25,7 +26,6 @@ void main()
 {
 	float3 vertexPos = cubeVertices[gl.vertexIndex];
 	float4 position = pc.viewProj * float4(vertexPos, 1.0f);
-	// Puts skybox on the far plane. (reversed Z depth)
-	gl.position = float4(position.xy, 0.0f, position.w);
+	gl.position = float4(position.xy, FAR_DEPTH_VALUE, position.w); // Puts skybox on the far plane.
 	fs.texCoords = vertexPos * 2.0f;
 }

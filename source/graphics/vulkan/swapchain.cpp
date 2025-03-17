@@ -20,7 +20,8 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
-static uint32 getBestVkImageCount(const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering)
+static constexpr uint32 getBestVkImageCount(
+	const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering) noexcept
 {
 	auto imageCount = capabilities.minImageCount;
 	auto maxImageCount = capabilities.maxImageCount;
@@ -72,7 +73,8 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 }
 
 //**********************************************************************************************************************
-static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& capabilities, uint2& framebufferSize)
+static constexpr vk::Extent2D getBestVkSurfaceExtent(
+	const vk::SurfaceCapabilitiesKHR& capabilities, uint2& framebufferSize) noexcept
 {
 	if (capabilities.currentExtent.width == UINT32_MAX)
 	{
@@ -85,7 +87,8 @@ static vk::Extent2D getBestVkSurfaceExtent(const vk::SurfaceCapabilitiesKHR& cap
 	return capabilities.currentExtent;
 }
 
-static vk::SurfaceTransformFlagBitsKHR getBestVkSurfaceTransform(const vk::SurfaceCapabilitiesKHR& capabilities)
+static vk::SurfaceTransformFlagBitsKHR getBestVkSurfaceTransform(
+	const vk::SurfaceCapabilitiesKHR& capabilities) noexcept
 {
 	if (capabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
 		return vk::SurfaceTransformFlagBitsKHR::eIdentity;

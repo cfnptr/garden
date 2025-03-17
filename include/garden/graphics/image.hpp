@@ -73,36 +73,81 @@ public:
 	 * Ufloat  - unsigned floating point (0.0, 1.0, 1.23, 10.0, ...)
 	 * Sint    - signed integer (0, 1, 5, 32, ...)
 	 * Uint    - unsigned integer (0, -2, 40, -12, ...)
-	 * Unorm   - uint to float [0.0, 1.0] (255 -> 1.0)
-	 * Snorm   - int to float [-1.0, 1.0] (0 -> -1.0)
-	 * Uscaled - uint as float (128 -> 128.0)
-	 * Sscaled - int as float (-32 -> -32.0)
-	 * Srgb    - sRGB color space
+	 * Unorm   - normalized uint as float [0.0, 1.0] (255 -> 1.0)
+	 * Snorm   - normalized int as float [-1.0, 1.0] (0 -> -1.0)
+	 * Uscaled - scaled uint as float (128 -> 128.0)
+	 * Sscaled - scaled int as float (-32 -> -32.0)
+	 * Srgb    - sRGB color space uint (0, 1, 32, 255, ...)
 	 */
 	enum class Format : uint8
 	{
 		Undefined,          /**< Undefined image data format. */
-		UintR8,             /**< 8-bit unsigned integer (red only channel) format.  */
+
+		UintR8,             /**< 8-bit unsigned integer (red only channel) format. */
+		UintR8G8,           /**< 8-bit unsigned integer (red and green channel) format. */
+		UintR8G8B8A8,       /**< 8-bit unsigned integer (red, green, blue, alpha channel) format. */
 		UintR16,            /**< 16-bit unsigned integer (red only channel) format. */
+		UintR16G16,         /**< 16-bit unsigned integer (red and green channel) format. */
+		UintR16G16B16A16,   /**< 16-bit unsigned integer (red, green, blue, alpha channel) format. */
 		UintR32,            /**< 32-bit unsigned integer (red only channel) format. */
+		UintR32G32,         /**< 32-bit unsigned integer (red and green channel) format. */
+		UintR32G32B32A32,   /**< 32-bit unsigned integer (red, green, blue, alpha channel) format. */
+		UintA2R10G10B10,    /**< unsigned integer (2-bit alpha, 10-bit red/green/blue channel) format. */
+		UintA2B10G10R10,    /**< unsigned integer (2-bit alpha, 10-bit blue/green/red channel) format. */
+
+		SintR8,             /**< 8-bit signed integer (red only channel) format. */
+		SintR8G8,           /**< 8-bit signed integer (red and green channel) format. */
+		SintR8G8B8A8,       /**< 8-bit signed integer (red, green, blue, alpha channel) format. */
+		SintR16,            /**< 16-bit signed integer (red only channel) format. */
+		SintR16G16,         /**< 16-bit signed integer (red and green channel) format. */
+		SintR16G16B16A16,   /**< 16-bit signed integer (red, green, blue, alpha channel) format. */
+		SintR32,            /**< 32-bit signed integer (red only channel) format. */
+		SintR32G32,         /**< 32-bit signed integer (red and green channel) format. */
+		SintR32G32B32A32,   /**< 32-bit signed integer (red, green, blue, alpha channel) format. */
+
 		UnormR8,            /**< 8-bit normalized uint as float (red only channel) format. */
 		UnormR8G8,          /**< 8-bit normalized uint as float (red and green channel) format. */
 		UnormR8G8B8A8,      /**< 8-bit normalized uint as float (red, green, blue, alpha channel) format. */
 		UnormB8G8R8A8,      /**< 8-bit normalized uint as float (blue, green, red, alpha channel) format. */
-		SrgbR8G8B8A8,       /**< 8-bit sRGB color space (red, green, blue, alpha channel) format. */
-		SrgbB8G8R8A8,       /**< 8-bit sRGB color space (blue, green, red, alpha channel) format. */
-		SfloatR16G16,       /**< 16-bit signed floating point (red and green channel) format. */
-		SfloatR32G32,       /**< 32-bit signed floating point (red and green channel) format. */
-		SfloatR16G16B16A16, /**< 16-bit signed floating point (red, green, blue, alpha channel) format. */
-		SfloatR32G32B32A32, /**< 32-bit signed floating point (red, green, blue, alpha channel) format. */
+		UnormR16,           /**< 16-bit normalized uint as float (red only channel) format. */
+		UnormR16G16,        /**< 16-bit normalized uint as float (red and green channel) format. */
+		UnormR16G16B16A16,  /**< 16-bit normalized uint as float (red, green, blue, alpha channel) format. */
+		UnormR5G6B5,        /**< normalized uint as float (5-bit red, 6-bit green, 5-bit blue channel) format. */
+		UnormA1R5G5B5,      /**< normalized uint as float (1-bit alpha, 5-bit red/green/blue channel) format. */
+		UnormR5G5B5A1,      /**< normalized uint as float (5-bit red/green/blue channel, 1-bit alpha) format. */
+		UnormB5G5R5A1,      /**< normalized uint as float (5-bit blue/green/red channel, 1-bit alpha) format. */
+		UnormR4G4B4A4,      /**< normalized uint as float (4-bit red/green/blue/alpha channel) format. */
+		UnormB4G4R4A4,      /**< normalized uint as float (4-bit blue/green/red/alpha channel) format. */
 		UnormA2R10G10B10,   /**< normalized uint as float (2-bit alpha, 10-bit red/green/blue channel) format. */
 		UnormA2B10G10R10,   /**< normalized uint as float (2-bit alpha, 10-bit blue/green/red channel) format. */
+
+		SnormR8,            /**< 8-bit normalized uint as float (red only channel) format. */
+		SnormR8G8,          /**< 8-bit normalized uint as float (red and green channel) format. */
+		SnormR8G8B8A8,      /**< 8-bit normalized uint as float (red, green, blue, alpha channel) format. */
+		SnormR16,           /**< 16-bit normalized uint as float (red only channel) format. */
+		SnormR16G16,        /**< 16-bit normalized uint as float (red and green channel) format. */
+		SnormR16G16B16A16,  /**< 16-bit normalized uint as float (red, green, blue, alpha channel) format. */
+
+		SfloatR16,          /**< 16-bit signed floating point (red only channel) format. */
+		SfloatR16G16,       /**< 16-bit signed floating point (red and green channel) format. */
+		SfloatR16G16B16A16, /**< 16-bit signed floating point (red, green, blue, alpha channel) format. */
+		SfloatR32,          /**< 32-bit signed floating point (red only channel) format. */
+		SfloatR32G32,       /**< 32-bit signed floating point (red and green channel) format. */
+		SfloatR32G32B32A32, /**< 32-bit signed floating point (red, green, blue, alpha channel) format. */
+
 		UfloatB10G11R11,    /**< Unsigned floating point (10-bit blue, 11-bit green, 10-bit red channel) format. */
+		UfloatE5B9G9R9,     /**< Unsigned floating point (5-bit exponent, 9-bit blue/green/red channel) format. */
+
+		SrgbR8G8B8A8,       /**< 8-bit sRGB color space (red, green, blue, alpha channel) format. */
+		SrgbB8G8R8A8,       /**< 8-bit sRGB color space (blue, green, red, alpha channel) format. */
+
 		UnormD16,           /**< 16-bit normalized uint as float depth format. */
 		SfloatD32,          /**< 32-bit signed floating point depth format. */
 		UnormD24UintS8,     /**< 24-bit normalized uint as float depth and 8-bit unsigned integer stencil format. */
 		SfloatD32Uint8S,    /**< 32-bit signed floating depth and 8-bit unsigned integer stencil format. */
+
 		Count               /**< Image data format count. */
+		// TODO: A8B8G8R8
 	};
 	/**
 	 * @brief Image bind type. (Affects driver optimizations)
@@ -805,8 +850,8 @@ public:
  */
 static constexpr bool isFormatColor(Image::Format formatType)
 {
-	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
+	return (uint8)Image::Format::Undefined < (uint8)formatType &&
+		(uint8)formatType < (uint8)Image::Format::UnormD16;
 }
 /**
  * @brief Is the image data format a depth only.
@@ -844,13 +889,13 @@ static constexpr bool isFormatDepthOrStencil(Image::Format formatType)
 		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
 }
 /**
- * @brief Is the image data format a floating point.
+ * @brief Is the image data format an unsigned integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatFloat(Image::Format formatType)
+static constexpr bool isFormatUint(Image::Format formatType)
 {
-	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
+	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::UintA2B10G10R10;
 }
 /**
  * @brief Is the image data format a signed integer.
@@ -858,16 +903,44 @@ static constexpr bool isFormatFloat(Image::Format formatType)
  */
 static constexpr bool isFormatInt(Image::Format formatType)
 {
-	return false; // TODO:
+	return (uint8)Image::Format::SintR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::SintR32G32B32A32;
 }
 /**
- * @brief Is the image data format an unsigned integer.
+ * @brief Is the image data format a normalized unsigned integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatUint(Image::Format formatType)
+static constexpr bool isFormatUnorm(Image::Format formatType)
 {
-	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UintR32;
+	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::UnormA2B10G10R10;
+}
+/**
+ * @brief Is the image data format a normalized signed integer.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatSnorm(Image::Format formatType)
+{
+	return (uint8)Image::Format::SnormR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::SnormR16G16B16A16;
+}
+/**
+ * @brief Is the image data format a normalized signed or unsigned integer.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatNorm(Image::Format formatType)
+{
+	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::SnormR16G16B16A16;
+}
+/**
+ * @brief Is the image data format a floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatFloat(Image::Format formatType)
+{
+	return (uint8)Image::Format::SfloatR16 <= (uint8)formatType &&
+		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
 }
 
 /***********************************************************************************************************************
@@ -880,27 +953,68 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 	switch (imageFormat)
 	{
 	case Image::Format::UintR8: return 1;
+	case Image::Format::UintR8G8: return 2;
+	case Image::Format::UintR8G8B8A8: return 4;
 	case Image::Format::UintR16: return 2;
+	case Image::Format::UintR16G16: return 4;
+	case Image::Format::UintR16G16B16A16: return 8;
 	case Image::Format::UintR32: return 4;
+	case Image::Format::UintR32G32: return 8;
+	case Image::Format::UintR32G32B32A32: return 16;
+	case Image::Format::UintA2R10G10B10: return 4;
+	case Image::Format::UintA2B10G10R10: return 4;
+
+	case Image::Format::SintR8: return 1;
+	case Image::Format::SintR8G8: return 2;
+	case Image::Format::SintR8G8B8A8: return 4;
+	case Image::Format::SintR16: return 2;
+	case Image::Format::SintR16G16: return 4;
+	case Image::Format::SintR16G16B16A16: return 8;
+	case Image::Format::SintR32: return 4;
+	case Image::Format::SintR32G32: return 8;
+	case Image::Format::SintR32G32B32A32: return 16;
+
 	case Image::Format::UnormR8: return 1;
 	case Image::Format::UnormR8G8: return 2;
-	case Image::Format::UnormR8G8B8A8:
-	case Image::Format::UnormB8G8R8A8:
-	case Image::Format::SrgbR8G8B8A8:
-	case Image::Format::SrgbB8G8R8A8:
-		return 4;
+	case Image::Format::UnormR8G8B8A8: return 4;
+	case Image::Format::UnormB8G8R8A8: return 4;
+	case Image::Format::UnormR16: return 2;
+	case Image::Format::UnormR16G16: return 4;
+	case Image::Format::UnormR16G16B16A16: return 8;
+	case Image::Format::UnormR5G6B5: return 2;
+	case Image::Format::UnormA1R5G5B5: return 2;
+	case Image::Format::UnormR5G5B5A1: return 2;
+	case Image::Format::UnormB5G5R5A1: return 2;
+	case Image::Format::UnormR4G4B4A4: return 2;
+	case Image::Format::UnormB4G4R4A4: return 2;
+	case Image::Format::UnormA2R10G10B10: return 4;
+	case Image::Format::UnormA2B10G10R10: return 4;
+
+	case Image::Format::SnormR8: return 1;
+	case Image::Format::SnormR8G8: return 2;
+	case Image::Format::SnormR8G8B8A8: return 4;
+	case Image::Format::SnormR16: return 2;
+	case Image::Format::SnormR16G16: return 4;
+	case Image::Format::SnormR16G16B16A16: return 8;
+
+	case Image::Format::SfloatR16: return 2;
 	case Image::Format::SfloatR16G16: return 4;
-	case Image::Format::SfloatR32G32: return 8;
 	case Image::Format::SfloatR16G16B16A16: return 8;
+	case Image::Format::SfloatR32: return 4;
+	case Image::Format::SfloatR32G32: return 8;
 	case Image::Format::SfloatR32G32B32A32: return 16;
-	case Image::Format::UnormA2R10G10B10:
-	case Image::Format::UnormA2B10G10R10:
-		return 4;
+
 	case Image::Format::UfloatB10G11R11: return 4;
+	case Image::Format::UfloatE5B9G9R9: return 4;
+
+	case Image::Format::SrgbR8G8B8A8: return 4;
+	case Image::Format::SrgbB8G8R8A8: return 4;
+	
 	case Image::Format::UnormD16: return 2;
 	case Image::Format::SfloatD32: return 4;
 	case Image::Format::UnormD24UintS8: return 4;
 	case Image::Format::SfloatD32Uint8S: return 5;
+	
 	default: return 0;
 	}
 }
@@ -1014,11 +1128,27 @@ constexpr string_view imageTypeNames[(psize)Image::Type::Count] =
  */
 constexpr string_view imageFormatNames[(psize)Image::Format::Count] =
 {
-	"Undefined", "UintR8", "UintR16", "UintR32",
-	"UnormR8", "UnormR8G8", "UnormR8G8B8A8", "UnormB8G8R8A8", "SrgbR8G8B8A8", "SrgbB8G8R8A8",
-	"SfloatR16G16", "SfloatR32G32", "SfloatR16G16B16A16", "SfloatR32G32B32A32",
-	"UnormA2R10G10B10", "UnormA2B10G10R10", "UfloatB10G11R11",
-	"UnormD16", "SfloatD32", "UnormD24UintS8", "SfloatD32Uint8S",
+	"Undefined",
+	
+	"UintR8", "UintR8G8", "UintR8G8B8A8", "UintR16", "UintR16G16", "UintR16G16B16A16", 
+	"UintR32", "UintR32G32", "UintR32G32B32A32", "UintA2R10G10B10", "UintA2B10G10R10", 
+
+	"SintR8", "SintR8G8", "SintR8G8B8A8", "SintR16", "SintR16G16", 
+	"SintR16G16B16A16", "SintR32", "SintR32G32", "SintR32G32B32A32", 
+
+	"UnormR8", "UnormR8G8", "UnormR8G8B8A8", "UnormB8G8R8A8", "UnormR16", "UnormR16G16", 
+	"UnormR16G16B16A16", "UnormR5G6B5", "UnormA1R5G5B5", "UnormR5G5B5A1", "UnormB5G5R5A1", 
+	"UnormR4G4B4A4", "UnormB4G4R4A4", "UnormA2R10G10B10", "UnormA2B10G10R10", 
+
+	"SnormR8", "SnormR8G8", "SnormR8G8B8A8", "SnormR16", "SnormR16G16", "SnormR16G16B16A16", 
+
+	"SfloatR16", "SfloatR16G16", "SfloatR16G16B16A16", "SfloatR32", "SfloatR32G32", "SfloatR32G32B32A32", 
+
+	"UfloatB10G11R11", "UfloatE5B9G9R9", 
+
+	"SrgbR8G8B8A8", "SrgbB8G8R8A8", 
+
+	"UnormD16", "SfloatD32", "UnormD24UintS8", "SfloatD32Uint8S"
 };
 
 /**

@@ -125,14 +125,15 @@ Texture wrap [TYPE]: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | m
 ## Image / Texture
 
 ```
-uniform image2D someImage : f16rgba;
+uniform image2D someImage : UnormR8G8B8A8;
 ```
 
-Image data shader interpretation formats: [ f16rgba | f32rgba | f16rg | f32rg | f16r |
-    f32r | i8rgba | i16rgba | i32rgba | i8rg | i16rg | i32rg | i8r | i16r | i32r |
-    u8rgba | u16rgba |u32rgba | u8rg | u16rg | u32rg | u8r | u16r | u32r ]
-
-TODO: support r11f_g11f_b10f, rgba16, rgba16_snorm...
+Image data shader interpretation formats:
+	Unsigned integer formats: [ uintR8, uintR8G8, uintR8G8B8A8, uintR16, uintR16G16, uintR16G16B16A16, uintR32, uintR32G32, uintR32G32B32A32, uintA2R10G10B10 ]
+	Signed integer formats: [ intR8, intR8G8, intR8G8B8A8, intR16, intR16G16, intR16G16B16A16, intR32, intR32G32, intR32G32B32A32 ]
+	Unsigned integer formats normalized to (0.0, 1.0): [ unormR8, unormR8G8, unormR8G8B8A8, unormR16, unormR16G16, unormR16G16B16A16, unormA2R10G10B10 ]
+	Signed integer formats normalized to (-1.0, 1.0): [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]
+	Floating point formats: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, floatB11G11B10 ]
 
 ## Compute Shader
 
@@ -187,7 +188,7 @@ void main()
 
 ## Spec Const
 
-Specialization constant is a way of injecting an int, bool, float, int4... constant 
+Specialization constant is a way of injecting an bool, int, uint and float constant 
 into a halfway-compiled version of a shader right before pipeline creation to optimize it.
 
 ```
@@ -201,5 +202,10 @@ To enable specific GLSL feature extensions use this shorting:
 
 * #feature [NAME] - Require specific GLSL feature extensions.
 
-Feature [NAME]: [ bindless ]
+Feature [NAME]: [ bindless, subgroupBasic, subgroupVote ]
+
+bindless - GL_EXT_nonuniform_qualifier
+subgroupBasic - GL_KHR_shader_subgroup_basic
+subgroupVote - GL_KHR_shader_subgroup_vote
+
 TODO: ray tracing features

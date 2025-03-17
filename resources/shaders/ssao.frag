@@ -18,6 +18,8 @@
 #include "common/constants.gsl"
 
 #define NOISE_SIZE 4
+
+// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
 spec const uint32 SAMPLE_COUNT = 32;
 
 pipelineState

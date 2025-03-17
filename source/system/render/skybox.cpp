@@ -60,9 +60,11 @@ const string& SkyboxRenderSystem::getComponentName() const
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
+	map<string, Pipeline::SpecConstValue> specConsts =
+	{ { "FAR_DEPTH_VALUE", Pipeline::SpecConstValue(0.0f) } };
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getMetaHdrFramebuffer(), deferredSystem->useAsyncRecording());
+	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("skybox", 
+		deferredSystem->getMetaHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConsts);
 	return skyboxPipeline;
 }
 

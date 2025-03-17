@@ -73,12 +73,12 @@ float3 evaluateIBL(GBufferValues gBuffer, float4 shadow, float3 viewDirection,
 	// TODO: Implement SSR
 	
 	// TODO: instead use shadow to mix between skybox radiance and dynamic GI.
-	float3 radiance = (shadow.a == 0.0f ? float3(0.0f) : prefilteredRadiance(iblSpecular, r, roughness)) * shadowColor;
+	float3 radiance = (shadow.a < FLOAT_EPS6 ? float3(0.0f) : prefilteredRadiance(iblSpecular, r, roughness)) * shadowColor;
 	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, roughness, f0);
 	float3 fr = e * radiance * energyCompensation;
 
 	float3 diffuseColor = computeDiffuseColor(gBuffer.baseColor.rgb, gBuffer.metallic);
-	float3 irradiance = (shadow.a == 0.0f ? float3(0.0f) : diffuseIrradiance(gBuffer.normal, iblSH)) * shadowColor;
+	float3 irradiance = (shadow.a < FLOAT_EPS6 ? float3(0.0f) : diffuseIrradiance(gBuffer.normal, iblSH)) * shadowColor;
 	float3 fd = diffuseColor * irradiance * (1.0f - e);
 
 	if (gBuffer.thickness < 1.0f)

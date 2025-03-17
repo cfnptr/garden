@@ -80,41 +80,6 @@ enum class GslDataFormat : uint8
 };
 
 /***********************************************************************************************************************
- * @brief GSL image formats. (Garden Shading Language)
- * @details Defines how data stored in the image memory should be accessed and interpreted by the shaders. 
- * 
- * @todo Support rgba16 without 'f'
- */
-enum class GslImageFormat : uint8
-{
-	F16RGBA, /**< 16-bit half floating point (red, green, blue, alpha channel) format. */
-	F32RGBA, /**< 32-bit floating point (red, green, blue, alpha channel) format. */
-	F16RG,   /**< 16-bit half floating point (red and green channel) format. */
-	F32RG,   /**< 32-bit floating point (red and green channel) format. */
-	F16R,    /**< 16-bit half floating point (red only channel) format. */
-	F32R,    /**< 32-bit floating point (red only channel) format. */
-	I8RGBA,  /**< 8-bit signed integer (red, green, blue, alpha channel) format. */
-	I16RGBA, /**< 16-bit signed integer (red, green, blue, alpha channel) format. */
-	I32RGBA, /**< 32-bit signed integer (red, green, blue, alpha channel) format. */
-	I8RG,    /**< 8-bit signed integer (red and green channel) format. */
-	I16RG,   /**< 16-bit signed integer (red and green channel) format. */
-	I32RG,   /**< 32-bit signed integer (red and green channel) format. */
-	I8R,     /**< 8-bit signed integer (red only channel) format. */
-	I16R,    /**< 16-bit signed integer (red only channel) format. */
-	I32R,    /**< 32-bit signed integer (red only channel) format. */
-	U8RGBA,  /**< 8-bit unsigned integer (red, green, blue, alpha channel) format. */
-	U16RGBA, /**< 16-bit unsigned integer (red, green, blue, alpha channel) format. */
-	U32RGBA, /**< 32-bit unsigned integer (red, green, blue, alpha channel) format. */
-	U8RG,    /**< 8-bit unsigned integer (red and green channel) format. */
-	U16RG,   /**< 16-bit unsigned integer (red and green channel) format. */
-	U32RG,   /**< 32-bit unsigned integer (red and green channel) format. */
-	U8R,     /**< 8-bit unsigned integer (red only channel) format. */
-	U16R,    /**< 16-bit unsigned integer (red only channel) format. */
-	U32R,    /**< 32-bit unsigned integer (red only channel) format. */
-	Count    /**< GSL image format count. */
-};
-
-/***********************************************************************************************************************
  * @brief GSL uniform types. (Garden Shading Language)
  */
 enum class GslUniformType : uint8
@@ -125,45 +90,53 @@ enum class GslUniformType : uint8
 	SamplerCube,          /**< Cubemap floating point combined image sampler. (read only access) */
 	Sampler1DArray,       /**< 1D floating point combined image array sampler. (read only access) */
 	Sampler2DArray,       /**< 2D floating point combined image array sampler. (read only access) */
+
 	Isampler1D,           /**< 1D signed integer combined image sampler. (read only access) */
 	Isampler2D,           /**< 2D signed integer combined image sampler. (read only access) */
 	Isampler3D,           /**< 3D signed integer combined image sampler. (read only access) */
 	IsamplerCube,         /**< Cubemap signed integer combined image sampler. (read only access) */
 	Isampler1DArray,      /**< 1D signed integer combined image array sampler. (read only access) */
 	Isampler2DArray,      /**< 2D signed integer combined image array sampler. (read only access) */
+
 	Usampler1D,           /**< 1D unsigned integer combined image sampler. (read only access) */
 	Usampler2D,           /**< 2D unsigned integer combined image sampler. (read only access) */
 	Usampler3D,           /**< 3D unsigned integer combined image sampler. (read only access) */
 	UsamplerCube,         /**< Cubemap unsigned integer combined image sampler. (read only access) */
 	Usampler1DArray,      /**< 1D unsigned integer combined image array sampler. (read only access) */
 	Usampler2DArray,      /**< 2D unsigned integer combined image array sampler. (read only access) */
+
 	Sampler1DShadow,      /**< 1D depth combined image shadow sampler. (read only access) */
 	Sampler2DShadow,      /**< 2D depth combined image shadow sampler. (read only access) */
 	SamplerCubeShadow,    /**< Cubemap depth combined image shadow sampler. (read only access) */
 	Sampler1DArrayShadow, /**< 1D depth combined image array shadow sampler. (read only access) */
 	Sampler2DArrayShadow, /**< 2D depth combined image array shadow sampler. (read only access) */
+
 	Image1D,              /**< 1D floating point image. (read and write access) */
 	Image2D,              /**< 2D floating point image. (read and write access) */
 	Image3D,              /**< 3D floating point image. (read and write access) */
 	ImageCube,            /**< Cubemap floating point image. (read and write access) */
 	Image1DArray,         /**< 1D floating point image array. (read and write access) */
 	Image2DArray,         /**< 2D floating point image array. (read and write access) */
+
 	Iimage1D,             /**< 1D signed integer image. (read and write access) */
 	Iimage2D,             /**< 2D signed integer image. (read and write access) */
 	Iimage3D,             /**< 3D signed integer image. (read and write access) */
 	IimageCube,           /**< Cubemap signed integer image. (read and write access) */
 	Iimage1DArray,        /**< 1D signed integer image array. (read and write access) */
 	Iimage2DArray,        /**< 2D signed integer image array. (read and write access) */
+
 	Uimage1D,             /**< 1D unsigned integer image. (read and write access) */
 	Uimage2D,             /**< 2D unsigned integer image. (read and write access) */
 	Uimage3D,             /**< 3D unsigned integer image. (read and write access) */
-	UimageCube,           /**< Cuebemap unsigned integer image. (read and write access) */
+	UimageCube,           /**< Cubemap unsigned integer image. (read and write access) */
 	Uimage1DArray,        /**< 1D unsigned integer image array. (read and write access) */
 	Uimage2DArray,        /**< 2D unsigned integer image array. (read and write access) */
+
 	SubpassInput,         /**< Subpass input image. (read only access) */
 	UniformBuffer,        /**< Uniform buffer. (read only access) */
 	StorageBuffer,        /**< Storage buffer. (read and write access) */
 	PushConstants,        /**< Push constants. (read only access) */
+	
 	Count                 /**< GSL uniform type count. */
 };
 
@@ -183,15 +156,6 @@ constexpr string_view gslDataTypeNames[(psize)GslDataType::Count] =
 constexpr string_view gslDataFormatNames[(psize)GslDataFormat::Count] =
 {
 	"f8", "f16", "f32", "i8", "i16", "i32", "u8", "u16", "u32"
-};
-/**
- * @brief GSL image format name strings. (camelCase)
- */
-constexpr string_view gslImageFormatNames[(psize)GslImageFormat::Count] =
-{
-	"f16rgba", "f32rgba", "f16rg", "f32rg", "f16r", "f32r",
-	"i8rgba", "i16rgba", "i32rgba", "i8rg", "i16rg", "i32rg", "i8r", "i16r", "i32r",
-	"u8rgba", "u16rgba", "u32rgba", "u8rg", "u16rg", "u32rg", "u8r", "u16r", "u32r"
 };
 /**
  * @brief GSL uniform type name strings. (camelCase)
@@ -264,40 +228,6 @@ static GslDataFormat toGslDataFormat(string_view dataFormat)
 }
 
 /***********************************************************************************************************************
- * @brief Returns GSL image format.
- * @param imageFormat target GSL image format name string (camelCase)
- * @throw GardenError on unknown GSL image format type.
- */
-static GslImageFormat toGslImageFormat(string_view imageFormat)
-{
-	if (imageFormat == "f16rgba") return GslImageFormat::F16RGBA;
-	if (imageFormat == "f32rgba") return GslImageFormat::F32RGBA;
-	if (imageFormat == "f16rg") return GslImageFormat::F16RG;
-	if (imageFormat == "f32rg") return GslImageFormat::F32RG;
-	if (imageFormat == "f16r") return GslImageFormat::F16R;
-	if (imageFormat == "f32r") return GslImageFormat::F32R;
-	if (imageFormat == "i8rgba") return GslImageFormat::I8RGBA;
-	if (imageFormat == "i16rgba") return GslImageFormat::I16RGBA;
-	if (imageFormat == "i32rgba") return GslImageFormat::I32RGBA;
-	if (imageFormat == "i8rg") return GslImageFormat::I8RG;
-	if (imageFormat == "i16rg") return GslImageFormat::I16RG;
-	if (imageFormat == "i32rg") return GslImageFormat::I32RG;
-	if (imageFormat == "i8r") return GslImageFormat::I8R;
-	if (imageFormat == "i16r") return GslImageFormat::I16R;
-	if (imageFormat == "i32r") return GslImageFormat::I32R;
-	if (imageFormat == "u8rgba") return GslImageFormat::U8RGBA;
-	if (imageFormat == "u16rgba") return GslImageFormat::U16RGBA;
-	if (imageFormat == "u32rgba") return GslImageFormat::U32RGBA;
-	if (imageFormat == "u8rg") return GslImageFormat::U8RG;
-	if (imageFormat == "u16rg") return GslImageFormat::U16RG;
-	if (imageFormat == "u32rg") return GslImageFormat::U32RG;
-	if (imageFormat == "u8r") return GslImageFormat::U8R;
-	if (imageFormat == "u16r") return GslImageFormat::U16R;
-	if (imageFormat == "u32r") return GslImageFormat::U32R;
-	throw GardenError("Unknown GSL image format type. (" + string(imageFormat) + ")");
-}
-
-/***********************************************************************************************************************
  * @brief Returns GSL uniform type.
  * @param uniformType target GSL uniform type name string (camelCase)
  * @throw GardenError on unknown GSL uniform type.
@@ -310,45 +240,53 @@ static GslUniformType toGslUniformType(string_view uniformType)
 	if (uniformType == "samplerCube") return GslUniformType::SamplerCube;
 	if (uniformType == "sampler1DArray") return GslUniformType::Sampler1DArray;
 	if (uniformType == "sampler2DArray") return GslUniformType::Sampler2DArray;
+
 	if (uniformType == "isampler1D") return GslUniformType::Isampler1D;
 	if (uniformType == "isampler2D") return GslUniformType::Isampler2D;
 	if (uniformType == "isampler3D") return GslUniformType::Isampler3D;
 	if (uniformType == "isamplerCube") return GslUniformType::IsamplerCube;
 	if (uniformType == "isampler1DArray") return GslUniformType::Isampler1DArray;
 	if (uniformType == "isampler2DArray") return GslUniformType::Isampler2DArray;
+
 	if (uniformType == "usampler1D") return GslUniformType::Usampler1D;
 	if (uniformType == "usampler2D") return GslUniformType::Usampler2D;
 	if (uniformType == "usampler3D") return GslUniformType::Usampler3D;
 	if (uniformType == "usamplerCube") return GslUniformType::UsamplerCube;
 	if (uniformType == "usampler1DArray") return GslUniformType::Usampler1DArray;
 	if (uniformType == "usampler2DArray") return GslUniformType::Usampler2DArray;
+
 	if (uniformType == "sampler1DShadow") return GslUniformType::Sampler1DShadow;
 	if (uniformType == "sampler2DShadow") return GslUniformType::Sampler2DShadow;
 	if (uniformType == "samplerCubeShadow") return GslUniformType::SamplerCubeShadow;
 	if (uniformType == "sampler1DArrayShadow") return GslUniformType::Sampler1DArrayShadow;
 	if (uniformType == "sampler2DArrayShadow") return GslUniformType::Sampler2DArrayShadow;
+
 	if (uniformType == "image1D") return GslUniformType::Image1D;
 	if (uniformType == "image2D") return GslUniformType::Image2D;
 	if (uniformType == "image3D") return GslUniformType::Image3D;
 	if (uniformType == "imageCube") return GslUniformType::ImageCube;
 	if (uniformType == "image1DArray") return GslUniformType::Image1DArray;
 	if (uniformType == "image2DArray") return GslUniformType::Image2DArray;
+
 	if (uniformType == "iimage1D") return GslUniformType::Iimage1D;
 	if (uniformType == "iimage2D") return GslUniformType::Iimage2D;
 	if (uniformType == "iimage3D") return GslUniformType::Iimage3D;
 	if (uniformType == "iimageCube") return GslUniformType::IimageCube;
 	if (uniformType == "iimage1DArray") return GslUniformType::Iimage1DArray;
 	if (uniformType == "iimage2DArray") return GslUniformType::Iimage2DArray;
+
 	if (uniformType == "uimage1D") return GslUniformType::Uimage1D;
 	if (uniformType == "uimage2D") return GslUniformType::Uimage2D;
 	if (uniformType == "uimage3D") return GslUniformType::Uimage3D;
 	if (uniformType == "uimageCube") return GslUniformType::UimageCube;
 	if (uniformType == "uimage1DArray") return GslUniformType::Uimage1DArray;
 	if (uniformType == "uimage2DArray") return GslUniformType::Uimage2DArray;
+
 	if (uniformType == "subpassInput") return GslUniformType::SubpassInput;
 	if (uniformType == "uniformBuffer") return GslUniformType::UniformBuffer;
 	if (uniformType == "storageBuffer") return GslUniformType::StorageBuffer;
 	if (uniformType == "pushConstants") return GslUniformType::PushConstants;
+	
 	throw GardenError("Unknown GSL uniform type. (" + string(uniformType) + ")");
 }
 
@@ -371,15 +309,6 @@ static string_view toString(GslDataFormat dataFormat) noexcept
 	return gslDataFormatNames[(psize)dataFormat];
 }
 /**
- * @brief Returns GSL image format name string.
- * @param imageFormat target GSL image format
- */
-static string_view toString(GslImageFormat imageFormat) noexcept
-{
-	GARDEN_ASSERT((uint8)imageFormat < (uint8)GslImageFormat::Count);
-	return gslImageFormatNames[(psize)imageFormat];
-}
-/**
  * @brief Returns GSL uniform type name string.
  * @param uniformType target GSL uniform type
  */
@@ -397,38 +326,31 @@ static uint8 toComponentCount(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-	case GslDataType::Bool:
-	case GslDataType::Int32:
-	case GslDataType::Uint32:
-	case GslDataType::Float:
-		return 1;
-	case GslDataType::Bool2:
-	case GslDataType::Int2:
-	case GslDataType::Uint2:
-	case GslDataType::Float2:
-		return 2;
-	case GslDataType::Bool3:
-	case GslDataType::Int3:
-	case GslDataType::Uint3:
-	case GslDataType::Float3:
-		return 3;
-	case GslDataType::Bool4:
-	case GslDataType::Int4:
-	case GslDataType::Uint4:
-	case GslDataType::Float4:
-	case GslDataType::Float2x2:
-		return 4;
+	case GslDataType::Bool: return 1;
+	case GslDataType::Int32: return 1;
+	case GslDataType::Uint32: return 1;
+	case GslDataType::Float: return 1;
+	case GslDataType::Bool2: return 2;
+	case GslDataType::Int2: return 2;
+	case GslDataType::Uint2: return 2;
+	case GslDataType::Float2: return 2;
+	case GslDataType::Bool3: return 3;
+	case GslDataType::Int3: return 3;
+	case GslDataType::Uint3: return 3;
+	case GslDataType::Float3: return 3;
+	case GslDataType::Bool4: return 4;
+	case GslDataType::Int4: return 4;
+	case GslDataType::Uint4: return 4;
+	case GslDataType::Float4: return 4;
+	case GslDataType::Float2x2: return 4;
 	case GslDataType::Float3x3: return 9;
 	case GslDataType::Float4x4: return 16;
-	case GslDataType::Float2x3:
-	case GslDataType::Float3x2:
-		return 6;
-	case GslDataType::Float2x4:
-	case GslDataType::Float4x2:
-		return 8;
-	case GslDataType::Float3x4:
-	case GslDataType::Float4x3:
-		return 12;
+	case GslDataType::Float2x3: return 6;
+	case GslDataType::Float3x2: return 6;
+	case GslDataType::Float2x4: return 8;
+	case GslDataType::Float4x2: return 8;
+	case GslDataType::Float3x4: return 12;
+	case GslDataType::Float4x3: return 12;
 	default: abort();
 	}
 }
@@ -441,23 +363,22 @@ static uint8 toLocationOffset(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-	case GslDataType::Bool:
-	case GslDataType::Int32:
-	case GslDataType::Uint32:
-	case GslDataType::Float:
-	case GslDataType::Bool2:
-	case GslDataType::Int2:
-	case GslDataType::Uint2:
-	case GslDataType::Float2:
-	case GslDataType::Bool3:
-	case GslDataType::Int3:
-	case GslDataType::Uint3:
-	case GslDataType::Float3:
-	case GslDataType::Bool4:
-	case GslDataType::Int4:
-	case GslDataType::Uint4:
-	case GslDataType::Float4:
-		return 1;
+	case GslDataType::Bool: return 1;
+	case GslDataType::Int32: return 1;
+	case GslDataType::Uint32: return 1;
+	case GslDataType::Float: return 1;
+	case GslDataType::Bool2: return 1;
+	case GslDataType::Int2: return 1;
+	case GslDataType::Uint2: return 1;
+	case GslDataType::Float2: return 1;
+	case GslDataType::Bool3: return 1;
+	case GslDataType::Int3: return 1;
+	case GslDataType::Uint3: return 1;
+	case GslDataType::Float3: return 1;
+	case GslDataType::Bool4: return 1;
+	case GslDataType::Int4: return 1;
+	case GslDataType::Uint4: return 1;
+	case GslDataType::Float4: return 1;
 	case GslDataType::Float2x2: return 2;
 	case GslDataType::Float3x3: return 3;
 	case GslDataType::Float4x4: return 4;

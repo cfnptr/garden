@@ -21,7 +21,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vk::Filter toVkFilter(SamplerFilter filterType)
+static vk::Filter toVkFilter(SamplerFilter filterType) noexcept
 {
 	switch (filterType)
 	{
@@ -30,7 +30,7 @@ static vk::Filter toVkFilter(SamplerFilter filterType)
 	default: abort();
 	}
 }
-static vk::SamplerMipmapMode toVkSamplerMipmapMode(SamplerFilter filterType)
+static vk::SamplerMipmapMode toVkSamplerMipmapMode(SamplerFilter filterType) noexcept
 {
 	switch (filterType)
 	{
@@ -39,7 +39,7 @@ static vk::SamplerMipmapMode toVkSamplerMipmapMode(SamplerFilter filterType)
 	default: abort();
 	}
 }
-static vk::SamplerAddressMode toVkSamplerAddressMode(Pipeline::SamplerWrap samplerWrap)
+static vk::SamplerAddressMode toVkSamplerAddressMode(Pipeline::SamplerWrap samplerWrap) noexcept
 {
 	switch (samplerWrap)
 	{
@@ -51,7 +51,7 @@ static vk::SamplerAddressMode toVkSamplerAddressMode(Pipeline::SamplerWrap sampl
 	default: abort();
 	}
 }
-static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor)
+static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor) noexcept
 {
 	switch (borderColor)
 	{
@@ -475,7 +475,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const map<
 	{
 		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
 			continue;
-		dataSize += toBinarySize(pair.second.dataType);
+		dataSize += sizeof(uint32);
 		entryCount++;
 	}
 
@@ -510,11 +510,10 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const map<
 
 		const auto& value = specConstValues.at(pair.first);
 		GARDEN_ASSERT(value.constBase.type == pair.second.dataType);
-		vk::SpecializationMapEntry entry(pair.second.index,
-			dataOffset, toBinarySize(pair.second.dataType));
+		vk::SpecializationMapEntry entry(pair.second.index, dataOffset, sizeof(uint32));
 		entries[itemIndex++] = entry;
-		memcpy(data + dataOffset, value.constBase.data, entry.size);
-		dataOffset += (uint32)entry.size;
+		memcpy(data + dataOffset, &value.constBase.data, sizeof(uint32));
+		dataOffset += sizeof(uint32);
 	}
 	
 	info->mapEntryCount = entryCount;

@@ -19,7 +19,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology)
+static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology) noexcept
 {
 	switch (topology)
 	{
@@ -31,7 +31,7 @@ static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology to
 	default: abort();
 	}
 }
-static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon)
+static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon) noexcept
 {
 	switch (polygon)
 	{
@@ -41,7 +41,7 @@ static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon)
 	default: abort();
 	}
 }
-static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace)
+static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace) noexcept
 {
 	switch (cullFace)
 	{
@@ -51,7 +51,7 @@ static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace)
 	default: abort();
 	}
 }
-static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace)
+static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace) noexcept
 {
 	switch (frontFace)
 	{
@@ -62,7 +62,7 @@ static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace)
 }
 
 //**********************************************************************************************************************
-static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor)
+static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor) noexcept
 {
 	switch (blendFactor)
 	{
@@ -87,7 +87,7 @@ static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor
 	default: abort();
 	}
 }
-static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOperation blendOperation)
+static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOperation blendOperation) noexcept
 {
 	switch (blendOperation)
 	{
@@ -99,7 +99,7 @@ static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOperation blendOperation)
 	default: abort();
 	}
 }
-static vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorComponent colorComponents)
+static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorComponent colorComponents) noexcept
 {
 	vk::ColorComponentFlags result;
 	if (hasAnyFlag(colorComponents, GraphicsPipeline::ColorComponent::R))
