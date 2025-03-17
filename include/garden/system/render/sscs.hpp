@@ -56,9 +56,9 @@ public:
 	struct Properties final
 	{
 		float2 depthBounds = float2(0.0f, 1.0f); /**< Bounds for the on-screen volume of the light. */ 
-		uint32 hardShadowSamples = 1;            /**< Number of initial shadow samples that will produce a hard shadow. */
-		uint32 fadeOutSamples = 64;               /**< Number of samples that will fade out at the end of the shadow. (minor cost) */
-		float surfaceThickness = 0.01f;         /**< Assumed thickness of each pixel for shadow-casting. */
+		uint32 hardShadowSamples = 4;            /**< Number of initial shadow samples that will produce a hard shadow. */
+		uint32 fadeOutSamples = 8;               /**< Number of samples that will fade out at the end of the shadow. (minor cost) */
+		float surfaceThickness = 0.005f;         /**< Assumed thickness of each pixel for shadow-casting. */
 		float bilinearThreshold = 0.02f;         /**< Threshold for determining if depth difference represents an edge. */
 		float shadowContrast = 4.0f;             /**< Contrast boost applied to the transition in/out of the shadow. (>= 1) */
 		bool ignoreEdgePixels : 1;               /**< If an edge is detected, pixel will not contribute to the shadow. */
