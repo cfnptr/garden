@@ -19,7 +19,7 @@
 
 #include "common/math.gsl"
 
-#define G_BUFFER_COUNT 5
+#define G_BUFFER_COUNT 6
 
 #define BASE_COLOR_G_BUFFER 0
 #define OPACITY_G_BUFFER 0
@@ -27,12 +27,14 @@
 #define ROUGHNESS_G_BUFFER 1
 #define AO_G_BUFFER 1
 #define REFLECTANCE_G_BUFFER 1
-#define NORMALS_G_BUFFER 2
 #define CLEAR_COAT_G_BUFFER 2
-#define EM_COLOR_G_BUFFER 3
-#define EM_FACTOR_G_BUFFER 3
-#define SUBSURFACE_G_BUFFER 4
-#define THICKNESS_G_BUFFER 4
+#define CC_ROUGHNESS_G_BUFFER 2
+#define NORMALS_G_BUFFER 3
+#define SHADOW_G_BUFFER 3
+#define EM_COLOR_G_BUFFER 4
+#define EM_FACTOR_G_BUFFER 4
+#define SUBSURFACE_G_BUFFER 5
+#define THICKNESS_G_BUFFER 5
 
 struct GBufferData
 {
@@ -45,8 +47,10 @@ struct GBufferValues
 	float roughness;
 	float ambientOcclusion;
 	float reflectance;
-	float3 normal;
 	float clearCoat;
+	float clearCoatRoughness;
+	float3 normal;
+	float shadow;
 	float3 emissiveColor;
 	float emissiveFactor;
 	float3 subsurfaceColor;
@@ -86,27 +90,36 @@ float4 encodeGBuffer1(float metallic, float roughness, float ambientOcclusion, f
 {
 	return float4(metallic, roughness, ambientOcclusion, reflectance);
 }
-float4 encodeGBuffer2(float3 normal, float clearCoat)
+float4 encodeGBuffer2(float clearCoat, float clearCoatRoughness)
+{
+	return float4(clearCoat, clearCoatRoughness, 0.0f, 0.0f); // zw are unused
+}
+float4 encodeGBuffer3(float3 normal, float shadow)
 {
 	float3 encodedNormal = encodeNormalOct(normal);
-	return float4(clearCoat, encodedNormal.x, encodedNormal.y, encodedNormal.z);
+	return float4(shadow, encodedNormal.x, encodedNormal.y, encodedNormal.z);
 }
-float4 encodeGBuffer3(float3 emissiveColor, float emissiveFactor)
+float4 encodeGBuffer4(float3 emissiveColor, float emissiveFactor)
 {
 	return float4(emissiveColor, emissiveFactor);
 }
-float4 encodeGBuffer4(float3 subsurfaceColor, float thickness)
+float4 encodeGBuffer5(float3 subsurfaceColor, float thickness)
 {
 	return float4(subsurfaceColor, thickness);
 }
 
-void encodeGBufferValues(GBufferValues values, out float4 g0, out float4 g1, out float4 g2, out float4 g3, out float4 g4)
+void encodeGBufferValues(GBufferValues values, out float4 g0, out float4 g1, 
+	out float4 g2, out float4 g3, out float4 g4, out float4 g5)
 {
 	g0 = encodeGBuffer0(values.baseColor);
 	g1 = encodeGBuffer1(values.metallic, values.roughness, values.ambientOcclusion, values.reflectance);
-	g2 = encodeGBuffer2(values.normal, values.clearCoat);
-	g3 = encodeGBuffer3(values.emissiveColor, values.emissiveFactor);
-	g4 = encodeGBuffer4(values.subsurfaceColor, values.thickness);
+	g2 = encodeGBuffer2(values.clearCoat, values.clearCoatRoughness);
+	g3 = encodeGBuffer3(values.normal, values.shadow);
+
+	if (USE_EMISSIVE_BUFFER)
+		g4 = encodeGBuffer4(values.emissiveColor, values.emissiveFactor);
+	if (USE_SUB_SURFACE_SCATTERING)
+		g5 = encodeGBuffer5(values.subsurfaceColor, values.thickness);
 }
 
 //**********************************************************************************************************************
@@ -115,8 +128,10 @@ float decodeMetallic(float4 gBufferData) { return gBufferData.r; }
 float decodeRoughness(float4 gBufferData) { return gBufferData.g; }
 float decodeAmbientOcclusion(float4 gBufferData) { return gBufferData.b; }
 float decodeReflectance(float4 gBufferData) { return gBufferData.a; }
-float3 decodeNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba); }
 float decodeClearCoat(float4 gBufferData) { return gBufferData.r; }
+float decodeClearCoatRoughness(float4 gBufferData) { return gBufferData.g; }
+float3 decodeNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba); }
+float decodeShadow(float4 gBufferData) { return gBufferData.r; }
 float3 decodeEmissiveColor(float4 gBufferData) { return gBufferData.rgb; }
 float decodeEmissiveFactor(float4 gBufferData) { return gBufferData.a; }
 float3 decodeSubsurfaceColor(float4 gBufferData) { return gBufferData.rgb; }
@@ -127,27 +142,34 @@ float decodeMetallic(GBufferData data) { return decodeMetallic(data.g[METALLIC_G
 float decodeRoughness(GBufferData data) { return decodeRoughness(data.g[ROUGHNESS_G_BUFFER]); }
 float decodeAmbientOcclusion(GBufferData data) { return decodeAmbientOcclusion(data.g[AO_G_BUFFER]); }
 float decodeReflectance(GBufferData data) { return decodeReflectance(data.g[REFLECTANCE_G_BUFFER]); }
-float3 decodeNormal(GBufferData data) { return decodeNormal(data.g[NORMALS_G_BUFFER]); }
 float decodeClearCoat(GBufferData data) { return decodeClearCoat(data.g[CLEAR_COAT_G_BUFFER]); }
+float decodeClearCoatRoughness(GBufferData data) { return decodeClearCoat(data.g[CC_ROUGHNESS_G_BUFFER]); }
+float3 decodeNormal(GBufferData data) { return decodeNormal(data.g[NORMALS_G_BUFFER]); }
+float decodeShadow(GBufferData data) { return decodeClearCoat(data.g[SHADOW_G_BUFFER]); }
 float3 decodeEmissiveColor(GBufferData data) { return decodeEmissiveColor(data.g[EM_COLOR_G_BUFFER]); }
 float decodeEmissiveFactor(GBufferData data) { return decodeEmissiveFactor(data.g[EM_FACTOR_G_BUFFER]); }
 float3 decodeSubsurfaceColor(GBufferData data) { return decodeSubsurfaceColor(data.g[SUBSURFACE_G_BUFFER]); }
 float decodeThickness(GBufferData data) { return decodeThickness(data.g[THICKNESS_G_BUFFER]); }
 
-GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
+GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, 
+	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
 	GBufferData data;
 	data.g[0] = texture(s0, texCoords);
 	data.g[1] = texture(s1, texCoords);
 	data.g[2] = texture(s2, texCoords);
 	data.g[3] = texture(s3, texCoords);
-	data.g[4] = texture(s4, texCoords);
+	if (USE_EMISSIVE_BUFFER)
+		data.g[4] = texture(s4, texCoords);
+	if (USE_SUB_SURFACE_SCATTERING)
+		data.g[5] = texture(s5, texCoords);
 	return data;
 }
 
-GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
+GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, 
+	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
-	GBufferData data = decodeGBufferData(s0, s1, s2, s3, s4, texCoords);
+	GBufferData data = decodeGBufferData(s0, s1, s2, s3, s4, s5, texCoords);
 
 	GBufferValues values;
 	values.baseColor = decodeBaseColor(data);
@@ -155,12 +177,22 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, samp
 	values.roughness = decodeRoughness(data);
 	values.ambientOcclusion = decodeAmbientOcclusion(data);
 	values.reflectance = decodeReflectance(data);
-	values.normal = decodeNormal(data);
 	values.clearCoat = decodeClearCoat(data);
-	values.emissiveColor = decodeEmissiveColor(data);
-	values.emissiveFactor = decodeEmissiveFactor(data);
-	values.subsurfaceColor = decodeSubsurfaceColor(data);
-	values.thickness = decodeThickness(data);
+	values.clearCoatRoughness = decodeClearCoatRoughness(data);
+	values.normal = decodeNormal(data);
+	values.shadow = decodeShadow(data);
+
+	if (USE_EMISSIVE_BUFFER)
+	{
+		values.emissiveColor = decodeEmissiveColor(data);
+		values.emissiveFactor = decodeEmissiveFactor(data);
+	}
+	if (USE_SUB_SURFACE_SCATTERING)
+	{
+		values.subsurfaceColor = decodeSubsurfaceColor(data);
+		values.thickness = decodeThickness(data);
+	}
+	
 	return values;
 }
 

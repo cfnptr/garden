@@ -582,6 +582,12 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	for (uint32 i = 0; i < colorAttachmentCount; i++)
 	{
 		auto colorAttachment = colorAttachments[i];
+		if (noSubpass && !colorAttachment.imageView)
+		{
+			vulkanAPI->colorAttachmentInfos[i].imageView = VK_NULL_HANDLE;
+			continue;
+		}
+
 		auto imageView = vulkanAPI->imageViewPool.get(colorAttachment.imageView);
 		auto& oldImageState = getImageState(imageView->getImage(), 
 			imageView->getBaseMip(), imageView->getBaseLayer());

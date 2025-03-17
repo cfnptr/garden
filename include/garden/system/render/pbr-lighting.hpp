@@ -112,9 +112,6 @@ private:
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;
 public:
-	f32x4 shadowColor = f32x4::one;
-	float emissiveMult = 100.0f; /**< (Max brightness) */
-
 	/*******************************************************************************************************************
 	 * @brief Use shadow buffer for PBR lighting rendering.
 	 */

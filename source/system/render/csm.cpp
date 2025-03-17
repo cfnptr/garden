@@ -160,10 +160,11 @@ void CsmRenderSystem::shadowRender()
 {
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
 
-	if (intensity <= 0.0f)
-		return;
-
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	if (cameraConstants.shadowColor.getW() <= 0.0f)
+		return;
+	
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -176,12 +177,14 @@ void CsmRenderSystem::shadowRender()
 	}
 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	dataBufferView->flush();
 
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->farPlanesIntens = (float4)f32x4(cameraConstants.nearPlane / farPlanes, intensity);
+	pushConstants->farPlanesIntens = (float4)f32x4(
+		cameraConstants.nearPlane / farPlanes, 
+		1.0f - cameraConstants.shadowColor.getW());
 
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
 	pipelineView->bind();
@@ -258,7 +261,8 @@ static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cam
 bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (intensity <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	if (cameraConstants.shadowColor.getW() <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
 		return false;
 
 	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
@@ -273,7 +277,6 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		farPlane *= cascadeSplits[passIndex];
 	farPlanes[passIndex] = farPlane;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	viewProj = calcLightViewProj(cameraConstants.view, cameraConstants.lightDir, cameraOffset,
 		cameraView->p.perspective.fieldOfView, cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff);
 

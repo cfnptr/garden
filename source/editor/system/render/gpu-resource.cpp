@@ -457,6 +457,12 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
 			auto attachment = colorAttachments[i];
+			if (!attachment.imageView)
+			{
+				ImGui::Text("[unused]");
+				continue;
+			}
+			
 			auto imageView = graphicsAPI->imageViewPool.get(attachment.imageView);
 			auto viewName = imageView->getDebugName().empty() ? "Image View " +
 				to_string(*attachment.imageView) : imageView->getDebugName();

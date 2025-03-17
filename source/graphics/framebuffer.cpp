@@ -486,16 +486,21 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 	#if GARDEN_DEBUG
 	auto graphicsAPI = GraphicsAPI::get();
 
+	uint32 validColorAttachCount = 0;
 	for	(uint32 i = 0; i < colorAttachmentCount; i ++)
 	{
 		const auto& colorAttachment = colorAttachments[i];
-		GARDEN_ASSERT(colorAttachment.imageView);
+		if (!colorAttachment.imageView)
+			continue;
+
 		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
+		validColorAttachCount++;
 	}
+	GARDEN_ASSERT((colorAttachmentCount > 0 && validColorAttachCount > 0) || colorAttachmentCount == 0);
 
 	if (depthStencilAttachment.imageView)
 	{

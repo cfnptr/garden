@@ -62,12 +62,14 @@ void ToneMappingRenderEditorSystem::editorRender()
 		if (ImGui::Combo("Tone Mapper", &toneMapper, toneMapperTypes))
 			toneMappingSystem->setConsts(toneMappingSystem->getUseBloomBuffer(), toneMapper);
 
-		ImGui::DragFloat("Exposure Coefficient", &toneMappingSystem->exposureFactor, 0.01f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Exposure Factor", &toneMappingSystem->exposureFactor, 0.01f, 0.0f, FLT_MAX);
 		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
 
-		auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
-		ImGui::ColorEdit3("Shadow Color", &pbrLightingSystem->shadowColor,
-			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+		auto emissiveCoeff = cameraConstants.emissiveCoeff;
+		if (ImGui::DragFloat("Emissive Coefficient", &emissiveCoeff, 0.1f, 0.0f, FLT_MAX))
+			graphicsSystem->setEmissiveCoeff(emissiveCoeff);
 
 		if (ImGui::CollapsingHeader("Set Exposure / Luminance"))
 		{

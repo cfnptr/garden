@@ -83,7 +83,6 @@ private:
 	friend class ecsm::Manager;
 public:
 	float2 cascadeSplits = float2(0.05f, 0.20f);
-	float intensity = 0.75f;
 	float distance = 100.0f;
 	float biasConstantFactor = -1.25f;
 	float biasSlopeFactor = -1.75f;

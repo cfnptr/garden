@@ -23,9 +23,9 @@ class DeferredRenderEditorSystem final : public System
 {
 	enum class DrawMode : uint8
 	{
-		Off, BaseColor, OpacityTransmission, Metallic, Roughness, MaterialAO, Reflectance,
-		Normals, ClearCoat, EmissiveColor, EmissiveFactor, SubsurfaceColor, Thickness,
-		Lighting, HDR, Depth, WorldPosition, Shadows, GlobalAO, DenoisedGlobalAO, Count
+		Off, BaseColor, OpacityTransmission, Metallic, Roughness, MaterialAO, Reflectance, 
+		ClearCoat, ClearCoatRoughness, Normals, GShadows, EmissiveColor, EmissiveFactor,  SubsurfaceColor, 
+		Thickness, Lighting, HDR, Depth, WorldPosition, Shadows, GlobalAO, DenoisedGlobalAO, Count
 	};
 
 	struct BufferPC final
@@ -42,7 +42,8 @@ class DeferredRenderEditorSystem final : public System
 		float4 mraor;
 		float4 emissive;
 		float4 subsurface;
-		float clearCoat;
+		float2 clearCoat;
+		float shadow;
 	};
 
 	f32x4 colorOverride = f32x4::one;
@@ -53,7 +54,8 @@ class DeferredRenderEditorSystem final : public System
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
-	float clearCoatOverride = 1.0f;
+	float2 clearCoatOverride = float2::zero;
+	float shadowOverride = 1.0f;
 	DrawMode drawMode = DrawMode::Off;
 	bool showChannelR = true;
 	bool showChannelG = true;

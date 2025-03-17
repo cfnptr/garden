@@ -143,6 +143,8 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 {
 	switch (formatType)
 	{
+	case Image::Format::Undefined: return vk::Format::eUndefined;
+
 	case Image::Format::UintR8: return vk::Format::eR8Uint;
 	case Image::Format::UintR8G8: return vk::Format::eR8G8Uint;
 	case Image::Format::UintR8G8B8A8: return vk::Format::eR8G8B8A8Uint;

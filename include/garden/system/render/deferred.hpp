@@ -19,11 +19,12 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbR8G8B8A8     (Base Color, A8_unused)
+ *   0. SrgbR8G8B8A8     (Base Color, unused)
  *   1. UnormR8G8B8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
- *   2. UnormA2B10G10R10 (Encoded Normal, R10_unused)
- *   3. SrgbR8G8B8A8     (Emissive Color and Factor)
- *   4. SrgbR8G8B8A8     (Subsurface Color, Thickness)
+ *   2. UnormR8G8B8A8    (Clear Coat, Clear Coat Roughness, unused, unused)
+ *   3. UnormA2B10G10R10 (Encoded Normal, Shadow)
+ *   4. SrgbR8G8B8A8     (Emissive Color and Factor) [optional]
+ *   5. SrgbR8G8B8A8     (Subsurface Color, Thickness) [optional]
  */
 
 // TODO: clear coat and sheen rendering. Make emissive, subsurface buffer creation optional.
@@ -58,7 +59,7 @@ public:
 	 * @brief Deferred rendering G-Buffer count.
 	 * @details See the deferred.hpp header.
 	 */
-	static constexpr uint8 gBufferCount = 5;
+	static constexpr uint8 gBufferCount = 6;
 
 	static constexpr uint8 baseColorGBuffer = 0;   /**< Index of the G-Buffer with encoded base color. */
 	static constexpr uint8 opacityGBuffer = 0;     /**< Index of the G-Buffer with encoded opacity or transmission. */
@@ -66,12 +67,14 @@ public:
 	static constexpr uint8 roughnessGBuffer = 1;   /**< Index of the G-Buffer with encoded roughness. */
 	static constexpr uint8 materialAoGBuffer = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
 	static constexpr uint8 reflectanceGBuffer = 1; /**< Index of the G-Buffer with encoded reflectance. */
-	static constexpr uint8 normalsGBuffer = 2;     /**< Index of the G-Buffer with encoded normals. */
 	static constexpr uint8 clearCoatGBuffer = 2;   /**< Index of the G-Buffer with encoded clear coat. */
-	static constexpr uint8 emColorGBuffer = 3;     /**< Index of the G-Buffer with encoded emissive color. */
-	static constexpr uint8 emFactorGBuffer = 3;    /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 subsurfaceGBuffer = 4;  /**< Index of the G-Buffer with encoded subsurface color. */
-	static constexpr uint8 thicknessGBuffer = 4;   /**< Index of the G-Buffer with encoded thickness. */
+	static constexpr uint8 ccRoughnessGBuffer = 2; /**< Index of the G-Buffer with encoded clear coat roughness. */
+	static constexpr uint8 normalsGBuffer = 3;     /**< Index of the G-Buffer with encoded normals. */
+	static constexpr uint8 shadowGBuffer = 3;      /**< Index of the G-Buffer with encoded shadow. */
+	static constexpr uint8 emColorGBuffer = 4;     /**< Index of the G-Buffer with encoded emissive color. */
+	static constexpr uint8 emFactorGBuffer = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
+	static constexpr uint8 subsurfaceGBuffer = 5;  /**< Index of the G-Buffer with encoded subsurface color. */
+	static constexpr uint8 thicknessGBuffer = 5;   /**< Index of the G-Buffer with encoded thickness. */
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
@@ -82,14 +85,19 @@ private:
 	ID<Framebuffer> metaHdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
 	bool asyncRecording = false;
+	bool emissive = false;
+	bool sss = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
 	 * 
+	 * @param useEmissive use emissive buffer
+	 * @param useSSS use sub surface scattering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param setSingleton set system singleton instance
 	 */
-	DeferredRenderSystem(bool useAsyncRecording = true, bool setSingleton = true);
+	DeferredRenderSystem(bool useEmissive = true, bool useSSS = true, 
+		bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
 	 */
@@ -110,6 +118,15 @@ public:
 	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
+
+	/**
+	 * @brief Use emissive buffer.
+	 */
+	bool useEmissive() const noexcept { return emissive; }
+	/**
+	 * @brief Use sub surface scattering.
+	 */
+	bool useSSS() const noexcept { return sss; }
 
 	/**
 	 * @brief Returns deferred G-Buffer array.

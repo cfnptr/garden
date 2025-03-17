@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/gbuffer.gsl"
-
 // TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
-#define SHADOW_MAP_CASCADE_COUNT 3
+#define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
+
+#include "common/math.gsl"
 
 pipelineState
 {
@@ -74,5 +74,5 @@ void main()
 		discard;
 
 	shadow *= (1.0f / 9.0f);
-	fb.shadow = float4(1.0f - shadow * pc.farPlanesIntens.w, 0.0f, 0.0f, 0.0f);
+	fb.shadow = float4(1.0f - shadow * pc.farPlanesIntens.w);
 }

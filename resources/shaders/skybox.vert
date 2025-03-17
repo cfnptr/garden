@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/primitives.gsl"
 spec const float FAR_DEPTH_VALUE = 0.0f;
+
+#include "common/primitives.gsl"
 
 out float3 fs.texCoords;
 

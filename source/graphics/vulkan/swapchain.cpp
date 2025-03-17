@@ -413,6 +413,12 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
+			if (!colorAttachments[i].imageView)
+			{
+				colorAttachmentFormats[i] = vk::Format::eUndefined;
+				continue;
+			}
+
 			auto imageView = vulkanAPI->imageViewPool.get(colorAttachments[i].imageView);
 			colorAttachmentFormats[i] = toVkFormat(imageView->getFormat());
 		}

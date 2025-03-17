@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+spec const bool USE_EMISSIVE_BUFFER = false;
+spec const bool USE_SUB_SURFACE_SCATTERING = false;
+
 #include "common/gbuffer.gsl"
 
 pipelineState
 {
 	faceCulling = off;
-	colorMask2 = r;
+	colorMask3 = r;
 }
 
 out float4 fb.g0;
@@ -25,6 +28,7 @@ out float4 fb.g1;
 out float4 fb.g2;
 out float4 fb.g3;
 out float4 fb.g4;
+out float4 fb.g5;
 
 uniform pushConstants
 {
@@ -32,7 +36,8 @@ uniform pushConstants
 	float4 mraor;
 	float4 emissive;
 	float4 subsurface;
-	float clearCoat;
+	float2 clearCoat;
+	float shadow;
 } pc;
 
 void main()
@@ -43,11 +48,21 @@ void main()
 	values.roughness = pc.mraor.g;
 	values.ambientOcclusion = pc.mraor.b;
 	values.reflectance = pc.mraor.a;
+	values.clearCoat = pc.clearCoat.r;
+	values.clearCoatRoughness = pc.clearCoat.g;
 	values.normal = float3(0.0f); // Using color mask here
-	values.clearCoat = pc.clearCoat;
-	values.emissiveColor = pc.emissive.rgb;
-	values.emissiveFactor = pc.emissive.a;
-	values.subsurfaceColor = pc.subsurface.rgb;
-	values.thickness = pc.subsurface.a;
-	encodeGBufferValues(values, fb.g0, fb.g1, fb.g2, fb.g3, fb.g4);
+	values.shadow = pc.shadow;
+
+	if (USE_EMISSIVE_BUFFER)
+	{
+		values.emissiveColor = pc.emissive.rgb;
+		values.emissiveFactor = pc.emissive.a;
+	}
+	if (USE_SUB_SURFACE_SCATTERING)
+	{
+		values.subsurfaceColor = pc.subsurface.rgb;
+		values.thickness = pc.subsurface.a;
+	}
+
+	encodeGBufferValues(values, fb.g0, fb.g1, fb.g2, fb.g3, fb.g4, fb.g5);
 }

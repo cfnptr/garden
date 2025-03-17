@@ -311,7 +311,10 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
-		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView));
+	{
+		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView ? 
+			colorAttachments[i].imageView : graphicsSystem->getEmptyTexture()));
+	}
 
 	return uniforms;
 }
@@ -337,7 +340,9 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 	map<string, Pipeline::SpecConstValue> specConstValues =
 	{
 		{ "USE_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
-		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) }
+		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) },
+		{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
+		{ "USE_SUB_SURFACE_SCATTERING", Pipeline::SpecConstValue(deferredSystem->useSSS()) },
 	};
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("pbr-lighting", 
@@ -674,7 +679,7 @@ void PbrLightingRenderSystem::hdrRender()
 
 	auto pushConstants = pipelineView->getPushConstants<LightingPC>();
 	pushConstants->uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
-	pushConstants->shadowEmissive = (float4)f32x4(shadowColor, emissiveMult);
+	pushConstants->shadowEmissive = (float4)f32x4(cameraConstants.shadowColor, cameraConstants.emissiveCoeff);
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	pipelineView->bind();

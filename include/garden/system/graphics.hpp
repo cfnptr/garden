@@ -144,6 +144,19 @@ public:
 	void setRenderScale(float renderScale);
 
 	/**
+	 * @brief Sets shadow color and intensity
+	 * @details See the @ref getCurrentCameraConstants().
+	 * @param shadowColor target shadow color and intensity
+	 */
+	void setShadowColor(f32x4 shadowColor) noexcept { currentCameraConstants.shadowColor = shadowColor; }
+	/**
+	 * @brief Sets emissive coefficient. (Produces maximum brightness)
+	 * @details See the @ref getCurrentCameraConstants().
+	 * @param emissiveCoeff target emissive coefficient
+	 */
+	void setEmissiveCoeff(float emissiveCoeff) noexcept { currentCameraConstants.emissiveCoeff = emissiveCoeff; }
+
+	/**
 	 * @brief Returns swapchain framebuffer size.
 	 * @note It may differ from the input framebuffer size.
 	 */

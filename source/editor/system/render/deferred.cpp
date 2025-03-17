@@ -74,7 +74,10 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPla
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
-		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView));
+	{
+		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView ? 
+			colorAttachments[i].imageView : graphicsSystem->getEmptyTexture()));
+	}
 
 	return uniforms;
 }
@@ -132,8 +135,10 @@ void DeferredRenderEditorSystem::editorRender()
 	{
 		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 		{
+			auto deferredSystem = DeferredRenderSystem::Instance::get();
 			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
-				"Reflectance\0Normals\0Clear Coat\0Emissive Color\0Emissive Factor\0Subsurface Color\0Thickness\0"
+				"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0G-Buffer Shadows\0"
+				"Emissive Color\0Emissive Factor\0Subsurface Color\0Thickness\0"
 				"Lighting\0HDR\0Depth\0World Position\0Shadows\0Global AO\0Denoised Global AO\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
@@ -146,11 +151,29 @@ void DeferredRenderEditorSystem::editorRender()
 				ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
 				ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);
 				ImGui::SliderFloat("Reflectance", &mraorOverride.floats.w, 0.0f, 1.0f);
+				ImGui::SliderFloat("Clear Coat", &clearCoatOverride.x, 0.0f, 1.0f);
+				ImGui::SliderFloat("Clear Coat Roughness", &clearCoatOverride.y, 0.0f, 1.0f);
+				ImGui::SliderFloat("G-Buffer Shadows", &shadowOverride, 0.0f, 1.0f);
+
+				ImGui::BeginDisabled(!deferredSystem->useEmissive());
 				ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
 				ImGui::SliderFloat("Emissive Factor", &emissiveOverride.floats.w, 0.0f, 1.0f);
+				ImGui::EndDisabled();
+
+				ImGui::BeginDisabled(!deferredSystem->useSSS());
 				ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
 				ImGui::SliderFloat("Thickness", &subsurfaceOverride.floats.w, 0.0f, 1.0f);
-				ImGui::SliderFloat("Clear Coat", &clearCoatOverride, 0.0f, 1.0f);
+				ImGui::EndDisabled();
+			}
+			else if ((drawMode == DrawMode::EmissiveColor || 
+				drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive())
+			{
+				ImGui::TextDisabled("Emissive buffer is disabled!");
+			}
+			else if ((drawMode == DrawMode::SubsurfaceColor || 
+				drawMode == DrawMode::Thickness) && !deferredSystem->useSSS())
+			{
+				ImGui::TextDisabled("Sub surface scattering is disabled!");
 			}
 			else if ((int)drawMode > (int)DrawMode::Off)
 			{
@@ -186,8 +209,13 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pbrLightingPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		map<string, Pipeline::SpecConstValue> specConstValues =
+		{
+			{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
+			{ "USE_SUB_SURFACE_SCATTERING", Pipeline::SpecConstValue(deferredSystem->useSSS()) },
+		};
 		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("editor/pbr-lighting",
-			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording());
+			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConstValues);
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -200,8 +228,9 @@ void DeferredRenderEditorSystem::deferredRender()
 		pushConstants->color = (float4)colorOverride;
 		pushConstants->mraor = (float4)mraorOverride;
 		pushConstants->emissive = (float4)emissiveOverride;
-		pushConstants->subsurface = (float4)emissiveOverride;
+		pushConstants->subsurface = (float4)subsurfaceOverride;
 		pushConstants->clearCoat = clearCoatOverride;
+		pushConstants->shadow = shadowOverride;
 
 		SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
 		if (graphicsSystem->isCurrentRenderPassAsync())
@@ -210,7 +239,6 @@ void DeferredRenderEditorSystem::deferredRender()
 			pipelineView->setViewportScissorAsync(f32x4::zero, threadIndex);
 			pipelineView->pushConstantsAsync(threadIndex);
 			pipelineView->drawFullscreenAsync(threadIndex);
-			
 		}
 		else
 		{
@@ -266,6 +294,15 @@ void DeferredRenderEditorSystem::ldrRender()
 		pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
 		pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
 		pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
+
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		if (((drawMode == DrawMode::EmissiveColor || 
+				drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive()) ||
+			((drawMode == DrawMode::SubsurfaceColor || 
+				drawMode == DrawMode::Thickness) && !deferredSystem->useSSS()))
+		{
+			pushConstants->drawMode = (int32)DrawMode::Off;
+		}
 
 		SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
 		pipelineView->bind();
