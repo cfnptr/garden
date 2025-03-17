@@ -1,0 +1,230 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Screen space contact shadows. (SSS)
+// Based on this: https://www.bendstudio.com/blog/inside-bend-screen-space-shadows/
+
+#include "common/math.gsl"
+
+#feature subgroupBasic
+#feature subgroupVote
+
+#define WAVE_SIZE 64
+#define SAMPLE_COUNT 256
+#define READ_COUNT (SAMPLE_COUNT / WAVE_SIZE + 2)
+
+spec const uint32 HARD_SHADOW_SAMPLES = 4;
+spec const uint32 FADE_OUT_SAMPLES = 8;
+spec const float SURFACE_THICKNESS = 0.005f;
+spec const float BILINEAR_THRESHOLD = 0.02f;
+spec const float SHADOW_CONTRAST = 4.0f;
+spec const bool IGNORE_EDGE_PIXELS = false;
+spec const bool USE_PRECISION_OFFSET = false;
+spec const bool BILINEAR_SAMPLING_OFFSET_MODE = false;
+spec const float NEAR_DEPTH_VALUE = 1.0f;
+spec const float FAR_DEPTH_VALUE = 0.0f;
+spec const float DEPTH_BOUNDS_X = 0.0f;
+spec const float DEPTH_BOUNDS_Y = 1.0f;
+spec const bool USE_EARLY_OUT = false;
+
+spec const bool DEBUG_OUTPUT_EDGE_MASK = false;
+spec const bool DEBUG_OUTPUT_THREAD_INDEX = false;
+spec const bool DEBUG_OUTPUT_WAVE_INDEX = false;
+
+localSize = 64, 1, 1;
+
+uniform sampler2D
+{
+	wrap = clampToBorder;
+} depthBuffer;
+
+uniform image2D shadowBuffer : unormR8;
+
+uniform pushConstants
+{
+	float4 lightCoordinate;
+	float2 invDepthTexSize;
+	int2 waveOffset;
+} pc;
+
+shared float depthData[READ_COUNT];
+shared bool ldsEarlyOut;
+
+//**********************************************************************************************************************
+bool earlyOutPixel(int2 pixelXY, float depth)
+{
+	return depth >= DEPTH_BOUNDS_Y || depth <= DEPTH_BOUNDS_X; // || imageLoad(shadowBuffer, pixelXY).x < FLOAT_EPS6;
+}
+
+void computeWavefrontExtents(out float2 deltaXY, out float2 pixelXY, 
+	out float pixelDistance, out bool majorAxisX)
+{
+	int2 xy = int2(gl.workGroupID.yz) * WAVE_SIZE + pc.waveOffset;
+	float2 lightXY = floor(pc.lightCoordinate.xy) + 0.5f;
+	float2 lightXyFraction = pc.lightCoordinate.xy - lightXY;
+	bool reverseDirection = pc.lightCoordinate.w > 0.0f;
+
+	int2 signXY = sign(xy);
+	bool horizontal = abs(xy.x + signXY.y) < abs(xy.y - signXY.x);
+	int2 axis = int2(horizontal ? signXY.y : 0, horizontal ? 0 : -signXY.x);
+	xy = axis * int32(gl.workGroupID.x) + xy;
+
+	float2 xyF = float2(xy);
+	majorAxisX = abs(xyF.x) > abs(xyF.y);
+	float majorAxis = majorAxisX ? xyF.x : xyF.y;
+	float majorAxisStart = abs(majorAxis);
+	float majorAxisEnd = abs(majorAxis) - WAVE_SIZE;
+
+	float maLightFrac = majorAxisX ? lightXyFraction.x : lightXyFraction.y;
+	maLightFrac = (majorAxis > 0.0f) ? -maLightFrac : maLightFrac;
+
+	float2 startXY = xyF + lightXY;
+	float2 endXY = mix(pc.lightCoordinate.xy, startXY, (majorAxisEnd + maLightFrac) / (majorAxisStart + maLightFrac));
+	deltaXY = startXY - endXY;
+
+	float threadStep = gl.localInvocationID.x ^ (reverseDirection ? 0 : WAVE_SIZE - 1);
+	pixelXY = mix(startXY, endXY, threadStep / WAVE_SIZE);
+	pixelDistance = majorAxisStart - threadStep + maLightFrac;
+}
+
+//**********************************************************************************************************************
+void main()
+{
+	float samplingDepth[READ_COUNT];
+	float shadowingDepth[READ_COUNT];
+	float depthThicknessScale[READ_COUNT];
+	float sampleDistance[READ_COUNT];
+
+	float2 deltaXY; float2 pixelXY; float pixelDistance; bool majorAxisX;
+	computeWavefrontExtents(deltaXY, pixelXY, pixelDistance, majorAxisX);
+
+	const float zSign = NEAR_DEPTH_VALUE > FAR_DEPTH_VALUE ? -1.0f : 1.0f;
+	float direction = -pc.lightCoordinate.w;
+	bool skipPixel = false; bool isEdge = false;
+	float2 writeXY = floor(pixelXY);
+
+	for (uint32 i = 0; i < READ_COUNT; i++)
+	{
+		float2 readXY = floor(pixelXY);
+		float bilinear = fract(majorAxisX ? pixelXY.y : pixelXY.x) - 0.5f;
+		//#if USE_HALF_PIXEL_OFFSET
+			readXY += 0.5;
+		//#endif
+		float bias = (bilinear > 0.0f) ? 1.0f : -1.0f;
+		float2 offsetXY = float2(majorAxisX ? 0.0f : bias, majorAxisX ? bias : 0.0f);
+		float2 depths = float2(texture(depthBuffer, readXY * pc.invDepthTexSize).r, 
+			texture(depthBuffer, (readXY + offsetXY) * pc.invDepthTexSize).r);
+		depthThicknessScale[i] = abs(FAR_DEPTH_VALUE - depths.x);
+		bool usePointFilter = abs(depths.x - depths.y) > (depthThicknessScale[i] * BILINEAR_THRESHOLD);
+
+		if (DEBUG_OUTPUT_EDGE_MASK && i == 0)
+			isEdge = usePointFilter;
+
+		const float edgeSkip = 1e20;
+		if (BILINEAR_SAMPLING_OFFSET_MODE)
+		{
+			bilinear = usePointFilter ? 0.0f : bilinear;
+			samplingDepth[i] = mix(depths.x, depths.y, abs(bilinear));
+			shadowingDepth[i] = (IGNORE_EDGE_PIXELS && usePointFilter) ? edgeSkip : samplingDepth[i];
+		}
+		else
+		{
+			samplingDepth[i] = depths.x;
+			float edgeDepth = IGNORE_EDGE_PIXELS ? edgeSkip : depths.x;
+			float shadowDepth = depths.x + abs(depths.x - depths.y) * zSign;
+			shadowingDepth[i] = usePointFilter ? edgeDepth : shadowDepth;
+		}
+
+		sampleDistance[i] = pixelDistance + (i * WAVE_SIZE) * direction;
+		pixelXY += deltaXY * direction;
+	}
+
+	if (USE_EARLY_OUT && (!DEBUG_OUTPUT_EDGE_MASK && !DEBUG_OUTPUT_THREAD_INDEX && !DEBUG_OUTPUT_WAVE_INDEX))
+	{
+		skipPixel = earlyOutPixel(int2(writeXY), samplingDepth[0]);
+		bool earlyOut = !subgroupAny(!skipPixel);
+
+		if (gl.subgroupSize == WAVE_SIZE)
+		{
+			if (earlyOut)
+				return;
+		}
+		else
+		{
+			ldsEarlyOut = true;
+			barrier();
+
+			if (!earlyOut)
+				ldsEarlyOut = false;
+			barrier();
+
+			if (ldsEarlyOut)
+				return;
+		}
+	}
+
+	for (uint32 i = 0; i < READ_COUNT; i++)
+	{
+		float storedDepth = (shadowingDepth[i] - pc.lightCoordinate.z) / sampleDistance[i];
+		if (i != 0)
+			storedDepth = sampleDistance[i] > 0.0f ? storedDepth : 1e10;
+		uint32 idx = i * WAVE_SIZE + gl.localInvocationID.x;
+		depthData[idx] = storedDepth;
+	}
+
+	barrier();
+
+	if (skipPixel)
+		return;
+
+	float startDepth = samplingDepth[0];
+	if (USE_PRECISION_OFFSET)
+		startDepth = mix(startDepth, FAR_DEPTH_VALUE, -1.0f / 0xFFFF);
+	startDepth = (startDepth - pc.lightCoordinate.z) / sampleDistance[0];
+
+	float4 shadowValue = float4(1.0f); float hardShadow = 1.0f;
+	uint32 sampleIndex = gl.localInvocationID.x + 1;
+	float depthScale = min(sampleDistance[0] + direction, 1.0f / SURFACE_THICKNESS) * 
+		sampleDistance[0] / depthThicknessScale[0];
+	startDepth = startDepth * depthScale - zSign;
+	
+	for (uint32 i = 0; i < HARD_SHADOW_SAMPLES; i++)
+	{
+		float depthDelta = abs(startDepth - depthData[sampleIndex + i] * depthScale);
+		hardShadow = min(hardShadow, depthDelta);
+	}
+	for (uint32 i = HARD_SHADOW_SAMPLES; i < SAMPLE_COUNT - FADE_OUT_SAMPLES; i++)
+	{
+		float depthDelta = abs(startDepth - depthData[sampleIndex + i] * depthScale);
+		shadowValue[i & 3] = min(shadowValue[i & 3], depthDelta);
+	}
+	for (uint32 i = SAMPLE_COUNT - FADE_OUT_SAMPLES; i < SAMPLE_COUNT; i++)
+	{
+		float depthDelta = abs(startDepth - depthData[sampleIndex + i] * depthScale);
+		float fadeOut = float(i + 1 - (SAMPLE_COUNT - FADE_OUT_SAMPLES)) / (FADE_OUT_SAMPLES + 1) * 0.75f;
+		shadowValue[i & 3] = min(shadowValue[i & 3], depthDelta + fadeOut);
+	}
+
+	shadowValue = clamp(shadowValue * SHADOW_CONTRAST + (1.0f - SHADOW_CONTRAST), 0.0f, 1.0f);
+	hardShadow = clamp(hardShadow * SHADOW_CONTRAST + (1.0f - SHADOW_CONTRAST), 0.0f, 1.0f);
+
+	float result = min(hardShadow, dot(shadowValue, float4(0.25f)));
+	if (DEBUG_OUTPUT_EDGE_MASK)
+		result = isEdge ? 1.0f : 0.0f;
+	if (DEBUG_OUTPUT_THREAD_INDEX)
+		result = float(gl.localInvocationID.x) / WAVE_SIZE;
+	if (DEBUG_OUTPUT_WAVE_INDEX)
+		result = fract(float(gl.workGroupID.x) / WAVE_SIZE);
+	imageStore(shadowBuffer, int2(writeXY), float4(result));
+}
