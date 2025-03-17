@@ -15,6 +15,7 @@
 #include "common/pbr.gsl"
 #include "common/depth.gsl"
 
+// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
 spec const bool USE_SHADOW_BUFFER = false;
 spec const bool USE_AO_BUFFER = false;
 

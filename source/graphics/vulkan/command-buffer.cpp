@@ -539,7 +539,7 @@ void VulkanCommandBuffer::addRenderPassBarriers(psize offset, uint32& oldPipelin
 
 //**********************************************************************************************************************
 static bool findLastSubpassInput(const vector<Framebuffer::Subpass>& subpasses,
-	ID<ImageView> colorAttachment, ShaderStage& shaderStages)
+	ID<ImageView> colorAttachment, ShaderStage& shaderStages) noexcept
 {
 	// TODO: cache this and do not search each frame?
 	bool isLastInput = false;

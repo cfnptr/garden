@@ -21,7 +21,7 @@ uniform samplerCube
 	filter = linear;
 } cubemap;
 
-uniform writeonly restrict image2DArray specular : f16rgba;
+uniform writeonly restrict image2DArray specular : floatR16G16B16A16;
 
 struct CacheItem
 {

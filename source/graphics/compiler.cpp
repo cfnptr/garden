@@ -87,7 +87,7 @@ namespace garden::graphics
 			isBorderColor = 0, isWrap = 0, isWrapX = 0, isWrapY = 0, isWrapZ = 0,
 			isSpecConst = 0, isFeature = 0, isVariantCount = 0;
 		uint8 arraySize = 1;
-		GslDataType dataType = {}; GslImageFormat imageFormat = {};
+		GslDataType dataType = {}; Image::Format imageFormat = {};
 		bool isNewLine = true;
 	};
 	struct GraphicsLineData final : public LineData
@@ -133,12 +133,12 @@ static bool toBoolState(string_view state, uint32 lineIndex)
 	if (state == "off") return false;
 	throw CompileError("unrecognized boolean state", lineIndex, string(state));
 }
-static string_view toStringState(bool state)
+static string_view toStringState(bool state) noexcept
 {
 	return state ? "on" : "off";
 } 
 
-static GraphicsPipeline::ColorComponent toColorComponents(string_view colorComponents)
+static GraphicsPipeline::ColorComponent toColorComponents(string_view colorComponents) noexcept
 {
 	if (colorComponents == "all") return GraphicsPipeline::ColorComponent::All;
 	if (colorComponents == "none") return GraphicsPipeline::ColorComponent::None;
@@ -154,17 +154,105 @@ static GraphicsPipeline::ColorComponent toColorComponents(string_view colorCompo
 	return components;
 }
 
-constexpr string_view glslImageFormatNames[(psize)GslImageFormat::Count] =
+static Image::Format toImageFormat(string_view gslImageFormat)
 {
-	"rgba16f", "rgba32f", "rg16f", "rg32f", "r16f", "r32f",
-	"rgba8i", "rgba16i", "rgba32i", "rg8i", "rg16i", "rg32i", "r8i", "r16i", "r32i",
-	"rgba8ui", "rgba16ui", "rgba32ui", "rg8ui", "rg16ui", "rg32ui", "r8ui", "r16ui", "r32ui"
-};
+	if (gslImageFormat == "uintR8") return Image::Format::UintR8;
+	if (gslImageFormat == "uintR8G8") return Image::Format::UintR8G8;
+	if (gslImageFormat == "uintR8G8B8A8") return Image::Format::UintR8G8B8A8;
+	if (gslImageFormat == "uintR16") return Image::Format::UintR16;
+	if (gslImageFormat == "uintR16G16") return Image::Format::UintR16G16;
+	if (gslImageFormat == "uintR16G16B16A16") return Image::Format::UintR16G16B16A16;
+	if (gslImageFormat == "uintR32") return Image::Format::UintR32;
+	if (gslImageFormat == "uintR32G32") return Image::Format::UintR32G32;
+	if (gslImageFormat == "uintR32G32B32A32") return Image::Format::UintR32G32B32A32;
+	if (gslImageFormat == "uintA2R10G10B10") return Image::Format::UintA2R10G10B10;
 
-static string_view toGlslString(GslImageFormat imageFormat)
+	if (gslImageFormat == "intR8") return Image::Format::SintR8;
+	if (gslImageFormat == "intR8G8") return Image::Format::SintR8G8;
+	if (gslImageFormat == "intR8G8B8A8") return Image::Format::SintR8G8B8A8;
+	if (gslImageFormat == "intR16") return Image::Format::SintR16;
+	if (gslImageFormat == "intR16G16") return Image::Format::SintR16G16;
+	if (gslImageFormat == "intR16G16B16A16") return Image::Format::SintR16G16B16A16;
+	if (gslImageFormat == "intR32") return Image::Format::SintR32;
+	if (gslImageFormat == "intR32G32") return Image::Format::SintR32G32;
+	if (gslImageFormat == "intR32G32B32A32") return Image::Format::SintR32G32B32A32;
+
+	if (gslImageFormat == "unormR8") return Image::Format::UnormR8;
+	if (gslImageFormat == "unormR8G8") return Image::Format::UnormR8G8;
+	if (gslImageFormat == "unormR8G8B8A8") return Image::Format::UnormR8G8B8A8;
+	if (gslImageFormat == "unormR16") return Image::Format::UnormR16;
+	if (gslImageFormat == "unormR16G16") return Image::Format::UnormR16G16;
+	if (gslImageFormat == "unormR16G16B16A16") return Image::Format::UnormR16G16B16A16;
+	if (gslImageFormat == "unormA2R10G10B10") return Image::Format::UnormA2R10G10B10;
+	
+	if (gslImageFormat == "snormR8") return Image::Format::SnormR8;
+	if (gslImageFormat == "snormR8G8") return Image::Format::SnormR8G8;
+	if (gslImageFormat == "snormR8G8B8A8") return Image::Format::SnormR8G8B8A8;
+	if (gslImageFormat == "snormR16") return Image::Format::SnormR16;
+	if (gslImageFormat == "snormR16G16") return Image::Format::SnormR16G16;
+	if (gslImageFormat == "snormR16G16B16A16") return Image::Format::SnormR16G16B16A16;
+
+	if (gslImageFormat == "floatR16") return Image::Format::SfloatR16;
+	if (gslImageFormat == "floatR16G16") return Image::Format::SfloatR16G16;
+	if (gslImageFormat == "floatR16G16B16A16") return Image::Format::SfloatR16G16B16A16;
+	if (gslImageFormat == "floatR32") return Image::Format::SfloatR32;
+	if (gslImageFormat == "floatR32G32") return Image::Format::SfloatR32G32;
+	if (gslImageFormat == "floatR32G32B32A32") return Image::Format::SfloatR32G32B32A32;
+	if (gslImageFormat == "floatB10G11R11") return Image::Format::UfloatB10G11R11; // Yeah, it's inverted.
+
+	return Image::Format::Undefined;
+}
+static string_view toGlslString(Image::Format imageFormat)
 {
-	GARDEN_ASSERT((uint8)imageFormat < (uint8)GslImageFormat::Count);
-	return glslImageFormatNames[(psize)imageFormat];
+	switch (imageFormat)
+	{
+	case Image::Format::UintR8: return "r8ui";
+	case Image::Format::UintR8G8: return "rg8ui";
+	case Image::Format::UintR8G8B8A8: return "rgba8ui";
+	case Image::Format::UintR16: return "r16ui";
+	case Image::Format::UintR16G16: return "rg16ui";
+	case Image::Format::UintR16G16B16A16: "rgba16ui";
+	case Image::Format::UintR32: return "r32ui";
+	case Image::Format::UintR32G32: return "rg32ui";
+	case Image::Format::UintR32G32B32A32: return "rgba32ui";
+	case Image::Format::UintA2R10G10B10: return "rgb10_a2ui";
+
+	case Image::Format::SintR8: return "r8i";
+	case Image::Format::SintR8G8: return "rg8i";
+	case Image::Format::SintR8G8B8A8: return "rgba8i";
+	case Image::Format::SintR16: return "r16i";
+	case Image::Format::SintR16G16: return "rg16i";
+	case Image::Format::SintR16G16B16A16: "rgba16i";
+	case Image::Format::SintR32: return "r32i";
+	case Image::Format::SintR32G32: return "rg32i";
+	case Image::Format::SintR32G32B32A32: return "rgba32i";
+
+	case Image::Format::UnormR8: return "r8";
+	case Image::Format::UnormR8G8: return "rg8";
+	case Image::Format::UnormR8G8B8A8: return "rgba8";
+	case Image::Format::UnormR16: return "r16";
+	case Image::Format::UnormR16G16: return "rg16";
+	case Image::Format::UnormR16G16B16A16: return "rgba16";
+	case Image::Format::UnormA2R10G10B10: return "rgb10_a2";
+
+	case Image::Format::SnormR8: return "r8_snorm";
+	case Image::Format::SnormR8G8: return "rg8_snorm";
+	case Image::Format::SnormR8G8B8A8: return "rgba8_snorm";
+	case Image::Format::SnormR16: return "r16_snorm";
+	case Image::Format::SnormR16G16: return "rg16_snorm";
+	case Image::Format::SnormR16G16B16A16: return "rgba16_snorm";
+
+	case Image::Format::SfloatR16: return "r16f";
+	case Image::Format::SfloatR16G16: return "rg16f";
+	case Image::Format::SfloatR16G16B16A16: return "rgba16f";
+	case Image::Format::SfloatR32: return "r32f";
+	case Image::Format::SfloatR32G32: return "rg32f";
+	case Image::Format::SfloatR32G32B32A32: return "rgba32f";
+
+	case Image::Format::UfloatB10G11R11: return "r11f_g11f_b10f"; // Yeah, it's inverted.
+
+	default: abort();
+	}
 }
 
 //******************************************************************************************************************
@@ -307,14 +395,9 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 	else if (fileData.isUniform == 7)
 	{
 		auto format = string_view(lineData.word.c_str(), lineData.word.find_first_of(';'));
-		try
-		{
-			lineData.imageFormat = toGslImageFormat(format);
-		}
-		catch (const exception&)
-		{
+		lineData.imageFormat = toImageFormat(format);
+		if (lineData.imageFormat == Image::Format::Undefined)
 			throw CompileError("unrecognized uniform image format", fileData.lineIndex, string(format));
-		}
 	}
 
 	if (lineData.uniformName.empty())
@@ -1153,6 +1236,10 @@ static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
 	if (lineData.word == "bindless")
 		fileData.outputFileStream << "#extension GL_EXT_nonuniform_qualifier : require";
+	else if (lineData.word == "subgroupBasic")
+		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_basic : require";
+	else if (lineData.word == "subgroupVote")
+		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_vote : require";
 	else
 		throw CompileError("unknown GSL feature", fileData.lineIndex, lineData.word);
 	lineData.isFeature = 0;
@@ -1252,7 +1339,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 		"#define float2x3 mat2x3\n#define float3x2 mat3x2\n"
 		"#define float2x4 mat2x4\n#define float4x2 mat4x2\n"
 		"#define float3x4 mat3x4\n#define float4x3 mat4x3\n"
-		"#line 1\n";
+		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	return true;
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)

@@ -205,7 +205,7 @@ void GraphicsSystem::preDeinit()
 }
 
 //**********************************************************************************************************************
-static f32x4x4 calcView(const TransformComponent* transform)
+static f32x4x4 calcView(const TransformComponent* transform) noexcept
 {
 	return rotate(normalize(transform->getRotation())) * translate(
 		scale(transform->getScale()), -transform->getPosition());

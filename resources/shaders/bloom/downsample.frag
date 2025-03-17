@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "bloom/common.gsl"
-#include "common/depth.gsl"
 #include "common/gbuffer.gsl"
 
 #variantCount 3

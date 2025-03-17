@@ -113,7 +113,7 @@ void AutoExposureRenderSystem::deinit()
 }
 
 //**********************************************************************************************************************
-static float calcTimeCoeff(float adaptationRate, float deltaTime)
+static float calcTimeCoeff(float adaptationRate, float deltaTime) noexcept
 {
 	return std::clamp(1.0f - std::exp(-deltaTime * adaptationRate), 0.0f, 1.0f);
 }
@@ -172,7 +172,7 @@ void AutoExposureRenderSystem::render()
 		averagePipelineView->bind();
 		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
 		averagePipelineView->pushConstants();
-		averagePipelineView->dispatch(u32x4::one);
+		averagePipelineView->dispatch(1);
 	}
 	graphicsSystem->stopRecording();
 }

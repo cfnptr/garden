@@ -42,7 +42,7 @@ float calcDepthSafe(float3 worldPos, float4x4 viewProj)
 }
 
 // Infinite Reversed Z Perspective Projection
-float calcPerspLinearDepth(float depth, float nearPlane)
+float calcPerspLinearDepthIRZ(float depth, float nearPlane)
 {
 	return nearPlane / depth; // TODO: check if works correctly
 }
