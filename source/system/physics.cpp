@@ -41,6 +41,7 @@
 #include "Jolt/Physics/Collision/Shape/BoxShape.h"
 #include "Jolt/Physics/Collision/Shape/EmptyShape.h"
 #include "Jolt/Physics/Collision/Shape/SphereShape.h"
+#include "Jolt/Physics/Collision/Shape/CapsuleShape.h"
 #include "Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h"
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
 #include "Jolt/Physics/Body/BodyActivationListener.h"
@@ -330,7 +331,7 @@ float Shape::getDensity() const
 {
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetType() == JPH::EShapeType::Convex);
-	auto convexInstance = (const JPH::ConvexShape*)this->instance;
+	auto convexInstance = (const JPH::ConvexShape*)instance;
 	return convexInstance->GetDensity();
 }
 
@@ -340,7 +341,7 @@ f32x4 Shape::getBoxHalfExtent() const
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Box);
-	auto boxInstance = (const JPH::BoxShape*)this->instance;
+	auto boxInstance = (const JPH::BoxShape*)instance;
 	return toF32x4(boxInstance->GetHalfExtent());
 }
 float Shape::getBoxConvexRadius() const
@@ -348,8 +349,34 @@ float Shape::getBoxConvexRadius() const
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Box);
-	auto boxInstance = (const JPH::BoxShape*)this->instance;
+	auto boxInstance = (const JPH::BoxShape*)instance;
 	return boxInstance->GetConvexRadius();
+}
+
+float Shape::getSphereRadius() const
+{
+	GARDEN_ASSERT(instance);
+	auto instance = (const JPH::Shape*)this->instance;
+	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Sphere);
+	auto sphereInstance = (const JPH::SphereShape*)instance;
+	return sphereInstance->GetRadius();
+}
+
+float Shape::getCapsuleHalfHeight() const
+{
+	GARDEN_ASSERT(instance);
+	auto instance = (const JPH::Shape*)this->instance;
+	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Capsule);
+	auto capsuleInstance = (const JPH::CapsuleShape*)instance;
+	return capsuleInstance->GetHalfHeightOfCylinder();
+}
+float Shape::getCapsuleRadius() const
+{
+	GARDEN_ASSERT(instance);
+	auto instance = (const JPH::Shape*)this->instance;
+	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::Capsule);
+	auto capsuleInstance = (const JPH::CapsuleShape*)instance;
+	return capsuleInstance->GetRadius();
 }
 
 //**********************************************************************************************************************
@@ -358,7 +385,7 @@ ID<Shape> Shape::getInnerShape() const
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetType() == JPH::EShapeType::Decorated);
-	auto decoratedInstance = (const JPH::DecoratedShape*)this->instance;
+	auto decoratedInstance = (const JPH::DecoratedShape*)instance;
 	auto innerInstance = decoratedInstance->GetInnerShape();
 	ID<Shape> id; *id = (uint32)innerInstance->GetUserData();
 	return id;
@@ -368,7 +395,7 @@ f32x4 Shape::getPosition() const
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::RotatedTranslated);
-	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
+	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)instance;
 	return toF32x4(rotTransInstance->GetPosition());
 }
 quat Shape::getRotation() const
@@ -376,7 +403,7 @@ quat Shape::getRotation() const
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::RotatedTranslated);
-	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
+	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)instance;
 	return toQuat(rotTransInstance->GetRotation());
 }
 void Shape::getPosAndRot(f32x4& position, quat& rotation) const
@@ -384,7 +411,7 @@ void Shape::getPosAndRot(f32x4& position, quat& rotation) const
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	GARDEN_ASSERT(instance->GetSubType() == JPH::EShapeSubType::RotatedTranslated);
-	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)this->instance;
+	auto rotTransInstance = (const JPH::RotatedTranslatedShape*)instance;
 	position = toF32x4(rotTransInstance->GetPosition());
 	rotation = toQuat(rotTransInstance->GetRotation());
 }
@@ -1783,6 +1810,79 @@ ID<Shape> PhysicsSystem::createSharedBoxShape(f32x4 halfExtent, float convexRadi
 }
 
 //**********************************************************************************************************************
+ID<Shape> PhysicsSystem::createSphereShape(float radius, float density)
+{
+	GARDEN_ASSERT(radius > 0.0f);
+	GARDEN_ASSERT(density > 0.0f);
+
+	auto sphereShape = new JPH::SphereShape(radius);
+	sphereShape->SetDensity(density);
+	sphereShape->AddRef();
+	auto instance = shapes.create(sphereShape);
+	sphereShape->SetUserData((JPH::uint64)*instance);
+	return instance;
+}
+
+ID<Shape> PhysicsSystem::createSharedSphereShape(float radius, float density)
+{
+	GARDEN_ASSERT(radius > 0.0f);
+	GARDEN_ASSERT(density > 0.0f);
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, &radius, sizeof(float));
+	Hash128::updateState(hashState, &density, sizeof(float));
+	auto hash = Hash128::digestState(hashState);
+
+	auto searchResult = sharedSphereShapes.find(hash);
+	if (searchResult != sharedSphereShapes.end())
+		return searchResult->second;
+
+	auto instance = createSphereShape(radius, density);
+	auto emplaceResult = sharedSphereShapes.emplace(hash, instance);
+	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	return instance;
+}
+
+//**********************************************************************************************************************
+ID<Shape> PhysicsSystem::createCapsuleShape(float halfheight, float radius, float density)
+{
+	GARDEN_ASSERT(halfheight > 0.0f);
+	GARDEN_ASSERT(radius > 0.0f);
+	GARDEN_ASSERT(density > 0.0f);
+
+	auto capsuleShape = new JPH::CapsuleShape(halfheight, radius);
+	capsuleShape->SetDensity(density);
+	capsuleShape->AddRef();
+	auto instance = shapes.create(capsuleShape);
+	capsuleShape->SetUserData((JPH::uint64)*instance);
+	return instance;
+}
+
+ID<Shape> PhysicsSystem::createSharedCapsuleShape(float halfheight, float radius, float density)
+{
+	GARDEN_ASSERT(halfheight > 0.0f);
+	GARDEN_ASSERT(radius > 0.0f);
+	GARDEN_ASSERT(density > 0.0f);
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, &halfheight, sizeof(float));
+	Hash128::updateState(hashState, &radius, sizeof(float));
+	Hash128::updateState(hashState, &density, sizeof(float));
+	auto hash = Hash128::digestState(hashState);
+
+	auto searchResult = sharedCapsuleShapes.find(hash);
+	if (searchResult != sharedCapsuleShapes.end())
+		return searchResult->second;
+
+	auto instance = createCapsuleShape(halfheight, radius, density);
+	auto emplaceResult = sharedCapsuleShapes.emplace(hash, instance);
+	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	return instance;
+}
+
+//**********************************************************************************************************************
 ID<Shape> PhysicsSystem::createRotTransShape(ID<Shape> innerShape, f32x4 position, quat rotation)
 {
 	GARDEN_ASSERT(innerShape);
@@ -1872,6 +1972,26 @@ void PhysicsSystem::destroyShared(ID<Shape> shape)
 			if (i->second != shape)
 				continue;
 			sharedBoxShapes.erase(i);
+			break;
+		}
+	}
+	else if (subType == ShapeSubType::Sphere)
+	{
+		for (auto i = sharedSphereShapes.begin(); i != sharedSphereShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedSphereShapes.erase(i);
+			break;
+		}
+	}
+	else if (subType == ShapeSubType::Capsule)
+	{
+		for (auto i = sharedCapsuleShapes.begin(); i != sharedCapsuleShapes.end(); i++)
+		{
+			if (i->second != shape)
+				continue;
+			sharedCapsuleShapes.erase(i);
 			break;
 		}
 	}

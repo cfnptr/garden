@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include "math/aabb.hpp"
 #include "math/color.hpp"
 #include "math/matrix.hpp"
 #include "math/quaternion.hpp"
 
 #include "Jolt/Jolt.h"
 #include "Jolt/Core/Color.h"
+#include "Jolt/Geometry/AABox.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
 
 namespace garden::physics
@@ -42,12 +44,14 @@ static f32x4 toF32x4(const JPH::Vec3& v) noexcept { return f32x4(v.mValue); }
 static f32x4 toF32x4(const JPH::Vec4& v) noexcept { return f32x4(v.mValue); }
 static u32x4 toU32x4(const JPH::UVec4& v) noexcept { return u32x4(v.mValue); }
 static quat toQuat(const JPH::Quat& q) noexcept { return quat(q.mValue.mValue); }
+static Aabb toAabb(const JPH::AABox& aabb) noexcept { return Aabb(aabb.mMin.mValue, aabb.mMax.mValue); }
 
 static JPH::Vec3 toVec3(f32x4 v) noexcept { return JPH::Vec3(v.getX(), v.getY(), v.getZ()); } // Fixing W
 static JPH::RVec3 toRVec3(f32x4 v) noexcept { return JPH::RVec3(v.getX(), v.getY(), v.getZ()); } // Fixing W
 static JPH::Vec4 toVec4(f32x4 v) noexcept { return JPH::Vec4(v.data); }
 static JPH::UVec4 toUVec4(u32x4 v) noexcept { return JPH::UVec4(v.data); }
 static JPH::Quat toQuat(quat q) noexcept { return JPH::Quat(q.data); }
+static JPH::AABox toAABox(const Aabb& aabb) noexcept { return JPH::AABox(aabb.getMin().data, aabb.getMax().data); }
 
 static f32x4x4 toF32x4x4(const JPH::Mat44& m) noexcept
 {

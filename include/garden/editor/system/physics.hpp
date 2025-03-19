@@ -32,6 +32,8 @@ public:
 		f32x4 thisConstraintPoint = f32x4::zero;
 		f32x4 otherConstraintPoint = f32x4::zero;
 		float convexRadius = 0.05f;
+		float halfHeight = 0.875f;
+		float shapeRadius = 0.3f;
 		float density = 1000.0f;
 		int collisionLayer = -1;
 		ID<Entity> constraintTarget = {};
@@ -45,8 +47,10 @@ public:
 	{
 		f32x4 centerOfMass = f32x4::zero;
 		f32x4 shapePosition = f32x4::zero;
-		f32x4 shapeSize = f32x4(0.5f, 1.75f, 0.5f);
+		f32x4 shapeSize = f32x4(0.3f, 1.75f, 0.3f);
 		float convexRadius = 0.05f;
+		float shapeHeight = 1.75f;
+		float shapeRadius = 0.3f;
 	};
 private:
 	f32x4 oldRigidbodyEulerAngles = f32x4::zero;

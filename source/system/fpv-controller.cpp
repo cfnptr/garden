@@ -14,7 +14,6 @@
 
 #include "garden/system/fpv-controller.hpp"
 #include "garden/system/transform.hpp"
-#include "garden/system/character.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/system/link.hpp"
@@ -259,14 +258,18 @@ void FpvControllerSystem::updateCharacterControl()
 		if (transformView && !transformView->isActive())
 			continue;
 
+		auto groundState = characterView->getGroundState();
+		if (groundState == CharacterGround::OnGround)
+			velocity += characterView->getGroundVelocity();
+
 		auto linearVelocity = characterView->getLinearVelocity();
 		linearVelocity.setX(lerpDelta(linearVelocity.getX(), velocity.getX(), 1.0f - moveLerpFactor, deltaTime));
 		linearVelocity.setZ(lerpDelta(linearVelocity.getZ(), velocity.getZ(), 1.0f - moveLerpFactor, deltaTime));
 
-		if (characterView->getGroundState() == CharacterGround::OnGround)
+		if (groundState == CharacterGround::OnGround)
 			linearVelocity.setY(isJumping ? jumpSpeed : 0.0f);
 		else
-			linearVelocity.setY(linearVelocity.getY() + gravity.getY() * deltaTime);
+			linearVelocity += gravity * deltaTime;
 
 		characterView->setLinearVelocity(linearVelocity);
 		characterView->update(deltaTime, gravity);

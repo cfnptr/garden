@@ -20,6 +20,7 @@
 
 #pragma once
 #include "garden/system/physics.hpp"
+#include "math/angles.hpp"
 
 namespace garden
 {
@@ -48,6 +49,19 @@ enum class CharacterGround : uint8
  */
 struct CharacterComponent final : public Component
 {
+public:
+	/**
+	 * @brief Character update settings container.
+	 */
+	struct UpdateSettings final
+	{
+		f32x4 stepDown = f32x4(0.0f, -0.5f, 0.0f);       /**< Max amount to project the character downwards on stick to floor. */
+		f32x4 stepUp = f32x4(0.0f, 0.4f, 0.0f);          /**< Direction and distance to step up. (zero = disabled) */
+		f32x4 stepDownExtra = f32x4::zero;               /**< Additional translation added when stepping down at the end. */
+		float minStepForward = 0.02f;                    /**< Magnitude to step forward after the step up. */
+		float stepForwardTest = 0.15f;                   /**< Additional step test magnitude when running at a high frequency. */
+		float forwardContact = std::cos(degrees(75.0f)); /**< Maximum angle between ground normal and the character forward vector. */
+	};
 private:
 	ID<Shape> shape = {};
 	void* instance = nullptr;
@@ -135,6 +149,10 @@ public:
 	void setLinearVelocity(f32x4 velocity);
 
 	/**
+	 * @brief Returns character ground velocity. (m/s)
+	 */
+	f32x4 getGroundVelocity() const;
+	/**
 	 * @brief Returns current character ground state.
 	 */
 	CharacterGround getGroundState() const;
@@ -157,23 +175,50 @@ public:
 	 * will follow unless collision is blocking the way. Note it's your own responsibility to apply gravity to the 
 	 * character velocity! Different surface materials (like ice) can be emulated by getting the ground material and 
 	 * adjusting the velocity and/or the max slope angle accordingly every frame.
-	 *
-	 * @param deltaTime time step to simulate
-	 * @param gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
-	 */
-	void update(float deltaTime, f32x4 gravity);
-	/**
-	 * @brief This function combines Update, StickToFloor and WalkStairs.
-	 *
-	 * @details
-	 * This function serves as an example of how these functions could be combined.
 	 * 
 	 * Before calling, call SetLinearVelocity to update the horizontal/vertical speed of the character, typically this is:
 	 *  - When on OnGround and not moving away from ground: velocity = GetGroundVelocity() + horizontal speed as 
 	 *    input by player + optional vertical jump velocity + delta time * gravity
 	 *  - Else: velocity = current vertical velocity + horizontal speed as input by player + delta time * gravity
+	 *
+	 * @param deltaTime time step to simulate
+	 * @param gravity vector (m/s^2). Only used when the character is standing on top of another object to apply downward force.
+	 * @param[in] settings extended character update settings
 	 */
-	void extendedUpdate();
+	void update(float deltaTime, f32x4 gravity, const UpdateSettings* settings = nullptr);
+
+	/**
+	 * @brief Returns true if the character has moved into a slope that is too steep (e.g. a vertical wall).
+	 * @details You would call WalkStairs to attempt to step up stairs.
+	 * @param linearVelocity linear velocity used to determine if we're pushing into a step
+	 */
+	bool canWalkStairs(f32x4 linearVelocity) const;
+	/**
+	 * @brief Cast up, forward and down again to try to find a valid position for stair walking.
+	 * 
+	 * @param deltaTime time step to simulate
+	 * @param stepUp direction and distance to step up (this corresponds to the max step height)
+	 * @param stepForward direction and distance to step forward after the step up 
+	 * @param stepForwardTest additional step test when running at a high frequency (prevents normal that violates the max slope angle)
+	 * @param stepDownExtra additional translation that is added when stepping down at the end (zero = disabled)
+	 * 
+	 * @return If stair walk was successful.
+	 */
+	bool walkStairs(float deltaTime, f32x4 stepUp, f32x4 stepForward, f32x4 stepForwardTest, f32x4 stepDownExtra);
+
+	/**
+	 * @brief Can be used to artificially keep the character to the floor.
+	 * 
+	 * @details
+	 * Normally when a character is on a small step and starts moving horizontally, the character will lose contact with 
+	 * the floor because the initial vertical velocity is zero while the horizontal velocity is quite high. To prevent 
+	 * the character from losing contact with the floor, we do an additional collision check downwards and if we find 
+	 * the floor within a certain distance, we project the character onto the floor.
+	 * 
+	 * @param stepDown max amount to project the character downwards
+	 * @return True if character was successfully projected onto the floor.
+	 */
+	bool stickToFloor(f32x4 stepDown);
 
 	/**
 	 * @brief Sets character world space position and rotation from a transform.
