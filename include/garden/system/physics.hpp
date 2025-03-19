@@ -258,6 +258,20 @@ public:
 	float getBoxConvexRadius() const;
 
 	/**
+	 * @brief Returns sphere shape radius.
+	 */
+	float getSphereRadius() const;
+
+	/**
+	 * @brief Returns capsule shape half height.
+	 */
+	float getCapsuleHalfHeight() const;
+	/**
+	 * @brief Returns capsule shape radius.
+	 */
+	float getCapsuleRadius() const;
+
+	/**
 	 * @brief Returns decorated shape inner instance.
 	 */
 	ID<Shape> getInnerShape() const;
@@ -669,6 +683,8 @@ private:
 	LinearPool<Shape> shapes;
 	map<Hash128, ID<Shape>> sharedEmptyShapes;
 	map<Hash128, ID<Shape>> sharedBoxShapes;
+	map<Hash128, ID<Shape>> sharedSphereShapes;
+	map<Hash128, ID<Shape>> sharedCapsuleShapes;
 	map<Hash128, ID<Shape>> sharedRotTransShapes;
 	map<Hash128, ID<Shape>> sharedCustomShapes;
 	vector<Event> bodyEvents;
@@ -758,13 +774,29 @@ public:
 	 */
 	const LinearPool<Shape>& getShapes() const noexcept { return shapes; }
 	/**
+	 * @brief Returns shared empty shape pool.
+	 */
+	const map<Hash128, ID<Shape>>& getSharedEmptyShapes() const noexcept { return sharedEmptyShapes; }
+	/**
 	 * @brief Returns shared box shape pool.
 	 */
 	const map<Hash128, ID<Shape>>& getSharedBoxShapes() const noexcept { return sharedBoxShapes; }
 	/**
+	 * @brief Returns shared sphere shape pool.
+	 */
+	const map<Hash128, ID<Shape>>& getSharedSphereShapes() const noexcept { return sharedSphereShapes; }
+	/**
+	 * @brief Returns shared capsule shape pool.
+	 */
+	const map<Hash128, ID<Shape>>& getSharedCapsuleShapes() const noexcept { return sharedCapsuleShapes; }
+	/**
 	 * @brief Returns shared rotated/translated shape pool.
 	 */
 	const map<Hash128, ID<Shape>>& getSharedRotTransShapes() const noexcept { return sharedRotTransShapes; }
+	/**
+	 * @brief Returns shared custom shape pool.
+	 */
+	const map<Hash128, ID<Shape>>& getSharedCustomShapes() const noexcept { return sharedCustomShapes; }
 
 	/**
 	 * @brief Returns current this rigidbody entity.
@@ -804,7 +836,7 @@ public:
 	 * Internally the convex radius will be subtracted from the half 
 	 * extent so the total box will not grow with the convex radius.
 	 * 
-	 * @param halfExtent half edge length
+	 * @param halfExtent half box edge length
 	 * @param convexRadius box convex radius
 	 * @param density box density (kg / m^3)
 	 */
@@ -813,11 +845,45 @@ public:
 	 * @brief Creates a new shared box shape instance.
 	 * @details See the @ref createBoxShape().
 	 *
-	 * @param halfExtent half edge length
+	 * @param halfExtent half box edge length
 	 * @param convexRadius box convex radius
 	 * @param density box density (kg / m^3)
 	 */
 	ID<Shape> createSharedBoxShape(f32x4 halfExtent, float convexRadius = 0.05f, float density = 1000.0f);
+
+	/**
+	 * @brief Creates a new sphere shape instance.
+	 * 
+	 * @param radius sphere radius
+	 * @param density sphere density (kg / m^3)
+	 */
+	ID<Shape> createSphereShape(float radius, float density = 1000.0f);
+	/**
+	 * @brief Creates a new shared sphere shape instance.
+	 * @details See the @ref createSphereShape().
+	 *
+	 * @param radius sphere radius
+	 * @param density sphere density (kg / m^3)
+	 */
+	ID<Shape> createSharedSphereShape(float radius, float density = 1000.0f);
+
+	/**
+	 * @brief Creates a new capsule shape instance.
+	 * 
+	 * @param halfheight capsule cylinder half height
+	 * @param radius capsule half sphere cap radius
+	 * @param density capsule density (kg / m^3)
+	 */
+	ID<Shape> createCapsuleShape(float halfheight, float radius, float density = 1000.0f);
+	/**
+	 * @brief Creates a new shared capsule shape instance.
+	 * @details See the @ref createCapsuleShape().
+	 *
+	 * @param halfheight capsule cylinder half height
+	 * @param radius capsule half sphere cap radius
+	 * @param density capsule density (kg / m^3)
+	 */
+	ID<Shape> createSharedCapsuleShape(float halfheight, float radius, float density = 1000.0f);
 
 	/**
 	 * @brief Creates a new rotated/translated shape instance.

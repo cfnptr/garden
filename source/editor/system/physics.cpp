@@ -309,6 +309,156 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 }
 
 //**********************************************************************************************************************
+static void renderSphereShape(View<RigidbodyComponent> rigidbodyView, 
+	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
+{
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto shape = rigidbodyView->getShape();
+
+	View<Shape> shapeView = {};
+	if (shape)
+	{
+		shapeView = physicsSystem->get(shape);
+		if (shapeView->getType() == ShapeType::Decorated)
+		{
+			auto innerShape = shapeView->getInnerShape();
+			shapeView = physicsSystem->get(innerShape);
+		}
+	}
+
+	if (shape)
+		cache.shapeRadius = shapeView->getSphereRadius();
+	isChanged |= ImGui::DragFloat("Radius", &cache.shapeRadius, 0.01f);
+	if (ImGui::BeginPopupContextItem("shapeRadius"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			cache.shapeRadius = 0.3f;
+			isChanged = true;
+		}
+		ImGui::EndPopup();
+	}
+
+	if (shape)
+		cache.density = shapeView->getDensity();
+	isChanged |= ImGui::DragFloat("Density", &cache.density, 1.0f, 0.0f, 0.0f, "%.3f kg/m^3");
+	if (ImGui::BeginPopupContextItem("density"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			cache.density = 1000.0f;
+			isChanged = true;
+		}
+		ImGui::EndPopup();
+	}
+
+	if (isChanged)
+	{
+		cache.shapeRadius = max(cache.shapeRadius, 0.001f);
+		cache.density = max(cache.density, 0.001f);
+		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+
+		physicsSystem->destroyShared(shape);
+		if (cache.shapePosition != f32x4::zero)
+		{
+			auto innerShape = physicsSystem->createSharedSphereShape(cache.shapeRadius, cache.density);
+			shape = physicsSystem->createSharedRotTransShape(innerShape, cache.shapePosition);
+		}
+		else
+		{
+			shape = physicsSystem->createSharedSphereShape(cache.shapeRadius, cache.density);
+		}
+
+		rigidbodyView->setShape(shape, cache.motionType, cache.collisionLayer,
+			false, rigidbodyView->canBeKinematicOrDynamic(), cache.allowedDOF);
+		rigidbodyView->setSensor(cache.isSensor);
+		rigidbodyView->setKinematicVsStatic(isKinematicVsStatic);
+	}
+}
+
+//**********************************************************************************************************************
+static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView, 
+	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
+{
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto shape = rigidbodyView->getShape();
+
+	View<Shape> shapeView = {};
+	if (shape)
+	{
+		shapeView = physicsSystem->get(shape);
+		if (shapeView->getType() == ShapeType::Decorated)
+		{
+			auto innerShape = shapeView->getInnerShape();
+			shapeView = physicsSystem->get(innerShape);
+		}
+	}
+
+	if (shape)
+		cache.halfExtent = shapeView->getCapsuleHalfHeight();
+	isChanged |= ImGui::DragFloat("Half Height", &cache.halfHeight, 0.01f);
+	if (ImGui::BeginPopupContextItem("halfHeight"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			cache.halfExtent = 0.875f;
+			isChanged = true;
+		}
+		ImGui::EndPopup();
+	}
+
+	if (shape)
+		cache.shapeRadius = shapeView->getCapsuleRadius();
+	isChanged |= ImGui::DragFloat("Radius", &cache.shapeRadius, 0.01f);
+	if (ImGui::BeginPopupContextItem("shapeRadius"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			cache.shapeRadius = 0.3f;
+			isChanged = true;
+		}
+		ImGui::EndPopup();
+	}
+
+	if (shape)
+		cache.density = shapeView->getDensity();
+	isChanged |= ImGui::DragFloat("Density", &cache.density, 1.0f, 0.0f, 0.0f, "%.3f kg/m^3");
+	if (ImGui::BeginPopupContextItem("density"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			cache.density = 1000.0f;
+			isChanged = true;
+		}
+		ImGui::EndPopup();
+	}
+
+	if (isChanged)
+	{
+		cache.halfHeight = max(cache.halfHeight, 0.001f);
+		cache.shapeRadius = max(cache.shapeRadius, 0.001f);
+		cache.density = max(cache.density, 0.001f);
+		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+
+		physicsSystem->destroyShared(shape);
+		if (cache.shapePosition != f32x4::zero)
+		{
+			auto innerShape = physicsSystem->createSharedCapsuleShape(cache.halfHeight, cache.shapeRadius, cache.density);
+			shape = physicsSystem->createSharedRotTransShape(innerShape, cache.shapePosition);
+		}
+		else
+		{
+			shape = physicsSystem->createSharedCapsuleShape(cache.halfHeight, cache.shapeRadius, cache.density);
+		}
+
+		rigidbodyView->setShape(shape, cache.motionType, cache.collisionLayer,
+			false, rigidbodyView->canBeKinematicOrDynamic(), cache.allowedDOF);
+		rigidbodyView->setSensor(cache.isSensor);
+		rigidbodyView->setKinematicVsStatic(isKinematicVsStatic);
+	}
+}
+
+//**********************************************************************************************************************
 static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::RigidbodyCache& cache)
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
@@ -341,13 +491,19 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 		case ShapeSubType::Box:
 			shapeType = 2;
 			break;
-		default:
+		case ShapeSubType::Sphere:
 			shapeType = 3;
+			break;
+		case ShapeSubType::Capsule:
+			shapeType = 4;
+			break;
+		default:
+			shapeType = 5;
 			break;
 		}
 	}
 
-	ImGui::BeginDisabled(shapeType == 3);
+	ImGui::BeginDisabled(shapeType == 5);
 	isChanged |= ImGui::DragFloat3("Position", &cache.shapePosition, 0.01f);
 	if (ImGui::BeginPopupContextItem("shapePosition"))
 	{
@@ -372,8 +528,7 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 			physicsSystem->destroyShared(shape);
 			rigidbodyView->setShape({});
 			break;
-		case 1:
-		case 2:
+		case 1: case 2: case 3: case 4:
 			isChanged = true;
 			break;
 		default:
@@ -388,6 +543,12 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 		break;
 	case 2:
 		renderBoxShape(rigidbodyView, cache, isChanged);
+		break;
+	case 3:
+		renderSphereShape(rigidbodyView, cache, isChanged);
+		break;
+	case 4:
+		renderCapsuleShape(rigidbodyView, cache, isChanged);
 		break;
 	default:
 		break;
@@ -888,37 +1049,20 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 				cache.convexRadius = shapeView->getBoxConvexRadius();
 				shapeType = 2;
 				break;
-			default:
+			case ShapeSubType::Capsule:
+				cache.shapeHeight = shapeView->getCapsuleHalfHeight() * 2.0f;
+				cache.shapeRadius = shapeView->getCapsuleRadius();
 				shapeType = 3;
+				break;
+			default:
+				shapeType = 4;
 				break;
 			}
 		}
 		else
 		{
-			shapeType = 3;
+			shapeType = 4;
 		}
-	}
-
-	isChanged |= ImGui::DragFloat3("Size", &cache.shapeSize, 0.01f);
-	if (ImGui::BeginPopupContextItem("shapeSize"))
-	{
-		if (ImGui::MenuItem("Reset Default"))
-		{
-			cache.shapeSize = f32x4(0.5f, 1.75f, 0.5f);
-			isChanged = true;
-		}
-		ImGui::EndPopup();
-	}
-
-	isChanged |= ImGui::DragFloat("Convex Radius", &cache.convexRadius, 0.01f);
-	if (ImGui::BeginPopupContextItem("convexRadius"))
-	{
-		if (ImGui::MenuItem("Reset Default"))
-		{
-			cache.convexRadius = 0.05f;
-			isChanged = true;
-		}
-		ImGui::EndPopup();
 	}
 
 	isChanged |= ImGui::DragFloat3("Position", &cache.shapePosition, 0.01f);
@@ -932,9 +1076,58 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 		ImGui::EndPopup();
 	}
 
+	if (shapeType == 2)
+	{
+		isChanged |= ImGui::DragFloat3("Size", &cache.shapeSize, 0.01f);
+		if (ImGui::BeginPopupContextItem("shapeSize"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+			{
+				cache.shapeSize = f32x4(0.5f, 1.75f, 0.5f);
+				isChanged = true;
+			}
+			ImGui::EndPopup();
+		}
+
+		isChanged |= ImGui::DragFloat("Convex Radius", &cache.convexRadius, 0.01f);
+		if (ImGui::BeginPopupContextItem("convexRadius"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+			{
+				cache.convexRadius = 0.05f;
+				isChanged = true;
+			}
+			ImGui::EndPopup();
+		}
+	}
+	else if (shapeType == 3)
+	{
+		isChanged |= ImGui::DragFloat("Height", &cache.shapeHeight, 0.01f);
+		if (ImGui::BeginPopupContextItem("shapeHeight"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+			{
+				cache.shapeHeight = 1.75f;
+				isChanged = true;
+			}
+			ImGui::EndPopup();
+		}
+
+		isChanged |= ImGui::DragFloat("Radius", &cache.shapeRadius, 0.01f);
+		if (ImGui::BeginPopupContextItem("shapeRadius"))
+		{
+			if (ImGui::MenuItem("Reset Default"))
+			{
+				cache.shapeRadius = 0.3f;
+				isChanged = true;
+			}
+			ImGui::EndPopup();
+		}
+	}
+
 	// TODO: shape rotation
 
-	constexpr auto sTypes = "None\0Empty\0Box\0Custom\00";
+	constexpr auto sTypes = "None\0Empty\0Box\0Capsule\0Custom\00";
 	if ((ImGui::Combo("Type", &shapeType, sTypes) || isChanged))
 	{
 		cache.convexRadius = max(cache.convexRadius, 0.0f);
@@ -955,7 +1148,13 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 			break;
 		case 2:
 			physicsSystem->destroyShared(shape);
-			innerShape = physicsSystem->createSharedBoxShape(cache.shapeSize * 0.5f, cache.convexRadius);
+			innerShape = physicsSystem->createSharedEmptyShape(cache.centerOfMass);
+			shape = physicsSystem->createRotTransShape(innerShape, cache.shapePosition);
+			characterView->setShape(shape);
+			break;
+		case 3:
+			physicsSystem->destroyShared(shape);
+			innerShape = physicsSystem->createSharedCapsuleShape(cache.shapeHeight * 0.5f, cache.shapeRadius);
 			shape = physicsSystem->createRotTransShape(innerShape, cache.shapePosition);
 			characterView->setShape(shape);
 			break;

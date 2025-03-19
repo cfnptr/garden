@@ -18,9 +18,7 @@
  */
 
 #pragma once
-#include "garden/defines.hpp"
-#include "ecsm.hpp"
-#include "math/quaternion.hpp"
+#include "garden/system/character.hpp"
 
 namespace garden
 {
@@ -59,6 +57,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	
 	friend class ecsm::Manager;
 public:
+	CharacterComponent::UpdateSettings updateSettings;
 	string characterEntityTag = "MainCharacter";
 	float mouseSensitivity = 1.0f;
 	float moveSpeed = 2.0f;

@@ -201,6 +201,13 @@ void CharacterComponent::setLinearVelocity(f32x4 velocity)
 	instance->SetLinearVelocity(toVec3(velocity));
 }
 
+f32x4 CharacterComponent::getGroundVelocity() const
+{
+	if (!shape)
+		return f32x4::zero;
+	auto instance = (const JPH::CharacterVirtual*)this->instance;
+	return toF32x4(instance->GetGroundVelocity());
+}
 CharacterGround CharacterComponent::getGroundState() const
 {
 	GARDEN_ASSERT(shape);
@@ -223,7 +230,7 @@ void CharacterComponent::setMass(float mass)
 }
 
 //**********************************************************************************************************************
-void CharacterComponent::update(float deltaTime, f32x4 gravity)
+void CharacterComponent::update(float deltaTime, f32x4 gravity, const UpdateSettings* settings)
 {
 	SET_CPU_ZONE_SCOPED("Character Update");
 
@@ -233,12 +240,12 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity)
 
 	if (transformView)
 	{
+		auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
+			CharacterSystem::Instance::get()->charVsCharCollision;
 		if (transformView->isActive())
 		{
 			if (!inSimulation)
 			{
-				auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-					CharacterSystem::Instance::get()->charVsCharCollision;
 				charVsCharCollision->Add(instance);
 				inSimulation = true;
 			}
@@ -247,8 +254,6 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity)
 		{
 			if (inSimulation)
 			{
-				auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-					CharacterSystem::Instance::get()->charVsCharCollision;
 				charVsCharCollision->Remove(instance);
 				inSimulation = false;
 			}
@@ -276,8 +281,23 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity)
 	JPH::IgnoreSingleBodyFilter bodyFilter(rigidbodyID);
 	JPH::ShapeFilter shapeFilter; // TODO: add collision matrix
 
-	instance->Update(deltaTime, toVec3(gravity), bpLayerFilter, 
-		objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
+	if (settings)
+	{
+		JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
+		updateSettings.mStickToFloorStepDown = toVec3(settings->stepDown);
+		updateSettings.mWalkStairsStepUp = toVec3(settings->stepUp);
+		updateSettings.mWalkStairsMinStepForward = settings->minStepForward;
+		updateSettings.mWalkStairsStepForwardTest = settings->stepForwardTest;
+		updateSettings.mWalkStairsCosAngleForwardContact = settings->forwardContact;
+		updateSettings.mWalkStairsStepDownExtra = toVec3(settings->stepDownExtra);
+		instance->ExtendedUpdate(deltaTime, toVec3(gravity), updateSettings, 
+			bpLayerFilter, objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
+	}
+	else
+	{
+		instance->Update(deltaTime, toVec3(gravity), bpLayerFilter, 
+			objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
+	}
 	
 	if (transformView)
 	{
@@ -305,9 +325,72 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity)
 			rigidbodyView->setPosAndRot(position, rotation, true);
 	}
 }
-void CharacterComponent::extendedUpdate()
+
+//**********************************************************************************************************************
+bool CharacterComponent::canWalkStairs(f32x4 linearVelocity) const
 {
-	abort(); // TODO:
+	GARDEN_ASSERT(shape);
+	auto instance = (JPH::CharacterVirtual*)this->instance;
+	return instance->CanWalkStairs(toVec3(linearVelocity));
+}
+bool CharacterComponent::walkStairs(float deltaTime, f32x4 stepUp, 
+	f32x4 stepForward, f32x4 stepForwardTest, f32x4 stepDownExtra)
+{
+	GARDEN_ASSERT(shape);
+	auto instance = (JPH::CharacterVirtual*)this->instance;
+
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	if (collisionLayer >= physicsSystem->properties.collisionLayerCount)
+		collisionLayer = (uint16)CollisionLayer::Moving;
+
+	auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
+	auto tempAllocator = (JPH::TempAllocator*)physicsSystem->tempAllocator;
+	auto bpLayerFilter = physicsInstance->GetDefaultBroadPhaseLayerFilter(collisionLayer);
+	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
+	JPH::BodyID rigidbodyID = {};
+
+	auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+	if (rigidbodyView && rigidbodyView->instance)
+	{
+		auto instance = (JPH::Body*)rigidbodyView->instance;
+		rigidbodyID = instance->GetID();
+	}
+
+	JPH::IgnoreSingleBodyFilter bodyFilter(rigidbodyID);
+	JPH::ShapeFilter shapeFilter; // TODO: add collision matrix
+
+	return instance->WalkStairs(deltaTime, toVec3(stepUp), toVec3(stepForward), 
+		toVec3(stepForwardTest), toVec3(stepDownExtra), bpLayerFilter, 
+		objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
+}
+
+bool CharacterComponent::stickToFloor(f32x4 stepDown)
+{
+	GARDEN_ASSERT(shape);
+	auto instance = (JPH::CharacterVirtual*)this->instance;
+
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	if (collisionLayer >= physicsSystem->properties.collisionLayerCount)
+		collisionLayer = (uint16)CollisionLayer::Moving;
+
+	auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
+	auto tempAllocator = (JPH::TempAllocator*)physicsSystem->tempAllocator;
+	auto bpLayerFilter = physicsInstance->GetDefaultBroadPhaseLayerFilter(collisionLayer);
+	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
+	JPH::BodyID rigidbodyID = {};
+
+	auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+	if (rigidbodyView && rigidbodyView->instance)
+	{
+		auto instance = (JPH::Body*)rigidbodyView->instance;
+		rigidbodyID = instance->GetID();
+	}
+
+	JPH::IgnoreSingleBodyFilter bodyFilter(rigidbodyID);
+	JPH::ShapeFilter shapeFilter; // TODO: add collision matrix
+
+	return instance->StickToFloor(toVec3(stepDown),  bpLayerFilter, 
+		objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator);
 }
 
 void CharacterComponent::setWorldTransform()
