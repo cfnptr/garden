@@ -23,9 +23,9 @@ class DeferredRenderEditorSystem final : public System
 {
 	enum class DrawMode : uint8
 	{
-		Off, BaseColor, OpacityTransmission, Metallic, Roughness, MaterialAO, Reflectance, 
-		ClearCoat, ClearCoatRoughness, Normals, GShadows, EmissiveColor, EmissiveFactor,  SubsurfaceColor, 
-		Thickness, Lighting, HDR, Depth, WorldPosition, Shadows, GlobalAO, DenoisedGlobalAO, Count
+		Off, BaseColor, OpacityTransmission, Metallic, Roughness, MaterialAO, Reflectance, ClearCoat, 
+		ClearCoatRoughness, Normals, MaterialShadows, EmissiveColor, EmissiveFactor, SubsurfaceColor, 
+		Thickness, Lighting, HDR, Depth, WorldPosition, GlobalShadows, GlobalAO, DenoisedGlobalAO, Count
 	};
 
 	struct BufferPC final

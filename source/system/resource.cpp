@@ -620,7 +620,6 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	vector<f32x4> floatData; const f32x4* equiPixels;
 	if (format == Image::Format::SrgbR8G8B8A8)
 	{
-		static const auto gammaCorrection = f32x4(2.2f);
 		floatData.resize(equiData.size() / sizeof(Color));
 		auto dstData = floatData.data();
 		auto srcData = (const Color*)equiData.data();

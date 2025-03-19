@@ -34,7 +34,7 @@ pipelineState
 #define CLEAR_COAT_DRAW_MODE 7
 #define CLEAR_COAT_ROUGHNESS_DRAW_MODE 8
 #define NORMALS_DRAW_MODE 9
-#define G_SHADOWS_COAT_DRAW_MODE 10
+#define MATERIAL_SHADOWS_DRAW_MODE 10
 #define EMISSIVE_COLOR_DRAW_MODE 11
 #define EMISSIVE_FACTOR_DRAW_MODE 12
 #define SUBSURFACE_COLOR_DRAW_MODE 13
@@ -43,7 +43,7 @@ pipelineState
 #define HDR_DRAW_MODE 16
 #define DEPTH_DRAW_MODE 17
 #define WORLD_POSITION_DRAW_MODE 18
-#define SHADOWS_DRAW_MODE 19
+#define GLOBAL_SHADOWS_DRAW_MODE 19
 #define GLOBAL_AO_DRAW_MODE 20
 #define DENOISED_GLOBAL_AO_DRAW_MODE 21
 #define DRAW_MODE_COUNT 22
@@ -119,7 +119,7 @@ void main()
 		float3 normal = gBuffer.normal * 0.5f + 0.5f;
 		fb.color = float4(gammaCorrection(normal, DEFAULT_GAMMA), 1.0f);
 	}
-	else if (pc.drawMode == G_SHADOWS_COAT_DRAW_MODE)
+	else if (pc.drawMode == MATERIAL_SHADOWS_DRAW_MODE)
 	{
 		fb.color = float4(float3(gBuffer.shadow), 1.0f);
 	}
@@ -155,7 +155,7 @@ void main()
 		float3 worldPos = calcWorldPosition(depth, fs.texCoords, pc.invViewProj);
 		fb.color = float4(log(abs(worldPos) + float3(1.0f)) * 0.1f, 1.0f);
 	}
-	else if (pc.drawMode == SHADOWS_DRAW_MODE)
+	else if (pc.drawMode == GLOBAL_SHADOWS_DRAW_MODE)
 	{
 		float shadow = texture(shadowBuffer0, fs.texCoords).r;
 		fb.color = float4(float3(shadow), 1.0f);

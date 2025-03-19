@@ -137,9 +137,9 @@ void DeferredRenderEditorSystem::editorRender()
 		{
 			auto deferredSystem = DeferredRenderSystem::Instance::get();
 			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
-				"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0G-Buffer Shadows\0"
-				"Emissive Color\0Emissive Factor\0Subsurface Color\0Thickness\0"
-				"Lighting\0HDR\0Depth\0World Position\0Shadows\0Global AO\0Denoised Global AO\0\0";
+				"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0"
+				"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR\0Depth\0World Position\0"
+				"Global Shadows\0Global AO\0Denoised Global AO\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
 			if (drawMode == DrawMode::Lighting)

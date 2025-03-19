@@ -52,7 +52,7 @@ static bool Combo(const char* label, T* currentItem, const char* items)
 static bool SliderFloat4(const char* label, f32x4* value, float min,
 	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
-	return ImGui::SliderFloat2(label, (float*)value, min, max, format, flags);
+	return ImGui::SliderFloat4(label, (float*)value, min, max, format, flags);
 }
 static bool SliderFloat3(const char* label, f32x4* value, float min,
 	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
@@ -78,7 +78,7 @@ static bool DragFloat4(const char* label, f32x4* value, float speed = 1.0f, floa
 static bool DragFloat3(const char* label, f32x4* value, float speed = 1.0f, float min = 0.0f,
 	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
-	return ImGui::DragFloat4(label, (float*)value, speed, min, max, format, flags);
+	return ImGui::DragFloat3(label, (float*)value, speed, min, max, format, flags);
 }
 static bool DragFloat2(const char* label, f32x4* value, float speed = 1.0f, float min = 0.0f,
 	float max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
@@ -120,7 +120,7 @@ static bool DragInt4(const char* label, i32x4* value, float speed = 1.0f, int mi
 static bool DragInt3(const char* label, i32x4* value, float speed = 1.0f, int min = 0,
 	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
 {
-	return ImGui::DragInt4(label, (int*)value, speed, min, max, format, flags);
+	return ImGui::DragInt3(label, (int*)value, speed, min, max, format, flags);
 }
 static bool DragInt2(const char* label, i32x4* value, float speed = 1.0f, int min = 0,
 	int max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0)
