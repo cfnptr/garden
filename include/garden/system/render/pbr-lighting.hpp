@@ -57,6 +57,7 @@ public:
 	{
 		float4x4 uvToWorld;
 		float4 shadowEmissive;
+		float reflectanceCoeff;
 	};
 	struct SpecularPC final
 	{
@@ -112,6 +113,8 @@ private:
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;
 public:
+	float reflectanceCoeff = 1.0f;
+
 	/*******************************************************************************************************************
 	 * @brief Use shadow buffer for PBR lighting rendering.
 	 */

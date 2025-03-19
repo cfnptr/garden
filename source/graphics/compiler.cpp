@@ -211,7 +211,7 @@ static string_view toGlslString(Image::Format imageFormat)
 	case Image::Format::UintR8G8B8A8: return "rgba8ui";
 	case Image::Format::UintR16: return "r16ui";
 	case Image::Format::UintR16G16: return "rg16ui";
-	case Image::Format::UintR16G16B16A16: "rgba16ui";
+	case Image::Format::UintR16G16B16A16: return "rgba16ui";
 	case Image::Format::UintR32: return "r32ui";
 	case Image::Format::UintR32G32: return "rg32ui";
 	case Image::Format::UintR32G32B32A32: return "rgba32ui";
@@ -222,7 +222,7 @@ static string_view toGlslString(Image::Format imageFormat)
 	case Image::Format::SintR8G8B8A8: return "rgba8i";
 	case Image::Format::SintR16: return "r16i";
 	case Image::Format::SintR16G16: return "rg16i";
-	case Image::Format::SintR16G16B16A16: "rgba16i";
+	case Image::Format::SintR16G16B16A16: return "rgba16i";
 	case Image::Format::SintR32: return "r32i";
 	case Image::Format::SintR32G32: return "rg32i";
 	case Image::Format::SintR32G32B32A32: return "rgba32i";

@@ -58,6 +58,7 @@ uniform pushConstants
 {
 	float4x4 uvToWorld;
 	float4 shadowEmissive;
+	float reflectanceCoeff;
 } pc;
 
 //**********************************************************************************************************************
@@ -74,6 +75,7 @@ void main()
 	if (USE_AO_BUFFER)
 		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, texture(aoBuffer, fs.texCoords).r);
 	// TODO: or maybe we can utilize filament micro/macro AO?
+	gBuffer.reflectance *= pc.reflectanceCoeff;
 
 	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
 	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);

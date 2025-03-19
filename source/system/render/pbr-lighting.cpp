@@ -680,6 +680,7 @@ void PbrLightingRenderSystem::hdrRender()
 	auto pushConstants = pipelineView->getPushConstants<LightingPC>();
 	pushConstants->uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
 	pushConstants->shadowEmissive = (float4)f32x4(cameraConstants.shadowColor, cameraConstants.emissiveCoeff);
+	pushConstants->reflectanceCoeff = reflectanceCoeff;
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	pipelineView->bind();

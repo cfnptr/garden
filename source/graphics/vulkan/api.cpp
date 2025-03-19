@@ -37,8 +37,7 @@ constexpr vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
 constexpr vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-	vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-	vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding;
+	vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
 #endif
 
 #if GARDEN_DEBUG
