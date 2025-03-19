@@ -1,14 +1,14 @@
 # Garden Shading Language Documentation
 
-GSL is a custom shader language based on GLSL. It was created for 
-the Garden game engine to simplify and standardize shader development.
+GSL is a custom shader language based on the [GLSL](https://www.khronos.org/opengl/wiki/Core_Language_(GLSL)) for [Vulkan API](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt). It was created for 
+the [Garden](https://github.com/cfnptr/garden) game engine to simplify and standardize shader development.
 
 ## Variable Types
 
-All GLSL default variable types vec2, ivec3, mat4... are replaced with 
-more pleasant looking variants float2, int3, float4x4. Also built in variables gl_Xxx with gl.xxx. Don't be angry :)
+All GLSL default variable types **vec2, ivec3, mat4**... are replaced with 
+more pleasant looking variants **float2, int3, float4x4**. Also built in variables **gl_Xxx** with **gl.xxx**. Don't be angry :)
 
-You can use #include directive it's backed by the shaderc compiler internally.
+You can use **#include** directive, it's backed by the shaderc compiler internally.
 
 ## Vertex attributes
 
@@ -19,9 +19,13 @@ Input attributes format can be specified using this syntax:
 in float3 vs.variableName : f32;
 ```
 
-With one of these formats: [ f8 | f16 | f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64 ]
+**With one of these formats**: [ f8 | f16 | f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64 ]
 
-* #attributeOffset X - Add offset to the vertex attributes. (in bytes)
+You can add offset to the vertex attributes. (in bytes)
+
+```
+#attributeOffset 16
+```
 
 ## Pipeline state
 
@@ -37,57 +41,58 @@ pipelineState
 }
 ```
 
-* discarding [ on | off ] - Controls whether primitives are discarded immediately before the rasterization stage. (off)
+* **discarding** [ on | off ] - Controls whether primitives are discarded immediately before the rasterization stage. (off)
 
 ### Input assembly
 
-* topology [ triangleList | triangleStrip | lineList | lineStrip | pointList ] -
+* **topology** [ triangleList | triangleStrip | lineList | lineStrip | pointList ] -
 	Specify what kind of primitives to render. (triangleList)
-* polygon [ fill | line | point ] - Specify how polygons will be rasterized. (fill)
+* **polygon** [ fill | line | point ] - Specify how polygons will be rasterized. (fill)
 
 ### Depth
 
-* depthTesting [ on | off ] - If enabled, do depth comparisons and update the depth buffer. (off)
-* depthWriting [ on | off ] - Enable or disable writing into the depth buffer. (off)
-* depthClamping [ on | off ] - Controls whether to clamp the fragment’s depth values. (off)
-* depthBiasing [ on | off ] - Controls whether to bias fragment depth values. (off)
+* **depthTesting** [ on | off ] - If enabled, do depth comparisons and update the depth buffer. (off)
+* **depthWriting** [ on | off ] - Enable or disable writing into the depth buffer. (off)
+* **depthClamping** [ on | off ] - Controls whether to clamp the fragment’s depth values. (off)
+* **depthBiasing** [ on | off ] - Controls whether to bias fragment depth values. (off)
 
-* depthCompare [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
+* **depthCompare** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value used for depth buffer comparisons. (greater)
 
-// TODO: depthBiasConstant, depthBiasSlope, depthBiasClamp.
+> // TODO: depthBiasConstant, depthBiasSlope, depthBiasClamp.
 
 ### Culling
 
-* faceCulling [ on | off ] - If enabled, cull polygons based on their winding in window coordinates. (on)
-* cullFace [ front | back | frontAndBack ] - Specify whether front or back-facing facets can be culled. (back)
-* frontFace [ clockwise | counterClockwise ] - Define front and back-facing polygons. (counterClockwise)
+* **faceCulling** [ on | off ] - If enabled, cull polygons based on their winding in window coordinates. (on)
+* **cullFace** [ front | back | frontAndBack ] - Specify whether front or back-facing facets can be culled. (back)
+* **frontFace** [ clockwise | counterClockwise ] - Define front and back-facing polygons. (counterClockwise)
 
 ### Blending
 
-* colorMaskX [ all | none | r | rg | rb | rgba | ... ] - Enable and disable writing of framebuffer color components. (all)
-* blendingX [ on | off ] - If enabled, blend the computed fragment color values with the values in the color buffers. (off)
-* blendOperationX [ add | sub | revSub | min | max ] - Specify the RGB color and alpha blend equation. (add)
-* colorOperationX [ add | sub | revSub | min | max ] - Specify the RGB color blend equation. (add)
-* alphaOperationX [ add | sub | revSub | min | max ] - Specify the alpha blend equation. (add)
-* srcBlendFactorX [FACTOR] - Specify pixel arithmetic for source RGB color and alpha. (srcAlpha, one)
-* dstBlendFactorX [FACTOR] - Specify pixel arithmetic for destination RGB color and alpha. (oneMinusSrcAlpha, zero)
-* srcColorFactorX [FACTOR] - Specify pixel arithmetic for source RGB color. (srcAlpha)
-* dstColorFactorX [FACTOR] - Specify pixel arithmetic for destination RGB color. (oneMinusSrcAlpha)
-* srcAlphaFactorX [FACTOR] - Specify pixel arithmetic for source alpha. (one)
-* dstAlphaFactorX [FACTOR] - Specify pixel arithmetic for destination alpha. (zero)
+* **colorMaskX** [ all | none | r | rg | rb | rgba | ... ] - Enable and disable writing of framebuffer color components. (all)
+* **blendingX** [ on | off ] - If enabled, blend the computed fragment color values with the values in the color buffers. (off)
+* **blendOperationX** [ add | sub | revSub | min | max ] - Specify the RGB color and alpha blend equation. (add)
+* **colorOperationX** [ add | sub | revSub | min | max ] - Specify the RGB color blend equation. (add)
+* **alphaOperationX** [ add | sub | revSub | min | max ] - Specify the alpha blend equation. (add)
+* **srcBlendFactorX** [FACTOR] - Specify pixel arithmetic for source RGB color and alpha. (srcAlpha, one)
+* **dstBlendFactorX** [FACTOR] - Specify pixel arithmetic for destination RGB color and alpha. (oneMinusSrcAlpha, zero)
+* **srcColorFactorX** [FACTOR] - Specify pixel arithmetic for source RGB color. (srcAlpha)
+* **dstColorFactorX** [FACTOR] - Specify pixel arithmetic for destination RGB color. (oneMinusSrcAlpha)
+* **srcAlphaFactorX** [FACTOR] - Specify pixel arithmetic for source alpha. (one)
+* **dstAlphaFactorX** [FACTOR] - Specify pixel arithmetic for destination alpha. (zero)
 
-Where [X] is index of the framebuffer attachment.
+> Where [X] is index of the framebuffer attachment.
 
-Blending scale [FACTOR]: [ zero | one | srcColor | oneMinusSrcColor | dstColor | oneMinusDstColor | srcAlpha | 
+**Blending scale factors**: [ zero | one | srcColor | oneMinusSrcColor | dstColor | oneMinusDstColor | srcAlpha | 
     oneMinusSrcAlpha | dstAlpha | oneMinusDstAlpha | constColor | oneMinusConstColor | constAlpha | 
     oneMinusConstAlpha | src1Color | oneMinusSrc1Color | src1Alpha | oneMinusSrc1Alpha | srcAlphaSaturate ]
 
-revSub - Subtracts the source from the destination (O = dD - sS).
-Color blending example: Orgb = srgb * Srgb + drgb * Drgb.
+**revSub** - Subtracts the source from the destination (O = dD - sS).
+
+Color blending example: Orgb = srgb * Srgb + drgb * Drgb.</br>
 Alpha blending example: Oa = sa * Sa + da * Da.
 
-// TODO: blending constant color.
+> // TODO: blending constant color.
 
 ## Sampler
 
@@ -102,25 +107,29 @@ uniform sampler2D
 uniform set1 samplerCube someSampler;
 ```
 
-* filter [ nearest | linear ] - Specify the texture minifying and magnification function. (nearest)
-* filterMin [ nearest | linear ] - Specify the minifying function. (nearest)
-* filterMag [ nearest | linear ] - Specify the magnification function. (nearest)
-* filterMipmap [ nearest | linear ] - Specify the mipmap function. (nearest)
-* wrap [TYPE] - Specify the wrap parameter for texture coordinate X, Y, and Z. (clampToEdge)
-* wrapX [TYPE] - Specify the wrap parameter for texture coordinate X. (clampToEdge)
-* wrapY [TYPE] - Specify the wrap parameter for texture coordinate Y. (clampToEdge)
-* wrapZ [TYPE] - Specify the wrap parameter for texture coordinate Z. (clampToEdge)
-* borderColor [ floatTransparentBlack | intTransparentBlack | floatOpaqueBlack | 
+* **filter** [ nearest | linear ] - Specify the texture minifying and magnification function. (nearest)
+* **filterMin** [ nearest | linear ] - Specify the minifying function. (nearest)
+* **filterMag** [ nearest | linear ] - Specify the magnification function. (nearest)
+* **filterMipmap** [ nearest | linear ] - Specify the mipmap function. (nearest)
+* **wrap** [TYPE] - Specify the wrap parameter for texture coordinate X, Y, and Z. (clampToEdge)
+* **wrapX** [TYPE] - Specify the wrap parameter for texture coordinate X. (clampToEdge)
+* **wrapY** [TYPE] - Specify the wrap parameter for texture coordinate Y. (clampToEdge)
+* **wrapZ** [TYPE] - Specify the wrap parameter for texture coordinate Z. (clampToEdge)
+* **borderColor** [ floatTransparentBlack | intTransparentBlack | floatOpaqueBlack | 
 	intOpaqueBlack | floatOpaqueWhite | intOpaqueWhite ] - Specify the border clamp color. (floatTransparentBlack)
-* comparison [ on | off ] - Enable or disable comparison against a reference value during lookups. (off)
-* anisoFiltering [ on | off ] - Enable or disable texel anisotropic filtering. (off)
-* unnormCoords [ on | off ] - Controls whether to use unnormalized texel coordinates to address texels of the image. (off)
-* compareOperation [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
+* **comparison** [ on | off ] - Enable or disable comparison against a reference value during lookups. (off)
+* **anisoFiltering** [ on | off ] - Enable or disable texel anisotropic filtering. (off)
+* **unnormCoords** [ on | off ] - Controls whether to use unnormalized texel coordinates to address texels of the image. (off)
+* **compareOperation** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value to apply to fetched data before filtering. (less)
 
-Texture wrap [TYPE]: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
+**Texture wrap types**: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
 
-* #attachmentOffset X - Add offset to the subpassInput index.
+### You can add offset to the subpassInput index:
+
+```
+#attachmentOffset 1
+```
 
 ## Image / Texture
 
@@ -128,12 +137,13 @@ Texture wrap [TYPE]: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | m
 uniform image2D someImage : UnormR8G8B8A8;
 ```
 
-Image data shader interpretation formats:
-	Unsigned integer formats: [ uintR8, uintR8G8, uintR8G8B8A8, uintR16, uintR16G16, uintR16G16B16A16, uintR32, uintR32G32, uintR32G32B32A32, uintA2R10G10B10 ]
-	Signed integer formats: [ intR8, intR8G8, intR8G8B8A8, intR16, intR16G16, intR16G16B16A16, intR32, intR32G32, intR32G32B32A32 ]
-	Unsigned integer formats normalized to (0.0, 1.0): [ unormR8, unormR8G8, unormR8G8B8A8, unormR16, unormR16G16, unormR16G16B16A16, unormA2R10G10B10 ]
-	Signed integer formats normalized to (-1.0, 1.0): [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]
-	Floating point formats: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, floatB11G11B10 ]
+### Image data shader interpretation formats:
+
+* **Unsigned integer formats**: [ uintR8, uintR8G8, uintR8G8B8A8, uintR16, uintR16G16, uintR16G16B16A16, uintR32, uintR32G32, uintR32G32B32A32, uintA2R10G10B10 ]</br>
+* **Signed integer formats**: [ intR8, intR8G8, intR8G8B8A8, intR16, intR16G16, intR16G16B16A16, intR32, intR32G32, intR32G32B32A32 ]</br>
+* **Unsigned integer formats normalized to (0.0, 1.0)**: [ unormR8, unormR8G8, unormR8G8B8A8, unormR16, unormR16G16, unormR16G16B16A16, unormA2R10G10B10 ]</br>
+* **Signed integer formats normalized to (-1.0, 1.0)**: [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]</br>
+* **Floating point formats**: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, floatB11G11B10 ]</br>
 
 ## Compute Shader
 
@@ -164,11 +174,11 @@ depthGreater out float gl.fragDepth;
 You can implement different shader code paths, permutations using variants. Each variant is a separate 
 instance of the pipeline in runtime. And we can choose which variant to use during the pipeline binding.
 
-* #variantCount X - Specify shader variant count.
-
 ```
 #variantCount 2
+```
 
+```
 #define FIRST_VARIANT 0
 #define SECOND_VARIANT 1
 
@@ -200,12 +210,14 @@ spec const float SOME_THRESHOLD = 0.5f;
 
 To enable specific GLSL feature extensions use this shorting:
 
-* #feature [NAME] - Require specific GLSL feature extensions.
+```
+#feature bindless
+```
 
-Feature [NAME]: [ bindless, subgroupBasic, subgroupVote ]
+**Features**: [ bindless, subgroupBasic, subgroupVote ]
 
-bindless - GL_EXT_nonuniform_qualifier
-subgroupBasic - GL_KHR_shader_subgroup_basic
-subgroupVote - GL_KHR_shader_subgroup_vote
+* bindless - GL_EXT_nonuniform_qualifier
+* subgroupBasic - GL_KHR_shader_subgroup_basic
+* subgroupVote - GL_KHR_shader_subgroup_vote
 
-TODO: ray tracing features
+> TODO: ray tracing features
