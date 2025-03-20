@@ -256,6 +256,18 @@ void GraphicsEditorSystem::showMemoryStats()
 		auto gpuInfo = toBinarySizeString(usedRamSize) + " / " + toBinarySizeString(totalRamSize);
 		auto fraction = totalRamSize > 0 ? (double)usedRamSize / (double)totalRamSize : 0.0;
 		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader("Descriptor Pool Usage"))
+		{
+			ImGui::Indent();
+			ImGui::Text("Combined Samplers: %u", DescriptorSet::combinedSamplerCount);
+			ImGui::Text("Uniform Buffers: %u", DescriptorSet::uniformBufferCount);
+			ImGui::Text("Storage Images: %u", DescriptorSet::storageImageCount);
+			ImGui::Text("Storage Buffers: %u", DescriptorSet::storageBufferCount);
+			ImGui::Text("Input Attachments: %u", DescriptorSet::inputAttachmentCount);
+			ImGui::Unindent();
+		}
 
 		// TODO: CPU RAM usage.
 	}

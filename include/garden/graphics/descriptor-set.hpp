@@ -211,6 +211,12 @@ public:
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) final;
+
+	static uint32 combinedSamplerCount; /**< Total descriptor pool combined sampler count. */
+	static uint32 uniformBufferCount; /**< Total descriptor pool uniform buffer count. */
+	static uint32 storageImageCount; /**< Total descriptor pool storage image count. */
+	static uint32 storageBufferCount; /**< Total descriptor pool storage buffer count. */
+	static uint32 inputAttachmentCount; /**< Total descriptor pool input attachment count. */
 	#endif
 };
 

@@ -261,12 +261,11 @@ void InputSystem::input()
 
 	if (!currFileDrops.empty())
 	{
-		const auto& subscribers = Manager::Instance::get()->getEventSubscribers("FileDrop");
+		const auto& event = Manager::Instance::get()->getEvent("FileDrop");
 		for (const auto& path : currFileDrops)
 		{
 			currFileDropPath = &path;
-			for (const auto& onFileDrop : subscribers)
-				onFileDrop();
+			event.run();
 		}
 		currFileDropPath = nullptr;
 		currFileDrops.clear();

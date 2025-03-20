@@ -116,53 +116,45 @@ void EditorRenderSystem::showMainMenuBar()
 				renderSceneSelector(this, &exportsScenePath);
 		}
 
-		const auto& subscribers = manager->getEventSubscribers("EditorBarFile");
-		if (subscribers.empty())
+		const auto& event = manager->getEvent("EditorBarFile");
+		if (event.hasSubscribers())
 		{
-			if (!hasTransformSystem)
-				ImGui::TextDisabled("Nothing here");
+			event.run();
 		}
 		else
 		{
-			for (const auto& onBarFile : subscribers)
-				onBarFile();
+			if (!hasTransformSystem)
+				ImGui::TextDisabled("Nothing here");
 		}
 			
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("Create"))
 	{
-		const auto& subscribers = manager->getEventSubscribers("EditorBarCreate");
-		if (subscribers.empty())
-		{
-			ImGui::TextDisabled("Nothing here");
-		}
+		const auto& event = manager->getEvent("EditorBarCreate");
+		if (event.hasSubscribers())
+			event.run();
 		else
-		{
-			for (const auto& onBarCreate : subscribers)
-				onBarCreate();
-		}
+			ImGui::TextDisabled("Nothing here");
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("Tools"))
 	{
-		const auto& toolSubscribers = manager->getEventSubscribers("EditorBarTool");
-		if (toolSubscribers.empty())
+		const auto& toolEvent = manager->getEvent("EditorBarTool");
+		if (toolEvent.hasSubscribers())
 		{
-			ImGui::TextDisabled("Nothing here");
+			toolEvent.run();
+			
+			const auto& ppEvent = manager->getEvent("EditorBarToolPP");
+			if (ppEvent.hasSubscribers() && ImGui::BeginMenu("Post-Processing"))
+			{
+				ppEvent.run();
+				ImGui::EndMenu();
+			}
 		}
 		else
 		{
-			for (const auto& onBarTool : toolSubscribers)
-				onBarTool();
-			
-			const auto& ppSubscribers = manager->getEventSubscribers("EditorBarToolPP");
-			if (!ppSubscribers.empty() && ImGui::BeginMenu("Post-Processing"))
-			{
-				for (const auto& onBarToolPP : ppSubscribers)
-					onBarToolPP();
-				ImGui::EndMenu();
-			}
+			ImGui::TextDisabled("Nothing here");
 		}
 		ImGui::EndMenu();
 	}

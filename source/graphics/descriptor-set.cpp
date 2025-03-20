@@ -16,11 +16,15 @@
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
-// TODO: track and log total used sampler/buffer/etc in the application to adjust pool size.
-
 using namespace math;
 using namespace garden;
 using namespace garden::graphics;
+
+uint32 DescriptorSet::combinedSamplerCount = 0;
+uint32 DescriptorSet::uniformBufferCount = 0;
+uint32 DescriptorSet::storageImageCount = 0;
+uint32 DescriptorSet::storageBufferCount = 0;
+uint32 DescriptorSet::inputAttachmentCount = 0;
 
 //**********************************************************************************************************************
 static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, 
@@ -53,6 +57,27 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 		auto allocateResult = vulkanAPI->device.allocateDescriptorSets(&allocateInfo, (vk::DescriptorSet*)&instance);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 	}
+
+	#if GARDEN_DEBUG
+	const auto& pipelineUniforms = pipelineView->getUniforms();
+	for	(const auto& pair : pipelineUniforms)
+	{
+		if (pair.second.descriptorSetIndex != index)
+			continue;
+		
+		auto descriptorType = toVkDescriptorType(pair.second.type);
+		switch (descriptorType)
+		{
+		case vk::DescriptorType::eCombinedImageSampler: DescriptorSet::combinedSamplerCount++; break;
+		case vk::DescriptorType::eStorageImage: DescriptorSet::storageImageCount++; break;
+		case vk::DescriptorType::eInputAttachment: DescriptorSet::inputAttachmentCount++; break;
+		case vk::DescriptorType::eUniformBuffer: DescriptorSet::uniformBufferCount++; break;
+		case vk::DescriptorType::eStorageBuffer: DescriptorSet::storageBufferCount++; break;
+		default: abort();
+		}
+	}
+	#endif
+
 	return instance;
 }
 
@@ -82,6 +107,28 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, Pipeli
 				instance, nullptr, setCount > 1 ? setCount : 0);
 		}
 	}
+
+	#if GARDEN_DEBUG
+	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
+	const auto& pipelineUniforms = pipelineView->getUniforms();
+
+	for	(const auto& pair : pipelineUniforms)
+	{
+		if (pair.second.descriptorSetIndex != index)
+			continue;
+		
+		auto descriptorType = toVkDescriptorType(pair.second.type);
+		switch (descriptorType)
+		{
+		case vk::DescriptorType::eCombinedImageSampler: DescriptorSet::combinedSamplerCount--; break;
+		case vk::DescriptorType::eStorageImage: DescriptorSet::storageImageCount--; break;
+		case vk::DescriptorType::eInputAttachment: DescriptorSet::inputAttachmentCount--; break;
+		case vk::DescriptorType::eUniformBuffer: DescriptorSet::uniformBufferCount--; break;
+		case vk::DescriptorType::eStorageBuffer: DescriptorSet::storageBufferCount--; break;
+		default: abort();
+		}
+	}
+	#endif
 }
 
 //**********************************************************************************************************************

@@ -578,21 +578,37 @@ static vk::CommandPool createVkCommandPool(vk::Device device, uint32 queueFamily
 
 static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 {
-	// TODO: adjust based on a application usage
-
-	const vector<vk::DescriptorPoolSize> sizes =
+	vector<vk::DescriptorPoolSize> sizes;
+	if (GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT > 0)
 	{
-		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler,
-			VK_DS_POOL_COMBINED_SAMPLER_COUNT),
-		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage,
-			VK_DS_POOL_STORAGE_IMAGE_COUNT),
-		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer,
-			VK_DS_POOL_UNIFORM_BUFFER_COUNT),
-		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer,
-			VK_DS_POOL_STORAGE_BUFFER_COUNT),
-		vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment,
-			VK_DS_POOL_INPUT_ATTACHMENT_COUNT),
-	};
+		sizes.push_back(vk::DescriptorPoolSize(
+			vk::DescriptorType::eCombinedImageSampler,
+			GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT));
+	}
+	if (GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT > 0)
+	{
+		sizes.push_back(vk::DescriptorPoolSize(
+			vk::DescriptorType::eUniformBuffer,
+			GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT));
+	}
+	if (GARDEN_DS_POOL_STORAGE_IMAGE_COUNT > 0)
+	{
+		sizes.push_back(vk::DescriptorPoolSize(
+			vk::DescriptorType::eStorageImage,
+			GARDEN_DS_POOL_STORAGE_IMAGE_COUNT));
+	}
+	if (GARDEN_DS_POOL_STORAGE_BUFFER_COUNT > 0)
+	{
+		sizes.push_back(vk::DescriptorPoolSize(
+			vk::DescriptorType::eStorageBuffer,
+			GARDEN_DS_POOL_STORAGE_BUFFER_COUNT));
+	}
+	if (GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT > 0)
+	{
+		sizes.push_back(vk::DescriptorPoolSize(
+			vk::DescriptorType::eInputAttachment,
+			GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT));
+	}
 	
 	uint32 maxSetCount = 0;
 	for (auto& size : sizes)
