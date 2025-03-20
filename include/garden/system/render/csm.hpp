@@ -44,8 +44,8 @@ public:
 
 	struct ShadowData final
 	{
-		float4 farPlanesIntens;
 		float4x4 lightSpace[cascadeCount];
+		float4 farPlanesIntens;
 	};
 private:
 	f32x4 farPlanes = f32x4::zero;

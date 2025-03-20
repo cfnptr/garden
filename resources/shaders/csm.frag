@@ -37,8 +37,8 @@ uniform sampler2DArrayShadow
 
 uniform ShadowData
 {
-	float4 farPlanesIntens;
 	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT];
+	float4 farPlanesIntens;
 } shadowData;
 
 //**********************************************************************************************************************
