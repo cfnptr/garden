@@ -1,0 +1,68 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Cascade Shadow Mapping
+
+#ifndef CSM_GSL
+#define CSM_GSL
+
+#define SHADOW_MAP_MAX_CASCADE_COUNT 4
+
+// Tuned for maximum 4 cascades
+float computeCSM(sampler2DArrayShadow shadowMap, float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], 
+	float2 texCoords, float pixelDepth, float3 farPlanes, float intensity)
+{
+	uint32 cascadeID;
+	if (SHADOW_MAP_CASCADE_COUNT == 4)
+	{
+		float3 steps = step(farPlanes, float3(pixelDepth));
+		cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y + steps.z);
+	}
+	else if (SHADOW_MAP_CASCADE_COUNT == 3)
+	{
+		float2 steps = step(farPlanes.xy, float2(pixelDepth));
+		cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y);
+	}
+	else if (SHADOW_MAP_CASCADE_COUNT == 2)
+	{
+		float steps = step(farPlanes.x, pixelDepth);
+		cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps);
+	}
+	else
+	{
+		cascadeID = 0;
+	}
+	
+	float4 lightProj = lightSpace[cascadeID] * float4(texCoords, pixelDepth, 1.0f);
+	float3 lightCoords = lightProj.xyz / lightProj.w;
+
+	if (lightCoords.z < 0.0f)
+		return 0.0f;
+
+	float2 texelSize = 1.0f / textureSize(shadowMap, 0).xy;
+	float shadow = 0.0f;
+
+	for (int32 y = -1; y <= 1; y++)
+	{
+		for (int32 x = -1; x <= 1; x++)
+		{
+			shadow += texture(shadowMap, float4(float2(x, y) *
+				texelSize + lightCoords.xy, cascadeID, lightCoords.z));
+		}
+	}
+
+	return shadow * (1.0f / 9.0f) * intensity;
+}
+
+#endif // CSM_GSL

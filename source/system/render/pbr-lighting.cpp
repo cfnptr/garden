@@ -536,60 +536,88 @@ void PbrLightingRenderSystem::preHdrRender()
 	if (hasShadowBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Pre Shadow Render");
-		SET_GPU_DEBUG_LABEL("Pre Shadow", Color::transparent);
-		manager->runEvent("PreShadowRender");
+
+		auto event = &manager->getEvent("PreShadowRender");
+		if (event->hasSubscribers())
+		{
+			SET_GPU_DEBUG_LABEL("Pre Shadow", Color::transparent);
+			event->run();
+		}
 	}
 	if (hasAoBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Pre AO Render");
-		SET_GPU_DEBUG_LABEL("Pre AO", Color::transparent);
-		manager->runEvent("PreAoRender");
+
+		auto event = &manager->getEvent("PreAoRender");
+		if (event->hasSubscribers())
+		{
+			SET_GPU_DEBUG_LABEL("Pre AO", Color::transparent);
+			event->run();
+		}
 	}
 
-	if (hasShadowBuffer && manager->isEventHasSubscribers("ShadowRender"))
+	if (hasShadowBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Shadow Render Pass");
 
-		if (!shadowBuffer)
-			shadowBuffer = createShadowBuffer(shadowImageViews);
-		if (!shadowFramebuffers[0])
-			createShadowFramebuffers(shadowFramebuffers, shadowImageViews);
+		auto event = &manager->getEvent("ShadowRender");
+		if (event->hasSubscribers())
+		{
+			if (!shadowBuffer)
+				shadowBuffer = createShadowBuffer(shadowImageViews);
+			if (!shadowFramebuffers[0])
+				createShadowFramebuffers(shadowFramebuffers, shadowImageViews);
 		
-		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
-		auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
-		framebufferView->beginRenderPass(f32x4::one);
-		manager->runEvent("ShadowRender");
-		framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+			auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
+			framebufferView->beginRenderPass(f32x4::one);
+			event->run();
+			framebufferView->endRenderPass();
+		}
 	}
-	if (hasAoBuffer && manager->isEventHasSubscribers("ShadowRender"))
+	if (hasAoBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("AO Render Pass");
 
-		if (!aoBuffer)
-			aoBuffer = createAoBuffer(aoImageViews);
-		if (!aoFramebuffers[0])
-			createAoFramebuffers(aoFramebuffers, aoImageViews);
-		if (!aoDenoisePipeline)
-			aoDenoisePipeline = createAoDenoisePipeline(aoFramebuffers);
+		auto event = &manager->getEvent("AoRender");
+		if (event->hasSubscribers())
+		{
+			if (!aoBuffer)
+				aoBuffer = createAoBuffer(aoImageViews);
+			if (!aoFramebuffers[0])
+				createAoFramebuffers(aoFramebuffers, aoImageViews);
+			if (!aoDenoisePipeline)
+				aoDenoisePipeline = createAoDenoisePipeline(aoFramebuffers);
 
-		SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
-		auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
-		framebufferView->beginRenderPass(f32x4::one);
-		manager->runEvent("AoRender");
-		framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
+			auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
+			framebufferView->beginRenderPass(f32x4::one);
+			event->run();
+			framebufferView->endRenderPass();
+		}
 	}
 
 	if (hasShadowBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Post Shadow Render");
-		SET_GPU_DEBUG_LABEL("Post Shadow", Color::transparent);
-		manager->runEvent("PostShadowRender");
+
+		auto event = &manager->getEvent("PostShadowRender");
+		if (event->hasSubscribers())
+		{
+			SET_GPU_DEBUG_LABEL("Post Shadow", Color::transparent);
+			event->run();
+		}
 	}
 	if (hasAoBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Post AO Render");
-		SET_GPU_DEBUG_LABEL("Post AO", Color::transparent);
-		manager->runEvent("PostAoRender");
+
+		auto event = &manager->getEvent("PostAoRender");
+		if (event->hasSubscribers())
+		{
+			SET_GPU_DEBUG_LABEL("Post AO", Color::transparent);
+			event->run();
+		}
 	}
 
 	// TODO: shadow buffer denoise pass.

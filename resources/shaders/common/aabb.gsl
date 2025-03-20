@@ -18,6 +18,7 @@
 #define AABB_GSL
 
 #include "common/ray.gsl"
+#include "common/math.gsl"
 
 struct Aabb
 {
@@ -32,8 +33,8 @@ float2 raycast2(Aabb aabb, Ray ray)
 	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * invDirection.xx;
 	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * invDirection.yy;
 	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * invDirection.zz;
-	float tMin = max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
-   	float tMax = min(min(max(t0.x, t0.y), max(t1.x, t1.y)), max(t2.x, t2.y));
+	float tMin = max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
+   	float tMax = min(max(t0.x, t0.y), max(t1.x, t1.y), max(t2.x, t2.y));
 	return float2(tMin, tMax);
 }
 float2 raycast2I(Aabb aabb, Ray ray)
@@ -41,8 +42,8 @@ float2 raycast2I(Aabb aabb, Ray ray)
 	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * ray.direction.xx;
 	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * ray.direction.yy;
 	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * ray.direction.zz;
-	float tMin = max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
-   	float tMax = min(min(max(t0.x, t0.y), max(t1.x, t1.y)), max(t2.x, t2.y));
+	float tMin = max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
+   	float tMax = min(max(t0.x, t0.y), max(t1.x, t1.y), max(t2.x, t2.y));
 	return float2(tMin, tMax);
 }
 
@@ -52,14 +53,14 @@ float raycast1(Aabb aabb, Ray ray)
 	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * invDirection.xx;
 	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * invDirection.yy;
 	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * invDirection.zz;
-	return max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
+	return max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
 }
 float raycast1I(Aabb aabb, Ray ray)
 {
 	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * ray.direction.xx;
 	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * ray.direction.yy;
 	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * ray.direction.zz;
-	return max(max(min(t0.x, t0.y), min(t1.x, t1.y)), min(t2.x, t2.y));
+	return max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
 }
 
 //**********************************************************************************************************************

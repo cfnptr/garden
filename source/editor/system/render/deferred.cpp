@@ -38,6 +38,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPla
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	const auto& depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 	
@@ -67,6 +68,8 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPla
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
+		{ "oitAccumBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[0].imageView) },
+		{ "oitRevealBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[1].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
 		{ "shadowBuffer0", DescriptorSet::Uniform(shadowBuffer0) },
 		{ "aoBuffer0", DescriptorSet::Uniform(aoBuffer0) },
@@ -138,8 +141,9 @@ void DeferredRenderEditorSystem::editorRender()
 			auto deferredSystem = DeferredRenderSystem::Instance::get();
 			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
 				"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0"
-				"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR\0Depth\0World Position\0"
-				"Global Shadows\0Global AO\0Denoised Global AO\0\0";
+				"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0"
+				"OIT Accumulated Alpha\0OIT Revealage\0Depth\0World Positions\0Global Shadows\0"
+				"Global AO\0Denoised Global AO\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
 			if (drawMode == DrawMode::Lighting)

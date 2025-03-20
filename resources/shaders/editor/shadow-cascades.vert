@@ -14,10 +14,8 @@
 
 #include "common/fullscreen.gsl"
 
-out noperspective float2 fs.texCoords;
-
 void main()
 {
-	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
-	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
+	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
 }

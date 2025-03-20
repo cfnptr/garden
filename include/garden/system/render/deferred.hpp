@@ -49,6 +49,7 @@ namespace garden
  *   PreDeferredRender, DeferredRender, 
  *   PreHdrRender, HdrRender, 
  *   PreMetaHdrRender, MetaHdrRender, 
+ *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
  *   PreSwapchainRender, GBufferRecreate.
  */
@@ -79,11 +80,14 @@ private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
 	ID<Image> ldrBuffer = {};
+	ID<Image> oitAccumBuffer = {};
+	ID<Image> oitRevealBuffer = {};
 	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
 	ID<Framebuffer> metaHdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
+	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
 	bool emissive = false;
 	bool sss = false;
@@ -142,6 +146,14 @@ public:
 	 */
 	ID<Image> getLdrBuffer();
 	/**
+	 * @brief Returns deferred OIT accumulation buffer. (Order Independent Transparency)
+	 */
+	ID<Image> getOitAccumBuffer();
+	/**
+	 * @brief Returns deferred OIT revealage buffer. (Order Independent Transparency)
+	 */
+	ID<Image> getOitRevealBuffer();
+	/**
 	 * @brief Returns deferred depth/stencil buffer.
 	 */
 	ID<Image> getDepthStencilBuffer();
@@ -162,6 +174,10 @@ public:
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */
 	ID<Framebuffer> getLdrFramebuffer();
+	/**
+	 * @brief Returns deferred OIT framebuffer. (Order Independent Transparency)
+	 */
+	ID<Framebuffer> getOitFramebuffer();
 };
 
 } // namespace garden

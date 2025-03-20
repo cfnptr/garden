@@ -31,7 +31,7 @@ pipelineState
 }
 
 in noperspective float2 fs.texCoords;
-out float4 fb.ao;
+out float fb.ao;
 
 uniform sampler2D gBufferNormals;
 uniform sampler2D depthBuffer;
@@ -58,7 +58,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	float depth = texture(depthBuffer, fs.texCoords).x;
+	float depth = texture(depthBuffer, fs.texCoords).r;
 	if (depth < FLOAT_EPS6)
 		discard;
 
@@ -91,6 +91,5 @@ void main()
 		occlusion += (samplePos.z <= position.z + bias ? 1.0f : 0.0f) * rangeCheck;
 	}
 
-	float ao = occlusion * (1.0f / SAMPLE_COUNT) * intensity;
-	fb.ao = float4(1.0f - ao, 0.0f, 0.0f, 0.0f);
+	fb.ao = 1.0f - occlusion * (1.0f / SAMPLE_COUNT) * intensity;
 }

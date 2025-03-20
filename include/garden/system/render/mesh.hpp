@@ -34,6 +34,7 @@ enum class MeshRenderType : uint8
 {
 	Opaque,      /**< Blocks all light from passing through. (Faster to compute) */
 	Translucent, /**< Allows some light to pass through, enabling partial transparency. */
+	OIT,         /**< Order independent transparency / translucency. (Faster than Translucent)  */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -115,7 +116,7 @@ protected:
 	friend class MeshRenderSystem;
 public:
 	/**
-	 * @brief Returns system mesh render type. (Opaque, translucent, etc.)
+	 * @brief Returns system mesh render type. (Opaque, translucent / transparent, OIT, etc.)
 	 */
 	virtual MeshRenderType getMeshRenderType() const { return MeshRenderType::Opaque; }
 	/**
@@ -170,7 +171,7 @@ protected:
 class MeshRenderSystem final : public System, public Singleton<MeshRenderSystem>
 {
 public:
-	struct alignas(64) OpaqueMesh final
+	struct alignas(64) UnsortedMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
 		float4x3 model = float4x3(0.0f);
@@ -178,16 +179,16 @@ public:
 	private:
 		uint32 _alignment = 0;
 	public:
-		bool operator<(const OpaqueMesh& m) const noexcept { return distanceSq < m.distanceSq; }
+		bool operator<(const UnsortedMesh& m) const noexcept { return distanceSq < m.distanceSq; }
 	};
-	struct alignas(64) TranslucentMesh final
+	struct alignas(64) SortedMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
 		float4x3 model = float4x3(0.0f);
 		float distanceSq = 0.0f;
 		uint32 bufferIndex = 0;
 
-		bool operator<(const TranslucentMesh& m) const noexcept { return distanceSq > m.distanceSq; }
+		bool operator<(const SortedMesh& m) const noexcept { return distanceSq > m.distanceSq; }
 	};
 
 	struct MeshBuffer
@@ -198,21 +199,21 @@ public:
 		MeshBuffer() : drawCount(new atomic<uint32>()) { }
 		~MeshBuffer() { delete drawCount; }
 	};
-	struct OpaqueBuffer final : public MeshBuffer
+	struct UnsortedBuffer final : public MeshBuffer
 	{
-		vector<vector<OpaqueMesh>> threadMeshes;
-		vector<OpaqueMesh> combinedMeshes;
+		vector<vector<UnsortedMesh>> threadMeshes;
+		vector<UnsortedMesh> combinedMeshes;
 	};
-	struct TranslucentBuffer final : MeshBuffer { };
+	struct SortedBuffer final : MeshBuffer { };
 private:
-	vector<OpaqueBuffer> opaqueBuffers;
-	vector<TranslucentBuffer> translucentBuffers;
-	vector<TranslucentMesh> transCombinedMeshes;
-	vector<vector<TranslucentMesh>> transThreadMeshes;
+	vector<UnsortedBuffer> unsortedBuffers;
+	vector<SortedBuffer> sortedBuffers;
+	vector<SortedMesh> sortedCombinedMeshes;
+	vector<vector<SortedMesh>> sortedThreadMeshes;
 	vector<IMeshRenderSystem*> meshSystems;
-	atomic<uint32> translucentIndex = 0;
-	uint32 opaqueBufferCount = 0;
-	uint32 translucentBufferCount = 0;
+	atomic<uint32> sortedDrawIndex = 0;
+	uint32 unsortedBufferCount = 0;
+	uint32 sortedBufferCount = 0;
 	bool asyncRecording = false;
 	bool asyncPreparing = false;
 
@@ -233,8 +234,8 @@ private:
 	void sortMeshes();
 	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, 
 		uint8 frustumPlaneCount, bool isShadowPass);
-	void renderOpaque(const f32x4x4& viewProj, bool isShadowPass);
-	void renderTranslucent(const f32x4x4& viewProj, bool isShadowPass);
+	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, bool isShadowPass);
+	void renderSorted(const f32x4x4& viewProj, bool isShadowPass);
 	void renderShadows();
 
 	void init();
@@ -244,6 +245,7 @@ private:
 	void preDeferredRender();
 	void deferredRender();
 	void metaHdrRender();
+	void oitRender();
 
 	friend class ecsm::Manager;
 	friend class GizmosEditorSystem;

@@ -20,9 +20,7 @@ pipelineState
 	blending0 = on;
 }
 
-in noperspective float2 fs.texCoords;
 out float4 fb.color;
-
 uniform sampler2D depthBuffer;
 
 uniform pushConstants
@@ -32,7 +30,7 @@ uniform pushConstants
 
 void main()
 {
-	float depth = texture(depthBuffer, fs.texCoords).r;
+	float depth = texelFetch(depthBuffer, int2(gl.fragCoord.xy), 0).r;
 	if (depth > pc.farPlanes.x)
 		fb.color = float4(0.0f, 0.8f, 0.0f, 0.5f);
 	else if (depth > pc.farPlanes.y)

@@ -64,7 +64,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	float depth = texture(depthBuffer, fs.texCoords).x;
+	float depth = texture(depthBuffer, fs.texCoords).r;
 	if (depth < FLOAT_EPS6)
 		discard;
 
@@ -84,10 +84,8 @@ void main()
 	hdrColor += evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
 
 	if (USE_EMISSIVE_BUFFER)
-		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * shadow.a;
-
-	float obstruction = depth < (1.0f - FLOAT_EPS6) ? 1.0f : 0.0f;
-	fb.hdr = float4(hdrColor * obstruction, 1.0f);
+		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.shadowEmissive.a;
+	fb.hdr = float4(hdrColor, 1.0f);
 	
 	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.
 	//fb.hdr *= texture(aoBuffer, fs.texCoords).r;
