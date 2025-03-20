@@ -292,9 +292,9 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	auto data = (ShadowData*)dataBufferView->getMap();
+	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
 	data->farPlanesIntens = (float4)f32x4(
 		cameraConstants.nearPlane / farPlanes, 1.0f - cameraConstants.shadowColor.getW());
-	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
 	return true;
 }
 

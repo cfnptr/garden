@@ -20,11 +20,13 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
+#if GARDEN_DEBUG || GARDEN_EDITOR
 uint32 DescriptorSet::combinedSamplerCount = 0;
 uint32 DescriptorSet::uniformBufferCount = 0;
 uint32 DescriptorSet::storageImageCount = 0;
 uint32 DescriptorSet::storageBufferCount = 0;
 uint32 DescriptorSet::inputAttachmentCount = 0;
+#endif
 
 //**********************************************************************************************************************
 static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, 
@@ -58,7 +60,7 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	const auto& pipelineUniforms = pipelineView->getUniforms();
 	for	(const auto& pair : pipelineUniforms)
 	{
@@ -108,7 +110,7 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, Pipeli
 		}
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
 	const auto& pipelineUniforms = pipelineView->getUniforms();
 
