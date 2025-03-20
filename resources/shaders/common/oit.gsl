@@ -12,10 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/fullscreen.gsl"
+// Weighted Blended Order Independent Transparency
 
-void main()
+#ifndef OIT_GSL
+#define OIT_GSL
+
+// Tuned for 16-bit floating point accumulation buffer
+float computeOitWeight(float colorAlpha, float fragCoordZ)
 {
-	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
-	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
+	return clamp(pow(min(1.0f, colorAlpha * 10.0f) + 0.01f, 3.0f) * 
+		1e8f * pow(1.0f - fragCoordZ * 0.9f, 3.0f), 1e-2f, 3e3f);
 }
+void computeOIT(float4 color, float fragCoordZ, out float4 accum, out float reveal)
+{
+	float weight = computeOitWeight(color.a, fragCoordZ);
+	accum = float4(color.rgb * color.a, color.a) * weight;
+	reveal = color.a;
+}
+
+#endif // OIT_GSL

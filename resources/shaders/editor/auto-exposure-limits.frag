@@ -20,9 +20,7 @@ pipelineState
 	blending0 = on;
 }
 
-in noperspective float2 fs.texCoords;
 out float4 fb.color;
-
 uniform sampler2D hdrBuffer;
 
 uniform Luminance
@@ -38,7 +36,7 @@ uniform pushConstants
 
 void main()
 {
-	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
+	float3 hdrColor = texelFetch(hdrBuffer, int2(gl.fragCoord.xy), 0).rgb;
 	float lum = rgbToLum(hdrColor);
 
 	if (lum < pc.minLum)

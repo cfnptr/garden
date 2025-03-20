@@ -126,7 +126,6 @@ void FxaaRenderSystem::preSwapchainRender()
 	framebufferView->endRenderPass();
 }
 
-//**********************************************************************************************************************
 void FxaaRenderSystem::gBufferRecreate()
 {
 	if (descriptorSet)

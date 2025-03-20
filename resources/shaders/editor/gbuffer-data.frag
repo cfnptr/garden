@@ -41,12 +41,15 @@ pipelineState
 #define THICKNESS_DRAW_MODE 14
 #define LIGHTING_DRAW_MODE 15
 #define HDR_DRAW_MODE 16
-#define DEPTH_DRAW_MODE 17
-#define WORLD_POSITION_DRAW_MODE 18
-#define GLOBAL_SHADOWS_DRAW_MODE 19
-#define GLOBAL_AO_DRAW_MODE 20
-#define DENOISED_GLOBAL_AO_DRAW_MODE 21
-#define DRAW_MODE_COUNT 22
+#define OIT_ACCUM_COLOR_DRAW_MODE 17
+#define OIT_ACCUM_ALPHA_DRAW_MODE 18
+#define OIT_REVEAL_DRAW_MODE 19
+#define DEPTH_DRAW_MODE 20
+#define WORLD_POSITION_DRAW_MODE 21
+#define GLOBAL_SHADOWS_DRAW_MODE 22
+#define GLOBAL_AO_DRAW_MODE 23
+#define DENOISED_GLOBAL_AO_DRAW_MODE 24
+#define DRAW_MODE_COUNT 25
 
 in noperspective float2 fs.texCoords;
 out float4 fb.color;
@@ -59,6 +62,8 @@ uniform sampler2D g4;
 uniform sampler2D g5;
 
 uniform sampler2D hdrBuffer;
+uniform sampler2D oitAccumBuffer;
+uniform sampler2D oitRevealBuffer;
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer0;
 uniform sampler2D aoBuffer0;
@@ -143,6 +148,21 @@ void main()
 	{
 		float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
 		fb.color = float4(gammaCorrection(hdrColor), 1.0f);
+	}
+	else if (pc.drawMode == OIT_ACCUM_COLOR_DRAW_MODE)
+	{
+		float3 oitColor = texture(oitAccumBuffer, fs.texCoords).rgb;
+		fb.color = float4(gammaCorrection(oitColor), 1.0f);
+	}
+	else if (pc.drawMode == OIT_ACCUM_ALPHA_DRAW_MODE)
+	{
+		float oitAlpha = texture(oitAccumBuffer, fs.texCoords).a;
+		fb.color = float4(float3(oitAlpha), 1.0f);
+	}
+	else if (pc.drawMode == OIT_REVEAL_DRAW_MODE)
+	{
+		float oitReveal = texture(oitRevealBuffer, fs.texCoords).r;
+		fb.color = float4(float3(oitReveal), 1.0f);
 	}
 	else if (pc.drawMode == DEPTH_DRAW_MODE)
 	{

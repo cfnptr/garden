@@ -89,6 +89,18 @@ public:
 		 * @note It can not be used to create a framebuffer.
 		 */
 		constexpr OutputAttachment() { }
+
+		/**
+		 * @brief Sets framebuffer output attachment clear, load and store flags.
+		 * 
+		 * @param clear clear output attachment content before rendering
+		 * @param load load output attachment content before rendering
+		 * @param store store output attachment content after rendering
+		 */
+		constexpr void setFlags(bool clear, bool load, bool store) noexcept
+		{
+			this->clear = clear; this->load = load, this->store = store;
+		}
 	};
 
 	/*******************************************************************************************************************

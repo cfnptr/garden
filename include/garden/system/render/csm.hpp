@@ -42,13 +42,10 @@ public:
 	 */
 	static constexpr uint8 cascadeCount = 3;
 
-	struct DataBuffer final
-	{
-		float4x4 lightSpace[cascadeCount];
-	};
-	struct PushConstants final
+	struct ShadowData final
 	{
 		float4 farPlanesIntens;
+		float4x4 lightSpace[cascadeCount];
 	};
 private:
 	f32x4 farPlanes = f32x4::zero;

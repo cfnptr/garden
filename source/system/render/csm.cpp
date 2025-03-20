@@ -54,7 +54,7 @@ static void createDataBuffers(DescriptorSetBuffers& dataBuffers)
 	for (uint32 i = 0; i < swapchainSize; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform, Buffer::Access::SequentialWrite, 
-			sizeof(CsmRenderSystem::DataBuffer), Buffer::Usage::Auto, Buffer::Strategy::Size);
+			sizeof(CsmRenderSystem::ShadowData), Buffer::Usage::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.csm.data" + to_string(i));
 		dataBuffers[i].resize(1); dataBuffers[i][0] = buffer;
 	}
@@ -98,7 +98,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Image> shadowMap, cons
 	{ 
 		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView, 1, swapchainSize) },
 		{ "shadowMap", DescriptorSet::Uniform(shadowMapView->getDefaultView(), 1, swapchainSize) },
-		{ "data", DescriptorSet::Uniform(dataBuffers) }
+		{ "shadowData", DescriptorSet::Uniform(dataBuffers) }
 	};
 	return uniforms;
 }
@@ -181,16 +181,10 @@ void CsmRenderSystem::shadowRender()
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	dataBufferView->flush();
 
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->farPlanesIntens = (float4)f32x4(
-		cameraConstants.nearPlane / farPlanes, 
-		1.0f - cameraConstants.shadowColor.getW());
-
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
-	pipelineView->pushConstants();
 	pipelineView->drawFullscreen();
 
 	PbrLightingRenderSystem::Instance::get()->markAnyShadow();
@@ -297,7 +291,9 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 
 	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
-	auto data = (DataBuffer*)dataBufferView->getMap();
+	auto data = (ShadowData*)dataBufferView->getMap();
+	data->farPlanesIntens = (float4)f32x4(
+		cameraConstants.nearPlane / farPlanes, 1.0f - cameraConstants.shadowColor.getW());
 	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
 	return true;
 }

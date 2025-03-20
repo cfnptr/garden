@@ -12,46 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
-#define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
+// Weighted Blended Order Independent Transparency
+// Based on this: https://learnopengl.com/Guest-Articles/2020/OIT/Weighted-Blended
 
-#include "common/csm.gsl"
 #include "common/math.gsl"
+
+#define EPSILON 0.00001f
 
 pipelineState
 {
 	faceCulling = off;
+	blending0 = on;
 }
 
-in noperspective float2 fs.texCoords;
-out float fb.shadow;
+out float4 fb.hdr;
 
-uniform sampler2D depthBuffer;
+uniform sampler2D accumBuffer;
+uniform sampler2D revealBuffer;
 
-uniform sampler2DArrayShadow
+bool isApproximatelyEqual(float a, float b)
 {
-	comparison = on;
-	filter = linear;
-	wrap = clampToBorder;
-} shadowMap;
-
-uniform ShadowData
-{
-	float4 farPlanesIntens;
-	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT];
-} shadowData;
+    return abs(a - b) <= (abs(a) < abs(b) ? abs(b) : abs(a)) * EPSILON;
+}
 
 //**********************************************************************************************************************
 void main()
 {
-	float pixelDepth = texture(depthBuffer, fs.texCoords).r;
-	if (pixelDepth < shadowData.farPlanesIntens.z)
+	float revealage = texelFetch(revealBuffer, int2(gl.fragCoord.xy), 0).r;
+	if (isApproximatelyEqual(revealage, 1.0f))
 		discard;
 
-	float shadow = computeCSM(shadowMap, shadowData.lightSpace, fs.texCoords, 
-		pixelDepth, shadowData.farPlanesIntens.xyz, shadowData.farPlanesIntens.w);
-	if (shadow < FLOAT_EPS6)
-		discard;
+	float4 accumulation = texelFetch(accumBuffer, int2(gl.fragCoord.xy), 0);
+	if (isinf(max(abs(accumulation.rgb))))
+		accumulation.rgb = float3(accumulation.a);
 
-	fb.shadow = 1.0f - shadow;
+	float3 averageColor = accumulation.rgb / max(accumulation.a, EPSILON);
+	fb.hdr = float4(averageColor, 1.0f - revealage);
 }

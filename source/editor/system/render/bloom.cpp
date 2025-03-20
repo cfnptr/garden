@@ -92,8 +92,9 @@ void BloomRenderEditorSystem::editorRender()
 			{
 				bloomSystem->setConsts(useThreshold, useAntiFlickering);
 			}
-
+			
 			ImGui::DragFloat("Threshold", &bloomSystem->threshold, 0.01f, 0.0f, FLT_MAX);
+			ImGui::Spacing();
 
 			ImGui::Checkbox("Visualize Threshold", &visualizeThreshold);
 			if (ImGui::BeginItemTooltip())
