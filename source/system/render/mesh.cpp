@@ -80,6 +80,8 @@ void MeshRenderSystem::deinit()
 //**********************************************************************************************************************
 void MeshRenderSystem::prepareSystems()
 {
+	SET_CPU_ZONE_SCOPED("Systems Prepare");
+
 	auto manager = Manager::Instance::get();
 	const auto& systems = manager->getSystems();
 	meshSystems.clear();
@@ -147,7 +149,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition,
 			model = f32x4x4::identity;
 		}
 
-		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, Plane::frustumCount))
+		if (isBehindFrustum(frustumPlanes, Plane::frustumCount, meshRenderView->aabb, model))
 		{
 			if (!isShadowPass)
 				meshRenderView->setVisible(false);
@@ -156,10 +158,6 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition,
 
 		if (!isShadowPass)
 			meshRenderView->setVisible(true);
-
-		// TODO: optimize this using SpatialDB.
-		// Or we can potentially extract BVH from the PhysX or Vulkan?
-		// TODO: we can use full scene BVH to speed up frustum culling.
 
 		MeshRenderSystem::UnsortedMesh unsortedMesh;
 		unsortedMesh.renderView = meshRenderView;
@@ -224,7 +222,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 			model = f32x4x4::identity;
 		}
 
-		if (isBehindFrustum(meshRenderView->aabb, model, frustumPlanes, Plane::frustumCount))
+		if (isBehindFrustum(frustumPlanes, Plane::frustumCount, meshRenderView->aabb, model))
 		{
 			if (!isShadowPass)
 				meshRenderView->setVisible(false);
@@ -274,6 +272,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 		}
 		else
 		{
+			SET_CPU_ZONE_SCOPED("Unsorted Meshes Sort");
 			auto& meshes = unsortedBuffer->combinedMeshes;
 			std::sort(meshes.begin(), meshes.begin() + unsortedBuffer->drawCount->load());
 		}
@@ -291,6 +290,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 		}
 		else
 		{
+			SET_CPU_ZONE_SCOPED("Sorted Meshes Sort");
 			std::sort(sortedCombinedMeshes.begin(), sortedCombinedMeshes.begin() + sortedDrawIndex.load());
 		}
 	}
@@ -298,7 +298,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 
 //**********************************************************************************************************************
 void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, 
-	f32x4 cameraOffset, uint8 frustumPlaneCount, bool isShadowPass)
+	f32x4 cameraOffset, uint8 frustumPlaneCount, bool isShadowPass) // TODO: pass mask with required opaque/transparent prepare. Allow to select which we need
 {
 	SET_CPU_ZONE_SCOPED("Meshes Prepare");
 
@@ -366,8 +366,8 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 				if (unsortedBuffer->threadMeshes.size() < threadPool.getThreadCount())
 					unsortedBuffer->threadMeshes.resize(threadPool.getThreadCount());
 
-				threadPool.addItems([&cameraOffset, &cameraPosition, frustumPlanes, unsortedBuffer, isShadowPass]
-					(const ThreadPool::Task& task) // Do not optimize args!
+				threadPool.addItems([&cameraOffset, &cameraPosition, frustumPlanes, 
+					unsortedBuffer, isShadowPass](const ThreadPool::Task& task) // Do not optimize args!
 				{
 					prepareUnsortedMeshes(cameraOffset, cameraPosition, frustumPlanes, unsortedBuffer, 
 						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), isShadowPass, true);
@@ -475,6 +475,8 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 			auto& threadPool = threadSystem->getForegroundPool();
 			threadPool.addItems([unsortedBuffer, &viewProj](const ThreadPool::Task& task)
 			{
+				SET_CPU_ZONE_SCOPED("Unsorted Mesh Draw");
+
 				auto meshSystem = unsortedBuffer->meshSystem;
 				const auto& meshes = unsortedBuffer->combinedMeshes;
 				auto itemCount = task.getItemCount();
@@ -495,6 +497,8 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 		}
 		else
 		{
+			SET_CPU_ZONE_SCOPED("Unsorted Mesh Draw");
+
 			const auto& meshes = unsortedBuffer->combinedMeshes;
 			meshSystem->beginDrawAsync(-1);
 			for (uint32 j = 0; j < drawCount; j++)
@@ -538,6 +542,8 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addItems([this, &viewProj](const ThreadPool::Task& task)
 		{
+			SET_CPU_ZONE_SCOPED("Sorted Mesh Draw");
+
 			auto currentBufferIndex = sortedCombinedMeshes[task.getItemOffset()].bufferIndex;
 			auto meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
 			auto bufferDrawCount = sortedBuffers[currentBufferIndex].drawCount;
@@ -575,6 +581,8 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("Sorted Mesh Draw");
+
 		auto currentBufferIndex = sortedCombinedMeshes[0].bufferIndex;
 		auto meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
 		auto bufferDrawCount = sortedBuffers[currentBufferIndex].drawCount;
@@ -640,17 +648,21 @@ void MeshRenderSystem::renderShadows()
 
 			prepareMeshes(viewProj, cameraOffset, Plane::frustumCount, true);
 
-			shadowSystem->beginShadowRender(i, MeshRenderType::Opaque);
-			renderUnsorted(viewProj, MeshRenderType::Opaque, true);
-			shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
-
-			shadowSystem->beginShadowRender(i, MeshRenderType::Translucent);
-			renderSorted(viewProj, true);
-			shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
-
-			shadowSystem->beginShadowRender(i, MeshRenderType::OIT);
-			renderUnsorted(viewProj, MeshRenderType::OIT, true);
-			shadowSystem->endShadowRender(i, MeshRenderType::OIT);
+			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
+			{
+				renderUnsorted(viewProj, MeshRenderType::Opaque, true);
+				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
+			}
+			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
+			{
+				renderSorted(viewProj, true);
+				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
+			}
+			if (shadowSystem->beginShadowRender(i, MeshRenderType::OIT))
+			{
+				renderUnsorted(viewProj, MeshRenderType::OIT, true);
+				shadowSystem->endShadowRender(i, MeshRenderType::OIT);
+			}
 		}
 	}
 }

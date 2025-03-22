@@ -29,7 +29,7 @@ static ID<Buffer> createReadbackBuffer()
 		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getSwapchainSize();
 	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::TransferDst, 
 		Buffer::Access::RandomReadWrite, size, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.auto-exposure.editor.readback");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.editor.autoExposure.readback");
 	return buffer;
 }
 
@@ -189,7 +189,7 @@ void AutoExposureRenderEditorSystem::editorRender()
 			{
 				auto uniforms = getLimitsUniforms();
 				limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.auto-exposure.editor.limits");
+				SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.editor.autoExposure.limits");
 			}
 
 			auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
@@ -232,7 +232,7 @@ void AutoExposureRenderEditorSystem::gBufferRecreate()
 		graphicsSystem->destroy(limitsDescriptorSet);
 		auto uniforms = getLimitsUniforms();
 		limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.auto-exposure.editor.limits");
+		SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.editor.autoExposure.limits");
 	}
 }
 

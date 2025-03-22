@@ -95,7 +95,7 @@ void InfiniteGridEditorSystem::editorRender()
 	{
 		auto uniforms = getUniforms();
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infinite-grid");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}
 
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
@@ -139,7 +139,7 @@ void InfiniteGridEditorSystem::swapchainRecreate()
 		graphicsSystem->destroy(descriptorSet);
 		auto uniforms = getUniforms();
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infinite-grid");
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}
 }
 

@@ -49,10 +49,13 @@ public:
 	};
 private:
 	f32x4 farPlanes = f32x4::zero;
-	vector<ID<ImageView>> imageViews;
-	vector<ID<Framebuffer>> framebuffers;
+	vector<ID<ImageView>> shadowImageViews;
+	vector<ID<ImageView>> transImageViews;
+	vector<ID<Framebuffer>> shadowFramebuffers;
+	vector<ID<Framebuffer>> transFramebuffers;
 	DescriptorSetBuffers dataBuffers;
 	ID<Image> shadowMap = {};
+	ID<Image> transparentMap = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 shadowMapSize = 2048;
@@ -74,7 +77,7 @@ private:
 
 	uint32 getShadowPassCount() final;
 	bool prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset) final;
-	void beginShadowRender(uint32 passIndex, MeshRenderType renderType) final;
+	bool beginShadowRender(uint32 passIndex, MeshRenderType renderType) final;
 	void endShadowRender(uint32 passIndex, MeshRenderType renderType) final;
 	
 	friend class ecsm::Manager;
@@ -104,17 +107,27 @@ public:
 	 */
 	ID<GraphicsPipeline> getPipeline();
 	/**
+	 * @brief Returns cascade shadow mapping data buffers.
+	 */
+	const DescriptorSetBuffers& getDataBuffers();
+
+	/**
 	 * @brief Returns cascade shadow map buffer.
 	 */
 	ID<Image> getShadowMap();
 	/**
-	 * @brief Returns cascade shadow mapping data buffers.
+	 * @brief Returns cascade transparent map buffer.
 	 */
-	const DescriptorSetBuffers& getDataBuffers();
+	ID<Image> getTransparentMap();
+	
 	/**
 	 * @brief Returns cascade shadow mapping framebuffers
 	 */
-	const vector<ID<Framebuffer>>& getFramebuffers();	
+	const vector<ID<Framebuffer>>& getShadowFramebuffers();
+	/**
+	 * @brief Returns cascade transparent mapping framebuffers
+	 */
+	const vector<ID<Framebuffer>>& getTransFramebuffers();
 };
 
 } // namespace garden

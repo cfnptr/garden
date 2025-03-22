@@ -29,7 +29,7 @@ namespace garden
 class InstanceRenderSystem : public System, public IMeshRenderSystem
 {
 protected:
-	DescriptorSetBuffers instanceBuffers = {};
+	DescriptorSetBuffers baseInstanceBuffers = {};
 	DescriptorSetBuffers shadowInstanceBuffers = {};
 	ID<GraphicsPipeline> basePipeline = {};
 	ID<GraphicsPipeline> shadowPipeline = {};
@@ -76,10 +76,11 @@ public:
 	 * @brief Returns mesh instance shadow graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getShadowPipeline();
+	
 	/**
-	 * @brief Returns mesh instance data size in bytes.
+	 * @brief Returns mesh base instance data size in bytes.
 	 */
-	virtual uint64 getInstanceDataSize() = 0;
+	virtual uint64 getBaseInstanceDataSize() = 0;
 	/**
 	 * @brief Returns mesh shadow instance data size in bytes.
 	 */

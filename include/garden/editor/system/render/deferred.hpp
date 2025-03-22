@@ -26,7 +26,7 @@ class DeferredRenderEditorSystem final : public System
 		Off, BaseColor, OpacityTransmission, Metallic, Roughness, MaterialAO, Reflectance, ClearCoat, 
 		ClearCoatRoughness, Normals, MaterialShadows, EmissiveColor, EmissiveFactor, SubsurfaceColor, 
 		Thickness, Lighting, HdrBuffer, OitAccumColor, OitAccumAlpha, OitRevealage, Depth, WorldPositions, 
-		GlobalShadows, GlobalAO, DenoisedGlobalAO, Count
+		GlobalShadowColor, GlobalShadowAlpha, GlobalAO, DenoisedGlobalAO, Count
 	};
 
 	struct BufferPC final

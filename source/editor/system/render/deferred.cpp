@@ -142,8 +142,8 @@ void DeferredRenderEditorSystem::editorRender()
 			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
 				"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0"
 				"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0"
-				"OIT Accumulated Alpha\0OIT Revealage\0Depth\0World Positions\0Global Shadows\0"
-				"Global AO\0Denoised Global AO\0\0";
+				"OIT Accumulated Alpha\0OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0"
+				"Global Shadow Alpha\0Global AO\0Denoised Global AO\0\0";
 			ImGui::Combo("Draw Mode", &drawMode, modes);
 
 			if (drawMode == DrawMode::Lighting)
@@ -277,7 +277,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 		{
 			auto uniforms = getBufferUniforms(blackPlaceholder);
 			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
+			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
 		}
 	}
 }
@@ -326,7 +326,7 @@ void DeferredRenderEditorSystem::gBufferRecreate()
 		graphicsSystem->destroy(bufferDescriptorSet);
 		auto uniforms = getBufferUniforms(blackPlaceholder);
 		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.deferred.editor.buffer");
+		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
 	}
 }
 

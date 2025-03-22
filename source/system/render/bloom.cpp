@@ -27,7 +27,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 {
-	constexpr auto bufferFormat = Image::Format::UfloatB10G11R11;
+	constexpr auto bloomFormat = Image::Format::UfloatB10G11R11;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto bloomBufferSize =  max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2::one);
 	auto mipCount = std::min(BloomRenderSystem::maxBloomMipCount, (uint8)calcMipCount(bloomBufferSize));
@@ -37,14 +37,14 @@ static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 	for (uint8 i = 0; i < mipCount; i++)
 		mips[i].push_back(nullptr);
 
-	auto image = graphicsSystem->createImage(bufferFormat, Image::Bind::ColorAttachment | 
+	auto image = graphicsSystem->createImage(bloomFormat, Image::Bind::ColorAttachment | 
 		Image::Bind::Sampled | Image::Bind::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.bloom.buffer");
 
 	for (uint8 i = 0; i < mipCount; i++)
 	{
 		auto imageView = graphicsSystem->createImageView(
-			image, Image::Type::Texture2D, bufferFormat, i, 1, 0, 1);
+			image, Image::Type::Texture2D, bloomFormat, i, 1, 0, 1);
 		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.bloom.buffer" + to_string(i));
 		imageViews[i] = imageView;
 	}

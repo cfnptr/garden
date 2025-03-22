@@ -32,7 +32,7 @@ static ID<Buffer> createHistogramBuffer()
 	auto buffer = GraphicsSystem::Instance::get()->createBuffer(bind,
 		Buffer::Access::None, AutoExposureRenderSystem::histogramSize * sizeof(uint32), 
 		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.auto-exposure.histogram");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.autoExposure.histogram");
 	return buffer;
 }
 
@@ -135,11 +135,11 @@ void AutoExposureRenderSystem::render()
 	{
 		auto uniforms = getHistogramUniforms(histogramBuffer);
 		histogramDescriptorSet = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.auto-exposure.histogram");
+		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.autoExposure.histogram");
 		
 		uniforms = getAverageUniforms(histogramBuffer);
 		averageDescriptorSet = graphicsSystem->createDescriptorSet(averagePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(averageDescriptorSet, "descriptorSet.auto-exposure.average");
+		SET_RESOURCE_DEBUG_NAME(averageDescriptorSet, "descriptorSet.autoExposure.average");
 	}
 
 	auto inputSystem = InputSystem::Instance::get();
@@ -186,7 +186,7 @@ void AutoExposureRenderSystem::gBufferRecreate()
 		graphicsSystem->destroy(histogramDescriptorSet);
 		auto uniforms = getHistogramUniforms(histogramBuffer);
 		histogramDescriptorSet = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.auto-exposure.histogram");
+		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.autoExposure.histogram");
 	}
 }
 

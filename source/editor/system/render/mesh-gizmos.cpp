@@ -219,7 +219,7 @@ void MeshGizmosEditorSystem::editorRender()
 
 	// TODO: check for selection freeze problem.
 
-	if (!transformView || transformView->hasBakedWithDescendants() || !frontPipelineView->isReady() ||
+	if (!transformView || transformView->hasStaticWithDescendants() || !frontPipelineView->isReady() ||
 		!backPipelineView->isReady() || !cubeVertexView->isReady() || !arrowVertexView->isReady())
 	{
 		return;

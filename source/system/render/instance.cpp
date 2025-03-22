@@ -69,7 +69,7 @@ void InstanceRenderSystem::init()
 	if (!shadowPipeline)
 		shadowPipeline = createShadowPipeline();
 
-	createInstanceBuffers(getInstanceDataSize() * 16, instanceBuffers, false, this);
+	createInstanceBuffers(getBaseInstanceDataSize() * 16, baseInstanceBuffers, false, this);
 	if (shadowPipeline)
 		createInstanceBuffers(getShadowInstanceDataSize() * 16, shadowInstanceBuffers, true, this);
 }
@@ -81,7 +81,7 @@ void InstanceRenderSystem::deinit()
 		graphicsSystem->destroy(shadowDescriptorSet);
 		graphicsSystem->destroy(baseDescriptorSet);
 		graphicsSystem->destroy(shadowInstanceBuffers);
-		graphicsSystem->destroy(instanceBuffers);
+		graphicsSystem->destroy(baseInstanceBuffers);
 		graphicsSystem->destroy(shadowPipeline);
 		graphicsSystem->destroy(basePipeline);
 
@@ -162,11 +162,11 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 	}
 	else
 	{
-		auto dataBinarySize = drawCount * getInstanceDataSize();
-		if (graphicsSystem->get(instanceBuffers[0][0])->getBinarySize() < dataBinarySize)
+		auto dataBinarySize = drawCount * getBaseInstanceDataSize();
+		if (graphicsSystem->get(baseInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
 		{
-			graphicsSystem->destroy(instanceBuffers);
-			createInstanceBuffers(dataBinarySize, instanceBuffers, false, this);
+			graphicsSystem->destroy(baseInstanceBuffers);
+			createInstanceBuffers(dataBinarySize, baseInstanceBuffers, false, this);
 
 			if (baseDescriptorSet)
 			{
@@ -179,7 +179,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 			}
 		}
 
-		auto bufferView = graphicsSystem->get(instanceBuffers[swapchainIndex][0]);
+		auto bufferView = graphicsSystem->get(baseInstanceBuffers[swapchainIndex][0]);
 		instanceMap = bufferView->getMap();
 		pipelineView = graphicsSystem->get(basePipeline);
 		descriptorSet = baseDescriptorSet;
@@ -202,8 +202,8 @@ void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCoun
 	}
 	else
 	{
-		instanceBuffer = instanceBuffers[swapchainIndex][0];
-		dataBinarySize = drawCount * getInstanceDataSize();
+		instanceBuffer = baseInstanceBuffers[swapchainIndex][0];
+		dataBinarySize = drawCount * getBaseInstanceDataSize();
 	}
 
 	auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
@@ -218,11 +218,11 @@ void InstanceRenderSystem::gBufferRecreate()
 
 	if (swapchainChanges.bufferCount)
 	{
-		if (!instanceBuffers.empty())
+		if (!baseInstanceBuffers.empty())
 		{
-			auto bufferSize = graphicsSystem->get(instanceBuffers[0][0])->getBinarySize();
-			graphicsSystem->destroy(instanceBuffers);
-			createInstanceBuffers(bufferSize, instanceBuffers, false, this);
+			auto bufferSize = graphicsSystem->get(baseInstanceBuffers[0][0])->getBinarySize();
+			graphicsSystem->destroy(baseInstanceBuffers);
+			createInstanceBuffers(bufferSize, baseInstanceBuffers, false, this);
 		}
 		if (!shadowInstanceBuffers.empty())
 		{
@@ -256,7 +256,7 @@ void InstanceRenderSystem::gBufferRecreate()
 map<string, DescriptorSet::Uniform> InstanceRenderSystem::getBaseUniforms()
 {
 	map<string, DescriptorSet::Uniform> baseUniforms =
-	{ { "instance", DescriptorSet::Uniform(instanceBuffers) } };
+	{ { "instance", DescriptorSet::Uniform(baseInstanceBuffers) } };
 	return baseUniforms;
 }
 map<string, DescriptorSet::Uniform> InstanceRenderSystem::getShadowUniforms()

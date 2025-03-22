@@ -69,9 +69,14 @@ void main()
 		discard;
 
 	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g5, fs.texCoords);
+	
 	float4 shadow = float4(pc.shadowEmissive.rgb, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)
-		shadow.a = min(shadow.a, texture(shadowBuffer, fs.texCoords).r);
+	{
+		float4 accumShadow = texture(shadowBuffer, fs.texCoords);
+		shadow = float4(shadow.rgb * accumShadow.rgb, min(shadow.a, accumShadow.a));
+	}
+
 	if (USE_AO_BUFFER)
 		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, texture(aoBuffer, fs.texCoords).r);
 	// TODO: or maybe we can utilize filament micro/macro AO?

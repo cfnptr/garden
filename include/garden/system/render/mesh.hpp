@@ -34,7 +34,7 @@ enum class MeshRenderType : uint8
 {
 	Opaque,      /**< Blocks all light from passing through. (Faster to compute) */
 	Translucent, /**< Allows some light to pass through, enabling partial transparency. */
-	OIT,         /**< Order independent transparency / translucency. (Faster than Translucent)  */
+	OIT,         /**< Order independent transparency / translucency. (Faster than Translucent type)  */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -153,7 +153,7 @@ protected:
 	 * @param passIndex shadow render pass index
 	 * @param renderType shadow mesh render type
 	 */
-	virtual void beginShadowRender(uint32 passIndex, MeshRenderType renderType) = 0;
+	virtual bool beginShadowRender(uint32 passIndex, MeshRenderType renderType) = 0;
 	/**
 	 * @brief Ends mesh shadow pass rendering.
 	 * 

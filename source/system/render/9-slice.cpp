@@ -27,11 +27,11 @@ void NineSliceRenderSystem::copyComponent(View<Component> source, View<Component
 	destinationView->windowBorder = sourceView->windowBorder;
 }
 
-uint64 NineSliceRenderSystem::getInstanceDataSize()
+uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
 {
 	return (uint64)sizeof(NineSliceInstanceData);
 }
-void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
+void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
 {
 	auto nineSliceRenderView = (NineSliceRenderComponent*)spriteRenderView;
