@@ -187,18 +187,19 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 //**********************************************************************************************************************
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
+	constexpr auto shadowFormat = Image::Format::UnormR8G8B8A8;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto shadowBufferSize = max(graphicsSystem->getScaledFramebufferSize(), uint2::one);
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
-		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
-		Image::Bind::Storage | Image::Bind::TransferDst, mips, shadowBufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadow.buffer");
+	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::ColorAttachment | 
+		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::Storage | 
+		Image::Bind::TransferDst, mips, shadowBufferSize, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadowBuffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
 	{
 		shadowImageViews[i] = graphicsSystem->createImageView(image,
-			Image::Type::Texture2D, Image::Format::UnormR8, 0, 1, i, 1);
+			Image::Type::Texture2D, shadowFormat, 0, 1, i, 1);
 		SET_RESOURCE_DEBUG_NAME(shadowImageViews[i], "imageView.lighting.shadow" + to_string(i));
 	}
 
@@ -246,7 +247,7 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
 		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | 
 		Image::Bind::Storage | Image::Bind::TransferDst, mips, aoBufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.ao.buffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.aoBuffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
 	{
@@ -636,7 +637,7 @@ void PbrLightingRenderSystem::preHdrRender()
 			{
 				auto uniforms = getAoDenoiseUniforms(aoImageViews);
 				aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.ao-denoise");
+				SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.aoDenoise");
 			}
 
 			SET_GPU_DEBUG_LABEL("AO Denoise Pass", Color::transparent);
@@ -771,7 +772,7 @@ void PbrLightingRenderSystem::gBufferRecreate()
 		graphicsSystem->destroy(aoDenoiseDescriptorSet);
 		auto uniforms = getAoDenoiseUniforms(aoImageViews);
 		aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.ao-denoise");
+		SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.aoDenoise");
 	}
 
 	if (aoRecreate)

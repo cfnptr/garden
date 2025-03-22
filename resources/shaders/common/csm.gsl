@@ -20,10 +20,9 @@
 #define SHADOW_MAP_MAX_CASCADE_COUNT 4
 
 // Tuned for maximum 4 cascades
-float computeCSM(sampler2DArrayShadow shadowMap, float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], 
-	float2 texCoords, float pixelDepth, float3 farPlanes, float intensity)
+void computeCsmData(float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], float2 texCoords, 
+	float pixelDepth, float3 farPlanes, out uint32 cascadeID, out float3 lightCoords)
 {
-	uint32 cascadeID;
 	if (SHADOW_MAP_CASCADE_COUNT == 4)
 	{
 		float3 steps = step(farPlanes, float3(pixelDepth));
@@ -45,8 +44,12 @@ float computeCSM(sampler2DArrayShadow shadowMap, float4x4 lightSpace[SHADOW_MAP_
 	}
 	
 	float4 lightProj = lightSpace[cascadeID] * float4(texCoords, pixelDepth, 1.0f);
-	float3 lightCoords = lightProj.xyz / lightProj.w;
+	lightCoords = lightProj.xyz / lightProj.w;
+}
 
+//**********************************************************************************************************************
+float evaluateCsmShadows(sampler2DArrayShadow shadowMap, uint32 cascadeID, float3 lightCoords)
+{
 	if (lightCoords.z < 0.0f)
 		return 0.0f;
 
@@ -62,7 +65,26 @@ float computeCSM(sampler2DArrayShadow shadowMap, float4x4 lightSpace[SHADOW_MAP_
 		}
 	}
 
-	return shadow * (1.0f / 9.0f) * intensity;
+	return shadow * (1.0f / 9.0f);
+}
+float3 evaluateCsmTransparency(sampler2DArray transparentMap, uint32 cascadeID, float3 lightCoords)
+{
+	if (lightCoords.z < 0.0f)
+		return float3(1.0f);
+
+	float2 texelSize = 1.0f / textureSize(transparentMap, 0).xy;
+	float3 transparency = float3(0.0f);
+
+	for (int32 y = -1; y <= 1; y++)
+	{
+		for (int32 x = -1; x <= 1; x++)
+		{
+			transparency += texture(transparentMap, float3(float2(x, y) *
+				texelSize + lightCoords.xy, cascadeID)).rgb;
+		}
+	}
+
+	return transparency * (1.0f / 9.0f);
 }
 
 #endif // CSM_GSL

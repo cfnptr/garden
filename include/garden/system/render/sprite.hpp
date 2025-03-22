@@ -82,7 +82,7 @@ public:
 class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable, public IAnimatable
 {
 public:
-	struct InstanceData
+	struct BaseInstanceData
 	{
 		float4x4 mvp = float4x4::zero;
 		float4 colorFactor = float4::zero;
@@ -121,8 +121,8 @@ protected:
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
 		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) override;
 
-	uint64 getInstanceDataSize() override;
-	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, InstanceData* instanceData,
+	uint64 getBaseInstanceDataSize() override;
+	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);

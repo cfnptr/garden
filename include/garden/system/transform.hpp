@@ -258,9 +258,9 @@ public:
 	 */
 	bool hasDescendant(ID<Entity> descendant) const noexcept;
 	/**
-	 * @brief Does this entity or its descendants have baked transform.
+	 * @brief Does this entity or its descendants have static transform.
 	 */
-	bool hasBakedWithDescendants() const noexcept;
+	bool hasStaticWithDescendants() const noexcept;
 };
 
 /**
@@ -347,25 +347,25 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Component indicating that entity is baked and it transform should't be changed.
+ * @brief Component indicating that entity is static and it transform should't be changed.
  */
-struct BakedTransformComponent final : public Component { };
+struct StaticTransformComponent final : public Component { };
 
 /**
- * @brief Handles baked, static components.
+ * @brief Handles static components.
  */
-class BakedTransformSystem final : public ComponentSystem<BakedTransformComponent, false>, 
-	public Singleton<BakedTransformSystem>, public ISerializable
+class StaticTransformSystem final : public ComponentSystem<StaticTransformComponent, false>, 
+	public Singleton<StaticTransformSystem>, public ISerializable
 {
 	/**
-	 * @brief Creates a new baked transformer system instance.
+	 * @brief Creates a new static transform system instance.
 	 * @param setSingleton set system singleton instance
 	 */
-	BakedTransformSystem(bool setSingleton = true);
+	StaticTransformSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroys baked transformer system instance.
+	 * @brief Destroys static transform system instance.
 	 */
-	~BakedTransformSystem() final;
+	~StaticTransformSystem() final;
 
 	const string& getComponentName() const final;
 	friend class ecsm::Manager;

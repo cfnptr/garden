@@ -46,10 +46,11 @@ pipelineState
 #define OIT_REVEAL_DRAW_MODE 19
 #define DEPTH_DRAW_MODE 20
 #define WORLD_POSITION_DRAW_MODE 21
-#define GLOBAL_SHADOWS_DRAW_MODE 22
-#define GLOBAL_AO_DRAW_MODE 23
-#define DENOISED_GLOBAL_AO_DRAW_MODE 24
-#define DRAW_MODE_COUNT 25
+#define GLOBAL_SHADOW_COLOR_DRAW_MODE 22
+#define GLOBAL_SHADOW_ALPHA_DRAW_MODE 23
+#define GLOBAL_AO_DRAW_MODE 24
+#define DENOISED_GLOBAL_AO_DRAW_MODE 25
+#define DRAW_MODE_COUNT 26
 
 in noperspective float2 fs.texCoords;
 out float4 fb.color;
@@ -175,10 +176,15 @@ void main()
 		float3 worldPos = calcWorldPosition(depth, fs.texCoords, pc.invViewProj);
 		fb.color = float4(log(abs(worldPos) + float3(1.0f)) * 0.1f, 1.0f);
 	}
-	else if (pc.drawMode == GLOBAL_SHADOWS_DRAW_MODE)
+	else if (pc.drawMode == GLOBAL_SHADOW_COLOR_DRAW_MODE)
 	{
-		float shadow = texture(shadowBuffer0, fs.texCoords).r;
-		fb.color = float4(float3(shadow), 1.0f);
+		float3 shadowColor = texture(shadowBuffer0, fs.texCoords).rgb;
+		fb.color = float4(shadowColor, 1.0f);
+	}
+	else if (pc.drawMode == GLOBAL_SHADOW_ALPHA_DRAW_MODE)
+	{
+		float shadowAlpha = texture(shadowBuffer0, fs.texCoords).a;
+		fb.color = float4(float3(shadowAlpha), 1.0f);
 	}
 	else if (pc.drawMode == GLOBAL_AO_DRAW_MODE)
 	{

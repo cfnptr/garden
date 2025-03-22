@@ -393,7 +393,7 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 }
 
 //**********************************************************************************************************************
-bool TransformComponent::hasBakedWithDescendants() const noexcept
+bool TransformComponent::hasStaticWithDescendants() const noexcept
 {
 	auto manager = Manager::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
@@ -404,7 +404,7 @@ bool TransformComponent::hasBakedWithDescendants() const noexcept
 		auto entity = entityStack.back();
 		entityStack.pop_back();
 
-		if (manager->has<BakedTransformComponent>(entity))
+		if (manager->has<StaticTransformComponent>(entity))
 		{
 			entityStack.clear();
 			return true;
@@ -727,11 +727,11 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 }
 
 //**********************************************************************************************************************
-BakedTransformSystem::BakedTransformSystem(bool setSingleton) : Singleton(setSingleton) { }
-BakedTransformSystem::~BakedTransformSystem() { unsetSingleton(); }
+StaticTransformSystem::StaticTransformSystem(bool setSingleton) : Singleton(setSingleton) { }
+StaticTransformSystem::~StaticTransformSystem() { unsetSingleton(); }
 
-const string& BakedTransformSystem::getComponentName() const
+const string& StaticTransformSystem::getComponentName() const
 {
-	static const string name = "Baked Transform";
+	static const string name = "Static Transform";
 	return name;
 }

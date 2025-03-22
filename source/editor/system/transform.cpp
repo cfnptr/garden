@@ -125,8 +125,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Active", &isSelfActive))
 		transformView->setActive(isSelfActive);
 
-	auto isBaked = manager->has<BakedTransformComponent>(entity);
-	ImGui::BeginDisabled(isBaked);
+	auto isStatic = manager->has<StaticTransformComponent>(entity);
+	ImGui::BeginDisabled(isStatic);
 
 	auto f32x4Value = transformView->getPosition();
 	if (ImGui::DragFloat3("Position", &f32x4Value, 0.01f))
@@ -139,8 +139,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 	if (ImGui::BeginItemTooltip())
 	{
-		if (isBaked)
-			ImGui::Text("Disabled due to BakedTransformComponent!");
+		if (isStatic)
+			ImGui::Text("Disabled due to StaticTransformComponent!");
 		auto translation = getTranslation(transformView->calcModel());
 		ImGui::Text("Position of the entity.\nGlobal: %.1f, %.1f, %.1f",
 			translation.getX(), translation.getY(), translation.getZ());
@@ -159,8 +159,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 	if (ImGui::BeginItemTooltip())
 	{
-		if (isBaked)
-			ImGui::Text("Disabled due to BakedTransformComponent!");
+		if (isStatic)
+			ImGui::Text("Disabled due to StaticTransformComponent!");
 		auto scale = extractScale(transformView->calcModel());
 		ImGui::Text("Scale of the entity.\nGlobal: %.3f, %.3f, %.3f", 
 			scale.getX(), scale.getY(), scale.getZ());
@@ -182,8 +182,8 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 	if (ImGui::BeginItemTooltip())
 	{
-		if (isBaked)
-			ImGui::Text("Disabled due to BakedTransformComponent!");
+		if (isStatic)
+			ImGui::Text("Disabled due to StaticTransformComponent!");
 		auto rotation = radians(newEulerAngles);
 		auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).extractEulerAngles());
 		ImGui::Text("Rotation in degrees.\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",

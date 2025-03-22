@@ -126,7 +126,7 @@ void CsmRenderEditorSystem::editorRender()
 			{
 				auto uniforms = getCascadesUniforms();
 				cascadesDescriptorSet = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.csm.editor.cascades");
+				SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.editor.csm.cascades");
 			}
 
 			auto csmSystem = CsmRenderSystem::Instance::get();

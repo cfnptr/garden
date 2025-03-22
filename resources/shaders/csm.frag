@@ -24,7 +24,7 @@ pipelineState
 }
 
 in noperspective float2 fs.texCoords;
-out float fb.shadow;
+out float4 fb.shadow;
 
 uniform sampler2D depthBuffer;
 
@@ -34,6 +34,11 @@ uniform sampler2DArrayShadow
 	filter = linear;
 	wrap = clampToBorder;
 } shadowMap;
+uniform sampler2DArray
+{
+	filter = linear;
+	wrap = clampToBorder;
+} transparentMap;
 
 uniform ShadowData
 {
@@ -48,10 +53,11 @@ void main()
 	if (pixelDepth < shadowData.farPlanesIntens.z)
 		discard;
 
-	float shadow = computeCSM(shadowMap, shadowData.lightSpace, fs.texCoords, 
-		pixelDepth, shadowData.farPlanesIntens.xyz, shadowData.farPlanesIntens.w);
-	if (shadow < FLOAT_EPS6)
-		discard;
-
-	fb.shadow = 1.0f - shadow;
+	uint32 cascadeID; float3 lightCoords;
+	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, 
+		shadowData.farPlanesIntens.xyz, cascadeID, lightCoords);
+	float shadow = evaluateCsmShadows(shadowMap, cascadeID, lightCoords);
+	float3 transparency = mix(evaluateCsmTransparency(
+		transparentMap, cascadeID, lightCoords), float3(1.0f), shadow);
+	fb.shadow = float4(transparency, 1.0f - shadow * shadowData.farPlanesIntens.w);
 }
