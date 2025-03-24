@@ -37,6 +37,11 @@ struct CutoutSpriteFrame final : public SpriteAnimationFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
+
+	bool hasAnimation() final
+	{
+		return SpriteAnimationFrame::hasAnimation() || animateAlphaCutoff;
+	}
 };
 
 /**

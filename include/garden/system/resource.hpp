@@ -340,15 +340,14 @@ public:
 	 */
 	void clearScene();
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Stores curent scene to the scenes directory.
 	 * 
 	 * @param[in] path target scene resource path
 	 * @param rootEntity custom scene root or null
+	 * @param[in] directory scene resource directory
 	 */
-	void storeScene(const fs::path& path, ID<Entity> rootEntity = {});
-	#endif
+	void storeScene(const fs::path& path, ID<Entity> rootEntity = {}, const fs::path& directory = "");
 
 	/*******************************************************************************************************************
 	 * @brief Loads animation from the resource pack.
@@ -365,17 +364,16 @@ public:
 	 */
 	void destroyShared(const Ref<Animation>& animation);
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Stores animation to the animations directory.
 	 * 
 	 * @param[in] path target animation resource path
 	 * @param animation target animation instance
+	 * @param[in] directory animation resource directory
 	 */
-	void storeAnimation(const fs::path& path, ID<Animation> animation);
-	#endif
+	void storeAnimation(const fs::path& path, ID<Animation> animation, const fs::path& directory = "");
 
-	#if !GARDEN_DEBUG
+	#if GARDEN_PACK_RESOURCES
 	/**
 	 * @brief Returns pack reader instance.
 	 * @warning Use with caution, background task are using it at runtime.

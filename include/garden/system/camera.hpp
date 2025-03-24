@@ -156,6 +156,11 @@ private:
 public:
 	CameraProjection c = {};
 	FrameProjection f = {};
+
+	bool hasAnimation() final
+	{
+		return f.base.animate0 || f.base.animate1 || f.base.animate2;
+	}
 };
 
 /***********************************************************************************************************************

@@ -274,6 +274,11 @@ struct TransformFrame final : public AnimationFrame
 	f32x4 position = f32x4::zero;
 	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
+
+	bool hasAnimation() final
+	{
+		return animatePosition || animateScale || animateRotation;
+	}
 };
 
 /***********************************************************************************************************************

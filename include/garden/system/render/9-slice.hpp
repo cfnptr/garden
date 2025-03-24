@@ -44,6 +44,12 @@ struct NineSliceAnimationFrame : public SpriteAnimationFrame
 	float2 windowBorder = float2::zero;
 	bool animateTextureBorder = false;
 	bool animateWindowBorder = false;
+
+	bool hasAnimation() override
+	{
+		return SpriteAnimationFrame::hasAnimation() || 
+			animateTextureBorder || animateWindowBorder;
+	}
 };
 
 /***********************************************************************************************************************
@@ -147,14 +153,8 @@ protected:
 	{
 		A frame;
 		NineSliceRenderSystem::deserializeAnimation(deserializer, frame);
-
-		if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize ||
-			frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap ||
-			frame.animateTextureBorder || frame.animateWindowBorder)
-		{
+		if (frame.hasAnimation())
 			return ID<AnimationFrame>(animationFrames.create(frame));
-		}
-
 		return {};
 	}
 	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) override
