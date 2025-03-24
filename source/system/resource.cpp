@@ -1923,13 +1923,17 @@ void ResourceSystem::clearScene()
 	GARDEN_LOG_TRACE("Cleaned scene.");
 }
 
-#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 //**********************************************************************************************************************
-void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
+void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
 
-	auto scenesPath = appResourcesPath / "scenes";
+	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
+	auto scenesPath = (directory.empty() ? appResourcesPath : directory) / "scenes";
+	#else
+	auto scenesPath = directory / "scenes";
+	#endif
+
 	auto directoryPath = scenesPath / path.parent_path();
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
@@ -2022,7 +2026,6 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity)
 
 	GARDEN_LOG_TRACE("Stored scene. (path: " + path.generic_string() + ")");
 }
-#endif
 
 //**********************************************************************************************************************
 Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShared)
@@ -2175,14 +2178,18 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 		AnimationSystem::Instance::get()->destroy(ID<Animation>(animation));
 }
 
-#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 //**********************************************************************************************************************
-void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animation)
+void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animation, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(animation);
 
-	auto animationsPath = appResourcesPath / "animations";
+	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
+	auto animationsPath = (directory.empty() ? appResourcesPath : directory) / "animations";
+	#else
+	auto animationsPath = directory / "animations";
+	#endif
+
 	auto directoryPath = animationsPath / path.parent_path();
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
@@ -2241,7 +2248,6 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 
 	GARDEN_LOG_TRACE("Stored animation. (path: " + path.generic_string() + ")");
 }
-#endif
 
 /* TODO:
 	for (int i = 0; i < count; i++)

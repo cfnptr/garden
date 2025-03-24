@@ -43,6 +43,10 @@ struct AnimationFrame
 	 * @brief Destroys animation frame data.
 	 */
 	virtual ~AnimationFrame() { }
+	/**
+	 * @brief Returns true if frame has any animated properties.
+	 */
+	virtual bool hasAnimation() { return false; }
 };
 
 /**

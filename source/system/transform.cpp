@@ -607,7 +607,7 @@ ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserial
 	frame.animateScale = deserializer.read("scale", frame.scale, 3);
 	frame.animateRotation = deserializer.read("rotation", frame.rotation);
 	
-	if (frame.animatePosition || frame.animateScale || frame.animateRotation)
+	if (frame.hasAnimation())
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	return {};
 }

@@ -39,6 +39,11 @@ struct Cutout9SliceFrame final : public NineSliceAnimationFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
+
+	bool hasAnimation() final
+	{
+		return NineSliceAnimationFrame::hasAnimation() || animateAlphaCutoff;
+	}
 };
 
 /**

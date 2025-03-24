@@ -223,17 +223,11 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> ent
 
 	string colorMapPath;
 	deserializer.read("colorMapPath", colorMapPath);
+	if (colorMapPath.empty())
+		colorMapPath = "missing";
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	spriteRenderView->colorMapPath = colorMapPath;
 	#endif
-
-	if (colorMapPath.empty())
-	{
-		colorMapPath = "missing";
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		spriteRenderView->colorMapPath = "missing";
-		#endif
-	}
 
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (spriteRenderView->isArray)
@@ -325,17 +319,11 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 
 	string colorMapPath;
 	frame.animateColorMap = deserializer.read("colorMapPath", colorMapPath);
+	if (colorMapPath.empty())
+		colorMapPath = "missing";
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	frame.colorMapPath = colorMapPath;
 	#endif
-
-	if (colorMapPath.empty())
-	{
-		colorMapPath = "missing";
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		frame.colorMapPath = "missing";
-		#endif
-	}
 
 	boolValue = false;
 	deserializer.read("isArray", boolValue);
@@ -367,14 +355,14 @@ void SpriteRenderSystem::destroyResources(View<SpriteRenderComponent> spriteRend
 	spriteRenderView->descriptorSet = {};
 }
 
-Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Image> image)
+Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Image> colorMap)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(image);
+	GARDEN_ASSERT(colorMap);
 
-	auto imageView = GraphicsSystem::Instance::get()->get(image);
-	auto imageSize = (uint2)imageView->getSize();
-	auto imageType = imageView->getType();
+	auto colorMapView = GraphicsSystem::Instance::get()->get(colorMap);
+	auto imageSize = (uint2)colorMapView->getSize();
+	auto imageType = colorMapView->getType();
 
 	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
@@ -383,7 +371,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Ima
 	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
-	auto uniforms = getSpriteUniforms(imageView->getDefaultView());
+	auto uniforms = getSpriteUniforms(colorMapView->getDefaultView());
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), getBasePipeline(), std::move(uniforms), 1);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + path);

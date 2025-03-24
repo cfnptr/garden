@@ -138,7 +138,7 @@ ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserialize
 		frame.f.orthographic.animateDepth = deserializer.read("depth", frame.c.orthographic.depth);
 	}
 
-	if (frame.f.base.animate0 || frame.f.base.animate1 || frame.f.base.animate2)
+	if (frame.hasAnimation())
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	return {};
 }

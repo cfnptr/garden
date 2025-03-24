@@ -74,6 +74,12 @@ public:
 
 	SpriteAnimationFrame() : isEnabled(true), animateIsEnabled(false), animateColorFactor(false), animateUvSize(false),
 		animateUvOffset(false), animateColorMapLayer(false), animateColorMap(false), isArray(false) { }
+
+	bool hasAnimation() override
+	{
+		return animateIsEnabled | animateColorFactor | animateUvSize | 
+			animateUvOffset | animateColorMapLayer | animateColorMap;
+	}
 };
 
 /***********************************************************************************************************************
@@ -109,8 +115,7 @@ protected:
 	 * @param useLinearFilter use linear or nearest texture filter
 	 * @param isTranslucent is sprite using translucent rendering
 	 */
-	SpriteRenderSystem(const fs::path& pipelinePath, 
-		bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent);
+	SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent);
 
 	void init() override;
 	void deinit() override;
@@ -153,9 +158,9 @@ public:
 	 * @brief Creates shared base sprite descriptor set.
 	 * 
 	 * @param path sprite resource path
-	 * @param image sprite texture instance
+	 * @param colorMap sprite texture instance
 	 */
-	Ref<DescriptorSet> createSharedDS(const string& path, ID<Image> image);
+	Ref<DescriptorSet> createSharedDS(const string& path, ID<Image> colorMap);
 };
 
 /***********************************************************************************************************************
@@ -230,13 +235,8 @@ protected:
 	{
 		A frame;
 		SpriteRenderSystem::deserializeAnimation(deserializer, frame);
-
-		if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize ||
-			frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap)
-		{
+		if (frame.hasAnimation())
 			return ID<AnimationFrame>(animationFrames.create(frame));
-		}
-
 		return {};
 	}
 	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) override

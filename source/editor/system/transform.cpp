@@ -186,7 +186,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::Text("Disabled due to StaticTransformComponent!");
 		auto rotation = radians(newEulerAngles);
 		auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).extractEulerAngles());
-		ImGui::Text("Rotation in degrees.\nRadians: %.3f, %.3f, %.3f\nGlobal: %.1f, %.1f, %.1f",
+		ImGui::Text("Rotation in degrees.\nGlobal: %.1f, %.1f, %.1f\nRadians: %.3f, %.3f, %.3f",
 			rotation.getX(), rotation.getY(), rotation.getZ(), global.getX(), global.getY(), global.getZ());
 		ImGui::EndTooltip();
 	}

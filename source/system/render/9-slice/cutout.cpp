@@ -75,13 +75,8 @@ ID<AnimationFrame> Cutout9SliceSystem::deserializeAnimation(IDeserializer& deser
 	NineSliceRenderSystem::deserializeAnimation(deserializer, frame);
 	frame.animateAlphaCutoff = deserializer.read("alphaCutoff", frame.alphaCutoff);
 
-	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
-		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap ||
-		frame.animateAlphaCutoff || frame.animateTextureBorder || frame.animateWindowBorder)
-	{
+	if (frame.hasAnimation())
 		return ID<AnimationFrame>(animationFrames.create(frame));
-	}
-
 	return {};
 }
 void Cutout9SliceSystem::animateAsync(View<Component> component,

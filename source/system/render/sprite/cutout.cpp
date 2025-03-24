@@ -75,13 +75,8 @@ ID<AnimationFrame> CutoutSpriteSystem::deserializeAnimation(IDeserializer& deser
 	SpriteRenderSystem::deserializeAnimation(deserializer, frame);
 	frame.animateAlphaCutoff = deserializer.read("alphaCutoff", frame.alphaCutoff);
 
-	if (frame.animateIsEnabled || frame.animateColorFactor || frame.animateUvSize || 
-		frame.animateUvOffset || frame.animateColorMapLayer || frame.animateColorMap || 
-		frame.animateAlphaCutoff)
-	{
+	if (frame.hasAnimation())
 		return ID<AnimationFrame>(animationFrames.create(frame));
-	}
-
 	return {};
 }
 void CutoutSpriteSystem::animateAsync(View<Component> component,
