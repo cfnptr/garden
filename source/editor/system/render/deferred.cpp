@@ -219,7 +219,7 @@ void DeferredRenderEditorSystem::deferredRender()
 			{ "USE_SUB_SURFACE_SCATTERING", Pipeline::SpecConstValue(deferredSystem->useSSS()) },
 		};
 		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("editor/pbr-lighting",
-			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConstValues);
+			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConstValues);
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();

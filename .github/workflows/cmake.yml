@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
-  VCPKG_CACHE: Windows-zlib-openssl
+  VCPKG_CACHE: Windows-zlib-openssl-assimp
 
 jobs:
   build:
@@ -34,22 +34,29 @@ jobs:
     - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest'
       run: |
-        wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
-        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list https://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
-        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev vulkan-sdk
+        vulkanVersion=$(curl -s https://vulkan.lunarg.com/sdk/latest/linux.txt)
+        export VULKAN_SDK=~/vulkan-sdk/$vulkanVersion/x86_64
+        cd ~ && mkdir vulkan-sdk && curl -O https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
+        tar xf vulkan_sdk.tar.xz -C vulkan-sdk
+        echo "VULKAN_SDK=$VULKAN_SDK" >> $GITHUB_ENV
+        echo "PATH=$PATH:$VULKAN_SDK/bin" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$VULKAN_SDK/lib" >> $GITHUB_ENV
+        sudo cp -r $VULKAN_SDK/include/vulkan/ /usr/local/include/
+        sudo cp -P $VULKAN_SDK/lib/libvulkan.so* /usr/local/lib/
+        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev libassimp-dev
 
     - name: Install macOS packages
       if: matrix.os == 'macos-latest'
       run: |
-        brew update && brew install zlib openssl
         vulkanVersion=$(curl -s https://vulkan.lunarg.com/sdk/latest/mac.txt)
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
         unzip vulkan_sdk.zip
-        sudo ./InstallVulkan-$vulkanVersion.app/Contents/MacOS/InstallVulkan-$vulkanVersion --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr 
+        sudo ./InstallVulkan-$vulkanVersion.app/Contents/MacOS/InstallVulkan-$vulkanVersion --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr
+        brew update && brew install zlib openssl assimp
 
     - name: Install Windows packages
       if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
-      run: vcpkg install zlib:x64-windows-static openssl:x64-windows-static
+      run: vcpkg install zlib:x64-windows-static openssl:x64-windows-static assimp:x64-windows-static
 
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'

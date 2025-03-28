@@ -118,7 +118,7 @@ static ID<GraphicsPipeline> createDownsamplePipeline(
 	toneMappingSystem->setConsts(true, toneMappingSystem->getToneMapper());
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"bloom/downsample", framebuffer, false, true, 0, 0, specConsts);
+		"bloom/downsample", framebuffer, false, true, 0, 0, &specConsts);
 }
 static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 {

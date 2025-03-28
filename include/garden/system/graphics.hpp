@@ -74,7 +74,9 @@ using DescriptorSetBuffers = vector<vector<ID<Buffer>>>;
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
 	DescriptorSetBuffers cameraConstantsBuffers;
+	CameraConstants currentCameraConstants = {};
 	uint64 frameIndex = 0, tickIndex = 0;
+	double beginSleepClock = 0.0;
 	ID<Buffer> cubeVertexBuffer = {};
 	ID<Buffer> quadVertexBuffer = {};
 	ID<ImageView> emptyTexture = {};
@@ -83,8 +85,6 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> normalMapTexture = {};
 	ID<ImageView> depthStencilBuffer = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
-	CameraConstants currentCameraConstants = {};
-	double beginSleepClock = 0.0;
 	float renderScale = 1.0f;
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;

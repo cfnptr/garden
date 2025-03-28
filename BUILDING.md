@@ -47,7 +47,7 @@ Note! Use appropriate github link if Garden engine is used as a third-party libr
 
 ## 6. Install vcpkg package manager
 
-1. Repoen **CMD** or **Terminal** app as Administrator. (Right click the app)
+1. Reopen **CMD** or **Terminal** app as Administrator. (Right click the app)
 2. Run ```scripts/update-vcpkg.bat``` command from the repository *scripts/* directory
 3. Reopen **CMD** or **Terminal** app to get updated system environment variables.
 
@@ -59,7 +59,7 @@ Or
 
 ## 7. Install required packages
 
-1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static``` using **Terminal** or **CMD** app
+1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static assimp:x64-windows-static``` using **Terminal** or **CMD** app
 
 Alternatively run ```install-packages.bat``` from the repository **scripts/** directory
 
@@ -74,13 +74,13 @@ Alternatively run ```install-packages.bat``` from the repository **scripts/** di
 ## 2. Install required packages
 
 1. Run ```sudo apt-get update``` command using **Terminal** app
-2. And ```sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev```
+2. And ```sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev libassimp-dev```
 
 ## 3. Install Vulkan SDK
 
 * Install latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **Linux**
 
-Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
+Follow [this](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html) guide to install SDK for your linux distribution.
 
 
 # macOS (14/15)
@@ -94,7 +94,7 @@ Use "Ubuntu Packages" tab and "Latest Supported Release" instructions for that.
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
 2. Run ```brew update``` command using **Terminal** app
-3. And ```brew install git cmake zlib openssl```
+3. And ```brew install git cmake zlib openssl assimp```
 
 ## 3. Install Vulkan SDK
 

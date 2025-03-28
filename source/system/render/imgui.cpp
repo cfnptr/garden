@@ -731,8 +731,8 @@ void ImGuiRenderSystem::swapchainRecreate()
 
 	if (swapchainChanges.bufferCount)
 	{
-		auto vertexSize = vertexBuffers.size() > 0 ? graphicsSystem->get(vertexBuffers[0])->getBinarySize() : 0;
-		auto indexSize = indexBuffers.size() > 0 ? graphicsSystem->get(indexBuffers[0])->getBinarySize() : 0;
+		auto vertexSize = !vertexBuffers.empty() ? graphicsSystem->get(vertexBuffers[0])->getBinarySize() : 0;
+		auto indexSize = !indexBuffers.empty() ? graphicsSystem->get(indexBuffers[0])->getBinarySize() : 0;
 
 		for (auto buffer : indexBuffers)
 			graphicsSystem->destroy(buffer);

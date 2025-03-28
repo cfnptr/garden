@@ -74,7 +74,7 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneM
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("tone-mapping",
-		deferredSystem->getLdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConsts);
+		deferredSystem->getLdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConsts);
 }
 
 //**********************************************************************************************************************

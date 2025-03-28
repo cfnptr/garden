@@ -19,6 +19,7 @@
 #pragma once
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
+#include "garden/graphics/lod.hpp"
 #include "garden/resource/image.hpp"
 #include "garden/system/graphics.hpp"
 #include <queue>
@@ -29,6 +30,18 @@
 
 namespace garden
 {
+
+/**
+ * @brief Additional buffer load flags.
+ */
+enum class BufferLoadFlags : uint8
+{
+	None        = 0x00, /**< No additional image load flags. */
+	LoadSync    = 0x01, /**< Load buffer synchronously. (Blocking call) */
+	LoadShared  = 0x02, /**< Load and share instance on second load call. */
+};
+
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(BufferLoadFlags)
 
 /**
  * @brief Additional image load flags.
@@ -95,8 +108,10 @@ protected:
 		ID<Image> instance = {};
 	};
 	
+	LinearPool<LodBuffer, false> lodBuffers;
 	map<Hash128, Ref<Buffer>> sharedBuffers;
 	map<Hash128, Ref<Image>> sharedImages;
+	map<Hash128, Ref<LodBuffer>> sharedLodBuffers;
 	map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
 	map<Hash128, Ref<Animation>> sharedAnimations;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
@@ -106,6 +121,7 @@ protected:
 	vector<LoadedBufferItem> loadedBufferArray;
 	vector<LoadedImageItem> loadedImageArray;
 	mutex queueLocker = {};
+	uint64 lodBufferVersion = 1;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
 	vector<fs::path> loadedImagePaths = {};
@@ -131,7 +147,8 @@ protected:
 	~ResourceSystem() override;
 
 	void dequeuePipelines();
-	void dequeueBuffersAndImages();
+	void dequeueBuffers();
+	void dequeueImages();
 
 	void init();
 	void deinit();
@@ -166,7 +183,7 @@ public:
 	 * @param[out] back back cubemap image pixel data container
 	 * @param[out] front front cubemap image pixel data container
 	 * @param[out] size loaded cubemap image size in pixels
-	 * @para clamp16 clamp color values to a 16-bit range
+	 * @param clamp16 clamp color values to a 16-bit range
 	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
 	void loadCubemapData(const fs::path& path, vector<uint8>& left, vector<uint8>& right,
@@ -219,7 +236,7 @@ public:
 
 	/**
 	 * @brief Destroys shared image if it's the last one.
-	 * @param[in] target shared image reference
+	 * @param[in] image target shared image reference
 	 */
 	void destroyShared(const Ref<Image>& image);
 
@@ -234,26 +251,42 @@ public:
 	 */
 	const vector<fs::path>& getLoadedImagePaths() const noexcept { return loadedImagePaths; }
 
-	// TODO: storeImage
-
-	/* TODO: refactor
-	shared_ptr<Model> loadModel(const fs::path& path);
-	void loadModelBuffers(shared_ptr<Model> model);
-
-	Ref<Buffer> loadBuffer(shared_ptr<Model> model, ModelData::Accessor accessor,
-		Buffer::Bind bind, Buffer::Access access = Buffer::Access::None,
-		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true); // TODO: offset, count?
-	Ref<Buffer> loadVertexBuffer(shared_ptr<Model> model, ModelData::Primitive primitive,
-		Buffer::Bind bind, const vector<ModelData::Attribute::Type>& attributes,
-		Buffer::Access access = Buffer::Access::None,
-		Buffer::Strategy strategy = Buffer::Strategy::Default, bool loadAsync = true);
-	*/
+	/*******************************************************************************************************************
+	 * @brief Loads LOD buffer from the resource pack.
+	 * @note Loads from the models directory in debug build.
+	 *
+	 * @param[in] path target LOD buffer resource path
+	 * @param maxMipCount maximum LOD level count (0 = unlimited)
+	 * @param strategy buffers memory allocation strategy
+	 * @param flags additional buffer load flags
+	 */
+	Ref<LodBuffer> loadLodBuffer(const fs::path& path, const vector<BufferChannel>& channels, uint8 maxLodCount = 0, 
+		Buffer::Strategy strategy = Buffer::Strategy::Default, BufferLoadFlags flags = BufferLoadFlags::None);
 
 	/**
+	 * @brief Destroys shared LOD buffer if it's the last one.
+	 * @param[in] lodBuffer target shared LOD buffer reference
+	 */
+	void destroyShared(const Ref<LodBuffer>& lodBuffer);
+	/**
 	 * @brief Destroys shared buffer if it's the last one.
-	 * @param[in] target shared buffer reference
+	 * @param[in] buffer target shared buffer reference
 	 */
 	void destroyShared(const Ref<Buffer>& buffer);
+
+	/**
+	 * @brief Returns LOD buffer data accessor.
+	 * @param buffer target LOD buffer instance
+	 */
+	View<LodBuffer> get(ID<LodBuffer> lodBuffer) const noexcept { return lodBuffers.get(lodBuffer); }
+	/**
+	 * @brief Returns LOD buffer data accessor.
+	 * @param buffer target LOD buffer instance
+	 */
+	View<LodBuffer> get(const Ref<LodBuffer>& lodBuffer) const noexcept
+	{
+		return lodBuffers.get(ID<LodBuffer>(lodBuffer));
+	}
 
 	/**
 	 * @brief Returns current loaded buffer instance.
@@ -285,7 +318,7 @@ public:
 
 	/**
 	 * @brief Destroys shared descriptor set if it's the last one.
-	 * @param[in] target shared descriptor set reference
+	 * @param[in] descriptorSet target shared descriptor set reference
 	 */
 	void destroyShared(const Ref<DescriptorSet>& descriptorSet);
 
@@ -299,15 +332,17 @@ public:
 	 * @param loadAsync load pipeline asynchronously without blocking
 	 * @param subpassIndex framebuffer subpass index
 	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or empty
+	 * @param[in] specConsts specialization constants array or null
 	 * @param[in] stateOverrides pipeline state overrides or null
+	 * @param[in,out] shaderOverrides pipeline shader code overrides or null
 	 * 
 	 * @throw GardenError if failed to load graphics pipeline.
 	 */
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, ID<Framebuffer> framebuffer, 
 		bool useAsyncRecording = false, bool loadAsync = true, uint8 subpassIndex = 0,
-		uint32 maxBindlessCount = 0, const map<string, Pipeline::SpecConstValue>& specConstValues = {},
-		const GraphicsPipeline::StateOverrides* stateOverrides = nullptr);
+		uint32 maxBindlessCount = 0, const map<string, Pipeline::SpecConstValue>* specConstValues = nullptr,
+		const GraphicsPipeline::StateOverrides* stateOverrides = nullptr,
+		GraphicsPipeline::ShaderOverrides* shaderOverrides = nullptr);
 	
 	/**
 	 * @brief Loads compute pipeline from the resource pack shaders.
@@ -317,15 +352,17 @@ public:
 	 * @param useAsyncRecording can be used for multithreaded commands recording
 	 * @param loadAsync load pipeline asynchronously without blocking
 	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or empty
-	 * @param[in] samplerStateOverrides sampler state override array or empty
+	 * @param[in] specConsts specialization constants array or null
+	 * @param[in] samplerStateOverrides sampler state override array or null
+	 * @param[in,out] shaderOverrides pipeline shader code overrides or null
 	 * 
 	 * @throw GardenError if failed to load compute pipeline.
 	 */
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const map<string, Pipeline::SpecConstValue>& specConstValues = {},
-		const map<string, Pipeline::SamplerState>& samplerStateOverrides = {});
+		const map<string, Pipeline::SpecConstValue>* specConstValues = nullptr,
+		const map<string, Pipeline::SamplerState>* samplerStateOverrides = nullptr,
+		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
@@ -360,7 +397,7 @@ public:
 
 	/**
 	 * @brief Destroys shared animation if it's the last one.
-	 * @param[in] target shared animation reference
+	 * @param[in] animation target shared animation reference
 	 */
 	void destroyShared(const Ref<Animation>& animation);
 

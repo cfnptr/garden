@@ -14,7 +14,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     status=$?
 
     if [ $status -ne 0 ]; then
-        echo "Hmebrew failed to install required packages."
+        echo "Homebrew failed to install required packages."
         exit $status
     fi
 else
@@ -26,7 +26,7 @@ else
         exit $status
     fi
 
-    sudo apt-get update && sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev
+    sudo apt-get update && sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev libassimp-dev
     status=$?
 
     if [ $status -ne 0 ]; then

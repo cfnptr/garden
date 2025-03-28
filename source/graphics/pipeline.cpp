@@ -258,7 +258,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Shade
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
 		(uint32)pushConstantRanges.size(), pushConstantRanges.data());
 
-	if (descriptorSetLayouts.size() > 0)
+	if (!descriptorSetLayouts.empty())
 	{
 		pipelineLayoutInfo.setLayoutCount = (uint32)descriptorSetLayouts.size();
 		pipelineLayoutInfo.pSetLayouts = (const vk::DescriptorSetLayout*)descriptorSetLayouts.data();
