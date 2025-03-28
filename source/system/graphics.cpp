@@ -429,6 +429,8 @@ void GraphicsSystem::update()
 		}
 	}
 }
+
+//**********************************************************************************************************************
 void GraphicsSystem::present()
 {
 	SET_CPU_ZONE_SCOPED("Frame Present");

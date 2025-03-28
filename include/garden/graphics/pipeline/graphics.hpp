@@ -272,6 +272,16 @@ public:
 		map<string, Pipeline::SamplerState> samplerStates;
 		map<uint8, vector<BlendState>> blendStates;
 	};
+	/**
+	 * @brief Graphics pipeline shader code overrides.
+	 * @details It allows to override pipeline shader code.
+	 */
+	struct ShaderOverrides final
+	{
+		vector<uint8> vertexCode;
+		vector<uint8> fragmentCode;
+		vector<uint8> headerData;
+	};
 
 	/**
 	 * @brief Graphics pipeline create data container.

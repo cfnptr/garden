@@ -37,6 +37,11 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 
+#include "assimp/Importer.hpp"
+#include "assimp/DefaultLogger.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
+
 #include <fstream>
 #include <iostream>
 
@@ -67,6 +72,17 @@ namespace garden::graphics
 		uint8 maxMipCount = 0;
 		ImageLoadFlags flags = {};
 	};
+	struct LodBufferLoadData final
+	{
+		uint64 version = 0;
+		vector<BufferChannel> channels;
+		fs::path path;
+		ID<LodBuffer> instance = {};
+		Buffer::Strategy strategy = {};
+		uint8 maxLodCount = 0;
+		BufferLoadFlags flags = {};
+	};
+
 	struct PipelineLoadData
 	{
 		uint64 version = 0;
@@ -95,34 +111,6 @@ namespace garden::graphics
 		ID<ComputePipeline> instance = {};
 		bool useAsyncRecording = false;
 	};
-
-	/* TODO: refactor
-	struct GeneralBufferLoadData final
-	{
-		uint64 version = 0;
-		shared_ptr<Model> model;
-		ID<Buffer> instance = {};
-		ModelData::Accessor accessor;
-		Buffer::Bind bind = {};
-		Buffer::Access access = {};
-		Buffer::Strategy strategy = {};
-
-		GeneralBufferLoadData(ModelData::Accessor accessor) : accessor(accessor) { }
-	};
-	struct VertexBufferLoadData final
-	{
-		uint64 version = 0;
-		vector<ModelData::Attribute::Type> attributes;
-		shared_ptr<Model> model;
-		ID<Buffer> instance = {};
-		ModelData::Primitive primitive;
-		Buffer::Bind bind = {};
-		Buffer::Access access = {};
-		Buffer::Strategy strategy = {};
-
-		VertexBufferLoadData(ModelData::Primitive primitive) : primitive(primitive) { }
-	};
-	*/
 }
 
 //**********************************************************************************************************************
@@ -154,6 +142,8 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
+
+	Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE); // TODO: log to the garden logger.
 	#endif
 }
 ResourceSystem::~ResourceSystem()
@@ -168,6 +158,10 @@ ResourceSystem::~ResourceSystem()
 		manager->unregisterEvent("BufferLoaded");
 	}
 
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	Assimp::DefaultLogger::kill();
+	#endif
+
 	unsetSingleton();
 }
 
@@ -180,26 +174,26 @@ void ResourceSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		while (loadedImageQueue.size() > 0)
+		while (!loadedImageQueue.empty())
 		{
 			auto& item = loadedImageQueue.front();
 			BufferExt::destroy(item.staging);
 			ImageExt::destroy(item.image);
 			loadedImageQueue.pop();
 		}
-		while (loadedBufferQueue.size() > 0)
+		while (!loadedBufferQueue.empty())
 		{
 			auto& item = loadedBufferQueue.front();
 			BufferExt::destroy(item.staging);
 			BufferExt::destroy(item.buffer);
 			loadedBufferQueue.pop();
 		}
-		while (loadedComputeQueue.size() > 0)
+		while (!loadedComputeQueue.empty())
 		{
 			PipelineExt::destroy(loadedComputeQueue.front().pipeline);
 			loadedComputeQueue.pop();
 		}
-		while (loadedGraphicsQueue.size() > 0)
+		while (!loadedGraphicsQueue.empty())
 		{
 			PipelineExt::destroy(loadedGraphicsQueue.front().pipeline);
 			loadedGraphicsQueue.pop();
@@ -218,7 +212,7 @@ void ResourceSystem::dequeuePipelines()
 	auto graphicsPipelines = graphicsAPI->graphicsPipelinePool.getData();
 	auto graphicsOccupancy = graphicsAPI->graphicsPipelinePool.getOccupancy();
 
-	while (loadedGraphicsQueue.size() > 0)
+	while (!loadedGraphicsQueue.empty())
 	{
 		auto& item = loadedGraphicsQueue.front();
 		if (*item.instance <= graphicsOccupancy)
@@ -257,7 +251,7 @@ void ResourceSystem::dequeuePipelines()
 	auto computePipelines = graphicsAPI->computePipelinePool.getData();
 	auto computeOccupancy = graphicsAPI->computePipelinePool.getOccupancy();
 
-	while (loadedComputeQueue.size() > 0)
+	while (!loadedComputeQueue.empty())
 	{
 		auto& item = loadedComputeQueue.front();
 		if (*item.instance <= computeOccupancy)
@@ -280,16 +274,17 @@ void ResourceSystem::dequeuePipelines()
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::dequeueBuffersAndImages()
+void ResourceSystem::dequeueBuffers()
 {
-	SET_CPU_ZONE_SCOPED("Loaded Buffers/Images Dequeue");
+	SET_CPU_ZONE_SCOPED("Loaded Buffers Dequeue");
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 
 	#if GARDEN_DEBUG
-	if (!loadedBufferQueue.empty() || !loadedImageQueue.empty())
+	auto hasDequeueItems = !loadedBufferQueue.empty();
+	if (hasDequeueItems)
 	{
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer", Color::transparent);
@@ -297,7 +292,7 @@ void ResourceSystem::dequeueBuffersAndImages()
 	}
 	#endif
 
-	while (loadedBufferQueue.size() > 0)
+	while (!loadedBufferQueue.empty())
 	{
 		auto& item = loadedBufferQueue.front();
 		if (*item.instance <= graphicsAPI->bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
@@ -328,6 +323,29 @@ void ResourceSystem::dequeueBuffersAndImages()
 			graphicsSystem->stopRecording();
 			graphicsAPI->bufferPool.destroy(staging);
 
+			for (auto& lod : lodBuffers)
+			{
+				auto levelCount = lod.getLevelCount();
+				if (hasAnyFlag(item.buffer.getBind(), Buffer::Bind::Vertex))
+				{
+					auto& vertexBuffers = lod.getVertexBuffers();
+					for (uint32 i = 0; i < levelCount; i++)
+					{
+						if (vertexBuffers[i] == item.instance)
+							lod.updateReadyState(i, item.instance);
+					}
+				}
+				if (hasAnyFlag(item.buffer.getBind(), Buffer::Bind::Index))
+				{
+					auto& indexBuffers = lod.getVertexBuffers();
+					for (uint32 i = 0; i < levelCount; i++)
+					{
+						if (indexBuffers[i] == item.instance)
+							lod.updateReadyState(i, item.instance);
+					}
+				}
+			}
+
 			loadedBuffer = item.instance;
 			loadedBufferPath = std::move(item.path);
 			manager->runEvent("BufferLoaded");
@@ -342,17 +360,33 @@ void ResourceSystem::dequeueBuffersAndImages()
 	}
 
 	#if GARDEN_DEBUG
-	if (!loadedBufferQueue.empty() || !loadedImageQueue.empty())
+	if (hasDequeueItems)
 	{
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		if (!loadedBufferQueue.empty())
-		{
-			END_GPU_DEBUG_LABEL();
-		}
-		if (!loadedImageQueue.empty())
-		{
-			BEGIN_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
-		}
+		END_GPU_DEBUG_LABEL();
+		graphicsSystem->stopRecording();
+	}
+	#endif
+
+	loadedBuffer = {};
+	loadedBufferPath = "";
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::dequeueImages()
+{
+	SET_CPU_ZONE_SCOPED("Loaded Images Dequeue");
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto manager = Manager::Instance::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+
+	#if GARDEN_DEBUG
+	auto hasDequeueItems = !loadedImageQueue.empty();
+	if (hasDequeueItems)
+	{
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		BEGIN_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
 		graphicsSystem->stopRecording();
 	}
 	#endif
@@ -360,7 +394,7 @@ void ResourceSystem::dequeueBuffersAndImages()
 	auto images = graphicsAPI->imagePool.getData();
 	auto imageOccupancy = graphicsAPI->imagePool.getOccupancy();
 
-	while (loadedImageQueue.size() > 0)
+	while (!loadedImageQueue.empty())
 	{
 		auto& item = loadedImageQueue.front();
 		if (*item.instance <= imageOccupancy)
@@ -405,7 +439,7 @@ void ResourceSystem::dequeueBuffersAndImages()
 	}
 
 	#if GARDEN_DEBUG
-	if (!loadedImageQueue.empty())
+	if (hasDequeueItems)
 	{
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		END_GPU_DEBUG_LABEL();
@@ -413,10 +447,8 @@ void ResourceSystem::dequeueBuffersAndImages()
 	}
 	#endif
 
-	loadedBuffer = {};
 	loadedImage = {};
 	loadedImagePaths = {};
-	loadedBufferPath = "";
 }
 
 //**********************************************************************************************************************
@@ -443,7 +475,8 @@ void ResourceSystem::input()
 
 	queueLocker.lock();
 	dequeuePipelines();
-	dequeueBuffersAndImages();
+	dequeueBuffers();
+	dequeueImages();
 	queueLocker.unlock();
 }
 
@@ -1246,6 +1279,237 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 }
 
 //**********************************************************************************************************************
+static bool hasChannel(const vector<BufferChannel>& channels, BufferChannel channel) noexcept
+{
+	for (auto _channel : channels)
+	{
+		if (channel == _channel)
+			return true;
+	}
+	return false;
+}
+
+static const aiScene* loadLodBufferData(const fs::path& path, 
+	const vector<BufferChannel>& channels, Assimp::Importer& importer, bool optimizeMesh)
+{
+	auto removeComponents = aiComponent_BONEWEIGHTS | aiComponent_ANIMATIONS | 
+		aiComponent_TEXTURES | aiComponent_LIGHTS | aiComponent_CAMERAS | aiComponent_MATERIALS;
+	if (!hasChannel(channels, BufferChannel::Normals))
+		removeComponents |= aiComponent_NORMALS;
+	if (!hasChannel(channels, BufferChannel::Tangents) && !hasChannel(channels, BufferChannel::Bitangents))
+		removeComponents |= aiComponent_TANGENTS_AND_BITANGENTS;
+	if (!hasChannel(channels, BufferChannel::TextureCoords))
+		removeComponents |= aiComponent_TEXCOORDS;
+	if (!hasChannel(channels, BufferChannel::VertexColors))
+		removeComponents |= aiComponent_COLORS;
+	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeComponents);
+	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_POINT | aiPrimitiveType_LINE);
+
+	auto flags = aiProcess_MakeLeftHanded | aiProcess_FlipUVs | aiProcess_Triangulate | aiProcess_SortByPType | 
+		aiProcess_RemoveComponent | aiProcess_GenUVCoords | aiProcess_FindInvalidData | 
+		aiProcess_PreTransformVertices | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes | 
+		aiProcess_OptimizeGraph | aiProcess_ValidateDataStructure;
+	if (optimizeMesh)
+		flags |= aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality;
+	if (hasChannel(channels, BufferChannel::Tangents) || hasChannel(channels, BufferChannel::Bitangents))
+		flags |= aiProcess_CalcTangentSpace;
+	flags |= hasChannel(channels, BufferChannel::Normals) ? aiProcess_GenNormals : aiProcess_DropNormals;
+
+	auto aiScene = importer.ReadFile(path.generic_string(), flags);
+
+	if (!aiScene)
+	{
+		GARDEN_LOG_ERROR("Failed to import LOD buffer.");
+		return nullptr;
+	}
+	if (!aiScene->HasMeshes())
+	{
+		GARDEN_LOG_ERROR("Imported LOD buffer has no meshes.");
+		return nullptr;
+	}
+
+	auto mesh = aiScene->mMeshes[0];
+	if (!mesh->HasFaces())
+	{
+		GARDEN_LOG_ERROR("Imported LOD buffer mesh has no faces.");
+		return nullptr;
+	}
+
+	uint32 texCoords = 0, vertColors = 0;
+	for (auto channel : channels)
+	{
+		if (channel == BufferChannel::Positions && !mesh->HasPositions())
+		{
+			GARDEN_LOG_ERROR("Imported LOD buffer does not have required positions channel.");
+			return nullptr;
+		}
+		if (channel == BufferChannel::Normals && !mesh->HasNormals())
+		{
+			GARDEN_LOG_ERROR("Imported LOD buffer does not have required normals channel.");
+			return nullptr;
+		}
+		if ((channel == BufferChannel::Tangents || channel == BufferChannel::Bitangents) && 
+			!mesh->HasTangentsAndBitangents())
+		{
+			GARDEN_LOG_ERROR("Imported LOD buffer does not have required tangents and bitangents channel.");
+			return nullptr;
+		}
+		if (channel == BufferChannel::TextureCoords)
+		{
+			if (!mesh->HasTextureCoords(texCoords))
+			{
+				GARDEN_LOG_ERROR("Imported LOD buffer does not have required texture coords channel.");
+				return nullptr;
+			}
+			texCoords++;
+		}
+		if (channel == BufferChannel::VertexColors)
+		{
+			if (!mesh->HasVertexColors(vertColors))
+			{
+				GARDEN_LOG_ERROR("Imported LOD buffer does not have required vertex colors channel.");
+				return nullptr;
+			}
+			vertColors++;
+		}
+	}
+
+	return aiScene;
+}
+static void copyLodBufferData(const vector<BufferChannel>& channels, const aiScene* aiScene)
+{
+	psize vertexDataSize = 0;
+	for (auto channel : channels)
+		vertexDataSize += toBinarySize(channel);
+
+	auto mesh = aiScene->mMeshes[0];
+	// mesh->mVertices
+}
+
+//**********************************************************************************************************************
+Ref<LodBuffer> ResourceSystem::loadLodBuffer(const fs::path& path, const vector<BufferChannel>& channels,
+	uint8 maxLodCount, Buffer::Strategy strategy, BufferLoadFlags flags)
+{
+	#if GARDEN_DEBUG
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(!channels.empty());
+
+	string debugName = hasAnyFlag(flags, BufferLoadFlags::LoadShared) ? "shared." : "";
+	#endif
+
+	Hash128 hash;
+	if (hasAnyFlag(flags, BufferLoadFlags::LoadShared))
+	{
+		auto hashState = Hash128::getState();
+		Hash128::resetState(hashState);
+		auto pathString = path.generic_string();
+		Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+		Hash128::updateState(hashState, &maxLodCount, sizeof(uint8));
+		Hash128::updateState(hashState, &flags, sizeof(BufferLoadFlags));
+		hash = Hash128::digestState(hashState);
+
+		auto result = sharedLodBuffers.find(hash);
+		if (result != sharedLodBuffers.end())
+		{
+			auto lodBufferView = lodBuffers.get(result->second);
+			auto& vertexBuffers = lodBufferView->getVertexBuffers();
+			auto& indexBuffers = lodBufferView->getIndexBuffers();
+			auto levelCount = lodBufferView->getLevelCount();
+
+			for (uint32 i = 0; i < levelCount; i++)
+			{
+				LoadedBufferItem item;
+				item.path = path;
+				item.instance = ID<Buffer>(vertexBuffers[i]);
+				loadedBufferArray.push_back(std::move(item));
+
+				item.instance = ID<Buffer>(indexBuffers[i]);
+				loadedBufferArray.push_back(std::move(item));
+			}
+			return result->second;
+		}
+	}
+	
+	auto version = lodBufferVersion++;
+	auto lodBuffer = lodBuffers.create();
+
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	if (!hasAnyFlag(flags, BufferLoadFlags::LoadSync) && threadSystem)
+	{
+		auto data = new LodBufferLoadData();
+		data->version = version;
+		data->channels = channels;
+		data->path = path;
+		data->instance = lodBuffer;
+		data->strategy = strategy;
+		data->maxLodCount = maxLodCount;
+		data->flags = flags;
+
+		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
+		{
+			SET_CPU_ZONE_SCOPED("LOD Buffer Load");
+
+			Assimp::Importer importer;
+			auto aiScene = loadLodBufferData(data->path, data->channels, importer, true);
+			if (!aiScene)
+			{
+				delete data;
+				return;
+			}
+
+			/*
+			BufferQueueItem item =
+			{
+				BufferExt::create(type, format, data->bind, data->strategy, 
+					u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, data->version),
+				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
+					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0),
+				std::move(paths),
+				realSize,
+				data->instance,
+			};
+			
+
+			// TODO: copy buffer
+			item.staging.flush();
+
+			delete data;
+			queueLocker.lock();
+			loadedBufferQueue.push(std::move(item));
+			queueLocker.unlock();
+			*/
+		});
+	}
+	else
+	{
+
+	}
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::destroyShared(const Ref<LodBuffer>& lodBuffer)
+{
+	if (!lodBuffer || lodBuffer.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedLodBuffers.begin(); i != sharedLodBuffers.end(); i++)
+	{
+		if (i->second != lodBuffer)
+			continue;
+		sharedLodBuffers.erase(i);
+		break;
+	}
+
+	if (lodBuffer.isLastRef())
+	{
+		auto lodBufferView = lodBuffers.get(lodBuffer);
+		for (auto& buffer : lodBufferView->getVertexBuffers())
+			destroyShared(buffer);
+		for (auto& buffer : lodBufferView->getIndexBuffers())
+			destroyShared(buffer);
+		lodBuffers.destroy(ID<LodBuffer>(lodBuffer));
+	}
+}
 void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 {
 	if (!buffer || buffer.getRefCount() > 2)
@@ -1408,12 +1672,11 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	ID<Framebuffer> framebuffer,  bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
-	uint32 maxBindlessCount, const map<string, Pipeline::SpecConstValue>& specConstValues,
-	const GraphicsPipeline::StateOverrides* stateOverrides)
+	uint32 maxBindlessCount, const map<string, Pipeline::SpecConstValue>* specConstValues,
+	const GraphicsPipeline::StateOverrides* stateOverrides, GraphicsPipeline::ShaderOverrides* shaderOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(framebuffer);
-
 	// TODO: validate specConstValues and stateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -1474,7 +1737,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	}
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (loadAsync && threadSystem)
+	if (loadAsync && threadSystem && !shaderOverrides)
 	{
 		auto data = new GraphicsPipelineLoadData();
 		data->shaderPath = path;
@@ -1482,7 +1745,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->renderPass = renderPass;
 		data->subpassIndex = subpassIndex;
 		data->colorFormats = std::move(colorFormats);
-		data->specConstValues = specConstValues;
+		if (specConstValues)
+			data->specConstValues = *specConstValues;
 		data->instance = pipeline;
 		data->maxBindlessCount = maxBindlessCount;
 		data->depthStencilFormat = depthStencilFormat;
@@ -1548,10 +1812,9 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	{
 		SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
-		vector<uint8> vertexCode, fragmentCode;
 		Compiler::GraphicsData pipelineData;
-		pipelineData.shaderPath = path;
-		pipelineData.specConstValues = specConstValues;
+		if (specConstValues)
+			pipelineData.specConstValues = *specConstValues;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
@@ -1573,10 +1836,21 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.blendStateOverrides = stateOverrides->blendStates;
 		}
 
-		if (!loadOrCompileGraphics(pipelineData))
+		if (shaderOverrides)
 		{
-			throw GardenError("Failed to load graphics pipeline. ("
-				"path: " + path.generic_string() + ")");
+			pipelineData.headerData = std::move(shaderOverrides->headerData);
+			pipelineData.vertexCode = std::move(shaderOverrides->vertexCode);
+			pipelineData.fragmentCode = std::move(shaderOverrides->fragmentCode);
+			Compiler::loadGraphicsShaders(pipelineData);
+		}
+		else
+		{
+			pipelineData.shaderPath = path;
+			if (!loadOrCompileGraphics(pipelineData))
+			{
+				throw GardenError("Failed to load graphics pipeline. ("
+					"path: " + path.generic_string() + ")");
+			}
 		}
 			
 		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
@@ -1650,10 +1924,11 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 }
 
 //**********************************************************************************************************************
-ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
-	bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount,
-	const map<string, Pipeline::SpecConstValue>& specConstValues,
-	const map<string, Pipeline::SamplerState>& samplerStateOverrides)
+ID<ComputePipeline> ResourceSystem::loadComputePipeline(
+	const fs::path& path, bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount, 
+	const map<string, Pipeline::SpecConstValue>* specConstValues,
+	const map<string, Pipeline::SamplerState>* samplerStateOverrides, 
+	ComputePipeline::ShaderOverrides* shaderOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
@@ -1663,13 +1938,15 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 	auto pipeline = graphicsAPI->computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (loadAsync && threadSystem)
+	if (loadAsync && threadSystem && !shaderOverrides)
 	{
 		auto data = new ComputePipelineLoadData();
 		data->version = version;
 		data->shaderPath = path;
-		data->specConstValues = specConstValues;
-		data->samplerStateOverrides = samplerStateOverrides;
+		if (specConstValues)
+			data->specConstValues = *specConstValues;
+		if (samplerStateOverrides)
+			data->samplerStateOverrides = *samplerStateOverrides;
 		data->maxBindlessCount = maxBindlessCount;
 		data->instance = pipeline;
 		data->useAsyncRecording = useAsyncRecording;
@@ -1720,9 +1997,11 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
 
 		Compiler::ComputeData pipelineData;
-		pipelineData.shaderPath = path;
-		pipelineData.specConstValues = specConstValues;
-		pipelineData.samplerStateOverrides = samplerStateOverrides;
+		
+		if (specConstValues)
+			pipelineData.specConstValues = *specConstValues;
+		if (samplerStateOverrides)
+			pipelineData.samplerStateOverrides = *samplerStateOverrides;
 		pipelineData.pipelineVersion = version;
 		pipelineData.maxBindlessCount = maxBindlessCount;
 		#if GARDEN_PACK_RESOURCES
@@ -1733,10 +2012,20 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path,
 		pipelineData.cachesPath = appCachesPath;
 		#endif
 		
-		if (!loadOrCompileCompute(pipelineData))
+		if (shaderOverrides)
 		{
-			throw GardenError("Failed to load compute pipeline. ("
-				"path: " + path.generic_string() + ")");
+			pipelineData.headerData = std::move(shaderOverrides->headerData);
+			pipelineData.code = std::move(shaderOverrides->code);
+			Compiler::loadComputeShader(pipelineData);
+		}
+		else
+		{
+			pipelineData.shaderPath = path;
+			if (!loadOrCompileCompute(pipelineData))
+			{
+				throw GardenError("Failed to load compute pipeline. ("
+					"path: " + path.generic_string() + ")");
+			}
 		}
 
 		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);

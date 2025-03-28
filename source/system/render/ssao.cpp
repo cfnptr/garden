@@ -71,7 +71,7 @@ static ID<GraphicsPipeline> createPipeline(uint32 sampleCount)
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useAoBuffer());
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("ssao",
-		pbrLightingSystem->getAoFramebuffers()[0], false, true, 0, 0, specConsts);
+		pbrLightingSystem->getAoFramebuffers()[0], false, true, 0, 0, &specConsts);
 }
 static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> sampleBuffer, ID<Image> noiseTexture)
 {

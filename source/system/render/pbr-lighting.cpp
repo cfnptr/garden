@@ -347,7 +347,7 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 	};
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("pbr-lighting", 
-		deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, specConstValues);
+		deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConstValues);
 }
 static ID<ComputePipeline> createIblSpecularPipeline()
 {

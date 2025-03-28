@@ -72,7 +72,7 @@ static string getCurrentDate()
 {
 	auto currentTime = chrono::system_clock::to_time_t(chrono::system_clock::now());
 	auto timeString = string(std::ctime(&currentTime));
-	if (timeString.size() > 0)
+	if (!timeString.empty())
 		timeString.resize(timeString.size() - 1);
 	return timeString;
 }

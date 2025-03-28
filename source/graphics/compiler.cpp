@@ -2279,25 +2279,29 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 //******************************************************************************************************************
 void Compiler::loadGraphicsShaders(GraphicsData& data)
 {
-	GARDEN_ASSERT(!data.shaderPath.empty());
-	auto vertexFilePath = "shaders" / data.shaderPath; vertexFilePath += ".vert.spv";
-	auto fragmentFilePath = "shaders" / data.shaderPath; fragmentFilePath += ".frag.spv";
-	auto headerFilePath = "shaders" / data.shaderPath; headerFilePath += ".gslh";
-	vector<uint8> dataBuffer;
-	
-	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
-	auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1;
-	data.packReader->readItemData(headerFilePath, dataBuffer, threadIndex);
-	#else
-	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
-		throw GardenError("Failed to open header file");
-	if (dataBuffer.empty())
-		throw GardenError("Header file is empty");
-	#endif
+	if (!data.shaderPath.empty())
+	{
+		auto headerFilePath = "shaders" / data.shaderPath; headerFilePath += ".gslh";
+		auto vertexFilePath = "shaders" / data.shaderPath; vertexFilePath += ".vert.spv";
+		auto fragmentFilePath = "shaders" / data.shaderPath; fragmentFilePath += ".frag.spv";
 
+		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+		auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1; uint64 itemIndex = 0;
+		data.packReader->readItemData(headerFilePath, data.headerData, threadIndex);
+		data.packReader->readItemData(vertexFilePath, data.vertexCode, threadIndex);
+		if (data.packReader->getItemIndex(fragmentFilePath, itemIndex))
+			data.packReader->readItemData(itemIndex, data.fragmentCode, threadIndex);
+		#else
+		File::loadBinary(data.cachesPath / headerFilePath, data.headerData);
+		File::loadBinary(data.cachesPath / vertexFilePath, data.vertexCode);
+		if (fs::exists(data.cachesPath / fragmentFilePath)) // It's allowed to have only vertex shader.
+			File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
+		#endif
+	}
+	
 	GraphicsGslValues values; uint32 dataOffset = 0;
-	auto shaderData = dataBuffer.data(); auto dataSize = (uint32)dataBuffer.size();
-	readGslHeaderValues(shaderData, dataSize, dataOffset, graphicsGslMagic, values);
+	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
+	readGslHeaderValues(headerData, dataSize, dataOffset, graphicsGslMagic, values);
 
 	if (dataOffset + values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute) +
 		values.blendStateCount * sizeof(GraphicsPipeline::BlendState) > dataSize)
@@ -2308,21 +2312,21 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	if (values.vertexAttributeCount > 0)
 	{
 		data.vertexAttributes.resize(values.vertexAttributeCount);
-		memcpy(data.vertexAttributes.data(), shaderData + dataOffset,
+		memcpy(data.vertexAttributes.data(), headerData + dataOffset,
 			values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute));
 		dataOffset += values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute);
 	}
 	if (values.blendStateCount > 0)
 	{
 		data.blendStates.resize(values.blendStateCount);
-		memcpy(data.blendStates.data(), shaderData + dataOffset,
+		memcpy(data.blendStates.data(), headerData + dataOffset,
 			values.blendStateCount * sizeof(GraphicsPipeline::BlendState));
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
 	}
 
-	readGslHeaderArray(shaderData, dataSize, dataOffset, values.uniformCount, data.uniforms);
-	readGslHeaderArray(shaderData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
-	readGslHeaderArray(shaderData, dataSize, dataOffset, values.specConstCount, data.specConsts);
+	readGslHeaderArray(headerData, dataSize, dataOffset, values.uniformCount, data.uniforms);
+	readGslHeaderArray(headerData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray(headerData, dataSize, dataOffset, values.specConstCount, data.specConsts);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2330,48 +2334,33 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 	data.pushConstantsStages = values.pushConstantsStages;
 	data.pipelineState = values.pipelineState;
 	data.vertexAttributesSize = values.vertexAttributesSize;
-
-	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
-	uint64 itemIndex = 0;
-	if (data.packReader->getItemIndex(vertexFilePath, itemIndex))
-		data.packReader->readItemData(itemIndex, data.vertexCode, threadIndex);
-	if (data.packReader->getItemIndex(fragmentFilePath, itemIndex))
-		data.packReader->readItemData(itemIndex, data.fragmentCode, threadIndex);
-	#else
-	File::loadBinary(data.cachesPath / vertexFilePath, data.vertexCode);
-	if (fs::exists(data.cachesPath / fragmentFilePath)) // It's allowed to have only vertex shader.
-		File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
-	#endif
-
-	if (data.vertexCode.empty())
-		throw GardenError("Graphics vertex shader file is empty");
 }
 
 //******************************************************************************************************************
 void Compiler::loadComputeShader(ComputeData& data)
 {
-	GARDEN_ASSERT(!data.shaderPath.empty());
-	auto computeFilePath = "shaders" / data.shaderPath; computeFilePath += ".comp.spv";
-	auto headerFilePath = "shaders" / data.shaderPath; headerFilePath += ".gslh";
-	vector<uint8> dataBuffer;
+	if (!data.shaderPath.empty())
+	{
+		auto headerFilePath = "shaders" / data.shaderPath; headerFilePath += ".gslh";
+		auto computeFilePath = "shaders" / data.shaderPath; computeFilePath += ".comp.spv";
 
-	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
-	auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1;
-	data.packReader->readItemData(headerFilePath, dataBuffer, threadIndex);
-	#else
-	if (!File::tryLoadBinary(data.cachesPath / headerFilePath, dataBuffer))
-		throw GardenError("Failed to open header file");
-	if (dataBuffer.empty())
-		throw GardenError("Header file is empty");
-	#endif
+		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+		auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1;
+		data.packReader->readItemData(headerFilePath, data.headerData, threadIndex);
+		data.packReader->readItemData(computeFilePath, data.code, threadIndex);
+		#else
+		File::loadBinary(data.cachesPath / headerFilePath, data.headerData);
+		File::loadBinary(data.cachesPath / computeFilePath, data.code);
+		#endif
+	}
 
 	ComputeGslValues values; uint32 dataOffset = 0; 
-	auto shaderData = dataBuffer.data(); auto dataSize = (uint32)dataBuffer.size();
-	readGslHeaderValues(shaderData, dataSize, dataOffset, computeGslMagic, values);
+	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
+	readGslHeaderValues(headerData, dataSize, dataOffset, computeGslMagic, values);
 
-	readGslHeaderArray(shaderData, dataSize, dataOffset, values.uniformCount, data.uniforms);
-	readGslHeaderArray(shaderData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
-	readGslHeaderArray(shaderData, dataSize, dataOffset, values.specConstCount, data.specConsts);
+	readGslHeaderArray(headerData, dataSize, dataOffset, values.uniformCount, data.uniforms);
+	readGslHeaderArray(headerData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray(headerData, dataSize, dataOffset, values.specConstCount, data.specConsts);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2380,15 +2369,6 @@ void Compiler::loadComputeShader(ComputeData& data)
 
 	if (data.pushConstantsSize > 0)
 		data.pushConstantsStages = ShaderStage::Compute;
-
-	#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
-	data.packReader->readItemData(computeFilePath, data.code, threadIndex);
-	#else
-	if (!File::tryLoadBinary(data.cachesPath / computeFilePath, data.code))
-		throw GardenError("Failed to open compute shader file");
-	if (data.code.empty())
-		throw GardenError("Compute shader file is empty");
-	#endif
 }
 
 #ifdef GSL_COMPILER

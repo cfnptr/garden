@@ -201,12 +201,13 @@ public:
 	 */
 	struct CreateData
 	{
-		fs::path shaderPath;
 		map<string, SamplerState> samplerStates;
 		map<string, Uniform> uniforms;
 		map<string, SpecConst> specConsts;
 		map<string, SpecConstValue> specConstValues;
 		map<string, SamplerState> samplerStateOverrides;
+		vector<uint8> headerData;
+		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
 		uint16 pushConstantsSize = 0;

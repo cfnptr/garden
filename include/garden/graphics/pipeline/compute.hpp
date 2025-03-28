@@ -39,6 +39,15 @@ class ComputePipeline final : public Pipeline
 {
 public:
 	/**
+	 * @brief Compute pipeline shader code overrides.
+	 * @details It allows to override pipeline shader code.
+	 */
+	struct ShaderOverrides final
+	{
+		vector<uint8> code;
+		vector<uint8> headerData;
+	};
+	/**
 	 * @brief Compute pipeline create data container.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
 	 */

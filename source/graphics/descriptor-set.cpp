@@ -155,7 +155,7 @@ static void recreateVkDescriptorSet(const map<string, DescriptorSet::Uniform>& o
 	#endif
 
 	// Note: Checks if descriptor set is just now created. 
-	auto oldSetCount = oldUniforms.size() > 0 ? (uint32)oldUniforms.begin()->second.resourceSets.size() : (uint32)0;
+	auto oldSetCount = !oldUniforms.empty() ? (uint32)oldUniforms.begin()->second.resourceSets.size() : (uint32)0;
 	auto newSetCount = (uint32)newUniforms.begin()->second.resourceSets.size();
 
 	if (oldSetCount != 0 && newSetCount != oldSetCount)

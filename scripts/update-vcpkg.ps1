@@ -44,7 +44,7 @@ if ($envPath -notlike "*C:\vcpkg*") {
         Exit 1
     }
 
-    Write-Host "`nAdding vcpkg to the system environment variables..."
+    Write-Host "Adding vcpkg to the system environment variables..."
 
     try {
         [Environment]::SetEnvironmentVariable("VCPKG_ROOT", "C:\vcpkg", "Machine")
