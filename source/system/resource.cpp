@@ -147,11 +147,13 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 		throw GardenError("Failed to open \"resources.pack\" file.");
 	}
 	#endif
-	#if GARDEN_DEBUG || GARDEN_EDITOR
+
 	auto appInfoSystem = AppInfoSystem::Instance::get();
+	appVersion = appInfoSystem->getVersion();
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachesPath = appInfoSystem->getCachesPath();
-	appVersion = appInfoSystem->getVersion();
 	#endif
 }
 ResourceSystem::~ResourceSystem()
@@ -2364,7 +2366,6 @@ Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor 
 	return buffer;
 }
 
-//**********************************************************************************************************************
 Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Primitive primitive,
 	Buffer::Bind bind, const vector<Model::Attribute::Type>& attributes,
 	Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)

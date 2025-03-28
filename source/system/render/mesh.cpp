@@ -74,6 +74,11 @@ void MeshRenderSystem::deinit()
 			ECSM_UNSUBSCRIBE_FROM_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", MeshRenderSystem::oitRender);
 		}
+
+		for (auto buffer : sortedBuffers)
+			delete buffer;
+		for (auto buffer : unsortedBuffers)
+			delete buffer;
 	}
 }
 
@@ -166,7 +171,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition,
 		meshes[drawIndex++] = unsortedMesh;
 	}
 
-	auto drawOffset = unsortedBuffer->drawCount->fetch_add(drawIndex);
+	auto drawOffset = unsortedBuffer->drawCount.fetch_add(drawIndex);
 	if (useThreading)
 	{
 		memcpy(unsortedBuffer->combinedMeshes.data() + drawOffset,
@@ -187,7 +192,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)componentPool.getData();
-	auto drawCount = sortedBuffer->drawCount;
+	auto& drawCount = sortedBuffer->drawCount;
 
 	MeshRenderSystem::SortedMesh* meshes = nullptr;
 	if (useThreading)
@@ -243,7 +248,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 	auto drawOffset = sortedDrawIndex.fetch_add(drawIndex);
 	if (useThreading)
 		memcpy(combinedMeshes + drawOffset, meshes, drawIndex * sizeof(MeshRenderSystem::SortedMesh));
-	drawCount->fetch_add(drawIndex);
+	drawCount.fetch_add(drawIndex);
 }
 
 //**********************************************************************************************************************
@@ -254,9 +259,9 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
 	for (uint32 i = 0; i < unsortedBufferCount; i++)
 	{
-		auto unsortedBuffer = &unsortedBuffers[i];
+		auto unsortedBuffer = unsortedBuffers[i];
 		if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::OIT ||
-			unsortedBuffer->drawCount->load() == 0) // Note: no need to sort OIT meshes at all.
+			unsortedBuffer->drawCount.load() == 0) // Note: no need to sort OIT meshes at all.
 		{
 			continue;
 		}
@@ -267,14 +272,14 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 			{
 				SET_CPU_ZONE_SCOPED("Unsorted Meshes Sort");
 				auto& meshes = unsortedBuffer->combinedMeshes;
-				std::sort(meshes.begin(), meshes.begin() + unsortedBuffer->drawCount->load());
+				std::sort(meshes.begin(), meshes.begin() + unsortedBuffer->drawCount.load());
 			});
 		}
 		else
 		{
 			SET_CPU_ZONE_SCOPED("Unsorted Meshes Sort");
 			auto& meshes = unsortedBuffer->combinedMeshes;
-			std::sort(meshes.begin(), meshes.begin() + unsortedBuffer->drawCount->load());
+			std::sort(meshes.begin(), meshes.begin() + unsortedBuffer->drawCount.load());
 		}
 	}
 
@@ -323,9 +328,20 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	}
 
 	if (unsortedBuffers.size() < unsortedBufferCount)
+	{
+		auto i = (uint32)unsortedBuffers.size();
 		unsortedBuffers.resize(unsortedBufferCount);
+		for (; i < unsortedBufferCount; i++)
+			unsortedBuffers[i] = new UnsortedBuffer();
+	}
 	if (sortedBuffers.size() < sortedBufferCount)
+	{
+		auto i = (uint32)sortedBuffers.size();
 		sortedBuffers.resize(sortedBufferCount);
+		for (; i < sortedBufferCount; i++)
+			sortedBuffers[i] = new SortedBuffer();
+	}
+
 	if (sortedCombinedMeshes.size() < sortedMeshMaxCount)
 		sortedCombinedMeshes.resize(sortedMeshMaxCount);
 
@@ -350,9 +366,9 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		
 		if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::OIT)
 		{
-			auto unsortedBuffer = &unsortedBuffers[unsortedBufferIndex++];
+			auto unsortedBuffer = unsortedBuffers[unsortedBufferIndex++];
 			unsortedBuffer->meshSystem = meshSystem;
-			unsortedBuffer->drawCount->store(0);
+			unsortedBuffer->drawCount.store(0);
 
 			if (componentCount == 0 || !meshSystem->isDrawReady(isShadowPass))
 				continue;
@@ -393,9 +409,9 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		else if (renderType == MeshRenderType::Translucent)
 		{
 			auto bufferIndex = sortedBufferIndex++;
-			auto sortedBuffer = &sortedBuffers[bufferIndex];
+			auto sortedBuffer = sortedBuffers[bufferIndex];
 			sortedBuffer->meshSystem = meshSystem;
-			sortedBuffer->drawCount->store(0);
+			sortedBuffer->drawCount.store(0);
 
 			if (componentCount == 0 || !meshSystem->isDrawReady(isShadowPass))
 				continue;
@@ -437,11 +453,11 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	{
 		for (uint32 i = 0; i < unsortedBufferCount; i++)
 		{
-			auto& unsortedBuffer = unsortedBuffers[i];
-			if (unsortedBuffer.meshSystem->getMeshRenderType() == MeshRenderType::Opaque)
-				graphicsEditorSystem->opaqueDrawCount += unsortedBuffer.drawCount->load();
+			auto unsortedBuffer = unsortedBuffers[i];
+			if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::Opaque)
+				graphicsEditorSystem->opaqueDrawCount += unsortedBuffer->drawCount.load();
 			else
-				graphicsEditorSystem->translucentDrawCount += unsortedBuffer.drawCount->load();
+				graphicsEditorSystem->translucentDrawCount += unsortedBuffer->drawCount.load();
 		}
 
 		graphicsEditorSystem->translucentDrawCount += sortedDrawIndex.load();
@@ -462,9 +478,9 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 	auto threadSystem = asyncRecording ? ThreadSystem::Instance::tryGet() : nullptr;
 	for (uint32 i = 0; i < unsortedBufferCount; i++)
 	{
-		auto unsortedBuffer = &unsortedBuffers[i];
+		auto unsortedBuffer = unsortedBuffers[i];
 		auto meshSystem = unsortedBuffer->meshSystem;
-		auto drawCount = unsortedBuffer->drawCount->load();
+		auto drawCount = unsortedBuffer->drawCount.load();
 		if (drawCount == 0 || meshSystem->getMeshRenderType() != renderType)
 			continue;
 
@@ -525,15 +541,15 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 
 	for (uint32 i = 0; i < sortedBufferCount; i++)
 	{
-		auto& sortedBuffer = sortedBuffers[i];
-		auto bufferDrawCount = sortedBuffer.drawCount->load();
+		auto sortedBuffer = sortedBuffers[i];
+		auto bufferDrawCount = sortedBuffer->drawCount.load();
 
 		if (bufferDrawCount == 0)
 			continue;
 
-		auto meshSystem = sortedBuffer.meshSystem;
+		auto meshSystem = sortedBuffer->meshSystem;
 		meshSystem->prepareDraw(viewProj, bufferDrawCount, isShadowPass);
-		sortedBuffer.drawCount->store(0);
+		sortedBuffer->drawCount.store(0);
 	}
 
 	auto threadSystem = asyncRecording ? ThreadSystem::Instance::tryGet() : nullptr;
@@ -545,8 +561,8 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 			SET_CPU_ZONE_SCOPED("Sorted Mesh Draw");
 
 			auto currentBufferIndex = sortedCombinedMeshes[task.getItemOffset()].bufferIndex;
-			auto meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
-			auto bufferDrawCount = sortedBuffers[currentBufferIndex].drawCount;
+			auto meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
+			auto bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
 			auto itemCount = task.getItemCount();
 			auto taskIndex = task.getTaskIndex(); // Using task index to preserve items order.
 			meshSystem->beginDrawAsync(taskIndex);
@@ -557,14 +573,14 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 				const auto& mesh = sortedCombinedMeshes[i];
 				if (currentBufferIndex != mesh.bufferIndex)
 				{
-					meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
+					meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 					meshSystem->endDrawAsync(currentDrawCount, taskIndex);
 
 					currentBufferIndex = mesh.bufferIndex;
 					currentDrawCount = 0;
 
-					bufferDrawCount = sortedBuffers[currentBufferIndex].drawCount;
-					meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
+					bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
+					meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 					meshSystem->beginDrawAsync(taskIndex);
 				}
 
@@ -584,8 +600,8 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 		SET_CPU_ZONE_SCOPED("Sorted Mesh Draw");
 
 		auto currentBufferIndex = sortedCombinedMeshes[0].bufferIndex;
-		auto meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
-		auto bufferDrawCount = sortedBuffers[currentBufferIndex].drawCount;
+		auto meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
+		auto bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
 		meshSystem->beginDrawAsync(-1);
 
 		uint32 currentDrawCount = 0;
@@ -594,14 +610,14 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 			const auto& mesh = sortedCombinedMeshes[i];
 			if (currentBufferIndex != mesh.bufferIndex)
 			{
-				meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
+				meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 				meshSystem->endDrawAsync(currentDrawCount, -1);
 
 				currentBufferIndex = mesh.bufferIndex;
 				currentDrawCount = 0;
 
-				bufferDrawCount = sortedBuffers[currentBufferIndex].drawCount;
-				meshSystem = sortedBuffers[currentBufferIndex].meshSystem;
+				bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
+				meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 				meshSystem->beginDrawAsync(-1);
 			}
 
@@ -616,12 +632,12 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, bool isShadowPass)
 
 	for (uint32 i = 0; i < sortedBufferCount; i++)
 	{
-		auto& sortedBuffer = sortedBuffers[i];
-		auto drawCount = sortedBuffer.drawCount->load();
+		auto sortedBuffer = sortedBuffers[i];
+		auto drawCount = sortedBuffer->drawCount.load();
 		if (drawCount == 0)
 			continue;
 
-		auto meshSystem = sortedBuffer.meshSystem;
+		auto meshSystem = sortedBuffer->meshSystem;
 		meshSystem->finalizeDraw(viewProj, drawCount, isShadowPass);
 	}
 }

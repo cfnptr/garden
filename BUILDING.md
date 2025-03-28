@@ -57,7 +57,7 @@ Or
 2. Run ```vcpkg integrate install``` command using **Terminal** or **CMD** app to make packages available user-wide
 3. Add **vcpkg** to the System Environment Variables. (Google it)
 
-## 6. Install required packages
+## 7. Install required packages
 
 1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static``` using **Terminal** or **CMD** app
 

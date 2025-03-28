@@ -191,13 +191,11 @@ public:
 		bool operator<(const SortedMesh& m) const noexcept { return distanceSq > m.distanceSq; }
 	};
 
-	struct MeshBuffer
+	// Note: aligning to the cache line size to prevent cache misses.
+	struct alignas(64) MeshBuffer
 	{
 		IMeshRenderSystem* meshSystem = nullptr;
-		atomic<uint32>* drawCount = nullptr;
-
-		MeshBuffer() : drawCount(new atomic<uint32>()) { }
-		~MeshBuffer() { delete drawCount; }
+		atomic<uint32> drawCount = 0;
 	};
 	struct UnsortedBuffer final : public MeshBuffer
 	{
@@ -206,16 +204,16 @@ public:
 	};
 	struct SortedBuffer final : MeshBuffer { };
 private:
-	vector<UnsortedBuffer> unsortedBuffers;
-	vector<SortedBuffer> sortedBuffers;
+	vector<UnsortedBuffer*> unsortedBuffers;
+	vector<SortedBuffer*> sortedBuffers;
 	vector<SortedMesh> sortedCombinedMeshes;
 	vector<vector<SortedMesh>> sortedThreadMeshes;
 	vector<IMeshRenderSystem*> meshSystems;
-	atomic<uint32> sortedDrawIndex = 0;
 	uint32 unsortedBufferCount = 0;
 	uint32 sortedBufferCount = 0;
 	bool asyncRecording = false;
 	bool asyncPreparing = false;
+	atomic<uint32> sortedDrawIndex = 0; // Always last.
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.

@@ -110,14 +110,14 @@ protected:
 	ID<Image> loadedImage = {};
 	vector<fs::path> loadedImagePaths = {};
 	fs::path loadedBufferPath = {};
+	Version appVersion = {};
 
 	#if GARDEN_PACK_RESOURCES
-	pack::Reader packReader;
+	pack::Reader packReader = {};
 	#endif
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path appResourcesPath;
-	fs::path appCachesPath;
-	Version appVersion;
+	fs::path appResourcesPath = {};
+	fs::path appCachesPath = {};
 	#endif
 
 	/**

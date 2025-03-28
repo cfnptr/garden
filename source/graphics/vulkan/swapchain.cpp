@@ -361,7 +361,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 			delete secondaryCommandState;
 		secondaryCommandStates.resize(threadCount);
 		for (int32 i = 0; i < threadCount; i++)
-			secondaryCommandStates[i] = new atomic<bool>(false);
+			secondaryCommandStates[i] = new VulkanAPI::atomic_bool_aligned();
 	}
 	
 	auto buffer = vulkanBuffers[bufferIndex];
