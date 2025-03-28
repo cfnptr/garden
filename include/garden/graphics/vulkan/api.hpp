@@ -40,6 +40,12 @@ namespace garden
  */
 class VulkanAPI final : public GraphicsAPI
 {
+public:
+	// Note: aligning to the cache line size to prevent cache misses.
+	struct alignas(64) atomic_bool_aligned : atomic_bool
+	{
+		atomic_bool_aligned() : atomic_bool(false) { }
+	};
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
 		int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen);
@@ -71,7 +77,7 @@ public:
 	vk::DescriptorPool descriptorPool;
 	vk::PipelineCache pipelineCache;
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
-	vector<atomic_bool*> secondaryCommandStates; // We need atomic here!
+	vector<atomic_bool_aligned*> secondaryCommandStates; // We need atomic here!
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
 	vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 	vector<vk::WriteDescriptorSet> writeDescriptorSets;
