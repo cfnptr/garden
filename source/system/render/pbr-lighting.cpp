@@ -16,7 +16,6 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/camera.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
 

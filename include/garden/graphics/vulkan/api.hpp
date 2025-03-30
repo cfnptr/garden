@@ -20,7 +20,6 @@
 #pragma once
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan/swapchain.hpp"
-#include "garden/graphics/vulkan/command-buffer.hpp"
 
 namespace garden
 {

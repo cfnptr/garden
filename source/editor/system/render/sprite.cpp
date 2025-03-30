@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/render/sprite/opaque.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 #include "garden/system/render/sprite/translucent.hpp"

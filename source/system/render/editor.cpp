@@ -27,7 +27,6 @@
 #include "garden/editor/system/render/gpu-resource.hpp"
 #include "garden/profiler.hpp"
 
-#include "mpio/os.hpp"
 #include "mpio/directory.hpp"
 
 using namespace garden;

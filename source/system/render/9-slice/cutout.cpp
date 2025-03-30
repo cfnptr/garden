@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/9-slice/cutout.hpp"
-#include "garden/system/render/deferred.hpp"
-#include "garden/system/render/forward.hpp"
-#include "garden/system/resource.hpp"
 
 using namespace garden;
 

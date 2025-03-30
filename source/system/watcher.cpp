@@ -17,7 +17,7 @@
 // TODO: if file is .gsl shader header then iterate over all shader files
 // by loading them into memory as strings and search for specific shader header.
 // then add to reload list. Also constantly check if there is no new requests for file refresh
-// when baground thread processes it.
+// when background thread processes it.
 
 /*
 #include "garden/system/watcher.hpp"

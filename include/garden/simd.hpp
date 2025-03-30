@@ -24,7 +24,6 @@
  */
 
 #pragma once
-#include <cstdint>
 
 #if __SSE__
 #define GARDEN_SIMD_SSE 1

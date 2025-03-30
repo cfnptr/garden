@@ -18,7 +18,7 @@
  */
 
 #pragma once
-#include "garden/hash.hpp"
+#include "garden/animate.hpp"
 #include "garden/system/render/instance.hpp"
 
 namespace garden

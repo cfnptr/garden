@@ -14,7 +14,6 @@
 
 #include "garden/graphics/descriptor-set.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/pipeline/graphics.hpp"
 
 using namespace math;
 using namespace garden;

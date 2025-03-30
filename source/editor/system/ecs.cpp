@@ -15,7 +15,6 @@
 #include "garden/editor/system/ecs.hpp"
 
 #if GARDEN_EDITOR
-
 using namespace garden;
 
 //**********************************************************************************************************************

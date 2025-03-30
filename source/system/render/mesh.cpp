@@ -15,6 +15,7 @@
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
 

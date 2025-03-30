@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/common.hpp"
-#include "garden/graphics/vulkan/api.hpp"
+#include "garden/graphics/api.hpp"
 
 using namespace std;
 using namespace math;

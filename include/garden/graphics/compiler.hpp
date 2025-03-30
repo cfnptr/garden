@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/system/log.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 
@@ -31,9 +30,6 @@
 #else
 #define GARDEN_VULKAN_SHADER_VERSION_STRING "vulkan1.4"
 #endif
-
-#include <map>
-#include <sstream>
 
 namespace garden::graphics
 {

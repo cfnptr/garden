@@ -19,10 +19,7 @@
 
 #pragma once
 #include "garden/system/graphics.hpp"
-#include "garden/system/transform.hpp"
 #include "math/aabb.hpp"
-
-#include <utility>
 
 namespace garden
 {

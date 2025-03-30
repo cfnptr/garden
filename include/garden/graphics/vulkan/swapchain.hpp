@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/graphics/swapchain.hpp"
+#include "garden/graphics/framebuffer.hpp"
 #include "garden/graphics/vulkan/vma.hpp"
 
 namespace garden

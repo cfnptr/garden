@@ -18,7 +18,6 @@
 #include "garden/system/link.hpp"
 #include "garden/system/spawner.hpp"
 #include "garden/system/transform.hpp"
-#include "garden/system/app-info.hpp"
 
 using namespace garden;
 

@@ -15,7 +15,6 @@
 #include "garden/editor/system/render/infinite-grid.hpp"
 
 #if GARDEN_EDITOR
-#include "math/tone-mapping.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 

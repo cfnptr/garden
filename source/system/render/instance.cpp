@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/instance.hpp"
-#include "garden/system/resource.hpp"
 
 using namespace garden;
 

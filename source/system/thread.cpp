@@ -16,6 +16,8 @@
 #include "garden/system/log.hpp"
 #include "garden/os.hpp"
 
+#include "mpmt/thread.hpp"
+
 using namespace garden;
 
 //**********************************************************************************************************************

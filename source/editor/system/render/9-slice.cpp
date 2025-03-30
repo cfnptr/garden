@@ -15,7 +15,6 @@
 #include "garden/editor/system/render/9-slice.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/resource.hpp"
 #include "garden/system/render/9-slice/opaque.hpp"
 #include "garden/system/render/9-slice/cutout.hpp"
 #include "garden/system/render/9-slice/translucent.hpp"

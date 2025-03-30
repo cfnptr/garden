@@ -15,6 +15,7 @@
 #include "garden/system/animation.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
 
 using namespace garden;

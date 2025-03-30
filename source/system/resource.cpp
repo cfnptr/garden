@@ -17,20 +17,15 @@
 #include "garden/system/animation.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/thread.hpp"
+#include "garden/system/log.hpp"
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/compiler.hpp"
 #include "garden/graphics/api.hpp"
+#include "garden/graphics/exr.hpp"
 #include "garden/json-serialize.hpp"
 #include "garden/profiler.hpp"
 #include "garden/file.hpp"
-
-#include "math/ibl.hpp"
 #include "math/tone-mapping.hpp"
-
-#define TINYEXR_USE_MINIZ 0
-#define TINYEXR_USE_STB_ZLIB 0
-#include "zlib.h"
-#include "tinyexr.h"
 
 #include "webp/decode.h"
 #include "png.h"
@@ -42,11 +37,9 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
-#include <fstream>
 #include <iostream>
 
 using namespace garden;
-using namespace math::ibl;
 
 constexpr uint8 imageFileExtCount = 8;
 constexpr string_view imageFileExts[] =

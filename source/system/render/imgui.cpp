@@ -15,7 +15,7 @@
 #include "garden/system/render/imgui.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/graphics/api.hpp"
-#include "garden/graphics/glfw.hpp" // Do not move it.
+#include "garden/graphics/glfw.hpp" // Defined before ImGUI
 #include "garden/graphics/imgui.hpp"
 #include "garden/profiler.hpp"
 

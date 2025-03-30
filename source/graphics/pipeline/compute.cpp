@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
 using namespace garden::graphics;
