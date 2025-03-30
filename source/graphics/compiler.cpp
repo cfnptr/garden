@@ -17,6 +17,7 @@
 
 #include <thread>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 #if GARDEN_OS_WINDOWS
