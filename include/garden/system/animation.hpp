@@ -21,7 +21,6 @@
 
 #pragma once
 #include "garden/animate.hpp"
-#include "garden/system/thread.hpp"
 
 namespace garden
 {

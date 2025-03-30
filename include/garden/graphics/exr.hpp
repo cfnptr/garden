@@ -12,17 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/system/render/sprite/opaque.hpp"
+// Note: no pragma once here.
 
-using namespace garden;
-
-//**********************************************************************************************************************
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderCompSystem("sprite/opaque", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
-OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
-
-const string& OpaqueSpriteSystem::getComponentName() const
-{
-	static const string name = "Opaque Sprite";
-	return name;
-}
+#define TINYEXR_USE_MINIZ 0
+#define TINYEXR_USE_STB_ZLIB 0
+#include "zlib.h" // Defined before TinyEXR
+#include "tinyexr.h"

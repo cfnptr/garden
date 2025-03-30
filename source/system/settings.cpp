@@ -19,7 +19,6 @@
 #include "conf/reader.hpp"
 #include "conf/writer.hpp"
 #include "mpio/directory.hpp"
-#include <iostream>
 
 using namespace garden;
 

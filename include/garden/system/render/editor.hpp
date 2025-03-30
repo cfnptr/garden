@@ -24,7 +24,6 @@
 #if GARDEN_EDITOR
 #include "garden/graphics/imgui.hpp"
 #include "ecsm.hpp"
-#include "math/aabb.hpp"
 
 namespace garden
 {

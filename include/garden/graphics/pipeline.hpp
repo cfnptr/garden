@@ -18,11 +18,8 @@
  */
 
 #pragma once
-#include "garden/graphics/image.hpp"
+#include "garden/graphics/gsl.hpp"
 #include "garden/graphics/descriptor-set.hpp"
-#include "math/matrix.hpp"
-
-#include <thread>
 
 namespace garden::graphics
 {

@@ -201,6 +201,8 @@ void InputSystem::deinit()
 //**********************************************************************************************************************
 void InputSystem::input()
 {
+	SET_CPU_ZONE_SCOPED("Input Update");
+
 	#if GARDEN_DEBUG
 	if (mpmt::Thread::isCurrentMain())
 		throw GardenError("Expected to run on a render thread."); // See the startRenderThread().
@@ -273,8 +275,9 @@ void InputSystem::input()
 }
 void InputSystem::output()
 {
-	eventLocker.lock();
+	SET_CPU_ZONE_SCOPED("Output Update");
 
+	eventLocker.lock();
 	currCursorMode = newCursorMode;
 
 	if (newWindowTitle != "")

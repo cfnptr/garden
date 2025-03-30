@@ -15,8 +15,6 @@
 #include "garden/graphics/pipeline.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
-#include <fstream>
-
 using namespace garden;
 using namespace garden::graphics;
 

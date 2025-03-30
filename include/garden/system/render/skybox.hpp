@@ -18,7 +18,7 @@
  */
 
 #pragma once
-#include "garden/system/render/deferred.hpp"
+#include "garden/system/graphics.hpp"
 
 namespace garden
 {

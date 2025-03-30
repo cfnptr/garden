@@ -15,7 +15,6 @@
 #pragma once
 #include "math/aabb.hpp"
 #include "math/color.hpp"
-#include "math/matrix.hpp"
 #include "math/quaternion.hpp"
 
 #include "Jolt/Jolt.h"

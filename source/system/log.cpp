@@ -22,7 +22,6 @@
 #endif
 
 #include "mpmt/thread.hpp"
-#include <thread>
 #include <chrono>
 
 #if GARDEN_OS_LINUX || GARDEN_OS_MACOS

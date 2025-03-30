@@ -17,7 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/resource/primitive.hpp"
-#include "garden/system/render/mesh.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"

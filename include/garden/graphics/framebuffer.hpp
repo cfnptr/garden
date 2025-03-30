@@ -19,7 +19,6 @@
 
 #pragma once
 #include "garden/graphics/image.hpp"
-#include <thread>
 
 namespace garden::graphics
 {

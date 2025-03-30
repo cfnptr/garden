@@ -14,7 +14,6 @@
 
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
-#include "garden/system/settings.hpp"
 #include "garden/profiler.hpp"
 
 using namespace garden;

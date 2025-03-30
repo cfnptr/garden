@@ -16,7 +16,6 @@
 #include "garden/system/render/tone-mapping.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/settings.hpp"
 #include "garden/profiler.hpp"
 
 using namespace garden;

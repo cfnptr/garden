@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/thread-pool.hpp"
-#include "garden/graphics/framebuffer.hpp"
+#include "garden/graphics/image.hpp"
 
 namespace garden::graphics
 {

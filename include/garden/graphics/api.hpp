@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/hash.hpp"
 #include "garden/graphics/swapchain.hpp"
 #include "garden/graphics/command-buffer.hpp"
 #include "garden/graphics/pipeline/compute.hpp"

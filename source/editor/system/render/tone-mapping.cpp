@@ -15,8 +15,6 @@
 #include "garden/editor/system/render/tone-mapping.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/render/pbr-lighting.hpp"
-
 using namespace garden;
 
 //**********************************************************************************************************************

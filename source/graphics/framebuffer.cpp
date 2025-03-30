@@ -14,7 +14,6 @@
 
 #include "garden/graphics/framebuffer.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/profiler.hpp"
 
 #include <set>
 

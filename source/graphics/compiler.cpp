@@ -15,6 +15,7 @@
 #include "garden/graphics/compiler.hpp"
 #include "garden/file.hpp"
 
+#include <thread>
 #include <fstream>
 #include <iostream>
 

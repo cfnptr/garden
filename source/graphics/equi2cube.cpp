@@ -16,11 +16,8 @@
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
 
-#define TINYEXR_USE_MINIZ 0
-#define TINYEXR_USE_STB_ZLIB 0
-#include "zlib.h"
 #define TINYEXR_IMPLEMENTATION
-#include "tinyexr.h"
+#include "garden/graphics/exr.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -29,7 +26,6 @@
 #include "stb_image_write.h"
 
 #include <vector>
-#include <fstream>
 #include <iostream>
 
 using namespace garden;

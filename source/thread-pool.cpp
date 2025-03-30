@@ -182,6 +182,8 @@ void ThreadPool::addItems(const Task::Function& function, uint32 count, float pr
 void ThreadPool::wait()
 {
 	GARDEN_ASSERT(isRunning);
+	SET_CPU_ZONE_SCOPED("Thread Pool Wait");
+
 	auto locker = unique_lock(mutex);
 	while (!taskQueue.empty() || workingCount > 0)
 		workingCond.wait(locker);
