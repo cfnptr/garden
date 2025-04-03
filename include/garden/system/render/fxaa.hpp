@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "garden/graphics/framebuffer.hpp"
 #include "garden/system/graphics.hpp"
 
 namespace garden
@@ -42,6 +43,7 @@ public:
 		float2 invFrameSize;
 	};
 private:
+	ID<Framebuffer> framebuffer = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 
@@ -57,13 +59,17 @@ private:
 
 	void init();
 	void deinit();
-	void preSwapchainRender();
+	void preUiRender();
 	void gBufferRecreate();
 
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is fast approximate anti-aliasing rendering enabled. */
 
+	/**
+	 * @brief Returns fast approximate anti-aliasing framebuffer.
+	 */
+	ID<Framebuffer> getFramebuffer();
 	/**
 	 * @brief Returns fast approximate anti-aliasing graphics pipeline.
 	 */

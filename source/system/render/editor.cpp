@@ -317,7 +317,7 @@ void EditorRenderSystem::showOptionsWindow()
 		{
 			ImGui::Indent();
 			auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
-			auto cachePath = appDataPath / "caches";
+			auto cachePath = appDataPath / "cache";
 			int fileCount = 0; uint64 binarySize = 0;
 
 			if (fs::exists(cachePath))
@@ -326,15 +326,15 @@ void EditorRenderSystem::showOptionsWindow()
 			ImGui::Text("Application cache: %d files, %s", fileCount, sizeString.c_str());
 
 			fileCount = 0; binarySize = 0;
-			if (fs::exists(appInfoSystem->getCachesPath()))
-				getFileInfo(appInfoSystem->getCachesPath(), fileCount, binarySize);
+			if (fs::exists(appInfoSystem->getCachePath()))
+				getFileInfo(appInfoSystem->getCachePath(), fileCount, binarySize);
 			sizeString = toBinarySizeString(binarySize);
 			ImGui::Text("Project cache: %d files, %s", fileCount, sizeString.c_str());
 
 			if (ImGui::Button("Clear application cache", ImVec2(-FLT_MIN, 0.0f)))
 				fs::remove_all(cachePath);
 			if (ImGui::Button("Clear project cache", ImVec2(-FLT_MIN, 0.0f)))
-				fs::remove_all(appInfoSystem->getCachesPath());
+				fs::remove_all(appInfoSystem->getCachePath());
 			if (ImGui::Button("Delete settings file", ImVec2(-FLT_MIN, 0.0f)))
 				fs::remove(appDataPath / "settings.txt");
 			ImGui::Unindent();
@@ -933,24 +933,17 @@ void EditorRenderSystem::showFileSelector()
 //**********************************************************************************************************************
 void EditorRenderSystem::init()
 {
-	Manager::Instance::get()->registerEventBefore("EditorRender", "Present");
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", EditorRenderSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
 }
 void EditorRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
-	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", EditorRenderSystem::editorRender);
-		Manager::Instance::get()->unregisterEvent("EditorRender");
-	}
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
 }
 
-void EditorRenderSystem::editorRender()
+void EditorRenderSystem::preUiRender()
 {
-	SET_CPU_ZONE_SCOPED("Editor Render");
-
-	if (!GraphicsSystem::Instance::get()->canRender())
-		return;
+	SET_CPU_ZONE_SCOPED("Pre UI Render");
 
 	showMainMenuBar();
 
@@ -1124,6 +1117,12 @@ void EditorRenderSystem::drawResource(ID<Framebuffer> framebuffer, const char* l
 	auto framebufferView = framebuffer ?
 		GraphicsAPI::get()->framebufferPool.get(framebuffer) : View<Framebuffer>();
 	::drawResource(*framebufferView, label, ID<Resource>(framebuffer), GpuResourceEditorSystem::TabType::Framebuffers);
+}
+void EditorRenderSystem::drawResource(ID<Sampler> sampler, const char* label)
+{
+	auto samplerView = sampler ?
+		GraphicsAPI::get()->samplerPool.get(sampler) : View<Sampler>();
+	::drawResource(*samplerView, label, ID<Resource>(sampler), GpuResourceEditorSystem::TabType::Samplers);
 }
 void EditorRenderSystem::drawResource(ID<DescriptorSet> descriptorSet, const char* label)
 {

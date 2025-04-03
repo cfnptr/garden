@@ -42,7 +42,7 @@ uniform pushConstants
 
 void main()
 {
-	GBufferValues values;
+	GBufferValues values = gBufferValuesDefault();
 	values.baseColor = pc.color;
 	values.metallic = pc.mraor.r;
 	values.roughness = pc.mraor.g;
@@ -50,7 +50,6 @@ void main()
 	values.reflectance = pc.mraor.a;
 	values.clearCoat = pc.clearCoat.r;
 	values.clearCoatRoughness = pc.clearCoat.g;
-	values.normal = float3(0.0f); // Using color mask here
 	values.shadow = pc.shadow;
 
 	if (USE_EMISSIVE_BUFFER)
@@ -64,5 +63,5 @@ void main()
 		values.thickness = pc.subsurface.a;
 	}
 
-	encodeGBufferValues(values, fb.g0, fb.g1, fb.g2, fb.g3, fb.g4, fb.g5);
+	ENCODE_G_BUFFER_VALUES(values);
 }

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "garden/system/resource.hpp"
+#include "garden/defines.hpp"
+#include "garden/graphics/buffer.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
 #include "garden/system/app-info.hpp"
@@ -27,6 +29,7 @@
 #include "garden/file.hpp"
 #include "math/tone-mapping.hpp"
 
+#include "math/types.hpp"
 #include "webp/decode.h"
 #include "png.h"
 #include "stb_image.h"
@@ -37,6 +40,10 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
+#include <assimp/mesh.h>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 using namespace garden;
@@ -67,9 +74,11 @@ namespace garden::graphics
 	};
 	struct LodBufferLoadData final
 	{
-		uint64 version = 0;
+		uint64 bufferVersion = 0;
 		vector<BufferChannel> channels;
-		fs::path path;
+		vector<fs::path> paths;
+		const vector<ID<Buffer>>* vertexBuffers;
+		const vector<ID<Buffer>>* indexBuffers;
 		ID<LodBuffer> instance = {};
 		Buffer::Strategy strategy = {};
 		uint8 maxLodCount = 0;
@@ -81,11 +90,11 @@ namespace garden::graphics
 		uint64 version = 0;
 		fs::path shaderPath;
 		map<string, Pipeline::SpecConstValue> specConstValues;
-		map<string, Pipeline::SamplerState> samplerStateOverrides;
+		map<string, Sampler::State> samplerStateOverrides;
 		uint32 maxBindlessCount = 0;
 		#if !GARDEN_PACK_RESOURCES
 		fs::path resourcesPath;
-		fs::path cachesPath;
+		fs::path cachePath;
 		#endif
 	};
 	struct GraphicsPipelineLoadData final : public PipelineLoadData
@@ -134,7 +143,7 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	appResourcesPath = appInfoSystem->getResourcesPath();
-	appCachesPath = appInfoSystem->getCachesPath();
+	appCachePath = appInfoSystem->getCachePath();
 
 	Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE); // TODO: log to the garden logger.
 	#endif
@@ -149,6 +158,8 @@ ResourceSystem::~ResourceSystem()
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("ImageLoaded");
 		manager->unregisterEvent("BufferLoaded");
+
+		lodBufferPool.clear();
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -288,9 +299,9 @@ void ResourceSystem::dequeueBuffers()
 	while (!loadedBufferQueue.empty())
 	{
 		auto& item = loadedBufferQueue.front();
-		if (*item.instance <= graphicsAPI->bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
+		if (*item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
 		{
-			auto& buffer = graphicsAPI->bufferPool.getData()[*item.instance - 1];
+			auto& buffer = graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1];
 			if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
 			{
 				BufferExt::moveInternalObjects(item.buffer, buffer);
@@ -312,34 +323,36 @@ void ResourceSystem::dequeueBuffers()
 			auto stagingView = graphicsAPI->bufferPool.get(staging);
 			BufferExt::moveInternalObjects(item.staging, **stagingView);
 			graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-			Buffer::copy(staging, item.instance);
+			Buffer::copy(staging, item.bufferInstance);
 			graphicsSystem->stopRecording();
 			graphicsAPI->bufferPool.destroy(staging);
 
-			for (auto& lod : lodBuffers)
+			if (item.lodBufferInstance)
 			{
-				auto levelCount = lod.getLevelCount();
+				auto lodBufferView = lodBufferPool.get(item.lodBufferInstance);
+				auto levelCount = lodBufferView->getLevelCount();
+
 				if (hasAnyFlag(item.buffer.getBind(), Buffer::Bind::Vertex))
 				{
-					auto& vertexBuffers = lod.getVertexBuffers();
+					auto& vertexBuffers = lodBufferView->getVertexBuffers();
 					for (uint32 i = 0; i < levelCount; i++)
 					{
-						if (vertexBuffers[i] == item.instance)
-							lod.updateReadyState(i, item.instance);
+						if (vertexBuffers[i] == item.bufferInstance)
+							lodBufferView->updateReadyState(i, item.bufferInstance);
 					}
 				}
 				if (hasAnyFlag(item.buffer.getBind(), Buffer::Bind::Index))
 				{
-					auto& indexBuffers = lod.getVertexBuffers();
+					auto& indexBuffers = lodBufferView->getIndexBuffers();
 					for (uint32 i = 0; i < levelCount; i++)
 					{
-						if (indexBuffers[i] == item.instance)
-							lod.updateReadyState(i, item.instance);
+						if (indexBuffers[i] == item.bufferInstance)
+							lodBufferView->updateReadyState(i, item.bufferInstance);
 					}
 				}
 			}
 
-			loadedBuffer = item.instance;
+			loadedBuffer = item.bufferInstance;
 			loadedBufferPath = std::move(item.path);
 			manager->runEvent("BufferLoaded");
 		}
@@ -483,7 +496,7 @@ static void loadMissingImage(vector<uint8>& data, uint2& size, Image::Format& fo
 	pixels[8] = Color::magenta; pixels[9] = Color::black;    pixels[10] = Color::magenta; pixels[11] = Color::black;
 	pixels[12] = Color::black;  pixels[13] = Color::magenta; pixels[14] = Color::black;   pixels[15] = Color::magenta;
 	size = uint2(4, 4);
-	format = Image::Format::SrgbR8G8B8A8;
+	format = Image::Format::SrgbB8G8R8A8;
 }
 static void loadMissingImageFloat(vector<uint8>& data, uint2& size, Image::Format& format)
 {
@@ -510,11 +523,11 @@ static void loadMissingImageFloat(vector<uint8>& left, vector<uint8>& right, vec
 
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
-static int32 getImageFilePath(const fs::path& appCachesPath, const fs::path& appResourcesPath,
+static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appResourcesPath,
 	fs::path path, fs::path& filePath, ImageFileType& fileType)
 {
 	auto imagePath = fs::path("images") / path;
-	filePath = appCachesPath / imagePath;
+	filePath = appCachePath / imagePath;
 
 	filePath += ".exr";
 	fileType = ImageFileType::Exr;
@@ -582,7 +595,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
 	#else
 	fs::path filePath;
-	auto fileCount = getImageFilePath(appCachesPath, appResourcesPath, path, filePath, fileType);
+	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, filePath, fileType);
 
 	if (fileCount == 0)
 	{
@@ -646,7 +659,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	SET_CPU_ZONE_SCOPED("Cubemap Data Convert");
 
 	vector<f32x4> floatData; const f32x4* equiPixels;
-	if (format == Image::Format::SrgbR8G8B8A8)
+	if (format == Image::Format::SrgbB8G8R8A8)
 	{
 		floatData.resize(equiData.size() / sizeof(Color));
 		auto dstData = floatData.data();
@@ -742,11 +755,11 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	
 	#if !GARDEN_PACK_RESOURCES
-	auto filePath = appCachesPath / "images" / path;
+	auto filePath = appCachePath / "images" / path;
 	auto cacheFilePath = filePath.generic_string();
 
 	fs::path inputFilePath; ImageFileType inputFileType; Image::Format format;
-	auto fileCount = getImageFilePath(appCachesPath, appResourcesPath, path, inputFilePath, inputFileType);
+	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
 
 	if (fileCount == 0)
 	{
@@ -981,7 +994,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		format = Image::Format::SfloatR32G32B32A32;
 		break;
 	default:
-		format = Image::Format::SrgbR8G8B8A8;
+		format = Image::Format::SrgbB8G8R8A8;
 		break;
 	}
 }
@@ -1093,7 +1106,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags)
 {
 	// TODO: allow to load file with image paths to load image arrays.
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	GARDEN_ASSERT(!paths.empty());
 	GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
 
@@ -1144,7 +1157,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	auto version = graphicsAPI->imageVersion++;
 	auto image = graphicsAPI->imagePool.create(bind, strategy, version);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto resource = graphicsAPI->imagePool.get(image);
 	if (paths.size() > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray))
 		resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
@@ -1172,8 +1185,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 			loadImageArrayData(this, paths, pixelArrays, realSize, format, task.getThreadIndex());
 			
-			if (hasAnyFlag(data->flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
-				format = Image::Format::UnormR8G8B8A8;
+			if (hasAnyFlag(data->flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbB8G8R8A8)
+				format = Image::Format::UnormB8G8R8A8;
 
 			auto formatBinarySize = toBinarySize(format);
 			uint2 imageSize; uint32 layerCount;
@@ -1209,8 +1222,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 		loadImageArrayData(this, paths, pixelArrays, realSize, format, -1);
 
-		if (hasAnyFlag(flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
-			format = Image::Format::UnormR8G8B8A8;
+		if (hasAnyFlag(flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbB8G8R8A8)
+			format = Image::Format::UnormB8G8R8A8;
 
 		auto formatBinarySize = toBinarySize(format);
 		uint2 imageSize; uint32 layerCount;
@@ -1272,6 +1285,28 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 }
 
 //**********************************************************************************************************************
+Ref<Buffer> ResourceSystem::loadBuffer(const vector<fs::path>& path, Buffer::Strategy strategy, BufferLoadFlags flags)
+{
+	abort(); // TODO: load plain buffer binary data.
+}
+void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
+{
+	if (!buffer || buffer.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedBuffers.begin(); i != sharedBuffers.end(); i++)
+	{
+		if (i->second != buffer)
+			continue;
+		sharedBuffers.erase(i);
+		break;
+	}
+
+	if (buffer.isLastRef())
+		GraphicsSystem::Instance::get()->destroy(ID<Buffer>(buffer));
+}
+
+//**********************************************************************************************************************
 static bool hasChannel(const vector<BufferChannel>& channels, BufferChannel channel) noexcept
 {
 	for (auto _channel : channels)
@@ -1282,8 +1317,8 @@ static bool hasChannel(const vector<BufferChannel>& channels, BufferChannel chan
 	return false;
 }
 
-static const aiScene* loadLodBufferData(const fs::path& path, 
-	const vector<BufferChannel>& channels, Assimp::Importer& importer, bool optimizeMesh)
+static const aiScene* loadLodBufferData(const fs::path& path, const vector<BufferChannel>& channels, 
+	Assimp::Importer& importer, uint32& vertexSize, uint32& indexSize, bool optimizeMesh)
 {
 	auto removeComponents = aiComponent_BONEWEIGHTS | aiComponent_ANIMATIONS | 
 		aiComponent_TEXTURES | aiComponent_LIGHTS | aiComponent_CAMERAS | aiComponent_MATERIALS;
@@ -1308,27 +1343,26 @@ static const aiScene* loadLodBufferData(const fs::path& path,
 		flags |= aiProcess_CalcTangentSpace;
 	flags |= hasChannel(channels, BufferChannel::Normals) ? aiProcess_GenNormals : aiProcess_DropNormals;
 
-	auto aiScene = importer.ReadFile(path.generic_string(), flags);
-
-	if (!aiScene)
+	auto scene = importer.ReadFile(path.generic_string(), flags);
+	if (!scene)
 	{
 		GARDEN_LOG_ERROR("Failed to import LOD buffer.");
 		return nullptr;
 	}
-	if (!aiScene->HasMeshes())
+	if (!scene->HasMeshes())
 	{
 		GARDEN_LOG_ERROR("Imported LOD buffer has no meshes.");
 		return nullptr;
 	}
 
-	auto mesh = aiScene->mMeshes[0];
+	auto mesh = scene->mMeshes[0];
 	if (!mesh->HasFaces())
 	{
 		GARDEN_LOG_ERROR("Imported LOD buffer mesh has no faces.");
 		return nullptr;
 	}
 
-	uint32 texCoords = 0, vertColors = 0;
+	uint32 texCoordsIdx = 0, vertColorsIdx = 0; uint32 vertexBinarySize = 0;
 	for (auto channel : channels)
 	{
 		if (channel == BufferChannel::Positions && !mesh->HasPositions())
@@ -1349,54 +1383,133 @@ static const aiScene* loadLodBufferData(const fs::path& path,
 		}
 		if (channel == BufferChannel::TextureCoords)
 		{
-			if (!mesh->HasTextureCoords(texCoords))
+			if (!mesh->HasTextureCoords(texCoordsIdx))
 			{
 				GARDEN_LOG_ERROR("Imported LOD buffer does not have required texture coords channel.");
 				return nullptr;
 			}
-			texCoords++;
+			texCoordsIdx++;
 		}
 		if (channel == BufferChannel::VertexColors)
 		{
-			if (!mesh->HasVertexColors(vertColors))
+			if (!mesh->HasVertexColors(vertColorsIdx))
 			{
 				GARDEN_LOG_ERROR("Imported LOD buffer does not have required vertex colors channel.");
 				return nullptr;
 			}
-			vertColors++;
+			vertColorsIdx++;
 		}
+
+		vertexBinarySize += (uint32)toBinarySize(channel);
 	}
 
-	return aiScene;
-}
-static void copyLodBufferData(const vector<BufferChannel>& channels, const aiScene* aiScene)
-{
-	psize vertexDataSize = 0;
-	for (auto channel : channels)
-		vertexDataSize += toBinarySize(channel);
-
-	auto mesh = aiScene->mMeshes[0];
-	// mesh->mVertices
+	vertexSize = vertexBinarySize;
+	indexSize = mesh->mNumVertices < UINT32_MAX ? sizeof(uint16) : sizeof(uint32);
+	return scene;
 }
 
 //**********************************************************************************************************************
-Ref<LodBuffer> ResourceSystem::loadLodBuffer(const fs::path& path, const vector<BufferChannel>& channels,
-	uint8 maxLodCount, Buffer::Strategy strategy, BufferLoadFlags flags)
+static void copyLodBufferVertexData(const vector<BufferChannel>& channels, const aiMesh* mesh, uint8* vertexData)
 {
-	#if GARDEN_DEBUG
-	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(!channels.empty());
+	auto channelData = channels.data();
+	auto vertices = mesh->mVertices;
+	auto normals = mesh->mNormals;
+	auto tangents = mesh->mTangents;
+	auto bitangents = mesh->mBitangents;
+	auto texCoords = mesh->mTextureCoords;
+	auto vertColors = mesh->mColors;
+	auto channelCount = (uint32)channels.size();
+	auto vertexCount = (uint32)mesh->mNumVertices;
+	auto texCoordsCount = (uint32)mesh->GetNumUVChannels();
+	auto vertColorsCount = (uint32)mesh->GetNumColorChannels();
 
-	string debugName = hasAnyFlag(flags, BufferLoadFlags::LoadShared) ? "shared." : "";
-	#endif
+	for (uint32 i = 0; i < vertexCount; i++)
+	{
+		uint32 texCoordsIdx = 0, vertColorsIdx = 0;
+		for (uint32 j = 0; j < channelCount; j++)
+		{
+			switch (channelData[j])
+			{
+				case BufferChannel::Positions:
+					memcpy(vertexData, vertices + i, sizeof(float3));
+					vertexData += sizeof(float3);
+					break;
+				case BufferChannel::Normals:
+					memcpy(vertexData, normals + i, sizeof(float3));
+					vertexData += sizeof(float3);
+					break;
+				case BufferChannel::Tangents:
+					memcpy(vertexData, tangents + i, sizeof(float3));
+					vertexData += sizeof(float3);
+					break;
+				case BufferChannel::Bitangents:
+					memcpy(vertexData, bitangents + i, sizeof(float3));
+					vertexData += sizeof(float3);
+					break;
+				case BufferChannel::TextureCoords: // TODO: support 3D texture coordinates.
+					if (texCoordsIdx < texCoordsCount)
+						memcpy(vertexData, texCoords[texCoordsIdx++] + i, sizeof(float2));
+					vertexData += sizeof(float2);
+					break;
+				case BufferChannel::VertexColors:
+					if (vertColorsIdx < vertColorsCount)
+						memcpy(vertexData, vertColors[vertColorsIdx++] + i, sizeof(float4));
+					vertexData += sizeof(float4);
+					break;
+				default: abort();
+			}
+		}
+	}
+}
+static void copyLodBufferIndexData(const aiMesh* mesh, uint8* indexData)
+{
+	auto faces = mesh->mFaces;
+	auto faceCount = (uint32)mesh->mNumFaces;
+	auto vertexCount = (uint32)mesh->mNumVertices;
+	
+	if (vertexCount < UINT16_MAX)
+	{
+		for (uint32 i = 0; i < faceCount; i++)
+		{
+			auto indices = faces[i].mIndices;
+			auto indexData16 = (uint16*)indexData;
+			*(indexData16    ) = (uint16)indices[0];
+			*(indexData16 + 1) = (uint16)indices[1];
+			*(indexData16 + 2) = (uint16)indices[2];
+			indexData += sizeof(uint16) * 3;
+		}
+	}
+	else
+	{
+		for (uint32 i = 0; i < faceCount; i++)
+		{
+			memcpy(indexData, faces[i].mIndices, sizeof(uint32) * 3);
+			indexData += sizeof(uint32) * 3;
+		}
+	}
+}
+
+//**********************************************************************************************************************
+Ref<LodBuffer> ResourceSystem::loadLodBuffer(const vector<fs::path>& paths, const vector<BufferChannel>& channels,
+	uint8 maxLodCount, float maxDistanceSq, Buffer::Strategy strategy, BufferLoadFlags flags)
+{
+	GARDEN_ASSERT(!paths.empty());
+	GARDEN_ASSERT(!channels.empty());
+	GARDEN_ASSERT(maxDistanceSq > 0.0f);
 
 	Hash128 hash;
 	if (hasAnyFlag(flags, BufferLoadFlags::LoadShared))
 	{
 		auto hashState = Hash128::getState();
 		Hash128::resetState(hashState);
-		auto pathString = path.generic_string();
-		Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+		for (const auto& item : paths)
+		{
+			auto path = item.generic_string();
+			Hash128::updateState(hashState, path.c_str(), path.length());
+		}
+
+		for (auto channel : channels)
+			Hash128::updateState(hashState, &channel, sizeof(BufferChannel));
 		Hash128::updateState(hashState, &maxLodCount, sizeof(uint8));
 		Hash128::updateState(hashState, &flags, sizeof(BufferLoadFlags));
 		hash = Hash128::digestState(hashState);
@@ -1404,7 +1517,7 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const fs::path& path, const vector<
 		auto result = sharedLodBuffers.find(hash);
 		if (result != sharedLodBuffers.end())
 		{
-			auto lodBufferView = lodBuffers.get(result->second);
+			auto lodBufferView = lodBufferPool.get(result->second);
 			auto& vertexBuffers = lodBufferView->getVertexBuffers();
 			auto& indexBuffers = lodBufferView->getIndexBuffers();
 			auto levelCount = lodBufferView->getLevelCount();
@@ -1412,7 +1525,7 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const fs::path& path, const vector<
 			for (uint32 i = 0; i < levelCount; i++)
 			{
 				LoadedBufferItem item;
-				item.path = path;
+				item.path = paths[i];
 				item.instance = ID<Buffer>(vertexBuffers[i]);
 				loadedBufferArray.push_back(std::move(item));
 
@@ -1423,16 +1536,36 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const fs::path& path, const vector<
 		}
 	}
 	
-	auto version = lodBufferVersion++;
-	auto lodBuffer = lodBuffers.create();
+	auto graphicsAPI = GraphicsAPI::get();
+	auto bufferVersion = graphicsAPI->bufferVersion;
+	graphicsAPI->bufferVersion += (uint32)paths.size();
+
+	auto lodBuffer = lodBufferPool.create((uint32)paths.size(), maxDistanceSq);
+	auto lodBufferView = lodBufferPool.get(lodBuffer);
+	auto& vertexBuffers = lodBufferView->getVertexBuffers();
+	auto& indexBuffers = lodBufferView->getIndexBuffers();
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	string debugName = hasAnyFlag(flags, BufferLoadFlags::LoadShared) ? "shared." : "";
+
+	for (uint32 i = 0; i < (uint32)paths.size(); i++)
+	{
+		auto resource = GraphicsAPI::get()->bufferPool.get(vertexBuffers[i]);
+		resource->setDebugName("buffer.vertex." + debugName + paths[i].generic_string());
+		resource = GraphicsAPI::get()->bufferPool.get(indexBuffers[i]);
+		resource->setDebugName("buffer.index." + debugName + paths[i].generic_string());
+	}
+	#endif
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (!hasAnyFlag(flags, BufferLoadFlags::LoadSync) && threadSystem)
 	{
 		auto data = new LodBufferLoadData();
-		data->version = version;
+		data->bufferVersion = bufferVersion;
 		data->channels = channels;
-		data->path = path;
+		data->paths = paths;
+		data->vertexBuffers = &vertexBuffers;
+		data->indexBuffers = &indexBuffers;
 		data->instance = lodBuffer;
 		data->strategy = strategy;
 		data->maxLodCount = maxLodCount;
@@ -1442,44 +1575,133 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const fs::path& path, const vector<
 		{
 			SET_CPU_ZONE_SCOPED("LOD Buffer Load");
 
-			Assimp::Importer importer;
-			auto aiScene = loadLodBufferData(data->path, data->channels, importer, true);
-			if (!aiScene)
+			auto& paths = data->paths;
+			auto& channels = data->channels;
+			auto& vertexBuffers = *data->vertexBuffers;
+			auto& indexBuffers = *data->indexBuffers;
+			auto bufferVersion = data->bufferVersion;
+			Assimp::Importer importer; uint32 vertexSize, indexSize;
+			auto optimizeMesh = !hasAnyFlag(data->flags, BufferLoadFlags::DoNotOptimize);
+
+			for (uint32 i = 0; i < (uint32)paths.size(); i++)
 			{
-				delete data;
-				return;
+				auto scene = loadLodBufferData(paths[i], data->channels, 
+					importer, vertexSize, indexSize, optimizeMesh);
+				if (!scene)
+				{
+					bufferVersion += 2;
+					continue;
+				}
+
+				auto mesh = scene->mMeshes[0];
+				
+				BufferQueueItem vertexItem =
+				{
+					BufferExt::create(Buffer::Bind::Vertex | Buffer::Bind::TransferDst, Buffer::Access::None, 
+						Buffer::Usage::PreferGPU, Buffer::Strategy::Size, bufferVersion++),
+					BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, 
+						Buffer::Usage::Auto, Buffer::Strategy::Speed, vertexSize * mesh->mNumVertices, 0),
+					paths[i], vertexBuffers[i], data->instance
+				};
+				BufferQueueItem indexItem =
+				{
+					BufferExt::create(Buffer::Bind::Index | Buffer::Bind::TransferDst, Buffer::Access::None, 
+						Buffer::Usage::PreferGPU, Buffer::Strategy::Size, bufferVersion++),
+					BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, 
+						Buffer::Usage::Auto, Buffer::Strategy::Speed, indexSize * mesh->mNumFaces * 3, 0),
+					std::move(paths[i]), indexBuffers[i], data->instance
+				};
+
+				copyLodBufferVertexData(channels, mesh, vertexItem.staging.getMap());
+				vertexItem.staging.flush();
+				copyLodBufferIndexData(mesh, indexItem.staging.getMap());
+				indexItem.staging.flush();
+
+				queueLocker.lock();
+				loadedBufferQueue.push(std::move(vertexItem));
+				loadedBufferQueue.push(std::move(indexItem));
+				queueLocker.unlock();
 			}
 
-			/*
-			BufferQueueItem item =
-			{
-				BufferExt::create(type, format, data->bind, data->strategy, 
-					u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
-					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0),
-				std::move(paths),
-				realSize,
-				data->instance,
-			};
-			
-
-			// TODO: copy buffer
-			item.staging.flush();
-
 			delete data;
-			queueLocker.lock();
-			loadedBufferQueue.push(std::move(item));
-			queueLocker.unlock();
-			*/
 		});
 	}
 	else
 	{
+		SET_CPU_ZONE_SCOPED("LOD Buffer Load");
 
+		Assimp::Importer importer; uint32 vertexSize, indexSize;
+		auto optimizeMesh = !hasAnyFlag(flags, BufferLoadFlags::DoNotOptimize);
+
+		for (uint32 i = 0; i < (uint32)paths.size(); i++)
+		{
+			auto scene = loadLodBufferData(paths[i], channels, 
+				importer, vertexSize, indexSize, optimizeMesh);
+			if (!scene)
+			{
+				bufferVersion += 2;
+				continue;
+			}
+
+			auto mesh = scene->mMeshes[0];
+
+			auto bufferInstance = BufferExt::create(Buffer::Bind::Vertex | Buffer::Bind::TransferDst, 
+				Buffer::Access::None, Buffer::Usage::PreferGPU, Buffer::Strategy::Size, bufferVersion++);
+			auto bufferView = graphicsAPI->bufferPool.get(vertexBuffers[i]);
+			BufferExt::moveInternalObjects(bufferInstance, **bufferView);
+
+			bufferInstance = BufferExt::create(Buffer::Bind::Index | Buffer::Bind::TransferDst, 
+				Buffer::Access::None, Buffer::Usage::PreferGPU, Buffer::Strategy::Size, bufferVersion++);
+			bufferView = graphicsAPI->bufferPool.get(indexBuffers[i]);
+			BufferExt::moveInternalObjects(bufferInstance, **bufferView);
+
+			auto graphicsSystem = GraphicsSystem::Instance::get();
+			auto vertexStaging = graphicsAPI->bufferPool.create(
+				Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto, 
+				Buffer::Strategy::Speed, vertexSize * mesh->mNumVertices, 0);
+			SET_RESOURCE_DEBUG_NAME(vertexStaging, 
+				"buffer.staging.vertex.loadedBuffer" + to_string(*vertexStaging));
+			auto stagingView = graphicsAPI->bufferPool.get(vertexStaging);
+			copyLodBufferVertexData(channels, mesh, stagingView->getMap());
+			stagingView->flush();
+
+			auto indexStaging = graphicsAPI->bufferPool.create(
+				Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto, 
+				Buffer::Strategy::Speed, indexSize * mesh->mNumFaces * 3, 0);
+			SET_RESOURCE_DEBUG_NAME(indexStaging, 
+				"buffer.staging.index.loadedBuffer" + to_string(*indexStaging));
+			stagingView = graphicsAPI->bufferPool.get(indexStaging);
+			copyLodBufferIndexData(mesh, stagingView->getMap());
+			stagingView->flush();
+
+			graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+			Buffer::copy(vertexStaging, vertexBuffers[i]);
+			Buffer::copy(indexStaging, indexBuffers[i]);
+			graphicsSystem->stopRecording();
+
+			graphicsAPI->bufferPool.destroy(indexStaging);
+			graphicsAPI->bufferPool.destroy(vertexStaging);
+
+			LoadedBufferItem item;
+			item.path = paths[i];
+			item.instance = vertexBuffers[i];
+			loadedBufferArray.push_back(std::move(item));
+
+			item.instance = indexBuffers[i];
+			loadedBufferArray.push_back(std::move(item));
+		}
 	}
+
+	auto lodBufferRef = Ref<LodBuffer>(lodBuffer);
+	if (hasAnyFlag(flags, BufferLoadFlags::LoadShared))
+	{
+		auto result = sharedLodBuffers.emplace(hash, lodBufferRef);
+		GARDEN_ASSERT(result.second); // Corrupted shared LOD buffers array.
+	}
+
+	return lodBufferRef;
 }
 
-//**********************************************************************************************************************
 void ResourceSystem::destroyShared(const Ref<LodBuffer>& lodBuffer)
 {
 	if (!lodBuffer || lodBuffer.getRefCount() > 2)
@@ -1494,30 +1716,7 @@ void ResourceSystem::destroyShared(const Ref<LodBuffer>& lodBuffer)
 	}
 
 	if (lodBuffer.isLastRef())
-	{
-		auto lodBufferView = lodBuffers.get(lodBuffer);
-		for (auto& buffer : lodBufferView->getVertexBuffers())
-			destroyShared(buffer);
-		for (auto& buffer : lodBufferView->getIndexBuffers())
-			destroyShared(buffer);
-		lodBuffers.destroy(ID<LodBuffer>(lodBuffer));
-	}
-}
-void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
-{
-	if (!buffer || buffer.getRefCount() > 2)
-		return;
-
-	for (auto i = sharedBuffers.begin(); i != sharedBuffers.end(); i++)
-	{
-		if (i->second != buffer)
-			continue;
-		sharedBuffers.erase(i);
-		break;
-	}
-
-	if (buffer.isLastRef())
-		GraphicsSystem::Instance::get()->destroy(ID<Buffer>(buffer));
+		lodBufferPool.destroy(ID<LodBuffer>(lodBuffer));
 }
 
 //**********************************************************************************************************************
@@ -1533,7 +1732,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<Graphi
 		return searchResult->second;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), index);
+	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), {}, index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64());
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
@@ -1553,7 +1752,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<Comput
 		return searchResult->second;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), index);
+	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), {}, index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64());
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
@@ -1598,9 +1797,9 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 	}
 
 	vertexPath += ".spv"; fragmentPath += ".spv";
-	auto vertexOutputPath = data.cachesPath / vertexPath;
-	auto fragmentOutputPath = data.cachesPath / fragmentPath;
-	auto headerFilePath = data.cachesPath / headerPath;
+	auto vertexOutputPath = data.cachePath / vertexPath;
+	auto fragmentOutputPath = data.cachePath / fragmentPath;
+	auto headerFilePath = data.cachePath / headerPath;
 	
 	if (!fs::exists(headerFilePath) ||
 		(hasVertexShader && (!fs::exists(vertexOutputPath) ||
@@ -1747,7 +1946,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->useAsyncRecording = useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
-		data->cachesPath = appCachesPath;
+		data->cachePath = appCachePath;
 		#endif
 
 		if (stateOverrides)
@@ -1778,7 +1977,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.threadIndex = task.getThreadIndex();
 			#else
 			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachesPath = std::move(data->cachesPath);
+			pipelineData.cachePath = std::move(data->cachePath);
 			#endif
 
 			if (!loadOrCompileGraphics(pipelineData))
@@ -1819,7 +2018,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.threadIndex = -1;
 		#else
 		pipelineData.resourcesPath = appResourcesPath;
-		pipelineData.cachesPath = appCachesPath;
+		pipelineData.cachePath = appCachePath;
 		#endif
 
 		if (stateOverrides)
@@ -1867,8 +2066,8 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 
 	auto headerPath = "shaders" / data.shaderPath;
 	computePath += ".spv"; headerPath += ".gslh";
-	auto computeOutputPath = data.cachesPath / computePath;
-	auto headerFilePath = data.cachesPath / headerPath;
+	auto computeOutputPath = data.cachePath / computePath;
+	auto headerFilePath = data.cachePath / headerPath;
 	
 	if (!fs::exists(headerFilePath) || !fs::exists(computeOutputPath) ||
 		fs::last_write_time(computeInputPath) > fs::last_write_time(computeOutputPath))
@@ -1920,7 +2119,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 	const fs::path& path, bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount, 
 	const map<string, Pipeline::SpecConstValue>* specConstValues,
-	const map<string, Pipeline::SamplerState>* samplerStateOverrides, 
+	const map<string, Sampler::State>* samplerStateOverrides, 
 	ComputePipeline::ShaderOverrides* shaderOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -1945,7 +2144,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 		data->useAsyncRecording = useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
-		data->cachesPath = appCachesPath;
+		data->cachePath = appCachePath;
 		#endif
 
 		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
@@ -1963,7 +2162,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 			pipelineData.threadIndex = task.getThreadIndex();
 			#else
 			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachesPath = std::move(data->cachesPath);
+			pipelineData.cachePath = std::move(data->cachePath);
 			#endif
 			
 			if (!loadOrCompileCompute(pipelineData))
@@ -2002,7 +2201,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 		pipelineData.threadIndex = -1;
 		#else
 		pipelineData.resourcesPath = appResourcesPath;
-		pipelineData.cachesPath = appCachesPath;
+		pipelineData.cachePath = appCachePath;
 		#endif
 		
 		if (shaderOverrides)

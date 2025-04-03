@@ -40,12 +40,9 @@ class TransSpriteSystem final : public SpriteRenderCompSystem<
 {
 	/**
 	 * @brief Creates a new translucent sprite rendering system instance.
-	 * 
-	 * @param useDeferredBuffer use deferred or forward framebuffer
-	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	TransSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	TransSpriteSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys opaque translucent rendering system instance.
 	 */

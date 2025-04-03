@@ -44,7 +44,7 @@ class LogEditorSystem final : public System, public Singleton<LogEditorSystem>
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

@@ -24,8 +24,8 @@ class GpuResourceEditorSystem final : public System
 public:
 	enum class TabType : uint8
 	{
-		None, Buffers, Images, ImageViews, Framebuffers, DescriptorSets,
-		GraphicsPipelines, ComputePipelines, Count
+		None, Buffers, Images, ImageViews, Framebuffers, Samplers, 
+		DescriptorSets, GraphicsPipelines, ComputePipelines, Count
 	};
 private:
 	string searchString;
@@ -40,7 +40,7 @@ private:
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

@@ -32,7 +32,7 @@ class ToneMappingRenderEditorSystem final : public System
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
 	void editorBarToolPP();
 
 	friend class ecsm::Manager;

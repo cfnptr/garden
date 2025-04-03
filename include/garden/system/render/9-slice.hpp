@@ -63,8 +63,7 @@ public:
 		f32x4 texWinBorder = f32x4::zero;
 	};
 protected:
-	NineSliceRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
-		bool isTranslucent) : SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter, isTranslucent) { }
+	NineSliceRenderSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
 
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
@@ -91,8 +90,7 @@ protected:
 	LinearPool<C, DestroyComponents> components;
 	LinearPool<A, DestroyAnimationFrames> animationFrames;
 
-	NineSliceRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
-		bool isTranslucent) : NineSliceRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter, isTranslucent) { }
+	NineSliceRenderCompSystem(const fs::path& pipelinePath) : NineSliceRenderSystem(pipelinePath) { }
 
 	ID<Component> createComponent(ID<Entity> entity) override
 	{

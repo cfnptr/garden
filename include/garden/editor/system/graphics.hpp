@@ -36,7 +36,7 @@ private:
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
 	void editorBarTool();
 
 	void showPerformanceStats();

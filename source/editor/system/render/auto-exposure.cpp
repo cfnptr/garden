@@ -64,7 +64,8 @@ AutoExposureRenderEditorSystem::~AutoExposureRenderEditorSystem()
 
 void AutoExposureRenderEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AutoExposureRenderEditorSystem::preUiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("UiRender", AutoExposureRenderEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AutoExposureRenderEditorSystem::editorBarToolPP);
 }
@@ -77,141 +78,134 @@ void AutoExposureRenderEditorSystem::deinit()
 		graphicsSystem->destroy(limitsPipeline);
 		graphicsSystem->destroy(readbackBuffer);
 		
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AutoExposureRenderEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AutoExposureRenderEditorSystem::preUiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", AutoExposureRenderEditorSystem::uiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", AutoExposureRenderEditorSystem::editorBarToolPP);
 	}
 }
 
 //**********************************************************************************************************************
-void AutoExposureRenderEditorSystem::editorRender()
+void AutoExposureRenderEditorSystem::preUiRender()
 {
-	if (!GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
-	if (showWindow)
+	if (ImGui::Begin("Automatic Exposure (AE)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		if (ImGui::Begin("Automatic Exposure (AE)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+		if (!readbackBuffer)
 		{
-			if (!readbackBuffer)
-			{
-				readbackBuffer = createReadbackBuffer();
-				histogramSamples.resize(AutoExposureRenderSystem::histogramSize);
-			}
-
-			auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
-			ImGui::Checkbox("Enabled", &autoExposureSystem->isEnabled);
-			ImGui::DragFloat("Min Log Luminance", &autoExposureSystem->minLogLum, 0.1f);
-			ImGui::DragFloat("Max Log Luminance", &autoExposureSystem->maxLogLum, 0.1f);
-			ImGui::DragFloat("Dark Adaptation Rate", &autoExposureSystem->darkAdaptRate, 0.01f, 0.001f);
-			ImGui::DragFloat("Bright Adaptation Rate", &autoExposureSystem->brightAdaptRate, 0.01f, 0.001f);
-
-			auto graphicsSystem = GraphicsSystem::Instance::get();
-			auto readbackBufferView = graphicsSystem->get(readbackBuffer);
-			auto size = sizeof(ToneMappingRenderSystem::LuminanceData) +
-				AutoExposureRenderSystem::histogramSize * sizeof(uint32);
-			auto offset = size * graphicsSystem->getSwapchainIndex();
-			readbackBufferView->invalidate(size, offset);
-			auto map = readbackBufferView->getMap() + offset;
-			auto luminance = (const ToneMappingRenderSystem::LuminanceData*)map;
-			auto histogram = (const uint32*)(map + sizeof(ToneMappingRenderSystem::LuminanceData));
-			uint32 maxHistogramValue = 0;
-
-			for (uint16 i = 0; i < AutoExposureRenderSystem::histogramSize; i++)
-			{
-				if (histogram[i] > maxHistogramValue)
-					maxHistogramValue = histogram[i];
-			}
-
-			for (uint16 i = 0; i < AutoExposureRenderSystem::histogramSize; i++)
-				histogramSamples[i] = (float)histogram[i] / maxHistogramValue;
-
-			ImGui::SeparatorText("Visualizer");
-			ImGui::Checkbox("Visualize Luminance Limits", &visualizeLimits);
-			if (ImGui::BeginItemTooltip())
-			{
-				ImGui::Text("Blue < Min / Max < Red");
-				ImGui::EndTooltip();
-			}
-			ImGui::Spacing();
-
-			ImGui::Text("Average Luminance: %f, Exposure: %f",
-				luminance->avgLuminance, luminance->exposure);
-			if (ImGui::BeginItemTooltip())
-			{
-				ImGui::Text("Histogram Range: %.3f / %.3f (log2(luminance))",
-					autoExposureSystem->minLogLum, autoExposureSystem->maxLogLum);
-				ImGui::EndTooltip();
-			}
-
-			ImGui::PlotHistogram("Histogram", histogramSamples.data(),
-				AutoExposureRenderSystem::histogramSize, 0, nullptr, 0.0f, 1.0f, { 320.0f, 64.0f });
-
-			if (limitsPipeline)
-			{
-				auto pipelineView = graphicsSystem->get(limitsPipeline);
-				if (!pipelineView->isReady())
-					ImGui::TextDisabled("Limits pipeline is loading...");
-			}
-
-			auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
-
-			graphicsSystem->startRecording(CommandBufferType::Frame);
-			{
-				SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data", Color::transparent);
-				Buffer::CopyRegion copyRegion;
-				copyRegion.dstOffset = offset;
-				copyRegion.size = sizeof(ToneMappingRenderSystem::LuminanceData);
-				Buffer::copy(toneMappingSystem->getLuminanceBuffer(), readbackBuffer, copyRegion);
-
-				copyRegion.dstOffset = offset + sizeof(ToneMappingRenderSystem::LuminanceData);
-				copyRegion.size = AutoExposureRenderSystem::histogramSize * sizeof(uint32);
-				Buffer::copy(autoExposureSystem->getHistogramBuffer(), readbackBuffer, copyRegion);
-			}
-			graphicsSystem->stopRecording();
+			readbackBuffer = createReadbackBuffer();
+			histogramSamples.resize(AutoExposureRenderSystem::histogramSize);
 		}
-		ImGui::End();
-	}
 
-	if (visualizeLimits)
-	{
+		auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
+		ImGui::Checkbox("Enabled", &autoExposureSystem->isEnabled);
+		ImGui::DragFloat("Min Log Luminance", &autoExposureSystem->minLogLum, 0.1f);
+		ImGui::DragFloat("Max Log Luminance", &autoExposureSystem->maxLogLum, 0.1f);
+		ImGui::DragFloat("Dark Adaptation Rate", &autoExposureSystem->darkAdaptRate, 0.01f, 0.001f);
+		ImGui::DragFloat("Bright Adaptation Rate", &autoExposureSystem->brightAdaptRate, 0.01f, 0.001f);
+
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		if (!limitsPipeline)
-		{
-			limitsPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-				"editor/auto-exposure-limits", graphicsSystem->getSwapchainFramebuffer());
-		}
-		
-		auto pipelineView = graphicsSystem->get(limitsPipeline);
-		if (pipelineView->isReady())
-		{
-			if (!limitsDescriptorSet)
-			{
-				auto uniforms = getLimitsUniforms();
-				limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.editor.autoExposure.limits");
-			}
+		auto readbackBufferView = graphicsSystem->get(readbackBuffer);
+		auto size = sizeof(ToneMappingRenderSystem::LuminanceData) +
+			AutoExposureRenderSystem::histogramSize * sizeof(uint32);
+		auto offset = size * graphicsSystem->getSwapchainIndex();
+		readbackBufferView->invalidate(size, offset);
+		auto map = readbackBufferView->getMap() + offset;
+		auto luminance = (const ToneMappingRenderSystem::LuminanceData*)map;
+		auto histogram = (const uint32*)(map + sizeof(ToneMappingRenderSystem::LuminanceData));
+		uint32 maxHistogramValue = 0;
 
-			auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
-			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-			pushConstants->minLum = std::exp2(autoExposureSystem->minLogLum);
-			pushConstants->maxLum = std::exp2(autoExposureSystem->maxLogLum);
-
-			graphicsSystem->startRecording(CommandBufferType::Frame);
-			{
-				SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
-				framebufferView->beginRenderPass(f32x4::zero);
-				pipelineView->bind();
-				pipelineView->setViewportScissor();
-				pipelineView->bindDescriptorSet(limitsDescriptorSet);
-				pipelineView->pushConstants();
-				pipelineView->drawFullscreen();
-				framebufferView->endRenderPass();
-			}
-			graphicsSystem->stopRecording();
+		for (uint16 i = 0; i < AutoExposureRenderSystem::histogramSize; i++)
+		{
+			if (histogram[i] > maxHistogramValue)
+				maxHistogramValue = histogram[i];
 		}
+
+		for (uint16 i = 0; i < AutoExposureRenderSystem::histogramSize; i++)
+			histogramSamples[i] = (float)histogram[i] / maxHistogramValue;
+
+		ImGui::SeparatorText("Visualizer");
+		ImGui::Checkbox("Visualize Luminance Limits", &visualizeLimits);
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Blue < Min / Max < Red");
+			ImGui::EndTooltip();
+		}
+		ImGui::Spacing();
+
+		ImGui::Text("Average Luminance: %f, Exposure: %f",
+			luminance->avgLuminance, luminance->exposure);
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Histogram Range: %.3f / %.3f (log2(luminance))",
+				autoExposureSystem->minLogLum, autoExposureSystem->maxLogLum);
+			ImGui::EndTooltip();
+		}
+
+		ImGui::PlotHistogram("Histogram", histogramSamples.data(),
+			AutoExposureRenderSystem::histogramSize, 0, nullptr, 0.0f, 1.0f, { 320.0f, 64.0f });
+
+		if (visualizeLimits)
+		{
+			if (!limitsPipeline)
+			{	
+				auto deferredSystem = DeferredRenderSystem::Instance::get();
+				limitsPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer());
+			}
+			auto pipelineView = graphicsSystem->get(limitsPipeline);
+			if (pipelineView->isReady())
+			{
+				if (!limitsDescriptorSet)
+				{
+					auto uniforms = getLimitsUniforms();
+					limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
+					SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.editor.autoExposure.limits");
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled("Limits pipeline is loading...");
+			}
+		}
+
+		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+
+		SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data", Color::transparent);
+		Buffer::CopyRegion copyRegion;
+		copyRegion.dstOffset = offset;
+		copyRegion.size = sizeof(ToneMappingRenderSystem::LuminanceData);
+		Buffer::copy(toneMappingSystem->getLuminanceBuffer(), readbackBuffer, copyRegion);
+
+		copyRegion.dstOffset = offset + sizeof(ToneMappingRenderSystem::LuminanceData);
+		copyRegion.size = AutoExposureRenderSystem::histogramSize * sizeof(uint32);
+		Buffer::copy(autoExposureSystem->getHistogramBuffer(), readbackBuffer, copyRegion);
 	}
+	ImGui::End();
+}
+void AutoExposureRenderEditorSystem::uiRender()
+{
+	if (!visualizeLimits)
+		return;
+	
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(limitsPipeline);
+	if (!pipelineView->isReady())
+		return;
+
+	auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
+	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+	pushConstants->minLum = std::exp2(autoExposureSystem->minLogLum);
+	pushConstants->maxLum = std::exp2(autoExposureSystem->maxLogLum);
+
+	SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(limitsDescriptorSet);
+	pipelineView->pushConstants();
+	pipelineView->drawFullscreen();
 }
 
 //**********************************************************************************************************************
@@ -225,8 +219,7 @@ void AutoExposureRenderEditorSystem::gBufferRecreate()
 		graphicsSystem->destroy(readbackBuffer);
 		readbackBuffer = createReadbackBuffer();
 	}
-
-	if (limitsDescriptorSet)
+	if (swapchainChanges.framebufferSize && limitsDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(limitsDescriptorSet);

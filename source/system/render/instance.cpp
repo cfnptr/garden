@@ -229,25 +229,28 @@ void InstanceRenderSystem::gBufferRecreate()
 			graphicsSystem->destroy(shadowInstanceBuffers);
 			createInstanceBuffers(bufferSize, shadowInstanceBuffers, false, this);
 		}
+	}
 
-		if (baseDescriptorSet)
-		{
-			graphicsSystem->destroy(baseDescriptorSet);
-			auto uniforms = getBaseUniforms();
-			baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
-			#if GARDEN_DEBUG
-			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
-			#endif
-		}
-		if (shadowDescriptorSet)
-		{
-			graphicsSystem->destroy(shadowDescriptorSet);
-			auto uniforms = getShadowUniforms();
-			shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
-			#if GARDEN_DEBUG
-			SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
-			#endif
-		}
+	// Recreating descriptor sets for all possible swapchain changes.
+	// Because we are not sure which ones are required for function overrides.
+
+	if (baseDescriptorSet)
+	{
+		graphicsSystem->destroy(baseDescriptorSet);
+		auto uniforms = getBaseUniforms();
+		baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+		#if GARDEN_DEBUG
+		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+		#endif
+	}
+	if (shadowDescriptorSet)
+	{
+		graphicsSystem->destroy(shadowDescriptorSet);
+		auto uniforms = getShadowUniforms();
+		shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+		#if GARDEN_DEBUG
+		SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+		#endif
 	}
 }
 

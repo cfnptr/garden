@@ -21,6 +21,7 @@
 #pragma once
 #include "garden/graphics/gsl.hpp"
 #include "garden/graphics/buffer.hpp"
+#include "garden/graphics/sampler.hpp"
 
 namespace garden::graphics
 {
@@ -315,7 +316,7 @@ public:
 	static bool isSupported(Type type, Format format, Bind bind, 
 		uint3 size, uint8 mipCount = 1, uint32 layerCount = 1);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Sets image debug name. (Debug Only)
 	 * @param[in] name target debug name
@@ -332,7 +333,7 @@ public:
 	 * @details Records image downsampling blit commands with specified filter. 
 	 * @param filter blitting operation filter
 	 */
-	void generateMips(SamplerFilter filter = SamplerFilter::Linear);
+	void generateMips(Sampler::Filter filter = Sampler::Filter::Linear);
 
 	/**
 	 * @brief Clears image regions with specified color.
@@ -698,7 +699,7 @@ public:
 	 * @param filter blitting operation filter
 	 */
 	static void blit(ID<Image> source, ID<Image> destination, const BlitRegion* regions,
-		uint32 count, SamplerFilter filter = SamplerFilter::Nearest);
+		uint32 count, Sampler::Filter filter = Sampler::Filter::Nearest);
 
 	/**
 	 * @brief Blits regions from the source image to the destination.
@@ -712,7 +713,7 @@ public:
 	 */
 	template<psize N>
 	static void blit(ID<Image> source, ID<Image> destination, const array<BlitRegion, N>& regions,
-		SamplerFilter filter = SamplerFilter::Nearest)
+		Sampler::Filter filter = Sampler::Filter::Nearest)
 	{ blit(source, destination, regions.data(), (uint32)N, filter); }
 	/**
 	 * @brief Blits regions from the source image to the destination.
@@ -724,7 +725,7 @@ public:
 	 * @param filter blitting operation filter
 	 */
 	static void blit(ID<Image> source, ID<Image> destination, const vector<BlitRegion>& regions,
-		SamplerFilter filter = SamplerFilter::Nearest)
+		Sampler::Filter filter = Sampler::Filter::Nearest)
 	{ blit(source, destination, regions.data(), (uint32)regions.size(), filter); }
 	/**
 	 * @brief Blits region from the source image to the destination.
@@ -736,7 +737,7 @@ public:
 	 * @param filter blitting operation filter
 	 */
 	static void blit(ID<Image> source, ID<Image> destination,
-		const BlitRegion& region, SamplerFilter filter = SamplerFilter::Nearest)
+		const BlitRegion& region, Sampler::Filter filter = Sampler::Filter::Nearest)
 	{ blit(source, destination, &region, 1, filter); }
 	/**
 	 * @brief Blits an entire source image to the destination.
@@ -747,7 +748,7 @@ public:
 	 * @param destination destination image
 	 * @param filter blitting operation filter
 	 */
-	static void blit(ID<Image> source, ID<Image> destination, SamplerFilter filter = SamplerFilter::Nearest)
+	static void blit(ID<Image> source, ID<Image> destination, Sampler::Filter filter = Sampler::Filter::Nearest)
 	{ BlitRegion region; blit(source, destination, &region, 1, filter); }
 
 	// TODO: add support of self copying and blitting if regions not overlapping.
@@ -835,7 +836,7 @@ public:
 	 */
 	bool isDefault() const noexcept { return _default; }
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Sets image view debug name. (Debug Only)
 	 * @param[in] name target debug name

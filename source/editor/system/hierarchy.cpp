@@ -40,14 +40,14 @@ HierarchyEditorSystem::~HierarchyEditorSystem()
 
 void HierarchyEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", HierarchyEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 }
 void HierarchyEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", HierarchyEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", HierarchyEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}
 }
@@ -210,9 +210,9 @@ static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEn
 }
 
 //**********************************************************************************************************************
-void HierarchyEditorSystem::editorRender()
+void HierarchyEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender() || !TransformSystem::Instance::has())
+	if (!showWindow || !TransformSystem::Instance::has())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 192.0f), ImGuiCond_FirstUseEver);

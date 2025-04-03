@@ -69,10 +69,10 @@ namespace garden::graphics
 		string line; uint32 lineIndex = 1;
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
 		bool isSkipMode = false, isReadonly = false, isWriteonly = false,
-			isRestrict = false, isVolatile = false, isCoherent = false;
+			isMutable, isRestrict = false, isVolatile = false, isCoherent = false;
 		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
-		Pipeline::SamplerState samplerState;
+		Sampler::State samplerState;
 	};
 	struct GraphicsFileData final : public FileData
 	{
@@ -85,8 +85,8 @@ namespace garden::graphics
 	{
 		string word, uniformName;
 		int8 isComparing = 0, isCompareOperation = 0, isAnisoFiltering = 0, isUnnormCoords = 0,
-			isFilter = 0, isFilterMin = 0, isFilterMag = 0, isFilterMipmap = 0,
-			isBorderColor = 0, isWrap = 0, isWrapX = 0, isWrapY = 0, isWrapZ = 0,
+			isFilter = 0, isFilterMin = 0, isFilterMag = 0, isFilterMipmap = 0, isBorderColor = 0, 
+			isAddressMode = 0, isAddressModeX = 0, isAddressModeY = 0, isAddressModeZ = 0,
 			isSpecConst = 0, isFeature = 0, isVariantCount = 0;
 		uint8 arraySize = 1;
 		GslDataType dataType = {}; Image::Format imageFormat = {};
@@ -259,7 +259,7 @@ static string_view toGlslString(Image::Format imageFormat)
 
 //******************************************************************************************************************
 static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage shaderStage, uint8& bindingIndex,
-	map<string, Pipeline::Uniform>& uniforms, map<string, Pipeline::SamplerState>& samplerStates)
+	map<string, Pipeline::Uniform>& uniforms, map<string, Sampler::State>& samplerStates)
 {
 	if (fileData.isUniform == 1)
 	{
@@ -270,6 +270,10 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == "writeonly")
 		{
 			fileData.isWriteonly = true;
+		}
+		else if (lineData.word == "mutable")
+		{
+			fileData.isMutable = true;
 		}
 		else if (lineData.word == "restrict")
 		{
@@ -451,6 +455,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		uniform.arraySize = lineData.arraySize;
 		uniform.readAccess = readAccess;
 		uniform.writeAccess = writeAccess;
+		uniform.isMutable = fileData.isMutable;
 
 		if (!uniforms.emplace(lineData.uniformName, uniform).second)
 			throw GardenError("Failed to emplace uniform.");
@@ -480,6 +485,11 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		if (uniform.readAccess != readAccess || uniform.writeAccess != writeAccess)
 		{
 			throw CompileError("different access between "
+				"stages is not supported yet", fileData.lineIndex); // TODO: add support
+		}
+		if (fileData.isMutable != uniform.isMutable)
+		{
+			throw CompileError("different mutable state between "
 				"stages is not supported yet", fileData.lineIndex); // TODO: add support
 		}
 		uniform.shaderStages |= shaderStage;
@@ -556,7 +566,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		}
 		else
 		{
-			if (memcmp(&fileData.samplerState, &result->second, sizeof(Pipeline::SamplerState)) != 0)
+			if (memcmp(&fileData.samplerState, &result->second, sizeof(Sampler::State)) != 0)
 			{
 				throw CompileError("different sampler state with the same name",
 					fileData.lineIndex, lineData.uniformName);
@@ -570,8 +580,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		}
 	}
 
-	fileData.isReadonly = fileData.isWriteonly = fileData.isRestrict =
-		fileData.isVolatile = fileData.isCoherent = false;
+	fileData.isReadonly = fileData.isWriteonly = fileData.isMutable = 
+		fileData.isRestrict = fileData.isVolatile = fileData.isCoherent = false;
 	fileData.isUniform = fileData.descriptorSetIndex = 0;
 }
 
@@ -615,7 +625,7 @@ static void onShaderPushConstants(FileData& fileData, LineData& lineData, uint16
 }
 
 //******************************************************************************************************************
-static SamplerFilter toSamplerFilter(string_view name, uint32 lineIndex)
+static Sampler::Filter toSamplerFilter(string_view name, uint32 lineIndex)
 {
 	try 
 	{
@@ -626,18 +636,18 @@ static SamplerFilter toSamplerFilter(string_view name, uint32 lineIndex)
 		throw CompileError("unrecognized sampler filter type", lineIndex, string(name));
 	}
 }
-static Pipeline::SamplerWrap toSamplerWrap(string_view name, uint32 lineIndex)
+static Sampler::AddessMode toAddressMode(string_view name, uint32 lineIndex)
 {
 	try 
 	{
-		return toSamplerWrap(name);
+		return toAddressMode(name);
 	}
 	catch (const exception&)
 	{
-		throw CompileError("unrecognized sampler wrap type", lineIndex, string(name));
+		throw CompileError("unrecognized sampler address mode", lineIndex, string(name));
 	}
 }
-static Pipeline::BorderColor toBorderColor(string_view name, uint32 lineIndex)
+static Sampler::BorderColor toBorderColor(string_view name, uint32 lineIndex)
 {
 	try 
 	{
@@ -648,7 +658,7 @@ static Pipeline::BorderColor toBorderColor(string_view name, uint32 lineIndex)
 		throw CompileError("unrecognized border color type", lineIndex, string(name));
 	}
 }
-static Pipeline::CompareOperation toCompareOperation(string_view name, uint32 lineIndex)
+static Sampler::CompareOp toCompareOperation(string_view name, uint32 lineIndex)
 {
 	try 
 	{
@@ -682,14 +692,14 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 				lineData.isFilterMipmap = 1;
 			else if (lineData.word == "borderColor")
 				lineData.isBorderColor = 1;
-			else if (lineData.word == "wrap")
-				lineData.isWrap = 1;
-			else if (lineData.word == "wrapX")
-				lineData.isWrapX = 1;
-			else if (lineData.word == "wrapY")
-				lineData.isWrapY = 1;
-			else if (lineData.word == "wrapZ")
-				lineData.isWrapZ = 1;
+			else if (lineData.word == "addressMode")
+				lineData.isAddressMode = 1;
+			else if (lineData.word == "addressModeX")
+				lineData.isAddressModeX = 1;
+			else if (lineData.word == "addressModeY")
+				lineData.isAddressModeY = 1;
+			else if (lineData.word == "addressModeZ")
+				lineData.isAddressModeZ = 1;
 			else if (lineData.word == "comparison")
 				lineData.isComparing = 1;
 			else if (lineData.word == "compareOperation")
@@ -745,26 +755,26 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 			fileData.samplerState.borderColor = toBorderColor(name, fileData.lineIndex);
 			lineData.isBorderColor = 0;
 		}
-		else if (lineData.isWrap)
+		else if (lineData.isAddressMode)
 		{
-			fileData.samplerState.wrapX = fileData.samplerState.wrapY =
-				fileData.samplerState.wrapZ = toSamplerWrap(name, fileData.lineIndex);
-			lineData.isWrap = 0;
+			fileData.samplerState.addressModeX = fileData.samplerState.addressModeY =
+				fileData.samplerState.addressModeZ = toAddressMode(name, fileData.lineIndex);
+			lineData.isAddressMode = 0;
 		}
-		else if (lineData.isWrapX)
+		else if (lineData.isAddressModeX)
 		{
-			fileData.samplerState.wrapX = toSamplerWrap(name, fileData.lineIndex);
-			lineData.isWrapX = 0;
+			fileData.samplerState.addressModeX = toAddressMode(name, fileData.lineIndex);
+			lineData.isAddressModeX = 0;
 		}
-		else if (lineData.isWrapY)
+		else if (lineData.isAddressModeY)
 		{
-			fileData.samplerState.wrapY = toSamplerWrap(name, fileData.lineIndex);
-			lineData.isWrapY = 0;
+			fileData.samplerState.addressModeY = toAddressMode(name, fileData.lineIndex);
+			lineData.isAddressModeY = 0;
 		}
-		else if (lineData.isWrapZ)
+		else if (lineData.isAddressModeZ)
 		{
-			fileData.samplerState.wrapZ = toSamplerWrap(name, fileData.lineIndex);
-			lineData.isWrapZ = 0;
+			fileData.samplerState.addressModeZ = toAddressMode(name, fileData.lineIndex);
+			lineData.isAddressModeZ = 0;
 		}
 		else if (lineData.isComparing)
 		{
@@ -2294,10 +2304,10 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 		if (data.packReader->getItemIndex(fragmentFilePath, itemIndex))
 			data.packReader->readItemData(itemIndex, data.fragmentCode, threadIndex);
 		#else
-		File::loadBinary(data.cachesPath / headerFilePath, data.headerData);
-		File::loadBinary(data.cachesPath / vertexFilePath, data.vertexCode);
-		if (fs::exists(data.cachesPath / fragmentFilePath)) // It's allowed to have only vertex shader.
-			File::loadBinary(data.cachesPath / fragmentFilePath, data.fragmentCode);
+		File::loadBinary(data.cachePath / headerFilePath, data.headerData);
+		File::loadBinary(data.cachePath / vertexFilePath, data.vertexCode);
+		if (fs::exists(data.cachePath / fragmentFilePath)) // It's allowed to have only vertex shader.
+			File::loadBinary(data.cachePath / fragmentFilePath, data.fragmentCode);
 		#endif
 	}
 	
@@ -2351,8 +2361,8 @@ void Compiler::loadComputeShader(ComputeData& data)
 		data.packReader->readItemData(headerFilePath, data.headerData, threadIndex);
 		data.packReader->readItemData(computeFilePath, data.code, threadIndex);
 		#else
-		File::loadBinary(data.cachesPath / headerFilePath, data.headerData);
-		File::loadBinary(data.cachesPath / computeFilePath, data.code);
+		File::loadBinary(data.cachePath / headerFilePath, data.headerData);
+		File::loadBinary(data.cachePath / computeFilePath, data.code);
 		#endif
 	}
 

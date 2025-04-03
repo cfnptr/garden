@@ -258,7 +258,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 	else abort();
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
 void Buffer::setDebugName(const string& name)
 {

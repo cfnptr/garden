@@ -44,7 +44,7 @@ buffer readonly Instance
 uniform set1 sampler2DArray
 {
 	filter = linear;
-	wrap = repeat;
+	addressMode = repeat;
 } colorMap;
 
 void main()

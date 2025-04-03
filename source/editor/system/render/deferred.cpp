@@ -102,7 +102,6 @@ DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
 
 void DeferredRenderEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
 	ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DeferredRenderEditorSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", DeferredRenderEditorSystem::ldrRender);
@@ -119,88 +118,11 @@ void DeferredRenderEditorSystem::deinit()
 		graphicsSystem->destroy(bufferPipeline);
 		graphicsSystem->destroy(blackPlaceholder);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", DeferredRenderEditorSystem::editorRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", DeferredRenderEditorSystem::preLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", DeferredRenderEditorSystem::ldrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
-	}
-}
-
-//**********************************************************************************************************************
-void DeferredRenderEditorSystem::editorRender()
-{
-	if (!GraphicsSystem::Instance::get()->canRender())
-		return;
-	
-	if (showWindow)
-	{
-		if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			auto deferredSystem = DeferredRenderSystem::Instance::get();
-			constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
-				"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0"
-				"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0"
-				"OIT Accumulated Alpha\0OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0"
-				"Global Shadow Alpha\0Global AO\0Denoised Global AO\0\0";
-			ImGui::Combo("Draw Mode", &drawMode, modes);
-
-			if (drawMode == DrawMode::Lighting)
-			{
-				ImGui::SeparatorText("Overrides");
-				ImGui::ColorEdit3("Base Color", &colorOverride);
-				ImGui::SliderFloat("Opaque / Transmission", &colorOverride.floats.w, 0.0f, 1.0f);
-				ImGui::SliderFloat("Metallic", &mraorOverride.floats.x, 0.0f, 1.0f);
-				ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
-				ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);
-				ImGui::SliderFloat("Reflectance", &mraorOverride.floats.w, 0.0f, 1.0f);
-				ImGui::SliderFloat("Clear Coat", &clearCoatOverride.x, 0.0f, 1.0f);
-				ImGui::SliderFloat("Clear Coat Roughness", &clearCoatOverride.y, 0.0f, 1.0f);
-				ImGui::SliderFloat("G-Buffer Shadows", &shadowOverride, 0.0f, 1.0f);
-
-				ImGui::BeginDisabled(!deferredSystem->useEmissive());
-				ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
-				ImGui::SliderFloat("Emissive Factor", &emissiveOverride.floats.w, 0.0f, 1.0f);
-				ImGui::EndDisabled();
-
-				ImGui::BeginDisabled(!deferredSystem->useSSS());
-				ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
-				ImGui::SliderFloat("Thickness", &subsurfaceOverride.floats.w, 0.0f, 1.0f);
-				ImGui::EndDisabled();
-			}
-			else if ((drawMode == DrawMode::EmissiveColor || 
-				drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive())
-			{
-				ImGui::TextDisabled("Emissive buffer is disabled!");
-			}
-			else if ((drawMode == DrawMode::SubsurfaceColor || 
-				drawMode == DrawMode::Thickness) && !deferredSystem->useSSS())
-			{
-				ImGui::TextDisabled("Sub surface scattering is disabled!");
-			}
-			else if ((int)drawMode > (int)DrawMode::Off)
-			{
-				ImGui::SeparatorText("Channels");
-				ImGui::Checkbox("<- R", &showChannelR); ImGui::SameLine();
-				ImGui::Checkbox("<- G", &showChannelG); ImGui::SameLine();
-				ImGui::Checkbox("<- B", &showChannelB);
-			}
-
-			if (bufferPipeline)
-			{
-				auto pipelineView = GraphicsSystem::Instance::get()->get(bufferPipeline);
-				if (!pipelineView->isReady())
-					ImGui::TextDisabled("G-Buffer pipeline is loading...");
-			}
-			if (pbrLightingPipeline)
-			{
-				auto pipelineView = GraphicsSystem::Instance::get()->get(pbrLightingPipeline);
-				if (!pipelineView->isReady())
-					ImGui::TextDisabled("PBR lighting pipeline is loading...");
-			}
-		}
-		ImGui::End();
 	}
 }
 
@@ -225,39 +147,108 @@ void DeferredRenderEditorSystem::deferredRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pbrLightingPipeline);
 
-	if (pipelineView->isReady())
-	{
-		auto threadIndex = graphicsSystem->getThreadCount() - 1;
-		auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
-		pushConstants->color = (float4)colorOverride;
-		pushConstants->mraor = (float4)mraorOverride;
-		pushConstants->emissive = (float4)emissiveOverride;
-		pushConstants->subsurface = (float4)subsurfaceOverride;
-		pushConstants->clearCoat = clearCoatOverride;
-		pushConstants->shadow = shadowOverride;
+	if (!pipelineView->isReady())
+		return;
 
-		SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
-		if (graphicsSystem->isCurrentRenderPassAsync())
-		{
-			pipelineView->bindAsync(0, threadIndex);
-			pipelineView->setViewportScissorAsync(f32x4::zero, threadIndex);
-			pipelineView->pushConstantsAsync(threadIndex);
-			pipelineView->drawFullscreenAsync(threadIndex);
-		}
-		else
-		{
-			pipelineView->bind();
-			pipelineView->setViewportScissor();
-			pipelineView->pushConstants();
-			pipelineView->drawFullscreen();
-			// TODO: also support translucent overrides.
-		}
+	auto threadIndex = graphicsSystem->getThreadCount() - 1;
+	auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
+	pushConstants->color = (float4)colorOverride;
+	pushConstants->mraor = (float4)mraorOverride;
+	pushConstants->emissive = (float4)emissiveOverride;
+	pushConstants->subsurface = (float4)subsurfaceOverride;
+	pushConstants->clearCoat = clearCoatOverride;
+	pushConstants->shadow = shadowOverride;
+
+	SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
+	if (graphicsSystem->isCurrentRenderPassAsync())
+	{
+		pipelineView->bindAsync(0, threadIndex);
+		pipelineView->setViewportScissorAsync(f32x4::zero, threadIndex);
+		pipelineView->pushConstantsAsync(threadIndex);
+		pipelineView->drawFullscreenAsync(threadIndex);
+	}
+	else
+	{
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->pushConstants();
+		pipelineView->drawFullscreen();
+		// TODO: also support translucent overrides.
 	}
 }
 
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::preLdrRender()
 {
+	if (!showWindow)
+		return;
+
+	if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
+			"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0"
+			"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0"
+			"OIT Accumulated Alpha\0OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0"
+			"Global Shadow Alpha\0Global AO\0Denoised Global AO\0\0";
+		ImGui::Combo("Draw Mode", &drawMode, modes);
+
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		if (drawMode == DrawMode::Lighting)
+		{
+			ImGui::SeparatorText("Overrides");
+			ImGui::ColorEdit3("Base Color", &colorOverride);
+			ImGui::SliderFloat("Opaque / Transmission", &colorOverride.floats.w, 0.0f, 1.0f);
+			ImGui::SliderFloat("Metallic", &mraorOverride.floats.x, 0.0f, 1.0f);
+			ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);
+			ImGui::SliderFloat("Reflectance", &mraorOverride.floats.w, 0.0f, 1.0f);
+			ImGui::SliderFloat("Clear Coat", &clearCoatOverride.x, 0.0f, 1.0f);
+			ImGui::SliderFloat("Clear Coat Roughness", &clearCoatOverride.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("G-Buffer Shadows", &shadowOverride, 0.0f, 1.0f);
+
+			ImGui::BeginDisabled(!deferredSystem->useEmissive());
+			ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
+			ImGui::SliderFloat("Emissive Factor", &emissiveOverride.floats.w, 0.0f, 1.0f);
+			ImGui::EndDisabled();
+
+			ImGui::BeginDisabled(!deferredSystem->useSSS());
+			ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
+			ImGui::SliderFloat("Thickness", &subsurfaceOverride.floats.w, 0.0f, 1.0f);
+			ImGui::EndDisabled();
+		}
+		else if ((drawMode == DrawMode::EmissiveColor || 
+			drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive())
+		{
+			ImGui::TextDisabled("Emissive buffer is disabled!");
+		}
+		else if ((drawMode == DrawMode::SubsurfaceColor || 
+			drawMode == DrawMode::Thickness) && !deferredSystem->useSSS())
+		{
+			ImGui::TextDisabled("Sub surface scattering is disabled!");
+		}
+		else if ((int)drawMode > (int)DrawMode::Off)
+		{
+			ImGui::SeparatorText("Channels");
+			ImGui::Checkbox("<- R", &showChannelR); ImGui::SameLine();
+			ImGui::Checkbox("<- G", &showChannelG); ImGui::SameLine();
+			ImGui::Checkbox("<- B", &showChannelB);
+		}
+
+		if (bufferPipeline)
+		{
+			auto pipelineView = GraphicsSystem::Instance::get()->get(bufferPipeline);
+			if (!pipelineView->isReady())
+				ImGui::TextDisabled("G-Buffer pipeline is loading...");
+		}
+		if (pbrLightingPipeline)
+		{
+			auto pipelineView = GraphicsSystem::Instance::get()->get(pbrLightingPipeline);
+			if (!pipelineView->isReady())
+				ImGui::TextDisabled("PBR lighting pipeline is loading...");
+		}
+	}
+	ImGui::End();
+
 	if ((int)drawMode == (int)DrawMode::Off || (int)drawMode == (int)DrawMode::Lighting)
 		return;
 
@@ -271,16 +262,14 @@ void DeferredRenderEditorSystem::preLdrRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(bufferPipeline);
 
-	if (pipelineView->isReady())
+	if (pipelineView->isReady() && !bufferDescriptorSet)
 	{
-		if (!bufferDescriptorSet)
-		{
-			auto uniforms = getBufferUniforms(blackPlaceholder);
-			bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
-		}
+		auto uniforms = getBufferUniforms(blackPlaceholder);
+		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
 	}
 }
+//**********************************************************************************************************************
 void DeferredRenderEditorSystem::ldrRender()
 {
 	if ((int)drawMode == (int)DrawMode::Off || (int)drawMode == (int)DrawMode::Lighting)
@@ -289,38 +278,39 @@ void DeferredRenderEditorSystem::ldrRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(bufferPipeline);
 
-	if (pipelineView->isReady() && graphicsSystem->camera)
+	if (!pipelineView->isReady() || !graphicsSystem->camera)
+		return;
+
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	auto pushConstants = pipelineView->getPushConstants<BufferPC>();
+	pushConstants->invViewProj = (float4x4)cameraConstants.invViewProj;
+	pushConstants->drawMode = (int32)drawMode;
+	pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
+	pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
+	pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
+
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	if (((drawMode == DrawMode::EmissiveColor || drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive()) ||
+		((drawMode == DrawMode::SubsurfaceColor || drawMode == DrawMode::Thickness) && !deferredSystem->useSSS()))
 	{
-		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-		auto pushConstants = pipelineView->getPushConstants<BufferPC>();
-		pushConstants->invViewProj = (float4x4)cameraConstants.invViewProj;
-		pushConstants->drawMode = (int32)drawMode;
-		pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
-		pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
-		pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
-
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		if (((drawMode == DrawMode::EmissiveColor || 
-				drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive()) ||
-			((drawMode == DrawMode::SubsurfaceColor || 
-				drawMode == DrawMode::Thickness) && !deferredSystem->useSSS()))
-		{
-			pushConstants->drawMode = (int32)DrawMode::Off;
-		}
-
-		SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(bufferDescriptorSet);
-		pipelineView->pushConstants();
-		pipelineView->drawFullscreen();
+		pushConstants->drawMode = (int32)DrawMode::Off;
 	}
+
+	SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(bufferDescriptorSet);
+	pipelineView->pushConstants();
+	pipelineView->drawFullscreen();
 }
 
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::gBufferRecreate()
 {
-	if (bufferDescriptorSet)
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+
+	if (swapchainChanges.framebufferSize && bufferDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(bufferDescriptorSet);

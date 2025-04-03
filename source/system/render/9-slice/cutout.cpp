@@ -17,8 +17,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Cutout9SliceSystem::Cutout9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	NineSliceRenderCompSystem("9-slice/cutout", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
+Cutout9SliceSystem::Cutout9SliceSystem(bool setSingleton) : NineSliceRenderCompSystem(
+	"9-slice/cutout"), Singleton(setSingleton) { }
 Cutout9SliceSystem::~Cutout9SliceSystem() { unsetSingleton(); }
 
 void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
@@ -42,6 +42,10 @@ const string& Cutout9SliceSystem::getComponentName() const
 {
 	static const string name = "Cutout 9-Slice";
 	return name;
+}
+MeshRenderType Cutout9SliceSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
 }
 
 //**********************************************************************************************************************

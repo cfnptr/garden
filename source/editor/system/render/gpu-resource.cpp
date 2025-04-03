@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/gpu-resource.hpp"
+#include "imgui.h"
 
 #if GARDEN_EDITOR
 #include "garden/graphics/vulkan/api.hpp"
@@ -40,14 +41,14 @@ GpuResourceEditorSystem::~GpuResourceEditorSystem()
 
 void GpuResourceEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GpuResourceEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 }
 void GpuResourceEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", GpuResourceEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", GpuResourceEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 	}
 }
@@ -555,6 +556,114 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 }
 
 //**********************************************************************************************************************
+static void renderSamplers(uint32& selectedItem, string& searchString,
+	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	auto samplers = graphicsAPI->samplerPool.getData();
+
+	string descriptorSetName;
+	renderItemList(graphicsAPI->samplerPool.getCount(), graphicsAPI->samplerPool.getOccupancy(), selectedItem,
+		searchString, searchCaseSensitive, samplers, sizeof(DescriptorSet), descriptorSetName, "Sampler ");
+
+	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
+	if (graphicsAPI->samplerPool.getCount() == 0 ||
+		selectedItem >= graphicsAPI->samplerPool.getOccupancy() ||
+		!ResourceExt::getInstance(samplers[selectedItem]))
+	{
+		ImGui::TextWrapped("None");
+		ImGui::EndChild();
+		renderSearch(searchString, searchCaseSensitive);
+		return;
+	}
+
+	const auto& sampler = samplers[selectedItem];
+	auto state = sampler.getState();
+	ImGui::SeparatorText(descriptorSetName.c_str());
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Minification Filter: %s", toString(state.minFilter).data());
+	ImGui::TextWrapped("Magnification Filter: %s", toString(state.magFilter).data());
+	ImGui::TextWrapped("Mipmap Filter: %s", toString(state.mipmapFilter).data());
+	ImGui::TextWrapped("Address Mode X: %s", toString(state.addressModeX).data());
+	ImGui::TextWrapped("Address Mode Y: %s", toString(state.addressModeY).data());
+	ImGui::TextWrapped("Address Mode Z: %s", toString(state.addressModeZ).data());
+	ImGui::TextWrapped("Border Color: %s", toString(state.borderColor).data());
+	ImGui::TextWrapped("Compare Operation: %s", toString(state.compareOperation).data());
+	ImGui::TextWrapped("Maximum Anisotropy: %f", state.maxAnisotropy);
+	ImGui::TextWrapped("Mip LOD Bias: %f", state.mipLodBias);
+	ImGui::TextWrapped("Minimum LOD: %f", state.minLod);
+	ImGui::TextWrapped("Maximum LOD: %f", state.maxLod);
+	auto boolValue = (bool)state.anisoFiltering;
+	ImGui::Checkbox("Anisotropic Filtering", &boolValue);
+	boolValue = (bool)state.comparison;
+	ImGui::Checkbox("Comparison", &boolValue);
+	boolValue = (bool)state.unnormCoords;
+	ImGui::Checkbox("Unnormalized Coordinates", &boolValue);
+	ImGui::Spacing();
+
+	if (ImGui::CollapsingHeader("Child Descriptor Sets"))
+	{
+		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+
+		const auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
+		auto occupancy = graphicsAPI->descriptorSetPool.getOccupancy();
+		auto selectedSampler = graphicsAPI->samplerPool.getID(&sampler);
+
+		auto isAny = false;
+		for (uint32 i = 0; i < occupancy; i++)
+		{
+			const auto& descriptorSet = descriptorSets[i];
+			const auto& dsSamplers = descriptorSet.getSamplers();
+
+			auto isFound = false;
+			for (const auto& dsSampler : dsSamplers)
+			{
+				if (dsSampler.second == selectedSampler)
+				{
+					isFound = true;
+					break;
+				}
+			}
+
+			if (!isFound)
+				continue;
+
+			auto descriptorSetName = descriptorSet.getDebugName().empty() ? 
+				"Descriptor Set " + to_string(i + 1) : descriptorSet.getDebugName();
+			isAny = true;
+
+			ImGui::PushID(to_string(i + 1).c_str());
+			if (ImGui::TreeNodeEx(descriptorSetName.c_str(), ImGuiTreeNodeFlags_Leaf))
+			{
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				{
+					openNextTab = GpuResourceEditorSystem::TabType::DescriptorSets;
+					selectedItem = i;
+					ImGui::TreePop();
+					ImGui::PopID();
+					break;
+				}
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+
+		if (!isAny)
+		{
+			ImGui::Indent();
+			ImGui::TextDisabled("None");
+			ImGui::Unindent();
+		}
+
+		ImGui::PopStyleColor();
+		ImGui::Spacing();
+	}
+
+	ImGui::EndChild();
+	renderSearch(searchString, searchCaseSensitive);
+}
+
+//**********************************************************************************************************************
 static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
@@ -726,17 +835,20 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 			auto uniform = pair.second;
 			auto readAccess = uniform.readAccess;
 			auto writeAccess = uniform.writeAccess;
+			auto isMutable = uniform.isMutable;
+
 			ImGui::SeparatorText(pair.first.c_str());
 			ImGui::TextWrapped("Type: %s", toString(uniform.type).data());
 			ImGui::TextWrapped("Shader stages: %s", toStringList(uniform.shaderStages).data());
 			ImGui::TextWrapped("Binding index: %lu", (unsigned long)uniform.bindingIndex);
 			ImGui::TextWrapped("Descriptor set index: %lu", (unsigned long)uniform.descriptorSetIndex);
 			ImGui::TextWrapped("Array size: %lu", (unsigned long)uniform.arraySize);
-
+			
 			ImGui::PushID(pair.first.c_str());
 			ImGui::Text("Access:"); ImGui::SameLine();
 			ImGui::Checkbox("Read", &readAccess); ImGui::SameLine();
 			ImGui::Checkbox("Write", &writeAccess);
+			ImGui::Checkbox("Mutable", &isMutable);
 			ImGui::PopID();
 		}
 
@@ -880,9 +992,9 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 }
 
 //**********************************************************************************************************************
-void GpuResourceEditorSystem::editorRender()
+void GpuResourceEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(750.0f, 450.0f), ImGuiCond_FirstUseEver);
@@ -914,6 +1026,12 @@ void GpuResourceEditorSystem::editorRender()
 				TabType::Framebuffers ? ImGuiTabItemFlags_SetSelected : 0))
 			{
 				renderFramebuffers(selectedItem, searchString, searchCaseSensitive, openNextTab);
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Samplers", nullptr, openNextTab == 
+				TabType::Samplers ? ImGuiTabItemFlags_SetSelected : 0))
+			{
+				renderSamplers(selectedItem, searchString, searchCaseSensitive, openNextTab);
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Descriptor Sets", nullptr, openNextTab == 

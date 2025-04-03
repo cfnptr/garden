@@ -102,20 +102,12 @@ public:
 protected:
 	fs::path pipelinePath = {};
 	ID<ImageView> defaultImageView = {};
-	bool useDeferredBuffer = false;
-	bool useLinearFilter = false;
-	bool isTranslucent = false;
-	uint8 _alignment0 = 0;
 
 	/**
 	 * @brief Creates a new sprite render system instance.
-	 * 
 	 * @param[in] pipelinePath target rendering pipeline path
-	 * @param useDeferredBuffer use deferred or forward rendering buffer
-	 * @param useLinearFilter use linear or nearest texture filter
-	 * @param isTranslucent is sprite using translucent rendering
 	 */
-	SpriteRenderSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent);
+	SpriteRenderSystem(const fs::path& pipelinePath);
 
 	void init() override;
 	void deinit() override;
@@ -173,8 +165,7 @@ protected:
 	LinearPool<C, DestroyComponents> components;
 	LinearPool<A, DestroyAnimationFrames> animationFrames;
 
-	SpriteRenderCompSystem(const fs::path& pipelinePath, bool useDeferredBuffer, bool useLinearFilter, 
-		bool isTranslucent) : SpriteRenderSystem(pipelinePath, useDeferredBuffer, useLinearFilter, isTranslucent) { }
+	SpriteRenderCompSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
 
 	ID<Component> createComponent(ID<Entity> entity) override
 	{

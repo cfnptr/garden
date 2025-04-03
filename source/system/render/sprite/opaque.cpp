@@ -17,12 +17,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderCompSystem("sprite/opaque", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
+OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
+	"sprite/opaque"), Singleton(setSingleton) { }
 OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
 
 const string& OpaqueSpriteSystem::getComponentName() const
 {
 	static const string name = "Opaque Sprite";
 	return name;
+}
+MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
 }

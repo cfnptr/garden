@@ -21,6 +21,7 @@
 #include "garden/animate.hpp"
 #include "garden/graphics/lod.hpp"
 #include "garden/system/render/instance.hpp"
+#include "math/types.hpp"
 
 namespace garden
 {
@@ -41,11 +42,10 @@ public:
 	Ref<Image> colorMap = {};               /**< Color map texture instance. */
 	Ref<Image> mraorMap = {};               /**< MRAOR map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {};  /**< Descriptor set instance. */
-	f32x4 colorFactor = f32x4::one;         /**< Texture color multiplier. */
 	uint32 indexCount = 0;                  /**< Model index buffer size. */
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path lodBufferPath = {};            /**< Model vertex buffer path. */
+	vector<fs::path> lodBufferPaths;        /**< Model LOD buffer paths. */
 	fs::path colorMapPath = {};             /**< Color map texture path. */
 	fs::path mraorMapPath = {};             /**< MRAOR map texture path. */
 	#endif
@@ -58,13 +58,11 @@ struct ModelAnimationFrame : public AnimationFrame
 {
 	uint8 isEnabled : 1;
 	uint8 animateIsEnabled : 1;
-	uint8 animateColorFactor : 1;
 	uint8 animateLodBuffer : 1;
 	uint8 animateTextureMaps : 1;
 protected:
 	uint16 _alignment0 = 0;
 public:
-	f32x4 colorFactor = f32x4::one;
 	Ref<LodBuffer> lodBuffer = {};
 	Ref<Image> colorMap = {};
 	Ref<Image> mraorMap = {};
@@ -77,11 +75,11 @@ public:
 	#endif
 
 	ModelAnimationFrame() : isEnabled(true), animateIsEnabled(false), 
-		animateColorFactor(false), animateLodBuffer(false), animateTextureMaps(false) { }
+		animateLodBuffer(false), animateTextureMaps(false) { }
 
 	bool hasAnimation() override
 	{
-		return animateIsEnabled | animateColorFactor | animateLodBuffer | animateTextureMaps;
+		return animateIsEnabled | animateLodBuffer | animateTextureMaps;
 	}
 };
 
@@ -94,7 +92,7 @@ public:
 	struct BaseInstanceData
 	{
 		float4x4 mvp = float4x4::zero;
-		float4 colorFactor = float4::zero;
+		float4x4 model = float4x4::zero;
 	};
 	struct PushConstants
 	{
@@ -104,27 +102,21 @@ protected:
 	fs::path pipelinePath = {};
 	ID<ImageView> defaultImageView = {};
 	bool useNormalMapping = false;
-	bool useDeferredBuffer = false;
-	bool useLinearFilter = false;
-	bool isTranslucent = false;
+	bool useGBuffer = false;
+	uint16 _alignment0 = 0;
 
 	/**
 	 * @brief Creates a new model render system instance.
 	 * 
 	 * @param[in] pipelinePath target rendering pipeline path
 	 * @param useNormalMapping load and use normal map textures
-	 * @param useDeferredBuffer use deferred or forward rendering buffer
-	 * @param useLinearFilter use linear or nearest texture filter
-	 * @param isTranslucent is model using translucent rendering
+	 * @param useGBuffer use G-Buffer framebuffer
 	 */
-	ModelRenderSystem(const fs::path& pipelinePath, bool useNormalMapping, 
-		bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent);
+	ModelRenderSystem(const fs::path& pipelinePath, bool useNormalMapping, bool useGBuffer);
 
 	void init() override;
 	void deinit() override;
-
 	virtual void imageLoaded();
-	virtual void bufferLoaded();
 
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
@@ -178,9 +170,8 @@ protected:
 	LinearPool<C, DestroyComponents> components;
 	LinearPool<A, DestroyAnimationFrames> animationFrames;
 
-	ModelRenderCompSystem(const fs::path& pipelinePath, bool useNormalMapping, 
-		bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent) : 
-		ModelRenderSystem(pipelinePath, useNormalMapping, useDeferredBuffer, useLinearFilter, isTranslucent) { }
+	ModelRenderCompSystem(const fs::path& pipelinePath, bool useNormalMapping, bool useGBuffer) : 
+		ModelRenderSystem(pipelinePath, useNormalMapping, useGBuffer) { }
 
 	ID<Component> createComponent(ID<Entity> entity) override
 	{

@@ -129,11 +129,11 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Image> shadowMap,
 	ID<Image> transparentMap, const DescriptorSetBuffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto shadowMapView = graphicsSystem->get(shadowMap);
 	auto transparentMapView = graphicsSystem->get(transparentMap);
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
 	auto depthStencilAttachment = gFramebuffer->getDepthStencilAttachment();
+	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -241,7 +241,10 @@ void CsmRenderSystem::shadowRender()
 
 void CsmRenderSystem::gBufferRecreate()
 {
-	if (descriptorSet)
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+
+	if ((swapchainChanges.bufferCount || swapchainChanges.framebufferSize) && descriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);
@@ -351,7 +354,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderType)
 {
 	ID<Framebuffer> framebuffer; const f32x4* clearColors; uint8 clearColorCount;
-	if (renderType == MeshRenderType::Opaque)
+	if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::Color)
 	{
 		framebuffer = shadowFramebuffers[passIndex];
 		clearColors = nullptr;
@@ -374,7 +377,7 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderType)
 {
 	ID<Framebuffer> framebuffer;
-	if (renderType == MeshRenderType::Opaque)
+	if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::Color)
 		framebuffer = shadowFramebuffers[passIndex];
 	else if (renderType == MeshRenderType::Translucent || renderType == MeshRenderType::OIT)
 		framebuffer = transFramebuffers[passIndex];

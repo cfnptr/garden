@@ -571,7 +571,7 @@ void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 	this->size = size;
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
 void Framebuffer::setDebugName(const string& name)
 {

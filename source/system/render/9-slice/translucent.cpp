@@ -17,8 +17,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Trans9SliceSystem::Trans9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	NineSliceRenderCompSystem("9-slice/translucent", useDeferredBuffer, useLinearFilter, true), Singleton(setSingleton) { }
+Trans9SliceSystem::Trans9SliceSystem(bool setSingleton) : NineSliceRenderCompSystem(
+	"9-slice/translucent"), Singleton(setSingleton) { }
 Trans9SliceSystem::~Trans9SliceSystem() { unsetSingleton(); }
 
 const string& Trans9SliceSystem::getComponentName() const

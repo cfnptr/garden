@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/graphics/gsl.hpp"
+#include "garden/graphics/sampler.hpp"
 #include "garden/graphics/descriptor-set.hpp"
 
 namespace garden::graphics
@@ -36,63 +37,6 @@ class PipelineExt;
 class Pipeline : public Resource
 {
 public:
-	/*******************************************************************************************************************
-	 * @brief Sampler wrap mode. (texture address)
-	 * 
-	 * @details
-	 * Setting that determines how a texture is applied (or "sampled") when texture coordinates (also known as UV 
-	 * coordinates) fall outside the standard range of [0, 1]. This scenario frequently occurs due to texture 
-	 * mapping or repeating textures across a surface. The wrap mode defines how the GPU handles these 
-	 * out-of-range texture coordinates, affecting the appearance of textured objects in 3D scenes.
-	 */
-	enum class SamplerWrap : uint8
-	{
-		Repeat,            /**< i = ​i % size */
-		MirroredRepeat,    /**< i = (size - 1) - mirror((i % (2 * size)) - size) */
-		ClampToEdge,       /**< i = clamp(i, 0, size - 1) */
-		ClampToBorder,     /**< i = clamp(i, -1, size) */
-		MirrorClampToEdge, /**< i = clamp(mirror(i), 0, size - 1) */
-		Count              /**< Sampler wrap mode count. */
-	};
-	/**
-	 * @brief Clamp to border sampling color.
-	 * 
-	 * @details
-	 * Color applied to pixels that fall outside the texture coordinates when using @ref ClampToBorder sampling modes.
-	 * 
-	 * @todo Support custom color extension?
-	 */
-	enum class BorderColor : uint8
-	{
-		FloatTransparentBlack, /**< Transparent, floating point format, black color. */
-		IntTransparentBlack,   /**< transparent, integer format, black color. */
-		FloatOpaqueBlack,      /**< Opaque, floating point format, black color. */
-		IntOpaqueBlack,        /**< Opaque, integer format, black color. */
-		FloatOpaqueWhite,      /**< Opaque, floating point format, white color. */
-		IntOpaqueWhite,        /**< Opaque, integer format, white color. */
-		Count                  /**< Clamp to border sampling color count. */
-	};
-	/**
-	 * @brief Comparison operator for depth, stencil, and sampler operations
-	 * 
-	 * @details
-	 * Used to compare two values against each other. These operators are fundamental in various graphics operations, 
-	 * such as depth testing, stencil testing, and shadow mapping, where decisions are made based on comparing 
-	 * values like depth (Z) values of fragments or stencil buffer values.
-	 */
-	enum class CompareOperation : uint8
-	{
-		Never,          /**< Comparison always evaluates false. */
-		Less,           /**< Comparison evaluates reference < test. */
-		Equal,          /**< Comparison evaluates reference == test. */
-		LessOrEqual,    /**< Comparison evaluates reference <= test. */
-		Greater,        /**< Comparison evaluates reference > test. */
-		NotEqual,       /**< Comparison evaluates reference != test. */
-		GreaterOrEqual, /**< Comparison evaluates reference >= test. */
-		Always,         /**< Comparison always evaluates true. */
-		Count           /**< Comparison operator type count. */
-	};
-
 	/*******************************************************************************************************************
 	 * @brief Uniform variable description.
 	 * 
@@ -113,41 +57,8 @@ public:
 		uint8 arraySize = 0;           /**< Number of descriptors contained in the binding. */
 		bool readAccess = true;        /**< Is variable read access allowed. */
 		bool writeAccess = true;       /**< Is variable write access allowed. */
-		uint8 _alignment = 0;          /**< [structure alignment] */
+		bool isMutable = false;        /**< Is uniform resource can be assigned dynamically. */
 		// Note: Should be aligned.
-	};
-
-	/**
-	 * @brief Sampler configuration.
-	 * 
-	 * @details
-	 * Configuration used to determine how a texture is sampled when applied to a 3D model. The process of mapping 
-	 * these textures onto the 3D surfaces is called texture mapping, and sampling is a crucial part of this process. 
-	 * The sampler state defines how the texture is accessed and filtered when it is being applied to a model.
-	 */
-	struct SamplerState final
-	{
-		uint8 anisoFiltering : 1;                                     /**< Is anisotropic filtering enabled. */
-		uint8 comparison : 1;                                         /**< Is comparison during lookups enabled. */
-		uint8 unnormCoords : 1;                                       /**< Is unnormalized coordinates enabled. */
-		uint8 _unused : 5;                                            /**< [reserved for future use] */
-		SamplerFilter minFilter = SamplerFilter::Nearest;             /**< Minification filter to apply to lookups. */
-		SamplerFilter magFilter = SamplerFilter::Nearest;             /**< Magnification filter to apply to lookups. */
-		SamplerFilter mipmapFilter = SamplerFilter::Nearest;          /**< Mipmap filter to apply to lookups. */
-		SamplerWrap wrapX = SamplerWrap::ClampToEdge;                 /**< Addressing mode for U coordinates outside [0,1) */
-		SamplerWrap wrapY = SamplerWrap::ClampToEdge;                 /**< Addressing mode for V coordinates outside [0,1) */
-		SamplerWrap wrapZ = SamplerWrap::ClampToEdge;                 /**< Addressing mode for W coordinates outside [0,1) */
-		CompareOperation compareOperation = CompareOperation::Less;   /**< Comparison operator to apply to fetched data/ */
-		float maxAnisotropy = 1.0f;                                   /**< Anisotropy value clamp used by the sampler. */
-		float mipLodBias = 0.0f;                                      /**< Bias to be added to mipmap LOD calculation. */
-		float minLod = 0.0f;                                          /**< Used to clamp the minimum of the computed LOD value. */
-		float maxLod = INFINITY;                                      /**< Used to clamp the maximum of the computed LOD value. */
-		BorderColor borderColor = BorderColor::FloatTransparentBlack; /**< Predefined border color to use. */
-		uint8 _alignment0 = 0;                                        /**< [structure alignment] */
-		uint16 _alignment1 = 0;                                       /**< [structure alignment] */
-		// should be aligned.
-
-		SamplerState() : anisoFiltering(0), comparison(0), unnormCoords(0), _unused(0) { }
 	};
 
 	/*******************************************************************************************************************
@@ -198,11 +109,11 @@ public:
 	 */
 	struct CreateData
 	{
-		map<string, SamplerState> samplerStates;
+		map<string, Sampler::State> samplerStates;
 		map<string, Uniform> uniforms;
 		map<string, SpecConst> specConsts;
 		map<string, SpecConstValue> specConstValues;
-		map<string, SamplerState> samplerStateOverrides;
+		map<string, Sampler::State> samplerStateOverrides;
 		vector<uint8> headerData;
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
@@ -486,104 +397,6 @@ public:
 	 */
 	void pushConstantsAsync(int32 threadIndex);
 };
-
-/**
- * @brief Returns sampler wrap mode.
- * @param samplerWrap target sampler wrap mode name string (camelCase)
- * @throw GardenError on unknown sampler wrap mode.
- */
-static Pipeline::SamplerWrap toSamplerWrap(string_view samplerWrap)
-{
-	if (samplerWrap == "repeat") return Pipeline::SamplerWrap::Repeat;
-	if (samplerWrap == "mirroredRepeat") return Pipeline::SamplerWrap::MirroredRepeat;
-	if (samplerWrap == "clampToEdge") return Pipeline::SamplerWrap::ClampToEdge;
-	if (samplerWrap == "clampToBorder") return Pipeline::SamplerWrap::ClampToBorder;
-	if (samplerWrap == "mirrorClampToEdge") return Pipeline::SamplerWrap::MirrorClampToEdge;
-	throw GardenError("Unknown sampler wrap type. (" + string(samplerWrap) + ")");
-}
-/**
- * @brief Returns border color type.
- * @param borderColor target border color name string (camelCase)
- * @throw GardenError on unknown border color type.
- */
-static Pipeline::BorderColor toBorderColor(string_view borderColor)
-{
-	if (borderColor == "floatTransparentBlack") return Pipeline::BorderColor::FloatTransparentBlack;
-	if (borderColor == "intTransparentBlack") return Pipeline::BorderColor::IntTransparentBlack;
-	if (borderColor == "floatOpaqueBlack") return Pipeline::BorderColor::FloatOpaqueBlack;
-	if (borderColor == "intOpaqueBlack") return Pipeline::BorderColor::IntOpaqueBlack;
-	if (borderColor == "floatOpaqueWhite") return Pipeline::BorderColor::FloatOpaqueWhite;
-	if (borderColor == "intOpaqueWhite") return Pipeline::BorderColor::IntOpaqueWhite;
-	throw GardenError("Unknown border color type. (" + string(borderColor) + ")");
-}
-/**
- * @brief Returns comparison operator type.
- * @param compareOperation target comparison operator name string (camelCase)
- * @throw GardenError on unknown comparison operator type.
- */
-static Pipeline::CompareOperation toCompareOperation(string_view compareOperation)
-{
-	if (compareOperation == "never") return Pipeline::CompareOperation::Never;
-	if (compareOperation == "less") return Pipeline::CompareOperation::Less;
-	if (compareOperation == "equal") return Pipeline::CompareOperation::Equal;
-	if (compareOperation == "lessOrEqual") return Pipeline::CompareOperation::LessOrEqual;
-	if (compareOperation == "greater") return Pipeline::CompareOperation::Greater;
-	if (compareOperation == "notEqual") return Pipeline::CompareOperation::NotEqual;
-	if (compareOperation == "greaterOrEqual") return Pipeline::CompareOperation::GreaterOrEqual;
-	if (compareOperation == "always") return Pipeline::CompareOperation::Always;
-	throw GardenError("Unknown compare operation type. (" + string(compareOperation) + ")");
-}
-
-/***********************************************************************************************************************
- * @brief Sampler wrap mode name strings.
- */
-constexpr string_view samplerWrapNames[(psize)Pipeline::SamplerWrap::Count] =
-{
-	"Repeat", "MirroredRepeat", "ClampToEdge", "ClampToBorder", "MirrorClampToEdge"
-};
-/**
- * @brief Border color name strings.
- */
-constexpr string_view borderColorNames[(psize)Pipeline::BorderColor::Count] =
-{
-	"FloatTransparentBlack", "IntTransparentBlack", "FloatOpaqueBlack",
-	"IntOpaqueBlack", "FloatOpaqueWhite", "IntOpaqueWhite"
-};
-/**
- * @brief Compare operation name strings.
- */
-constexpr string_view compareOperationNames[(psize)Pipeline::CompareOperation::Count] =
-{
-	"Never", "Less", "Equal", "LessOrEqual", "Greater", "NotEqual", "GreaterOrEqual", "Always"
-};
-
-/**
- * @brief Returns sampler wrap mode name string.
- * @param memoryAccess target sampler wrap mode
- */
-static string_view toString(Pipeline::SamplerWrap samplerWrap) noexcept
-{
-	GARDEN_ASSERT((uint8)samplerWrap < (uint8)Pipeline::SamplerWrap::Count);
-	return samplerWrapNames[(psize)samplerWrap];
-}
-/**
- * @brief Returns border color name string.
- * @param memoryAccess target border color type
- */
-static string_view toString(Pipeline::BorderColor borderColor) noexcept
-{
-	GARDEN_ASSERT((uint8)borderColor < (uint8)Pipeline::BorderColor::Count);
-	return borderColorNames[(psize)borderColor];
-}
-/**
- * @brief Returns comparison operator name string.
- * @param memoryAccess target comparison operator type
- */
-static string_view toString(Pipeline::CompareOperation compareOperation) noexcept
-{
-	GARDEN_ASSERT((uint8)compareOperation < (uint8)Pipeline::CompareOperation::Count);
-	return compareOperationNames[(psize)compareOperation];
-}
 
 /***********************************************************************************************************************
  * @brief Rendering pipeline resource extension mechanism.

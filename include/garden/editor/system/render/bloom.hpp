@@ -36,7 +36,9 @@ class BloomRenderEditorSystem final : public System
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
+	void uiRender();
+	void gBufferRecreate();
 	void editorBarToolPP();
 	
 	friend class ecsm::Manager;

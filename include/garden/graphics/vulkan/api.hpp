@@ -351,26 +351,85 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 }
 
 /***********************************************************************************************************************
- * @brief Returns Vulkan comparison operator from the pipeline compare operation.
- * @param compareOperation target pipeline compare operation type
+ * @brief Returns Vulkan sampler filter type.
+ * @param filterType target sampler filter type
  */
-static vk::CompareOp toVkCompareOp(Pipeline::CompareOperation compareOperation) noexcept
+static vk::Filter toVkFilter(Sampler::Filter filterType) noexcept
+{
+	switch (filterType)
+	{
+	case Sampler::Filter::Nearest: return vk::Filter::eNearest;
+	case Sampler::Filter::Linear: return vk::Filter::eLinear;
+	default: abort();
+	}
+}
+/**
+ * @brief Returns Vulkan sampler mipmap mode.
+ * @param filterType target sampler filter type
+ */
+static vk::SamplerMipmapMode toVkSamplerMipmapMode(Sampler::Filter filterType) noexcept
+{
+	switch (filterType)
+	{
+	case Sampler::Filter::Nearest: return vk::SamplerMipmapMode::eNearest;
+	case Sampler::Filter::Linear: return vk::SamplerMipmapMode::eLinear;
+	default: abort();
+	}
+}
+/**
+ * @brief Returns Vulkan sampler address mode.
+ * @param addressMode target sampler address mode
+ */
+static vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddessMode addressMode) noexcept
+{
+	switch (addressMode)
+	{
+	case Sampler::AddessMode::Repeat: return vk::SamplerAddressMode::eRepeat;
+	case Sampler::AddessMode::MirroredRepeat: return vk::SamplerAddressMode::eMirroredRepeat;
+	case Sampler::AddessMode::ClampToEdge: return vk::SamplerAddressMode::eClampToEdge;
+	case Sampler::AddessMode::ClampToBorder: return vk::SamplerAddressMode::eClampToBorder;
+	case Sampler::AddessMode::MirrorClampToEdge: return vk::SamplerAddressMode::eMirrorClampToEdge;
+	default: abort();
+	}
+}
+/**
+ * @brief Returns Vulkan sampler border color.
+ * @param compareOperation target sampler compare operation
+ */
+static vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcept
+{
+	switch (borderColor)
+	{
+		case Sampler::BorderColor::FloatTransparentBlack: return vk::BorderColor::eFloatTransparentBlack;
+		case Sampler::BorderColor::IntTransparentBlack: return vk::BorderColor::eIntTransparentBlack;
+		case Sampler::BorderColor::FloatOpaqueBlack: return vk::BorderColor::eFloatOpaqueBlack;
+		case Sampler::BorderColor::IntOpaqueBlack: return vk::BorderColor::eIntOpaqueBlack;
+		case Sampler::BorderColor::FloatOpaqueWhite: return vk::BorderColor::eFloatOpaqueWhite;
+		case Sampler::BorderColor::IntOpaqueWhite: return vk::BorderColor::eIntOpaqueWhite;
+		default: abort();
+	}
+}
+/**
+ * @brief Returns Vulkan sampler comparison operatotion.
+ * @param compareOperation target sampler compare operation
+ */
+static vk::CompareOp toVkCompareOp(Sampler::CompareOp compareOperation) noexcept
 {
 	switch (compareOperation)
 	{
-	case Pipeline::CompareOperation::Never: return vk::CompareOp::eNever;
-	case Pipeline::CompareOperation::Less: return vk::CompareOp::eLess;
-	case Pipeline::CompareOperation::Equal: return vk::CompareOp::eEqual;
-	case Pipeline::CompareOperation::LessOrEqual: return  vk::CompareOp::eLessOrEqual;
-	case Pipeline::CompareOperation::Greater: return vk::CompareOp::eGreater;
-	case Pipeline::CompareOperation::NotEqual: return vk::CompareOp::eNotEqual;
-	case Pipeline::CompareOperation::GreaterOrEqual: return vk::CompareOp::eGreaterOrEqual;
-	case Pipeline::CompareOperation::Always: return vk::CompareOp::eAlways;
+	case Sampler::CompareOp::Never: return vk::CompareOp::eNever;
+	case Sampler::CompareOp::Less: return vk::CompareOp::eLess;
+	case Sampler::CompareOp::Equal: return vk::CompareOp::eEqual;
+	case Sampler::CompareOp::LessOrEqual: return  vk::CompareOp::eLessOrEqual;
+	case Sampler::CompareOp::Greater: return vk::CompareOp::eGreater;
+	case Sampler::CompareOp::NotEqual: return vk::CompareOp::eNotEqual;
+	case Sampler::CompareOp::GreaterOrEqual: return vk::CompareOp::eGreaterOrEqual;
+	case Sampler::CompareOp::Always: return vk::CompareOp::eAlways;
 	default: abort();
 	}
 }
 
-/**
+/***********************************************************************************************************************
  * @brief Returns Vulkan shader stage flag bits from the shader stage.
  * @param shaderStage target shader stage
  */
@@ -515,5 +574,20 @@ static vk::IndexType toVkIndexType(GraphicsPipeline::Index indexType) noexcept
 		default: abort();
 	}
 }
+
+/**
+ * @brief Returns Vulkan sampler create info container.
+ * @param state[in] target sampler state data
+ */
+static vk::SamplerCreateInfo getVkSamplerCreateInfo(const Sampler::State& state) noexcept
+{
+	return vk::SamplerCreateInfo({}, toVkFilter(state.magFilter), toVkFilter(state.minFilter),
+		toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.addressModeX),
+		toVkSamplerAddressMode(state.addressModeY), toVkSamplerAddressMode(state.addressModeZ),
+		state.mipLodBias, state.anisoFiltering, state.maxAnisotropy,
+		state.comparison, toVkCompareOp(state.compareOperation), state.minLod,
+		state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod,
+		toVkBorderColor(state.borderColor), state.unnormCoords);
+} 
 
 } // namespace garden

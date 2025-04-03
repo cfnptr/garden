@@ -99,6 +99,7 @@ public:
 	LinearPool<Image> imagePool;
 	LinearPool<ImageView> imageViewPool;
 	LinearPool<Framebuffer> framebufferPool;
+	LinearPool<Sampler> samplerPool;
 	LinearPool<GraphicsPipeline> graphicsPipelinePool;
 	LinearPool<ComputePipeline> computePipelinePool;
 	LinearPool<DescriptorSet> descriptorSetPool;

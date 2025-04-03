@@ -80,7 +80,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_APP_VERSION_MINOR  | Application minor version          | `0`                                |
 | GARDEN_APP_VERSION_PATCH  | Application patch version          | `0`                                |
 | GARDEN_APP_RESOURCES_DIR  | Application resources directory    | `garden/resources/default`         |
-| GARDEN_APP_CACHES_DIR     | Application caches directory       | `garden/.caches`                   |
+| GARDEN_APP_CACHE_DIR      | Application cache directory       | `garden/.cache`                   |
 
 ### CMake targets
 

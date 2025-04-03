@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/mesh-selector.hpp"
+#include "garden/system/render/deferred.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/settings.hpp"
@@ -39,7 +40,7 @@ MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 
 void MeshSelectorEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", MeshSelectorEditorSystem::metaLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
@@ -50,16 +51,16 @@ void MeshSelectorEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshSelectorEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", MeshSelectorEditorSystem::metaLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 	}
 }
 
 //**********************************************************************************************************************
-void MeshSelectorEditorSystem::editorRender()
+void MeshSelectorEditorSystem::metaLdrRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
 	auto manager = Manager::Instance::get();
@@ -169,19 +170,12 @@ void MeshSelectorEditorSystem::editorRender()
 		auto transformView = transformSystem->tryGetComponent(selectedEntity);
 		if (transformView && selectedEntityAabb != Aabb())
 		{
-			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
 			auto model = transformView->calcModel(cameraPosition);
 			auto mvp = cameraConstants.viewProj * model * translate(
 				selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 
-			graphicsSystem->startRecording(CommandBufferType::Frame);
-			{
-				SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
-				framebufferView->beginRenderPass(f32x4::zero);
-				graphicsSystem->drawAabb(mvp, (f32x4)aabbColor);
-				framebufferView->endRenderPass();
-			}
-			graphicsSystem->stopRecording();
+			SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
+			graphicsSystem->drawAabb(mvp, (f32x4)aabbColor);
 		}
 	}
 }

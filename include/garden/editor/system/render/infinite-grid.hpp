@@ -39,7 +39,8 @@ private:
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preMetaLdrRender();
+	void metaLdrRender();
 	void swapchainRecreate();
 	void editorSettings();
 	

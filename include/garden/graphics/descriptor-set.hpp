@@ -18,9 +18,8 @@
  */
 
 #pragma once
-#include "linear-pool.hpp"
 #include "garden/graphics/common.hpp"
-#include "garden/graphics/resource.hpp"
+#include "garden/graphics/sampler.hpp"
 
 #include <map>
 #include <typeindex>
@@ -137,11 +136,12 @@ public:
 private:
 	ID<Pipeline> pipeline = {};
 	map<string, Uniform> uniforms;
+	map<string, ID<Sampler>> samplers;
 	PipelineType pipelineType = {};
 	uint8 index = 0;
 
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
-		map<string, Uniform>&& uniforms, uint8 index);
+		map<string, Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers, uint8 index);
 	bool destroy() final;
 
 	friend class DescriptorSetExt;
@@ -174,6 +174,12 @@ public:
 	 */
 	const map<string, Uniform>& getUniforms() const noexcept { return uniforms; }
 	/**
+	 * @brief Returns dynamic sampler map. (mutable uniforms)
+	 * @details Can be used to access descriptor set mutable samplers.
+	 */
+	const map<string, ID<Sampler>>& getSamplers() const noexcept { return samplers; }
+
+	/**
 	 * @brief Returns internal descriptor set instance count.
 	 * @details Internally single set descriptor can contain multiple instances.
 	 */
@@ -186,10 +192,13 @@ public:
 
 	/**
 	 * @brief Recreates descriptor set with a new resources.
+	 *
 	 * @param[in] uniforms new resource sets
+	 * @param[in] samplers dynamic samplers (mutable uniforms)
+	 *
 	 * @warning Use only when required, this operation impacts performance!
 	 */
-	void recreate(map<string, Uniform>&& uniforms);
+	void recreate(map<string, Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers = {});
 
 	// TODO: void copy(ID<DescriptorSet> descriptorSet);
 
@@ -205,7 +214,7 @@ public:
 	 */
 	void updateUniform(const string& name, const Uniform& uniform, uint32 elementOffset = 0);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Sets descriptor set debug name. (Debug Only)
 	 * @param[in] name target debug name

@@ -68,7 +68,6 @@ class DeferredRenderEditorSystem final : public System
 
 	void init();
 	void deinit();
-	void editorRender();
 	void deferredRender();
 	void preLdrRender();
 	void ldrRender();

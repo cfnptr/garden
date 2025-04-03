@@ -40,7 +40,7 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 	Version version;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path cachesPath;
+	fs::path cachePath;
 	fs::path resourcesPath;
 	#endif
 
@@ -58,7 +58,7 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 	AppInfoSystem(string_view name, string_view nameLowercase, string_view description,
 		string_view creator, string_view copyright, Version version,
 		#if GARDEN_DEBUG
-		const fs::path& cachesPath, const fs::path& resourcesPath,
+		const fs::path& cachePath, const fs::path& resourcesPath,
 		#endif
 		bool setSingleton = true);
 	/**
@@ -114,10 +114,10 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Returns application caches path. (Debug Only)
-	 * @details See the GARDEN_APP_CACHES_DIR.
+	 * @brief Returns application cache path. (Debug Only)
+	 * @details See the GARDEN_APP_CACHE_DIR.
 	 */
-	const fs::path& getCachesPath() const noexcept { return cachesPath; }
+	const fs::path& getCachePath() const noexcept { return cachePath; }
 	/**
 	 * @brief Returns application resources path. (Debug Only)
 	 * @details See the GARDEN_APP_RESOURCES_DIR.

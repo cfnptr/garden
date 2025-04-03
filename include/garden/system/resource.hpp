@@ -36,9 +36,10 @@ namespace garden
  */
 enum class BufferLoadFlags : uint8
 {
-	None        = 0x00, /**< No additional image load flags. */
-	LoadSync    = 0x01, /**< Load buffer synchronously. (Blocking call) */
-	LoadShared  = 0x02, /**< Load and share instance on second load call. */
+	None          = 0x00, /**< No additional image load flags. */
+	LoadSync      = 0x01, /**< Load buffer synchronously. (Blocking call) */
+	LoadShared    = 0x02, /**< Load and share instance on second load call. */
+	DoNotOptimize = 0x04  /**< Do not apply mesh optimizations and fixes. */
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(BufferLoadFlags)
@@ -87,7 +88,8 @@ protected:
 		Buffer buffer;
 		Buffer staging;
 		fs::path path = "";
-		ID<Buffer> instance = {};
+		ID<Buffer> bufferInstance = {};
+		ID<LodBuffer> lodBufferInstance = {};
 	};
 	struct ImageQueueItem
 	{
@@ -97,6 +99,7 @@ protected:
 		uint2 realSize = uint2::zero;
 		ID<Image> instance = {};
 	};
+
 	struct LoadedBufferItem
 	{
 		fs::path path = "";
@@ -108,7 +111,7 @@ protected:
 		ID<Image> instance = {};
 	};
 	
-	LinearPool<LodBuffer, false> lodBuffers;
+	LinearPool<LodBuffer> lodBufferPool;
 	map<Hash128, Ref<Buffer>> sharedBuffers;
 	map<Hash128, Ref<Image>> sharedImages;
 	map<Hash128, Ref<LodBuffer>> sharedLodBuffers;
@@ -121,7 +124,6 @@ protected:
 	vector<LoadedBufferItem> loadedBufferArray;
 	vector<LoadedImageItem> loadedImageArray;
 	mutex queueLocker = {};
-	uint64 lodBufferVersion = 1;
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
 	vector<fs::path> loadedImagePaths = {};
@@ -133,7 +135,7 @@ protected:
 	#endif
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path appResourcesPath = {};
-	fs::path appCachesPath = {};
+	fs::path appCachePath = {};
 	#endif
 
 	/**
@@ -252,40 +254,54 @@ public:
 	const vector<fs::path>& getLoadedImagePaths() const noexcept { return loadedImagePaths; }
 
 	/*******************************************************************************************************************
-	 * @brief Loads LOD buffer from the resource pack.
+	 * @brief Loads buffer from the resource pack.
 	 * @note Loads from the models directory in debug build.
 	 *
-	 * @param[in] path target LOD buffer resource path
-	 * @param maxMipCount maximum LOD level count (0 = unlimited)
+	 * @param[in] path target buffer resource path
 	 * @param strategy buffers memory allocation strategy
 	 * @param flags additional buffer load flags
 	 */
-	Ref<LodBuffer> loadLodBuffer(const fs::path& path, const vector<BufferChannel>& channels, uint8 maxLodCount = 0, 
-		Buffer::Strategy strategy = Buffer::Strategy::Default, BufferLoadFlags flags = BufferLoadFlags::None);
+	 Ref<Buffer> loadBuffer(const vector<fs::path>& path, 
+		Buffer::Strategy strategy = Buffer::Strategy::Default, 
+		BufferLoadFlags flags = BufferLoadFlags::None);
+	/**
+	 * @brief Destroys shared buffer if it's the last one.
+	 * @param[in] buffer target shared buffer reference
+	 */
+	 void destroyShared(const Ref<Buffer>& buffer);
 
+	/*******************************************************************************************************************
+	 * @brief Loads LOD buffer from the resource pack.
+	 * @note Loads from the models directory in debug build.
+	 *
+	 * @param[in] paths target LOD buffer resource path array
+	 * @param[in] channels vertex buffer data channel array
+	 * @param maxLodCount maximum LOD level count (0 = unlimited)
+	 * @param maxDistanceSq maximum LOD level distance (power of 2)
+	 * @param strategy buffers memory allocation strategy
+	 * @param flags additional buffer load flags
+	 */
+	Ref<LodBuffer> loadLodBuffer(const vector<fs::path>& path, const vector<BufferChannel>& channels, 
+		uint8 maxLodCount = 0, float maxDistanceSq = 1000.0f, Buffer::Strategy strategy = Buffer::Strategy::Default, 
+		BufferLoadFlags flags = BufferLoadFlags::None);
 	/**
 	 * @brief Destroys shared LOD buffer if it's the last one.
 	 * @param[in] lodBuffer target shared LOD buffer reference
 	 */
 	void destroyShared(const Ref<LodBuffer>& lodBuffer);
-	/**
-	 * @brief Destroys shared buffer if it's the last one.
-	 * @param[in] buffer target shared buffer reference
-	 */
-	void destroyShared(const Ref<Buffer>& buffer);
 
 	/**
 	 * @brief Returns LOD buffer data accessor.
 	 * @param buffer target LOD buffer instance
 	 */
-	View<LodBuffer> get(ID<LodBuffer> lodBuffer) const noexcept { return lodBuffers.get(lodBuffer); }
+	View<LodBuffer> get(ID<LodBuffer> lodBuffer) const noexcept { return lodBufferPool.get(lodBuffer); }
 	/**
 	 * @brief Returns LOD buffer data accessor.
 	 * @param buffer target LOD buffer instance
 	 */
 	View<LodBuffer> get(const Ref<LodBuffer>& lodBuffer) const noexcept
 	{
-		return lodBuffers.get(ID<LodBuffer>(lodBuffer));
+		return lodBufferPool.get(ID<LodBuffer>(lodBuffer));
 	}
 
 	/**
@@ -361,7 +377,7 @@ public:
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
 		const map<string, Pipeline::SpecConstValue>* specConstValues = nullptr,
-		const map<string, Pipeline::SamplerState>* samplerStateOverrides = nullptr,
+		const map<string, Sampler::State>* samplerStateOverrides = nullptr,
 		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr);
 
 	/*******************************************************************************************************************

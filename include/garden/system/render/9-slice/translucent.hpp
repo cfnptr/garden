@@ -40,12 +40,9 @@ class Trans9SliceSystem final : public NineSliceRenderCompSystem<
 {
 	/**
 	 * @brief Creates a new translucent 9-slice rendering system instance.
-	 * 
-	 * @param useDeferredBuffer use deferred or forward framebuffer
-	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	Trans9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	Trans9SliceSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys translucent 9-slice rendering system instance.
 	 */

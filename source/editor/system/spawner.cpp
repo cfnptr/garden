@@ -38,7 +38,7 @@ SpawnerEditorSystem::~SpawnerEditorSystem()
 
 void SpawnerEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", SpawnerEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<SpawnerComponent>(
@@ -54,7 +54,7 @@ void SpawnerEditorSystem::deinit()
 	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", SpawnerEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", SpawnerEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 	}
 }
@@ -182,9 +182,9 @@ static void renderSharedPrefabs(const string& searchString, bool searchCaseSensi
 }
 
 //**********************************************************************************************************************
-void SpawnerEditorSystem::editorRender()
+void SpawnerEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);

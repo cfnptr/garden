@@ -259,7 +259,7 @@ struct CopyBufferImageCommand final : public CopyBufferImageCommandBase
 };
 struct BlitImageCommandBase : public Command
 {
-	SamplerFilter filter = {};
+	Sampler::Filter filter = {};
 	uint16 _alignment = 0;
 	uint32 regionCount = 0;
 	ID<Image> source = {};

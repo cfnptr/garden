@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: add sheen G-Buffer?
+
 #ifndef GBUFFER_GSL
 #define GBUFFER_GSL
 
-// TODO: add sheen G-Buffer?
-
 #include "common/math.gsl"
-
-#define G_BUFFER_COUNT 6
 
 #define BASE_COLOR_G_BUFFER 0
 #define OPACITY_G_BUFFER 0
@@ -35,6 +33,7 @@
 #define EM_FACTOR_G_BUFFER 4
 #define SUBSURFACE_G_BUFFER 5
 #define THICKNESS_G_BUFFER 5
+#define G_BUFFER_COUNT 6
 
 struct GBufferData
 {
@@ -56,6 +55,25 @@ struct GBufferValues
 	float3 subsurfaceColor;
 	float thickness;
 };
+
+GBufferValues gBufferValuesDefault()
+{
+	GBufferValues values;
+	values.baseColor = float4(1.0f);
+	values.metallic = 0.0f;
+	values.roughness = 1.0f;
+	values.ambientOcclusion = 1.0f;
+	values.reflectance = 0.5f;
+	values.clearCoat = 0.0f;
+	values.clearCoatRoughness = 0.0f;
+	values.normal = float3(0.0f, 1.0f, 0.0f);
+	values.shadow = 1.0f;
+	values.emissiveColor = float3(0.0f);
+	values.emissiveFactor = 0.0f;
+	values.subsurfaceColor = float3(0.0f);
+	values.thickness = 1.0f;
+	return values;
+}
 
 //**********************************************************************************************************************
 // Signed Octahedron Normal Encoding (R10G10B10A2)
@@ -122,6 +140,8 @@ void encodeGBufferValues(GBufferValues values, out float4 g0, out float4 g1,
 		g5 = encodeGBuffer5(values.subsurfaceColor, values.thickness);
 }
 
+#define ENCODE_G_BUFFER_VALUES(values) encodeGBufferValues(values, fb_g0, fb_g1, fb_g2, fb_g3, fb_g4, fb_g5)
+
 //**********************************************************************************************************************
 float4 decodeBaseColor(float4 gBufferData) { return gBufferData; }
 float decodeMetallic(float4 gBufferData) { return gBufferData.r; }
@@ -151,6 +171,7 @@ float decodeEmissiveFactor(GBufferData data) { return decodeEmissiveFactor(data.
 float3 decodeSubsurfaceColor(GBufferData data) { return decodeSubsurfaceColor(data.g[SUBSURFACE_G_BUFFER]); }
 float decodeThickness(GBufferData data) { return decodeThickness(data.g[THICKNESS_G_BUFFER]); }
 
+//**********************************************************************************************************************
 GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, 
 	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
@@ -165,7 +186,6 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2,
 		data.g[5] = texture(s5, texCoords);
 	return data;
 }
-
 GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, 
 	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
@@ -195,5 +215,8 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	
 	return values;
 }
+
+#define DECODE_G_BUFFER_DATA(texCoords) decodeGBufferData(g0, g1, g2, g3, g4, g5, texCoords)
+#define DECODE_G_BUFFER_VALUES(texCoords) decodeGBufferValues(g0, g1, g2, g3, g4, g5, texCoords)
 
 #endif // GBUFFER_GSL

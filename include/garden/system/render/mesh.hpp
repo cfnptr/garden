@@ -31,7 +31,8 @@ enum class MeshRenderType : uint8
 {
 	Opaque,      /**< Blocks all light from passing through. (Faster to compute) */
 	Translucent, /**< Allows some light to pass through, enabling partial transparency. */
-	OIT,         /**< Order independent transparency / translucency. (Faster than Translucent type)  */
+	Color,       /**< Opaque color only rendering. (Directly to the HDR buffer)  */
+	OIT,         /**< Order independent transparency / translucency. (Faster than Translucent type) */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -115,7 +116,7 @@ public:
 	/**
 	 * @brief Returns system mesh render type. (Opaque, translucent / transparent, OIT, etc.)
 	 */
-	virtual MeshRenderType getMeshRenderType() const { return MeshRenderType::Opaque; }
+	virtual MeshRenderType getMeshRenderType() const = 0;
 	/**
 	 * @brief Returns system mesh component pool.
 	 */
@@ -227,8 +228,7 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, 
-		uint8 frustumPlaneCount, bool isShadowPass);
+	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, uint8 frustumPlaneCount, bool isShadowPass);
 	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, bool isShadowPass);
 	void renderSorted(const f32x4x4& viewProj, bool isShadowPass);
 	void renderShadows();

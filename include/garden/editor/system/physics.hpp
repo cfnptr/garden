@@ -71,7 +71,8 @@ private:
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preMetaLdrRender();
+	void metaLdrRender();
 	void editorBarTool();
 
 	void onRigidbodyInspector(ID<Entity> entity, bool isOpened);

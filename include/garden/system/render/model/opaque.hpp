@@ -42,18 +42,17 @@ class OpaqueModelSystem final : public ModelRenderCompSystem<
 	 * @brief Creates a new opaque model rendering system instance.
 	 * 
 	 * @param useNormalMapping load and use normal map textures
-	 * @param useDeferredBuffer use deferred or forward framebuffer
-	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	OpaqueModelSystem(bool useNormalMapping = false, bool useDeferredBuffer = false, 
-		bool useLinearFilter = true, bool setSingleton = true);
+	OpaqueModelSystem(bool useNormalMapping = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys opaque model rendering system instance.
 	 */
 	~OpaqueModelSystem() final;
 
 	const string& getComponentName() const final;
+	MeshRenderType getMeshRenderType() const final;
+	
 	friend class ecsm::Manager;
 };
 

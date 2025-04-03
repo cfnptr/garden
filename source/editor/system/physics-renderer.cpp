@@ -14,6 +14,7 @@
 
 #include "garden/editor/system/physics-renderer.hpp"
 #include "garden/system/graphics.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 
 // TODO: Implement faster debug renderer using JPH::DebugRender.
@@ -53,13 +54,14 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	if (lines.empty())
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (!linePipeline)
 	{
 		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/lines", graphicsSystem->getSwapchainFramebuffer());
+			"editor/physics/lines", deferredSystem->getMetaLdrFramebuffer());
 	}
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(linePipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -80,13 +82,14 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	if (triangles.empty())
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (!trianglePipeline)
 	{
 		trianglePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/triangles", graphicsSystem->getSwapchainFramebuffer());
+			"editor/physics/triangles", deferredSystem->getMetaLdrFramebuffer());
 	}
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(trianglePipeline);
 	if (!pipelineView->isReady())
 		return;

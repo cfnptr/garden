@@ -55,8 +55,6 @@ void FxaaRenderEditorSystem::editorSettings()
 
 		if (ImGui::Checkbox("Enabled", &fxaaSystem->isEnabled))
 		{
-			DeferredRenderSystem::Instance::get()->runSwapchainPass = !fxaaSystem->isEnabled;
-
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
 				settingsSystem->setBool("fxaa.isEnabled", fxaaSystem->isEnabled);

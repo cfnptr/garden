@@ -641,7 +641,7 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties, bool& isLoaded)
 {
 	constexpr auto cacheHeaderSize = sizeof(PipelineCacheHeader) - sizeof(VkPipelineCacheHeaderVersionOne);
-	auto path = mpio::Directory::getAppDataPath(appDataName) / "caches/shaders";
+	auto path = mpio::Directory::getAppDataPath(appDataName) / "cache/shaders";
 	ifstream inputStream(path, ios::in | ios::binary | ios::ate);
 	vector<uint8> fileData;
 
@@ -695,7 +695,7 @@ static void destroyPipelineCache(const string& appDataName, Version appVersion, 
 	auto cacheData = device.getPipelineCacheData((VkPipelineCache)pipelineCache);
 	if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
 	{
-		auto directory = mpio::Directory::getAppDataPath(appDataName) / "caches";
+		auto directory = mpio::Directory::getAppDataPath(appDataName) / "cache";
 		if (!fs::exists(directory))
 			fs::create_directories(directory);
 		auto path = directory / "shaders";
@@ -813,6 +813,7 @@ VulkanAPI::~VulkanAPI()
 	descriptorSetPool.clear();
 	computePipelinePool.clear();
 	graphicsPipelinePool.clear();
+	samplerPool.clear();
 	framebufferPool.clear();
 	renderPasses.clear();
 	imageViewPool.clear();
