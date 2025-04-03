@@ -82,7 +82,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g5, fs.texCoords);
+	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
 
 	if (pc.drawMode == OFF_DRAW_MODE)
 	{

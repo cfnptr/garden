@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "garden/graphics/descriptor-set.hpp"
+#include "garden/defines.hpp"
 #include "garden/graphics/vulkan/api.hpp"
+#include <vulkan/vulkan_core.h>
 
 using namespace math;
 using namespace garden;
@@ -134,8 +136,8 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, Pipeli
 
 //**********************************************************************************************************************
 static void recreateVkDescriptorSet(const map<string, DescriptorSet::Uniform>& oldUniforms, 
-	const map<string, DescriptorSet::Uniform>& newUniforms, uint8 index, void*& instance, 
-	vk::DescriptorPool descriptorPool, vk::DescriptorSetLayout descriptorSetLayout,
+	const map<string, DescriptorSet::Uniform>& newUniforms, const map<string, ID<Sampler>>& samplers, 
+	uint8 index, void*& instance, vk::DescriptorPool descriptorPool, vk::DescriptorSetLayout descriptorSetLayout,
 	const map<string, Pipeline::Uniform>& pipelineUniforms)
 {
 	auto vulkanAPI = VulkanAPI::get();
@@ -213,6 +215,18 @@ static void recreateVkDescriptorSet(const map<string, DescriptorSet::Uniform>& o
 			vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
 				vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
 			writeDescriptorSet.pBufferInfo = nullptr;
+
+			if (pipelineUniform.isMutable)
+			{
+				auto sampler = samplers.at(pair.first);
+				auto samplerView = vulkanAPI->samplerPool.get(sampler);
+				imageInfo.sampler = (VkSampler)ResourceExt::getInstance(**samplerView);
+			}
+			else
+			{
+				// You should add 'mutable' keyword to the uniform to use dynamic samplers.
+				GARDEN_ASSERT(samplers.find(pair.first) == samplers.end());
+			}
 
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
@@ -346,7 +360,7 @@ static void updateVkDescriptorSetUniform(void* instance, const Pipeline::Uniform
 
 //**********************************************************************************************************************
 DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, map<string, Uniform>&& uniforms, 
-	uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
+	map<string, ID<Sampler>>&& samplers, uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
 {
 	GARDEN_ASSERT(pipeline);
 	GARDEN_ASSERT(!uniforms.empty());
@@ -372,7 +386,7 @@ bool DescriptorSet::destroy()
 }
 
 //**********************************************************************************************************************
-void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
+void DescriptorSet::recreate(map<string, Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers)
 {
 	GARDEN_ASSERT(this->uniforms.size() == 0 || uniforms.size() == this->uniforms.size());
 
@@ -466,12 +480,13 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms)
 			PipelineExt::getDescriptorPools(**pipelineView)[index];
 		vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)
 			PipelineExt::getDescriptorSetLayouts(**pipelineView)[index];
-		recreateVkDescriptorSet(this->uniforms, uniforms, index, instance, 
-			descriptorPool, descriptorSetLayout, pipelineUniforms);
+		recreateVkDescriptorSet(this->uniforms, uniforms, samplers, index, 
+			instance, descriptorPool, descriptorSetLayout, pipelineUniforms);
 	}
 	else abort();
 
 	this->uniforms = std::move(uniforms);
+	this->samplers = std::move(samplers);
 }
 
 //**********************************************************************************************************************
@@ -542,7 +557,7 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 		uniform.resourceSets[0].data(), uniform.resourceSets[0].size() * sizeof(ID<Resource>));
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
 void DescriptorSet::setDebugName(const string& name)
 {

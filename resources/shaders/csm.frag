@@ -32,12 +32,12 @@ uniform sampler2DArrayShadow
 {
 	comparison = on;
 	filter = linear;
-	wrap = clampToBorder;
+	addressMode = clampToBorder;
 } shadowMap;
 uniform sampler2DArray
 {
 	filter = linear;
-	wrap = clampToBorder;
+	addressMode = clampToBorder;
 } transparentMap;
 
 uniform ShadowData

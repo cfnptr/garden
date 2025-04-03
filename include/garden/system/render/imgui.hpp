@@ -57,10 +57,11 @@ private:
 	~ImGuiRenderSystem() final;
 
 	void preInit();
+	void postInit();
 	void postDeinit();
 	void input();
 	void update();
-	void present();
+	void uiRender();
 	void swapchainRecreate();
 
 	friend class ecsm::Manager;

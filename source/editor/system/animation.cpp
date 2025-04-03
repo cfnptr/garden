@@ -38,7 +38,7 @@ AnimationEditorSystem::~AnimationEditorSystem()
 
 void AnimationEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", AnimationEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AnimationEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<AnimationComponent>(
@@ -54,15 +54,15 @@ void AnimationEditorSystem::deinit()
 	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<AnimationComponent>();
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", AnimationEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AnimationEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
-void AnimationEditorSystem::editorRender()
+void AnimationEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	if (ImGui::Begin("Animation Editor", &showWindow, ImGuiWindowFlags_NoFocusOnAppearing))

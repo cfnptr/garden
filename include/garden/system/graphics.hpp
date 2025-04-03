@@ -18,6 +18,8 @@
  */
 
 #pragma once
+#include "garden/graphics/framebuffer.hpp"
+#include "garden/graphics/sampler.hpp"
 #include "garden/system/input.hpp"
 #include "garden/graphics/constants.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
@@ -83,7 +85,6 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> whiteTexture = {};
 	ID<ImageView> greenTexture = {};
 	ID<ImageView> normalMapTexture = {};
-	ID<ImageView> depthStencilBuffer = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
 	float renderScale = 1.0f;
 	bool asyncRecording = false;
@@ -101,7 +102,6 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * @brief Creates a new graphics system instance.
 	 * 
 	 * @param windowSize target OS window size (in units)
-	 * @param depthStencilFormat depth/stencil buffer image format (Undefined = no buffer)
 	 * @param isFullscreen create a fullscreen window
 	 * @param useVsync use vertical synchronization (V-Sync)
 	 * @param useTripleBuffering use swapchain triple buffering
@@ -109,7 +109,6 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize,
-		Image::Format depthStencilFormat = Image::Format::SfloatD32, 
 		bool isFullscreen = !GARDEN_DEBUG & !GARDEN_OS_LINUX,
 		bool useVsync = true, bool useTripleBuffering = true, 
 		bool useAsyncRecording = true, bool setSingleton = true);
@@ -265,11 +264,6 @@ public:
 	 * @details Allocates if it is not created yet.
 	 */
 	ID<ImageView> getNormalMapTexture();
-	/**
-	 * @brief Returns depth/stencil buffer image view.
-	 * @details It is created if depthBufferFormat is not Undefined during system initialization.
-	 */
-	ID<ImageView> getDepthStencilBuffer() const noexcept { return depthStencilBuffer; }
 
 	/**
 	 * @brief Returns current swapchain framebuffer.
@@ -345,6 +339,22 @@ public:
 	void setDebugName(const Ref<Framebuffer>& framebuffer, const string& name)
 	{
 		setDebugName(ID<Framebuffer>(framebuffer), name);
+	}
+
+	/**
+	 * @brief Sets sampler debug name. (visible in GPU profiler)
+	 * @param sampler target sampler instance
+	 * @param[in] name sampler debug name
+	 */
+	void setDebugName(ID<Sampler> sampler, const string& name);
+	 /**
+	  * @brief Sets sampler debug name. (visible in GPU profiler)
+	  * @param instance target sampler instance
+	  * @param[in] name sampler debug name
+	  */
+	void setDebugName(const Ref<Sampler>& sampler, const string& name)
+	{
+		setDebugName(ID<Sampler>(sampler), name);
 	}
 
 	/**
@@ -705,6 +715,28 @@ public:
 	View<Framebuffer> get(const Ref<Framebuffer>& framebuffer) const { return get(ID<Framebuffer>(framebuffer)); }
 
 	/*******************************************************************************************************************
+	 * @brief Creates a new sampler instance.
+	 * @param[in] state target sampler state
+	 */
+	ID<Sampler> createSampler(const Sampler::State& state);
+	 /**
+	 * @brief Destroys sampler instance.
+	 * @param sampler target sampler instance or null
+	 */
+	void destroy(ID<Sampler> sampler);
+
+	/**
+	 * @brief Returns sampler data accessor.
+	 * @param sampler target sampler instance
+	 */
+	 View<Sampler> get(ID<Sampler> sampler) const;
+	 /**
+	  * @brief Returns sampler data accessor.
+	  * @param sampler target sampler instance
+	  */
+	 View<Sampler> get(const Ref<Sampler>& sampler) const { return get(ID<Sampler>(sampler)); }
+
+	/*******************************************************************************************************************
 	 * @brief Destroys graphics pipeline instance.
 	 * @param graphicsPipeline target graphics pipeline instance or null
 	 */
@@ -767,19 +799,21 @@ public:
 	 * 
 	 * @param graphicsPipeline target graphics pipeline
 	 * @param[in] uniforms shader uniform array
+	 * @param[in] samplers dynamic sampler array (mutable uniforms)
 	 * @param index index of descriptor set in the shader
 	 */
 	ID<DescriptorSet> createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
-		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+		map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers = {}, uint8 index = 0);
 	/**
 	 * @brief Create a new compute descriptor set instance.
 	 * 
 	 * @param graphicsPipeline target compute pipeline
 	 * @param[in] uniforms shader uniform array
+	 * @param[in] samplers dynamic sampler array (mutable uniforms)
 	 * @param index index of descriptor set in the shader
 	 */
 	ID<DescriptorSet> createDescriptorSet(ID<ComputePipeline> computePipeline,
-		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+		map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers = {}, uint8 index = 0);
 
 	/**
 	 * @brief Destroys descriptor set instance.

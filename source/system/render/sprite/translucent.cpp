@@ -17,8 +17,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-TransSpriteSystem::TransSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderCompSystem("sprite/translucent", useDeferredBuffer, useLinearFilter, true), Singleton(setSingleton) { }
+TransSpriteSystem::TransSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
+	"sprite/translucent"), Singleton(setSingleton) { }
 TransSpriteSystem::~TransSpriteSystem() { unsetSingleton(); }
 
 const string& TransSpriteSystem::getComponentName() const

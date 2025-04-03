@@ -173,7 +173,6 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 {
 	auto images = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
 	auto imageFormat = toImageFormat(surfaceFormat);
-	constexpr auto imageBind = Image::Bind::ColorAttachment | Image::Bind::TransferDst;
 	vector<VulkanSwapchain::VkBuffer*> buffers(images.size());
 	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 
@@ -184,7 +183,7 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 
 		buffer->colorImage = vulkanAPI->imagePool.create((VkImage)images[i], imageFormat,
-			imageBind, Image::Strategy::Default, framebufferSize, 0);
+			Image::Bind::TransferDst, Image::Strategy::Default, framebufferSize, 0);
 		buffer->secondaryCommandPools = createVkCommandPools(vulkanAPI->device, 
 			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
 

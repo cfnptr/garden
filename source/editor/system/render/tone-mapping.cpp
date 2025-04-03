@@ -34,22 +34,22 @@ ToneMappingRenderEditorSystem::~ToneMappingRenderEditorSystem()
 
 void ToneMappingRenderEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", ToneMappingRenderEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", ToneMappingRenderEditorSystem::editorBarToolPP);
 }
 void ToneMappingRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", ToneMappingRenderEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", ToneMappingRenderEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", ToneMappingRenderEditorSystem::editorBarToolPP);
 	}
 }
 
 //**********************************************************************************************************************
-void ToneMappingRenderEditorSystem::editorRender()
+void ToneMappingRenderEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))

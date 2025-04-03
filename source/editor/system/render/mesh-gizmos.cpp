@@ -16,12 +16,13 @@
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/mesh-selector.hpp"
-#include "garden/resource/primitive.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
+#include "garden/resource/primitive.hpp"
 #include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
 #include <array>
@@ -80,16 +81,17 @@ MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", MeshGizmosEditorSystem::metaLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto swapchainFramebuffer = graphicsSystem->getSwapchainFramebuffer();
+	auto framebuffer = DeferredRenderSystem::Instance::get()->getMetaLdrFramebuffer();
 
-	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", swapchainFramebuffer);
-	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", swapchainFramebuffer);
+	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer);
+	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer);
 
+	graphicsSystem->getCubeVertexBuffer(); // Allocating default cube in advance.
 	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
 		Buffer::Access::None, arrowVertices, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(arrowVertexBuffer, "buffer.vertex.gizmos.arrow");
@@ -114,7 +116,7 @@ void MeshGizmosEditorSystem::deinit()
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", MeshGizmosEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", MeshGizmosEditorSystem::metaLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 	}
 }
@@ -194,16 +196,12 @@ static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 }
 
 //**********************************************************************************************************************
-void MeshGizmosEditorSystem::editorRender()
+void MeshGizmosEditorSystem::metaLdrRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto selectedEntity = EditorRenderSystem::Instance::get()->selectedEntity;
-
-	if (!isEnabled || !graphicsSystem->canRender() || !selectedEntity ||
-		!graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
-	{
+	if (!isEnabled || !selectedEntity || !graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
 		return;
-	}
 
 	auto inputSystem = InputSystem::Instance::get();
 	if (!inputSystem->getMouseState(MouseButton::Left))
@@ -357,17 +355,9 @@ void MeshGizmosEditorSystem::editorRender()
 			meshSelector->skipUpdate();
 	}
 
-	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-	graphicsSystem->startRecording(CommandBufferType::Frame);
-	{
-		SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
-		framebufferView->beginRenderPass(f32x4::zero);
-		renderGizmosMeshes(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
-		renderGizmosMeshes(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
-		framebufferView->endRenderPass();
-	}
-	graphicsSystem->stopRecording();
-
+	SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
+	renderGizmosMeshes(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
+	renderGizmosMeshes(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
 	gizmosMeshes.clear();
 }
 

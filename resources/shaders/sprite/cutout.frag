@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "sprite/common.gsl"
+
 pipelineState
 {
 	depthTesting = on;
@@ -28,12 +30,6 @@ uniform pushConstants
 	float alphaCutoff;
 } pc;
 
-struct InstanceData
-{
-	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
-};
 buffer readonly Instance
 {
 	InstanceData data[];
@@ -42,7 +38,7 @@ buffer readonly Instance
 uniform set1 sampler2DArray
 {
 	filter = linear;
-	wrap = repeat;
+	addressMode = repeat;
 } colorMap;
 
 void main()

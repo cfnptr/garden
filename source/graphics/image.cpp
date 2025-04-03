@@ -274,7 +274,7 @@ bool Image::isSupported(Type type, Format format, Bind bind, uint3 size, uint8 m
 	
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR
 void Image::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
@@ -292,7 +292,7 @@ void Image::setDebugName(const string& name)
 }
 #endif
 
-void Image::generateMips(SamplerFilter filter)
+void Image::generateMips(Sampler::Filter filter)
 {
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
@@ -596,7 +596,8 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 }
 
 //**********************************************************************************************************************
-void Image::blit(ID<Image> source, ID<Image> destination, const BlitRegion* regions, uint32 count, SamplerFilter filter)
+void Image::blit(ID<Image> source, ID<Image> destination, 
+	const BlitRegion* regions, uint32 count, Sampler::Filter filter)
 {
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -777,7 +778,7 @@ bool ImageView::destroy()
 	return true;
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR
 void ImageView::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);

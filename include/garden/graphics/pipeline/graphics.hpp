@@ -223,23 +223,23 @@ public:
 	 */
 	struct State final
 	{
-		uint8 depthTesting : 1;                                    /**< Is depth value testing enabled. */
-		uint8 depthWriting : 1;                                    /**< Is depth value writing enabled. */
-		uint8 depthClamping : 1;                                   /**< Is depth value clamping enabled. */
-		uint8 depthBiasing : 1;                                    /**< Is depth value biasing enabled. */
-		uint8 faceCulling : 1;                                     /**< Is face culling enabled. */
-		uint8 discarding : 1;                                      /**< Is fragment discarding enabled. */
-		uint8 _unused : 1;                                         /**< [reserved for future use] */
-		Topology topology = Topology::TriangleList;                /**< Primitive topology type. */
-		Polygon polygon = Polygon::Fill;                           /**< Polygon rasterization mode. */
-		CompareOperation depthCompare = CompareOperation::Greater; /**< Depth compare operation. */
-		float depthBiasConstant = 0.0f;                            /**< Depth bias constant value. */
-		float depthBiasClamp = 0.0f;                               /**< Depth bias clamp value. */
-		float depthBiasSlope = 0.0f;                               /**< Depth bias slope value. */
-		float4 blendConstant = float4::zero;                       /**< Blending operations constant color. */
-		CullFace cullFace = CullFace::Back;                        /**< Triangle culling mode. */
-		FrontFace frontFace = FrontFace::CounterClockwise;         /**< Polygon front-facing orientation. */
-		uint16 _alignment = 0;                                     /**< [structure alignment] */
+		uint8 depthTesting : 1;                                        /**< Is depth value testing enabled. */
+		uint8 depthWriting : 1;                                        /**< Is depth value writing enabled. */
+		uint8 depthClamping : 1;                                       /**< Is depth value clamping enabled. */
+		uint8 depthBiasing : 1;                                        /**< Is depth value biasing enabled. */
+		uint8 faceCulling : 1;                                         /**< Is face culling enabled. */
+		uint8 discarding : 1;                                          /**< Is fragment discarding enabled. */
+		uint8 _unused : 1;                                             /**< [reserved for future use] */
+		Topology topology = Topology::TriangleList;                    /**< Primitive topology type. */
+		Polygon polygon = Polygon::Fill;                               /**< Polygon rasterization mode. */
+		Sampler::CompareOp depthCompare = Sampler::CompareOp::Greater; /**< Depth compare operation. */
+		float depthBiasConstant = 0.0f;                                /**< Depth bias constant value. */
+		float depthBiasClamp = 0.0f;                                   /**< Depth bias clamp value. */
+		float depthBiasSlope = 0.0f;                                   /**< Depth bias slope value. */
+		float4 blendConstant = float4::zero;                           /**< Blending operations constant color. */
+		CullFace cullFace = CullFace::Back;                            /**< Triangle culling mode. */
+		FrontFace frontFace = FrontFace::CounterClockwise;             /**< Polygon front-facing orientation. */
+		uint16 _alignment = 0;                                         /**< [structure alignment] */
 		// Note: should be aligned.
 
 		State() : depthTesting(0), depthWriting(0), depthClamping(0),
@@ -269,7 +269,7 @@ public:
 	struct StateOverrides final
 	{
 		map<uint8, GraphicsPipeline::State> pipelineStates;
-		map<string, Pipeline::SamplerState> samplerStates;
+		map<string, Sampler::State> samplerStates;
 		map<uint8, vector<BlendState>> blendStates;
 	};
 	/**

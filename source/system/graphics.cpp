@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "garden/system/graphics.hpp"
+#include "garden/graphics/framebuffer.hpp"
+#include "garden/graphics/sampler.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/input.hpp"
 #include "garden/system/thread.hpp"
@@ -49,18 +51,8 @@ namespace garden::graphics
 }
 
 //**********************************************************************************************************************
-static ID<ImageView> createDepthStencilBuffer(uint2 size, Image::Format format)
-{
-	auto depthImage = GraphicsSystem::Instance::get()->createImage(format, 
-		Image::Bind::TransferDst | Image::Bind::DepthStencilAttachment | Image::Bind::Sampled |
-		Image::Bind::Fullscreen, { { nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(depthImage, "image.depthBuffer");
-	auto imageView = GraphicsAPI::get()->imagePool.get(depthImage);
-	return imageView->getDefaultView();
-}
-
-GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilFormat, bool isFullscreen, 
-	bool useVsync, bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
+GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool useVsync, 
+	bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
 	asyncRecording(useAsyncRecording), useVsync(useVsync), useTripleBuffering(useTripleBuffering)
 {
 	auto manager = Manager::Instance::get();
@@ -87,11 +79,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, Image::Format depthStencilForma
 	auto swapchainImageView = swapchainImage->getDefaultView();
 	auto framebufferSize = (uint2)swapchainImage->getSize();
 
-	if (depthStencilFormat != Image::Format::Undefined)
-		depthStencilBuffer = createDepthStencilBuffer(framebufferSize, depthStencilFormat);
-
-	swapchainFramebuffer = graphicsAPI->framebufferPool.create(
-		framebufferSize, swapchainImageView, depthStencilBuffer);
+	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImageView);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	auto swapchainBufferCount = graphicsAPI->swapchain->getBufferCount();
@@ -248,8 +236,7 @@ static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 	}
 }
 
-static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
-	ID<ImageView> depthStencilBuffer, uint2 framebufferSize)
+static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer, uint2 framebufferSize)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
@@ -257,7 +244,6 @@ static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer,
 	auto colorImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
 	FramebufferExt::getSize(**framebufferView) = framebufferSize;
 	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = colorImage->getDefaultView();
-	FramebufferExt::getDepthStencilAttachment(**framebufferView).imageView = depthStencilBuffer;
 }
 
 //**********************************************************************************************************************
@@ -365,18 +351,6 @@ void GraphicsSystem::update()
 		auto framebufferSize = swapchain->getFramebufferSize();
 		outOfDateSwapchain = false;
 
-		if (depthStencilBuffer)
-		{
-			auto depthStencilBufferView = graphicsAPI->imageViewPool.get(depthStencilBuffer);
-			auto depthStencilImageView = graphicsAPI->imagePool.get(depthStencilBufferView->getImage());
-			if (framebufferSize != (uint2)depthStencilImageView->getSize())
-			{
-				auto format = depthStencilBufferView->getFormat();
-				destroy(depthStencilBufferView->getImage());
-				depthStencilBuffer = createDepthStencilBuffer(framebufferSize, format);
-			}
-		}
-
 		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
 			to_string(framebufferSize.y) + " px, " + to_string(swapchain->getBufferCount()) + "B)");
 	}
@@ -398,8 +372,7 @@ void GraphicsSystem::update()
 		}
 	}
 
-	updateCurrentFramebuffer(swapchainFramebuffer, 
-		depthStencilBuffer, swapchain->getFramebufferSize());
+	updateCurrentFramebuffer(swapchainFramebuffer, swapchain->getFramebufferSize());
 	
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
@@ -416,17 +389,6 @@ void GraphicsSystem::update()
 		auto cameraBuffer = graphicsAPI->bufferPool.get(
 			cameraConstantsBuffers[swapchain->getCurrentBufferIndex()][0]);
 		cameraBuffer->writeData(&currentCameraConstants);
-	}
-
-	if (isFramebufferSizeValid)
-	{
-		if (renderScale != 1.0f) // TODO: make this optional
-		{
-			startRecording(CommandBufferType::Frame);
-			auto depthStencilBufferView = graphicsAPI->imageViewPool.get(depthStencilBuffer);
-			graphicsAPI->imagePool.get(depthStencilBufferView->getImage())->clear(0.0f, 0x00);
-			stopRecording();
-		}
 	}
 }
 
@@ -447,6 +409,7 @@ void GraphicsSystem::present()
 	graphicsAPI->descriptorSetPool.dispose();
 	graphicsAPI->computePipelinePool.dispose();
 	graphicsAPI->graphicsPipelinePool.dispose();
+	graphicsAPI->samplerPool.dispose();
 	graphicsAPI->framebufferPool.dispose();
 	graphicsAPI->imageViewPool.dispose();
 	graphicsAPI->imagePool.dispose();
@@ -558,7 +521,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 	if (!emptyTexture)
 	{
 		const Color data[1] = { Color::transparent };
-		auto texture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormB8G8R8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
@@ -570,7 +533,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 	if (!whiteTexture)
 	{
 		const Color data[1] = { Color::white };
-		auto texture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormB8G8R8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
@@ -582,7 +545,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 	if (!greenTexture)
 	{
 		const Color data[1] = { Color::green };
-		auto texture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormB8G8R8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
@@ -594,7 +557,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 	if (!normalMapTexture)
 	{
 		const Color data[1] = { Color(127, 127, 255, 255) };
-		auto texture = createImage(Image::Format::UnormR8G8B8A8,
+		auto texture = createImage(Image::Format::UnormB8G8R8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
@@ -632,6 +595,11 @@ void GraphicsSystem::setDebugName(ID<ImageView> imageView, const string& name)
 void GraphicsSystem::setDebugName(ID<Framebuffer> framebuffer, const string& name)
 {
 	auto resource = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Sampler> sampler, const string& name)
+{
+	auto resource = GraphicsAPI::get()->samplerPool.get(sampler);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string& name)
@@ -1042,6 +1010,23 @@ View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> framebuffer) const
 }
 
 //**********************************************************************************************************************
+ID<Sampler> GraphicsSystem::createSampler(const Sampler::State& state)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	auto sampler = graphicsAPI->samplerPool.create(state);
+	SET_RESOURCE_DEBUG_NAME(sampler, "sampler" + to_string(*sampler));
+	return sampler;
+}
+void GraphicsSystem::destroy(ID<Sampler> sampler)
+{
+	GraphicsAPI::get()->samplerPool.destroy(sampler);
+}
+
+View<Sampler> GraphicsSystem::get(ID<Sampler> sampler) const
+{
+	return GraphicsAPI::get()->samplerPool.get(sampler);
+}
+
 void GraphicsSystem::destroy(ID<GraphicsPipeline> graphicsPipeline)
 {
 	GraphicsAPI::get()->graphicsPipelinePool.destroy(graphicsPipeline);
@@ -1062,7 +1047,7 @@ View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) c
 
 //**********************************************************************************************************************
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
-	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+	map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers, uint8 index)
 {
 	GARDEN_ASSERT(graphicsPipeline);
 	GARDEN_ASSERT(!uniforms.empty());
@@ -1075,13 +1060,13 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	// TODO: check if all items initialized if not using bindless.
 	#endif
 
-	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(
-		ID<Pipeline>(graphicsPipeline), PipelineType::Graphics, std::move(uniforms), index);
+	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(graphicsPipeline), 
+		PipelineType::Graphics, std::move(uniforms), std::move(samplers), index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> computePipeline,
-	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+	map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers, uint8 index)
 {
 	GARDEN_ASSERT(computePipeline);
 	GARDEN_ASSERT(!uniforms.empty());
@@ -1094,8 +1079,8 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	// TODO: check if all items initialized if not using bindless.
 	#endif
 
-	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(
-		ID<Pipeline>(computePipeline), PipelineType::Compute, std::move(uniforms), index);
+	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(computePipeline), 
+		PipelineType::Compute, std::move(uniforms), std::move(samplers), index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
@@ -1155,6 +1140,8 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
+	pipelineView->updateFramebuffer(GraphicsAPI::get()->currentFramebuffer);
+
 	auto pushConstants = pipelineView->getPushConstants<LinePC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;
@@ -1171,10 +1158,12 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 	if (!aabbPipeline)
 	{
 		aabbPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/aabb-lines", swapchainFramebuffer, false, false);
+			"editor/aabb-lines", GraphicsAPI::get()->currentFramebuffer, false, false);
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
+	pipelineView->updateFramebuffer(GraphicsAPI::get()->currentFramebuffer);
+
 	auto pushConstants = pipelineView->getPushConstants<AabbPC>();
 	pushConstants->mvp = mvp;
 	pushConstants->color = color;

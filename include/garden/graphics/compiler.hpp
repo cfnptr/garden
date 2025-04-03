@@ -59,7 +59,7 @@ public:
 	struct GraphicsData : public GraphicsPipeline::GraphicsCreateData
 	{
 		#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
-		fs::path cachesPath;
+		fs::path cachePath;
 		fs::path resourcesPath;
 		#endif
 		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
@@ -73,7 +73,7 @@ public:
 	struct ComputeData : public ComputePipeline::ComputeCreateData
 	{
 		#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
-		fs::path cachesPath;
+		fs::path cachePath;
 		fs::path resourcesPath;
 		#endif
 		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)

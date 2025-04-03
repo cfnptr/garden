@@ -2,7 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,c++,cmake,windows,macos,linux
 
 ### Custom ###
-.caches/
+.cache/
 build/
 build-debug/
 build-release/

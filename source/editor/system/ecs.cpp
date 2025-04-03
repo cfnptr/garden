@@ -34,14 +34,14 @@ EcsEditorSystem::~EcsEditorSystem()
 
 void EcsEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", EcsEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EcsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 }
 void EcsEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", EcsEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", EcsEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 	}
 }
@@ -182,9 +182,9 @@ static void renderRegisteredComponents()
 }
 
 //**********************************************************************************************************************
-void EcsEditorSystem::editorRender()
+void EcsEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);

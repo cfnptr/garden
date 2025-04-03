@@ -77,10 +77,10 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> sampleBuffer, 
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
+	auto swapchainSize = graphicsSystem->getSwapchainSize();
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
@@ -221,7 +221,10 @@ void SsaoRenderSystem::aoRender()
 
 void SsaoRenderSystem::gBufferRecreate()
 {
-	if (descriptorSet)
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+
+	if ((swapchainChanges.bufferCount || swapchainChanges.framebufferSize) && descriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);

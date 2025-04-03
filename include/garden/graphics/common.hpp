@@ -64,24 +64,6 @@ enum class PipelineType : uint8
 };
 
 /**
- * @brief Texture (image) sampling method type.
- * 
- * @details
- * Method used by the GPU to determine the color of a texture sample based on the texture coordinates 
- * provided by a shader. When a texture is sampled in a shader, the texture coordinates might not 
- * directly correspond to the texel (texture pixel) positions in the texture. The sampler filter 
- * type defines how the color value for these coordinates is calculated, affecting the final appearance 
- * of the texture when it's applied to a surface in 3D space. The choice of filter type can 
- * significantly impact both the visual quality and the performance of texture sampling.
- */
-enum class SamplerFilter : uint8
-{
-	Nearest, /**< Selects the color of the closest texel. (nearest-neighbour) */
-	Linear,  /**< Computed by linearly interpolating between the colors of adjacent texels. */
-	Count,   /**< Sampler filter type count. */
-};
-
-/**
  * @brief Rendering command buffer type.
  * 
  * @details 
@@ -114,13 +96,6 @@ constexpr string_view pipelineTypeNames[(psize)PipelineType::Count] =
 {
 	"Graphics", "Compute"
 };
-/**
- * @brief Sampler filter name strings.
- */
-constexpr string_view samplerFilterNames[(psize)SamplerFilter::Count] =
-{
-	"Nearest", "Linear"
-};
 
 /**
  * @brief Returns pipeline type.
@@ -141,27 +116,6 @@ static string_view toString(PipelineType pipelineType) noexcept
 {
 	GARDEN_ASSERT((uint8)pipelineType < (uint8)PipelineType::Count);
 	return pipelineTypeNames[(psize)pipelineType];
-}
-
-/**
- * @brief Returns sampler filter type.
- * @param samplerFilter target sampler filter name (camelCase)
- * @throw GardenError on unknown sampler filter type.
- */
-static SamplerFilter toSamplerFilter(string_view samplerFilter)
-{
-	if (samplerFilter == "nearest") return SamplerFilter::Nearest;
-	if (samplerFilter == "linear") return SamplerFilter::Linear;
-	throw GardenError("Unknown sampler filter type. (" + string(samplerFilter) + ")");
-}
-/**
- * @brief Returns sampler filter name string.
- * @param samplerFilter target sampler filter type
- */
-static string_view toString(SamplerFilter samplerFilter) noexcept
-{
-	GARDEN_ASSERT((uint8)samplerFilter < (uint8)SamplerFilter::Count);
-	return samplerFilterNames[(psize)samplerFilter];
 }
 
 /**

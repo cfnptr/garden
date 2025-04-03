@@ -17,6 +17,14 @@
 
 #include "common/math.gsl"
 
+struct InstanceData
+{
+	float4x4 mvp;
+	float4 colorFactor;
+	float4 sizeOffset;
+	float4 texWinBorder;
+};
+
 float mapAxis(float coord, float textureBorder, float windowBorder)
 {
 	if (coord < windowBorder)

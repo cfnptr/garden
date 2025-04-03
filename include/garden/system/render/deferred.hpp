@@ -19,12 +19,12 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbR8G8B8A8     (Base Color, unused)
- *   1. UnormR8G8B8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
- *   2. UnormR8G8B8A8    (Clear Coat, Clear Coat Roughness, unused, unused)
+ *   0. SrgbB8G8R8A8     (Base Color, unused)
+ *   1. UnormB8G8R8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
+ *   2. UnormB8G8R8A8    (Clear Coat, Clear Coat Roughness, unused, unused)
  *   3. UnormA2B10G10R10 (Encoded Normal, Shadow)
- *   4. SrgbR8G8B8A8     (Emissive Color and Factor) [optional]
- *   5. SrgbR8G8B8A8     (Subsurface Color, Thickness) [optional]
+ *   4. SrgbB8G8R8A8     (Emissive Color and Factor) [optional]
+ *   5. SrgbB8G8R8A8     (Subsurface Color, Thickness) [optional]
  */
 
 // TODO: clear coat and sheen rendering. Make emissive, subsurface buffer creation optional.
@@ -51,6 +51,8 @@ namespace garden
  *   PreMetaHdrRender, MetaHdrRender, 
  *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
+ *   PreMetaLdrRender, MetaLdrRender, 
+ *   PreUiRender, UiRender, 
  *   PreSwapchainRender, GBufferRecreate.
  */
 class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>
@@ -76,10 +78,24 @@ public:
 	static constexpr uint8 emFactorGBuffer = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
 	static constexpr uint8 subsurfaceGBuffer = 5;  /**< Index of the G-Buffer with encoded subsurface color. */
 	static constexpr uint8 thicknessGBuffer = 5;   /**< Index of the G-Buffer with encoded thickness. */
+
+	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
+	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format gBufferFormat5 = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format depthStencilFormat = Image::Format::SfloatD32;
+	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format ldrBufferFormat = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format uiBufferFormat = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format oitAccumBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
 	ID<Image> ldrBuffer = {};
+	ID<Image> uiBuffer = {};
 	ID<Image> oitAccumBuffer = {};
 	ID<Image> oitRevealBuffer = {};
 	ID<Image> depthStencilBuffer = {};
@@ -87,6 +103,8 @@ private:
 	ID<Framebuffer> hdrFramebuffer = {};
 	ID<Framebuffer> metaHdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
+	ID<Framebuffer> metaLdrFramebuffer = {};
+	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
 	bool emissive = false;
@@ -115,7 +133,6 @@ private:
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true;        /**< Is deferred rendering enabled. */
-	bool runSwapchainPass = true; /**< Run deferred rendering swapchain pass. */
 
 	/**
 	 * @brief Use multithreaded command buffer recording.
@@ -146,6 +163,10 @@ public:
 	 */
 	ID<Image> getLdrBuffer();
 	/**
+	 * @brief Returns deferred UI buffer. (User Interface)
+	 */
+	ID<Image> getUiBuffer();
+	/**
 	 * @brief Returns deferred OIT accumulation buffer. (Order Independent Transparency)
 	 */
 	ID<Image> getOitAccumBuffer();
@@ -174,6 +195,14 @@ public:
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */
 	ID<Framebuffer> getLdrFramebuffer();
+	/**
+	 * @brief Returns deferred meta LDR framebuffer. (LDR + Depth)
+	 */
+	ID<Framebuffer> getMetaLdrFramebuffer();
+	/**
+	 * @brief Returns deferred UI framebuffer. (User Interface)
+	 */
+	ID<Framebuffer> getUiFramebuffer();
 	/**
 	 * @brief Returns deferred OIT framebuffer. (Order Independent Transparency)
 	 */

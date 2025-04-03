@@ -40,18 +40,17 @@ class Opaque9SliceSystem final : public NineSliceRenderCompSystem<
 {
 	/**
 	 * @brief Creates a new opaque 9-slice rendering system instance.
-	 * 
-	 * @param useDeferredBuffer use deferred or forward framebuffer
-	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	Opaque9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	Opaque9SliceSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys opaque 9-slice rendering system instance.
 	 */
 	~Opaque9SliceSystem() final;
 
 	const string& getComponentName() const final;
+	MeshRenderType getMeshRenderType() const final;
+	
 	friend class ecsm::Manager;
 };
 

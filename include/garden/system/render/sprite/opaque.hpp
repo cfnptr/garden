@@ -40,18 +40,17 @@ class OpaqueSpriteSystem final : public SpriteRenderCompSystem<
 {
 	/**
 	 * @brief Creates a new opaque sprite rendering system instance.
-	 * 
-	 * @param useDeferredBuffer use deferred or forward framebuffer
-	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	OpaqueSpriteSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	OpaqueSpriteSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys opaque sprite rendering system instance.
 	 */
 	~OpaqueSpriteSystem() final;
 
 	const string& getComponentName() const final;
+	MeshRenderType getMeshRenderType() const final;
+	
 	friend class ecsm::Manager;
 };
 

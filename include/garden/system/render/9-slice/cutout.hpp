@@ -60,12 +60,9 @@ public:
 private:
 	/**
 	 * @brief Creates a new cutout 9-slice rendering system instance.
-	 * 
-	 * @param useDeferredBuffer use deferred or forward framebuffer
-	 * @param useLinearFilter use linear filtering for texture
 	 * @param setSingleton set system singleton instance
 	 */
-	Cutout9SliceSystem(bool useDeferredBuffer = false, bool useLinearFilter = true, bool setSingleton = true);
+	Cutout9SliceSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys cutout 9-slice rendering system instance.
 	 */
@@ -76,6 +73,8 @@ private:
 
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	const string& getComponentName() const final;
+	MeshRenderType getMeshRenderType() const final;
+	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;

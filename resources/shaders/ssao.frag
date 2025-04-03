@@ -38,7 +38,7 @@ uniform sampler2D depthBuffer;
 
 uniform sampler2D
 {
-	wrap = repeat;
+	addressMode = repeat;
 } noise;
 uniform SampleBuffer
 {

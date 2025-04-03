@@ -29,12 +29,20 @@ namespace garden::graphics
 class LodBuffer final
 {
 	vector<uint8> readyStates;
-	vector<Ref<Buffer>> vertexBuffers;
-	vector<Ref<Buffer>> indexBuffers;
+	vector<ID<Buffer>> vertexBuffers;
+	vector<ID<Buffer>> indexBuffers;
 	vector<float> splits;
 
+	LodBuffer(uint32 count, float maxDistanceSq);
 	void destroy();
+	
+	friend class LinearPool<LodBuffer>;
 public:
+	/**
+	 * @brief Creates a new empty LOD buffers container.
+	 */
+	LodBuffer() = default;
+
 	/**
 	 * @brief Returns LOD ready state array.
 	 */
@@ -42,11 +50,11 @@ public:
 	/**
 	 * @brief Returns LOD vertex buffer array.
 	 */
-	const vector<Ref<Buffer>>& getVertexBuffers() const noexcept { return vertexBuffers; }
+	const vector<ID<Buffer>>& getVertexBuffers() const noexcept { return vertexBuffers; }
 	/**
 	 * @brief Returns LOD index buffer array.
 	 */
-	const vector<Ref<Buffer>>& getIndexBuffers() const noexcept { return indexBuffers; }
+	const vector<ID<Buffer>>& getIndexBuffers() const noexcept { return indexBuffers; }
 	/**
 	 * @brief Returns LOD split array.
 	 */
@@ -60,6 +68,19 @@ public:
 	 * @brief Returns true if LOD mesh is loaded and ready.
 	 */
 	bool isLevelReady(uint32 level) const noexcept { return readyStates[level] > 1; }
+	
+	/**
+	 * @brief Returns true if all LOD mesh levels are loaded and ready.
+	 */
+	bool isReady() const noexcept
+	{
+		for (uint32 i = 0; i < (uint32)readyStates.size(); i++)
+		{
+			if (readyStates[i] < 2)
+				return false;
+		}
+		return true;
+	}
 
 	/**
 	 * @brief Returns mesh LOD based on the specified distance to the model and readiness.
@@ -79,13 +100,20 @@ public:
 	 * @param[in] vertexBuffer mesh vertex buffer
 	 * @param[in] indexBuffer mesh index buffer
 	 */
-	void addLevel(uint32 level, float splitSq, const Ref<Buffer>& vertexBuffer, const Ref<Buffer>& indexBuffer);
+	void addLevel(uint32 level, float splitSq, ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer);
 	/**
 	 * @brief Removes specified LOD mesh level.
 	 * @param level target LOD mesh level
 	 */
 	void removeLevel(uint32 level);
 
+	/**
+	 * @brief Sets distance to the specified LOD level. (power of 2)
+	 * 
+	 * @param level target LOD mesh level
+	 * @param splitSq distance to the LOD level (power of 2)
+	 */
+	void setSplit(uint32 level, float splitSq);
 	/**
 	 * @brief Updates LOD buffers readiness at the specified level.
 	 * 

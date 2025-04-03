@@ -211,7 +211,7 @@ public:
 		}
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Sets buffer debug name. (Debug Only)
 	 * @param[in] name target debug name

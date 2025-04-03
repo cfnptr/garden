@@ -39,14 +39,14 @@ LogEditorSystem::~LogEditorSystem()
 
 void LogEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", LogEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", LogEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
 void LogEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LogEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", LogEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 	}
 }
@@ -83,9 +83,9 @@ static void updateTextBuffer(string& textBuffer,
 }
 
 //**********************************************************************************************************************
-void LogEditorSystem::editorRender()
+void LogEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(560.0f, 180.0f), ImGuiCond_FirstUseEver);

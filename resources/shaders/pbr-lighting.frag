@@ -68,7 +68,7 @@ void main()
 	if (depth < FLOAT_EPS6)
 		discard;
 
-	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g5, fs.texCoords);
+	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
 	
 	float4 shadow = float4(pc.shadowEmissive.rgb, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)

@@ -210,12 +210,10 @@ private:
 	Framebuffer(uint2 size, vector<Subpass>&& subpasses);
 	Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments,
 		OutputAttachment depthStencilAttachment);
-	Framebuffer(uint2 size, ID<ImageView> swapchainImage, ID<ImageView> depthBuffer)
+	Framebuffer(uint2 size, ID<ImageView> swapchainImage)
 	{
 		this->instance = (void*)1;
 		this->colorAttachments.emplace_back(swapchainImage, false, true, true);
-		if (depthBuffer)
-			this->depthStencilAttachment = OutputAttachment(depthBuffer, false, true, true);
 		this->size = size;
 		this->isSwapchain = true;
 	}
@@ -292,7 +290,7 @@ public:
 	 */
 	void recreate(uint2 size, const vector<SubpassImages>& subpasses);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Sets framebuffer debug name. (Debug Only)
 	 * @param[in] name target debug name
@@ -432,18 +430,24 @@ public:
 	 * @brief Clears framebuffer attachment content.
 	 * @details See the @ref Framebuffer::clearAttachments().
 	 * 
-	 * @param attachments framebuffer attachment
-	 * @param regions image clear region
+	 * @param attachment framebuffer attachment
+	 * @param region image clear region
 	 */
 	void clearAttachment(ClearAttachment attachment, const ClearRegion& region)
 	{ clearAttachments(&attachment, 1, &region, 1); }
 	/**
 	 * @brief Clears framebuffer attachment content.
 	 * @details See the @ref Framebuffer::clearAttachments().
-	 * @param attachments target framebuffer attachment
+	 * @param attachment target framebuffer attachment
 	 */
 	void clearAttachment(ClearAttachment attachment)
 	{ ClearRegion region; clearAttachments(&attachment, 1, &region, 1); }
+	/**
+	 * @brief Clears first framebuffer attachment content.
+	 * @details See the @ref Framebuffer::clearAttachments().
+	 */
+	 void clearAttachment()
+	 { ClearAttachment attachment; ClearRegion region; clearAttachments(&attachment, 1, &region, 1); }
 
 	/**
 	 * @brief Clears framebuffer depth/stencil attachment content.

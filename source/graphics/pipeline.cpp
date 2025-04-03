@@ -13,60 +13,17 @@
 // limitations under the License.
 
 #include "garden/graphics/pipeline.hpp"
+#include "garden/defines.hpp"
+#include "garden/graphics/sampler.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
 using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vk::Filter toVkFilter(SamplerFilter filterType) noexcept
-{
-	switch (filterType)
-	{
-	case SamplerFilter::Nearest: return vk::Filter::eNearest;
-	case SamplerFilter::Linear: return vk::Filter::eLinear;
-	default: abort();
-	}
-}
-static vk::SamplerMipmapMode toVkSamplerMipmapMode(SamplerFilter filterType) noexcept
-{
-	switch (filterType)
-	{
-	case SamplerFilter::Nearest: return vk::SamplerMipmapMode::eNearest;
-	case SamplerFilter::Linear: return vk::SamplerMipmapMode::eLinear;
-	default: abort();
-	}
-}
-static vk::SamplerAddressMode toVkSamplerAddressMode(Pipeline::SamplerWrap samplerWrap) noexcept
-{
-	switch (samplerWrap)
-	{
-	case Pipeline::SamplerWrap::Repeat: return vk::SamplerAddressMode::eRepeat;
-	case Pipeline::SamplerWrap::MirroredRepeat: return vk::SamplerAddressMode::eMirroredRepeat;
-	case Pipeline::SamplerWrap::ClampToEdge: return vk::SamplerAddressMode::eClampToEdge;
-	case Pipeline::SamplerWrap::ClampToBorder: return vk::SamplerAddressMode::eClampToBorder;
-	case Pipeline::SamplerWrap::MirrorClampToEdge: return vk::SamplerAddressMode::eMirrorClampToEdge;
-	default: abort();
-	}
-}
-static vk::BorderColor toVkBorderColor(Pipeline::BorderColor borderColor) noexcept
-{
-	switch (borderColor)
-	{
-		case Pipeline::BorderColor::FloatTransparentBlack: return vk::BorderColor::eFloatTransparentBlack;
-		case Pipeline::BorderColor::IntTransparentBlack: return vk::BorderColor::eIntTransparentBlack;
-		case Pipeline::BorderColor::FloatOpaqueBlack: return vk::BorderColor::eFloatOpaqueBlack;
-		case Pipeline::BorderColor::IntOpaqueBlack: return vk::BorderColor::eIntOpaqueBlack;
-		case Pipeline::BorderColor::FloatOpaqueWhite: return vk::BorderColor::eFloatOpaqueWhite;
-		case Pipeline::BorderColor::IntOpaqueWhite: return vk::BorderColor::eIntOpaqueWhite;
-		default: abort();
-	}
-}
-
-//**********************************************************************************************************************
-static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::SamplerState>& samplerStates,
-	map<string, vk::Sampler>& immutableSamplers, const fs::path& pipelinePath,
-	const map<string, Pipeline::SamplerState>& samplerStateOverrides)
+static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::Uniform>& uniforms, 
+	const map<string, Sampler::State>& samplerStates, map<string, vk::Sampler>& immutableSamplers, 
+	const fs::path& pipelinePath, const map<string, Sampler::State>& samplerStateOverrides)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> samplers(samplerStates.size());
@@ -74,17 +31,18 @@ static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::Sample
 
 	for (auto it = samplerStates.begin(); it != samplerStates.end(); it++, i++)
 	{
+		auto& uniform = uniforms.at(it->first);
+		if (uniform.isMutable)
+		{
+			// Can't override pipeline mutable (dynamic) sampler state.
+			GARDEN_ASSERT(samplerStateOverrides.find(it->first) == samplerStateOverrides.end());
+			continue;
+		}
+
 		auto samplerStateSearch = samplerStateOverrides.find(it->first);
 		auto state = samplerStateSearch == samplerStateOverrides.end() ?
 			it->second : samplerStateSearch->second;
-
-		vk::SamplerCreateInfo samplerInfo({}, toVkFilter(state.magFilter), toVkFilter(state.minFilter),
-			toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.wrapX),
-			toVkSamplerAddressMode(state.wrapY), toVkSamplerAddressMode(state.wrapZ),
-			state.mipLodBias, state.anisoFiltering, state.maxAnisotropy,
-			state.comparison, toVkCompareOp(state.compareOperation), state.minLod,
-			state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod,
-			toVkBorderColor(state.borderColor), state.unnormCoords);
+		auto samplerInfo = getVkSamplerCreateInfo(state);
 		auto sampler = vulkanAPI->device.createSampler(samplerInfo);
 		samplers[i] = (VkSampler)sampler;
 		immutableSamplers.emplace(it->first, sampler);
@@ -146,7 +104,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 
 			if (uniform.arraySize > 0)
 			{
-				if (isSamplerType(uniform.type))
+				if (!uniform.isMutable && isSamplerType(uniform.type))
 					descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(pair.first);
 				descriptorSetBinding.descriptorCount = uniform.arraySize;
 			}
@@ -166,7 +124,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 				default: abort();
 				}
 
-				if (isSamplerType(uniform.type))
+				if (!uniform.isMutable && isSamplerType(uniform.type))
 				{
 					vector<vk::Sampler> samplers(maxBindlessCount, *&immutableSamplers.at(pair.first));
 					samplerArrays.push_back(std::move(samplers));
@@ -393,7 +351,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 		this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
 
 		map<string, vk::Sampler> immutableSamplers;
-		this->samplers = createVkPipelineSamplers(createData.samplerStates,
+		this->samplers = createVkPipelineSamplers(uniforms, createData.samplerStates,
 			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
 
 		createVkDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms,

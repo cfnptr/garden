@@ -13,8 +13,39 @@
 // limitations under the License.
 
 #include "garden/graphics/lod.hpp"
+#include "garden/defines.hpp"
+#include "garden/graphics/api.hpp"
+#include "garden/graphics/buffer.hpp"
+#include "garden/system/graphics.hpp"
 
 using namespace garden::graphics;
+
+//**********************************************************************************************************************
+LodBuffer::LodBuffer(uint32 count, float maxDistanceSq) : 
+	readyStates(count), vertexBuffers(count), indexBuffers(count), splits(count)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	for (uint32 i = 0; i < count; i++)
+	{
+		auto version = graphicsAPI->imageVersion++;
+		vertexBuffers[i] = graphicsAPI->bufferPool.create(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
+			Buffer::Access::None, Buffer::Usage::PreferGPU, Buffer::Strategy::Size, version);
+		version = graphicsAPI->imageVersion++;
+		indexBuffers[i] = graphicsAPI->bufferPool.create(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
+			Buffer::Access::None, Buffer::Usage::PreferGPU, Buffer::Strategy::Size, version);
+		splits[i] = (i + 1) / (float)count;
+	}
+}
+void LodBuffer::destroy()
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	for (auto buffer : vertexBuffers)
+		graphicsSystem->destroy(buffer);
+	vertexBuffers.clear();
+	for (auto buffer : indexBuffers)
+		graphicsSystem->destroy(buffer);
+	indexBuffers.clear();
+}
 
 //**********************************************************************************************************************
 bool LodBuffer::getLevel(float distanceSq, ID<Buffer>& vertexBuffer, ID<Buffer>& indexBuffer) const
@@ -39,12 +70,13 @@ bool LodBuffer::getLevel(float distanceSq, ID<Buffer>& vertexBuffer, ID<Buffer>&
 	return readyStates[lastIndex] > 1;
 }
 
-void LodBuffer::addLevel(uint32 level, float splitSq, const Ref<Buffer>& vertexBuffer, const Ref<Buffer>& indexBuffer)
+void LodBuffer::addLevel(uint32 level, float splitSq, ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer)
 {
 	GARDEN_ASSERT(level <= splits.size());
 	GARDEN_ASSERT(splitSq >= 0.0f);
 	GARDEN_ASSERT(vertexBuffer);
 	GARDEN_ASSERT(indexBuffer);
+	GARDEN_ASSERT(isReady()); // Can't modify when async loading.
 
 	readyStates.emplace(readyStates.begin() + level, 0);
 	splits.emplace(splits.begin() + level, splitSq);
@@ -54,12 +86,20 @@ void LodBuffer::addLevel(uint32 level, float splitSq, const Ref<Buffer>& vertexB
 void LodBuffer::removeLevel(uint32 level)
 {
 	GARDEN_ASSERT(level < splits.size());
+	GARDEN_ASSERT(isReady()); // Can't modify when async loading.
+	
 	readyStates.erase(readyStates.begin() + level);
 	splits.erase(splits.begin() + level);
 	vertexBuffers.erase(vertexBuffers.begin() + level);
 	indexBuffers.erase(indexBuffers.begin() + level);
 }
 
+void LodBuffer::setSplit(uint32 level, float splitSq)
+{
+	GARDEN_ASSERT(level < splits.size());
+	GARDEN_ASSERT(splitSq >= 0.0f);
+	splits[level] = splitSq;
+}
 void LodBuffer::updateReadyState(uint32 level, ID<Buffer> loadedBuffer)
 {
 	GARDEN_ASSERT(level < splits.size());

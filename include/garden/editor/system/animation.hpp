@@ -28,7 +28,7 @@ class AnimationEditorSystem final : public System
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
 	void editorBarTool();
 
 	void onEntityInspector(ID<Entity> entity, bool isOpened);

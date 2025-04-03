@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "garden/system/render/fxaa.hpp"
+#include "garden/defines.hpp"
+#include "garden/graphics/framebuffer.hpp"
+#include "garden/system/graphics.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
@@ -20,11 +23,26 @@
 
 using namespace garden;
 
-static ID<GraphicsPipeline> createPipeline()
+static ID<Framebuffer> createFramebuffer()
 {
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"fxaa", GraphicsSystem::Instance::get()->getSwapchainFramebuffer());
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[1]); // Reusing G-Buffer memory.
+	GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+
+	vector<Framebuffer::OutputAttachment> colorAttachments =
+	{ Framebuffer::OutputAttachment(gBufferView->getDefaultView(), false, false, true) };
+
+	auto framebuffer = graphicsSystem->createFramebuffer(
+		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.fxaa");
+	return framebuffer;
 }
+static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
+{
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer);
+}
+
 static map<string, DescriptorSet::Uniform> getUniforms()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -61,7 +79,7 @@ FxaaRenderSystem::~FxaaRenderSystem()
 
 void FxaaRenderSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreSwapchainRender", FxaaRenderSystem::preSwapchainRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
@@ -70,35 +88,38 @@ void FxaaRenderSystem::init()
 
 	if (isEnabled)
 	{
+		if (!framebuffer)
+			framebuffer = createFramebuffer();
 		if (!pipeline)
-			pipeline = createPipeline();
+			pipeline = createPipeline(getFramebuffer());
 	}
-
-	if (isEnabled)
-		DeferredRenderSystem::Instance::get()->runSwapchainPass = false;
 }
 void FxaaRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		DeferredRenderSystem::Instance::get()->runSwapchainPass = true;
-		GraphicsSystem::Instance::get()->destroy(pipeline);
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(descriptorSet);
+		graphicsSystem->destroy(framebuffer);
+		graphicsSystem->destroy(pipeline);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreSwapchainRender", FxaaRenderSystem::preSwapchainRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
 	}
 }
 
 //**********************************************************************************************************************
-void FxaaRenderSystem::preSwapchainRender()
+void FxaaRenderSystem::preUiRender()
 {
-	SET_CPU_ZONE_SCOPED("FXAA Pre Swapchain Render");
+	SET_CPU_ZONE_SCOPED("FXAA Pre UI Render");
 
 	if (!isEnabled)
 		return;
 	
+	if (!framebuffer)
+		framebuffer = createFramebuffer();
 	if (!pipeline)
-		pipeline = createPipeline();
+		pipeline = createPipeline(getFramebuffer());
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
@@ -112,9 +133,9 @@ void FxaaRenderSystem::preSwapchainRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
 
-	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+	auto framebufferView = graphicsSystem->get(framebuffer);
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->invFrameSize = float2::one / graphicsSystem->getFramebufferSize();
+	pushConstants->invFrameSize = float2::one / framebufferView->getSize();
 
 	SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
 	framebufferView->beginRenderPass(f32x4::zero);
@@ -124,23 +145,48 @@ void FxaaRenderSystem::preSwapchainRender()
 	pipelineView->pushConstants();
 	pipelineView->drawFullscreen();
 	framebufferView->endRenderPass();
+
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto fxaaBufferView = graphicsSystem->get(framebufferView->getColorAttachments()[0].imageView);
+	Image::copy(fxaaBufferView->getImage(), deferredSystem->getLdrBuffer());
 }
 
 void FxaaRenderSystem::gBufferRecreate()
 {
-	if (descriptorSet)
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+
+	if (swapchainChanges.framebufferSize)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms();
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
+		if (framebuffer)
+		{
+			auto deferredSystem = DeferredRenderSystem::Instance::get();
+			auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[1]); // Reusing G-Buffer memory.
+			GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+
+			auto framebufferView = graphicsSystem->get(framebuffer);
+			Framebuffer::OutputAttachment colorAttachment(gBufferView->getDefaultView(), false, false, true);
+			framebufferView->update(graphicsSystem->getScaledFramebufferSize(), &colorAttachment, 1);
+		}
+		if (descriptorSet)
+		{
+			graphicsSystem->destroy(descriptorSet);
+			auto uniforms = getUniforms();
+			descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
+		}
 	}
 }
 
+ID<Framebuffer> FxaaRenderSystem::getFramebuffer()
+{
+	if (!framebuffer)
+		framebuffer = createFramebuffer();
+	return framebuffer;
+}
 ID<GraphicsPipeline> FxaaRenderSystem::getPipeline()
 {
 	if (!pipeline)
-		pipeline = createPipeline();
+		pipeline = createPipeline(getFramebuffer());
 	return pipeline;
 }

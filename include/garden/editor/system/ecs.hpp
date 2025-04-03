@@ -28,7 +28,7 @@ class EcsEditorSystem final : public System
 
 	void init();
 	void deinit();
-	void editorRender();
+	void preUiRender();
 	void editorBarTool();
 
 	friend class ecsm::Manager;

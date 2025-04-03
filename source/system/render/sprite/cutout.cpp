@@ -17,8 +17,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-CutoutSpriteSystem::CutoutSpriteSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	SpriteRenderCompSystem("sprite/cutout", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
+CutoutSpriteSystem::CutoutSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
+	"sprite/cutout"), Singleton(setSingleton) { }
 CutoutSpriteSystem::~CutoutSpriteSystem() { unsetSingleton(); }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
@@ -42,6 +42,10 @@ const string& CutoutSpriteSystem::getComponentName() const
 {
 	static const string name = "Cutout Sprite";
 	return name;
+}
+MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
 }
 
 //**********************************************************************************************************************

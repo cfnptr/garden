@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "garden/system/render/imgui.hpp"
+#include "garden/defines.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/glfw.hpp" // Defined before ImGUI
@@ -108,7 +110,7 @@ static void setImGuiStyle()
 static ID<GraphicsPipeline> createPipeline()
 {
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"imgui", GraphicsSystem::Instance::get()->getSwapchainFramebuffer());
+		"imgui", DeferredRenderSystem::Instance::get()->getUiFramebuffer());
 }
 static map<string, DescriptorSet::Uniform> getUniforms(ID<ImageView> texture)
 {
@@ -135,6 +137,7 @@ ImGuiRenderSystem::ImGuiRenderSystem(bool setSingleton,
 	const fs::path& fontPath) : Singleton(setSingleton), fontPath(fontPath)
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ImGuiRenderSystem::preInit);
+	ECSM_SUBSCRIBE_TO_EVENT("PostInit", ImGuiRenderSystem::postInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", ImGuiRenderSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ImGuiRenderSystem::update);
 
@@ -149,6 +152,7 @@ ImGuiRenderSystem::~ImGuiRenderSystem()
 		ImGui::DestroyContext();
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ImGuiRenderSystem::preInit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", ImGuiRenderSystem::postInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", ImGuiRenderSystem::postDeinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", ImGuiRenderSystem::update);
 	}
@@ -189,7 +193,6 @@ static LRESULT CALLBACK imGuiWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 void ImGuiRenderSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
-	ECSM_SUBSCRIBE_TO_EVENT("Present", ImGuiRenderSystem::present);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ImGuiRenderSystem::swapchainRecreate);
 
 	auto& io = ImGui::GetIO();
@@ -253,7 +256,7 @@ void ImGuiRenderSystem::preInit()
 
 	unsigned char* pixels; int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	fontTexture = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, Image::Bind::Sampled | 
+	fontTexture = graphicsSystem->createImage(Image::Format::UnormB8G8R8A8, Image::Bind::Sampled | 
 		Image::Bind::TransferDst, { { pixels } }, uint2(width, height), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(fontTexture, "image.imgui.fontTexture");
 
@@ -266,6 +269,12 @@ void ImGuiRenderSystem::preInit()
 			pipeline = createPipeline();
 	}
 }
+void ImGuiRenderSystem::postInit()
+{
+	ECSM_SUBSCRIBE_TO_EVENT("UiRender", ImGuiRenderSystem::uiRender);
+}
+
+//**********************************************************************************************************************
 void ImGuiRenderSystem::postDeinit()
 {
 	if (Manager::Instance::get()->isRunning)
@@ -298,7 +307,7 @@ void ImGuiRenderSystem::postDeinit()
 			ImGuiBackendFlags_HasSetMousePos | ImGuiBackendFlags_HasGamepad);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Present", ImGuiRenderSystem::present);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ImGuiRenderSystem::swapchainRecreate);
 	}
 }
@@ -567,20 +576,25 @@ void ImGuiRenderSystem::update()
 		}
 	}
 
-	ImGui::NewFrame();
-	startedFrame = true;
-
-
 	// TODO: implement these if required for something:
 	//
 	// ImGui_ImplGlfw_UpdateMouseData();
 	// ImGui_ImplGlfw_UpdateGamepads();
+
+	ImGui::NewFrame();
+	startedFrame = true;
+
+	if (!isEnabled)
+		return;
+
+	if (!pipeline)
+		pipeline = createPipeline();
 }
 
 //**********************************************************************************************************************
-void ImGuiRenderSystem::present()
+void ImGuiRenderSystem::uiRender()
 {
-	SET_CPU_ZONE_SCOPED("ImGui Present");
+	SET_CPU_ZONE_SCOPED("ImGui UI Render");
 
 	if (startedFrame)
 	{
@@ -588,13 +602,10 @@ void ImGuiRenderSystem::present()
 		startedFrame = false;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender())
+	if (!isEnabled)
 		return;
 
-	if (!pipeline)
-		pipeline = createPipeline();
-	
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	auto fontTextureView = graphicsSystem->get(fontTexture);
 	if (!pipelineView->isReady() || !fontTextureView->isReady())
@@ -612,7 +623,7 @@ void ImGuiRenderSystem::present()
 	auto defaultFontTexture = fontTextureView->getDefaultView();
 	ID<Buffer> vertexBuffer = {}, indexBuffer = {};
 
-	if (drawData->TotalVtxCount > 0)
+	if (drawData->TotalVtxCount > 0 && drawData->TotalIdxCount > 0)
 	{
 		auto vertexSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
 		auto indexSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
@@ -646,24 +657,23 @@ void ImGuiRenderSystem::present()
 			vtxDst += drawList->VtxBuffer.Size;
 			idxDst += drawList->IdxBuffer.Size;
 		}
-
+		
 		vertexBufferView->flush(vertexSize);
 		indexBufferView->flush(indexSize);
 	}
 
 	const auto indexType = sizeof(ImDrawIdx) == 2 ?
 		GraphicsPipeline::Index::Uint16 : GraphicsPipeline::Index::Uint32;
-	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto framebufferView = graphicsSystem->get(deferredSystem->getUiFramebuffer());
 	auto framebufferSize = framebufferView->getSize();
 
-	graphicsSystem->startRecording(CommandBufferType::Frame);
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->scale = float2(2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y);
 	pushConstants->translate = float2(-1.0f - drawData->DisplayPos.x * pushConstants->scale.x,
 		-1.0f - drawData->DisplayPos.y * pushConstants->scale.y);
 
-	BEGIN_GPU_DEBUG_LABEL("ImGui", Color::transparent);
-	framebufferView->beginRenderPass(f32x4::zero);
+	SET_GPU_DEBUG_LABEL("ImGui", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewport();
 	pipelineView->pushConstants();
@@ -717,10 +727,6 @@ void ImGuiRenderSystem::present()
 		globalIdxOffset += cmdList->IdxBuffer.Size;
 		globalVtxOffset += cmdList->VtxBuffer.Size;
 	}
-
-	framebufferView->endRenderPass();
-	END_GPU_DEBUG_LABEL();
-	graphicsSystem->stopRecording();
 }
 
 //**********************************************************************************************************************
@@ -731,8 +737,8 @@ void ImGuiRenderSystem::swapchainRecreate()
 
 	if (swapchainChanges.bufferCount)
 	{
-		auto vertexSize = !vertexBuffers.empty() ? graphicsSystem->get(vertexBuffers[0])->getBinarySize() : 0;
-		auto indexSize = !indexBuffers.empty() ? graphicsSystem->get(indexBuffers[0])->getBinarySize() : 0;
+		auto vertexSize = vertexBuffers.empty() ? 0 : graphicsSystem->get(vertexBuffers[0])->getBinarySize();
+		auto indexSize = indexBuffers.empty() ? 0 : graphicsSystem->get(indexBuffers[0])->getBinarySize();
 
 		for (auto buffer : indexBuffers)
 			graphicsSystem->destroy(buffer);
@@ -742,7 +748,7 @@ void ImGuiRenderSystem::swapchainRecreate()
 		if (vertexSize > 0)
 			createBuffers(vertexBuffers, vertexSize, Buffer::Bind::Vertex);
 		if (indexSize > 0)
-			createBuffers(indexBuffers, indexSize, Buffer::Bind::Vertex);
+			createBuffers(indexBuffers, indexSize, Buffer::Bind::Index);
 	}
 }
 

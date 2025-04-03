@@ -16,17 +16,17 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/resource.hpp"
+#include "math/matrix/float.hpp"
 #include "math/matrix/transform.hpp"
+#include <filesystem>
 
 using namespace garden;
 
 // TODO: add bindless support
 
 //**********************************************************************************************************************
-ModelRenderSystem::ModelRenderSystem(const fs::path& pipelinePath, bool useNormalMapping,
-	bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent) : 
-	useNormalMapping(useNormalMapping), useDeferredBuffer(useDeferredBuffer), 
-	useLinearFilter(useLinearFilter), isTranslucent(isTranslucent), pipelinePath(pipelinePath) { }
+ModelRenderSystem::ModelRenderSystem(const fs::path& pipelinePath, bool useNormalMapping, bool useGBuffer) : 
+	useNormalMapping(useNormalMapping), useGBuffer(useGBuffer), pipelinePath(pipelinePath) { }
 
 void ModelRenderSystem::init()
 {
@@ -98,10 +98,6 @@ void ModelRenderSystem::imageLoaded()
 		modelRenderFrame->descriptorSet = descriptorSet;
 	}
 }
-void ModelRenderSystem::bufferLoaded()
-{
-	// TODO:
-}
 
 //**********************************************************************************************************************
 void ModelRenderSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -117,14 +113,15 @@ void ModelRenderSystem::copyComponent(View<Component> source, View<Component> de
 
 	destinationView->aabb = sourceView->aabb;
 	destinationView->isEnabled = sourceView->isEnabled;
+	destinationView->indexType = sourceView->indexType;
 	destinationView->lodBuffer = sourceView->lodBuffer;
 	destinationView->colorMap = sourceView->colorMap;
 	destinationView->mraorMap = sourceView->mraorMap;
 	destinationView->descriptorSet = sourceView->descriptorSet;
-	destinationView->colorFactor = sourceView->colorFactor;
+	destinationView->indexCount = sourceView->indexCount;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	destinationView->lodBufferPath = sourceView->lodBufferPath;
+	destinationView->lodBufferPaths = sourceView->lodBufferPaths;
 	destinationView->colorMapPath = sourceView->colorMapPath;
 	destinationView->mraorMapPath = sourceView->mraorMapPath;
 	#endif
@@ -169,7 +166,7 @@ void ModelRenderSystem::setInstanceData(ModelRenderComponent* modelRenderView, B
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	instanceData->mvp = (float4x4)(viewProj * model);
-	instanceData->colorFactor = (float4)modelRenderView->colorFactor;
+	instanceData->model = useNormalMapping ? (float4x4)model : (float4x4)transpose3x3(inverse4x4(model));
 }
 void ModelRenderSystem::setPushConstants(ModelRenderComponent* modelRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
@@ -190,31 +187,17 @@ map<string, DescriptorSet::Uniform> ModelRenderSystem::getModelUniforms(ID<Image
 ID<GraphicsPipeline> ModelRenderSystem::createBasePipeline()
 {
 	ID<Framebuffer> framebuffer;
-	if (useDeferredBuffer)
+	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
+	if (deferredSystem)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		framebuffer = isTranslucent ? deferredSystem->getMetaHdrFramebuffer() : 
-			deferredSystem->getGFramebuffer();
+		framebuffer = useGBuffer ? deferredSystem->getGFramebuffer() :
+			deferredSystem->getMetaHdrFramebuffer();
 	}
 	else
 	{
 		framebuffer = ForwardRenderSystem::Instance::get()->getFramebuffer();
 	}
-
-	GraphicsPipeline::StateOverrides stateOverrides;
-	GraphicsPipeline::StateOverrides* stateOverridesPtr = nullptr;
-	if (!useLinearFilter)
-	{
-		Pipeline::SamplerState samplerState;
-		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
-			GraphicsPipeline::SamplerWrap::Repeat;
-		stateOverrides.samplerStates.emplace("colorMap", samplerState);
-		stateOverrides.samplerStates.emplace("mraorMap", samplerState);
-		stateOverridesPtr = &stateOverrides;
-	}
-
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath,
-		framebuffer, true, true, 0, 0, {}, stateOverridesPtr);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, true);
 }
 
 //**********************************************************************************************************************
@@ -222,7 +205,7 @@ static const vector<BufferChannel> fullModelChannels =
 {
 	BufferChannel::Positions, BufferChannel::Normals, BufferChannel::TextureCoords, BufferChannel::Tangents
 };
-static const vector<BufferChannel> partModelChannels = 
+static const vector<BufferChannel> liteModelChannels = 
 {
 	BufferChannel::Positions, BufferChannel::Normals, BufferChannel::TextureCoords
 };
@@ -234,13 +217,27 @@ void ModelRenderSystem::serialize(ISerializer& serializer, const View<Component>
 		serializer.write("aabb", modelRenderView->aabb);
 	if (!modelRenderView->isEnabled)
 		serializer.write("isEnabled", false);
-	if (modelRenderView->colorFactor != f32x4::one)
-		serializer.write("colorFactor", (float4)modelRenderView->colorFactor);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	serializer.write("lodBufferPath", modelRenderView->lodBufferPath.generic_string());
-	serializer.write("colorMapPath", modelRenderView->colorMapPath.generic_string());
-	serializer.write("mraorMapPath", modelRenderView->mraorMapPath.generic_string());
+	if (!modelRenderView->lodBufferPaths.empty())
+	{
+		auto& lodBufferPaths = modelRenderView->lodBufferPaths;
+		auto arraySize = (uint32)lodBufferPaths.size();
+
+		serializer.beginChild("lodBufferPaths");
+		for (uint32 i = 0; i < arraySize; i++)
+		{
+			serializer.beginArrayElement();
+			serializer.write(lodBufferPaths[i].generic_string());
+			serializer.endArrayElement();
+		}
+		serializer.endChild();
+	}
+	
+	if (!modelRenderView->colorMapPath.empty())
+		serializer.write("colorMapPath", modelRenderView->colorMapPath.generic_string());
+	if (!modelRenderView->mraorMapPath.empty())
+		serializer.write("mraorMapPath", modelRenderView->mraorMapPath.generic_string());
 	#endif
 }
 void ModelRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
@@ -248,7 +245,6 @@ void ModelRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> enti
 	auto modelRenderView = View<ModelRenderComponent>(component);
 	deserializer.read("aabb", modelRenderView->aabb);
 	deserializer.read("isEnabled", modelRenderView->isEnabled);
-	deserializer.read("colorFactor", modelRenderView->colorFactor);
 
 	constexpr auto bind = Image::Bind::TransferDst | Image::Bind::Sampled;
 	constexpr auto strategy = Image::Strategy::Default;
@@ -256,14 +252,57 @@ void ModelRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> enti
 	auto resourceSystem = ResourceSystem::Instance::get();
 
 	string resourcePath;
-	deserializer.read("lodBufferPath", resourcePath);
-	if (resourcePath.empty())
-		resourcePath = "missing";
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	modelRenderView->lodBufferPath = resourcePath;
-	#endif
-	modelRenderView->lodBuffer = resourceSystem->loadLodBuffer(resourcePath, 
-		useNormalMapping ? fullModelChannels : partModelChannels);
+	if (deserializer.beginChild("lodBufferPaths"))
+	{
+		auto arraySize = (uint32)deserializer.getArraySize();
+		vector<fs::path> lodBufferPaths(arraySize);
+
+		for (uint32 i = 0; i < arraySize; i++)
+		{
+			if (!deserializer.beginArrayElement(i))
+				break;
+
+			deserializer.read(resourcePath);
+			deserializer.endArrayElement();
+
+			if (resourcePath.empty())
+			{
+				lodBufferPaths.resize(i);
+				break;
+			}
+
+			lodBufferPaths[i] = resourcePath;
+		}
+		deserializer.endChild();
+
+		if (lodBufferPaths.empty())
+			lodBufferPaths.push_back("missing");
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		modelRenderView->lodBufferPaths = lodBufferPaths;
+		#endif
+		modelRenderView->lodBuffer = resourceSystem->loadLodBuffer(lodBufferPaths, 
+			useNormalMapping ? fullModelChannels : liteModelChannels);
+
+		if (deserializer.beginChild("lodBufferSplits"))
+		{
+			arraySize = min(arraySize, (uint32)deserializer.getArraySize());
+			auto lodBufferView = resourceSystem->get(modelRenderView->lodBuffer);
+
+			for (uint32 i = 0; i < arraySize; i++)
+			{
+				if (!deserializer.beginArrayElement(i))
+					break;
+
+				float splitSq = 0.0f;
+				deserializer.read(splitSq);
+				deserializer.endArrayElement();
+
+				if (splitSq >= 0.0f)
+					lodBufferView->setSplit(i, splitSq);
+			}
+			deserializer.endChild();
+		}
+	}
 
 	deserializer.read("colorMapPath", resourcePath);
 	if (resourcePath.empty())
@@ -288,8 +327,6 @@ void ModelRenderSystem::serializeAnimation(ISerializer& serializer, View<Animati
 	auto modelFrameView = View<ModelAnimationFrame>(frame);
 	if (modelFrameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)modelFrameView->isEnabled);
-	if (modelFrameView->animateColorFactor)
-		serializer.write("colorFactor", (float4)modelFrameView->colorFactor);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (modelFrameView->animateLodBuffer)
@@ -315,8 +352,6 @@ void ModelRenderSystem::animateAsync(View<Component> component,
 
 	if (frameA->animateIsEnabled)
 		modelRenderView->isEnabled = (bool)round(t);
-	if (frameA->animateColorFactor)
-		modelRenderView->colorFactor = lerp(frameA->colorFactor, frameB->colorFactor, t);
 
 	if (frameA->animateTextureMaps)
 	{
@@ -353,7 +388,6 @@ void ModelRenderSystem::deserializeAnimation(IDeserializer& deserializer, ModelA
 	auto boolValue = true;
 	frame.animateIsEnabled = deserializer.read("isEnabled", boolValue);
 	frame.isEnabled = boolValue;
-	frame.animateColorFactor = deserializer.read("colorFactor", frame.colorFactor);
 
 	constexpr auto bind = Image::Bind::TransferDst | Image::Bind::Sampled;
 	constexpr auto strategy = Image::Strategy::Default;

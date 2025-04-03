@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/physics-renderer.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "Jolt/Physics/PhysicsSystem.h"
 #include "garden/system/transform.hpp"
 #include "math/angles.hpp"
@@ -40,7 +41,8 @@ PhysicsEditorSystem::~PhysicsEditorSystem()
 
 void PhysicsEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreMetaLdrRender", PhysicsEditorSystem::preMetaLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", PhysicsEditorSystem::metaLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<RigidbodyComponent>(
@@ -70,102 +72,98 @@ void PhysicsEditorSystem::deinit()
 		editorSystem->unregisterEntityInspector<RigidbodyComponent>();
 		editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", PhysicsEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreMetaLdrRender", PhysicsEditorSystem::preMetaLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", PhysicsEditorSystem::metaLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
-void PhysicsEditorSystem::editorRender()
+void PhysicsEditorSystem::preMetaLdrRender()
 {
-	if (!GraphicsSystem::Instance::get()->canRender())
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	if (!showWindow)
 		return;
 
-	auto physicsSystem = PhysicsSystem::Instance::get();
-	if (showWindow)
+	if (ImGui::Begin("Physics Simulation", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		if (ImGui::Begin("Physics Simulation", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+		int collisionSteps = physicsSystem->collisionSteps;
+		if (ImGui::DragInt("Collision Steps", &collisionSteps))
+			physicsSystem->collisionSteps = clamp(collisionSteps, 1, 1000);
+		int simulationRate = physicsSystem->simulationRate;
+		if (ImGui::DragInt("Simulation Rate", &simulationRate))
+			physicsSystem->simulationRate = clamp(simulationRate, 1, (int)UINT16_MAX);
+		ImGui::SliderFloat("Cascade Lag Threshold", &physicsSystem->cascadeLagThreshold, 0.0f, 1.0f);
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader("Visualization"))
 		{
-			int collisionSteps = physicsSystem->collisionSteps;
-			if (ImGui::DragInt("Collision Steps", &collisionSteps))
-				physicsSystem->collisionSteps = clamp(collisionSteps, 1, 1000);
-			int simulationRate = physicsSystem->simulationRate;
-			if (ImGui::DragInt("Simulation Rate", &simulationRate))
-				physicsSystem->simulationRate = clamp(simulationRate, 1, (int)UINT16_MAX);
-			ImGui::SliderFloat("Cascade Lag Threshold", &physicsSystem->cascadeLagThreshold, 0.0f, 1.0f);
+			ImGui::SeparatorText("Bodies");
+			ImGui::Checkbox("Shapes", &drawShapes); ImGui::SameLine();
+			ImGui::Checkbox("Bounding Box", &drawBoundingBox); ImGui::SameLine();
+			ImGui::Checkbox("Center Of Mass", &drawCenterOfMass);
 			ImGui::Spacing();
 
-			if (ImGui::CollapsingHeader("Visualization"))
-			{
-				ImGui::SeparatorText("Bodies");
-				ImGui::Checkbox("Shapes", &drawShapes); ImGui::SameLine();
-				ImGui::Checkbox("Bounding Box", &drawBoundingBox); ImGui::SameLine();
-				ImGui::Checkbox("Center Of Mass", &drawCenterOfMass);
-				ImGui::Spacing();
-
-				ImGui::SeparatorText("Constraints");
-				ImGui::Checkbox("Constraints", &drawConstraints); ImGui::SameLine();
-				ImGui::Checkbox("Constraint Limits", &drawConstraintLimits); ImGui::SameLine();
-				ImGui::Checkbox("Constraint Reference Frame", &drawConstraintRefFrame);
-				ImGui::Spacing();
-			}
-
-			if (ImGui::CollapsingHeader("Stats Logging"))
-			{
-				ImGui::Checkbox("Log Broadphase", &physicsSystem->logBroadPhaseStats); ImGui::SameLine();
-				ImGui::Checkbox("Log Narrowphase", &physicsSystem->logNarrowPhaseStats);
-				ImGui::DragFloat("Stats Log Rate", &physicsSystem->statsLogRate, 1.0f, 0.0f, 0.0f, "%.3f s");
-				ImGui::Spacing();
-			}
-
-			// TODO: visualize collision matrix and other physics settings.
-
-			if (debugRenderer)
-			{
-				if (!((PhysicsDebugRenderer*)debugRenderer)->isReady())
-					ImGui::TextDisabled("Physics pipelines are loading...");
-			}
+			ImGui::SeparatorText("Constraints");
+			ImGui::Checkbox("Constraints", &drawConstraints); ImGui::SameLine();
+			ImGui::Checkbox("Constraint Limits", &drawConstraintLimits); ImGui::SameLine();
+			ImGui::Checkbox("Constraint Reference Frame", &drawConstraintRefFrame);
+			ImGui::Spacing();
 		}
-		ImGui::End();
-	}
 
-	if (drawShapes || drawConstraints || drawConstraintLimits || drawConstraintRefFrame)
-	{
-		if (!debugRenderer)
-			debugRenderer = new PhysicsDebugRenderer();
-		
-		auto renderer = (PhysicsDebugRenderer*)debugRenderer;
-		auto instance = (JPH::PhysicsSystem*)physicsSystem->getInstance();
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-		renderer->setCameraPosition(cameraConstants.cameraPos);
-
-		JPH::BodyManager::DrawSettings drawSettings;
-		drawSettings.mDrawShapeWireframe = true;
-		drawSettings.mDrawBoundingBox = drawBoundingBox;
-		drawSettings.mDrawCenterOfMassTransform = drawCenterOfMass;
-
-		if (drawShapes)
-			instance->DrawBodies(drawSettings, renderer);
-		if (drawConstraints)
-			instance->DrawConstraints(renderer);
-		if (drawConstraintLimits)
-			instance->DrawConstraintLimits(renderer);
-		if (drawConstraintRefFrame)
-			instance->DrawConstraintReferenceFrame(renderer);
-		
-		auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-		graphicsSystem->startRecording(CommandBufferType::Frame);
+		if (ImGui::CollapsingHeader("Stats Logging"))
 		{
-			SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
-			renderer->preDraw();
-			framebufferView->beginRenderPass(f32x4::zero);
-			renderer->draw(cameraConstants.viewProj);
-			framebufferView->endRenderPass();
+			ImGui::Checkbox("Log Broadphase", &physicsSystem->logBroadPhaseStats); ImGui::SameLine();
+			ImGui::Checkbox("Log Narrowphase", &physicsSystem->logNarrowPhaseStats);
+			ImGui::DragFloat("Stats Log Rate", &physicsSystem->statsLogRate, 1.0f, 0.0f, 0.0f, "%.3f s");
+			ImGui::Spacing();
 		}
-		graphicsSystem->stopRecording();
+
+		// TODO: visualize collision matrix and other physics settings.
+
+		if (debugRenderer)
+		{
+			if (!((PhysicsDebugRenderer*)debugRenderer)->isReady())
+				ImGui::TextDisabled("Physics pipelines are loading...");
+		}
 	}
+	ImGui::End();
 }
+void PhysicsEditorSystem::metaLdrRender()
+{
+	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
+		return;
+
+	if (!debugRenderer)
+		debugRenderer = new PhysicsDebugRenderer();
+	
+	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
+	auto instance = (JPH::PhysicsSystem*)physicsSystem->getInstance();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	renderer->setCameraPosition(cameraConstants.cameraPos);
+
+	JPH::BodyManager::DrawSettings drawSettings;
+	drawSettings.mDrawShapeWireframe = true;
+	drawSettings.mDrawBoundingBox = drawBoundingBox;
+	drawSettings.mDrawCenterOfMassTransform = drawCenterOfMass;
+
+	if (drawShapes)
+		instance->DrawBodies(drawSettings, renderer);
+	if (drawConstraints)
+		instance->DrawConstraints(renderer);
+	if (drawConstraintLimits)
+		instance->DrawConstraintLimits(renderer);
+	if (drawConstraintRefFrame)
+		instance->DrawConstraintReferenceFrame(renderer);
+	
+
+	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
+	renderer->preDraw();
+	renderer->draw(cameraConstants.viewProj);
+}
+
 void PhysicsEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("Physics Simulation"))

@@ -47,7 +47,9 @@ CsmRenderEditorSystem::~CsmRenderEditorSystem()
 
 void CsmRenderEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", CsmRenderEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", CsmRenderEditorSystem::preUiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("UiRender", CsmRenderEditorSystem::uiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CsmRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", CsmRenderEditorSystem::editorBarToolPP);
 }
 void CsmRenderEditorSystem::deinit()
@@ -58,96 +60,115 @@ void CsmRenderEditorSystem::deinit()
 		graphicsSystem->destroy(cascadesDescriptorSet);
 		graphicsSystem->destroy(cascadesPipeline);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", CsmRenderEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", CsmRenderEditorSystem::preUiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", CsmRenderEditorSystem::uiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CsmRenderEditorSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", CsmRenderEditorSystem::editorBarToolPP);
 	}
 }
 
 //**********************************************************************************************************************
-void CsmRenderEditorSystem::editorRender()
+void CsmRenderEditorSystem::preUiRender()
 {
-	if (!GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
-	if (showWindow)
-	{
-		auto csmSystem = CsmRenderSystem::Instance::get();
-		if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			auto graphicsSystem = GraphicsSystem::Instance::get();
-			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-			auto shadowColor = cameraConstants.shadowColor;
-			if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
-				graphicsSystem->setShadowColor(shadowColor);
-			if (ImGui::SliderFloat("Alpha", &shadowColor.floats.w, 0.0f, 1.0f))
-				graphicsSystem->setShadowColor(shadowColor);
-
-			ImGui::DragFloat("Distance", &csmSystem->distance, 1.0f);
-			ImGui::DragFloat("Constant Factor", &csmSystem->biasConstantFactor, 0.001f);
-			ImGui::DragFloat("Slope Factor", &csmSystem->biasSlopeFactor, 0.0001f);
-			ImGui::DragFloat("Z-Axis Offset Coefficient", &csmSystem->zCoeff, 0.01f);
-			ImGui::SliderFloat2("Cascade Splits", &csmSystem->cascadeSplits, 0.001f, 0.999f);
-
-			ImGui::Checkbox("Visualize Cascades", &visualizeCascades);
-			if (ImGui::BeginItemTooltip())
-			{
-				ImGui::Text("Cascade 1 = green, 2 = yellow, 3 = red, outside = magenta");
-				ImGui::EndTooltip();
-			}
-
-			ImGui::Text("Cascade Far Planes: %f, %f, %f", csmSystem->cascadeSplits.x * csmSystem->distance, 
-				csmSystem->cascadeSplits.y * csmSystem->distance, csmSystem->distance);
-
-			// TODO: set shadow map size, also set it in the settings
-
-			if (cascadesPipeline)
-			{
-				auto pipelineView = graphicsSystem->get(cascadesPipeline);
-				if (!pipelineView->isReady())
-					ImGui::TextDisabled("Cascades pipeline is loading...");
-			}
-		}
-		ImGui::End();
-	}
-
-	if (visualizeCascades)
+	auto csmSystem = CsmRenderSystem::Instance::get();
+	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		if (!cascadesPipeline)
+		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+		auto shadowColor = cameraConstants.shadowColor;
+		if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
+			graphicsSystem->setShadowColor(shadowColor);
+		if (ImGui::SliderFloat("Alpha", &shadowColor.floats.w, 0.0f, 1.0f))
+			graphicsSystem->setShadowColor(shadowColor);
+
+		ImGui::DragFloat("Distance", &csmSystem->distance, 1.0f);
+		ImGui::DragFloat("Constant Factor", &csmSystem->biasConstantFactor, 0.001f);
+		ImGui::DragFloat("Slope Factor", &csmSystem->biasSlopeFactor, 0.0001f);
+		ImGui::DragFloat("Z-Axis Offset Coefficient", &csmSystem->zCoeff, 0.01f);
+		ImGui::SliderFloat2("Cascade Splits", &csmSystem->cascadeSplits, 0.001f, 0.999f);
+
+		ImGui::Checkbox("Visualize Cascades", &visualizeCascades);
+		if (ImGui::BeginItemTooltip())
 		{
-			cascadesPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-				"editor/shadow-cascades", graphicsSystem->getSwapchainFramebuffer());
+			ImGui::Text("Cascade 1 = green, 2 = yellow, 3 = red, outside = magenta");
+			ImGui::EndTooltip();
 		}
-		
-		auto pipelineView = graphicsSystem->get(cascadesPipeline);
-		if (pipelineView->isReady())
+
+		ImGui::Text("Cascade Far Planes: %f, %f, %f", csmSystem->cascadeSplits.x * csmSystem->distance, 
+			csmSystem->cascadeSplits.y * csmSystem->distance, csmSystem->distance);
+
+		// TODO: set shadow map size, also set it in the settings
+
+		if (visualizeCascades)
 		{
-			if (!cascadesDescriptorSet)
+			if (!cascadesPipeline)
 			{
-				auto uniforms = getCascadesUniforms();
-				cascadesDescriptorSet = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.editor.csm.cascades");
+				auto deferredSystem = DeferredRenderSystem::Instance::get();
+				cascadesPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+					"editor/shadow-cascades", deferredSystem->getUiFramebuffer());
 			}
 
-			auto csmSystem = CsmRenderSystem::Instance::get();
-			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-			const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
-			auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-			pushConstants->farPlanes = (float4)f32x4(cameraConstants.nearPlane / csmSystem->getFarPlanes(), 0.0f);
-
-			graphicsSystem->startRecording(CommandBufferType::Frame);
+			auto pipelineView = graphicsSystem->get(cascadesPipeline);
+			if (pipelineView->isReady())
 			{
-				SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
-				framebufferView->beginRenderPass(f32x4::zero);
-				pipelineView->bind();
-				pipelineView->setViewportScissor();
-				pipelineView->bindDescriptorSet(cascadesDescriptorSet);
-				pipelineView->pushConstants();
-				pipelineView->drawFullscreen();
-				framebufferView->endRenderPass();
+				if (!cascadesDescriptorSet)
+				{
+					auto uniforms = getCascadesUniforms();
+					cascadesDescriptorSet = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
+					SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.editor.csm.cascades");
+				}
 			}
-			graphicsSystem->stopRecording();
+			else
+			{
+				ImGui::TextDisabled("Cascades pipeline is loading...");
+			}
 		}
+
+			
+	}
+	ImGui::End();
+}
+void CsmRenderEditorSystem::uiRender()
+{
+	if (!visualizeCascades)
+		return;
+	
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(cascadesPipeline);
+	if (!pipelineView->isReady())
+		return;
+
+	auto csmSystem = CsmRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto framebufferView = graphicsSystem->get(deferredSystem->getUiFramebuffer());
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
+	pushConstants->farPlanes = (float4)f32x4(cameraConstants.nearPlane / csmSystem->getFarPlanes(), 0.0f);
+
+	SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(cascadesDescriptorSet);
+	pipelineView->pushConstants();
+	pipelineView->drawFullscreen();
+}
+
+//**********************************************************************************************************************
+void CsmRenderEditorSystem::gBufferRecreate()
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
+
+	if (swapchainChanges.framebufferSize && cascadesDescriptorSet)
+	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(cascadesDescriptorSet);
+		auto uniforms = getCascadesUniforms();
+		cascadesDescriptorSet = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.editor.csm.cascades");
 	}
 }
 

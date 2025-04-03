@@ -36,6 +36,11 @@ namespace garden
  */
 class ForwardRenderSystem final : public System, public Singleton<ForwardRenderSystem>
 {
+public:
+	static constexpr Image::Format colorBufferFormat = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format depthStencilFormat = Image::Format::UnormD16;
+private:
 	ID<Image> colorBuffer = {};
 	ID<Image> depthStencilBuffer = {};
 	ID<Framebuffer> framebuffer = {};
@@ -66,7 +71,6 @@ class ForwardRenderSystem final : public System, public Singleton<ForwardRenderS
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is forward rendering enabled. */
-	bool runSwapchainPass = true; /**< Run deferred rendering swapchain pass. */
 
 	/**
 	 * @brief Use multithreaded command buffer recording.

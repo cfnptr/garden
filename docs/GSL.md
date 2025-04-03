@@ -37,7 +37,7 @@ pipelineState
 {
     depthTesting = on;
     depthWriting = on;
-    faceCulling = on;
+    faceCulling = off;
 }
 ```
 
@@ -94,9 +94,22 @@ Alpha blending example: Oa = sa * Sa + da * Da.
 
 > // TODO: blending constant color.
 
+## Push Constants
+
+Push constants allow to pass some small data (128 bytes) to the shader for each draw call.
+
+```
+uniform pushConstants
+{
+    uint32 instanceIndex;
+    float alphaCutoff;
+} pc;
+```
+
 ## Sampler
 
 Shader parser gets sampler state from the properties, written inside sampler declaration block.
+Also you can use dynamic samplers by marking uniform with ```mutable``` keyword.
 
 ```
 uniform sampler2D
@@ -104,17 +117,17 @@ uniform sampler2D
     filter = linear;
 } samplerName;
 
-uniform set1 samplerCube someSampler;
+uniform samplerCube someSampler;
 ```
 
 * **filter** [ nearest | linear ] - Specify the texture minifying and magnification function. (nearest)
 * **filterMin** [ nearest | linear ] - Specify the minifying function. (nearest)
 * **filterMag** [ nearest | linear ] - Specify the magnification function. (nearest)
 * **filterMipmap** [ nearest | linear ] - Specify the mipmap function. (nearest)
-* **wrap** [TYPE] - Specify the wrap parameter for texture coordinate X, Y, and Z. (clampToEdge)
-* **wrapX** [TYPE] - Specify the wrap parameter for texture coordinate X. (clampToEdge)
-* **wrapY** [TYPE] - Specify the wrap parameter for texture coordinate Y. (clampToEdge)
-* **wrapZ** [TYPE] - Specify the wrap parameter for texture coordinate Z. (clampToEdge)
+* **addressMode** [TYPE] - Specify the address mode parameter for texture coordinate X, Y, and Z. (clampToEdge)
+* **addressModeX** [TYPE] - Specify the address mode parameter for texture coordinate X. (clampToEdge)
+* **addressModeY** [TYPE] - Specify the address mode parameter for texture coordinate Y. (clampToEdge)
+* **addressModeZ** [TYPE] - Specify the address mode parameter for texture coordinate Z. (clampToEdge)
 * **borderColor** [ floatTransparentBlack | intTransparentBlack | floatOpaqueBlack | 
 	intOpaqueBlack | floatOpaqueWhite | intOpaqueWhite ] - Specify the border clamp color. (floatTransparentBlack)
 * **comparison** [ on | off ] - Enable or disable comparison against a reference value during lookups. (off)
@@ -123,7 +136,7 @@ uniform set1 samplerCube someSampler;
 * **compareOperation** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value to apply to fetched data before filtering. (less)
 
-**Texture wrap types**: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
+**Texture address mode types**: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
 
 ### You can add offset to the subpassInput index:
 
@@ -144,6 +157,35 @@ uniform image2D someImage : UnormR8G8B8A8;
 * **Unsigned integer formats normalized to (0.0, 1.0)**: [ unormR8, unormR8G8, unormR8G8B8A8, unormR16, unormR16G16, unormR16G16B16A16, unormA2R10G10B10 ]</br>
 * **Signed integer formats normalized to (-1.0, 1.0)**: [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]</br>
 * **Floating point formats**: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, floatB11G11B10 ]</br>
+
+## Storage Buffer
+
+```
+struct InstanceData
+{
+    float4x4 mvp;
+    float4x4 model;
+};
+
+buffer readonly Instance
+{
+    InstanceData data[];
+} instance;
+```
+
+## Descriptor Set
+
+Use ```setX``` keyword to set which descriptor set to use inside shader, where **X** is the index of the DS.
+
+```
+uniform set1 sampler2D someSampler;
+
+uniform set2 SomeBuffer
+{
+    float someValue;
+	int someInteger;
+} uniformBuffer;
+```
 
 ## Compute Shader
 

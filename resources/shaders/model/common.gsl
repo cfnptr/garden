@@ -1,0 +1,65 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef MODEL_GSL
+#define MODEL_GSL
+
+#define USE_EMISSIVE_BUFFER true
+#define USE_SUB_SURFACE_SCATTERING false // TODO: support
+
+#include "common/gbuffer.gsl"
+
+struct InstanceData
+{
+	float4x4 mvp;
+	float4x4 model;
+};
+
+GBufferValues fillModelGBuffer(sampler2D mraorMap, sampler2D normalMap, 
+	sampler2D emissiveMap, float3x3 tbn, float2 texCoords, float4 color)
+{
+	float4 mraor = texture(mraorMap, texCoords);
+	float3 normal = texture(normalMap, texCoords).xyz;
+	float4 emissive = texture(emissiveMap, texCoords);
+
+	GBufferValues values = gBufferValuesDefault();
+	values.baseColor = color;
+	values.metallic = mraor.r;
+	values.roughness = mraor.g;
+	values.ambientOcclusion = mraor.b;
+	values.reflectance = mraor.a;
+	values.normal = tbn * (normal * 2.0f - 1.0f);
+	values.emissiveColor = emissive.rgb;
+	values.emissiveFactor = emissive.a;
+	return values;
+}
+GBufferValues fillModelGBufferLite(sampler2D mraorMap, 
+	sampler2D emissiveMap, float2 texCoords, float4 color, float3 normal)
+{
+	float4 mraor = texture(mraorMap, texCoords);
+	float4 emissive = texture(emissiveMap, texCoords);
+
+	GBufferValues values = gBufferValuesDefault();
+	values.baseColor = color;
+	values.metallic = mraor.r;
+	values.roughness = mraor.g;
+	values.ambientOcclusion = mraor.b;
+	values.reflectance = mraor.a;
+	values.normal = normal;
+	values.emissiveColor = emissive.rgb;
+	values.emissiveFactor = emissive.a;
+	return values;
+}
+
+#endif // MODEL_GSL

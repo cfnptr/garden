@@ -43,14 +43,14 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 
 void GraphicsEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
 void GraphicsEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", GraphicsEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 	}
 }
@@ -275,11 +275,8 @@ void GraphicsEditorSystem::showMemoryStats()
 }
 
 //**********************************************************************************************************************
-void GraphicsEditorSystem::editorRender()
+void GraphicsEditorSystem::preUiRender()
 {
-	if (!GraphicsSystem::Instance::get()->canRender())
-		return;
-
 	if (performanceStats)
 		showPerformanceStats();
 	if (memoryStats)

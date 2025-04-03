@@ -17,12 +17,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Opaque9SliceSystem::Opaque9SliceSystem(bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) :
-	NineSliceRenderCompSystem("9-slice/opaque", useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
+Opaque9SliceSystem::Opaque9SliceSystem(bool setSingleton) : NineSliceRenderCompSystem(
+	"9-slice/opaque"), Singleton(setSingleton) { }
 Opaque9SliceSystem::~Opaque9SliceSystem() { unsetSingleton(); }
 
 const string& Opaque9SliceSystem::getComponentName() const
 {
 	static const string name = "Opaque 9-Slice";
 	return name;
+}
+MeshRenderType Opaque9SliceSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
 }

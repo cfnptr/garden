@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "sprite/common.gsl"
 #include "common/primitives.gsl"
 
 out float2 fs.texCoords;
@@ -23,12 +24,6 @@ uniform pushConstants
 	float alphaCutoff;
 } pc;
 
-struct InstanceData
-{
-	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
-};
 buffer readonly Instance
 {
 	InstanceData data[];

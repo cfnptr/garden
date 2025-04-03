@@ -37,7 +37,7 @@ LinkEditorSystem::~LinkEditorSystem()
 
 void LinkEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("EditorRender", LinkEditorSystem::editorRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", LinkEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<LinkComponent>(
@@ -53,7 +53,7 @@ void LinkEditorSystem::deinit()
 	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<LinkComponent>();
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorRender", LinkEditorSystem::editorRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", LinkEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 	}
 }
@@ -171,9 +171,9 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 }
 
 //**********************************************************************************************************************
-void LinkEditorSystem::editorRender()
+void LinkEditorSystem::preUiRender()
 {
-	if (!showWindow || !GraphicsSystem::Instance::get()->canRender())
+	if (!showWindow)
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(320.0f, 256.0f), ImGuiCond_FirstUseEver);

@@ -17,14 +17,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-OpaqueModelSystem::OpaqueModelSystem(bool useNormalMapping, 
-	bool useDeferredBuffer, bool useLinearFilter, bool setSingleton) : 
-	ModelRenderCompSystem("model/opaque", useNormalMapping, 
-		useDeferredBuffer, useLinearFilter, false), Singleton(setSingleton) { }
+OpaqueModelSystem::OpaqueModelSystem(bool useNormalMapping,  bool setSingleton) : ModelRenderCompSystem(
+	useNormalMapping ? "model/opaque" : "model/opaque-lite", useNormalMapping, true), Singleton(setSingleton) { }
 OpaqueModelSystem::~OpaqueModelSystem() { unsetSingleton(); }
 
 const string& OpaqueModelSystem::getComponentName() const
 {
 	static const string name = "Opaque Model";
 	return name;
+}
+MeshRenderType OpaqueModelSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
 }

@@ -315,7 +315,8 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	for (auto meshSystem : meshSystems)
 	{
 		auto renderType = meshSystem->getMeshRenderType();
-		if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::OIT)
+		if (renderType == MeshRenderType::Opaque || 
+			renderType == MeshRenderType::Color || renderType == MeshRenderType::OIT)
 		{
 			unsortedBufferCount++;
 		}
@@ -365,7 +366,8 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		auto componentCount = componentPool.getCount();
 		auto renderType = meshSystem->getMeshRenderType();
 		
-		if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::OIT)
+		if (renderType == MeshRenderType::Opaque ||
+			renderType == MeshRenderType::Color || renderType == MeshRenderType::OIT)
 		{
 			auto unsortedBuffer = unsortedBuffers[unsortedBufferIndex++];
 			unsortedBuffer->meshSystem = meshSystem;
@@ -400,10 +402,10 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 			#if GARDEN_EDITOR
 			if (graphicsEditorSystem)
 			{
-				if (renderType == MeshRenderType::Opaque)
-					graphicsEditorSystem->opaqueTotalCount += componentCount;
-				else
+				if (renderType == MeshRenderType::OIT)
 					graphicsEditorSystem->translucentTotalCount += componentCount;
+				else
+					graphicsEditorSystem->opaqueTotalCount += componentCount;
 			}
 			#endif	
 		}
@@ -455,10 +457,10 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		for (uint32 i = 0; i < unsortedBufferCount; i++)
 		{
 			auto unsortedBuffer = unsortedBuffers[i];
-			if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::Opaque)
-				graphicsEditorSystem->opaqueDrawCount += unsortedBuffer->drawCount.load();
-			else
+			if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::OIT)
 				graphicsEditorSystem->translucentDrawCount += unsortedBuffer->drawCount.load();
+			else
+				graphicsEditorSystem->opaqueDrawCount += unsortedBuffer->drawCount.load();
 		}
 
 		graphicsEditorSystem->translucentDrawCount += sortedDrawIndex.load();
@@ -670,15 +672,20 @@ void MeshRenderSystem::renderShadows()
 				renderUnsorted(viewProj, MeshRenderType::Opaque, true);
 				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
 			}
-			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
+			if (shadowSystem->beginShadowRender(i, MeshRenderType::Color))
 			{
-				renderSorted(viewProj, true);
-				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
+				renderUnsorted(viewProj, MeshRenderType::Color, true);
+				shadowSystem->endShadowRender(i, MeshRenderType::Color);
 			}
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::OIT))
 			{
 				renderUnsorted(viewProj, MeshRenderType::OIT, true);
 				shadowSystem->endShadowRender(i, MeshRenderType::OIT);
+			}
+			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
+			{
+				renderSorted(viewProj, true);
+				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
 			}
 		}
 	}
@@ -710,6 +717,7 @@ void MeshRenderSystem::forwardRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, false);
+	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, false);
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, false);
 	renderSorted(cameraConstants.viewProj, false);
 }
@@ -751,6 +759,7 @@ void MeshRenderSystem::metaHdrRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, false);
 	renderSorted(cameraConstants.viewProj, false);
 }
 

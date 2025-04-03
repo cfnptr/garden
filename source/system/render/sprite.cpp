@@ -23,10 +23,7 @@ using namespace garden;
 // TODO: Add automatic tightly packed sprite arrays (add support of this to the resource system or texture atlases).
 
 //**********************************************************************************************************************
-SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath, 
-	bool useDeferredBuffer, bool useLinearFilter, bool isTranslucent) : 
-	useDeferredBuffer(useDeferredBuffer), useLinearFilter(useLinearFilter),
-	isTranslucent(isTranslucent), pipelinePath(pipelinePath) { }
+SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath) : pipelinePath(pipelinePath) { }
 
 void SpriteRenderSystem::init()
 {
@@ -160,31 +157,10 @@ map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<Ima
 }
 ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 {
-	ID<Framebuffer> framebuffer;
-	if (useDeferredBuffer)
-	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		framebuffer = isTranslucent ? deferredSystem->getMetaHdrFramebuffer() : 
-			deferredSystem->getGFramebuffer();
-	}
-	else
-	{
-		framebuffer = ForwardRenderSystem::Instance::get()->getFramebuffer();
-	}
-
-	GraphicsPipeline::StateOverrides stateOverrides;
-	GraphicsPipeline::StateOverrides* stateOverridesPtr = nullptr;
-	if (!useLinearFilter)
-	{
-		Pipeline::SamplerState samplerState;
-		samplerState.wrapX = samplerState.wrapY = samplerState.wrapZ =
-			GraphicsPipeline::SamplerWrap::Repeat;
-		stateOverrides.samplerStates.emplace("colorMap", samplerState);
-		stateOverridesPtr = &stateOverrides;
-	}
-
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath,
-		framebuffer, true, true, 0, 0, {}, stateOverridesPtr);
+	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
+	auto framebuffer = deferredSystem ? deferredSystem->getHdrFramebuffer() : 
+		ForwardRenderSystem::Instance::get()->getFramebuffer();
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, true);
 }
 
 //**********************************************************************************************************************
@@ -207,7 +183,8 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 		serializer.write("uvOffset", spriteRenderView->uvOffset);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	serializer.write("colorMapPath", spriteRenderView->colorMapPath.generic_string());
+	if (!spriteRenderView->colorMapPath.empty())
+		serializer.write("colorMapPath", spriteRenderView->colorMapPath.generic_string());
 	#endif
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
