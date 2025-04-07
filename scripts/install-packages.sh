@@ -26,7 +26,7 @@ else
         exit $status
     fi
 
-    sudo apt-get update && sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev libassimp-dev
+    sudo apt-get update && sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev
     status=$?
 
     if [ $status -ne 0 ]; then

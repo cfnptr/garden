@@ -20,7 +20,6 @@
 #include "garden/graphics/buffer.hpp"
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
-#include "garden/graphics/lod.hpp"
 #include "garden/resource/image.hpp"
 #include "garden/system/graphics.hpp"
 #include <queue>
@@ -75,7 +74,6 @@ class ResourceSystem : public System, public Singleton<ResourceSystem>
 public:
 	static const vector<string_view> imageFileExts;
 	static const vector<ImageFileType> imageFileTypes;
-	static const vector<string_view> modelFileExts;
 protected:
 	struct GraphicsQueueItem
 	{
@@ -94,7 +92,6 @@ protected:
 		Buffer staging;
 		fs::path path = "";
 		ID<Buffer> bufferInstance = {};
-		ID<LodBuffer> lodBufferInstance = {};
 	};
 	struct ImageQueueItem
 	{
@@ -116,10 +113,8 @@ protected:
 		ID<Image> instance = {};
 	};
 	
-	LinearPool<LodBuffer> lodBufferPool;
 	map<Hash128, Ref<Buffer>> sharedBuffers;
 	map<Hash128, Ref<Image>> sharedImages;
-	map<Hash128, Ref<LodBuffer>> sharedLodBuffers;
 	map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
 	map<Hash128, Ref<Animation>> sharedAnimations;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
@@ -266,63 +261,14 @@ public:
 	 * @param strategy buffers memory allocation strategy
 	 * @param flags additional buffer load flags
 	 */
-	 Ref<Buffer> loadBuffer(const vector<fs::path>& path, 
+	Ref<Buffer> loadBuffer(const vector<fs::path>& path, 
 		Buffer::Strategy strategy = Buffer::Strategy::Default, 
 		BufferLoadFlags flags = BufferLoadFlags::None);
 	/**
 	 * @brief Destroys shared buffer if it's the last one.
 	 * @param[in] buffer target shared buffer reference
 	 */
-	 void destroyShared(const Ref<Buffer>& buffer);
-
-	/*******************************************************************************************************************
-	 * @brief Loads model data (vertices and indices) from the resource pack.
-	 * @note Loads from the models directory in debug build.
-	 * 
-	 * @param[in] path target model resource path
-	 * @param[in] channels vertex buffer data channel array
-	 * @param[out] vertexData model vertex data container
-	 * @param[out] indexData model index data container
-	 * @param[out] vertexCount model vertex count
-	 * @param[out] indexCount model index count
-	 * @param threadIndex thread index in the pool (-1 = single threaded)
-	 */
-	void loadModelData(const fs::path& path, const vector<BufferChannel>& channels, vector<uint8>& vertexData, 
-		vector<uint8>& indexData, uint32& vertexCount, uint32& indexCount, int32 threadIndex = -1) const;
-
-	/**
-	 * @brief Loads LOD buffer from the resource pack.
-	 * @note Loads from the models directory in debug build.
-	 *
-	 * @param[in] paths target LOD buffer resource path array
-	 * @param[in] channels vertex buffer data channel array
-	 * @param maxLodCount maximum LOD level count (0 = unlimited)
-	 * @param maxDistanceSq maximum LOD level distance (power of 2)
-	 * @param strategy buffers memory allocation strategy
-	 * @param flags additional buffer load flags
-	 */
-	Ref<LodBuffer> loadLodBuffer(const vector<fs::path>& path, const vector<BufferChannel>& channels, 
-		uint8 maxLodCount = 0, float maxDistanceSq = 1000.0f, Buffer::Strategy strategy = Buffer::Strategy::Default, 
-		BufferLoadFlags flags = BufferLoadFlags::None);
-	/**
-	 * @brief Destroys shared LOD buffer if it's the last one.
-	 * @param[in] lodBuffer target shared LOD buffer reference
-	 */
-	void destroyShared(const Ref<LodBuffer>& lodBuffer);
-
-	/**
-	 * @brief Returns LOD buffer data accessor.
-	 * @param buffer target LOD buffer instance
-	 */
-	View<LodBuffer> get(ID<LodBuffer> lodBuffer) const noexcept { return lodBufferPool.get(lodBuffer); }
-	/**
-	 * @brief Returns LOD buffer data accessor.
-	 * @param buffer target LOD buffer instance
-	 */
-	View<LodBuffer> get(const Ref<LodBuffer>& lodBuffer) const noexcept
-	{
-		return lodBufferPool.get(ID<LodBuffer>(lodBuffer));
-	}
+	void destroyShared(const Ref<Buffer>& buffer);
 
 	/**
 	 * @brief Returns current loaded buffer instance.
