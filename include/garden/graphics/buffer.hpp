@@ -423,5 +423,16 @@ static psize toBinarySize(BufferChannel channel) noexcept
 	default: abort();
 	}
 }
+/**
+ * @brief Returns buffer channels binary size in bytes.
+ * @param[in] channels target buffer channels
+ */
+ static psize toBinarySize(const vector<BufferChannel>& channels) noexcept
+ {
+	psize binarySize = 0;
+	for (auto channel : channels)
+		binarySize += toBinarySize(channel);
+	return binarySize;
+ }
 
 } // namespace garden::graphics

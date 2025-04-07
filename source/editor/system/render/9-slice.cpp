@@ -137,6 +137,7 @@ void NineSliceRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool
 //**********************************************************************************************************************
 void NineSliceRenderEditorSystem::renderComponent(NineSliceRenderComponent* componentView, type_index componentType)
 {
+	GARDEN_ASSERT(componentView);
 	SpriteRenderEditorSystem::renderComponent(componentView, componentType);
 	ImGui::DragFloat2("Texture Border", &componentView->textureBorder, 0.1f);
 	ImGui::DragFloat2("Window Border", &componentView->windowBorder, 0.1f);

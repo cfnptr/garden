@@ -46,6 +46,16 @@ public:
 	 */
 	static bool tryLoadBinary(const fs::path& filePath, vector<uint8>& data);
 
+	/**
+	 * @brief Stores binary data to the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[in] data binary data buffer
+	 * 
+	 * @throw GardenError if failed to store file data.
+	 */
+	static void storeBinary(const fs::path& filePath, const vector<uint8>& data);
+
 	#if GARDEN_DEBUG
 	/******************************************************************************************************************
 	 * @brief Returns resource file path in the system. (Debug Only)

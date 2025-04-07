@@ -38,6 +38,8 @@ project(Garden VERSION 0.0.1 LANGUAGES CXX
 	HOMEPAGE_URL "https://github.com/cfnptr/garden")
 
 option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
+option(GARDEN_BUILD_MODELC "Build Garden model converter." ON)
+option(GARDEN_BUILD_JSON2BSON "Build JSON to binary JSON converter." ON)
 option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
 option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
 option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release build." OFF)
@@ -207,13 +209,15 @@ configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	libraries/ecsm/include libraries/voxy/include libraries/vma/include libraries/stb
 	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash 
-	assimp::assimp ecsm-static math-static conf-static pack-static logy-static 
-	nets-static voxy glfw webp png_static tinyexr FastNoise Jolt)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static math-static 
+	conf-static pack-static logy-static nets-static voxy glfw webp png_static tinyexr FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
+endif()
+if(NOT GARDEN_PACK_RESOURCES)
+	list(APPEND GARDEN_LINK_LIBS assimp::assimp)
 endif()
 
 find_package(Vulkan REQUIRED)
@@ -321,12 +325,32 @@ target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
 
 if(GARDEN_BUILD_GSLC)
-	add_executable(gslc source/graphics/compiler.cpp)
+	add_executable(gslc source/graphics/gslc.cpp)
 	target_compile_definitions(gslc PUBLIC GSL_COMPILER)
 	target_link_libraries(gslc PUBLIC garden)
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		stripExecutable(gslc)
+	endif()
+endif()
+
+if(GARDEN_BUILD_MODELC)
+	add_executable(modelc source/graphics/modelc.cpp)
+	target_compile_definitions(modelc PUBLIC GARDEN_MODEL_CONVERTER)
+	target_link_libraries(modelc PUBLIC garden)
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		stripExecutable(modelc)
+	endif()
+endif()
+
+if(GARDEN_BUILD_JSON2BSON)
+	add_executable(json2bson source/json2bson.cpp)
+	target_compile_definitions(json2bson PUBLIC JSON2BSON)
+	target_link_libraries(json2bson PUBLIC garden)
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		stripExecutable(json2bson)
 	endif()
 endif()
 

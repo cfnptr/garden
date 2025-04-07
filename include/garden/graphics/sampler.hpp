@@ -20,7 +20,7 @@
 #pragma once
 #include "linear-pool.hpp"
 #include "garden/graphics/resource.hpp"
-#include <cfloat>
+#include <cmath>
 
 namespace garden::graphics
 {

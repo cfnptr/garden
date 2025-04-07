@@ -21,10 +21,12 @@
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
 #include "garden/graphics/equi2cube.hpp"
-#include "garden/graphics/compiler.hpp"
+#include "garden/graphics/modelc.hpp"
+#include "garden/graphics/gslc.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/exr.hpp"
 #include "garden/json-serialize.hpp"
+#include "garden/json2bson.hpp"
 #include "garden/profiler.hpp"
 #include "garden/file.hpp"
 #include "math/tone-mapping.hpp"
@@ -34,13 +36,17 @@
 #include "png.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
+#include <cfloat>
+#include <fstream>
 
+#if !GARDEN_PACK_RESOURCES
 #include "assimp/Importer.hpp"
 #include "assimp/DefaultLogger.hpp"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
+#include "zstd.h"
+#endif
 
-#include <assimp/mesh.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -48,18 +54,21 @@
 
 using namespace garden;
 
-constexpr uint8 imageFileExtCount = 8;
-constexpr string_view imageFileExts[] =
-{
-	".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga"
-};
-constexpr ImageFileType imageFileTypes[] =
-{
-	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Jpg, ImageFileType::Jpg,
-	ImageFileType::Exr, ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, ImageFileType::Tga
-};
-
 //**********************************************************************************************************************
+#if GARDEN_DEBUG || GARDEN_EDITOR
+class AssimpLogger : public Assimp::LogStream
+{
+public:
+	void write(const char* message) final
+	{
+		string msg = "Assimp "; msg += message;
+		if (msg.length() > 0)
+			msg.resize(msg.length() - 1);
+		GARDEN_LOG_ERROR(msg);
+	}
+};
+#endif
+
 namespace garden::graphics
 {
 	struct ImageLoadData final
@@ -115,6 +124,22 @@ namespace garden::graphics
 	};
 }
 
+const vector<string_view> ResourceSystem::imageFileExts =
+{
+	".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga", ".pic", ".gif"
+};
+const vector<ImageFileType> ResourceSystem::imageFileTypes =
+{
+	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Jpg, ImageFileType::Jpg, 
+	ImageFileType::Exr, ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, 
+	ImageFileType::Tga, ImageFileType::Pic, ImageFileType::Gif
+};
+
+const vector<string_view> ResourceSystem::modelFileExts =
+{
+	".gltf", ".glb", ".usd", ".fbx", ".obj", ".stl", ".3mf", ".3ds", ".dae", ".xml", ".ply", ".dxf"
+};
+
 //**********************************************************************************************************************
 ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 {
@@ -145,7 +170,8 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachePath = appInfoSystem->getCachePath();
 
-	Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE); // TODO: log to the garden logger.
+	Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE);
+	Assimp::DefaultLogger::get()->attachStream(new AssimpLogger, Assimp::Logger::Err);
 	#endif
 }
 ResourceSystem::~ResourceSystem()
@@ -521,6 +547,60 @@ static void loadMissingImageFloat(vector<uint8>& left, vector<uint8>& right, vec
 	loadMissingImageFloat(front, size, format);
 }
 
+//**********************************************************************************************************************
+static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8>& vertexData, 
+	vector<uint8>& indexData, uint32& vertexCount, uint32& indexCount)
+{
+	const float4 colorMagenta = (float4)Color::magenta; const float4 colorBlack = (float4)Color::black;
+	auto vertexSize = toBinarySize(channels);
+	vertexData.resize(vertexSize * 3);
+	auto vertices = vertexData.data();
+
+	for (auto channel : channels)
+	{
+		psize dataOffset = 0;
+		switch (channel)
+		{
+		case BufferChannel::Positions:
+			*(float3*)(vertices                 ) = float3(-1.0f, -1.0f, 0.0f);
+			*(float3*)(vertices + vertexSize    ) = float3( 1.0f, -1.0f, 0.0f);
+			*(float3*)(vertices + vertexSize * 2) = float3( 1.0f,  1.0f, 0.0f);
+			vertices += sizeof(float3);
+			break;
+		case BufferChannel::Normals:
+			*(float3*)(vertices                 ) = float3(0.0f, 0.0f, -1.0f);
+			*(float3*)(vertices + vertexSize    ) = float3(0.0f, 0.0f, -1.0f);
+			*(float3*)(vertices + vertexSize * 2) = float3(0.0f, 0.0f, -1.0f);
+			vertices += sizeof(float3);
+			break;
+		case BufferChannel::Tangents:
+			*(float3*)(vertices                 ) = float3(1.0f, 0.0f, 0.0f);
+			*(float3*)(vertices + vertexSize    ) = float3(1.0f, 0.0f, 0.0f);
+			*(float3*)(vertices + vertexSize * 2) = float3(1.0f, 0.0f, 0.0f);
+			vertices += sizeof(float3);
+			break;
+		case BufferChannel::Bitangents:
+			*(float3*)(vertices                 ) = float3(0.0f, 1.0f, 0.0f);
+			*(float3*)(vertices + vertexSize    ) = float3(0.0f, 1.0f, 0.0f);
+			*(float3*)(vertices + vertexSize * 2) = float3(0.0f, 1.0f, 0.0f);
+			vertices += sizeof(float3);
+		case BufferChannel::TextureCoords:
+			*(float2*)(vertices                 ) = float2(0.0f, 0.0f);
+			*(float2*)(vertices + vertexSize    ) = float2(1.0f, 0.0f);
+			*(float2*)(vertices + vertexSize * 2) = float2(0.5f, 1.0f);
+			vertices += sizeof(float2);
+			break;
+		case BufferChannel::VertexColors:
+			*(float4*)(vertices                 ) = colorBlack;
+			*(float4*)(vertices + vertexSize    ) = colorBlack;
+			*(float4*)(vertices + vertexSize * 2) = colorMagenta;
+			vertices += sizeof(float4);
+			break;
+		default: abort();
+		}
+	}
+}
+
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
 static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appResourcesPath,
@@ -528,30 +608,44 @@ static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appR
 {
 	auto imagePath = fs::path("images") / path;
 	filePath = appCachePath / imagePath;
+	int32 fileCount = 0;
 
-	filePath += ".exr";
-	fileType = ImageFileType::Exr;
-	int32 fileCount = fs::exists(filePath) ? 1 : 0;
-
-	for (uint8 i = 0; i < imageFileExtCount; i++)
+	for (uint8 i = 0; i < (uint8)ResourceSystem::imageFileExts.size(); i++)
 	{
-		imagePath.replace_extension(imageFileExts[i]);
+		imagePath.replace_extension(ResourceSystem::imageFileExts[i]);
 		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
 		{
-			fileType = imageFileTypes[i];
+			fileType = ResourceSystem::imageFileTypes[i];
 			fileCount++;
 		}
 	}
 
 	imagePath = fs::path("models") / path;
-	for (uint8 i = 0; i < imageFileExtCount; i++)
+	for (uint8 i = 0; i < (uint8)ResourceSystem::imageFileExts.size(); i++)
 	{
-		imagePath.replace_extension(imageFileExts[i]);
+		imagePath.replace_extension(ResourceSystem::imageFileExts[i]);
 		if (File::tryGetResourcePath(appResourcesPath, imagePath, filePath))
 		{
-			fileType = imageFileTypes[i];
+			fileType = ResourceSystem::imageFileTypes[i];
 			fileCount++;
 		}
+	}
+
+	return fileCount;
+}
+
+static int32 getModelFilePath(const fs::path& appCachePath, 
+	const fs::path& appResourcesPath, fs::path path, fs::path& filePath)
+{
+	auto modelPath = fs::path("models") / path;
+	filePath = appCachePath / modelPath;
+	int32 fileCount = 0;
+
+	for (uint8 i = 0; i < (uint8)ResourceSystem::modelFileExts.size(); i++)
+	{
+		modelPath.replace_extension(ResourceSystem::modelFileExts[i]);
+		if (File::tryGetResourcePath(appResourcesPath, modelPath, filePath))
+			fileCount++;
 	}
 
 	return fileCount;
@@ -621,10 +715,6 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 //**********************************************************************************************************************
 static void writeExrImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
 {
-	auto directory = filePath.parent_path();
-	if (!fs::exists(directory))
-		fs::create_directories(directory);
-
 	const char* error = nullptr;
 	auto result = SaveEXR((const float*)data.data(), size, size,
 		4, false, filePath.generic_string().c_str(), &error);
@@ -755,8 +845,8 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	
 	#if !GARDEN_PACK_RESOURCES
-	auto filePath = appCachePath / "images" / path;
-	auto cacheFilePath = filePath.generic_string();
+	auto cacheFilePath = appCachePath / "images" / path;
+	auto cacheFileString = cacheFilePath.generic_string();
 
 	fs::path inputFilePath; ImageFileType inputFileType; Image::Format format;
 	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
@@ -775,15 +865,15 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	}
 	
 	auto inputLastWriteTime = fs::last_write_time(inputFilePath);
-	if (!fs::exists(cacheFilePath + "-nx.exr") || !fs::exists(cacheFilePath + "-px.exr") ||
-		!fs::exists(cacheFilePath + "-ny.exr") || !fs::exists(cacheFilePath + "-py.exr") ||
-		!fs::exists(cacheFilePath + "-nz.exr") || !fs::exists(cacheFilePath + "-pz.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-nx.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-px.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-ny.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-py.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-nz.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFilePath + "-pz.exr"))
+	if (!fs::exists(cacheFileString + "-nx.exr") || !fs::exists(cacheFileString + "-px.exr") ||
+		!fs::exists(cacheFileString + "-ny.exr") || !fs::exists(cacheFileString + "-py.exr") ||
+		!fs::exists(cacheFileString + "-nz.exr") || !fs::exists(cacheFileString + "-pz.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nx.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-px.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-ny.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-py.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nz.exr") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-pz.exr"))
 	{
 		vector<uint8> equiData; uint2 equiSize;
 		loadImageData(path, equiData, equiSize, format, threadIndex);
@@ -808,7 +898,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			left, right, bottom, top, back, front, format, threadIndex);
 		size = uint2(equiSize.x / 4, equiSize.y / 2);
 
-		fs::create_directories(filePath.parent_path());
+		fs::create_directories(cacheFilePath.parent_path());
 		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
@@ -816,12 +906,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			{
 				switch (task.getTaskIndex())
 				{
-					case 0: writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left); break;
-					case 1: writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right); break;
-					case 2: writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom); break;
-					case 3: writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top); break;
-					case 4: writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back); break;
-					case 5: writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front); break;
+					case 0: writeExrImageData(cacheFileString + "-nx.exr", cubemapSize, left); break;
+					case 1: writeExrImageData(cacheFileString + "-px.exr", cubemapSize, right); break;
+					case 2: writeExrImageData(cacheFileString + "-ny.exr", cubemapSize, bottom); break;
+					case 3: writeExrImageData(cacheFileString + "-py.exr", cubemapSize, top); break;
+					case 4: writeExrImageData(cacheFileString + "-nz.exr", cubemapSize, back); break;
+					case 5: writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front); break;
 					default: abort();
 				}
 			}, 6);
@@ -829,12 +919,12 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		}
 		else
 		{
-			writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left);
-			writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right);
-			writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom);
-			writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top);
-			writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back);
-			writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
+			writeExrImageData(cacheFileString + "-nx.exr", cubemapSize, left);
+			writeExrImageData(cacheFileString + "-px.exr", cubemapSize, right);
+			writeExrImageData(cacheFileString + "-ny.exr", cubemapSize, bottom);
+			writeExrImageData(cacheFileString + "-py.exr", cubemapSize, top);
+			writeExrImageData(cacheFileString + "-nz.exr", cubemapSize, back);
+			writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front);
 		}
 
 		GARDEN_LOG_TRACE("Converted spherical cubemap. (path: " + path.generic_string() + ")");
@@ -942,7 +1032,8 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 			throw GardenError("Invalid PNG image data.");
 	}
 	else if (fileType == ImageFileType::Jpg || fileType == ImageFileType::Bmp ||
-		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga)
+		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga ||
+		fileType == ImageFileType::Pic || fileType == ImageFileType::Gif)
 	{
 		int sizeX = 0, sizeY = 0;
 		auto pixelData = stbi_load_from_memory(data,
@@ -1306,168 +1397,92 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 		GraphicsSystem::Instance::get()->destroy(ID<Buffer>(buffer));
 }
 
+#if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
-static bool hasChannel(const vector<BufferChannel>& channels, BufferChannel channel) noexcept
+static void copyMeshVertexData(const vector<BufferChannel>& channels, 
+	const aiMesh* mesh, uint8* vertexData, uint32 vertexBinarySize) noexcept
 {
-	for (auto _channel : channels)
-	{
-		if (channel == _channel)
-			return true;
-	}
-	return false;
-}
+	auto vertexCount = (uint32)mesh->mNumVertices;
+	uint32 texCoordsIdx = 0, vertColorsIdx = 0;
 
-static const aiScene* loadLodBufferData(const fs::path& path, const vector<BufferChannel>& channels, 
-	Assimp::Importer& importer, uint32& vertexSize, uint32& indexSize, bool optimizeMesh)
-{
-	auto removeComponents = aiComponent_BONEWEIGHTS | aiComponent_ANIMATIONS | 
-		aiComponent_TEXTURES | aiComponent_LIGHTS | aiComponent_CAMERAS | aiComponent_MATERIALS;
-	if (!hasChannel(channels, BufferChannel::Normals))
-		removeComponents |= aiComponent_NORMALS;
-	if (!hasChannel(channels, BufferChannel::Tangents) && !hasChannel(channels, BufferChannel::Bitangents))
-		removeComponents |= aiComponent_TANGENTS_AND_BITANGENTS;
-	if (!hasChannel(channels, BufferChannel::TextureCoords))
-		removeComponents |= aiComponent_TEXCOORDS;
-	if (!hasChannel(channels, BufferChannel::VertexColors))
-		removeComponents |= aiComponent_COLORS;
-	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeComponents);
-	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_POINT | aiPrimitiveType_LINE);
-
-	auto flags = aiProcess_MakeLeftHanded | aiProcess_FlipUVs | aiProcess_Triangulate | aiProcess_SortByPType | 
-		aiProcess_RemoveComponent | aiProcess_GenUVCoords | aiProcess_FindInvalidData | 
-		aiProcess_PreTransformVertices | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes | 
-		aiProcess_OptimizeGraph | aiProcess_ValidateDataStructure;
-	if (optimizeMesh)
-		flags |= aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality;
-	if (hasChannel(channels, BufferChannel::Tangents) || hasChannel(channels, BufferChannel::Bitangents))
-		flags |= aiProcess_CalcTangentSpace;
-	flags |= hasChannel(channels, BufferChannel::Normals) ? aiProcess_GenNormals : aiProcess_DropNormals;
-
-	auto scene = importer.ReadFile(path.generic_string(), flags);
-	if (!scene)
-	{
-		GARDEN_LOG_ERROR("Failed to import LOD buffer.");
-		return nullptr;
-	}
-	if (!scene->HasMeshes())
-	{
-		GARDEN_LOG_ERROR("Imported LOD buffer has no meshes.");
-		return nullptr;
-	}
-
-	auto mesh = scene->mMeshes[0];
-	if (!mesh->HasFaces())
-	{
-		GARDEN_LOG_ERROR("Imported LOD buffer mesh has no faces.");
-		return nullptr;
-	}
-
-	uint32 texCoordsIdx = 0, vertColorsIdx = 0; uint32 vertexBinarySize = 0;
 	for (auto channel : channels)
 	{
-		if (channel == BufferChannel::Positions && !mesh->HasPositions())
+		switch (channel)
 		{
-			GARDEN_LOG_ERROR("Imported LOD buffer does not have required positions channel.");
-			return nullptr;
-		}
-		if (channel == BufferChannel::Normals && !mesh->HasNormals())
-		{
-			GARDEN_LOG_ERROR("Imported LOD buffer does not have required normals channel.");
-			return nullptr;
-		}
-		if ((channel == BufferChannel::Tangents || channel == BufferChannel::Bitangents) && 
-			!mesh->HasTangentsAndBitangents())
-		{
-			GARDEN_LOG_ERROR("Imported LOD buffer does not have required tangents and bitangents channel.");
-			return nullptr;
-		}
-		if (channel == BufferChannel::TextureCoords)
-		{
-			if (!mesh->HasTextureCoords(texCoordsIdx))
-			{
-				GARDEN_LOG_ERROR("Imported LOD buffer does not have required texture coords channel.");
-				return nullptr;
-			}
-			texCoordsIdx++;
-		}
-		if (channel == BufferChannel::VertexColors)
-		{
-			if (!mesh->HasVertexColors(vertColorsIdx))
-			{
-				GARDEN_LOG_ERROR("Imported LOD buffer does not have required vertex colors channel.");
-				return nullptr;
-			}
-			vertColorsIdx++;
-		}
-
-		vertexBinarySize += (uint32)toBinarySize(channel);
-	}
-
-	vertexSize = vertexBinarySize;
-	indexSize = mesh->mNumVertices < UINT32_MAX ? sizeof(uint16) : sizeof(uint32);
-	return scene;
-}
-
-//**********************************************************************************************************************
-static void copyLodBufferVertexData(const vector<BufferChannel>& channels, const aiMesh* mesh, uint8* vertexData)
-{
-	auto channelData = channels.data();
-	auto vertices = mesh->mVertices;
-	auto normals = mesh->mNormals;
-	auto tangents = mesh->mTangents;
-	auto bitangents = mesh->mBitangents;
-	auto texCoords = mesh->mTextureCoords;
-	auto vertColors = mesh->mColors;
-	auto channelCount = (uint32)channels.size();
-	auto vertexCount = (uint32)mesh->mNumVertices;
-	auto texCoordsCount = (uint32)mesh->GetNumUVChannels();
-	auto vertColorsCount = (uint32)mesh->GetNumColorChannels();
-
-	for (uint32 i = 0; i < vertexCount; i++)
-	{
-		uint32 texCoordsIdx = 0, vertColorsIdx = 0;
-		for (uint32 j = 0; j < channelCount; j++)
-		{
-			switch (channelData[j])
-			{
-				case BufferChannel::Positions:
-					memcpy(vertexData, vertices + i, sizeof(float3));
-					vertexData += sizeof(float3);
-					break;
-				case BufferChannel::Normals:
-					memcpy(vertexData, normals + i, sizeof(float3));
-					vertexData += sizeof(float3);
-					break;
-				case BufferChannel::Tangents:
-					memcpy(vertexData, tangents + i, sizeof(float3));
-					vertexData += sizeof(float3);
-					break;
-				case BufferChannel::Bitangents:
-					memcpy(vertexData, bitangents + i, sizeof(float3));
-					vertexData += sizeof(float3);
-					break;
-				case BufferChannel::TextureCoords: // TODO: support 3D texture coordinates.
-					if (texCoordsIdx < texCoordsCount)
-						memcpy(vertexData, texCoords[texCoordsIdx++] + i, sizeof(float2));
-					vertexData += sizeof(float2);
-					break;
-				case BufferChannel::VertexColors:
-					if (vertColorsIdx < vertColorsCount)
-						memcpy(vertexData, vertColors[vertColorsIdx++] + i, sizeof(float4));
-					vertexData += sizeof(float4);
-					break;
-				default: abort();
-			}
+			case BufferChannel::Positions:
+				if (mesh->HasPositions())
+				{
+					auto vertices = mesh->mVertices;
+					for (uint32 j = 0; j < vertexCount; j++)
+						memcpy(vertexData + vertexBinarySize, vertices + j, sizeof(float3));
+				}
+				vertexData += sizeof(float3);
+				break;
+			case BufferChannel::Normals:
+				if (mesh->HasNormals())
+				{
+					auto normals = mesh->mNormals;
+					for (uint32 j = 0; j < vertexCount; j++)
+						memcpy(vertexData + vertexBinarySize, normals + j, sizeof(float3));
+				}
+				vertexData += sizeof(float3);
+				break;
+			case BufferChannel::Tangents:
+				if (mesh->HasTangentsAndBitangents())
+				{
+					auto tangents = mesh->mTangents;
+					for (uint32 j = 0; j < vertexCount; j++)
+						memcpy(vertexData + vertexBinarySize, tangents + j, sizeof(float3));
+				}
+				vertexData += sizeof(float3);
+				break;
+			case BufferChannel::Bitangents:
+				if (mesh->HasTangentsAndBitangents())
+				{
+					auto bitangents = mesh->mBitangents;
+					for (uint32 j = 0; j < vertexCount; j++)
+						memcpy(vertexData + vertexBinarySize, bitangents + j, sizeof(float3));
+				}
+				vertexData += sizeof(float3);
+				break;
+			case BufferChannel::TextureCoords: // TODO: support 3D texture coordinates.
+				if (mesh->HasTextureCoords(texCoordsIdx))
+				{
+					auto texCoords = mesh->mTextureCoords[texCoordsIdx];
+					for (uint32 j = 0; j < vertexCount; j++)
+						memcpy(vertexData + vertexBinarySize, texCoords + j, sizeof(float2));
+				}
+				vertexData += sizeof(float2);
+				texCoordsIdx++;
+				break;
+			case BufferChannel::VertexColors:
+				if (mesh->HasVertexColors(vertColorsIdx))
+				{
+					auto vertColors = mesh->mColors[vertColorsIdx];
+					for (uint32 j = 0; j < vertexCount; j++)
+						memcpy(vertexData + vertexBinarySize, vertColors + j, sizeof(float4));
+				}
+				vertexData += sizeof(float4);
+				vertColorsIdx++;
+				break;
+			default: abort();
 		}
 	}
 }
-static void copyLodBufferIndexData(const aiMesh* mesh, uint8* indexData)
+static void copyMeshIndexData(const aiMesh* mesh, uint8* indexData) noexcept
 {
 	auto faces = mesh->mFaces;
 	auto faceCount = (uint32)mesh->mNumFaces;
-	auto vertexCount = (uint32)mesh->mNumVertices;
 	
-	if (vertexCount < UINT16_MAX)
+	if (mesh->mNumVertices > UINT16_MAX)
+	{
+		for (uint32 i = 0; i < faceCount; i++)
+		{
+			memcpy(indexData, faces[i].mIndices, sizeof(uint32) * 3);
+			indexData += sizeof(uint32) * 3;
+		}
+	}
+	else
 	{
 		for (uint32 i = 0; i < faceCount; i++)
 		{
@@ -1479,14 +1494,134 @@ static void copyLodBufferIndexData(const aiMesh* mesh, uint8* indexData)
 			indexData += sizeof(uint16) * 3;
 		}
 	}
-	else
+}
+
+//**********************************************************************************************************************
+static void writeMeshData(const string& filePath, const aiMesh* mesh) 
+{
+	// TODO: use google draco compressor
+}
+#endif
+
+//**********************************************************************************************************************
+void ResourceSystem::loadModelData(const fs::path& path, 
+	const vector<BufferChannel>& channels, vector<uint8>& vertexData, vector<uint8>& indexData, 
+	uint32& vertexCount, uint32& indexCount, int32 threadIndex) const
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(!channels.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+
+	#if GARDEN_PACK_RESOURCES
+	abort(); // TODO:
+	#else
+	auto cacheFilePath = appCachePath / "models" / path;
+	auto cacheFileString = cacheFilePath.generic_string() + ".model";
+
+	fs::path inputFilePath;
+	auto fileCount = getModelFilePath(appCachePath, appResourcesPath, path, inputFilePath);
+
+	if (fileCount == 0)
 	{
-		for (uint32 i = 0; i < faceCount; i++)
-		{
-			memcpy(indexData, faces[i].mIndices, sizeof(uint32) * 3);
-			indexData += sizeof(uint32) * 3;
-		}
+		GARDEN_LOG_ERROR("Model file does not exist. (path: " + path.generic_string() + ")");
+		loadMissingModel(channels, vertexData, indexData, vertexCount, indexCount);
+		return;
 	}
+	if (fileCount > 1)
+	{
+		GARDEN_LOG_ERROR("Model file is ambiguous. (path: " + path.generic_string() + ")");
+		loadMissingModel(channels, vertexData, indexData, vertexCount, indexCount);
+		return;
+	}
+
+	if (!fs::exists(cacheFileString) || fs::last_write_time(inputFilePath) > fs::last_write_time(cacheFileString))
+	{
+		Assimp::Importer importer;
+		auto removeComponents = aiComponent_BONEWEIGHTS | aiComponent_ANIMATIONS | 
+			aiComponent_TEXTURES | aiComponent_LIGHTS | aiComponent_CAMERAS | aiComponent_MATERIALS;
+		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeComponents);
+		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_POINT | aiPrimitiveType_LINE);
+
+		auto flags = aiProcess_MakeLeftHanded | aiProcess_FlipUVs | 
+			aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_RemoveComponent | 
+			aiProcess_GenUVCoords | aiProcess_FindInvalidData | aiProcess_PreTransformVertices | 
+			aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | 
+			aiProcess_ValidateDataStructure | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality;
+		auto scene = importer.ReadFile(path.generic_string(), flags);
+
+		if (!scene)
+		{
+			GARDEN_LOG_ERROR("Failed to load 3D model file. (path: " + path.generic_string() + ")");
+			loadMissingModel(channels, vertexData, indexData, vertexCount, indexCount);
+			return;
+		}
+		if (!scene->HasMeshes())
+		{
+			GARDEN_LOG_ERROR("Loaded 3D model has no meshes. (path: " + path.generic_string() + ")");
+			loadMissingModel(channels, vertexData, indexData, vertexCount, indexCount);
+			return;
+		}
+
+		auto mesh = scene->mMeshes[0];
+		if (!mesh->HasFaces())
+		{
+			GARDEN_LOG_ERROR("Loaded 3D model mesh has no faces. (path: " + path.generic_string() + ")");
+			loadMissingModel(channels, vertexData, indexData, vertexCount, indexCount);
+			return;
+		}
+
+		uint32 texCoordsIdx = 0, vertColorsIdx = 0; uint32 vertexBinarySize = 0;
+		for (auto channel : channels)
+		{
+			if (channel == BufferChannel::Positions && !mesh->HasPositions())
+				GARDEN_LOG_ERROR("Loaded 3D model does not have positions channel. (path: " + path.generic_string() + ")");
+			if (channel == BufferChannel::Normals && !mesh->HasNormals())
+				GARDEN_LOG_ERROR("Loaded 3D model does not have normals channel. (path: " + path.generic_string() + ")");
+			if ((channel == BufferChannel::Tangents || channel == BufferChannel::Bitangents) && 
+				!mesh->HasTangentsAndBitangents())
+			{
+				GARDEN_LOG_ERROR("Loaded 3D model does not have tangents and "
+					"bitangents channel. (path: " + path.generic_string() + ")");
+			}
+			if (channel == BufferChannel::TextureCoords)
+			{
+				if (!mesh->HasTextureCoords(texCoordsIdx))
+				{
+					GARDEN_LOG_ERROR("Loaded 3D model does not have texture coords channel " + 
+						to_string(texCoordsIdx) + ". (path: " + path.generic_string() + ")");
+				}
+				texCoordsIdx++;
+			}
+			if (channel == BufferChannel::VertexColors)
+			{
+				if (!mesh->HasVertexColors(vertColorsIdx))
+				{
+					GARDEN_LOG_ERROR("Loaded 3D model does not have vertex colors channel " +
+						to_string(vertColorsIdx) + ". (path: " + path.generic_string() + ")");
+				}
+				vertColorsIdx++;
+			}
+
+			vertexBinarySize += (uint32)toBinarySize(channel);
+		}
+
+		auto indexTypeSize = mesh->mNumVertices > UINT16_MAX ? sizeof(uint32) : sizeof(uint16);
+		vertexData.resize(mesh->mNumVertices * vertexBinarySize);
+		indexData.resize(mesh->mNumFaces * indexTypeSize * 3);
+		copyMeshVertexData(channels, mesh, vertexData.data(), vertexBinarySize);
+		copyMeshIndexData(mesh, indexData.data());
+
+		fs::create_directories(cacheFilePath.parent_path());
+		writeMeshData(cacheFileString, mesh);
+		GARDEN_LOG_TRACE("Converted 3D model. (path: " + path.generic_string() + ")");
+		return;
+	}
+
+	#endif
+
+
+	// loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, data, size, format);
+	GARDEN_LOG_TRACE("Loaded 3D model. (path: " + path.generic_string() + ")");
 }
 
 //**********************************************************************************************************************
@@ -1585,6 +1720,7 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const vector<fs::path>& paths, cons
 
 			for (uint32 i = 0; i < (uint32)paths.size(); i++)
 			{
+				/*
 				auto scene = loadLodBufferData(paths[i], data->channels, 
 					importer, vertexSize, indexSize, optimizeMesh);
 				if (!scene)
@@ -1621,6 +1757,7 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const vector<fs::path>& paths, cons
 				loadedBufferQueue.push(std::move(vertexItem));
 				loadedBufferQueue.push(std::move(indexItem));
 				queueLocker.unlock();
+				*/
 			}
 
 			delete data;
@@ -1635,6 +1772,7 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const vector<fs::path>& paths, cons
 
 		for (uint32 i = 0; i < (uint32)paths.size(); i++)
 		{
+			/*
 			auto scene = loadLodBufferData(paths[i], channels, 
 				importer, vertexSize, indexSize, optimizeMesh);
 			if (!scene)
@@ -1689,6 +1827,7 @@ Ref<LodBuffer> ResourceSystem::loadLodBuffer(const vector<fs::path>& paths, cons
 
 			item.instance = indexBuffers[i];
 			loadedBufferArray.push_back(std::move(item));
+			*/
 		}
 	}
 
@@ -1779,7 +1918,7 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 }
 
 //**********************************************************************************************************************
-static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
+static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
 	auto vertexPath = "shaders" / data.shaderPath; vertexPath += ".vert";
@@ -1829,7 +1968,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 		try
 		{
 			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
-			compileResult = Compiler::compileGraphicsShaders(inputPath, outputPath, includePaths, data);
+			compileResult = GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, data);
 			data.shaderPath = dataPath;
 		}
 		catch (const exception& e)
@@ -1849,7 +1988,7 @@ static bool loadOrCompileGraphics(Compiler::GraphicsData& data)
 
 	try
 	{
-		Compiler::loadGraphicsShaders(data);
+		GslCompiler::loadGraphicsShaders(data);
 	}
 	catch (const exception& e)
 	{
@@ -1960,7 +2099,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		{
 			SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
-			Compiler::GraphicsData pipelineData;
+			GslCompiler::GraphicsData pipelineData;
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
@@ -2004,7 +2143,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	{
 		SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
-		Compiler::GraphicsData pipelineData;
+		GslCompiler::GraphicsData pipelineData;
 		if (specConstValues)
 			pipelineData.specConstValues = *specConstValues;
 		pipelineData.pipelineVersion = version;
@@ -2033,7 +2172,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.headerData = std::move(shaderOverrides->headerData);
 			pipelineData.vertexCode = std::move(shaderOverrides->vertexCode);
 			pipelineData.fragmentCode = std::move(shaderOverrides->fragmentCode);
-			Compiler::loadGraphicsShaders(pipelineData);
+			GslCompiler::loadGraphicsShaders(pipelineData);
 		}
 		else
 		{
@@ -2055,7 +2194,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-static bool loadOrCompileCompute(Compiler::ComputeData& data)
+static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
 	auto computePath = "shaders" / data.shaderPath; computePath += ".comp";
@@ -2082,7 +2221,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 		try
 		{
 			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
-			compileResult = Compiler::compileComputeShader(computeInputPath.parent_path(),
+			compileResult = GslCompiler::compileComputeShader(computeInputPath.parent_path(),
 				computeOutputPath.parent_path(), includePaths, data);
 			data.shaderPath = dataPath;
 		}
@@ -2103,7 +2242,7 @@ static bool loadOrCompileCompute(Compiler::ComputeData& data)
 
 	try
 	{
-		Compiler::loadComputeShader(data);
+		GslCompiler::loadComputeShader(data);
 	}
 	catch (const exception& e)
 	{
@@ -2151,7 +2290,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 		{
 			SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
 
-			Compiler::ComputeData pipelineData;
+			GslCompiler::ComputeData pipelineData;
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
@@ -2188,7 +2327,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 	{
 		SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
 
-		Compiler::ComputeData pipelineData;
+		GslCompiler::ComputeData pipelineData;
 		
 		if (specConstValues)
 			pipelineData.specConstValues = *specConstValues;
@@ -2208,7 +2347,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 		{
 			pipelineData.headerData = std::move(shaderOverrides->headerData);
 			pipelineData.code = std::move(shaderOverrides->code);
-			Compiler::loadComputeShader(pipelineData);
+			GslCompiler::loadComputeShader(pipelineData);
 		}
 		else
 		{
@@ -2731,208 +2870,3 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 
 	GARDEN_LOG_TRACE("Stored animation. (path: " + path.generic_string() + ")");
 }
-
-/* TODO:
-	for (int i = 0; i < count; i++)
-	{
-		auto path = fs::path(paths[i]).generic_string(); 
-		auto length = path.length();
-		if (length < 8)
-			continue;
-
-		psize pathOffset = 0;
-		auto cmpPath = (GARDEN_RESOURCES_PATH / "scenes").generic_string();
-		if (length > cmpPath.length())
-		{
-			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
-				pathOffset = cmpPath.length() + 1;
-		}
-		cmpPath = (GARDEN_APP_RESOURCES_PATH / "scenes").generic_string();
-		if (length > cmpPath.length())
-		{
-			if (memcmp(path.c_str(), cmpPath.c_str(), cmpPath.length()) == 0)
-				pathOffset = cmpPath.length() + 1;
-		}
-
-		if (memcmp(path.c_str() + (length - 5), "scene", 5) == 0)
-		{
-			fs::path filePath = path.c_str() + pathOffset; filePath.replace_extension();
-			try
-			{
-				ResourceSystem::getInstance()->loadScene(filePath);
-			}
-			catch (const exception& e)
-			{
-				GARDEN_LOG_ERROR("Failed to load scene. (error: " + string(e.what()) + ")");
-			}
-			break;
-		}
-	}
-*/
-
-/* TODO: refactor
-Ref<Buffer> ResourceSystem::loadBuffer(shared_ptr<Model> model, Model::Accessor accessor,
-	Buffer::Bind bind, Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)
-{
-	GARDEN_ASSERT(model);
-	GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
-
-	auto version = GraphicsAPI::bufferVersion++;
-	auto buffer = GraphicsAPI::bufferPool.create(bind,
-		access, Buffer::Usage::PreferGPU, strategy, version);
-	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.loaded" + to_string(*buffer)); // TODO: use model path for this buffer
-
-	if (loadAsync && threadSystem)
-	{
-		auto data = new GeneralBufferLoadData(accessor);
-		data->version = version;
-		data->model = model;
-		data->instance = buffer;
-		data->bind = bind;
-		data->access = access;
-		data->strategy = strategy;
-
-		threadSystem->getBackgroundPool().addTask([this](const ThreadPool::Task& task)
-		{
-			SET_CPU_ZONE_SCOPED("Buffer Load");
-
-			auto data = (GeneralBufferLoadData*)task.getArgument();
-			loadModelBuffers(data->model);
-
-			auto accessor = data->accessor;
-			auto size = (uint64)(accessor.getCount() * accessor.getBinaryStride());
-
-			BufferQueueItem item =
-			{
-				BufferExt::create(data->bind, data->access, Buffer::Usage::PreferGPU,
-					data->strategy, size, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0),
-				data->instance,
-			};
-
-			accessor.copy(item.staging.getMap()); // TODO: convert uint8 to uintXX.
-			item.staging.flush();
-
-			delete data;
-			queueLocker.lock();
-			bufferQueue.push(std::move(item));
-			queueLocker.unlock();
-		},
-		data);
-	}
-	else
-	{
-		SET_CPU_ZONE_SCOPED("Buffer Load");
-
-		auto size = (uint64)(accessor.getCount() * accessor.getBinaryStride());
-		auto bufferInstance = BufferExt::create(bind,
-			access, Buffer::Usage::Auto, strategy, size, 0);
-		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
-		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
-
-		auto staging = GraphicsAPI::bufferPool.create(
-			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
-		SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loaded" + to_string(*staging));
-		auto stagingView = GraphicsAPI::bufferPool.get(staging);
-		accessor.copy(stagingView->getMap()); // TODO: convert uint8 to uintXX.
-		stagingView->flush();
-		graphicsSystem->startRecording(CommandBufferType::Frame);
-		Buffer::copy(staging, buffer);
-		graphicsSystem->stopRecording();
-		GraphicsAPI::bufferPool.destroy(staging);
-	}
-
-	return buffer;
-}
-
-Ref<Buffer> ResourceSystem::loadVertexBuffer(shared_ptr<Model> model, Model::Primitive primitive,
-	Buffer::Bind bind, const vector<Model::Attribute::Type>& attributes,
-	Buffer::Access access, Buffer::Strategy strategy, bool loadAsync)
-{
-	GARDEN_ASSERT(model);
-	GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
-
-	#if GARDEN_DEBUG
-	auto hasAnyAttribute = false;
-	for (auto attribute : attributes)
-		hasAnyAttribute |= primitive.getAttributeIndex(attribute) >= 0;
-	GARDEN_ASSERT(hasAnyAttribute);
-	#endif
-
-	auto version = GraphicsAPI::bufferVersion++;
-	auto buffer = GraphicsAPI::bufferPool.create(bind,
-		access, Buffer::Usage::PreferGPU, strategy, version);
-	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.vertex.loaded" + to_string(*buffer)); // TODO: use model path
-
-	if (loadAsync && threadSystem)
-	{
-		auto data = new VertexBufferLoadData(primitive);
-		data->version = version;
-		data->attributes = attributes;
-		data->model = model;
-		data->instance = buffer;
-		data->bind = bind;
-		data->access = access;
-		data->strategy = strategy;
-
-		threadSystem->getBackgroundPool().addTask([this](const ThreadPool::Task& task)
-		{
-			SET_CPU_ZONE_SCOPED("Vertex Buffer Load");
-
-			auto data = (VertexBufferLoadData*)task.getArgument();
-			loadModelBuffers(data->model);
-
-			auto primitive = data->primitive;
-			auto& attributes = data->attributes;
-
-			auto size = primitive.getVertexCount(attributes) *
-				primitive.getBinaryStride(attributes);
-
-			BufferQueueItem item =
-			{
-				BufferExt::create(data->bind, data->access, Buffer::Usage::PreferGPU,
-					data->strategy, size, data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-					Buffer::Usage::Auto, data->strategy, size, 0),
-				data->instance,
-			};
-
-			primitive.copyVertices(attributes, item.staging.getMap());
-			item.staging.flush();
-
-			delete data;
-			queueLocker.lock();
-			bufferQueue.push(std::move(item));
-			queueLocker.unlock();
-		},
-		data);
-	}
-	else
-	{
-		SET_CPU_ZONE_SCOPED("Vertex Buffer Load");
-
-		auto size = primitive.getVertexCount(attributes) *
-			primitive.getBinaryStride(attributes);
-		auto bufferInstance = BufferExt::create(bind,
-			access, Buffer::Usage::Auto, strategy, size, 0);
-		auto bufferView = GraphicsAPI::bufferPool.get(buffer);
-		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
-
-		auto staging = GraphicsAPI::bufferPool.create(
-			Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
-		SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.vertexLoaded" + to_string(*staging));
-		auto stagingView = GraphicsAPI::bufferPool.get(staging);
-		primitive.copyVertices(attributes, stagingView->getMap());
-		stagingView->flush();
-		graphicsSystem->startRecording(CommandBufferType::Frame);
-		Buffer::copy(staging, buffer);
-		graphicsSystem->stopRecording();
-		GraphicsAPI::bufferPool.destroy(staging);
-	}
-
-	return buffer;
-}
-*/

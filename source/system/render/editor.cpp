@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "garden/system/render/editor.hpp"
+#include "garden/defines.hpp"
+#include "garden/system/resource.hpp"
+#include <filesystem>
+#include <vector>
 
 #if GARDEN_EDITOR
 #include "garden/file.hpp"
@@ -71,7 +75,7 @@ EditorRenderSystem::~EditorRenderSystem()
 //**********************************************************************************************************************
 static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path* exportScenePath)
 {
-	static const set<string> extensions = { ".scene" };
+	static const vector<string_view> extensions = { ".scene" };
 	editorSystem->openFileSelector([exportScenePath](const fs::path& selectedFile)
 	{
 		auto path = selectedFile;
@@ -766,6 +770,8 @@ static void updateDirectoryClick(const string& filename, const fs::directory_ent
 	{
 		if (ImGui::MenuItem("Copy Name"))
 			ImGui::SetClipboardText(filename.c_str());
+		if (ImGui::MenuItem("Copy Path"))
+			ImGui::SetClipboardText(entry.path().generic_string().c_str());
 		if (ImGui::MenuItem("Open Explorer"))
 			openExplorer(entry.path());
 		ImGui::EndPopup();
@@ -806,6 +812,14 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 }
 
 //**********************************************************************************************************************
+static time_t to_time_t(fs::file_time_type tp) noexcept
+{
+	// Dirty hack to converte last_write_time to the time_t. Because C++ standard is a bige pile of garbage.
+    auto sctp = chrono::time_point_cast<chrono::system_clock::duration>(
+		tp - fs::file_time_type::clock::now() + chrono::system_clock::now());
+    return chrono::system_clock::to_time_t(sctp);
+}
+
 void EditorRenderSystem::showFileSelector()
 {
 	if (!ImGui::IsPopupOpen("File Selector"))
@@ -832,73 +846,91 @@ void EditorRenderSystem::showFileSelector()
 		ImGui::EndChild();
 		ImGui::SameLine();
 
-		ImGui::BeginChild("##itemView", ImVec2(0.0f,
-			-(ImGui::GetFrameHeightWithSpacing() + 4.0f)), ImGuiChildFlags_Border);
+		ImGui::BeginChild("##itemView", ImVec2(0.0f, 
+			-(ImGui::GetFrameHeightWithSpacing() + 4.0f)), ImGuiChildFlags_Borders);
+		auto foundAny = false;
 
-		if (fs::exists(selectedEntry) && fs::is_directory(selectedEntry))
+		if (ImGui::BeginTable("##fileTable", 3, ImGuiTableFlags_BordersInner | 
+			ImGuiTableFlags_PadOuterX | ImGuiTableFlags_SizingStretchProp))
 		{
 			ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-			auto dirIterator = fs::directory_iterator(selectedEntry);
+			ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImGui::GetStyle().Colors[ImGuiCol_TableRowBg]);
+			ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_IndentDisable);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_IndentDisable);
+			ImGui::TableSetupColumn("Date modified", ImGuiTableColumnFlags_IndentDisable);
+			ImGui::TableHeadersRow();
 
-			psize longestFilename = 0;
-			for (const auto& entry : dirIterator)
+			if (fs::exists(selectedEntry) && fs::is_directory(selectedEntry))
 			{
-				if (entry.is_directory() || fileExtensions.find(
-					entry.path().extension().generic_string()) == fileExtensions.end())
-				{
-					continue;
-				}
-
-				auto length = entry.path().filename().generic_string().length();
-				if (length > longestFilename)
-					longestFilename = length;
-			}
-			
-			if (longestFilename > 0)
-			{
-				longestFilename += 4;
-				dirIterator = fs::directory_iterator(selectedEntry);
+				auto dirIterator = fs::directory_iterator(selectedEntry);
 				for (const auto& entry : dirIterator)
 				{
-					if (entry.is_directory() || fileExtensions.find(
-						entry.path().extension().generic_string()) == fileExtensions.end())
-					{
+					if (entry.is_directory())
 						continue;
-					}
 
-					auto filename = entry.path().filename().generic_string();
-					if (!entry.is_directory())
+					auto extensionNotFound = true;
+					auto extension = entry.path().extension().generic_string();
+					for (auto fileExtension : fileExtensions)
 					{
-						if (longestFilename >= filename.length())
-							filename += string(longestFilename - filename.length(), ' ');
-						filename += toBinarySizeString(entry.file_size()); // TODO: Also render last modify date and file type.
+						if (extension == fileExtension)
+						{
+							extensionNotFound = false;
+							break;
+						}
 					}
 
-					auto flags = (int)ImGuiTreeNodeFlags_Leaf;
+					if (extensionNotFound)
+						continue;
+
+					ImGui::TableNextRow();
+
+					ImGui::TableNextColumn();
+					auto stringValue = entry.path().filename().generic_string();
+					auto flags = (int)(ImGuiTreeNodeFlags_Leaf | 
+						ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAllColumns);
 					if (selectedFile == entry.path())
 						flags |= (int)ImGuiTreeNodeFlags_Selected;
+					ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+					ImGui::TreeNodeEx(stringValue.c_str(), flags);
 
-					if (ImGui::TreeNodeEx(filename.c_str(), flags))
+					if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+						selectedFile = entry.path();
+					if (ImGui::BeginPopupContextItem())
 					{
-						if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-							selectedFile = entry.path();
-						if (ImGui::BeginPopupContextItem())
-						{
-							if (ImGui::MenuItem("Copy Name"))
-								ImGui::SetClipboardText(filename.c_str());
-							if (ImGui::MenuItem("Open Explorer"))
-								openExplorer(selectedEntry);
-							ImGui::EndPopup();
-						}
-						ImGui::TreePop();
+						if (ImGui::MenuItem("Copy Name"))
+							ImGui::SetClipboardText(stringValue.c_str());
+						if (ImGui::MenuItem("Copy Path"))
+							ImGui::SetClipboardText(entry.path().generic_string().c_str());
+						if (ImGui::MenuItem("Open Explorer"))
+							openExplorer(entry.path());
+						ImGui::EndPopup();
 					}
+
+					ImGui::TableNextColumn();
+					stringValue = toBinarySizeString(entry.file_size());
+					ImGui::Text("%s", stringValue.c_str());
+
+					ImGui::TableNextColumn();
+					auto lastWriteTime = to_time_t(entry.last_write_time());
+					auto data = localtime(&lastWriteTime);
+					ImGui::Text("%d-%02d-%02d %02d:%02d", data->tm_year + 1900, 
+						data->tm_mon + 1, data->tm_mday, data->tm_hour, data->tm_min);
+					foundAny = true;
 				}
+				ImGui::EndTable();
 			}
-			else
-			{
-				ImGui::TextDisabled("No suitable files.");
-			}
-			ImGui::PopStyleColor();
+			ImGui::PopStyleColor(2);
+		}
+
+		if (!foundAny)
+		{
+			const auto text = "No suitable files.";
+			auto textSize = ImGui::CalcTextSize(text);
+			auto childSize = ImGui::GetContentRegionAvail();
+			auto textPosX = (childSize.x - textSize.x) * 0.5f;
+			auto textPosY = (childSize.y - textSize.y) * 0.5f;
+			ImGui::SetCursorPos(ImVec2(textPosX, textPosY));
+			ImGui::TextDisabled(text);
 		}
 
 		ImGui::EndChild();
@@ -982,7 +1014,7 @@ void EditorRenderSystem::setPlaying(bool isPlaying)
 
 //**********************************************************************************************************************
 void EditorRenderSystem::openFileSelector(const std::function<void(const fs::path&)>& onSelect, 
-	const fs::path& directory, const set<string>& extensions)
+	const fs::path& directory, const vector<string_view>& extensions)
 {
 	fileSelectDirectory = selectedEntry = directory.empty() ?
 		AppInfoSystem::Instance::get()->getResourcesPath() : directory;
@@ -990,49 +1022,83 @@ void EditorRenderSystem::openFileSelector(const std::function<void(const fs::pat
 	onFileSelect = onSelect;
 }
 
-void EditorRenderSystem::drawFileSelector(fs::path& path, ID<Entity> entity,
-	type_index componentType, const fs::path& directory, const set<string>& extensions)
+void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<Entity> entity,
+	type_index componentType, const fs::path& directory, const vector<string_view>& extensions)
 {
+	GARDEN_ASSERT(name);
+	GARDEN_ASSERT(entity);
+
 	auto pathString = path.generic_string();
-	if (ImGui::InputText("Path", &pathString, ImGuiInputTextFlags_ReadOnly))
+	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))
 		path = pathString;
 
 	if (ImGui::BeginPopupContextItem())
 	{
+		if (ImGui::MenuItem("Select File"))
+		{
+			auto _path = &path;
+
+			openFileSelector([_path, entity, componentType, directory, extensions](const fs::path& selectedFile)
+			{
+				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
+					!Manager::Instance::get()->has(entity, componentType))
+				{
+					return;
+				}
+
+				auto path = selectedFile;
+				path.replace_extension();
+				*_path = path.generic_string();
+			},
+			AppInfoSystem::Instance::get()->getResourcesPath() / directory, extensions);
+		}
+
 		if (ImGui::MenuItem("Reset Default"))
 			path = "";
 		ImGui::EndPopup();
 	}
-	ImGui::SameLine();
-
-	if (ImGui::Button(" + "))
-	{	
-		auto _path = &path;
-
-		openFileSelector([_path, entity, componentType, directory, extensions](const fs::path& selectedFile)
-		{
-			if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
-				!Manager::Instance::get()->has(entity, componentType))
-			{
-				return;
-			}
-
-			auto path = selectedFile;
-			path.replace_extension();
-			*_path = path.generic_string();
-		},
-		AppInfoSystem::Instance::get()->getResourcesPath() / directory, extensions);
-	}
 }
-void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
-	ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags)
+
+//**********************************************************************************************************************
+void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, 
+	Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags)
 {
+	GARDEN_ASSERT(name);
+	GARDEN_ASSERT(entity);
+
 	auto pathString = path.generic_string();
-	if (ImGui::InputText("Path", &pathString, ImGuiInputTextFlags_ReadOnly))
+	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))
 		path = pathString;
 
 	if (ImGui::BeginPopupContextItem())
 	{
+		if (ImGui::MenuItem("Select File"))
+		{
+			auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
+			openFileSelector([_path, _image, _descriptorSet, 
+				entity, componentType, loadFlags](const fs::path& selectedFile)
+			{
+				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
+					!Manager::Instance::get()->has(entity, componentType))
+				{
+					return;
+				}
+			
+				auto resourceSystem = ResourceSystem::Instance::get();
+				resourceSystem->destroyShared(*_image);
+				resourceSystem->destroyShared(*_descriptorSet);
+
+				auto path = selectedFile;
+				path.replace_extension();
+				*_path = path;
+
+				*_image = resourceSystem->loadImage(path, Image::Bind::TransferDst |
+					Image::Bind::Sampled, 1, Image::Strategy::Default, loadFlags);
+				*_descriptorSet = {};
+			},
+			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);
+		}
+
 		auto gpuResourceSystem = Manager::Instance::get()->tryGet<GpuResourceEditorSystem>();
 		if (ImGui::MenuItem("Show Resource", nullptr, false, gpuResourceSystem && image))
 			gpuResourceSystem->openTab(ID<Image>(image));
@@ -1045,34 +1111,70 @@ void EditorRenderSystem::drawImageSelector(fs::path& path, Ref<Image>& image, Re
 		}
 		ImGui::EndPopup();
 	}
-	ImGui::SameLine();
+}
 
-	if (ImGui::Button(" + "))
-	{	
-		static const set<string> extensions = 
-		{ ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga" };
-		auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
+//**********************************************************************************************************************
+void EditorRenderSystem::drawLodBufferSelector(const char* name, vector<fs::path>& paths, Ref<LodBuffer>& lodBuffer, 
+	ID<Entity> entity, type_index componentType, const vector<BufferChannel>& channels, BufferLoadFlags loadFlags)
+{
+	GARDEN_ASSERT(name);
+	GARDEN_ASSERT(entity);
+	GARDEN_ASSERT(!channels.empty());
 
-		openFileSelector([_path, _image, _descriptorSet, entity, componentType, loadFlags](const fs::path& selectedFile)
+	if (paths.empty())
+		paths.resize(1);
+	auto pathString = paths[0].generic_string();
+	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))
+		paths[0] = pathString;
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		if (ImGui::MenuItem("Select File"))
 		{
-			if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
-				!Manager::Instance::get()->has(entity, componentType))
+			auto _paths = &paths; auto _lodBuffer = &lodBuffer; auto _channels = &channels;
+			openFileSelector([_paths, _lodBuffer, _channels, 
+				entity, componentType, loadFlags](const fs::path& selectedFile)
 			{
-				return;
-			}
+				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
+					!Manager::Instance::get()->has(entity, componentType))
+				{
+					return;
+				}
 			
-			auto resourceSystem = ResourceSystem::Instance::get();
-			resourceSystem->destroyShared(*_image);
-			resourceSystem->destroyShared(*_descriptorSet);
+				auto resourceSystem = ResourceSystem::Instance::get();
+				resourceSystem->destroyShared(*_lodBuffer);
 
-			auto path = selectedFile;
-			path.replace_extension();
-			*_path = path.generic_string();
-			*_image = resourceSystem->loadImage(path, Image::Bind::TransferDst |
-				Image::Bind::Sampled, 1, Image::Strategy::Default, loadFlags);
-			*_descriptorSet = {};
-		},
-		AppInfoSystem::Instance::get()->getResourcesPath() / "images", extensions);
+				auto path = selectedFile;
+				auto extension = path.extension();
+				path.replace_extension();
+
+				vector<fs::path> paths = { path };
+				uint32 lodIndex = 1;
+				while (true)
+				{
+					auto lodPath = path;
+					lodPath += "_LOD" + to_string(lodIndex);
+					lodPath.replace_extension(extension);
+					if (!fs::exists(lodPath))
+						break;
+
+					path.replace_extension();
+					paths.push_back(lodPath);
+				}
+				*_paths = std::move(paths);
+			
+				*_lodBuffer = resourceSystem->loadLodBuffer(*_paths, *_channels, 
+					0, 1000.0f, Buffer::Strategy::Default, loadFlags);
+			},
+			AppInfoSystem::Instance::get()->getResourcesPath() / "models", ResourceSystem::modelFileExts);
+		}
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			auto resourceSystem = ResourceSystem::Instance::get();
+			resourceSystem->destroyShared(lodBuffer);
+			paths.clear(); lodBuffer = {};
+		}
+		ImGui::EndPopup();
 	}
 }
 

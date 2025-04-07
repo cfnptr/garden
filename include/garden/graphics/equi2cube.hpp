@@ -39,7 +39,7 @@ public:
 	 * 
 	 * @param filePath target image to convert path
 	 * @param inputPath input image directory path
-	 * @param outputPath input images directory path
+	 * @param outputPath output images directory path
 	 * 
 	 * @return Returns true on success and writes cubemap images, otherwise false.
 	 */

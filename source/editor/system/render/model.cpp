@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/model.hpp"
-#include "imgui.h"
+#include "garden/defines.hpp"
 #include "math/simd/vector/float.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
-#include "garden/system/transform.hpp"
 #include "garden/system/render/model/color.hpp"
 #include "garden/system/render/model/opaque.hpp"
 #include "garden/system/render/model/cutout.hpp"
@@ -101,8 +100,9 @@ void ModelRenderEditorSystem::onColorEntityInspector(ID<Entity> entity, bool isO
 	}
 	if (isOpened)
 	{
-		auto colorModelView = ColorModelSystem::Instance::get()->getComponent(entity);
-		renderComponent(*colorModelView, typeid(ColorModelComponent));
+		auto colorModelSystem = ColorModelSystem::Instance::get();
+		auto colorModelView = colorModelSystem->getComponent(entity);
+		renderComponent(colorModelSystem, *colorModelView, typeid(ColorModelComponent));
 
 		ImGui::ColorEdit4("Color", &colorModelView->color, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 		if (ImGui::BeginPopupContextItem("color"))
@@ -125,8 +125,9 @@ void ModelRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool is
 	}
 	if (isOpened)
 	{
-		auto opaqueModelView = OpaqueModelSystem::Instance::get()->getComponent(entity);
-		renderComponent(*opaqueModelView, typeid(OpaqueModelComponent));
+		auto opaqueModelSystem = OpaqueModelSystem::Instance::get();
+		auto opaqueModelView = opaqueModelSystem->getComponent(entity);
+		renderComponent(opaqueModelSystem, *opaqueModelView, typeid(OpaqueModelComponent));
 	}
 }
 void ModelRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
@@ -141,8 +142,9 @@ void ModelRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool is
 	}
 	if (isOpened)
 	{
-		auto cutoutModelView = CutoutModelSystem::Instance::get()->getComponent(entity);
-		renderComponent(*cutoutModelView, typeid(CutoutModelComponent));
+		auto cutoutModelSystem = CutoutModelSystem::Instance::get();
+		auto cutoutModelView = cutoutModelSystem->getComponent(entity);
+		renderComponent(cutoutModelSystem, *cutoutModelView, typeid(CutoutModelComponent));
 
 		ImGui::SliderFloat("Alpha Cutoff", &cutoutModelView->alphaCutoff, 0.0f, 1.0f);
 		if (ImGui::BeginPopupContextItem("alphaCutoff"))
@@ -165,18 +167,26 @@ void ModelRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isO
 	}
 	if (isOpened)
 	{
-		auto transModelView = TransModelSystem::Instance::get()->getComponent(entity);
-		renderComponent(*transModelView, typeid(TransModelComponent));
+		auto transModelSystem = TransModelSystem::Instance::get();
+		auto transModelView = transModelSystem->getComponent(entity);
+		renderComponent(transModelSystem, *transModelView, typeid(TransModelComponent));
 	}
 }
 
 //**********************************************************************************************************************
-void ModelRenderEditorSystem::renderComponent(ModelRenderComponent* componentView, type_index componentType)
+void ModelRenderEditorSystem::renderComponent(ModelRenderSystem* system, 
+	ModelRenderComponent* componentView, type_index componentType)
 {
+	GARDEN_ASSERT(system);
+	GARDEN_ASSERT(componentView);
+
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto flags = ImageLoadFlags::LoadShared;
-	editorSystem->drawImageSelector(componentView->colorMapPath, componentView->colorMap,
-		componentView->descriptorSet, componentView->getEntity(), componentType, flags);
+	editorSystem->drawImageSelector("Color Map", componentView->colorMapPath, componentView->colorMap,
+		componentView->descriptorSet, componentView->getEntity(), componentType, ImageLoadFlags::LoadShared);
+	const auto& bufferChannels = system->isUseGBuffer() ? 
+		ModelRenderSystem::fullModelChannels : ModelRenderSystem::liteModelChannels;
+	editorSystem->drawLodBufferSelector("LOD Buffer", componentView->lodBufferPaths, componentView->lodBuffer,
+		componentView->getEntity(), componentType, bufferChannels, BufferLoadFlags::LoadShared);
 	editorSystem->drawResource(componentView->descriptorSet);
 
 	ImGui::Checkbox("Enabled", &componentView->isEnabled);

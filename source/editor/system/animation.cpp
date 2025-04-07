@@ -81,7 +81,7 @@ void AnimationEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 static void renderAnimationSelector(ID<Entity> entity)
 {
-	static const set<string> extensions = { ".anim" };
+	static const vector<string_view> extensions = { ".anim" };
 	EditorRenderSystem::Instance::get()->openFileSelector([entity](const fs::path& selectedFile)
 	{
 		auto animationView = AnimationSystem::Instance::get()->tryGetComponent(entity);

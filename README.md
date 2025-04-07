@@ -56,6 +56,8 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | Name                        | Description                                      | Default value |
 |-----------------------------|--------------------------------------------------|---------------|
 | GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
+| GARDEN_BUILD_MODELC         | Build Garden 3D model converter                  | `ON`          |
+| GARDEN_BUILD_JSON2BOSN      | Build JSON to binary JSON converter              | `ON`          |
 | GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |

@@ -35,7 +35,7 @@ namespace garden::graphics
 {
 
 /**
- * @brief Wrapper around GLSL shader compiler.
+ * @brief Garden Shading Language compiler. (Wrapper around GLSL compiler).
  * 
  * @details
  * Shader compiler is a specialized software tool that converts shader code written in a high-level shading 
@@ -45,7 +45,7 @@ namespace garden::graphics
  * They are an integral part of modern graphics and compute pipelines, enabling detailed control over the 
  * visual appearance of 3D scenes and the execution of parallel computations.
  */
-class Compiler final
+class GslCompiler final
 {
 public:
 	/**

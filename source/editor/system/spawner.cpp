@@ -269,18 +269,18 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	ImGui::Checkbox("Active", &spawnerView->isActive); ImGui::SameLine();
 	ImGui::Checkbox("Spawn As Child", &spawnerView->spawnAsChild);
 	
-	static const set<string> extensions = { ".scene" };
-	EditorRenderSystem::Instance::get()->drawFileSelector(spawnerView->path,
+	static const vector<string_view> extensions = { ".scene" };
+	EditorRenderSystem::Instance::get()->drawFileSelector("Prefab", spawnerView->path,
 		spawnerView->getEntity(), typeid(SpawnerComponent), "scenes", extensions);
 	
 	auto uuid = spawnerView->prefab ? spawnerView->prefab.toBase64() : "";
-	if (ImGui::InputText("Prefab", &uuid))
+	if (ImGui::InputText("UUID", &uuid))
 	{
 		auto prefab = spawnerView->prefab;
 		if (prefab.fromBase64(uuid))
 			spawnerView->prefab = prefab;
 	}
-	if (ImGui::BeginPopupContextItem("prefab"))
+	if (ImGui::BeginPopupContextItem("uuid"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 			spawnerView->prefab = {};
