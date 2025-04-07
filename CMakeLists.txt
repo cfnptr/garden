@@ -38,7 +38,6 @@ project(Garden VERSION 0.0.1 LANGUAGES CXX
 	HOMEPAGE_URL "https://github.com/cfnptr/garden")
 
 option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
-option(GARDEN_BUILD_MODELC "Build Garden model converter." ON)
 option(GARDEN_BUILD_JSON2BSON "Build JSON to binary JSON converter." ON)
 option(GARDEN_BUILD_EQUI2CUBE "Build equirectangular to cubemap converter." ON)
 option(GARDEN_RELEASE_EDITOR "Build Garden editor in the release build." OFF)
@@ -216,12 +215,8 @@ set(GARDEN_LINK_DIRS)
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
 endif()
-if(NOT GARDEN_PACK_RESOURCES)
-	list(APPEND GARDEN_LINK_LIBS assimp::assimp)
-endif()
 
 find_package(Vulkan REQUIRED)
-find_package(assimp REQUIRED)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
@@ -331,16 +326,6 @@ if(GARDEN_BUILD_GSLC)
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		stripExecutable(gslc)
-	endif()
-endif()
-
-if(GARDEN_BUILD_MODELC)
-	add_executable(modelc source/graphics/modelc.cpp)
-	target_compile_definitions(modelc PUBLIC GARDEN_MODEL_CONVERTER)
-	target_link_libraries(modelc PUBLIC garden)
-
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
-		stripExecutable(modelc)
 	endif()
 endif()
 

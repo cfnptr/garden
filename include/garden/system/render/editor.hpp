@@ -134,8 +134,6 @@ public:
 		type_index componentType, const fs::path& directory, const vector<string_view>& extensions);
 	void drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
 		ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags = {});
-	void drawLodBufferSelector(const char* name, vector<fs::path>& paths, Ref<LodBuffer>& lodBuffer, ID<Entity> entity, 
-		type_index componentType, const vector<BufferChannel>& channels, BufferLoadFlags loadFlags = {});
 
 	//******************************************************************************************************************
 	void drawResource(ID<Buffer> buffer, const char* label = "Buffer");

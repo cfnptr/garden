@@ -69,8 +69,8 @@ namespace garden::graphics
 		istringstream inputStream; ostringstream outputStream;
 		string line; uint32 lineIndex = 1;
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
-		bool isSkipMode = false, isReadonly = false, isWriteonly = false,
-			isMutable, isRestrict = false, isVolatile = false, isCoherent = false;
+		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, 
+			isRestrict = false, isVolatile = false, isCoherent = false;
 		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
 		Sampler::State samplerState;
