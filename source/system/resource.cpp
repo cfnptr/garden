@@ -613,7 +613,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& data,
 	imagePath += ".ext";
 
 	uint64 itemIndex = 0;
-	for (uint8 i = 0; i < imageFileExtCount; i++)
+	for (uint8 i = 0; i < (uint8)imageFileExts.size(); i++)
 	{
 		imagePath.replace_extension(imageFileExts[i]);
 		if (packReader.getItemIndex(imagePath, itemIndex))
