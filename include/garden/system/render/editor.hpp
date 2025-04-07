@@ -18,6 +18,8 @@
  */
 
 #pragma once
+#include "garden/defines.hpp"
+#include "garden/graphics/buffer.hpp"
 #include "garden/graphics/sampler.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"
@@ -59,7 +61,7 @@ private:
 	fs::path fileSelectDirectory;
 	fs::path selectedEntry;
 	fs::path selectedFile;
-	set<string> fileExtensions;
+	vector<string_view> fileExtensions;
 	std::function<void(const fs::path)> onFileSelect;
 	double lastFps = 0.0;
 	bool demoWindow = false;
@@ -93,12 +95,14 @@ private:
 	friend class ecsm::Manager;
 	friend class HierarchyEditorSystem;
 public:
+	//******************************************************************************************************************
 	ID<Entity> selectedEntity;
 	bool exportScene = false;
 
 	template<typename T = Component>
 	void registerEntityInspector(OnComponent onComponent, float priority = 0.0f)
 	{
+		GARDEN_ASSERT(onComponent);
 		Inspector inspector(onComponent, -priority);
 		if (!entityInspectors.emplace(typeid(T), std::move(inspector)).second)
 		{
@@ -125,12 +129,15 @@ public:
 	void setPlaying(bool isPlaying);
 
 	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
-		const fs::path& directory = {}, const set<string>& extensions = {});
-	void drawFileSelector(fs::path& path, ID<Entity> entity, type_index componentType, 
-		const fs::path& directory, const set<string>& extensions);
-	void drawImageSelector(fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
+		const fs::path& directory = {}, const vector<string_view>&  extensions = {});
+	void drawFileSelector(const char* name, fs::path& path, ID<Entity> entity, 
+		type_index componentType, const fs::path& directory, const vector<string_view>& extensions);
+	void drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,
 		ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags = {});
+	void drawLodBufferSelector(const char* name, vector<fs::path>& paths, Ref<LodBuffer>& lodBuffer, ID<Entity> entity, 
+		type_index componentType, const vector<BufferChannel>& channels, BufferLoadFlags loadFlags = {});
 
+	//******************************************************************************************************************
 	void drawResource(ID<Buffer> buffer, const char* label = "Buffer");
 	void drawResource(ID<Image> image, const char* label = "Image");
 	void drawResource(ID<ImageView> imageView, const char* label = "ImageView");

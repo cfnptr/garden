@@ -98,6 +98,9 @@ public:
 	{
 		uint32 instanceIndex;
 	};
+
+	static const vector<BufferChannel> fullModelChannels;
+	static const vector<BufferChannel> liteModelChannels;
 protected:
 	fs::path pipelinePath = {};
 	ID<ImageView> defaultImageView = {};
@@ -142,6 +145,14 @@ protected:
 
 	static void destroyResources(View<ModelRenderComponent> spriteRenderView);
 public:
+	/**
+	 * @brief Does model system use normal map textures.
+	 */
+	bool isUseNormalMapping() const noexcept { return useNormalMapping; }
+	/**
+	 * @brief Does model system use G-Buffer framebuffer.
+	 */
+	bool isUseGBuffer() const noexcept { return useGBuffer; }
 	/**
 	 * @brief Returns model animation frame pool.
 	 */

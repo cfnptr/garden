@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "garden/graphics/equi2cube.hpp"
+#include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
+#include <thread>
 
 #define TINYEXR_IMPLEMENTATION
 #include "garden/graphics/exr.hpp"
@@ -25,6 +27,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#include <atomic>
 #include <vector>
 #include <iostream>
 
@@ -195,6 +198,7 @@ int main(int argc, char *argv[])
 	int logOffset = 1;
 	fs::path workingPath = fs::path(argv[0]).parent_path();
 	auto inputPath = workingPath, outputPath = workingPath;
+	ThreadPool* threadPool = nullptr; atomic_int convertResult = true;
 	
 	for (int i = 1; i < argc; i++)
 	{
@@ -207,11 +211,12 @@ int main(int argc, char *argv[])
 				"Usage: equi2cube [options] name...\n"
 				"\n"
 				"Options:\n"
-				"  -i <dir>     Read input from <dir>.\n"
-				"  -o <dir>     Write output to <dir>.\n"
-				"  -h           Display available options.\n"
-				"  --help       Display available options.\n"
-				"  --version    Display converter version information.\n";
+				"  -i <dir>      Read input from <dir>.\n"
+				"  -o <dir>      Write output to <dir>.\n"
+				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
+				"  -h            Display available options.\n"
+				"  --help        Display available options.\n"
+				"  --version     Display converter version information.\n";
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)
@@ -243,6 +248,27 @@ int main(int argc, char *argv[])
 			logOffset += 2;
 			i++;
 		}
+		else if (strcmp(arg, "-t") == 0)
+		{
+			if (i + 1 >= argc)
+			{
+				cout << "gslc: error: no thread count\n";
+				return EXIT_FAILURE;
+			}
+
+			auto count = atoi(argv[i + 1]);
+			if (count > 0 && count < thread::hardware_concurrency())
+			{
+				if (threadPool)
+				{
+					threadPool->wait();
+					delete threadPool;
+				}
+				threadPool = new ThreadPool(false, "T", count);
+			}
+			logOffset += 2;
+			i++;
+		}
 		else if (arg[0] == '-')
 		{
 			cout << "equi2cube: error: unsupported option: '" << arg << "'\n";
@@ -250,30 +276,24 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			// TODO: do this from multiple thread.
-
-			int progress = (int)(((float)((i - logOffset) + 1) /
-				(float)(argc - logOffset)) * 100.0f);
-
-			const char* spacing;
-			if (progress < 10)
-				spacing = "  ";
-			else if (progress < 100)
-				spacing = " ";
-			else
-				spacing = "";
-
-			cout << "[" << spacing << progress << "%] " <<
-				"Converting image " << arg << "\n" << flush;
-
-			if (!Equi2Cube::convertImage(arg, inputPath, outputPath))
+			if (!threadPool)
+				threadPool = new ThreadPool(false, "T");
+			threadPool->addTask([&convertResult, arg, inputPath, outputPath](const ThreadPool::Task& task)
 			{
-				cout << "equi2cube: error: no image file found (" << arg << ")\n";
-				return EXIT_FAILURE;
-			}
+				cout << "Converting image " << arg << "\n" << flush;
+				auto result = Equi2Cube::convertImage(arg, inputPath, outputPath);;
+				if (!result)
+					cout << "equi2cube: error: no image file found (" << arg << ")\n";
+				convertResult &= result;
+			});
 		}
 	}
 
-	return EXIT_SUCCESS;
+	if (threadPool)
+	{
+		threadPool->wait();
+		delete threadPool;
+	}
+	return convertResult ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 #endif

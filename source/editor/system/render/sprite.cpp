@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/sprite.hpp"
+#include "garden/defines.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
@@ -137,11 +138,13 @@ void SpriteRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool is
 //**********************************************************************************************************************
 void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentView, type_index componentType)
 {
+	GARDEN_ASSERT(componentView);
+
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	editorSystem->drawImageSelector(componentView->colorMapPath, componentView->colorMap,
+	editorSystem->drawImageSelector("Color Map", componentView->colorMapPath, componentView->colorMap,
 		componentView->descriptorSet, componentView->getEntity(), componentType, flags);
 	editorSystem->drawResource(componentView->descriptorSet);
 

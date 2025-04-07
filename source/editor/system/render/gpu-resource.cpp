@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/gpu-resource.hpp"
-#include "imgui.h"
+#include "garden/defines.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/graphics/vulkan/api.hpp"
@@ -1071,6 +1071,7 @@ void GpuResourceEditorSystem::editorBarTool()
 
 void GpuResourceEditorSystem::openTab(ID<Resource> resource, TabType type) noexcept
 {
+	GARDEN_ASSERT(resource);
 	selectedItem = *resource - 1;
 	openNextTab = type;
 	showWindow = true;

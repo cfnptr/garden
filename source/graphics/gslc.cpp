@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/graphics/compiler.hpp"
+#include "garden/graphics/gslc.hpp"
+#include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
 
-#include <thread>
+#include <atomic>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -1406,7 +1407,7 @@ static void writeGslHeaderArray(ofstream& headerStream, const map<string, T>& va
 
 //******************************************************************************************************************
 static bool compileVertexShader(const fs::path& inputPath, const fs::path& outputPath,
-	const vector<fs::path>& includePaths, Compiler::GraphicsData& data,
+	const vector<fs::path>& includePaths, GslCompiler::GraphicsData& data,
 	uint8& bindingIndex, int8& outIndex, uint16& pushConstantsSize, uint8& variantCount)
 {
 	constexpr auto shaderStage = ShaderStage::Vertex;
@@ -1684,7 +1685,7 @@ static bool compileVertexShader(const fs::path& inputPath, const fs::path& outpu
 
 //******************************************************************************************************************
 static bool compileFragmentShader(const fs::path& inputPath, const fs::path& outputPath,
-	const vector<fs::path>& includePaths, Compiler::GraphicsData& data,
+	const vector<fs::path>& includePaths, GslCompiler::GraphicsData& data,
 	uint8& bindingIndex, int8& inIndex, uint16& pushConstantsSize, uint8& variantCount)
 {
 	constexpr auto shaderStage = ShaderStage::Fragment;
@@ -1917,7 +1918,7 @@ static bool compileFragmentShader(const fs::path& inputPath, const fs::path& out
 }
 
 //******************************************************************************************************************
-bool Compiler::compileGraphicsShaders(const fs::path& inputPath,
+bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	const fs::path& outputPath, const vector<fs::path>& includePaths, GraphicsData& data)
 {
 	GARDEN_ASSERT(!data.shaderPath.empty());
@@ -2020,7 +2021,7 @@ bool Compiler::compileGraphicsShaders(const fs::path& inputPath,
 }
 
 //******************************************************************************************************************
-bool Compiler::compileComputeShader(const fs::path& inputPath,
+bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	const fs::path& outputPath, const vector<fs::path>& includePaths, ComputeData& data)
 {
 	GARDEN_ASSERT(!data.shaderPath.empty());
@@ -2252,11 +2253,11 @@ template<typename T>
 static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
-	if (dataOffset + Compiler::gslMagicSize + sizeof(gslHeader) > dataSize)
+	if (dataOffset + GslCompiler::gslMagicSize + sizeof(gslHeader) > dataSize)
 		throw GardenError("Invalid GSL header size.");
-	if (memcmp(data + dataOffset, gslMagic.data(), Compiler::gslMagicSize) != 0)
+	if (memcmp(data + dataOffset, gslMagic.data(), GslCompiler::gslMagicSize) != 0)
 		throw GardenError("Invalid GSL header magic value.");
-	dataOffset += Compiler::gslMagicSize;
+	dataOffset += GslCompiler::gslMagicSize;
 	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
 		throw GardenError("Invalid GSL header version or endianness.");
 	dataOffset += sizeof(gslHeader);
@@ -2289,7 +2290,7 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 }
 
 //******************************************************************************************************************
-void Compiler::loadGraphicsShaders(GraphicsData& data)
+void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 {
 	if (!data.shaderPath.empty())
 	{
@@ -2349,7 +2350,7 @@ void Compiler::loadGraphicsShaders(GraphicsData& data)
 }
 
 //******************************************************************************************************************
-void Compiler::loadComputeShader(ComputeData& data)
+void GslCompiler::loadComputeShader(ComputeData& data)
 {
 	if (!data.shaderPath.empty())
 	{
@@ -2396,6 +2397,7 @@ int main(int argc, char *argv[])
 	vector<fs::path> includePaths; int logOffset = 1;
 	fs::path workingPath = fs::path(argv[0]).parent_path();
 	auto inputPath = workingPath, outputPath = workingPath;
+	ThreadPool* threadPool = nullptr; atomic_int compileResult = true;
 	
 	for (int i = 1; i < argc; i++)
 	{
@@ -2411,6 +2413,7 @@ int main(int argc, char *argv[])
 				"  -i <dir>      Read input from <dir>.\n"
 				"  -o <dir>      Write output to <dir>.\n"
 				"  -I <value>    Add directory to include search path.\n"
+				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
 				"  -h            Display available options.\n"
 				"  --help        Display available options.\n"
 				"  --version     Display compiler version information.\n";
@@ -2457,6 +2460,27 @@ int main(int argc, char *argv[])
 			logOffset += 2;
 			i++;
 		}
+		else if (strcmp(arg, "-t") == 0)
+		{
+			if (i + 1 >= argc)
+			{
+				cout << "gslc: error: no thread count\n";
+				return EXIT_FAILURE;
+			}
+
+			auto count = atoi(argv[i + 1]);
+			if (count > 0 && count < thread::hardware_concurrency())
+			{
+				if (threadPool)
+				{
+					threadPool->wait();
+					delete threadPool;
+				}
+				threadPool = new ThreadPool(false, "T", count);
+			}
+			logOffset += 2;
+			i++;
+		}
 		else if (arg[0] == '-')
 		{
 			cout << "gslc: error: unsupported option: '" << arg << "'\n";
@@ -2464,59 +2488,49 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			// TODO: do this from multiple thread.
-
-			int progress = (int)(((float)((i - logOffset) + 1) /
-				(float)(argc - logOffset)) * 100.0f);
-			
-			const char* spacing;
-			if (progress < 10)
-				spacing = "  ";
-			else if (progress < 100)
-				spacing = " ";
-			else
-				spacing = "";
-
-			cout << "[" << spacing << progress << "%] " <<
-				"Compiling shader " << arg << "\n" << flush;
-
-			auto compileResult = false;
-			try
+			if (!threadPool)
+				threadPool = new ThreadPool(false, "T");
+			threadPool->addTask([&compileResult, arg, inputPath, outputPath, includePaths](const ThreadPool::Task& task)
 			{
-				Compiler::GraphicsData graphicsData;
-				graphicsData.shaderPath = arg;
+				cout << "Compiling shader " << arg << "\n" << flush;
+				auto result = true;
 
-				compileResult |= Compiler::compileGraphicsShaders(
-					inputPath, outputPath, includePaths, graphicsData);
-			}
-			catch (const exception& e)
-			{
-				if (strcmp(e.what(), "_GLSLC") != 0)
-					cout << e.what() << '\n';
-			}
+				try
+				{
+					GslCompiler::GraphicsData graphicsData;
+					graphicsData.shaderPath = arg;
+					result &= GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, graphicsData);
+				}
+				catch (const exception& e)
+				{
+					if (strcmp(e.what(), "_GLSLC") != 0)
+						cout << e.what() << '\n';
+				}
 	
-			try
-			{
-				Compiler::ComputeData computeData;
-				computeData.shaderPath = arg;
+				try
+				{
+					GslCompiler::ComputeData computeData;
+					computeData.shaderPath = arg;
+					result &= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
+				}
+				catch (const exception& e)
+				{
+					if (strcmp(e.what(), "_GLSLC") != 0)
+						cout << e.what() << '\n';
+				}
 
-				compileResult |= Compiler::compileComputeShader(
-					inputPath, outputPath, includePaths, computeData);
-			}
-			catch (const exception& e)
-			{
-				if (strcmp(e.what(), "_GLSLC") != 0)
-					cout << e.what() << '\n';
-			}
-
-			if (!compileResult)
-			{
-				cout << "gslc: error: no shader files found (" << arg << ")\n";
-				return EXIT_FAILURE;
-			}
+				if (!result)
+					cout << "gslc: error: no shader files found (" << arg << ")\n";
+				compileResult &= result;
+			});
 		}
 	}
 
-	return EXIT_SUCCESS;
+	if (threadPool)
+	{
+		threadPool->wait();
+		delete threadPool;
+	}
+	return compileResult ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 #endif

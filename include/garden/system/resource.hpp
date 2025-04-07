@@ -17,6 +17,7 @@
  */
 
 #pragma once
+#include "garden/graphics/buffer.hpp"
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
 #include "garden/graphics/lod.hpp"
@@ -71,6 +72,10 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
  */
 class ResourceSystem : public System, public Singleton<ResourceSystem>
 {
+public:
+	static const vector<string_view> imageFileExts;
+	static const vector<ImageFileType> imageFileTypes;
+	static const vector<string_view> modelFileExts;
 protected:
 	struct GraphicsQueueItem
 	{
@@ -271,6 +276,21 @@ public:
 	 void destroyShared(const Ref<Buffer>& buffer);
 
 	/*******************************************************************************************************************
+	 * @brief Loads model data (vertices and indices) from the resource pack.
+	 * @note Loads from the models directory in debug build.
+	 * 
+	 * @param[in] path target model resource path
+	 * @param[in] channels vertex buffer data channel array
+	 * @param[out] vertexData model vertex data container
+	 * @param[out] indexData model index data container
+	 * @param[out] vertexCount model vertex count
+	 * @param[out] indexCount model index count
+	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 */
+	void loadModelData(const fs::path& path, const vector<BufferChannel>& channels, vector<uint8>& vertexData, 
+		vector<uint8>& indexData, uint32& vertexCount, uint32& indexCount, int32 threadIndex = -1) const;
+
+	/**
 	 * @brief Loads LOD buffer from the resource pack.
 	 * @note Loads from the models directory in debug build.
 	 *

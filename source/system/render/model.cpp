@@ -20,9 +20,18 @@
 #include "math/matrix/transform.hpp"
 #include <filesystem>
 
+// TODO: add bindless support
+
 using namespace garden;
 
-// TODO: add bindless support
+const vector<BufferChannel> ModelRenderSystem::fullModelChannels = 
+{
+	BufferChannel::Positions, BufferChannel::Normals, BufferChannel::TextureCoords, BufferChannel::Tangents
+};
+const vector<BufferChannel> ModelRenderSystem::liteModelChannels = 
+{
+	BufferChannel::Positions, BufferChannel::Normals, BufferChannel::TextureCoords
+};
 
 //**********************************************************************************************************************
 ModelRenderSystem::ModelRenderSystem(const fs::path& pipelinePath, bool useNormalMapping, bool useGBuffer) : 
@@ -201,15 +210,6 @@ ID<GraphicsPipeline> ModelRenderSystem::createBasePipeline()
 }
 
 //**********************************************************************************************************************
-static const vector<BufferChannel> fullModelChannels = 
-{
-	BufferChannel::Positions, BufferChannel::Normals, BufferChannel::TextureCoords, BufferChannel::Tangents
-};
-static const vector<BufferChannel> liteModelChannels = 
-{
-	BufferChannel::Positions, BufferChannel::Normals, BufferChannel::TextureCoords
-};
-
 void ModelRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto modelRenderView = View<ModelRenderComponent>(component);

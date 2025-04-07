@@ -36,7 +36,8 @@ class ModelRenderEditorSystem final : public System
 
 	friend class ecsm::Manager;
 public:
-	static void renderComponent(ModelRenderComponent* component, type_index componentType);
+	static void renderComponent(ModelRenderSystem* system,
+		ModelRenderComponent* component, type_index componentType);
 };
 
 } // namespace garden
