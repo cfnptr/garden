@@ -60,6 +60,6 @@ void main()
 {
 	float4 color = texture(colorMap, fs.texCoords);
 	GBufferValues values = fillModelGBuffer(mraorMap, 
-		normalMap, emissiveMap, fs.tbn, texCoords, color);
+		normalMap, emissiveMap, fs.tbn, fs.texCoords, color);
 	ENCODE_G_BUFFER_VALUES(values);
 }

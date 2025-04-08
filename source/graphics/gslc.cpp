@@ -2492,35 +2492,39 @@ int main(int argc, char *argv[])
 				threadPool = new ThreadPool(false, "T");
 			threadPool->addTask([&compileResult, arg, inputPath, outputPath, includePaths](const ThreadPool::Task& task)
 			{
-				cout << "Compiling shader " << arg << "\n" << flush;
-				auto result = true;
+				if (!compileResult)
+					return;
+
+				// Sending one batched message due to multithreading.
+				cout << string("Compiling ") + arg + "\n" << flush;
+				auto result = false;
 
 				try
 				{
 					GslCompiler::GraphicsData graphicsData;
 					graphicsData.shaderPath = arg;
-					result &= GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, graphicsData);
+					result = GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, graphicsData);
 				}
 				catch (const exception& e)
 				{
 					if (strcmp(e.what(), "_GLSLC") != 0)
-						cout << e.what() << '\n';
+						cout << string(e.what()) + "\n";
 				}
 	
 				try
 				{
 					GslCompiler::ComputeData computeData;
 					computeData.shaderPath = arg;
-					result &= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
+					result |= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
 				}
 				catch (const exception& e)
 				{
 					if (strcmp(e.what(), "_GLSLC") != 0)
-						cout << e.what() << '\n';
+						cout << string(e.what()) + '\n';
 				}
 
 				if (!result)
-					cout << "gslc: error: no shader files found (" << arg << ")\n";
+					cout << string("gslc: error: no shader files found (") + arg + ")\n";
 				compileResult &= result;
 			});
 		}

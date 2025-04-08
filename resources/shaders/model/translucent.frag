@@ -34,6 +34,7 @@ pipelineState
 }
 
 in float2 fs.texCoords;
+in float3 fs.worldPos;
 in float3x3 fs.tbn;
 
 out float4 fb.accum;
@@ -83,7 +84,7 @@ uniform sampler2DArrayShadow
 {
 	comparison = on;
 	filter = linear;
-	wrap = clampToBorder;
+	addressMode = clampToBorder;
 } shadowMap;
 uniform ShadowData
 {
@@ -99,9 +100,9 @@ uniform CameraConstants
 //**********************************************************************************************************************
 void main()
 {
-	float4 color = texture(colorMap, fs.texCoords);
+	float4 baseColor = texture(colorMap, fs.texCoords);
 	GBufferValues values = fillModelGBuffer(mraorMap, 
-		normalMap, emissiveMap, fs.tbn, texCoords, color);
+		normalMap, emissiveMap, fs.tbn, fs.texCoords, baseColor);
 	float3 viewDirection = calcViewDirection(fs.worldPos);
 
 	float4 shadow = float4(cc.shadowColor.rgb, 1.0f);
@@ -114,7 +115,7 @@ void main()
 	}
 
 	float3 hdrColor = float3(0.0f);
-	hdrColor += evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
-	hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * cc.emissiveCoeff * baseColor.a;
+	hdrColor += evaluateIBL(values, shadow, viewDirection, dfgLUT, sh.data, specular);
+	hdrColor += values.emissiveColor * values.emissiveFactor * cc.emissiveCoeff * baseColor.a;
 	computeOIT(float4(hdrColor, baseColor.a), gl.fragCoord.z, fb.accum, fb.reveal);
 }
