@@ -21,6 +21,7 @@ in float2 vs.texCoords : f32;
 in float4 vs.tangent : f32;
 
 out float2 fs.texCoords;
+out float3 fs.worldPos;
 out float3x3 fs.tbn;
 
 uniform pushConstants
@@ -36,6 +37,7 @@ buffer readonly Instance
 void main()
 {
 	gl.position = instance.data[pc.instanceIndex].mvp * float4(vs.position, 1.0f);
+	fs.worldPos = (instance.data[pc.instanceIndex].model * float4(vs.position, 1.0f)).xyz;
 	fs.tbn = computeTBN(instance.data[pc.instanceIndex].model, vs.normal, vs.tangent.xyz);
 	fs.texCoords = vs.texCoords;
 }

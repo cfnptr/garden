@@ -29,13 +29,6 @@ uniform pushConstants
 	float colorMapLayer;
 } pc;
 
-struct InstanceData
-{
-	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
-	float4 texWinBorder;
-};
 buffer readonly Instance
 {
 	InstanceData data[];

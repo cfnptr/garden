@@ -47,11 +47,32 @@ macro(collectPackShaders PACK_CACHE_DIR PACK_RESOURCES_DIR
 		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${SHADER_PART}.spv")
 		list(APPEND ${PACK_RESOURCES} "${SHADER_PART}.spv")
 
-		if(NOT ${SHADER_PATH} IN_LIST ${PACK_SHADERS})
+		# Preventing double .vert and .frag shader name addition.
+		if(NOT ${SHADER_PATH} IN_LIST ${PACK_SHADERS}) 
 			list(APPEND ${PACK_SHADERS} "${SHADER_PATH}")
 			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${SHADER_PATH}.gslh")
 			list(APPEND ${PACK_RESOURCES} "${SHADER_PATH}.gslh")
 		endif()
+	endforeach()
+endmacro()
+
+#***********************************************************************************************************************
+macro(collectPackJson2bsons PACK_CACHE_DIR PACK_RESOURCES_DIR
+	INCLUDE_EDITOR INCLUDE_DEBUG PACK_JSONS PACK_RESOURCES)
+
+	file(GLOB_RECURSE PACK_JSON_PATHS ${${PACK_RESOURCES_DIR}}/scenes/*.scene 
+		${${PACK_RESOURCES_DIR}}/configs/*.json)
+	
+	foreach(JSON ${PACK_JSON_PATHS})
+		if((NOT ${INCLUDE_EDITOR} AND JSON MATCHES "editor") OR
+			(NOT ${INCLUDE_DEBUG} AND JSON MATCHES "debug"))
+			continue()
+		endif()
+
+		string(REPLACE ${${PACK_RESOURCES_DIR}}/ "" JSON_PATH ${JSON})
+		list(APPEND ${PACK_JSONS} "${JSON_PATH}")
+		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${JSON_PATH}")
+		list(APPEND ${PACK_RESOURCES} "${JSON_PATH}")
 	endforeach()
 endmacro()
 
@@ -127,6 +148,14 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
 	collectPackShaders(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR
 		INCLUDE_DEBUG PACK_APP_SHADERS PACK_APP_RES_PATHS)
 
+	set(PACK_GARDEN_JSON2BSONS)
+	set(PACK_APP_JSON2BSONS)
+
+	collectPackJson2bsons(PACK_CACHE_DIR PACK_GARDEN_RES_DIR INCLUDE_EDITOR
+		INCLUDE_DEBUG PACK_GARDEN_JSON2BSONS PACK_APP_RES_PATHS)
+	collectPackJson2bsons(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR
+		INCLUDE_DEBUG PACK_APP_JSON2BSONS PACK_APP_RES_PATHS)
+
 	set(PACK_GARDEN_EQUI2CUBES)
 	set(PACK_APP_EQUI2CUBES)
 
@@ -139,7 +168,7 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
 	collectPackResources(PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS)
 
 	add_custom_command(TARGET ${PACK_EXE_NAME} POST_BUILD VERBATIM
-		COMMAND ${CMAKE_COMMAND} -E echo "Compiling garden shaders..."
+		COMMAND ${CMAKE_COMMAND} -E echo "Compiling Garden shaders..."
 		COMMAND $<TARGET_FILE:gslc> -i ${PACK_GARDEN_RES_DIR} 
 			-o ${PACK_CACHE_DIR} -I ${PACK_GARDEN_RES_DIR}/shaders ${PACK_GARDEN_SHADERS}
 
@@ -148,7 +177,15 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
 			-o ${PACK_CACHE_DIR} -I ${PACK_APP_RES_DIR}/shaders 
 			-I ${PACK_GARDEN_RES_DIR}/shaders ${PACK_APP_SHADERS}
 
-		COMMAND ${CMAKE_COMMAND} -E echo "Converting garden images..."
+		COMMAND ${CMAKE_COMMAND} -E echo "Converting Garden JSON files..."
+		COMMAND $<TARGET_FILE:json2bson> -i ${PACK_GARDEN_RES_DIR} 
+			-o ${PACK_CACHE_DIR} ${PACK_GARDEN_JSON2BSONS}
+
+		COMMAND ${CMAKE_COMMAND} -E echo "Converting ${PACK_EXE_NAME} JSON files..."
+		COMMAND $<TARGET_FILE:json2bson> -i ${PACK_APP_RES_DIR} 
+			-o ${PACK_CACHE_DIR} ${PACK_APP_JSON2BSONS}
+
+		COMMAND ${CMAKE_COMMAND} -E echo "Converting Garden images..."
 		COMMAND $<TARGET_FILE:equi2cube> -i ${PACK_GARDEN_RES_DIR} 
 			-o ${PACK_CACHE_DIR} ${PACK_GARDEN_EQUI2CUBES}
 

@@ -1853,12 +1853,32 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 {
 	GARDEN_ASSERT(!path.empty());
+
 	JsonDeserializer deserializer;
+	fs::path filePath = "scenes" / path; filePath += ".scene";
 
 	#if GARDEN_PACK_RESOURCES
-	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
+	uint64 itemIndex = 0; vector<uint8> dataBuffer;
+	if (!packReader.getItemIndex(filePath, itemIndex))
+	{
+		GARDEN_LOG_ERROR("Scene file does not exist. (path: " + path.generic_string() + ")");
+		return {};
+	}
+
+	packReader.readItemData(itemIndex, dataBuffer);
+
+	try
+	{
+		deserializer.load(dataBuffer);
+		dataBuffer = {};
+	}
+	catch (exception& e)
+	{
+		GARDEN_LOG_ERROR("Failed to deserialize scene. (path: " + path.generic_string() + ")");
+		return {};
+	}
 	#else
-	fs::path filePath = "scenes" / path; filePath += ".scene"; fs::path scenePath;
+	fs::path scenePath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, scenePath))
 	{
 		GARDEN_LOG_ERROR("Scene file does not exist or ambiguous. (path: " + path.generic_string() + ")");
@@ -1871,7 +1891,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	catch (exception& e)
 	{
-		GARDEN_LOG_TRACE("Failed to deserialize scene. ("
+		GARDEN_LOG_ERROR("Failed to deserialize scene. ("
 			"path: " + path.generic_string() + ", error: " + string(e.what()) + ")");
 		return {};
 	}
@@ -2134,8 +2154,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShared)
 {
 	GARDEN_ASSERT(!path.empty());
-	JsonDeserializer deserializer;
-
+	
 	Hash128 hash;
 	if (loadShared)
 	{
@@ -2150,10 +2169,31 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 			return result->second;
 	}
 
+	JsonDeserializer deserializer;
+	fs::path filePath = "animations" / path; filePath += ".anim";
+
 	#if GARDEN_PACK_RESOURCES
-	abort(); // TODO: load binary bson file from the resources, also handle case when scene does not exist
+	uint64 itemIndex = 0; vector<uint8> dataBuffer;
+	if (!packReader.getItemIndex(filePath, itemIndex))
+	{
+		GARDEN_LOG_ERROR("Animation file does not exist. (path: " + path.generic_string() + ")");
+		return {};
+	}
+
+	packReader.readItemData(itemIndex, dataBuffer);
+
+	try
+	{
+		deserializer.load(dataBuffer);
+		dataBuffer = {};
+	}
+	catch (exception& e)
+	{
+		GARDEN_LOG_ERROR("Failed to deserialize animation. (path: " + path.generic_string() + ")");
+		return {};
+	}
 	#else
-	fs::path filePath = "animations" / path; filePath += ".anim"; fs::path animationPath;
+	fs::path animationPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, animationPath))
 	{
 		GARDEN_LOG_ERROR("Animation file does not exist or ambiguous. (path: " + path.generic_string() + ")");
@@ -2166,7 +2206,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	}
 	catch (exception& e)
 	{
-		GARDEN_LOG_TRACE("Failed to deserialize scene. ("
+		GARDEN_LOG_ERROR("Failed to deserialize animation. ("
 			"path: " + path.generic_string() + ", error: " + string(e.what()) + ")");
 		return {};
 	}

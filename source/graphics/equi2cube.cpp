@@ -16,7 +16,6 @@
 #include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
 #include "math/ibl.hpp"
-#include <thread>
 
 #define TINYEXR_IMPLEMENTATION
 #include "garden/graphics/exr.hpp"
@@ -28,7 +27,6 @@
 #include "stb_image_write.h"
 
 #include <atomic>
-#include <vector>
 #include <iostream>
 
 using namespace garden;
@@ -252,7 +250,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "gslc: error: no thread count\n";
+				cout << "equi2cube: error: no thread count\n";
 				return EXIT_FAILURE;
 			}
 
@@ -280,10 +278,15 @@ int main(int argc, char *argv[])
 				threadPool = new ThreadPool(false, "T");
 			threadPool->addTask([&convertResult, arg, inputPath, outputPath](const ThreadPool::Task& task)
 			{
-				cout << "Converting image " << arg << "\n" << flush;
-				auto result = Equi2Cube::convertImage(arg, inputPath, outputPath);;
+				if (!convertResult)
+					return;
+
+				// Sending one batched message due to multithreading.
+				cout << string("Converting ") + arg + "\n" << flush;
+
+				auto result = Equi2Cube::convertImage(arg, inputPath, outputPath);
 				if (!result)
-					cout << "equi2cube: error: no image file found (" << arg << ")\n";
+					cout << string("equi2cube: error: no image file found (") + arg + ")\n";
 				convertResult &= result;
 			});
 		}
