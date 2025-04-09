@@ -670,22 +670,14 @@ void MeshRenderSystem::renderShadows()
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
 			{
 				renderUnsorted(viewProj, MeshRenderType::Opaque, true);
-				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
-			}
-			if (shadowSystem->beginShadowRender(i, MeshRenderType::Color))
-			{
 				renderUnsorted(viewProj, MeshRenderType::Color, true);
-				shadowSystem->endShadowRender(i, MeshRenderType::Color);
-			}
-			if (shadowSystem->beginShadowRender(i, MeshRenderType::OIT))
-			{
-				renderUnsorted(viewProj, MeshRenderType::OIT, true);
-				shadowSystem->endShadowRender(i, MeshRenderType::OIT);
+				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
 			}
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
 			{
+				renderUnsorted(viewProj, MeshRenderType::OIT, true);
 				renderSorted(viewProj, true);
-				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
+				shadowSystem->endShadowRender(i, MeshRenderType::OIT);
 			}
 		}
 	}

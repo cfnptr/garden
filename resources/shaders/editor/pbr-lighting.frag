@@ -20,6 +20,7 @@ spec const bool USE_SUB_SURFACE_SCATTERING = false;
 pipelineState
 {
 	faceCulling = off;
+	colorMask2 = r;
 	colorMask3 = r;
 }
 
@@ -36,20 +37,20 @@ uniform pushConstants
 	float4 mraor;
 	float4 emissive;
 	float4 subsurface;
-	float2 clearCoat;
 	float shadow;
+	float ccRoughness;
 } pc;
 
 void main()
 {
 	GBufferValues values = gBufferValuesDefault();
-	values.baseColor = pc.color;
+	values.baseColor = pc.color.rgb;
+	values.opacity = pc.color.a;
 	values.metallic = pc.mraor.r;
 	values.roughness = pc.mraor.g;
 	values.ambientOcclusion = pc.mraor.b;
 	values.reflectance = pc.mraor.a;
-	values.clearCoat = pc.clearCoat.r;
-	values.clearCoatRoughness = pc.clearCoat.g;
+	values.clearCoatRoughness = pc.ccRoughness;
 	values.shadow = pc.shadow;
 
 	if (USE_EMISSIVE_BUFFER)

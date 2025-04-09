@@ -460,7 +460,7 @@ static void loadMissingImage(vector<uint8>& data, uint2& size, Image::Format& fo
 	pixels[8] = Color::magenta; pixels[9] = Color::black;    pixels[10] = Color::magenta; pixels[11] = Color::black;
 	pixels[12] = Color::black;  pixels[13] = Color::magenta; pixels[14] = Color::black;   pixels[15] = Color::magenta;
 	size = uint2(4, 4);
-	format = Image::Format::SrgbB8G8R8A8;
+	format = Image::Format::SrgbR8G8B8A8;
 }
 static void loadMissingImageFloat(vector<uint8>& data, uint2& size, Image::Format& format)
 {
@@ -690,7 +690,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	SET_CPU_ZONE_SCOPED("Cubemap Data Convert");
 
 	vector<f32x4> floatData; const f32x4* equiPixels;
-	if (format == Image::Format::SrgbB8G8R8A8)
+	if (format == Image::Format::SrgbR8G8B8A8)
 	{
 		floatData.resize(equiData.size() / sizeof(Color));
 		auto dstData = floatData.data();
@@ -1026,7 +1026,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		format = Image::Format::SfloatR32G32B32A32;
 		break;
 	default:
-		format = Image::Format::SrgbB8G8R8A8;
+		format = Image::Format::SrgbR8G8B8A8;
 		break;
 	}
 }
@@ -1217,8 +1217,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 			loadImageArrayData(this, paths, pixelArrays, realSize, format, task.getThreadIndex());
 			
-			if (hasAnyFlag(data->flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbB8G8R8A8)
-				format = Image::Format::UnormB8G8R8A8;
+			if (hasAnyFlag(data->flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
+				format = Image::Format::UnormR8G8B8A8;
 
 			auto formatBinarySize = toBinarySize(format);
 			uint2 imageSize; uint32 layerCount;
@@ -1254,8 +1254,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize; Image::Format format;
 		loadImageArrayData(this, paths, pixelArrays, realSize, format, -1);
 
-		if (hasAnyFlag(flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbB8G8R8A8)
-			format = Image::Format::UnormB8G8R8A8;
+		if (hasAnyFlag(flags, ImageLoadFlags::LinearData) && format == Image::Format::SrgbR8G8B8A8)
+			format = Image::Format::UnormR8G8B8A8;
 
 		auto formatBinarySize = toBinarySize(format);
 		uint2 imageSize; uint32 layerCount;

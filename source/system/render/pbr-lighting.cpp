@@ -296,11 +296,10 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
-	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
-		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
+		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ? // TODO: [1]
 			shadowImageViews[0] : graphicsSystem->getWhiteTexture()) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[1] ?

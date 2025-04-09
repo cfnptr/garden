@@ -21,7 +21,7 @@
  * G-Buffer structure:
  *   0. SrgbB8G8R8A8     (Base Color, unused)
  *   1. UnormB8G8R8A8    (Metallic, Roughness, Ambient Occlusion, Reflectance)
- *   2. UnormB8G8R8A8    (Clear Coat, Clear Coat Roughness, unused, unused)
+ *   2. UnormA2B10G10R10 (Clear Coat Normal, Clear Coat Roughness)
  *   3. UnormA2B10G10R10 (Encoded Normal, Shadow)
  *   4. SrgbB8G8R8A8     (Emissive Color and Factor) [optional]
  *   5. SrgbB8G8R8A8     (Subsurface Color, Thickness) [optional]
@@ -64,24 +64,26 @@ public:
 	 */
 	static constexpr uint8 gBufferCount = 6;
 
-	static constexpr uint8 baseColorGBuffer = 0;   /**< Index of the G-Buffer with encoded base color. */
-	static constexpr uint8 opacityGBuffer = 0;     /**< Index of the G-Buffer with encoded opacity or transmission. */
-	static constexpr uint8 metallicGBuffer = 1;    /**< Index of the G-Buffer with encoded metallic. */
-	static constexpr uint8 roughnessGBuffer = 1;   /**< Index of the G-Buffer with encoded roughness. */
-	static constexpr uint8 materialAoGBuffer = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
-	static constexpr uint8 reflectanceGBuffer = 1; /**< Index of the G-Buffer with encoded reflectance. */
-	static constexpr uint8 clearCoatGBuffer = 2;   /**< Index of the G-Buffer with encoded clear coat. */
-	static constexpr uint8 ccRoughnessGBuffer = 2; /**< Index of the G-Buffer with encoded clear coat roughness. */
-	static constexpr uint8 normalsGBuffer = 3;     /**< Index of the G-Buffer with encoded normals. */
-	static constexpr uint8 shadowGBuffer = 3;      /**< Index of the G-Buffer with encoded shadow. */
-	static constexpr uint8 emColorGBuffer = 4;     /**< Index of the G-Buffer with encoded emissive color. */
-	static constexpr uint8 emFactorGBuffer = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 subsurfaceGBuffer = 5;  /**< Index of the G-Buffer with encoded subsurface color. */
-	static constexpr uint8 thicknessGBuffer = 5;   /**< Index of the G-Buffer with encoded thickness. */
+	static constexpr uint8 baseColorGBuffer = 0;      /**< Index of the G-Buffer with encoded base color. */
+	static constexpr uint8 opacityGBuffer = 0;        /**< Index of the G-Buffer with encoded opacity. */
+	static constexpr uint8 absorptionColorGBuffer = 0;/**< Index of the G-Buffer with encoded absorption color. */
+	static constexpr uint8 transmissionGBuffer = 0;   /**< Index of the G-Buffer with encoded transmission. */
+	static constexpr uint8 metallicGBuffer = 1;      /**< Index of the G-Buffer with encoded metallic. */
+	static constexpr uint8 roughnessGBuffer = 1;     /**< Index of the G-Buffer with encoded roughness. */
+	static constexpr uint8 materialAoGBuffer = 1;    /**< Index of the G-Buffer with encoded material ambient occlusion. */
+	static constexpr uint8 reflectanceGBuffer = 1;   /**< Index of the G-Buffer with encoded reflectance. */
+	static constexpr uint8 ccNormalsGBuffer = 2;     /**< Index of the G-Buffer with encoded clear coat normals. */
+	static constexpr uint8 ccRoughnessGBuffer = 2;   /**< Index of the G-Buffer with encoded clear coat roughness. */
+	static constexpr uint8 normalsGBuffer = 3;       /**< Index of the G-Buffer with encoded normals. */
+	static constexpr uint8 shadowGBuffer = 3;        /**< Index of the G-Buffer with encoded shadow. */
+	static constexpr uint8 emColorGBuffer = 4;       /**< Index of the G-Buffer with encoded emissive color. */
+	static constexpr uint8 emFactorGBuffer = 4;      /**< Index of the G-Buffer with encoded emissive factor. */
+	static constexpr uint8 subsurfaceGBuffer = 5;    /**< Index of the G-Buffer with encoded subsurface color. */
+	static constexpr uint8 thicknessGBuffer = 5;     /**< Index of the G-Buffer with encoded thickness. */
 
 	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormB8G8R8A8;
-	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format gBufferFormat5 = Image::Format::SrgbB8G8R8A8;

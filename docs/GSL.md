@@ -183,7 +183,7 @@ uniform set1 sampler2D someSampler;
 uniform set2 SomeBuffer
 {
     float someValue;
-	int someInteger;
+    int someInteger;
 } uniformBuffer;
 ```
 

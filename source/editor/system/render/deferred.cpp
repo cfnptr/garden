@@ -40,7 +40,6 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPla
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
-	const auto& depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 	
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::tryGet();
 	ID<ImageView> shadowBuffer0, aoBuffer0, aoBuffer1;
@@ -70,7 +69,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPla
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "oitAccumBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[0].imageView) },
 		{ "oitRevealBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[1].imageView) },
-		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView) },
+		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
 		{ "shadowBuffer0", DescriptorSet::Uniform(shadowBuffer0) },
 		{ "aoBuffer0", DescriptorSet::Uniform(aoBuffer0) },
 		{ "aoBuffer1", DescriptorSet::Uniform(aoBuffer1) },
@@ -156,8 +155,8 @@ void DeferredRenderEditorSystem::deferredRender()
 	pushConstants->mraor = (float4)mraorOverride;
 	pushConstants->emissive = (float4)emissiveOverride;
 	pushConstants->subsurface = (float4)subsurfaceOverride;
-	pushConstants->clearCoat = clearCoatOverride;
 	pushConstants->shadow = shadowOverride;
+	pushConstants->ccRoughness = ccRoughnessOverride;
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())
@@ -185,11 +184,11 @@ void DeferredRenderEditorSystem::preLdrRender()
 
 	if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		constexpr auto modes = "Off\0Base Color\0Opacity / Transmission\0Metallic\0Roughness\0Material AO\0"
-			"Reflectance\0Clear Coat\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0"
-			"Emissive Factor\0Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0"
-			"OIT Accumulated Alpha\0OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0"
-			"Global Shadow Alpha\0Global AO\0Denoised Global AO\0\0";
+		constexpr auto modes = "Off\0Base Color\0Opacity\0Transmission\0Metallic\0Roughness\0Material AO\0Reflectance\0"
+			"Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0Emissive Factor\0"
+			"Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0OIT Accumulated Alpha\0"
+			"OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0Global Shadow Alpha\0"
+			"Global AO\0Denoised Global AO\0\0";
 		ImGui::Combo("Draw Mode", &drawMode, modes);
 
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -197,13 +196,12 @@ void DeferredRenderEditorSystem::preLdrRender()
 		{
 			ImGui::SeparatorText("Overrides");
 			ImGui::ColorEdit3("Base Color", &colorOverride);
-			ImGui::SliderFloat("Opaque / Transmission", &colorOverride.floats.w, 0.0f, 1.0f);
+			ImGui::SliderFloat("Opacity", &colorOverride.floats.w, 0.0f, 1.0f);
 			ImGui::SliderFloat("Metallic", &mraorOverride.floats.x, 0.0f, 1.0f);
 			ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
 			ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);
 			ImGui::SliderFloat("Reflectance", &mraorOverride.floats.w, 0.0f, 1.0f);
-			ImGui::SliderFloat("Clear Coat", &clearCoatOverride.x, 0.0f, 1.0f);
-			ImGui::SliderFloat("Clear Coat Roughness", &clearCoatOverride.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("Clear Coat Roughness", &ccRoughnessOverride, 0.0f, 1.0f);
 			ImGui::SliderFloat("G-Buffer Shadows", &shadowOverride, 0.0f, 1.0f);
 
 			ImGui::BeginDisabled(!deferredSystem->useEmissive());

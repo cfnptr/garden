@@ -63,7 +63,7 @@ void main()
 	if (color.a < pc.alphaCutoff)
 		discard;
 
-	GBufferValues values = fillModelGBufferLite(mraorMap, 
-		emissiveMap, fs.texCoords, color, fs.normal);
+	const GBufferValues values = fillModelGBufferLite(
+		mraorMap, emissiveMap, fs.texCoords, color, fs.normal);
 	ENCODE_G_BUFFER_VALUES(values);
 }

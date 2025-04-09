@@ -31,40 +31,14 @@
 #include "common/gbuffer.gsl"
 
 //**********************************************************************************************************************
-float3 surfaceBRDF(GBufferValues gBuffer, Light light, float3 viewDirection, sampler2D dfgLUT)
-{
-	float roughness = max(gBuffer.roughness, 0.045f); // Perceptual, clamped.
-	float3 h = normalize(viewDirection + light.direction);
-	float nov = abs(dot(gBuffer.normal, viewDirection)) + 1e-5f;
-	float nol = clamp(dot(gBuffer.normal, light.direction), 0.0f, 1.0f);
-	float noh = clamp(dot(gBuffer.normal, h), 0.0f, 1.0f);
-	float loh = clamp(dot(light.direction, h), 0.0f, 1.0f);
-	float reflectance = computeDielectricF0(gBuffer.reflectance);
-	float3 f0 = computeF0(gBuffer.baseColor.rgb, gBuffer.metallic, reflectance);
-	
-	float3 fr = specularLobe(noh, nov, nol, loh, f0, roughness);
-	float3 fd = diffuseLobe(gBuffer.baseColor.rgb, gBuffer.metallic);
-
-	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, roughness, f0);
-	float3 color = fd + fr * energyCompensation;
-
-    return (color * light.color) * (light.intensity * light.attenuation * nol);
-}
-float3 evaluateDirectLight(GBufferValues gBuffer, DirectLight directLight, float3 viewDirection, sampler2D dfgLUT)
-{
-	Light light = Light(directLight.color, directLight.intensity, directLight.direction, 1.0f);
-	return surfaceBRDF(gBuffer, light, viewDirection, dfgLUT);
-}
-
-//**********************************************************************************************************************
-float3 evaluateIBL(GBufferValues gBuffer, float4 shadow, float3 viewDirection, 
+float4 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirection, 
 	sampler2D dfgLUT, const float4 iblSH[SH_COEFF_COUNT], samplerCube iblSpecular)
 {
 	float3 shadowColor = shadow.rgb * shadow.a;
 	float roughness = max(gBuffer.roughness, 0.045f); // Perceptual.
-	float nov = abs(dot(gBuffer.normal, viewDirection)) + 1e-5f;
+	float nov = max(dot(gBuffer.normal, viewDirection), 1e-4f);
 	float reflectance = computeDielectricF0(gBuffer.reflectance);
-	float3 f0 = computeF0(gBuffer.baseColor.rgb, gBuffer.metallic, reflectance);
+	float3 f0 = computeF0(gBuffer.baseColor, gBuffer.metallic, reflectance);
 	float3 e = specularDFG(dfgLUT, nov, roughness, f0);
 	float3 reflected = reflect(-viewDirection, gBuffer.normal);
 	float linearRoughness = roughness * roughness;
@@ -77,11 +51,11 @@ float3 evaluateIBL(GBufferValues gBuffer, float4 shadow, float3 viewDirection,
 	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, roughness, f0);
 	float3 fr = e * radiance * energyCompensation;
 
-	float3 diffuseColor = computeDiffuseColor(gBuffer.baseColor.rgb, gBuffer.metallic);
+	float3 diffuseColor = computeDiffuseColor(gBuffer.baseColor, gBuffer.metallic);
 	float3 irradiance = diffuseIrradiance(gBuffer.normal, iblSH) * shadowColor;
 	float3 fd = diffuseColor * irradiance * (1.0f - e);
 
-	if (USE_SUB_SURFACE_SCATTERING && gBuffer.thickness < 1.0f)
+	if (USE_SUB_SURFACE_SCATTERING && gBuffer.thickness < 1.0f && gBuffer.opacity >= FLOAT_EPS6)
 	{
 		float3 viewDependent = prefilteredRadiance(iblSpecular, 
 			-viewDirection, linearRoughness, 1.0 + gBuffer.thickness);
@@ -92,15 +66,36 @@ float3 evaluateIBL(GBufferValues gBuffer, float4 shadow, float3 viewDirection,
 
 	if (gBuffer.ambientOcclusion < 1.0f)
 	{
-		float diffuseAO = gBuffer.ambientOcclusion;
-		float specularAO = specularAoLagarde(nov, diffuseAO, linearRoughness);
-		fd *= gtaoMultiBounce(diffuseAO, diffuseColor);
+		float specularAO = specularAoLagarde(nov, gBuffer.ambientOcclusion, linearRoughness);
+		fd *= gtaoMultiBounce(gBuffer.ambientOcclusion, diffuseColor);
 		fr *= gtaoMultiBounce(specularAO, f0);
 	}
 
 	/// TODO: evaluateSheenIBL();
+
+	if (gBuffer.clearCoatRoughness > 0.0)
+	{
+		float clearCoatNov = max(dot(gBuffer.normal, viewDirection), 1e-4f);
+		float3 clearCoatR = reflect(-viewDirection, gBuffer.clearCoatNormal);
+		float fc = schlick(0.04f, 1.0f, clearCoatNov);
+		float attenuation = 1.0f - fc;
+		fd *= attenuation; fr *= attenuation;
+
+		float clearCoatRoughness = max(gBuffer.clearCoatRoughness, 0.045f); // Perceptual.
+		float ccLinearRoughness = clearCoatRoughness * clearCoatRoughness;
+		float specularAO = specularAoLagarde(clearCoatNov, gBuffer.ambientOcclusion, ccLinearRoughness);
+		fr += prefilteredRadiance(iblSpecular, clearCoatR, clearCoatRoughness) * (specularAO * fc);
+    }
+
+	float opacity = gBuffer.opacity;
+	if (gBuffer.opacity < FLOAT_EPS6)
+	{
+		fd = min(float3(1.0), exp(-gBuffer.absorptionColor * gBuffer.thickness)) * (1.0f - e);
+		opacity = 1.0f - pow(dot(fd, float3(0.2126f, 0.7152f, 0.0722f)), 0.5f);
+		fd *= shadowColor;
+	}
 	
-	return fd + fr;
+	return float4(fd + fr, opacity);
 }
 
 // TODO: support another shading models:

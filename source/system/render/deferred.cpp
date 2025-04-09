@@ -150,7 +150,7 @@ static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer)
 	auto hdrBufferView = graphicsSystem->get(hdrBuffer);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), false, false, true) };
+	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), false, true, true) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
@@ -179,7 +179,7 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 	auto ldrBufferView = graphicsSystem->get(ldrBuffer);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), false, false, true) };
+	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), false, true, true) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
@@ -193,7 +193,7 @@ static ID<Framebuffer> createMetaLdrFramebuffer(ID<Image> ldrBuffer, ID<Image> d
 	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), false, false, true) };
+	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), false, true, true) };
 	Framebuffer::OutputAttachment depthStencilAttachment(
 		depthStencilBufferView->getDefaultView(), false, true, true);
 
@@ -208,7 +208,7 @@ static ID<Framebuffer> createUiFramebuffer(ID<Image> uiBuffer)
 	auto uiBufferView = graphicsSystem->get(uiBuffer);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(uiBufferView->getDefaultView(), false, false, true) };
+	{ Framebuffer::OutputAttachment(uiBufferView->getDefaultView(), false, true, true) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));

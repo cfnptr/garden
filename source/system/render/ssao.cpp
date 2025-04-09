@@ -78,15 +78,14 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> sampleBuffer, 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	const auto& colorAttachments = gFramebufferView->getColorAttachments();
-	auto depthStencilAttachment = gFramebufferView->getDepthStencilAttachment();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
-		{ "gBufferNormals", DescriptorSet::Uniform(
-			colorAttachments[DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },
-		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView, 1, swapchainSize) },
+		{ "gBufferNormals", DescriptorSet::Uniform(gFramebufferView->getColorAttachments()[
+			DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },
+		{ "depthBuffer", DescriptorSet::Uniform(
+			gFramebufferView->getDepthStencilAttachment().imageView, 1, swapchainSize) },
 		{ "samples", DescriptorSet::Uniform(sampleBuffer, 1, swapchainSize) },
 		{ "noise", DescriptorSet::Uniform(graphicsSystem->get(noiseTexture)->getDefaultView(), 1, swapchainSize) },
 		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCameraConstantsBuffers()) }

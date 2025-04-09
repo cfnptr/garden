@@ -101,6 +101,8 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool useVsyn
 }
 GraphicsSystem::~GraphicsSystem()
 {
+	GraphicsAPI::get()->storePipelineCache();
+
 	if (Manager::Instance::get()->isRunning)
 	{
 		// Note: constants buffers and other resources will destroyed by terminating graphics API.
@@ -556,7 +558,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 {
 	if (!normalMapTexture)
 	{
-		const Color data[1] = { Color(127, 127, 255, 255) };
+		const Color data[1] = { Color(255, 127, 127, 255) }; // Note: R/B flipped.
 		auto texture = createImage(Image::Format::UnormB8G8R8A8,
 			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");

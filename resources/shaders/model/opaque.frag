@@ -59,7 +59,7 @@ uniform set1 sampler2D
 void main()
 {
 	float4 color = texture(colorMap, fs.texCoords);
-	GBufferValues values = fillModelGBuffer(mraorMap, 
+	const GBufferValues values = fillModelGBuffer(mraorMap, 
 		normalMap, emissiveMap, fs.tbn, fs.texCoords, color);
 	ENCODE_G_BUFFER_VALUES(values);
 }

@@ -202,6 +202,11 @@ public:
 	static void terminate();
 
 	/**
+	 * @brief Stores shader pipeline cache to the disk.
+	 */
+	virtual void storePipelineCache() { }
+
+	/**
 	 * @brief Is graphics API initialized.
 	 */
 	inline static bool isInitialized() noexcept { return apiInstance; }
