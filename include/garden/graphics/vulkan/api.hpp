@@ -113,6 +113,10 @@ public:
 	 * @brief Actually destroys unused GPU resources.
 	 */
 	void flushDestroyBuffer() final;
+	/**
+	 * @brief Stores shader pipeline cache to the disk.
+	 */
+	void storePipelineCache() final;
 
 	/**
 	 * @brief Returns Vulkan graphics API instance.

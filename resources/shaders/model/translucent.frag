@@ -101,7 +101,7 @@ uniform CameraConstants
 void main()
 {
 	float4 baseColor = texture(colorMap, fs.texCoords);
-	GBufferValues values = fillModelGBuffer(mraorMap, 
+	const GBufferValues values = fillModelGBuffer(mraorMap, 
 		normalMap, emissiveMap, fs.tbn, fs.texCoords, baseColor);
 	float3 viewDirection = calcViewDirection(fs.worldPos);
 
@@ -114,8 +114,7 @@ void main()
 		shadow.a -= evaluateCsmShadows(shadowMap, cascadeID, lightCoords) * shadowData.farPlanesIntens.w;
 	}
 
-	float3 hdrColor = float3(0.0f);
-	hdrColor += evaluateIBL(values, shadow, viewDirection, dfgLUT, sh.data, specular);
-	hdrColor += values.emissiveColor * values.emissiveFactor * cc.emissiveCoeff * baseColor.a;
-	computeOIT(float4(hdrColor, baseColor.a), gl.fragCoord.z, fb.accum, fb.reveal);
+	float4 hdrColor = evaluateIBL(values, shadow, viewDirection, dfgLUT, sh.data, specular);
+	hdrColor.rgb += values.emissiveColor * values.emissiveFactor * cc.emissiveCoeff * hdrColor.a;
+	computeOIT(hdrColor, gl.fragCoord.z, fb.accum, fb.reveal);
 }

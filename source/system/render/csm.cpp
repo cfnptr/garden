@@ -132,12 +132,11 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Image> shadowMap,
 	auto shadowMapView = graphicsSystem->get(shadowMap);
 	auto transparentMapView = graphicsSystem->get(transparentMap);
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
-	auto depthStencilAttachment = gFramebuffer->getDepthStencilAttachment();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	
 	map<string, DescriptorSet::Uniform> uniforms =
 	{ 
-		{ "depthBuffer", DescriptorSet::Uniform(depthStencilAttachment.imageView, 1, swapchainSize) },
+		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, swapchainSize) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
 		{ "shadowMap", DescriptorSet::Uniform(shadowMapView->getDefaultView(), 1, swapchainSize) },
 		{ "transparentMap", DescriptorSet::Uniform(transparentMapView->getDefaultView(), 1, swapchainSize) }

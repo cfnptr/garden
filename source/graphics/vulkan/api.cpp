@@ -689,42 +689,6 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 }
 
 //**********************************************************************************************************************
-static void destroyPipelineCache(const string& appDataName, Version appVersion, vk::PipelineCache pipelineCache, 
-	vk::Device device, const vk::PhysicalDeviceProperties2& deviceProperties)
-{
-	auto cacheData = device.getPipelineCacheData((VkPipelineCache)pipelineCache);
-	if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
-	{
-		auto directory = mpio::Directory::getAppDataPath(appDataName) / "cache";
-		if (!fs::exists(directory))
-			fs::create_directories(directory);
-		auto path = directory / "shaders";
-		ofstream outputStream(path, ios::out | ios::binary);
-
-		if (outputStream.is_open())
-		{
-			outputStream.write("GSLC", 4);
-			const uint32 vkEngineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
-				GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
-			const uint32 vkAppVersion = VK_MAKE_API_VERSION(0,
-				appVersion.major, appVersion.minor, appVersion.patch);
-			outputStream.write((const char*)&vkEngineVersion, sizeof(uint32));
-			outputStream.write((const char*)&vkAppVersion, sizeof(uint32));
-			auto dataSize = (uint32)cacheData.size();
-			outputStream.write((const char*)&dataSize, sizeof(uint32));
-			auto hash = Hash128(cacheData.data(), cacheData.size());
-			outputStream.write((const char*)&hash, sizeof(Hash128));
-			outputStream.write((const char*)
-				&deviceProperties.properties.driverVersion, sizeof(uint32));
-			auto driverABI = (uint32)sizeof(void*);
-			outputStream.write((const char*)&driverABI, sizeof(uint32));
-			outputStream.write((const char*)cacheData.data(), cacheData.size());
-		}
-	}
-	device.destroyPipelineCache(pipelineCache);
-}
-
-//**********************************************************************************************************************
 VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
 	int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen) : 
 	GraphicsAPI(appName, windowSize, isFullscreen)
@@ -822,8 +786,7 @@ VulkanAPI::~VulkanAPI()
 
 	if (device)
 	{
-		destroyPipelineCache(appDataName, appVersion, 
-			pipelineCache, device, deviceProperties);
+		device.destroyPipelineCache(pipelineCache);
 		device.destroyDescriptorPool(descriptorPool);
 		device.destroyCommandPool(computeCommandPool);
 		device.destroyCommandPool(transferCommandPool);
@@ -915,4 +878,37 @@ void VulkanAPI::flushDestroyBuffer()
 	}
 
 	destroyBuffer.clear();
+}
+
+void VulkanAPI::storePipelineCache()
+{
+	auto cacheData = device.getPipelineCacheData((VkPipelineCache)pipelineCache);
+	if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
+	{
+		auto directory = mpio::Directory::getAppDataPath(appDataName) / "cache";
+		if (!fs::exists(directory))
+			fs::create_directories(directory);
+		auto path = directory / "shaders";
+		ofstream outputStream(path, ios::out | ios::binary);
+
+		if (outputStream.is_open())
+		{
+			outputStream.write("GSLC", 4);
+			const uint32 vkEngineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
+				GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
+			const uint32 vkAppVersion = VK_MAKE_API_VERSION(0,
+				appVersion.major, appVersion.minor, appVersion.patch);
+			outputStream.write((const char*)&vkEngineVersion, sizeof(uint32));
+			outputStream.write((const char*)&vkAppVersion, sizeof(uint32));
+			auto dataSize = (uint32)cacheData.size();
+			outputStream.write((const char*)&dataSize, sizeof(uint32));
+			auto hash = Hash128(cacheData.data(), cacheData.size());
+			outputStream.write((const char*)&hash, sizeof(Hash128));
+			outputStream.write((const char*)
+				&deviceProperties.properties.driverVersion, sizeof(uint32));
+			auto driverABI = (uint32)sizeof(void*);
+			outputStream.write((const char*)&driverABI, sizeof(uint32));
+			outputStream.write((const char*)cacheData.data(), cacheData.size());
+		}
+	}
 }

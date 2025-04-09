@@ -26,12 +26,12 @@ pipelineState
 
 #define OFF_DRAW_MODE 0
 #define BASE_COLOR_DRAW_MODE 1
-#define OPACITY_TRANSMISSION_DRAW_MODE 2
-#define METALLIC_DRAW_MODE 3
-#define ROUGHNESS_DRAW_MODE 4
-#define MATERIAL_AO_DRAW_MODE 5
-#define REFLECTANCE_DRAW_MODE 6
-#define CLEAR_COAT_DRAW_MODE 7
+#define OPACITY_DRAW_MODE 2
+#define TRANSMISSION_DRAW_MODE 3
+#define METALLIC_DRAW_MODE 4
+#define ROUGHNESS_DRAW_MODE 5
+#define MATERIAL_AO_DRAW_MODE 6
+#define REFLECTANCE_DRAW_MODE 7
 #define CLEAR_COAT_ROUGHNESS_DRAW_MODE 8
 #define NORMALS_DRAW_MODE 9
 #define MATERIAL_SHADOWS_DRAW_MODE 10
@@ -82,7 +82,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	const GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
 
 	if (pc.drawMode == OFF_DRAW_MODE)
 	{
@@ -90,11 +90,15 @@ void main()
 	}
 	else if (pc.drawMode == BASE_COLOR_DRAW_MODE)
 	{
-		fb.color = float4(gBuffer.baseColor.rgb, 1.0f);
+		fb.color = float4(gBuffer.baseColor, 1.0f);
 	}
-	else if (pc.drawMode == OPACITY_TRANSMISSION_DRAW_MODE)
+	else if (pc.drawMode == OPACITY_DRAW_MODE)
 	{
-		fb.color = float4(float3(gBuffer.baseColor.a), 1.0f);
+		fb.color = float4(float3(gBuffer.opacity), 1.0f);
+	}
+	else if (pc.drawMode == TRANSMISSION_DRAW_MODE)
+	{
+		fb.color = float4(float3(gBuffer.transmission), 1.0f);
 	}
 	else if (pc.drawMode == METALLIC_DRAW_MODE)
 	{
@@ -111,10 +115,6 @@ void main()
 	else if (pc.drawMode == REFLECTANCE_DRAW_MODE)
 	{
 		fb.color = float4(float3(gBuffer.reflectance), 1.0f);
-	}
-	else if (pc.drawMode == CLEAR_COAT_DRAW_MODE)
-	{
-		fb.color = float4(float3(gBuffer.clearCoat), 1.0f);
 	}
 	else if (pc.drawMode == CLEAR_COAT_ROUGHNESS_DRAW_MODE)
 	{

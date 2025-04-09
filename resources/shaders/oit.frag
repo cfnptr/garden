@@ -43,6 +43,7 @@ void main()
 		discard;
 
 	float4 accumulation = texelFetch(accumBuffer, int2(gl.fragCoord.xy), 0);
+	
 	if (isinf(max(abs(accumulation.rgb))))
 		accumulation.rgb = float3(accumulation.a);
 
