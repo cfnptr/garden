@@ -103,17 +103,22 @@ public:
 		SpecConstValue(float value) { constFloat.value = value; constBool.type = GslDataType::Float; }
 	};
 
+	using SamplerStates = map<string, Sampler::State, less<>>;
+	using Uniforms = map<string, Uniform, less<>>;
+	using SpecConsts = map<string, SpecConst, less<>>;
+	using SpecConstValues = map<string, SpecConstValue, less<>>;
+
 	/*******************************************************************************************************************
 	 * @brief Rendering pipeline create data container.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
 	 */
 	struct CreateData
 	{
-		map<string, Sampler::State> samplerStates;
-		map<string, Uniform> uniforms;
-		map<string, SpecConst> specConsts;
-		map<string, SpecConstValue> specConstValues;
-		map<string, Sampler::State> samplerStateOverrides;
+		SamplerStates samplerStates;
+		Uniforms uniforms;
+		SpecConsts specConsts;
+		SpecConstValues specConstValues;
+		SamplerStates samplerStateOverrides;
 		vector<uint8> headerData;
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
@@ -124,7 +129,7 @@ public:
 		ShaderStage pushConstantsStages = {};
 	};
 protected:
-	map<string, Uniform> uniforms;
+	Uniforms uniforms;
 	vector<uint8> pushConstantsBuffer;
 	vector<void*> samplers;
 	vector<void*> descriptorSetLayouts;
@@ -158,8 +163,8 @@ protected:
 	static vector<void*> createShaders(const vector<vector<uint8>>& code, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);
 
-	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
-		const map<string, SpecConstValue>& specConstValues, ShaderStage shaderStage, uint8 variantCount);
+	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const SpecConsts& specConsts, 
+		const SpecConstValues& specConstValues, ShaderStage shaderStage, uint8 variantCount);
 	static void setVkVariantIndex(void* specInfo, uint8 variantIndex);
 	static void updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 descriptorDataSize);
 	static bool checkThreadIndex(int32 threadIndex);
@@ -186,7 +191,7 @@ public:
 	 * @brief Returns pipeline uniforms map.
 	 * @details Uniforms are loaded from the compiled shader files.
 	 */
-	const map<string, Uniform>& getUniforms() const noexcept { return uniforms; }
+	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
 	 * @brief Returns pipeline push constants data buffer.
 	 * @details You can use it to access written push constants data.
@@ -410,7 +415,7 @@ public:
 	 * @warning In most cases you should use @ref Pipeline functions.
 	 * @param[in] pipeline target pipeline instance
 	 */
-	static map<string, Pipeline::Uniform>& getUniforms(Pipeline& pipeline) noexcept { return pipeline.uniforms; }
+	static Pipeline::Uniforms& getUniforms(Pipeline& pipeline) noexcept { return pipeline.uniforms; }
 	/**
 	 * @brief Returns pipeline push constants buffer.
 	 * @warning In most cases you should use @ref Pipeline functions.

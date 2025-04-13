@@ -27,7 +27,7 @@ static ID<Framebuffer> createFramebuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[1]); // Reusing G-Buffer memory.
+	auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[0]); // Reusing G-Buffer memory.
 	GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
@@ -43,7 +43,7 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer);
 }
 
-static map<string, DescriptorSet::Uniform> getUniforms()
+static DescriptorSet::Uniforms getUniforms()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -52,7 +52,7 @@ static map<string, DescriptorSet::Uniform> getUniforms()
 
 	// TODO: support forward rendering too
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "ldrBuffer", DescriptorSet::Uniform(ldrFramebufferView->getColorAttachments()[0].imageView) },
@@ -138,7 +138,7 @@ void FxaaRenderSystem::preUiRender()
 	pushConstants->invFrameSize = float2::one / framebufferView->getSize();
 
 	SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
-	framebufferView->beginRenderPass(f32x4::zero);
+	framebufferView->beginRenderPass(float4::zero);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);
@@ -161,7 +161,7 @@ void FxaaRenderSystem::gBufferRecreate()
 		if (framebuffer)
 		{
 			auto deferredSystem = DeferredRenderSystem::Instance::get();
-			auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[1]); // Reusing G-Buffer memory.
+			auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[0]); // Reusing G-Buffer memory.
 			GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 			auto framebufferView = graphicsSystem->get(framebuffer);

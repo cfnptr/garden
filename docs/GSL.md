@@ -132,9 +132,13 @@ uniform samplerCube someSampler;
 	intOpaqueBlack | floatOpaqueWhite | intOpaqueWhite ] - Specify the border clamp color. (floatTransparentBlack)
 * **comparison** [ on | off ] - Enable or disable comparison against a reference value during lookups. (off)
 * **anisoFiltering** [ on | off ] - Enable or disable texel anisotropic filtering. (off)
+* **maxAnisotropy** [ 1 | 2 | 4 | 8 | 16 ] - Anisotropy value clamp used by the sampler. (1)
 * **unnormCoords** [ on | off ] - Controls whether to use unnormalized texel coordinates to address texels of the image. (off)
 * **compareOperation** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value to apply to fetched data before filtering. (less)
+* **mipLodBias** [ 0.0 | 1.0 | -1.0 | ... ] - Bias to be added to mipmap LOD calculation. (0.0)
+* **minLod** [ 0.0 | 0.5 | 2.0 | ... ] - Used to clamp the minimum of the computed LOD value. (0.0)
+* **maxLod** [ 0.0 | 1.5 | 5.0 | inf | ... ] - Used to clamp the maximum of the computed LOD value. (inf)
 
 **Texture address mode types**: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
 

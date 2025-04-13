@@ -15,18 +15,23 @@
 # Based on Steam survey CPU instruction set support.
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-	add_compile_options(/MP /nologo /utf-8 /arch:AVX2)
-
+	add_compile_options(/MP /nologo /utf-8)
+	if(NOT GARDEN_DO_NOT_USE_AVX2)
+		add_compile_options(/arch:AVX2)
+	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(/GL)
 	endif()
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
-	add_compile_options(-march=haswell -Wno-unused-function -Wno-unused-private-field 
-		-Wno-reorder-ctor -Wno-switch-default -Wno-nan-infinity-disabled)
-
+	if(NOT GARDEN_DO_NOT_USE_AVX2)
+		add_compile_options(-march=haswell)
+	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(-flto)
 	endif()
+
+	add_compile_options(-Wno-unused-function -Wno-unused-private-field 
+		-Wno-reorder-ctor -Wno-switch-default -Wno-nan-infinity-disabled)
 
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -35,4 +40,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 			add_compile_options(-fno-fat-lto-objects)
 		endif()
 	endif()
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_compile_options(-fstandalone-debug)
 endif()

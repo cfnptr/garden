@@ -97,7 +97,10 @@ public:
 class SpawnerSystem final : public ComponentSystem<SpawnerComponent>, 
 	public Singleton<SpawnerSystem>, public ISerializable
 {
-	unordered_map<string, Hash128> sharedPrefabs;
+public:
+	using SharedPrefabs = map<string, Hash128, less<>>;
+private:
+	SharedPrefabs sharedPrefabs;
 	string valueStringCache;
 
 	/**
@@ -123,45 +126,41 @@ class SpawnerSystem final : public ComponentSystem<SpawnerComponent>,
 	friend struct LinkComponent;
 public:
 	/**
-	 * @brief Returns spawner component pool.
-	 */
-	const LinearPool<SpawnerComponent>& getComponents() const noexcept { return components; }
-	/**
 	 * @brief Returns shared prefab map.
 	 */
-	const unordered_map<string, Hash128>& getSharedPrefabs() const noexcept { return sharedPrefabs; }
+	const SharedPrefabs& getSharedPrefabs() const noexcept { return sharedPrefabs; }
 
 	/**
 	 * @brief Is shared prefab exists.
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 */
-	bool hasSharedPrefab(const string& path) const { return sharedPrefabs.find(path) != sharedPrefabs.end(); }
+	bool hasSharedPrefab(string_view path) const { return sharedPrefabs.find(path) != sharedPrefabs.end(); }
 
 	/**
 	 * @brief Adds shared prefab to the map.
 	 * 
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param[in] uuid target shared prefab UUID
 	 * 
 	 * @return True if a new shared prefab was added to the map.
 	 */
-	bool tryAddSharedPrefab(const string& path, const Hash128& uuid);
+	bool tryAddSharedPrefab(string_view path, const Hash128& uuid);
 	/**
 	 * @brief Adds shared prefab to the map.
 	 *
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param prefab target shared prefab entity
 	 *
 	 * @return True if a new shared prefab was added to the map.
 	 */
-	bool tryAddSharedPrefab(const string& path, ID<Entity> prefab);
+	bool tryAddSharedPrefab(string_view path, ID<Entity> prefab);
 	/**
 	 * @brief Adds shared prefab to the map.
 	 *
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param[in] uuid target shared prefab UUID
 	 */
-	void addSharedPrefab(const string& path, const Hash128& uuid)
+	void addSharedPrefab(string_view path, const Hash128& uuid)
 	{
 		auto result = tryAddSharedPrefab(path, uuid);
 		GARDEN_ASSERT(result); // Shared prefab already exist
@@ -169,10 +168,10 @@ public:
 	/**
 	 * @brief Adds shared prefab to the map.
 	 *
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param prefab target shared prefab entity
 	 */
-	void addSharedPrefab(const string& path, ID<Entity> prefab)
+	void addSharedPrefab(string_view path, ID<Entity> prefab)
 	{
 		auto result = tryAddSharedPrefab(path, prefab);
 		GARDEN_ASSERT(result); // Shared prefab already exist
@@ -181,31 +180,31 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Returns shared prefab UUID if exist.
 	 *
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param[out] uuid shared prefab UUID
 	 *
 	 * @return True if shared prefab exist.
 	 */
-	bool tryGetSharedPrefab(const string& path, Hash128& uuid);
+	bool tryGetSharedPrefab(string_view path, Hash128& uuid);
 	/**
 	 * @brief Returns shared prefab entity if exist.
 	 *
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param[out] prefab shared prefab entity
 	 *
 	 * @return True if shared prefab exist.
 	 */
-	bool tryGetSharedPrefab(const string& path, ID<Entity>& prefab);
+	bool tryGetSharedPrefab(string_view path, ID<Entity>& prefab);
 	/**
 	 * @brief Returns shared prefab UUD and entity if exist.
 	 *
-	 * @param[in] path target shared prefab path
+	 * @param path target shared prefab path
 	 * @param[out] uuid shared prefab UUID
 	 * @param[out] prefab shared prefab entity
 	 *
 	 * @return True if shared prefab exist.
 	 */
-	bool tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Entity>& prefab);
+	bool tryGetSharedPrefab(string_view path, Hash128& uuid, ID<Entity>& prefab);
 
 	/**
 	 * @brief Destroys all existing shared prefab entities and clears the map.

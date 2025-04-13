@@ -46,6 +46,7 @@ class EditorRenderSystem final : public System, public Singleton<EditorRenderSys
 {
 public:
 	using OnComponent = std::function<void(ID<Entity> entity, bool isOpened)>;
+	using OnFileSelect = std::function<void(const fs::path&)>;
 
 	struct Inspector final
 	{
@@ -55,14 +56,19 @@ public:
 		Inspector(const OnComponent& onComponent, float priority = 0.0f) :
 			onComponent(onComponent), priority(priority) { }
 	};
+
+	
+	using OnComponents = multimap<float, pair<System*, OnComponent>>;
+	using EntityInspectors = unordered_map<type_index, Inspector>;
 private:
-	unordered_map<type_index, Inspector> entityInspectors;
+	OnComponents onComponents;
+	EntityInspectors entityInspectors;
 	fs::path exportsScenePath = "unnamed";
 	fs::path fileSelectDirectory;
 	fs::path selectedEntry;
 	fs::path selectedFile;
 	vector<string_view> fileExtensions;
-	std::function<void(const fs::path)> onFileSelect;
+	OnFileSelect onFileSelect;
 	double lastFps = 0.0;
 	bool demoWindow = false;
 	bool aboutWindow = false;
@@ -128,8 +134,8 @@ public:
 	bool isPlaying() const noexcept { return playing; }
 	void setPlaying(bool isPlaying);
 
-	void openFileSelector(const std::function<void(const fs::path&)>& onSelect,
-		const fs::path& directory = {}, const vector<string_view>&  extensions = {});
+	void openFileSelector(const OnFileSelect& onSelect, const fs::path& directory = {}, 
+		const vector<string_view>&  extensions = {});
 	void drawFileSelector(const char* name, fs::path& path, ID<Entity> entity, 
 		type_index componentType, const fs::path& directory, const vector<string_view>& extensions);
 	void drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet,

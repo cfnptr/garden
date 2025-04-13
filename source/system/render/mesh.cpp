@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/mesh.hpp"
+#include "garden/defines.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/transform.hpp"
@@ -20,6 +21,7 @@
 #include "garden/profiler.hpp"
 
 #include "math/matrix/transform.hpp"
+#include <string>
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/graphics.hpp"
@@ -28,8 +30,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-MeshRenderSystem::MeshRenderSystem(bool useAsyncRecording, bool useAsyncPreparing, bool setSingleton) :
-	Singleton(setSingleton), asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
+MeshRenderSystem::MeshRenderSystem(bool useOIT, bool useAsyncRecording, bool useAsyncPreparing, bool setSingleton) :
+	Singleton(setSingleton), oit(useOIT), asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
@@ -56,7 +58,12 @@ void MeshRenderSystem::init()
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
-		ECSM_SUBSCRIBE_TO_EVENT("OitRender", MeshRenderSystem::oitRender);
+		ECSM_SUBSCRIBE_TO_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+
+		if (oit)
+			ECSM_SUBSCRIBE_TO_EVENT("OitRender", MeshRenderSystem::oitRender);
+		else
+			ECSM_SUBSCRIBE_TO_EVENT("Translucent", MeshRenderSystem::translucentRender);
 	}
 }
 void MeshRenderSystem::deinit()
@@ -73,7 +80,12 @@ void MeshRenderSystem::deinit()
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", MeshRenderSystem::oitRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+
+			if (oit)
+				ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", MeshRenderSystem::oitRender);
+			else
+				ECSM_UNSUBSCRIBE_FROM_EVENT("Translucent", MeshRenderSystem::translucentRender);
 		}
 
 		for (auto buffer : sortedBuffers)
@@ -315,8 +327,21 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	for (auto meshSystem : meshSystems)
 	{
 		auto renderType = meshSystem->getMeshRenderType();
-		if (renderType == MeshRenderType::Opaque || 
-			renderType == MeshRenderType::Color || renderType == MeshRenderType::OIT)
+
+		#if GARDEN_DEBUG
+		// Supported only translucent or OIT meshes, not both.
+		if (oit)
+		{
+			GARDEN_ASSERT(renderType != MeshRenderType::Translucent);
+		}
+		else
+		{
+			GARDEN_ASSERT(renderType != MeshRenderType::OIT);
+		}
+		#endif
+
+		if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque || 
+			renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
 		{
 			unsortedBufferCount++;
 		}
@@ -366,8 +391,8 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		auto componentCount = componentPool.getCount();
 		auto renderType = meshSystem->getMeshRenderType();
 		
-		if (renderType == MeshRenderType::Opaque ||
-			renderType == MeshRenderType::Color || renderType == MeshRenderType::OIT)
+		if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque || 
+			renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
 		{
 			auto unsortedBuffer = unsortedBuffers[unsortedBufferIndex++];
 			unsortedBuffer->meshSystem = meshSystem;
@@ -425,7 +450,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 				if (sortedThreadMeshes.size() < threadPool.getThreadCount())
 					sortedThreadMeshes.resize(threadPool.getThreadCount());
 
-				threadSystem->getForegroundPool().addItems([this, &cameraOffset, &cameraPosition, frustumPlanes, 
+				threadPool.addItems([this, &cameraOffset, &cameraPosition, frustumPlanes, 
 					sortedBuffer, bufferIndex, isShadowPass](const ThreadPool::Task& task) // Do not optimize args!
 				{
 					prepareSortedMeshes(cameraOffset, cameraPosition, frustumPlanes, sortedBuffer, 
@@ -448,29 +473,32 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		}
 	}		
 
-	if (threadSystem)
-		threadSystem->getForegroundPool().wait();
-
-	#if GARDEN_EDITOR
-	if (graphicsEditorSystem)
+	if (!meshSystems.empty())
 	{
-		for (uint32 i = 0; i < unsortedBufferCount; i++)
+		if (threadSystem)
+			threadSystem->getForegroundPool().wait();
+
+		#if GARDEN_EDITOR
+		if (graphicsEditorSystem)
 		{
-			auto unsortedBuffer = unsortedBuffers[i];
-			if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::OIT)
-				graphicsEditorSystem->translucentDrawCount += unsortedBuffer->drawCount.load();
-			else
-				graphicsEditorSystem->opaqueDrawCount += unsortedBuffer->drawCount.load();
+			for (uint32 i = 0; i < unsortedBufferCount; i++)
+			{
+				auto unsortedBuffer = unsortedBuffers[i];
+				if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::OIT)
+					graphicsEditorSystem->translucentDrawCount += unsortedBuffer->drawCount.load();
+				else
+					graphicsEditorSystem->opaqueDrawCount += unsortedBuffer->drawCount.load();
+			}
+
+			graphicsEditorSystem->translucentDrawCount += sortedDrawIndex.load();
 		}
+		#endif	
 
-		graphicsEditorSystem->translucentDrawCount += sortedDrawIndex.load();
+		sortMeshes();
+
+		if (threadSystem)
+			threadSystem->getForegroundPool().wait();
 	}
-	#endif	
-
-	sortMeshes();
-
-	if (threadSystem)
-		threadSystem->getForegroundPool().wait();
 }
 
 //**********************************************************************************************************************
@@ -675,9 +703,10 @@ void MeshRenderSystem::renderShadows()
 			}
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
 			{
+				renderUnsorted(viewProj, MeshRenderType::Refracted, true);
 				renderUnsorted(viewProj, MeshRenderType::OIT, true);
 				renderSorted(viewProj, true);
-				shadowSystem->endShadowRender(i, MeshRenderType::OIT);
+				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
 			}
 		}
 	}
@@ -710,6 +739,7 @@ void MeshRenderSystem::forwardRender()
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, false);
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, false);
+	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, false);
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, false);
 	renderSorted(cameraConstants.viewProj, false);
 }
@@ -729,7 +759,6 @@ void MeshRenderSystem::preDeferredRender()
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, false);
 }
-
 void MeshRenderSystem::deferredRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Deferred Render");
@@ -741,7 +770,6 @@ void MeshRenderSystem::deferredRender()
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, false);
 }
-
 void MeshRenderSystem::metaHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Meta HDR Render");
@@ -752,9 +780,29 @@ void MeshRenderSystem::metaHdrRender()
 
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, false);
+}
+void MeshRenderSystem::refractedRender()
+{
+	SET_CPU_ZONE_SCOPED("Mesh Refracted Render");
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!graphicsSystem->camera)
+		return;
+
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, false);
+}
+void MeshRenderSystem::translucentRender()
+{
+	SET_CPU_ZONE_SCOPED("Mesh Translucent Render");
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!graphicsSystem->camera)
+		return;
+
+	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderSorted(cameraConstants.viewProj, false);
 }
-
 void MeshRenderSystem::oitRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh OIT Render");

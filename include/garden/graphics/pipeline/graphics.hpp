@@ -246,6 +246,9 @@ public:
 			depthBiasing(0), faceCulling(1), discarding(0), _unused(0) { }
 	};
 
+	using PipelineStates = map<uint8, State>;
+	using BlendStates = map<uint8, vector<BlendState>>;
+
 	/*******************************************************************************************************************
 	 * @brief Vertex input attribute description.
 	 * 
@@ -268,9 +271,9 @@ public:
 	 */
 	struct StateOverrides final
 	{
-		map<uint8, GraphicsPipeline::State> pipelineStates;
-		map<string, Sampler::State> samplerStates;
-		map<uint8, vector<BlendState>> blendStates;
+		PipelineStates pipelineStates;
+		SamplerStates samplerStates;
+		BlendStates blendStates;
 	};
 	/**
 	 * @brief Graphics pipeline shader code overrides.
@@ -297,8 +300,8 @@ public:
 		vector<VertexAttribute> vertexAttributes;
 		vector<BlendState> blendStates;
 		vector<Image::Format> colorFormats;
-		map<uint8, State> pipelineStateOverrides;
-		map<uint8, vector<BlendState>> blendStateOverrides;
+		PipelineStates pipelineStateOverrides;
+		BlendStates blendStateOverrides;
 		void* renderPass = nullptr;
 		State pipelineState = {};
 		uint16 vertexAttributesSize = 0;
@@ -479,21 +482,21 @@ public:
 	 * @details Useful for shadow mapping.
 	 * 
 	 * @param constantFactor scalar factor controlling the constant depth value added to each fragment
-	 * @param clamp maximum (or minimum) depth bias of a fragment
 	 * @param slopeFactor scalar factor applied to a fragment’s slope in depth bias calculations
+	 * @param clamp maximum (or minimum) depth bias of a fragment
 	 */
-	static void setDepthBias(float constantFactor, float clamp, float slopeFactor);
+	static void setDepthBias(float constantFactor, float slopeFactor, float clamp = 0.0f);
 
 	/**
 	 * @brief Set depth bias factors and clamp dynamically.
 	 * @details See the @ref GraphicsPipeline::setDepthBias()
 	 * 
 	 * @param constantFactor scalar factor controlling the constant depth value added to each fragment
-	 * @param clamp maximum (or minimum) depth bias of a fragment
 	 * @param slopeFactor scalar factor applied to a fragment’s slope in depth bias calculations
+	 * @param clamp maximum (or minimum) depth bias of a fragment
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	static void setDepthBiasAsync(float constantFactor, float clamp, float slopeFactor, int32 threadIndex = -1);
+	static void setDepthBiasAsync(float constantFactor, float slopeFactor, float clamp = 0.0f, int32 threadIndex = -1);
 
 	// TODO: Also allow to override blendStates, vertexAttributes separately.
 	// TODO: Add dynamic and dynamic/static states (viewport/scissor).

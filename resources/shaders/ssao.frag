@@ -59,7 +59,7 @@ uniform pushConstants
 void main()
 {
 	float depth = texture(depthBuffer, fs.texCoords).r;
-	if (depth < FLOAT_EPS6)
+	if (depth < FLOAT32_MIN)
 		discard;
 
 	float4x4 uvToView = pc.uvToView;

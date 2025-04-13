@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/vulkan/command-buffer.hpp"
+#include "garden/defines.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/profiler.hpp"
 
@@ -569,7 +570,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 	const auto& colorAttachments = framebuffer->getColorAttachments();
 	auto colorAttachmentCount = (uint32)colorAttachments.size();
 	auto commandBufferData = (const uint8*)&command;
-	auto clearColors = (const f32x4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
+	auto clearColors = (const float4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 
 	noSubpass = framebuffer->getSubpasses().empty();
@@ -613,7 +614,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			if (colorAttachment.clear)
 			{
 				array<float, 4> color;
-				*(f32x4*)color.data() = clearColors[i];
+				*(float4*)color.data() = clearColors[i];
 				loadOperation = vk::AttachmentLoadOp::eClear;
 				clearValue = vk::ClearValue(vk::ClearColorValue(color));
 			}
@@ -635,7 +636,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		else
 		{
 			array<float, 4> color;
-			*(f32x4*)color.data() = clearColors[i];
+			*(float4*)color.data() = clearColors[i];
 			vulkanAPI->clearValues.emplace_back(vk::ClearColorValue(color));
 		}
 	}
@@ -1554,6 +1555,13 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 	instance.blitImage(vkSrcImage, vk::ImageLayout::eTransferSrcOptimal,
 		vkDstImage, vk::ImageLayout::eTransferDstOptimal, command.regionCount, 
 		vulkanAPI->imageBlits.data(), (vk::Filter)command.filter);
+}
+
+//**********************************************************************************************************************
+void VulkanCommandBuffer::processCommand(const SetDepthBiasCommand& command)
+{
+	SET_CPU_ZONE_SCOPED("SetDepthBias Command Process");
+	instance.setDepthBias(command.constantFactor, command.clamp, command.slopeFactor);
 }
 
 #if GARDEN_DEBUG

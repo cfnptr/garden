@@ -35,6 +35,7 @@ struct Command
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor,
 		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
 		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
+		SetDepthBias,
 
 		#if GARDEN_DEBUG
 		BeginLabel, EndLabel, InsertLabel,
@@ -64,7 +65,7 @@ struct BeginRenderPassCommandBase : public Command
 };
 struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 {
-	const f32x4* clearColors = nullptr;
+	const float4* clearColors = nullptr; // Do not use f32x4, unaligned memory!
 };
 struct NextSubpassCommand final : public Command
 {
@@ -271,6 +272,14 @@ struct BlitImageCommand final : public BlitImageCommandBase
 	const Image::BlitRegion* regions = nullptr;
 };
 
+struct SetDepthBiasCommand : public Command
+{
+	float constantFactor = 0.0f;
+	float slopeFactor = 0.0f;
+	float clamp = 0.0f;
+	constexpr SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
+};
+
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
 struct BeginLabelCommandBase : public Command
@@ -384,6 +393,7 @@ protected:
 	virtual void processCommand(const CopyImageCommand& command) = 0;
 	virtual void processCommand(const CopyBufferImageCommand& command) = 0;
 	virtual void processCommand(const BlitImageCommand& command) = 0;
+	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 
 	#if GARDEN_DEBUG
 	virtual void processCommand(const BeginLabelCommand& command) = 0;
@@ -432,6 +442,7 @@ public:
 	void addCommand(const CopyImageCommand& command);
 	void addCommand(const CopyBufferImageCommand& command);
 	void addCommand(const BlitImageCommand& command);
+	void addCommand(const SetDepthBiasCommand& command);
 
 	#if GARDEN_DEBUG
 	void addCommand(const BeginLabelCommand& command);

@@ -289,7 +289,7 @@ static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 }
 
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
+static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT,
 	ID<ImageView> shadowImageViews[PbrLightingRenderSystem::shadowBufferCount],
 	ID<ImageView> aoImageViews[PbrLightingRenderSystem::aoBufferCount])
 {
@@ -297,7 +297,7 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ? // TODO: [1]
@@ -316,25 +316,23 @@ static map<string, DescriptorSet::Uniform> getLightingUniforms(ID<Image> dfgLUT,
 	return uniforms;
 }
 
-static map<string, DescriptorSet::Uniform> getShadowDenoiseUniforms(
+static DescriptorSet::Uniforms getShadowDenoiseUniforms(
 	ID<ImageView> shadowImageViews[PbrLightingRenderSystem::shadowBufferCount])
 {
-	map<string, DescriptorSet::Uniform> uniforms =
-	{ { "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) } };
+	DescriptorSet::Uniforms uniforms = { { "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) } };
 	return uniforms;
 }
-static map<string, DescriptorSet::Uniform> getAoDenoiseUniforms(
+static DescriptorSet::Uniforms getAoDenoiseUniforms(
 	ID<ImageView> aoImageViews[PbrLightingRenderSystem::aoBufferCount])
 {
-	map<string, DescriptorSet::Uniform> uniforms =
-	{ { "aoBuffer", DescriptorSet::Uniform(aoImageViews[0]) } };
+	DescriptorSet::Uniforms uniforms = { { "aoBuffer", DescriptorSet::Uniform(aoImageViews[0]) } };
 	return uniforms;
 }
 
 static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool useAoBuffer)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	map<string, Pipeline::SpecConstValue> specConstValues =
+	Pipeline::SpecConstValues specConstValues =
 	{
 		{ "USE_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
 		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) },
@@ -567,7 +565,7 @@ void PbrLightingRenderSystem::preHdrRender()
 		
 			SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 			auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
-			framebufferView->beginRenderPass(f32x4::one);
+			framebufferView->beginRenderPass(float4::one);
 			event->run();
 			framebufferView->endRenderPass();
 		}
@@ -588,7 +586,7 @@ void PbrLightingRenderSystem::preHdrRender()
 
 			SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
-			framebufferView->beginRenderPass(f32x4::one);
+			framebufferView->beginRenderPass(float4::one);
 			event->run();
 			framebufferView->endRenderPass();
 		}
@@ -638,7 +636,7 @@ void PbrLightingRenderSystem::preHdrRender()
 
 			SET_GPU_DEBUG_LABEL("AO Denoise Pass", Color::transparent);
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[1]);
-			framebufferView->beginRenderPass(f32x4::one);
+			framebufferView->beginRenderPass(float4::one);
 			aoPipelineView->bind();
 			aoPipelineView->setViewportScissor();
 			aoPipelineView->bindDescriptorSet(aoDenoiseDescriptorSet);
@@ -1137,7 +1135,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	{
 		auto iblSpecularView = graphicsSystem->createImageView(specular,
 			Image::Type::Texture2DArray, cubemapFormat, i + 1, 1, 0, 6);
-		map<string, DescriptorSet::Uniform> iblSpecularUniforms =
+		DescriptorSet::Uniforms iblSpecularUniforms =
 		{
 			{ "cubemap", DescriptorSet::Uniform(defaultCubemapView) },
 			{ "specular", DescriptorSet::Uniform(iblSpecularView) },
@@ -1213,7 +1211,7 @@ Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh,
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto specularView = graphicsSystem->get(specular);
 
-	map<string, DescriptorSet::Uniform> iblUniforms =
+	DescriptorSet::Uniforms iblUniforms =
 	{ 
 		{ "sh", DescriptorSet::Uniform(sh) },
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }

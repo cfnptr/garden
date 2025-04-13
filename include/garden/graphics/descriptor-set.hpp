@@ -133,15 +133,18 @@ public:
 		 */
 		constexpr Range() = default;
 	};
+
+	using Uniforms = map<string, Uniform, less<>>;
+	using Samplers = map<string, ID<Sampler>, less<>>;
 private:
 	ID<Pipeline> pipeline = {};
-	map<string, Uniform> uniforms;
-	map<string, ID<Sampler>> samplers;
+	Uniforms uniforms;
+	Samplers samplers;
 	PipelineType pipelineType = {};
 	uint8 index = 0;
 
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
-		map<string, Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers, uint8 index);
+		Uniforms&& uniforms, Samplers&& samplers, uint8 index);
 	bool destroy() final;
 
 	friend class DescriptorSetExt;
@@ -172,12 +175,12 @@ public:
 	 * @brief Returns uniform map. (resources)
 	 * @details Can be used to access descriptor set resources.
 	 */
-	const map<string, Uniform>& getUniforms() const noexcept { return uniforms; }
+	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
 	 * @brief Returns dynamic sampler map. (mutable uniforms)
 	 * @details Can be used to access descriptor set mutable samplers.
 	 */
-	const map<string, ID<Sampler>>& getSamplers() const noexcept { return samplers; }
+	const Samplers& getSamplers() const noexcept { return samplers; }
 
 	/**
 	 * @brief Returns internal descriptor set instance count.
@@ -198,7 +201,7 @@ public:
 	 *
 	 * @warning Use only when required, this operation impacts performance!
 	 */
-	void recreate(map<string, Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers = {});
+	void recreate(Uniforms&& uniforms, Samplers&& samplers = {});
 
 	// TODO: void copy(ID<DescriptorSet> descriptorSet);
 
@@ -206,13 +209,13 @@ public:
 	 * @brief Updates specific descriptor set uniform.
 	 * @details Useful for updating bindless descriptor set resources.
 	 * 
-	 * @param[in] name target uniform name
+	 * @param name target uniform name
 	 * @param[in] uniform new resource sets
 	 * @param elementOffset element offset inside descriptor set or 0
 	 * 
 	 * @warning Use only when required, this operation impacts performance!
 	 */
-	void updateUniform(const string& name, const Uniform& uniform, uint32 elementOffset = 0);
+	void updateUniform(string_view name, const Uniform& uniform, uint32 elementOffset = 0);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
@@ -249,8 +252,7 @@ public:
 	 * @warning In most cases you should use @ref DescriptorSet functions.
 	 * @param[in] descriptorSet target descriptor set instance
 	 */
-	static map<string, DescriptorSet::Uniform>& getUniforms(DescriptorSet& descriptorSet)
-		noexcept { return descriptorSet.uniforms; }
+	static DescriptorSet::Uniforms& getUniforms(DescriptorSet& descriptorSet) noexcept { return descriptorSet.uniforms; }
 	/**
 	 * @brief Returns descriptor set parent pipeline type.
 	 * @warning In most cases you should use @ref DescriptorSet functions.

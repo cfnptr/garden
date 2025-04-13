@@ -17,7 +17,7 @@
 
 using namespace garden;
 
-static void eraseEntityTag(multimap<string, ID<Entity>>& tagMap, ID<Entity> entity, const string& tag)
+static void eraseEntityTag(LinkSystem::TagMap& tagMap, ID<Entity> entity, string_view tag)
 {
 	auto range = tagMap.equal_range(tag);
 	for (auto i = range.first; i != range.second; i++)
@@ -86,7 +86,7 @@ bool LinkComponent::trySetUUID(const Hash128& uuid)
 	this->uuid = uuid;
 	return true;
 }
-void LinkComponent::setTag(const string& tag)
+void LinkComponent::setTag(string_view tag)
 {
 	if (this->tag == tag)
 		return;
@@ -179,7 +179,7 @@ ID<Entity> LinkSystem::findEntity(const Hash128& uuid) const
 		return {};
 	return searchResult->second;
 }
-void LinkSystem::findEntities(const string& tag, vector<ID<Entity>>& entities) const
+void LinkSystem::findEntities(string_view tag, vector<ID<Entity>>& entities) const
 {
 	GARDEN_ASSERT(!tag.empty());
 	auto result = tagMap.equal_range(tag);

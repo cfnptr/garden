@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/input.hpp"
+#include "GLFW/glfw3.h"
 #include "garden/system/log.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"
@@ -307,11 +308,7 @@ void InputSystem::output()
 
 void InputSystem::setWindowIcon(const vector<string>& paths)
 {
-	#if GARDEN_OS_WINDOWS
 	newWindowIconPaths = paths;
-	#else
-	throw GardenError("Window icons are not supported on this platform.");
-	#endif
 }
 
 //**********************************************************************************************************************
@@ -417,23 +414,26 @@ void InputSystem::startRenderThread()
 
 		if (!inputSystem->currWindowIconPaths.empty())
 		{
-			auto resourceSystem = ResourceSystem::Instance::get();
-			const auto& paths = inputSystem->currWindowIconPaths;
-			imageData.resize(paths.size());
-			images.resize(paths.size());
-
-			for (psize i = 0; i < paths.size(); i++)
+			auto platform = glfwGetPlatform();
+			if (platform == GLFW_PLATFORM_WIN32 || platform == GLFW_PLATFORM_X11)
 			{
-				uint2 size; Image::Format format;
-				resourceSystem->loadImageData(paths[i], imageData[i], size, format);
+				auto resourceSystem = ResourceSystem::Instance::get();
+				const auto& paths = inputSystem->currWindowIconPaths;
+				imageData.resize(paths.size());
+				images.resize(paths.size());
 
-				GLFWimage image;
-				image.width = size.x;
-				image.height = size.y;
-				image.pixels = imageData[i].data();
-				images[i] = image;
+				for (psize i = 0; i < paths.size(); i++)
+				{
+					uint2 size; Image::Format format;
+					resourceSystem->loadImageData(paths[i], imageData[i], size, format);
+
+					GLFWimage image;
+					image.width = size.x;
+					image.height = size.y;
+					image.pixels = imageData[i].data();
+					images[i] = image;
+				}
 			}
-
 			inputSystem->currWindowIconPaths.clear();
 		}
 

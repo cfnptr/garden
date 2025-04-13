@@ -1049,7 +1049,7 @@ View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) c
 
 //**********************************************************************************************************************
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
-	map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers, uint8 index)
+	DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers, uint8 index)
 {
 	GARDEN_ASSERT(graphicsPipeline);
 	GARDEN_ASSERT(!uniforms.empty());
@@ -1068,7 +1068,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	return descriptorSet;
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> computePipeline,
-	map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers, uint8 index)
+	DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers, uint8 index)
 {
 	GARDEN_ASSERT(computePipeline);
 	GARDEN_ASSERT(!uniforms.empty());

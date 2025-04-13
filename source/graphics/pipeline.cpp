@@ -21,9 +21,9 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::Uniform>& uniforms, 
-	const map<string, Sampler::State>& samplerStates, map<string, vk::Sampler>& immutableSamplers, 
-	const fs::path& pipelinePath, const map<string, Sampler::State>& samplerStateOverrides)
+static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms, 
+	const Pipeline::SamplerStates& samplerStates, map<string, vk::Sampler>& immutableSamplers, 
+	const fs::path& pipelinePath, const Pipeline::SamplerStates& samplerStateOverrides)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> samplers(samplerStates.size());
@@ -63,7 +63,7 @@ static vector<void*> createVkPipelineSamplers(const map<string, Pipeline::Unifor
 
 //**********************************************************************************************************************
 static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
-	const map<string, Pipeline::Uniform>& uniforms, const map<string, vk::Sampler>& immutableSamplers,
+	const Pipeline::Uniforms& uniforms, const map<string, vk::Sampler>& immutableSamplers,
 	const fs::path& pipelinePath, uint32 maxBindlessCount, bool& bindless)
 {
 	bindless = false;
@@ -415,8 +415,8 @@ void Pipeline::destroyShaders(const vector<void*>& shaders)
 }
 
 //**********************************************************************************************************************
-void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const map<string, SpecConst>& specConsts, 
-	const map<string, SpecConstValue>& specConstValues, ShaderStage shaderStage, uint8 variantCount)
+void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipeline::SpecConsts& specConsts, 
+	const Pipeline::SpecConstValues& specConstValues, ShaderStage shaderStage, uint8 variantCount)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
 	uint32 dataSize = 0, entryCount = 0;

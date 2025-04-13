@@ -94,12 +94,29 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	}
 
 	info("Started logging system. (UTC+0)");
-	info("Date: " + getCurrentDate());
+	info("Current date: " + getCurrentDate());
 	info(appInfoSystem->getName() + " [v" + appInfoSystem->getVersion().toString3() + "]");
 	info(GARDEN_NAME_STRING " Engine [v" GARDEN_VERSION_STRING "]");
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	info("Git commit: " GARDEN_GIT_COMMIT);
+	info("Git SHA1: " GARDEN_GIT_SHA1);
+	info("Git date: " GARDEN_GIT_DATE);
+	#endif
+
+	#ifdef NDEBUG
+		#if GARDEN_DEBUG
+		info("Build: Release (Debugging)");
+		#else
+		info("Build: Release");
+		#endif
+	#else
+	info("Build: Debug");
+	#endif
+	
 	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
+	info("Target SIMDs: " + string(GARDEN_SIMD_STRING));
 	logKernelInfo(this);
-	info("SIMDs: " + string(GARDEN_SIMD_STRING));
 	info("CPU: " + string(mpio::OS::getCpuName()));
 	info("Logical core count: " + to_string(mpio::OS::getLogicalCpuCount()));
 	info("Physical core count: " + to_string(mpio::OS::getPhysicalCpuCount()));

@@ -50,6 +50,8 @@ void FpvControllerSystem::init()
 
 	auto manager = Manager::Instance::get();
 	camera = manager->createEntity();
+	manager->reserveComponents(camera, 8);
+
 	manager->add<DoNotDestroyComponent>(camera);
 	manager->add<DoNotSerializeComponent>(camera);
 

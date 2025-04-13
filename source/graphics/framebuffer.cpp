@@ -594,14 +594,14 @@ void Framebuffer::setDebugName(const string& name)
 #endif
 
 //**********************************************************************************************************************
-void Framebuffer::beginRenderPass(const f32x4* clearColors, uint8 clearColorCount,
-	float clearDepth, uint32 clearStencil, i32x4 region, bool asyncRecording)
+void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCount,
+	float clearDepth, uint32 clearStencil, int4 region, bool asyncRecording)
 {
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(clearColorCount == colorAttachments.size());
 	GARDEN_ASSERT(!clearColors || (clearColors && clearColorCount > 0));
-	GARDEN_ASSERT(region.getX() + region.getZ() <= size.x);
-	GARDEN_ASSERT(region.getY() + region.getW() <= size.y);
+	GARDEN_ASSERT(region.x + region.z <= size.x);
+	GARDEN_ASSERT(region.y + region.w <= size.y);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	
 	auto graphicsAPI = GraphicsAPI::get();
@@ -638,7 +638,7 @@ void Framebuffer::beginRenderPass(const f32x4* clearColors, uint8 clearColorCoun
 	command.framebuffer = graphicsAPI->framebufferPool.getID(this);
 	command.clearDepth = clearDepth;
 	command.clearStencil = clearStencil;
-	command.region = region == i32x4::zero ? int4(0, 0, size.x, size.y) : (int4)region;
+	command.region = region == int4::zero ? int4(0, 0, size.x, size.y) : region;
 	command.clearColors = clearColors;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 

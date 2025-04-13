@@ -255,16 +255,14 @@ void InstanceRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-map<string, DescriptorSet::Uniform> InstanceRenderSystem::getBaseUniforms()
+DescriptorSet::Uniforms InstanceRenderSystem::getBaseUniforms()
 {
-	map<string, DescriptorSet::Uniform> baseUniforms =
-	{ { "instance", DescriptorSet::Uniform(baseInstanceBuffers) } };
+	DescriptorSet::Uniforms baseUniforms = { { "instance", DescriptorSet::Uniform(baseInstanceBuffers) } };
 	return baseUniforms;
 }
-map<string, DescriptorSet::Uniform> InstanceRenderSystem::getShadowUniforms()
+DescriptorSet::Uniforms InstanceRenderSystem::getShadowUniforms()
 {
-	map<string, DescriptorSet::Uniform> baseUniforms =
-	{ { "instance", DescriptorSet::Uniform(shadowInstanceBuffers) } };
+	DescriptorSet::Uniforms baseUniforms = { { "instance", DescriptorSet::Uniform(shadowInstanceBuffers) } };
 	return baseUniforms;
 }
 

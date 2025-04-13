@@ -33,13 +33,13 @@ static ID<Buffer> createReadbackBuffer()
 	return buffer;
 }
 
-static map<string, DescriptorSet::Uniform> getLimitsUniforms()
+static DescriptorSet::Uniforms getLimitsUniforms()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
 	auto hdrFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getHdrFramebuffer());
 				
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "luminance", DescriptorSet::Uniform(toneMappingSystem->getLuminanceBuffer()) }

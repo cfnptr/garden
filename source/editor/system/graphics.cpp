@@ -261,11 +261,16 @@ void GraphicsEditorSystem::showMemoryStats()
 		if (ImGui::CollapsingHeader("Descriptor Pool Usage"))
 		{
 			ImGui::Indent();
-			ImGui::Text("Combined Samplers: %u", DescriptorSet::combinedSamplerCount);
-			ImGui::Text("Uniform Buffers: %u", DescriptorSet::uniformBufferCount);
-			ImGui::Text("Storage Images: %u", DescriptorSet::storageImageCount);
-			ImGui::Text("Storage Buffers: %u", DescriptorSet::storageBufferCount);
-			ImGui::Text("Input Attachments: %u", DescriptorSet::inputAttachmentCount);
+			ImGui::Text("Combined Samplers: %u / %u", 
+				DescriptorSet::combinedSamplerCount, GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT);
+			ImGui::Text("Uniform Buffers: %u / %u", 
+				DescriptorSet::uniformBufferCount, GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT);
+			ImGui::Text("Storage Images: %u / %u", 
+				DescriptorSet::storageImageCount, GARDEN_DS_POOL_STORAGE_IMAGE_COUNT);
+			ImGui::Text("Storage Buffers: %u / %u", 
+				DescriptorSet::storageBufferCount, GARDEN_DS_POOL_STORAGE_BUFFER_COUNT);
+			ImGui::Text("Input Attachments: %u / %u", 
+				DescriptorSet::inputAttachmentCount, GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT);
 			ImGui::Unindent();
 		}
 

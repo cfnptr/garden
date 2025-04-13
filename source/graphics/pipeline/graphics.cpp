@@ -123,7 +123,6 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	{
 		stages.push_back(ShaderStage::Vertex);
 		code.push_back(std::move(createData.vertexCode));
-
 	}
 	if (!createData.fragmentCode.empty())
 	{
@@ -795,11 +794,19 @@ void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 	else abort();
 }
 
-void GraphicsPipeline::setDepthBias(float constantFactor, float clamp, float slopeFactor)
+void GraphicsPipeline::setDepthBias(float constantFactor, float slopeFactor, float clamp)
 {
-	abort(); // TODO:
+	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
+	
+	SetDepthBiasCommand command;
+	command.constantFactor = constantFactor;
+	command.slopeFactor = slopeFactor;
+	command.clamp = clamp;
+	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }
-void GraphicsPipeline::setDepthBiasAsync(float constantFactor, float clamp, float slopeFactor, int32 threadIndex)
+void GraphicsPipeline::setDepthBiasAsync(float constantFactor, float slopeFactor, float clamp, int32 threadIndex)
 {
 	GARDEN_ASSERT(threadIndex < GraphicsAPI::get()->threadCount);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);

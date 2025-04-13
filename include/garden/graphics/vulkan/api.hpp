@@ -102,7 +102,7 @@ public:
 	bool hasDynamicRendering = false;
 	bool hasDescriptorIndexing = false;
 	
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	vk::DebugUtilsMessengerEXT debugMessenger;
 	bool hasDebugUtils = false;
 	#endif

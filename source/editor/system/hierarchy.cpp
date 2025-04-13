@@ -317,9 +317,7 @@ void HierarchyEditorSystem::preUiRender()
 		for (uint32 i = 0; i < entities.getOccupancy(); i++)  // Do not optimize occupancy!!!
 		{
 			auto entityView = &(entities.getData()[i]);
-			const auto& components = entityView->getComponents();
-
-			if (components.empty() || components.find(typeid(TransformComponent)) != components.end())
+			if (!entityView->hasComponents() || entityView->findComponent(typeid(TransformComponent).hash_code()))
 				continue;
 
 			if (!hasSeparator)

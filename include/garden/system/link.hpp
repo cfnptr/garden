@@ -67,7 +67,7 @@ public:
 	 * @brief Sets entity tag. (Can be used by several entities)
 	 * @param tag target entity tag
 	 */
-	void setTag(const string& tag);
+	void setTag(string_view tag);
 };
 
 /***********************************************************************************************************************
@@ -75,8 +75,12 @@ public:
  */
 class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton<LinkSystem>, public ISerializable
 {
-	map<Hash128, ID<Entity>> uuidMap;
-	multimap<string, ID<Entity>> tagMap;
+public:
+	using UuidMap = map<Hash128, ID<Entity>>;
+	using TagMap = multimap<string, ID<Entity>, less<>>;
+private:
+	UuidMap uuidMap;
+	TagMap tagMap;
 	string uuidStringCache;
 	random_device randomDevice;
 
@@ -100,17 +104,13 @@ class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton
 	friend struct LinkComponent;
 public:
 	/**
-	 * @brief Returns link component pool.
-	 */
-	const LinearPool<LinkComponent>& getComponents() const noexcept { return components; }
-	/**
 	 * @brief Returns link UUID map.
 	 */
-	const map<Hash128, ID<Entity>>& getUuidMap() const noexcept { return uuidMap; }
+	const UuidMap& getUuidMap() const noexcept { return uuidMap; }
 	/**
 	 * @brief Returns link tag map.
 	 */
-	const multimap<string, ID<Entity>>& getTagMap() const noexcept { return tagMap; }
+	const TagMap& getTagMap() const noexcept { return tagMap; }
 
 	/**
 	 * @brief Returns entity by UUID if found, otherwise null.
@@ -120,14 +120,14 @@ public:
 
 	/**
 	 * @brief Returns entities iterator by tag if found.
-	 * @param[in] tag target entities tag
+	 * @param tag target entities tag
 	 */
-	auto findEntities(const string& tag) const { return tagMap.equal_range(tag); }
+	auto findEntities(string_view tag) const { return tagMap.equal_range(tag); }
 	/**
 	 * @brief Returns entities array by tag if found.
-	 * @param[in] tag target entities tag
+	 * @param tag target entities tag
 	 */
-	void findEntities(const string& tag, vector<ID<Entity>>& entities) const;
+	void findEntities(string_view tag, vector<ID<Entity>>& entities) const;
 };
 
 } // namespace garden

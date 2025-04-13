@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/csm.hpp"
+#include "garden/system/render/mesh.hpp"
 #include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/settings.hpp"
@@ -125,7 +126,7 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowFramebuffers()[0]);
 }
 
-static map<string, DescriptorSet::Uniform> getUniforms(ID<Image> shadowMap, 
+static DescriptorSet::Uniforms getUniforms(ID<Image> shadowMap, 
 	ID<Image> transparentMap, const DescriptorSetBuffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -134,7 +135,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Image> shadowMap,
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 	
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, swapchainSize) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
@@ -352,34 +353,40 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 //**********************************************************************************************************************
 bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderType)
 {
-	ID<Framebuffer> framebuffer; const f32x4* clearColors; uint8 clearColorCount;
-	if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::Color)
+	ID<Framebuffer> framebuffer; const float4* clearColors; uint8 clearColorCount;
+	if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque)
 	{
 		framebuffer = shadowFramebuffers[passIndex];
 		clearColors = nullptr;
 		clearColorCount = 0;
 	}
-	else if (renderType == MeshRenderType::Translucent || renderType == MeshRenderType::OIT)
+	else if (renderType == MeshRenderType::Translucent || 
+		renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
 	{
 		framebuffer = transFramebuffers[passIndex];
-		clearColors = &f32x4::one;
+		clearColors = &float4::one;
 		clearColorCount = 1;
 	}
 	else abort();
 
 	auto asyncRecording = MeshRenderSystem::Instance::get()->useAsyncRecording();
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);
-	framebufferView->beginRenderPass(clearColors, clearColorCount, 0.0f, 0, i32x4::zero, asyncRecording);
-	GraphicsPipeline::setDepthBiasAsync(biasConstantFactor, 0.0f, biasSlopeFactor);
+	framebufferView->beginRenderPass(clearColors, clearColorCount, 0.0f, 0, int4::zero, asyncRecording);
+	GraphicsPipeline::setDepthBiasAsync(biasConstantFactor, biasSlopeFactor);
 	return true;
 }
 void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderType)
 {
 	ID<Framebuffer> framebuffer;
-	if (renderType == MeshRenderType::Opaque || renderType == MeshRenderType::Color)
+	if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque )
+	{
 		framebuffer = shadowFramebuffers[passIndex];
-	else if (renderType == MeshRenderType::Translucent || renderType == MeshRenderType::OIT)
+	}
+	else if (renderType == MeshRenderType::Translucent || 
+		renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
+	{
 		framebuffer = transFramebuffers[passIndex];
+	}
 	else abort();
 
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);

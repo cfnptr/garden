@@ -643,6 +643,9 @@ class PhysicsSystem final : public ComponentSystem<RigidbodyComponent>,
 	public Singleton<PhysicsSystem>, public ISerializable
 {
 public:
+	using Shapes = LinearPool<Shape>;
+	using SharedShapes = map<Hash128, ID<Shape>>;
+
 	/**
 	 * @brief Physics simulation system properties.
 	 */
@@ -680,13 +683,13 @@ private:
 	};
 
 	Properties properties;
-	LinearPool<Shape> shapes;
-	map<Hash128, ID<Shape>> sharedEmptyShapes;
-	map<Hash128, ID<Shape>> sharedBoxShapes;
-	map<Hash128, ID<Shape>> sharedSphereShapes;
-	map<Hash128, ID<Shape>> sharedCapsuleShapes;
-	map<Hash128, ID<Shape>> sharedRotTransShapes;
-	map<Hash128, ID<Shape>> sharedCustomShapes;
+	Shapes shapes;
+	SharedShapes sharedEmptyShapes;
+	SharedShapes sharedBoxShapes;
+	SharedShapes sharedSphereShapes;
+	SharedShapes sharedCapsuleShapes;
+	SharedShapes sharedRotTransShapes;
+	SharedShapes sharedCustomShapes;
 	vector<Event> bodyEvents;
 	vector<ID<Entity>> entityStack;
 	set<ID<Entity>> serializedConstraints;
@@ -766,37 +769,33 @@ public:
 	 */
 	const Properties& getProperties() const noexcept { return properties; }
 	/**
-	 * @brief Returns rigidbody component pool.
-	 */
-	const LinearPool<RigidbodyComponent>& getComponents() const noexcept { return components; }
-	/**
 	 * @brief Returns physics shape pool.
 	 */
-	const LinearPool<Shape>& getShapes() const noexcept { return shapes; }
+	const Shapes& getShapes() const noexcept { return shapes; }
 	/**
 	 * @brief Returns shared empty shape pool.
 	 */
-	const map<Hash128, ID<Shape>>& getSharedEmptyShapes() const noexcept { return sharedEmptyShapes; }
+	const SharedShapes& getSharedEmptyShapes() const noexcept { return sharedEmptyShapes; }
 	/**
 	 * @brief Returns shared box shape pool.
 	 */
-	const map<Hash128, ID<Shape>>& getSharedBoxShapes() const noexcept { return sharedBoxShapes; }
+	const SharedShapes& getSharedBoxShapes() const noexcept { return sharedBoxShapes; }
 	/**
 	 * @brief Returns shared sphere shape pool.
 	 */
-	const map<Hash128, ID<Shape>>& getSharedSphereShapes() const noexcept { return sharedSphereShapes; }
+	const SharedShapes& getSharedSphereShapes() const noexcept { return sharedSphereShapes; }
 	/**
 	 * @brief Returns shared capsule shape pool.
 	 */
-	const map<Hash128, ID<Shape>>& getSharedCapsuleShapes() const noexcept { return sharedCapsuleShapes; }
+	const SharedShapes& getSharedCapsuleShapes() const noexcept { return sharedCapsuleShapes; }
 	/**
 	 * @brief Returns shared rotated/translated shape pool.
 	 */
-	const map<Hash128, ID<Shape>>& getSharedRotTransShapes() const noexcept { return sharedRotTransShapes; }
+	const SharedShapes& getSharedRotTransShapes() const noexcept { return sharedRotTransShapes; }
 	/**
 	 * @brief Returns shared custom shape pool.
 	 */
-	const map<Hash128, ID<Shape>>& getSharedCustomShapes() const noexcept { return sharedCustomShapes; }
+	const SharedShapes& getSharedCustomShapes() const noexcept { return sharedCustomShapes; }
 
 	/**
 	 * @brief Returns current this rigidbody entity.

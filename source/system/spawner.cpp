@@ -184,11 +184,7 @@ void SpawnerSystem::preInit()
 {
 	auto manager = Manager::Instance::get();
 	auto prefabs = manager->createEntity();
-
-	if (DoNotDestroySystem::Instance::has())
-		manager->add<DoNotDestroyComponent>(prefabs);
-	if (DoNotSerializeSystem::Instance::has())
-		manager->add<DoNotSerializeComponent>(prefabs);
+	manager->reserveComponents(prefabs, 2);
 
 	auto transformView = manager->add<TransformComponent>(prefabs);
 	transformView->setActive(false);
@@ -198,6 +194,11 @@ void SpawnerSystem::preInit()
 	
 	auto linkView = manager->add<LinkComponent>(prefabs);
 	linkView->setTag("Prefabs");
+
+	if (DoNotDestroySystem::Instance::has())
+		manager->add<DoNotDestroyComponent>(prefabs);
+	if (DoNotSerializeSystem::Instance::has())
+		manager->add<DoNotSerializeComponent>(prefabs);
 }
 
 //**********************************************************************************************************************
@@ -312,7 +313,7 @@ void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 }
 
 //**********************************************************************************************************************
-bool SpawnerSystem::tryAddSharedPrefab(const string& path, const Hash128& uuid)
+bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(uuid);
@@ -331,7 +332,7 @@ bool SpawnerSystem::tryAddSharedPrefab(const string& path, const Hash128& uuid)
 	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory.
 	return true;
 }
-bool SpawnerSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
+bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(prefab);
@@ -369,7 +370,7 @@ bool SpawnerSystem::tryAddSharedPrefab(const string& path, ID<Entity> prefab)
 }
 
 //**********************************************************************************************************************
-bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid)
+bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
@@ -381,7 +382,7 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid)
 	uuid = searchResult->second;
 	return true;
 }
-bool SpawnerSystem::tryGetSharedPrefab(const string& path, ID<Entity>& prefab)
+bool SpawnerSystem::tryGetSharedPrefab(string_view path, ID<Entity>& prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
@@ -395,7 +396,7 @@ bool SpawnerSystem::tryGetSharedPrefab(const string& path, ID<Entity>& prefab)
 	prefab = entity;
 	return true;
 }
-bool SpawnerSystem::tryGetSharedPrefab(const string& path, Hash128& uuid, ID<Entity>& prefab)
+bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid, ID<Entity>& prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);

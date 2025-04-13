@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/graphics/descriptor-set.hpp"
 #include "garden/graphics/framebuffer.hpp"
 #include "garden/graphics/sampler.hpp"
 #include "garden/system/input.hpp"
@@ -803,7 +804,7 @@ public:
 	 * @param index index of descriptor set in the shader
 	 */
 	ID<DescriptorSet> createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
-		map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers = {}, uint8 index = 0);
+		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
 	/**
 	 * @brief Create a new compute descriptor set instance.
 	 * 
@@ -813,7 +814,7 @@ public:
 	 * @param index index of descriptor set in the shader
 	 */
 	ID<DescriptorSet> createDescriptorSet(ID<ComputePipeline> computePipeline,
-		map<string, DescriptorSet::Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers = {}, uint8 index = 0);
+		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
 
 	/**
 	 * @brief Destroys descriptor set instance.

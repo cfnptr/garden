@@ -319,8 +319,8 @@ public:
 	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
-	void beginRenderPass(const f32x4* clearColors = nullptr, uint8 clearColorCount = 0, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false);
+	void beginRenderPass(const float4* clearColors = nullptr, uint8 clearColorCount = 0, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false);
 	
 	/**
 	 * @brief Begins framebuffer rendering pass.
@@ -334,8 +334,8 @@ public:
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
 	template<psize N>
-	void beginRenderPass(const array<f32x4, N>& clearColors, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false)
+	void beginRenderPass(const array<float4, N>& clearColors, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false)
 	{ beginRenderPass(clearColors.data(), (uint8)N, clearDepth, clearStencil, region, asyncRecording); }
 	/**
 	 * @brief Begins framebuffer rendering pass.
@@ -347,8 +347,8 @@ public:
 	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
-	void beginRenderPass(const vector<f32x4>& clearColors, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false)
+	void beginRenderPass(const vector<float4>& clearColors, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false)
 	{
 		beginRenderPass(clearColors.data(), (uint8)clearColors.size(),
 			clearDepth, clearStencil, region, asyncRecording);
@@ -363,8 +363,8 @@ public:
 	 * @param region rendering region (0 = full size)
 	 * @param asyncRecording render with multithreaded commands recording
 	 */
-	void beginRenderPass(const f32x4& clearColor, float clearDepth = 0.0f,
-		uint32 clearStencil = 0x00, i32x4 region = i32x4::zero, bool asyncRecording = false)
+	void beginRenderPass(const float4& clearColor, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false)
 	{ beginRenderPass(&clearColor, 1, clearDepth, clearStencil, region, asyncRecording); }
 	
 	/*******************************************************************************************************************
