@@ -28,6 +28,6 @@ void main()
 {
 	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
 	fs.nearPoint = calcWorldPosition(1.0f, texCoords, cc.invViewProj) + cc.cameraPos.xyz;
-    fs.farPoint = calcWorldPosition(0.0001f, texCoords, cc.invViewProj) + cc.cameraPos.xyz; // 0.001 is for inf far plane
+	fs.farPoint = calcWorldPosition(0.0001f, texCoords, cc.invViewProj) + cc.cameraPos.xyz; // 0.001 is for inf far plane
 	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
 }

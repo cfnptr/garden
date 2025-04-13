@@ -12,38 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/depth.gsl"
-#include "common/constants.gsl"
+#ifndef INFINITE_GRID_GSL
+#define INFINITE_GRID_GSL
 
-pipelineState
+float intersectGrid(float3 nearPoint, float3 farPoint, bool isHorizontal)
 {
-	depthTesting = on;
-	depthWriting = on;
-	faceCulling = off;
-	blending0 = on;
+	return isHorizontal ? -nearPoint.y / (farPoint.y - nearPoint.y) : 
+		-nearPoint.z / (farPoint.z - nearPoint.z);
 }
-
-uniform pushConstants
+float3 calcFragPos(float3 nearPoint, float3 farPoint, float t)
 {
-	float4 meshColor;
-	float4 axisColorX;
-	float4 axisColorYZ;
-	float meshScale;
-	bool isHorizontal;
-} pc;
-
-uniform CameraConstants
-{
-	CAMERA_CONSTANTS
-} cc;
-
-in float3 fs.nearPoint;
-in float3 fs.farPoint;
-
-out float4 fb.color;
-
-//**********************************************************************************************************************
-float4 grid(float3 fragPos, float3 meshColor, float3 axisColorX, float3 axisColorYZ, float meshScale, bool isHorizontal)
+	return t * (farPoint - nearPoint) + nearPoint;
+}
+float4 calcGrid(float3 fragPos, float3 meshColor, float3 axisColorX, 
+	float3 axisColorYZ, float meshScale, bool isHorizontal)
 {
 	float2 coords = (isHorizontal ? fragPos.xz : fragPos.xy) * meshScale;
 	float2 derivative = fwidth(coords);
@@ -69,18 +51,4 @@ float4 grid(float3 fragPos, float3 meshColor, float3 axisColorX, float3 axisColo
 	return color;
 }
 
-void main()
-{
-	float t = pc.isHorizontal ? -fs.nearPoint.y / (fs.farPoint.y - fs.nearPoint.y) : 
-		-fs.nearPoint.z / (fs.farPoint.z - fs.nearPoint.z);
-	if (t <= 0.0f)
-		discard;
-
-	float3 fragPos = t * (fs.farPoint - fs.nearPoint) + fs.nearPoint;
-	fb.color = grid(fragPos, pc.meshColor.rgb, pc.axisColorX.rgb,
-		pc.axisColorYZ.rgb, pc.meshScale, pc.isHorizontal);
-	if (fb.color.a == 0.0f)
-		discard;
-
-	gl.fragDepth = calcDepth(fragPos - cc.cameraPos.xyz, cc.viewProj);
-}
+#endif // INFINITE_GRID_GSL

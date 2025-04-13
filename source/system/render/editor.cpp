@@ -226,8 +226,8 @@ void EditorRenderSystem::showAboutWindow()
 			engineVersion += " (Beta)";
 
 		ImGui::SeparatorText(GARDEN_NAME_STRING " Engine");
-		ImGui::Text("Version: %s", engineVersion.c_str());
 		ImGui::Text("Creator: Nikita Fediuchin");
+		ImGui::Text("Version: %s", engineVersion.c_str());
 
 		auto appInfoSystem = AppInfoSystem::Instance::tryGet();
 		if (appInfoSystem)
@@ -235,8 +235,18 @@ void EditorRenderSystem::showAboutWindow()
 			auto appVersion = appInfoSystem->getVersion().toString3();
 			ImGui::SeparatorText("Application");
 			ImGui::Text("Name: %s", appInfoSystem->getName().c_str());
-			ImGui::Text("Version: %s", appVersion.c_str());
 			ImGui::Text("Creator: %s", appInfoSystem->getCreator().c_str());
+			ImGui::Text("Version: %s", appVersion.c_str());
+			#ifdef NDEBUG
+				#if GARDEN_DEBUG
+				ImGui::Text("Build: Release (Debugging)");
+				#else
+				ImGui::Text("Build: Release");
+				#endif
+			#else
+			ImGui::Text("Build: Debug");
+			#endif
+			ImGui::Text("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
 		}
 	}
 	ImGui::End();
@@ -355,15 +365,15 @@ namespace
 {
 	struct ComponentEntry final
 	{
-		map<string, ComponentEntry> nodes;
+		using Nodes = map<string, ComponentEntry>;
+		Nodes nodes;
 		type_index componentType;
-
 		ComponentEntry(type_index componentType) : componentType(componentType) { }
 	};
 }
 
 // TODO: replace with stack based recursion.
-static void renderWordNode(const map<string, ComponentEntry>& nodes, ID<Entity> selectedEntity)
+static void renderWordNode(const ComponentEntry::Nodes& nodes, ID<Entity> selectedEntity)
 {
 	for (const auto& pair : nodes)
 	{
@@ -382,12 +392,12 @@ static void renderWordNode(const map<string, ComponentEntry>& nodes, ID<Entity> 
 		}
 	}
 }
-static void renderAddComponent(const unordered_map<type_index, 
-	EditorRenderSystem::Inspector>& entityInspectors, ID<Entity> selectedEntity, uint32& itemCount)
+static void renderAddComponent(const EditorRenderSystem::EntityInspectors& entityInspectors, 
+	ID<Entity> selectedEntity, uint32& itemCount)
 {
 	auto manager = Manager::Instance::get();
 	const auto& componentTypes = manager->getComponentTypes();
-	static map<string, ComponentEntry> wordNodes;
+	static ComponentEntry::Nodes wordNodes;
 
 	for (const auto& pair : componentTypes)
 	{
@@ -456,8 +466,8 @@ static void renderAddComponent(const unordered_map<type_index,
 	wordNodes.clear();
 }
 
-static bool renderInspectorWindowPopup(const unordered_map<type_index, 
-	EditorRenderSystem::Inspector>& entityInspectors, ID<Entity>& selectedEntity)
+static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspectors& 
+	entityInspectors, ID<Entity>& selectedEntity)
 {
 	if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 	{
@@ -536,7 +546,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 			auto manager = Manager::Instance::get();
 			auto selected = selectedEntity; // Do not optimize, required for transforms.
 			manager->remove(selectedEntity, componentType);
-			if (manager->getComponentCount(selected) == 0)
+			if (!manager->hasComponents(selected))
 				manager->destroy(selected);
 			ImGui::EndPopup();
 			return false;
@@ -600,13 +610,14 @@ void EditorRenderSystem::showEntityInspector()
 	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		auto manager = Manager::Instance::get();
-		auto entity = manager->getEntities().get(selectedEntity);
-		const auto& components = entity->getComponents();
+		auto entityView = manager->getEntities().get(selectedEntity);
+		auto components = entityView->getComponents();
+		auto componentCount = entityView->getComponentCount();
 
 		if (ImGui::BeginItemTooltip())
 		{
-			ImGui::Text("Runtime ID: %lu, Components: %lu",
-				(unsigned long)*selectedEntity, (unsigned long)components.size());
+			ImGui::Text("Runtime ID: %lu, Components: %lu / %lu", (unsigned long)*selectedEntity, 
+				(unsigned long)componentCount, (unsigned long)entityView->getComponentCapacity());
 			ImGui::EndTooltip();
 		}
 		
@@ -616,14 +627,13 @@ void EditorRenderSystem::showEntityInspector()
 			return;
 		}
 
-		static multimap<float, pair<System*, OnComponent>> onComponents;
-		for (const auto& component : components)
+		for (uint32 i = 0; i < componentCount; i++)
 		{
-			auto result = entityInspectors.find(component.first);
+			auto system = components[i].system;
+			auto result = entityInspectors.find(system->getComponentType());
 			if (result == entityInspectors.end())
 				continue;
-			onComponents.emplace(result->second.priority, make_pair(
-				component.second.first, result->second.onComponent));
+			onComponents.emplace(result->second.priority, make_pair(system, result->second.onComponent));
 		}
 		for (const auto& pair : onComponents)
 		{
@@ -650,16 +660,17 @@ void EditorRenderSystem::showEntityInspector()
 		}
 		onComponents.clear();
 
-		for (const auto& component : components)
+		for (uint32 i = 0; i < componentCount; i++)
 		{
-			auto system = component.second.first;
-			if (entityInspectors.find(component.first) == entityInspectors.end())
+			auto system = components[i].system;
+			if (entityInspectors.find(system->getComponentType()) == entityInspectors.end())
 			{
-				auto componentName = system->getComponentName().empty() ?
-					typeToString(system->getComponentType()) : system->getComponentName();
+				auto componentType = system->getComponentType();
+				auto componentName = system->getComponentName().empty() ? 
+					typeToString(componentType) : system->getComponentName();
 				ImGui::CollapsingHeader(componentName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
 				
-				if (!renderInspectorComponentPopup(selectedEntity, system, component.first, componentName))
+				if (!renderInspectorComponentPopup(selectedEntity, system, componentType, componentName))
 					continue;
 			}
 		}
@@ -1013,7 +1024,7 @@ void EditorRenderSystem::setPlaying(bool isPlaying)
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::openFileSelector(const std::function<void(const fs::path&)>& onSelect, 
+void EditorRenderSystem::openFileSelector(const OnFileSelect& onSelect, 
 	const fs::path& directory, const vector<string_view>& extensions)
 {
 	fileSelectDirectory = selectedEntry = directory.empty() ?

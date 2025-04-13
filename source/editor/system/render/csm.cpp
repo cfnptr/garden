@@ -21,11 +21,11 @@
 
 using namespace garden;
 
-static map<string, DescriptorSet::Uniform> getCascadesUniforms()
+static DescriptorSet::Uniforms getCascadesUniforms()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());		
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ { "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) } };
 	return uniforms;
 }

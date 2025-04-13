@@ -112,9 +112,9 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"imgui", DeferredRenderSystem::Instance::get()->getUiFramebuffer());
 }
-static map<string, DescriptorSet::Uniform> getUniforms(ID<ImageView> texture)
+static DescriptorSet::Uniforms getUniforms(ID<ImageView> texture)
 {
-	map<string, DescriptorSet::Uniform> uniforms = { { "tex", DescriptorSet::Uniform(texture) } };
+	DescriptorSet::Uniforms uniforms = { { "tex", DescriptorSet::Uniform(texture) } };
 	return uniforms;
 }
 static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Bind bind)

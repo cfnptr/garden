@@ -32,7 +32,7 @@ static void getBlackPlaceholder(ID<Image>& blackPlaceholder)
 	}
 }
 
-static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPlaceholder)
+static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -64,7 +64,7 @@ static map<string, DescriptorSet::Uniform> getBufferUniforms(ID<Image>& blackPla
 		shadowBuffer0 = imageView->getDefaultView();
 	}
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "oitAccumBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[0].imageView) },
@@ -134,7 +134,7 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pbrLightingPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		map<string, Pipeline::SpecConstValue> specConstValues =
+		Pipeline::SpecConstValues specConstValues =
 		{
 			{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
 			{ "USE_SUB_SURFACE_SCATTERING", Pipeline::SpecConstValue(deferredSystem->useSSS()) },

@@ -430,6 +430,16 @@ void CommandBuffer::addCommand(const BlitImageCommand& command)
 	lastSize = commandSize;
 	hasAnyCommand = true;
 }
+void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
+{
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+	auto commandSize = (uint32)sizeof(SetDepthBiasCommand);
+	auto allocation = (SetDepthBiasCommand*)allocateCommand(commandSize);
+	*allocation = command;
+	allocation->thisSize = commandSize;
+	allocation->lastSize = lastSize;
+	lastSize = commandSize;
+}
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************

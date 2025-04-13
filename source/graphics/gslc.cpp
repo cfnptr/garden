@@ -17,9 +17,12 @@
 #include "garden/file.hpp"
 
 #include <atomic>
+#include <cmath>
+#include <exception>
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <string>
 
 #if GARDEN_OS_WINDOWS
 #include <windows.h>
@@ -85,8 +88,9 @@ namespace garden::graphics
 	struct LineData
 	{
 		string word, uniformName;
-		int8 isComparing = 0, isCompareOperation = 0, isAnisoFiltering = 0, isUnnormCoords = 0,
-			isFilter = 0, isFilterMin = 0, isFilterMag = 0, isFilterMipmap = 0, isBorderColor = 0, 
+		int8 isComparing = 0, isCompareOperation = 0, isAnisoFiltering = 0, isMaxAnisotropy = 0, 
+			isUnnormCoords = 0, isMipLodBias = 0, isMinLod = 0, isMaxLod = 0, isFilter = 0, 
+			isFilterMin = 0, isFilterMag = 0, isFilterMipmap = 0, isBorderColor = 0, 
 			isAddressMode = 0, isAddressModeX = 0, isAddressModeY = 0, isAddressModeZ = 0,
 			isSpecConst = 0, isFeature = 0, isVariantCount = 0;
 		uint8 arraySize = 1;
@@ -139,7 +143,22 @@ static bool toBoolState(string_view state, uint32 lineIndex)
 static string_view toStringState(bool state) noexcept
 {
 	return state ? "on" : "off";
-} 
+}
+
+static float toFloatValue(string_view value, uint32 lineIndex)
+{
+	if (value == "inf")
+		return INFINITY;
+
+	try
+	{
+		return stof(string(value));
+	}
+	catch (const exception&)
+	{
+		throw CompileError("invalid floating point value", lineIndex, string(value));
+	}
+}
 
 static GraphicsPipeline::ColorComponent toColorComponents(string_view colorComponents) noexcept
 {
@@ -259,8 +278,8 @@ static string_view toGlslString(Image::Format imageFormat)
 }
 
 //******************************************************************************************************************
-static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage shaderStage, uint8& bindingIndex,
-	map<string, Pipeline::Uniform>& uniforms, map<string, Sampler::State>& samplerStates)
+static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage shaderStage, 
+	uint8& bindingIndex, Pipeline::Uniforms& uniforms, Pipeline::SamplerStates& samplerStates)
 {
 	if (fileData.isUniform == 1)
 	{
@@ -707,8 +726,16 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 				lineData.isCompareOperation = 1;
 			else if (lineData.word == "anisoFiltering")
 				lineData.isAnisoFiltering = 1;
+			else if (lineData.word == "maxAnisotropy")
+				lineData.isMaxAnisotropy = 1;
 			else if (lineData.word == "unnormCoords")
 				lineData.isUnnormCoords = 1;
+			else if (lineData.word == "mipLodBias")
+				lineData.isMipLodBias = 1;
+			else if (lineData.word == "minLod")
+				lineData.isMinLod = 1;
+			else if (lineData.word == "maxLod")
+				lineData.isMaxLod = 1;
 			else
 			{
 				throw CompileError("unrecognized sampler property",
@@ -792,10 +819,30 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 			fileData.samplerState.anisoFiltering = toBoolState(name, fileData.lineIndex);
 			lineData.isAnisoFiltering = 0;
 		}
+		else if (lineData.isMaxAnisotropy)
+		{
+			fileData.samplerState.maxAnisotropy = toFloatValue(name, fileData.lineIndex);
+			lineData.isMaxAnisotropy = 0;
+		}
 		else if (lineData.isUnnormCoords)
 		{
 			fileData.samplerState.unnormCoords = toBoolState(name, fileData.lineIndex);
 			lineData.isUnnormCoords = 0;
+		}
+		else if (lineData.isMipLodBias)
+		{
+			fileData.samplerState.mipLodBias = toFloatValue(name, fileData.lineIndex);
+			lineData.isMipLodBias = 0;
+		}
+		else if (lineData.isMinLod)
+		{
+			fileData.samplerState.minLod = toFloatValue(name, fileData.lineIndex);
+			lineData.isMinLod = 0;
+		}
+		else if (lineData.isMaxLod)
+		{
+			fileData.samplerState.maxLod = toFloatValue(name, fileData.lineIndex);
+			lineData.isMaxLod = 0;
 		}
 		else abort();
 
@@ -1170,7 +1217,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 
 //******************************************************************************************************************
 static void onSpecConst(FileData& fileData, LineData& lineData,
-	map<string, Pipeline::SpecConst>& specConsts, ShaderStage shaderStage)
+	Pipeline::SpecConsts& specConsts, ShaderStage shaderStage)
 {
 	if (lineData.isSpecConst == 1)
 	{
@@ -1393,7 +1440,7 @@ static void writeGslHeaderValues(const fs::path& filePath,
 }
 
 template<typename T>
-static void writeGslHeaderArray(ofstream& headerStream, const map<string, T>& valueArray)
+static void writeGslHeaderArray(ofstream& headerStream, const map<string, T, less<>>& valueArray)
 {
 	for (const auto& pair : valueArray)
 	{
@@ -2269,7 +2316,7 @@ static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 
 template<typename T>
 static void readGslHeaderArray(const uint8* data, uint32 dataSize,
-	uint32& dataOffset, uint8 count, map<string, T>& valueArray)
+	uint32& dataOffset, uint8 count, map<string, T, less<>>& valueArray)
 {
 	for (uint8 i = 0; i < count; i++)
 	{

@@ -70,9 +70,9 @@ static void createBloomFramebuffers(const vector<ID<ImageView>>& imageViews, vec
 }
 
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getUniforms(ID<ImageView> srcTexture)
+static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcTexture)
 {
-	map<string, DescriptorSet::Uniform> uniforms = { { "srcTexture", DescriptorSet::Uniform(srcTexture) } };
+	DescriptorSet::Uniforms uniforms = { { "srcTexture", DescriptorSet::Uniform(srcTexture) } };
 	return uniforms;
 }
 
@@ -108,7 +108,7 @@ static void createBloomDescriptorSets(ID<Image> bloomBuffer,
 static ID<GraphicsPipeline> createDownsamplePipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
-	map<string, Pipeline::SpecConstValue> specConsts =
+	Pipeline::SpecConstValues specConsts =
 	{
 		{ "USE_THRESHOLD", Pipeline::SpecConstValue(useThreshold) },
 		{ "USE_ANTI_FLICKERING", Pipeline::SpecConstValue(useAntiFlickering) }
@@ -223,7 +223,7 @@ void BloomRenderSystem::preLdrRender()
 		pushConstants->threshold = threshold;
 
 		SET_GPU_DEBUG_LABEL("Downsample", Color::transparent);
-		framebufferView->beginRenderPass(f32x4::zero);
+		framebufferView->beginRenderPass(float4::zero);
 		downsamplePipelineView->bind(downsampleFirstVariant);
 		downsamplePipelineView->setViewportScissor();
 		downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
@@ -239,7 +239,7 @@ void BloomRenderSystem::preLdrRender()
 			framebufferView = graphicsSystem->get(framebuffers[i]);
 			downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
 				downsampleBaseVariant : downsample6x6Variant);
-			framebufferView->beginRenderPass(f32x4::zero);
+			framebufferView->beginRenderPass(float4::zero);
 			downsamplePipelineView->setViewportScissor();
 			downsamplePipelineView->bindDescriptorSet(descriptorSets[i]);
 			downsamplePipelineView->drawFullscreen();
@@ -253,7 +253,7 @@ void BloomRenderSystem::preLdrRender()
 		for (int8 i = mipCount - 2; i >= 0; i--)
 		{
 			framebufferView = graphicsSystem->get(framebuffers[i]);
-			framebufferView->beginRenderPass(f32x4::zero);
+			framebufferView->beginRenderPass(float4::zero);
 			upsamplePipelineView->setViewportScissor();
 			upsamplePipelineView->bindDescriptorSet(descriptorSets[mipCount + i]);
 			upsamplePipelineView->drawFullscreen();

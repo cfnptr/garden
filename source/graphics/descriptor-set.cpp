@@ -15,7 +15,6 @@
 #include "garden/graphics/descriptor-set.hpp"
 #include "garden/defines.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include <vulkan/vulkan_core.h>
 
 using namespace math;
 using namespace garden;
@@ -31,7 +30,7 @@ uint32 DescriptorSet::inputAttachmentCount = 0;
 
 //**********************************************************************************************************************
 static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, 
-	const map<string, DescriptorSet::Uniform>& uniforms, uint8 index)
+	const DescriptorSet::Uniforms& uniforms, uint8 index)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
@@ -84,8 +83,8 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 	return instance;
 }
 
-static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, PipelineType pipelineType, 
-	const map<string, DescriptorSet::Uniform>& uniforms, uint8 index)
+static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, 
+	PipelineType pipelineType, const DescriptorSet::Uniforms& uniforms, uint8 index)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	if (vulkanAPI->forceResourceDestroy)
@@ -135,10 +134,10 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, Pipeli
 }
 
 //**********************************************************************************************************************
-static void recreateVkDescriptorSet(const map<string, DescriptorSet::Uniform>& oldUniforms, 
-	const map<string, DescriptorSet::Uniform>& newUniforms, const map<string, ID<Sampler>>& samplers, 
-	uint8 index, void*& instance, vk::DescriptorPool descriptorPool, vk::DescriptorSetLayout descriptorSetLayout,
-	const map<string, Pipeline::Uniform>& pipelineUniforms)
+static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms, 
+	const DescriptorSet::Uniforms& newUniforms, const DescriptorSet::Samplers& samplers, uint8 index, 
+	void*& instance, vk::DescriptorPool descriptorPool, vk::DescriptorSetLayout descriptorSetLayout,
+	const Pipeline::Uniforms& pipelineUniforms)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	#if GARDEN_DEBUG
@@ -359,8 +358,8 @@ static void updateVkDescriptorSetUniform(void* instance, const Pipeline::Uniform
 }
 
 //**********************************************************************************************************************
-DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, map<string, Uniform>&& uniforms, 
-	map<string, ID<Sampler>>&& samplers, uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
+DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, Uniforms&& uniforms, 
+	Samplers&& samplers, uint8 index) : pipeline(pipeline), pipelineType(pipelineType), index(index)
 {
 	GARDEN_ASSERT(pipeline);
 	GARDEN_ASSERT(!uniforms.empty());
@@ -386,7 +385,7 @@ bool DescriptorSet::destroy()
 }
 
 //**********************************************************************************************************************
-void DescriptorSet::recreate(map<string, Uniform>&& uniforms, map<string, ID<Sampler>>&& samplers)
+void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 {
 	GARDEN_ASSERT(this->uniforms.size() == 0 || uniforms.size() == this->uniforms.size());
 
@@ -490,7 +489,7 @@ void DescriptorSet::recreate(map<string, Uniform>&& uniforms, map<string, ID<Sam
 }
 
 //**********************************************************************************************************************
-void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, uint32 elementOffset)
+void DescriptorSet::updateUniform(string_view name, const Uniform& uniform, uint32 elementOffset)
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(uniform.resourceSets.size() == 1);
@@ -499,14 +498,13 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
 	const auto& pipelineUniforms = pipelineView->getUniforms();
-	const auto& pipelineUniform = pipelineUniforms.at(name);
+	auto pipelineUniform = pipelineUniforms.find(name);
+	if (pipelineUniform == pipelineUniforms.end())
+		throw GardenError("Missing required pipeline uniform. (" + string(name) + ")");
 	GARDEN_ASSERT(uniform.resourceSets[0].size() + elementOffset <= pipelineView->getMaxBindlessCount());
 
 	#if GARDEN_DEBUG
-	if (pipelineUniforms.find(name) == pipelineUniforms.end())
-		throw GardenError("Missing required pipeline uniform. (" + name + ")");
-
-	auto uniformType = pipelineUniform.type;
+	auto uniformType = pipelineUniform->second.type;
 	if (isSamplerType(uniformType) || isImageType(uniformType))
 	{
 		GARDEN_ASSERT(uniform.getDebugType() == typeid(ImageView));
@@ -550,10 +548,13 @@ void DescriptorSet::updateUniform(const string& name, const Uniform& uniform, ui
 	#endif
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
-		updateVkDescriptorSetUniform(instance, pipelineUniform, uniform, elementOffset);
+		updateVkDescriptorSetUniform(instance, pipelineUniform->second, uniform, elementOffset);
 	else abort();
 
-	memcpy(this->uniforms.at(name).resourceSets[0].data() + elementOffset, 
+	auto thisUniform = this->uniforms.find(name);
+	if (thisUniform == this->uniforms.end())
+		throw GardenError("Missing required this pipeline uniform. (" + string(name) + ")");
+	memcpy(thisUniform->second.resourceSets[0].data() + elementOffset, 
 		uniform.resourceSets[0].data(), uniform.resourceSets[0].size() * sizeof(ID<Resource>));
 }
 

@@ -12,26 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/animate.hpp"
+#include "common/depth.gsl"
+#include "common/constants.gsl"
+#include "common/fullscreen.gsl"
 
-using namespace garden;
-
-bool Animation::destroy()
+uniform CameraConstants
 {
-	destroyKeyframes(keyframes);
-	keyframes.clear();
-	return true;
-}
+	CAMERA_CONSTANTS
+} cc;
 
-void Animation::destroyKeyframes(const Keyframes& keyframes)
+out float3 fs.nearPoint;
+out float3 fs.farPoint;
+
+void main()
 {
-	for (const auto& keyframe : keyframes)
-	{
-		const auto& animatables = keyframe.second;
-		for (const auto& pair : animatables)
-		{
-			auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
-			animatableSystem->destroyAnimation(pair.second);
-		}
-	}
+	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	fs.nearPoint = calcWorldPosition(1.0f, texCoords, cc.invViewProj) + cc.cameraPos.xyz;
+	fs.farPoint = calcWorldPosition(0.0001f, texCoords, cc.invViewProj) + cc.cameraPos.xyz; // 0.001 is for inf far plane
+	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
 }

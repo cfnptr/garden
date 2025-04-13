@@ -26,13 +26,13 @@ static ID<GraphicsPipeline> createPipeline()
 		"oit", deferredSystem->getHdrFramebuffer());
 	return skyboxPipeline;
 }
-static map<string, DescriptorSet::Uniform> getUniforms()
+static DescriptorSet::Uniforms getUniforms()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto oitFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getOitFramebuffer());
 	const auto& colorAttachments = oitFramebufferView->getColorAttachments();
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "accumBuffer", DescriptorSet::Uniform(colorAttachments[0].imageView) },
 		{ "revealBuffer", DescriptorSet::Uniform(colorAttachments[1].imageView) },
@@ -105,7 +105,7 @@ void OitRenderSystem::preLdrRender()
 	auto framebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 
 	SET_GPU_DEBUG_LABEL("OIT Compose", Color::transparent);
-	framebufferView->beginRenderPass(f32x4::zero);
+	framebufferView->beginRenderPass(float4::zero);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);

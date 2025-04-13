@@ -686,7 +686,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	}
 
 	const auto& descriptorSet = descriptorSets[selectedItem];
-	const std::map<string, Pipeline::Uniform>* uniforms = nullptr; string pipelineName;
+	const Pipeline::Uniforms* uniforms = nullptr; string pipelineName;
 	if (descriptorSet.getPipeline())
 	{
 		auto pipelineView = graphicsAPI->getPipelineView(

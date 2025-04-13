@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/animate.hpp"
+#include "garden/defines.hpp"
 #include "garden/system/render/instance.hpp"
 
 namespace garden
@@ -123,7 +124,7 @@ protected:
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
-	virtual map<string, DescriptorSet::Uniform> getSpriteUniforms(ID<ImageView> colorMap);
+	virtual DescriptorSet::Uniforms getSpriteUniforms(ID<ImageView> colorMap);
 	ID<GraphicsPipeline> createBasePipeline() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
@@ -245,25 +246,24 @@ public:
 	{
 		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		const auto& entityComponents = entityView->getComponents();
-		return entityComponents.find(typeid(C)) != entityComponents.end();
+		return entityView->findComponent(typeid(C).hash_code());
 	}
 	View<C> getComponent(ID<Entity> entity) const
 	{
 		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		const auto& pair = entityView->getComponents().at(typeid(C));
-		return components.get(ID<C>(pair.second));
+		auto componentData = entityView->findComponent(typeid(C).hash_code());
+		GARDEN_ASSERT(componentData);
+		return components.get(ID<C>(componentData->instance));
 	}
 	View<C> tryGetComponent(ID<Entity> entity) const
 	{
 		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		const auto& entityComponents = entityView->getComponents();
-		auto result = entityComponents.find(typeid(C));
-		if (result == entityComponents.end())
+		auto componentData = entityView->findComponent(typeid(C).hash_code());
+		if (!componentData)
 			return {};
-		return components.get(ID<C>(result->second.second));
+		return components.get(ID<C>(componentData->instance));
 	}
 };
 

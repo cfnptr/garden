@@ -37,7 +37,7 @@ static ID<Buffer> createLuminanceBuffer()
 }
 
 //**********************************************************************************************************************
-static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> luminanceBuffer, bool useBloomBuffer)
+static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useBloomBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -55,7 +55,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> luminanceBuffe
 		bloomBufferView = graphicsSystem->getEmptyTexture();
 	}
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "bloomBuffer", DescriptorSet::Uniform(bloomBufferView) },
@@ -66,7 +66,7 @@ static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> luminanceBuffe
 
 static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneMapper)
 {
-	map<string, Pipeline::SpecConstValue> specConsts =
+	Pipeline::SpecConstValues specConsts =
 	{
 		{ "USE_BLOOM_BUFFER", Pipeline::SpecConstValue(useBloomBuffer) },
 		{ "TONE_MAPPER", Pipeline::SpecConstValue((uint32)toneMapper) }

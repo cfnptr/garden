@@ -149,10 +149,9 @@ void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 }
 
 //**********************************************************************************************************************
-map<string, DescriptorSet::Uniform> SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colorMap)
+DescriptorSet::Uniforms SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colorMap)
 {
-	map<string, DescriptorSet::Uniform> spriteUniforms =
-	{ { "colorMap", DescriptorSet::Uniform(colorMap) } };
+	DescriptorSet::Uniforms spriteUniforms = { { "colorMap", DescriptorSet::Uniform(colorMap) } };
 	return spriteUniforms;
 }
 ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()

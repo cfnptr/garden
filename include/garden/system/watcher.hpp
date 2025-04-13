@@ -29,10 +29,11 @@ class WatcherSystem final : public System
 {
 public:
 	using OnChange = std::function<void(const string& path)>;
+	using Listeners = map<string, vector<OnChange>, les<>>;
 private:
 	void* instance = nullptr;
 	vector<string> changedFiles;
-	map<string, vector<OnChange>> listeners;
+	Listeners listeners;
 	mutex locker = {};
 
 	void initialize() final;
@@ -43,7 +44,7 @@ public:
 	vector<string>& getChangedFiles() noexcept { return changedFiles; }
 	mutex& getLocker() noexcept { return locker; }
 
-	void addListener(const string& extension, const OnChange& onChange) {
+	void addListener(string_view extension, const OnChange& onChange) {
 		listeners[extension].push_back(onChange); }
 };
 

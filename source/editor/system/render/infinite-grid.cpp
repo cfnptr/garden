@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/infinite-grid.hpp"
+#include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/system/render/oit.hpp"
+#include "ecsm.hpp"
+#include "math/simd/vector/float.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/deferred.hpp"
@@ -21,9 +25,9 @@
 
 using namespace garden;
 
-static map<string, DescriptorSet::Uniform> getUniforms()
+static DescriptorSet::Uniforms getUniforms()
 {
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ { "cc", DescriptorSet::Uniform(GraphicsSystem::Instance::get()->getCameraConstantsBuffers()) } };
 	return uniforms;
 }
@@ -50,14 +54,26 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreMetaLdrRender", InfiniteGridEditorSystem::preMetaLdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", InfiniteGridEditorSystem::metaLdrRender);
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	if (Manager::Instance::get()->has<OitRenderSystem>())
+	{
+		ECSM_SUBSCRIBE_TO_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
+		ECSM_SUBSCRIBE_TO_EVENT("OitRender", InfiniteGridEditorSystem::render);
+
+		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+			"editor/infinite-grid/oit", deferredSystem->getOitFramebuffer(), true);
+	}
+	else
+	{
+		ECSM_SUBSCRIBE_TO_EVENT("PreMetaLdrRender", InfiniteGridEditorSystem::preRender);
+		ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", InfiniteGridEditorSystem::render);
+
+		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+			"editor/infinite-grid/translucent", deferredSystem->getMetaLdrFramebuffer());
+	}
+	
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
-
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"editor/infinite-grid", deferredSystem->getMetaLdrFramebuffer());
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -76,15 +92,24 @@ void InfiniteGridEditorSystem::deinit()
 		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreMetaLdrRender", InfiniteGridEditorSystem::preMetaLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", InfiniteGridEditorSystem::metaLdrRender);
+		if (Manager::Instance::get()->has<OitRenderSystem>())
+		{
+			ECSM_UNSUBSCRIBE_FROM_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", InfiniteGridEditorSystem::render);
+		}
+		else
+		{
+			ECSM_UNSUBSCRIBE_FROM_EVENT("PreMetaLdrRender", InfiniteGridEditorSystem::preRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", InfiniteGridEditorSystem::render);
+		}
+		
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
 	}
 }
 
 //**********************************************************************************************************************
-void InfiniteGridEditorSystem::preMetaLdrRender()
+void InfiniteGridEditorSystem::preRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->camera)
@@ -98,7 +123,7 @@ void InfiniteGridEditorSystem::preMetaLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}
 }
-void InfiniteGridEditorSystem::metaLdrRender()
+void InfiniteGridEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->camera)
@@ -122,13 +147,25 @@ void InfiniteGridEditorSystem::metaLdrRender()
 	}
 	pushConstants->meshScale = meshScale;
 	pushConstants->isHorizontal = isHorizontal;
+	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
 
 	SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
-	pipelineView->pushConstants();
-	pipelineView->drawFullscreen();
+	if (graphicsSystem->isCurrentRenderPassAsync())
+	{
+		pipelineView->bindAsync(0);
+		pipelineView->setViewportScissorAsync(f32x4::zero, 0);
+		pipelineView->bindDescriptorSetAsync(descriptorSet, swapchainIndex, 0);
+		pipelineView->pushConstantsAsync(0);
+		pipelineView->drawFullscreenAsync(0);
+	}
+	else
+	{
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
+		pipelineView->pushConstants();
+		pipelineView->drawFullscreen();
+	}
 }
 
 void InfiniteGridEditorSystem::swapchainRecreate()

@@ -59,6 +59,7 @@ struct GBufferValues
 	float emissiveFactor;
 	float3 subsurfaceColor;
 	float thickness;
+	float3 refractedColor;
 };
 
 GBufferValues gBufferValuesDefault()
@@ -80,6 +81,7 @@ GBufferValues gBufferValuesDefault()
 	values.emissiveFactor = 0.0f;
 	values.subsurfaceColor = float3(0.0f);
 	values.thickness = 1.0f;
+	values.refractedColor = float3(0.0f);
 	return values;
 }
 
@@ -215,7 +217,7 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	values.clearCoatRoughness = decodeClearCoatRoughness(data);
 	values.normal = decodeNormal(data);
 	values.shadow = decodeShadow(data);
-
+	
 	if (USE_EMISSIVE_BUFFER)
 	{
 		values.emissiveColor = decodeEmissiveColor(data);
@@ -227,6 +229,7 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 		values.thickness = decodeThickness(data);
 	}
 	
+	values.refractedColor = float3(0.0f);
 	return values;
 }
 

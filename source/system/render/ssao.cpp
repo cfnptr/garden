@@ -67,20 +67,20 @@ static ID<Image> createNoiseTexture()
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline(uint32 sampleCount)
 {
-	map<string, Pipeline::SpecConstValue> specConsts = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
+	Pipeline::SpecConstValues specConsts = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useAoBuffer());
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("ssao",
 		pbrLightingSystem->getAoFramebuffers()[0], false, true, 0, 0, &specConsts);
 }
-static map<string, DescriptorSet::Uniform> getUniforms(ID<Buffer> sampleBuffer, ID<Image> noiseTexture)
+static DescriptorSet::Uniforms getUniforms(ID<Buffer> sampleBuffer, ID<Image> noiseTexture)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "gBufferNormals", DescriptorSet::Uniform(gFramebufferView->getColorAttachments()[
 			DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },

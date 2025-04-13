@@ -29,10 +29,11 @@ namespace garden
  */
 enum class MeshRenderType : uint8
 {
+	Color,       /**< Opaque color only rendering. (Directly to the HDR buffer)  */
 	Opaque,      /**< Blocks all light from passing through. (Faster to compute) */
 	Translucent, /**< Allows some light to pass through, enabling partial transparency. */
-	Color,       /**< Opaque color only rendering. (Directly to the HDR buffer)  */
-	OIT,         /**< Order independent transparency / translucency. (Faster than Translucent type) */
+	OIT,         /**< Order independent transparency. (Faster than Translucent type) */
+	Refracted,   /**< Refracted or absorbed light rendering. */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -209,18 +210,22 @@ private:
 	vector<IMeshRenderSystem*> meshSystems;
 	uint32 unsortedBufferCount = 0;
 	uint32 sortedBufferCount = 0;
+	bool oit = false;
 	bool asyncRecording = false;
 	bool asyncPreparing = false;
+	uint8 _alignment = 0;
 	atomic<uint32> sortedDrawIndex = 0; // Always last.
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.
 	 * 
+	 * @param useOIT use order independent transparency rendering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param useAsyncPreparing use multithreaded render meshes preparing
 	 * @param setSingleton set system singleton instance
 	 */
-	MeshRenderSystem(bool useAsyncRecording = true, bool useAsyncPreparing = true, bool setSingleton = true);
+	MeshRenderSystem(bool useOIT = true, bool useAsyncRecording = true, 
+		bool useAsyncPreparing = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys mesh rendering system instance.
 	 */
@@ -240,6 +245,8 @@ private:
 	void preDeferredRender();
 	void deferredRender();
 	void metaHdrRender();
+	void refractedRender();
+	void translucentRender();
 	void oitRender();
 
 	friend class ecsm::Manager;

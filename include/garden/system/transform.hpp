@@ -335,11 +335,6 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 	friend class ecsm::Manager;
 public:
 	/**
-	 * @brief Returns transform component pool.
-	 */
-	const LinearPool<TransformComponent>& getComponents() const noexcept { return components; }
-
-	/**
 	 * @brief Destroys the entity and all it descendants.
 	 * @param entity target entity to destroy
 	 */

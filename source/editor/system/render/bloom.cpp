@@ -23,11 +23,11 @@
 
 using namespace garden;
 
-static map<string, DescriptorSet::Uniform> getThresholdUniforms()
+static DescriptorSet::Uniforms getThresholdUniforms()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hdrFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getHdrFramebuffer());
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ { "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) } };
 	return uniforms;
 }

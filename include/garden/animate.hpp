@@ -101,8 +101,10 @@ public:
  */
 struct Animation final
 {
+public:
+	using Keyframes = map<int32, Animatables>;
 private:
-	map<int32, Animatables> keyframes;
+	Keyframes keyframes;
 public:
 	float frameRate = 30.0f; /**< Animation frame rate per second. */
 	bool isLooped = true;    /**< Is animation played infinitely. */
@@ -121,7 +123,7 @@ public:
 	/**
 	 * @brief Returns animation keyframes map.
 	 */
-	const map<int32, Animatables>& getKeyframes() const noexcept { return keyframes; }
+	const Keyframes& getKeyframes() const noexcept { return keyframes; }
 
 	/**
 	 * @brief Adds keyframe to the animation.
@@ -159,7 +161,7 @@ public:
 	 * @warning It does not destroys keyframe system frames!
 	 * @param index target keyframe iterator
 	 */
-	auto eraseKeyframe(map<int32, Animatables>::const_iterator i) { return keyframes.erase(i); }
+	auto eraseKeyframe(Keyframes::const_iterator i) { return keyframes.erase(i); }
 	/**
 	 * @brief Removes all keyframes from the animation.
 	 * @warning It does not destroys keyframe system frames!
@@ -170,7 +172,7 @@ public:
 	 * @brief Destroys keyframe system animation frames.
 	 * @warning Invalidates keyframes map!
 	 */
-	static void destroyKeyframes(const map<int32, Animatables>& keyframes);
+	static void destroyKeyframes(const Keyframes& keyframes);
 };
 
 } // namespace garden

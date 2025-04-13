@@ -59,8 +59,8 @@ protected:
 	void beginDrawAsync(int32 taskIndex) override;
 	void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
 
-	virtual map<string, DescriptorSet::Uniform> getBaseUniforms();
-	virtual map<string, DescriptorSet::Uniform> getShadowUniforms();
+	virtual DescriptorSet::Uniforms getBaseUniforms();
+	virtual DescriptorSet::Uniforms getShadowUniforms();
 	virtual ID<GraphicsPipeline> createBasePipeline() = 0;
 	virtual ID<GraphicsPipeline> createShadowPipeline() { return {}; }
 public:

@@ -75,8 +75,8 @@ namespace garden::graphics
 	{
 		uint64 version = 0;
 		fs::path shaderPath;
-		map<string, Pipeline::SpecConstValue> specConstValues;
-		map<string, Sampler::State> samplerStateOverrides;
+		Pipeline::SpecConstValues specConstValues;
+		Pipeline::SamplerStates samplerStateOverrides;
 		uint32 maxBindlessCount = 0;
 		#if !GARDEN_PACK_RESOURCES
 		fs::path resourcesPath;
@@ -87,8 +87,8 @@ namespace garden::graphics
 	{
 		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
-		map<uint8, GraphicsPipeline::State> pipelineStateOverrides;
-		map<uint8, vector<GraphicsPipeline::BlendState>> blendStateOverrides;
+		GraphicsPipeline::PipelineStates pipelineStateOverrides;
+		GraphicsPipeline::BlendStates blendStateOverrides;
 		ID<GraphicsPipeline> instance = {};
 		Image::Format depthStencilFormat = {};
 		uint8 subpassIndex = 0;
@@ -1231,10 +1231,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 				ImageExt::create(type, format, data->bind, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
-					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0),
-				std::move(paths),
-				realSize,
-				data->instance,
+					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
+				std::move(paths), realSize, data->instance,
 			};
 
 			copyLoadedImageData(pixelArrays, item.staging.getMap(),
@@ -1340,8 +1338,8 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<GraphicsPipeline> graphicsPipeline, 
-	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, 
+	ID<GraphicsPipeline> graphicsPipeline, DescriptorSet::Uniforms&& uniforms, uint8 index)
 {
 	GARDEN_ASSERT(hash);
 	GARDEN_ASSERT(graphicsPipeline);
@@ -1360,8 +1358,8 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<Graphi
 	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
 	return sharedDescriptorSet;
 }
-Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, ID<ComputePipeline> computePipeline, 
-	map<string, DescriptorSet::Uniform>&& uniforms, uint8 index)
+Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, 
+	ID<ComputePipeline> computePipeline, DescriptorSet::Uniforms&& uniforms, uint8 index)
 {
 	GARDEN_ASSERT(hash);
 	GARDEN_ASSERT(computePipeline);
@@ -1484,7 +1482,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	ID<Framebuffer> framebuffer,  bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
-	uint32 maxBindlessCount, const map<string, Pipeline::SpecConstValue>* specConstValues,
+	uint32 maxBindlessCount, const Pipeline::SpecConstValues* specConstValues,
 	const GraphicsPipeline::StateOverrides* stateOverrides, GraphicsPipeline::ShaderOverrides* shaderOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -1609,8 +1607,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			GraphicsQueueItem item =
 			{
 				GraphicsPipelineExt::create(pipelineData, data->useAsyncRecording),
-				data->renderPass,
-				data->instance
+				data->renderPass, data->instance
 			};
 
 			delete data;
@@ -1738,8 +1735,8 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 //**********************************************************************************************************************
 ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 	const fs::path& path, bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount, 
-	const map<string, Pipeline::SpecConstValue>* specConstValues,
-	const map<string, Sampler::State>* samplerStateOverrides, 
+	const Pipeline::SpecConstValues* specConstValues,
+	const Pipeline::SamplerStates* samplerStateOverrides, 
 	ComputePipeline::ShaderOverrides* shaderOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -1980,7 +1977,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					deserializer.endArrayElement();
 				}
 
-				if (manager->getComponentCount(entity) == 0)
+				if (!manager->hasComponents(entity))
 				{
 					manager->destroy(entity);
 				}
@@ -2031,7 +2028,7 @@ void ResourceSystem::clearScene()
 	for (const auto& entity : entities)
 	{
 		auto entityID = entities.getID(&entity);
-		if (entity.getComponents().empty() || manager->has<DoNotDestroyComponent>(entityID))
+		if (!entity.hasComponents() || manager->has<DoNotDestroyComponent>(entityID))
 			continue;
 
 		if (transformSystem)
@@ -2084,13 +2081,12 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	const auto& entities = manager->getEntities();
 	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
 
-	for (const auto& entity : entities)
+	for (const auto& entityView : entities)
 	{
-		const auto& components = entity.getComponents();
-		if (components.empty())
+		if (!entityView.hasComponents())
 			continue;
 
-		auto instance = entities.getID(&entity);
+		auto instance = entities.getID(&entityView);
 
 		View<TransformComponent> transformView = {};
 		if (transformSystem)
@@ -2110,10 +2106,16 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 		serializer.beginArrayElement();
 		serializer.beginChild("components");
 
-		for (const auto& pair : components)
+		auto components = entityView.getComponents();
+		auto componentCount = entityView.getComponentCount();
+
+		for (uint32 i = 0; i < componentCount; i++)
 		{
-			auto system = pair.second.first;
-			if (pair.first == typeid(DoNotDestroyComponent) || pair.first == typeid(DoNotDuplicateComponent))
+			auto& component = components[i];
+			auto system = component.system;
+
+			if (system->getComponentType() == typeid(DoNotDestroyComponent) || 
+				system->getComponentType() == typeid(DoNotDuplicateComponent))
 			{
 				serializer.beginArrayElement();
 				serializer.write(".type", system->getComponentName());
@@ -2128,7 +2130,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 			
 			serializer.beginArrayElement();
 			serializer.write(".type", componentName);
-			auto componentView = system->getComponent(pair.second.second);
+			auto componentView = system->getComponent(component.instance);
 			serializableSystem->serialize(serializer, componentView);
 			serializer.endArrayElement();
 		}

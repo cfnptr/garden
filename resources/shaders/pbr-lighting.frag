@@ -65,7 +65,7 @@ uniform pushConstants
 void main()
 {
 	float depth = texture(depthBuffer, fs.texCoords).r;
-	if (depth < FLOAT_EPS6)
+	if (depth < FLOAT32_MIN)
 		discard;
 
 	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
@@ -85,11 +85,11 @@ void main()
 
 	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
 	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);
-	float4 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
+	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
 
 	if (USE_EMISSIVE_BUFFER)
-		hdrColor.rgb += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.shadowEmissive.a;
-	fb.hdr = hdrColor;
+		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.shadowEmissive.a;
+	fb.hdr = float4(hdrColor, gBuffer.opacity);
 	
 	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.
 	//fb.hdr *= texture(aoBuffer, fs.texCoords).r;

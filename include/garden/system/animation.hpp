@@ -32,13 +32,15 @@ class AnimationSystem;
  */
 struct AnimationComponent final : public Component
 {
+	using Animations = map<string, Ref<Animation>, less<>>;
+
 	string active;               /**< Active animation path */
 	float frame = 0.0f;          /**< Current animation frame */
 	bool isPlaying = true;       /**< Is animation playing */
 	bool randomizeStart = false; /**< Set random frame on copy/deserialization */
 private:
 	uint16 _alignment = 0;
-	map<string, Ref<Animation>> animations;
+	Animations animations;
 
 	bool destroy();
 
@@ -49,7 +51,7 @@ public:
 	/**
 	 * @brief Returns animations map.
 	 */
-	const map<string, Ref<Animation>>& getAnimations() const noexcept { return animations; }
+	const Animations& getAnimations() const noexcept { return animations; }
 
 	/**
 	 * @brief Returns active animation loop state.
@@ -72,14 +74,14 @@ public:
 
 	/**
 	 * @brief Removes animation from the map.
-	 * @param[in] path target animation path
+	 * @param path target animation path
 	 */
 	psize eraseAnimation(const string& path) noexcept { return animations.erase(path); }
 	/**
 	 * @brief Removes animation from the map.
 	 * @param i target animation iterator
 	 */
-	auto eraseAnimation(map<string, Ref<Animation>>::const_iterator i) noexcept { return animations.erase(i); }
+	auto eraseAnimation(Animations::const_iterator i) noexcept { return animations.erase(i); }
 
 	/**
 	 * @brief Clears animations map.
@@ -93,7 +95,10 @@ public:
 class AnimationSystem final : public ComponentSystem<AnimationComponent>, 
 	public Singleton<AnimationSystem>, public ISerializable
 {
-	LinearPool<Animation> animations;
+public:
+	using Animations = LinearPool<Animation>;
+private:
+	Animations animations;
 	mt19937 randomGenerator;
 	bool animateAsync = false;
 
@@ -125,13 +130,9 @@ public:
 	 */
 	bool isAnimateAsync() const noexcept { return animateAsync; }
 	/**
-	 * @brief Returns animation component pool.
-	 */
-	const LinearPool<AnimationComponent>& getComponents() const noexcept { return components; }
-	/**
 	 * @brief Returns animation pool.
 	 */
-	const LinearPool<Animation>& getAnimations() const noexcept { return animations; }
+	const Animations& getAnimations() const noexcept { return animations; }
 
 	/**
 	 * @brief Creates a new animation instance.

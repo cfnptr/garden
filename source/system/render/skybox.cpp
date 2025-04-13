@@ -24,8 +24,7 @@ using namespace garden::primitive;
 
 static ID<GraphicsPipeline> createPipeline()
 {
-	map<string, Pipeline::SpecConstValue> specConsts =
-	{ { "FAR_DEPTH_VALUE", Pipeline::SpecConstValue(0.0f) } };
+	Pipeline::SpecConstValues specConsts = { { "FAR_DEPTH_VALUE", Pipeline::SpecConstValue(0.0f) } };
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("skybox", 
 		deferredSystem->getMetaHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConsts);
@@ -176,7 +175,7 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(const string& path, ID<Ima
 	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
-	map<string, DescriptorSet::Uniform> uniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ { "cubemap", DescriptorSet::Uniform(cubemapView->getDefaultView()) } };
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), pipeline, std::move(uniforms));

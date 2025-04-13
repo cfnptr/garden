@@ -285,7 +285,7 @@ public:
 	 * @param index index of descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createSharedDS(const Hash128& hash, ID<GraphicsPipeline> graphicsPipeline,
-		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+		DescriptorSet::Uniforms&& uniforms, uint8 index = 0);
 
 	/**
 	 * @brief Create shared graphics descriptor set instance.
@@ -296,7 +296,7 @@ public:
 	 * @param index index of descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createSharedDS(const Hash128& hash, ID<ComputePipeline> computePipeline,
-		map<string, DescriptorSet::Uniform>&& uniforms, uint8 index = 0);
+		DescriptorSet::Uniforms&& uniforms, uint8 index = 0);
 
 	/**
 	 * @brief Destroys shared descriptor set if it's the last one.
@@ -322,7 +322,7 @@ public:
 	 */
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, ID<Framebuffer> framebuffer, 
 		bool useAsyncRecording = false, bool loadAsync = true, uint8 subpassIndex = 0,
-		uint32 maxBindlessCount = 0, const map<string, Pipeline::SpecConstValue>* specConstValues = nullptr,
+		uint32 maxBindlessCount = 0, const Pipeline::SpecConstValues* specConstValues = nullptr,
 		const GraphicsPipeline::StateOverrides* stateOverrides = nullptr,
 		GraphicsPipeline::ShaderOverrides* shaderOverrides = nullptr);
 	
@@ -342,8 +342,8 @@ public:
 	 */
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
 		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const map<string, Pipeline::SpecConstValue>* specConstValues = nullptr,
-		const map<string, Sampler::State>* samplerStateOverrides = nullptr,
+		const Pipeline::SpecConstValues* specConstValues = nullptr,
+		const Pipeline::SamplerStates* samplerStateOverrides = nullptr,
 		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr);
 
 	/*******************************************************************************************************************

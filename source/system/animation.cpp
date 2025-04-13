@@ -64,7 +64,7 @@ AnimationSystem::~AnimationSystem()
 }
 
 //**********************************************************************************************************************
-static void animateComponent(const LinearPool<Animation>* animations, AnimationComponent& animationComp)
+static void animateComponent(const AnimationSystem::Animations* animations, AnimationComponent& animationComp)
 {
 	auto entity = animationComp.getEntity();
 	if (!entity || !animationComp.isPlaying || !animationComp.active.empty())
