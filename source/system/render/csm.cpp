@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/csm.hpp"
-#include "garden/system/render/mesh.hpp"
 #include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/settings.hpp"

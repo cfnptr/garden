@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/graphics/descriptor-set.hpp"
-#include "garden/defines.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
 using namespace math;

@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/resource.hpp"
-#include "garden/defines.hpp"
-#include "garden/graphics/buffer.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
 #include "garden/system/app-info.hpp"
@@ -35,9 +33,6 @@
 #include "png.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include <cfloat>
-#include <filesystem>
-#include <fstream>
 
 #include <cstdint>
 #include <cstdlib>

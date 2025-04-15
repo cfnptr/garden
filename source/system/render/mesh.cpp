@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/mesh.hpp"
-#include "garden/defines.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/transform.hpp"
@@ -21,7 +20,6 @@
 #include "garden/profiler.hpp"
 
 #include "math/matrix/transform.hpp"
-#include <string>
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/graphics.hpp"

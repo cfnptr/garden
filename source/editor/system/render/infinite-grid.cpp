@@ -13,13 +13,10 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/infinite-grid.hpp"
-#include "garden/graphics/pipeline/graphics.hpp"
-#include "garden/system/render/oit.hpp"
-#include "ecsm.hpp"
-#include "math/simd/vector/float.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/render/oit.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 

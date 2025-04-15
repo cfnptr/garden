@@ -19,7 +19,6 @@
 
 #pragma once
 #include "garden/graphics/gsl.hpp"
-#include "garden/graphics/sampler.hpp"
 #include "garden/graphics/descriptor-set.hpp"
 
 namespace garden::graphics

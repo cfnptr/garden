@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/input.hpp"
-#include "GLFW/glfw3.h"
 #include "garden/system/log.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"

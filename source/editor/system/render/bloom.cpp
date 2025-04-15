@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/bloom.hpp"
-#include "garden/system/graphics.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/render/bloom.hpp"

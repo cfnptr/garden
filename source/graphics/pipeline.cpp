@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "garden/graphics/pipeline.hpp"
-#include "garden/defines.hpp"
-#include "garden/graphics/sampler.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
 using namespace garden;

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/graphics/vulkan/command-buffer.hpp"
-#include "garden/defines.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/profiler.hpp"
 

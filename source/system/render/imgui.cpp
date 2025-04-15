@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/imgui.hpp"
-#include "garden/defines.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/graphics/api.hpp"

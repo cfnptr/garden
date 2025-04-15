@@ -19,7 +19,6 @@
 
 #pragma once
 #include "garden/animate.hpp"
-#include "garden/defines.hpp"
 #include "garden/system/render/instance.hpp"
 
 namespace garden
