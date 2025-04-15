@@ -78,6 +78,8 @@ void InfiniteGridEditorSystem::init()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 	{
+		settingsSystem->getBool("infiniteGrid.isEnabled", isEnabled);
+		settingsSystem->getBool("infiniteGrid.isHorizontal", isHorizontal);
 		settingsSystem->getFloat("infiniteGrid.meshScale", meshScale);
 		settingsSystem->getColor("infiniteGrid.meshColor", meshColor);
 		settingsSystem->getColor("infiniteGrid.axisColorX", axisColorX);
@@ -189,8 +191,19 @@ void InfiniteGridEditorSystem::editorSettings()
 	{
 		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		ImGui::Indent();
-		ImGui::Checkbox("Enabled", &isEnabled); ImGui::SameLine();
-		ImGui::Checkbox("Horizontal", &isHorizontal);
+
+		if (ImGui::Checkbox("Enabled", &isEnabled))
+		{
+			if (settingsSystem)
+				settingsSystem->setBool("infiniteGrid.isEnabled", isEnabled);
+		}
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Horizontal", &isHorizontal))
+		{
+			if (settingsSystem)
+				settingsSystem->setBool("infiniteGrid.isHorizontal", isHorizontal);
+		}
+
 		if (ImGui::DragFloat("Mesh Scale", &meshScale, 0.1f))
 		{
 			if (settingsSystem)

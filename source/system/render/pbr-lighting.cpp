@@ -186,7 +186,7 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 //**********************************************************************************************************************
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
-	constexpr auto shadowFormat = Image::Format::UnormB8G8R8A8;
+	constexpr auto shadowFormat = Image::Format::SfloatR16G16B16A16;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::ColorAttachment | 

@@ -35,13 +35,12 @@ GBufferValues fillModelGBuffer(sampler2D mraorMap, sampler2D normalMap,
 
 	GBufferValues values = gBufferValuesDefault();
 	values.baseColor = color.rgb;
-	values.opacity = color.a;
+	values.specularFactor = color.a;
 	values.metallic = mraor.r;
 	values.roughness = mraor.g;
 	values.ambientOcclusion = mraor.b;
 	values.reflectance = mraor.a;
 	values.absorptionColor = color.rgb;
-	values.transmission = 1.0f - color.a;
 	values.normal = tbn * (normal * 2.0f - 1.0f);
 	values.emissiveColor = emissive.rgb;
 	values.emissiveFactor = emissive.a;
@@ -55,13 +54,12 @@ GBufferValues fillModelGBufferLite(sampler2D mraorMap,
 
 	GBufferValues values = gBufferValuesDefault();
 	values.baseColor = color.rgb;
-	values.opacity = color.a;
+	values.specularFactor = color.a;
 	values.metallic = mraor.r;
 	values.roughness = mraor.g;
 	values.ambientOcclusion = mraor.b;
 	values.reflectance = mraor.a;
 	values.absorptionColor = color.rgb;
-	values.transmission = 1.0f - color.a;
 	values.normal = normal;
 	values.emissiveColor = emissive.rgb;
 	values.emissiveFactor = emissive.a;

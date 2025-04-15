@@ -26,7 +26,7 @@ pipelineState
 
 #define OFF_DRAW_MODE 0
 #define BASE_COLOR_DRAW_MODE 1
-#define OPACITY_DRAW_MODE 2
+#define SPECULAR_FACTOR_DRAW_MODE 2
 #define TRANSMISSION_DRAW_MODE 3
 #define METALLIC_DRAW_MODE 4
 #define ROUGHNESS_DRAW_MODE 5
@@ -92,9 +92,9 @@ void main()
 	{
 		fb.color = float4(gBuffer.baseColor, 1.0f);
 	}
-	else if (pc.drawMode == OPACITY_DRAW_MODE)
+	else if (pc.drawMode == SPECULAR_FACTOR_DRAW_MODE)
 	{
-		fb.color = float4(float3(gBuffer.opacity), 1.0f);
+		fb.color = float4(float3(gBuffer.specularFactor), 1.0f);
 	}
 	else if (pc.drawMode == TRANSMISSION_DRAW_MODE)
 	{

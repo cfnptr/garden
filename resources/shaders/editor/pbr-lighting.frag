@@ -33,7 +33,7 @@ out float4 fb.g5;
 
 uniform pushConstants
 {
-	float4 color;
+	float4 colorSpec;
 	float4 mraor;
 	float4 emissive;
 	float4 subsurface;
@@ -44,8 +44,8 @@ uniform pushConstants
 void main()
 {
 	GBufferValues values = gBufferValuesDefault();
-	values.baseColor = pc.color.rgb;
-	values.opacity = pc.color.a;
+	values.baseColor = pc.colorSpec.rgb;
+	values.specularFactor = pc.colorSpec.a;
 	values.metallic = pc.mraor.r;
 	values.roughness = pc.mraor.g;
 	values.ambientOcclusion = pc.mraor.b;

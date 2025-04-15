@@ -75,7 +75,7 @@ private:
 	void shadowRender();
 	void gBufferRecreate();
 
-	uint32 getShadowPassCount() final;
+	uint8 getShadowPassCount() final;
 	bool prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset) final;
 	bool beginShadowRender(uint32 passIndex, MeshRenderType renderType) final;
 	void endShadowRender(uint32 passIndex, MeshRenderType renderType) final;

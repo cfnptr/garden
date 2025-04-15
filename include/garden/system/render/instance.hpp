@@ -54,10 +54,10 @@ protected:
 	virtual void deinit();
 	virtual void gBufferRecreate();
 	
-	bool isDrawReady(bool isShadowPass) override;
-	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
+	bool isDrawReady(int8 shadowPass) override;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) override;
 	void beginDrawAsync(int32 taskIndex) override;
-	void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) override;
+	void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) override;
 
 	virtual DescriptorSet::Uniforms getBaseUniforms();
 	virtual DescriptorSet::Uniforms getShadowUniforms();
