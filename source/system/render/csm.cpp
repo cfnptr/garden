@@ -255,7 +255,7 @@ void CsmRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-uint32 CsmRenderSystem::getShadowPassCount()
+uint8 CsmRenderSystem::getShadowPassCount()
 {
 	return cascadeCount;
 }

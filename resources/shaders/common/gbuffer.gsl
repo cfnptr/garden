@@ -20,9 +20,7 @@
 #include "common/math.gsl"
 
 #define BASE_COLOR_G_BUFFER 0
-#define OPACITY_G_BUFFER 0
-#define ABSORPTION_COLOR_G_BUFFER 0
-#define TRANSMISSION_G_BUFFER 0
+#define SPECULAR_FACTOR_G_BUFFER 0
 #define METALLIC_G_BUFFER 1
 #define ROUGHNESS_G_BUFFER 1
 #define AO_G_BUFFER 1
@@ -44,7 +42,7 @@ struct GBufferData
 struct GBufferValues
 {
 	float3 baseColor;
-	float opacity;
+	float specularFactor;
 	float metallic;
 	float roughness;
 	float ambientOcclusion;
@@ -66,14 +64,14 @@ GBufferValues gBufferValuesDefault()
 {
 	GBufferValues values;
 	values.baseColor = float3(1.0f);
-	values.opacity = 1.0f;
+	values.specularFactor = 1.0f;
 	values.metallic = 0.0f;
 	values.roughness = 1.0f;
 	values.ambientOcclusion = 1.0f;
 	values.reflectance = 0.5f;
 	values.absorptionColor = float3(1.0f);
 	values.transmission = 0.0f;
-	values.clearCoatNormal = float3(0.5f, 0.5f, 1.0f);
+	values.clearCoatNormal = float3(0.0f, 0.0f, 1.0f);
 	values.clearCoatRoughness = 0.0f;
 	values.normal = float3(0.0f, 1.0f, 0.0f);
 	values.shadow = 1.0f;
@@ -110,9 +108,9 @@ float3 decodeNormalOct(float3 encoded)
 }
 
 //**********************************************************************************************************************
-float4 encodeGBuffer0(float3 baseColor, float opacity)
+float4 encodeGBuffer0(float3 baseColor, float specularFactor)
 {
-	return float4(baseColor, opacity);
+	return float4(baseColor, specularFactor);
 }
 float4 encodeGBuffer1(float metallic, float roughness, float ambientOcclusion, float reflectance)
 {
@@ -140,7 +138,7 @@ float4 encodeGBuffer5(float3 subsurfaceColor, float thickness)
 void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g1, 
 	out float4 g2, out float4 g3, out float4 g4, out float4 g5)
 {
-	g0 = encodeGBuffer0(values.baseColor, values.transmission);
+	g0 = encodeGBuffer0(values.baseColor, values.specularFactor);
 	g1 = encodeGBuffer1(values.metallic, values.roughness, values.ambientOcclusion, values.reflectance);
 	g2 = encodeGBuffer2(values.clearCoatNormal, values.clearCoatRoughness);
 	g3 = encodeGBuffer3(values.normal, values.shadow);
@@ -155,7 +153,7 @@ void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g
 
 //**********************************************************************************************************************
 float3 decodeBaseColor(float4 gBufferData) { return gBufferData.rgb; }
-float decodeOpacity(float4 gBufferData) { return gBufferData.a; }
+float decodeSpecularFactor(float4 gBufferData) { return gBufferData.a; }
 float decodeMetallic(float4 gBufferData) { return gBufferData.r; }
 float decodeRoughness(float4 gBufferData) { return gBufferData.g; }
 float decodeAmbientOcclusion(float4 gBufferData) { return gBufferData.b; }
@@ -170,7 +168,7 @@ float3 decodeSubsurfaceColor(float4 gBufferData) { return gBufferData.rgb; }
 float decodeThickness(float4 gBufferData) { return gBufferData.a; }
 
 float3 decodeBaseColor(const GBufferData data) { return decodeBaseColor(data.g[BASE_COLOR_G_BUFFER]); }
-float decodeOpacity(const GBufferData data) { return decodeOpacity(data.g[OPACITY_G_BUFFER]); }
+float decodeSpecularFactor(const GBufferData data) { return decodeSpecularFactor(data.g[SPECULAR_FACTOR_G_BUFFER]); }
 float decodeMetallic(const GBufferData data) { return decodeMetallic(data.g[METALLIC_G_BUFFER]); }
 float decodeRoughness(const GBufferData data) { return decodeRoughness(data.g[ROUGHNESS_G_BUFFER]); }
 float decodeAmbientOcclusion(const GBufferData data) { return decodeAmbientOcclusion(data.g[AO_G_BUFFER]); }
@@ -206,13 +204,12 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 
 	GBufferValues values;
 	values.baseColor = decodeBaseColor(data);
-	values.opacity = decodeOpacity(data);
+	values.specularFactor = decodeSpecularFactor(data);
 	values.metallic = decodeMetallic(data);
 	values.roughness = decodeRoughness(data);
 	values.ambientOcclusion = decodeAmbientOcclusion(data);
 	values.reflectance = decodeReflectance(data);
 	values.absorptionColor = values.baseColor;
-	values.transmission = 1.0f - values.opacity;
 	values.clearCoatNormal = decodeClearCoatNormal(data);
 	values.clearCoatRoughness = decodeClearCoatRoughness(data);
 	values.normal = decodeNormal(data);
@@ -229,6 +226,7 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 		values.thickness = decodeThickness(data);
 	}
 	
+	values.transmission = 0.0f;
 	values.refractedColor = float3(0.0f);
 	return values;
 }

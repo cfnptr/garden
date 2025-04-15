@@ -65,17 +65,17 @@ class IMeshRenderSystem
 protected:
 	/**
 	 * @brief Is mesh system ready for rendering. (All resources loaded, etc.)
-	 * @param isShadowPass is current pass shadow only
+	 * @param shadowPass current shadow pass index (light pass = -1)
 	 */
-	virtual bool isDrawReady(bool isShadowPass) = 0;
+	virtual bool isDrawReady(int8 shadowPass) = 0;
 	/**
 	 * @brief Prepares data required for mesh rendering.
 	 *
 	 * @param[in] viewProj camera view * projection matrix
 	 * @param drawCount total mesh draw item count
-	 * @param isShadowPass is current pass shadow only
+	 * @param shadowPass current shadow pass index (light pass = -1)
 	 */
-	virtual void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
+	virtual void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) { }
 	/**
 	 * @brief Begins mesh drawing asynchronously.
 	 * @warning Be careful with multithreaded code!
@@ -108,9 +108,9 @@ protected:
 	 * 
 	 * @param[in] viewProj camera view * projection matrix
 	 * @param drawCount total mesh draw item count
-	 * @param isShadowPass is current pass shadow only
+	 * @param shadowPass current shadow pass index (light pass = -1)
 	 */
-	virtual void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, bool isShadowPass) { }
+	virtual void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) { }
 
 	friend class MeshRenderSystem;
 public:
@@ -137,7 +137,7 @@ protected:
 	/**
 	 * @brief Returns mesh shadow render pass count.
 	 */
-	virtual uint32 getShadowPassCount() = 0;
+	virtual uint8 getShadowPassCount() = 0;
 	/**
 	 * @brief Prepares all required data for mesh shadow rendering.
 	 * 
@@ -233,9 +233,9 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, uint8 frustumPlaneCount, bool isShadowPass);
-	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, bool isShadowPass);
-	void renderSorted(const f32x4x4& viewProj, bool isShadowPass);
+	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, uint8 frustumPlaneCount, int8 shadowPass);
+	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
+	void renderSorted(const f32x4x4& viewProj, int8 shadowPass);
 	void renderShadows();
 
 	void init();

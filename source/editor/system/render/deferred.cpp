@@ -151,7 +151,7 @@ void DeferredRenderEditorSystem::deferredRender()
 
 	auto threadIndex = graphicsSystem->getThreadCount() - 1;
 	auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
-	pushConstants->color = (float4)colorOverride;
+	pushConstants->colorSpec = (float4)colorSpecOverride;
 	pushConstants->mraor = (float4)mraorOverride;
 	pushConstants->emissive = (float4)emissiveOverride;
 	pushConstants->subsurface = (float4)subsurfaceOverride;
@@ -184,8 +184,8 @@ void DeferredRenderEditorSystem::preLdrRender()
 
 	if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		constexpr auto modes = "Off\0Base Color\0Opacity\0Transmission\0Metallic\0Roughness\0Material AO\0Reflectance\0"
-			"Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0Emissive Factor\0"
+		constexpr auto modes = "Off\0Base Color\0Specular Factor\0Transmission\0Metallic\0Roughness\0Material AO\0"
+			"Reflectance\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0Emissive Factor\0"
 			"Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0OIT Accumulated Alpha\0"
 			"OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0Global Shadow Alpha\0"
 			"Global AO\0Denoised Global AO\0\0";
@@ -195,8 +195,8 @@ void DeferredRenderEditorSystem::preLdrRender()
 		if (drawMode == DrawMode::Lighting)
 		{
 			ImGui::SeparatorText("Overrides");
-			ImGui::ColorEdit3("Base Color", &colorOverride);
-			ImGui::SliderFloat("Opacity", &colorOverride.floats.w, 0.0f, 1.0f);
+			ImGui::ColorEdit3("Base Color", &colorSpecOverride);
+			ImGui::SliderFloat("Specular Factor", &colorSpecOverride.floats.w, 0.0f, 1.0f);
 			ImGui::SliderFloat("Metallic", &mraorOverride.floats.x, 0.0f, 1.0f);
 			ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
 			ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);

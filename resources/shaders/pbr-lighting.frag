@@ -69,7 +69,6 @@ void main()
 		discard;
 
 	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
-	gBuffer.opacity = 1.0f; gBuffer.transmission = 0.0f;
 	
 	float4 shadow = float4(pc.shadowEmissive.rgb, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)
@@ -89,7 +88,7 @@ void main()
 
 	if (USE_EMISSIVE_BUFFER)
 		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.shadowEmissive.a;
-	fb.hdr = float4(hdrColor, gBuffer.opacity);
+	fb.hdr = float4(hdrColor, 1.0f);
 	
 	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.
 	//fb.hdr *= texture(aoBuffer, fs.texCoords).r;

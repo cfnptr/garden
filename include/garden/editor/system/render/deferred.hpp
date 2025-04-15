@@ -23,7 +23,7 @@ class DeferredRenderEditorSystem final : public System
 {
 	enum class DrawMode : uint8
 	{
-		Off, BaseColor, Opacity, Transmission, Metallic, Roughness, MaterialAO, Reflectance, 
+		Off, BaseColor, SpecularFactor, Transmission, Metallic, Roughness, MaterialAO, Reflectance, 
 		ClearCoatRoughness, Normals, MaterialShadows, EmissiveColor, EmissiveFactor, SubsurfaceColor, 
 		Thickness, Lighting, HdrBuffer, OitAccumColor, OitAccumAlpha, OitRevealage, Depth, WorldPositions, 
 		GlobalShadowColor, GlobalShadowAlpha, GlobalAO, DenoisedGlobalAO, Count
@@ -39,7 +39,7 @@ class DeferredRenderEditorSystem final : public System
 	};
 	struct LightingPC final
 	{
-		float4 color;
+		float4 colorSpec;
 		float4 mraor;
 		float4 emissive;
 		float4 subsurface;
@@ -47,7 +47,7 @@ class DeferredRenderEditorSystem final : public System
 		float ccRoughness;
 	};
 
-	f32x4 colorOverride = f32x4::one;
+	f32x4 colorSpecOverride = f32x4::one;
 	f32x4 mraorOverride = f32x4(0.0f, 1.0f, 1.0f, 0.5f);
 	f32x4 emissiveOverride = f32x4::zero;
 	f32x4 subsurfaceOverride = f32x4::zero;
