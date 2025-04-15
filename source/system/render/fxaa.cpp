@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/fxaa.hpp"
-#include "garden/defines.hpp"
-#include "garden/graphics/framebuffer.hpp"
-#include "garden/system/graphics.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"

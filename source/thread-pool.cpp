@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/thread-pool.hpp"
-#include "garden/defines.hpp"
 #include "garden/profiler.hpp"
 
 #include "mpmt/thread.hpp"

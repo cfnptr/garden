@@ -19,7 +19,6 @@
  */
 
 #pragma once
-#include "garden/graphics/framebuffer.hpp"
 #include "garden/system/graphics.hpp"
 
 namespace garden

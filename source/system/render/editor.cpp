@@ -13,10 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/editor.hpp"
-#include "garden/defines.hpp"
-#include "garden/system/resource.hpp"
-#include <filesystem>
-#include <vector>
 
 #if GARDEN_EDITOR
 #include "garden/file.hpp"

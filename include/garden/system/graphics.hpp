@@ -18,9 +18,6 @@
  */
 
 #pragma once
-#include "garden/graphics/descriptor-set.hpp"
-#include "garden/graphics/framebuffer.hpp"
-#include "garden/graphics/sampler.hpp"
 #include "garden/system/input.hpp"
 #include "garden/graphics/constants.hpp"
 #include "garden/graphics/pipeline/compute.hpp"

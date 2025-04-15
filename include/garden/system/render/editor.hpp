@@ -18,10 +18,6 @@
  */
 
 #pragma once
-#include "garden/defines.hpp"
-#include "garden/graphics/buffer.hpp"
-#include "garden/graphics/sampler.hpp"
-#include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"
 
 #if GARDEN_EDITOR

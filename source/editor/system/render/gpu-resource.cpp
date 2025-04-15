@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/gpu-resource.hpp"
-#include "garden/defines.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/graphics/vulkan/api.hpp"

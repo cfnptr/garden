@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/deferred.hpp"
-#include "garden/graphics/framebuffer.hpp"
-#include "garden/system/graphics.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/profiler.hpp"
 

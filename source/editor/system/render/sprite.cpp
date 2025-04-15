@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/sprite.hpp"
-#include "garden/defines.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"

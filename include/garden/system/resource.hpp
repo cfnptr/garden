@@ -17,7 +17,6 @@
  */
 
 #pragma once
-#include "garden/graphics/buffer.hpp"
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
 #include "garden/resource/image.hpp"
