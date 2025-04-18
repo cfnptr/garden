@@ -42,7 +42,6 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<Image> fontTexture = {};
 	ID<DescriptorSet> fontDescriptorSet = {};
-	bool startedFrame = false;
 
 	/**
 	 * @brief Creates a new immediate mode GUI rendering system instance. (ImGui)
@@ -61,6 +60,7 @@ private:
 	void postDeinit();
 	void input();
 	void update();
+	void render();
 	void uiRender();
 	void swapchainRecreate();
 

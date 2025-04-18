@@ -192,6 +192,7 @@ static LRESULT CALLBACK imGuiWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 void ImGuiRenderSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
+	ECSM_SUBSCRIBE_TO_EVENT("Render", ImGuiRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ImGuiRenderSystem::swapchainRecreate);
 
 	auto& io = ImGui::GetIO();
@@ -306,6 +307,7 @@ void ImGuiRenderSystem::postDeinit()
 			ImGuiBackendFlags_HasSetMousePos | ImGuiBackendFlags_HasGamepad);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ImGuiRenderSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ImGuiRenderSystem::swapchainRecreate);
 	}
@@ -581,13 +583,18 @@ void ImGuiRenderSystem::update()
 	// ImGui_ImplGlfw_UpdateGamepads();
 
 	ImGui::NewFrame();
-	startedFrame = true;
 
-	if (!isEnabled)
-		return;
+	if (isEnabled)
+	{
+		if (!pipeline)
+			pipeline = createPipeline();
+	}
+}
 
-	if (!pipeline)
-		pipeline = createPipeline();
+void ImGuiRenderSystem::render()
+{
+	if (!GraphicsSystem::Instance::get()->canRender())
+		ImGui::EndFrame();
 }
 
 //**********************************************************************************************************************
@@ -595,11 +602,7 @@ void ImGuiRenderSystem::uiRender()
 {
 	SET_CPU_ZONE_SCOPED("ImGui UI Render");
 
-	if (startedFrame)
-	{
-		ImGui::Render();
-		startedFrame = false;
-	}
+	ImGui::Render();
 
 	if (!isEnabled)
 		return;

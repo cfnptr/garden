@@ -69,11 +69,26 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 		auto descriptorType = toVkDescriptorType(pair.second.type);
 		switch (descriptorType)
 		{
-		case vk::DescriptorType::eCombinedImageSampler: DescriptorSet::combinedSamplerCount++; break;
-		case vk::DescriptorType::eStorageImage: DescriptorSet::storageImageCount++; break;
-		case vk::DescriptorType::eInputAttachment: DescriptorSet::inputAttachmentCount++; break;
-		case vk::DescriptorType::eUniformBuffer: DescriptorSet::uniformBufferCount++; break;
-		case vk::DescriptorType::eStorageBuffer: DescriptorSet::storageBufferCount++; break;
+		case vk::DescriptorType::eCombinedImageSampler:
+			GARDEN_ASSERT(DescriptorSet::combinedSamplerCount < GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT);
+			DescriptorSet::combinedSamplerCount++;
+			break;
+		case vk::DescriptorType::eStorageImage:
+			GARDEN_ASSERT(DescriptorSet::storageImageCount < GARDEN_DS_POOL_STORAGE_IMAGE_COUNT);
+			DescriptorSet::storageImageCount++;
+			break;
+		case vk::DescriptorType::eInputAttachment:
+			GARDEN_ASSERT(DescriptorSet::inputAttachmentCount < GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT);
+			DescriptorSet::inputAttachmentCount++;
+			break;
+		case vk::DescriptorType::eUniformBuffer:
+			GARDEN_ASSERT(DescriptorSet::uniformBufferCount < GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT);
+			DescriptorSet::uniformBufferCount++;
+			break;
+		case vk::DescriptorType::eStorageBuffer:
+			GARDEN_ASSERT(DescriptorSet::storageBufferCount < GARDEN_DS_POOL_STORAGE_BUFFER_COUNT);
+			DescriptorSet::storageBufferCount++;
+			break;
 		default: abort();
 		}
 	}

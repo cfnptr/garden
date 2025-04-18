@@ -139,7 +139,7 @@ void MeshSelectorEditorSystem::metaLdrRender()
 	if (selectedEntity)
 	{
 		const auto& systems = manager->getSystems();
-		Aabb selectedEntityAabb = {};
+		Aabb selectedEntityAabb = Aabb::inf;
 
 		for (const auto& pair : systems)
 		{
@@ -152,23 +152,18 @@ void MeshSelectorEditorSystem::metaLdrRender()
 			auto componentData = (const uint8*)componentPool.getData();
 			auto componentOccupancy = componentPool.getOccupancy();
 
-			auto breakOut = false;
 			for (uint32 i = 0; i < componentOccupancy; i++)
 			{
 				auto meshRenderView = (const MeshRenderComponent*)(componentData + i * componentSize);
-				if (selectedEntity != meshRenderView->getEntity())
+				if (!meshRenderView->isEnabled || selectedEntity != meshRenderView->getEntity())
 					continue;
-				selectedEntityAabb = meshRenderView->aabb;
-				breakOut = true;
+				selectedEntityAabb.shrink(meshRenderView->aabb);
 				break;
 			}
-
-			if (breakOut)
-				break;
 		}
 
 		auto transformView = transformSystem->tryGetComponent(selectedEntity);
-		if (transformView && selectedEntityAabb != Aabb())
+		if (transformView && selectedEntityAabb != Aabb::inf)
 		{
 			auto model = transformView->calcModel(cameraPosition);
 			auto mvp = cameraConstants.viewProj * model * translate(
