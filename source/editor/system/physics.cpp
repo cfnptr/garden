@@ -516,7 +516,7 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 
 	ImGui::PopID();
 
-	constexpr auto sTypes = "None\0Empty\0Box\0Custom\00";
+	constexpr auto sTypes = "None\0Empty\0Box\0Sphere\0Capsule\0Custom\00";
 	if (ImGui::Combo("Type", &shapeType, sTypes) || isChanged)
 	{
 		switch (shapeType)
