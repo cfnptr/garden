@@ -322,7 +322,7 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void postSerialize(ISerializer& serializer) final;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;

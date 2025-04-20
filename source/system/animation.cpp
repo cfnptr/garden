@@ -258,7 +258,7 @@ void AnimationSystem::serialize(ISerializer& serializer, const View<Component> c
 	if (animationView->randomizeStart)
 		serializer.write("randomizeStart", true);
 }
-void AnimationSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void AnimationSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto animationView = View<AnimationComponent>(component);
 	auto& animations = animationView->animations;

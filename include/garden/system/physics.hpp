@@ -745,7 +745,7 @@ private:
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void postSerialize(ISerializer& serializer) final;
 	ID<Shape> deserializeDecoratedShape(IDeserializer& deserializer, string& valueStringCache);
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
 	
 	friend class ecsm::Manager;

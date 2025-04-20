@@ -182,10 +182,9 @@ public:
 	 * @brief Deserializes specified system component.
 	 * 
 	 * @param[in,out] deserializer target deserializer instance
-	 * @param entity component containing entity
 	 * @param component system component view
 	 */
-	virtual void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) { }
+	virtual void deserialize(IDeserializer& deserializer, View<Component> component) { }
 	/**
 	 * @brief Finalizes system after components deserialization.
 	 * @param[in,out] deserializer target deserializer instance

@@ -1968,7 +1968,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					}
 
 					auto componentView = manager->add(entity, system->getComponentType());
-					serializableSystem->deserialize(deserializer, entity, componentView);
+					serializableSystem->deserialize(deserializer, componentView);
 					deserializer.endArrayElement();
 				}
 

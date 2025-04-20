@@ -56,9 +56,9 @@ void Cutout9SliceSystem::serialize(ISerializer& serializer, const View<Component
 	if (cutout9SliceView->alphaCutoff != 0.5f)
 		serializer.write("alphaCutoff", cutout9SliceView->alphaCutoff);
 }
-void Cutout9SliceSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void Cutout9SliceSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	SpriteRenderSystem::deserialize(deserializer, entity, component);
+	SpriteRenderSystem::deserialize(deserializer, component);
 	auto cutout9SliceView = View<Cutout9SliceComponent>(component);
 	deserializer.read("alphaCutoff", cutout9SliceView->alphaCutoff);
 }

@@ -127,7 +127,7 @@ protected:
 	ID<GraphicsPipeline> createBasePipeline() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
 	void animateAsync(View<Component> component,

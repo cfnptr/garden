@@ -72,7 +72,7 @@ protected:
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex) override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
 	void animateAsync(View<Component> component,

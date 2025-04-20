@@ -120,7 +120,7 @@ private:
 	const string& getComponentName() const final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 	
 	friend class ecsm::Manager;
 	friend struct LinkComponent;

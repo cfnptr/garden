@@ -186,7 +186,7 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 		serializer.write("colorMapPath", spriteRenderView->colorMapPath.generic_string());
 	#endif
 }
-void SpriteRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto spriteRenderView = View<SpriteRenderComponent>(component);
 	deserializer.read("isArray", spriteRenderView->isArray);

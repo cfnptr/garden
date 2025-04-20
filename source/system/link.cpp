@@ -145,7 +145,7 @@ void LinkSystem::serialize(ISerializer& serializer, const View<Component> compon
 	if (!linkView->tag.empty())
 		serializer.write("tag", linkView->tag);
 }
-void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void LinkSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto linkView = View<LinkComponent>(component);
 
@@ -154,7 +154,7 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 		if (!linkView->uuid.fromBase64(uuidStringCache))
 			GARDEN_LOG_ERROR("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
 
-		auto result = uuidMap.emplace(linkView->uuid, entity);
+		auto result = uuidMap.emplace(linkView->uuid, linkView->entity);
 		if (!result.second)
 		{
 			GARDEN_LOG_ERROR("Deserialized entity with already existing link uuid. (uuid: " + uuidStringCache + ")");
@@ -165,7 +165,7 @@ void LinkSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, Vie
 	string tag;
 	if (deserializer.read("tag", tag))
 	{
-		tagMap.emplace(tag, entity);
+		tagMap.emplace(tag, linkView->entity);
 		linkView->tag = std::move(tag);
 	}
 }

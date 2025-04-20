@@ -463,7 +463,7 @@ void CharacterSystem::serialize(ISerializer& serializer, const View<Component> c
 		physicsSystem->serializeDecoratedShape(serializer, characterView->shape);
 	}
 }
-void CharacterSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto characterView = View<CharacterComponent>(component);
 
