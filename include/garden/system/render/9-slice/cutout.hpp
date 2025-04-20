@@ -76,7 +76,7 @@ private:
 	MeshRenderType getMeshRenderType() const final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component) final;
+	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
 	void animateAsync(View<Component> component,

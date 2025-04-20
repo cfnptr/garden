@@ -69,7 +69,7 @@ void CameraSystem::serialize(ISerializer& serializer, const View<Component> comp
 		serializer.write("depth", cameraView->p.orthographic.depth);
 	}
 }
-void CameraSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void CameraSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto cameraView = View<CameraComponent>(component);
 

@@ -526,7 +526,7 @@ void TransformSystem::postSerialize(ISerializer& serializer)
 	#endif
 }
 
-void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto transformView = View<TransformComponent>(component);
 
@@ -535,7 +535,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 	{
 		if (decodeBase64(&transformView->uid, uidStringCache, ModpDecodePolicy::kForgiving))
 		{
-			auto result = deserializedEntities.emplace(transformView->uid, entity);
+			auto result = deserializedEntities.emplace(transformView->uid, transformView->entity);
 			if (!result.second)
 				GARDEN_LOG_ERROR("Deserialized entity with already existing UID. (uid: " + uidStringCache + ")");
 		}
@@ -560,7 +560,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity
 			if (transformView->uid == parentUID)
 				GARDEN_LOG_ERROR("Deserialized entity with the same parent UID. (uid: " + uidStringCache + ")");
 			else
-				deserializedParents.emplace_back(make_pair(entity, parentUID));
+				deserializedParents.emplace_back(make_pair(transformView->entity, parentUID));
 		}
 	}
 

@@ -580,7 +580,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 				JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
 				serializableSystem->preDeserialize(jsonDeserializer);
 				auto componentView = manager->get(stagingEntity, componentType);
-				serializableSystem->deserialize(jsonDeserializer, selectedEntity, componentView);
+				serializableSystem->deserialize(jsonDeserializer, componentView);
 				serializableSystem->postDeserialize(jsonDeserializer);
 				manager->copy(stagingEntity, selectedEntity, componentType);
 			}

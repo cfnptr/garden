@@ -291,7 +291,7 @@ void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> com
 		break;
 	}
 }
-void SpawnerSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void SpawnerSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto spawnerView = View<SpawnerComponent>(component);
 	deserializer.read("isActive", spawnerView->isActive);

@@ -64,9 +64,9 @@ void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Compon
 	if (nineSliceView->windowBorder != float2::zero)
 		serializer.write("windowBorder", nineSliceView->windowBorder);
 }
-void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	SpriteRenderSystem::deserialize(deserializer, entity, component);
+	SpriteRenderSystem::deserialize(deserializer, component);
 	auto nineSliceView = View<NineSliceRenderComponent>(component);
 	deserializer.read("textureBorder", nineSliceView->textureBorder);
 	deserializer.read("windowBorder", nineSliceView->windowBorder);

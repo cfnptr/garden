@@ -203,12 +203,14 @@ void InputSystem::input()
 {
 	SET_CPU_ZONE_SCOPED("Input Update");
 
-	#if GARDEN_DEBUG
-	if (mpmt::Thread::isCurrentMain())
-		throw GardenError("Expected to run on a render thread."); // See the startRenderThread().
-	#endif
+	#if GARDEN_OS_WINDOWS
+		#if GARDEN_DEBUG
+		if (mpmt::Thread::isCurrentMain())
+			throw GardenError("Expected to run on a render thread."); // See the startRenderThread().
+		#endif
 
 	eventLocker.lock();
+	#endif
 
 	if (GraphicsSystem::Instance::get()->isOutOfDateSwapchain())
 	{
@@ -254,7 +256,9 @@ void InputSystem::input()
 	if (currClipboard != newClipboard)
 		newClipboard = currClipboard;
 
+	#if GARDEN_OS_WINDOWS
 	eventLocker.unlock();
+	#endif
 
 	auto currentTime = glfwGetTime();
 	deltaTime = (currentTime - systemTime) * timeMultiplier;
@@ -277,7 +281,10 @@ void InputSystem::output()
 {
 	SET_CPU_ZONE_SCOPED("Output Update");
 
+	#if GARDEN_OS_WINDOWS
 	eventLocker.lock();
+	#endif
+
 	currCursorMode = newCursorMode;
 
 	if (newWindowTitle != "")
@@ -301,8 +308,10 @@ void InputSystem::output()
 	if (glfwWindowShouldClose(window))
 		Manager::Instance::get()->isRunning = false;
 
+	#if GARDEN_OS_WINDOWS
 	eventLocker.unlock();
 	glfwPostEmptyEvent();
+	#endif
 }
 
 void InputSystem::setWindowIcon(const vector<string>& paths)
@@ -315,7 +324,12 @@ void InputSystem::startRenderThread()
 {
 	mpmt::Thread::setForegroundPriority();
 
+	#if GARDEN_OS_WINDOWS
 	auto renderThread = thread(InputSystem::renderThread);
+	#else
+	Manager::Instance::get()->isRunning = true;
+	#endif
+
 	auto inputSystem = InputSystem::Instance::get();
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 
@@ -346,7 +360,9 @@ void InputSystem::startRenderThread()
 		string newWindowTitle = "";
 		vector<vector<uint8>> imageData; vector<GLFWimage> images;
 
+		#if GARDEN_OS_WINDOWS
 		inputSystem->eventLocker.lock();
+		#endif
 
 		inputSystem->newFramebufferSize = uint2((uint32)framebufferX, (uint32)framebufferY);
 		inputSystem->newWindowSize = uint2((uint32)windowX, (uint32)windowY);
@@ -436,10 +452,12 @@ void InputSystem::startRenderThread()
 			inputSystem->currWindowIconPaths.clear();
 		}
 
+		#if GARDEN_OS_WINDOWS
 		inputSystem->eventLocker.unlock();
+		#endif
 
-		if (newCursorMode != -1)
-			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
+		//if (newCursorMode != -1)
+			// glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
 		if (newCursorType != -1)
 		{
 			glfwSetCursor(window, newCursorType == (int)CursorType::Default ?
@@ -452,8 +470,17 @@ void InputSystem::startRenderThread()
 			glfwSetWindowTitle(window, newWindowTitle.c_str());
 		if (!images.empty())
 			glfwSetWindowIcon(window, images.size(), images.data());
+
+		#if !GARDEN_OS_WINDOWS
+		Manager::Instance::get()->update();
+		#endif
 	}
 
 	glfwHideWindow(window);
+
+	#if GARDEN_OS_WINDOWS
 	renderThread.join();
+	#else
+	Manager::Instance::get()->isRunning = false;
+	#endif
 }

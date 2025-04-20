@@ -1594,7 +1594,7 @@ ID<Shape> PhysicsSystem::deserializeDecoratedShape(IDeserializer& deserializer, 
 }
 
 //**********************************************************************************************************************
-void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, View<Component> component)
+void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto rigidbodyView = View<RigidbodyComponent>(component);
 
@@ -1603,7 +1603,7 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, ID<Entity> entity, 
 	{
 		if (decodeBase64(&rigidbodyView->uid, valueStringCache, ModpDecodePolicy::kForgiving))
 		{
-			auto result = deserializedEntities.emplace(rigidbodyView->uid, entity);
+			auto result = deserializedEntities.emplace(rigidbodyView->uid, rigidbodyView->entity);
 			if (!result.second)
 				GARDEN_LOG_ERROR("Deserialized entity with already existing UID. (uid: " + valueStringCache + ")");
 		}
