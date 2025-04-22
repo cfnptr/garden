@@ -103,20 +103,25 @@ public:
 
 	/**
 	 * @brief Recreates swapchain rendering buffers.
+	 * 
+	 * @param framebufferSize new swapchain framebuffer size
+	 * @param useVsync use vertical synchronization (V-Sync)
+	 * @param useTripleBuffering use triple buffering (3 framebuffers)
 	 */
 	virtual void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) = 0;
 	/**
 	 * @brief Acquires next (front) swapchain rendering buffer.
-	 * @param threadPool async recording thread pool instance or null
+	 * @param[in,out] threadPool async recording thread pool instance or null
+	 * @return True on success, or false if swapchain is out of date.
 	 */
 	virtual bool acquireNextImage(ThreadPool* threadPool) = 0;
 	/**
 	 * @brief Submits current (front) swapchain rendering buffer.
-	 * @param threadPool async recording thread pool instance or null
 	 */
 	virtual void submit() = 0;
 	/**
 	 * @brief Presents current (front) swapchain rendering buffer.
+	 * @return True on success, or false if swapchain is out of date.
 	 */
 	virtual bool present() = 0;
 };

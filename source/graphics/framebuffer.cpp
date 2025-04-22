@@ -144,14 +144,14 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 			
 			if (isImageFormatColor)
 			{
-				if (outputAttachment.clear)
+				if (outputAttachment.flags.clear)
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
-				else if (outputAttachment.load)
+				else if (outputAttachment.flags.load)
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eLoad;
 				else
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
 				
-				if (outputAttachment.store)
+				if (outputAttachment.flags.store)
 					attachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
 				else
 					attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
@@ -164,14 +164,14 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 			{
 				if (isFormatDepthOnly(imageFormat))
 				{
-					if (outputAttachment.clear)
+					if (outputAttachment.flags.clear)
 						attachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
-					else if (outputAttachment.load)
+					else if (outputAttachment.flags.load)
 						attachmentDescription.loadOp = vk::AttachmentLoadOp::eLoad;
 					else
 						attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
 					
-					if (outputAttachment.store)
+					if (outputAttachment.flags.store)
 						attachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
 					else
 						attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
@@ -184,26 +184,26 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 					attachmentDescription.loadOp = vk::AttachmentLoadOp::eDontCare;
 					attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
 
-					if (outputAttachment.clear)
+					if (outputAttachment.flags.clear)
 						attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eClear;
-					else if (outputAttachment.load)
+					else if (outputAttachment.flags.load)
 						attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eLoad;
 					else
 						attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 
-					if (outputAttachment.store)
+					if (outputAttachment.flags.store)
 						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 					else
 						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 				}
 				else
 				{
-					if (outputAttachment.clear) // TODO: support separated depth/stencil clear?
+					if (outputAttachment.flags.clear) // TODO: support separated depth/stencil clear?
 					{
 						attachmentDescription.loadOp = attachmentDescription.stencilLoadOp =
 							vk::AttachmentLoadOp::eClear;
 					}
-					else if (outputAttachment.load)
+					else if (outputAttachment.flags.load)
 					{
 						attachmentDescription.loadOp = attachmentDescription.stencilLoadOp =
 							vk::AttachmentLoadOp::eLoad;
@@ -214,7 +214,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 							vk::AttachmentLoadOp::eDontCare;
 					}
 
-					if (outputAttachment.store)
+					if (outputAttachment.flags.store)
 					{
 						attachmentDescription.storeOp = attachmentDescription.stencilStoreOp =
 							vk::AttachmentStoreOp::eStore;

@@ -322,7 +322,7 @@ void GraphicsSystem::input()
 	auto inputSystem = InputSystem::Instance::get();
 	auto windowSize = inputSystem->getWindowSize();
 	auto framebufferSize = inputSystem->getFramebufferSize();
-	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 &&framebufferSize.x > 0 && framebufferSize.y > 0;
+	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 && framebufferSize.x > 0 && framebufferSize.y > 0;
 	beginSleepClock = mpio::OS::getCurrentClock();
 }
 void GraphicsSystem::update()
@@ -370,7 +370,7 @@ void GraphicsSystem::update()
 		{
 			isFramebufferSizeValid = false;
 			outOfDateSwapchain = true;
-			GARDEN_LOG_DEBUG("Out of date swapchain.");
+			GARDEN_LOG_DEBUG("Out of date swapchain. [Acquire]");
 		}
 	}
 
@@ -430,7 +430,7 @@ void GraphicsSystem::present()
 		{
 			isFramebufferSizeValid = false;
 			outOfDateSwapchain = true;
-			GARDEN_LOG_DEBUG("Out of date swapchain.");
+			GARDEN_LOG_DEBUG("Out of date swapchain. [Present]");
 		}
 		frameIndex++;
 	}
@@ -974,9 +974,9 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 		for (auto outputAttachment : subpass.outputAttachments)
 		{
 			GARDEN_ASSERT(outputAttachment.imageView);
-			GARDEN_ASSERT((!outputAttachment.clear && !outputAttachment.load) ||
-				(outputAttachment.clear && !outputAttachment.load) ||
-				(!outputAttachment.clear && outputAttachment.load));
+			GARDEN_ASSERT((!outputAttachment.flags.clear && !outputAttachment.flags.load) ||
+				(outputAttachment.flags.clear && !outputAttachment.flags.load) ||
+				(!outputAttachment.flags.clear && outputAttachment.flags.load));
 			auto imageView = graphicsAPI->imageViewPool.get(outputAttachment.imageView);
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));

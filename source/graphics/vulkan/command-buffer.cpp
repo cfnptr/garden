@@ -595,7 +595,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 		ImageState newImageState;
 		newImageState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
-		if (colorAttachment.load)
+		if (colorAttachment.flags.load)
 			newImageState.access |= (uint32)vk::AccessFlagBits::eColorAttachmentRead;
 		newImageState.layout = (uint32)vk::ImageLayout::eColorAttachmentOptimal;
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -610,14 +610,14 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			vk::AttachmentLoadOp loadOperation;
 			vk::ClearValue clearValue;
 
-			if (colorAttachment.clear)
+			if (colorAttachment.flags.clear)
 			{
 				array<float, 4> color;
 				*(float4*)color.data() = clearColors[i];
 				loadOperation = vk::AttachmentLoadOp::eClear;
 				clearValue = vk::ClearValue(vk::ClearColorValue(color));
 			}
-			else if (colorAttachment.load)
+			else if (colorAttachment.flags.load)
 			{
 				loadOperation = vk::AttachmentLoadOp::eLoad;
 			}
@@ -655,7 +655,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 		ImageState newImageState;
 		newImageState.access |= (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-		if (depthStencilAttachment.load)
+		if (depthStencilAttachment.flags.load)
 			newImageState.access |= (uint32)vk::AccessFlagBits::eDepthStencilAttachmentRead;
 		newImageState.layout = (uint32)vk::ImageLayout::eDepthStencilAttachmentOptimal;
 		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eEarlyFragmentTests;
@@ -671,13 +671,13 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (noSubpass)
 			{
-				if (depthStencilAttachment.clear) // TODO: support separated depth/stencil clear?
+				if (depthStencilAttachment.flags.clear) // TODO: support separated depth/stencil clear?
 				{
 					depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 					depthAttachmentInfo.clearValue = vk::ClearValue(vk::ClearDepthStencilValue(
 						command.clearDepth, command.clearStencil));
 				}
-				else if (depthStencilAttachment.load)
+				else if (depthStencilAttachment.flags.load)
 				{
 					depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eLoad;
 				}
@@ -704,13 +704,13 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (noSubpass)
 			{
-				if (depthStencilAttachment.clear)
+				if (depthStencilAttachment.flags.clear)
 				{
 					stencilAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 					stencilAttachmentInfo.clearValue = vk::ClearValue(vk::ClearDepthStencilValue(
 						command.clearDepth, command.clearStencil));
 				}
-				else if (depthStencilAttachment.load)
+				else if (depthStencilAttachment.flags.load)
 				{
 					stencilAttachmentInfo.loadOp = vk::AttachmentLoadOp::eLoad;
 				}

@@ -288,7 +288,6 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 	auto fence = fences[frameIndex];
 	auto waitResult = vulkanAPI->device.waitForFences(1, &fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
-	vulkanAPI->device.resetFences(fence);
 	
 	auto result = vulkanAPI->device.acquireNextImageKHR(instance,
 		UINT64_MAX, imageAcquiredSemaphores[frameIndex], {}, &bufferIndex);
@@ -297,6 +296,9 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 		return false;
 	else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 		throw GardenError("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
+
+	// Note: Should be called after image acquire, to prevent fences wait freeze.
+	vulkanAPI->device.resetFences(fence);
 
 	auto buffer = vulkanBuffers[bufferIndex];
 	if (threadPool)

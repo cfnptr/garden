@@ -85,8 +85,9 @@ void CsmRenderEditorSystem::preUiRender()
 			graphicsSystem->setShadowColor(shadowColor);
 
 		ImGui::DragFloat("Distance", &csmSystem->distance, 1.0f);
-		ImGui::DragFloat("Constant Factor", &csmSystem->biasConstantFactor, 0.001f);
-		ImGui::DragFloat("Slope Factor", &csmSystem->biasSlopeFactor, 0.0001f);
+		ImGui::DragFloat("Bias Constant Factor", &csmSystem->biasConstantFactor, 0.01f);
+		ImGui::DragFloat("Bias Slope Factor", &csmSystem->biasSlopeFactor, 0.01f);
+		ImGui::DragFloat("Bias Normal Factor", &csmSystem->biasNormalFactor, 0.01f);
 		ImGui::DragFloat("Z-Axis Offset Coefficient", &csmSystem->zCoeff, 0.01f);
 		ImGui::SliderFloat2("Cascade Splits", &csmSystem->cascadeSplits, 0.001f, 0.999f);
 

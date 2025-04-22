@@ -86,7 +86,7 @@ static void createShadowFramebuffers(const vector<ID<ImageView>>& imageViews,
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(CsmRenderSystem::cascadeCount);
-	Framebuffer::OutputAttachment depthStencilAttachment({}, true, false, true);
+	Framebuffer::OutputAttachment depthStencilAttachment({}, { true, false, true });
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
@@ -103,12 +103,12 @@ static void createTransparentFramebuffers(const vector<ID<ImageView>>& transImag
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(CsmRenderSystem::cascadeCount);
-	Framebuffer::OutputAttachment depthStencilAttachment({}, false, true, false);
+	Framebuffer::OutputAttachment depthStencilAttachment({}, { false, true, false} );
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(transImageViews[i], true, false, true) };
+		{ Framebuffer::OutputAttachment(transImageViews[i], { true, false, true }) };
 		depthStencilAttachment.imageView = shadowImageViews[i];
 		auto framebuffer = graphicsSystem->createFramebuffer(uint2(shadowMapSize), 
 			std::move(colorAttachments), depthStencilAttachment);
@@ -136,6 +136,8 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> shadowMap,
 	
 	DescriptorSet::Uniforms uniforms =
 	{ 
+		{ "gBufferNormals", DescriptorSet::Uniform(gFramebuffer->getColorAttachments()[
+			DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, swapchainSize) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
 		{ "shadowMap", DescriptorSet::Uniform(shadowMapView->getDefaultView(), 1, swapchainSize) },
@@ -259,8 +261,8 @@ uint8 CsmRenderSystem::getShadowPassCount()
 	return cascadeCount;
 }
 
-static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cameraOffset, 
-	float fieldOfView, float aspectRatio, float nearPlane, float farPlane, float zCoeff) noexcept
+static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cameraOffset, float fieldOfView, 
+	float aspectRatio, float nearPlane, float farPlane, float zCoeff, uint32 shadowMapSize) noexcept
 {
 	auto proj = (f32x4x4)calcPerspProjRevZ(fieldOfView, aspectRatio, nearPlane, farPlane);
 	auto invViewProj = inverse4x4(proj * view);
@@ -296,10 +298,17 @@ static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cam
 	minimum.setZ(minimum.getZ() < 0.0f ? minimum.getZ() * zCoeff : minimum.getZ() / zCoeff);
 	maximum.setZ(maximum.getZ() < 0.0f ? maximum.getZ() / zCoeff : maximum.getZ() * zCoeff);
 
+	float unitsPerTexel = (maximum.getX() - minimum.getX()) / shadowMapSize;
+	auto lightCameraPos = lightView * center;
+	lightCameraPos.setX(floor(lightCameraPos.getX() / unitsPerTexel) * unitsPerTexel);
+	lightCameraPos.setZ(floor(lightCameraPos.getZ() / unitsPerTexel) * unitsPerTexel);
+	auto snappedCameraPos = inverse4x4(lightView) * lightCameraPos;
+	auto stabilizedLightView = lookAt(snappedCameraPos - lightDir, snappedCameraPos);
+
 	cameraOffset = -(lightDir * minimum.getZ() + center);
 	auto lightProj = (f32x4x4)calcOrthoProjRevZ(float2(minimum.getX(), maximum.getX()),
 		float2(minimum.getY(), maximum.getY()), float2(minimum.getZ(), maximum.getZ()));
-	return lightProj * lightView;
+	return lightProj * stabilizedLightView;
 }
 
 //**********************************************************************************************************************
@@ -322,8 +331,9 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		farPlane *= cascadeSplits[passIndex];
 	farPlanes[passIndex] = farPlane;
 
-	viewProj = calcLightViewProj(cameraConstants.view, cameraConstants.lightDir, cameraOffset,
-		cameraView->p.perspective.fieldOfView, cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff);
+	viewProj = calcLightViewProj(cameraConstants.view, cameraConstants.lightDir, cameraOffset, 
+		cameraView->p.perspective.fieldOfView, cameraView->p.perspective.aspectRatio, 
+		nearPlane, farPlane, zCoeff, shadowMapSize);
 
 	const f32x4x4 ndcToCoords
 	(
@@ -344,8 +354,9 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
 	auto data = (ShadowData*)dataBufferView->getMap();
 	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
-	data->farPlanesIntens = (float4)f32x4(
-		cameraConstants.nearPlane / farPlanes, 1.0f - cameraConstants.shadowColor.getW());
+	data->farPlanesIntens = float4((float3)(cameraConstants.nearPlane / 
+		farPlanes), 1.0f - cameraConstants.shadowColor.getW());
+	data->lightDirBias = float4((float3)-cameraConstants.lightDir, biasNormalFactor);
 	return true;
 }
 

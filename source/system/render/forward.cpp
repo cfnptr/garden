@@ -51,8 +51,9 @@ static ID<Framebuffer> createFramebuffer(ID<Image> colorBuffer, ID<Image> depthS
 	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(colorBufferView->getDefaultView(), clearColorBuffer, false, true), };
-	Framebuffer::OutputAttachment depthStencilAttachment(depthStencilBufferView->getDefaultView(), true, false, true);
+	{ Framebuffer::OutputAttachment(colorBufferView->getDefaultView(), { clearColorBuffer, false, true } ), };
+	Framebuffer::OutputAttachment depthStencilAttachment(
+		depthStencilBufferView->getDefaultView(), { true, false, true} );
 
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment); 
@@ -220,9 +221,9 @@ void ForwardRenderSystem::swapchainRecreate()
 		auto colorBufferView = graphicsSystem->get(colorBuffer);
 		auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
 		Framebuffer::OutputAttachment colorAttachment(
-			colorBufferView->getDefaultView(), clearColorBuffer, false, true);
+			colorBufferView->getDefaultView(), { clearColorBuffer, false, true });
 		Framebuffer::OutputAttachment depthStencilAttachment(
-			depthStencilBufferView->getDefaultView(), true, false, true);
+			depthStencilBufferView->getDefaultView(), { true, false, true } );
 		framebufferView->update(graphicsSystem->getScaledFramebufferSize(), 
 			&colorAttachment, 1, depthStencilAttachment);
 	}

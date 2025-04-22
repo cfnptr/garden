@@ -61,7 +61,7 @@ static void createBloomFramebuffers(const vector<ID<ImageView>>& imageViews, vec
 	for (uint8 i = 0; i < mipCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(imageViews[i], false, true, true) };
+		{ Framebuffer::OutputAttachment(imageViews[i], { false, true, true }) };
 		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.bloom" + to_string(i));
 		framebuffers[i] = framebuffer;

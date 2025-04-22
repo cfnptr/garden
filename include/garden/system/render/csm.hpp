@@ -46,6 +46,7 @@ public:
 	{
 		float4x4 lightSpace[cascadeCount];
 		float4 farPlanesIntens;
+		float4 lightDirBias;
 	};
 private:
 	f32x4 farPlanes = f32x4::zero;
@@ -82,10 +83,11 @@ private:
 	
 	friend class ecsm::Manager;
 public:
-	float2 cascadeSplits = float2(0.05f, 0.20f);
+	float2 cascadeSplits = float2(0.1f, 0.25f);
 	float distance = 100.0f;
 	float biasConstantFactor = -1.25f;
 	float biasSlopeFactor = -1.75f;
+	float biasNormalFactor = 0.0002f;
 	float zCoeff = 10.0f;
 
 	/**

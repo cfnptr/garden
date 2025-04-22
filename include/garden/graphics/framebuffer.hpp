@@ -68,21 +68,24 @@ public:
 	 */
 	struct OutputAttachment final
 	{
+		struct Flags final
+		{
+			bool clear = false; /**< Clear output attachment content before rendering. */
+			bool load = false;  /**< Load output attachment content before rendering. */
+			bool store = false; /**< Store output attachment content after rendering. */
+		};
+
 		ID<ImageView> imageView = {}; /**< Output attachment image view. */
-		bool clear = false;           /**< Clear output attachment content before rendering. */
-		bool load = false;            /**< Load output attachment content before rendering. */
-		bool store = false;           /**< Store output attachment content after rendering. */
+		Flags flags = {};             /**< Output attachment content flags. */
 
 		/**
 		 * @brief Creates a new framebuffer input attachment.
 		 * 
 		 * @param imageView target output image view
-		 * @param clear clear output attachment content before rendering
-		 * @param load load output attachment content before rendering
-		 * @param store store output attachment content after rendering
+		 * @param flags output attachment content flags
 		 */
-		constexpr OutputAttachment(ID<ImageView> imageView, bool clear, bool load, bool store) noexcept :
-			imageView(imageView), clear(clear), load(load), store(store) { }
+		constexpr OutputAttachment(ID<ImageView> imageView, Flags flags) noexcept :
+			imageView(imageView), flags(flags) { }
 		/**
 		 * @brief Creates a new empty framebuffer output attachment.
 		 * @note It can not be used to create a framebuffer.
@@ -90,16 +93,10 @@ public:
 		constexpr OutputAttachment() { }
 
 		/**
-		 * @brief Sets framebuffer output attachment clear, load and store flags.
-		 * 
-		 * @param clear clear output attachment content before rendering
-		 * @param load load output attachment content before rendering
-		 * @param store store output attachment content after rendering
+		 * @brief Sets framebuffer output attachment content clear, load and store flags.
+		 * @param flags output attachment content flags
 		 */
-		constexpr void setFlags(bool clear, bool load, bool store) noexcept
-		{
-			this->clear = clear; this->load = load, this->store = store;
-		}
+		constexpr void setFlags(Flags flags) noexcept { this->flags = flags; }
 	};
 
 	/*******************************************************************************************************************
@@ -212,8 +209,9 @@ private:
 		OutputAttachment depthStencilAttachment);
 	Framebuffer(uint2 size, ID<ImageView> swapchainImage)
 	{
+		Framebuffer::OutputAttachment::Flags flags = { false, true, true };
 		this->instance = (void*)1;
-		this->colorAttachments.emplace_back(swapchainImage, false, true, true);
+		this->colorAttachments.emplace_back(swapchainImage, flags);
 		this->size = size;
 		this->isSwapchain = true;
 	}

@@ -470,11 +470,11 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::Text("%s", viewName.c_str());
 			ImGui::PushID(viewName.c_str());
 
-			auto value = attachment.clear;
+			auto value = attachment.flags.clear;
 			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
-			value = attachment.load;
+			value = attachment.flags.load;
 			ImGui::Checkbox("Load", &value); ImGui::SameLine();
-			value = attachment.store;
+			value = attachment.flags.store;
 			ImGui::Checkbox("Store", &value); ImGui::SameLine();
 			
 			if (ImGui::Button("Select image view")) 
@@ -505,11 +505,11 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::Text("%s", viewName.c_str());
 			ImGui::PushID(viewName.c_str());
 
-			auto value = depthStencilAttachment.clear;
+			auto value = depthStencilAttachment.flags.clear;
 			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
-			value = depthStencilAttachment.load;
+			value = depthStencilAttachment.flags.load;
 			ImGui::Checkbox("Load", &value); ImGui::SameLine();
-			value = depthStencilAttachment.store;
+			value = depthStencilAttachment.flags.store;
 			ImGui::Checkbox("Store", &value); ImGui::SameLine();
 
 			if (ImGui::Button("Select image view"))

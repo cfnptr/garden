@@ -28,7 +28,7 @@ static ID<Framebuffer> createFramebuffer()
 	GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(gBufferView->getDefaultView(), false, false, true) };
+	{ Framebuffer::OutputAttachment(gBufferView->getDefaultView(), { false, false, true } ) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
@@ -162,7 +162,7 @@ void FxaaRenderSystem::gBufferRecreate()
 			GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 			auto framebufferView = graphicsSystem->get(framebuffer);
-			Framebuffer::OutputAttachment colorAttachment(gBufferView->getDefaultView(), false, false, true);
+			Framebuffer::OutputAttachment colorAttachment(gBufferView->getDefaultView(), { false, false, true });
 			framebufferView->update(graphicsSystem->getScaledFramebufferSize(), &colorAttachment, 1);
 		}
 		if (descriptorSet)
