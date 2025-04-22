@@ -89,6 +89,16 @@ public:
 	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format oitAccumBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
+
+	static constexpr Framebuffer::OutputAttachment::Flags gBufferFlags = { false, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags gBufferDepthFlags = { true, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferDepthFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags ldrBufferFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags ldrBufferDepthFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags uiBufferFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags oitBufferFlags = { true, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags oitBufferDepthFlags = { false, true, false };
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};

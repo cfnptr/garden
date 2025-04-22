@@ -88,8 +88,7 @@ uniform sampler2DArrayShadow
 } shadowMap;
 uniform ShadowData
 {
-	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT];
-	float4 farPlanesIntens;
+	SHADOW_MAP_DATA
 } shadowData;
 
 uniform CameraConstants
@@ -109,7 +108,8 @@ void main()
 	{
 		uint32 cascadeID; float3 lightCoords;
 		computeCsmData(shadowData.lightSpace, gl.fragCoord.xy * cc.invFrameSize, 
-			gl.fragCoord.z, shadowData.farPlanesIntens.xyz, cascadeID, lightCoords);
+			gl.fragCoord.z, shadowData.farPlanesIntens.xyz, shadowData.lightDirBias.xyz,
+			shadowData.lightDirBias.w, values.normal, cascadeID, lightCoords);
 		shadow.a -= evaluateCsmShadows(shadowMap, cascadeID, lightCoords) * shadowData.farPlanesIntens.w;
 	}
 

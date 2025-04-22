@@ -335,7 +335,11 @@ void InputSystem::startRenderThread()
 
 	while (!glfwWindowShouldClose(window))
 	{
+		#if GARDEN_OS_WINDOWS
 		glfwWaitEvents();
+		#else
+		glfwPollEvents();
+		#endif
 
 		int framebufferX = 0.0, framebufferY = 0.0;
 		glfwGetFramebufferSize(window, &framebufferX, &framebufferY);
@@ -456,8 +460,8 @@ void InputSystem::startRenderThread()
 		inputSystem->eventLocker.unlock();
 		#endif
 
-		//if (newCursorMode != -1)
-			// glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
+		if (newCursorMode != -1)
+			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
 		if (newCursorType != -1)
 		{
 			glfwSetCursor(window, newCursorType == (int)CursorType::Default ?

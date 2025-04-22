@@ -13,10 +13,12 @@
 // limitations under the License.
 
 // TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
+#define USE_EMISSIVE_BUFFER false 
+#define USE_SUB_SURFACE_SCATTERING false 
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
 
 #include "common/csm.gsl"
-#include "common/math.gsl"
+#include "common/gbuffer.gsl"
 
 pipelineState
 {
@@ -26,6 +28,7 @@ pipelineState
 in noperspective float2 fs.texCoords;
 out float4 fb.shadow;
 
+uniform sampler2D gBufferNormals;
 uniform sampler2D depthBuffer;
 
 uniform sampler2DArrayShadow
@@ -42,8 +45,7 @@ uniform sampler2DArray
 
 uniform ShadowData
 {
-	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT];
-	float4 farPlanesIntens;
+	SHADOW_MAP_DATA
 } shadowData;
 
 //**********************************************************************************************************************
@@ -53,11 +55,13 @@ void main()
 	if (pixelDepth < shadowData.farPlanesIntens.z)
 		discard;
 
+	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
 	uint32 cascadeID; float3 lightCoords;
-	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, 
-		shadowData.farPlanesIntens.xyz, cascadeID, lightCoords);
+	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, shadowData.farPlanesIntens.xyz, 
+		shadowData.lightDirBias.xyz, shadowData.lightDirBias.w, normal, cascadeID, lightCoords);
 	float shadow = evaluateCsmShadows(shadowMap, cascadeID, lightCoords);
-	float3 transparency = mix(evaluateCsmTransparency(
-		transparentMap, cascadeID, lightCoords), float3(1.0f), shadow);
+
+	float3 transparency = evaluateCsmTransparency(transparentMap, cascadeID, lightCoords);
+	transparency = mix(transparency, float3(1.0f), shadow);
 	fb.shadow = float4(transparency, 1.0f - shadow * shadowData.farPlanesIntens.w);
 }

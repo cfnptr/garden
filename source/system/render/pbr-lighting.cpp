@@ -221,7 +221,7 @@ static void createShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers, const 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
-		{ Framebuffer::OutputAttachment(shadowImageViews[i], true, false, true) };
+		{ Framebuffer::OutputAttachment(shadowImageViews[i], { true, false, true }) };
 		shadowFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[i], "framebuffer.lighting.shadow" + to_string(i));
 	}
@@ -273,7 +273,7 @@ static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<Image
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments
-		{ Framebuffer::OutputAttachment(aoImageViews[i], true, false, true) };
+		{ Framebuffer::OutputAttachment(aoImageViews[i], { true, false, true }) };
 		aoFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(aoFramebuffers[i], "framebuffer.lighting.ao" + to_string(i));
 	}
@@ -732,7 +732,7 @@ void PbrLightingRenderSystem::gBufferRecreate()
 			for (uint32 i = 0; i < aoBufferCount; i++)
 			{
 				auto framebufferView = graphicsSystem->get(aoFramebuffers[i]);
-				Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], true, false, true);
+				Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], { true, false, true });
 				framebufferView->update(framebufferSize, &colorAttachment, 1);
 			}
 		}
@@ -747,7 +747,7 @@ void PbrLightingRenderSystem::gBufferRecreate()
 			for (uint32 i = 0; i < shadowBufferCount; i++)
 			{
 				auto framebufferView = graphicsSystem->get(shadowFramebuffers[i]);
-				Framebuffer::OutputAttachment colorAttachment(shadowImageViews[i], true, false, true);
+				Framebuffer::OutputAttachment colorAttachment(shadowImageViews[i], { true, false, true });
 				framebufferView->update(framebufferSize, &colorAttachment, 1);
 			}
 		}
