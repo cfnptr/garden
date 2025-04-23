@@ -54,24 +54,24 @@ static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool u
 	}
 }
 
-static ID<Image> createDepthStencilBuffer()
+static ID<Image> createDepthStencilBuffer(bool isCopy)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(
 		DeferredRenderSystem::depthStencilFormat, Image::Bind::DepthStencilAttachment | 
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.depthStencil");
+	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.depthStencil" + string(isCopy ? "Copy" : ""));
 	return image;
 }
 
-static ID<Image> createHdrBuffer()
+static ID<Image> createHdrBuffer(bool isCopy)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(DeferredRenderSystem::hdrBufferFormat, Image::Bind::ColorAttachment | 
 		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.hdr");
+	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.hdr" + string(isCopy ? "Copy" : ""));
 	return image;
 }
 static ID<Image> createLdrBuffer()
@@ -309,9 +309,9 @@ void DeferredRenderSystem::init()
 	if (gBuffers.empty())
 		createGBuffers(gBuffers, emissive, sss);
 	if (!hdrBuffer)
-		hdrBuffer = createHdrBuffer();
+		hdrBuffer = createHdrBuffer(false);
 	if (!hdrCopyBuffer)
-		hdrCopyBuffer = createHdrBuffer();
+		hdrCopyBuffer = createHdrBuffer(true);
 	if (!ldrBuffer)
 		ldrBuffer = createLdrBuffer();
 	if (!uiBuffer)
@@ -321,9 +321,9 @@ void DeferredRenderSystem::init()
 	if (!oitRevealBuffer)
 		oitRevealBuffer = createOitRevealBuffer();
 	if (!depthStencilBuffer)
-		depthStencilBuffer = createDepthStencilBuffer();
+		depthStencilBuffer = createDepthStencilBuffer(false);
 	if (!depthCopyBuffer)
-		depthCopyBuffer = createDepthStencilBuffer();
+		depthCopyBuffer = createDepthStencilBuffer(true);
 	
 	if (!gFramebuffer)
 		gFramebuffer = createGFramebuffer(gBuffers, depthStencilBuffer);
@@ -603,9 +603,9 @@ void DeferredRenderSystem::swapchainRecreate()
 		graphicsSystem->destroy(gBuffers);
 		createGBuffers(gBuffers, emissive, sss);
 		graphicsSystem->destroy(hdrBuffer);
-		hdrBuffer = createHdrBuffer();
+		hdrBuffer = createHdrBuffer(false);
 		graphicsSystem->destroy(hdrCopyBuffer);
-		hdrCopyBuffer = createHdrBuffer();
+		hdrCopyBuffer = createHdrBuffer(true);
 		graphicsSystem->destroy(ldrBuffer);
 		ldrBuffer = createLdrBuffer();
 		if (destroyUI)
@@ -616,9 +616,9 @@ void DeferredRenderSystem::swapchainRecreate()
 		graphicsSystem->destroy(oitRevealBuffer);
 		oitRevealBuffer = createOitRevealBuffer();
 		graphicsSystem->destroy(depthStencilBuffer);
-		depthStencilBuffer = createDepthStencilBuffer();
+		depthStencilBuffer = createDepthStencilBuffer(false);
 		graphicsSystem->destroy(depthCopyBuffer);
-		depthCopyBuffer = createDepthStencilBuffer();
+		depthCopyBuffer = createDepthStencilBuffer(true);
 		
 		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 		Framebuffer::OutputAttachment colorAttachments[gBufferCount];
@@ -698,13 +698,13 @@ const vector<ID<Image>>& DeferredRenderSystem::getGBuffers()
 ID<Image> DeferredRenderSystem::getHdrBuffer()
 {
 	if (!hdrBuffer)
-		hdrBuffer = createHdrBuffer();
+		hdrBuffer = createHdrBuffer(false);
 	return hdrBuffer;
 }
 ID<Image> DeferredRenderSystem::getHdrCopyBuffer()
 {
 	if (!hdrCopyBuffer)
-		hdrCopyBuffer = createHdrBuffer();
+		hdrCopyBuffer = createHdrBuffer(true);
 	return hdrCopyBuffer;
 }
 ID<Image> DeferredRenderSystem::getLdrBuffer()
@@ -734,13 +734,13 @@ ID<Image> DeferredRenderSystem::getOitRevealBuffer()
 ID<Image> DeferredRenderSystem::getDepthStencilBuffer()
 {
 	if (!depthStencilBuffer)
-		depthStencilBuffer = createDepthStencilBuffer();
+		depthStencilBuffer = createDepthStencilBuffer(false);
 	return depthStencilBuffer;
 }
 ID<Image> DeferredRenderSystem::getDepthCopyBuffer()
 {
 	if (!depthCopyBuffer)
-		depthCopyBuffer = createDepthStencilBuffer();
+		depthCopyBuffer = createDepthStencilBuffer(true);
 	return depthCopyBuffer;
 }
 

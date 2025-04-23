@@ -29,20 +29,18 @@ namespace garden
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
-protected:
-	uint8 _alignment = 0;
-public:
-	bool isArray = false;                  /**< Is sprite texture type array. */
+	f32x4 colorFactor = f32x4::one;        /**< Texture color multiplier. */
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
-	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
-	f32x4 colorFactor = f32x4::one;        /**< Texture color multiplier. */
 	float2 uvSize = float2::one;           /**< Texture UV size. */
 	float2 uvOffset = float2::zero;        /**< Texture UV offset. */
-
+	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = {};            /**< Color map texture path. */
 	#endif
+
+	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
+	bool isArray = false;                  /**< Is sprite texture type array. */
 };
 
 /**

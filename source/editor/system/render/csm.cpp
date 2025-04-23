@@ -25,9 +25,7 @@ static DescriptorSet::Uniforms getCascadesUniforms()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());		
-	DescriptorSet::Uniforms uniforms =
-	{ { "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) } };
-	return uniforms;
+	return { { "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) } };
 }
 
 //**********************************************************************************************************************

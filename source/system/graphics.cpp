@@ -716,6 +716,10 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	else abort();
 	#endif
 
+	if (type == Image::Type::Texture3D)
+		layerCount = size.getZ();
+	else
+		size.setZ(layerCount);
 	if (dataFormat == Image::Format::Undefined)
 		dataFormat = format;
 
@@ -727,7 +731,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];
-		auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY() * mipSize.getZ();
+		auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY();
 
 		for (auto layerData : mipData)
 		{
@@ -741,7 +745,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	}
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto image = graphicsAPI->imagePool.create(type, format, bind, strategy, size, mipCount, layerCount, 0);
+	auto image = graphicsAPI->imagePool.create(type, format, bind, strategy, u32x4(size, mipCount), 0);
 	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
@@ -759,7 +763,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		else
 		{
 			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Bind::TransferDst |
-				Image::Bind::TransferSrc, Image::Strategy::Speed, size, mipCount, layerCount, 0);
+				Image::Bind::TransferSrc, Image::Strategy::Speed, u32x4(size, mipCount), 0);
 			SET_RESOURCE_DEBUG_NAME(targetImage, "image.staging" + to_string(*targetImage));
 		}
 
@@ -773,7 +777,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
 			const auto& mipData = data[mip];
-			auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY() * mipSize.getZ();
+			auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY();
 
 			for (uint32 layer = 0; layer < (uint32)mipData.size(); layer++)
 			{
@@ -893,7 +897,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 		GARDEN_ASSERT(layerCount == 1);
 
 	auto imageView = graphicsAPI->imageViewPool.create(false, image,
-		type, format, baseMip, mipCount, baseLayer, layerCount);
+		type, format, baseLayer, layerCount, baseMip, mipCount);
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
 	return imageView;
 }

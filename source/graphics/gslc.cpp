@@ -759,8 +759,7 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 
 		if (lineData.isFilter)
 		{
-			fileData.samplerState.magFilter = fileData.samplerState.minFilter =
-				fileData.samplerState.mipmapFilter = toSamplerFilter(name, fileData.lineIndex);
+			fileData.samplerState.setFilter(toSamplerFilter(name, fileData.lineIndex));
 			lineData.isFilter = 0;
 		}
 		else if (lineData.isFilterMin)
@@ -785,8 +784,7 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 		}
 		else if (lineData.isAddressMode)
 		{
-			fileData.samplerState.addressModeX = fileData.samplerState.addressModeY =
-				fileData.samplerState.addressModeZ = toAddressMode(name, fileData.lineIndex);
+			fileData.samplerState.setAddressMode(toAddressMode(name, fileData.lineIndex));
 			lineData.isAddressMode = 0;
 		}
 		else if (lineData.isAddressModeX)
@@ -2537,7 +2535,7 @@ int main(int argc, char *argv[])
 		{
 			if (!threadPool)
 				threadPool = new ThreadPool(false, "T");
-			threadPool->addTask([&compileResult, arg, inputPath, outputPath, includePaths](const ThreadPool::Task& task)
+			threadPool->addTask([&](const ThreadPool::Task& task)
 			{
 				if (!compileResult)
 					return;
