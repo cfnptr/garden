@@ -42,11 +42,13 @@ enum class MeshRenderType : uint8
  */
 struct MeshRenderComponent : public Component
 {
-	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
-	bool isEnabled = true; /**< Is mesh should be rendered. */
 protected:
+	uint16 _alignment0 = 0;
 	bool visible = false;
 public:
+	bool isEnabled = true; /**< Is mesh should be rendered. */
+	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
+
 	/**
 	 * @brief Is mesh visible on camera after last frustum culling.
 	 */

@@ -111,11 +111,26 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"imgui", DeferredRenderSystem::Instance::get()->getUiFramebuffer());
 }
+static ID<Sampler> createLinearSampler()
+{
+	Sampler::State state;
+	state.setFilter(Sampler::Filter::Linear);
+	return GraphicsSystem::Instance::get()->createSampler(state);
+}
+static ID<Sampler> createNearesSampler()
+{
+	return GraphicsSystem::Instance::get()->createSampler({});
+}
+
 static DescriptorSet::Uniforms getUniforms(ID<ImageView> texture)
 {
-	DescriptorSet::Uniforms uniforms = { { "tex", DescriptorSet::Uniform(texture) } };
-	return uniforms;
+	return { { "tex", DescriptorSet::Uniform(texture) } };
 }
+static DescriptorSet::Samplers getSamplers(ID<Sampler> sampler)
+{
+	return { { "tex", sampler } };
+}
+
 static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Bind bind)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -267,6 +282,10 @@ void ImGuiRenderSystem::preInit()
 	{
 		if (!pipeline)
 			pipeline = createPipeline();
+		if (!linearSampler)
+			linearSampler = createLinearSampler();
+		if (!nearestSampler)
+			nearestSampler = createNearesSampler();
 	}
 }
 void ImGuiRenderSystem::postInit()
@@ -588,6 +607,10 @@ void ImGuiRenderSystem::update()
 	{
 		if (!pipeline)
 			pipeline = createPipeline();
+		if (!linearSampler)
+			linearSampler = createLinearSampler();
+		if (!nearestSampler)
+			nearestSampler = createNearesSampler();
 	}
 }
 
@@ -616,7 +639,9 @@ void ImGuiRenderSystem::uiRender()
 	if (!fontDescriptorSet)
 	{
 		auto uniforms = getUniforms(fontTextureView->getDefaultView());
-		fontDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		auto samplers = getSamplers(linearSampler);
+		fontDescriptorSet = graphicsSystem->createDescriptorSet(
+			pipeline, std::move(uniforms), std::move(samplers));
 		SET_RESOURCE_DEBUG_NAME(fontDescriptorSet, "descriptorSet.imgui.font");
 	}
 
@@ -716,8 +741,10 @@ void ImGuiRenderSystem::uiRender()
 				*texture = cmd.TextureId;
 
 				auto uniforms = getUniforms(texture);
-				auto tmpDescriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(tmpDescriptorSet, "descriptorSet.imgui.imageView");
+				auto samplers = getSamplers(nearestSampler);
+				auto tmpDescriptorSet = graphicsSystem->createDescriptorSet(
+					pipeline, std::move(uniforms), std::move(samplers));
+				SET_RESOURCE_DEBUG_NAME(tmpDescriptorSet, "descriptorSet.imgui.imageView.tmp");
 				graphicsSystem->destroy(tmpDescriptorSet); // TODO: use here Vulkan extensions which allows to bind resources directly without DS.
 				descriptorSet = tmpDescriptorSet;
 			}

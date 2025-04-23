@@ -24,9 +24,7 @@ using namespace garden;
 
 static DescriptorSet::Uniforms getUniforms()
 {
-	DescriptorSet::Uniforms uniforms =
-	{ { "cc", DescriptorSet::Uniform(GraphicsSystem::Instance::get()->getCameraConstantsBuffers()) } };
-	return uniforms;
+	return { { "cc", DescriptorSet::Uniform(GraphicsSystem::Instance::get()->getCameraConstantsBuffers()) } };
 }
 
 //**********************************************************************************************************************

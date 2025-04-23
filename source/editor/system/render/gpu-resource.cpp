@@ -203,7 +203,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	if (hasAnyFlag(image.getBind(), Image::Bind::Sampled) && image.isReady())
 	{
 		imageMip = std::min(imageMip, (int)image.getMipCount() - 1);
-		imageLayer = std::min(imageLayer, (int)image.getLayerCount() - 1);
+		imageLayer = std::min(imageLayer, (int)image.getSize().getZ() - 1);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		auto imageView = graphicsSystem->createImageView(
@@ -217,8 +217,8 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 
 		if (image.getMipCount() > 1)
 			ImGui::SliderInt("Mip", &imageMip, 0, image.getMipCount() - 1);
-		if (image.getLayerCount() > 1)
-			ImGui::SliderInt("Layer", &imageLayer, 0, image.getLayerCount() - 1);
+		if ((int)image.getSize().getZ() > 1)
+			ImGui::SliderInt("Layer", &imageLayer, 0, (int)image.getSize().getZ() - 1);
 	}
 
 	ImGui::SeparatorText(imageName.c_str());
@@ -226,8 +226,8 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(image.getFormat()).data());
 	ImGui::TextWrapped("Bind types: { %s }", toStringList(image.getBind()).c_str());
-	ImGui::TextWrapped("Image size: %ldx%ldx%ld", (long)size.getX(), (long)size.getY(), (long)size.getZ());
-	ImGui::TextWrapped("Layer count: %lu", (unsigned long)image.getLayerCount());
+	ImGui::TextWrapped("Image size: %lux%lux%lu", (unsigned long)size.getX(), 
+		(unsigned long)size.getY(), (unsigned long)size.getZ());
 	ImGui::TextWrapped("Mip count: %lu", (unsigned long)image.getMipCount());
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -446,7 +446,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	const auto& framebuffer = framebuffers[selectedItem];
 	ImGui::SeparatorText(framebufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)*graphicsAPI->framebufferPool.getID(&framebuffer));
-	ImGui::TextWrapped("Size: %ldx%ld", (long)framebuffer.getSize().x, (long)framebuffer.getSize().y);
+	ImGui::TextWrapped("Size: %lux%lu", (unsigned long)framebuffer.getSize().x, (unsigned long)framebuffer.getSize().y);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Color attachments"))
@@ -981,8 +981,8 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(computePipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Local size: %ldx%ldx%ld", 
-		(long)localSize.getX(), (long)localSize.getY(), (long)localSize.getZ());
+	ImGui::TextWrapped("Local size: %lux%lux%lu", (unsigned long)localSize.getX(), 
+		(unsigned long)localSize.getY(), (unsigned long)localSize.getZ());
 	auto instance = ID<Pipeline>(graphicsAPI->computePipelinePool.getID(&computePipeline));
 	renderPipelineDetails(computePipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();

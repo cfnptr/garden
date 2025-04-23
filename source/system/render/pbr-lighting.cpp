@@ -319,14 +319,12 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT,
 static DescriptorSet::Uniforms getShadowDenoiseUniforms(
 	ID<ImageView> shadowImageViews[PbrLightingRenderSystem::shadowBufferCount])
 {
-	DescriptorSet::Uniforms uniforms = { { "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) } };
-	return uniforms;
+	return { { "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) } };
 }
 static DescriptorSet::Uniforms getAoDenoiseUniforms(
 	ID<ImageView> aoImageViews[PbrLightingRenderSystem::aoBufferCount])
 {
-	DescriptorSet::Uniforms uniforms = { { "aoBuffer", DescriptorSet::Uniform(aoImageViews[0]) } };
-	return uniforms;
+	return { { "aoBuffer", DescriptorSet::Uniform(aoImageViews[0]) } };
 }
 
 static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool useAoBuffer)
@@ -356,14 +354,15 @@ static ID<GraphicsPipeline> createAoDenoisePipeline(
 //**********************************************************************************************************************
 static ID<Image> createDfgLUT()
 {
-	auto pixels = malloc<float2>(iblDfgSize * iblDfgSize);
+	vector<float2> pixels(iblDfgSize * iblDfgSize);
+	auto pixelData = pixels.data();
 
 	// TODO: check if release build DFG image looks the same as debug.
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems([&](const ThreadPool::Task& task)
+		threadPool.addItems([pixelData](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("DFG LUT Create");
 
@@ -371,7 +370,7 @@ static ID<Image> createDfgLUT()
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto y = i / iblDfgSize, x = i - y * iblDfgSize;
-				pixels[i] = dfvMultiscatter(x, (iblDfgSize - 1) - y);
+				pixelData[i] = dfvMultiscatter(x, (iblDfgSize - 1) - y);
 			}
 		},
 		iblDfgSize * iblDfgSize);
@@ -381,7 +380,7 @@ static ID<Image> createDfgLUT()
 	{
 		SET_CPU_ZONE_SCOPED("DFG LUT Create");
 
-		auto pixelData = (float2*)pixels; uint32 index = 0;
+		uint32 index = 0;
 		for (int32 y = iblDfgSize - 1; y >= 0; y--)
 		{
 			for (uint32 x = 0; x < iblDfgSize; x++)
@@ -391,9 +390,8 @@ static ID<Image> createDfgLUT()
 	
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Bind::TransferDst |
-		Image::Bind::Sampled, { { pixels } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
+		Image::Bind::Sampled, { { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
-	free(pixels);
 	return image;
 }
 
@@ -1074,13 +1072,13 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 
 	vector<uint32> countBuffer(specularMipCount - 1);
 	vector<ID<Buffer>> gpuSpecularCache(countBuffer.size());
-	auto countBufferData = countBuffer.data();
 	auto specularMap = (SpecularItem*)cpuSpecularCacheView->getMap();
+	auto countBufferData = countBuffer.data();
 
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addTasks([&](const ThreadPool::Task& task)
+		threadPool.addTasks([=](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL Specular Generate");
 

@@ -23,7 +23,7 @@ in float2 fs.texCoords;
 
 out float4 fb.color;
 
-uniform sampler2D
+uniform mutable sampler2D
 {
 	filter = linear;
 } tex;

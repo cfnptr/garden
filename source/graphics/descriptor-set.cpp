@@ -382,7 +382,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, U
 		this->instance = createVkDescriptorSet(pipeline, pipelineType, uniforms, index);
 	else abort();
 
-	recreate(std::move(uniforms));
+	recreate(std::move(uniforms), std::move(samplers));
 }
 
 bool DescriptorSet::destroy()

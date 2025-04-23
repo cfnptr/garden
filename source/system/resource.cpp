@@ -694,7 +694,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 		if (threadIndex < 0 && threadSystem)
 		{
 			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addItems([&](const ThreadPool::Task& task)
+			threadPool.addItems([srcData, dstData](const ThreadPool::Task& task)
 			{
 				auto itemCount = task.getItemCount();
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -734,7 +734,7 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems([&](const ThreadPool::Task& task)
+		threadPool.addItems([=](const ThreadPool::Task& task)
 		{
 			auto sizeXY = cubemapSize * cubemapSize;
 			auto itemCount = task.getItemCount();
@@ -1218,13 +1218,13 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			auto formatBinarySize = toBinarySize(format);
 			uint2 imageSize; uint32 layerCount;
 			calcLoadedImageDim(paths.size(), realSize, data->flags, imageSize, layerCount);
-			auto type = calcLoadedImageType(paths.size(), realSize.y, data->flags);
 			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
-
+			auto type = calcLoadedImageType(paths.size(), realSize.y, data->flags);
+			
 			ImageQueueItem item =
 			{
 				ImageExt::create(type, format, data->bind, data->strategy, 
-					u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, data->version),
+					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->version),
 				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
 					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
 				std::move(paths), realSize, data->instance,
@@ -1253,11 +1253,11 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto formatBinarySize = toBinarySize(format);
 		uint2 imageSize; uint32 layerCount;
 		calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
-		auto type = calcLoadedImageType(paths.size(), realSize.y, flags);
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
+		auto type = calcLoadedImageType(paths.size(), realSize.y, flags);
 
 		auto imageInstance = ImageExt::create(type, format, bind, strategy,
-			u32x4(imageSize.x, imageSize.y, 1), mipCount, layerCount, 0);
+			u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 

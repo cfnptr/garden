@@ -72,8 +72,7 @@ static void createBloomFramebuffers(const vector<ID<ImageView>>& imageViews, vec
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcTexture)
 {
-	DescriptorSet::Uniforms uniforms = { { "srcTexture", DescriptorSet::Uniform(srcTexture) } };
-	return uniforms;
+	return { { "srcTexture", DescriptorSet::Uniform(srcTexture) } };
 }
 
 static void createBloomDescriptorSets(ID<Image> bloomBuffer, 

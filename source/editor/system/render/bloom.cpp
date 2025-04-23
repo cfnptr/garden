@@ -26,9 +26,7 @@ static DescriptorSet::Uniforms getThresholdUniforms()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hdrFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getHdrFramebuffer());
-	DescriptorSet::Uniforms uniforms =
-	{ { "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) } };
-	return uniforms;
+	return { { "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) } };
 }
 
 //**********************************************************************************************************************

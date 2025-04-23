@@ -144,8 +144,20 @@ public:
 		uint16 _alignment1 = 0;                                       /**< [structure alignment] */
 		// should be aligned.
  
+		/**
+		 * @brief Creates a new default sampler state.
+		 */
 		State() : anisoFiltering(0), comparison(0), unnormCoords(0), _unused(0) { }
-	 };
+		
+		/**
+		 * @brief Sets sampler minification, magnification and mipmap filter type.
+		 */
+		void setFilter(Filter filter) noexcept { minFilter = magFilter = mipmapFilter = filter; }
+		/**
+		 * @brief Sets sampler U, V and W coordinates addressing mode.
+		 */
+		void setAddressMode(AddessMode mode) noexcept { addressModeX = addressModeY = addressModeZ = mode; }
+	};
 private:
 	State state = {};
 

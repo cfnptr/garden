@@ -234,14 +234,13 @@ private:
 	Type type = {};
 	Format format = {};
 	Bind bind = {};
-	uint8 mipCount = 0;
 	bool swapchain = false;
+	uint8 _alignment = 0;
 	ID<ImageView> defaultView = {};
 	u32x4 size = u32x4::zero;
 	vector<uint32> layouts;
 
-	Image(Type type, Format format, Bind bind, Strategy strategy,
-		u32x4 size, uint8 mipCount, uint32 layerCount, uint64 version);
+	Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size, uint64 version);
 	Image(Bind bind, Strategy strategy, uint64 version) noexcept :
 		Memory(0, Access::None, Usage::Auto, strategy, version), bind(bind) { }
 	Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version);
@@ -277,15 +276,15 @@ public:
 	 */
 	Bind getBind() const noexcept { return bind; }
 	/**
-	 * @brief Returns image mipmap level count.
-	 * @details Number of different resolution versions of a texture that are stored in a mipmap chain.
-	 */
-	uint8 getMipCount() const noexcept { return mipCount; }
-	/**
 	 * @brief Returns image array layer count.
 	 * @details Each layer is an individual texture having the same size and format.
 	 */
-	uint32 getLayerCount() const noexcept { return size.getW(); }
+	uint32 getLayerCount() const noexcept { return size.getZ(); }
+	/**
+	 * @brief Returns image mipmap level count.
+	 * @details Number of different resolution versions of a texture that are stored in a mipmap chain.
+	 */
+	uint8 getMipCount() const noexcept { return (uint8)size.getW(); }
 	/**
 	 * @brief Is this image part of the swapchain.
 	 * @details Swapchain images are provided by the graphics API.
@@ -783,7 +782,7 @@ class ImageView final : public Resource
 	bool _default = false;
 
 	ImageView(bool isDefault, ID<Image> image, Image::Type type, Image::Format format,
-		uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount);
+		uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount);
 	bool destroy() final;
 
 	friend class ImageViewExt;
@@ -1197,12 +1196,6 @@ public:
 	 */
 	static Image::Bind& getBind(Image& image) noexcept { return image.bind; }
 	/**
-	 * @brief Returns image mipmap level count.
-	 * @warning In most cases you should use @ref Image functions.
-	 * @param[in] image target image instance
-	 */
-	static uint8& getMipCount(Image& image) noexcept { return image.mipCount; }
-	/**
 	 * @brief Is this image part of the swapchain.
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
@@ -1221,12 +1214,6 @@ public:
 	 */
 	static u32x4& getSize(Image& image) noexcept { return image.size; }
 	/**
-	 * @brief Returns image array layer count.
-	 * @warning In most cases you should use @ref Image functions.
-	 * @param[in] image target image instance
-	 */
-	static uint32& getLayerCount(Image& image) noexcept { return image.size.uints.w; }
-	/**
 	 * @brief Returns default image view.
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
@@ -1241,15 +1228,14 @@ public:
 	 * @param format image data format
 	 * @param bind image bind usage
 	 * @param strategy image allocation strategy
-	 * @param size image size in texels
+	 * @param size image size in texels and mip count
 	 * @param mipCount image mipmap level count
-	 * @param layerCount image array layer count
 	 * @param version image instance version
 	 */
 	static Image create(Image::Type type, Image::Format format, Image::Bind bind,
-		Image::Strategy strategy, u32x4 size, uint8 mipCount, uint32 layerCount, uint64 version)
+		Image::Strategy strategy, u32x4 size, uint64 version)
 	{
-		return Image(type, format, bind, strategy, size, mipCount, layerCount, version);
+		return Image(type, format, bind, strategy, size, version);
 	}
 	/**
 	 * @brief Moves internal image objects.
@@ -1265,9 +1251,7 @@ public:
 		ResourceExt::getInstance(destination) = ResourceExt::getInstance(source);
 		ImageExt::getType(destination) = ImageExt::getType(source);
 		ImageExt::getFormat(destination) = ImageExt::getFormat(source);
-		ImageExt::getMipCount(destination) = ImageExt::getMipCount(source);
 		ImageExt::getSize(destination) = ImageExt::getSize(source);
-		ImageExt::getLayerCount(destination) = ImageExt::getLayerCount(source);
 		ImageExt::getLayouts(destination) = std::move(ImageExt::getLayouts(source));
 		ResourceExt::getInstance(source) = nullptr;
 	}

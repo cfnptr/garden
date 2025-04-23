@@ -281,7 +281,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 
 		if (threadSystem)
 		{
-			threadSystem->getForegroundPool().addTask([unsortedBuffer](const ThreadPool::Task& task) // Do not optimize args!
+			threadSystem->getForegroundPool().addTask([unsortedBuffer](const ThreadPool::Task& task)
 			{
 				SET_CPU_ZONE_SCOPED("Unsorted Meshes Sort");
 				auto& meshes = unsortedBuffer->combinedMeshes;
@@ -410,8 +410,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 				if (unsortedBuffer->threadMeshes.size() < threadPool.getThreadCount())
 					unsortedBuffer->threadMeshes.resize(threadPool.getThreadCount());
 
-				threadPool.addItems([&cameraOffset, &cameraPosition, frustumPlanes, 
-					unsortedBuffer, shadowPass](const ThreadPool::Task& task) // Do not optimize args!
+				threadPool.addItems([=](const ThreadPool::Task& task)
 				{
 					prepareUnsortedMeshes(cameraOffset, cameraPosition, frustumPlanes, unsortedBuffer, 
 						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), shadowPass, true);
@@ -450,8 +449,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 				if (sortedThreadMeshes.size() < threadPool.getThreadCount())
 					sortedThreadMeshes.resize(threadPool.getThreadCount());
 
-				threadPool.addItems([this, &cameraOffset, &cameraPosition, frustumPlanes, 
-					sortedBuffer, bufferIndex, shadowPass](const ThreadPool::Task& task) // Do not optimize args!
+				threadPool.addItems([&](const ThreadPool::Task& task)
 				{
 					prepareSortedMeshes(cameraOffset, cameraPosition, frustumPlanes, sortedBuffer, 
 						sortedCombinedMeshes.data(), sortedThreadMeshes, sortedDrawIndex, bufferIndex, 

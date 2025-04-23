@@ -69,15 +69,14 @@ EditorRenderSystem::~EditorRenderSystem()
 }
 
 //**********************************************************************************************************************
-static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path* exportScenePath)
+static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path& exportScenePath)
 {
 	static const vector<string_view> extensions = { ".scene" };
-	editorSystem->openFileSelector([exportScenePath](const fs::path& selectedFile)
+	editorSystem->openFileSelector([&](const fs::path& selectedFile)
 	{
-		auto path = selectedFile;
-		path.replace_extension();
-		ResourceSystem::Instance::get()->loadScene(path);
-		*exportScenePath = path;
+		exportScenePath = selectedFile;
+		exportScenePath.replace_extension();
+		ResourceSystem::Instance::get()->loadScene(exportScenePath);
 	},
 	AppInfoSystem::Instance::get()->getResourcesPath() / "scenes", extensions);
 }
@@ -112,7 +111,7 @@ void EditorRenderSystem::showMainMenuBar()
 			if (ImGui::MenuItem("Export Scene"))
 				exportScene = true;
 			if (ImGui::MenuItem("Import Scene"))
-				renderSceneSelector(this, &exportsScenePath);
+				renderSceneSelector(this, exportsScenePath);
 		}
 
 		const auto& event = manager->getEvent("EditorBarFile");
@@ -1043,9 +1042,7 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 	{
 		if (ImGui::MenuItem("Select File"))
 		{
-			auto _path = &path;
-
-			openFileSelector([_path, entity, componentType, directory, extensions](const fs::path& selectedFile)
+			openFileSelector([&](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
 					!Manager::Instance::get()->has(entity, componentType))
@@ -1053,9 +1050,8 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 					return;
 				}
 
-				auto path = selectedFile;
+				path = selectedFile;
 				path.replace_extension();
-				*_path = path.generic_string();
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / directory, extensions);
 		}
@@ -1081,9 +1077,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 	{
 		if (ImGui::MenuItem("Select File"))
 		{
-			auto _path = &path; auto _image = &image; auto _descriptorSet = &descriptorSet;
-			openFileSelector([_path, _image, _descriptorSet, 
-				entity, componentType, loadFlags](const fs::path& selectedFile)
+			openFileSelector([&](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
 					!Manager::Instance::get()->has(entity, componentType))
@@ -1092,16 +1086,15 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 				}
 			
 				auto resourceSystem = ResourceSystem::Instance::get();
-				resourceSystem->destroyShared(*_image);
-				resourceSystem->destroyShared(*_descriptorSet);
+				resourceSystem->destroyShared(image);
+				resourceSystem->destroyShared(descriptorSet);
 
-				auto path = selectedFile;
+				path = selectedFile;
 				path.replace_extension();
-				*_path = path;
 
-				*_image = resourceSystem->loadImage(path, Image::Bind::TransferDst |
+				image = resourceSystem->loadImage(path, Image::Bind::TransferDst |
 					Image::Bind::Sampled, 1, Image::Strategy::Default, loadFlags);
-				*_descriptorSet = {};
+				descriptorSet = {};
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);
 		}

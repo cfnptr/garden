@@ -40,6 +40,8 @@ private:
 	vector<ID<Buffer>> indexBuffers;
 	float2 lastValidMousePos = float2::zero;
 	ID<GraphicsPipeline> pipeline = {};
+	ID<Sampler> linearSampler = {};
+	ID<Sampler> nearestSampler = {};
 	ID<Image> fontTexture = {};
 	ID<DescriptorSet> fontDescriptorSet = {};
 

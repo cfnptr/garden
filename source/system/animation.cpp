@@ -170,7 +170,7 @@ void AnimationSystem::update()
 	if (animateAsync && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems([&](const ThreadPool::Task& task)
+		threadPool.addItems([animations, componentData](const ThreadPool::Task& task)
 		{
 			auto itemCount = task.getItemCount();
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
