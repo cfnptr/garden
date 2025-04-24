@@ -115,11 +115,15 @@ static ID<Sampler> createLinearSampler()
 {
 	Sampler::State state;
 	state.setFilter(Sampler::Filter::Linear);
-	return GraphicsSystem::Instance::get()->createSampler(state);
+	auto sampler = GraphicsSystem::Instance::get()->createSampler(state);
+	SET_RESOURCE_DEBUG_NAME(sampler, "sampler.imgui.linear");
+	return sampler;
 }
-static ID<Sampler> createNearesSampler()
+static ID<Sampler> createNearestSampler()
 {
-	return GraphicsSystem::Instance::get()->createSampler({});
+	auto sampler = GraphicsSystem::Instance::get()->createSampler({});
+	SET_RESOURCE_DEBUG_NAME(sampler, "sampler.imgui.nearest");
+	return sampler;
 }
 
 static DescriptorSet::Uniforms getUniforms(ID<ImageView> texture)
@@ -285,7 +289,7 @@ void ImGuiRenderSystem::preInit()
 		if (!linearSampler)
 			linearSampler = createLinearSampler();
 		if (!nearestSampler)
-			nearestSampler = createNearesSampler();
+			nearestSampler = createNearestSampler();
 	}
 }
 void ImGuiRenderSystem::postInit()
@@ -610,7 +614,7 @@ void ImGuiRenderSystem::update()
 		if (!linearSampler)
 			linearSampler = createLinearSampler();
 		if (!nearestSampler)
-			nearestSampler = createNearesSampler();
+			nearestSampler = createNearestSampler();
 	}
 }
 

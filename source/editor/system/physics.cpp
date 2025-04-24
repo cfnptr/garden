@@ -904,13 +904,18 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	}
 	ImGui::EndDisabled();
 
-	ImGui::SameLine();
 	ImGui::BeginDisabled(!shape);
 	if (shape)
 		rigidbodyCache.isSensor = rigidbodyView->isSensor();
+	ImGui::SameLine();
 	if (ImGui::Checkbox("Sensor", &rigidbodyCache.isSensor))
 		rigidbodyView->setSensor(rigidbodyCache.isSensor);
 	ImGui::EndDisabled();
+
+	auto isInSimulation = rigidbodyView->isInSimulation();
+	ImGui::SameLine();
+	if (ImGui::Checkbox("In Simulation", &isInSimulation))
+		rigidbodyView->setInSimulation(isInSimulation);
 
 	ImGui::BeginDisabled(!rigidbodyCache.isSensor);
 	ImGui::InputText("Event Listener", &rigidbodyView->eventListener);

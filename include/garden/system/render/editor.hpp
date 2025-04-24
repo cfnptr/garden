@@ -140,10 +140,10 @@ public:
 	//******************************************************************************************************************
 	void drawResource(ID<Buffer> buffer, const char* label = "Buffer");
 	void drawResource(ID<Image> image, const char* label = "Image");
-	void drawResource(ID<ImageView> imageView, const char* label = "ImageView");
+	void drawResource(ID<ImageView> imageView, const char* label = "Image View");
 	void drawResource(ID<Framebuffer> framebuffer, const char* label = "Framebuffer");
 	void drawResource(ID<Sampler> sampler, const char* label = "Sampler");
-	void drawResource(ID<DescriptorSet> descriptorSet, const char* label = "DescriptorSet");
+	void drawResource(ID<DescriptorSet> descriptorSet, const char* label = "Descriptor Set");
 	void drawResource(ID<GraphicsPipeline> graphicsPipeline, const char* label = "Graphics Pipeline");
 	void drawResource(ID<ComputePipeline> computePipeline, const char* label = "Compute Pipeline");
 
@@ -151,13 +151,13 @@ public:
 	{ drawResource(ID<Buffer>(buffer), label); }
 	void drawResource(const Ref<Image>& image, const char* label = "Image")
 	{ drawResource(ID<Image>(image), label); }
-	void drawResource(const Ref<ImageView>& imageView, const char* label = "ImageView")
+	void drawResource(const Ref<ImageView>& imageView, const char* label = "Image View")
 	{ drawResource(ID<ImageView>(imageView), label); }
 	void drawResource(const Ref<Framebuffer>& framebuffer, const char* label = "Framebuffer")
 	{ drawResource(ID<Framebuffer>(framebuffer), label); }
 	void drawResource(const Ref<Sampler>& sampler, const char* label = "Sampler")
 	{ drawResource(ID<Sampler>(sampler), label); }
-	void drawResource(const Ref<DescriptorSet>& descriptorSet, const char* label = "DescriptorSet")
+	void drawResource(const Ref<DescriptorSet>& descriptorSet, const char* label = "Descriptor Set")
 	{ drawResource(ID<DescriptorSet>(descriptorSet), label); }
 	void drawResource(const Ref<GraphicsPipeline>& graphicsPipeline, const char* label = "Graphics Pipeline")
 	{ drawResource(ID<GraphicsPipeline>(graphicsPipeline), label); }

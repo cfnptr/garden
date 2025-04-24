@@ -279,7 +279,7 @@ public:
 	 * @brief Returns image array layer count.
 	 * @details Each layer is an individual texture having the same size and format.
 	 */
-	uint32 getLayerCount() const noexcept { return size.getZ(); }
+	uint32 getLayerCount() const noexcept { return type == Image::Type::Texture3D ? 1 : size.getZ(); }
 	/**
 	 * @brief Returns image mipmap level count.
 	 * @details Number of different resolution versions of a texture that are stored in a mipmap chain.

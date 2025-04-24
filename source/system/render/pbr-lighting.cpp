@@ -1201,7 +1201,7 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 
 //**********************************************************************************************************************
 Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh, 
-	ID<Image> specular, ID<GraphicsPipeline> pipeline)
+	ID<Image> specular, ID<GraphicsPipeline> pipeline, uint8 index)
 {
 	GARDEN_ASSERT(sh);
 	GARDEN_ASSERT(specular);
@@ -1215,7 +1215,7 @@ Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh,
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 
-	auto descriptorSet = graphicsSystem->createDescriptorSet(
-		pipeline ? pipeline : lightingPipeline, std::move(iblUniforms), {}, 1);
+	auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline ? 
+		pipeline : lightingPipeline, std::move(iblUniforms), {}, index);
 	return Ref<DescriptorSet>(descriptorSet);
 }

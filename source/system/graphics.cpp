@@ -716,22 +716,19 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	else abort();
 	#endif
 
-	if (type == Image::Type::Texture3D)
-		layerCount = size.getZ();
-	else
+	if (type != Image::Type::Texture3D)
 		size.setZ(layerCount);
 	if (dataFormat == Image::Format::Undefined)
 		dataFormat = format;
 
-	auto mipSize = size;
+	auto mipSize = (uint2)size;
 	auto formatBinarySize = (uint64)toBinarySize(dataFormat);
-	uint64 stagingSize = 0;
-	uint32 stagingCount = 0;
+	uint64 stagingSize = 0; uint32 stagingCount = 0;
 
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];
-		auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY();
+		auto binarySize = formatBinarySize * mipSize.x * mipSize.y;
 
 		for (auto layerData : mipData)
 		{
@@ -741,7 +738,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			stagingCount++;
 		}
 
-		mipSize = max(mipSize / 2u, u32x4::one);
+		mipSize = max(mipSize / 2u, uint2::one);
 	}
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -770,14 +767,13 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 		auto stagingMap = stagingBufferView->getMap();
 		vector<Image::CopyBufferRegion> regions(stagingCount);
-		mipSize = size;
-		uint64 stagingOffset = 0;
-		uint32 copyIndex = 0;
+		uint64 stagingOffset = 0; uint32 copyIndex = 0;
+		mipSize = (uint2)size;
 
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
 			const auto& mipData = data[mip];
-			auto binarySize = formatBinarySize * mipSize.getX() * mipSize.getY();
+			auto binarySize = formatBinarySize * mipSize.x * mipSize.y;
 
 			for (uint32 layer = 0; layer < (uint32)mipData.size(); layer++)
 			{
@@ -787,7 +783,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 				Image::CopyBufferRegion region;
 				region.bufferOffset = stagingOffset;
-				region.imageExtent = (uint3)mipSize;
+				region.imageExtent = uint3(mipSize, 1);
 				region.imageBaseLayer = layer;
 				region.imageLayerCount = 1;
 				region.imageMipLevel = mip;
@@ -797,7 +793,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				stagingOffset += binarySize;
 			}
 
-			mipSize = max(mipSize / 2u, u32x4::one);
+			mipSize = max(mipSize / 2u, uint2::one);
 		}
 
 		GARDEN_ASSERT(stagingCount == copyIndex);
@@ -818,18 +814,18 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 			vector<Image::BlitRegion> blitRegions(mipCount);
-			mipSize = size;
+			mipSize = (uint2)size;
 
 			for (uint8 i = 0; i < mipCount; i++)
 			{
 				Image::BlitRegion region;
-				region.srcExtent = (uint3)mipSize;
-				region.dstExtent = (uint3)mipSize;
+				region.srcExtent = uint3(mipSize, 1);
+				region.dstExtent = uint3(mipSize, 1);
 				region.layerCount = layerCount;
 				region.srcMipLevel = i;
 				region.dstMipLevel = i;
 				blitRegions[i] = region;
-				mipSize = max(mipSize / 2u, u32x4::one);
+				mipSize = max(mipSize / 2u, uint2::one);
 			}
 
 			Image::blit(targetImage, image, blitRegions);
