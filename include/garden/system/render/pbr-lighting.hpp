@@ -194,8 +194,10 @@ public:
 	 * @param sh spherical harmonics buffer instance
 	 * @param specular specular cubemap instance
 	 * @param pipeline target descriptor set pipeline ({} = lighting)
+	 * @param index index of the descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, ID<GraphicsPipeline> pipeline = {});
+	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
+		ID<GraphicsPipeline> pipeline = {}, uint8 index = 1);
 
 	/**
 	 * @brief Marks that there is rendered shadow data on the current frame.

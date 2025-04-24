@@ -316,6 +316,9 @@ void Image::generateMips(Sampler::Filter filter)
 		region.srcMipLevel = mip - 1;
 		region.dstMipLevel = mip;
 
+		if (type != Image::Type::Texture3D)
+			region.srcExtent.z = region.dstExtent.z = 1;
+
 		// Note: We should not blit all layers in one mip,
 		//       because result differs across GPUs.
 		
