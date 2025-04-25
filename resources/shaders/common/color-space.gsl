@@ -19,13 +19,13 @@ float3 rgbToSrgb(float3 rgb)
 {
 	float3 l = fma(pow(rgb, float3(1.0f / 2.4f)), float3(1.055f), float3(-0.055f));
 	float3 h = rgb * 12.92f;
-	return mix(l, h, float3(lessThanEqual(rgb, float3(0.0031308f))));
+	return mix(l, h, step(rgb, float3(0.0031308f)));
 }
 float3 srgbToRgb(float3 srgb)
 {
 	float3 l = pow((srgb + 0.055f) * (1.0f / 1.055f), float3(2.4f));
 	float3 h = srgb * (1.0f / 12.92f);
-	return mix(l, h, lessThanEqual(srgb, float3(0.04045f)));
+	return mix(l, h, step(srgb, float3(0.04045f)));
 }
 
 float3 rgbToXyz(float3 rgb)
