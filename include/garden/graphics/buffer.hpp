@@ -91,9 +91,19 @@ public:
 		uint64 srcOffset = 0; /**< Source buffer offset of the region in bytes. */
 		uint64 dstOffset = 0; /**< Destination buffer offset of the region in bytes. */
 	};
+
+	/**
+	 * @brief Buffer memory barrier state.
+	 */
+	struct BarrierState final
+	{
+		uint32 access = 0;
+		uint32 stage = 0;
+	};
 private:
 	Bind bind = {};
 	uint8* map = nullptr;
+	BarrierState barrierState = {};
 
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size, uint64 version);
 	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
@@ -351,6 +361,12 @@ public:
 	 * @param[in] buffer target buffer instance
 	 */
 	static uint8*& getMap(Buffer& buffer) noexcept { return buffer.map; }
+	/**
+	 * @brief Returns buffer memory barrier state.
+	 * @warning In most cases you should use @ref Buffer functions.
+	 * @param[in] buffer target buffer instance
+	 */
+	static Buffer::BarrierState& getBarrierState(Buffer& buffer) noexcept { return buffer.barrierState; }
 
 	/**
 	 * @brief Creates a new buffer data.

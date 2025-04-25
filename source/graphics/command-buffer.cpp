@@ -118,21 +118,6 @@ void CommandBuffer::processCommands()
 	GARDEN_ASSERT(offset == size);
 }
 
-void CommandBuffer::updateImageStates()
-{
-	SET_CPU_ZONE_SCOPED("Image States Update");
-
-	auto graphicsAPI = GraphicsAPI::get();
-	for (auto pair : imageStates)
-	{
-		auto imageState = pair.first;
-		auto image = graphicsAPI->imagePool.get(imageState.image);
-		auto& layouts = ImageExt::getLayouts(**image);
-		layouts[imageState.mip * image->getLayerCount() + imageState.layer] = pair.second.layout;
-	}
-	imageStates.clear();
-}
-
 //**********************************************************************************************************************
 void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lockedResources)
 {

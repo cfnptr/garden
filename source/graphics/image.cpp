@@ -155,7 +155,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 
 //**********************************************************************************************************************
 Image::Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size, uint64 version) :
-	Memory(0, Access::None, Usage::Auto, strategy, version), layouts(size.getZ() * size.getW())
+	Memory(0, Access::None, Usage::Auto, strategy, version), barrierStates(size.getZ() * size.getW())
 {
 	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
@@ -178,14 +178,11 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size,
 		this->binarySize += formatBinarySize * mipSize.getX() * mipSize.getY() * mipSize.getZ();
 		mipSize = max(mipSize / 2u, u32x4::one);
 	}
-
-	for (auto& layout : this->layouts)
-		layout = (uint32)vk::ImageLayout::eUndefined;
 }
 
 //**********************************************************************************************************************
 Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version) : 
-	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), layouts(1)
+	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 
@@ -195,7 +192,6 @@ Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 
 	this->bind = bind;
 	this->swapchain = true;
 	this->size = u32x4(size.x, size.y, 1, 1);
-	this->layouts[0] = (uint32)vk::ImageLayout::eUndefined;
 }
 bool Image::destroy()
 {

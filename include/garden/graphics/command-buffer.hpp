@@ -329,35 +329,10 @@ constexpr psize alignSize(psize size, psize alignment = 4) noexcept
 class CommandBuffer
 {
 public:
-	struct ImageSubresource final
-	{
-		ID<Image> image = {};
-		uint32 mip = 0;
-		uint32 layer = 0;
-
-		bool operator<(ImageSubresource v) const noexcept
-		{
-			return memcmp(this, &v, sizeof(ImageSubresource)) < 0;
-		}
-	};
-	struct ImageState final
-	{
-		uint32 access = 0;
-		uint32 layout = 0;
-		uint32 stage = 0;
-	};
-	struct BufferState final
-	{
-		uint32 access = 0;
-		uint32 stage = 0;
-	};
-
 	typedef pair<ID<Resource>, ResourceType> LockResource;
 protected:
 	uint8* data = nullptr;
 	psize size = 0, capacity = 16;
-	map<ImageSubresource, ImageState> imageStates;
-	unordered_map<ID<Buffer>, BufferState, IdHash<Buffer>> bufferStates;
 	vector<LockResource> lockedResources;
 	vector<LockResource> lockingResources;
 	uint32 lastSize = 0;
@@ -366,12 +341,8 @@ protected:
 	bool hasAnyCommand = false;
 	bool isRunning = false;
 
-	ImageState& getImageState(ID<Image> image, uint32 mip, uint32 layer);
-	BufferState& getBufferState(ID<Buffer> buffer);
-
 	Command* allocateCommand(uint32 size);
 	void processCommands();
-	void updateImageStates();
 
 	virtual void processCommand(const BeginRenderPassCommand& command) = 0;
 	virtual void processCommand(const NextSubpassCommand& command) = 0;

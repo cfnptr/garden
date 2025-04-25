@@ -32,9 +32,6 @@ class VulkanCommandBuffer final : public CommandBuffer
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 
-	ImageState& getImageState(ID<Image> image, uint32 mip, uint32 layer);
-	BufferState& getBufferState(ID<Buffer> buffer);
-
 	void addDescriptorSetBarriers(const DescriptorSet::Range* descriptorSetRange,
 		uint32 rangeCount, uint32& oldStage, uint32& newStage);
 	void addRenderPassBarriers(psize offset, uint32& oldPipelineStage, uint32& newPipelineStage);

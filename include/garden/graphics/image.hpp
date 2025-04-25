@@ -228,6 +228,16 @@ public:
 		uint32 dstMipLevel = 0;        /**< Destination image mipmap level. */
 	};
 
+	/**
+	 * @brief Image memory barrier state.
+	 */
+	struct BarrierState final
+	{
+		uint32 access = 0;
+		uint32 layout = 0;
+		uint32 stage = 0;
+	};
+
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;
 private:
@@ -235,10 +245,10 @@ private:
 	Format format = {};
 	Bind bind = {};
 	bool swapchain = false;
-	uint8 _alignment = 0;
+	bool fullBarrier = true;
 	ID<ImageView> defaultView = {};
 	u32x4 size = u32x4::zero;
-	vector<uint32> layouts;
+	vector<BarrierState> barrierStates;
 
 	Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size, uint64 version);
 	Image(Bind bind, Strategy strategy, uint64 version) noexcept :
@@ -1202,11 +1212,17 @@ public:
 	 */
 	static bool& isSwapchain(Image& image) noexcept { return image.swapchain; }
 	/**
-	 * @brief Returns image layer nad mipmap layouts.
+	 * @brief Is last image memory barrier was full.
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
-	static vector<uint32>& getLayouts(Image& image) noexcept { return image.layouts; }
+	static bool& isFullBarrier(Image& image) noexcept { return image.fullBarrier; }
+	/**
+	 * @brief Returns image memory barrier state array.
+	 * @warning In most cases you should use @ref Image functions.
+	 * @param[in] image target image instance
+	 */
+	static vector<Image::BarrierState>& getBarrierStates(Image& image) noexcept { return image.barrierStates; }
 	/**
 	 * @brief Returns image size in texels.
 	 * @warning In most cases you should use @ref Image functions.
@@ -1252,7 +1268,7 @@ public:
 		ImageExt::getType(destination) = ImageExt::getType(source);
 		ImageExt::getFormat(destination) = ImageExt::getFormat(source);
 		ImageExt::getSize(destination) = ImageExt::getSize(source);
-		ImageExt::getLayouts(destination) = std::move(ImageExt::getLayouts(source));
+		ImageExt::getBarrierStates(destination) = std::move(ImageExt::getBarrierStates(source));
 		ResourceExt::getInstance(source) = nullptr;
 	}
 	/**

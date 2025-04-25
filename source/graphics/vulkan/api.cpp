@@ -67,7 +67,11 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 		severity = "ERROR";
 	else
 		severity = "UNKNOWN";
-	cout << "VULKAN::" << severity << ": " << callbackData->pMessage << "\n";
+	cout << "VULKAN::" << severity << ": ";
+
+	for (int32 i = callbackData->cmdBufLabelCount - 1; i >= 0; i--)
+		cout << callbackData->pCmdBufLabels[i].pLabelName << " -> ";
+	cout << callbackData->pMessage << "\n\n";
 
 	// Debuging break points \/
 	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)

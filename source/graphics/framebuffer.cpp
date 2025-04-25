@@ -154,7 +154,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 				if (outputAttachment.flags.store)
 					attachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
 				else
-					attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+					attachmentDescription.storeOp = vk::AttachmentStoreOp::eNone;
 
 				attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 				attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
@@ -174,7 +174,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 					if (outputAttachment.flags.store)
 						attachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
 					else
-						attachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+						attachmentDescription.storeOp = vk::AttachmentStoreOp::eNone;
 
 					attachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 					attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
@@ -194,7 +194,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 					if (outputAttachment.flags.store)
 						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 					else
-						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+						attachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eNone;
 				}
 				else
 				{
@@ -222,7 +222,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 					else
 					{
 						attachmentDescription.storeOp = attachmentDescription.stencilStoreOp =
-							vk::AttachmentStoreOp::eDontCare;
+							vk::AttachmentStoreOp::eNone;
 					}
 				}
 
