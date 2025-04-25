@@ -127,7 +127,7 @@ public:
 	bool recordGpuTime = false;
 	#endif
 
-	/**
+	/***************************************************************************************************************
 	 * @brief Returns graphics API backend type. 
 	 */
 	GraphicsBackend getBackendType() const noexcept { return backendType; }
@@ -162,6 +162,28 @@ public:
 	}
 
 	/**
+	 * @brief Returns image memory barrier state.
+	 * 
+	 * @param image target image instace
+	 * @param mip image mip level
+	 * @param layer image layer index
+	 */
+	Image::BarrierState& getImageState(ID<Image> image, uint8 mip, uint32 layer) noexcept
+	{
+		auto imageView = imagePool.get(image);
+		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
+		return barrierStates[imageView->getLayerCount() * mip + layer];
+	}
+	 /**
+	  * @brief Returns buffer memory barrier state.
+	  * @param buffer target buffer insance
+	  */
+	Buffer::BarrierState& getBufferState(ID<Buffer> buffer) noexcept
+	{
+		return BufferExt::getBarrierState(**bufferPool.get(buffer));
+	}
+
+	/**
 	 * @brief Calculate rendering operation auto thread count
 	 * @param threadIndex current thread index
 	 */
@@ -175,7 +197,7 @@ public:
 		return threadIndex + 1;
 	}
 
-	/**
+	/***************************************************************************************************************
 	 * @brief Adds graphics resource data to the destroy buffer.
 	 * 
 	 * @param type target GPU resource type
