@@ -695,12 +695,14 @@ void MeshRenderSystem::renderShadows()
 
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
 			{
+				SET_CPU_ZONE_SCOPED("Opaque/Color Shadow Render");
 				renderUnsorted(viewProj, MeshRenderType::Opaque, i);
 				renderUnsorted(viewProj, MeshRenderType::Color, i);
 				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
 			}
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
 			{
+				SET_CPU_ZONE_SCOPED("Translucent/Refracted/OIT Shadow Render");
 				renderUnsorted(viewProj, MeshRenderType::Refracted, i);
 				renderUnsorted(viewProj, MeshRenderType::OIT, i);
 				renderSorted(viewProj, i);
