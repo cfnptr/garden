@@ -150,7 +150,7 @@ public:
 	 * @param path sprite resource path
 	 * @param colorMap sprite texture instance
 	 */
-	Ref<DescriptorSet> createSharedDS(const string& path, ID<Image> colorMap);
+	Ref<DescriptorSet> createSharedDS(string_view path, ID<Image> colorMap);
 };
 
 /***********************************************************************************************************************
@@ -184,7 +184,7 @@ protected:
 		**destinationView = **sourceView;
 	}
 
-	const string& getComponentName() const override
+	string_view getComponentName() const override
 	{
 		static const string name = typeToString(typeid(C));
 		return name;

@@ -110,7 +110,7 @@ private:
 	void hdrRender();
 	void gBufferRecreate();
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	friend class ecsm::Manager;
 public:
 	float reflectanceCoeff = 1.0f;

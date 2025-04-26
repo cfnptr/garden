@@ -29,7 +29,7 @@ class WatcherSystem final : public System
 {
 public:
 	using OnChange = std::function<void(const string& path)>;
-	using Listeners = map<string, vector<OnChange>, les<>>;
+	using Listeners = tsl::robin_map<string, vector<OnChange>, les<>>;
 private:
 	void* instance = nullptr;
 	vector<string> changedFiles;

@@ -111,7 +111,7 @@ protected:
 		**destinationView = **sourceView;
 	}
 
-	const string& getComponentName() const override
+	string_view getComponentName() const override
 	{
 		static const string name = typeToString(typeid(C));
 		return name;

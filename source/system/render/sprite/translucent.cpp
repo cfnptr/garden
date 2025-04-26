@@ -21,10 +21,9 @@ TransSpriteSystem::TransSpriteSystem(bool setSingleton) : SpriteRenderCompSystem
 	"sprite/translucent"), Singleton(setSingleton) { }
 TransSpriteSystem::~TransSpriteSystem() { unsetSingleton(); }
 
-const string& TransSpriteSystem::getComponentName() const
+string_view TransSpriteSystem::getComponentName() const
 {
-	static const string name = "Translucent Sprite";
-	return name;
+	return "Translucent Sprite";
 }
 MeshRenderType TransSpriteSystem::getMeshRenderType() const
 {

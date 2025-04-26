@@ -112,10 +112,10 @@ protected:
 		ID<Image> instance = {};
 	};
 	
-	map<Hash128, Ref<Buffer>> sharedBuffers;
-	map<Hash128, Ref<Image>> sharedImages;
-	map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
-	map<Hash128, Ref<Animation>> sharedAnimations;
+	tsl::robin_map<Hash128, Ref<Buffer>> sharedBuffers;
+	tsl::robin_map<Hash128, Ref<Image>> sharedImages;
+	tsl::robin_map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
+	tsl::robin_map<Hash128, Ref<Animation>> sharedAnimations;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> loadedComputeQueue;
 	queue<BufferQueueItem> loadedBufferQueue;

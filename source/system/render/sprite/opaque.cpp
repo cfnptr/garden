@@ -21,10 +21,9 @@ OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : SpriteRenderCompSyst
 	"sprite/opaque"), Singleton(setSingleton) { }
 OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
 
-const string& OpaqueSpriteSystem::getComponentName() const
+string_view OpaqueSpriteSystem::getComponentName() const
 {
-	static const string name = "Opaque Sprite";
-	return name;
+	return "Opaque Sprite";
 }
 MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
 {

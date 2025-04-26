@@ -167,7 +167,7 @@ static void renderRegisteredComponents()
 		auto name = pair.second->getComponentName();
 		if (name.empty())
 			name = typeToString(pair.first);
-		ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+		ImGui::TreeNodeEx(string(name).c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 	}
 
 	if (componentTypes.empty())

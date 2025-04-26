@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/serialize.hpp"
+#include <map>
 
 namespace garden
 {
@@ -52,7 +53,7 @@ struct AnimationFrame
 /**
  * @brief Animatable system properties container. 
  */
-using Animatables = map<System*, ID<AnimationFrame>>;
+using Animatables = tsl::robin_map<System*, ID<AnimationFrame>>;
 
 /***********************************************************************************************************************
  * @brief Base animatable system interface.

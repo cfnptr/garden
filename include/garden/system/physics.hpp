@@ -644,7 +644,7 @@ class PhysicsSystem final : public ComponentSystem<RigidbodyComponent>,
 {
 public:
 	using Shapes = LinearPool<Shape>;
-	using SharedShapes = map<Hash128, ID<Shape>>;
+	using SharedShapes = tsl::robin_map<Hash128, ID<Shape>>;
 
 	/**
 	 * @brief Physics simulation system properties.
@@ -693,7 +693,7 @@ private:
 	vector<Event> bodyEvents;
 	vector<ID<Entity>> entityStack;
 	set<ID<Entity>> serializedConstraints;
-	map<uint64, ID<Entity>> deserializedEntities;
+	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityConstraint> deserializedConstraints;
 	mutex bodyEventLocker;
 	string valueStringCache;
@@ -738,7 +738,7 @@ private:
 	void interpolateResult(float t);
 
 	void copyComponent(View<Component> source, View<Component> destination) final;
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	void disposeComponents() final;
 	
 	void serializeDecoratedShape(ISerializer& serializer, ID<Shape> shape);

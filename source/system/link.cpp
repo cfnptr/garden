@@ -125,10 +125,9 @@ void LinkSystem::copyComponent(View<Component> source, View<Component> destinati
 		destinationView->tag = sourceView->tag;
 	}
 }
-const string& LinkSystem::getComponentName() const
+string_view LinkSystem::getComponentName() const
 {
-	static const string name = "Link";
-	return name;
+	return "Link";
 }
 
 //**********************************************************************************************************************

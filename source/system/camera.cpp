@@ -39,10 +39,9 @@ float CameraComponent::getNearPlane() const noexcept
 CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton) { }
 CameraSystem::~CameraSystem() { unsetSingleton(); }
 
-const string& CameraSystem::getComponentName() const
+string_view CameraSystem::getComponentName() const
 {
-	static const string name = "Camera";
-	return name;
+	return "Camera";
 }
 void CameraSystem::disposeComponents()
 {

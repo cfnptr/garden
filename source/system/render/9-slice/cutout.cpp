@@ -38,10 +38,9 @@ void Cutout9SliceSystem::copyComponent(View<Component> source, View<Component> d
 	const auto sourceView = View<Cutout9SliceComponent>(source);
 	destinationView->alphaCutoff = sourceView->alphaCutoff;
 }
-const string& Cutout9SliceSystem::getComponentName() const
+string_view Cutout9SliceSystem::getComponentName() const
 {
-	static const string name = "Cutout 9-Slice";
-	return name;
+	return "Cutout 9-Slice";
 }
 MeshRenderType Cutout9SliceSystem::getMeshRenderType() const
 {

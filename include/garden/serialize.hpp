@@ -215,7 +215,7 @@ protected:
 	 */
 	~DoNotSerializeSystem() override;
 
-	const string& getComponentName() const override;
+	string_view getComponentName() const override;
 	friend class ecsm::Manager;
 public:
 	/**

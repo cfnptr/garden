@@ -261,8 +261,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	{
 		if (variantCount > 1)
 		{
-			for (uint32 stageIndex = 0; stageIndex < (uint32)stages.size(); stageIndex++)
-				setVkVariantIndex(&specializationInfos[stageIndex], variantIndex);
+			for (auto& specializationInfo : specializationInfos)
+				setVkVariantIndex(&specializationInfo, variantIndex);
 		}
 
 		auto pipelineStateSearch = pipelineStateOverrides.find(variantIndex);

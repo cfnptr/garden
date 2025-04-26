@@ -226,7 +226,7 @@ void SettingsSystem::setBool(const string& name, bool value)
 		return;
 	}
 	GARDEN_ASSERT(searchResult->second.type == Type::Bool);
-	searchResult->second.data = value;
+	searchResult.value().data = value;
 }
 
 void SettingsSystem::setString(const string& name, string_view value)
@@ -258,5 +258,5 @@ void SettingsSystem::setColor(const string& name, Color value)
 		return;
 	}
 	GARDEN_ASSERT(searchResult->second.type == Type::Color);
-	searchResult->second.data = (uint32)value;
+	searchResult.value().data = (uint32)value;
 }

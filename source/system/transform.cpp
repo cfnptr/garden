@@ -457,10 +457,9 @@ void TransformSystem::copyComponent(View<Component> source, View<Component> dest
 	destinationView->uid = 0;
 	destinationView->selfActive = sourceView->selfActive;
 }
-const string& TransformSystem::getComponentName() const
+string_view TransformSystem::getComponentName() const
 {
-	static const string name = "Transform";
-	return name;
+	return "Transform";
 }
 void TransformSystem::disposeComponents()
 {
@@ -730,8 +729,7 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 StaticTransformSystem::StaticTransformSystem(bool setSingleton) : Singleton(setSingleton) { }
 StaticTransformSystem::~StaticTransformSystem() { unsetSingleton(); }
 
-const string& StaticTransformSystem::getComponentName() const
+string_view StaticTransformSystem::getComponentName() const
 {
-	static const string name = "Static Transform";
-	return name;
+	return "Static Transform";
 }

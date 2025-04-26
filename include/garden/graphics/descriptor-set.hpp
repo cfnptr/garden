@@ -20,16 +20,27 @@
 #pragma once
 #include "garden/graphics/common.hpp"
 #include "garden/graphics/sampler.hpp"
+#include "tsl/robin_map.h"
 
-#include <map>
 #include <typeindex>
 
 namespace garden::graphics
 {
 
-using namespace ecsm;
 class Pipeline;
 class DescriptorSetExt;
+
+struct SvHash
+{
+	using is_transparent = void;
+	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
+};
+struct SvEqual
+{
+	using is_transparent = void;
+	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
+};
 
 /***********************************************************************************************************************
  * @brief Shader resource container.
@@ -134,8 +145,8 @@ public:
 		constexpr Range() = default;
 	};
 
-	using Uniforms = map<string, Uniform, less<>>;
-	using Samplers = map<string, ID<Sampler>, less<>>;
+	using Uniforms = tsl::robin_map<string, Uniform, SvHash, SvEqual>;
+	using Samplers = tsl::robin_map<string, ID<Sampler>>;
 private:
 	ID<Pipeline> pipeline = {};
 	Uniforms uniforms;

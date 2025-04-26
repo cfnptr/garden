@@ -24,6 +24,8 @@
 #include "garden/graphics/imgui.hpp"
 #include "ecsm.hpp"
 
+#include <unordered_map>
+
 namespace garden
 {
 
@@ -54,8 +56,8 @@ public:
 	};
 
 	
-	using OnComponents = multimap<float, pair<System*, OnComponent>>;
-	using EntityInspectors = unordered_map<type_index, Inspector>;
+	using OnComponents = unordered_multimap<float, pair<System*, OnComponent>>;
+	using EntityInspectors = tsl::robin_map<type_index, Inspector>;
 private:
 	OnComponents onComponents;
 	EntityInspectors entityInspectors;

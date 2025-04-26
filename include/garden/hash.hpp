@@ -33,7 +33,7 @@ namespace garden
  * Hash is a function that converts an input (or 'key') into a fixed-size set of bytes. 
  * This output set has a fixed length, regardless of the size of the input.
  */
-struct Hash128
+struct Hash128 final
 {
 	typedef void* State;
 protected:
@@ -97,7 +97,6 @@ public:
 	 * @brief Returns true if hash is not all zeros, otherwise false.
 	 */
 	explicit operator bool() const noexcept { return low64 | high64; }
-
 
 	/******************************************************************************************************************
 	 * @brief Returns hash Base64 encoded string.
@@ -190,3 +189,22 @@ public:
 };
 
 } // namespace garden
+
+namespace std
+{
+	template<>
+	struct hash<garden::Hash128>
+	{
+		size_t operator()(const garden::Hash128& hash) const noexcept
+		{
+			auto x = hash.low64 ^ hash.high64;
+			#if SIZE_MAX == UINT64_MAX
+			return (size_t)x;
+			#elif SIZE_MAX == UINT32_MAX
+			return (size_t)(x ^ x >> 32u);
+			#else
+			#error "Unsupported size_t size"
+			#endif
+		}
+	};
+} // namespace std

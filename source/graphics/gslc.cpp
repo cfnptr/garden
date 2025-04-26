@@ -1267,7 +1267,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 					fileData.lineIndex, lineData.word);
 			}
 			
-			result->second.shaderStages |= shaderStage;
+			result.value().shaderStages |= shaderStage;
 		}
 
 		fileData.outputFileStream << " " << lineData.word;
@@ -1438,7 +1438,7 @@ static void writeGslHeaderValues(const fs::path& filePath,
 }
 
 template<typename T>
-static void writeGslHeaderArray(ofstream& headerStream, const map<string, T, less<>>& valueArray)
+static void writeGslHeaderArray(ofstream& headerStream, const T& valueArray)
 {
 	for (const auto& pair : valueArray)
 	{
@@ -2312,9 +2312,9 @@ static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	dataOffset += sizeof(T);
 }
 
-template<typename T>
-static void readGslHeaderArray(const uint8* data, uint32 dataSize,
-	uint32& dataOffset, uint8 count, map<string, T, less<>>& valueArray)
+template<typename T, typename A>
+static void readGslHeaderArray(const uint8* data, uint32 dataSize, 
+	uint32& dataOffset, uint8 count, A& valueArray)
 {
 	for (uint8 i = 0; i < count; i++)
 	{
@@ -2359,7 +2359,7 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 	
 	GraphicsGslValues values; uint32 dataOffset = 0;
 	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
-	readGslHeaderValues(headerData, dataSize, dataOffset, graphicsGslMagic, values);
+	readGslHeaderValues<>(headerData, dataSize, dataOffset, graphicsGslMagic, values);
 
 	if (dataOffset + values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute) +
 		values.blendStateCount * sizeof(GraphicsPipeline::BlendState) > dataSize)
@@ -2382,9 +2382,12 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
 	}
 
-	readGslHeaderArray(headerData, dataSize, dataOffset, values.uniformCount, data.uniforms);
-	readGslHeaderArray(headerData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
-	readGslHeaderArray(headerData, dataSize, dataOffset, values.specConstCount, data.specConsts);
+	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
+		dataOffset, values.uniformCount, data.uniforms);
+	readGslHeaderArray<Sampler::State>(headerData, dataSize, 
+		dataOffset, values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
+		dataOffset, values.specConstCount, data.specConsts);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2416,9 +2419,12 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
 	readGslHeaderValues(headerData, dataSize, dataOffset, computeGslMagic, values);
 
-	readGslHeaderArray(headerData, dataSize, dataOffset, values.uniformCount, data.uniforms);
-	readGslHeaderArray(headerData, dataSize, dataOffset, values.samplerStateCount, data.samplerStates);
-	readGslHeaderArray(headerData, dataSize, dataOffset, values.specConstCount, data.specConsts);
+	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
+		dataOffset, values.uniformCount, data.uniforms);
+	readGslHeaderArray<Sampler::State>(headerData, dataSize, 
+		dataOffset, values.samplerStateCount, data.samplerStates);
+	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
+		dataOffset, values.specConstCount, data.specConsts);
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;

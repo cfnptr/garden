@@ -123,7 +123,7 @@ public:
 	 * @param[in] name thread pool thread name
 	 * @param threadCount target pool thread count
 	 */
-	ThreadPool(bool isBackground = false, const string& name = "", uint32 threadCount = UINT32_MAX);
+	ThreadPool(bool isBackground = false, string_view name = "", uint32 threadCount = UINT32_MAX);
 	/**
 	 * @brief Destroys thread pool. (Blocking)
 	 * @details Waits until all running tasks are completed.

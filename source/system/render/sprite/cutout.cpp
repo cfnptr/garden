@@ -38,10 +38,9 @@ void CutoutSpriteSystem::copyComponent(View<Component> source, View<Component> d
 	const auto sourceView = View<CutoutSpriteComponent>(source);
 	destinationView->alphaCutoff = sourceView->alphaCutoff;
 }
-const string& CutoutSpriteSystem::getComponentName() const
+string_view CutoutSpriteSystem::getComponentName() const
 {
-	static const string name = "Cutout Sprite";
-	return name;
+	return "Cutout Sprite";
 }
 MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
 {

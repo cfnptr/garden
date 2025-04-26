@@ -21,10 +21,9 @@ using namespace garden;
 DoNotSerializeSystem::DoNotSerializeSystem(bool setSingleton) : Singleton(setSingleton) { }
 DoNotSerializeSystem::~DoNotSerializeSystem() { unsetSingleton(); }
 
-const string& DoNotSerializeSystem::getComponentName() const
+string_view DoNotSerializeSystem::getComponentName() const
 {
-	static const string name = "Do Not Serialize";
-	return name;
+	return "Do Not Serialize";
 }
 
 //**********************************************************************************************************************

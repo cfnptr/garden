@@ -181,7 +181,7 @@ class CameraSystem final : public ComponentSystem<CameraComponent, false>,
 	 */
 	~CameraSystem() final;
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;

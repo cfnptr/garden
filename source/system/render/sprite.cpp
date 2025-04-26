@@ -331,7 +331,7 @@ void SpriteRenderSystem::destroyResources(View<SpriteRenderComponent> spriteRend
 	spriteRenderView->descriptorSet = {};
 }
 
-Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Image> colorMap)
+Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(string_view path, ID<Image> colorMap)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(colorMap);
@@ -342,7 +342,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Ima
 
 	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
-	Hash128::updateState(hashState, path.c_str(), path.length());
+	Hash128::updateState(hashState, path.data(), path.length());
 	Hash128::updateState(hashState, &imageSize.x, sizeof(uint32));
 	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
@@ -350,6 +350,6 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(const string& path, ID<Ima
 	auto uniforms = getSpriteUniforms(colorMapView->getDefaultView());
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), getBasePipeline(), std::move(uniforms), 1);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + path);
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));
 	return descriptorSet;
 }

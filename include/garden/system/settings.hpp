@@ -47,7 +47,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	};
 
 	void* confReader = nullptr;
-	unordered_map<string, Item> items;
+	tsl::robin_map<string, Item> items;
 
 	/**
 	 * @brief Creates a new settings system instance.

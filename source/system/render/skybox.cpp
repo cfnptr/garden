@@ -60,10 +60,9 @@ SkyboxRenderSystem::~SkyboxRenderSystem()
 	unsetSingleton();
 }
 
-const string& SkyboxRenderSystem::getComponentName() const
+string_view SkyboxRenderSystem::getComponentName() const
 {
-	static const string name = "Skybox";
-	return name;
+	return "Skybox";
 }
 
 //**********************************************************************************************************************
@@ -159,7 +158,7 @@ ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()
 	return pipeline;
 }
 
-Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(const string& path, ID<Image> cubemap)
+Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image> cubemap)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(cubemap);
@@ -170,7 +169,7 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(const string& path, ID<Ima
 
 	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
-	Hash128::updateState(hashState, path.c_str(), path.length());
+	Hash128::updateState(hashState, path.data(), path.length());
 	Hash128::updateState(hashState, &imageSize.x, sizeof(uint32));
 	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
@@ -179,6 +178,6 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(const string& path, ID<Ima
 	{ { "cubemap", DescriptorSet::Uniform(cubemapView->getDefaultView()) } };
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), pipeline, std::move(uniforms));
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + path);
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));
 	return descriptorSet;
 }

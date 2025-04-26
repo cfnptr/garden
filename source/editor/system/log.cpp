@@ -145,7 +145,7 @@ void LogEditorSystem::editorBarTool()
 }
 
 //**********************************************************************************************************************
-void LogEditorSystem::log(LogLevel level, const string& message)
+void LogEditorSystem::log(LogLevel level, string_view message)
 {
 	bufferMutex.lock();
 
