@@ -48,7 +48,7 @@ class Opaque9SliceSystem final : public NineSliceRenderCompSystem<
 	 */
 	~Opaque9SliceSystem() final;
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;
 	
 	friend class ecsm::Manager;

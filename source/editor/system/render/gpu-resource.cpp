@@ -360,9 +360,8 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 			const auto& colorAttachments = framebuffer.getColorAttachments();
 
 			auto isFound = false;
-			for (uint32 j = 0; j < colorAttachments.size(); j++)
+			for (auto& colorAttachment : colorAttachments)
 			{
-				auto& colorAttachment = colorAttachments[j];
 				if (colorAttachment.imageView == selectedImageView)
 				{
 					isFound = true;
@@ -453,8 +452,10 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	{
 		ImGui::Indent();
 
-		const auto& colorAttachments = framebuffer.getColorAttachments();
-		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
+		const auto& colorAttachments = framebuffer.getColorAttachments().data();
+		auto colorAttachmentCount = (uint32)framebuffer.getColorAttachments().size();
+		
+		for (uint32 i = 0; i < colorAttachmentCount; i++)
 		{
 			auto attachment = colorAttachments[i];
 			if (!attachment.imageView)
@@ -485,7 +486,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::PopID();
 		}
 
-		if (colorAttachments.empty())
+		if (framebuffer.getColorAttachments().empty())
 			ImGui::TextDisabled("None");
 		
 		ImGui::Unindent();
@@ -532,8 +533,10 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	{
 		ImGui::Indent();
 
-		const auto& subpasses = framebuffer.getSubpasses();
-		for (uint32 i = 0; i < (uint32)subpasses.size(); i++)
+		const auto& subpasses = framebuffer.getSubpasses().data();
+		auto subpassCount = (uint32)framebuffer.getSubpasses().size();
+
+		for (uint32 i = 0; i < subpassCount; i++)
 		{
 			const auto& subpass = subpasses[i];
 			ImGui::SeparatorText(to_string(i).c_str());
@@ -543,7 +546,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			// TODO: render input and output attachment list.
 		}
 
-		if (subpasses.empty())
+		if (framebuffer.getSubpasses().empty())
 			ImGui::TextDisabled("None");
 		
 		ImGui::Unindent();
@@ -720,11 +723,13 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			ImGui::SeparatorText(pair.first.c_str());
 			ImGui::PushID(pair.first.c_str());
 
+			const auto& resourceSets = pair.second.resourceSets.data();
+			auto resourceSetCount = (uint32)pair.second.resourceSets.size();
+
 			auto type = uniform->second.type;
-			const auto& resourceSets = pair.second.resourceSets;
 			if (isBufferType(type))
 			{
-				for (uint32 i = 0; i < (uint32)resourceSets.size(); i++)
+				for (uint32 i = 0; i < resourceSetCount; i++)
 				{
 					if (ImGui::TreeNodeEx(to_string(i).c_str()))
 					{
@@ -755,7 +760,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			}
 			else if (isSamplerType(type) || isImageType(type))
 			{
-				for (uint32 i = 0; i < (uint32)resourceSets.size(); i++)
+				for (uint32 i = 0; i < resourceSetCount; i++)
 				{
 					if (ImGui::TreeNodeEx(to_string(i).c_str()))
 					{

@@ -21,10 +21,9 @@ Opaque9SliceSystem::Opaque9SliceSystem(bool setSingleton) : NineSliceRenderCompS
 	"9-slice/opaque"), Singleton(setSingleton) { }
 Opaque9SliceSystem::~Opaque9SliceSystem() { unsetSingleton(); }
 
-const string& Opaque9SliceSystem::getComponentName() const
+string_view Opaque9SliceSystem::getComponentName() const
 {
-	static const string name = "Opaque 9-Slice";
-	return name;
+	return "Opaque 9-Slice";
 }
 MeshRenderType Opaque9SliceSystem::getMeshRenderType() const
 {

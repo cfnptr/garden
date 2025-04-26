@@ -297,7 +297,7 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 	LinearPool<TransformFrame, false> animationFrames;
 	vector<ID<Entity>> entityStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
-	map<uint64, ID<Entity>> deserializedEntities;
+	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityParentPair> deserializedParents;
 	string uidStringCache;
 
@@ -317,7 +317,7 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 
 	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
@@ -367,7 +367,7 @@ class StaticTransformSystem final : public ComponentSystem<StaticTransformCompon
 	 */
 	~StaticTransformSystem() final;
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	friend class ecsm::Manager;
 };
 

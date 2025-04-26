@@ -41,7 +41,7 @@ functions in the system *.cpp* file `source/system/my-system.cpp`.
 
 class MyCustomSystem : public ComponentSystem<MyCustomComponent, false>
 {
-    const string& getComponentName() const override;
+    std::string_view getComponentName() const override;
     friend class ecsm::Manager;
 };
 
@@ -55,7 +55,7 @@ class MyCustomSystem : public ComponentSystem<MyCustomComponent, false>
 
 using namespace my::app;
 
-const string& MyCustomSystem::getComponentName() const
+const std::string& MyCustomSystem::getComponentName() const
 {
     static const string name = "My Custom";
     return name;
@@ -150,7 +150,7 @@ unallocated components. It is essential to check this by using `component->getEn
 ```cpp
 //...
 
-for (auto component : components)
+for (auto& component : components)
 {
     if (!component->getEntity())
         continue;

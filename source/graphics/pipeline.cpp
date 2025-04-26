@@ -20,7 +20,7 @@ using namespace garden::graphics;
 
 //**********************************************************************************************************************
 static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms, 
-	const Pipeline::SamplerStates& samplerStates, map<string, vk::Sampler>& immutableSamplers, 
+	const Pipeline::SamplerStates& samplerStates, tsl::robin_map<string, vk::Sampler>& immutableSamplers, 
 	const fs::path& pipelinePath, const Pipeline::SamplerStates& samplerStateOverrides)
 {
 	auto vulkanAPI = VulkanAPI::get();
@@ -61,7 +61,7 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 
 //**********************************************************************************************************************
 static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
-	const Pipeline::Uniforms& uniforms, const map<string, vk::Sampler>& immutableSamplers,
+	const Pipeline::Uniforms& uniforms, const tsl::robin_map<string, vk::Sampler>& immutableSamplers,
 	const fs::path& pipelinePath, uint32 maxBindlessCount, bool& bindless)
 {
 	bindless = false;
@@ -89,7 +89,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			descriptorBindingFlags.resize(uniforms.size());
 		}
 
-		for	(auto pair : uniforms)
+		for	(const auto& pair : uniforms)
 		{
 			auto uniform = pair.second;
 			if (uniform.descriptorSetIndex != i)
@@ -348,7 +348,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 
 		this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
 
-		map<string, vk::Sampler> immutableSamplers;
+		tsl::robin_map<string, vk::Sampler> immutableSamplers;
 		this->samplers = createVkPipelineSamplers(uniforms, createData.samplerStates,
 			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
 

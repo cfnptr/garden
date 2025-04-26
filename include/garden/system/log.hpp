@@ -151,40 +151,40 @@ public:
 	 * @brief Writes message to the log.
 	 * 
 	 * @param level logging level
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void log(LogLevel level, const string& message) noexcept;
+	void log(LogLevel level, string_view message) noexcept;
 
 	/**
 	 * @brief Writes trace message to the log. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void trace(const string& message) noexcept  { log(TRACE_LOG_LEVEL, message); }
+	void trace(string_view message) noexcept  { log(TRACE_LOG_LEVEL, message); }
 	/**
 	 * @brief Writes debug message to the log. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void debug(const string& message) noexcept  { log(DEBUG_LOG_LEVEL, message); }
+	void debug(string_view message) noexcept  { log(DEBUG_LOG_LEVEL, message); }
 	/**
 	 * @brief Writes information message to the log. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void info(const string& message) noexcept  { log(INFO_LOG_LEVEL, message); }
+	void info(string_view message) noexcept  { log(INFO_LOG_LEVEL, message); }
 	/**
 	 * @brief Writes warning message to the log. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void warn(const string& message) noexcept  { log(WARN_LOG_LEVEL, message); }
+	void warn(string_view message) noexcept  { log(WARN_LOG_LEVEL, message); }
 	/**
 	 * @brief Writes error message to the log. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void error(const string& message) noexcept  { log(ERROR_LOG_LEVEL, message); }
+	void error(string_view message) noexcept  { log(ERROR_LOG_LEVEL, message); }
 	/**
 	 * @brief Writes fatal message to the log. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	void fatal(const string& message) noexcept { log(FATAL_LOG_LEVEL, message); }
+	void fatal(string_view message) noexcept { log(FATAL_LOG_LEVEL, message); }
 
 	/**
 	 * @brief Returns current logger logging level. (MT-Safe)
@@ -213,54 +213,54 @@ public:
 
 	/**
 	 * @brief Writes trace message to the log if system exist. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	static void tryTrace(const string& message)
+	static void tryTrace(string_view message)
 	{
 		auto logSystem = LogSystem::Instance::tryGet();
 		if (logSystem) logSystem->trace(message);
 	}
 	/**
 	 * @brief Writes debug message to the log if system exist. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	static void tryDebug(const string& message)
+	static void tryDebug(string_view message)
 	{
 		auto logSystem = LogSystem::Instance::tryGet();
 		if (logSystem) logSystem->debug(message);
 	}
 	/**
 	 * @brief Writes information message to the log if system exist. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	static void tryInfo(const string& message)
+	static void tryInfo(string_view message)
 	{
 		auto logSystem = LogSystem::Instance::tryGet();
 		if (logSystem) logSystem->info(message);
 	}
 	/**
 	 * @brief Writes warning message to the log if system exist. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	static void tryWarn(const string& message)
+	static void tryWarn(string_view message)
 	{
 		auto logSystem = LogSystem::Instance::tryGet();
 		if (logSystem) logSystem->warn(message);
 	}
 	/**
 	 * @brief Writes error message to the log if system exist. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	static void tryError(const string& message)
+	static void tryError(string_view message)
 	{
 		auto logSystem = LogSystem::Instance::tryGet();
 		if (logSystem) logSystem->error(message);
 	}
 	/**
 	 * @brief Writes fatal message to the log if system exist. (MT-Safe)
-	 * @param[in] message target logging message
+	 * @param message target logging message
 	 */
-	static void tryFatal(const string& message)
+	static void tryFatal(string_view message)
 	{
 		auto logSystem = LogSystem::Instance::tryGet();
 		if (logSystem) logSystem->fatal(message);

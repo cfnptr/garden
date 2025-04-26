@@ -32,7 +32,7 @@ class AnimationSystem;
  */
 struct AnimationComponent final : public Component
 {
-	using Animations = map<string, Ref<Animation>, less<>>;
+	using Animations = tsl::robin_map<string, Ref<Animation>, SvHash, SvEqual>;
 
 	string active;               /**< Active animation path */
 	float frame = 0.0f;          /**< Current animation frame */
@@ -76,7 +76,7 @@ public:
 	 * @brief Removes animation from the map.
 	 * @param path target animation path
 	 */
-	psize eraseAnimation(const string& path) noexcept { return animations.erase(path); }
+	psize eraseAnimation(string_view path) noexcept { return animations.erase(path); }
 	/**
 	 * @brief Removes animation from the map.
 	 * @param i target animation iterator
@@ -117,7 +117,7 @@ private:
 	void update();
 
 	void copyComponent(View<Component> source, View<Component> destination) final;
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	void disposeComponents() final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;

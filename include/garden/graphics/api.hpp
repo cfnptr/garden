@@ -103,7 +103,7 @@ public:
 	LinearPool<GraphicsPipeline> graphicsPipelinePool;
 	LinearPool<ComputePipeline> computePipelinePool;
 	LinearPool<DescriptorSet> descriptorSetPool;
-	map<void*, uint64> renderPasses;
+	tsl::robin_map<void*, uint64> renderPasses;
 	uint64 graphicsPipelineVersion = 1;
 	uint64 computePipelineVersion = 1;
 	uint64 bufferVersion = 1;

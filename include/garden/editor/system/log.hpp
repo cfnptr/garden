@@ -49,7 +49,7 @@ class LogEditorSystem final : public System, public Singleton<LogEditorSystem>
 
 	friend class ecsm::Manager;
 public:
-	void log(LogLevel level, const string& message);
+	void log(LogLevel level, string_view message);
 };
 
 } // namespace garden

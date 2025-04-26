@@ -1179,7 +1179,7 @@ void PhysicsSystem::prepareSimulate()
 }
 
 //**********************************************************************************************************************
-static void toEventName(string& eventName, const string& eventListener, BodyEvent eventType)
+static void toEventName(string& eventName, string_view eventListener, BodyEvent eventType)
 {
 	eventName.assign(eventListener);
 	switch (eventType)
@@ -1396,10 +1396,9 @@ void PhysicsSystem::copyComponent(View<Component> source, View<Component> destin
 	destinationView->eventListener = sourceView->eventListener;
 	destinationView->uid = 0;
 }
-const string& PhysicsSystem::getComponentName() const
+string_view PhysicsSystem::getComponentName() const
 {
-	static const string name = "Rigidbody";
-	return name;
+	return "Rigidbody";
 }
 void PhysicsSystem::disposeComponents()
 {
@@ -1564,7 +1563,7 @@ void PhysicsSystem::postSerialize(ISerializer& serializer)
 }
 
 //**********************************************************************************************************************
-static ID<Shape> deserializeShape(IDeserializer& deserializer, const string& shapeType, bool isInner)
+static ID<Shape> deserializeShape(IDeserializer& deserializer, string_view shapeType, bool isInner)
 {
 	if (shapeType == "Box")
 	{

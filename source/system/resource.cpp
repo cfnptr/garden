@@ -2119,7 +2119,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 			}
 
 			auto serializableSystem = dynamic_cast<ISerializable*>(system);
-			const auto& componentName = system->getComponentName();
+			auto componentName = system->getComponentName();
 			if (!serializableSystem || componentName.empty())
 				continue;
 			
@@ -2362,7 +2362,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 		for (const auto& animatable : animatables)
 		{
 			auto system = animatable.first;
-			const auto& componentName = system->getComponentName();
+			auto componentName = system->getComponentName();
 			if (componentName.empty())
 				continue;
 

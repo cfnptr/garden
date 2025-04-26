@@ -70,7 +70,7 @@ void ThreadPool::threadFunction(uint32 index)
 }
 
 //**********************************************************************************************************************
-ThreadPool::ThreadPool(bool isBackground, const string& name, uint32 threadCount) : 
+ThreadPool::ThreadPool(bool isBackground, string_view name, uint32 threadCount) : 
 	name(name), background(isBackground), isRunning(true)
 {
 	GARDEN_ASSERT(threadCount > 0);

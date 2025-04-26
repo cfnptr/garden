@@ -17,6 +17,8 @@
 #include "garden/hash.hpp"
 #include "ecsm.hpp"
 
+#include <map>
+
 /***********************************************************************************************************************
  * @file
  * @brief Common entity search functions.
@@ -76,7 +78,7 @@ public:
 class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton<LinkSystem>, public ISerializable
 {
 public:
-	using UuidMap = map<Hash128, ID<Entity>>;
+	using UuidMap = tsl::robin_map<Hash128, ID<Entity>>;
 	using TagMap = multimap<string, ID<Entity>, less<>>;
 private:
 	UuidMap uuidMap;
@@ -95,7 +97,7 @@ private:
 	~LinkSystem() final;
 
 	void copyComponent(View<Component> source, View<Component> destination) final;
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;

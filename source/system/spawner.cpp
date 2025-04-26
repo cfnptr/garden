@@ -249,10 +249,9 @@ void SpawnerSystem::copyComponent(View<Component> source, View<Component> destin
 	destinationView->isActive = sourceView->isActive;
 	destinationView->spawnAsChild = sourceView->spawnAsChild;
 }
-const string& SpawnerSystem::getComponentName() const
+string_view SpawnerSystem::getComponentName() const
 {
-	static const string name = "Spawner";
-	return name;
+	return "Spawner";
 }
 
 //**********************************************************************************************************************
@@ -324,7 +323,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 	{
 		if (linkSystem->findEntity(searchResult->second))
 			return false;
-		searchResult->second = uuid;
+		searchResult.value() = uuid;
 		return true;
 	}
 
@@ -364,7 +363,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 	}
 	else
 	{
-		searchResult->second = linkView->getUUID();
+		searchResult.value() = linkView->getUUID();
 	}
 	return true;
 }

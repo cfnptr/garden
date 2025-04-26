@@ -348,7 +348,7 @@ bool VulkanSwapchain::present()
 //**********************************************************************************************************************
 void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, vk::RenderPass renderPass, 
 	uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
-	Framebuffer::OutputAttachment depthStencilAttachment, const string& name)
+	Framebuffer::OutputAttachment depthStencilAttachment, const string& debugName)
 {
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers Begin");
 
@@ -391,7 +391,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 			#if GARDEN_DEBUG
 			if (vulkanAPI->hasDebugUtils)
 			{
-				auto objectName = name + ".secondaryCommandBuffer" + to_string(i);
+				auto objectName = debugName + ".secondaryCommandBuffer" + to_string(i);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
 					(uint64)(VkCommandBuffer)commandBuffer, objectName.c_str());
 				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);

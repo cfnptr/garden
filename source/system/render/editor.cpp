@@ -356,11 +356,12 @@ void EditorRenderSystem::showOptionsWindow()
 }
 
 //**********************************************************************************************************************
-namespace
+namespace garden
 {
 	struct ComponentEntry final
 	{
-		using Nodes = map<string, ComponentEntry>;
+		using Nodes = unordered_map<string, ComponentEntry>;
+		
 		Nodes nodes;
 		type_index componentType;
 		ComponentEntry(type_index componentType) : componentType(componentType) { }
@@ -407,7 +408,7 @@ static void renderAddComponent(const EditorRenderSystem::EntityInspectors& entit
 		}
 
 		auto currentNode = &wordNodes;
-		auto& componentName = pair.second->getComponentName();
+		auto componentName = pair.second->getComponentName();
 		auto lastSpace = componentName.length();
 		auto isRunning = true;
 
@@ -487,7 +488,7 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 						continue;
 					}
 
-					if (ImGui::MenuItem(pair.second->getComponentName().c_str()))
+					if (ImGui::MenuItem(string(pair.second->getComponentName()).c_str()))
 						manager->add(selectedEntity, pair.first);
 				}
 				ImGui::EndMenu();
@@ -532,7 +533,7 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 
 //**********************************************************************************************************************
 static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
-	System* system, type_index componentType, const string& componentName)
+	System* system, type_index componentType, string_view componentName)
 {
 	if (ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 	{
@@ -556,7 +557,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		}
 
 		if (ImGui::MenuItem("Copy Component Name"))
-			ImGui::SetClipboardText(componentName.c_str());
+			ImGui::SetClipboardText(string(componentName).c_str());
 
 		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		if (ImGui::MenuItem("Copy Component Data", nullptr, false, serializableSystem))
@@ -634,7 +635,7 @@ void EditorRenderSystem::showEntityInspector()
 		{
 			auto system = pair.second.first;
 			auto componentName = system->getComponentName().empty() ?
-				typeToString(system->getComponentType()) : system->getComponentName();
+				typeToString(system->getComponentType()) : string(system->getComponentName());
 			ImGui::PushID(componentName.c_str());
 			auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
 				
@@ -662,7 +663,7 @@ void EditorRenderSystem::showEntityInspector()
 			{
 				auto componentType = system->getComponentType();
 				auto componentName = system->getComponentName().empty() ? 
-					typeToString(componentType) : system->getComponentName();
+					typeToString(componentType) : string(system->getComponentName());
 				ImGui::CollapsingHeader(componentName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
 				
 				if (!renderInspectorComponentPopup(selectedEntity, system, componentType, componentName))

@@ -48,7 +48,7 @@ class Trans9SliceSystem final : public NineSliceRenderCompSystem<
 	 */
 	~Trans9SliceSystem() final;
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;
 	
 	friend class ecsm::Manager;

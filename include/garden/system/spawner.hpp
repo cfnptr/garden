@@ -98,7 +98,7 @@ class SpawnerSystem final : public ComponentSystem<SpawnerComponent>,
 	public Singleton<SpawnerSystem>, public ISerializable
 {
 public:
-	using SharedPrefabs = map<string, Hash128, less<>>;
+	using SharedPrefabs = tsl::robin_map<string, Hash128, SvHash, SvEqual>;
 private:
 	SharedPrefabs sharedPrefabs;
 	string valueStringCache;
@@ -117,7 +117,7 @@ private:
 	void update();
 
 	void copyComponent(View<Component> source, View<Component> destination) final;
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;

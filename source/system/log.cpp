@@ -131,9 +131,9 @@ LogSystem::~LogSystem()
 	unsetSingleton();
 }
 
-void LogSystem::log(LogLevel level, const string& message) noexcept
+void LogSystem::log(LogLevel level, string_view message) noexcept
 {
-	logger.log(level, "%.*s", message.length(), message.c_str());
+	logger.log(level, "%.*s", message.length(), message.data());
 
 	#if GARDEN_EDITOR
 	auto logEditorSystem = LogEditorSystem::Instance::tryGet();

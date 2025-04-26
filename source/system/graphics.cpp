@@ -772,10 +772,11 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
-			const auto& mipData = data[mip];
+			const auto& mipData = data[mip].data();
+			auto mipLayerCount = (uint32)data[mip].size();
 			auto binarySize = formatBinarySize * mipSize.x * mipSize.y;
 
-			for (uint32 layer = 0; layer < (uint32)mipData.size(); layer++)
+			for (uint32 layer = 0; layer < mipLayerCount; layer++)
 			{
 				auto layerData = mipData[layer];
 				if (!layerData)

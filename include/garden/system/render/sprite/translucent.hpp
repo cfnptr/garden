@@ -48,7 +48,7 @@ class TransSpriteSystem final : public SpriteRenderCompSystem<
 	 */
 	~TransSpriteSystem() final;
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;
 	
 	friend class ecsm::Manager;

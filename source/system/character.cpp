@@ -431,10 +431,9 @@ void CharacterSystem::copyComponent(View<Component> source, View<Component> dest
 	destinationView->setPosAndRot(position, rotation);
 	destinationView->setLinearVelocity(sourceView->getLinearVelocity());
 }
-const string& CharacterSystem::getComponentName() const
+string_view CharacterSystem::getComponentName() const
 {
-	static const string name = "Character";
-	return name;
+	return "Character";
 }
 
 //**********************************************************************************************************************

@@ -773,10 +773,9 @@ void PbrLightingRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-const string& PbrLightingRenderSystem::getComponentName() const
+string_view PbrLightingRenderSystem::getComponentName() const
 {
-	static const string name = "PBR Lighting";
-	return name;
+	return "PBR Lighting";
 }
 
 //**********************************************************************************************************************

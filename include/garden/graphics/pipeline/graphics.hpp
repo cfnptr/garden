@@ -246,8 +246,8 @@ public:
 			depthBiasing(0), faceCulling(1), discarding(0), _unused(0) { }
 	};
 
-	using PipelineStates = map<uint8, State>;
-	using BlendStates = map<uint8, vector<BlendState>>;
+	using PipelineStates = tsl::robin_map<uint8, State>;
+	using BlendStates = tsl::robin_map<uint8, vector<BlendState>>;
 
 	/*******************************************************************************************************************
 	 * @brief Vertex input attribute description.

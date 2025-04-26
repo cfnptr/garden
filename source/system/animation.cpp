@@ -220,10 +220,9 @@ void AnimationSystem::copyComponent(View<Component> source, View<Component> dest
 	destinationView->randomizeStart = sourceView->randomizeStart;
 	randomizeStartFrame(randomGenerator, destinationView);
 }
-const string& AnimationSystem::getComponentName() const
+string_view AnimationSystem::getComponentName() const
 {
-	static const string name = "Animation";
-	return name;
+	return "Animation";
 }
 void AnimationSystem::disposeComponents()
 {

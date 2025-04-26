@@ -62,7 +62,7 @@ private:
 	void imageLoaded();
 	void metaHdrRender();
 
-	const string& getComponentName() const final;
+	string_view getComponentName() const final;
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is skybox rendering enabled. */
@@ -78,7 +78,7 @@ public:
 	 * @param path skybox resource path
 	 * @param cubemap skybox cubemap instance
 	 */
-	Ref<DescriptorSet> createSharedDS(const string& path, ID<Image> cubemap);
+	Ref<DescriptorSet> createSharedDS(string_view path, ID<Image> cubemap);
 };
 
 } // namespace garden

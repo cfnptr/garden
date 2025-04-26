@@ -21,10 +21,9 @@ Trans9SliceSystem::Trans9SliceSystem(bool setSingleton) : NineSliceRenderCompSys
 	"9-slice/translucent"), Singleton(setSingleton) { }
 Trans9SliceSystem::~Trans9SliceSystem() { unsetSingleton(); }
 
-const string& Trans9SliceSystem::getComponentName() const
+string_view Trans9SliceSystem::getComponentName() const
 {
-	static const string name = "Translucent 9-Slice";
-	return name;
+	return "Translucent 9-Slice";
 }
 MeshRenderType Trans9SliceSystem::getMeshRenderType() const
 {

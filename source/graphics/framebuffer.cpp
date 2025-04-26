@@ -42,7 +42,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 	for	(const auto& subpass : subpasses)
 		referenceCount += (uint32)(subpass.inputAttachments.size() + subpass.outputAttachments.size());
 
-	map<ID<ImageView>, ImageViewState> imageViewStates;
+	tsl::robin_map<ID<ImageView>, ImageViewState> imageViewStates;
 	vector<vk::AttachmentDescription> attachmentDescriptions;
 	vector<vk::AttachmentReference> attachmentReferences(referenceCount);
 	vector<vk::SubpassDescription> subpassDescriptions(subpassCount);
@@ -116,12 +116,13 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 					newAccess = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 				}
 
-				oldDependencyStage |= result->second.stage;
-				oldDependencyAccess |= result->second.access;
+				auto& imageViewState = result.value();
+				oldDependencyStage |= imageViewState.stage;
+				oldDependencyAccess |= imageViewState.access;
 				newDependencyStage |= newStage;
 				newDependencyAccess |= newAccess;
-				result->second.stage = newStage;
-				result->second.access = newAccess;
+				imageViewState.stage = newStage;
+				imageViewState.access = newAccess;
 
 				if (!isImageFormatColor)
 				{
