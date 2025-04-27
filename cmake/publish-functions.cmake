@@ -137,7 +137,7 @@ endmacro()
 
 #***********************************************************************************************************************
 function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
-	PACK_GARDEN_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG)
+	PACK_GARDEN_RES_DIR PACK_APP_VERSION INCLUDE_EDITOR INCLUDE_DEBUG)
 
 	set(PACK_APP_RES_PATHS)
 	set(PACK_GARDEN_SHADERS)
@@ -168,6 +168,9 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
 	collectPackResources(PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS)
 
 	add_custom_command(TARGET ${PACK_EXE_NAME} POST_BUILD VERBATIM
+		COMMAND ${CMAKE_COMMAND} -E echo "Cleaning up cache..."
+		COMMAND ${CMAKE_COMMAND} -E rm -r ${PACK_CACHE_DIR}
+
 		COMMAND ${CMAKE_COMMAND} -E echo "Compiling Garden shaders..."
 		COMMAND $<TARGET_FILE:gslc> -i ${PACK_GARDEN_RES_DIR} 
 			-o ${PACK_CACHE_DIR} -I ${PACK_GARDEN_RES_DIR}/shaders ${PACK_GARDEN_SHADERS}
@@ -194,6 +197,6 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
 			-o ${PACK_CACHE_DIR} ${PACK_APP_EQUI2CUBES}
 
 		COMMAND ${CMAKE_COMMAND} -E echo "Packing ${PACK_EXE_NAME} resources..."
-		COMMAND $<TARGET_FILE:packer>
+		COMMAND $<TARGET_FILE:packer> -v ${PACK_APP_VERSION} 
 			$<TARGET_FILE_DIR:${PACK_EXE_NAME}>/resources.pack ${PACK_APP_RES_PATHS})
 endfunction()

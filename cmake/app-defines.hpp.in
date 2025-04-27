@@ -30,7 +30,7 @@ constexpr uint8 appVersionMajor = @GARDEN_APP_VERSION_MAJOR@;
 constexpr uint8 appVersionMinor = @GARDEN_APP_VERSION_MINOR@;
 constexpr uint8 appVersionPatch = @GARDEN_APP_VERSION_PATCH@;
 constexpr Version appVersion = Version(@GARDEN_APP_VERSION_MAJOR@, @GARDEN_APP_VERSION_MINOR@, @GARDEN_APP_VERSION_PATCH@);
-constexpr string_view appVersionString = "@GARDEN_APP_VERSION@";
+constexpr string_view appVersionString = "@GARDEN_APP_VERSION_STRING@";
 
 #if GARDEN_DEBUG
 const fs::path appCachePath = fs::path("@GARDEN_APP_CACHE_DIR@");

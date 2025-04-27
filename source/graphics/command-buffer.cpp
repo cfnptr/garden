@@ -137,6 +137,9 @@ void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lo
 		case ResourceType::ImageView:
 			ResourceExt::getReadyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(pair.first)))--;
 			break;
+		case ResourceType::Sampler:
+			ResourceExt::getReadyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(pair.first)))--;
+			break;
 		case ResourceType::Framebuffer:
 			ResourceExt::getReadyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(pair.first)))--;
 			break;

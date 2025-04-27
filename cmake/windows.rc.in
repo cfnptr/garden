@@ -15,12 +15,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "@GARDEN_APP_CREATOR@"
             VALUE "FileDescription",  "@GARDEN_APP_NAME@"
-            VALUE "FileVersion",      "v@GARDEN_APP_VERSION@"
+            VALUE "FileVersion",      "v@GARDEN_APP_VERSION_STRING@"
             VALUE "InternalName",     "@GARDEN_APP_NAME@"
             VALUE "LegalCopyright",   "@GARDEN_APP_COPYRIGHT@"
             VALUE "OriginalFilename", "@GARDEN_APP_NAME@"
             VALUE "ProductName",      "@GARDEN_APP_NAME@"
-            VALUE "ProductVersion",   "v@GARDEN_APP_VERSION@"
+            VALUE "ProductVersion",   "v@GARDEN_APP_VERSION_STRING@"
         END
     END
 

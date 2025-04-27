@@ -860,8 +860,7 @@ public:
  */
 static constexpr bool isFormatColor(Image::Format formatType)
 {
-	return (uint8)Image::Format::Undefined < (uint8)formatType &&
-		(uint8)formatType < (uint8)Image::Format::UnormD16;
+	return Image::Format::Undefined < formatType && formatType < Image::Format::UnormD16;
 }
 /**
  * @brief Is the image data format a depth only.
@@ -869,8 +868,7 @@ static constexpr bool isFormatColor(Image::Format formatType)
  */
 static constexpr bool isFormatDepthOnly(Image::Format formatType)
 {
-	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SfloatD32;
+	return Image::Format::UnormD16 <= formatType && formatType <= Image::Format::SfloatD32;
 }
 /**
  * @brief Is the image data format a stencil only.
@@ -886,8 +884,7 @@ static constexpr bool isFormatStencilOnly(Image::Format formatType)
  */
 static constexpr bool isFormatDepthStencil(Image::Format formatType)
 {
-	return (uint8)Image::Format::UnormD24UintS8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
+	return Image::Format::UnormD24UintS8 <= formatType && formatType <= Image::Format::SfloatD32Uint8S;
 }
 /**
  * @brief Is the image data format a depth or stencil.
@@ -895,8 +892,7 @@ static constexpr bool isFormatDepthStencil(Image::Format formatType)
  */
 static constexpr bool isFormatDepthOrStencil(Image::Format formatType)
 {
-	return (uint8)Image::Format::UnormD16 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SfloatD32Uint8S;
+	return Image::Format::UnormD16 <= formatType && formatType <= Image::Format::SfloatD32Uint8S;
 }
 /**
  * @brief Is the image data format an unsigned integer.
@@ -904,8 +900,7 @@ static constexpr bool isFormatDepthOrStencil(Image::Format formatType)
  */
 static constexpr bool isFormatUint(Image::Format formatType)
 {
-	return (uint8)Image::Format::UintR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UintA2B10G10R10;
+	return Image::Format::UintR8 <= formatType && formatType <= Image::Format::UintA2B10G10R10;
 }
 /**
  * @brief Is the image data format a signed integer.
@@ -913,8 +908,7 @@ static constexpr bool isFormatUint(Image::Format formatType)
  */
 static constexpr bool isFormatInt(Image::Format formatType)
 {
-	return (uint8)Image::Format::SintR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SintR32G32B32A32;
+	return Image::Format::SintR8 <= formatType && formatType <= Image::Format::SintR32G32B32A32;
 }
 /**
  * @brief Is the image data format a normalized unsigned integer.
@@ -922,8 +916,7 @@ static constexpr bool isFormatInt(Image::Format formatType)
  */
 static constexpr bool isFormatUnorm(Image::Format formatType)
 {
-	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UnormA2B10G10R10;
+	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::UnormA2B10G10R10;
 }
 /**
  * @brief Is the image data format a normalized signed integer.
@@ -931,8 +924,7 @@ static constexpr bool isFormatUnorm(Image::Format formatType)
  */
 static constexpr bool isFormatSnorm(Image::Format formatType)
 {
-	return (uint8)Image::Format::SnormR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SnormR16G16B16A16;
+	return Image::Format::SnormR8 <= formatType && formatType <= Image::Format::SnormR16G16B16A16;
 }
 /**
  * @brief Is the image data format a normalized signed or unsigned integer.
@@ -940,8 +932,7 @@ static constexpr bool isFormatSnorm(Image::Format formatType)
  */
 static constexpr bool isFormatNorm(Image::Format formatType)
 {
-	return (uint8)Image::Format::UnormR8 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::SnormR16G16B16A16;
+	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::SnormR16G16B16A16;
 }
 /**
  * @brief Is the image data format a floating point.
@@ -949,8 +940,7 @@ static constexpr bool isFormatNorm(Image::Format formatType)
  */
 static constexpr bool isFormatFloat(Image::Format formatType)
 {
-	return (uint8)Image::Format::SfloatR16 <= (uint8)formatType &&
-		(uint8)formatType <= (uint8)Image::Format::UfloatB10G11R11;
+	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatB10G11R11;
 }
 
 /***********************************************************************************************************************
@@ -1167,7 +1157,7 @@ constexpr string_view imageFormatNames[(psize)Image::Format::Count] =
  */
 static string_view toString(Image::Type imageType) noexcept
 {
-	GARDEN_ASSERT((uint8)imageType < (uint8)Image::Type::Count);
+	GARDEN_ASSERT(imageType < Image::Type::Count);
 	return imageTypeNames[(psize)imageType];
 }
 /**
@@ -1176,7 +1166,7 @@ static string_view toString(Image::Type imageType) noexcept
  */
 static string_view toString(Image::Format imageFormat) noexcept
 {
-	GARDEN_ASSERT((uint8)imageFormat < (uint8)Image::Format::Count);
+	GARDEN_ASSERT(imageFormat < Image::Format::Count);
 	return imageFormatNames[(psize)imageFormat];
 }
 

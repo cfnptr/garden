@@ -1408,6 +1408,7 @@ static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& 
 	for (auto& path : includePaths)
 		command += " -I \"" + path.generic_string() + "\"";
 
+	std::cout << std::flush;
 	auto result = std::system(command.c_str());
 	if (result != 0)
 		throw GardenError("_GLSLC");
@@ -1437,8 +1438,8 @@ static void writeGslHeaderValues(const fs::path& filePath,
 	headerStream.write((const char*)&values, sizeof(T));
 }
 
-template<typename T>
-static void writeGslHeaderArray(ofstream& headerStream, const T& valueArray)
+template<typename T, typename A>
+static void writeGslHeaderArray(ofstream& headerStream, const A& valueArray)
 {
 	for (const auto& pair : valueArray)
 	{
@@ -2059,9 +2060,9 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 			values.blendStateCount * sizeof(GraphicsPipeline::BlendState));
 	}
 	
-	writeGslHeaderArray(headerStream, data.uniforms);
-	writeGslHeaderArray(headerStream, data.samplerStates);
-	writeGslHeaderArray(headerStream, data.specConsts);
+	writeGslHeaderArray<Pipeline::Uniform>(headerStream, data.uniforms);
+	writeGslHeaderArray<Sampler::State>(headerStream, data.samplerStates);
+	writeGslHeaderArray<Pipeline::SpecConst>(headerStream, data.specConsts);
 	return true;
 }
 
@@ -2251,6 +2252,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
+	
 	fileData.outputFileStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
@@ -2279,9 +2281,9 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	ofstream headerStream;
 	auto headerFilePath = outputPath / data.shaderPath; headerFilePath += ".gslh";
 	writeGslHeaderValues(headerFilePath, computeGslMagic, headerStream, values);
-	writeGslHeaderArray(headerStream, data.uniforms);
-	writeGslHeaderArray(headerStream, data.samplerStates);
-	writeGslHeaderArray(headerStream, data.specConsts);
+	writeGslHeaderArray<Pipeline::Uniform>(headerStream, data.uniforms);
+	writeGslHeaderArray<Sampler::State>(headerStream, data.samplerStates);
+	writeGslHeaderArray<Pipeline::SpecConst>(headerStream, data.specConsts);
 	headerStream.close();
 
 	outputFilePath += ".spv";
@@ -2359,7 +2361,7 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 	
 	GraphicsGslValues values; uint32 dataOffset = 0;
 	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
-	readGslHeaderValues<>(headerData, dataSize, dataOffset, graphicsGslMagic, values);
+	readGslHeaderValues(headerData, dataSize, dataOffset, graphicsGslMagic, values);
 
 	if (dataOffset + values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute) +
 		values.blendStateCount * sizeof(GraphicsPipeline::BlendState) > dataSize)
@@ -2541,7 +2543,7 @@ int main(int argc, char *argv[])
 		{
 			if (!threadPool)
 				threadPool = new ThreadPool(false, "T");
-			threadPool->addTask([&](const ThreadPool::Task& task)
+			threadPool->addTask([=, &compileResult](const ThreadPool::Task& task)
 			{
 				if (!compileResult)
 					return;

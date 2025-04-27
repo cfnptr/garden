@@ -296,7 +296,7 @@ static GslUniformType toGslUniformType(string_view uniformType)
  */
 static string_view toString(GslDataType dataType) noexcept
 {
-	GARDEN_ASSERT((uint8)dataType < (uint8)GslDataType::Count);
+	GARDEN_ASSERT(dataType < GslDataType::Count);
 	return gslDataTypeNames[(psize)dataType];
 }
 /**
@@ -305,7 +305,7 @@ static string_view toString(GslDataType dataType) noexcept
  */
 static string_view toString(GslDataFormat dataFormat) noexcept
 {
-	GARDEN_ASSERT((uint8)dataFormat < (uint8)GslDataFormat::Count);
+	GARDEN_ASSERT(dataFormat < GslDataFormat::Count);
 	return gslDataFormatNames[(psize)dataFormat];
 }
 /**
@@ -314,7 +314,7 @@ static string_view toString(GslDataFormat dataFormat) noexcept
  */
 static string_view toString(GslUniformType uniformType) noexcept
 {
-	GARDEN_ASSERT((uint8)uniformType < (uint8)GslUniformType::Count);
+	GARDEN_ASSERT(uniformType < GslUniformType::Count);
 	return gslUniformTypeNames[(psize)uniformType];
 }
 
@@ -455,8 +455,7 @@ static constexpr psize toBinarySize(GslDataFormat dataFormat) noexcept
  */
 static constexpr bool isSamplerType(GslUniformType uniformType) noexcept
 {
-	return (uint8)GslUniformType::Sampler1D <= (uint8)uniformType &&
-		(uint8)uniformType <= (uint8)GslUniformType::Sampler2DArrayShadow;
+	return GslUniformType::Sampler1D <= uniformType && uniformType <= GslUniformType::Sampler2DArrayShadow;
 }
 /**
  * @brief Is the GSL uniform type an image.
@@ -464,8 +463,7 @@ static constexpr bool isSamplerType(GslUniformType uniformType) noexcept
  */
 static constexpr bool isImageType(GslUniformType uniformType) noexcept
 {
-	return (uint8)GslUniformType::Image1D <= (uint8)uniformType &&
-		(uint8)uniformType <= (uint8)GslUniformType::Uimage2DArray;
+	return GslUniformType::Image1D <= uniformType && uniformType <= GslUniformType::Uimage2DArray;
 }
 /**
  * @brief Is the GSL uniform type a buffer.
@@ -473,8 +471,7 @@ static constexpr bool isImageType(GslUniformType uniformType) noexcept
  */
 static constexpr bool isBufferType(GslUniformType uniformType) noexcept
 {
-	return uniformType == GslUniformType::UniformBuffer ||
-		uniformType == GslUniformType::StorageBuffer;
+	return uniformType == GslUniformType::UniformBuffer || uniformType == GslUniformType::StorageBuffer;
 }
 
 } // namespace garden::graphics

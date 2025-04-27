@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 		{
 			if (!threadPool)
 				threadPool = new ThreadPool(false, "T");
-			threadPool->addTask([&](const ThreadPool::Task& task)
+			threadPool->addTask([=, &convertResult](const ThreadPool::Task& task)
 			{
 				if (!convertResult)
 					return;

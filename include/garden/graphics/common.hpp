@@ -114,7 +114,7 @@ static PipelineType toPipelineType(string_view pipelineType)
  */
 static string_view toString(PipelineType pipelineType) noexcept
 {
-	GARDEN_ASSERT((uint8)pipelineType < (uint8)PipelineType::Count);
+	GARDEN_ASSERT(pipelineType < PipelineType::Count);
 	return pipelineTypeNames[(psize)pipelineType];
 }
 
