@@ -301,7 +301,7 @@ public:
 	 */
 	bool isKeyboardPressed(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int16)button >= 0 && (int16)button <= (int16)KeyboardButton::Last);
+		GARDEN_ASSERT((int16)button >= 0 && button <= KeyboardButton::Last);
 		return !lastKeyboardStates[(int16)button] && currKeyboardStates[(int16)button];
 	}
 	/**
@@ -310,7 +310,7 @@ public:
 	 */
 	bool isKeyboardReleased(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int16)button >= 0 && (int16)button <= (int16)KeyboardButton::Last);
+		GARDEN_ASSERT((int16)button >= 0 && button <= KeyboardButton::Last);
 		return lastKeyboardStates[(int)button] && !currKeyboardStates[(int)button];
 	}
 
@@ -320,7 +320,7 @@ public:
 	 */
 	bool isMousePressed(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT((uint8)button <= (uint8)MouseButton::Last);
+		GARDEN_ASSERT(button <= MouseButton::Last);
 		return !lastMouseStates[(uint8)button] && currMouseStates[(uint8)button];
 	}
 	/**
@@ -329,7 +329,7 @@ public:
 	 */
 	bool isMouseReleased(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT((uint8)button <= (uint8)MouseButton::Last);
+		GARDEN_ASSERT(button <= MouseButton::Last);
 		return lastMouseStates[(uint8)button] && !currMouseStates[(uint8)button];
 	}
 
@@ -339,7 +339,7 @@ public:
 	 */
 	bool getKeyboardState(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int16)button >= 0 && (int16)button <= (int16)KeyboardButton::Last);
+		GARDEN_ASSERT((int16)button >= 0 && button <= KeyboardButton::Last);
 		return currKeyboardStates[(int16)button];
 	}
 	/**
@@ -348,7 +348,7 @@ public:
 	 */
 	bool getMouseState(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT((uint8)button <= (uint8)MouseButton::Last);
+		GARDEN_ASSERT(button <= MouseButton::Last);
 		return currMouseStates[(uint8)button];
 	}
 
@@ -363,7 +363,7 @@ public:
 	 */
 	void setCursorMode(CursorMode mode) noexcept
 	{
-		GARDEN_ASSERT((uint8)mode < (uint8)CursorMode::Count);
+		GARDEN_ASSERT(mode < CursorMode::Count);
 		newCursorMode = mode;
 	}
 
@@ -377,7 +377,7 @@ public:
 	 */
 	void setCursorType(CursorType type) noexcept
 	{
-		GARDEN_ASSERT((uint8)type < (uint8)CursorType::Count);
+		GARDEN_ASSERT(type < CursorType::Count);
 		newCursorType = type;
 	}
 

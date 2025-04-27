@@ -505,7 +505,7 @@ void VulkanCommandBuffer::addRenderPassBarriers(psize offset, uint32& oldPipelin
 	while (offset < size)
 	{
 		auto subCommand = (const Command*)(data + offset);
-		GARDEN_ASSERT((uint8)subCommand->type < (uint8)Command::Type::Count);
+		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
 
 		auto commandType = subCommand->type;
 		if (commandType == Command::Type::EndRenderPass)
@@ -1129,7 +1129,7 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 	while (offset >= 0)
 	{
 		auto subCommand = (const Command*)(data + offset);
-		GARDEN_ASSERT((uint8)subCommand->type < (uint8)Command::Type::Count);
+		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
 		if (subCommand->lastSize == 0)
 			break;
 

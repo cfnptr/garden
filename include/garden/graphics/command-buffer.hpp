@@ -432,6 +432,8 @@ public:
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Image); }
 	void addLockResource(ID<ImageView> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ImageView); }
+	void addLockResource(ID<Sampler> resource)
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Sampler); }
 	void addLockResource(ID<Framebuffer> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Framebuffer); }
 	void addLockResource(ID<GraphicsPipeline> resource)

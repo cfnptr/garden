@@ -119,19 +119,19 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
+	auto appInfoSystem = AppInfoSystem::Instance::get();
+	appVersion = appInfoSystem->getVersion();
+
 	#if GARDEN_PACK_RESOURCES
 	try
 	{
-		packReader.open("resources.pack", true, thread::hardware_concurrency() + 1);
+		packReader.open("resources.pack", (uint32)appVersion, true, thread::hardware_concurrency() + 1);
 	}
 	catch (const exception& e)
 	{
 		throw GardenError("Failed to open \"resources.pack\" file.");
 	}
 	#endif
-
-	auto appInfoSystem = AppInfoSystem::Instance::get();
-	appVersion = appInfoSystem->getVersion();
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	appResourcesPath = appInfoSystem->getResourcesPath();
@@ -779,12 +779,13 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 	auto threadSystem = ThreadSystem::Instance::tryGet();
+	Image::Format format;
 	
 	#if !GARDEN_PACK_RESOURCES
 	auto cacheFilePath = appCachePath / "images" / path;
 	auto cacheFileString = cacheFilePath.generic_string();
 
-	fs::path inputFilePath; ImageFileType inputFileType; Image::Format format;
+	fs::path inputFilePath; ImageFileType inputFileType; 
 	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
 
 	if (fileCount == 0)

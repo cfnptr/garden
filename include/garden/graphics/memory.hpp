@@ -144,7 +144,7 @@ constexpr string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
  */
 static string_view toString(Memory::Access memoryAccess) noexcept
 {
-	GARDEN_ASSERT((uint8)memoryAccess < (uint8)Memory::Access::Count);
+	GARDEN_ASSERT(memoryAccess < Memory::Access::Count);
 	return memoryAccessNames[(psize)memoryAccess];
 }
 /**
@@ -153,7 +153,7 @@ static string_view toString(Memory::Access memoryAccess) noexcept
  */
 static string_view toString(Memory::Usage memoryUsage) noexcept
 {
-	GARDEN_ASSERT((uint8)memoryUsage < (uint8)Memory::Usage::Count);
+	GARDEN_ASSERT(memoryUsage < Memory::Usage::Count);
 	return memoryUsageNames[(psize)memoryUsage];
 }
 /**
@@ -162,7 +162,7 @@ static string_view toString(Memory::Usage memoryUsage) noexcept
  */
 static string_view toString(Memory::Strategy memoryStrategy) noexcept
 {
-	GARDEN_ASSERT((uint8)memoryStrategy < (uint8)Memory::Strategy::Count);
+	GARDEN_ASSERT(memoryStrategy < Memory::Strategy::Count);
 	return memoryStrategyNames[(psize)memoryStrategy];
 }
 

@@ -95,7 +95,7 @@ public:
 	const string& getCopyright() const noexcept { return copyright; }
 	/**
 	 * @brief Returns application version.
-	 * @details See the GARDEN_APP_VERSION.
+	 * @details See the GARDEN_APP_VERSION_.
 	 */
 	Version getVersion() const noexcept { return version; }
 

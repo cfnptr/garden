@@ -281,7 +281,7 @@ static Sampler::Filter toSamplerFilter(string_view samplerFilter)
  */
 static string_view toString(Sampler::Filter samplerFilter) noexcept
 {
-	GARDEN_ASSERT((uint8)samplerFilter < (uint8)Sampler::Filter::Count);
+	GARDEN_ASSERT(samplerFilter < Sampler::Filter::Count);
 	return samplerFilterNames[(psize)samplerFilter];
 }
 /**
@@ -290,7 +290,7 @@ static string_view toString(Sampler::Filter samplerFilter) noexcept
  */
 static string_view toString(Sampler::AddessMode addressMode) noexcept
 {
-	GARDEN_ASSERT((uint8)addressMode < (uint8)Sampler::AddessMode::Count);
+	GARDEN_ASSERT(addressMode < Sampler::AddessMode::Count);
 	return addressModeNames[(psize)addressMode];
 }
 /**
@@ -299,7 +299,7 @@ static string_view toString(Sampler::AddessMode addressMode) noexcept
  */
 static string_view toString(Sampler::BorderColor borderColor) noexcept
 {
-	GARDEN_ASSERT((uint8)borderColor < (uint8)Sampler::BorderColor::Count);
+	GARDEN_ASSERT(borderColor < Sampler::BorderColor::Count);
 	return borderColorNames[(psize)borderColor];
 }
 /**
@@ -308,7 +308,7 @@ static string_view toString(Sampler::BorderColor borderColor) noexcept
  */
 static string_view toString(Sampler::CompareOp compareOperation) noexcept
 {
-	GARDEN_ASSERT((uint8)compareOperation < (uint8)Sampler::CompareOp::Count);
+	GARDEN_ASSERT(compareOperation < Sampler::CompareOp::Count);
 	return compareOperationNames[(psize)compareOperation];
 }
 
