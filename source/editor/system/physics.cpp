@@ -128,14 +128,21 @@ void PhysicsEditorSystem::preMetaLdrRender()
 		}
 	}
 	ImGui::End();
-}
-void PhysicsEditorSystem::metaLdrRender()
-{
+
 	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
 		return;
 
 	if (!debugRenderer)
 		debugRenderer = new PhysicsDebugRenderer();
+
+	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
+	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
+	renderer->preDraw();
+}
+void PhysicsEditorSystem::metaLdrRender()
+{
+	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
+		return;
 	
 	auto physicsSystem = PhysicsSystem::Instance::get();
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
@@ -157,10 +164,8 @@ void PhysicsEditorSystem::metaLdrRender()
 		instance->DrawConstraintLimits(renderer);
 	if (drawConstraintRefFrame)
 		instance->DrawConstraintReferenceFrame(renderer);
-	
 
 	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
-	renderer->preDraw();
 	renderer->draw(cameraConstants.viewProj);
 }
 

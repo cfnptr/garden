@@ -50,9 +50,10 @@ void FxaaRenderEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("FXAA (Anti-aliasing)"))
 	{
-		auto fxaaSystem = FxaaRenderSystem::Instance::get();
 		ImGui::Indent();
+		ImGui::PushID("fxaa");
 
+		auto fxaaSystem = FxaaRenderSystem::Instance::get();
 		if (ImGui::Checkbox("Enabled", &fxaaSystem->isEnabled))
 		{
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
@@ -60,6 +61,7 @@ void FxaaRenderEditorSystem::editorSettings()
 				settingsSystem->setBool("fxaa.isEnabled", fxaaSystem->isEnabled);
 		}
 
+		ImGui::PopID();
 		ImGui::Unindent();
 		ImGui::Spacing();
 	}

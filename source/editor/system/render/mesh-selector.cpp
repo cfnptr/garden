@@ -180,16 +180,19 @@ void MeshSelectorEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Mesh Selector"))
 	{
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		ImGui::Indent();
+		ImGui::PushID("meshSelector");
+
 		ImGui::Checkbox("Enabled", &isEnabled);
 
 		if (ImGui::ColorEdit4("AABB Color", &aabbColor))
 		{
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
 				settingsSystem->setColor("meshSelector.aabbColor", aabbColor);
 		}
 
+		ImGui::PopID();
 		ImGui::Unindent();
 		ImGui::Spacing();
 	}

@@ -366,10 +366,12 @@ void MeshGizmosEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Mesh Gizmos"))
 	{
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		ImGui::Indent();
+		ImGui::PushID("meshGizmos");
+
 		ImGui::Checkbox("Enabled", &isEnabled);
 
+		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		if (ImGui::ColorEdit4("Handle Color", &handleColor))
 		{
 			if (settingsSystem)
@@ -400,6 +402,8 @@ void MeshGizmosEditorSystem::editorSettings()
 			if (settingsSystem)
 				settingsSystem->setFloat("meshGizmos.patternScale", patternScale);
 		}
+
+		ImGui::PopID();
 		ImGui::Unindent();
 		ImGui::Spacing();
 	}

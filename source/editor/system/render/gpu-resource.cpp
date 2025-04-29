@@ -566,7 +566,7 @@ static void renderSamplers(uint32& selectedItem, string& searchString,
 
 	string descriptorSetName;
 	renderItemList(graphicsAPI->samplerPool.getCount(), graphicsAPI->samplerPool.getOccupancy(), selectedItem,
-		searchString, searchCaseSensitive, samplers, sizeof(DescriptorSet), descriptorSetName, "Sampler ");
+		searchString, searchCaseSensitive, samplers, sizeof(Sampler), descriptorSetName, "Sampler ");
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
 	if (graphicsAPI->samplerPool.getCount() == 0 ||
