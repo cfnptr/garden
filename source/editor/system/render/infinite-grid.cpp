@@ -184,9 +184,10 @@ void InfiniteGridEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Infinite Grid"))
 	{
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		ImGui::Indent();
+		ImGui::PushID("infiniteGrid");
 
+		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		if (ImGui::Checkbox("Enabled", &isEnabled))
 		{
 			if (settingsSystem)
@@ -220,6 +221,8 @@ void InfiniteGridEditorSystem::editorSettings()
 			if (settingsSystem)
 				settingsSystem->setColor("infiniteGrid.axisColorYZ", axisColorYZ);
 		}
+
+		ImGui::PopID();
 		ImGui::Unindent();
 		ImGui::Spacing();
 	}

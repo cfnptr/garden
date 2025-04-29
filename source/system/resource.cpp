@@ -736,15 +736,16 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addItems([=](const ThreadPool::Task& task)
 		{
-			auto sizeXY = cubemapSize * cubemapSize;
+			auto layerSize = cubemapSize * cubemapSize;
 			auto itemCount = task.getItemCount();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				uint3 coords;
-				coords.z = i / sizeXY;
-				coords.y = (i - coords.z * sizeXY) / cubemapSize;
-				coords.x = i - (coords.y * cubemapSize + coords.z * sizeXY);
+				auto index = i; uint3 coords;
+				coords.z = index / layerSize;
+				index %= layerSize;
+				coords.y = index / cubemapSize;
+				coords.x = index % cubemapSize;
 				auto cubePixels = cubePixelArray[coords.z];
 
 				Equi2Cube::convert(coords, cubemapSize, equiSize,

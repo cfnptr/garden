@@ -58,10 +58,13 @@ void SkyboxRenderEditorSystem::editorSettings()
 {
 	if (ImGui::CollapsingHeader("Skybox"))
 	{
-		auto skyboxSystem = SkyboxRenderSystem::Instance::get();
-
 		ImGui::Indent();
+		ImGui::PushID("skybox");
+
+		auto skyboxSystem = SkyboxRenderSystem::Instance::get();
 		ImGui::Checkbox("Enabled", &skyboxSystem->isEnabled);
+
+		ImGui::PopID();
 		ImGui::Unindent();
 		ImGui::Spacing();
 	}
