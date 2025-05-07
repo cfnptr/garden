@@ -14,12 +14,6 @@
 
 #include "sprite/common.gsl"
 
-pipelineState
-{
-	depthTesting = on;
-	depthWriting = on;
-}
-
 in float2 fs.texCoords;
 out float4 fb.color;
 

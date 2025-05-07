@@ -131,6 +131,8 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	{
 		throw GardenError("Failed to open \"resources.pack\" file.");
 	}
+	#else
+	// TODO: iterate over all .gsl files and check if any changed, then search all usages in shaders and touch depending files.
 	#endif
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR

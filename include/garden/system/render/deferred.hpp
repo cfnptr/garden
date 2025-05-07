@@ -49,14 +49,14 @@ namespace garden
  * Registers events:
  *   PreDeferredRender, DeferredRender, 
  *   PreHdrRender, HdrRender, 
- *   PreMetaHdrRender, MetaHdrRender, 
+ *   PreDepthHdrRender, DepthHdrRender, 
  *   PreRefractedRender, RefractedRender, 
  *   PreTranslucentRender, TranslucentRender, 
  *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
- *   PreMetaLdrRender, MetaLdrRender, 
+ *   PreDepthLdrRender, DepthLdrRender, 
  *   PreUiRender, UiRender, 
- *   PreSwapchainRender, GBufferRecreate.
+ *   GBufferRecreate.
  */
 class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>
 {
@@ -111,9 +111,9 @@ private:
 	ID<Image> depthCopyBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
-	ID<Framebuffer> metaHdrFramebuffer = {};
+	ID<Framebuffer> depthHdrFramebuffer = {};
 	ID<Framebuffer> ldrFramebuffer = {};
-	ID<Framebuffer> metaLdrFramebuffer = {};
+	ID<Framebuffer> depthLdrFramebuffer = {};
 	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
@@ -206,17 +206,17 @@ public:
 	 */
 	ID<Framebuffer> getHdrFramebuffer();
 	/**
-	 * @brief Returns deferred meta HDR framebuffer. (HDR + Depth)
+	 * @brief Returns deferred depth HDR framebuffer. (HDR + Depth)
 	 */
-	ID<Framebuffer> getMetaHdrFramebuffer();
+	ID<Framebuffer> getDepthHdrFramebuffer();
 	/**
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */
 	ID<Framebuffer> getLdrFramebuffer();
 	/**
-	 * @brief Returns deferred meta LDR framebuffer. (LDR + Depth)
+	 * @brief Returns deferred depth LDR framebuffer. (LDR + Depth)
 	 */
-	ID<Framebuffer> getMetaLdrFramebuffer();
+	ID<Framebuffer> getDepthLdrFramebuffer();
 	/**
 	 * @brief Returns deferred UI framebuffer. (User Interface)
 	 */

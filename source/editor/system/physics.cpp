@@ -41,8 +41,8 @@ PhysicsEditorSystem::~PhysicsEditorSystem()
 
 void PhysicsEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreMetaLdrRender", PhysicsEditorSystem::preMetaLdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", PhysicsEditorSystem::metaLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", PhysicsEditorSystem::preDepthLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", PhysicsEditorSystem::depthLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<RigidbodyComponent>(
@@ -72,14 +72,14 @@ void PhysicsEditorSystem::deinit()
 		editorSystem->unregisterEntityInspector<RigidbodyComponent>();
 		editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreMetaLdrRender", PhysicsEditorSystem::preMetaLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", PhysicsEditorSystem::metaLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDepthLdrRender", PhysicsEditorSystem::preDepthLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", PhysicsEditorSystem::depthLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
-void PhysicsEditorSystem::preMetaLdrRender()
+void PhysicsEditorSystem::preDepthLdrRender()
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
 	if (!showWindow)
@@ -139,7 +139,7 @@ void PhysicsEditorSystem::preMetaLdrRender()
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
 	renderer->preDraw();
 }
-void PhysicsEditorSystem::metaLdrRender()
+void PhysicsEditorSystem::depthLdrRender()
 {
 	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
 		return;

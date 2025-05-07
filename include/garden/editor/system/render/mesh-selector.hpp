@@ -29,7 +29,7 @@ class MeshSelectorEditorSystem final : public System
 
 	void init();
 	void deinit();
-	void metaLdrRender();
+	void render();
 	void editorSettings();
 	
 	friend class ecsm::Manager;

@@ -61,7 +61,10 @@ InstanceRenderSystem::~InstanceRenderSystem()
 
 void InstanceRenderSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
+	if (Manager::Instance::get()->hasEvent("GBufferRecreate"))
+		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
+	else
+		ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
 
 	if (!basePipeline)
 		basePipeline = createBasePipeline();
@@ -84,7 +87,10 @@ void InstanceRenderSystem::deinit()
 		graphicsSystem->destroy(shadowPipeline);
 		graphicsSystem->destroy(basePipeline);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
+		if (Manager::Instance::get()->hasEvent("GBufferRecreate"))
+			ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
+		else
+			ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
 	}
 }
 

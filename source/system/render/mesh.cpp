@@ -55,7 +55,7 @@ void MeshRenderSystem::init()
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-		ECSM_SUBSCRIBE_TO_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
+		ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
 		ECSM_SUBSCRIBE_TO_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
 
 		if (oit)
@@ -77,7 +77,7 @@ void MeshRenderSystem::deinit()
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("MetaHdrRender", MeshRenderSystem::metaHdrRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
 
 			if (oit)
@@ -770,9 +770,9 @@ void MeshRenderSystem::deferredRender()
 	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, -1);
 }
-void MeshRenderSystem::metaHdrRender()
+void MeshRenderSystem::depthHdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Mesh Meta HDR Render");
+	SET_CPU_ZONE_SCOPED("Mesh Depth HDR Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!graphicsSystem->camera)

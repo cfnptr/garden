@@ -101,15 +101,16 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * 
 	 * @param windowSize target OS window size (in units)
 	 * @param isFullscreen create a fullscreen window
+	 * @param isDecorated decorate window with top bar and borders
 	 * @param useVsync use vertical synchronization (V-Sync)
 	 * @param useTripleBuffering use swapchain triple buffering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param setSingleton set system singleton instance
 	 */
-	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize,
-		bool isFullscreen = !GARDEN_DEBUG & !GARDEN_OS_LINUX,
-		bool useVsync = true, bool useTripleBuffering = true, 
-		bool useAsyncRecording = true, bool setSingleton = true);
+	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize, 
+		bool isFullscreen = !GARDEN_DEBUG & !GARDEN_OS_LINUX, bool isDecorated = true,
+		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true, 
+		bool setSingleton = true);
 	/**
 	 * @brief Destroys graphics system instance.
 	 */

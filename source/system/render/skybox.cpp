@@ -27,7 +27,7 @@ static ID<GraphicsPipeline> createPipeline()
 	Pipeline::SpecConstValues specConsts = { { "FAR_DEPTH_VALUE", Pipeline::SpecConstValue(0.0f) } };
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("skybox", 
-		deferredSystem->getMetaHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConsts);
+		deferredSystem->getDepthHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConsts);
 	return skyboxPipeline;
 }
 
@@ -69,7 +69,7 @@ string_view SkyboxRenderSystem::getComponentName() const
 void SkyboxRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-	ECSM_SUBSCRIBE_TO_EVENT("MetaHdrRender", SkyboxRenderSystem::metaHdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
 
 	if (!pipeline)
 		pipeline = createPipeline();
@@ -81,7 +81,7 @@ void SkyboxRenderSystem::deinit()
 		GraphicsSystem::Instance::get()->destroy(pipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaHdrRender", SkyboxRenderSystem::metaHdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
 	}
 }
 
@@ -103,9 +103,9 @@ void SkyboxRenderSystem::imageLoaded()
 }
 
 //**********************************************************************************************************************
-void SkyboxRenderSystem::metaHdrRender()
+void SkyboxRenderSystem::depthHdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Skybox Meta HDR Render");
+	SET_CPU_ZONE_SCOPED("Skybox Depth HDR Render");
 
 	if (!isEnabled)
 		return;

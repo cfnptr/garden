@@ -32,32 +32,42 @@ namespace garden
  * which separates geometry and lighting passes, forward rendering performs all the work 
  * (geometry, lighting, shading) in a single pass for each object.
  * 
- * Registers events: PreForwardRender, ForwardRender, PreSwapchainRender, ColorBufferRecreate.
+ * Registers events:
+ *   PreForwardRender, ForwardRender, 
+ *   PreDepthForwardRender, DepthForwardRender, 
+ *   PreUiRender, UiRender, 
+ *   ColorBufferRecreate.
  */
 class ForwardRenderSystem final : public System, public Singleton<ForwardRenderSystem>
 {
 public:
-	static constexpr Image::Format colorBufferFormat = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format colorBufferFormat = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format depthStencilFormat = Image::Format::UnormD16;
+
+	static constexpr Framebuffer::OutputAttachment::Flags colorBufferFlags = { false, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferFlags = { false, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags uiBufferFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags depthBufferFlags = { true, false, true};
 private:
 	ID<Image> colorBuffer = {};
+	ID<Image> uiBuffer = {};
 	ID<Image> depthStencilBuffer = {};
-	ID<Framebuffer> framebuffer = {};
-	bool clearColorBuffer = false;
+	ID<Framebuffer> colorFramebuffer = {};
+	ID<Framebuffer> fullFramebuffer = {};
+	ID<Framebuffer> uiFramebuffer = {};
 	bool asyncRecording = false;
 	bool hdrColorBuffer = false;
 
 	/**
 	 * @brief Creates a new forward rendering system instance.
 	 * 
-	 * @param useAsyncRecording clear color buffer before render pass
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param useHdrColorBuffer create color buffer with extended color range
 	 * @param setSingleton set system singleton instance
 	 */
-	ForwardRenderSystem(bool clearColorBuffer = GARDEN_EDITOR, bool useAsyncRecording = true, 
-		bool useHdrColorBuffer = false, bool setSingleton = true);
+	ForwardRenderSystem(bool useAsyncRecording = true, bool useHdrColorBuffer = false, bool setSingleton = true);
 	/**
 	 * @brief Destroys forward rendering system instance.
 	 */
@@ -87,13 +97,26 @@ public:
 	 */
 	ID<Image> getColorBuffer();
 	/**
+	 * @brief Returns forward color buffer.
+	 */
+	 ID<Image> getUiBuffer();
+	/**
 	 * @brief Returns forward depth/stencil buffer.
 	 */
 	ID<Image> getDepthStencilBuffer();
+
 	/**
-	 * @brief Returns forward framebuffer.
+	 * @brief Returns color only forward framebuffer.
 	 */
-	ID<Framebuffer> getFramebuffer();
+	ID<Framebuffer> getColorFramebuffer();
+	/**
+	 * @brief Returns color and depth forward framebuffer.
+	 */
+	ID<Framebuffer> getFullFramebuffer();
+	/**
+	 * @brief Returns UI forward framebuffer. (User Interface)
+	 */
+	ID<Framebuffer> getUiFramebuffer();
 };
 
 } // namespace garden

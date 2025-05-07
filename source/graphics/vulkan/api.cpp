@@ -694,8 +694,8 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 
 //**********************************************************************************************************************
 VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
-	int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen) : 
-	GraphicsAPI(appName, windowSize, isFullscreen)
+	int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated) : 
+	GraphicsAPI(appName, windowSize, isFullscreen, isDecorated)
 {
 	this->backendType = GraphicsBackend::VulkanAPI;
 	this->threadCount = threadCount;

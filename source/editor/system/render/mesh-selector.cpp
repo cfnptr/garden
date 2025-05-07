@@ -40,7 +40,10 @@ MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 
 void MeshSelectorEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", MeshSelectorEditorSystem::metaLdrRender);
+	if (DeferredRenderSystem::Instance::has())
+		ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", MeshSelectorEditorSystem::render);
+	else
+		ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", MeshSelectorEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
@@ -51,13 +54,16 @@ void MeshSelectorEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", MeshSelectorEditorSystem::metaLdrRender);
+		if (DeferredRenderSystem::Instance::has())
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", MeshSelectorEditorSystem::render);
+		else
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthForwardRender", MeshSelectorEditorSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 	}
 }
 
 //**********************************************************************************************************************
-void MeshSelectorEditorSystem::metaLdrRender()
+void MeshSelectorEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->camera)

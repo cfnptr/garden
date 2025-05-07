@@ -158,7 +158,7 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
 	auto framebuffer = deferredSystem ? deferredSystem->getHdrFramebuffer() : 
-		ForwardRenderSystem::Instance::get()->getFramebuffer();
+		ForwardRenderSystem::Instance::get()->getColorFramebuffer();
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, true);
 }
 

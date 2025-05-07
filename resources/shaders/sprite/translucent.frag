@@ -16,8 +16,6 @@
 
 pipelineState
 {
-	depthTesting = on;
-	depthWriting = on;
 	blending0 = on;
 }
 

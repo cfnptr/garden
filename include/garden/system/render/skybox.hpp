@@ -60,7 +60,7 @@ private:
 	void init();
 	void deinit();
 	void imageLoaded();
-	void metaHdrRender();
+	void depthHdrRender();
 
 	string_view getComponentName() const final;
 	friend class ecsm::Manager;
