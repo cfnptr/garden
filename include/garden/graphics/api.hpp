@@ -88,7 +88,7 @@ protected:
 
 	inline static GraphicsAPI* apiInstance = nullptr;
 
-	GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen);
+	GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen, bool isDecorated);
 public:
 	virtual ~GraphicsAPI();
 
@@ -217,7 +217,7 @@ public:
 	 */
 	static void initialize(GraphicsBackend backendType, const string& appName, 
 		const string& appDataName, Version appVersion, uint2 windowSize, uint32 threadCount, 
-		bool useVsync, bool useTripleBuffering, bool isFullscreen);
+		bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated);
 	/**
 	 * @brief Terminates and destroys graphics API instance.
 	 */

@@ -28,7 +28,7 @@
 
 using namespace garden;
 
-GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen)
+GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen, bool isDecorated)
 {
 	GLFWmonitor* primaryMonitor = nullptr;
 	if (isFullscreen)
@@ -45,6 +45,11 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscr
 				windowSize.y = videoMode->height;
 			}
 		}
+	}
+	else
+	{
+		if (!isDecorated)
+			glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 	}
 	
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -83,7 +88,7 @@ void GraphicsAPI::destroyResource(DestroyResourceType type, void* data0, void* d
 //**********************************************************************************************************************
 void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName, 
 	const string& appDataName, Version appVersion, uint2 windowSize, uint32 threadCount, 
-	bool useVsync, bool useTripleBuffering, bool isFullscreen)
+	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
 	if (!glfwInit())
 		throw GardenError("Failed to initialize GLFW.");
@@ -97,7 +102,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	if (backendType == GraphicsBackend::VulkanAPI)
 	{
 		apiInstance = new VulkanAPI(appName, appDataName, appVersion, windowSize, 
-			threadCount, useVsync, useTripleBuffering, isFullscreen);
+			threadCount, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 	}
 }
 void GraphicsAPI::terminate()

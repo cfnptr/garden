@@ -246,7 +246,7 @@ private:
 	void forwardRender();
 	void preDeferredRender();
 	void deferredRender();
-	void metaHdrRender();
+	void depthHdrRender();
 	void refractedRender();
 	void translucentRender();
 	void oitRender();

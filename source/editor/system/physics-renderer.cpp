@@ -58,7 +58,7 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	if (!linePipeline)
 	{
 		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/lines", deferredSystem->getMetaLdrFramebuffer());
+			"editor/physics/lines", deferredSystem->getDepthLdrFramebuffer());
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -86,7 +86,7 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	if (!trianglePipeline)
 	{
 		trianglePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/triangles", deferredSystem->getMetaLdrFramebuffer());
+			"editor/physics/triangles", deferredSystem->getDepthLdrFramebuffer());
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();

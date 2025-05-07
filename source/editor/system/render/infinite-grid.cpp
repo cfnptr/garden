@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/render/forward.hpp"
 #include "garden/system/render/oit.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
@@ -49,22 +50,34 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::init()
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (Manager::Instance::get()->has<OitRenderSystem>())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
 		ECSM_SUBSCRIBE_TO_EVENT("OitRender", InfiniteGridEditorSystem::render);
 
 		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/infinite-grid/oit", deferredSystem->getOitFramebuffer(), true);
+			"editor/infinite-grid/oit", DeferredRenderSystem::Instance::get()->getOitFramebuffer(), true);
 	}
 	else
 	{
-		ECSM_SUBSCRIBE_TO_EVENT("PreMetaLdrRender", InfiniteGridEditorSystem::preRender);
-		ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", InfiniteGridEditorSystem::render);
+		ID<Framebuffer> framebuffer;
+		if (DeferredRenderSystem::Instance::has())
+		{
+			ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", InfiniteGridEditorSystem::preRender);
+			ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", InfiniteGridEditorSystem::render);
+
+			framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
+		}
+		else
+		{
+			ECSM_SUBSCRIBE_TO_EVENT("PreDepthForwardRender", InfiniteGridEditorSystem::preRender);
+			ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", InfiniteGridEditorSystem::render);
+
+			framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
+		}
 
 		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/infinite-grid/translucent", deferredSystem->getMetaLdrFramebuffer());
+			"editor/infinite-grid/translucent", framebuffer);
 	}
 	
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);
@@ -96,8 +109,8 @@ void InfiniteGridEditorSystem::deinit()
 		}
 		else
 		{
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreMetaLdrRender", InfiniteGridEditorSystem::preRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", InfiniteGridEditorSystem::render);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDepthLdrRender", InfiniteGridEditorSystem::preRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", InfiniteGridEditorSystem::render);
 		}
 		
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);

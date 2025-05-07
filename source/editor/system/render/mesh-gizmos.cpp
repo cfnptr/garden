@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/render/forward.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/settings.hpp"
@@ -81,12 +82,20 @@ MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("MetaLdrRender", MeshGizmosEditorSystem::metaLdrRender);
+	if (DeferredRenderSystem::Instance::has())
+		ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", MeshGizmosEditorSystem::render);
+	else
+		ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", MeshGizmosEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto framebuffer = DeferredRenderSystem::Instance::get()->getMetaLdrFramebuffer();
+
+	ID<Framebuffer> framebuffer;
+	if (DeferredRenderSystem::Instance::has())
+		framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
+	else
+		framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
 
 	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer);
 	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer);
@@ -116,7 +125,10 @@ void MeshGizmosEditorSystem::deinit()
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("MetaLdrRender", MeshGizmosEditorSystem::metaLdrRender);
+		if (DeferredRenderSystem::Instance::has())
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", MeshGizmosEditorSystem::render);
+		else
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthForwardRender", MeshGizmosEditorSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 	}
 }
@@ -196,7 +208,7 @@ static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 }
 
 //**********************************************************************************************************************
-void MeshGizmosEditorSystem::metaLdrRender()
+void MeshGizmosEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto selectedEntity = EditorRenderSystem::Instance::get()->selectedEntity;

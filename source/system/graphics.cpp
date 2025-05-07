@@ -51,7 +51,7 @@ namespace garden::graphics
 }
 
 //**********************************************************************************************************************
-GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool useVsync, 
+GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecorated, bool useVsync, 
 	bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
 	asyncRecording(useAsyncRecording), useVsync(useVsync), useTripleBuffering(useTripleBuffering)
 {
@@ -71,7 +71,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool useVsyn
 	auto threadCount = getBestForegroundThreadCount();
 
 	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getAppDataName(),
-		appInfoSystem->getVersion(), windowSize, threadCount, useVsync, useTripleBuffering, isFullscreen);
+		appInfoSystem->getVersion(), windowSize, threadCount, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();

@@ -14,6 +14,7 @@
 
 #include "garden/system/render/imgui.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/render/forward.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/glfw.hpp" // Defined before ImGUI
@@ -108,8 +109,12 @@ static void setImGuiStyle()
 
 static ID<GraphicsPipeline> createPipeline()
 {
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"imgui", DeferredRenderSystem::Instance::get()->getUiFramebuffer());
+	ID<Framebuffer> framebuffer;
+	if (DeferredRenderSystem::Instance::has())
+		framebuffer = DeferredRenderSystem::Instance::get()->getUiFramebuffer();
+	else
+		framebuffer = ForwardRenderSystem::Instance::get()->getColorFramebuffer();
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("imgui", framebuffer);
 }
 static ID<Sampler> createLinearSampler()
 {
@@ -695,8 +700,7 @@ void ImGuiRenderSystem::uiRender()
 
 	const auto indexType = sizeof(ImDrawIdx) == 2 ?
 		GraphicsPipeline::Index::Uint16 : GraphicsPipeline::Index::Uint32;
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto framebufferView = graphicsSystem->get(deferredSystem->getUiFramebuffer());
+	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto framebufferSize = framebufferView->getSize();
 
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
