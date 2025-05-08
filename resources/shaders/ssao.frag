@@ -17,7 +17,7 @@
 #define NOISE_SIZE 4
 
 #define USE_EMISSIVE_BUFFER false
-#define USE_SUB_SURFACE_SCATTERING false
+#define USE_GI_BUFFER false
 
 spec const uint32 SAMPLE_COUNT = 32;
 // TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;

@@ -98,7 +98,7 @@ private:
 	 * @param useAoBuffer create and use ambient occlusion buffer for rendering
 	 * @param setSingleton set system singleton instance
 	 */
-	PbrLightingRenderSystem(bool useShadowBuffer = false, bool useAoBuffer = false, bool setSingleton = true);
+	PbrLightingRenderSystem(bool useShadowBuffer = true, bool useAoBuffer = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
 	 */

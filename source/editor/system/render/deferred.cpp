@@ -137,7 +137,7 @@ void DeferredRenderEditorSystem::deferredRender()
 		Pipeline::SpecConstValues specConstValues =
 		{
 			{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
-			{ "USE_SUB_SURFACE_SCATTERING", Pipeline::SpecConstValue(deferredSystem->useSSS()) },
+			{ "USE_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 		};
 		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("editor/pbr-lighting",
 			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConstValues);
@@ -154,7 +154,7 @@ void DeferredRenderEditorSystem::deferredRender()
 	pushConstants->colorSpec = (float4)colorSpecOverride;
 	pushConstants->mraor = (float4)mraorOverride;
 	pushConstants->emissive = (float4)emissiveOverride;
-	pushConstants->subsurface = (float4)subsurfaceOverride;
+	pushConstants->giColor = (float4)giColorOverride;
 	pushConstants->shadow = shadowOverride;
 	pushConstants->ccRoughness = ccRoughnessOverride;
 
@@ -186,9 +186,8 @@ void DeferredRenderEditorSystem::preLdrRender()
 	{
 		constexpr auto modes = "Off\0Base Color\0Specular Factor\0Transmission\0Metallic\0Roughness\0Material AO\0"
 			"Reflectance\0Clear Coat Roughness\0Normals\0Material Shadows\0Emissive Color\0Emissive Factor\0"
-			"Subsurface Color\0Thickness\0Lighting\0HDR Buffer\0OIT Accumulated Color\0OIT Accumulated Alpha\0"
-			"OIT Revealage\0Depth\0World Positions\0Global Shadow Color\0Global Shadow Alpha\0"
-			"Global AO\0Denoised Global AO\0\0";
+			"GI Color\0Lighting\0HDR Buffer\0OIT Accumulated Color\0OIT Accumulated Alpha\0OIT Revealage\0"
+			"Depth\0World Positions\0Global Shadow Color\0Global Shadow Alpha\0Global AO\0Denoised Global AO\0\0";
 		ImGui::Combo("Draw Mode", &drawMode, modes);
 
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -209,20 +208,18 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::SliderFloat("Emissive Factor", &emissiveOverride.floats.w, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 
-			ImGui::BeginDisabled(!deferredSystem->useSSS());
-			ImGui::ColorEdit3("Subsurface Color", &subsurfaceOverride);
-			ImGui::SliderFloat("Thickness", &subsurfaceOverride.floats.w, 0.0f, 1.0f);
+			ImGui::BeginDisabled(!deferredSystem->useGI());
+			ImGui::ColorEdit3("GI Color", &giColorOverride);
 			ImGui::EndDisabled();
 		}
 		else if ((drawMode == DrawMode::EmissiveColor || 
 			drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive())
 		{
-			ImGui::TextDisabled("Emissive buffer is disabled!");
+			ImGui::TextDisabled("Emissive buffer is disabled in deferred system!");
 		}
-		else if ((drawMode == DrawMode::SubsurfaceColor || 
-			drawMode == DrawMode::Thickness) && !deferredSystem->useSSS())
+		else if (drawMode == DrawMode::GiColor && !deferredSystem->useGI())
 		{
-			ImGui::TextDisabled("Sub surface scattering is disabled!");
+			ImGui::TextDisabled("GI buffer is disabled in deferred system!");
 		}
 		else if ((int)drawMode > (int)DrawMode::Off)
 		{
@@ -289,7 +286,7 @@ void DeferredRenderEditorSystem::ldrRender()
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (((drawMode == DrawMode::EmissiveColor || drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive()) ||
-		((drawMode == DrawMode::SubsurfaceColor || drawMode == DrawMode::Thickness) && !deferredSystem->useSSS()))
+		(drawMode == DrawMode::GiColor && !deferredSystem->useGI()))
 	{
 		pushConstants->drawMode = (int32)DrawMode::Off;
 	}

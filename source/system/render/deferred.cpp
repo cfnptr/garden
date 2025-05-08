@@ -21,7 +21,7 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool useSSS)
+static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool useGI)
 {
 	constexpr auto binds = Image::Bind::ColorAttachment | Image::Bind::Sampled | 
 		Image::Bind::TransferSrc | Image::Bind::TransferDst | Image::Bind::Fullscreen;
@@ -33,7 +33,7 @@ static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool u
 		DeferredRenderSystem::gBufferFormat2,
 		DeferredRenderSystem::gBufferFormat3,
 		useEmissive ? DeferredRenderSystem::gBufferFormat4 : Image::Format::Undefined,
-		useSSS ? DeferredRenderSystem::gBufferFormat5 : Image::Format::Undefined,
+		useGI ? DeferredRenderSystem::gBufferFormat5 : Image::Format::Undefined,
 	};
 
 	const Image::Mips mips = { { nullptr } };
@@ -235,8 +235,8 @@ static ID<Framebuffer> createOitFramebuffer(ID<Image> oitAccumBuffer,
 }
 
 //**********************************************************************************************************************
-DeferredRenderSystem::DeferredRenderSystem(bool useEmissive, bool useSSS, bool useAsyncRecording, bool setSingleton) : 
-	Singleton(setSingleton), emissive(useEmissive), sss(useSSS), asyncRecording(useAsyncRecording)
+DeferredRenderSystem::DeferredRenderSystem(bool useEmissive, bool useGI, bool useAsyncRecording, bool setSingleton) : 
+	Singleton(setSingleton), emissive(useEmissive), gi(useGI), asyncRecording(useAsyncRecording)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreDeferredRender");
@@ -304,7 +304,7 @@ void DeferredRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 
 	if (gBuffers.empty())
-		createGBuffers(gBuffers, emissive, sss);
+		createGBuffers(gBuffers, emissive, gi);
 	if (!hdrBuffer)
 		hdrBuffer = createHdrBuffer(false);
 	if (!hdrCopyBuffer)
@@ -591,7 +591,7 @@ void DeferredRenderSystem::swapchainRecreate()
 	{
 		auto destroyUI = uiBuffer != gBuffers[0];
 		graphicsSystem->destroy(gBuffers);
-		createGBuffers(gBuffers, emissive, sss);
+		createGBuffers(gBuffers, emissive, gi);
 		graphicsSystem->destroy(hdrBuffer);
 		hdrBuffer = createHdrBuffer(false);
 		graphicsSystem->destroy(hdrCopyBuffer);
@@ -682,7 +682,7 @@ void DeferredRenderSystem::swapchainRecreate()
 const vector<ID<Image>>& DeferredRenderSystem::getGBuffers()
 {
 	if (gBuffers.empty())
-		createGBuffers(gBuffers, emissive, sss);
+		createGBuffers(gBuffers, emissive, gi);
 	return gBuffers;
 }
 ID<Image> DeferredRenderSystem::getHdrBuffer()

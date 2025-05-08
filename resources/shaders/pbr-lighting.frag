@@ -15,7 +15,8 @@
 spec const bool USE_SHADOW_BUFFER = false;
 spec const bool USE_AO_BUFFER = false;
 spec const bool USE_EMISSIVE_BUFFER = false;
-spec const bool USE_SUB_SURFACE_SCATTERING = false;
+spec const bool USE_GI_BUFFER = false;
+#define USE_SUB_SURFACE_SCATTERING false
 // TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
 
 #include "common/pbr.gsl"

@@ -16,7 +16,7 @@
 #define MODEL_GSL
 
 #define USE_EMISSIVE_BUFFER true
-#define USE_SUB_SURFACE_SCATTERING false // TODO: support
+#define USE_GI_BUFFER false // TODO: support
 
 #include "common/gbuffer.gsl"
 

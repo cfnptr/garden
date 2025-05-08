@@ -13,7 +13,7 @@
 // limitations under the License.
 
 spec const bool USE_EMISSIVE_BUFFER = false;
-spec const bool USE_SUB_SURFACE_SCATTERING = false;
+spec const bool USE_GI_BUFFER = false;
 
 #include "common/gbuffer.gsl"
 
@@ -36,7 +36,7 @@ uniform pushConstants
 	float4 colorSpec;
 	float4 mraor;
 	float4 emissive;
-	float4 subsurface;
+	float4 giColor;
 	float shadow;
 	float ccRoughness;
 } pc;
@@ -58,11 +58,9 @@ void main()
 		values.emissiveColor = pc.emissive.rgb;
 		values.emissiveFactor = pc.emissive.a;
 	}
-	if (USE_SUB_SURFACE_SCATTERING)
-	{
-		values.subsurfaceColor = pc.subsurface.rgb;
-		values.thickness = pc.subsurface.a;
-	}
+
+	if (USE_GI_BUFFER)
+		values.giColor = pc.giColor.rgb;
 
 	ENCODE_G_BUFFER_VALUES(values);
 }
