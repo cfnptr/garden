@@ -135,20 +135,9 @@ void PhysicsEditorSystem::preDepthLdrRender()
 	if (!debugRenderer)
 		debugRenderer = new PhysicsDebugRenderer();
 
-	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
-	renderer->preDraw();
-}
-void PhysicsEditorSystem::depthLdrRender()
-{
-	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
-		return;
-	
-	auto physicsSystem = PhysicsSystem::Instance::get();
-	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
-	auto instance = (JPH::PhysicsSystem*)physicsSystem->getInstance();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	auto instance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->getInstance();
+	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
 	renderer->setCameraPosition(cameraConstants.cameraPos);
 
 	JPH::BodyManager::DrawSettings drawSettings;
@@ -164,6 +153,17 @@ void PhysicsEditorSystem::depthLdrRender()
 		instance->DrawConstraintLimits(renderer);
 	if (drawConstraintRefFrame)
 		instance->DrawConstraintReferenceFrame(renderer);
+
+	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
+	renderer->preDraw();
+}
+void PhysicsEditorSystem::depthLdrRender()
+{
+	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
+		return;
+
+	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
+	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
 	renderer->draw(cameraConstants.viewProj);
