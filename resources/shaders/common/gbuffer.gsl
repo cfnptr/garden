@@ -31,8 +31,7 @@
 #define SHADOW_G_BUFFER 3
 #define EM_COLOR_G_BUFFER 4
 #define EM_FACTOR_G_BUFFER 4
-#define SUBSURFACE_G_BUFFER 5
-#define THICKNESS_G_BUFFER 5
+#define GI_G_BUFFER 5
 #define G_BUFFER_COUNT 6
 
 struct GBufferData
@@ -58,6 +57,7 @@ struct GBufferValues
 	float3 subsurfaceColor;
 	float thickness;
 	float3 refractedColor;
+	float3 giColor;
 };
 
 GBufferValues gBufferValuesDefault()
@@ -80,6 +80,7 @@ GBufferValues gBufferValuesDefault()
 	values.subsurfaceColor = float3(0.0f);
 	values.thickness = 1.0f;
 	values.refractedColor = float3(0.0f);
+	values.giColor = float3(1.0f);
 	return values;
 }
 
@@ -130,9 +131,9 @@ float4 encodeGBuffer4(float3 emissiveColor, float emissiveFactor)
 {
 	return float4(emissiveColor, emissiveFactor);
 }
-float4 encodeGBuffer5(float3 subsurfaceColor, float thickness)
+float4 encodeGBuffer5(float3 giColor)
 {
-	return float4(subsurfaceColor, thickness);
+	return float4(giColor, 0.0f);
 }
 
 void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g1, 
@@ -145,8 +146,8 @@ void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g
 
 	if (USE_EMISSIVE_BUFFER)
 		g4 = encodeGBuffer4(values.emissiveColor, values.emissiveFactor);
-	if (USE_SUB_SURFACE_SCATTERING)
-		g5 = encodeGBuffer5(values.subsurfaceColor, values.thickness);
+	if (USE_GI_BUFFER)
+		g5 = encodeGBuffer5(values.giColor);
 }
 
 #define ENCODE_G_BUFFER_VALUES(values) encodeGBufferValues(values, fb_g0, fb_g1, fb_g2, fb_g3, fb_g4, fb_g5)
@@ -164,8 +165,7 @@ float3 decodeNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba
 float decodeShadow(float4 gBufferData) { return gBufferData.r; }
 float3 decodeEmissiveColor(float4 gBufferData) { return gBufferData.rgb; }
 float decodeEmissiveFactor(float4 gBufferData) { return gBufferData.a; }
-float3 decodeSubsurfaceColor(float4 gBufferData) { return gBufferData.rgb; }
-float decodeThickness(float4 gBufferData) { return gBufferData.a; }
+float3 decodeGiColor(float4 gBufferData) { return gBufferData.rgb; }
 
 float3 decodeBaseColor(const GBufferData data) { return decodeBaseColor(data.g[BASE_COLOR_G_BUFFER]); }
 float decodeSpecularFactor(const GBufferData data) { return decodeSpecularFactor(data.g[SPECULAR_FACTOR_G_BUFFER]); }
@@ -179,8 +179,7 @@ float3 decodeNormal(const GBufferData data) { return decodeNormal(data.g[NORMALS
 float decodeShadow(const GBufferData data) { return decodeShadow(data.g[SHADOW_G_BUFFER]); }
 float3 decodeEmissiveColor(const GBufferData data) { return decodeEmissiveColor(data.g[EM_COLOR_G_BUFFER]); }
 float decodeEmissiveFactor(const GBufferData data) { return decodeEmissiveFactor(data.g[EM_FACTOR_G_BUFFER]); }
-float3 decodeSubsurfaceColor(const GBufferData data) { return decodeSubsurfaceColor(data.g[SUBSURFACE_G_BUFFER]); }
-float decodeThickness(const GBufferData data) { return decodeThickness(data.g[THICKNESS_G_BUFFER]); }
+float3 decodeGiColor(const GBufferData data) { return decodeGiColor(data.g[GI_G_BUFFER]); }
 
 //**********************************************************************************************************************
 GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, 
@@ -193,7 +192,7 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2,
 	data.g[3] = texture(s3, texCoords);
 	if (USE_EMISSIVE_BUFFER)
 		data.g[4] = texture(s4, texCoords);
-	if (USE_SUB_SURFACE_SCATTERING)
+	if (USE_GI_BUFFER)
 		data.g[5] = texture(s5, texCoords);
 	return data;
 }
@@ -214,18 +213,16 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	values.clearCoatRoughness = decodeClearCoatRoughness(data);
 	values.normal = decodeNormal(data);
 	values.shadow = decodeShadow(data);
-	
+
 	if (USE_EMISSIVE_BUFFER)
 	{
 		values.emissiveColor = decodeEmissiveColor(data);
 		values.emissiveFactor = decodeEmissiveFactor(data);
 	}
-	if (USE_SUB_SURFACE_SCATTERING)
-	{
-		values.subsurfaceColor = decodeSubsurfaceColor(data);
-		values.thickness = decodeThickness(data);
-	}
-	
+
+	if (USE_GI_BUFFER)
+		values.giColor = decodeGiColor(data);
+
 	values.transmission = 0.0f;
 	values.refractedColor = float3(0.0f);
 	return values;

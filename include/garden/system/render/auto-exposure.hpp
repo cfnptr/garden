@@ -82,8 +82,8 @@ private:
 public:
 	float minLogLum = -8.0f;
 	float maxLogLum = 4.0f;
-	float darkAdaptRate = 1.0f;
-	float brightAdaptRate = 3.0f;
+	float darkAdaptRate = 0.5f;
+	float brightAdaptRate = 0.5f;
 	bool isEnabled = true;
 
 	/**

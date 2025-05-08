@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #define USE_SHADOW_BUFFER true
+#define USE_SUB_SURFACE_SCATTERING false
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to change
 
 #include "model/common.gsl"

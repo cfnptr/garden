@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #define USE_EMISSIVE_BUFFER true
-#define USE_SUB_SURFACE_SCATTERING true
+#define USE_GI_BUFFER true
 
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
@@ -37,7 +37,7 @@ pipelineState
 #define MATERIAL_SHADOWS_DRAW_MODE 10
 #define EMISSIVE_COLOR_DRAW_MODE 11
 #define EMISSIVE_FACTOR_DRAW_MODE 12
-#define SUBSURFACE_COLOR_DRAW_MODE 13
+#define GI_COLOR_DRAW_MODE 13
 #define THICKNESS_DRAW_MODE 14
 #define LIGHTING_DRAW_MODE 15
 #define HDR_DRAW_MODE 16
@@ -137,9 +137,9 @@ void main()
 	{
 		fb.color = float4(float3(gBuffer.emissiveFactor), 1.0f);
 	}
-	else if (pc.drawMode == SUBSURFACE_COLOR_DRAW_MODE)
+	else if (pc.drawMode == GI_COLOR_DRAW_MODE)
 	{
-		fb.color = float4(gBuffer.subsurfaceColor, 1.0f);
+		fb.color = float4(gBuffer.giColor, 1.0f);
 	}
 	else if (pc.drawMode == THICKNESS_DRAW_MODE)
 	{

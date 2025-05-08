@@ -24,11 +24,10 @@
  *   2. UnormA2B10G10R10 (Clear Coat Normal, Clear Coat Roughness)
  *   3. UnormA2B10G10R10 (Encoded Normal, Shadow)
  *   4. SrgbB8G8R8A8     (Emissive Color and Factor) [optional]
- *   5. SrgbB8G8R8A8     (Subsurface Color, Thickness) [optional]
+ *   5. SrgbB8G8R8A8     (GI Color, <unused>) [optional]
  */
 
-// TODO: clear coat and sheen rendering. Make emissive, subsurface buffer creation optional.
-// TODO: share GPU memory between independent buffers.
+// TODO: Sheen rendering.
 
 #pragma once
 #include "garden/system/graphics.hpp"
@@ -73,8 +72,7 @@ public:
 	static constexpr uint8 shadowGBuffer = 3;        /**< Index of the G-Buffer with encoded shadow. */
 	static constexpr uint8 emColorGBuffer = 4;       /**< Index of the G-Buffer with encoded emissive color. */
 	static constexpr uint8 emFactorGBuffer = 4;      /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 subsurfaceGBuffer = 5;    /**< Index of the G-Buffer with encoded subsurface color. */
-	static constexpr uint8 thicknessGBuffer = 5;     /**< Index of the G-Buffer with encoded thickness. */
+	static constexpr uint8 giGBuffer = 5;            /**< Index of the G-Buffer with encoded global illumination color. */
 	static constexpr uint8 gBufferCount = 6;         /**< Deferred rendering G-Buffer count. */
 
 	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;
@@ -118,7 +116,7 @@ private:
 	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
 	bool emissive = false;
-	bool sss = false;
+	bool gi = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
@@ -128,7 +126,7 @@ private:
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param setSingleton set system singleton instance
 	 */
-	DeferredRenderSystem(bool useEmissive = true, bool useSSS = true, 
+	DeferredRenderSystem(bool useEmissive = true, bool useGI = true, 
 		bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
@@ -157,7 +155,7 @@ public:
 	/**
 	 * @brief Use sub surface scattering.
 	 */
-	bool useSSS() const noexcept { return sss; }
+	bool useGI() const noexcept { return gi; }
 
 	/**
 	 * @brief Returns deferred G-Buffer array.

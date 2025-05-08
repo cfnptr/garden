@@ -335,7 +335,7 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 		{ "USE_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
 		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) },
 		{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
-		{ "USE_SUB_SURFACE_SCATTERING", Pipeline::SpecConstValue(deferredSystem->useSSS()) },
+		{ "USE_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 	};
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("pbr-lighting", 
