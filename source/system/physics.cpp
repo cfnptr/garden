@@ -1134,39 +1134,18 @@ void PhysicsSystem::prepareSimulate()
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto rigidbodyView = &componentData[i];
-				if (!rigidbodyView->entity)
-					continue;
-
-				auto transformView = transformSystem->tryGetComponent(rigidbodyView->entity);
-				if (!transformView)
-					continue;
-
-				auto body = (JPH::Body*)rigidbodyView->instance;
-				if (transformView->isActive())
-				{
-					if (!rigidbodyView->inSimulation)
-					{
-						if (rigidbodyView->instance)
-							bodyInterface.AddBody(body->GetID(), JPH::EActivation::Activate);
-						rigidbodyView->inSimulation = true;
-					}
-				}
-				else
-				{
-					if (rigidbodyView->inSimulation)
-					{
-						if (rigidbodyView->instance)
-							bodyInterface.RemoveBody(body->GetID());
-						rigidbodyView->inSimulation = false;
-					}
-				}
-
-				if (!rigidbodyView->instance || rigidbodyView->getMotionType() == MotionType::Static ||
+				if (!rigidbodyView->entity || !rigidbodyView->instance || !rigidbodyView->inSimulation ||
+					rigidbodyView->getMotionType() == MotionType::Static ||
 					(characterSystem && characterSystem->hasComponent(rigidbodyView->entity)))
 				{
 					continue;
 				}
 
+				auto transformView = transformSystem->tryGetComponent(rigidbodyView->entity);
+				if (!transformView || !transformView->isActive())
+					continue;
+
+				auto body = (JPH::Body*)rigidbodyView->instance;
 				JPH::RVec3 position = {}; JPH::Quat rotation = {};
 				bodyInterface.GetPositionAndRotation(body->GetID(), position, rotation);
 				transformView->setPosition(rigidbodyView->lastPosition = toF32x4(position));
