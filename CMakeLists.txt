@@ -45,6 +45,7 @@ option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release buil
 option(GARDEN_DEBUG_PACK_RESOURCES "Pack and load resources in the debug build." OFF)
 option(GARDEN_USE_GAPI_VALIDATIONS "Use graphics API validation layers." ON)
 option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
+option(GARDEN_USE_FIDELITY_FX "Use FidelityFX SDK for FSR, SSAO, SSR, etc." ON)
 
 string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 
@@ -219,6 +220,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
 endif()
 
+include(FetchContent)
 find_package(Vulkan REQUIRED)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
