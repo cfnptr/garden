@@ -19,7 +19,9 @@
 #endif
 
 #include "volk.h"
+#if __linux__ || __APPLE__
 #undef VK_NO_PROTOTYPES
+#endif
 
 #include "vulkan/vulkan.hpp"
 
