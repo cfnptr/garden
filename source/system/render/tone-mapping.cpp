@@ -23,15 +23,15 @@ using namespace garden;
 static ID<Buffer> createLuminanceBuffer()
 {
 	#if GARDEN_EDITOR
-	constexpr auto bind = Buffer::Bind::TransferSrc;
+	constexpr auto usage = Buffer::Usage::TransferSrc;
 	#else
-	constexpr auto bind = Buffer::Bind::None;
+	constexpr auto usage = Buffer::Usage::None;
 	#endif
 
 	constexpr float data[2] = { 1.0f / ToneMappingRenderSystem::lumToExp, 1.0f };
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::Storage | 
-		Buffer::Bind::Uniform | Buffer::Bind::TransferDst | bind, Buffer::Access::None, data, 
-		sizeof(ToneMappingRenderSystem::LuminanceData), Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Storage | 
+		Buffer::Usage::Uniform | Buffer::Usage::TransferDst | usage, Buffer::CpuAccess::None, data, 
+		sizeof(ToneMappingRenderSystem::LuminanceData), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
 	return buffer;
 }

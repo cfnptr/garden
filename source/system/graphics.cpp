@@ -93,8 +93,8 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	{
 		SET_RESOURCE_DEBUG_NAME(swapchainBuffers[i]->colorImage, "image.swapchain" + to_string(i));
 
-		auto constantsBuffer = createBuffer(Buffer::Bind::Uniform, Buffer::Access::SequentialWrite, 
-			sizeof(CameraConstants), Buffer::Usage::Auto, Buffer::Strategy::Size);
+		auto constantsBuffer = createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
+			sizeof(CameraConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].push_back(constantsBuffer);
 	}
@@ -160,11 +160,9 @@ static void logVkGpuInfo()
 	GARDEN_LOG_INFO("Device Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
 	GARDEN_LOG_INFO("Driver version: " + getVkDeviceDriverVersion());
-
-	if (vulkanAPI->isCacheLoaded)
-		GARDEN_LOG_INFO("Loaded existing pipeline cache.");
-	else
-		GARDEN_LOG_INFO("Created a new pipeline cache.");
+	GARDEN_LOG_INFO(vulkanAPI->isCacheLoaded ? 
+		"Loaded existing pipeline cache." : "Created a new pipeline cache.");
+	GARDEN_LOG_INFO("Has ray tracing support: " + to_string(vulkanAPI->features.rayTracing));
 }
 
 void GraphicsSystem::preInit()
@@ -231,8 +229,8 @@ static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
 
 	for (uint32 i = 0; i < swapchainBufferCount; i++)
 	{
-		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform, Buffer::Access::SequentialWrite, 
-			sizeof(CameraConstants), Buffer::Usage::Auto, Buffer::Strategy::Size);
+		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
+			sizeof(CameraConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
 		cameraConstantsBuffers[i].resize(1); cameraConstantsBuffers[i][0] = constantsBuffer;
 	}
@@ -481,6 +479,10 @@ bool GraphicsSystem::isCurrentRenderPassAsync() const noexcept
 {
 	return GraphicsAPI::get()->isCurrentRenderPassAsync;
 }
+bool GraphicsSystem::hasRayTracing() const noexcept
+{
+	return GraphicsAPI::get()->hasRayTracing();
+}
 
 uint32 GraphicsSystem::getSwapchainSize() const noexcept
 {
@@ -501,8 +503,8 @@ ID<Buffer> GraphicsSystem::getCubeVertexBuffer()
 {
 	if (!cubeVertexBuffer)
 	{
-		cubeVertexBuffer = createBuffer(Buffer::Bind::Vertex |
-			Buffer::Bind::TransferDst, Buffer::Access::None, cubeVertices);
+		cubeVertexBuffer = createBuffer(Buffer::Usage::Vertex |
+			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, cubeVertices);
 		SET_RESOURCE_DEBUG_NAME(cubeVertexBuffer, "buffer.vertex.cube");
 	}
 	return cubeVertexBuffer;
@@ -511,8 +513,8 @@ ID<Buffer> GraphicsSystem::getQuadVertexBuffer()
 {
 	if (!quadVertexBuffer)
 	{
-		quadVertexBuffer = createBuffer(Buffer::Bind::Vertex |
-			Buffer::Bind::TransferDst, Buffer::Access::None, quadVertices);
+		quadVertexBuffer = createBuffer(Buffer::Usage::Vertex |
+			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, quadVertices);
 		SET_RESOURCE_DEBUG_NAME(quadVertexBuffer, "buffer.vertex.quad");
 	}
 	return quadVertexBuffer;
@@ -524,7 +526,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 	{
 		const Color data[1] = { Color::transparent };
 		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
+			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -536,7 +538,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 	{
 		const Color data[1] = { Color::white };
 		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
+			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -548,7 +550,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 	{
 		const Color data[1] = { Color::green };
 		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
+			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -560,7 +562,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 	{
 		const Color data[1] = { Color(255, 127, 127, 255) }; // Note: R/B flipped.
 		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Bind::Sampled | Image::Bind::TransferDst, { { data } }, uint2::one);
+			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -609,21 +611,31 @@ void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string&
 	auto resource = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
 	resource->setDebugName(name);
 }
+void GraphicsSystem::setDebugName(ID<Blas> blas, const string& name)
+{
+	auto resource = GraphicsAPI::get()->blasPool.get(blas);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Tlas> tlas, const string& name)
+{
+	auto resource = GraphicsAPI::get()->tlasPool.get(tlas);
+	resource->setDebugName(name);
+}
 #endif
 
 //**********************************************************************************************************************
-ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access,
-	const void* data, uint64 size, Buffer::Usage usage, Buffer::Strategy strategy)
+ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess,
+	const void* data, uint64 size, Buffer::Location location, Buffer::Strategy strategy)
 {
 	GARDEN_ASSERT(size > 0);
 
 	#if GARDEN_DEBUG
 	if (data)
-		GARDEN_ASSERT(hasAnyFlag(bind, Buffer::Bind::TransferDst));
+		GARDEN_ASSERT(hasAnyFlag(usage, Buffer::Usage::TransferDst));
 	#endif
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto buffer = graphicsAPI->bufferPool.create(bind, access, usage, strategy, size, 0);
+	auto buffer = graphicsAPI->bufferPool.create(usage, cpuAccess, location, strategy, size, 0);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
 
 	if (data)
@@ -635,11 +647,9 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Bind bind, Buffer::Access access
 		}
 		else
 		{
-			auto stagingBuffer = graphicsAPI->bufferPool.create(
-				Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-				Buffer::Usage::Auto, Buffer::Strategy::Speed, size, 0);
-			SET_RESOURCE_DEBUG_NAME(stagingBuffer,
-				"buffer.staging" + to_string(*stagingBuffer));
+			auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
+				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, size, 0);
+			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging" + to_string(*stagingBuffer));
 			auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 			stagingBufferView->writeData(data, size);
 
@@ -670,7 +680,7 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
 }
 
 //**********************************************************************************************************************
-ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Bind bind,
+ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Usage usage,
 	const Image::Mips& data, u32x4 size, Image::Strategy strategy, Image::Format dataFormat)
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
@@ -742,14 +752,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	}
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto image = graphicsAPI->imagePool.create(type, format, bind, strategy, u32x4(size, mipCount), 0);
+	auto image = graphicsAPI->imagePool.create(type, format, usage, strategy, u32x4(size, mipCount), 0);
 	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
 	{
-		GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc,
-			Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, stagingSize, 0);
+		GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, stagingSize, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.imageStaging" + to_string(*stagingBuffer));
 		
 		ID<Image> targetImage; 
@@ -759,8 +769,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		}
 		else
 		{
-			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Bind::TransferDst |
-				Image::Bind::TransferSrc, Image::Strategy::Speed, u32x4(size, mipCount), 0);
+			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Usage::TransferDst |
+				Image::Usage::TransferSrc, Image::Strategy::Speed, u32x4(size, mipCount), 0);
 			SET_RESOURCE_DEBUG_NAME(targetImage, "image.staging" + to_string(*targetImage));
 		}
 
@@ -932,7 +942,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
+		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
 		validColorAttachCount++;
 	}
 	GARDEN_ASSERT((!colorAttachments.empty() && validColorAttachCount > 0) || colorAttachments.empty());
@@ -943,7 +953,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
+		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment));
 	}
 	#endif
 
@@ -969,7 +979,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 			auto imageView = graphicsAPI->imageViewPool.get(inputAttachment.imageView);
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
+			GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
 		}
 
 		for (auto outputAttachment : subpass.outputAttachments)
@@ -983,7 +993,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 			#if GARDEN_DEBUG
 			if (isFormatColor(imageView->getFormat()))
-				GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
+				GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
 			#endif
 			outputAttachmentCount++;
 
@@ -1087,6 +1097,25 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
+ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> rayTracingPipeline,
+	DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers, uint8 index)
+{
+	GARDEN_ASSERT(rayTracingPipeline);
+	GARDEN_ASSERT(!uniforms.empty());
+
+	#if GARDEN_DEBUG
+	auto pipelineView = GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
+	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
+	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
+
+	// TODO: check if all items initialized if not using bindless.
+	#endif
+
+	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(rayTracingPipeline), 
+		PipelineType::RayTracing, std::move(uniforms), std::move(samplers), index);
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+	return descriptorSet;
+}
 void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)
 {
 	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
@@ -1094,6 +1123,63 @@ void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)
 View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const
 {
 	return GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
+}
+
+//**********************************************************************************************************************
+ID<Blas> GraphicsSystem::createBlas(const Blas::TrianglesBuffer* geometryArray, 
+	uint32 geometryCount, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+{
+	GARDEN_ASSERT(geometryArray);
+	GARDEN_ASSERT(geometryCount > 0);
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto blas = graphicsAPI->blasPool.create(geometryArray, geometryCount, flags);
+	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
+
+	auto blasView = graphicsAPI->blasPool.get(blas);
+	if (!isRecording())
+	{
+		startRecording(CommandBufferType::TransferOnly);
+		blasView->build(scratchBuffer);
+		stopRecording();
+	}
+	else
+	{
+		blasView->build(scratchBuffer);
+	}
+	return blas;
+}
+ID<Blas> GraphicsSystem::createBlas(const Blas::AabbsBuffer* geometryArray, 
+	uint32 geometryCount, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+{
+	GARDEN_ASSERT(geometryArray);
+	GARDEN_ASSERT(geometryCount > 0);
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto blas = graphicsAPI->blasPool.create(geometryArray, geometryCount, flags);
+	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
+
+	auto blasView = graphicsAPI->blasPool.get(blas);
+	if (!isRecording())
+	{
+		startRecording(CommandBufferType::ComputeOnly);
+		blasView->build(scratchBuffer);
+		stopRecording();
+	}
+	else
+	{
+		blasView->build(scratchBuffer);
+	}
+	return blas;
+}
+void GraphicsSystem::destroy(ID<Blas> blas)
+{
+	GraphicsAPI::get()->blasPool.destroy(blas);
+}
+
+View<Blas> GraphicsSystem::get(ID<Blas> blas) const
+{
+	return GraphicsAPI::get()->blasPool.get(blas);
 }
 
 //**********************************************************************************************************************

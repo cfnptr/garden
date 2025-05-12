@@ -1,0 +1,205 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "garden/graphics/acceleration-structure/blas.hpp"
+#include "garden/graphics/vulkan/api.hpp"
+
+using namespace std;
+using namespace math;
+using namespace garden;
+using namespace garden::graphics;
+
+//**********************************************************************************************************************
+static void prepareVkBlas(VulkanAPI* vulkanAPI, 
+	const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, vk::AccelerationStructureGeometryKHR* asArray, 
+	vk::AccelerationStructureBuildRangeInfoKHR* rangeInfos, ID<Buffer>* syncBuffers, BuildFlagsAS flags)
+{
+	for (uint32 i = 0; i < geometryCount; i++)
+	{
+		auto geometry = geometryArray[i];
+		GARDEN_ASSERT(geometry.vertexBuffer);
+		GARDEN_ASSERT(geometry.indexBuffer);
+		GARDEN_ASSERT(geometry.vertexSize > 0);
+		GARDEN_ASSERT(geometry.vertexSize % 4 == 0);
+
+		auto vertexBufferView = vulkanAPI->bufferPool.get(geometry.vertexBuffer);
+		GARDEN_ASSERT(hasAnyFlag(vertexBufferView->getUsage(), Buffer::Usage::DeviceAddress));
+		GARDEN_ASSERT(vertexBufferView->getDeviceAddress()); // is ready
+		GARDEN_ASSERT(geometry.vertexCount + geometry.vertexOffset <= 
+			vertexBufferView->getBinarySize() / geometry.vertexSize);
+
+		auto indexBufferView = vulkanAPI->bufferPool.get(geometry.vertexBuffer);
+		GARDEN_ASSERT(hasAnyFlag(indexBufferView->getUsage(), Buffer::Usage::DeviceAddress));
+		GARDEN_ASSERT(indexBufferView->getDeviceAddress()); // is ready
+		GARDEN_ASSERT(geometry.primitiveCount + geometry.primitiveOffset <= 
+			indexBufferView->getBinarySize() / (toBinarySize(geometry.indexType) * 3));
+
+		vk::AccelerationStructureGeometryKHR as;
+		as.geometryType = vk::GeometryTypeKHR::eTriangles;
+		as.geometry.triangles = vk::AccelerationStructureGeometryTrianglesDataKHR();
+		as.geometry.triangles.vertexFormat = vk::Format::eR32G32B32Sfloat;
+		as.geometry.triangles.vertexData.deviceAddress = vertexBufferView->getDeviceAddress(); // TODO: support case when pos is not first component.
+		as.geometry.triangles.vertexStride = geometry.vertexSize;
+		as.geometry.triangles.maxVertex = (geometry.vertexCount > 0 ?  geometry.vertexCount : 
+			vertexBufferView->getBinarySize() / geometry.vertexSize - geometry.vertexOffset) - 1; // -1 required!
+		as.geometry.triangles.indexType = toVkIndexType(geometry.indexType);
+		as.geometry.triangles.indexData.deviceAddress = indexBufferView->getDeviceAddress();
+		as.geometry.triangles.transformData = VK_NULL_HANDLE; // Identity transform TODO:
+		
+		if (geometry.isOpaqueOnly)
+			as.flags = vk::GeometryFlagBitsKHR::eOpaque;
+		asArray[i] = as;
+
+		vk::AccelerationStructureBuildRangeInfoKHR rangeInfo;
+		rangeInfo.primitiveCount = geometry.primitiveCount > 0 ? geometry.primitiveCount :
+			indexBufferView->getBinarySize() / (toBinarySize(geometry.indexType) * 3) - geometry.primitiveOffset;
+		rangeInfo.primitiveOffset = geometry.primitiveOffset;
+		rangeInfo.firstVertex = geometry.vertexOffset;
+		rangeInfo.transformOffset = 0; // TODO:
+		rangeInfos[i] = rangeInfo;
+
+		syncBuffers[i * 2] = geometry.vertexBuffer;
+		syncBuffers[i * 2 + 1] = geometry.indexBuffer;
+	}
+}
+
+//**********************************************************************************************************************
+static void prepareVkBlas(VulkanAPI* vulkanAPI, 
+	const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, vk::AccelerationStructureGeometryKHR* asArray, 
+	vk::AccelerationStructureBuildRangeInfoKHR* rangeInfos, ID<Buffer>* syncBuffers, BuildFlagsAS flags)
+{
+	for (uint32 i = 0; i < geometryCount; i++)
+	{
+		auto geometry = geometryArray[i];
+		GARDEN_ASSERT(geometry.aabbBuffer);
+		GARDEN_ASSERT(geometry.aabbStride);
+		GARDEN_ASSERT(geometry.aabbStride > 0);
+		GARDEN_ASSERT(geometry.aabbStride % 8 == 0);
+
+		auto aabbBufferView = vulkanAPI->bufferPool.get(geometry.aabbBuffer);
+		GARDEN_ASSERT(hasAnyFlag(aabbBufferView->getUsage(), Buffer::Usage::DeviceAddress));
+		GARDEN_ASSERT(aabbBufferView->getDeviceAddress()); // is ready
+		GARDEN_ASSERT(geometry.aabbCount + geometry.aabbOffset <= 
+			aabbBufferView->getBinarySize() / geometry.aabbStride);
+
+		vk::AccelerationStructureGeometryKHR as;
+		as.geometryType = vk::GeometryTypeKHR::eAabbs;
+		as.geometry.aabbs = vk::AccelerationStructureGeometryAabbsDataKHR();
+		as.geometry.aabbs.data.deviceAddress = aabbBufferView->getDeviceAddress();
+		as.geometry.aabbs.stride = geometry.aabbStride;
+		
+		if (geometry.isOpaqueOnly)
+			as.flags = vk::GeometryFlagBitsKHR::eOpaque;
+		asArray[i] = as;
+
+		vk::AccelerationStructureBuildRangeInfoKHR rangeInfo;
+		rangeInfo.primitiveCount = geometry.aabbCount > 0 ? geometry.aabbCount :
+			aabbBufferView->getBinarySize() / geometry.aabbStride - geometry.aabbOffset;
+		rangeInfo.primitiveOffset = geometry.aabbOffset;
+		rangeInfo.firstVertex = 0;
+		rangeInfo.transformOffset = 0;
+		rangeInfos[i] = rangeInfo;
+
+		syncBuffers[i] = geometry.aabbBuffer;
+	}
+}
+
+//**********************************************************************************************************************
+static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 geometryType,
+	BuildFlagsAS flags, ID<Buffer>& storage, void*& instance, uint64& deviceAddress, void*& _buildData)
+{
+	auto vulkanAPI = VulkanAPI::get();
+	auto buildData = malloc<uint8>(
+		sizeof(AccelerationStructure::BuildDataHeader) + geometryCount * (geometryType * sizeof(ID<Buffer>) +
+		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR)));
+	_buildData = buildData;
+
+	auto builDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
+	auto builDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
+	auto syncBuffers = (ID<Buffer>*)(buildData + builDataOffset);
+	builDataOffset += geometryCount * geometryType * sizeof(ID<Buffer>);
+	auto asArray = (vk::AccelerationStructureGeometryKHR*)(buildData + builDataOffset);
+	builDataOffset += geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
+	auto rangeInfos = (vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + builDataOffset);
+
+	if (geometryType == 2)
+	{
+		prepareVkBlas(vulkanAPI, (const Blas::TrianglesBuffer*)geometryArray, 
+			geometryCount, asArray, rangeInfos, syncBuffers, flags);
+	}
+	else
+	{
+		prepareVkBlas(vulkanAPI, (const Blas::AabbsBuffer*)geometryArray, 
+			geometryCount, asArray, rangeInfos, syncBuffers, flags);
+	}
+
+	vk::AccelerationStructureBuildGeometryInfoKHR geometryInfo;
+	geometryInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+	geometryInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
+	geometryInfo.flags = toVkBuildFlagsAS(flags);
+	geometryInfo.geometryCount = geometryCount;
+	geometryInfo.pGeometries = asArray;
+
+	std::vector<uint32_t> maxPrimitiveCounts(geometryCount);
+	for (uint32 i = 0; i < geometryCount; i++)
+		maxPrimitiveCounts[i] = rangeInfos[i].primitiveCount;
+
+	// TODO: also support building on the host (CPU). Currently only relevant for AMD and mobile GPUs.
+	auto sizesInfo =  vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
+		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, maxPrimitiveCounts);
+
+	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
+		Buffer::Strategy::Speed : Buffer::Strategy::Size;
+	storage = vulkanAPI->bufferPool.create(Buffer::Usage::DeviceAddress | Buffer::Usage::StorageAS, 
+		Buffer::CpuAccess::None, Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
+	auto storageView = vulkanAPI->bufferPool.get(storage);
+
+	vk::AccelerationStructureCreateInfoKHR createInfo;
+	createInfo.buffer = (VkBuffer)ResourceExt::getInstance(**storageView);
+	createInfo.size = sizesInfo.accelerationStructureSize;
+	createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+	auto accelerationStructure = vulkanAPI->device.createAccelerationStructureKHR(createInfo);
+	instance = accelerationStructure;
+
+	vk::AccelerationStructureDeviceAddressInfoKHR addressInfo;
+	addressInfo.accelerationStructure = accelerationStructure;
+	deviceAddress = vulkanAPI->device.getAccelerationStructureAddressKHR(addressInfo);
+
+	builDataHeader->scratchSize = sizesInfo.buildScratchSize +
+		vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment;
+	builDataHeader->geometryCount = geometryCount;
+	builDataHeader->bufferCount = geometryCount * geometryType;
+}
+
+//**********************************************************************************************************************
+Blas::Blas(const Blas::TrianglesBuffer* geometryArray, 
+	uint32 geometryCount, BuildFlagsAS flags) : AccelerationStructure(flags)
+{
+	GARDEN_ASSERT(geometryArray);
+	GARDEN_ASSERT(geometryCount > 0);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		createVkBlas(geometryArray, geometryCount, 2, flags, storage, instance, deviceAddress, buildData);
+	else abort();
+}
+Blas::Blas(const Blas::AabbsBuffer* geometryArray, 
+	uint32 geometryCount, BuildFlagsAS flags) : AccelerationStructure(flags)
+{
+	GARDEN_ASSERT(geometryArray);
+	GARDEN_ASSERT(geometryCount > 0);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		createVkBlas(geometryArray, geometryCount, 1, flags, storage, instance, deviceAddress, buildData);
+	else abort();
+}

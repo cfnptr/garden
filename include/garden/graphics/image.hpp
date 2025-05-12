@@ -151,13 +151,13 @@ public:
 		// TODO: A8B8G8R8
 	};
 	/**
-	 * @brief Image bind type. (Affects driver optimizations)
+	 * @brief Image usage types. (Affects driver optimizations)
 	 * 
 	 * @details
-	 * Image bind flags are critical for ensuring that an image is compatible 
+	 * Image usage flags are critical for ensuring that an image is compatible 
 	 * with the operations the application intends to perform on it.
 	 */
-	enum class Bind : uint8
+	enum class Usage : uint32
 	{
 		None                   = 0x00, /**< No image usage specified, zero mask. */
 		TransferSrc            = 0x01, /**< Image can be used as the source of a transfer command. */
@@ -169,6 +169,8 @@ public:
 		InputAttachment        = 0x40, /**< Image can be used as the framebuffer subpass input attachment. */
 		Fullscreen             = 0x80, /**< Image will be the size of the window or larger. (Better optimization) */
 	};
+
+	static constexpr uint8 usageCount = 8; /**< Image usage type count. */
 
 	/*******************************************************************************************************************
 	 * @brief Image clear region description.
@@ -241,19 +243,20 @@ public:
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;
 private:
+	uint8 _alignment = 0;
 	Type type = {};
 	Format format = {};
-	Bind bind = {};
 	bool swapchain = false;
 	bool fullBarrier = true;
-	ID<ImageView> defaultView = {};
+	Usage usage = {};
 	u32x4 size = u32x4::zero;
+	ID<ImageView> defaultView = {};
 	vector<BarrierState> barrierStates;
 
-	Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size, uint64 version);
-	Image(Bind bind, Strategy strategy, uint64 version) noexcept :
-		Memory(0, Access::None, Usage::Auto, strategy, version), bind(bind) { }
-	Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version);
+	Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version);
+	Image(Usage usage, Strategy strategy, uint64 version) noexcept :
+		Memory(0, CpuAccess::None, Location::Auto, strategy, version), usage(usage) { }
+	Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint64 version);
 	bool destroy() final;
 
 	friend class ImageExt;
@@ -281,10 +284,10 @@ public:
 	 */
 	Format getFormat() const noexcept { return format; }
 	/**
-	 * @brief Returns image bind type.
-	 * @details Image bind type helps to optimize it usage inside the driver.
+	 * @brief Returns image usage flags.
+	 * @details Image usage flags helps to optimize it usage inside the driver.
 	 */
-	Bind getBind() const noexcept { return bind; }
+	Usage getUsage() const noexcept { return usage; }
 	/**
 	 * @brief Returns image array layer count.
 	 * @details Each layer is an individual texture having the same size and format.
@@ -317,12 +320,12 @@ public:
 	 * 
 	 * @param type image dimensionality
 	 * @param format image data format
-	 * @param bind image bind type
+	 * @param usage image usage flags
 	 * @param size image size in texels
 	 * @param mipCount image mip level count
 	 * @param layerCount image array layer count
 	 */
-	static bool isSupported(Type type, Format format, Bind bind, 
+	static bool isSupported(Type type, Format format, Usage usage, 
 		uint3 size, uint8 mipCount = 1, uint32 layerCount = 1);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -763,12 +766,7 @@ public:
 	// TODO: add support of self copying and blitting if regions not overlapping.
 };
 
-/**
- * @brief Image bind type count.
- */
-constexpr uint8 imageBindCount = 10;
-
-DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Bind)
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)
 
 /***********************************************************************************************************************
  * @brief View of the graphics image.
@@ -1081,37 +1079,37 @@ static Image::Type toImageType(GslUniformType uniformType)
 }
 
 /***********************************************************************************************************************
- * @brief Returns image bind name string.
- * @param imageBind target image bind type
+ * @brief Returns image usage name string.
+ * @param imageUsage target image usage flags
  */
-static string_view toString(Image::Bind imageBind) noexcept
+static string_view toString(Image::Usage imageUsage) noexcept
 {
-	if (hasOneFlag(imageBind, Image::Bind::TransferSrc)) return "TransferSrc";
-	if (hasOneFlag(imageBind, Image::Bind::TransferDst)) return "TransferDst";
-	if (hasOneFlag(imageBind, Image::Bind::Sampled)) return "Sampled";
-	if (hasOneFlag(imageBind, Image::Bind::Storage)) return "Storage";
-	if (hasOneFlag(imageBind, Image::Bind::ColorAttachment)) return "ColorAttachment";
-	if (hasOneFlag(imageBind, Image::Bind::DepthStencilAttachment)) return "DepthStencilAttachment";
-	if (hasOneFlag(imageBind, Image::Bind::InputAttachment)) return "InputAttachment";
-	if (hasOneFlag(imageBind, Image::Bind::Fullscreen)) return "Fullscreen";
+	if (hasOneFlag(imageUsage, Image::Usage::TransferSrc)) return "TransferSrc";
+	if (hasOneFlag(imageUsage, Image::Usage::TransferDst)) return "TransferDst";
+	if (hasOneFlag(imageUsage, Image::Usage::Sampled)) return "Sampled";
+	if (hasOneFlag(imageUsage, Image::Usage::Storage)) return "Storage";
+	if (hasOneFlag(imageUsage, Image::Usage::ColorAttachment)) return "ColorAttachment";
+	if (hasOneFlag(imageUsage, Image::Usage::DepthStencilAttachment)) return "DepthStencilAttachment";
+	if (hasOneFlag(imageUsage, Image::Usage::InputAttachment)) return "InputAttachment";
+	if (hasOneFlag(imageUsage, Image::Usage::Fullscreen)) return "Fullscreen";
 	return "None";
 }
 /**
- * @brief Returns image bind name string list.
- * @param imageBind target image bind type
+ * @brief Returns image usage name string list.
+ * @param imageUsage target image usage flags
  */
-static string toStringList(Image::Bind imageBind) noexcept
+static string toStringList(Image::Usage imageUsage) noexcept
 {
 	string list;
-	if (hasAnyFlag(imageBind, Image::Bind::None)) list += "None | ";
-	if (hasAnyFlag(imageBind, Image::Bind::TransferSrc)) list += "TransferSrc | ";
-	if (hasAnyFlag(imageBind, Image::Bind::TransferDst)) list += "TransferDst | ";
-	if (hasAnyFlag(imageBind, Image::Bind::Sampled)) list += "Sampled | ";
-	if (hasAnyFlag(imageBind, Image::Bind::Storage)) list += "Storage | ";
-	if (hasAnyFlag(imageBind, Image::Bind::ColorAttachment)) list += "ColorAttachment | ";
-	if (hasAnyFlag(imageBind, Image::Bind::DepthStencilAttachment)) list += "DepthStencilAttachment | ";
-	if (hasAnyFlag(imageBind, Image::Bind::InputAttachment)) list += "InputAttachment | ";
-	if (hasAnyFlag(imageBind, Image::Bind::Fullscreen)) list += "Fullscreen | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::None)) list += "None | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::TransferSrc)) list += "TransferSrc | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::TransferDst)) list += "TransferDst | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::Sampled)) list += "Sampled | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::Storage)) list += "Storage | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::ColorAttachment)) list += "ColorAttachment | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::DepthStencilAttachment)) list += "DepthStencilAttachment | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::InputAttachment)) list += "InputAttachment | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::Fullscreen)) list += "Fullscreen | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }
@@ -1190,12 +1188,6 @@ public:
 	 */
 	static Image::Format& getFormat(Image& image) noexcept { return image.format; }
 	/**
-	 * @brief Returns image bind type.
-	 * @warning In most cases you should use @ref Image functions.
-	 * @param[in] image target image instance
-	 */
-	static Image::Bind& getBind(Image& image) noexcept { return image.bind; }
-	/**
 	 * @brief Is this image part of the swapchain.
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
@@ -1208,11 +1200,11 @@ public:
 	 */
 	static bool& isFullBarrier(Image& image) noexcept { return image.fullBarrier; }
 	/**
-	 * @brief Returns image memory barrier state array.
+	 * @brief Returns image usage flags.
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
-	static vector<Image::BarrierState>& getBarrierStates(Image& image) noexcept { return image.barrierStates; }
+	static Image::Usage& getUsage(Image& image) noexcept { return image.usage; }
 	/**
 	 * @brief Returns image size in texels.
 	 * @warning In most cases you should use @ref Image functions.
@@ -1225,6 +1217,12 @@ public:
 	 * @param[in] image target image instance
 	 */
 	static ID<ImageView> getDefaultView(Image& image) noexcept { return image.defaultView; }
+	/**
+	 * @brief Returns image memory barrier state array.
+	 * @warning In most cases you should use @ref Image functions.
+	 * @param[in] image target image instance
+	 */
+	static vector<Image::BarrierState>& getBarrierStates(Image& image) noexcept { return image.barrierStates; }
 
 	/**
 	 * @brief Creates a new image data.
@@ -1232,16 +1230,16 @@ public:
 	 * 
 	 * @param type image dimensionality type
 	 * @param format image data format
-	 * @param bind image bind usage
+	 * @param usage image usage flags
 	 * @param strategy image allocation strategy
 	 * @param size image size in texels and mip count
 	 * @param mipCount image mipmap level count
 	 * @param version image instance version
 	 */
-	static Image create(Image::Type type, Image::Format format, Image::Bind bind,
+	static Image create(Image::Type type, Image::Format format, Image::Usage usage,
 		Image::Strategy strategy, u32x4 size, uint64 version)
 	{
-		return Image(type, format, bind, strategy, size, version);
+		return Image(type, format, usage, strategy, size, version);
 	}
 	/**
 	 * @brief Moves internal image objects.

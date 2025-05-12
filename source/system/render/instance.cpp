@@ -26,8 +26,8 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSetBuffers& insta
 
 	for (uint32 i = 0; i < swapchainSize; i++)
 	{
-		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Storage, Buffer::Access::SequentialWrite,
-			bufferSize, Buffer::Usage::Auto, Buffer::Strategy::Size);
+		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Storage, Buffer::CpuAccess::SequentialWrite,
+			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
 		#if GARDEN_DEBUG
 		if (isShadow)
 		{

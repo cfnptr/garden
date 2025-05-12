@@ -211,12 +211,12 @@ public:
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
-	 * @param bind image bind type (affects driver optimization)
+	 * @param usage image usage flags (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
 	 * @param flags additional image load flags
 	 */
-	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Bind bind, uint8 maxMipCount = 1,
+	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Usage usage, uint8 maxMipCount = 1,
 		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None);
 
 	/**
@@ -224,15 +224,15 @@ public:
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] path target image resource path
-	 * @param bind image bind type (affects driver optimization)
+	 * @param usage image usage flags (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
 	 * @param flags additional image load flags
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Bind bind, uint8 maxMipCount = 1,
+	Ref<Image> loadImage(const fs::path& path, Image::Usage usage, uint8 maxMipCount = 1,
 		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None)
 	{
-		return loadImageArray({ path }, bind, maxMipCount, strategy, flags);
+		return loadImageArray({ path }, usage, maxMipCount, strategy, flags);
 	}
 
 	/**

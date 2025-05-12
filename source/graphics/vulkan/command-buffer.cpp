@@ -79,14 +79,10 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
 
 //**********************************************************************************************************************
 constexpr uint32 writeAccessMask =
-	VK_ACCESS_SHADER_WRITE_BIT |
-	VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-	VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-	VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT |
-	VK_ACCESS_MEMORY_WRITE_BIT |
-	VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR |
-	VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
-	VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+	VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+	VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT |
+	VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
+	VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
 
 constexpr bool isDifferentState(const Image::BarrierState& oldState, const Image::BarrierState& newState) noexcept
 {
@@ -458,6 +454,7 @@ void VulkanCommandBuffer::submit()
 		#endif
 	}
 
+	GARDEN_ASSERT(vulkanAPI->asBuildData.empty());
 	instance.end();
 
 	if (type == CommandBufferType::Frame)
@@ -497,21 +494,21 @@ void VulkanCommandBuffer::submit()
 }
 
 //**********************************************************************************************************************
-void VulkanCommandBuffer::addRenderPassBarriers(psize offset, uint32& oldPipelineStage, uint32& newPipelineStage)
+void VulkanCommandBuffer::addRenderPassBarriers(psize commandOffset, uint32& oldPipelineStage, uint32& newPipelineStage)
 {
 	SET_CPU_ZONE_SCOPED("Render Pass Barriers Add");
 
 	auto vulkanAPI = VulkanAPI::get();
-	while (offset < size)
+	while (commandOffset < size)
 	{
-		auto subCommand = (const Command*)(data + offset);
+		auto subCommand = (const Command*)(data + commandOffset);
 		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
 
 		auto commandType = subCommand->type;
 		if (commandType == Command::Type::EndRenderPass)
 			break;
 
-		offset += subCommand->thisSize;
+		commandOffset += subCommand->thisSize;
 
 		if (commandType == Command::Type::BindDescriptorSets)
 		{
@@ -750,8 +747,8 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			depthStencilAttachment.imageView, oldPipelineStage, aspectFlags);
 	}
 
-	auto offset = (commandBufferData - data) + command.thisSize;
-	addRenderPassBarriers(offset, oldPipelineStage, newPipelineStage);
+	auto commandOffset = (commandBufferData - data) + command.thisSize;
+	addRenderPassBarriers(commandOffset, oldPipelineStage, newPipelineStage);
 	processPipelineBarriers(oldPipelineStage, newPipelineStage);
 
 	vk::Rect2D rect({ command.region.x, command.region.y },
@@ -1123,12 +1120,12 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 	SET_CPU_ZONE_SCOPED("Dispatch Command Process");
 
 	auto commandBufferData = (const uint8*)&command;
-	auto offset = (int64)(commandBufferData - data) - (int64)command.lastSize;
+	auto commandOffset = (int64)(commandBufferData - data) - (int64)command.lastSize;
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 
-	while (offset >= 0)
+	while (commandOffset >= 0)
 	{
-		auto subCommand = (const Command*)(data + offset);
+		auto subCommand = (const Command*)(data + commandOffset);
 		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
 		if (subCommand->lastSize == 0)
 			break;
@@ -1137,7 +1134,7 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 		if (commandType == Command::Type::Dispatch || commandType == Command::Type::BindPipeline)
 			break;
 
-		offset -= subCommand->lastSize;
+		commandOffset -= subCommand->lastSize;
 		if (commandType != Command::Type::BindDescriptorSets)
 			continue;
 
@@ -1168,8 +1165,8 @@ void VulkanCommandBuffer::processCommand(const FillBufferCommand& command)
 
 	addBufferBarrier(vulkanAPI, newBufferState, command.buffer, oldPipelineStage,
 		command.size == 0 ? VK_WHOLE_SIZE : command.size, command.offset);
-
 	processPipelineBarriers(oldPipelineStage, newPipelineStage);
+
 	instance.fillBuffer(vkBuffer, command.offset, command.size == 0 ? VK_WHOLE_SIZE : command.size, command.data);
 }
 
@@ -1484,6 +1481,112 @@ void VulkanCommandBuffer::processCommand(const SetDepthBiasCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("SetDepthBias Command Process");
 	instance.setDepthBias(command.constantFactor, command.clamp, command.slopeFactor);
+}
+
+void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand& command)
+{
+	SET_CPU_ZONE_SCOPED("BuildAccelerationStructure Command Process");
+
+	auto vulkanAPI = VulkanAPI::get();
+	auto scratchBufferView = vulkanAPI->bufferPool.get(command.scratchBuffer);
+
+	uint32 newPipelineStage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
+	Buffer::BarrierState newBufferState;
+	newBufferState.access = (uint32)(vk::AccessFlagBits::eAccelerationStructureReadKHR |
+		vk::AccessFlagBits::eAccelerationStructureWriteKHR);
+	newBufferState.stage = newPipelineStage;
+	addBufferBarrier(vulkanAPI, newBufferState, command.scratchBuffer, vulkanAPI->asOldPipelineStage); // TODO: synchronize only used part of the scratch buffer.
+
+	vk::AccelerationStructureBuildGeometryInfoKHR info;
+	View<AccelerationStructure> asView;
+	if (command.srcAS)
+	{
+		if (command.typeAS == AccelerationStructure::Type::Blas)
+			asView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
+		else
+			asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
+
+		addBufferBarrier(vulkanAPI, newBufferState, AccelerationStructureExt::
+			getStorage(**asView), vulkanAPI->asOldPipelineStage);
+		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
+	}
+	if (command.typeAS == AccelerationStructure::Type::Blas)
+	{
+		info.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+		asView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
+	}
+	else
+	{
+		info.type = vk::AccelerationStructureTypeKHR::eTopLevel;
+		asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
+	}
+
+	addBufferBarrier(vulkanAPI, newBufferState, AccelerationStructureExt::
+		getStorage(**asView), vulkanAPI->asOldPipelineStage);
+	
+	auto buildData = (const uint8*)AccelerationStructureExt::getBuildData(**asView);
+	auto buildDataHeader = *((const AccelerationStructure::BuildDataHeader*)buildData);
+	auto builDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
+	auto syncBuffers = (ID<Buffer>*)(buildData + builDataOffset);
+	builDataOffset += buildDataHeader.bufferCount * sizeof(ID<Buffer>);
+	auto asArray = (const vk::AccelerationStructureGeometryKHR*)(buildData + builDataOffset);
+	builDataOffset += buildDataHeader.geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
+	auto rangeInfos = (const vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + builDataOffset);
+
+	info.flags = toVkBuildFlagsAS(asView->getFlags());
+	info.mode = command.isUpdate ? vk::BuildAccelerationStructureModeKHR::eUpdate :
+		vk::BuildAccelerationStructureModeKHR::eBuild;
+	info.dstAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
+	info.scratchData = alignSize(scratchBufferView->getDeviceAddress(), 
+		(uint64)vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment);
+	info.geometryCount = buildDataHeader.geometryCount;
+	info.pGeometries = asArray;
+
+	newBufferState.access = (uint32)vk::AccessFlagBits::eShaderRead;
+	for (uint32 i = 0; i < buildDataHeader.bufferCount; i++)
+		addBufferBarrier(vulkanAPI, newBufferState, syncBuffers[i], vulkanAPI->asOldPipelineStage);
+
+	vulkanAPI->asBuildData.push_back(&AccelerationStructureExt::getBuildData(**asView));
+	vulkanAPI->asGeometryInfos.push_back(info);
+	vulkanAPI->asRangeInfos.push_back(rangeInfos);
+	
+	auto commandOffset = (((const uint8*)&command) - data) + command.thisSize;
+	auto shouldBuild = false;
+	if (commandOffset < size)
+	{
+		auto subCommand = (const Command*)(data + commandOffset);
+		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
+
+		if (subCommand->type != Command::Type::BuildAccelerationStructure)
+			shouldBuild = true;
+
+		auto subCommandAS = (const BuildAccelerationStructureCommand*)subCommand;
+		if (command.typeAS != subCommandAS->typeAS)
+			shouldBuild = true;
+	}
+	else
+	{
+		shouldBuild = true;
+	}
+
+	if (shouldBuild)
+	{
+		processPipelineBarriers(vulkanAPI->asOldPipelineStage, newPipelineStage);
+
+		instance.buildAccelerationStructuresKHR(vulkanAPI->asGeometryInfos.size(), 
+			vulkanAPI->asGeometryInfos.data(), vulkanAPI->asRangeInfos.data());
+
+		for (auto buildData : vulkanAPI->asBuildData)
+		{
+			free(*buildData);
+			*buildData = nullptr;
+		}
+		vulkanAPI->asBuildData.clear();
+
+		vulkanAPI->asGeometryInfos.clear();
+		vulkanAPI->asRangeInfos.clear();
+		vulkanAPI->asOldPipelineStage = 0;
+	}
 }
 
 #if GARDEN_DEBUG

@@ -140,7 +140,7 @@ static DescriptorSet::Samplers getSamplers(ID<Sampler> sampler)
 	return { { "tex", sampler } };
 }
 
-static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Bind bind)
+static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Usage usage)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto swapchainSize = graphicsSystem->getSwapchainSize();
@@ -148,9 +148,9 @@ static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer
 
 	for (uint32 i = 0; i < swapchainSize; i++)
 	{
-		auto buffer = graphicsSystem->createBuffer(bind, Buffer::Access::SequentialWrite,
-			bufferSize, Buffer::Usage::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.imgui." + string(toString(bind)) + to_string(i));
+		auto buffer = graphicsSystem->createBuffer(usage, Buffer::CpuAccess::SequentialWrite,
+			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.imgui." + string(toString(usage)) + to_string(i));
 		buffers[i] = buffer;
 	}
 }
@@ -280,8 +280,8 @@ void ImGuiRenderSystem::preInit()
 
 	unsigned char* pixels; int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	fontTexture = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, Image::Bind::Sampled | 
-		Image::Bind::TransferDst, { { pixels } }, uint2(width, height), Image::Strategy::Size);
+	fontTexture = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
+		Image::Usage::TransferDst, { { pixels } }, uint2(width, height), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(fontTexture, "image.imgui.fontTexture");
 
 	auto fontTextureView = graphicsSystem->get(fontTexture);
@@ -668,13 +668,13 @@ void ImGuiRenderSystem::uiRender()
 		{
 			for (auto buffer : vertexBuffers)
 				graphicsSystem->destroy(buffer);
-			createBuffers(vertexBuffers, vertexSize, Buffer::Bind::Vertex);
+			createBuffers(vertexBuffers, vertexSize, Buffer::Usage::Vertex);
 		}
 		if (indexBuffers.size() == 0 || graphicsSystem->get(indexBuffers[0])->getBinarySize() < indexSize)
 		{
 			for (auto buffer : indexBuffers)
 				graphicsSystem->destroy(buffer);
-			createBuffers(indexBuffers, indexSize, Buffer::Bind::Index);
+			createBuffers(indexBuffers, indexSize, Buffer::Usage::Index);
 		}
 
 		auto swapchainIndex = graphicsSystem->getSwapchainIndex();
@@ -698,8 +698,7 @@ void ImGuiRenderSystem::uiRender()
 		indexBufferView->flush(indexSize);
 	}
 
-	const auto indexType = sizeof(ImDrawIdx) == 2 ?
-		GraphicsPipeline::Index::Uint16 : GraphicsPipeline::Index::Uint32;
+	const auto indexType = sizeof(ImDrawIdx) == 2 ? IndexType::Uint16 : IndexType::Uint32;
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto framebufferSize = framebufferView->getSize();
 
@@ -783,9 +782,9 @@ void ImGuiRenderSystem::swapchainRecreate()
 			graphicsSystem->destroy(buffer);
 
 		if (vertexSize > 0)
-			createBuffers(vertexBuffers, vertexSize, Buffer::Bind::Vertex);
+			createBuffers(vertexBuffers, vertexSize, Buffer::Usage::Vertex);
 		if (indexSize > 0)
-			createBuffers(indexBuffers, indexSize, Buffer::Bind::Index);
+			createBuffers(indexBuffers, indexSize, Buffer::Usage::Index);
 	}
 }
 

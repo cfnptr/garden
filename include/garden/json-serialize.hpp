@@ -26,7 +26,7 @@ class JsonSerializer final : public ISerializer
 {
 	fs::path filePath;
 	json data;
-	stack<json*> hierarchy;
+	stack<json*, vector<json*>> hierarchy;
 public:
 	JsonSerializer();
 	JsonSerializer(const fs::path& filePath);
@@ -90,7 +90,7 @@ public:
 class JsonDeserializer final : public IDeserializer
 {
 	json data;
-	stack<json*> hierarchy;
+	stack<json*, vector<json*>> hierarchy;
 public:
 	JsonDeserializer();
 	JsonDeserializer(string_view json) { load(json); }

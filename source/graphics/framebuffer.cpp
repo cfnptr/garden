@@ -367,7 +367,7 @@ static void recreateVkFramebuffer(uint2 size, const vector<Framebuffer::SubpassI
 			auto imageView = vulkanAPI->imageViewPool.get(newInputAttachment);
 			auto image = vulkanAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-			GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
+			GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
 			auto result = attachments.find(newInputAttachment);
 			GARDEN_ASSERT(result != attachments.end());
 			#endif
@@ -394,13 +394,13 @@ static void recreateVkFramebuffer(uint2 size, const vector<Framebuffer::SubpassI
 
 			if (isFormatColor(newImageView->getFormat()))
 			{
-				GARDEN_ASSERT(hasAnyFlag(newImage->getBind(), Image::Bind::ColorAttachment));
+				GARDEN_ASSERT(hasAnyFlag(newImage->getUsage(), Image::Usage::ColorAttachment));
 				auto index = colorAttachmentIndex++;
 				colorAttachments[index].imageView = newOutputAttachment;
 			}
 			else
 			{
-				GARDEN_ASSERT(hasAnyFlag(newImage->getBind(), Image::Bind::DepthStencilAttachment));
+				GARDEN_ASSERT(hasAnyFlag(newImage->getUsage(), Image::Usage::DepthStencilAttachment));
 				GARDEN_ASSERT(!depthStencilAttachment.imageView);
 				depthStencilAttachment.imageView = newOutputAttachment;
 			}
@@ -450,7 +450,7 @@ Framebuffer::Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (!VulkanAPI::get()->hasDynamicRendering) // TODO: handle this case and use subpass framebuffer.
+		if (!VulkanAPI::get()->features.dynamicRendering) // TODO: handle this case and use subpass framebuffer.
 			throw GardenError("Dynamic rendering is not supported on this GPU.");
 	}
 	else abort();
@@ -497,7 +497,7 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
+		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
 		validColorAttachCount++;
 	}
 	GARDEN_ASSERT((colorAttachmentCount > 0 && validColorAttachCount > 0) || colorAttachmentCount == 0);
@@ -508,7 +508,7 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
+		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment));
 	}
 	#endif
 
@@ -538,7 +538,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::ColorAttachment));
+		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
 	}
 
 	if (depthStencilAttachment.imageView)
@@ -547,7 +547,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::DepthStencilAttachment));
+		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment));
 	}
 	#endif
 

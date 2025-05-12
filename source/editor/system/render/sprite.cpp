@@ -159,7 +159,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
 		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath,
-			Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
+			Image::Usage::TransferDst | Image::Usage::Sampled, 1, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
 	}
 

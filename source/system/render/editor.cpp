@@ -1093,8 +1093,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 				path = selectedFile;
 				path.replace_extension();
 
-				image = resourceSystem->loadImage(path, Image::Bind::TransferDst |
-					Image::Bind::Sampled, 1, Image::Strategy::Default, loadFlags);
+				image = resourceSystem->loadImage(path, Image::Usage::TransferDst |
+					Image::Usage::Sampled, 1, Image::Strategy::Default, loadFlags);
 				descriptorSet = {};
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);

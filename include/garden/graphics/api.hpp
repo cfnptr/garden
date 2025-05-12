@@ -22,6 +22,7 @@
 #include "garden/graphics/command-buffer.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/graphics/pipeline/ray-tracing.hpp"
 
 namespace garden
 {
@@ -66,8 +67,8 @@ public:
 	 */
 	enum class DestroyResourceType : uint32
 	{
-		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout,
-		Sampler, Framebuffer, ImageView, Image, Buffer, Count
+		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout, Sampler, 
+		Framebuffer, ImageView, Image, AccelerationStructure, Buffer, Count
 	};
 	/**
 	 * @brief Graphics resource destroy data container.
@@ -102,7 +103,10 @@ public:
 	LinearPool<Sampler> samplerPool;
 	LinearPool<GraphicsPipeline> graphicsPipelinePool;
 	LinearPool<ComputePipeline> computePipelinePool;
+	LinearPool<RayTracingPipeline> rayTracingPipelinePool;
 	LinearPool<DescriptorSet> descriptorSetPool;
+	LinearPool<Blas> blasPool;
+	LinearPool<Tlas> tlasPool;
 	tsl::robin_map<void*, uint64> renderPasses;
 	uint64 graphicsPipelineVersion = 1;
 	uint64 computePipelineVersion = 1;
@@ -144,6 +148,8 @@ public:
 			return ID<Pipeline>(graphicsPipelinePool.getID((const GraphicsPipeline*)pipeline));
 		else if (type == PipelineType::Compute)
 			return ID<Pipeline>(computePipelinePool.getID((const ComputePipeline*)pipeline));
+		else if (type == PipelineType::RayTracing)
+			return ID<Pipeline>(rayTracingPipelinePool.getID((const RayTracingPipeline*)pipeline));
 		abort();
 	}
 	/**
@@ -158,6 +164,8 @@ public:
 			return View<Pipeline>(graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline)));
 		else if (type == PipelineType::Compute)
 			return View<Pipeline>(computePipelinePool.get(ID<ComputePipeline>(pipeline)));
+		else if (type == PipelineType::RayTracing)
+			return View<Pipeline>(rayTracingPipelinePool.get(ID<RayTracingPipeline>(pipeline)));
 		abort();
 	}
 
@@ -213,6 +221,11 @@ public:
 	virtual void flushDestroyBuffer() = 0;
 
 	/**
+	 * @brief Stores shader pipeline cache to the disk.
+	 */
+	virtual void storePipelineCache() { }
+
+	/**
 	 * @brief Creates and initializes a new graphics API instance.
 	 */
 	static void initialize(GraphicsBackend backendType, const string& appName, 
@@ -224,9 +237,13 @@ public:
 	static void terminate();
 
 	/**
-	 * @brief Stores shader pipeline cache to the disk.
+	 * @brief Returns true if buffer device address supported.
 	 */
-	virtual void storePipelineCache() { }
+	virtual bool hasBufferDeviceAddress() const { return false; }
+	/**
+	 * @brief Returns true if ray tracing supported.
+	 */
+	virtual bool hasRayTracing() const { return false; }
 
 	/**
 	 * @brief Is graphics API initialized.

@@ -20,9 +20,10 @@
 #pragma once
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/graphics/pipeline/ray-tracing.hpp"
+#include "garden/graphics/acceleration-structure.hpp"
 
 #include <mutex>
-#include <unordered_map>
 
 namespace garden::graphics
 {
@@ -35,7 +36,8 @@ struct Command
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor,
 		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
 		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
-		SetDepthBias,
+		SetDepthBias, // TODO: other dynamic setters
+		BuildAccelerationStructure,
 
 		#if GARDEN_DEBUG
 		BeginLabel, EndLabel, InsertLabel,
@@ -60,7 +62,7 @@ struct BeginRenderPassCommandBase : public Command
 	ID<Framebuffer> framebuffer = {};
 	float clearDepth = 0.0f;
 	uint32 clearStencil = 0x00;
-	int4 region = int4(0);
+	int4 region = int4::zero;
 	constexpr BeginRenderPassCommandBase() noexcept : Command(Type::BeginRenderPass) { }
 };
 struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
@@ -141,21 +143,21 @@ struct SetViewportCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	float4 viewport = float4(0.0f);
+	float4 viewport = float4::zero;
 	constexpr SetViewportCommand() noexcept : Command(Type::SetViewport) { }
 };
 struct SetScissorCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	int4 scissor = int4(0);
+	int4 scissor = int4::zero;
 	constexpr SetScissorCommand() noexcept : Command(Type::SetScissor) { }
 };
 struct SetViewportScissorCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	float4 viewportScissor = float4(0.0f);
+	float4 viewportScissor = float4::zero;
 	constexpr SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
 
@@ -173,7 +175,7 @@ struct DrawCommand final : public Command
 };
 struct DrawIndexedCommand final : public Command
 {
-	GraphicsPipeline::Index indexType = {};
+	IndexType indexType = {};
 	uint8 asyncRecording = false;
 	uint8 _alignment = 0;
 	uint32 indexCount = 0;
@@ -189,7 +191,7 @@ struct DispatchCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	uint3 groupCount = uint3(0);
+	uint3 groupCount = uint3::zero;
 	constexpr DispatchCommand() noexcept : Command(Type::Dispatch) { }
 };
 
@@ -225,7 +227,7 @@ struct ClearImageCommandBase : public Command
 	uint16 _alignment = 0;
 	uint32 regionCount = 0;
 	ID<Image> image = {};
-	float4 color = float4(0);
+	float4 color = float4::zero;
 	constexpr ClearImageCommandBase() noexcept : Command(Type::ClearImage) { }
 };
 struct ClearImageCommand final : public ClearImageCommandBase
@@ -272,12 +274,26 @@ struct BlitImageCommand final : public BlitImageCommandBase
 	const Image::BlitRegion* regions = nullptr;
 };
 
-struct SetDepthBiasCommand : public Command
+struct SetDepthBiasCommand final : public Command
 {
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
 	float constantFactor = 0.0f;
 	float slopeFactor = 0.0f;
 	float clamp = 0.0f;
 	constexpr SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
+};
+
+//**********************************************************************************************************************
+struct BuildAccelerationStructureCommand : public Command
+{
+	uint8 _alignment0 = 0;
+	uint8 isUpdate = 0;
+	AccelerationStructure::Type typeAS = {};
+	ID<AccelerationStructure> srcAS = {};
+	ID<AccelerationStructure> dstAS = {};
+	ID<Buffer> scratchBuffer = {};
+	constexpr BuildAccelerationStructureCommand() noexcept : Command(Type::BuildAccelerationStructure) { }
 };
 
 #if GARDEN_DEBUG
@@ -311,11 +327,6 @@ struct InsertLabelCommand final : public InsertLabelCommandBase
 	const char* name = nullptr;
 };
 #endif
-
-constexpr psize alignSize(psize size, psize alignment = 4) noexcept
-{
-	return (size + (alignment - 1)) & ~(alignment - 1);
-}
 
 /***********************************************************************************************************************
  * @brief Base rendering commands recorder.
@@ -365,6 +376,7 @@ protected:
 	virtual void processCommand(const CopyBufferImageCommand& command) = 0;
 	virtual void processCommand(const BlitImageCommand& command) = 0;
 	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
+	virtual void processCommand(const BuildAccelerationStructureCommand& command) = 0;
 
 	#if GARDEN_DEBUG
 	virtual void processCommand(const BeginLabelCommand& command) = 0;
@@ -414,6 +426,7 @@ public:
 	void addCommand(const CopyBufferImageCommand& command);
 	void addCommand(const BlitImageCommand& command);
 	void addCommand(const SetDepthBiasCommand& command);
+	void addCommand(const BuildAccelerationStructureCommand& command);
 
 	#if GARDEN_DEBUG
 	void addCommand(const BeginLabelCommand& command);
@@ -432,14 +445,20 @@ public:
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Image); }
 	void addLockResource(ID<ImageView> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ImageView); }
-	void addLockResource(ID<Sampler> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Sampler); }
 	void addLockResource(ID<Framebuffer> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Framebuffer); }
+	void addLockResource(ID<Sampler> resource)
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Sampler); }
+	void addLockResource(ID<Blas> resource)
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Blas); }
+	void addLockResource(ID<Tlas> resource)
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Tlas); }
 	void addLockResource(ID<GraphicsPipeline> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::GraphicsPipeline); }
 	void addLockResource(ID<ComputePipeline> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ComputePipeline); }
+	void addLockResource(ID<RayTracingPipeline> resource)
+	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::RayTracingPipeline); }
 	void addLockResource(ID<DescriptorSet> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::DescriptorSet); }
 };

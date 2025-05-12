@@ -209,7 +209,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	if (spriteRenderView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
+		Image::Usage::TransferDst | Image::Usage::Sampled, 1, Image::Strategy::Default, flags);
 }
 
 //**********************************************************************************************************************
@@ -309,7 +309,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	if (frame.isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Bind::TransferDst | Image::Bind::Sampled, 1, Image::Strategy::Default, flags);
+		Image::Usage::TransferDst | Image::Usage::Sampled, 1, Image::Strategy::Default, flags);
 	frame.descriptorSet = {}; // See the imageLoaded()
 }
 

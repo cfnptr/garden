@@ -99,7 +99,7 @@ public:
 	/**
 	 * @brief Returns forward color buffer.
 	 */
-	 ID<Image> getUiBuffer();
+	ID<Image> getUiBuffer();
 	/**
 	 * @brief Returns forward depth/stencil buffer.
 	 */

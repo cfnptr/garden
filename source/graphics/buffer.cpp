@@ -21,43 +21,50 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static constexpr vk::BufferUsageFlags toVkBufferUsages(Buffer::Bind bufferBind) noexcept
+static constexpr vk::BufferUsageFlags toVkBufferUsages(Buffer::Usage bufferUsage) noexcept
 {
 	vk::BufferUsageFlags flags;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::TransferSrc))
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferSrc))
 		flags |= vk::BufferUsageFlagBits::eTransferSrc;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::TransferDst))
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferDst))
 		flags |= vk::BufferUsageFlagBits::eTransferDst;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Vertex))
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Vertex))
 		flags |= vk::BufferUsageFlagBits::eVertexBuffer;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Index))
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Index))
 		flags |= vk::BufferUsageFlagBits::eIndexBuffer;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Uniform))
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Uniform))
 		flags |= vk::BufferUsageFlagBits::eUniformBuffer;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Storage))
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Storage))
 		flags |= vk::BufferUsageFlagBits::eStorageBuffer;
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Indirect))
+		flags |= vk::BufferUsageFlagBits::eIndirectBuffer;
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::DeviceAddress))
+		flags |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::StorageAS))
+		flags |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::BuildInputAS))
+		flags |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
 	return flags;
 }
-static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::Access memoryAccess) noexcept
+static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::CpuAccess memoryCpuAccess) noexcept
 {
-	switch (memoryAccess)
+	switch (memoryCpuAccess)
 	{
-	case Buffer::Access::None: return {};
-	case Buffer::Access::SequentialWrite:
+	case Buffer::CpuAccess::None: return {};
+	case Buffer::CpuAccess::SequentialWrite:
 		return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	case Buffer::Access::RandomReadWrite:
+	case Buffer::CpuAccess::RandomReadWrite:
 		return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-	// TODO: support VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
 	default: abort();
 	}
 }
-static VmaMemoryUsage toVmaMemoryUsage(Buffer::Usage memoryUsage) noexcept
+static VmaMemoryUsage toVmaMemoryUsage(Buffer::Location memoryLocation) noexcept
 {
-	switch (memoryUsage)
+	switch (memoryLocation)
 	{
-	case Buffer::Usage::Auto: return VMA_MEMORY_USAGE_AUTO;
-	case Buffer::Usage::PreferGPU: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-	case Buffer::Usage::PreferCPU: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+	case Buffer::Location::Auto: return VMA_MEMORY_USAGE_AUTO;
+	case Buffer::Location::PreferGPU: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	case Buffer::Location::PreferCPU: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
 	default: abort();
 	}
 }
@@ -73,22 +80,22 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUs
 }
 
 //**********************************************************************************************************************
-static void createVkBuffer(Buffer::Bind bind, Buffer::Access access, Buffer::Usage usage, 
-	Buffer::Strategy strategy, uint64 size, void*& instance, void*& allocation, uint8*& map)
+static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buffer::Location location, 
+	Buffer::Strategy strategy, uint64 size, void*& instance, void*& allocation, uint8*& map, uint64& deviceAddress)
 {
 	VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bufferInfo.size = size;
-	bufferInfo.usage = (VkBufferUsageFlags)toVkBufferUsages(bind);
+	bufferInfo.usage = (VkBufferUsageFlags)toVkBufferUsages(usage);
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	bufferInfo.queueFamilyIndexCount = 0;
 	bufferInfo.pQueueFamilyIndices = nullptr;
 
 	VmaAllocationCreateInfo allocationCreateInfo = {};
-	allocationCreateInfo.flags = toVmaMemoryAccess(access) | toVmaMemoryStrategy(strategy);
-	allocationCreateInfo.usage = toVmaMemoryUsage(usage);
+	allocationCreateInfo.flags = toVmaMemoryAccess(cpuAccess) | toVmaMemoryStrategy(strategy);
+	allocationCreateInfo.usage = toVmaMemoryUsage(location);
 	allocationCreateInfo.priority = 0.5f; // TODO: expose this RAM offload priority?
 
-	if (access != Buffer::Access::None)
+	if (cpuAccess != Buffer::CpuAccess::None)
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
 	// TODO: VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT?
@@ -105,22 +112,34 @@ static void createVkBuffer(Buffer::Bind bind, Buffer::Access access, Buffer::Usa
 
 	VmaAllocationInfo allocationInfo = {};
 	vmaGetAllocationInfo(vulkanAPI->memoryAllocator, vmaAllocation, &allocationInfo);
-	if (access != Buffer::Access::None && !allocationInfo.pMappedData)
+	if (cpuAccess != Buffer::CpuAccess::None && !allocationInfo.pMappedData)
 		throw GardenError("Failed to map buffer memory.");
 	map = (uint8*)allocationInfo.pMappedData;
+
+	if (hasAnyFlag(usage, Buffer::Usage::DeviceAddress))
+	{
+		vk::BufferDeviceAddressInfo info(vmaInstance);
+		deviceAddress = (uint64)VulkanAPI::get()->device.getBufferAddress(info);
+	}
 }
 
 //**********************************************************************************************************************
-Buffer::Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size,
-	uint64 version) : Memory(size, access, usage, strategy, version)
+Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 size,
+	uint64 version) : Memory(size, cpuAccess, location, strategy, version)
 {
 	GARDEN_ASSERT(size > 0);
 
+	auto graphicsAPI = GraphicsAPI::get();
+	if (hasAnyFlag(usage, Buffer::Usage::DeviceAddress) && !graphicsAPI->hasBufferDeviceAddress())
+		throw GardenError("Device buffer address is not supported on this GPU.");
+	if (hasAnyFlag(usage, Buffer::Usage::StorageAS | Buffer::Usage::BuildInputAS) && !graphicsAPI->hasRayTracing())
+		throw GardenError("Ray tracing acceleration is not supported on this GPU.");
+
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		createVkBuffer(bind, access, usage, strategy, size, instance, allocation, map);
+		createVkBuffer(usage, cpuAccess, location, strategy, size, instance, allocation, map, deviceAddress);
 	else abort();
 
-	this->bind = bind;
+	this->usage = usage;
 }
 
 //**********************************************************************************************************************
@@ -283,7 +302,7 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(size == 0 || size % 4 == 0);
 	GARDEN_ASSERT(size == 0 || size + offset <= binarySize);
-	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	auto graphicsAPI = GraphicsAPI::get();
@@ -315,11 +334,11 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 
 	auto srcView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
+	GARDEN_ASSERT(hasAnyFlag(srcView->usage, Usage::TransferSrc));
 
 	auto dstView = graphicsAPI->bufferPool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(dstView->usage, Usage::TransferDst));
 	
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)

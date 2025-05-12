@@ -121,9 +121,9 @@ static void renderVkMemoryDetails(const VmaAllocationInfo& allocationInfo,
 	const vk::MemoryType& memoryType, const vk::MemoryHeap& memoryHeap, const Memory& memory)
 {
 	ImGui::TextWrapped("Binary size: %s", toBinarySizeString(memory.getBinarySize()).c_str());
-	ImGui::TextWrapped("Memory access: %s", toString(memory.getMemoryAccess()).data());
-	ImGui::TextWrapped("Memory usage: %s", toString(memory.getMemoryUsage()).data());
-	ImGui::TextWrapped("Memory strategy: %s", toString(memory.getMemoryStrategy()).data());
+	ImGui::TextWrapped("Memory CPU access: %s", toString(memory.getCpuAccess()).data());
+	ImGui::TextWrapped("Memory location: %s", toString(memory.getLocation()).data());
+	ImGui::TextWrapped("Memory strategy: %s", toString(memory.getStrategy()).data());
 	ImGui::TextWrapped("Allocation size: %s", toBinarySizeString(allocationInfo.size).c_str());
 	ImGui::TextWrapped("Allocation offset: %s", toBinarySizeString(allocationInfo.offset).c_str());
 	ImGui::TextWrapped("Memory type index: %lu", (long unsigned)allocationInfo.memoryType);
@@ -156,7 +156,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString, bool& sear
 	auto& buffer = buffers[selectedItem];
 	ImGui::SeparatorText(bufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Bind types: { %s }", toStringList(buffer.getBind()).c_str());
+	ImGui::TextWrapped("Usage: { %s }", toStringList(buffer.getUsage()).c_str());
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -200,7 +200,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	auto& image = images[selectedItem];
 	auto size = image.getSize();
 
-	if (hasAnyFlag(image.getBind(), Image::Bind::Sampled) && image.isReady())
+	if (hasAnyFlag(image.getUsage(), Image::Usage::Sampled) && image.isReady())
 	{
 		imageMip = std::min(imageMip, (int)image.getMipCount() - 1);
 		imageLayer = std::min(imageLayer, (int)image.getSize().getZ() - 1);
@@ -225,7 +225,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(image.getFormat()).data());
-	ImGui::TextWrapped("Bind types: { %s }", toStringList(image.getBind()).c_str());
+	ImGui::TextWrapped("Usage: { %s }", toStringList(image.getUsage()).c_str());
 	ImGui::TextWrapped("Image size: %lux%lux%lu", (unsigned long)size.getX(), 
 		(unsigned long)size.getY(), (unsigned long)size.getZ());
 	ImGui::TextWrapped("Mip count: %lu", (unsigned long)image.getMipCount());
@@ -324,7 +324,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 		imageName = image->getDebugName().empty() ? "Image " +
 			to_string(*imageView.getImage()) : image->getDebugName();
 
-		if (hasAnyFlag(image->getBind(), Image::Bind::Sampled) && image->isReady())
+		if (hasAnyFlag(image->getUsage(), Image::Usage::Sampled) && image->isReady())
 		{
 			auto size = image->getSize();
 			auto aspectRatio = (float)size.getY() / size.getX();

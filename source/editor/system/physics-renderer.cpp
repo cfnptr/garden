@@ -26,8 +26,8 @@ using namespace garden::physics;
 
 static ID<Buffer> createVertexBuffer(uint64 size, const void* data)
 {
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
-		Buffer::Access::None, data, size, Buffer::Usage::PreferGPU, Buffer::Strategy::Default);
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst,
+		Buffer::CpuAccess::None, data, size, Buffer::Location::PreferGPU, Buffer::Strategy::Default);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.vertex.physicsDebug" + to_string(*buffer));
 	return buffer;
 }

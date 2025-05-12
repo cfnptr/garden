@@ -21,8 +21,8 @@ using namespace garden::graphics;
 void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 {
 	auto vulkanAPI = VulkanAPI::get();
-	auto _code = vector<vector<uint8>>(1); _code[0] = std::move(createData.code);
-	auto shaders = createShaders(_code, createData.shaderPath);
+	auto shaderCode = std::move(createData.code);
+	auto shaders = createShaders(&shaderCode, 1, createData.shaderPath); //TODO: with maintenance5 we can omit shader modules creation.
 
 	vk::SpecializationInfo specializationInfo;
 	fillVkSpecConsts(createData.shaderPath, &specializationInfo, createData.specConsts,

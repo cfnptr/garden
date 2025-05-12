@@ -27,7 +27,7 @@ static void getBlackPlaceholder(ID<Image>& blackPlaceholder)
 	if (!blackPlaceholder)
 	{
 		blackPlaceholder = GraphicsSystem::Instance::get()->createImage(Image::Format::UnormR8,
-			Image::Bind::Sampled, { { nullptr } }, uint2::one, Image::Strategy::Size);
+			Image::Usage::Sampled, { { nullptr } }, uint2::one, Image::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(blackPlaceholder, "image.editor.deferred.blackPlaceholder");
 	}
 }

@@ -175,7 +175,7 @@ public:
 	struct alignas(64) UnsortedMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
-		float4x3 model = float4x3(0.0f);
+		float4x3 model = float4x3::zero;
 		float distanceSq = 0.0f;
 	private:
 		uint32 _alignment = 0;
@@ -185,7 +185,7 @@ public:
 	struct alignas(64) SortedMesh final
 	{
 		MeshRenderComponent* renderView = nullptr;
-		float4x3 model = float4x3(0.0f);
+		float4x3 model = float4x3::zero;
 		float distanceSq = 0.0f;
 		uint32 bufferIndex = 0;
 

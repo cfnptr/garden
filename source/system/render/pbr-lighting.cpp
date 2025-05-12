@@ -189,8 +189,8 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 	constexpr auto shadowFormat = Image::Format::SfloatR16G16B16A16;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::ColorAttachment | 
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::Storage | Image::Bind::TransferDst, 
+	auto image = graphicsSystem->createImage(shadowFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::Storage | Image::Usage::TransferDst, 
 		mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadowBuffer");
 
@@ -242,8 +242,8 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
-		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::Storage | 
-		Image::Bind::TransferDst, mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
+		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::Storage | 
+		Image::Usage::TransferDst, mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.aoBuffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
@@ -389,8 +389,8 @@ static ID<Image> createDfgLUT()
 	}
 	
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Bind::TransferDst |
-		Image::Bind::Sampled, { { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
+	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Usage::TransferDst |
+		Image::Usage::Sampled, { { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
 	return image;
 }
@@ -979,8 +979,8 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	shaderPreprocessSH(shBufferData);
 
 	// TODO: check if final SH is the same as debug in release build.
-	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Bind::TransferDst | Buffer::Bind::Uniform,
-		Buffer::Access::None, shBuffer, 0, 0, Buffer::Usage::PreferGPU, strategy);
+	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::TransferDst | Buffer::Usage::Uniform,
+		Buffer::CpuAccess::None, shBuffer, 0, 0, Buffer::Location::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************
@@ -1054,8 +1054,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	for (uint8 i = 0; i < specularMipCount; i++)
 		mips[i] = Image::Layers(6);
 
-	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | 
-		Image::Bind::Storage | Image::Bind::Sampled, mips, uint2(cubemapSize), strategy);
+	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::TransferDst | 
+		Image::Usage::Storage | Image::Usage::Sampled, mips, uint2(cubemapSize), strategy);
 
 	uint64 specularCacheSize = 0;
 	for (uint8 i = 1; i < specularMipCount; i++)
@@ -1063,8 +1063,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	specularCacheSize *= sizeof(SpecularItem);
 
 	auto cpuSpecularCache = graphicsSystem->createBuffer(
-		Buffer::Bind::TransferSrc, Buffer::Access::RandomReadWrite,
-		specularCacheSize, Buffer::Usage::Auto, Buffer::Strategy::Speed);
+		Buffer::Usage::TransferSrc, Buffer::CpuAccess::RandomReadWrite,
+		specularCacheSize, Buffer::Location::Auto, Buffer::Strategy::Speed);
 	SET_RESOURCE_DEBUG_NAME(cpuSpecularCache,
 		"buffer.storage.lighting.cpuSpecularCache" + to_string(*cpuSpecularCache));
 	auto cpuSpecularCacheView = graphicsSystem->get(cpuSpecularCache);
@@ -1105,11 +1105,9 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	for (uint32 i = 0; i < (uint32)gpuSpecularCache.size(); i++)
 	{
 		auto cacheSize = countBuffer[i] * sizeof(SpecularItem);
-		auto cache = graphicsSystem->createBuffer(Buffer::Bind::Storage |
-			Buffer::Bind::TransferDst, Buffer::Access::None, cacheSize,
-			Buffer::Usage::PreferGPU, Buffer::Strategy::Speed);
-		SET_RESOURCE_DEBUG_NAME(cache,
-			"buffer.storage.lighting.gpuSpecularCache" + to_string(*cache));
+		auto cache = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst, 
+			Buffer::CpuAccess::None, cacheSize, Buffer::Location::PreferGPU, Buffer::Strategy::Speed);
+		SET_RESOURCE_DEBUG_NAME(cache, "buffer.storage.lighting.gpuSpecularCache" + to_string(*cache));
 		gpuSpecularCache[i] = cache;
 
 		Buffer::CopyRegion bufferCopyRegion;
@@ -1180,8 +1178,8 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
 
-	cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Bind::TransferDst | 
-		Image::Bind::TransferSrc | Image::Bind::Sampled, mips, size, strategy, Image::Format::SfloatR32G32B32A32));
+	cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::TransferDst | 
+		Image::Usage::TransferSrc | Image::Usage::Sampled, mips, size, strategy, Image::Format::SfloatR32G32B32A32));
 	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);

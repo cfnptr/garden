@@ -36,24 +36,24 @@ class Memory : public Resource
 {
 public:
 	/**
-	 * @brief Graphics GPU memory access type.
+	 * @brief Graphics GPU memory CPU side access.
 	 */
-	enum class Access : uint8
+	enum class CpuAccess : uint8
 	{
 		None,            /**< No CPU read/write access, GPU only memory. */
 		SequentialWrite, /**< Sequential data write only from a CPU side. */
 		RandomReadWrite, /**< Random data read/write from a CPU side. */
-		Count            /**< Graphics memory access type count. */
+		Count            /**< Graphics GPU memory CPU side access type count. */
 	};
 	/**
-	 * @brief Graphics memory preferred usage.
+	 * @brief Graphics memory preferred location.
 	 */
-	enum class Usage : uint8
+	enum class Location : uint8
 	{
-		Auto,      /**< Automatically select the best memory type for specific resource. */
+		Auto,      /**< Automatically select the best memory location for specific resource. */
 		PreferGPU, /**< Prefer memory allocated on a GPU side. */
 		PreferCPU, /**< Prefer memory allocated on a CPU side. */
-		Count      /**< Graphics memory preferred usage count. */
+		Count      /**< Graphics memory preferred location count. */
 	};
 	/**
 	 * @brief Graphics memory allocation strategy.
@@ -69,12 +69,12 @@ protected:
 	void* allocation = nullptr;
 	uint64 binarySize = 0;
 	uint64 version = 0;
-	Access access = {};
-	Usage usage = {};
+	CpuAccess cpuAccess = {};
+	Location location = {};
 	Strategy strategy = {};
 
-	Memory(uint64 binarySize, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
-		binarySize(binarySize), version(version), access(access), usage(usage), strategy(strategy) { }
+	Memory(uint64 binarySize, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 version) noexcept :
+		binarySize(binarySize), version(version), cpuAccess(cpuAccess), location(location), strategy(strategy) { }
 	friend class MemoryExt;
 public:
 	/*******************************************************************************************************************
@@ -89,44 +89,33 @@ public:
 	 */
 	uint64 getBinarySize() const noexcept { return binarySize; }
 	/**
-	 * @brief Returns resource memory access type.
+	 * @brief Returns resource memory CPU side access.
 	 * @details Describes how GPU memory will be accessed from a CPU side.
 	 */
-	Access getMemoryAccess() const noexcept { return access; }
+	CpuAccess getCpuAccess() const noexcept { return cpuAccess; }
 	/**
-	 * @brief Returns resource memory preferred usage.
+	 * @brief Returns resource memory preferred location.
 	 * @details Describes preferred memory allocation place, CPU or GPU.
 	 */
-	Usage getMemoryUsage() const noexcept { return usage; }
+	Location getLocation() const noexcept { return location; }
 	/**
 	 * @brief Returns resource memory allocation strategy.
 	 * @details Describes allocation strategy, prefer speed or size.
 	 */
-	Strategy getMemoryStrategy() const noexcept { return strategy; }
+	Strategy getStrategy() const noexcept { return strategy; }
 };
 
 /**
- * @brief Aligns memory size to the specified alignment.
- * 
- * @param size memory size in bytes
- * @param alignment target memory alignment in bytes
+ * @brief Memory CPU side access name strings.
  */
-constexpr uint64 alignMemorySize(uint64 size, uint64 alignment) noexcept
-{
-	return (size + alignment - 1) & ~(alignment - 1);
-}
-
-/**
- * @brief Memory access name strings.
- */
-constexpr string_view memoryAccessNames[(psize)Memory::Access::Count] =
+constexpr string_view memoryCpuAccessNames[(psize)Memory::CpuAccess::Count] =
 {
 	"None", "SequentialWrite", "RandomReadWrite"
 };
 /**
- * @brief Memory preferred usage name strings.
+ * @brief Memory preferred location name strings.
  */
-constexpr string_view memoryUsageNames[(psize)Memory::Usage::Count] =
+constexpr string_view memoryLocationNames[(psize)Memory::Location::Count] =
 {
 	"Auto", "PreferGPU", "PreferCPU"
 };
@@ -139,22 +128,22 @@ constexpr string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
 };
 
 /**
- * @brief Returns memory access name string.
- * @param memoryAccess target memory access type
+ * @brief Returns memory CPU side access name string.
+ * @param memoryCpuAccess target memory CPU side access
  */
-static string_view toString(Memory::Access memoryAccess) noexcept
+static string_view toString(Memory::CpuAccess memoryCpuAccess) noexcept
 {
-	GARDEN_ASSERT(memoryAccess < Memory::Access::Count);
-	return memoryAccessNames[(psize)memoryAccess];
+	GARDEN_ASSERT(memoryCpuAccess < Memory::CpuAccess::Count);
+	return memoryCpuAccessNames[(psize)memoryCpuAccess];
 }
 /**
- * @brief Returns memory preferred usage name string.
- * @param memoryUsage target memory preferred usage type
+ * @brief Returns memory preferred location name string.
+ * @param memoryLocation target memory preferred location type
  */
-static string_view toString(Memory::Usage memoryUsage) noexcept
+static string_view toString(Memory::Location memoryLocation) noexcept
 {
-	GARDEN_ASSERT(memoryUsage < Memory::Usage::Count);
-	return memoryUsageNames[(psize)memoryUsage];
+	GARDEN_ASSERT(memoryLocation < Memory::Location::Count);
+	return memoryLocationNames[(psize)memoryLocation];
 }
 /**
  * @brief Returns memory allocation strategy name string.
@@ -192,17 +181,17 @@ public:
 	 */
 	static uint64& getVersion(Memory& memory) noexcept { return memory.version; }
 	/**
-	 * @brief Returns memory access type.
+	 * @brief Returns memory CPU side access.
 	 * @warning In most cases you should use @ref Memory functions.
 	 * @param[in] memory target memory instance
 	 */
-	static Memory::Access& getAccess(Memory& memory) noexcept { return memory.access; }
+	static Memory::CpuAccess& getCpuAccess(Memory& memory) noexcept { return memory.cpuAccess; }
 	/**
-	 * @brief Returns memory preferred usage.
+	 * @brief Returns memory preferred location.
 	 * @warning In most cases you should use @ref Memory functions.
 	 * @param[in] memory target memory instance
 	 */
-	static Memory::Usage& getUsage(Memory& memory) noexcept { return memory.usage; }
+	static Memory::Location& getLocation(Memory& memory) noexcept { return memory.location; }
 	/**
 	 * @brief Returns memory allocation strategy.
 	 * @warning In most cases you should use @ref Memory functions.

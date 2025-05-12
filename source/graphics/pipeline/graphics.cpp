@@ -117,26 +117,27 @@ static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::C
 void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 {
 	auto vulkanAPI = VulkanAPI::get();
-	vector<ShaderStage> stages; vector<vector<uint8>> code;
+	ShaderStage stages[2]; vector<uint8> codeArray[2];
+	uint8 stageCount = 0;
 
 	if (!createData.vertexCode.empty())
 	{
-		stages.push_back(ShaderStage::Vertex);
-		code.push_back(std::move(createData.vertexCode));
+		stages[stageCount] = ShaderStage::Vertex;
+		codeArray[stageCount] = std::move(createData.vertexCode);
+		stageCount++;
 	}
 	if (!createData.fragmentCode.empty())
 	{
-		stages.push_back(ShaderStage::Fragment);
-		code.push_back(std::move(createData.fragmentCode));
+		stages[stageCount] = ShaderStage::Fragment;
+		codeArray[stageCount] = std::move(createData.fragmentCode);
+		stageCount++;
 	}
 
-	auto shaders = createShaders(code, createData.shaderPath);
-	vector<vk::PipelineShaderStageCreateInfo> stageInfos(stages.size());
-	vk::PipelineShaderStageCreateInfo stageInfo;
-	stageInfo.pName = "main";
+	auto shaders = createShaders(codeArray, stageCount, createData.shaderPath);
+	vk::PipelineShaderStageCreateInfo stageInfos[2];
+	vk::SpecializationInfo specializationInfos[2];
 
-	vector<vk::SpecializationInfo> specializationInfos(stages.size());
-	for (uint32 i = 0; i < (uint32)stages.size(); i++)
+	for (uint32 i = 0; i < stageCount; i++)
 	{
 		auto stage = stages[i];
 		auto specializationInfo = &specializationInfos[i];
@@ -144,8 +145,10 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		fillVkSpecConsts(createData.shaderPath, specializationInfo, createData.specConsts,
 			createData.specConstValues, stage, createData.variantCount);
 
+		vk::PipelineShaderStageCreateInfo stageInfo;
 		stageInfo.stage = toVkShaderStage(stage);
 		stageInfo.module = (VkShaderModule)shaders[i];
+		stageInfo.pName = "main";
 		stageInfo.pSpecializationInfo = specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr;
 		stageInfos[i] = stageInfo;
 	}
@@ -184,8 +187,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	vk::PipelineMultisampleStateCreateInfo multisampleInfo({},
 		vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
 
-	vk::GraphicsPipelineCreateInfo pipelineInfo({}, (uint32)stageInfos.size(), stageInfos.data(),
-		&inputInfo, nullptr, nullptr, &viewportInfo, nullptr, &multisampleInfo, nullptr, nullptr, nullptr,
+	vk::GraphicsPipelineCreateInfo pipelineInfo({}, stageCount, stageInfos, &inputInfo, 
+		nullptr, nullptr, &viewportInfo, nullptr, &multisampleInfo, nullptr, nullptr, nullptr,
 		(VkPipelineLayout)pipelineLayout, nullptr, createData.subpassIndex, nullptr, -1);
 
 	vk::PipelineRenderingCreateInfoKHR dynamicRenderingInfo;
@@ -648,7 +651,7 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 }
 
 //**********************************************************************************************************************
-void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer, Index indexType,
+void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer, IndexType indexType,
 	uint32 indexCount, uint32 instanceCount, uint32 indexOffset, uint32 vertexOffset, uint32 instanceOffset)
 {
 	GARDEN_ASSERT(instance); // is ready
@@ -690,7 +693,7 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 
 //**********************************************************************************************************************
 void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
-	ID<Buffer> indexBuffer, Index indexType, uint32 indexCount, uint32 instanceCount,
+	ID<Buffer> indexBuffer, IndexType indexType, uint32 indexCount, uint32 instanceCount,
 	uint32 indexOffset, uint32 vertexOffset, uint32 instanceOffset)
 {
 	GARDEN_ASSERT(instance); // is ready

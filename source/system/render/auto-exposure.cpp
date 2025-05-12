@@ -22,15 +22,13 @@ using namespace garden;
 
 static ID<Buffer> createHistogramBuffer()
 {
-	auto bind = Buffer::Bind::Storage | Buffer::Bind::TransferDst;
-
+	auto usage = Buffer::Usage::Storage | Buffer::Usage::TransferDst;
 	#if GARDEN_EDITOR
-	bind |= Buffer::Bind::TransferSrc;
+	usage |= Buffer::Usage::TransferSrc;
 	#endif
 	
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(bind,
-		Buffer::Access::None, AutoExposureRenderSystem::histogramSize * sizeof(uint32), 
-		Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(usage, Buffer::CpuAccess::None, 
+		AutoExposureRenderSystem::histogramSize * sizeof(uint32), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.autoExposure.histogram");
 	return buffer;
 }

@@ -49,22 +49,22 @@ static vk::ImageViewType toVkImageViewType(Image::Type imageType) noexcept
 		default: abort();
 	}
 }
-static constexpr vk::ImageUsageFlags toVkImageUsages(Image::Bind imageBind) noexcept
+static constexpr vk::ImageUsageFlags toVkImageUsages(Image::Usage imageUsage) noexcept
 {
 	vk::ImageUsageFlags flags;
-	if (hasAnyFlag(imageBind, Image::Bind::TransferSrc))
+	if (hasAnyFlag(imageUsage, Image::Usage::TransferSrc))
 		flags |= vk::ImageUsageFlagBits::eTransferSrc;
-	if (hasAnyFlag(imageBind, Image::Bind::TransferDst))
+	if (hasAnyFlag(imageUsage, Image::Usage::TransferDst))
 		flags |= vk::ImageUsageFlagBits::eTransferDst;
-	if (hasAnyFlag(imageBind, Image::Bind::Sampled))
+	if (hasAnyFlag(imageUsage, Image::Usage::Sampled))
 		flags |= vk::ImageUsageFlagBits::eSampled;
-	if (hasAnyFlag(imageBind, Image::Bind::Storage))
+	if (hasAnyFlag(imageUsage, Image::Usage::Storage))
 		flags |= vk::ImageUsageFlagBits::eStorage;
-	if (hasAnyFlag(imageBind, Image::Bind::ColorAttachment))
+	if (hasAnyFlag(imageUsage, Image::Usage::ColorAttachment))
 		flags |= vk::ImageUsageFlagBits::eColorAttachment;
-	if (hasAnyFlag(imageBind, Image::Bind::DepthStencilAttachment))
+	if (hasAnyFlag(imageUsage, Image::Usage::DepthStencilAttachment))
 		flags |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	if (hasAnyFlag(imageBind, Image::Bind::InputAttachment))
+	if (hasAnyFlag(imageUsage, Image::Usage::InputAttachment))
 		flags |= vk::ImageUsageFlagBits::eInputAttachment;
 	return flags;
 }
@@ -80,7 +80,7 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 }
 
 //**********************************************************************************************************************
-static void createVkImage(Image::Type type, Image::Format format, Image::Bind bind, 
+static void createVkImage(Image::Type type, Image::Format format, Image::Usage usage, 
 	Image::Strategy strategy, u32x4 size, void*& instance, void*& allocation)
 {
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -89,7 +89,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 	imageInfo.mipLevels = size.getW();
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage = (VkImageUsageFlags)toVkImageUsages(bind);
+	imageInfo.usage = (VkImageUsageFlags)toVkImageUsages(usage);
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // TODO: multi queue
 	imageInfo.queueFamilyIndexCount = 0;
 	imageInfo.pQueueFamilyIndices = nullptr;
@@ -131,7 +131,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 	allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	allocationCreateInfo.flags = toVmaMemoryStrategy(strategy);
 
-	if (hasAnyFlag(bind, Image::Bind::Fullscreen))
+	if (hasAnyFlag(usage, Image::Usage::Fullscreen))
 	{
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 		allocationCreateInfo.priority = 1.0f;
@@ -154,19 +154,19 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Bind bi
 }
 
 //**********************************************************************************************************************
-Image::Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size, uint64 version) :
-	Memory(0, Access::None, Usage::Auto, strategy, version), barrierStates(size.getZ() * size.getW())
+Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version) :
+	Memory(0, CpuAccess::None, Location::Auto, strategy, version), barrierStates(size.getZ() * size.getW())
 {
 	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		createVkImage(type, format, bind, strategy, size, instance, allocation);
+		createVkImage(type, format, usage, strategy, size, instance, allocation);
 	else abort();
 
 	this->binarySize = 0;
 	this->type = type;
 	this->format = format;
-	this->bind = bind;
+	this->usage = usage;
 	this->swapchain = false;
 	this->size = size;
 
@@ -181,15 +181,15 @@ Image::Image(Type type, Format format, Bind bind, Strategy strategy, u32x4 size,
 }
 
 //**********************************************************************************************************************
-Image::Image(void* instance, Format format, Bind bind, Strategy strategy, uint2 size, uint64 version) : 
-	Memory(toBinarySize(format) * size.x * size.y, Access::None, Usage::Auto, strategy, version), barrierStates(1)
+Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint64 version) : 
+	Memory(toBinarySize(format) * size.x * size.y, CpuAccess::None, Location::Auto, strategy, version), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;
 	this->format = format;
-	this->bind = bind;
+	this->usage = usage;
 	this->swapchain = true;
 	this->size = u32x4(size.x, size.y, 1, 1);
 }
@@ -252,7 +252,7 @@ ID<ImageView> Image::getDefaultView()
 	return defaultView;
 }
 
-bool Image::isSupported(Type type, Format format, Bind bind, uint3 size, uint8 mipCount, uint32 layerCount)
+bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8 mipCount, uint32 layerCount)
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -260,7 +260,7 @@ bool Image::isSupported(Type type, Format format, Bind bind, uint3 size, uint8 m
 		imageFormatInfo.format = toVkFormat(format);
 		imageFormatInfo.type = toVkImageType(type);
 		imageFormatInfo.tiling = vk::ImageTiling::eOptimal;
-		imageFormatInfo.usage = toVkImageUsages(bind);
+		imageFormatInfo.usage = toVkImageUsages(usage);
 		if (type == Type::Cubemap)
 			imageFormatInfo.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
 
@@ -334,7 +334,7 @@ void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatFloat(format) || isFormatNorm(format));
-	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
@@ -358,7 +358,7 @@ void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatInt(format));
-	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
@@ -382,7 +382,7 @@ void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatUint(format));
-	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
@@ -406,7 +406,7 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(isFormatDepthOrStencil(format));
-	GARDEN_ASSERT(hasAnyFlag(bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 	
 	ClearImageCommand command;
@@ -437,11 +437,11 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
+	GARDEN_ASSERT(hasAnyFlag(srcView->usage, Usage::TransferSrc));
 
 	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(dstView->usage, Usage::TransferDst));
 	GARDEN_ASSERT(toBinarySize(srcView->format) == toBinarySize(dstView->format));
 
 	#if GARDEN_DEBUG
@@ -498,11 +498,11 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 
 	auto bufferView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT(ResourceExt::getInstance(**bufferView)); // is ready
-	GARDEN_ASSERT(hasAnyFlag(bufferView->getBind(), Buffer::Bind::TransferSrc));
+	GARDEN_ASSERT(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc));
 	
 	auto imageView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT(imageView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(imageView->getBind(), Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(imageView->getUsage(), Usage::TransferDst));
 	
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -555,11 +555,11 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 
 	auto imageView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT(imageView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(imageView->getBind(), Bind::TransferSrc));
+	GARDEN_ASSERT(hasAnyFlag(imageView->getUsage(), Usage::TransferSrc));
 
 	auto bufferView = graphicsAPI->bufferPool.get(destination);
 	GARDEN_ASSERT(ResourceExt::getInstance(**bufferView)); // is ready
-	GARDEN_ASSERT(hasAnyFlag(bufferView->getBind(), Buffer::Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferDst));
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -613,11 +613,11 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT(srcView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(srcView->bind, Bind::TransferSrc));
+	GARDEN_ASSERT(hasAnyFlag(srcView->usage, Usage::TransferSrc));
 
 	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT(dstView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(dstView->bind, Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(dstView->usage, Usage::TransferDst));
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)

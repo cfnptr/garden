@@ -37,8 +37,8 @@ static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 	for (uint8 i = 0; i < mipCount; i++)
 		mips[i].push_back(nullptr);
 
-	auto image = graphicsSystem->createImage(bloomFormat, Image::Bind::ColorAttachment | 
-		Image::Bind::Sampled | Image::Bind::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(bloomFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.bloom.buffer");
 
 	for (uint8 i = 0; i < mipCount; i++)

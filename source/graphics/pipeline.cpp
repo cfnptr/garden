@@ -208,6 +208,16 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Shade
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize);
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Compute))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::RayGeneration))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eRaygenKHR, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::Intersection))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eIntersectionKHR, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::AnyHit))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eAnyHitKHR, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::ClosestHit))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eClosestHitKHR, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::Miss))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMissKHR, 0, pushConstantsSize);
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
 		(uint32)pushConstantRanges.size(), pushConstantRanges.data());
@@ -291,17 +301,16 @@ static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector
 }
 
 //**********************************************************************************************************************
-static vector<void*> createVkShaders(const vector<vector<uint8>>& code, const fs::path& pipelinePath)
+static vector<void*> createVkShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
 	auto vulkanAPI = VulkanAPI::get();
-	vector<void*> shaders(code.size());
+	vector<void*> shaders(shaderCount);
 
-	for (uint8 i = 0; i < (uint8)code.size(); i++)
+	for (uint8 i = 0; i < shaderCount; i++)
 	{
-		const auto& shaderCode = code[i];
+		const auto& shaderCode = codeArray[i];
 		vk::ShaderModuleCreateInfo shaderInfo({},
-	
-		(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
+			(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
 		shaders[i] = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
 
 		#if GARDEN_DEBUG
@@ -340,7 +349,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (createData.maxBindlessCount > 0 && !VulkanAPI::get()->hasDescriptorIndexing)
+		if (createData.maxBindlessCount > 0 && !VulkanAPI::get()->features.descriptorIndexing)
 		{
 			throw GardenError("Bindless descriptors are not supported on this GPU. ("
 				"pipeline: )" + createData.shaderPath.generic_string() + ")");
@@ -395,10 +404,10 @@ bool Pipeline::destroy()
 	return true;
 }
 
-vector<void*> Pipeline::createShaders(const vector<vector<uint8>>& code, const fs::path& pipelinePath)
+vector<void*> Pipeline::createShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		return createVkShaders(code, pipelinePath);
+		return createVkShaders(codeArray, shaderCount, pipelinePath);
 	else abort();
 }
 void Pipeline::destroyShaders(const vector<void*>& shaders)
@@ -585,6 +594,14 @@ void Pipeline::bind(uint8 variant)
 			graphicsAPI->currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
 		}
 	}
+	else if (type == PipelineType::RayTracing)
+	{
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+		{
+			readyLock++;
+			graphicsAPI->currentCommandBuffer->addLockResource(ID<RayTracingPipeline>(pipeline));
+		}
+	}
 	else abort();
 
 	BindPipelineCommand command;
@@ -607,27 +624,33 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipeline = graphicsAPI->getPipeline(type, this);
 
+	graphicsAPI->currentCommandBuffer->commandMutex.lock();
 	if (type == PipelineType::Graphics)
 	{
-		graphicsAPI->currentCommandBuffer->commandMutex.lock();
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			readyLock++;
 			graphicsAPI->currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
 		}
-		graphicsAPI->currentCommandBuffer->commandMutex.unlock();
 	}
 	else if (type == PipelineType::Compute)
 	{
-		graphicsAPI->currentCommandBuffer->commandMutex.lock();
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			readyLock++;
 			graphicsAPI->currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
 		}
-		graphicsAPI->currentCommandBuffer->commandMutex.unlock();
+	}
+	else if (type == PipelineType::RayTracing)
+	{
+		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+		{
+			readyLock++;
+			graphicsAPI->currentCommandBuffer->addLockResource(ID<RayTracingPipeline>(pipeline));
+		}
 	}
 	else abort();
+	graphicsAPI->currentCommandBuffer->commandMutex.unlock();
 
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)

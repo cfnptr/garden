@@ -64,22 +64,28 @@ class Buffer final : public Memory
 {
 public:
 	/**
-	 * @brief Buffer bind type. (Affects driver optimizations)
+	 * @brief Buffer usage types. (Affects driver optimizations)
 	 * 
 	 * @details
-	 * Buffer bind flags are critical for ensuring that an buffer is compatible 
+	 * Buffer usage flags are critical for ensuring that an buffer is compatible 
 	 * with the operations the application intends to perform on it.
 	 */
-	enum class Bind : uint8
+	enum class Usage : uint32
 	{
-		None        = 0x00, /**< No buffer usage specified, zero mask. */
-		TransferSrc = 0x01, /**< Buffer can be used as the source of a transfer command. */
-		TransferDst = 0x02, /**< Buffer can be used as the destination of a transfer command. */
-		Vertex      = 0x04, /**< Buffer can be used by a graphics rendering command. */
-		Index       = 0x08, /**< Buffer can be used by a graphics rendering command. */
-		Uniform     = 0x10, /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
-		Storage     = 0x20  /**< Buffer can be used in a descriptor set. */
+		None          = 0x0000, /**< No buffer usage specified, zero mask. */
+		TransferSrc   = 0x0001, /**< Buffer can be used as the source of a transfer command. */
+		TransferDst   = 0x0002, /**< Buffer can be used as the destination of a transfer command. */
+		Vertex        = 0x0004, /**< Buffer can be used by a graphics rendering commands. */
+		Index         = 0x0008, /**< Buffer can be used by a graphics rendering commands. */
+		Uniform       = 0x0010, /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
+		Storage       = 0x0020, /**< Buffer can be used in a descriptor set. (Slower but has bigger capacity) */
+		Indirect      = 0x0040, /**< Buffer can be used by an inderect rendering commands. */
+		DeviceAddress = 0x0080, /**< Buffer device address can be used inside shaders. */
+		StorageAS     = 0x0100, /**< Buffer can be used for a acceleration structure storage space. */
+		BuildInputAS  = 0x0200  /**< Buffer can be used as a read only input for acceleration structure build. */
 	};
+
+	static constexpr uint8 usageCount = 10; /**< Buffer usage type count. */
 
 	/**
 	 * @brief Buffer memory copy region description.
@@ -101,13 +107,15 @@ public:
 		uint32 stage = 0;
 	};
 private:
-	Bind bind = {};
+	uint8 _alignment = 0;
 	uint8* map = nullptr;
+	uint64 deviceAddress = 0;
+	Usage usage = {};
 	BarrierState barrierState = {};
 
-	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 size, uint64 version);
-	Buffer(Bind bind, Access access, Usage usage, Strategy strategy, uint64 version) noexcept :
-		Memory(0, access, usage, strategy, version), bind(bind) { }
+	Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 size, uint64 version);
+	Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 version) noexcept :
+		Memory(0, cpuAccess, location, strategy, version), usage(usage) { }
 	bool destroy() final;
 
 	friend class BufferExt;
@@ -120,10 +128,10 @@ public:
 	Buffer() = default;
 
 	/**
-	 * @brief Returns buffer bind type.
-	 * @details Buffer bind type helps to optimize it usage inside the driver.
+	 * @brief Returns buffer usage flags.
+	 * @details Buffer usage flags helps to optimize it usage inside the driver.
 	 */
-	Bind getBind() const noexcept { return bind; }
+	Usage getUsage() const noexcept { return usage; }
 
 	/**
 	 * @brief Returns pointer to the buffer mapped memory or nullptr.
@@ -135,6 +143,11 @@ public:
 	 * @warning Use it only according to the @ref Memory::Access!
 	 */
 	const uint8* getMap() const noexcept { return map; }
+	/**
+	 * @brief Returns buffer device address which can be used inside shaders.
+	 * @warning Make sure that your target GPU supports buffer device address!
+	 */
+	uint64 getDeviceAddress() const noexcept { return deviceAddress; }
 
 	/**
 	 * @brief Is buffer memory mapped. (Can be written or read)
@@ -303,41 +316,44 @@ public:
 	// TODO: Add support of self copying if regions not overlapping.
 };
 
-/**
- * @brief Buffer bind type count.
- */
-constexpr uint8 bufferBindCount = 7;
-
-DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Bind)
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Usage)
 
 /***********************************************************************************************************************
- * @brief Returns buffer bind name string.
- * @param bufferBind target buffer bind type
+ * @brief Returns buffer usage name string.
+ * @param imageUsage target buffer usage flags
  */
-static string_view toString(Buffer::Bind bufferBind)
+static string_view toString(Buffer::Usage bufferUsage)
 {
-	if (hasOneFlag(bufferBind, Buffer::Bind::TransferSrc)) return "TransferSrc";
-	if (hasOneFlag(bufferBind, Buffer::Bind::TransferDst)) return "TransferDst";
-	if (hasOneFlag(bufferBind, Buffer::Bind::Vertex)) return "Vertex";
-	if (hasOneFlag(bufferBind, Buffer::Bind::Index)) return "Index";
-	if (hasOneFlag(bufferBind, Buffer::Bind::Uniform)) return "Uniform";
-	if (hasOneFlag(bufferBind, Buffer::Bind::Storage)) return "Storage";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::TransferSrc)) return "TransferSrc";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::TransferDst)) return "TransferDst";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::Vertex)) return "Vertex";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::Index)) return "Index";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::Uniform)) return "Uniform";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::Storage)) return "Storage";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::Indirect)) return "Indirect";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::DeviceAddress)) return "DeviceAddress";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::StorageAS)) return "StorageAS";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::BuildInputAS)) return "BuildInputAS";
 	return "None";
 }
 /**
- * @brief Returns buffer bind name string list.
- * @param bufferBind target buffer bind type
+ * @brief Returns buffer usage name string list.
+ * @param imageUsage target buffer usage flags
  */
-static string toStringList(Buffer::Bind bufferBind)
+static string toStringList(Buffer::Usage bufferUsage)
 {
 	string list;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::None)) list += "None | ";
-	if (hasAnyFlag(bufferBind, Buffer::Bind::TransferSrc)) list += "TransferSrc | ";
-	if (hasAnyFlag(bufferBind, Buffer::Bind::TransferDst)) list += "TransferDst | " ;
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Vertex)) list += "Vertex | ";
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Index)) list += "Index | ";
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Uniform)) list += "Uniform | ";
-	if (hasAnyFlag(bufferBind, Buffer::Bind::Storage)) list += "Storage | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::None)) list += "None | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferSrc)) list += "TransferSrc | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferDst)) list += "TransferDst | " ;
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Vertex)) list += "Vertex | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Index)) list += "Index | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Uniform)) list += "Uniform | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Storage)) list += "Storage | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::Indirect)) list += "Indirect | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::DeviceAddress)) list += "DeviceAddress | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::StorageAS)) list += "StorageAS | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::BuildInputAS)) list += "BuildInputAS | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }
@@ -350,17 +366,23 @@ class BufferExt final
 {
 public:
 	/**
-	 * @brief Returns buffer bind type.
-	 * @warning In most cases you should use @ref Buffer functions.
-	 * @param[in] buffer target buffer instance
-	 */
-	static Buffer::Bind& getBind(Buffer& buffer) noexcept { return buffer.bind; }
-	/**
 	 * @brief Returns buffer memory map.
 	 * @warning In most cases you should use @ref Buffer functions.
 	 * @param[in] buffer target buffer instance
 	 */
 	static uint8*& getMap(Buffer& buffer) noexcept { return buffer.map; }
+	/**
+	 * @brief Returns buffer device address.
+	 * @warning In most cases you should use @ref Buffer functions.
+	 * @param[in] buffer target buffer instance
+	 */
+	static uint64& getDeviceAddress(Buffer& buffer) noexcept { return buffer.deviceAddress; }
+	/**
+	 * @brief Returns buffer usage flags.
+	 * @warning In most cases you should use @ref Buffer functions.
+	 * @param[in] buffer target buffer instance
+	 */
+	static Buffer::Usage& getUsage(Buffer& buffer) noexcept { return buffer.usage; }
 	/**
 	 * @brief Returns buffer memory barrier state.
 	 * @warning In most cases you should use @ref Buffer functions.
@@ -372,32 +394,32 @@ public:
 	 * @brief Creates a new buffer data.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
 	 * 
-	 * @param bind buffer bind type
-	 * @param access buffer access type
-	 * @param usage buffer preferred usage
+	 * @param usage buffer usage flags
+	 * @param cpuAccess buffer CPU side access
+	 * @param location buffer preferred location
 	 * @param strategy buffer allocation strategy
 	 * @param size buffer size in bytes
 	 * @param version buffer instance version
 	 */
-	static Buffer create(Buffer::Bind bind, Buffer::Access access,
-		Buffer::Usage usage, Buffer::Strategy strategy, uint64 size, uint64 version)
+	static Buffer create(Buffer::Usage usage, Buffer::CpuAccess cpuAccess,
+		Buffer::Location location, Buffer::Strategy strategy, uint64 size, uint64 version)
 	{
-		return Buffer(bind, access, usage, strategy, size, version);
+		return Buffer(usage, cpuAccess, location, strategy, size, version);
 	}
 	/**
 	 * @brief Creates a new buffer data holder.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
 	 * 
-	 * @param bind buffer bind type
-	 * @param access buffer access type
-	 * @param usage buffer preferred usage
+	 * @param usage buffer usage flags
+	 * @param cpuAccess buffer CPU side access
+	 * @param location buffer preferred location
 	 * @param strategy buffer allocation strategy
 	 * @param version buffer instance version
 	 */
-	static Buffer create(Buffer::Bind bind, Buffer::Access access,
-		Buffer::Usage usage, Buffer::Strategy strategy, uint64 version)
+	static Buffer create(Buffer::Usage usage, Buffer::CpuAccess cpuAccess,
+		Buffer::Location location, Buffer::Strategy strategy, uint64 version)
 	{
-		return Buffer(bind, access, usage, strategy, version);
+		return Buffer(usage, cpuAccess, location, strategy, version);
 	}
 	/**
 	 * @brief Moves internal buffer objects.
@@ -443,12 +465,12 @@ static psize toBinarySize(BufferChannel channel) noexcept
  * @brief Returns buffer channels binary size in bytes.
  * @param[in] channels target buffer channels
  */
- static psize toBinarySize(const vector<BufferChannel>& channels) noexcept
- {
+static psize toBinarySize(const vector<BufferChannel>& channels) noexcept
+{
 	psize binarySize = 0;
 	for (auto channel : channels)
 		binarySize += toBinarySize(channel);
 	return binarySize;
- }
+}
 
 } // namespace garden::graphics
