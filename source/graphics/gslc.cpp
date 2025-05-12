@@ -47,11 +47,12 @@ namespace garden::graphics
 	};
 	struct GraphicsGslValues final : public GslValues
 	{
+		uint8 _alignment = 0;
 		uint8 vertexAttributeCount = 0;
 		uint8 blendStateCount = 0;
-		ShaderStage pushConstantsStages = {};
 		uint16 vertexAttributesSize = 0;
-		GraphicsPipeline::State pipelineState;
+		ShaderStage pushConstantsStages = {};
+		GraphicsPipeline::State pipelineState = {};
 		// should be aligned.
 	};
 	struct ComputeGslValues final : public GslValues

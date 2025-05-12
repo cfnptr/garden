@@ -58,6 +58,7 @@ class VulkanCommandBuffer final : public CommandBuffer
 	void processCommand(const CopyBufferImageCommand& command) final;
 	void processCommand(const BlitImageCommand& command) final;
 	void processCommand(const SetDepthBiasCommand& command) final;
+	void processCommand(const BuildAccelerationStructureCommand& command) final;
 
 	#if GARDEN_DEBUG
 	void processCommand(const BeginLabelCommand& command) final;

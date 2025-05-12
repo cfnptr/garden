@@ -27,8 +27,8 @@ static ID<Buffer> createReadbackBuffer()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto size = (sizeof(ToneMappingRenderSystem::LuminanceData) + 
 		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getSwapchainSize();
-	auto buffer = graphicsSystem->createBuffer(Buffer::Bind::TransferDst, 
-		Buffer::Access::RandomReadWrite, size, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
+	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::TransferDst, 
+		Buffer::CpuAccess::RandomReadWrite, size, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.editor.autoExposure.readback");
 	return buffer;
 }

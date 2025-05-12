@@ -193,7 +193,7 @@ public:
 	/**
 	 * @brief Returns deferred depth copy buffer.
 	 */
-	 ID<Image> getDepthCopyBuffer();
+	ID<Image> getDepthCopyBuffer();
 
 	/**
 	 * @brief Returns deferred G-Buffer framebuffer.

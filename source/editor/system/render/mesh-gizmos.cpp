@@ -101,8 +101,8 @@ void MeshGizmosEditorSystem::init()
 	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer);
 
 	graphicsSystem->getCubeVertexBuffer(); // Allocating default cube in advance.
-	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Bind::Vertex | Buffer::Bind::TransferDst,
-		Buffer::Access::None, arrowVertices, 0, 0, Buffer::Usage::PreferGPU, Buffer::Strategy::Size);
+	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst,
+		Buffer::CpuAccess::None, arrowVertices, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(arrowVertexBuffer, "buffer.vertex.gizmos.arrow");
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();

@@ -22,6 +22,7 @@
 #include "garden/graphics/constants.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/graphics/pipeline/ray-tracing.hpp"
 
 namespace garden
 {
@@ -202,6 +203,11 @@ public:
 	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
+	/**
+	 * @brief Returns true if target GPU has ray tracing support.
+	 * @note Without hardware support we can't use ray tracing pipelines.
+	 */
+	bool hasRayTracing() const noexcept;
 
 	/**
 	 * @brief Returns current swapchain changes.
@@ -371,96 +377,128 @@ public:
 	{
 		setDebugName(ID<DescriptorSet>(descriptorSet), name);
 	}
+
+	/**
+	 * @brief Sets BLAS set debug name. (visible in GPU profiler)
+	 * @param blas target BLAS instance
+	 * @param[in] name BLAS debug name
+	 */
+	void setDebugName(ID<Blas> blas, const string& name);
+	/**
+	 * @brief Sets BLAS debug name. (visible in GPU profiler)
+	 * @param blas target BLAS instance
+	 * @param[in] name BLAS debug name
+	 */
+	void setDebugName(const Ref<Blas>& blas, const string& name)
+	{
+		setDebugName(ID<Blas>(blas), name);
+	}
+
+	/**
+	 * @brief Sets TLAS set debug name. (visible in GPU profiler)
+	 * @param tlas target TLAS instance
+	 * @param[in] name TLAS debug name
+	 */
+	void setDebugName(ID<Tlas> tlas, const string& name);
+	/**
+	 * @brief Sets TLAS debug name. (visible in GPU profiler)
+	 * @param tlas target TLAS instance
+	 * @param[in] name TLAS debug name
+	 */
+	void setDebugName(const Ref<Tlas>& tlas, const string& name)
+	{
+		setDebugName(ID<Tlas>(tlas), name);
+	}
 	#endif
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new buffer instance.
 	 * 
-	 * @param bind buffer bind type
-	 * @param access buffer access type
+	 * @param usage buffer usage flags
+	 * @param cpuAccess buffer CPU side access
 	 * @param[in] data target buffer data
 	 * @param size buffer size in bytes
-	 * @param usage buffer preferred usage
+	 * @param location buffer preferred location
 	 * @param strategy buffer allocation strategy
 	 * 
 	 * @throw GardenError if failed to allocate buffer.
 	 */
-	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access, const void* data, uint64 size,
-		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default);
+	ID<Buffer> createBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, const void* data, uint64 size,
+		Buffer::Location location = Buffer::Location::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default);
 	/**
 	 * @brief Creates a new empty buffer instance. (Undefined initial data)
 	 * 
-	 * @param bind buffer bind type
-	 * @param access buffer access type
+	 * @param usage buffer usage flags
+	 * @param cpuAccess buffer CPU side access
 	 * @param size buffer size in bytes
-	 * @param usage buffer preferred usage
+	 * @param location buffer preferred location
 	 * @param strategy buffer allocation strategy
 	 * 
 	 * @throw GardenError if failed to allocate buffer.
 	 */
-	ID<Buffer> createBuffer(Buffer::Bind bind, Buffer::Access access, uint64 size,
-		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
+	ID<Buffer> createBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, uint64 size,
+		Buffer::Location location = Buffer::Location::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
-		return createBuffer(bind, access, nullptr, size, usage, strategy);
+		return createBuffer(usage, cpuAccess, nullptr, size, location, strategy);
 	}
 	/**
 	 * @brief Creates a new buffer instance.
 	 * 
 	 * @tparam T data array element type
-	 * @param bind buffer bind type
-	 * @param access buffer access type
+	 * @param usage buffer usage flags
+	 * @param cpuAccess buffer CPU side access
 	 * @param[in] data target buffer data
 	 * @param count data array element count
 	 * @param offset data array element offset
-	 * @param usage buffer preferred usage
+	 * @param location buffer preferred location
 	 * @param strategy buffer allocation strategy
 	 * 
 	 * @throw GardenError if failed to allocate buffer.
 	 */
 	template<typename T = float>
 	ID<Buffer> createBuffer(
-		Buffer::Bind bind, Buffer::Access access, const vector<T>& data, psize count = 0, psize offset = 0,
-		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
+		Buffer::Usage usage, Buffer::CpuAccess cpuAccess, const vector<T>& data, psize count = 0, psize offset = 0,
+		Buffer::Location location = Buffer::Location::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
 		if (count == 0)
 		{
-			return createBuffer(bind, access, data.data() + offset,
-				(data.size() - offset) * sizeof(T), usage, strategy);
+			return createBuffer(usage, cpuAccess, data.data() + offset,
+				(data.size() - offset) * sizeof(T), location, strategy);
 		}
 		else
 		{
 			GARDEN_ASSERT(count + offset <= data.size());
-			return createBuffer(bind, access, data.data() + offset, count * sizeof(T), usage, strategy);
+			return createBuffer(usage, cpuAccess, data.data() + offset, count * sizeof(T), location, strategy);
 		}
 	}
 	/**
 	 * @brief Creates a new buffer instance.
 	 * 
 	 * @tparam T data array element type
-	 * @param bind buffer bind type
-	 * @param access buffer access type
+	 * @param usage buffer usage flags
+	 * @param cpuAccess buffer CPU side access
 	 * @param[in] data target buffer data
 	 * @param count data array element count
 	 * @param offset data array element offset
-	 * @param usage buffer preferred usage
+	 * @param location buffer preferred location
 	 * @param strategy buffer allocation strategy
 	 * 
 	 * @throw GardenError if failed to allocate buffer.
 	 */
 	template<typename T = float, psize S>
 	ID<Buffer> createBuffer(
-		Buffer::Bind bind, Buffer::Access access, const array<T, S>& data, psize count = 0, psize offset = 0,
-		Buffer::Usage usage = Buffer::Usage::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
+		Buffer::Usage usage, Buffer::CpuAccess cpuAccess, const array<T, S>& data, psize count = 0, psize offset = 0,
+		Buffer::Location location = Buffer::Location::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
 		if (count == 0)
 		{
-			return createBuffer(bind, access, data.data() + offset,
-				(data.size() - offset) * sizeof(T), usage, strategy);
+			return createBuffer(usage, cpuAccess, data.data() + offset,
+				(data.size() - offset) * sizeof(T), location, strategy);
 		}
 		else
 		{
 			GARDEN_ASSERT(count + offset <= data.size());
-			return createBuffer(bind, access, data.data() + offset, count * sizeof(T), usage, strategy);
+			return createBuffer(usage, cpuAccess, data.data() + offset, count * sizeof(T), location, strategy);
 		}
 	}
 
@@ -507,7 +545,7 @@ public:
 	 * 
 	 * @param type image dimensionality
 	 * @param format image data format
-	 * @param bind image bind type
+	 * @param usage image usage flags
 	 * @param[in] data image data (mips, layers)
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
@@ -516,13 +554,13 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Type type, Image::Format format, Image::Bind bind, const Image::Mips& data, u32x4 size,
+		Image::Type type, Image::Format format, Image::Usage usage, const Image::Mips& data, u32x4 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined);
 	/**
 	 * @brief Creates a new 3D image (texture) instance.
 	 * 
 	 * @param format image data format
-	 * @param bind image bind type
+	 * @param usage image usage flags
 	 * @param[in] data image data (mips, layers)
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
@@ -531,17 +569,17 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, u32x4 size,
+		Image::Format format, Image::Usage usage, const Image::Mips& data, u32x4 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
-		return createImage(Image::Type::Texture3D, format, bind, data, size, strategy, dataFormat);
+		return createImage(Image::Type::Texture3D, format, usage, data, size, strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new 2D image (texture) instance.
 	 * @details Automatically detects if image has array type.
 	 * 
 	 * @param format image data format
-	 * @param bind image bind type
+	 * @param usage image usage flags
 	 * @param[in] data image data (mips, layers)
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
@@ -550,19 +588,19 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, uint2 size,
+		Image::Format format, Image::Usage usage, const Image::Mips& data, uint2 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture2DArray : Image::Type::Texture2D;
-		return createImage(imageType, format, bind, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
+		return createImage(imageType, format, usage, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new 1D image (texture) instance.
 	 * @details Automatically detects if image has array type.
 	 * 
 	 * @param format image data format
-	 * @param bind image bind type
+	 * @param usage image usage flags
 	 * @param[in] data image data (mips, layers)
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
@@ -571,18 +609,18 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, int32 size,
+		Image::Format format, Image::Usage usage, const Image::Mips& data, int32 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture1DArray : Image::Type::Texture1D;
-		return createImage(imageType, format, bind, data, u32x4(size, 1, 1), strategy, dataFormat);
+		return createImage(imageType, format, usage, data, u32x4(size, 1, 1), strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new cubemap image (texture) instance.
 	 * 
 	 * @param format image data format
-	 * @param bind image bind type
+	 * @param usage image usage flags
 	 * @param[in] data image data (mips, layers)
 	 * @param size image size in pixels
 	 * @param strategy image allocation strategy
@@ -591,11 +629,11 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createCubemap(
-		Image::Format format, Image::Bind bind, const Image::Mips& data, uint2 size,
+		Image::Format format, Image::Usage usage, const Image::Mips& data, uint2 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
-		return createImage(Image::Type::Cubemap, format, bind, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
+		return createImage(Image::Type::Cubemap, format, usage, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
 	}
 
 	/* 
@@ -728,12 +766,12 @@ public:
 	 * @brief Returns sampler data accessor.
 	 * @param sampler target sampler instance
 	 */
-	 View<Sampler> get(ID<Sampler> sampler) const;
+	View<Sampler> get(ID<Sampler> sampler) const;
 	 /**
 	  * @brief Returns sampler data accessor.
 	  * @param sampler target sampler instance
 	  */
-	 View<Sampler> get(const Ref<Sampler>& sampler) const { return get(ID<Sampler>(sampler)); }
+	View<Sampler> get(const Ref<Sampler>& sampler) const { return get(ID<Sampler>(sampler)); }
 
 	/*******************************************************************************************************************
 	 * @brief Destroys graphics pipeline instance.
@@ -806,12 +844,22 @@ public:
 	/**
 	 * @brief Create a new compute descriptor set instance.
 	 * 
-	 * @param graphicsPipeline target compute pipeline
+	 * @param computePipeline target compute pipeline
 	 * @param[in] uniforms shader uniform array
 	 * @param[in] samplers dynamic sampler array (mutable uniforms)
 	 * @param index index of descriptor set in the shader
 	 */
 	ID<DescriptorSet> createDescriptorSet(ID<ComputePipeline> computePipeline,
+		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
+	/**
+	 * @brief Create a new ray tracing descriptor set instance.
+	 * 
+	 * @param rayTracingPipeline target ray tracing pipeline
+	 * @param[in] uniforms shader uniform array
+	 * @param[in] samplers dynamic sampler array (mutable uniforms)
+	 * @param index index of descriptor set in the shader
+	 */
+	ID<DescriptorSet> createDescriptorSet(ID<RayTracingPipeline> rayTracingPipeline,
 		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
 
 	/**
@@ -842,6 +890,44 @@ public:
 	{
 		return get(ID<DescriptorSet>(descriptorSet));
 	}
+
+	/*******************************************************************************************************************
+	 * @brief Create a new graphics bottom level acceleration structure instance. (BLAS)
+	 * 
+	 * @param[in] geometryArray target triangle geometry array
+	 * @param geometryCount geometry array size
+	 * @param flags acceleration structure build flags
+	 * @param scratchBuffer AS build scractch buffer (null = auto create)
+	 */
+	ID<Blas> createBlas(const Blas::TrianglesBuffer* geometryArray, 
+		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+	/**
+	 * @brief Create a new graphics bottom level acceleration structure instance. (BLAS)
+	 * 
+	 * @param[in] geometryArray target AABB geometry array
+	 * @param geometryCount geometry array size
+	 * @param flags acceleration structure build flags
+	 * @param scratchBuffer AS build scractch buffer (null = auto create)
+	 */
+	ID<Blas> createBlas(const Blas::AabbsBuffer* geometryArray, 
+		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+
+	 /**
+	 * @brief Destroys bottom level acceleration structure instance. (BLAS)
+	 * @param blas target BLAS instance or null
+	 */
+	void destroy(ID<Blas> blas);
+
+	/**
+	 * @brief Returns bottom level acceleration structure data accessor. (BLAS)
+	 * @param blas target BLAS instance
+	 */
+	View<Blas> get(ID<Blas> blas) const;
+	 /**
+	  * @brief Returns bottom level acceleration structure data accessor. (BLAS)
+	  * @param blas target BLAS instance
+	  */
+	View<Blas> get(const Ref<Blas>& blas) const { return get(ID<Blas>(blas)); }
 	
 	//******************************************************************************************************************
 	// Render commands

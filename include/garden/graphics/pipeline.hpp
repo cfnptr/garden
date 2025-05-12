@@ -49,15 +49,15 @@ public:
 	 */
 	struct Uniform final
 	{
-		GslUniformType type = {};      /**< Uniform variable type. */
 		ShaderStage shaderStages = {}; /**< Shader stages where uniform is used. */
+		GslUniformType type = {};      /**< Uniform variable type. */
 		uint8 bindingIndex = 0;        /**< Binding index inside the descriptor set. */
 		uint8 descriptorSetIndex = 0;  /**< Index of the descriptor set. */
 		uint8 arraySize = 0;           /**< Number of descriptors contained in the binding. */
 		bool readAccess = true;        /**< Is variable read access allowed. */
 		bool writeAccess = true;       /**< Is variable write access allowed. */
 		bool isMutable = false;        /**< Is uniform resource can be assigned dynamically. */
-		// Note: Should be aligned.
+		uint8 _alignment = 0;          // Note: Should be aligned.
 	};
 
 	/*******************************************************************************************************************
@@ -74,7 +74,7 @@ public:
 		ShaderStage shaderStages = {};
 		GslDataType dataType = {};
 		uint8 index = 0;
-		uint8 _alignment = 0;
+		uint16 _alignment = 0;
 	};
 
 	struct SpecConstBase { GslDataType type = {}; uint32 data = 0; };
@@ -122,10 +122,10 @@ public:
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
+		ShaderStage pushConstantsStages = {};
 		uint16 pushConstantsSize = 0;
 		uint8 descriptorSetCount = 0;
 		uint8 variantCount = 0;
-		ShaderStage pushConstantsStages = {};
 	};
 protected:
 	Uniforms uniforms;
@@ -154,12 +154,14 @@ protected:
 			debugName = "graphicsPipeline." + path.generic_string();
 		else if (type == PipelineType::Compute)
 			debugName = "computePipeline." + path.generic_string();
+		else if (type == PipelineType::RayTracing)
+			debugName = "rayTracingPipeline." + path.generic_string();
 		else abort();
 		#endif
 	}
 	bool destroy() final;
 
-	static vector<void*> createShaders(const vector<vector<uint8>>& code, const fs::path& path);
+	static vector<void*> createShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);
 
 	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const SpecConsts& specConsts, 

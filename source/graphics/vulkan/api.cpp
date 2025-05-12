@@ -342,15 +342,10 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 }
 
 //**********************************************************************************************************************
-static vk::Device createVkDevice(
-	vk::PhysicalDevice physicalDevice, uint32 versionMajor, uint32 versionMinor,
-	uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex,
-	uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount,
-	uint32 transferQueueMaxCount, uint32 computeQueueMaxCount,
-	uint32& frameQueueIndex, uint32& graphicsQueueIndex,
-	uint32& transferQueueIndex, uint32& computeQueueIndex,
-	bool& hasMemoryBudget, bool& hasMemoryPriority, bool& hasPageableMemory,
-	bool& hasDynamicRendering, bool& hasDescriptorIndexing)
+static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versionMajor, uint32 versionMinor,
+	uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex, uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount,
+	uint32 transferQueueMaxCount, uint32 computeQueueMaxCount, uint32& frameQueueIndex, uint32& graphicsQueueIndex,
+	uint32& transferQueueIndex, uint32& computeQueueIndex, VulkanAPI::Features& features)
 {
 	uint32 graphicsQueueCount = 1, transferQueueCount = 0, computeQueueCount = 0;
 	frameQueueIndex = 0;
@@ -421,24 +416,41 @@ static vk::Device createVkDevice(
 	};
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
+	auto hasDeferredHostOperations = false, hasAccelerationStructure = false, hasRayTracingPipeline = false;
+
 	for (const auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0)
-			hasMemoryBudget = true;
-		if (strcmp(properties.extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0)
-			hasMemoryPriority = true;
-		if (strcmp(properties.extensionName, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0)
-			hasPageableMemory = true;
+			features.memoryBudget = true;
+		else if (strcmp(properties.extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0)
+			features.memoryPriority = true;
+		else if (strcmp(properties.extensionName, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0)
+			features.pageableMemory = true;
+		else if (strcmp(properties.extensionName, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0)
+			hasDeferredHostOperations = true;
+		else if (strcmp(properties.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0)
+			hasAccelerationStructure = true;
+		else if (strcmp(properties.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0)
+			hasRayTracingPipeline = true;
 
 		if (versionMinor < 2)
 		{
 			if (strcmp(properties.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
-				hasDescriptorIndexing = true;
+				features.descriptorIndexing = true;
+			else if (strcmp(properties.extensionName, VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0)
+				features.bufferDeviceAddress = true;
 		}
 		if (versionMinor < 3)
 		{
 			if (strcmp(properties.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
-				hasDynamicRendering = true;
+				features.dynamicRendering = true;
+			else if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_4_EXTENSION_NAME) == 0)
+				features.maintenance4 = true;
+		}
+		if (versionMinor < 4)
+		{
+			if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_5_EXTENSION_NAME) == 0)
+				features.maintenance5 = true;
 		}
 	}
 
@@ -446,25 +458,30 @@ static vk::Device createVkDevice(
 	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
 	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
 	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
+	vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures;
+	vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures;
+	vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeloneFeatures;
+	vk::PhysicalDeviceMaintenance4FeaturesKHR maintenance4Features;
+	vk::PhysicalDeviceMaintenance5FeaturesKHR maintenance5Features;
 
-	if (hasMemoryBudget)
+	if (features.memoryBudget)
 		extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-	if (hasMemoryPriority) 
+	if (features.memoryPriority)
 		extensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
 
-	if (hasPageableMemory)
+	if (features.pageableMemory)
 	{
 		deviceFeatures.pNext = &pageableMemoryFeatures;
 		physicalDevice.getFeatures2(&deviceFeatures);
 		if (pageableMemoryFeatures.pageableDeviceLocalMemory)
 			extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
 		else
-			hasPageableMemory = false;
+			features.pageableMemory = false;
 	}
 
 	if (versionMinor < 2)
 	{
-		if (hasDescriptorIndexing)
+		if (features.descriptorIndexing)
 		{
 			deviceFeatures.pNext = &descriptorIndexingFeatures;
 			physicalDevice.getFeatures2(&deviceFeatures);
@@ -480,29 +497,88 @@ static vk::Device createVkDevice(
 			}
 			else
 			{
-				hasDescriptorIndexing = false;
+				features.descriptorIndexing = false;
 			}
+		}
+		if (features.bufferDeviceAddress)
+		{
+			deviceFeatures.pNext = &bufferDeviceAddressFeatures;
+			physicalDevice.getFeatures2(&deviceFeatures);
+			if (bufferDeviceAddressFeatures.bufferDeviceAddress)
+				extensions.push_back(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+			else
+				features.bufferDeviceAddress = false;
 		}
 	}
 	else
 	{
-		hasDescriptorIndexing = true;
+		features.descriptorIndexing = true;
+		features.bufferDeviceAddress = true;
 	}
+
 	if (versionMinor < 3)
 	{
-		if (hasDynamicRendering)
+		if (features.dynamicRendering)
 		{
 			deviceFeatures.pNext = &dynamicRenderingFeatures;
 			physicalDevice.getFeatures2(&deviceFeatures);
 			if (dynamicRenderingFeatures.dynamicRendering)
 				extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 			else
-				hasDynamicRendering = false;
+				features.dynamicRendering = false;
+		}
+		if (features.maintenance4)
+		{
+			deviceFeatures.pNext = &maintenance4Features;
+			physicalDevice.getFeatures2(&deviceFeatures);
+			if (maintenance4Features.maintenance4)
+				extensions.push_back(VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
+			else
+				features.maintenance4 = false;
 		}
 	}
 	else
 	{
-		hasDynamicRendering = true;
+		features.dynamicRendering = true;
+		features.maintenance4 = true;
+	}
+
+	if (versionMinor < 4)
+	{
+		if (features.maintenance5)
+		{
+			deviceFeatures.pNext = &maintenance5Features;
+			physicalDevice.getFeatures2(&deviceFeatures);
+			if (maintenance5Features.maintenance5)
+				extensions.push_back(VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
+			else
+				features.maintenance5 = false;
+		}
+	}
+	else
+	{
+		features.maintenance5 = true;
+	}
+
+	if (hasDeferredHostOperations && hasAccelerationStructure && hasRayTracingPipeline && 
+		features.descriptorIndexing && features.bufferDeviceAddress)
+	{
+		deviceFeatures.pNext = &accelerationStructureFeatures;
+		physicalDevice.getFeatures2(&deviceFeatures);
+		deviceFeatures.pNext = &rayTracingPipeloneFeatures;
+		physicalDevice.getFeatures2(&deviceFeatures);
+
+		if (accelerationStructureFeatures.accelerationStructure && rayTracingPipeloneFeatures.rayTracingPipeline)
+		{
+			extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+			extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+			extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+			features.rayTracing = true;
+		}
+		else
+		{
+			features.rayTracing = false;
+		}
 	}
 
 	deviceFeatures.features = vk::PhysicalDeviceFeatures();
@@ -519,21 +595,31 @@ static vk::Device createVkDevice(
 	lastPNext = &portabilityFeatures.pNext;
 	#endif
 
-	if (hasPageableMemory)
+	if (features.maintenance4)
 	{
-		pageableMemoryFeatures.pageableDeviceLocalMemory = true;
+		maintenance4Features = vk::PhysicalDeviceMaintenance4FeaturesKHR();
+		maintenance4Features.maintenance4 = VK_TRUE;
+		maintenance4Features.pNext = nullptr;
+		*lastPNext = &maintenance4Features;
+		lastPNext = &maintenance4Features.pNext;
+	}
+	if (features.maintenance5 && features.dynamicRendering) // dynamicRendering required
+	{
+		maintenance5Features = vk::PhysicalDeviceMaintenance5FeaturesKHR();
+		maintenance5Features.maintenance5 = VK_TRUE;
+		maintenance5Features.pNext = nullptr;
+		*lastPNext = &maintenance5Features;
+		lastPNext = &maintenance5Features.pNext;
+	}
+	if (features.pageableMemory)
+	{
+		pageableMemoryFeatures = vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT();
+		pageableMemoryFeatures.pageableDeviceLocalMemory = VK_TRUE;
 		pageableMemoryFeatures.pNext = nullptr;
 		*lastPNext = &pageableMemoryFeatures;
 		lastPNext = &pageableMemoryFeatures.pNext;
 	}
-	if (hasDynamicRendering)
-	{
-		dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
-		dynamicRenderingFeatures.pNext = nullptr;
-		*lastPNext = &dynamicRenderingFeatures;
-		lastPNext = &dynamicRenderingFeatures.pNext;
-	}
-	if (hasDescriptorIndexing)
+	if (features.descriptorIndexing)
 	{
 		descriptorIndexingFeatures = vk::PhysicalDeviceDescriptorIndexingFeatures();
 		descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
@@ -546,6 +632,32 @@ static vk::Device createVkDevice(
 		*lastPNext = &descriptorIndexingFeatures;
 		lastPNext = &descriptorIndexingFeatures.pNext;
 	}
+	if (features.bufferDeviceAddress)
+	{
+		bufferDeviceAddressFeatures = vk::PhysicalDeviceBufferDeviceAddressFeatures();
+		bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+		*lastPNext = &bufferDeviceAddressFeatures;
+		lastPNext = &bufferDeviceAddressFeatures.pNext;
+	}
+	if (features.dynamicRendering)
+	{
+		dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures();
+		dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+		*lastPNext = &dynamicRenderingFeatures;
+		lastPNext = &dynamicRenderingFeatures.pNext;
+	}
+	if (features.rayTracing)
+	{
+		accelerationStructureFeatures = vk::PhysicalDeviceAccelerationStructureFeaturesKHR();
+		accelerationStructureFeatures.accelerationStructure = VK_TRUE;
+		*lastPNext = &accelerationStructureFeatures;
+		lastPNext = &accelerationStructureFeatures.pNext;
+
+		rayTracingPipeloneFeatures = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR();
+		rayTracingPipeloneFeatures.rayTracingPipeline = VK_TRUE;
+		*lastPNext = &rayTracingPipeloneFeatures;
+		lastPNext = &rayTracingPipeloneFeatures.pNext;
+	}
 
 	vk::DeviceCreateInfo deviceInfo({}, queueInfos, {}, extensions, {}, &deviceFeatures);
 	auto device = physicalDevice.createDevice(deviceInfo);
@@ -555,7 +667,7 @@ static vk::Device createVkDevice(
 
 //**********************************************************************************************************************
 static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVersion, vk::Instance instance,
-	vk::PhysicalDevice physicalDevice, vk::Device device, bool hasMemoryBudget, bool hasMemoryPriority)
+	vk::PhysicalDevice physicalDevice, vk::Device device, const VulkanAPI::Features& features)
 {
 	VmaAllocatorCreateInfo allocatorInfo = {};
 	allocatorInfo.vulkanApiVersion = VK_MAKE_API_VERSION(0, majorVersion, minorVersion, 0);
@@ -563,15 +675,27 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	allocatorInfo.device = device;
 	allocatorInfo.instance = instance;
 
-	if (hasMemoryBudget)
+	if (features.memoryBudget)
 		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-	if (hasMemoryPriority)
+	if (features.memoryPriority)
 		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
+	if (features.bufferDeviceAddress)
+		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+	if (features.maintenance4)
+		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT;
+	if (features.maintenance5)
+		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
+
+	VmaVulkanFunctions vulkanFunctions;
+	auto result = vmaImportVulkanFunctionsFromVolk(&allocatorInfo, &vulkanFunctions);
+	if (result != VK_SUCCESS)
+		throw GardenError("Failed to import Vulkan function from Volk.");
+	allocatorInfo.pVulkanFunctions = &vulkanFunctions;
 
 	VmaAllocator allocator = nullptr;
-	auto result = vmaCreateAllocator(&allocatorInfo, &allocator);
+	result = vmaCreateAllocator(&allocatorInfo, &allocator);
 	if (result != VK_SUCCESS)
-		throw GardenError("Failed to create memory allocator.");
+		throw GardenError("Failed to create Vulkan memory allocator.");
 	return allocator;
 }
 
@@ -723,19 +847,17 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	
 	physicalDevice = getBestPhysicalDevice(instance);
 	deviceProperties = physicalDevice.getProperties2();
+	deviceFeatures = physicalDevice.getFeatures2();
 	versionMajor = VK_API_VERSION_MAJOR(deviceProperties.properties.apiVersion);
 	versionMinor = VK_API_VERSION_MINOR(deviceProperties.properties.apiVersion);
 	isDeviceIntegrated = deviceProperties.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 	surface = createVkSurface(instance, (GLFWwindow*)window);
 	getVkQueueFamilyIndices(physicalDevice, surface, graphicsQueueFamilyIndex, transferQueueFamilyIndex, 
 		computeQueueFamilyIndex, graphicsQueueMaxCount, transferQueueMaxCount, computeQueueMaxCount);
-	deviceFeatures = physicalDevice.getFeatures2();
 	device = createVkDevice(physicalDevice, versionMajor, versionMinor, graphicsQueueFamilyIndex, 
 		transferQueueFamilyIndex, computeQueueFamilyIndex, graphicsQueueMaxCount, transferQueueMaxCount, 
-		computeQueueMaxCount,frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex,
-		hasMemoryBudget, hasMemoryPriority, hasPageableMemory, hasDynamicRendering, hasDescriptorIndexing);
-	memoryAllocator = createVmaMemoryAllocator(versionMajor, versionMinor,
-		instance, physicalDevice, device, hasMemoryBudget, hasMemoryPriority);
+		computeQueueMaxCount, frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex, features);
+	memoryAllocator = createVmaMemoryAllocator(versionMajor, versionMinor, instance, physicalDevice, device, features);
 	frameQueue = device.getQueue(graphicsQueueFamilyIndex, frameQueueIndex);
 	graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, graphicsQueueIndex);
 	transferQueue = device.getQueue(transferQueueFamilyIndex, transferQueueIndex);
@@ -746,6 +868,12 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex);
 	descriptorPool = createVkDescriptorPool(device);
 	pipelineCache = createPipelineCache(appDataName, appVersion, device, deviceProperties, isCacheLoaded);
+
+	if (features.rayTracing)
+	{
+		deviceProperties.pNext = &asProperties;
+		physicalDevice.getProperties2(&deviceProperties);
+	}
 
 	int sizeX = 0, sizeY = 0;
 	glfwGetFramebufferSize((GLFWwindow*)window, &sizeX, &sizeY);
@@ -873,6 +1001,9 @@ void VulkanAPI::flushDestroyBuffer()
 			break;
 		case GraphicsAPI::DestroyResourceType::Image:
 			vmaDestroyImage(memoryAllocator, (VkImage)resource.data0, (VmaAllocation)resource.data1);
+			break;
+		case GraphicsAPI::DestroyResourceType::AccelerationStructure:
+			device.destroyAccelerationStructureKHR((VkAccelerationStructureKHR)resource.data0);
 			break;
 		case GraphicsAPI::DestroyResourceType::Buffer:
 			vmaDestroyBuffer(memoryAllocator, (VkBuffer)resource.data0, (VmaAllocation)resource.data1);

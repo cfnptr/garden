@@ -33,8 +33,8 @@ static void createDataBuffers(DescriptorSetBuffers& dataBuffers)
 
 	for (uint32 i = 0; i < swapchainSize; i++)
 	{
-		auto buffer = graphicsSystem->createBuffer(Buffer::Bind::Uniform, Buffer::Access::SequentialWrite, 
-			sizeof(CsmRenderSystem::ShadowData), Buffer::Usage::Auto, Buffer::Strategy::Size);
+		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
+			sizeof(CsmRenderSystem::ShadowData), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.csm.data" + to_string(i));
 		dataBuffers[i].resize(1); dataBuffers[i][0] = buffer;
 	}
@@ -45,7 +45,7 @@ static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shad
 {
 	constexpr auto shadowFormat = Image::Format::UnormD16;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(shadowFormat, Image::Bind::DepthStencilAttachment | Image::Bind::Sampled, 
+	auto image = graphicsSystem->createImage(shadowFormat, Image::Usage::DepthStencilAttachment | Image::Usage::Sampled, 
 		{ Image::Layers(CsmRenderSystem::cascadeCount) }, uint2(shadowMapSize), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.csm.shadowMap");
 	imageViews.resize(CsmRenderSystem::cascadeCount);
@@ -64,7 +64,7 @@ static ID<Image> createTransparentData(vector<ID<ImageView>>& imageViews, uint32
 {
 	constexpr auto transparentFormat = Image::Format::UfloatB10G11R11;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(transparentFormat, Image::Bind::ColorAttachment | Image::Bind::Sampled, 
+	auto image = graphicsSystem->createImage(transparentFormat, Image::Usage::ColorAttachment | Image::Usage::Sampled, 
 		{ Image::Layers(CsmRenderSystem::cascadeCount) }, uint2(shadowMapSize), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.csm.transparentMap");
 	imageViews.resize(CsmRenderSystem::cascadeCount);

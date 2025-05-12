@@ -41,9 +41,21 @@ class VulkanAPI final : public GraphicsAPI
 {
 public:
 	// Note: aligning to the cache line size to prevent cache misses.
-	struct alignas(64) atomic_bool_aligned : atomic_bool
+	struct alignas(64) atomic_bool_aligned final : atomic_bool
 	{
 		atomic_bool_aligned() : atomic_bool(false) { }
+	};
+	struct Features final
+	{
+		bool memoryBudget = false;
+		bool memoryPriority = false;
+		bool pageableMemory = false;
+		bool dynamicRendering = false;
+		bool descriptorIndexing = false;
+		bool bufferDeviceAddress = false;
+		bool rayTracing = false;
+		bool maintenance4 = false;
+		bool maintenance5 = false;
 	};
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
@@ -93,14 +105,15 @@ public:
 	vector<vk::ImageCopy> imageCopies;
 	vector<vk::BufferImageCopy> bufferImageCopies;
 	vector<vk::ImageBlit> imageBlits;
+	vector<void**> asBuildData;
+	vector<vk::AccelerationStructureBuildGeometryInfoKHR> asGeometryInfos;
+	vector<const vk::AccelerationStructureBuildRangeInfoKHR*> asRangeInfos;
+	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
 	vk::PhysicalDeviceProperties2 deviceProperties;
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
+	Features features = {};
+	uint32 asOldPipelineStage = 0;
 	bool isCacheLoaded = false;
-	bool hasMemoryBudget = false;
-	bool hasMemoryPriority = false;
-	bool hasPageableMemory = false;
-	bool hasDynamicRendering = false;
-	bool hasDescriptorIndexing = false;
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	vk::DebugUtilsMessengerEXT debugMessenger;
@@ -117,6 +130,15 @@ public:
 	 * @brief Stores shader pipeline cache to the disk.
 	 */
 	void storePipelineCache() final;
+
+	/**
+	 * @brief Returns true if device buffer address supported.
+	 */
+	bool hasBufferDeviceAddress() const final { return features.bufferDeviceAddress; }
+	/**
+	 * @brief Returns true if ray tracing supported.
+	 */
+	bool hasRayTracing() const final { return features.rayTracing; }
 
 	/**
 	 * @brief Returns Vulkan graphics API instance.
@@ -445,13 +467,23 @@ static vk::ShaderStageFlagBits toVkShaderStage(ShaderStage shaderStage) noexcept
 		return vk::ShaderStageFlagBits::eFragment;
 	if (hasOneFlag(shaderStage, ShaderStage::Compute))
 		return vk::ShaderStageFlagBits::eCompute;
+	if (hasOneFlag(shaderStage, ShaderStage::RayGeneration))
+		return vk::ShaderStageFlagBits::eRaygenKHR;
+	if (hasOneFlag(shaderStage, ShaderStage::Intersection))
+		return vk::ShaderStageFlagBits::eIntersectionKHR;
+	if (hasOneFlag(shaderStage, ShaderStage::AnyHit))
+		return vk::ShaderStageFlagBits::eAnyHitKHR;
+	if (hasOneFlag(shaderStage, ShaderStage::ClosestHit))
+		return vk::ShaderStageFlagBits::eClosestHitKHR;
+	if (hasOneFlag(shaderStage, ShaderStage::Miss))
+		return vk::ShaderStageFlagBits::eMissKHR;
 	abort();
 }
 /**
  * @brief Returns Vulkan shader stage flags from the shader stage.
  * @param shaderStage target shader stage
  */
-static vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage) noexcept
+static constexpr vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage) noexcept
 {
 	vk::ShaderStageFlags flags;
 	if (hasAnyFlag(shaderStage, ShaderStage::Vertex))
@@ -460,13 +492,23 @@ static vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage) noexcept
 		flags |= vk::ShaderStageFlagBits::eFragment;
 	if (hasAnyFlag(shaderStage, ShaderStage::Compute))
 		flags |= vk::ShaderStageFlagBits::eCompute;
+	if (hasAnyFlag(shaderStage, ShaderStage::RayGeneration))
+		flags |= vk::ShaderStageFlagBits::eRaygenKHR;
+	if (hasAnyFlag(shaderStage, ShaderStage::Intersection))
+		flags |= vk::ShaderStageFlagBits::eIntersectionKHR;
+	if (hasAnyFlag(shaderStage, ShaderStage::AnyHit))
+		flags |= vk::ShaderStageFlagBits::eAnyHitKHR;
+	if (hasAnyFlag(shaderStage, ShaderStage::ClosestHit))
+		flags |= vk::ShaderStageFlagBits::eClosestHitKHR;
+	if (hasAnyFlag(shaderStage, ShaderStage::Miss))
+		flags |= vk::ShaderStageFlagBits::eMissKHR;
 	return flags;
 }
 /**
  * @brief Returns Vulkan pipeline stage flags from the shader stage.
  * @param shaderStage target shader stage
  */
-static vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage) noexcept
+static constexpr vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage) noexcept
 {
 	vk::PipelineStageFlags flags;
 	if (hasAnyFlag(shaderStage, ShaderStage::Vertex))
@@ -475,6 +517,11 @@ static vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage) noexce
 		flags |= vk::PipelineStageFlagBits::eFragmentShader;
 	if (hasAnyFlag(shaderStage, ShaderStage::Compute))
 		flags |= vk::PipelineStageFlagBits::eComputeShader;
+	if (hasAnyFlag(shaderStage, ShaderStage::RayGeneration | ShaderStage::Intersection | 
+		ShaderStage::AnyHit | ShaderStage::ClosestHit | ShaderStage::Miss))
+	{
+		flags |= vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+	}
 	return flags;
 }
 
@@ -488,6 +535,7 @@ static vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType) no
 	{
 	case PipelineType::Graphics: return vk::PipelineBindPoint::eGraphics;
 	case PipelineType::Compute: return vk::PipelineBindPoint::eCompute;
+	case PipelineType::RayTracing: return vk::PipelineBindPoint::eRayTracingKHR;
 	default: abort();
 	}
 }
@@ -496,7 +544,7 @@ static vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType) no
  * @brief Returns Vulkan image aspect flags from the image data format.
  * @param imageFormat target image data format
  */
-static vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFormat) noexcept
+static constexpr vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFormat) noexcept
 {
 	if (isFormatColor(imageFormat)) return vk::ImageAspectFlagBits::eColor;
 	if (isFormatDepthOnly(imageFormat)) return vk::ImageAspectFlagBits::eDepth;
@@ -566,17 +614,37 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcep
 }
 
 /***********************************************************************************************************************
- * @brief Returns Vulkan index type from the graphics pipeline index type.
- * @param indexType target graphics pipeline index type
+ * @brief Returns Vulkan index type from the index type.
+ * @param indexType target index type
  */
-static vk::IndexType toVkIndexType(GraphicsPipeline::Index indexType) noexcept
+static vk::IndexType toVkIndexType(IndexType indexType) noexcept
 {
 	switch (indexType)
 	{
-		case GraphicsPipeline::Index::Uint16: return vk::IndexType::eUint16;
-		case GraphicsPipeline::Index::Uint32: return vk::IndexType::eUint32;
+		case IndexType::Uint16: return vk::IndexType::eUint16;
+		case IndexType::Uint32: return vk::IndexType::eUint32;
 		default: abort();
 	}
+}
+
+/**
+ * @brief Returns Vulkan build acceleration structure flags from the AS build flags.
+ * @param asBuildFlags target AS build flags
+ */
+static constexpr vk::BuildAccelerationStructureFlagsKHR toVkBuildFlagsAS(BuildFlagsAS asBuildFlags) noexcept
+{
+	vk::BuildAccelerationStructureFlagsKHR flags;
+	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::AllowUpdate))
+		flags |= vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
+	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::AllowCompaction))
+		flags |= vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
+	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::PreferFastTrace))
+		flags |= vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
+	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::PreferFastBuild))
+		flags |= vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild;
+	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::PreferLowMemory))
+		flags |= vk::BuildAccelerationStructureFlagBitsKHR::eLowMemory;
+	return flags;
 }
 
 /**

@@ -44,16 +44,6 @@ class GraphicsPipelineExt;
 class GraphicsPipeline final : public Pipeline
 {
 public:
-	/*******************************************************************************************************************
-	 * @brief Type of the index buffer indices.
-	 * @details Supported 16-bit and 32-bit unsigned integers.
-	 */
-	enum class Index : uint8
-	{
-		Uint16, /**< 16-bit unsigned integer values. */
-		Uint32, /**< 32-bit unsigned integer values. */
-		Count   /**< Index buffer indices type count. */
-	};
 	/**
 	 * @brief Primitive topologies.
 	 * 
@@ -190,6 +180,8 @@ public:
 		All  = 0x0F, /**<  All components are written to the color attachment. */
 	};
 
+	static constexpr uint8 colorComponentCount = 4; /**< Color component count. */
+
 	/*******************************************************************************************************************
 	 * @brief Blending operations state for a framebuffer attachment.
 	 * 
@@ -307,6 +299,7 @@ public:
 		uint16 vertexAttributesSize = 0;
 	};
 private:
+	uint8 _alignment = 0;
 	uint8 subpassIndex = 0;
 	ID<Framebuffer> framebuffer = {};
 
@@ -444,7 +437,7 @@ public:
 	 * @param instanceOffset draw instance offset or 0
 	 */
 	void drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer,
-		Index indexType, uint32 indexCount, uint32 instanceCount = 1,
+		IndexType indexType, uint32 indexCount, uint32 instanceCount = 1,
 		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
@@ -461,7 +454,7 @@ public:
 	 * @param instanceOffset draw instance offset or 0
 	 */
 	void drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
-		ID<Buffer> indexBuffer, Index indexType, uint32 indexCount,
+		ID<Buffer> indexBuffer, IndexType indexType, uint32 indexCount,
 		uint32 instanceCount = 1, uint32 indexOffset = 0,
 		uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 
@@ -502,26 +495,7 @@ public:
 	// TODO: Add dynamic and dynamic/static states (viewport/scissor).
 };
 
-/**
- * @brief Color component count.
- */
-constexpr uint8 colorComponentCount = 4;
-
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(GraphicsPipeline::ColorComponent)
-
-/***********************************************************************************************************************
- * @brief Returns index buffer indices type size in bytes.
- * @param indexType target index buffer indices type
- */
-static constexpr psize toBinarySize(GraphicsPipeline::Index indexType) noexcept
-{
-	switch (indexType)
-	{
-	case GraphicsPipeline::Index::Uint16: return sizeof(uint16);
-	case GraphicsPipeline::Index::Uint32: return sizeof(uint32);
-	default: return 0;
-	}
-}
 
 /**
  * @brief Returns primitive topology type.

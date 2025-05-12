@@ -183,7 +183,7 @@ static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vu
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 
 		buffer->colorImage = vulkanAPI->imagePool.create((VkImage)images[i], imageFormat,
-			Image::Bind::TransferDst, Image::Strategy::Default, framebufferSize, 0);
+			Image::Usage::TransferDst, Image::Strategy::Default, framebufferSize, 0);
 		buffer->secondaryCommandPools = createVkCommandPools(vulkanAPI->device, 
 			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
 

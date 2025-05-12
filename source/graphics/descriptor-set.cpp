@@ -456,15 +456,15 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 					auto image = graphicsAPI->imagePool.get(imageView->getImage());
 					if (isSamplerType(uniformType))
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
+						GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Sampled));
 					}
 					else if (isImageType(uniformType))
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Storage));
+						GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Storage));
 					}
 					else
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::InputAttachment));
+						GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
 					}
 				}
 				else if (isBufferType(uniformType))
@@ -474,11 +474,11 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 
 					if (uniformType == GslUniformType::UniformBuffer)
 					{
-						GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Uniform));
+						GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Uniform));
 					}
 					else
 					{
-						GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Storage));
+						GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage));
 					}
 				}
 				else abort();
@@ -537,11 +537,11 @@ void DescriptorSet::updateUniform(string_view name, const Uniform& uniform, uint
 				auto image = graphicsAPI->imagePool.get(imageView->getImage());
 				if (isSamplerType(uniformType))
 				{
-					GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Sampled));
+					GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Sampled));
 				}
 				else
 				{
-					GARDEN_ASSERT(hasAnyFlag(image->getBind(), Image::Bind::Storage));
+					GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Storage));
 				}
 			}
 			else if (isBufferType(uniformType))
@@ -549,11 +549,11 @@ void DescriptorSet::updateUniform(string_view name, const Uniform& uniform, uint
 				auto buffer = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 				if (uniformType == GslUniformType::UniformBuffer)
 				{
-					GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Uniform));
+					GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Uniform));
 				}
 				else
 				{
-					GARDEN_ASSERT(hasAnyFlag(buffer->getBind(), Buffer::Bind::Storage));
+					GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage));
 				}
 			}
 			else abort();

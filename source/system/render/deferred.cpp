@@ -23,8 +23,8 @@ using namespace garden;
 //**********************************************************************************************************************
 static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool useGI)
 {
-	constexpr auto binds = Image::Bind::ColorAttachment | Image::Bind::Sampled | 
-		Image::Bind::TransferSrc | Image::Bind::TransferDst | Image::Bind::Fullscreen;
+	constexpr auto usage = Image::Usage::ColorAttachment | Image::Usage::Sampled | 
+		Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::Fullscreen;
 	constexpr auto strategy = Image::Strategy::Size;
 	Image::Format formats[DeferredRenderSystem::gBufferCount]
 	{
@@ -49,7 +49,7 @@ static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool u
 			continue;
 		}
 
-		gBuffers[i] = graphicsSystem->createImage(formats[i], binds, mips, framebufferSize, strategy);
+		gBuffers[i] = graphicsSystem->createImage(formats[i], usage, mips, framebufferSize, strategy);
 		SET_RESOURCE_DEBUG_NAME(gBuffers[i], "image.deferred.gBuffer" + to_string(i));
 	}
 }
@@ -58,8 +58,8 @@ static ID<Image> createDepthStencilBuffer(bool isCopy)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(
-		DeferredRenderSystem::depthStencilFormat, Image::Bind::DepthStencilAttachment | 
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst, 
+		DeferredRenderSystem::depthStencilFormat, Image::Usage::DepthStencilAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.depthStencil" + string(isCopy ? "Copy" : ""));
 	return image;
@@ -68,8 +68,8 @@ static ID<Image> createDepthStencilBuffer(bool isCopy)
 static ID<Image> createHdrBuffer(bool isCopy)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(DeferredRenderSystem::hdrBufferFormat, Image::Bind::ColorAttachment | 
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst, 
+	auto image = graphicsSystem->createImage(DeferredRenderSystem::hdrBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.hdr" + string(isCopy ? "Copy" : ""));
 	return image;
@@ -77,8 +77,8 @@ static ID<Image> createHdrBuffer(bool isCopy)
 static ID<Image> createLdrBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(DeferredRenderSystem::ldrBufferFormat, Image::Bind::ColorAttachment | 
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst,
+	auto image = graphicsSystem->createImage(DeferredRenderSystem::ldrBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst,
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.ldr");
 	return image;
@@ -86,8 +86,8 @@ static ID<Image> createLdrBuffer()
 static ID<Image> createUiBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(DeferredRenderSystem::uiBufferFormat, Image::Bind::ColorAttachment | 
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst,
+	auto image = graphicsSystem->createImage(DeferredRenderSystem::uiBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst,
 		{ { nullptr } }, graphicsSystem->getFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.ui");
 	return image;
@@ -97,7 +97,7 @@ static ID<Image> createOitAccumBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(DeferredRenderSystem::oitAccumBufferFormat, 
-		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen, 
+		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Fullscreen, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.oitAccum");
 	return image;
@@ -106,7 +106,7 @@ static ID<Image> createOitRevealBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(DeferredRenderSystem::oitRevealBufferFormat, 
-		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen, 
+		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Fullscreen, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.oitReveal");
 	return image;

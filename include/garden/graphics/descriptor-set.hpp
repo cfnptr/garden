@@ -265,6 +265,12 @@ public:
 	 */
 	static DescriptorSet::Uniforms& getUniforms(DescriptorSet& descriptorSet) noexcept { return descriptorSet.uniforms; }
 	/**
+	 * @brief Returns descriptor set sampler map.
+	 * @warning In most cases you should use @ref DescriptorSet functions.
+	 * @param[in] descriptorSet target descriptor set instance
+	 */
+	static DescriptorSet::Samplers& getSamplers(DescriptorSet& descriptorSet) noexcept { return descriptorSet.samplers; }
+	/**
 	 * @brief Returns descriptor set parent pipeline type.
 	 * @warning In most cases you should use @ref DescriptorSet functions.
 	 * @param[in] descriptorSet target descriptor set instance

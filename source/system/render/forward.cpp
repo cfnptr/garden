@@ -23,8 +23,8 @@ static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(useHdrColorBuffer ? 
-		ForwardRenderSystem::hdrBufferFormat : ForwardRenderSystem::colorBufferFormat, 
-		Image::Bind::ColorAttachment | Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc, 
+		ForwardRenderSystem::hdrBufferFormat : ForwardRenderSystem::colorBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.color");
 	return image;
@@ -32,22 +32,21 @@ static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 static ID<Image> createUiBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(ForwardRenderSystem::uiBufferFormat, Image::Bind::ColorAttachment | 
-		Image::Bind::Sampled | Image::Bind::Fullscreen | Image::Bind::TransferSrc | Image::Bind::TransferDst,
+	auto image = graphicsSystem->createImage(ForwardRenderSystem::uiBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst,
 		{ { nullptr } }, graphicsSystem->getFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.ui");
 	return image;
 }
 static ID<Image> createDepthStencilBuffer()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto bind = Image::Bind::DepthStencilAttachment | Image::Bind::Fullscreen;
-
+	auto usage = Image::Usage::DepthStencilAttachment | Image::Usage::Fullscreen;
 	#if GARDEN_EDITOR
-	bind |= Image::Bind::TransferSrc;
+	usage |= Image::Usage::TransferSrc;
 	#endif
 
-	auto image = graphicsSystem->createImage(ForwardRenderSystem::depthStencilFormat, bind, 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto image = graphicsSystem->createImage(ForwardRenderSystem::depthStencilFormat, usage, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.depthStencil");
 	return image;

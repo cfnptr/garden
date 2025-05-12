@@ -320,7 +320,7 @@ class SamplerExt final
 {
 public:
 	/**
-	 * @brief Returns sampler bind type.
+	 * @brief Returns sampler state.
 	 * @warning In most cases you should use @ref Sampler functions.
 	 * @param[in] sampler target sampler instance
 	 */

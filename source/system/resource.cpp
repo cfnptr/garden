@@ -49,7 +49,7 @@ namespace garden::graphics
 		uint64 version = 0;
 		vector<fs::path> paths;
 		ID<Image> instance = {};
-		Image::Bind bind = {};
+		Image::Usage usage = {};
 		Image::Strategy strategy = {};
 		uint8 maxMipCount = 0;
 		ImageLoadFlags flags = {};
@@ -302,8 +302,8 @@ void ResourceSystem::dequeueBuffers()
 				graphicsAPI->forceResourceDestroy = false;
 			}
 			
-			auto staging = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc,
-				Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
+			auto staging = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
 			SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loaded" + to_string(*staging));
 
 			auto stagingView = graphicsAPI->bufferPool.get(staging);
@@ -374,8 +374,8 @@ void ResourceSystem::dequeueImages()
 				image.setDebugName(image.getDebugName());
 				#endif
 
-				auto staging = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc,
-					Buffer::Access::SequentialWrite, Buffer::Usage::Auto, Buffer::Strategy::Speed, 0);
+				auto staging = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+					Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
 				SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
 
 				auto stagingView = graphicsAPI->bufferPool.get(staging);
@@ -1133,13 +1133,13 @@ static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcep
 }
 
 //**********************************************************************************************************************
-Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::Bind bind,
+Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::Usage usage,
 	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags)
 {
 	// TODO: allow to load file with image paths to load image arrays.
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	GARDEN_ASSERT(!paths.empty());
-	GARDEN_ASSERT(hasAnyFlag(bind, Image::Bind::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
 
 	if (paths.size() > 1)
 	{
@@ -1164,7 +1164,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			Hash128::updateState(hashState, path.c_str(), path.length());
 		}
 
-		Hash128::updateState(hashState, &bind, sizeof(Image::Bind));
+		Hash128::updateState(hashState, &usage, sizeof(Image::Usage));
 		Hash128::updateState(hashState, &maxMipCount, sizeof(uint8));
 		Hash128::updateState(hashState, &flags, sizeof(ImageLoadFlags));
 		hash = Hash128::digestState(hashState);
@@ -1186,7 +1186,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	
 	auto graphicsAPI = GraphicsAPI::get();
 	auto version = graphicsAPI->imageVersion++;
-	auto image = graphicsAPI->imagePool.create(bind, strategy, version);
+	auto image = graphicsAPI->imagePool.create(usage, strategy, version);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto resource = graphicsAPI->imagePool.get(image);
@@ -1203,7 +1203,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		data->version = version;
 		data->paths = paths;
 		data->instance = image;
-		data->bind = bind;
+		data->usage = usage;
 		data->strategy = strategy;
 		data->maxMipCount = maxMipCount;
 		data->flags = flags;
@@ -1227,9 +1227,9 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			
 			ImageQueueItem item =
 			{
-				ImageExt::create(type, format, data->bind, data->strategy, 
+				ImageExt::create(type, format, data->usage, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->version),
-				BufferExt::create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite, Buffer::Usage::Auto,
+				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto,
 					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
 				std::move(paths), realSize, data->instance,
 			};
@@ -1260,14 +1260,14 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
 		auto type = calcLoadedImageType(paths.size(), realSize.y, flags);
 
-		auto imageInstance = ImageExt::create(type, format, bind, strategy,
+		auto imageInstance = ImageExt::create(type, format, usage, strategy,
 			u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto staging = graphicsAPI->bufferPool.create(Buffer::Bind::TransferSrc, Buffer::Access::SequentialWrite,
-			Buffer::Usage::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
+		auto staging = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite,
+			Buffer::Location::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
 		SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
 		auto stagingView = graphicsAPI->bufferPool.get(staging);
 

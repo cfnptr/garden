@@ -195,11 +195,10 @@ public:
 		uint32 baseLayer = 0;       /**< Image base array layer. */
 		uint32 layerCount = 0;      /**< Image array layer count. */
 	};
-
 private:
-	void* renderPass = nullptr;
 	vector<Subpass> subpasses;
 	vector<OutputAttachment> colorAttachments;
+	void* renderPass = nullptr;
 	uint2 size = uint2::zero;
 	OutputAttachment depthStencilAttachment = {};
 	bool isSwapchain = false;
@@ -444,8 +443,8 @@ public:
 	 * @brief Clears first framebuffer attachment content.
 	 * @details See the @ref Framebuffer::clearAttachments().
 	 */
-	 void clearAttachment()
-	 { ClearAttachment attachment; ClearRegion region; clearAttachments(&attachment, 1, &region, 1); }
+	void clearAttachment()
+	{ ClearAttachment attachment; ClearRegion region; clearAttachments(&attachment, 1, &region, 1); }
 
 	/**
 	 * @brief Clears framebuffer depth/stencil attachment content.
@@ -472,12 +471,6 @@ class FramebufferExt final
 {
 public:
 	/**
-	 * @brief Returns framebuffer render pass instance.
-	 * @warning In most cases you should use @ref Framebuffer functions.
-	 * @param[in] framebuffer target framebuffer instance
-	 */
-	static void*& getRenderPass(Framebuffer& framebuffer) noexcept { return framebuffer.renderPass; }
-	/**
 	 * @brief Returns framebuffer subpasses.
 	 * @warning In most cases you should use @ref Framebuffer functions.
 	 * @param[in] framebuffer target framebuffer instance
@@ -491,6 +484,12 @@ public:
 	 */
 	static vector<Framebuffer::OutputAttachment>& getColorAttachments(Framebuffer& framebuffer)
 		noexcept { return framebuffer.colorAttachments; }
+	/**
+	 * @brief Returns framebuffer render pass instance.
+	 * @warning In most cases you should use @ref Framebuffer functions.
+	 * @param[in] framebuffer target framebuffer instance
+	 */
+	static void*& getRenderPass(Framebuffer& framebuffer) noexcept { return framebuffer.renderPass; }
 	/**
 	 * @brief Returns framebuffer size in texels.
 	 * @warning In most cases you should use @ref Framebuffer functions.

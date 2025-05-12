@@ -99,6 +99,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const CopyBufferImageCommand*)command); break;
 		case Command::Type::BlitImage:
 			processCommand(*(const BlitImageCommand*)command); break;
+		case Command::Type::BuildAccelerationStructure:
+			processCommand(*(const BuildAccelerationStructureCommand*)command); break;
 
 		#if GARDEN_DEBUG
 		case Command::Type::BeginLabel:
@@ -137,17 +139,26 @@ void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lo
 		case ResourceType::ImageView:
 			ResourceExt::getReadyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(pair.first)))--;
 			break;
+		case ResourceType::Framebuffer:
+			ResourceExt::getReadyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(pair.first)))--;
+			break;
 		case ResourceType::Sampler:
 			ResourceExt::getReadyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(pair.first)))--;
 			break;
-		case ResourceType::Framebuffer:
-			ResourceExt::getReadyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(pair.first)))--;
+		case ResourceType::Blas:
+			ResourceExt::getReadyLock(**graphicsAPI->blasPool.get(ID<Blas>(pair.first)))--;
+			break;
+		case ResourceType::Tlas:
+			ResourceExt::getReadyLock(**graphicsAPI->tlasPool.get(ID<Tlas>(pair.first)))--;
 			break;
 		case ResourceType::GraphicsPipeline:
 			ResourceExt::getReadyLock(**graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(pair.first)))--;
 			break;
 		case ResourceType::ComputePipeline:
 			ResourceExt::getReadyLock(**graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(pair.first)))--;
+			break;
+		case ResourceType::RayTracingPipeline:
+			ResourceExt::getReadyLock(**graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(pair.first)))--;
 			break;
 		case ResourceType::DescriptorSet:
 			ResourceExt::getReadyLock(**graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(pair.first)))--;
@@ -259,7 +270,7 @@ void CommandBuffer::addCommand(const PushConstantsCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
 		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
-	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize(command.dataSize));
+	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize(command.dataSize, (uint16)4));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(PushConstantsCommandBase));
 	memcpy((uint8*)allocation + sizeof(PushConstantsCommandBase), command.data, command.dataSize);
@@ -428,13 +439,24 @@ void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
 }
+void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
+{
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::ComputeOnly);
+	auto commandSize = (uint32)sizeof(BuildAccelerationStructureCommand);
+	auto allocation = (BuildAccelerationStructureCommand*)allocateCommand(commandSize);
+	*allocation = command;
+	allocation->thisSize = commandSize;
+	allocation->lastSize = lastSize;
+	lastSize = commandSize;
+	hasAnyCommand = true;
+}
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
 void CommandBuffer::addCommand(const BeginLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) + alignSize(nameLength));
+	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) + alignSize(nameLength, (psize)4));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BeginLabelCommandBase));
 	memcpy((uint8*)allocation + sizeof(BeginLabelCommandBase), command.name, nameLength);
@@ -455,7 +477,7 @@ void CommandBuffer::addCommand(const EndLabelCommand& command)
 void CommandBuffer::addCommand(const InsertLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) + alignSize(nameLength));
+	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) + alignSize(nameLength, (psize)4));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(InsertLabelCommandBase));
 	memcpy((uint8*)allocation + sizeof(InsertLabelCommandBase), command.name, nameLength);
