@@ -144,4 +144,17 @@ static T* realloc(T* oldMemoryBlock, psize elementCount)
 	return (T*)newMemoryBlock;
 }
 
+/**
+ * @brief Aligns size to the specified alignment.
+ * 
+ * @tparam T target size type
+ * @param size size in bytes
+ * @param alignment  alignment in bytes
+ */
+template<typename T = size_t>
+constexpr T alignSize(T size, T alignment) noexcept
+{
+	return (size + (alignment - 1)) & ~(alignment - 1);
+}
+
 } // namespace garden

@@ -21,7 +21,7 @@
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/pipeline/ray-tracing.hpp"
-#include "garden/graphics/acceleration-structure.hpp"
+#include "garden/graphics/acceleration-structure/tlas.hpp"
 
 #include <mutex>
 
@@ -50,7 +50,7 @@ struct Command
 	uint32 lastSize = 0;
 	Type type = {};
 
-	constexpr Command(Type type) noexcept : type(type) { }
+	Command(Type type) noexcept : type(type) { }
 };
 
 //**********************************************************************************************************************
@@ -63,7 +63,7 @@ struct BeginRenderPassCommandBase : public Command
 	float clearDepth = 0.0f;
 	uint32 clearStencil = 0x00;
 	int4 region = int4::zero;
-	constexpr BeginRenderPassCommandBase() noexcept : Command(Type::BeginRenderPass) { }
+	BeginRenderPassCommandBase() noexcept : Command(Type::BeginRenderPass) { }
 };
 struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 {
@@ -73,13 +73,13 @@ struct NextSubpassCommand final : public Command
 {
 	uint8 asyncRecording = false;
 	uint16 _alignment = 0;
-	constexpr NextSubpassCommand() noexcept : Command(Type::NextSubpass) { }
+	NextSubpassCommand() noexcept : Command(Type::NextSubpass) { }
 };
 struct ExecuteCommandBase : public Command
 {
 	uint8 _alignment = 0;
 	uint16 bufferCount = 0;
-	constexpr ExecuteCommandBase() noexcept : Command(Type::Execute) { }
+	ExecuteCommandBase() noexcept : Command(Type::Execute) { }
 };
 struct ExecuteCommand final : public ExecuteCommandBase
 {
@@ -89,7 +89,7 @@ struct EndRenderPassCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	constexpr EndRenderPassCommand() noexcept : Command(Type::EndRenderPass) { }
+	EndRenderPassCommand() noexcept : Command(Type::EndRenderPass) { }
 };
 
 //**********************************************************************************************************************
@@ -99,7 +99,7 @@ struct ClearAttachmentsCommandBase : public Command
 	uint16 _alignment = 0;
 	uint32 regionCount = 0;
 	ID<Framebuffer> framebuffer = {};
-	constexpr ClearAttachmentsCommandBase() noexcept : Command(Type::ClearAttachments) { }
+	ClearAttachmentsCommandBase() noexcept : Command(Type::ClearAttachments) { }
 };
 struct ClearAttachmentsCommand final : public ClearAttachmentsCommandBase
 {
@@ -112,14 +112,14 @@ struct BindPipelineCommand final : public Command
 	uint8 variant = 0;
 	uint8 _alignment = 0;
 	ID<Pipeline> pipeline = {};
-	constexpr BindPipelineCommand() noexcept : Command(Type::BindPipeline) { }
+	BindPipelineCommand() noexcept : Command(Type::BindPipeline) { }
 };
 struct BindDescriptorSetsCommandBase : public Command
 {
 	uint8 asyncRecording = false;
 	uint8 rangeCount = 0;
 	uint8 _alignment = 0;
-	constexpr BindDescriptorSetsCommandBase() noexcept : Command(Type::BindDescriptorSets) { }
+	BindDescriptorSetsCommandBase() noexcept : Command(Type::BindDescriptorSets) { }
 };
 struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 {
@@ -133,7 +133,7 @@ struct PushConstantsCommandBase : public Command
 	uint16 dataSize = 0;
 	uint32 shaderStages = 0;
 	void* pipelineLayout = nullptr;
-	constexpr PushConstantsCommandBase() noexcept : Command(Type::PushConstants) { }
+	PushConstantsCommandBase() noexcept : Command(Type::PushConstants) { }
 };
 struct PushConstantsCommand final : public PushConstantsCommandBase
 {
@@ -144,21 +144,21 @@ struct SetViewportCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewport = float4::zero;
-	constexpr SetViewportCommand() noexcept : Command(Type::SetViewport) { }
+	SetViewportCommand() noexcept : Command(Type::SetViewport) { }
 };
 struct SetScissorCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	int4 scissor = int4::zero;
-	constexpr SetScissorCommand() noexcept : Command(Type::SetScissor) { }
+	SetScissorCommand() noexcept : Command(Type::SetScissor) { }
 };
 struct SetViewportScissorCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewportScissor = float4::zero;
-	constexpr SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
+	SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
 
 //**********************************************************************************************************************
@@ -171,7 +171,7 @@ struct DrawCommand final : public Command
 	uint32 vertexOffset = 0;
 	uint32 instanceOffset = 0;
 	ID<Buffer> vertexBuffer = {};
-	constexpr DrawCommand() noexcept : Command(Type::Draw) { }
+	DrawCommand() noexcept : Command(Type::Draw) { }
 };
 struct DrawIndexedCommand final : public Command
 {
@@ -185,14 +185,14 @@ struct DrawIndexedCommand final : public Command
 	uint32 instanceOffset = 0;
 	ID<Buffer> vertexBuffer = {};
 	ID<Buffer> indexBuffer = {};
-	constexpr DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }
+	DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }
 };
 struct DispatchCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	uint3 groupCount = uint3::zero;
-	constexpr DispatchCommand() noexcept : Command(Type::Dispatch) { }
+	DispatchCommand() noexcept : Command(Type::Dispatch) { }
 };
 
 //**********************************************************************************************************************
@@ -204,7 +204,7 @@ struct FillBufferCommand final : public Command
 	uint32 data = 0;
 	uint64 size = 0;
 	uint64 offset = 0;
-	constexpr FillBufferCommand() noexcept : Command(Type::FillBuffer) { }
+	FillBufferCommand() noexcept : Command(Type::FillBuffer) { }
 };
 struct CopyBufferCommandBase : public Command
 {
@@ -213,7 +213,7 @@ struct CopyBufferCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Buffer> source = {};
 	ID<Buffer> destination = {};
-	constexpr CopyBufferCommandBase() noexcept : Command(Type::CopyBuffer) { }
+	CopyBufferCommandBase() noexcept : Command(Type::CopyBuffer) { }
 };
 struct CopyBufferCommand final : public CopyBufferCommandBase
 {
@@ -228,7 +228,7 @@ struct ClearImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Image> image = {};
 	float4 color = float4::zero;
-	constexpr ClearImageCommandBase() noexcept : Command(Type::ClearImage) { }
+	ClearImageCommandBase() noexcept : Command(Type::ClearImage) { }
 };
 struct ClearImageCommand final : public ClearImageCommandBase
 {
@@ -241,7 +241,7 @@ struct CopyImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Image> source = {};
 	ID<Image> destination = {};
-	constexpr CopyImageCommandBase() noexcept : Command(Type::CopyImage) { }
+	CopyImageCommandBase() noexcept : Command(Type::CopyImage) { }
 };
 struct CopyImageCommand final : public CopyImageCommandBase
 {
@@ -254,7 +254,7 @@ struct CopyBufferImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Buffer> buffer = {};
 	ID<Image> image = {};
-	constexpr CopyBufferImageCommandBase() noexcept : Command(Type::CopyBufferImage) { }
+	CopyBufferImageCommandBase() noexcept : Command(Type::CopyBufferImage) { }
 };
 struct CopyBufferImageCommand final : public CopyBufferImageCommandBase
 {
@@ -267,7 +267,7 @@ struct BlitImageCommandBase : public Command
 	uint32 regionCount = 0;
 	ID<Image> source = {};
 	ID<Image> destination = {};
-	constexpr BlitImageCommandBase() noexcept : Command(Type::BlitImage) { }
+	BlitImageCommandBase() noexcept : Command(Type::BlitImage) { }
 };
 struct BlitImageCommand final : public BlitImageCommandBase
 {
@@ -281,7 +281,7 @@ struct SetDepthBiasCommand final : public Command
 	float constantFactor = 0.0f;
 	float slopeFactor = 0.0f;
 	float clamp = 0.0f;
-	constexpr SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
+	SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
 };
 
 //**********************************************************************************************************************
@@ -293,7 +293,7 @@ struct BuildAccelerationStructureCommand : public Command
 	ID<AccelerationStructure> srcAS = {};
 	ID<AccelerationStructure> dstAS = {};
 	ID<Buffer> scratchBuffer = {};
-	constexpr BuildAccelerationStructureCommand() noexcept : Command(Type::BuildAccelerationStructure) { }
+	BuildAccelerationStructureCommand() noexcept : Command(Type::BuildAccelerationStructure) { }
 };
 
 #if GARDEN_DEBUG
@@ -303,7 +303,7 @@ struct BeginLabelCommandBase : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	Color color = Color((uint8)0);
-	constexpr BeginLabelCommandBase() noexcept : Command(Type::BeginLabel) { }
+	BeginLabelCommandBase() noexcept : Command(Type::BeginLabel) { }
 };
 struct BeginLabelCommand final : public BeginLabelCommandBase
 {
@@ -313,14 +313,14 @@ struct EndLabelCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	constexpr EndLabelCommand() noexcept : Command(Type::EndLabel) { }
+	EndLabelCommand() noexcept : Command(Type::EndLabel) { }
 };
 struct InsertLabelCommandBase : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	Color color = Color((uint8)0);
-	constexpr InsertLabelCommandBase() noexcept : Command(Type::InsertLabel) { }
+	InsertLabelCommandBase() noexcept : Command(Type::InsertLabel) { }
 };
 struct InsertLabelCommand final : public InsertLabelCommandBase
 {

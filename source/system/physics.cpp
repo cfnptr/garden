@@ -288,7 +288,6 @@ bool Shape::destroy()
 			physicsSystem->destroyShared(innerShape);
 	}
 
-	this->instance = nullptr;
 	return true;
 }
 
@@ -432,6 +431,9 @@ bool Shape::isLastRef() const
 //**********************************************************************************************************************
 bool RigidbodyComponent::destroy()
 {
+	if (!entity)
+		return false;
+
 	if (instance)
 	{
 		auto body = (JPH::Body*)instance;
@@ -447,9 +449,6 @@ bool RigidbodyComponent::destroy()
 
 		bodyInterface->DestroyBody(body->GetID());
 		physicsSystem->destroyShared(shape);
-
-		this->shape = {};
-		this->instance = nullptr;
 	}
 
 	return true;
@@ -482,6 +481,8 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 			auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
 			if (transformView)
 			{
+				transformView->modelWithAncestors = motionType == MotionType::Static || 
+					Manager::Instance::get()->has<CharacterComponent>(entity);
 				position = this->lastPosition = transformView->getPosition();
 				rotation = this->lastRotation = transformView->getRotation();
 			}
@@ -517,6 +518,10 @@ void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 
 			bodyInterface->DestroyBody(body->GetID());
 			this->instance = nullptr;
 		}
+
+		auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+		if (transformView)
+			transformView->modelWithAncestors = true;
 	}
 
 	this->shape = shape;
@@ -610,6 +615,13 @@ void RigidbodyComponent::setMotionType(MotionType motionType, bool activate)
 	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::Instance::get()->bodyInterface;
 	bodyInterface->SetMotionType(body->GetID(), (JPH::EMotionType)motionType,
 		activate && inSimulation ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+
+	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+	if (transformView)
+	{
+		transformView->modelWithAncestors = motionType == MotionType::Static || 
+			Manager::Instance::get()->has<CharacterComponent>(entity);
+	}
 }
 
 uint16 RigidbodyComponent::getCollisionLayer() const

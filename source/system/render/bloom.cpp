@@ -215,6 +215,7 @@ void BloomRenderSystem::preLdrRender()
 	
 	auto mipCount = (uint8)imageViews.size();
 	auto framebufferView = graphicsSystem->get(framebuffers[0]);
+	downsamplePipelineView->updateFramebuffer(framebuffers[0]);
 
 	SET_GPU_DEBUG_LABEL("Bloom", Color::transparent);
 	{
@@ -236,9 +237,10 @@ void BloomRenderSystem::preLdrRender()
 			auto framebufferSize = framebufferView->getSize();
 
 			framebufferView = graphicsSystem->get(framebuffers[i]);
+			downsamplePipelineView->updateFramebuffer(framebuffers[i]);
+			framebufferView->beginRenderPass(float4::zero);
 			downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
 				downsampleBaseVariant : downsample6x6Variant);
-			framebufferView->beginRenderPass(float4::zero);
 			downsamplePipelineView->setViewportScissor();
 			downsamplePipelineView->bindDescriptorSet(descriptorSets[i]);
 			downsamplePipelineView->drawFullscreen();
@@ -252,6 +254,7 @@ void BloomRenderSystem::preLdrRender()
 		for (int8 i = mipCount - 2; i >= 0; i--)
 		{
 			framebufferView = graphicsSystem->get(framebuffers[i]);
+			upsamplePipelineView->updateFramebuffer(framebuffers[i]);
 			framebufferView->beginRenderPass(float4::zero);
 			upsamplePipelineView->setViewportScissor();
 			upsamplePipelineView->bindDescriptorSet(descriptorSets[mipCount + i]);

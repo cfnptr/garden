@@ -85,6 +85,11 @@ protected:
 		ComputePipeline pipeline;
 		ID<ComputePipeline> instance = {};
 	};
+	struct RayTracingQueueItem
+	{
+		RayTracingPipeline pipeline;
+		ID<RayTracingPipeline> instance = {};
+	};
 	struct BufferQueueItem
 	{
 		Buffer buffer;
@@ -118,6 +123,7 @@ protected:
 	tsl::robin_map<Hash128, Ref<Animation>> sharedAnimations;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> loadedComputeQueue;
+	queue<RayTracingQueueItem> loadedRayTracingQueue;
 	queue<BufferQueueItem> loadedBufferQueue;
 	queue<ImageQueueItem> loadedImageQueue;
 	vector<LoadedBufferItem> loadedBufferArray;
@@ -344,6 +350,26 @@ public:
 		const Pipeline::SpecConstValues* specConstValues = nullptr,
 		const Pipeline::SamplerStates* samplerStateOverrides = nullptr,
 		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr);
+
+	/**
+	 * @brief Loads ray tracing pipeline from the resource pack shaders.
+	 * @note Loads from the shaders directory in debug build.
+	 * 
+	 * @param[in] path target ray tracing pipeline resource path
+	 * @param useAsyncRecording can be used for multithreaded commands recording
+	 * @param loadAsync load pipeline asynchronously without blocking
+	 * @param maxBindlessCount maximum bindless descriptor count
+	 * @param[in] specConsts specialization constants array or null
+	 * @param[in] samplerStateOverrides sampler state override array or null
+	 * @param[in,out] shaderOverrides pipeline shader code overrides or null
+	 * 
+	 * @throw GardenError if failed to load ray tracing pipeline.
+	 */
+	ID<RayTracingPipeline> loadRayTracingPipeline(const fs::path& path,
+		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
+		const Pipeline::SpecConstValues* specConstValues = nullptr,
+		const Pipeline::SamplerStates* samplerStateOverrides = nullptr,
+		RayTracingPipeline::ShaderOverrides* shaderOverrides = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.

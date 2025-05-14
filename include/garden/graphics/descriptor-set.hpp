@@ -61,15 +61,8 @@ public:
 	 */
 	struct Uniform final
 	{
-		/**
-		 * @brief Uniform resource array or just one resource.
-		 */
-		using ResourceArray = vector<ID<Resource>>;
-
-		/**
-		 * @brief Resource array for each descriptor set.
-		 */
-		vector<ResourceArray> resourceSets;
+		using ResourceArray = vector<ID<Resource>>; /**< Uniform resource array or just one resource. */
+		vector<ResourceArray> resourceSets;         /**< Resource array for each descriptor set. */
 	private:
 		#if GARDEN_DEBUG
 		type_index type;

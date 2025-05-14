@@ -398,6 +398,9 @@ static ID<Image> createDfgLUT()
 //**********************************************************************************************************************
 bool PbrLightingRenderComponent::destroy()
 {
+	if (!entity)
+		return false;
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (cubemap.isLastRef())
 		graphicsSystem->destroy(ID<Image>(cubemap));
@@ -407,7 +410,6 @@ bool PbrLightingRenderComponent::destroy()
 		graphicsSystem->destroy(ID<Image>(specular));
 	if (descriptorSet.isLastRef())
 		graphicsSystem->destroy(ID<DescriptorSet>(descriptorSet));
-	cubemap = {}; sh = {}; specular = {}; descriptorSet = {};
 	return true;
 }
 

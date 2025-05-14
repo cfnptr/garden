@@ -162,8 +162,8 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 
 		auto bufferView = graphicsSystem->get(baseInstanceBuffers[swapchainIndex][0]);
 		instanceMap = bufferView->getMap();
-		pipelineView = graphicsSystem->get(basePipeline);
 		descriptorSet = baseDescriptorSet;
+		pipelineView = graphicsSystem->get(basePipeline);
 		shadowDrawIndex = 0;
 	}
 	else
@@ -187,8 +187,9 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 
 		auto bufferView = graphicsSystem->get(shadowInstanceBuffers[swapchainIndex][0]);
 		instanceMap = bufferView->getMap();
-		pipelineView = graphicsSystem->get(shadowPipeline);
 		descriptorSet = shadowDescriptorSet;
+		pipelineView = graphicsSystem->get(shadowPipeline);
+		pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
 	}
 }
 void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)

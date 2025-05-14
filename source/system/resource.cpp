@@ -94,6 +94,11 @@ namespace garden::graphics
 		ID<ComputePipeline> instance = {};
 		bool useAsyncRecording = false;
 	};
+	struct RayTracingPipelineLoadData final : public PipelineLoadData
+	{
+		ID<RayTracingPipeline> instance = {};
+		bool useAsyncRecording = false;
+	};
 }
 
 const vector<string_view> ResourceSystem::imageFileExts =
@@ -1399,9 +1404,10 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
-	auto vertexPath = "shaders" / data.shaderPath; vertexPath += ".vert";
-	auto fragmentPath = "shaders" / data.shaderPath; fragmentPath += ".frag";
-	auto headerPath = "shaders" / data.shaderPath; headerPath += ".gslh";
+	auto shadersDirectory = "shaders" / data.shaderPath;
+	auto headerPath = shadersDirectory; headerPath += ".gslh";
+	auto vertexPath = shadersDirectory; vertexPath += ".vert";
+	auto fragmentPath = shadersDirectory; fragmentPath += ".frag";
 
 	fs::path vertexInputPath, fragmentInputPath;
 	auto hasVertexShader = File::tryGetResourcePath(data.resourcesPath, vertexPath, vertexInputPath);
@@ -1414,9 +1420,9 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	}
 
 	vertexPath += ".spv"; fragmentPath += ".spv";
+	auto headerFilePath = data.cachePath / headerPath;
 	auto vertexOutputPath = data.cachePath / vertexPath;
 	auto fragmentOutputPath = data.cachePath / fragmentPath;
-	auto headerFilePath = data.cachePath / headerPath;
 	
 	if (!fs::exists(headerFilePath) ||
 		(hasVertexShader && (!fs::exists(vertexOutputPath) ||
@@ -1425,10 +1431,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 		fs::last_write_time(fragmentInputPath) > fs::last_write_time(fragmentOutputPath))))
 	{
 		const vector<fs::path> includePaths =
-		{
-			GARDEN_RESOURCES_PATH / "shaders",
-			data.resourcesPath / "shaders"
-		};
+		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
 
 		fs::path inputPath, outputPath;
 		if (hasVertexShader)
@@ -1674,25 +1677,23 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
-	auto computePath = "shaders" / data.shaderPath; computePath += ".comp";
+	auto shadersDirectory = "shaders" / data.shaderPath;
+	auto headerPath = shadersDirectory; headerPath += ".gslh";
+	auto computePath = shadersDirectory; computePath += ".comp";
 
 	fs::path computeInputPath;
 	if (!File::tryGetResourcePath(data.resourcesPath, computePath, computeInputPath))
 		throw GardenError("Compute shader file does not exist, or it is ambiguous.");
 
-	auto headerPath = "shaders" / data.shaderPath;
-	computePath += ".spv"; headerPath += ".gslh";
-	auto computeOutputPath = data.cachePath / computePath;
+	computePath += ".spv";
 	auto headerFilePath = data.cachePath / headerPath;
+	auto computeOutputPath = data.cachePath / computePath;
 	
 	if (!fs::exists(headerFilePath) || !fs::exists(computeOutputPath) ||
 		fs::last_write_time(computeInputPath) > fs::last_write_time(computeOutputPath))
 	{
 		const vector<fs::path> includePaths =
-		{
-			GARDEN_RESOURCES_PATH / "shaders",
-			data.resourcesPath / "shaders"
-		};
+		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
 
 		auto compileResult = false;
 		try
@@ -1840,6 +1841,212 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 		auto pipelineView = graphicsAPI->computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + path.generic_string() + ")");
+	}
+
+	return pipeline;
+}
+
+//**********************************************************************************************************************
+static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
+{
+	#if !GARDEN_PACK_RESOURCES
+	auto shadersDirectory = "shaders" / data.shaderPath;
+	auto headerPath = shadersDirectory; headerPath += ".gslh";
+	auto rayGenerationPath = shadersDirectory; rayGenerationPath += ".rgen.spv";
+	auto closestHitPath = shadersDirectory; closestHitPath += ".rchit.spv";
+	auto missPath = shadersDirectory; missPath += ".rmiss.spv";
+	auto intersectionPath = shadersDirectory; intersectionPath += ".rint.spv";
+	auto anyHitPath = shadersDirectory; anyHitPath += ".rahit.spv";
+	auto callablePath = shadersDirectory; callablePath += ".rcall.spv";
+
+	fs::path rayGenInputPath, closHitInputPath, missInputPath, intersectInputPath, anyHitInputPath, callInputPath;
+	auto hasRayGenShader = File::tryGetResourcePath(data.resourcesPath, rayGenerationPath, rayGenInputPath);
+	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
+	auto hasMissShader = File::tryGetResourcePath(data.resourcesPath, missPath, missInputPath);
+	auto hasIntersectShader = File::tryGetResourcePath(data.resourcesPath, intersectionPath, intersectInputPath);
+	auto hasAnyHitShader = File::tryGetResourcePath(data.resourcesPath, anyHitPath, anyHitInputPath);
+	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
+
+	if (!hasRayGenShader || !hasClosHitShader || !hasMissShader)
+	{
+		throw GardenError("Ray tracing shader file does not exist or it is ambiguous. ("
+			"path: " + data.shaderPath.generic_string() + ")");
+	}
+
+	rayGenerationPath += ".spv"; closestHitPath += ".spv"; missPath += ".spv";
+	auto headerFilePath = data.cachePath / headerPath;
+	auto rayGenOutputPath = data.cachePath / rayGenerationPath;
+	auto closHitOutputPath = data.cachePath / closestHitPath;
+	auto missOutputPath = data.cachePath / missPath;
+	auto intersectOutputPath = data.cachePath / intersectionPath;
+	auto anyHitOutputPath = data.cachePath / anyHitPath;
+	auto callOutputPath = data.cachePath / callablePath;
+
+	if (!fs::exists(headerFilePath) ||
+		(!fs::exists(rayGenOutputPath) || fs::last_write_time(rayGenInputPath) > fs::last_write_time(rayGenOutputPath)) ||
+		(!fs::exists(closHitOutputPath) || fs::last_write_time(closHitInputPath) > fs::last_write_time(closHitOutputPath)) ||
+		(!fs::exists(missOutputPath) || fs::last_write_time(missInputPath) > fs::last_write_time(missOutputPath)) ||
+		(hasIntersectShader && (!fs::exists(intersectOutputPath) ||
+		fs::last_write_time(intersectInputPath) > fs::last_write_time(intersectOutputPath))) ||
+		(hasAnyHitShader && (!fs::exists(anyHitOutputPath) ||
+		fs::last_write_time(anyHitInputPath) > fs::last_write_time(anyHitOutputPath))) ||
+		(hasCallableShader && (!fs::exists(callOutputPath) ||
+		fs::last_write_time(callInputPath) > fs::last_write_time(callOutputPath))))
+	{
+		const vector<fs::path> includePaths =
+		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+
+		auto compileResult = false;
+		try
+		{
+			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
+			compileResult = GslCompiler::compileRayTracingShaders(rayGenInputPath.parent_path(), 
+				rayGenOutputPath.parent_path(), includePaths, data);
+			data.shaderPath = dataPath;
+		}
+		catch (const exception& e)
+		{
+			if (strcmp(e.what(), "_GLSLC") != 0)
+				cout << rayGenInputPath.generic_string() << "(.rXXX):" << e.what() << "\n"; // TODO: get info which stage throw.
+			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + data.shaderPath.generic_string() + ")");
+			return false;
+		}
+		
+		if (!compileResult)
+			throw GardenError("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
+		GARDEN_LOG_TRACE("Compiled ray tracing shaders. (path: " + data.shaderPath.generic_string() + ")");
+		return true;
+	}
+	#endif
+
+	try
+	{
+		GslCompiler::loadRayTracingShaders(data);
+	}
+	catch (const exception& e)
+	{
+		GARDEN_LOG_ERROR("Failed to load ray tracing shaders. ("
+			"name: " + data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
+		return false;
+	}
+
+	return true;
+}
+
+//**********************************************************************************************************************
+ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
+	const fs::path& path, bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount, 
+	const Pipeline::SpecConstValues* specConstValues,
+	const Pipeline::SamplerStates* samplerStateOverrides, 
+	RayTracingPipeline::ShaderOverrides* shaderOverrides)
+{
+	GARDEN_ASSERT(!path.empty());
+	// TODO: validate specConstValues and samplerStateOverrides
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto version = graphicsAPI->rayTracingPipelineVersion++;
+	auto pipeline = graphicsAPI->rayTracingPipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
+
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	if (loadAsync && threadSystem && !shaderOverrides)
+	{
+		auto data = new RayTracingPipelineLoadData();
+		data->version = version;
+		data->shaderPath = path;
+		if (specConstValues)
+			data->specConstValues = *specConstValues;
+		if (samplerStateOverrides)
+			data->samplerStateOverrides = *samplerStateOverrides;
+		data->maxBindlessCount = maxBindlessCount;
+		data->instance = pipeline;
+		data->useAsyncRecording = useAsyncRecording;
+		#if !GARDEN_PACK_RESOURCES
+		data->resourcesPath = appResourcesPath;
+		data->cachePath = appCachePath;
+		#endif
+
+		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
+		{
+			SET_CPU_ZONE_SCOPED("Ray Tracing Pipeline Load");
+
+			GslCompiler::RayTracingData pipelineData;
+			pipelineData.shaderPath = std::move(data->shaderPath);
+			pipelineData.specConstValues = std::move(data->specConstValues);
+			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
+			pipelineData.pipelineVersion = data->version;
+			pipelineData.maxBindlessCount = data->maxBindlessCount;
+			#if GARDEN_PACK_RESOURCES
+			pipelineData.packReader = &packReader;
+			pipelineData.threadIndex = task.getThreadIndex();
+			#else
+			pipelineData.resourcesPath = std::move(data->resourcesPath);
+			pipelineData.cachePath = std::move(data->cachePath);
+			#endif
+			
+			if (!loadOrCompileRayTracing(pipelineData))
+			{
+				delete data;
+				return;
+			}
+
+			RayTracingQueueItem item = 
+			{
+				RayTracingPipelineExt::create(pipelineData, data->useAsyncRecording),
+				data->instance
+			};
+
+			delete data;
+			queueLocker.lock();
+			loadedRayTracingQueue.push(std::move(item));
+			queueLocker.unlock();
+		},
+		pipelineTaskPriority);
+	}
+	else
+	{
+		SET_CPU_ZONE_SCOPED("Ray Tracing Pipeline Load");
+
+		GslCompiler::RayTracingData pipelineData;
+		
+		if (specConstValues)
+			pipelineData.specConstValues = *specConstValues;
+		if (samplerStateOverrides)
+			pipelineData.samplerStateOverrides = *samplerStateOverrides;
+		pipelineData.pipelineVersion = version;
+		pipelineData.maxBindlessCount = maxBindlessCount;
+		#if GARDEN_PACK_RESOURCES
+		pipelineData.packReader = &packReader;
+		pipelineData.threadIndex = -1;
+		#else
+		pipelineData.resourcesPath = appResourcesPath;
+		pipelineData.cachePath = appCachePath;
+		#endif
+		
+		if (shaderOverrides)
+		{
+			pipelineData.headerData = std::move(shaderOverrides->headerData);
+			pipelineData.rayGenerationCode = std::move(shaderOverrides->rayGenerationCode);
+			pipelineData.intersectionCode = std::move(shaderOverrides->intersectionCode);
+			pipelineData.anyHitCode = std::move(shaderOverrides->anyHitCode);
+			pipelineData.closestHitCode = std::move(shaderOverrides->closestHitCode);
+			pipelineData.missCode = std::move(shaderOverrides->missCode);
+			pipelineData.callableCode = std::move(shaderOverrides->callableCode);
+			GslCompiler::loadRayTracingShaders(pipelineData);
+		}
+		else
+		{
+			pipelineData.shaderPath = path;
+			if (!loadOrCompileRayTracing(pipelineData))
+			{
+				throw GardenError("Failed to load ray tracing pipeline. ("
+					"path: " + path.generic_string() + ")");
+			}
+		}
+
+		auto rayTracingPipeline = RayTracingPipelineExt::create(pipelineData, useAsyncRecording);
+		auto pipelineView = graphicsAPI->rayTracingPipelinePool.get(pipeline);
+		RayTracingPipelineExt::moveInternalObjects(rayTracingPipeline, **pipelineView);
+		GARDEN_LOG_TRACE("Loaded ray tracing pipeline. (path: " + path.generic_string() + ")");
 	}
 
 	return pipeline;

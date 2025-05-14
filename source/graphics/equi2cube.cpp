@@ -231,8 +231,7 @@ int main(int argc, char *argv[])
 			}
 
 			inputPath = argv[i + 1];
-			logOffset += 2;
-			i++;
+			logOffset += 2; i++;
 		}
 		else if (strcmp(arg, "-o") == 0)
 		{
@@ -243,8 +242,7 @@ int main(int argc, char *argv[])
 			}
 
 			outputPath = argv[i + 1];
-			logOffset += 2;
-			i++;
+			logOffset += 2; i++;
 		}
 		else if (strcmp(arg, "-t") == 0)
 		{
@@ -264,8 +262,7 @@ int main(int argc, char *argv[])
 				}
 				threadPool = new ThreadPool(false, "T", count);
 			}
-			logOffset += 2;
-			i++;
+			logOffset += 2; i++;
 		}
 		else if (arg[0] == '-')
 		{

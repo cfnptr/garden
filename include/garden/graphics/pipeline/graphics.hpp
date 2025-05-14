@@ -299,7 +299,7 @@ public:
 		uint16 vertexAttributesSize = 0;
 	};
 private:
-	uint8 _alignment = 0;
+	uint8 attachmentCount = 0;
 	uint8 subpassIndex = 0;
 	ID<Framebuffer> framebuffer = {};
 
@@ -325,6 +325,11 @@ public:
 	 * @note We can use graphics pipeline only inside this framebuffer.
 	 */
 	ID<Framebuffer> getFramebuffer() const noexcept { return framebuffer; }
+	/**
+	 * @brief Returns graphics pipeline framebuffer color attachment count.
+	 * @note It should be the same as target rendering framebuffer.
+	 */
+	uint8 getAttachmentCount() const noexcept { return attachmentCount; }
 	/**
 	 * @brief Returns graphics pipeline subpass index inside framebuffer pass.
 	 * @details Sub passes help graphics API to optimize resources sharing, especially on tile-based GPUs.
@@ -598,23 +603,23 @@ class GraphicsPipelineExt final
 {
 public:
 	/**
+	 * @brief Returns graphics pipeline framebuffer color attachment count.
+	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @param[in] pipeline target graphics pipeline instance
+	 */
+	static uint8& getAttachmentCount(GraphicsPipeline& pipeline) { return pipeline.attachmentCount; }
+	/**
 	 * @brief Returns graphics pipeline parent framebuffer.
 	 * @warning In most cases you should use @ref GraphicsPipeline functions.
 	 * @param[in] pipeline target graphics pipeline instance
 	 */
-	static uint8& getSubpassIndex(GraphicsPipeline& pipeline)
-	{
-		return pipeline.subpassIndex;
-	}
+	static uint8& getSubpassIndex(GraphicsPipeline& pipeline) { return pipeline.subpassIndex; }
 	/**
 	 * @brief Returns graphics pipeline subpass index inside framebuffer pass.
 	 * @warning In most cases you should use @ref GraphicsPipeline functions.
 	 * @param[in] pipeline target graphics pipeline instance
 	 */
-	static ID<Framebuffer>& getFramebuffer(GraphicsPipeline& pipeline)
-	{
-		return pipeline.framebuffer;
-	}
+	static ID<Framebuffer>& getFramebuffer(GraphicsPipeline& pipeline) { return pipeline.framebuffer; }
 
 	/**
 	 * @brief Creates a new graphics pipeline data.
@@ -636,6 +641,7 @@ public:
 	 */
 	static void moveInternalObjects(GraphicsPipeline& source, GraphicsPipeline& destination) noexcept
 	{
+		GraphicsPipelineExt::getAttachmentCount(destination) = GraphicsPipelineExt::getAttachmentCount(source);
 		PipelineExt::moveInternalObjects(source, destination);
 	}
 };

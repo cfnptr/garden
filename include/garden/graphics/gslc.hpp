@@ -20,6 +20,7 @@
 #pragma once
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/graphics/pipeline/ray-tracing.hpp"
 
 #if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 #include "pack/reader.hpp"
@@ -81,6 +82,20 @@ public:
 		int32 threadIndex = 0;
 		#endif
 	};
+	/**
+	 * @brief Ray tracing pipeline shader data.
+	 */
+	struct RayTracingData : public RayTracingPipeline::RayTracingCreateData
+	{
+		#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
+		fs::path cachePath;
+		fs::path resourcesPath;
+		#endif
+		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+		pack::Reader* packReader = nullptr;
+		int32 threadIndex = 0;
+		#endif
+	};
 
 	/**
 	 * @brief Graphics pipeline file magic number
@@ -90,6 +105,10 @@ public:
 	 * @brief Graphics pipeline file magic number
 	 */
 	static constexpr string_view computeGslMagic = "GSLC";
+	/**
+	 * @brief Ray tracing pipeline file magic number
+	 */
+	static constexpr string_view rayTracingGslMagic = "GSLR";
 	
 	/**
 	 * @brief Loads graphics pipeline shader data.
@@ -101,10 +120,15 @@ public:
 	 * @param[in,out] data target shader data container
 	 */
 	static void loadComputeShader(ComputeData& data);
+	/**
+	 * @brief Loads ray tracing pipeline shader data.
+	 * @param[in,out] data target shader data container
+	 */
+	static void loadRayTracingShaders(RayTracingData& data);
 
 	#if !GARDEN_PACK_RESOURCES || defined(GSL_COMPILER)
 	/**
-	 * @brief Compiles graphics shaders. (.vert, .frag)
+	 * @brief Compiles graphics shaders. (.vert, .frag, .mesh, .task)
 	 * 
 	 * @param inputPath target shaders input directory path
 	 * @param outputPath compiled shaders output directory path
@@ -130,6 +154,20 @@ public:
 	 */
 	static bool compileComputeShader(const fs::path& inputPath, const fs::path& outputPath,
 		const vector<fs::path>& includePaths, ComputeData& data);
+
+	/**
+	 * @brief Compiles ray tracing shaders. (.rgen, rint, .rahit, rchit, .rmiss, .rcall)
+	 * 
+	 * @param inputPath target shader input directory path
+	 * @param outputPath compiled shader output directory path
+	 * @param includePaths include shaders directory paths
+	 * @param[in,out] data input and compiled shader data
+	 * 
+	 * @return True on success and writes processed data, otherwise false if shader not found.
+	 * @throw CompileError on shader compilation or syntax error.
+	 */
+	static bool compileRayTracingShaders(const fs::path& inputPath, const fs::path& outputPath,
+		const vector<fs::path>& includePaths, RayTracingData& data);
 	#endif
 };
 

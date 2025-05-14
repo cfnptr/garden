@@ -20,6 +20,20 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
+static constexpr VkGeometryInstanceFlagsKHR toVkInstanceFlagsAS(Tlas::InstanceFlags tlasInstanceFlags) noexcept
+{
+	VkGeometryInstanceFlagsKHR flags = 0;
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::DisableCulling))
+		flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::FlipFacing))
+		flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR;
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::ForceOpaque))
+		flags |= VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR;
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::ForceNoOpaque))
+		flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
+	return flags;
+}
+
 //**********************************************************************************************************************
 static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags, 
 	ID<Buffer>& storage, void*& instance, uint64& deviceAddress, void*& _buildData)
@@ -48,6 +62,7 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	geometry.geometry.instances.data.deviceAddress = isntanceBufferView->getDeviceAddress();
 	*geometryAS = geometry;
 	*rangeInfo = vk::AccelerationStructureBuildRangeInfoKHR(1, 0, 0, 0);
+	*syncBuffer = instanceBuffer;
 
 	vk::AccelerationStructureBuildGeometryInfoKHR geometryInfo;
 	geometryInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
@@ -68,7 +83,7 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	vk::AccelerationStructureCreateInfoKHR createInfo;
 	createInfo.buffer = (VkBuffer)ResourceExt::getInstance(**storageView);
 	createInfo.size = sizesInfo.accelerationStructureSize;
-	createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+	createInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
 	auto accelerationStructure = vulkanAPI->device.createAccelerationStructureKHR(createInfo);
 	instance = accelerationStructure;
 
@@ -91,7 +106,7 @@ Tlas::InstanceData::InstanceData(const f32x4x4& model, ID<Blas> blas,
 }
 
 //**********************************************************************************************************************
-Tlas::Tlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags)
+Tlas::Tlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags) : AccelerationStructure(1, flags, Type::Tlas)
 {
 	GARDEN_ASSERT(instanceBuffer);
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -125,7 +140,7 @@ void Tlas::getInstanceData(const InstanceData* instanceArray, uint32 instanceCou
 			vkInstance.instanceCustomIndex = instance.customIndex;
 			vkInstance.mask = instance.mask;
 			vkInstance.instanceShaderBindingTableRecordOffset = instance.sbtRecordOffset;
-			vkInstance.flags = (uint8)instance.flags;
+			vkInstance.flags = toVkInstanceFlagsAS(instance.flags);
 			vkInstance.accelerationStructureReference = AccelerationStructureExt::getDeviceAddress(**asView); 
 			instances[i] = vkInstance;
 		}

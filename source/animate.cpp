@@ -18,8 +18,10 @@ using namespace garden;
 
 bool Animation::destroy()
 {
+	if (keyframes.empty())
+		return false;
+
 	destroyKeyframes(keyframes);
-	keyframes.clear();
 	return true;
 }
 

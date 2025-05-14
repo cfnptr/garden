@@ -471,7 +471,6 @@ bool Framebuffer::destroy()
 		destroyVkFramebuffer(instance, renderPass);
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 

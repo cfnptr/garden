@@ -38,7 +38,6 @@ private:
 	ID<Entity>* childs = nullptr;
 	bool selfActive = true;
 	bool ancestorsActive = true;
-	uint16 _alignment = 0;
 
 	/**
 	 * @brief Destroys childs array memory block, if allocated. 
@@ -52,6 +51,8 @@ private:
 	friend class LinearPool<TransformComponent>;
 	friend class ComponentSystem<TransformComponent>;
 public:
+	bool modelWithAncestors = true; /**< Are ancestors accounted when calculating model matrix. */
+
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	string debugName; /**< Entity debug name. (Debug and editor only) */
 	#endif

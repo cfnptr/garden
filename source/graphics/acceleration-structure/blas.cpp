@@ -183,8 +183,8 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 }
 
 //**********************************************************************************************************************
-Blas::Blas(const Blas::TrianglesBuffer* geometryArray, 
-	uint32 geometryCount, BuildFlagsAS flags) : AccelerationStructure(flags)
+Blas::Blas(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags) : 
+	AccelerationStructure(geometryCount, flags, Type::Blas)
 {
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
@@ -193,8 +193,8 @@ Blas::Blas(const Blas::TrianglesBuffer* geometryArray,
 		createVkBlas(geometryArray, geometryCount, 2, flags, storage, instance, deviceAddress, buildData);
 	else abort();
 }
-Blas::Blas(const Blas::AabbsBuffer* geometryArray, 
-	uint32 geometryCount, BuildFlagsAS flags) : AccelerationStructure(flags)
+Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags) :
+	AccelerationStructure(geometryCount, flags, Type::Blas)
 {
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);

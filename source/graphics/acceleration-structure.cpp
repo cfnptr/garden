@@ -70,14 +70,19 @@ bool AccelerationStructure::destroy()
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->forceResourceDestroy)
+		{
 			vulkanAPI->device.destroyAccelerationStructureKHR((VkAccelerationStructureKHR)instance);
+		}
 		else
-			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::AccelerationStructure, instance);
+		{
+			auto resourceType = type == Type::Blas ? 
+				GraphicsAPI::DestroyResourceType::Blas : GraphicsAPI::DestroyResourceType::Tlas;
+			vulkanAPI->destroyResource(resourceType, instance);
+		}
 		vulkanAPI->bufferPool.destroy(storage);
 	}
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 
@@ -118,6 +123,7 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	GARDEN_ASSERT(!isBuilt());
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer != GraphicsAPI::get()->frameCommandBuffer);
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto destroyScratch = false;
@@ -140,21 +146,20 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	command.scratchBuffer = scratchBuffer;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-	{
-		auto bufferView = graphicsAPI->bufferPool.get(storage);
-		ResourceExt::getReadyLock(**bufferView)++;
-		bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
-		ResourceExt::getReadyLock(**bufferView)++;
+	// Note: assuming that acceleration structure will be built on a separate compute queue.
+	auto bufferView = graphicsAPI->bufferPool.get(storage);
+	ResourceExt::getReadyLock(**bufferView)++;
+	bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
+	ResourceExt::getReadyLock(**bufferView)++;
+	readyLock++;
 
-		graphicsAPI->currentCommandBuffer->addLockResource(storage);
-		graphicsAPI->currentCommandBuffer->addLockResource(scratchBuffer);
+	graphicsAPI->currentCommandBuffer->addLockResource(storage);
+	graphicsAPI->currentCommandBuffer->addLockResource(scratchBuffer);
 
-		if (type == AccelerationStructure::Type::Blas)
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<Blas>(command.dstAS));
-		else
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<Tlas>(command.dstAS));
-	}
+	if (type == AccelerationStructure::Type::Blas)
+		graphicsAPI->currentCommandBuffer->addLockResource(ID<Blas>(command.dstAS));
+	else
+		graphicsAPI->currentCommandBuffer->addLockResource(ID<Tlas>(command.dstAS));
 
 	if (destroyScratch)
 		graphicsAPI->bufferPool.destroy(scratchBuffer);

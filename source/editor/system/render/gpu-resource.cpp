@@ -156,6 +156,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString, bool& sear
 	auto& buffer = buffers[selectedItem];
 	ImGui::SeparatorText(bufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(buffer));
 	ImGui::TextWrapped("Usage: { %s }", toStringList(buffer.getUsage()).c_str());
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -223,6 +224,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 
 	ImGui::SeparatorText(imageName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(image));
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(image.getFormat()).data());
 	ImGui::TextWrapped("Usage: { %s }", toStringList(image.getUsage()).c_str());
@@ -314,7 +316,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 		return;
 	}
 
-	const auto& imageView = imageViews[selectedItem];
+	auto& imageView = imageViews[selectedItem];
 	auto isDefault = imageView.isDefault();
 
 	string imageName;
@@ -335,6 +337,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(imageViewName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(imageView));
 	ImGui::TextWrapped("Image: %s", imageName.c_str());
 	ImGui::TextWrapped("Image type: %s", toString(imageView.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(imageView.getFormat()).data());
@@ -442,9 +445,10 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 		return;
 	}
 
-	const auto& framebuffer = framebuffers[selectedItem];
+	auto& framebuffer = framebuffers[selectedItem];
 	ImGui::SeparatorText(framebufferName.c_str());
-	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)*graphicsAPI->framebufferPool.getID(&framebuffer));
+	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(framebuffer));
 	ImGui::TextWrapped("Size: %lux%lu", (unsigned long)framebuffer.getSize().x, (unsigned long)framebuffer.getSize().y);
 	ImGui::Spacing();
 
@@ -579,10 +583,11 @@ static void renderSamplers(uint32& selectedItem, string& searchString,
 		return;
 	}
 
-	const auto& sampler = samplers[selectedItem];
+	auto& sampler = samplers[selectedItem];
 	auto state = sampler.getState();
 	ImGui::SeparatorText(descriptorSetName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(sampler));
 	ImGui::TextWrapped("Minification Filter: %s", toString(state.minFilter).data());
 	ImGui::TextWrapped("Magnification Filter: %s", toString(state.magFilter).data());
 	ImGui::TextWrapped("Mipmap Filter: %s", toString(state.mipmapFilter).data());
@@ -687,7 +692,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 		return;
 	}
 
-	const auto& descriptorSet = descriptorSets[selectedItem];
+	auto& descriptorSet = descriptorSets[selectedItem];
 	const Pipeline::Uniforms* uniforms = nullptr; string pipelineName;
 	if (descriptorSet.getPipeline())
 	{
@@ -700,6 +705,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(descriptorSetName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(descriptorSet));
 	ImGui::TextWrapped("Pipeline: %s", pipelineName.c_str());
 	ImGui::TextWrapped("Pipeline type: %s", toString(descriptorSet.getPipelineType()).data());
 	ImGui::TextWrapped("Index: %lu", (unsigned long)descriptorSet.getIndex());
@@ -938,7 +944,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 		return;
 	}
 
-	const auto& graphicsPipeline = graphicsPipelines[selectedItem];
+	auto& graphicsPipeline = graphicsPipelines[selectedItem];
 	string framebufferName;
 	if (graphicsPipeline.getFramebuffer())
 	{
@@ -949,6 +955,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(graphicsPipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(graphicsPipeline));
 	ImGui::TextWrapped("Framebuffer: %s", framebufferName.c_str());
 	ImGui::TextWrapped("Subpass index: %lu", (unsigned long)graphicsPipeline.getSubpassIndex());
 	auto instance = ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(&graphicsPipeline));
@@ -981,11 +988,12 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 		return;
 	}
 
-	const auto& computePipeline = computePipelines[selectedItem];
+	auto& computePipeline = computePipelines[selectedItem];
 	auto localSize = computePipeline.getLocalSize();
 
 	ImGui::SeparatorText(computePipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
+	ImGui::TextWrapped("Ready lock: %lu", (unsigned long)ResourceExt::getReadyLock(computePipeline));
 	ImGui::TextWrapped("Local size: %lux%lux%lu", (unsigned long)localSize.getX(), 
 		(unsigned long)localSize.getY(), (unsigned long)localSize.getZ());
 	auto instance = ID<Pipeline>(graphicsAPI->computePipelinePool.getID(&computePipeline));

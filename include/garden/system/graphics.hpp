@@ -23,6 +23,7 @@
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/pipeline/ray-tracing.hpp"
+#include "garden/graphics/acceleration-structure/tlas.hpp" // TODO: move somewhere?
 
 namespace garden
 {
@@ -831,6 +832,35 @@ public:
 		return get(ID<ComputePipeline>(computePipeline));
 	}
 
+	/**
+	 * @brief Destroys ray tracing pipeline instance.
+	 * @param rayTracingPipeline target ray tracing pipeline instance or null
+	 */
+	void destroy(ID<RayTracingPipeline> rayTracingPipeline);
+	/**
+	 * @brief Destroys vector with ray tracing pipeline instances.
+	 * @param[in] rayTracingPipelines target vector with ray tracing pipeline instances or/and nulls
+	 */
+	void destroy(const vector<ID<RayTracingPipeline>>& rayTracingPipelines)
+	{
+		for (auto rayTracingPipeline : rayTracingPipelines)
+			destroy(rayTracingPipeline);
+	}
+
+	/**
+	 * @brief Returns ray tracing pipeline data accessor.
+	 * @param rayTracingPipeline target tracing pipeline pipeline instance
+	 */
+	View<RayTracingPipeline> get(ID<RayTracingPipeline> rayTracingPipeline) const;
+	/**
+	 * @brief Returns ray tracing pipeline data accessor.
+	 * @param rayTracingPipeline target ray tracing pipeline instance
+	 */
+	View<RayTracingPipeline> get(const Ref<RayTracingPipeline>& rayTracingPipeline) const
+	{
+		return get(ID<RayTracingPipeline>(rayTracingPipeline));
+	}
+
 	/*******************************************************************************************************************
 	 * @brief Create a new graphics descriptor set instance.
 	 * 
@@ -912,7 +942,7 @@ public:
 	ID<Blas> createBlas(const Blas::AabbsBuffer* geometryArray, 
 		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
 
-	 /**
+	/**
 	 * @brief Destroys bottom level acceleration structure instance. (BLAS)
 	 * @param blas target BLAS instance or null
 	 */
@@ -923,11 +953,37 @@ public:
 	 * @param blas target BLAS instance
 	 */
 	View<Blas> get(ID<Blas> blas) const;
-	 /**
-	  * @brief Returns bottom level acceleration structure data accessor. (BLAS)
-	  * @param blas target BLAS instance
-	  */
+	/**
+	 * @brief Returns bottom level acceleration structure data accessor. (BLAS)
+	 * @param blas target BLAS instance
+	 */
 	View<Blas> get(const Ref<Blas>& blas) const { return get(ID<Blas>(blas)); }
+
+	/*******************************************************************************************************************
+	 * @brief Create a new graphics top level acceleration structure instance. (TLAS)
+	 * 
+	 * @param instanceBuffer target TLAS instance buffer
+	 * @param flags acceleration structure build flags
+	 * @param scratchBuffer AS build scractch buffer (null = auto create)
+	 */
+	ID<Tlas> createTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+
+	/**
+	 * @brief Destroys top level acceleration structure instance. (TLAS)
+	 * @param tlas target TLAS instance or null
+	 */
+	void destroy(ID<Tlas> tlas);
+
+	/**
+	 * @brief Returns top level acceleration structure data accessor. (TLAS)
+	 * @param tlas target TLAS instance
+	 */
+	View<Tlas> get(ID<Tlas> tlas) const;
+	/**
+	 * @brief Returns top level acceleration structure data accessor. (TLAS)
+	 * @param tlas target TLAS instance
+	 */
+	View<Tlas> get(const Ref<Tlas>& tlas) const { return get(ID<Tlas>(tlas)); }
 	
 	//******************************************************************************************************************
 	// Render commands

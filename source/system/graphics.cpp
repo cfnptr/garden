@@ -406,7 +406,10 @@ void GraphicsSystem::present()
 		graphicsAPI->frameCommandBuffer->submit();
 	}
 	
+	graphicsAPI->tlasPool.dispose();
+	graphicsAPI->blasPool.dispose();
 	graphicsAPI->descriptorSetPool.dispose();
+	graphicsAPI->rayTracingPipelinePool.dispose();
 	graphicsAPI->computePipelinePool.dispose();
 	graphicsAPI->graphicsPipelinePool.dispose();
 	graphicsAPI->samplerPool.dispose();
@@ -1058,6 +1061,15 @@ View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) c
 	return GraphicsAPI::get()->computePipelinePool.get(computePipeline);
 }
 
+void GraphicsSystem::destroy(ID<RayTracingPipeline> rayTracingPipeline)
+{
+	GraphicsAPI::get()->rayTracingPipelinePool.destroy(rayTracingPipeline);
+}
+View<RayTracingPipeline> GraphicsSystem::get(ID<RayTracingPipeline> rayTracingPipeline) const
+{
+	return GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
+}
+
 //**********************************************************************************************************************
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
 	DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers, uint8 index)
@@ -1139,7 +1151,7 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::TrianglesBuffer* geometryArray,
 	auto blasView = graphicsAPI->blasPool.get(blas);
 	if (!isRecording())
 	{
-		startRecording(CommandBufferType::TransferOnly);
+		startRecording(CommandBufferType::ComputeOnly);
 		blasView->build(scratchBuffer);
 		stopRecording();
 	}
@@ -1176,10 +1188,39 @@ void GraphicsSystem::destroy(ID<Blas> blas)
 {
 	GraphicsAPI::get()->blasPool.destroy(blas);
 }
-
 View<Blas> GraphicsSystem::get(ID<Blas> blas) const
 {
 	return GraphicsAPI::get()->blasPool.get(blas);
+}
+
+ID<Tlas> GraphicsSystem::createTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+{
+	GARDEN_ASSERT(instanceBuffer);
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto tlas = graphicsAPI->tlasPool.create(instanceBuffer, flags);
+	SET_RESOURCE_DEBUG_NAME(tlas, "tlas" + to_string(*tlas));
+
+	auto tlasView = graphicsAPI->tlasPool.get(tlas);
+	if (!isRecording())
+	{
+		startRecording(CommandBufferType::ComputeOnly);
+		tlasView->build(scratchBuffer);
+		stopRecording();
+	}
+	else
+	{
+		tlasView->build(scratchBuffer);
+	}
+	return tlas;
+}
+void GraphicsSystem::destroy(ID<Tlas> tlas)
+{
+	return GraphicsAPI::get()->tlasPool.destroy(tlas);
+}
+View<Tlas> GraphicsSystem::get(ID<Tlas> tlas) const
+{
+	return GraphicsAPI::get()->tlasPool.get(tlas);
 }
 
 //**********************************************************************************************************************

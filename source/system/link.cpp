@@ -32,18 +32,18 @@ static void eraseEntityTag(LinkSystem::TagMap& tagMap, ID<Entity> entity, string
 //**********************************************************************************************************************
 bool LinkComponent::destroy()
 {
+	if (!entity)
+		return false;
+
 	auto linkSystem = LinkSystem::Instance::get();
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
 		GARDEN_ASSERT(result == 1); // Failed to remove link, corruped memory.
-		uuid = {};
 	}
+	
 	if (!tag.empty())
-	{
 		eraseEntityTag(linkSystem->tagMap, entity, tag);
-		tag = "";
-	}
 	return true;
 }
 

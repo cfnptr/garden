@@ -28,8 +28,8 @@ using namespace garden::physics;
 //**********************************************************************************************************************
 bool CharacterComponent::destroy()
 {
-	if (!instance)
-		return true;
+	if (!entity)
+		return false;
 	
 	if (instance)
 	{
@@ -39,10 +39,8 @@ bool CharacterComponent::destroy()
 		charVsCharCollision->Remove(instance);
 		delete instance;
 		PhysicsSystem::Instance::get()->destroyShared(shape);
-
-		this->shape = {};
-		this->instance = nullptr;
 	}
+	
 	return true;
 }
 
@@ -417,6 +415,23 @@ CharacterSystem::~CharacterSystem()
 }
 
 //**********************************************************************************************************************
+ID<Component> CharacterSystem::createComponent(ID<Entity> entity)
+{
+	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+	if (transformView)
+		transformView->modelWithAncestors = true;
+	return ID<Component>(components.create());
+}
+void CharacterSystem::destroyComponent(ID<Component> instance)
+{
+	auto manager = Manager::Instance::get();
+	auto componentView = getComponent(instance);
+	auto transformView = manager->tryGet<TransformComponent>(componentView->getEntity());
+	auto rigidbodyView = manager->tryGet<RigidbodyComponent>(componentView->getEntity());
+	if (transformView && rigidbodyView)
+		transformView->modelWithAncestors = rigidbodyView->getMotionType() == MotionType::Static;
+	components.destroy(ID<CharacterComponent>(instance));
+}
 void CharacterSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<CharacterComponent>(source);

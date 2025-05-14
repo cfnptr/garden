@@ -477,6 +477,12 @@ static vk::ShaderStageFlagBits toVkShaderStage(ShaderStage shaderStage) noexcept
 		return vk::ShaderStageFlagBits::eClosestHitKHR;
 	if (hasOneFlag(shaderStage, ShaderStage::Miss))
 		return vk::ShaderStageFlagBits::eMissKHR;
+	if (hasOneFlag(shaderStage, ShaderStage::Callable))
+		return vk::ShaderStageFlagBits::eCallableKHR;
+	if (hasOneFlag(shaderStage, ShaderStage::Mesh))
+		return vk::ShaderStageFlagBits::eMeshEXT;
+	if (hasOneFlag(shaderStage, ShaderStage::Task))
+		return vk::ShaderStageFlagBits::eTaskEXT;
 	abort();
 }
 /**
@@ -502,6 +508,12 @@ static constexpr vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage) 
 		flags |= vk::ShaderStageFlagBits::eClosestHitKHR;
 	if (hasAnyFlag(shaderStage, ShaderStage::Miss))
 		flags |= vk::ShaderStageFlagBits::eMissKHR;
+	if (hasAnyFlag(shaderStage, ShaderStage::Callable))
+		flags |= vk::ShaderStageFlagBits::eCallableKHR;
+	if (hasAnyFlag(shaderStage, ShaderStage::Mesh))
+		flags |= vk::ShaderStageFlagBits::eMeshEXT;
+	if (hasAnyFlag(shaderStage, ShaderStage::Task))
+		flags |= vk::ShaderStageFlagBits::eTaskEXT;
 	return flags;
 }
 /**
@@ -518,10 +530,14 @@ static constexpr vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderSta
 	if (hasAnyFlag(shaderStage, ShaderStage::Compute))
 		flags |= vk::PipelineStageFlagBits::eComputeShader;
 	if (hasAnyFlag(shaderStage, ShaderStage::RayGeneration | ShaderStage::Intersection | 
-		ShaderStage::AnyHit | ShaderStage::ClosestHit | ShaderStage::Miss))
+		ShaderStage::AnyHit | ShaderStage::ClosestHit | ShaderStage::Miss | ShaderStage::Callable))
 	{
 		flags |= vk::PipelineStageFlagBits::eRayTracingShaderKHR;
 	}
+	if (hasAnyFlag(shaderStage, ShaderStage::Mesh))
+		flags |= vk::PipelineStageFlagBits::eMeshShaderEXT;
+	if (hasAnyFlag(shaderStage, ShaderStage::Task))
+		flags |= vk::PipelineStageFlagBits::eTaskShaderEXT;
 	return flags;
 }
 
@@ -609,6 +625,8 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcep
 		return vk::DescriptorType::eUniformBuffer;
 	case GslUniformType::StorageBuffer:
 		return vk::DescriptorType::eStorageBuffer;
+	case GslUniformType::AccelerationStructure:
+		return vk::DescriptorType::eAccelerationStructureKHR;
 	default: abort();
 	}
 }
