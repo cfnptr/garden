@@ -195,7 +195,7 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 }
 bool Image::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -346,8 +346,8 @@ void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
+		busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
@@ -370,8 +370,8 @@ void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
+		busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
@@ -394,8 +394,8 @@ void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
+		busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
@@ -418,8 +418,8 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(command.image);
+		busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 
@@ -477,10 +477,10 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		srcView->readyLock++;
-		dstView->readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(source);
-		graphicsAPI->currentCommandBuffer->addLockResource(destination);
+		srcView->busyLock++;
+		dstView->busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(source);
+		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -534,10 +534,10 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		ResourceExt::getReadyLock(**bufferView)++;
-		ResourceExt::getReadyLock(**imageView)++;
-		graphicsAPI->currentCommandBuffer->addLockResource(source);
-		graphicsAPI->currentCommandBuffer->addLockResource(destination);
+		ResourceExt::getBusyLock(**bufferView)++;
+		ResourceExt::getBusyLock(**imageView)++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(source);
+		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -591,10 +591,10 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		ResourceExt::getReadyLock(**imageView)++;
-		ResourceExt::getReadyLock(**bufferView)++;
-		graphicsAPI->currentCommandBuffer->addLockResource(source);
-		graphicsAPI->currentCommandBuffer->addLockResource(destination);
+		ResourceExt::getBusyLock(**imageView)++;
+		ResourceExt::getBusyLock(**bufferView)++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(source);
+		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -660,10 +660,10 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		ResourceExt::getReadyLock(**srcView)++;
-		ResourceExt::getReadyLock(**dstView)++;
-		graphicsAPI->currentCommandBuffer->addLockResource(source);
-		graphicsAPI->currentCommandBuffer->addLockResource(destination);
+		ResourceExt::getBusyLock(**srcView)++;
+		ResourceExt::getBusyLock(**dstView)++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(source);
+		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -702,7 +702,7 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 }
 bool ImageView::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();

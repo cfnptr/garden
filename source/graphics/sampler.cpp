@@ -41,7 +41,7 @@ Sampler::Sampler(const State& state) : state(state)
 
 bool Sampler::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)

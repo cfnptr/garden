@@ -23,7 +23,7 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 bool AccelerationStructure::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -148,18 +148,18 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 
 	// Note: assuming that acceleration structure will be built on a separate compute queue.
 	auto bufferView = graphicsAPI->bufferPool.get(storage);
-	ResourceExt::getReadyLock(**bufferView)++;
+	ResourceExt::getBusyLock(**bufferView)++;
 	bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
-	ResourceExt::getReadyLock(**bufferView)++;
-	readyLock++;
+	ResourceExt::getBusyLock(**bufferView)++;
+	busyLock++;
 
-	graphicsAPI->currentCommandBuffer->addLockResource(storage);
-	graphicsAPI->currentCommandBuffer->addLockResource(scratchBuffer);
+	graphicsAPI->currentCommandBuffer->addLockedResource(storage);
+	graphicsAPI->currentCommandBuffer->addLockedResource(scratchBuffer);
 
 	if (type == AccelerationStructure::Type::Blas)
-		graphicsAPI->currentCommandBuffer->addLockResource(ID<Blas>(command.dstAS));
+		graphicsAPI->currentCommandBuffer->addLockedResource(ID<Blas>(command.dstAS));
 	else
-		graphicsAPI->currentCommandBuffer->addLockResource(ID<Tlas>(command.dstAS));
+		graphicsAPI->currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
 
 	if (destroyScratch)
 		graphicsAPI->bufferPool.destroy(scratchBuffer);

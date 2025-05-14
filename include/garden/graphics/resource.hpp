@@ -45,7 +45,7 @@ class Resource
 {
 protected:
 	void* instance = nullptr;
-	uint32 readyLock = 0;
+	uint32 busyLock = 0;
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	#define UNNAMED_RESOURCE "unnamed"
@@ -65,7 +65,7 @@ public:
 	 * @brief Is resource fully ready for graphics rendering.
 	 * @details Graphics resource is loaded and transferred.
 	 */
-	bool isReady() const noexcept { return instance && readyLock < 1; }
+	bool isReady() const noexcept { return instance && busyLock < 1; }
 	/**
 	 * @brief Is resource loaded. (Does not include ongoing transfers!)
 	 * @warning This doesn't takes into account if resource is fully transferred!
@@ -104,11 +104,11 @@ public:
 	 */
 	static void*& getInstance(Resource& resource) noexcept { return resource.instance; }
 	/**
-	 * @brief Returns resource ready lock.
+	 * @brief Returns resource busy lock.
 	 * @warning In most cases you should use @ref Resource functions.
 	 * @param[in] resource target resource instance
 	 */
-	static uint32& getReadyLock(Resource& resource) noexcept { return resource.readyLock; }
+	static uint32& getBusyLock(Resource& resource) noexcept { return resource.busyLock; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

@@ -439,27 +439,27 @@ public:
 	 */
 	virtual void submit() = 0;
 
-	void addLockResource(ID<Buffer> resource)
+	void addLockedResource(ID<Buffer> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Buffer); }
-	void addLockResource(ID<Image> resource)
+	void addLockedResource(ID<Image> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Image); }
-	void addLockResource(ID<ImageView> resource)
+	void addLockedResource(ID<ImageView> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ImageView); }
-	void addLockResource(ID<Framebuffer> resource)
+	void addLockedResource(ID<Framebuffer> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Framebuffer); }
-	void addLockResource(ID<Sampler> resource)
+	void addLockedResource(ID<Sampler> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Sampler); }
-	void addLockResource(ID<Blas> resource)
+	void addLockedResource(ID<Blas> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Blas); }
-	void addLockResource(ID<Tlas> resource)
+	void addLockedResource(ID<Tlas> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Tlas); }
-	void addLockResource(ID<GraphicsPipeline> resource)
+	void addLockedResource(ID<GraphicsPipeline> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::GraphicsPipeline); }
-	void addLockResource(ID<ComputePipeline> resource)
+	void addLockedResource(ID<ComputePipeline> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ComputePipeline); }
-	void addLockResource(ID<RayTracingPipeline> resource)
+	void addLockedResource(ID<RayTracingPipeline> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::RayTracingPipeline); }
-	void addLockResource(ID<DescriptorSet> resource)
+	void addLockedResource(ID<DescriptorSet> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::DescriptorSet); }
 };
 

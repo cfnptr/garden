@@ -571,8 +571,8 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			ResourceExt::getReadyLock(**vertexBufferView)++;
-			graphicsAPI->currentCommandBuffer->addLockResource(vertexBuffer);
+			ResourceExt::getBusyLock(**vertexBufferView)++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(vertexBuffer);
 		}
 	}
 }
@@ -635,8 +635,8 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 	{
 		if (currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			ResourceExt::getReadyLock(**vertexBufferView)++;
-			currentCommandBuffer->addLockResource(vertexBuffer);
+			ResourceExt::getBusyLock(**vertexBufferView)++;
+			currentCommandBuffer->addLockedResource(vertexBuffer);
 		}
 	}
 	currentCommandBuffer->commandMutex.unlock();
@@ -676,10 +676,10 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		ResourceExt::getReadyLock(**vertexBufferView)++;
-		ResourceExt::getReadyLock(**indexBufferView)++;
-		graphicsAPI->currentCommandBuffer->addLockResource(vertexBuffer);
-		graphicsAPI->currentCommandBuffer->addLockResource(indexBuffer);
+		ResourceExt::getBusyLock(**vertexBufferView)++;
+		ResourceExt::getBusyLock(**indexBufferView)++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(vertexBuffer);
+		graphicsAPI->currentCommandBuffer->addLockedResource(indexBuffer);
 	}
 }
 
@@ -742,10 +742,10 @@ void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuff
 	currentCommandBuffer->addCommand(command);
 	if (currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		ResourceExt::getReadyLock(**vertexBufferView)++;
-		ResourceExt::getReadyLock(**indexBufferView)++;
-		currentCommandBuffer->addLockResource(vertexBuffer);
-		currentCommandBuffer->addLockResource(indexBuffer);
+		ResourceExt::getBusyLock(**vertexBufferView)++;
+		ResourceExt::getBusyLock(**indexBufferView)++;
+		currentCommandBuffer->addLockedResource(vertexBuffer);
+		currentCommandBuffer->addLockedResource(indexBuffer);
 	}
 	currentCommandBuffer->commandMutex.unlock();
 }
