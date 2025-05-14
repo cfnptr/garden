@@ -26,6 +26,8 @@ using namespace garden;
 //**********************************************************************************************************************
 bool SpawnerComponent::destroy()
 {
+	if (!entity)
+		return false;
 	destroySpawned();
 	return true;
 }
@@ -149,6 +151,9 @@ void SpawnerComponent::spawn(uint32 count)
 }
 void SpawnerComponent::destroySpawned()
 {
+	if (spawnedEntities.empty())
+		return;
+
 	auto linkSystem = LinkSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	for (const auto& uuid : spawnedEntities)

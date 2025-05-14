@@ -227,7 +227,6 @@ bool Image::destroy()
 	}
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 
@@ -778,7 +777,6 @@ bool ImageView::destroy()
 	}
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 

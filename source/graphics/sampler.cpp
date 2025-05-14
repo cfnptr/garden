@@ -48,7 +48,6 @@ bool Sampler::destroy()
 		destroyVkSampler(instance);
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 

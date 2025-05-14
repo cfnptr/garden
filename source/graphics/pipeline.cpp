@@ -218,6 +218,12 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Shade
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eClosestHitKHR, 0, pushConstantsSize);
 	if (hasAnyFlag(pushConstantsStages, ShaderStage::Miss))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMissKHR, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::Callable))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCallableKHR, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::Mesh))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMeshEXT, 0, pushConstantsSize);
+	if (hasAnyFlag(pushConstantsStages, ShaderStage::Task))
+		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eTaskEXT, 0, pushConstantsSize);
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
 		(uint32)pushConstantRanges.size(), pushConstantRanges.data());
@@ -400,7 +406,6 @@ bool Pipeline::destroy()
 	}
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 

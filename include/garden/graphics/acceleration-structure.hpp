@@ -28,12 +28,19 @@ class AccelerationStructureExt;
 
 /**
  * @brief Ray tracing acceleration structure build flags.
+ * @details
+ *
+ * Build flags best practices:
+ *   PreferFastBuild: Fully dynamic geometry like particles, destruction, changing prim counts or moving wildly.
+ *   PreferFastBuild + AllowUpdate: Lower LOD dynamic objects, unlikely to be hit by too many rays.
+ *   PreferFastTrace: Default choice for static level geometry.
+ *   PreferFastTrace + AllowUpdate: Hero character, high-LOD dynamic objects, expected to be hit by many rays.
  */
 enum class BuildFlagsAS : uint8
 {
 	None            = 0x00, /**< No acceleration structure build flags specified, zero mask. */
-	AllowUpdate     = 0x01, /**< Allows to compact acceleration structure. */
-	AllowCompaction = 0x02, /**< Allows to compact acceleration structure. */
+	AllowUpdate     = 0x01, /**< Allows to update acceleration structure geometry positions. */
+	AllowCompaction = 0x02, /**< Allows to compact acceleration structure storage. */
 	PreferFastTrace = 0x04, /**< Prioritize trace performance over AS build time. */
 	PreferFastBuild = 0x08, /**< Prioritize AS build time over trace performance. */
 	PreferLowMemory = 0x10  /**< Minimize memory usage at expense of AS build time and trace performance. */
@@ -70,10 +77,12 @@ protected:
 	ID<Buffer> storage = {};
 	uint64 deviceAddress = 0;
 	void* buildData = nullptr;
+	uint32 geometryCount = 0;
 	Type type = {};
 	BuildFlagsAS flags = {};
 
-	AccelerationStructure(BuildFlagsAS flags) : flags(flags) { }
+	AccelerationStructure(uint32 geometryCount, BuildFlagsAS flags, Type type) : 
+		geometryCount(geometryCount), type(type), flags(flags) { }
 	bool destroy() final;
 
 	friend class AccelerationStructureExt;
@@ -92,6 +101,10 @@ protected:
 	 * @brief Returns acceleration structure build flags.
 	 */
 	BuildFlagsAS getFlags() const noexcept { return flags; }
+	/**
+	 * @brief Returns acceleration structure geometry buffer size.
+	 */
+	uint32 getGeometryCount() const noexcept { return geometryCount; }
 	/**
 	 * @brief Returns true if acceleration structure is built and can be used.
 	 */

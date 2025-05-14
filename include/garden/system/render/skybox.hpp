@@ -30,8 +30,11 @@ struct SkyboxRenderComponent final : public Component
 {
 	Ref<Image> cubemap = {};               /**< Skybox cubemap texture. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Skybox descriptor set. */
-
+private:
 	bool destroy();
+	
+	friend class LinearPool<SkyboxRenderComponent>;
+	friend class ComponentSystem<SkyboxRenderComponent>;
 };
 
 /**

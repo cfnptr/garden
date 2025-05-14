@@ -906,7 +906,10 @@ VulkanAPI::~VulkanAPI()
 		flushDestroyBuffer();
 	delete swapchain;
 
+	tlasPool.clear();
+	blasPool.clear();
 	descriptorSetPool.clear();
+	rayTracingPipelinePool.clear();
 	computePipelinePool.clear();
 	graphicsPipelinePool.clear();
 	samplerPool.clear();
@@ -1002,7 +1005,8 @@ void VulkanAPI::flushDestroyBuffer()
 		case GraphicsAPI::DestroyResourceType::Image:
 			vmaDestroyImage(memoryAllocator, (VkImage)resource.data0, (VmaAllocation)resource.data1);
 			break;
-		case GraphicsAPI::DestroyResourceType::AccelerationStructure:
+		case GraphicsAPI::DestroyResourceType::Tlas:
+		case GraphicsAPI::DestroyResourceType::Blas:
 			device.destroyAccelerationStructureKHR((VkAccelerationStructureKHR)resource.data0);
 			break;
 		case GraphicsAPI::DestroyResourceType::Buffer:

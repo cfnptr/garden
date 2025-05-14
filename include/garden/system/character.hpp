@@ -274,6 +274,8 @@ public:
 	 */
 	~CharacterSystem() final;
 
+	ID<Component> createComponent(ID<Entity> entity) final;
+	void destroyComponent(ID<Component> instance) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 

@@ -199,7 +199,6 @@ bool Buffer::destroy()
 	}
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 

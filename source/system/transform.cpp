@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/transform.hpp"
-#include "garden/system/character.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
 #include "math/matrix/transform.hpp"
@@ -30,6 +29,9 @@ static thread_local vector<ID<Entity>> entityStack;
 //**********************************************************************************************************************
 bool TransformComponent::destroy()
 {
+	if (!entity)
+		return false;
+
 	if (parent)
 	{
 		auto parentTransformView = TransformSystem::Instance::get()->getComponent(parent);
@@ -44,8 +46,6 @@ bool TransformComponent::destroy()
 				parentChilds[j - 1] = parentChilds[j];
 
 			parentTransformView->childCount()--;
-			parent = {};
-			ancestorsActive = true;
 			goto REMOVED_FROM_PARENT;
 		}
 
@@ -67,7 +67,6 @@ REMOVED_FROM_PARENT:
 		}
 
 		free(childs); // Warning: assuming that ID<> has no damageable constructor!
-		childs = nullptr;
 	}
 
 	return true;
@@ -137,26 +136,23 @@ f32x4x4 TransformComponent::calcModel(f32x4 cameraPosition) const noexcept
 	auto transformSystem = TransformSystem::Instance::get();
 	auto model = ::calcModel(posChildCount, rotation, scaleChildCap);
 
-	// TODO: rethink this architecture, we should't access physics system from here :(
-	auto rigidbodyComponent = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
-	if (rigidbodyComponent && rigidbodyComponent->getMotionType() != MotionType::Static &&
-		!Manager::Instance::get()->has<CharacterComponent>(entity))
+	if (modelWithAncestors)
 	{
-		setTranslation(model, scaleChildCap - cameraPosition);
-		return model;
+		auto nextParent = parent;
+		while (nextParent)
+		{
+			auto nextTransformView = transformSystem->getComponent(nextParent);
+			auto parentModel = ::calcModel(nextTransformView->posChildCount,
+				nextTransformView->rotation, nextTransformView->scaleChildCap);
+			model = parentModel * model;
+			nextParent = nextTransformView->parent;
+		}
+
+		return ::translate(-cameraPosition, model);
 	}
 
-	auto nextParent = parent;
-	while (nextParent)
-	{
-		auto nextTransformView = transformSystem->getComponent(nextParent);
-		auto parentModel = ::calcModel(nextTransformView->posChildCount,
-			nextTransformView->rotation, nextTransformView->scaleChildCap);
-		model = parentModel * model;
-		nextParent = nextTransformView->parent;
-	}
-
-	return ::translate(-cameraPosition, model);
+	setTranslation(model, posChildCount - cameraPosition);
+	return model;
 }
 
 void TransformComponent::setParent(ID<Entity> parent)

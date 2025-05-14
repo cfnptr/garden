@@ -68,7 +68,7 @@ public:
 	enum class DestroyResourceType : uint32
 	{
 		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout, Sampler, 
-		Framebuffer, ImageView, Image, AccelerationStructure, Buffer, Count
+		Framebuffer, ImageView, Image, Tlas, Blas, Buffer, Count
 	};
 	/**
 	 * @brief Graphics resource destroy data container.
@@ -110,6 +110,7 @@ public:
 	tsl::robin_map<void*, uint64> renderPasses;
 	uint64 graphicsPipelineVersion = 1;
 	uint64 computePipelineVersion = 1;
+	uint64 rayTracingPipelineVersion = 1;
 	uint64 bufferVersion = 1;
 	uint64 imageVersion = 1;
 	CommandBuffer* frameCommandBuffer;

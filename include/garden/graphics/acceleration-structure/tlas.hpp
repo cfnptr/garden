@@ -37,12 +37,15 @@ public:
 	 */
 	enum class InstanceFlags : uint8
 	{
-		DisableCulling, /**< */
-		Count
+		None           = 0x00, /**< No TLAS instance flags specified, zero mask. */
+		DisableCulling = 0x01, /**< Disables face culling for this TLAS instance. */
+		FlipFacing     = 0x02, /**< Facing determination for geometry in this instance is inverted. */
+		ForceOpaque    = 0x04, /**< Forces all TLAS instance geometry opaque flag. */
+		ForceNoOpaque  = 0x08  /**< Forces all TLAS instance geometry no opaque flag. */
 	};
 
 	/**
-	 * @brief Tlas instance data container. (One 3D model)
+	 * @brief Tlas instance data container. (One BLAS)
 	 */
 	struct InstanceData final
 	{
@@ -65,6 +68,7 @@ public:
 		 */
 		InstanceData(const f32x4x4& model, ID<Blas> blas, uint32 customIndex, 
 			uint32 sbtRecordOffset, uint8 mask, InstanceFlags flags) noexcept;
+		InstanceData() noexcept = default;
 	};
 private:
 	Tlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags);
@@ -91,5 +95,35 @@ public:
 	 */
 	static void getInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept;
 };
+
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(Tlas::InstanceFlags)
+
+/***********************************************************************************************************************
+ * @brief Returns TLAS instance flag name string.
+ * @param tlasInstanceFlag target TLAS instance flag
+ */
+static string_view toString(Tlas::InstanceFlags tlasInstanceFlag)
+{
+	if (hasOneFlag(tlasInstanceFlag, Tlas::InstanceFlags::DisableCulling)) return "DisableCulling";
+	if (hasOneFlag(tlasInstanceFlag, Tlas::InstanceFlags::FlipFacing)) return "FlipFacing";
+	if (hasOneFlag(tlasInstanceFlag, Tlas::InstanceFlags::ForceOpaque)) return "ForceOpaque";
+	if (hasOneFlag(tlasInstanceFlag, Tlas::InstanceFlags::ForceNoOpaque)) return "ForceNoOpaque";
+	return "None";
+}
+/**
+ * @brief Returns TLAS instance flags name string list.
+ * @param tlasInstanceFlags target TLAS instance flags
+ */
+static string toStringList(Tlas::InstanceFlags tlasInstanceFlags)
+{
+	string list;
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::None)) list += "None | ";
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::DisableCulling)) list += "DisableCulling | ";
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::FlipFacing)) list += "FlipFacing | ";
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::ForceOpaque)) list += "ForceOpaque | ";
+	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::ForceNoOpaque)) list += "ForceNoOpaque | ";
+	if (list.length() >= 3) list.resize(list.length() - 3);
+	return list;
+}
 
 } // namespace garden::graphics

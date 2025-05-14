@@ -23,10 +23,16 @@ using namespace garden;
 //**********************************************************************************************************************
 bool AnimationComponent::destroy()
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
-	for (const auto& pair : animations)
-		resourceSystem->destroyShared(pair.second);
-	animations.clear();
+	if (!entity)
+		return false;
+
+	if (!animations.empty())
+	{
+		auto resourceSystem = ResourceSystem::Instance::get();
+		for (const auto& pair : animations)
+			resourceSystem->destroyShared(pair.second);
+	}
+	
 	return true;
 }
 

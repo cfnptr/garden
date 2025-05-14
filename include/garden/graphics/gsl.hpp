@@ -84,60 +84,61 @@ enum class GslDataFormat : uint8
  */
 enum class GslUniformType : uint8
 {
-	Sampler1D,            /**< 1D floating point combined image sampler. (read only access) */
-	Sampler2D,            /**< 2D floating point combined image sampler. (read only access) */
-	Sampler3D,            /**< 3D floating point combined image sampler. (read only access) */
-	SamplerCube,          /**< Cubemap floating point combined image sampler. (read only access) */
-	Sampler1DArray,       /**< 1D floating point combined image array sampler. (read only access) */
-	Sampler2DArray,       /**< 2D floating point combined image array sampler. (read only access) */
+	Sampler1D,             /**< 1D floating point combined image sampler. (read only access) */
+	Sampler2D,             /**< 2D floating point combined image sampler. (read only access) */
+	Sampler3D,             /**< 3D floating point combined image sampler. (read only access) */
+	SamplerCube,           /**< Cubemap floating point combined image sampler. (read only access) */
+	Sampler1DArray,        /**< 1D floating point combined image array sampler. (read only access) */
+	Sampler2DArray,        /**< 2D floating point combined image array sampler. (read only access) */
 
-	Isampler1D,           /**< 1D signed integer combined image sampler. (read only access) */
-	Isampler2D,           /**< 2D signed integer combined image sampler. (read only access) */
-	Isampler3D,           /**< 3D signed integer combined image sampler. (read only access) */
-	IsamplerCube,         /**< Cubemap signed integer combined image sampler. (read only access) */
-	Isampler1DArray,      /**< 1D signed integer combined image array sampler. (read only access) */
-	Isampler2DArray,      /**< 2D signed integer combined image array sampler. (read only access) */
+	Isampler1D,            /**< 1D signed integer combined image sampler. (read only access) */
+	Isampler2D,            /**< 2D signed integer combined image sampler. (read only access) */
+	Isampler3D,            /**< 3D signed integer combined image sampler. (read only access) */
+	IsamplerCube,          /**< Cubemap signed integer combined image sampler. (read only access) */
+	Isampler1DArray,       /**< 1D signed integer combined image array sampler. (read only access) */
+	Isampler2DArray,       /**< 2D signed integer combined image array sampler. (read only access) */
 
-	Usampler1D,           /**< 1D unsigned integer combined image sampler. (read only access) */
-	Usampler2D,           /**< 2D unsigned integer combined image sampler. (read only access) */
-	Usampler3D,           /**< 3D unsigned integer combined image sampler. (read only access) */
-	UsamplerCube,         /**< Cubemap unsigned integer combined image sampler. (read only access) */
-	Usampler1DArray,      /**< 1D unsigned integer combined image array sampler. (read only access) */
-	Usampler2DArray,      /**< 2D unsigned integer combined image array sampler. (read only access) */
+	Usampler1D,            /**< 1D unsigned integer combined image sampler. (read only access) */
+	Usampler2D,            /**< 2D unsigned integer combined image sampler. (read only access) */
+	Usampler3D,            /**< 3D unsigned integer combined image sampler. (read only access) */
+	UsamplerCube,          /**< Cubemap unsigned integer combined image sampler. (read only access) */
+	Usampler1DArray,       /**< 1D unsigned integer combined image array sampler. (read only access) */
+	Usampler2DArray,       /**< 2D unsigned integer combined image array sampler. (read only access) */
 
-	Sampler1DShadow,      /**< 1D depth combined image shadow sampler. (read only access) */
-	Sampler2DShadow,      /**< 2D depth combined image shadow sampler. (read only access) */
-	SamplerCubeShadow,    /**< Cubemap depth combined image shadow sampler. (read only access) */
-	Sampler1DArrayShadow, /**< 1D depth combined image array shadow sampler. (read only access) */
-	Sampler2DArrayShadow, /**< 2D depth combined image array shadow sampler. (read only access) */
+	Sampler1DShadow,       /**< 1D depth combined image shadow sampler. (read only access) */
+	Sampler2DShadow,       /**< 2D depth combined image shadow sampler. (read only access) */
+	SamplerCubeShadow,     /**< Cubemap depth combined image shadow sampler. (read only access) */
+	Sampler1DArrayShadow,  /**< 1D depth combined image array shadow sampler. (read only access) */
+	Sampler2DArrayShadow,  /**< 2D depth combined image array shadow sampler. (read only access) */
 
-	Image1D,              /**< 1D floating point image. (read and write access) */
-	Image2D,              /**< 2D floating point image. (read and write access) */
-	Image3D,              /**< 3D floating point image. (read and write access) */
-	ImageCube,            /**< Cubemap floating point image. (read and write access) */
-	Image1DArray,         /**< 1D floating point image array. (read and write access) */
-	Image2DArray,         /**< 2D floating point image array. (read and write access) */
+	Image1D,               /**< 1D floating point image. (read and write access) */
+	Image2D,               /**< 2D floating point image. (read and write access) */
+	Image3D,               /**< 3D floating point image. (read and write access) */
+	ImageCube,             /**< Cubemap floating point image. (read and write access) */
+	Image1DArray,          /**< 1D floating point image array. (read and write access) */
+	Image2DArray,          /**< 2D floating point image array. (read and write access) */
 
-	Iimage1D,             /**< 1D signed integer image. (read and write access) */
-	Iimage2D,             /**< 2D signed integer image. (read and write access) */
-	Iimage3D,             /**< 3D signed integer image. (read and write access) */
-	IimageCube,           /**< Cubemap signed integer image. (read and write access) */
-	Iimage1DArray,        /**< 1D signed integer image array. (read and write access) */
-	Iimage2DArray,        /**< 2D signed integer image array. (read and write access) */
+	Iimage1D,              /**< 1D signed integer image. (read and write access) */
+	Iimage2D,              /**< 2D signed integer image. (read and write access) */
+	Iimage3D,              /**< 3D signed integer image. (read and write access) */
+	IimageCube,            /**< Cubemap signed integer image. (read and write access) */
+	Iimage1DArray,         /**< 1D signed integer image array. (read and write access) */
+	Iimage2DArray,         /**< 2D signed integer image array. (read and write access) */
 
-	Uimage1D,             /**< 1D unsigned integer image. (read and write access) */
-	Uimage2D,             /**< 2D unsigned integer image. (read and write access) */
-	Uimage3D,             /**< 3D unsigned integer image. (read and write access) */
-	UimageCube,           /**< Cubemap unsigned integer image. (read and write access) */
-	Uimage1DArray,        /**< 1D unsigned integer image array. (read and write access) */
-	Uimage2DArray,        /**< 2D unsigned integer image array. (read and write access) */
+	Uimage1D,              /**< 1D unsigned integer image. (read and write access) */
+	Uimage2D,              /**< 2D unsigned integer image. (read and write access) */
+	Uimage3D,              /**< 3D unsigned integer image. (read and write access) */
+	UimageCube,            /**< Cubemap unsigned integer image. (read and write access) */
+	Uimage1DArray,         /**< 1D unsigned integer image array. (read and write access) */
+	Uimage2DArray,         /**< 2D unsigned integer image array. (read and write access) */
 
-	SubpassInput,         /**< Subpass input image. (read only access) */
-	UniformBuffer,        /**< Uniform buffer. (read only access) */
-	StorageBuffer,        /**< Storage buffer. (read and write access) */
-	PushConstants,        /**< Push constants. (read only access) */
+	SubpassInput,          /**< Subpass input image. (read only access) */
+	UniformBuffer,         /**< Uniform buffer. (read only access) */
+	StorageBuffer,         /**< Storage buffer. (read and write access) */
+	PushConstants,         /**< Push constants buffer. (read only access) */
+	AccelerationStructure, /**< Acceleration structure buffer. (read only access) */
 	
-	Count                 /**< GSL uniform type count. */
+	Count                  /**< GSL uniform type count. */
 };
 
 /***********************************************************************************************************************
@@ -286,6 +287,7 @@ static GslUniformType toGslUniformType(string_view uniformType)
 	if (uniformType == "uniformBuffer") return GslUniformType::UniformBuffer;
 	if (uniformType == "storageBuffer") return GslUniformType::StorageBuffer;
 	if (uniformType == "pushConstants") return GslUniformType::PushConstants;
+	if (uniformType == "accelerationStructure") return GslUniformType::AccelerationStructure;
 	
 	throw GardenError("Unknown GSL uniform type. (" + string(uniformType) + ")");
 }

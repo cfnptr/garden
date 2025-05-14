@@ -194,13 +194,13 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	vk::PipelineRenderingCreateInfoKHR dynamicRenderingInfo;
 	vector<vk::Format> dynamicColorFormats;
 
+	// Different shader output and framebuffer attachment count.
+	GARDEN_ASSERT(createData.blendStates.size() == createData.colorFormats.size());
+	attachmentCount = (uint8)createData.blendStates.size();
+
 	if (!createData.renderPass)
 	{
 		const auto& colorFormats = createData.colorFormats;
-
-		// Different shader output and framebuffer attachment count.
-		GARDEN_ASSERT(createData.blendStates.size() == colorFormats.size());
-
 		if (!colorFormats.empty())
 		{
 			dynamicColorFormats.resize(colorFormats.size());
@@ -300,11 +300,11 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		auto blendStateSearch = blendStateOverrides.find(variantIndex);
 		const auto& blendStates = blendStateSearch == blendStateOverrides.end() ?
 			createData.blendStates : blendStateSearch->second;
-		vector<vk::PipelineColorBlendAttachmentState> blendAttachments(blendStates.size());
+		vector<vk::PipelineColorBlendAttachmentState> blendAttachments(attachmentCount);
 
-		for (uint32 i = 0; i < (uint32)blendStates.size(); i++)
+		for (uint8 i = 0; i < attachmentCount; i++)
 		{
-			auto blendState = blendStates[i];
+			auto blendState = blendStates.at(i);
 			blendAttachments[i] = vk::PipelineColorBlendAttachmentState(blendState.blending,
 				toVkBlendFactor(blendState.srcColorFactor), toVkBlendFactor(blendState.dstColorFactor),
 				toVkBlendOp(blendState.colorOperation), toVkBlendFactor(blendState.srcAlphaFactor),
@@ -360,7 +360,7 @@ static void checkFramebufferSubpass(GraphicsAPI* graphicsAPI, ID<Framebuffer> fr
 {
 	#if GARDEN_DEBUG
 	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(framebufferView->getSubpasses().empty() || framebuffer == graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
 	#endif
 }
@@ -372,6 +372,7 @@ void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 	#if GARDEN_DEBUG
 	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
 	GARDEN_ASSERT(framebufferView->getSubpasses().empty());
+	GARDEN_ASSERT(attachmentCount == framebufferView->getColorAttachments().size());
 	#endif
 	this->framebuffer = framebuffer;
 }
@@ -382,9 +383,7 @@ void GraphicsPipeline::setViewport(f32x4 viewport)
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
-
 	auto graphicsAPI = GraphicsAPI::get();
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
 	SetViewportCommand command;
@@ -410,7 +409,6 @@ void GraphicsPipeline::setViewportAsync(f32x4 viewport, int32 threadIndex)
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -438,9 +436,7 @@ void GraphicsPipeline::setScissor(i32x4 scissor)
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
-
 	auto graphicsAPI = GraphicsAPI::get();
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	SetScissorCommand command;
 	if (scissor == i32x4::zero)
@@ -465,7 +461,6 @@ void GraphicsPipeline::setScissorAsync(i32x4 scissor, int32 threadIndex)
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -493,9 +488,7 @@ void GraphicsPipeline::setViewportScissor(f32x4 viewportScissor)
 	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
-
 	auto graphicsAPI = GraphicsAPI::get();
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	SetViewportScissorCommand command;
 	if (viewportScissor == f32x4::zero)
@@ -520,7 +513,6 @@ void GraphicsPipeline::setViewportScissorAsync(f32x4 viewportScissor, int32 thre
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{

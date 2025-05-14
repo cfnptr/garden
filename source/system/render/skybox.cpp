@@ -33,10 +33,12 @@ static ID<GraphicsPipeline> createPipeline()
 
 bool SkyboxRenderComponent::destroy()
 {
+	if (!entity)
+		return false;
+
 	auto resourceSystem = ResourceSystem::Instance::get();
 	resourceSystem->destroyShared(descriptorSet);
 	resourceSystem->destroyShared(cubemap);
-	cubemap = {}; descriptorSet = {};
 	return true;
 }
 

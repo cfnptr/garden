@@ -34,8 +34,11 @@ struct PbrLightingRenderComponent final : public Component
 	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
 	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
-
+private:
 	bool destroy();
+
+	friend class LinearPool<PbrLightingRenderComponent>;
+	friend class ComponentSystem<PbrLightingRenderComponent>;
 };
 
 /**

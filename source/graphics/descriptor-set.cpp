@@ -394,7 +394,6 @@ bool DescriptorSet::destroy()
 		destroyVkDescriptorSet(instance, pipeline, pipelineType, uniforms, index);
 	else abort();
 
-	instance = nullptr;
 	return true;
 }
 
@@ -481,6 +480,10 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 						GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage));
 					}
 				}
+				else if (uniformType == GslUniformType::AccelerationStructure)
+				{
+					GARDEN_ASSERT(dsUniform.getDebugType() == typeid(Tlas));
+				}
 				else abort();
 			}
 		}
@@ -556,6 +559,7 @@ void DescriptorSet::updateUniform(string_view name, const Uniform& uniform, uint
 					GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage));
 				}
 			}
+			else if (uniformType == GslUniformType::AccelerationStructure) { }
 			else abort();
 		}
 	}

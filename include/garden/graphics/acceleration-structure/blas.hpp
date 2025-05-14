@@ -70,6 +70,16 @@ public:
 	 * @note Use @ref GraphicsSystem to create, destroy and access BLAS'es.
 	 */
 	Blas() = default;
+
+	//******************************************************************************************************************
+	// Render commands
+	//******************************************************************************************************************
+
+	/**
+	 * @brief Updates bottom level acceleration structure geometry positions.
+	 * @warning Only positions can be updated! If changed geometry count you should rebuild BLAS instead.
+	 */
+	// TODO: void update(const TrianglesBuffer* geometryArray, uint32 geometryCount);
 };
 
 } // namespace garden::graphics

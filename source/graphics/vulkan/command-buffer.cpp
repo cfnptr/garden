@@ -313,6 +313,11 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 					}
 				}
 			}
+			else if (uniform.type == GslUniformType::AccelerationStructure)
+			{
+				// Note: assuming that acceleration structure will be built on a separate compute queue.
+			}
+			else abort();
 		}
 	}
 
@@ -1561,7 +1566,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 			shouldBuild = true;
 
 		auto subCommandAS = (const BuildAccelerationStructureCommand*)subCommand;
-		if (command.typeAS != subCommandAS->typeAS)
+		if (command.typeAS != subCommandAS->typeAS) // We can't mix BLAS and TLAS in one command.
 			shouldBuild = true;
 	}
 	else

@@ -19,8 +19,6 @@
 
 #pragma once
 #include "garden/graphics/pipeline.hpp"
-#include "garden/graphics/acceleration-structure/blas.hpp"
-#include "garden/graphics/acceleration-structure/tlas.hpp" // TODO: maybe move to the API?
 
 namespace garden::graphics
 {
@@ -44,6 +42,7 @@ public:
 		vector<uint8> anyHitCode;
 		vector<uint8> closestHitCode;
 		vector<uint8> missCode;
+		vector<uint8> callableCode;
 		vector<uint8> headerData;
 	};
 	/**
@@ -59,6 +58,7 @@ public:
 		vector<uint8> anyHitCode;
 		vector<uint8> closestHitCode;
 		vector<uint8> missCode;
+		vector<uint8> callableCode;
 	};
 private:
 	uint16 _alignment = 0;

@@ -97,6 +97,7 @@ public:
 	static constexpr Framebuffer::OutputAttachment::Flags uiBufferFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags oitBufferFlags = { true, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags oitBufferDepthFlags = { false, true, false };
+	static constexpr Framebuffer::OutputAttachment::Flags normalsBufferFlags = { false, true, true };
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
@@ -113,6 +114,7 @@ private:
 	ID<Framebuffer> ldrFramebuffer = {};
 	ID<Framebuffer> depthLdrFramebuffer = {};
 	ID<Framebuffer> uiFramebuffer = {};
+	ID<Framebuffer> refractedFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
 	bool emissive = false;
@@ -219,6 +221,10 @@ public:
 	 * @brief Returns deferred UI framebuffer. (User Interface)
 	 */
 	ID<Framebuffer> getUiFramebuffer();
+	/**
+	 * @brief Returns deferred refracted framebuffer. (HDR + Depth + Normals)
+	 */
+	ID<Framebuffer> getRefractedFramebuffer();
 	/**
 	 * @brief Returns deferred OIT framebuffer. (Order Independent Transparency)
 	 */
