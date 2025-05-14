@@ -464,7 +464,7 @@ Framebuffer::Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments
 
 bool Framebuffer::destroy()
 {
-	if (!instance || readyLock > 0 || subpasses.empty())
+	if (!instance || busyLock > 0 || subpasses.empty())
 		return !colorAttachments.empty() || depthStencilAttachment.imageView;
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -644,8 +644,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(command.framebuffer);
+		busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(command.framebuffer);
 	}
 
 	graphicsAPI->isCurrentRenderPassAsync = asyncRecording;

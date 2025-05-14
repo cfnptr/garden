@@ -145,7 +145,7 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 //**********************************************************************************************************************
 bool Buffer::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -315,8 +315,8 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(command.buffer);
+		busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(command.buffer);
 	}
 }
 
@@ -368,9 +368,9 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 
 	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 	{
-		srcView->readyLock++;
-		dstView->readyLock++;
-		graphicsAPI->currentCommandBuffer->addLockResource(source);
-		graphicsAPI->currentCommandBuffer->addLockResource(destination);
+		srcView->busyLock++;
+		dstView->busyLock++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(source);
+		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }

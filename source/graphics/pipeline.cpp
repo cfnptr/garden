@@ -377,7 +377,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 
 bool Pipeline::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	#if GARDEN_DEBUG
@@ -507,8 +507,8 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			ResourceExt::getReadyLock(**dsView)++;
-			graphicsAPI->currentCommandBuffer->addLockResource(descriptorSet);
+			ResourceExt::getBusyLock(**dsView)++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(descriptorSet);
 		}
 
 		auto dsPipelineView = graphicsAPI->getPipelineView(
@@ -536,10 +536,10 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 
 						if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 						{
-							ResourceExt::getReadyLock(**imageViewView)++;
-							ResourceExt::getReadyLock(**imageView)++;
-							graphicsAPI->currentCommandBuffer->addLockResource(ID<ImageView>(resource));
-							graphicsAPI->currentCommandBuffer->addLockResource(imageViewView->getImage());
+							ResourceExt::getBusyLock(**imageViewView)++;
+							ResourceExt::getBusyLock(**imageView)++;
+							graphicsAPI->currentCommandBuffer->addLockedResource(ID<ImageView>(resource));
+							graphicsAPI->currentCommandBuffer->addLockedResource(imageViewView->getImage());
 						}
 					}
 				}
@@ -556,8 +556,8 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 						auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 						if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 						{
-							ResourceExt::getReadyLock(**bufferView)++;
-							graphicsAPI->currentCommandBuffer->addLockResource(ID<Buffer>(resource));
+							ResourceExt::getBusyLock(**bufferView)++;
+							graphicsAPI->currentCommandBuffer->addLockedResource(ID<Buffer>(resource));
 						}
 					}
 				}
@@ -587,24 +587,24 @@ void Pipeline::bind(uint8 variant)
 	{
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			readyLock++;
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
+			busyLock++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(ID<GraphicsPipeline>(pipeline));
 		}
 	}
 	else if (type == PipelineType::Compute)
 	{
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			readyLock++;
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
+			busyLock++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(ID<ComputePipeline>(pipeline));
 		}
 	}
 	else if (type == PipelineType::RayTracing)
 	{
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			readyLock++;
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<RayTracingPipeline>(pipeline));
+			busyLock++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(ID<RayTracingPipeline>(pipeline));
 		}
 	}
 	else abort();
@@ -634,24 +634,24 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 	{
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			readyLock++;
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<GraphicsPipeline>(pipeline));
+			busyLock++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(ID<GraphicsPipeline>(pipeline));
 		}
 	}
 	else if (type == PipelineType::Compute)
 	{
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			readyLock++;
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<ComputePipeline>(pipeline));
+			busyLock++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(ID<ComputePipeline>(pipeline));
 		}
 	}
 	else if (type == PipelineType::RayTracing)
 	{
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
-			readyLock++;
-			graphicsAPI->currentCommandBuffer->addLockResource(ID<RayTracingPipeline>(pipeline));
+			busyLock++;
+			graphicsAPI->currentCommandBuffer->addLockedResource(ID<RayTracingPipeline>(pipeline));
 		}
 	}
 	else abort();

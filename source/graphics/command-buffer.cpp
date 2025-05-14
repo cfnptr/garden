@@ -131,37 +131,37 @@ void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lo
 		switch (pair.second)
 		{
 		case ResourceType::Buffer:
-			ResourceExt::getReadyLock(**graphicsAPI->bufferPool.get(ID<Buffer>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->bufferPool.get(ID<Buffer>(pair.first)))--;
 			break;
 		case ResourceType::Image:
-			ResourceExt::getReadyLock(**graphicsAPI->imagePool.get(ID<Image>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->imagePool.get(ID<Image>(pair.first)))--;
 			break;
 		case ResourceType::ImageView:
-			ResourceExt::getReadyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(pair.first)))--;
 			break;
 		case ResourceType::Framebuffer:
-			ResourceExt::getReadyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(pair.first)))--;
 			break;
 		case ResourceType::Sampler:
-			ResourceExt::getReadyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(pair.first)))--;
 			break;
 		case ResourceType::Blas:
-			ResourceExt::getReadyLock(**graphicsAPI->blasPool.get(ID<Blas>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->blasPool.get(ID<Blas>(pair.first)))--;
 			break;
 		case ResourceType::Tlas:
-			ResourceExt::getReadyLock(**graphicsAPI->tlasPool.get(ID<Tlas>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->tlasPool.get(ID<Tlas>(pair.first)))--;
 			break;
 		case ResourceType::GraphicsPipeline:
-			ResourceExt::getReadyLock(**graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(pair.first)))--;
 			break;
 		case ResourceType::ComputePipeline:
-			ResourceExt::getReadyLock(**graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(pair.first)))--;
 			break;
 		case ResourceType::RayTracingPipeline:
-			ResourceExt::getReadyLock(**graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(pair.first)))--;
 			break;
 		case ResourceType::DescriptorSet:
-			ResourceExt::getReadyLock(**graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(pair.first)))--;
 			break;
 		default: abort();
 		}

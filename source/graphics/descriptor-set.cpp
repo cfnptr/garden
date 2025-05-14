@@ -387,7 +387,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, U
 
 bool DescriptorSet::destroy()
 {
-	if (!instance || readyLock > 0)
+	if (!instance || busyLock > 0)
 		return false;
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
