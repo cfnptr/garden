@@ -37,7 +37,7 @@ struct Command
 		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
 		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		SetDepthBias, // TODO: other dynamic setters
-		BuildAccelerationStructure,
+		BuildAccelerationStructure, TraceRays,
 
 		#if GARDEN_DEBUG
 		BeginLabel, EndLabel, InsertLabel,
@@ -295,6 +295,14 @@ struct BuildAccelerationStructureCommand : public Command
 	ID<Buffer> scratchBuffer = {};
 	BuildAccelerationStructureCommand() noexcept : Command(Type::BuildAccelerationStructure) { }
 };
+struct TraceRaysCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	uint3 groupCount = uint3::zero;
+	RayTracingPipeline::SbtGroupRegions sbt;
+	TraceRaysCommand() noexcept : Command(Type::TraceRays) { }
+};
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
@@ -341,6 +349,7 @@ class CommandBuffer
 {
 public:
 	typedef pair<ID<Resource>, ResourceType> LockResource;
+	static constexpr psize dataAlignment = 4;
 protected:
 	uint8* data = nullptr;
 	psize size = 0, capacity = 16;
@@ -377,6 +386,7 @@ protected:
 	virtual void processCommand(const BlitImageCommand& command) = 0;
 	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 	virtual void processCommand(const BuildAccelerationStructureCommand& command) = 0;
+	virtual void processCommand(const TraceRaysCommand& command) = 0;
 
 	#if GARDEN_DEBUG
 	virtual void processCommand(const BeginLabelCommand& command) = 0;
@@ -427,6 +437,7 @@ public:
 	void addCommand(const BlitImageCommand& command);
 	void addCommand(const SetDepthBiasCommand& command);
 	void addCommand(const BuildAccelerationStructureCommand& command);
+	void addCommand(const TraceRaysCommand& command);
 
 	#if GARDEN_DEBUG
 	void addCommand(const BeginLabelCommand& command);

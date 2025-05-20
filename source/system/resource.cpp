@@ -266,6 +266,30 @@ void ResourceSystem::dequeuePipelines()
 		}
 		loadedComputeQueue.pop();
 	}
+
+	auto rayTracingPipelines = graphicsAPI->rayTracingPipelinePool.getData();
+	auto rayTracingOccupancy = graphicsAPI->rayTracingPipelinePool.getOccupancy();
+
+	while (!loadedRayTracingQueue.empty())
+	{
+		auto& item = loadedRayTracingQueue.front();
+		if (*item.instance <= rayTracingOccupancy)
+		{
+			auto& pipeline = rayTracingPipelines[*item.instance - 1];
+			if (PipelineExt::getVersion(pipeline) == PipelineExt::getVersion(item.pipeline))
+			{
+				RayTracingPipelineExt::moveInternalObjects(item.pipeline, pipeline);
+				GARDEN_LOG_TRACE("Loaded ray tracing pipeline. (path: " + pipeline.getPath().generic_string() + ")");
+			}
+			else
+			{
+				graphicsAPI->forceResourceDestroy = true;
+				PipelineExt::destroy(item.pipeline);
+				graphicsAPI->forceResourceDestroy = false;
+			}
+		}
+		loadedRayTracingQueue.pop();
+	}
 }
 
 //**********************************************************************************************************************
@@ -1455,7 +1479,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
-				cout << vertexInputPath.generic_string() << "(.frag):" << e.what() << "\n"; // TODO: get info which stage throw.
+				cout << vertexInputPath.generic_string() << "(.frag): " << e.what() << "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + data.shaderPath.generic_string() + ")");
 			return false;
 		}
@@ -1706,7 +1730,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
-				cout << computeInputPath.generic_string() << ":" << e.what() << "\n";
+				cout << computeInputPath.generic_string() << ": " << e.what() << "\n";
 			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + data.shaderPath.generic_string() + ")");
 			return false;
 		}
@@ -1852,44 +1876,52 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	#if !GARDEN_PACK_RESOURCES
 	auto shadersDirectory = "shaders" / data.shaderPath;
 	auto headerPath = shadersDirectory; headerPath += ".gslh";
-	auto rayGenerationPath = shadersDirectory; rayGenerationPath += ".rgen.spv";
-	auto closestHitPath = shadersDirectory; closestHitPath += ".rchit.spv";
-	auto missPath = shadersDirectory; missPath += ".rmiss.spv";
-	auto intersectionPath = shadersDirectory; intersectionPath += ".rint.spv";
-	auto anyHitPath = shadersDirectory; anyHitPath += ".rahit.spv";
-	auto callablePath = shadersDirectory; callablePath += ".rcall.spv";
+	auto rayGenerationPath = shadersDirectory; rayGenerationPath += ".rgen";
+	auto missPath = shadersDirectory; missPath += ".rmiss";
+	auto intersectionPath = shadersDirectory; intersectionPath += ".rint";
+	auto anyHitPath = shadersDirectory; anyHitPath += ".rahit";
+	auto closestHitPath = shadersDirectory; closestHitPath += ".rchit";
+	auto callablePath = shadersDirectory; callablePath += ".rcall";
 
-	fs::path rayGenInputPath, closHitInputPath, missInputPath, intersectInputPath, anyHitInputPath, callInputPath;
+	fs::path rayGenInputPath, missInputPath, intersectInputPath, closHitInputPath, anyHitInputPath, callInputPath;
 	auto hasRayGenShader = File::tryGetResourcePath(data.resourcesPath, rayGenerationPath, rayGenInputPath);
-	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
 	auto hasMissShader = File::tryGetResourcePath(data.resourcesPath, missPath, missInputPath);
 	auto hasIntersectShader = File::tryGetResourcePath(data.resourcesPath, intersectionPath, intersectInputPath);
 	auto hasAnyHitShader = File::tryGetResourcePath(data.resourcesPath, anyHitPath, anyHitInputPath);
+	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
 	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
 
-	if (!hasRayGenShader || !hasClosHitShader || !hasMissShader)
+	if (!hasRayGenShader || !hasMissShader)
+	{
+		throw GardenError("Ray tracing shader file does not exist or it is ambiguous. ("
+			"path: " + data.shaderPath.generic_string() + ")");
+	}
+	if (!hasIntersectShader && !hasClosHitShader && !hasAnyHitShader && !hasCallableShader)
 	{
 		throw GardenError("Ray tracing shader file does not exist or it is ambiguous. ("
 			"path: " + data.shaderPath.generic_string() + ")");
 	}
 
-	rayGenerationPath += ".spv"; closestHitPath += ".spv"; missPath += ".spv";
+	rayGenerationPath += ".spv"; missPath += ".spv"; intersectionPath += ".spv";
+	anyHitPath += ".spv"; closestHitPath += ".spv"; callablePath += ".spv";
+
 	auto headerFilePath = data.cachePath / headerPath;
 	auto rayGenOutputPath = data.cachePath / rayGenerationPath;
-	auto closHitOutputPath = data.cachePath / closestHitPath;
 	auto missOutputPath = data.cachePath / missPath;
 	auto intersectOutputPath = data.cachePath / intersectionPath;
 	auto anyHitOutputPath = data.cachePath / anyHitPath;
+	auto closHitOutputPath = data.cachePath / closestHitPath;
 	auto callOutputPath = data.cachePath / callablePath;
 
 	if (!fs::exists(headerFilePath) ||
 		(!fs::exists(rayGenOutputPath) || fs::last_write_time(rayGenInputPath) > fs::last_write_time(rayGenOutputPath)) ||
-		(!fs::exists(closHitOutputPath) || fs::last_write_time(closHitInputPath) > fs::last_write_time(closHitOutputPath)) ||
 		(!fs::exists(missOutputPath) || fs::last_write_time(missInputPath) > fs::last_write_time(missOutputPath)) ||
 		(hasIntersectShader && (!fs::exists(intersectOutputPath) ||
 		fs::last_write_time(intersectInputPath) > fs::last_write_time(intersectOutputPath))) ||
 		(hasAnyHitShader && (!fs::exists(anyHitOutputPath) ||
 		fs::last_write_time(anyHitInputPath) > fs::last_write_time(anyHitOutputPath))) ||
+		(hasClosHitShader && (!fs::exists(closHitOutputPath) ||
+		fs::last_write_time(closHitInputPath) > fs::last_write_time(closHitOutputPath))) ||
 		(hasCallableShader && (!fs::exists(callOutputPath) ||
 		fs::last_write_time(callInputPath) > fs::last_write_time(callOutputPath))))
 	{
@@ -1907,7 +1939,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
-				cout << rayGenInputPath.generic_string() << "(.rXXX):" << e.what() << "\n"; // TODO: get info which stage throw.
+				cout << rayGenInputPath.generic_string() << "(.rXXX): " << e.what() << "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + data.shaderPath.generic_string() + ")");
 			return false;
 		}
@@ -2025,12 +2057,10 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 		if (shaderOverrides)
 		{
 			pipelineData.headerData = std::move(shaderOverrides->headerData);
-			pipelineData.rayGenerationCode = std::move(shaderOverrides->rayGenerationCode);
-			pipelineData.intersectionCode = std::move(shaderOverrides->intersectionCode);
-			pipelineData.anyHitCode = std::move(shaderOverrides->anyHitCode);
-			pipelineData.closestHitCode = std::move(shaderOverrides->closestHitCode);
-			pipelineData.missCode = std::move(shaderOverrides->missCode);
-			pipelineData.callableCode = std::move(shaderOverrides->callableCode);
+			pipelineData.rayGenGroups = std::move(shaderOverrides->rayGenGroups);
+			pipelineData.missGroups = std::move(shaderOverrides->missGroups);
+			pipelineData.hitGroups = std::move(shaderOverrides->hitGroups);
+			pipelineData.callGroups = std::move(shaderOverrides->callGroups);
 			GslCompiler::loadRayTracingShaders(pipelineData);
 		}
 		else

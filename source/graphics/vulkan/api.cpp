@@ -488,7 +488,6 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			if (descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind &&
 				descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
 				descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind &&
-				descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind &&
 				descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind &&
 				descriptorIndexingFeatures.descriptorBindingPartiallyBound &&
 				descriptorIndexingFeatures.runtimeDescriptorArray)
@@ -625,7 +624,6 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
-		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
 		descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
@@ -710,33 +708,33 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 	vector<vk::DescriptorPoolSize> sizes;
 	if (GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT > 0)
 	{
-		sizes.push_back(vk::DescriptorPoolSize(
-			vk::DescriptorType::eCombinedImageSampler,
+		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler,
 			GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT));
 	}
 	if (GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT > 0)
 	{
-		sizes.push_back(vk::DescriptorPoolSize(
-			vk::DescriptorType::eUniformBuffer,
+		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer,
 			GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT));
 	}
 	if (GARDEN_DS_POOL_STORAGE_IMAGE_COUNT > 0)
 	{
-		sizes.push_back(vk::DescriptorPoolSize(
-			vk::DescriptorType::eStorageImage,
+		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage,
 			GARDEN_DS_POOL_STORAGE_IMAGE_COUNT));
 	}
 	if (GARDEN_DS_POOL_STORAGE_BUFFER_COUNT > 0)
 	{
-		sizes.push_back(vk::DescriptorPoolSize(
-			vk::DescriptorType::eStorageBuffer,
+		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer,
 			GARDEN_DS_POOL_STORAGE_BUFFER_COUNT));
 	}
 	if (GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT > 0)
 	{
-		sizes.push_back(vk::DescriptorPoolSize(
-			vk::DescriptorType::eInputAttachment,
+		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment,
 			GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT));
+	}
+	if (GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT > 0)
+	{
+		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR,
+			GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT));
 	}
 	
 	uint32 maxSetCount = 0;
@@ -827,6 +825,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	this->appVersion = appVersion;
 	this->currentPipelines.resize(threadCount);
 	this->currentPipelineTypes.resize(threadCount);
+	this->currentPipelineVariants.resize(threadCount);
 	this->currentVertexBuffers.resize(threadCount);
 	this->currentIndexBuffers.resize(threadCount);
 	this->bindDescriptorSets.resize(threadCount);
@@ -871,7 +870,8 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 
 	if (features.rayTracing)
 	{
-		deviceProperties.pNext = &asProperties;
+		deviceProperties.pNext = &rtProperties;
+		rtProperties.pNext = &asProperties;
 		physicalDevice.getProperties2(&deviceProperties);
 	}
 

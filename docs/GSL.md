@@ -151,7 +151,7 @@ uniform samplerCube someSampler;
 ## Image / Texture
 
 ```
-uniform image2D someImage : UnormR8G8B8A8;
+uniform image2D someImage : unormR8G8B8A8;
 ```
 
 ### Image data shader interpretation formats:
@@ -160,7 +160,7 @@ uniform image2D someImage : UnormR8G8B8A8;
 * **Signed integer formats**: [ intR8, intR8G8, intR8G8B8A8, intR16, intR16G16, intR16G16B16A16, intR32, intR32G32, intR32G32B32A32 ]</br>
 * **Unsigned integer formats normalized to (0.0, 1.0)**: [ unormR8, unormR8G8, unormR8G8B8A8, unormR16, unormR16G16, unormR16G16B16A16, unormA2R10G10B10 ]</br>
 * **Signed integer formats normalized to (-1.0, 1.0)**: [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]</br>
-* **Floating point formats**: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, floatB11G11B10 ]</br>
+* **Floating point formats**: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, ufloatB10G11R11 ]</br>
 
 ## Storage Buffer
 
@@ -265,5 +265,3 @@ To enable specific GLSL feature extensions use this shorting:
 * bindless - GL_EXT_nonuniform_qualifier
 * subgroupBasic - GL_KHR_shader_subgroup_basic
 * subgroupVote - GL_KHR_shader_subgroup_vote
-
-> TODO: ray tracing features

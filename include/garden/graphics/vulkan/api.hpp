@@ -92,8 +92,10 @@ public:
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
 	vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 	vector<vk::WriteDescriptorSet> writeDescriptorSets;
+	vector<vk::WriteDescriptorSetAccelerationStructureKHR> asWriteDescriptorSets;
 	vector<vk::DescriptorImageInfo> descriptorImageInfos;
 	vector<vk::DescriptorBufferInfo> descriptorBufferInfos;
+	vector<vk::AccelerationStructureKHR> asDescriptorInfos;
 	vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
 	vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
 	vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
@@ -108,6 +110,7 @@ public:
 	vector<void**> asBuildData;
 	vector<vk::AccelerationStructureBuildGeometryInfoKHR> asGeometryInfos;
 	vector<const vk::AccelerationStructureBuildRangeInfoKHR*> asRangeInfos;
+	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
 	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
 	vk::PhysicalDeviceProperties2 deviceProperties;
 	vk::PhysicalDeviceFeatures2 deviceFeatures;

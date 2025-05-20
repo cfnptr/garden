@@ -105,6 +105,9 @@ endif()
 if(NOT DEFINED GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT)
 	set(GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT 128)
 endif()
+if(NOT DEFINED GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT)
+	set(GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT 64)
+endif()
 
 #***********************************************************************************************************************
 set(CMAKE_CXX_STANDARD 17)

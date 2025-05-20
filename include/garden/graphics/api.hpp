@@ -122,6 +122,7 @@ public:
 	uint32 currentSubpassIndex = 0;
 	vector<ID<Pipeline>> currentPipelines;
 	vector<PipelineType> currentPipelineTypes;
+	vector<uint8> currentPipelineVariants;
 	vector<ID<Buffer>> currentVertexBuffers;
 	vector<ID<Buffer>> currentIndexBuffers;
 	bool isCurrentRenderPassAsync = false;

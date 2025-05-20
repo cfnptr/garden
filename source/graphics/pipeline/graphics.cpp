@@ -116,47 +116,43 @@ static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::C
 //**********************************************************************************************************************
 void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	ShaderStage stages[2]; vector<uint8> codeArray[2];
+	if (variantCount > 1)
+		this->instance = malloc<vk::Pipeline>(variantCount);
+
+	constexpr uint8 maxStageCount = 2;
+	ShaderStage shaderStages[maxStageCount]; 
+	vector<uint8> codeArray[maxStageCount];
 	uint8 stageCount = 0;
 
 	if (!createData.vertexCode.empty())
 	{
-		stages[stageCount] = ShaderStage::Vertex;
+		shaderStages[stageCount] = ShaderStage::Vertex;
 		codeArray[stageCount] = std::move(createData.vertexCode);
 		stageCount++;
 	}
 	if (!createData.fragmentCode.empty())
 	{
-		stages[stageCount] = ShaderStage::Fragment;
+		shaderStages[stageCount] = ShaderStage::Fragment;
 		codeArray[stageCount] = std::move(createData.fragmentCode);
 		stageCount++;
 	}
 
 	auto shaders = createShaders(codeArray, stageCount, createData.shaderPath);
-	vk::PipelineShaderStageCreateInfo stageInfos[2];
-	vk::SpecializationInfo specializationInfos[2];
+	vk::PipelineShaderStageCreateInfo stageInfos[maxStageCount];
+	vk::SpecializationInfo specializationInfos[maxStageCount];
 
-	for (uint32 i = 0; i < stageCount; i++)
+	for (uint8 i = 0; i < stageCount; i++)
 	{
-		auto stage = stages[i];
-		auto specializationInfo = &specializationInfos[i];
-
-		fillVkSpecConsts(createData.shaderPath, specializationInfo, createData.specConsts,
-			createData.specConstValues, stage, createData.variantCount);
-
-		vk::PipelineShaderStageCreateInfo stageInfo;
-		stageInfo.stage = toVkShaderStage(stage);
-		stageInfo.module = (VkShaderModule)shaders[i];
-		stageInfo.pName = "main";
-		stageInfo.pSpecializationInfo = specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr;
+		auto shaderStage = shaderStages[i]; auto specializationInfo = &specializationInfos[i];
+		fillVkSpecConsts(createData.shaderPath, specializationInfo, 
+			createData.specConsts, createData.specConstValues, shaderStage, variantCount);
+		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(shaderStage), (VkShaderModule)shaders[i], 
+			"main", specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr);
 		stageInfos[i] = stageInfo;
 	}
 
-	vk::VertexInputBindingDescription bindingDescription;
-	bindingDescription.stride = createData.vertexAttributesSize;
-	bindingDescription.inputRate = vk::VertexInputRate::eVertex;
-
+	vk::VertexInputBindingDescription bindingDescription(0, 
+		createData.vertexAttributesSize, vk::VertexInputRate::eVertex);
 	vk::PipelineVertexInputStateCreateInfo inputInfo;
 	vector<vk::VertexInputAttributeDescription> inputAttributes(createData.vertexAttributes.size());
 
@@ -166,11 +162,9 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		for (uint32 i = 0; i < (uint32)inputAttributes.size(); i++)
 		{
 			auto attribute = vertexAttributes[i];
-			auto& inputAttribute = inputAttributes[i];
-			inputAttribute.location = i;
-			inputAttribute.binding = 0;
-			inputAttribute.format = toVkFormat(attribute.type, attribute.format);
-			inputAttribute.offset = attribute.offset;
+			vk::VertexInputAttributeDescription inputAttribute(i, 0, 
+				toVkFormat(attribute.type, attribute.format), attribute.offset);
+			inputAttributes[i] = inputAttribute;
 		}
 
 		inputInfo.vertexBindingDescriptionCount = 1;
@@ -180,9 +174,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		// TODO: allow to specify input rate for an each vertex attribute?
 	}
 
-	vk::PipelineViewportStateCreateInfo viewportInfo;
-	viewportInfo.viewportCount = 1; // TODO: pass it as argument.
-	viewportInfo.scissorCount = 1;
+	vk::PipelineViewportStateCreateInfo viewportInfo({}, 1, nullptr, 1, nullptr); // TODO: pass it as argument.
 
 	vk::PipelineMultisampleStateCreateInfo multisampleInfo({},
 		vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
@@ -196,7 +188,6 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 
 	// Different shader output and framebuffer attachment count.
 	GARDEN_ASSERT(createData.blendStates.size() == createData.colorFormats.size());
-	attachmentCount = (uint8)createData.blendStates.size();
 
 	if (!createData.renderPass)
 	{
@@ -257,18 +248,19 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		pipelineInfo.pDynamicState = &dynamicInfo;
 	}
 
+	auto vulkanAPI = VulkanAPI::get();
 	const auto& pipelineStateOverrides = createData.pipelineStateOverrides;
 	const auto& blendStateOverrides = createData.blendStateOverrides;
 
-	for (uint8 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
+	for (uint8 i = 0; i < variantCount; i++)
 	{
-		if (variantCount > 1)
+		if (i > 1)
 		{
 			for (auto& specializationInfo : specializationInfos)
-				setVkVariantIndex(&specializationInfo, variantIndex);
+				setVkVariantIndex(&specializationInfo, i);
 		}
 
-		auto pipelineStateSearch = pipelineStateOverrides.find(variantIndex);
+		auto pipelineStateSearch = pipelineStateOverrides.find(i);
 		const auto& pipelineState = pipelineStateSearch == pipelineStateOverrides.end() ?
 			createData.pipelineState : pipelineStateSearch->second;
 
@@ -297,19 +289,20 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			// TODO: stencil testing, depth boundsTesting
 		}
 
-		auto blendStateSearch = blendStateOverrides.find(variantIndex);
+		auto blendStateSearch = blendStateOverrides.find(i);
 		const auto& blendStates = blendStateSearch == blendStateOverrides.end() ?
 			createData.blendStates : blendStateSearch->second;
 		vector<vk::PipelineColorBlendAttachmentState> blendAttachments(attachmentCount);
 
-		for (uint8 i = 0; i < attachmentCount; i++)
+		for (uint8 j = 0; j < attachmentCount; j++)
 		{
-			auto blendState = blendStates.at(i);
-			blendAttachments[i] = vk::PipelineColorBlendAttachmentState(blendState.blending,
+			auto blendState = blendStates.at(j);
+			vk::PipelineColorBlendAttachmentState blendAttachment(blendState.blending,
 				toVkBlendFactor(blendState.srcColorFactor), toVkBlendFactor(blendState.dstColorFactor),
 				toVkBlendOp(blendState.colorOperation), toVkBlendFactor(blendState.srcAlphaFactor),
 				toVkBlendFactor(blendState.dstAlphaFactor), toVkBlendOp(blendState.alphaOperation),
 				toVkColorComponents(blendState.colorMask));
+			blendAttachments[j] = blendAttachment;
 		}
 
 		array<float, 4> blendConstant =
@@ -329,8 +322,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		auto result = vulkanAPI->device.createGraphicsPipeline(vulkanAPI->pipelineCache, pipelineInfo);
 		vk::detail::resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
-		if (createData.variantCount > 1)
-			((void**)this->instance)[variantIndex] = result.value;
+		if (variantCount > 1)
+			((void**)this->instance)[i] = result.value;
 		else
 			this->instance = result.value;
 	}
@@ -348,9 +341,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, 
 	bool asyncRecording) : Pipeline(createData, asyncRecording)
 {
-	if (createData.variantCount > 1)
-		this->instance = malloc<vk::Pipeline>(createData.variantCount);
-
+	this->attachmentCount = (uint8)createData.blendStates.size();
+	
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
 	else abort();

@@ -500,19 +500,17 @@ void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex)
 void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->frameCommandBuffer)
+		return;
+
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
 		auto descriptorSet = descriptorSetRange[i].set;
 		auto dsView = graphicsAPI->descriptorSetPool.get(descriptorSet);
+		ResourceExt::getBusyLock(**dsView)++;
+		graphicsAPI->currentCommandBuffer->addLockedResource(descriptorSet);
 
-		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-		{
-			ResourceExt::getBusyLock(**dsView)++;
-			graphicsAPI->currentCommandBuffer->addLockedResource(descriptorSet);
-		}
-
-		auto dsPipelineView = graphicsAPI->getPipelineView(
-			dsView->getPipelineType(), dsView->getPipeline());
+		auto dsPipelineView = graphicsAPI->getPipelineView(dsView->getPipelineType(), dsView->getPipeline());
 		const auto& pipelineUniforms = dsPipelineView->getUniforms();
 		const auto& dsUniforms = dsView->getUniforms();
 
@@ -533,14 +531,10 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 
 						auto imageViewView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
 						auto imageView = graphicsAPI->imagePool.get(imageViewView->getImage());
-
-						if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-						{
-							ResourceExt::getBusyLock(**imageViewView)++;
-							ResourceExt::getBusyLock(**imageView)++;
-							graphicsAPI->currentCommandBuffer->addLockedResource(ID<ImageView>(resource));
-							graphicsAPI->currentCommandBuffer->addLockedResource(imageViewView->getImage());
-						}
+						ResourceExt::getBusyLock(**imageViewView)++;
+						ResourceExt::getBusyLock(**imageView)++;
+						graphicsAPI->currentCommandBuffer->addLockedResource(ID<ImageView>(resource));
+						graphicsAPI->currentCommandBuffer->addLockedResource(imageViewView->getImage());
 					}
 				}
 			}
@@ -551,14 +545,26 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 					for (auto resource : resourceArray)
 					{
 						if (!resource)
-							continue; // TODO: maybe separate into 2 paths: bindless/nonbindless?
+							continue;
 
 						auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
-						if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-						{
-							ResourceExt::getBusyLock(**bufferView)++;
-							graphicsAPI->currentCommandBuffer->addLockedResource(ID<Buffer>(resource));
-						}
+						ResourceExt::getBusyLock(**bufferView)++;
+						graphicsAPI->currentCommandBuffer->addLockedResource(ID<Buffer>(resource));
+					}
+				}
+			}
+			else if (uniformType == GslUniformType::AccelerationStructure)
+			{
+				for (const auto& resourceArray : dsUniform.second.resourceSets)
+				{
+					for (auto resource : resourceArray)
+					{
+						if (!resource)
+							continue;
+
+						auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
+						ResourceExt::getBusyLock(**tlasView)++;
+						graphicsAPI->currentCommandBuffer->addLockedResource(ID<Tlas>(resource));
 					}
 				}
 			}
@@ -661,15 +667,20 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		auto bindPoint = toVkPipelineBindPoint(type);
+		auto vkBindPoint = toVkPipelineBindPoint(type);
 
 		while (threadIndex < autoThreadCount)
 		{
 			if (pipeline != graphicsAPI->currentPipelines[threadIndex] ||
-				type != graphicsAPI->currentPipelineTypes[threadIndex])
+				type != graphicsAPI->currentPipelineTypes[threadIndex] ||
+				variant != graphicsAPI->currentPipelineVariants[threadIndex])
 			{
-				vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[variant] : (VkPipeline)instance;
-				vulkanAPI->secondaryCommandBuffers[threadIndex].bindPipeline(bindPoint, pipeline);
+				vk::Pipeline vkPipeline = variantCount > 1 ? ((VkPipeline*)instance)[variant] : (VkPipeline)instance;
+				vulkanAPI->secondaryCommandBuffers[threadIndex].bindPipeline(vkBindPoint, vkPipeline);
+
+				vulkanAPI->currentPipelines[threadIndex] = pipeline;
+				vulkanAPI->currentPipelineTypes[threadIndex] = type;
+				vulkanAPI->currentPipelineVariants[threadIndex] = variant;
 			}
 			threadIndex++;
 		}
