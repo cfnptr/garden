@@ -82,7 +82,8 @@ public:
 		Indirect      = 0x0040, /**< Buffer can be used by an inderect rendering commands. */
 		DeviceAddress = 0x0080, /**< Buffer device address can be used inside shaders. */
 		StorageAS     = 0x0100, /**< Buffer can be used for a acceleration structure storage space. */
-		BuildInputAS  = 0x0200  /**< Buffer can be used as a read only input for acceleration structure build. */
+		BuildInputAS  = 0x0200, /**< Buffer can be used as a read only input for acceleration structure build. */
+		SBT           = 0x0400  /**< Buffer can be used as a ray tracing shader binding table. */
 	};
 
 	static constexpr uint8 usageCount = 10; /**< Buffer usage type count. */
@@ -334,6 +335,7 @@ static string_view toString(Buffer::Usage bufferUsage)
 	if (hasOneFlag(bufferUsage, Buffer::Usage::DeviceAddress)) return "DeviceAddress";
 	if (hasOneFlag(bufferUsage, Buffer::Usage::StorageAS)) return "StorageAS";
 	if (hasOneFlag(bufferUsage, Buffer::Usage::BuildInputAS)) return "BuildInputAS";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::SBT)) return "SBT";
 	return "None";
 }
 /**
@@ -354,6 +356,7 @@ static string toStringList(Buffer::Usage bufferUsage)
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::DeviceAddress)) list += "DeviceAddress | ";
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::StorageAS)) list += "StorageAS | ";
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::BuildInputAS)) list += "BuildInputAS | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::SBT)) list += "SBT | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }

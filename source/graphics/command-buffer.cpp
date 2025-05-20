@@ -101,6 +101,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const BlitImageCommand*)command); break;
 		case Command::Type::BuildAccelerationStructure:
 			processCommand(*(const BuildAccelerationStructureCommand*)command); break;
+		case Command::Type::TraceRays:
+			processCommand(*(const TraceRaysCommand*)command); break;
 
 		#if GARDEN_DEBUG
 		case Command::Type::BeginLabel:
@@ -270,7 +272,7 @@ void CommandBuffer::addCommand(const PushConstantsCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
 		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
-	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize(command.dataSize, (uint16)4));
+	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize((psize)command.dataSize, dataAlignment));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(PushConstantsCommandBase));
 	memcpy((uint8*)allocation + sizeof(PushConstantsCommandBase), command.data, command.dataSize);
@@ -429,6 +431,8 @@ void CommandBuffer::addCommand(const BlitImageCommand& command)
 	lastSize = commandSize;
 	hasAnyCommand = true;
 }
+
+//**********************************************************************************************************************
 void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
@@ -439,11 +443,23 @@ void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
 	allocation->lastSize = lastSize;
 	lastSize = commandSize;
 }
+
 void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::ComputeOnly);
 	auto commandSize = (uint32)sizeof(BuildAccelerationStructureCommand);
 	auto allocation = (BuildAccelerationStructureCommand*)allocateCommand(commandSize);
+	*allocation = command;
+	allocation->thisSize = commandSize;
+	allocation->lastSize = lastSize;
+	lastSize = commandSize;
+	hasAnyCommand = true;
+}
+void CommandBuffer::addCommand(const TraceRaysCommand& command)
+{
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::ComputeOnly);
+	auto commandSize = (uint32)sizeof(TraceRaysCommand);
+	auto allocation = (TraceRaysCommand*)allocateCommand(commandSize);
 	*allocation = command;
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;
@@ -456,7 +472,7 @@ void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
 void CommandBuffer::addCommand(const BeginLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) + alignSize(nameLength, (psize)4));
+	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) + alignSize(nameLength, dataAlignment));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BeginLabelCommandBase));
 	memcpy((uint8*)allocation + sizeof(BeginLabelCommandBase), command.name, nameLength);
@@ -477,7 +493,7 @@ void CommandBuffer::addCommand(const EndLabelCommand& command)
 void CommandBuffer::addCommand(const InsertLabelCommand& command)
 {
 	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) + alignSize(nameLength, (psize)4));
+	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) + alignSize(nameLength, dataAlignment));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(InsertLabelCommandBase));
 	memcpy((uint8*)allocation + sizeof(InsertLabelCommandBase), command.name, nameLength);

@@ -20,30 +20,31 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 {
+	if (variantCount > 1)
+		this->instance = malloc<vk::Pipeline>(createData.variantCount);
+
 	auto vulkanAPI = VulkanAPI::get();
 	auto shaderCode = std::move(createData.code);
-	auto shaders = createShaders(&shaderCode, 1, createData.shaderPath); //TODO: with maintenance5 we can omit shader modules creation.
+	auto shaders = createShaders(&shaderCode, 1, createData.shaderPath);
 
 	vk::SpecializationInfo specializationInfo;
 	fillVkSpecConsts(createData.shaderPath, &specializationInfo, createData.specConsts,
-		createData.specConstValues, ShaderStage::Compute, createData.variantCount);
+		createData.specConstValues, ShaderStage::Compute, variantCount);
 
-	vk::PipelineShaderStageCreateInfo stageInfo({},
-		toVkShaderStage(ShaderStage::Compute), (VkShaderModule)shaders[0], "main",
-		specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
-	vk::ComputePipelineCreateInfo pipelineInfo({},
-		stageInfo, (VkPipelineLayout)pipelineLayout, {}, -1);
+	vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(ShaderStage::Compute), 
+		(VkShaderModule)shaders[0], "main", specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
+	vk::ComputePipelineCreateInfo pipelineInfo({}, stageInfo, (VkPipelineLayout)pipelineLayout, nullptr, -1);
 
-	for (uint32 variantIndex = 0; variantIndex < createData.variantCount; variantIndex++)
+	for (uint8 i = 0; i < variantCount; i++)
 	{
 		if (variantCount > 1)
-			setVkVariantIndex(&specializationInfo, variantIndex);
+			setVkVariantIndex(&specializationInfo, i);
 
 		auto result = vulkanAPI->device.createComputePipeline(vulkanAPI->pipelineCache, pipelineInfo);
 		vk::detail::resultCheck(result.result, "vk::Device::createComputePipeline");
 
 		if (createData.variantCount > 1)
-			((void**)this->instance)[variantIndex] = result.value;
+			((void**)this->instance)[i] = result.value;
 		else
 			this->instance = result.value;
 	}
@@ -55,24 +56,20 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecording) :
 	Pipeline(createData, asyncRecording), localSize(createData.localSize)
 {
-	if (createData.variantCount > 1)
-		this->instance = malloc<vk::Pipeline>(createData.variantCount);
-
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
 	else abort();
 }
 
 //**********************************************************************************************************************
-void ComputePipeline::dispatch(u32x4 count, bool isGlobalCount)
+void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 {
 	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(areAllTrue(count > u32x4::zero));
+	GARDEN_ASSERT(areAllTrue(count > uint3::zero));
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
 
 	DispatchCommand command;
-	command.groupCount = (uint3)(isGlobalCount ? (u32x4)ceil((f32x4)count / (f32x4)localSize) : count);
+	command.groupCount = (uint3)(isGlobalCount ? ceil(count / localSize) : count);
 	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }

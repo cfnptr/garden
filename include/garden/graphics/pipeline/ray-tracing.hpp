@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/graphics/buffer.hpp"
 #include "garden/graphics/pipeline.hpp"
 
 namespace garden::graphics
@@ -32,18 +33,48 @@ class RayTracingPipeline final : public Pipeline
 {
 public:
 	/**
+	 * @brief Ray tracing pipeline shader hit group region information container.
+	 */
+	struct HitGroupRegion final
+	{
+		uint64 deviceAddress = 0;
+		uint32 size = 0;
+		uint32 stride = 0;
+	};
+	/**
+	 * @brief Ray tracing pipeline varant group regions container.
+	 */
+	struct SbtGroupRegions final
+	{
+		HitGroupRegion rayGenRegion;
+		HitGroupRegion missRegion;
+		HitGroupRegion hitRegion;
+		HitGroupRegion callRegion;
+	};
+
+	/**
+	 * @brief Ray tracing pipeline shader hit group data container.
+	 */
+	struct HitGroupData final
+	{
+		vector<uint8> intersectionCode;
+		vector<uint8> anyHitCode;
+		vector<uint8> closestHitCode;
+		bool hasIntersectShader = false;
+		bool hasAnyHitShader = false;
+		bool hasClosHitShader = false;
+	};
+	/**
 	 * @brief Ray tracing pipeline shader code overrides.
 	 * @details It allows to override pipeline shader code.
 	 */
 	struct ShaderOverrides final
 	{
-		vector<uint8> rayGenerationCode;
-		vector<uint8> intersectionCode;
-		vector<uint8> anyHitCode;
-		vector<uint8> closestHitCode;
-		vector<uint8> missCode;
-		vector<uint8> callableCode;
 		vector<uint8> headerData;
+		vector<vector<uint8>> rayGenGroups;
+		vector<vector<uint8>> missGroups;
+		vector<HitGroupData> hitGroups;
+		vector<vector<uint8>> callGroups;
 	};
 	/**
 	 * @brief Ray tracing pipeline create data container.
@@ -51,17 +82,19 @@ public:
 	 */
 	struct RayTracingCreateData : public CreateData
 	{
-		uint8 _alignment0 = 0;
-		uint16 _alignment1 = 0;
-		vector<uint8> rayGenerationCode;
-		vector<uint8> intersectionCode;
-		vector<uint8> anyHitCode;
-		vector<uint8> closestHitCode;
-		vector<uint8> missCode;
-		vector<uint8> callableCode;
+		uint8 maxRecursionDepth = 0;
+		uint16 _alignment = 0;
+		vector<vector<uint8>> rayGenGroups;
+		vector<vector<uint8>> missGroups;
+		vector<HitGroupData> hitGroups;
+		vector<vector<uint8>> callGroups;
 	};
 private:
-	uint16 _alignment = 0;
+	uint8 rayGenGroupCount = 0;
+	uint8 missGroupCount = 0;
+	uint8 hitGroupCount = 0;
+	uint8 callGroupCount = 0;
+	uint16 _alignment1 = 0;
 
 	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
 		Pipeline(PipelineType::RayTracing, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
@@ -78,13 +111,47 @@ public:
 	 */
 	RayTracingPipeline() = default;
 
-
-
 	//******************************************************************************************************************
 	// Render commands
 	//******************************************************************************************************************
 
-	
+	/**
+	 * @brief Creates and transfers ray tracing pipeline shader binding table. (SBT)
+	 *
+	 * @param[out] sbtBuffer created STB buffer instance
+	 * @param[out] sbtGroupRegions shader group region array
+	 */
+	void createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions);
+
+	/**
+	 * @brief Executes ray tracing shader with specified SBT and 3D generation group size.
+	 * 
+	 * @param[in] sbtGroupRegions target SBT group region array
+	 * @param count ray tracing generation group 3D size
+	 */
+	void traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint3 count);
+	/**
+	 * @brief Executes ray tracing shader with specified SBT and 2D generation group size.
+	 * @details See the @ref traceRays().
+	 * 
+	 * @param[in] sbtGroupRegions target SBT group region array
+	 * @param count ray tracing generation group 2D size
+	 */
+	void traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint2 count)
+	{
+		traceRays(sbtGroupRegions, uint3(count.x, count.y, 1));
+	}
+	/**
+	 * @brief Executes ray tracing shader with specified SBT and 1D generation group size.
+	 * @details See the @ref traceRays().
+	 * 
+	 * @param[in] sbtGroupRegions target SBT group region array
+	 * @param count ray tracing generation group 1D size
+	 */
+	void traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint32 count)
+	{
+		traceRays(sbtGroupRegions, uint3(count, 1, 1));
+	}
 };
 
 /***********************************************************************************************************************
@@ -94,6 +161,31 @@ public:
 class RayTracingPipelineExt final
 {
 public:
+	/**
+	 * @brief Returns ray tracing pipeline ray generation shader group count.
+	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @param[in] pipeline target ray tracing pipeline instance
+	 */
+	static uint8& getRayGenGroupCount(RayTracingPipeline& pipeline) { return pipeline.rayGenGroupCount; }
+	/**
+	 * @brief Returns ray tracing pipeline ray miss shader group count.
+	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @param[in] pipeline target ray tracing pipeline instance
+	 */
+	static uint8& getMissGroupCount(RayTracingPipeline& pipeline) { return pipeline.missGroupCount; }
+	/**
+	 * @brief Returns ray tracing pipeline ray hit shader group count.
+	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @param[in] pipeline target ray tracing pipeline instance
+	 */
+	static uint8& getHitGroupCount(RayTracingPipeline& pipeline) { return pipeline.hitGroupCount; }
+	/**
+	 * @brief Returns ray tracing pipeline callable shader group count.
+	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @param[in] pipeline target ray tracing pipeline instance
+	 */
+	static uint8& getCallGroupCount(RayTracingPipeline& pipeline) { return pipeline.callGroupCount; }
+
 	/**
 	 * @brief Creates a new ray tracing pipeline data.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
@@ -114,7 +206,14 @@ public:
 	 */
 	static void moveInternalObjects(RayTracingPipeline& source, RayTracingPipeline& destination) noexcept
 	{
-		
+		RayTracingPipelineExt::getRayGenGroupCount(destination) = 
+			std::move(RayTracingPipelineExt::getRayGenGroupCount(source));
+		RayTracingPipelineExt::getMissGroupCount(destination) = 
+			std::move(RayTracingPipelineExt::getMissGroupCount(source));
+		RayTracingPipelineExt::getHitGroupCount(destination) = 
+			std::move(RayTracingPipelineExt::getHitGroupCount(source));
+		RayTracingPipelineExt::getCallGroupCount(destination) = 
+			std::move(RayTracingPipelineExt::getCallGroupCount(source));
 		PipelineExt::moveInternalObjects(source, destination);
 	}
 };

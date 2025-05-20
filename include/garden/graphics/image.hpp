@@ -162,8 +162,8 @@ public:
 		None                   = 0x00, /**< No image usage specified, zero mask. */
 		TransferSrc            = 0x01, /**< Image can be used as the source of a transfer command. */
 		TransferDst            = 0x02, /**< Image can be used as the destination of a transfer command. */
-		Sampled                = 0x04, /**< Image can be used in a descriptor set. */
-		Storage                = 0x08, /**< Image can be used in a descriptor set. */
+		Sampled                = 0x04, /**< Image can be used as image sampler in shaders. (Read only) */
+		Storage                = 0x08, /**< Image can be used as storage buffer in shaders. (Read and write) */
 		ColorAttachment        = 0x10, /**< Image can be used as the framebuffer color attachment. */
 		DepthStencilAttachment = 0x20, /**< Image can be used as the framebuffer depth or/and stencil attachment. */
 		InputAttachment        = 0x40, /**< Image can be used as the framebuffer subpass input attachment. */

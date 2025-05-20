@@ -627,8 +627,11 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 
 		for (uint32 i = 0; i < graphicsAPI->threadCount; i++)
 		{
-			graphicsAPI->currentPipelines[i] = {}; graphicsAPI->currentPipelineTypes[i] = {};
-			graphicsAPI->currentVertexBuffers[i] = graphicsAPI->currentIndexBuffers[i] = {};
+			graphicsAPI->currentPipelines[i] = {};
+			graphicsAPI->currentPipelineTypes[i] = {};
+			graphicsAPI->currentPipelineVariants[i] = 0;
+			graphicsAPI->currentVertexBuffers[i] = {};
+			graphicsAPI->currentIndexBuffers[i] = {};
 		}
 	}
 

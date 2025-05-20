@@ -55,7 +55,7 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 			vertexBufferView->getBinarySize() / geometry.vertexSize - geometry.vertexOffset) - 1; // -1 required!
 		as.geometry.triangles.indexType = toVkIndexType(geometry.indexType);
 		as.geometry.triangles.indexData.deviceAddress = indexBufferView->getDeviceAddress();
-		as.geometry.triangles.transformData = VK_NULL_HANDLE; // Identity transform TODO:
+		as.geometry.triangles.transformData = nullptr; // Identity transform TODO:
 		
 		if (geometry.isOpaqueOnly)
 			as.flags = vk::GeometryFlagBitsKHR::eOpaque;

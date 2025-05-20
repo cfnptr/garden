@@ -44,8 +44,8 @@ public:
 	 */
 	struct ShaderOverrides final
 	{
-		vector<uint8> code;
 		vector<uint8> headerData;
+		vector<uint8> code;
 	};
 	/**
 	 * @brief Compute pipeline create data container.
@@ -102,7 +102,7 @@ public:
      *     gl.localInvocationID.y * gl.workGroupSize.x + gl.localInvocationID.x;
 	 * gl.globalInvocationID = gl.workGroupID * gl.workGroupSize + gl.localInvocationID;
 	 */
-	void dispatch(u32x4 count, bool isGlobalCount = true);
+	void dispatch(uint3 count, bool isGlobalCount = true);
 	/**
 	 * @brief Executes compute shader with specified 2D work group size.
 	 * @details See the @ref dispatch().
@@ -110,7 +110,7 @@ public:
 	 * @param count 2D work group size
 	 * @param isGlobalCount is work group size in global space
 	 */
-	void dispatch(uint2 count, bool isGlobalCount = true) { dispatch(u32x4(count.x, count.y, 1), isGlobalCount); }
+	void dispatch(uint2 count, bool isGlobalCount = true) { dispatch(uint3(count.x, count.y, 1), isGlobalCount); }
 	/**
 	 * @brief Executes compute shader with specified 1D work group size.
 	 * @details See the @ref dispatch().
@@ -118,7 +118,7 @@ public:
 	 * @param count 1D work group size
 	 * @param isGlobalCount is work group size in global space
 	 */
-	void dispatch(uint32 count, bool isGlobalCount = true) { dispatch(u32x4(count, 1, 1), isGlobalCount); }
+	void dispatch(uint32 count, bool isGlobalCount = true) { dispatch(uint3(count, 1, 1), isGlobalCount); }
 };
 
 /***********************************************************************************************************************

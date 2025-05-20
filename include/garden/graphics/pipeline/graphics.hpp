@@ -273,9 +273,9 @@ public:
 	 */
 	struct ShaderOverrides final
 	{
+		vector<uint8> headerData;
 		vector<uint8> vertexCode;
 		vector<uint8> fragmentCode;
-		vector<uint8> headerData;
 	};
 
 	/**

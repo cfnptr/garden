@@ -271,6 +271,8 @@ void GraphicsEditorSystem::showMemoryStats()
 				DescriptorSet::storageBufferCount, GARDEN_DS_POOL_STORAGE_BUFFER_COUNT);
 			ImGui::Text("Input Attachments: %u / %u", 
 				DescriptorSet::inputAttachmentCount, GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT);
+			ImGui::Text("Acceleration Structures: %u / %u", 
+				DescriptorSet::accelStructureCount, GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT);
 			ImGui::Unindent();
 		}
 

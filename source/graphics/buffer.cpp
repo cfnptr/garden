@@ -44,6 +44,8 @@ static constexpr vk::BufferUsageFlags toVkBufferUsages(Buffer::Usage bufferUsage
 		flags |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::BuildInputAS))
 		flags |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::SBT))
+		flags |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
 	return flags;
 }
 static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::CpuAccess memoryCpuAccess) noexcept
@@ -132,8 +134,12 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 	auto graphicsAPI = GraphicsAPI::get();
 	if (hasAnyFlag(usage, Buffer::Usage::DeviceAddress) && !graphicsAPI->hasBufferDeviceAddress())
 		throw GardenError("Device buffer address is not supported on this GPU.");
-	if (hasAnyFlag(usage, Buffer::Usage::StorageAS | Buffer::Usage::BuildInputAS) && !graphicsAPI->hasRayTracing())
+
+	if (!graphicsAPI->hasRayTracing() && hasAnyFlag(usage, Buffer::Usage::StorageAS | 
+		Buffer::Usage::BuildInputAS | Buffer::Usage::SBT))
+	{
 		throw GardenError("Ray tracing acceleration is not supported on this GPU.");
+	}
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkBuffer(usage, cpuAccess, location, strategy, size, instance, allocation, map, deviceAddress);

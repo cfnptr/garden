@@ -181,7 +181,7 @@ static void addBufferBarrier(VulkanAPI* vulkanAPI, const Buffer::BarrierState& n
 			vk::AccessFlags(oldBufferState.access), vk::AccessFlags(newBufferState.access),
 			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, 
 			(VkBuffer)ResourceExt::getInstance(**bufferView), offset, size);
-			vulkanAPI->bufferMemoryBarriers.push_back(bufferMemoryBarrier);
+		vulkanAPI->bufferMemoryBarriers.push_back(bufferMemoryBarrier);
 	}
 
 	oldPipelineStage |= oldBufferState.stage;
@@ -600,7 +600,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		auto colorAttachment = colorAttachments[i];
 		if (noSubpass && !colorAttachment.imageView)
 		{
-			vulkanAPI->colorAttachmentInfos[i].imageView = VK_NULL_HANDLE;
+			vulkanAPI->colorAttachmentInfos[i].imageView = nullptr;
 			continue;
 		}
 
@@ -638,10 +638,11 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 				vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eNone;
 
 			auto imageView = vulkanAPI->imageViewPool.get(colorAttachment.imageView);
-			vulkanAPI->colorAttachmentInfos[i] = vk::RenderingAttachmentInfo(
+			vk::RenderingAttachmentInfo colorAttachmentInfo(
 				(VkImageView)ResourceExt::getInstance(**imageView),
-				vk::ImageLayout::eColorAttachmentOptimal, {}, VK_NULL_HANDLE, 
+				vk::ImageLayout::eColorAttachmentOptimal, {}, nullptr, 
 				vk::ImageLayout::eUndefined, loadOperation, storeOperation, clearValue);
+			vulkanAPI->colorAttachmentInfos[i] = colorAttachmentInfo;
 			// TODO: some how utilize write discarding? (eDontCare)
 		}
 		else
@@ -829,8 +830,11 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 	if (!command.asyncRecording)
 	{
-		vulkanAPI->currentPipelines[0] = {}; vulkanAPI->currentPipelineTypes[0] = {};
-		vulkanAPI->currentVertexBuffers[0] = vulkanAPI->currentIndexBuffers[0] = {};
+		vulkanAPI->currentPipelines[0] = {};
+		vulkanAPI->currentPipelineTypes[0] = {}; 
+		vulkanAPI->currentPipelineVariants[0] = 0;
+		vulkanAPI->currentVertexBuffers[0] = {};
+		vulkanAPI->currentIndexBuffers[0] = {};
 	}
 }
 
@@ -845,8 +849,11 @@ void VulkanCommandBuffer::processCommand(const NextSubpassCommand& command)
 	if (!command.asyncRecording)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		vulkanAPI->currentPipelines[0] = {}; vulkanAPI->currentPipelineTypes[0] = {};
-		vulkanAPI->currentVertexBuffers[0] = vulkanAPI->currentIndexBuffers[0] = {};
+		vulkanAPI->currentPipelines[0] = {};
+		vulkanAPI->currentPipelineTypes[0] = {};
+		vulkanAPI->currentPipelineVariants[0] = 0;
+		vulkanAPI->currentVertexBuffers[0] = {};
+		vulkanAPI->currentIndexBuffers[0] = {};
 	}
 }
 
@@ -970,15 +977,17 @@ void VulkanCommandBuffer::processCommand(const BindPipelineCommand& command)
 
 	auto vulkanAPI = VulkanAPI::get();
 	if (command.pipeline != vulkanAPI->currentPipelines[0] || 
-		command.pipelineType != vulkanAPI->currentPipelineTypes[0])
+		command.pipelineType != vulkanAPI->currentPipelineTypes[0] ||
+		command.variant != vulkanAPI->currentPipelineVariants[0])
 	{
 		auto pipelineView = vulkanAPI->getPipelineView(command.pipelineType, command.pipeline);
 		auto pipeline = ResourceExt::getInstance(**pipelineView);
 		instance.bindPipeline(toVkPipelineBindPoint(command.pipelineType), 
-			pipelineView->getVariantCount() > 1 ?
-			((VkPipeline*)pipeline)[command.variant] : (VkPipeline)pipeline);
+			pipelineView->getVariantCount() > 1 ? ((VkPipeline*)pipeline)[command.variant] : (VkPipeline)pipeline);
+
 		vulkanAPI->currentPipelines[0] = command.pipeline;
 		vulkanAPI->currentPipelineTypes[0] = command.pipelineType;
+		vulkanAPI->currentPipelineVariants[0] = command.variant;
 	}
 }
 
@@ -994,6 +1003,7 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 	auto descriptorSetRange = (const DescriptorSet::Range*)(
 		(const uint8*)&command + sizeof(BindDescriptorSetsCommandBase));
 	auto& descriptorSets = vulkanAPI->bindDescriptorSets[0];
+	// TODO: maybe detect already bound descriptor sets?
 
 	for (uint8 i = 0; i < command.rangeCount; i++)
 	{
@@ -1136,8 +1146,11 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 			break;
 
 		auto commandType = subCommand->type;
-		if (commandType == Command::Type::Dispatch || commandType == Command::Type::BindPipeline)
+		if (commandType == Command::Type::Dispatch | commandType == Command::Type::TraceRays |
+			commandType == Command::Type::EndRenderPass)
+		{
 			break;
+		}
 
 		commandOffset -= subCommand->lastSize;
 		if (commandType != Command::Type::BindDescriptorSets)
@@ -1592,6 +1605,55 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 		vulkanAPI->asRangeInfos.clear();
 		vulkanAPI->asOldPipelineStage = 0;
 	}
+}
+
+//**********************************************************************************************************************
+void VulkanCommandBuffer::processCommand(const TraceRaysCommand& command)
+{
+	SET_CPU_ZONE_SCOPED("TraceRays Command Process");
+
+	auto commandBufferData = (const uint8*)&command;
+	auto commandOffset = (int64)(commandBufferData - data) - (int64)command.lastSize;
+	uint32 oldPipelineStage = 0, newPipelineStage = 0;
+
+	while (commandOffset >= 0)
+	{
+		auto subCommand = (const Command*)(data + commandOffset);
+		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
+		if (subCommand->lastSize == 0)
+			break;
+
+		auto commandType = subCommand->type;
+		if (commandType == Command::Type::TraceRays | commandType == Command::Type::Dispatch |
+			commandType == Command::Type::EndRenderPass)
+		{
+			break;
+		}
+
+		commandOffset -= subCommand->lastSize;
+		if (commandType != Command::Type::BindDescriptorSets)
+			continue;
+
+		const auto& bindDescriptorSetsCommand = *(const BindDescriptorSetsCommand*)subCommand;
+		auto descriptorSetRange = (const DescriptorSet::Range*)(
+			(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
+		addDescriptorSetBarriers(descriptorSetRange,
+			bindDescriptorSetsCommand.rangeCount, oldPipelineStage, newPipelineStage);
+	}
+
+	processPipelineBarriers(oldPipelineStage, newPipelineStage);
+
+	vk::StridedDeviceAddressRegionKHR rayGenRegion(command.sbt.rayGenRegion.deviceAddress,
+		command.sbt.rayGenRegion.stride, command.sbt.rayGenRegion.size);
+	vk::StridedDeviceAddressRegionKHR missRegion(command.sbt.missRegion.deviceAddress,
+		command.sbt.missRegion.stride, command.sbt.missRegion.size);
+	vk::StridedDeviceAddressRegionKHR hitRegion(command.sbt.hitRegion.deviceAddress,
+		command.sbt.hitRegion.stride, command.sbt.hitRegion.size);
+	vk::StridedDeviceAddressRegionKHR callRegion(command.sbt.callRegion.deviceAddress,
+		command.sbt.callRegion.stride, command.sbt.callRegion.size);
+
+	instance.traceRaysKHR(&rayGenRegion, &missRegion, &hitRegion, &callRegion, 
+		command.groupCount.x, command.groupCount.y, command.groupCount.z);
 }
 
 #if GARDEN_DEBUG

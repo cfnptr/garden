@@ -1148,7 +1148,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 		pushConstants->itemCount = countBuffer[i];
 		pipelineView->pushConstants();
 
-		pipelineView->dispatch(u32x4(cubemapSize, cubemapSize, 6));
+		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
 
 		graphicsSystem->destroy(iblSpecularDescriptorSet);
 		graphicsSystem->destroy(iblSpecularView);

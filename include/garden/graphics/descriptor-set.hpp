@@ -214,12 +214,13 @@ public:
 	 * @details Useful for updating bindless descriptor set resources.
 	 * 
 	 * @param name target uniform name
-	 * @param[in] uniform new resource sets
-	 * @param elementOffset element offset inside descriptor set or 0
+	 * @param[in] uniform new descriptor set resource array
+	 * @param elementOffset element index inside descriptor set
+	 * @param setIndex descriptor set index inside resource array
 	 * 
 	 * @warning Use only when required, this operation impacts performance!
 	 */
-	void updateUniform(string_view name, const Uniform& uniform, uint32 elementOffset = 0);
+	void updateUniform(string_view name, const Uniform& uniform, uint32 elementIndex = 0, uint32 setIndex = 0);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
@@ -231,10 +232,11 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	static uint32 combinedSamplerCount; /**< Total descriptor pool combined sampler count. */
-	static uint32 uniformBufferCount; /**< Total descriptor pool uniform buffer count. */
-	static uint32 storageImageCount; /**< Total descriptor pool storage image count. */
-	static uint32 storageBufferCount; /**< Total descriptor pool storage buffer count. */
+	static uint32 uniformBufferCount;   /**< Total descriptor pool uniform buffer count. */
+	static uint32 storageImageCount;    /**< Total descriptor pool storage image count. */
+	static uint32 storageBufferCount;   /**< Total descriptor pool storage buffer count. */
 	static uint32 inputAttachmentCount; /**< Total descriptor pool input attachment count. */
+	static uint32 accelStructureCount;  /**< Total descriptor pool acceleration structure count. */
 	#endif
 };
 

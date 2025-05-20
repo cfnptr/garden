@@ -171,7 +171,7 @@ constexpr string_view gslUniformTypeNames[(psize)GslUniformType::Count] =
 	"image1D", "image2D", "image3D", "imageCube", "image1DArray", "image2DArray",
 	"iimage1D", "iimage2D", "iimage3D", "iimageCube", "iimage1DArray", "iimage2DArray",
 	"uimage1D", "uimage2D", "uimage3D", "uimageCube", "uimage1DArray", "uimage2DArray",
-	"subpassInput", "uniformBuffer", "storageBuffer", "pushConstants"
+	"subpassInput", "uniformBuffer", "storageBuffer", "pushConstants", "accelerationStructure"
 };
 
 /***********************************************************************************************************************
