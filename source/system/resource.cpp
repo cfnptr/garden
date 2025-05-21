@@ -1891,6 +1891,11 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
 	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
 
+	data.hitGroups.resize(1);
+	data.hitGroups[0].hasIntersectShader = hasIntersectShader;
+	data.hitGroups[0].hasAnyHitShader = hasAnyHitShader;
+	data.hitGroups[0].hasClosHitShader = hasClosHitShader;
+
 	if (!hasRayGenShader || !hasMissShader)
 	{
 		throw GardenError("Ray tracing shader file does not exist or it is ambiguous. ("

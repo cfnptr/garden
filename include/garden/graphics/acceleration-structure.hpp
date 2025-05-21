@@ -74,7 +74,7 @@ public:
 		uint32 bufferCount = 0;
 	};
 protected:
-	ID<Buffer> storage = {};
+	ID<Buffer> storageBuffer = {};
 	uint64 deviceAddress = 0;
 	void* buildData = nullptr;
 	uint32 geometryCount = 0;
@@ -105,6 +105,10 @@ protected:
 	 * @brief Returns acceleration structure geometry buffer size.
 	 */
 	uint32 getGeometryCount() const noexcept { return geometryCount; }
+	/**
+	 * @brief Returns acceleration structure storage buffer instance.
+	 */
+	ID<Buffer> getStorageBuffer() const noexcept { return storageBuffer; }
 	/**
 	 * @brief Returns true if acceleration structure is built and can be used.
 	 */
@@ -187,7 +191,7 @@ public:
 	 * @warning In most cases you should use @ref AccelerationStructure functions.
 	 * @param[in] as target acceleration structure instance
 	 */
-	static ID<Buffer>& getStorage(AccelerationStructure& as) noexcept { return as.storage; }
+	static ID<Buffer>& getStorageBuffer(AccelerationStructure& as) noexcept { return as.storageBuffer; }
 	/**
 	 * @brief Returns acceleration structure device address.
 	 * @warning In most cases you should use @ref AccelerationStructure functions.

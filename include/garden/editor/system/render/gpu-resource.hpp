@@ -24,8 +24,8 @@ class GpuResourceEditorSystem final : public System
 public:
 	enum class TabType : uint8
 	{
-		None, Buffers, Images, ImageViews, Framebuffers, Samplers, 
-		DescriptorSets, GraphicsPipelines, ComputePipelines, Count
+		None, Buffers, Images, ImageViews, Framebuffers, Samplers, Blases, Tlases,
+		DescriptorSets, GraphicsPipelines, ComputePipelines, RayTracingPipelines, Count
 	};
 private:
 	string searchString;
@@ -55,12 +55,20 @@ public:
 	{ openTab(ID<Resource>(imageView), TabType::ImageViews); }
 	void openTab(ID<Framebuffer> framebuffer) noexcept
 	{ openTab(ID<Resource>(framebuffer), TabType::Framebuffers); }
+	void openTab(ID<Sampler> sampler) noexcept
+	{ openTab(ID<Resource>(sampler), TabType::Samplers); }
+	void openTab(ID<Blas> blas) noexcept
+	{ openTab(ID<Resource>(blas), TabType::Blases); }
+	void openTab(ID<Tlas> tlas) noexcept
+	{ openTab(ID<Resource>(tlas), TabType::Tlases); }
 	void openTab(ID<DescriptorSet> descriptrSet) noexcept
 	{ openTab(ID<Resource>(descriptrSet), TabType::DescriptorSets); }
 	void openTab(ID<GraphicsPipeline> graphicsPipeline) noexcept
 	{ openTab(ID<Resource>(graphicsPipeline), TabType::GraphicsPipelines); }
 	void openTab(ID<ComputePipeline> computePipeline) noexcept
 	{ openTab(ID<Resource>(computePipeline), TabType::ComputePipelines); }
+	void openTab(ID<RayTracingPipeline> rayTracingPipeline) noexcept
+	{ openTab(ID<Resource>(rayTracingPipeline), TabType::RayTracingPipelines); }
 };
 
 } // namespace garden

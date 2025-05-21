@@ -55,7 +55,7 @@ bool AccelerationStructure::destroy()
 				{
 					for (auto resource : resourceArray)
 					{
-						if (ID<Buffer>(resource) != storage)
+						if (ID<Buffer>(resource) != storageBuffer)
 							continue;
 						throw GardenError("Descriptor set is still using destroyed AS storage. (storage: " +
 							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
@@ -79,7 +79,7 @@ bool AccelerationStructure::destroy()
 				GraphicsAPI::DestroyResourceType::Blas : GraphicsAPI::DestroyResourceType::Tlas;
 			vulkanAPI->destroyResource(resourceType, instance);
 		}
-		vulkanAPI->bufferPool.destroy(storage);
+		vulkanAPI->bufferPool.destroy(storageBuffer);
 	}
 	else abort();
 
@@ -90,7 +90,7 @@ bool AccelerationStructure::isStorageReady() const noexcept
 {
 	if (!isBuilt())
 		return false;
-	auto storageView = GraphicsAPI::get()->bufferPool.get(storage);
+	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
 	return storageView->isReady();
 }
 
@@ -100,7 +100,7 @@ void AccelerationStructure::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto storageView = GraphicsAPI::get()->bufferPool.get(storage);
+	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
 	storageView->setDebugName("buffer." + name);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -147,13 +147,13 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
 	// Note: assuming that acceleration structure will be built on a separate compute queue.
-	auto bufferView = graphicsAPI->bufferPool.get(storage);
+	auto bufferView = graphicsAPI->bufferPool.get(storageBuffer);
 	ResourceExt::getBusyLock(**bufferView)++;
 	bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
 	ResourceExt::getBusyLock(**bufferView)++;
 	busyLock++;
 
-	graphicsAPI->currentCommandBuffer->addLockedResource(storage);
+	graphicsAPI->currentCommandBuffer->addLockedResource(storageBuffer);
 	graphicsAPI->currentCommandBuffer->addLockedResource(scratchBuffer);
 
 	if (type == AccelerationStructure::Type::Blas)

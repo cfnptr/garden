@@ -19,10 +19,9 @@
 
 #pragma once
 #include "garden/graphics/common.hpp"
-#include "garden/graphics/sampler.hpp"
+#include "garden/graphics/image.hpp"
+#include "garden/graphics/acceleration-structure/tlas.hpp"
 #include "tsl/robin_map.h"
-
-#include <typeindex>
 
 namespace garden::graphics
 {
@@ -56,60 +55,95 @@ class DescriptorSet final : public Resource
 {
 public:
 	/*******************************************************************************************************************
-	 * @brief Descriptor set resource container.
+	 * @brief Descriptor set uniform resources container.
 	 * @details Resources like buffers, images and other types of data that shaders need to access.
 	 */
 	struct Uniform final
 	{
 		using ResourceArray = vector<ID<Resource>>; /**< Uniform resource array or just one resource. */
 		vector<ResourceArray> resourceSets;         /**< Resource array for each descriptor set. */
-	private:
-		#if GARDEN_DEBUG
-		type_index type;
-		#endif
 	public:
 		/**
-		 * @brief Creates a new descriptor set uniform out of target resource.
+		 * @brief Creates a new descriptor set uniform out of target buffer.
 		 * 
-		 * @tparam T type of the resource (or @ref Resource)
-		 * @param resource target uniform resource
-		 * @param arraySize resource array size
+		 * @param buffer target buffer instance
+		 * @param resourceCount resource array size
 		 * @param setCount descriptor set count
 		 */
-		template<class T = Resource>
-		Uniform(ID<T> resource, psize arraySize = 1, psize setCount = 1) noexcept :
-			resourceSets(setCount, ResourceArray(arraySize, ID<Resource>(resource)))
-			#if GARDEN_DEBUG
-			, type(typeid(T))
-			#endif
-		{ }
+		Uniform(ID<Buffer> buffer, psize resourceCount = 1, psize setCount = 1) noexcept :
+			resourceSets(setCount, ResourceArray(resourceCount, ID<Resource>(buffer))) { }
 		/**
-		 * @brief Creates a new descriptor set uniform out of resource sets.
+		 * @brief Creates a new descriptor set uniform out of target image view.
 		 * 
-		 * @tparam T type of the resource (or @ref Resource)
-		 * @param[in] resourceSets target resource sets
+		 * @param imageView target image view instance
+		 * @param resourceCount resource array size
+		 * @param setCount descriptor set count
 		 */
-		template<class T = Resource>
-		Uniform(const vector<vector<ID<T>>>& resourceSets) noexcept :
-			resourceSets(*((const vector<ResourceArray>*)&resourceSets))
-			#if GARDEN_DEBUG
-			, type(typeid(T))
-			#endif
-		{ }
+		Uniform(ID<ImageView> imageView, psize resourceCount = 1, psize setCount = 1) noexcept :
+			resourceSets(setCount, ResourceArray(resourceCount, ID<Resource>(imageView))) { }
+		/**
+		 * @brief Creates a new descriptor set uniform out of target TLAS.
+		 * 
+		 * @param tlas target top level acceleration structure instance (TLAS)
+		 * @param resourceCount resource array size
+		 * @param setCount descriptor set count
+		 */
+		Uniform(ID<Tlas> tlas, psize resourceCount = 1, psize setCount = 1) noexcept :
+			resourceSets(setCount, ResourceArray(resourceCount, ID<Resource>(tlas))) { }
+
+		/**
+		 * @brief Creates a new descriptor set uniform out of buffers.
+		 * @param[in] buffers target buffer array
+		 */
+		Uniform(const vector<vector<ID<Buffer>>>& buffers) noexcept :
+			resourceSets(*((const vector<ResourceArray>*)&buffers)) { }
+		/**
+		 * @brief Creates a new descriptor set uniform out of image views.
+		 * @param[in] imageViews target image view array
+		 */
+		Uniform(const vector<vector<ID<ImageView>>>& imageViews) noexcept :
+			resourceSets(*((const vector<ResourceArray>*)&imageViews)) { }
+		/**
+		 * @brief Creates a new descriptor set uniform out of image views.
+		 * @param[in] tlases target top level acceleration structure array (TLAS)
+		 */
+		Uniform(const vector<vector<ID<Tlas>>>& tlases) noexcept :
+			resourceSets(*((const vector<ResourceArray>*)&tlases)) { }
+
+		/**
+		 * @brief Creates a new empty descriptor set uniform.
+		 */
+		Uniform() noexcept = default;
+	};
+
+	/*******************************************************************************************************************
+	 * @brief Descriptor set uniform resource container.
+	 * @details See the @ref Uniform for details.
+	 */
+	struct UniformResource final
+	{
+		ID<Resource> resource = {}; /**< Uniform resource instance. */
+	public:
+		/**
+		 * @brief Creates a new descriptor set uniform out of target buffer.
+		 * @param buffer target buffer instance
+		 */
+		UniformResource(ID<Buffer> buffer) noexcept : resource(ID<Resource>(buffer)) { }
+		/**
+		 * @brief Creates a new descriptor set uniform out of target image view.
+		 * @param imageView target image view instance
+		 */
+		UniformResource(ID<ImageView> imageView) noexcept : resource(ID<Resource>(imageView)) { }
+		/**
+		 * @brief Creates a new descriptor set uniform out of target TLAS.
+		 * @param tlas target top level acceleration structure instance (TLAS)
+		 */
+		UniformResource(ID<Tlas> tlas) noexcept : resource(ID<Resource>(tlas)) { }
 		/**
 		 * @brief Creates a new empty descriptor set uniform.
 		 * @note It can not be used to create a descriptor set.
 		 */
-		Uniform() noexcept
-			#if GARDEN_DEBUG
-			: type(typeid(Resource)) { }
-			#else
-			= default;
-			#endif
-
-		#if GARDEN_DEBUG
-		type_index getDebugType() const noexcept { return type; }
-		#endif
+		UniformResource() noexcept = default;
 	};
 
 	/*******************************************************************************************************************
@@ -143,9 +177,9 @@ public:
 private:
 	ID<Pipeline> pipeline = {};
 	Uniforms uniforms;
-	Samplers samplers;
 	PipelineType pipelineType = {};
 	uint8 index = 0;
+	uint8 setCount = 0;
 
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 		Uniforms&& uniforms, Samplers&& samplers, uint8 index);
@@ -181,21 +215,10 @@ public:
 	 */
 	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
-	 * @brief Returns dynamic sampler map. (mutable uniforms)
-	 * @details Can be used to access descriptor set mutable samplers.
-	 */
-	const Samplers& getSamplers() const noexcept { return samplers; }
-
-	/**
 	 * @brief Returns internal descriptor set instance count.
-	 * @details Internally single set descriptor can contain multiple instances.
+	 * @details Internally single descriptor set can contain multiple instances.
 	 */
-	uint32 getSetCount() const noexcept
-	{
-		if (uniforms.empty())
-			return 0;
-		return (uint32)uniforms.begin()->second.resourceSets.size();
-	}
+	uint32 getSetCount() const noexcept { return setCount; }
 
 	/**
 	 * @brief Recreates descriptor set with a new resources.
@@ -210,17 +233,26 @@ public:
 	// TODO: void copy(ID<DescriptorSet> descriptorSet);
 
 	/**
-	 * @brief Updates specific descriptor set uniform.
+	 * @brief Updates specific descriptor set uniform resource.
 	 * @details Useful for updating bindless descriptor set resources.
 	 * 
 	 * @param name target uniform name
-	 * @param[in] uniform new descriptor set resource array
-	 * @param elementOffset element index inside descriptor set
-	 * @param setIndex descriptor set index inside resource array
-	 * 
-	 * @warning Use only when required, this operation impacts performance!
+	 * @param[in] uniform new descriptor set uniform resource
+	 * @param elementIndex element index inside descriptor array
+	 * @param setIndex descriptor set index inside descriptor set array
 	 */
-	void updateUniform(string_view name, const Uniform& uniform, uint32 elementIndex = 0, uint32 setIndex = 0);
+	void updateUniform(string_view name, const UniformResource& uniform, 
+		uint32 elementIndex = 0, uint32 setIndex = 0);
+	/**
+	 * @brief Writes updated descriptor set uniform resources.
+	 * @warning Use only when required, this operation impacts performance!
+	 *
+	 * @param name target uniform name
+	 * @param elementCount descriptor array element count
+	 * @param elementOffset element offset inside descriptor array
+	 * @param setIndex descriptor set index inside descriptor set array
+	 */
+	void writeResources(string_view name, uint32 elementCount, uint32 elementOffset = 0, uint32 setIndex = 0);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
@@ -259,12 +291,6 @@ public:
 	 * @param[in] descriptorSet target descriptor set instance
 	 */
 	static DescriptorSet::Uniforms& getUniforms(DescriptorSet& descriptorSet) noexcept { return descriptorSet.uniforms; }
-	/**
-	 * @brief Returns descriptor set sampler map.
-	 * @warning In most cases you should use @ref DescriptorSet functions.
-	 * @param[in] descriptorSet target descriptor set instance
-	 */
-	static DescriptorSet::Samplers& getSamplers(DescriptorSet& descriptorSet) noexcept { return descriptorSet.samplers; }
 	/**
 	 * @brief Returns descriptor set parent pipeline type.
 	 * @warning In most cases you should use @ref DescriptorSet functions.

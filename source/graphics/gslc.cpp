@@ -1796,7 +1796,6 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	if (!fileResult) return false;
 
 	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n"
-		"#extension GL_EXT_nonuniform_qualifier : require\n"
 		"#define accelerationStructure accelerationStructureEXT\n#define hitAttribute hitAttributeEXT\n"
 		"#define rayPayload rayPayloadEXT\n#define rayPayloadIn rayPayloadInEXT\n"
 		"#define callableData callableDataEXT\n#define callableDataIn callableDataInEXT\n"
@@ -2246,11 +2245,20 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 		data.packReader->readItemData(rayGenerationPath, data.rayGenGroups[0], threadIndex);
 		data.packReader->readItemData(missPath, data.missGroups[0], threadIndex);
 		if (data.packReader->getItemIndex(intersectionPath, itemIndex))
+		{
 			data.packReader->readItemData(itemIndex, data.hitGroups[0].intersectionCode, threadIndex);
+			data.hitGroups[0].hasIntersectShader = true;
+		}
 		if (data.packReader->getItemIndex(anyHitPath, itemIndex))
+		{
 			data.packReader->readItemData(itemIndex, data.hitGroups[0].anyHitCode, threadIndex);
+			data.hitGroups[0].hasAnyHitShader = true;
+		}
 		if (data.packReader->getItemIndex(closestHitPath, itemIndex))
+		{
 			data.packReader->readItemData(itemIndex, data.hitGroups[0].closestHitCode, threadIndex);
+			data.hitGroups[0].hasClosHitShader = true;
+		}
 		if (data.packReader->getItemIndex(callablePath, itemIndex))
 		{
 			data.callGroups.resize(1);
@@ -2261,11 +2269,20 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 		File::loadBinary(data.cachePath / rayGenerationPath, data.rayGenGroups[0]);
 		File::loadBinary(data.cachePath / missPath, data.missGroups[0]);
 		if (fs::exists(data.cachePath / intersectionPath))
+		{
 			File::loadBinary(data.cachePath / intersectionPath, data.hitGroups[0].intersectionCode);
+			data.hitGroups[0].hasIntersectShader = true;
+		}
 		if (fs::exists(data.cachePath / anyHitPath))
+		{
 			File::loadBinary(data.cachePath / anyHitPath, data.hitGroups[0].anyHitCode);
+			data.hitGroups[0].hasAnyHitShader = true;
+		}
 		if (fs::exists(data.cachePath / closestHitPath))
+		{
 			File::loadBinary(data.cachePath / closestHitPath, data.hitGroups[0].closestHitCode);
+			data.hitGroups[0].hasClosHitShader = true;
+		}
 		if (fs::exists(data.cachePath / callablePath))
 		{
 			data.callGroups.resize(1);
@@ -2419,6 +2436,18 @@ int main(int argc, char *argv[])
 					GslCompiler::ComputeData computeData;
 					computeData.shaderPath = arg;
 					result |= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
+				}
+				catch (const exception& e)
+				{
+					if (strcmp(e.what(), "_GLSLC") != 0)
+						cout << string(e.what()) + '\n';
+				}
+
+				try
+				{
+					GslCompiler::RayTracingData rayTracingData;
+					rayTracingData.shaderPath = arg;
+					result |= GslCompiler::compileRayTracingShaders(inputPath, outputPath, includePaths, rayTracingData);
 				}
 				catch (const exception& e)
 				{

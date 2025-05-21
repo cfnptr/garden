@@ -145,9 +145,12 @@ public:
 	void drawResource(ID<ImageView> imageView, const char* label = "Image View");
 	void drawResource(ID<Framebuffer> framebuffer, const char* label = "Framebuffer");
 	void drawResource(ID<Sampler> sampler, const char* label = "Sampler");
+	void drawResource(ID<Blas> blas, const char* label = "BLAS");
+	void drawResource(ID<Tlas> tlas, const char* label = "TLAS");
 	void drawResource(ID<DescriptorSet> descriptorSet, const char* label = "Descriptor Set");
 	void drawResource(ID<GraphicsPipeline> graphicsPipeline, const char* label = "Graphics Pipeline");
 	void drawResource(ID<ComputePipeline> computePipeline, const char* label = "Compute Pipeline");
+	void drawResource(ID<RayTracingPipeline> rayTracingPipeline, const char* label = "Ray Tracing Pipeline");
 
 	void drawResource(const Ref<Buffer>& buffer, const char* label = "Buffer")
 	{ drawResource(ID<Buffer>(buffer), label); }
@@ -159,12 +162,19 @@ public:
 	{ drawResource(ID<Framebuffer>(framebuffer), label); }
 	void drawResource(const Ref<Sampler>& sampler, const char* label = "Sampler")
 	{ drawResource(ID<Sampler>(sampler), label); }
+	void drawResource(const Ref<Blas>& blas, const char* label = "BLAS")
+	{ drawResource(ID<Blas>(blas), label); }
+	void drawResource(const Ref<Tlas>& tlas, const char* label = "TLAS")
+	{ drawResource(ID<Tlas>(tlas), label); }
 	void drawResource(const Ref<DescriptorSet>& descriptorSet, const char* label = "Descriptor Set")
 	{ drawResource(ID<DescriptorSet>(descriptorSet), label); }
 	void drawResource(const Ref<GraphicsPipeline>& graphicsPipeline, const char* label = "Graphics Pipeline")
 	{ drawResource(ID<GraphicsPipeline>(graphicsPipeline), label); }
 	void drawResource(const Ref<ComputePipeline>& computePipeline, const char* label = "Compute Pipeline")
 	{ drawResource(ID<ComputePipeline>(computePipeline), label); }
+	void drawResource(const Ref<RayTracingPipeline>& rayTracingPipeline, const char* label = "Ray Tracing Pipeline")
+	{ drawResource(ID<RayTracingPipeline>(rayTracingPipeline), label); }
+
 };
 
 } // namespace garden

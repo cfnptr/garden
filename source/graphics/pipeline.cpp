@@ -62,18 +62,17 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 //**********************************************************************************************************************
 static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
 	const Pipeline::Uniforms& uniforms, const tsl::robin_map<string, vk::Sampler>& immutableSamplers,
-	const fs::path& pipelinePath, uint32 maxBindlessCount, bool& bindless)
+	const fs::path& pipelinePath, uint32 maxBindlessCount)
 {
-	bindless = false;
-
 	auto vulkanAPI = VulkanAPI::get();
 	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings;
 	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
-	vector<vector<vk::Sampler>> samplerArrays; 
+	vector<vector<vk::Sampler>> samplerArrays;
+	// TODO: refactor this garbage.
 	
 	for (uint8 i = 0; i < (uint8)descriptorSetLayouts.size(); i++)
 	{	
-		uint32 bindingIndex = 0; bool isBindless = false;
+		uint32 bindingIndex = 0;
 
 		vector<vk::DescriptorPoolSize> descriptorPoolSizes =
 		{
@@ -81,6 +80,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 0),
 			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 0),
 			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 0),
+			vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, 0),
 		};
 
 		if (descriptorSetBindings.size() < uniforms.size())
@@ -119,6 +119,8 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 					descriptorPoolSizes[2].descriptorCount += maxBindlessCount; break;
 				case vk::DescriptorType::eStorageBuffer:
 					descriptorPoolSizes[3].descriptorCount += maxBindlessCount; break;
+				case vk::DescriptorType::eAccelerationStructureKHR:
+					descriptorPoolSizes[4].descriptorCount += maxBindlessCount; break;
 				default: abort();
 				}
 
@@ -132,7 +134,6 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 				descriptorBindingFlags[bindingIndex] =
 					vk::DescriptorBindingFlagBits::eUpdateAfterBind | vk::DescriptorBindingFlagBits::ePartiallyBound;
 				descriptorSetBinding.descriptorCount = maxBindlessCount;
-				isBindless = true;
 			}
 
 			bindingIndex++;
@@ -141,7 +142,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo({}, bindingIndex, descriptorSetBindings.data());
 		vk::DescriptorSetLayoutBindingFlagsCreateInfo descriptorSetFlagsInfo;
 
-		if (isBindless)
+		if (maxBindlessCount > 0)
 		{
 			descriptorSetFlagsInfo.bindingCount = bindingIndex;
 			descriptorSetFlagsInfo.pBindingFlags = descriptorBindingFlags.data();
@@ -163,6 +164,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 					maxSetCount += descriptorPoolSizes[j].descriptorCount;
 				}
 			}
+			GARDEN_ASSERT(maxSetCount > 0);
 
 			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
 				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
@@ -180,9 +182,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		}
 
 		descriptorSetLayouts[i] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
-
 		samplerArrays.clear();
-		bindless = isBindless;
 
 		#if GARDEN_DEBUG
 		if (vulkanAPI->hasDebugUtils)
@@ -368,7 +368,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
 
 		createVkDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms,
-			immutableSamplers, createData.shaderPath, createData.maxBindlessCount, bindless);
+			immutableSamplers, createData.shaderPath, createData.maxBindlessCount);
 		this->pipelineLayout = createVkPipelineLayout(pushConstantsSize,
 			createData.pushConstantsStages, descriptorSetLayouts, createData.shaderPath);
 	}

@@ -202,7 +202,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 	{
 		auto descriptor = descriptorSetRange[i];
 		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptor.set);
-		const auto& descriptorSetUniforms = descriptorSet->getUniforms();
+		const auto& dsUniforms = descriptorSet->getUniforms();
 		auto pipelineView = vulkanAPI->getPipelineView(
 			descriptorSet->getPipelineType(), descriptorSet->getPipeline());
 		const auto& pipelineUniforms = pipelineView->getUniforms();
@@ -214,7 +214,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 				continue;
 
 			auto setCount = descriptor.offset + descriptor.count;
-			const auto& descriptorSetUniform = descriptorSetUniforms.at(pipelineUniform.first);
+			const auto& dsUniform = dsUniforms.at(pipelineUniform.first);
 
 			if (isSamplerType(uniform.type) || isImageType(uniform.type))
 			{
@@ -242,7 +242,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 				{
 					for (uint32 j = descriptor.offset; j < setCount; j++)
 					{
-						const auto& resourceArray = descriptorSetUniform.resourceSets[j];
+						const auto& resourceArray = dsUniform.resourceSets[j];
 						for (auto resource : resourceArray)
 						{
 							if (!resource)
@@ -259,7 +259,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 				{
 					for (uint32 j = descriptor.offset; j < setCount; j++)
 					{
-						const auto& resourceArray = descriptorSetUniform.resourceSets[j];
+						const auto& resourceArray = dsUniform.resourceSets[j];
 						for (auto resource : resourceArray)
 						{
 							auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
@@ -294,7 +294,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 				{
 					for (uint32 j = descriptor.offset; j < setCount; j++)
 					{
-						const auto& resourceArray = descriptorSetUniform.resourceSets[j];
+						const auto& resourceArray = dsUniform.resourceSets[j];
 						for (auto resource : resourceArray)
 						{
 							if (!resource)
@@ -307,7 +307,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 				{
 					for (uint32 j = descriptor.offset; j < setCount; j++)
 					{
-						const auto& resourceArray = descriptorSetUniform.resourceSets[j];
+						const auto& resourceArray = dsUniform.resourceSets[j];
 						for (auto resource : resourceArray)
 							addBufferBarrier(vulkanAPI, newBufferState, ID<Buffer>(resource), oldPipelineStage);
 					}
@@ -922,11 +922,11 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		auto format = imageView->getFormat();
 
 		vk::ClearValue clearValue;
-		if (isFormatFloat(format))
+		if (isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format))
 		{
 			memcpy(clearValue.color.float32.data(), &attachment.clearColor.floatValue, sizeof(float) * 4);
 		}
-		else if (isFormatInt(format))
+		else if (isFormatSint(format))
 		{
 			memcpy(clearValue.color.int32.data(), &attachment.clearColor.intValue, sizeof(int32) * 4);
 		}
@@ -1525,7 +1525,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 			asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
 
 		addBufferBarrier(vulkanAPI, newBufferState, AccelerationStructureExt::
-			getStorage(**asView), vulkanAPI->asOldPipelineStage);
+			getStorageBuffer(**asView), vulkanAPI->asOldPipelineStage);
 		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
 	}
 	if (command.typeAS == AccelerationStructure::Type::Blas)
@@ -1540,7 +1540,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	}
 
 	addBufferBarrier(vulkanAPI, newBufferState, AccelerationStructureExt::
-		getStorage(**asView), vulkanAPI->asOldPipelineStage);
+		getStorageBuffer(**asView), vulkanAPI->asOldPipelineStage);
 	
 	auto buildData = (const uint8*)AccelerationStructureExt::getBuildData(**asView);
 	auto buildDataHeader = *((const AccelerationStructure::BuildDataHeader*)buildData);

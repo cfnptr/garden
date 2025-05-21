@@ -94,7 +94,7 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 		auto groupType = hitGroup.hasIntersectShader ?
 			vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup :
 			vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup;
-		vk::RayTracingShaderGroupCreateInfoKHR groupInfo(groupType, 0);
+		vk::RayTracingShaderGroupCreateInfoKHR groupInfo(groupType);
 
 		if (hitGroup.hasIntersectShader)
 			groupInfo.intersectionShader = stageIndex++;

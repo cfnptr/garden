@@ -28,7 +28,6 @@ PhysicsEditorSystem::PhysicsEditorSystem()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
-	
 }
 PhysicsEditorSystem::~PhysicsEditorSystem()
 {

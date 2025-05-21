@@ -110,7 +110,7 @@ Tlas::Tlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags) : AccelerationStructur
 {
 	GARDEN_ASSERT(instanceBuffer);
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		createVkTlas(instanceBuffer, flags, storage, instance, deviceAddress, buildData);
+		createVkTlas(instanceBuffer, flags, storageBuffer, instance, deviceAddress, buildData);
 	else abort();
 }
 
