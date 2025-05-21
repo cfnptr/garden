@@ -904,9 +904,17 @@ static constexpr bool isFormatUint(Image::Format formatType)
  * @brief Is the image data format a signed integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatInt(Image::Format formatType)
+static constexpr bool isFormatSint(Image::Format formatType)
 {
 	return Image::Format::SintR8 <= formatType && formatType <= Image::Format::SintR32G32B32A32;
+}
+/**
+ * @brief Is the image data format a signed or unsigned integer.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatInt(Image::Format formatType)
+{
+	return Image::Format::UintR8 <= formatType && formatType <= Image::Format::SintR32G32B32A32;
 }
 /**
  * @brief Is the image data format a normalized unsigned integer.
@@ -939,6 +947,14 @@ static constexpr bool isFormatNorm(Image::Format formatType)
 static constexpr bool isFormatFloat(Image::Format formatType)
 {
 	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatB10G11R11;
+}
+/**
+ * @brief Is the image data format a sRGB encoded.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatSrgb(Image::Format formatType)
+{
+	return Image::Format::SrgbR8G8B8A8 <= formatType && formatType <= Image::Format::SrgbB8G8R8A8;
 }
 
 /***********************************************************************************************************************

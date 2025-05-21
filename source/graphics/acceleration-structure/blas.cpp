@@ -151,7 +151,7 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 	geometryInfo.geometryCount = geometryCount;
 	geometryInfo.pGeometries = asArray;
 
-	std::vector<uint32_t> maxPrimitiveCounts(geometryCount);
+	vector<uint32_t> maxPrimitiveCounts(geometryCount);
 	for (uint32 i = 0; i < geometryCount; i++)
 		maxPrimitiveCounts[i] = rangeInfos[i].primitiveCount;
 
@@ -190,7 +190,7 @@ Blas::Blas(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, Bui
 	GARDEN_ASSERT(geometryCount > 0);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		createVkBlas(geometryArray, geometryCount, 2, flags, storage, instance, deviceAddress, buildData);
+		createVkBlas(geometryArray, geometryCount, 2, flags, storageBuffer, instance, deviceAddress, buildData);
 	else abort();
 }
 Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags) :
@@ -200,6 +200,6 @@ Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFl
 	GARDEN_ASSERT(geometryCount > 0);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		createVkBlas(geometryArray, geometryCount, 1, flags, storage, instance, deviceAddress, buildData);
+		createVkBlas(geometryArray, geometryCount, 1, flags, storageBuffer, instance, deviceAddress, buildData);
 	else abort();
 }

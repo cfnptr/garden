@@ -1152,15 +1152,25 @@ void EditorRenderSystem::drawResource(ID<ImageView> imageView, const char* label
 }
 void EditorRenderSystem::drawResource(ID<Framebuffer> framebuffer, const char* label)
 {
-	auto framebufferView = framebuffer ?
+	auto framebufferView = framebuffer ? 
 		GraphicsAPI::get()->framebufferPool.get(framebuffer) : View<Framebuffer>();
-	::drawResource(*framebufferView, label, ID<Resource>(framebuffer), GpuResourceEditorSystem::TabType::Framebuffers);
+	::drawResource(*framebufferView, label, ID<Resource>(framebuffer), 
+		GpuResourceEditorSystem::TabType::Framebuffers);
 }
 void EditorRenderSystem::drawResource(ID<Sampler> sampler, const char* label)
 {
-	auto samplerView = sampler ?
-		GraphicsAPI::get()->samplerPool.get(sampler) : View<Sampler>();
+	auto samplerView = sampler ? GraphicsAPI::get()->samplerPool.get(sampler) : View<Sampler>();
 	::drawResource(*samplerView, label, ID<Resource>(sampler), GpuResourceEditorSystem::TabType::Samplers);
+}
+void EditorRenderSystem::drawResource(ID<Blas> blas, const char* label)
+{
+	auto blasView = blas ? GraphicsAPI::get()->blasPool.get(blas) : View<Blas>();
+	::drawResource(*blasView, label, ID<Resource>(blas), GpuResourceEditorSystem::TabType::Blases);
+}
+void EditorRenderSystem::drawResource(ID<Tlas> tlas, const char* label)
+{
+	auto tlasView = tlas ? GraphicsAPI::get()->tlasPool.get(tlas) : View<Tlas>();
+	::drawResource(*tlasView, label, ID<Resource>(tlas), GpuResourceEditorSystem::TabType::Tlases);
 }
 void EditorRenderSystem::drawResource(ID<DescriptorSet> descriptorSet, const char* label)
 {
@@ -1182,5 +1192,12 @@ void EditorRenderSystem::drawResource(ID<ComputePipeline> computePipeline, const
 		GraphicsAPI::get()->computePipelinePool.get(computePipeline) : View<ComputePipeline>();
 	::drawResource(*computePipelineView, label, ID<Resource>(computePipeline),
 		GpuResourceEditorSystem::TabType::ComputePipelines);
+}
+void EditorRenderSystem::drawResource(ID<RayTracingPipeline> rayTracingPipeline, const char* label)
+{
+	auto rayTracingPipelineView = rayTracingPipeline ?
+		GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline) : View<RayTracingPipeline>();
+	::drawResource(*rayTracingPipelineView, label, ID<Resource>(rayTracingPipeline),
+		GpuResourceEditorSystem::TabType::RayTracingPipelines);
 }
 #endif

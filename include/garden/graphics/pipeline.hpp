@@ -142,7 +142,6 @@ protected:
 	PipelineType type = {};
 	uint8 variantCount = 0;
 	bool asyncRecording = false;
-	bool bindless = false;
 
 	Pipeline(CreateData& createData, bool useAsyncRecording);
 	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, 
@@ -222,7 +221,7 @@ public:
 	 * @brief Is pipeline can be used for bindless descriptor set creation.
 	 * @details Helps to reduce overhead associated with binding and switching resources like textures, buffers.
 	 */
-	bool isBindless() const noexcept { return bindless; }
+	bool isBindless() const noexcept { return maxBindlessCount > 0; }
 
 	/*******************************************************************************************************************
 	 * @brief Returns push constants data. (MT-Safe)
@@ -495,12 +494,6 @@ public:
 	 * @param[in] pipeline target pipeline instance
 	 */
 	static bool& isAsyncRecording(Pipeline& pipeline) noexcept { return pipeline.asyncRecording; }
-	/**
-	 * @brief Is pipeline can be used for bindless descriptor set creation.
-	 * @warning In most cases you should use @ref Pipeline functions.
-	 * @param[in] pipeline target pipeline instance
-	 */
-	static bool& isBindless(Pipeline& pipeline) noexcept { return pipeline.bindless; }
 	
 	/*******************************************************************************************************************
 	 * @brief Moves internal pipeline objects.
@@ -520,7 +513,6 @@ public:
 		PipelineExt::getPushConstantsMask(destination) = PipelineExt::getPushConstantsMask(source);
 		PipelineExt::getPushConstantsSize(destination) = PipelineExt::getPushConstantsSize(source);
 		PipelineExt::getVariantCount(destination) = PipelineExt::getVariantCount(source);
-		PipelineExt::isBindless(destination) = PipelineExt::isBindless(source);
 		ResourceExt::getInstance(destination) = ResourceExt::getInstance(source);
 		ResourceExt::getInstance(source) = nullptr;
 	}

@@ -332,7 +332,7 @@ void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatFloat(format) || isFormatNorm(format));
+	GARDEN_ASSERT(isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format));
 	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -356,7 +356,7 @@ void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatInt(format));
+	GARDEN_ASSERT(isFormatSint(format));
 	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
 	auto graphicsAPI = GraphicsAPI::get();
 
