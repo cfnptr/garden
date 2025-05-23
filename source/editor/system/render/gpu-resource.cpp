@@ -873,6 +873,12 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
+							if (!resource)
+							{
+								ImGui::TreeNodeEx("<null>", ImGuiTreeNodeFlags_Leaf);
+								continue;
+							}
+
 							auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 							auto imageViewName = bufferView->getDebugName().empty() ? "Buffer " +
 								to_string(*resource) : bufferView->getDebugName();
@@ -904,6 +910,12 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
+							if (!resource)
+							{
+								ImGui::TreeNodeEx("<null>", ImGuiTreeNodeFlags_Leaf);
+								continue;
+							}
+
 							auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
 							auto imageViewName = imageView->getDebugName().empty() ? "Image View " +
 								to_string(*resource) : imageView->getDebugName();
@@ -935,6 +947,12 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 						const auto& resourceArray = resourceSets[i];
 						for (auto resource : resourceArray)
 						{
+							if (!resource)
+							{
+								ImGui::TreeNodeEx("<null>", ImGuiTreeNodeFlags_Leaf);
+								continue;
+							}
+
 							auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
 							auto tlasName = tlasView->getDebugName().empty() ? "Tlas " +
 								to_string(*resource) : tlasView->getDebugName();

@@ -94,7 +94,6 @@ private:
 	uint8 missGroupCount = 0;
 	uint8 hitGroupCount = 0;
 	uint8 callGroupCount = 0;
-	uint16 _alignment1 = 0;
 
 	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
 		Pipeline(PipelineType::RayTracing, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }

@@ -215,6 +215,11 @@ public:
 	 */
 	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
+	 * @brief Returns uniform map. (resources)
+	 * @details Can be used to access descriptor set resources.
+	 */
+	Uniforms& getUniforms() noexcept { return uniforms; }
+	/**
 	 * @brief Returns internal descriptor set instance count.
 	 * @details Internally single descriptor set can contain multiple instances.
 	 */
@@ -252,7 +257,7 @@ public:
 	 * @param elementOffset element offset inside descriptor array
 	 * @param setIndex descriptor set index inside descriptor set array
 	 */
-	void writeResources(string_view name, uint32 elementCount, uint32 elementOffset = 0, uint32 setIndex = 0);
+	void updateResources(string_view name, uint32 elementCount, uint32 elementOffset = 0, uint32 setIndex = 0);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

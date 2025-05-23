@@ -43,10 +43,9 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 
 	descriptorSet = graphicsAPI->descriptorSetPool.create(pipeline, 
 		pipelineType, std::move(uniforms), std::move(samplers), index);
-}
-BindlessPool::~BindlessPool()
-{
-	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
+
+	auto test = graphicsAPI->descriptorSetPool.get(descriptorSet);
+	test->getIndex();
 }
 
 //**********************************************************************************************************************
@@ -57,7 +56,7 @@ uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 fr
 	GARDEN_ASSERT(descriptorSet);
 
 	auto descriptorSetView = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
-	auto dsUniforms = descriptorSetView->getUniforms();
+	auto& dsUniforms = descriptorSetView->getUniforms();
 	auto uniform = dsUniforms.find(name);
 	if (uniform == dsUniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
@@ -98,7 +97,7 @@ void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
 		return;
 
 	auto descriptorSetView = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
-	auto dsUniforms = descriptorSetView->getUniforms();
+	const auto& dsUniforms = descriptorSetView->getUniforms();
 	auto uniform = dsUniforms.find(name);
 	if (uniform == dsUniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
@@ -127,7 +126,7 @@ void BindlessPool::update()
 			continue;
 
 		auto updateCount = allocData.updateEndIndex - allocData.updateBeginIndex;
-		descriptorSetView->writeResources(i->first, updateCount, allocData.updateBeginIndex);
+		descriptorSetView->updateResources(i->first, updateCount, allocData.updateBeginIndex);
 
 		allocData.updateBeginIndex = UINT32_MAX;
 		allocData.updateEndIndex = 0;

@@ -34,10 +34,11 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 {
 	auto vulkanAPI = VulkanAPI::get();
 	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
-	vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)
-		PipelineExt::getDescriptorSetLayouts(**pipelineView)[index];
-	GARDEN_ASSERT(descriptorSetLayout);
+	const auto& descriptorSetLayouts = PipelineExt::getDescriptorSetLayouts(**pipelineView);
+	GARDEN_ASSERT(index < descriptorSetLayouts.size());
+	GARDEN_ASSERT(descriptorSetLayouts[index]);
 
+	vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)descriptorSetLayouts[index];
 	vk::DescriptorPool descriptorPool = (VkDescriptorPool)PipelineExt::getDescriptorPools(**pipelineView)[index];
 	setCount = (uint32)uniforms.begin()->second.resourceSets.size();
 
@@ -107,16 +108,24 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline,
 	PipelineType pipelineType, const DescriptorSet::Uniforms& uniforms, uint8 index, uint8 setCount)
 {
 	auto vulkanAPI = VulkanAPI::get();
+	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
+	auto isBindless = PipelineExt::getDescriptorPools(**pipelineView)[index];
+
 	if (vulkanAPI->forceResourceDestroy)
 	{
-		if (setCount > 1)
-			free(instance);
+		if (isBindless)
+		{
+			if (setCount > 1)
+				free(instance);
+		}
+		else
+		{
+			vulkanAPI->device.freeDescriptorSets(vulkanAPI->descriptorPool, setCount, 
+				setCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance);
+		}
 	}
 	else
 	{
-		auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
-		auto isBindless = PipelineExt::getDescriptorPools(**pipelineView)[index];
-
 		if (isBindless)
 		{
 			if (setCount > 1)
@@ -130,9 +139,7 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline,
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
 	const auto& pipelineUniforms = pipelineView->getUniforms();
-
 	for	(const auto& pair : pipelineUniforms)
 	{
 		if (pair.second.descriptorSetIndex != index)
@@ -396,20 +403,18 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 		}
 	}
 
+	if (!vulkanAPI->writeDescriptorSets.empty())
+		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
+
+	vulkanAPI->writeDescriptorSets.clear();
+	vulkanAPI->asWriteDescriptorSets.clear();
 	vulkanAPI->descriptorImageInfos.clear();
 	vulkanAPI->descriptorBufferInfos.clear();
 	vulkanAPI->asDescriptorInfos.clear();
-
-	if (vulkanAPI->writeDescriptorSets.empty())
-		return;
-
-	vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
-	vulkanAPI->writeDescriptorSets.clear();
-	vulkanAPI->asWriteDescriptorSets.clear();
 }
 
 //**********************************************************************************************************************
-static void writeVkDescriptorSetResources(void* instance, const Pipeline::Uniform& pipelineUniform, 
+static void updateVkDescriptorSetResources(void* instance, const Pipeline::Uniform& pipelineUniform, 
 	const DescriptorSet::Uniform& dsUniform, uint32 elementCount, uint32 elementOffset, uint32 setIndex)
 {
 	auto vulkanAPI = VulkanAPI::get();
@@ -510,14 +515,12 @@ static void writeVkDescriptorSetResources(void* instance, const Pipeline::Unifor
 		asWriteDescriptorSet.pAccelerationStructures = &vulkanAPI->asDescriptorInfos[infoOffset];
 	}
 
+	if (hasAnyResource)
+		vulkanAPI->device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+
 	vulkanAPI->descriptorImageInfos.clear();
 	vulkanAPI->descriptorBufferInfos.clear();
 	vulkanAPI->asDescriptorInfos.clear();
-
-	if (!hasAnyResource)
-		return;
-
-	vulkanAPI->device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 }
 
 //**********************************************************************************************************************
@@ -589,6 +592,9 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 
 			for (auto resource : resourceArray)
 			{
+				if (!resource)
+					continue;
+
 				if (isSamplerType(uniformType) || isImageType(uniformType) ||
 					uniformType == GslUniformType::SubpassInput)
 				{
@@ -704,7 +710,7 @@ void DescriptorSet::updateUniform(string_view name,
 	dsUniform.value().resourceSets[setIndex][elementIndex] = uniform.resource;
 }
 
-void DescriptorSet::writeResources(string_view name, uint32 elementCount, uint32 elementOffset, uint32 setIndex)
+void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint32 elementOffset, uint32 setIndex)
 {
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT(elementCount > 0);
@@ -723,7 +729,7 @@ void DescriptorSet::writeResources(string_view name, uint32 elementCount, uint32
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		writeVkDescriptorSetResources(instance, pipelineUniform->second, 
+		updateVkDescriptorSetResources(instance, pipelineUniform->second, 
 			dsUniform->second, elementCount, elementOffset, setIndex);
 	}
 	else abort();

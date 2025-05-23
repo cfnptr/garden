@@ -94,15 +94,11 @@ public:
 	 * @brief Creates a new empty bindless pool instance.
 	 */
 	BindlessPool() noexcept = default;
-	/**
-	 * @brief Destroys bindless pool instance.
-	 */
-	~BindlessPool();
 
 	/*******************************************************************************************************************
 	 * @brief Returns bindless descriptor set instance.
 	 */
-	ID<DescriptorSet> getDiscriptorSet() const noexcept { return descriptorSet; }
+	ID<DescriptorSet> getDescriptorSet() const noexcept { return descriptorSet; }
 
 	/**
 	 * @brief Allocates a new bindless descriptor set buffer.

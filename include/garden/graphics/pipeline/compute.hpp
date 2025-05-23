@@ -59,7 +59,8 @@ public:
 		vector<uint8> code;
 	};
 private:
-	uint16 _alignment = 0;
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
 	uint3 localSize = uint3::zero;
 
 	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
