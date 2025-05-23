@@ -109,7 +109,7 @@ uniform pushConstants
 ## Sampler
 
 Shader parser gets sampler state from the properties, written inside sampler declaration block.
-Also you can use dynamic samplers by marking uniform with ```mutable``` keyword.
+Also you can use dynamic samplers by marking uniform with `mutable` keyword.
 
 ```
 uniform sampler2D
@@ -179,7 +179,7 @@ buffer readonly Instance
 
 ## Descriptor Set
 
-Use ```setX``` keyword to set which descriptor set to use inside shader, where **X** is the index of the DS.
+Use `setX` keyword to set which descriptor set to use inside shader, where **X** is the index of the DS.
 
 ```
 uniform set1 sampler2D someSampler;
@@ -203,7 +203,7 @@ localSize = 16, 16, 1;
 
 Early fragment tests, as an optimization, exist to prevent unnecessary executions of the Fragment Shader.
 
-You will only make the depth smaller, compared to gl.fragCoord.z:
+You will only make the depth smaller, compared to `gl.fragCoord.z`:
 
 ```
 depthLess out float gl.fragDepth;
@@ -213,6 +213,12 @@ You will only make the depth larger, compared to gl.fragCoord.z:
 
 ```
 depthGreater out float gl.fragDepth;
+```
+
+Forces depth and stencil tests to run before the fragment shader executes, when use `discard`:
+
+```
+earlyFragmentTests in;
 ```
 
 ## Shader Variant
@@ -250,6 +256,15 @@ into a halfway-compiled version of a shader right before pipeline creation to op
 ```
 spec const bool USE_FAST_FUNC = false;
 spec const float SOME_THRESHOLD = 0.5f;
+```
+
+## Ray Tracing
+
+All ray tracing built-ins and functions are written without the **EXT*** postfix.
+
+```
+uniform accelerationStructure tlas;
+rayPayload float4 payload;
 ```
 
 ## Extension / Feature

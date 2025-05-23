@@ -68,31 +68,19 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings;
 	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
 	vector<vector<vk::Sampler>> samplerArrays;
-	// TODO: refactor this garbage.
 	
-	for (uint8 i = 0; i < (uint8)descriptorSetLayouts.size(); i++)
-	{	
-		uint32 bindingIndex = 0;
-
-		vector<vk::DescriptorPoolSize> descriptorPoolSizes =
-		{
-			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 0),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 0),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 0),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 0),
-			vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, 0),
-		};
+	for (uint8 dsIndex = 0; dsIndex < (uint8)descriptorSetLayouts.size(); dsIndex++)
+	{
+		vector<vk::DescriptorPoolSize> descriptorPoolSizes;
+		uint32 bindingIndex = 0; auto isBindless = false;
 
 		if (descriptorSetBindings.size() < uniforms.size())
-		{
 			descriptorSetBindings.resize(uniforms.size());
-			descriptorBindingFlags.resize(uniforms.size());
-		}
 
 		for	(const auto& pair : uniforms)
 		{
 			auto uniform = pair.second;
-			if (uniform.descriptorSetIndex != i)
+			if (uniform.descriptorSetIndex != dsIndex)
 				continue;
 
 			auto& descriptorSetBinding = descriptorSetBindings[bindingIndex];
@@ -103,12 +91,38 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			if (uniform.arraySize > 0)
 			{
 				if (!uniform.isMutable && isSamplerType(uniform.type))
-					descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(pair.first);
+				{
+					if (uniform.arraySize > 1)
+					{
+						// TODO: allow to specify sampler states for separate uniform array elements?
+						vector<vk::Sampler> samplers(uniform.arraySize, *&immutableSamplers.at(pair.first));
+						samplerArrays.push_back(std::move(samplers));
+					}
+					else
+					{
+						descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(pair.first);
+					}
+				}
 				descriptorSetBinding.descriptorCount = uniform.arraySize;
 			}
 			else
 			{
-				GARDEN_ASSERT(maxBindlessCount > 0);
+				GARDEN_ASSERT(maxBindlessCount > 0); // Pipeline is not bindless.
+
+				if (descriptorBindingFlags.size() < uniforms.size())
+					descriptorBindingFlags.resize(uniforms.size());
+				if (descriptorPoolSizes.empty())
+				{
+					descriptorPoolSizes =
+					{
+						vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 0),
+						vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 0),
+						vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 0),
+						vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 0),
+						vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, 0),
+					};
+				}
+
 				switch (descriptorSetBinding.descriptorType)
 				{
 				case vk::DescriptorType::eCombinedImageSampler:
@@ -134,6 +148,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 				descriptorBindingFlags[bindingIndex] =
 					vk::DescriptorBindingFlagBits::eUpdateAfterBind | vk::DescriptorBindingFlagBits::ePartiallyBound;
 				descriptorSetBinding.descriptorCount = maxBindlessCount;
+				isBindless = true;
 			}
 
 			bindingIndex++;
@@ -142,54 +157,53 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo({}, bindingIndex, descriptorSetBindings.data());
 		vk::DescriptorSetLayoutBindingFlagsCreateInfo descriptorSetFlagsInfo;
 
-		if (maxBindlessCount > 0)
+		if (isBindless)
 		{
 			descriptorSetFlagsInfo.bindingCount = bindingIndex;
 			descriptorSetFlagsInfo.pBindingFlags = descriptorBindingFlags.data();
 			descriptorSetLayoutInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 			descriptorSetLayoutInfo.pNext = &descriptorSetFlagsInfo;
 	
-			uint32 maxSetCount = 0;
-			for (uint32 j = 0; j < (uint32)descriptorPoolSizes.size(); j++)
+			uint32 maxSetCount = 0; 
+			for (auto i = descriptorPoolSizes.begin(); i != descriptorPoolSizes.end();)
 			{
-				if (descriptorPoolSizes[j].descriptorCount == 0)
+				// TODO: reverse delete or back-swap would be faster.
+				if (i->descriptorCount > 0)
 				{
-					descriptorPoolSizes.erase(descriptorPoolSizes.begin() + j);
-
-					if (j > 0)
-						j--;
+					maxSetCount += i->descriptorCount;
+					i++;
 				}
 				else
 				{
-					maxSetCount += descriptorPoolSizes[j].descriptorCount;
+					i = descriptorPoolSizes.erase(i);
 				}
 			}
 			GARDEN_ASSERT(maxSetCount > 0);
 
 			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
 				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
-			descriptorPools[i] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
+			descriptorPools[dsIndex] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
 
 			#if GARDEN_DEBUG
 			if (vulkanAPI->hasDebugUtils)
 			{
-				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(i);
+				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(dsIndex);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorPool,
-					(uint64)(VkSampler)descriptorPools[i], name.c_str());
+					(uint64)(VkSampler)descriptorPools[dsIndex], name.c_str());
 				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 			}
 			#endif
 		}
 
-		descriptorSetLayouts[i] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
+		descriptorSetLayouts[dsIndex] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
 		samplerArrays.clear();
 
 		#if GARDEN_DEBUG
 		if (vulkanAPI->hasDebugUtils)
 		{
-			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(i);
+			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(dsIndex);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
-				(uint64)descriptorSetLayouts[i], name.c_str());
+				(uint64)descriptorSetLayouts[dsIndex], name.c_str());
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif

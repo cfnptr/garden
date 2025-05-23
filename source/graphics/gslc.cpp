@@ -1483,17 +1483,24 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				}
 				else if (lineData.word == "depthLess")
 				{
-					if (shaderStage != ShaderStage::Vertex)
+					if (shaderStage != ShaderStage::Fragment)
 						throw CompileError("depthLess is accesible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(depth_less) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "depthGreater")
 				{
-					if (shaderStage != ShaderStage::Vertex)
+					if (shaderStage != ShaderStage::Fragment)
 						throw CompileError("depthGreater is accesible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(depth_greater) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
+				}
+				else if (lineData.word == "earlyFragmentTests")
+				{
+					if (shaderStage != ShaderStage::Fragment)
+						throw CompileError("earlyFragmentTests is accesible only in fragment shaders", fileData.lineIndex);
+					fileData.outputFileStream << "layout(early_fragment_tests) ";
+					overrideOutput = true;
 				}
 				else if (setCommonKeywords(fileData, lineData, overrideOutput)) { }
 				else onShaderGlobalVariable(lineData.word);

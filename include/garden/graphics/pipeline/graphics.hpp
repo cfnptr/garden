@@ -299,6 +299,7 @@ public:
 		uint16 vertexAttributesSize = 0;
 	};
 private:
+	uint8 _alignment = 0;
 	uint8 attachmentCount = 0;
 	uint8 subpassIndex = 0;
 	ID<Framebuffer> framebuffer = {};

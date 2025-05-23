@@ -61,7 +61,7 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	geometry.geometry.instances = vk::AccelerationStructureGeometryInstancesDataKHR();
 	geometry.geometry.instances.data.deviceAddress = isntanceBufferView->getDeviceAddress();
 	*geometryAS = geometry;
-	*rangeInfo = vk::AccelerationStructureBuildRangeInfoKHR(1, 0, 0, 0);
+	*rangeInfo = vk::AccelerationStructureBuildRangeInfoKHR(instanceCount, 0, 0, 0);
 	*syncBuffer = instanceBuffer;
 
 	vk::AccelerationStructureBuildGeometryInfoKHR geometryInfo;
@@ -71,7 +71,7 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	geometryInfo.geometryCount = 1;
 	geometryInfo.pGeometries = geometryAS;
 
-	auto sizesInfo =  vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
+	auto sizesInfo = vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
 		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, instanceCount);
 
 	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
