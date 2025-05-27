@@ -189,7 +189,7 @@ void BloomRenderSystem::preLdrRender()
 		if (bloomBuffer)
 		{
 			auto imageView = GraphicsSystem::Instance::get()->get(bloomBuffer);
-			imageView->clear(f32x4::zero);
+			imageView->clear(float4::zero);
 		}
 		return;
 	}

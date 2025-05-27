@@ -619,7 +619,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	if (shadowBuffer && !hasAnyShadow)
 	{
 		auto imageView = graphicsSystem->get(shadowBuffer);
-		imageView->clear(f32x4::one);
+		imageView->clear(float4::one);
 	}
 
 	if (hasAnyAO)
@@ -647,7 +647,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	else if (aoBuffer)
 	{
 		auto imageView = graphicsSystem->get(aoBuffer);
-		imageView->clear(f32x4::one);
+		imageView->clear(float4::one);
 	}
 }
 
@@ -1023,7 +1023,10 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 
 	auto invWeight = 1.0f / weight;
 	for (uint32 i = 0; i < count; i++)
-		map[i].nolMip.floats.x *= invWeight;
+	{
+		auto& nolMip = map[i].nolMip;
+		nolMip.setX(nolMip.getX() * invWeight);
+	}
 		
 	qsort(map, count, sizeof(SpecularItem), [](const void* a, const void* b)
 	{

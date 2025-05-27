@@ -326,7 +326,7 @@ void Image::generateMips(Sampler::Filter filter)
 }
 
 //**********************************************************************************************************************
-void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
+void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
@@ -340,7 +340,7 @@ void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 	command.clearType = 1;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
-	command.color = (float4)color;
+	command.color = color;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -350,7 +350,7 @@ void Image::clear(f32x4 color, const ClearRegion* regions, uint32 count)
 		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
 	}
 }
-void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
+void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
@@ -364,7 +364,7 @@ void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
 	command.clearType = 2;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
-	*(i32x4*)&command.color = color;
+	*(int4*)&command.color = color;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -374,7 +374,7 @@ void Image::clear(i32x4 color, const ClearRegion* regions, uint32 count)
 		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
 	}
 }
-void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
+void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 {
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
@@ -388,7 +388,7 @@ void Image::clear(u32x4 color, const ClearRegion* regions, uint32 count)
 	command.clearType = 3;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
-	*(u32x4*)&command.color = color;
+	*(uint4*)&command.color = color;
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -719,8 +719,10 @@ bool ImageView::destroy()
 			const auto& descriptorUniforms = descriptorSet.getUniforms();
 			auto pipelineView = graphicsAPI->getPipelineView(
 				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			const auto& uniforms = pipelineView->getUniforms();
+			if (pipelineView->isBindless())
+				continue;
 
+			const auto& uniforms = pipelineView->getUniforms();
 			for (const auto& pair : descriptorUniforms)
 			{
 				const auto uniform = uniforms.find(pair.first);

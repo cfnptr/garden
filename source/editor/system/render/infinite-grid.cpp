@@ -163,7 +163,7 @@ void InfiniteGridEditorSystem::render()
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0);
-		pipelineView->setViewportScissorAsync(f32x4::zero, 0);
+		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(descriptorSet, swapchainIndex, 0);
 		pipelineView->pushConstantsAsync(0);
 		pipelineView->drawFullscreenAsync(0);

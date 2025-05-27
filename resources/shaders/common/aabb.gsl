@@ -27,56 +27,40 @@ struct Aabb
 };
 
 //**********************************************************************************************************************
-float2 raycast2(Aabb aabb, Ray ray)
-{
-	float3 invDirection = 1.0f / ray.direction;
-	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * invDirection.xx;
-	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * invDirection.yy;
-	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * invDirection.zz;
-	float tMin = max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
-   	float tMax = min(max(t0.x, t0.y), max(t1.x, t1.y), max(t2.x, t2.y));
-	return float2(tMin, tMax);
-}
 float2 raycast2I(Aabb aabb, Ray ray)
 {
-	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * ray.direction.xx;
-	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * ray.direction.yy;
-	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * ray.direction.zz;
-	float tMin = max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
-   	float tMax = min(max(t0.x, t0.y), max(t1.x, t1.y), max(t2.x, t2.y));
-	return float2(tMin, tMax);
+	float3 tBot = ray.direction * (aabb.min - ray.origin);
+	float3 tTop = ray.direction * (aabb.max - ray.origin);
+	float3 tMin = min(tTop, tBot); float3 tMax = max(tTop, tBot);
+	float t0 = max(tMin.x, max(tMin.y, tMin.z));
+	float t1 = min(tMax.x, min(tMax.y, tMax.z));
+	return float2(t0, t1);
+}
+float2 raycast2(Aabb aabb, Ray ray)
+{
+	ray.direction = 1.0f / ray.direction;
+	return raycast2I(aabb, ray);
 }
 
-float raycast1(Aabb aabb, Ray ray)
-{
-	float3 invDirection = 1.0f / ray.direction;
-	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * invDirection.xx;
-	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * invDirection.yy;
-	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * invDirection.zz;
-	return max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
-}
 float raycast1I(Aabb aabb, Ray ray)
 {
-	float2 t0 = (float2(aabb.min.x, aabb.max.x) - ray.origin.xx) * ray.direction.xx;
-	float2 t1 = (float2(aabb.min.y, aabb.max.y) - ray.origin.yy) * ray.direction.yy;
-	float2 t2 = (float2(aabb.min.z, aabb.max.z) - ray.origin.zz) * ray.direction.zz;
-	return max(min(t0.x, t0.y), min(t1.x, t1.y), min(t2.x, t2.y));
+	float3 tBot = ray.direction * (aabb.min - ray.origin);
+	float3 tTop = ray.direction * (aabb.max - ray.origin);
+	float3 tMin = min(tTop, tBot); float3 tMax = max(tTop, tBot);
+	float t0 = max(tMin.x, max(tMin.y, tMin.z));
+	float t1 = min(tMax.x, min(tMax.y, tMax.z));
+	return t1 > max(t0, 0.0f) ? t0 : FLOAT32_MAX;
+}
+float raycast1(Aabb aabb, Ray ray)
+{
+	ray.direction = 1.0f / ray.direction;
+	return raycast1I(aabb, ray);
 }
 
-//**********************************************************************************************************************
 bool isIntersected(float2 hitPoints)
 {
 	// If tMax < 0.0f, ray is intersecting AABB, but whole AABB is behing us.
-	return hitPoints.x <= hitPoints.y && hitPoints.y >= 0.0f;
-}
-
-bool raycast(Aabb aabb, Ray ray)
-{
-	return isIntersected(raycast2(aabb, ray));
-}
-bool raycastI(Aabb aabb, Ray ray)
-{
-	return isIntersected(raycast2I(aabb, ray));
+	return hitPoints.y > max(hitPoints.x, 0.0f);
 }
 
 #endif // AABB_GSL

@@ -36,8 +36,6 @@ class BindlessPool final
 	{
 		FreeAllocs freeAllocs;
 		uint32 occupancy = 0;
-		uint32 updateBeginIndex = UINT32_MAX;
-		uint32 updateEndIndex = 0;
 	};
 	
 	tsl::robin_map<string, UniformData, SvHash, SvEqual> uniformData;
@@ -142,10 +140,6 @@ public:
 	 */
 	void free(string_view name, uint32 allocation, uint64 frameIndex);
 
-	/**
-	 * @brief Updates pending bindless descriptor set writes.
-	 */
-	void update();
 	/**
 	 * @brief Destroys bindless descriptor set instance.
 	 */

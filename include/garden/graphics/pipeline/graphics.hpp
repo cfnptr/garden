@@ -351,7 +351,7 @@ public:
 	 * @brief Specifies the region of the framebuffer where the rendering will occur.
 	 * @param viewport target viewport (xy = position, zw = size)
 	 */
-	void setViewport(f32x4 viewport = f32x4::zero);
+	void setViewport(float4 viewport = float4::zero);
 	/**
 	 * @brief Specifies the region of the framebuffer where the rendering will occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport()
@@ -359,7 +359,7 @@ public:
 	 * @param viewport target viewport value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportAsync(f32x4 viewport = f32x4::zero, int32 threadIndex = -1);
+	void setViewportAsync(float4 viewport = float4::zero, int32 threadIndex = -1);
 
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur.
@@ -370,7 +370,7 @@ public:
 	 * This command is used in conjunction with the viewport setting to further restrict rendering to a specific 
 	 * region of the screen, enabling more precise control over where graphics are drawn.
 	 */
-	void setScissor(i32x4 scissor = i32x4::zero);
+	void setScissor(int4 scissor = int4::zero);
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setScissor()
@@ -378,7 +378,7 @@ public:
 	 * @param scissor target scissor value (xy = offset, zw = extent)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setScissorAsync(i32x4 scissor = i32x4::zero, int32 threadIndex = -1);
+	void setScissorAsync(int4 scissor = int4::zero, int32 threadIndex = -1);
 
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions.
@@ -386,7 +386,7 @@ public:
 	 * 
 	 * @param viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 */
-	void setViewportScissor(f32x4 viewportScissor = f32x4::zero);
+	void setViewportScissor(float4 viewportScissor = float4::zero);
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
@@ -394,7 +394,7 @@ public:
 	 * @param viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportScissorAsync(f32x4 viewportScissor = f32x4::zero, int32 threadIndex = -1);
+	void setViewportScissorAsync(float4 viewportScissor = float4::zero, int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Renders primitives to the framebuffer.

@@ -83,7 +83,6 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 	{
 		auto geometry = geometryArray[i];
 		GARDEN_ASSERT(geometry.aabbBuffer);
-		GARDEN_ASSERT(geometry.aabbStride);
 		GARDEN_ASSERT(geometry.aabbStride > 0);
 		GARDEN_ASSERT(geometry.aabbStride % 8 == 0);
 

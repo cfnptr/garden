@@ -39,8 +39,10 @@ bool AccelerationStructure::destroy()
 			const auto& descriptorUniforms = descriptorSet.getUniforms();
 			auto pipelineView = graphicsAPI->getPipelineView(
 				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			const auto& uniforms = pipelineView->getUniforms();
+			if (pipelineView->isBindless())
+				continue;
 
+			const auto& uniforms = pipelineView->getUniforms();
 			for (const auto& pair : descriptorUniforms)
 			{
 				const auto uniform = uniforms.find(pair.first);

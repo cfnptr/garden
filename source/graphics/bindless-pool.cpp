@@ -84,8 +84,7 @@ uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 fr
 
 	auto& resourceSet = uniform.value().resourceSets[0];
 	resourceSet[allocation] = resource;
-	allocData.updateBeginIndex = std::min(allocData.updateBeginIndex, allocation);
-	allocData.updateEndIndex = std::max(allocData.updateEndIndex, allocation + 1);
+	descriptorSetView->updateResources(name, 1, allocation);
 	return allocation;
 }
 void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
@@ -97,41 +96,24 @@ void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
 		return;
 
 	auto descriptorSetView = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
-	const auto& dsUniforms = descriptorSetView->getUniforms();
+	auto& dsUniforms = descriptorSetView->getUniforms();
 	auto uniform = dsUniforms.find(name);
 	if (uniform == dsUniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
-
 	auto& allocData = uniformData.at(name);
-	GARDEN_ASSERT(allocation < allocData.occupancy);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG	
+	GARDEN_ASSERT(allocation < allocData.occupancy);
 	for (auto freeAlloc : allocData.freeAllocs)
 		GARDEN_ASSERT(allocation != freeAlloc.first); // Already destroyed.
 	#endif
 
+	auto& resourceSet = uniform.value().resourceSets[0];
+	resourceSet[allocation] = {};
 	allocData.freeAllocs.emplace_back(allocation, frameIndex + frameLag + 1);
 }
 
 //**********************************************************************************************************************
-void BindlessPool::update()
-{
-	GARDEN_ASSERT(descriptorSet);
-	auto descriptorSetView = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
-
-	for (auto i = uniformData.begin(); i != uniformData.end(); i++)
-	{
-		auto& allocData = i.value();
-		if (allocData.updateBeginIndex >= allocData.updateEndIndex)
-			continue;
-
-		auto updateCount = allocData.updateEndIndex - allocData.updateBeginIndex;
-		descriptorSetView->updateResources(i->first, updateCount, allocData.updateBeginIndex);
-
-		allocData.updateBeginIndex = UINT32_MAX;
-		allocData.updateEndIndex = 0;
-	}
-}
 void BindlessPool::destroy()
 {
 	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);

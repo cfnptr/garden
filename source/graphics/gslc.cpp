@@ -99,7 +99,7 @@ namespace garden::graphics
 	};
 	struct RayTracingFileData final : public FileData
 	{
-		uint8 payloadIndex = 0, callableIndex = 0;
+		uint8 rayPayloadIndex = 0, callableDataIndex = 0;
 	};
 
 	struct LineData
@@ -133,8 +133,8 @@ namespace garden::graphics
 	};
 	struct RayTracingLineData final : public LineData
 	{
-		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, 
-			isCallableDataIn = 0, isPayloadOffset = 0, isCallableOffset = 0;
+		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, isCallableDataIn = 0, 
+			isRayPayloadOffset = 0, isHitAttributeOffset = 0, isCallableDataOffset = 0;
 	};
 
 	class CompileError final : public GardenError
@@ -236,7 +236,7 @@ static Image::Format toImageFormat(string_view gslImageFormat)
 	if (gslImageFormat == "floatR32G32") return Image::Format::SfloatR32G32;
 	if (gslImageFormat == "floatR32G32B32A32") return Image::Format::SfloatR32G32B32A32;
 
-	if (gslImageFormat == "ufloatB10G11R11") return Image::Format::UfloatB10G11R11; // Yeah, it's inverted.
+	if (gslImageFormat == "ufloatB10G11R11") return Image::Format::UfloatB10G11R11;
 
 	return Image::Format::Undefined;
 }
@@ -305,6 +305,13 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == "restrict") fileData.isRestrict = true;
 		else if (lineData.word == "volatile") fileData.isVolatile = true;
 		else if (lineData.word == "coherent") fileData.isCoherent = true;
+		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: do not move down.
+		{
+			auto index = strtoul(lineData.word.c_str() + 3, nullptr, 10);
+			if (index > UINT8_MAX)
+				throw CompileError("invalid descriptor set index", fileData.lineIndex, lineData.word);
+			fileData.descriptorSetIndex = (uint8)index;
+		}
 		else if (fileData.isBuffer)
 		{
 			fileData.uniformType = GslUniformType::StorageBuffer;
@@ -320,13 +327,6 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == toString(GslUniformType::SubpassInput))
 		{
 			fileData.uniformType = GslUniformType::SubpassInput; fileData.isUniform = 3;
-		}
-		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0)
-		{
-			auto index = strtoul(lineData.word.c_str() + 3, nullptr, 10);
-			if (index > UINT8_MAX)
-				throw CompileError("invalid descriptor set index", fileData.lineIndex, lineData.word);
-			fileData.descriptorSetIndex = (uint8)index;
 		}
 		else
 		{
@@ -1803,9 +1803,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	if (!fileResult) return false;
 
 	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n"
-		"#define accelerationStructure accelerationStructureEXT\n#define hitAttribute hitAttributeEXT\n"
-		"#define rayPayload rayPayloadEXT\n#define rayPayloadIn rayPayloadInEXT\n"
-		"#define callableData callableDataEXT\n#define callableDataIn callableDataInEXT\n"
+		"#define accelerationStructure accelerationStructureEXT\n"
 		"#define gl_LaunchID gl_LaunchIDEXT\n#define gl_LaunchSize gl_LaunchSizeEXT\n"
 		"#define gl_InstanceCustomIndex gl_InstanceCustomIndexEXT\n#define gl_GeometryIndex gl_GeometryIndexEXT\n"
 		"#define gl_WorldRayOrigin gl_WorldRayOriginEXT\n#define gl_WorldRayDirection gl_WorldRayDirectionEXT\n"
@@ -1827,7 +1825,8 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 		"#define gl_HitKindBackFacingTriangle gl_HitKindBackFacingTriangleEXT\n"
 		"#define traceRay traceRayEXT\n#define terminateRay terminateRayEXT\n"
 		"#define reportIntersection reportIntersectionEXT\n#define ignoreIntersection ignoreIntersectionEXT\n"
-		"#define executeCallable executeCallableEXT\n#define ignoreIntersection ignoreIntersectionEXT\n";
+		"#define executeCallable executeCallableEXT\n#define hitAttribute hitAttributeEXT\n"
+		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 
 	// TODO: shaderRecordEXT support
 	
@@ -1872,42 +1871,42 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			if (lineData.isRayPayload)
 			{
 				fileData.outputFileStream << "layout(location = " << 
-					to_string(fileData.payloadIndex++) << ") rayPayload ";
+					to_string(fileData.rayPayloadIndex++) << ") rayPayloadEXT ";
 				lineData.isRayPayload = 0;
 			}
 			else if (lineData.isRayPayloadIn)
 			{
 				fileData.outputFileStream << "layout(location = " << 
-					to_string(fileData.payloadIndex++) << ") rayPayloadIn ";
+					to_string(fileData.rayPayloadIndex++) << ") rayPayloadInEXT ";
 				lineData.isRayPayloadIn = 0;
 			}
 			else if (lineData.isCallableData)
 			{
 				fileData.outputFileStream << "layout(location = " << 
-					to_string(fileData.callableIndex++) << ") callableData ";
+					to_string(fileData.callableDataIndex++) << ") callableDataEXT ";
 				lineData.isCallableData = 0;
 			}
 			else if (lineData.isCallableDataIn)
 			{
 				fileData.outputFileStream << "layout(location = " << 
-					to_string(fileData.callableIndex++) << ") callableDataIn ";
+					to_string(fileData.callableDataIndex++) << ") callableDataInEXT ";
 				lineData.isCallableDataIn = 0;
 			}
-			else if (lineData.isPayloadOffset)
+			else if (lineData.isRayPayloadOffset)
 			{
 				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
 				if (offset > UINT8_MAX)
 					throw CompileError("invalid ray payload index offset", fileData.lineIndex, lineData.word);
-				fileData.outputFileStream << "// #payloadOffset ";
-				fileData.payloadIndex += (uint8)offset; lineData.isPayloadOffset = 0;
+				fileData.outputFileStream << "// #rayPayloadOffset ";
+				fileData.rayPayloadIndex += (uint8)offset; lineData.isRayPayloadOffset = 0;
 			}
-			else if (lineData.isCallableOffset)
+			else if (lineData.isCallableDataOffset)
 			{
 				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
 				if (offset > UINT8_MAX)
 					throw CompileError("invalid callable data index offset", fileData.lineIndex, lineData.word);
-				fileData.outputFileStream << "// #callableOffset ";
-				fileData.callableIndex += (uint8)offset; lineData.isCallableOffset = 0;
+				fileData.outputFileStream << "// #callableDataOffset ";
+				fileData.callableDataIndex += (uint8)offset; lineData.isCallableDataOffset = 0;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
 				bindingIndex, pushConstantsSize, variantCount, shaderStage)) { }
@@ -1928,10 +1927,17 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 					}
 					lineData.isRayPayloadIn = 1; overrideOutput = true;
 				}
+				/*else if (lineData.word == "hitAttribute")
+				{
+					if (shaderStage != ShaderStage::Intersection)
+						throw CompileError("hitAttribute is accesible only in ray interestion shaders", fileData.lineIndex);
+					lineData.isHitAttribute = 1; overrideOutput = true;
+				}*/
 				else if (lineData.word == "callableData") { lineData.isCallableData = 1; overrideOutput = true; }
 				else if (lineData.word == "callableDataIn") { lineData.isCallableDataIn = 1; overrideOutput = true; }
-				else if (lineData.word == "#payloadOffset") { lineData.isPayloadOffset = 1; overrideOutput = true; }
-				else if (lineData.word == "#callableOffset") { lineData.isCallableOffset = 1; overrideOutput = true; }
+				else if (lineData.word == "#rayPayloadOffset") { lineData.isRayPayloadOffset = 1; overrideOutput = true; }
+				else if (lineData.word == "#hitAttributeOffset") { lineData.isHitAttributeOffset = 1; overrideOutput = true; }
+				else if (lineData.word == "#callableDataOffset") { lineData.isCallableDataOffset = 1; overrideOutput = true; }
 				else if (setCommonKeywords(fileData, lineData, overrideOutput)) { }
 				else onShaderGlobalVariable(lineData.word);
 			}
@@ -2005,7 +2011,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 		bindingIndex, closHitPushConstantsSize, closHitVariantCount, ShaderStage::ClosestHit);
 	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, 
 		bindingIndex, callPushConstantsSize, callVariantCount, ShaderStage::Callable);
-	if (!compileResult) return false;
+	if (!compileResult || !hitCompileResult) return false;
 
 	if (rayGenVariantCount > 1 && missVariantCount > 1 && rayGenVariantCount != missVariantCount)
 		throw CompileError("different ray generation and miss shader variant count");
