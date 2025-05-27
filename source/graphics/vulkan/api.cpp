@@ -489,6 +489,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 				descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
 				descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind &&
 				descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind &&
+				descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending &&
 				descriptorIndexingFeatures.descriptorBindingPartiallyBound &&
 				descriptorIndexingFeatures.runtimeDescriptorArray)
 			{
@@ -625,6 +626,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
 		descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
 		descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
 		*lastPNext = &descriptorIndexingFeatures;

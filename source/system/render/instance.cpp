@@ -195,7 +195,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
-	pipelineView->setViewportScissorAsync(f32x4::zero, taskIndex);
+	pipelineView->setViewportScissorAsync(float4::zero, taskIndex);
 }
 void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {

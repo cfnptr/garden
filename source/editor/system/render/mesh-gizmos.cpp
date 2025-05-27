@@ -326,9 +326,9 @@ void MeshGizmosEditorSystem::render()
 		auto cursorTrans = (globalNewPos - globalLastPos); 
 		switch (dragMode)
 		{
-		case 2: cursorTrans.floats.y = cursorTrans.floats.z = 0.0f; break;
-		case 3: cursorTrans.floats.x = cursorTrans.floats.z = 0.0f; break;
-		case 4: cursorTrans.floats.x = cursorTrans.floats.y = 0.0f; break;
+		case 2: cursorTrans.setY(0.0f); cursorTrans.setZ(0.0f); break;
+		case 3: cursorTrans.setX(0.0f); cursorTrans.setZ(0.0f); break;
+		case 4: cursorTrans.setX(0.0f); cursorTrans.setY(0.0f); break;
 		}
 
 		if (dragMode != 1 && !inputSystem->getKeyboardState(KeyboardButton::LeftShift) &&

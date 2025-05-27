@@ -735,7 +735,7 @@ void ImGuiRenderSystem::uiRender()
 			if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
 				continue;
 
-			pipelineView->setScissor(i32x4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y));
+			pipelineView->setScissor(int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y));
 
 			ID<DescriptorSet> descriptorSet;
 			if (cmd.TextureId == *defaultFontTexture)

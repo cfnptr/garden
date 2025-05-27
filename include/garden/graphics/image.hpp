@@ -359,7 +359,7 @@ public:
 	 * @param[in] regions target image regions
 	 * @param count region array size
 	 */
-	void clear(f32x4 color, const ClearRegion* regions, uint32 count);
+	void clear(float4 color, const ClearRegion* regions, uint32 count);
 	/**
 	 * @brief Clears image regions with specified color.
 	 * @details See the @ref Image::clear().
@@ -368,7 +368,7 @@ public:
 	 * @param[in] regions target image regions
 	 * @param count region array size
 	 */
-	void clear(i32x4 color, const ClearRegion* regions, uint32 count);
+	void clear(int4 color, const ClearRegion* regions, uint32 count);
 	/**
 	 * @brief Clears image regions with specified color.
 	 * @details See the @ref Image::clear().
@@ -377,7 +377,7 @@ public:
 	 * @param[in] regions target image regions
 	 * @param count region array size
 	 */
-	void clear(u32x4 color, const ClearRegion* regions, uint32 count);
+	void clear(uint4 color, const ClearRegion* regions, uint32 count);
 	/**
 	 * @brief Clears image regions with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
@@ -398,7 +398,7 @@ public:
 	 * @param[in] regions target image region array
 	 */
 	template<psize N>
-	void clear(f32x4 color, const array<ClearRegion, N>& regions)
+	void clear(float4 color, const array<ClearRegion, N>& regions)
 	{ clear(color, regions.data(), (uint32)N); }
 	/**
 	 * @brief Clears image regions with specified color.
@@ -409,7 +409,7 @@ public:
 	 * @param[in] regions target image region array
 	 */
 	template<psize N>
-	void clear(i32x4 color, const array<ClearRegion, N>& regions)
+	void clear(int4 color, const array<ClearRegion, N>& regions)
 	{ clear(color, regions.data(), (uint32)N); }
 	/**
 	 * @brief Clears image regions with specified color.
@@ -420,7 +420,7 @@ public:
 	 * @param[in] regions target image region array
 	 */
 	template<psize N>
-	void clear(u32x4 color, const array<ClearRegion, N>& regions)
+	void clear(uint4 color, const array<ClearRegion, N>& regions)
 	{ clear(color, regions.data(), (uint32)N); }
 	/**
 	 * @brief Clears image regions with specified depth/stencil value.
@@ -442,7 +442,7 @@ public:
 	 * @param color floating point color for clearing
 	 * @param[in] regions target image region vector
 	 */
-	void clear(f32x4 color, const vector<ClearRegion>& regions)
+	void clear(float4 color, const vector<ClearRegion>& regions)
 	{ clear(color, regions.data(), (uint32)regions.size()); }
 	/**
 	 * @brief Clears image regions with specified color.
@@ -451,7 +451,7 @@ public:
 	 * @param color signed integer color for clearing
 	 * @param[in] regions target image region vector
 	 */
-	void clear(i32x4 color, const vector<ClearRegion>& regions)
+	void clear(int4 color, const vector<ClearRegion>& regions)
 	{ clear(color, regions.data(), (uint32)regions.size()); }
 	/**
 	 * @brief Clears image regions with specified color.
@@ -460,7 +460,7 @@ public:
 	 * @param color unsigned integer color for clearing
 	 * @param[in] regions target image region vector
 	 */
-	void clear(u32x4 color, const vector<ClearRegion>& regions)
+	void clear(uint4 color, const vector<ClearRegion>& regions)
 	{ clear(color, regions.data(), (uint32)regions.size()); }
 	/**
 	 * @brief Clears image regions with specified depth/stencil value.
@@ -480,7 +480,7 @@ public:
 	 * @param color floating point color for clearing
 	 * @param[in] region target image region
 	 */
-	void clear(f32x4 color, const ClearRegion& region) { clear(color, &region, 1); }
+	void clear(float4 color, const ClearRegion& region) { clear(color, &region, 1); }
 	/**
 	 * @brief Clears image region with specified color.
 	 * @details See the @ref Image::clear().
@@ -488,7 +488,7 @@ public:
 	 * @param color singed integer color for clearing
 	 * @param[in] region target image region
 	 */
-	void clear(i32x4 color, const ClearRegion& region) { clear(color, &region, 1); }
+	void clear(int4 color, const ClearRegion& region) { clear(color, &region, 1); }
 	/**
 	 * @brief Clears image region with specified color.
 	 * @details See the @ref Image::clear().
@@ -496,7 +496,7 @@ public:
 	 * @param color unsigned integer color for clearing
 	 * @param[in] region target image region
 	 */
-	void clear(u32x4 color, const ClearRegion& region) { clear(color, &region, 1); }
+	void clear(uint4 color, const ClearRegion& region) { clear(color, &region, 1); }
 	/**
 	 * @brief Clears image region with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
@@ -512,19 +512,19 @@ public:
 	 * @details See the @ref Image::clear().
 	 * @param color floating point value for clearing
 	 */
-	void clear(f32x4 color) { ClearRegion region; clear(color, &region, 1); }
+	void clear(float4 color) { ClearRegion region; clear(color, &region, 1); }
 	/**
 	 * @brief Clears entire image with specified color.
 	 * @details See the @ref Image::clear().
 	 * @param color signed integer value for clearing
 	 */
-	void clear(i32x4 color) { ClearRegion region; clear(color, &region, 1); }
+	void clear(int4 color) { ClearRegion region; clear(color, &region, 1); }
 	/**
 	 * @brief Clears entire image with specified color.
 	 * @details See the @ref Image::clear().
 	 * @param color unsigned integer value for clearing
 	 */
-	void clear(u32x4 color) { ClearRegion region; clear(color, &region, 1); }
+	void clear(uint4 color) { ClearRegion region; clear(color, &region, 1); }
 	/**
 	 * @brief Clears entire image with specified depth/stencil value.
 	 * @details See the @ref Image::clear().
@@ -1349,6 +1349,7 @@ public:
  */
 static uint32 encodeB10G11R11(float value, uint32 bits, uint32 mask) noexcept
 {
+	// TODO use here simd vector instead, it all can be ported.
 	auto valueBits = *(const uint32*)&value;
 	auto exponent = (int32)((valueBits >> 23u) & 0xFFu) - 127 + 15; 
 	if (exponent <= 0) return 0; // 5-bit exponent bias 15

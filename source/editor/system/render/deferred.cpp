@@ -162,7 +162,7 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0, threadIndex);
-		pipelineView->setViewportScissorAsync(f32x4::zero, threadIndex);
+		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
 		pipelineView->pushConstantsAsync(threadIndex);
 		pipelineView->drawFullscreenAsync(threadIndex);
 	}

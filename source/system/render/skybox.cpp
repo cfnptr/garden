@@ -137,7 +137,7 @@ void SkyboxRenderSystem::depthHdrRender()
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(f32x4::zero, 0);
+		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
 		pipelineView->pushConstantsAsync(0);
 		pipelineView->drawAsync(0, {}, primitive::cubeVertices.size());
