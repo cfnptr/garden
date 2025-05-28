@@ -229,7 +229,7 @@ void HierarchyEditorSystem::preUiRender()
 				auto transformView = manager->add<TransformComponent>(entity);
 				if (GraphicsSystem::Instance::get()->camera)
 				{
-					const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
+					const auto& cameraConstants = GraphicsSystem::Instance::get()->getCameraConstants();
 					transformView->setPosition(cameraConstants.cameraPos + cameraConstants.viewDir);
 				}
 				editorSystem->selectedEntity = entity;

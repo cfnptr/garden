@@ -79,8 +79,7 @@ void InfiniteGridEditorSystem::init()
 		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/infinite-grid/translucent", framebuffer);
 	}
-	
-	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);
+
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
@@ -112,8 +111,7 @@ void InfiniteGridEditorSystem::deinit()
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDepthLdrRender", InfiniteGridEditorSystem::preRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", InfiniteGridEditorSystem::render);
 		}
-		
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InfiniteGridEditorSystem::swapchainRecreate);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
 	}
 }
@@ -157,14 +155,14 @@ void InfiniteGridEditorSystem::render()
 	}
 	pushConstants->meshScale = meshScale;
 	pushConstants->isHorizontal = isHorizontal;
-	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 	SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0);
 		pipelineView->setViewportScissorAsync(float4::zero, 0);
-		pipelineView->bindDescriptorSetAsync(descriptorSet, swapchainIndex, 0);
+		pipelineView->bindDescriptorSetAsync(descriptorSet, inFlightIndex, 0);
 		pipelineView->pushConstantsAsync(0);
 		pipelineView->drawFullscreenAsync(0);
 	}
@@ -172,23 +170,9 @@ void InfiniteGridEditorSystem::render()
 	{
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
+		pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
 		pipelineView->pushConstants();
 		pipelineView->drawFullscreen();
-	}
-}
-
-void InfiniteGridEditorSystem::swapchainRecreate()
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.bufferCount && descriptorSet)
-	{
-		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms();
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}
 }
 

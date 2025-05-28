@@ -687,7 +687,7 @@ void PbrLightingRenderSystem::hdrRender()
 		pbrLightingView->descriptorSet = descriptorSet;
 	}
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	static const auto uvToNDC = f32x4x4
 	(
 		2.0f, 0.0f, 0.0f, -1.0f,
@@ -717,61 +717,56 @@ void PbrLightingRenderSystem::hdrRender()
 void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize)
+	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	if (aoBuffer)
 	{
-		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-		if (aoBuffer)
-		{
-			destroyAoBuffer(aoBuffer, aoImageViews);
-			aoBuffer = createAoBuffer(aoImageViews);
-		}
-		if (aoFramebuffers[0])
-		{
-			for (uint32 i = 0; i < aoBufferCount; i++)
-			{
-				auto framebufferView = graphicsSystem->get(aoFramebuffers[i]);
-				Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], { true, false, true });
-				framebufferView->update(framebufferSize, &colorAttachment, 1);
-			}
-		}
-
-		if (shadowBuffer)
-		{
-			destroyShadowBuffer(shadowBuffer, shadowImageViews);
-			shadowBuffer = createShadowBuffer(shadowImageViews);
-		}
-		if (shadowFramebuffers[0])
-		{
-			for (uint32 i = 0; i < shadowBufferCount; i++)
-			{
-				auto framebufferView = graphicsSystem->get(shadowFramebuffers[i]);
-				Framebuffer::OutputAttachment colorAttachment(shadowImageViews[i], { true, false, true });
-				framebufferView->update(framebufferSize, &colorAttachment, 1);
-			}
-		}
-
-		if (lightingDescriptorSet)
-		{
-			graphicsSystem->destroy(lightingDescriptorSet);
-			auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
-			lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
-		}
-		if (aoDenoiseDescriptorSet)
-		{
-			graphicsSystem->destroy(aoDenoiseDescriptorSet);
-			auto uniforms = getAoDenoiseUniforms(aoImageViews);
-			aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.aoDenoise");
-		}
-
-		if (aoBuffer || aoFramebuffers[0])
-			Manager::Instance::get()->runEvent("AoRecreate");
-		if (shadowBuffer || shadowFramebuffers[0])
-			Manager::Instance::get()->runEvent("ShadowRecreate");
+		destroyAoBuffer(aoBuffer, aoImageViews);
+		aoBuffer = createAoBuffer(aoImageViews);
 	}
+	if (aoFramebuffers[0])
+	{
+		for (uint32 i = 0; i < aoBufferCount; i++)
+		{
+			auto framebufferView = graphicsSystem->get(aoFramebuffers[i]);
+			Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], { true, false, true });
+			framebufferView->update(framebufferSize, &colorAttachment, 1);
+		}
+	}
+
+	if (shadowBuffer)
+	{
+		destroyShadowBuffer(shadowBuffer, shadowImageViews);
+		shadowBuffer = createShadowBuffer(shadowImageViews);
+	}
+	if (shadowFramebuffers[0])
+	{
+		for (uint32 i = 0; i < shadowBufferCount; i++)
+		{
+			auto framebufferView = graphicsSystem->get(shadowFramebuffers[i]);
+			Framebuffer::OutputAttachment colorAttachment(shadowImageViews[i], { true, false, true });
+			framebufferView->update(framebufferSize, &colorAttachment, 1);
+		}
+	}
+
+	if (lightingDescriptorSet)
+	{
+		graphicsSystem->destroy(lightingDescriptorSet);
+		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
+		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
+	}
+	if (aoDenoiseDescriptorSet)
+	{
+		graphicsSystem->destroy(aoDenoiseDescriptorSet);
+		auto uniforms = getAoDenoiseUniforms(aoImageViews);
+		aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.aoDenoise");
+	}
+
+	if (aoBuffer || aoFramebuffers[0])
+		Manager::Instance::get()->runEvent("AoRecreate");
+	if (shadowBuffer || shadowFramebuffers[0])
+		Manager::Instance::get()->runEvent("ShadowRecreate");
 }
 
 //**********************************************************************************************************************

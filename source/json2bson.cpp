@@ -31,8 +31,8 @@ bool Json2Bson::convertFile(const fs::path& filePath, const fs::path& inputPath,
 	GARDEN_ASSERT(!filePath.empty());
 
 	std::ifstream inputStream(inputPath / filePath);
-    if (!inputStream.is_open())
-        return false;
+	if (!inputStream.is_open())
+		return false;
 
 	json textData;
 	inputStream >> textData;

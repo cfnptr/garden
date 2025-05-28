@@ -156,10 +156,7 @@ void BloomRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void BloomRenderEditorSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize && thresholdDescriptorSet)
+	if (thresholdDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(thresholdDescriptorSet);

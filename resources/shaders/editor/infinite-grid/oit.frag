@@ -21,7 +21,6 @@ pipelineState
 {
 	depthTesting = on;
 	depthWriting = on;
-	depthBiasing = on;
 	faceCulling = off;
 	blending0 = on;
 	srcBlendFactor0 = one;

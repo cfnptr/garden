@@ -140,14 +140,14 @@ void GraphicsEditorSystem::showPerformanceStats()
 		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
-			auto swapchainBuffer = vulkanAPI->vulkanSwapchain->getCurrentVkBuffer();
+			auto& inFlightFrame = vulkanAPI->vulkanSwapchain->getInFlightFrame();
 			uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
 
 			auto vkResult = vk::Result::eNotReady;
-			if (swapchainBuffer->isPoolClean)
+			if (inFlightFrame.isPoolClean)
 			{
 				vkResult = vulkanAPI->device.getQueryPoolResults(
-					swapchainBuffer->queryPool, 0, 2, sizeof(uint64) * 2, timestamps,
+					inFlightFrame.queryPool, 0, 2, sizeof(uint64) * 2, timestamps,
 					(vk::DeviceSize)sizeof(uint64), vk::QueryResultFlagBits::e64);
 			}
 
@@ -174,7 +174,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 
 		auto isIntegrated = !graphicsAPI->isDeviceIntegrated;
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
-		ImGui::Text("Swapchain Size: %lu", (unsigned long)graphicsAPI->swapchain->getBufferCount());
+		ImGui::Text("Swapchain Size: %lu", (unsigned long)graphicsAPI->swapchain->getImageCount());
 		
 		graphicsAPI->recordGpuTime = true;
 	}

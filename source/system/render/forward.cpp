@@ -316,8 +316,7 @@ void ForwardRenderSystem::swapchainRecreate()
 		}
 	}
 
-	// Forward system notifies both framebufferSize and bufferCount changes!
-	if (swapchainChanges.framebufferSize || swapchainChanges.bufferCount)
+	if (swapchainChanges.framebufferSize)
 		Manager::Instance::get()->runEvent("ColorBufferRecreate");
 }
 

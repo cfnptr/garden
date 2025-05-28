@@ -124,13 +124,13 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR)));
 	_buildData = buildData;
 
-	auto builDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
-	auto builDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
-	auto syncBuffers = (ID<Buffer>*)(buildData + builDataOffset);
-	builDataOffset += geometryCount * geometryType * sizeof(ID<Buffer>);
-	auto asArray = (vk::AccelerationStructureGeometryKHR*)(buildData + builDataOffset);
-	builDataOffset += geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
-	auto rangeInfos = (vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + builDataOffset);
+	auto buildDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
+	auto buildDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
+	auto syncBuffers = (ID<Buffer>*)(buildData + buildDataOffset);
+	buildDataOffset += geometryCount * geometryType * sizeof(ID<Buffer>);
+	auto asArray = (vk::AccelerationStructureGeometryKHR*)(buildData + buildDataOffset);
+	buildDataOffset += geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
+	auto rangeInfos = (vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + buildDataOffset);
 
 	if (geometryType == 2)
 	{
@@ -175,10 +175,10 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 	addressInfo.accelerationStructure = accelerationStructure;
 	deviceAddress = vulkanAPI->device.getAccelerationStructureAddressKHR(addressInfo);
 
-	builDataHeader->scratchSize = sizesInfo.buildScratchSize +
+	buildDataHeader->scratchSize = sizesInfo.buildScratchSize +
 		vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment;
-	builDataHeader->geometryCount = geometryCount;
-	builDataHeader->bufferCount = geometryCount * geometryType;
+	buildDataHeader->geometryCount = geometryCount;
+	buildDataHeader->bufferCount = geometryCount * geometryType;
 }
 
 //**********************************************************************************************************************

@@ -73,7 +73,7 @@ void MeshSelectorEditorSystem::render()
 	auto inputSystem = InputSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto cameraPosition = cameraConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 

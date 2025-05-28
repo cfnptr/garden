@@ -35,7 +35,7 @@ protected:
 	ID<GraphicsPipeline> shadowPipeline = {};
 	ID<DescriptorSet> baseDescriptorSet = {};
 	ID<DescriptorSet> shadowDescriptorSet = {};
-	uint32 swapchainIndex = 0;
+	uint32 inFlightIndex = 0;
 	uint32 shadowDrawIndex = 0;
 	ID<DescriptorSet> descriptorSet = {};
 	View<GraphicsPipeline> pipelineView = {};

@@ -81,7 +81,7 @@ public:
 		uint32 count = 0;
 	};
 protected:
-	vector<DestroyResource> destroyBuffers[frameLag + 1];
+	vector<DestroyResource> destroyBuffers[inFlightCount + 1];
 	GraphicsBackend backendType = {};
 	uint8 fillDestroyIndex = 0;
 	uint8 flushDestroyIndex = 1;
@@ -174,7 +174,7 @@ public:
 	/**
 	 * @brief Returns image memory barrier state.
 	 * 
-	 * @param image target image instace
+	 * @param image target image instance
 	 * @param mip image mip level
 	 * @param layer image layer index
 	 */
@@ -186,7 +186,7 @@ public:
 	}
 	 /**
 	  * @brief Returns buffer memory barrier state.
-	  * @param buffer target buffer insance
+	  * @param buffer target buffer instance
 	  */
 	Buffer::BarrierState& getBufferState(ID<Buffer> buffer) noexcept
 	{

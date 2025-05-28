@@ -38,19 +38,18 @@ pipelineState
 #define EMISSIVE_COLOR_DRAW_MODE 11
 #define EMISSIVE_FACTOR_DRAW_MODE 12
 #define GI_COLOR_DRAW_MODE 13
-#define THICKNESS_DRAW_MODE 14
-#define LIGHTING_DRAW_MODE 15
-#define HDR_DRAW_MODE 16
-#define OIT_ACCUM_COLOR_DRAW_MODE 17
-#define OIT_ACCUM_ALPHA_DRAW_MODE 18
-#define OIT_REVEAL_DRAW_MODE 19
-#define DEPTH_DRAW_MODE 20
-#define WORLD_POSITION_DRAW_MODE 21
-#define GLOBAL_SHADOW_COLOR_DRAW_MODE 22
-#define GLOBAL_SHADOW_ALPHA_DRAW_MODE 23
-#define GLOBAL_AO_DRAW_MODE 24
-#define DENOISED_GLOBAL_AO_DRAW_MODE 25
-#define DRAW_MODE_COUNT 26
+#define LIGHTING_DRAW_MODE 14
+#define HDR_DRAW_MODE 15
+#define OIT_ACCUM_COLOR_DRAW_MODE 16
+#define OIT_ACCUM_ALPHA_DRAW_MODE 17
+#define OIT_REVEAL_DRAW_MODE 18
+#define DEPTH_DRAW_MODE 19
+#define WORLD_POSITION_DRAW_MODE 20
+#define GLOBAL_SHADOW_COLOR_DRAW_MODE 21
+#define GLOBAL_SHADOW_ALPHA_DRAW_MODE 22
+#define GLOBAL_AO_DRAW_MODE 23
+#define DENOISED_GLOBAL_AO_DRAW_MODE 24
+#define DRAW_MODE_COUNT 25
 
 in noperspective float2 fs.texCoords;
 out float4 fb.color;
@@ -140,10 +139,6 @@ void main()
 	else if (pc.drawMode == GI_COLOR_DRAW_MODE)
 	{
 		fb.color = float4(gBuffer.giColor, 1.0f);
-	}
-	else if (pc.drawMode == THICKNESS_DRAW_MODE)
-	{
-		fb.color = float4(float3(gBuffer.thickness), 1.0f);
 	}
 	else if (pc.drawMode == HDR_DRAW_MODE)
 	{

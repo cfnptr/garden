@@ -375,7 +375,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto cameraPosition = cameraConstants.cameraPos;
 	uint32 unsortedBufferIndex = 0, sortedBufferIndex = 0;
 	Plane frustumPlanes[Plane::frustumCount];
@@ -724,7 +724,7 @@ void MeshRenderSystem::preForwardRender()
 	prepareSystems();
 	renderShadows();
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 
@@ -736,7 +736,7 @@ void MeshRenderSystem::forwardRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, -1);
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, -1);
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
@@ -756,7 +756,7 @@ void MeshRenderSystem::preDeferredRender()
 	prepareSystems();
 	renderShadows();
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 void MeshRenderSystem::deferredRender()
@@ -767,7 +767,7 @@ void MeshRenderSystem::deferredRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, -1);
 }
 void MeshRenderSystem::depthHdrRender()
@@ -778,7 +778,7 @@ void MeshRenderSystem::depthHdrRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, -1);
 }
 void MeshRenderSystem::refractedRender()
@@ -789,7 +789,7 @@ void MeshRenderSystem::refractedRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
 }
 void MeshRenderSystem::translucentRender()
@@ -800,7 +800,7 @@ void MeshRenderSystem::translucentRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderSorted(cameraConstants.viewProj, -1);
 }
 void MeshRenderSystem::oitRender()
@@ -811,6 +811,6 @@ void MeshRenderSystem::oitRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, -1);
 }

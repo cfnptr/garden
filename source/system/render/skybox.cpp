@@ -129,7 +129,7 @@ void SkyboxRenderSystem::depthHdrRender()
 	if (!pipelineView->isReady() || !cubemapView->isReady())
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>(0);
 	pushConstants->viewProj = (float4x4)cameraConstants.viewProj;
 

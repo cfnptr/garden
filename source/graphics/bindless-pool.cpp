@@ -110,7 +110,7 @@ void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
 
 	auto& resourceSet = uniform.value().resourceSets[0];
 	resourceSet[allocation] = {};
-	allocData.freeAllocs.emplace_back(allocation, frameIndex + frameLag + 1);
+	allocData.freeAllocs.emplace_back(allocation, frameIndex + inFlightCount + 1);
 }
 
 //**********************************************************************************************************************

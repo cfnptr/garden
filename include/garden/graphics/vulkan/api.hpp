@@ -409,15 +409,15 @@ static vk::SamplerMipmapMode toVkSamplerMipmapMode(Sampler::Filter filterType) n
  * @brief Returns Vulkan sampler address mode.
  * @param addressMode target sampler address mode
  */
-static vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddessMode addressMode) noexcept
+static vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddressMode addressMode) noexcept
 {
 	switch (addressMode)
 	{
-	case Sampler::AddessMode::Repeat: return vk::SamplerAddressMode::eRepeat;
-	case Sampler::AddessMode::MirroredRepeat: return vk::SamplerAddressMode::eMirroredRepeat;
-	case Sampler::AddessMode::ClampToEdge: return vk::SamplerAddressMode::eClampToEdge;
-	case Sampler::AddessMode::ClampToBorder: return vk::SamplerAddressMode::eClampToBorder;
-	case Sampler::AddessMode::MirrorClampToEdge: return vk::SamplerAddressMode::eMirrorClampToEdge;
+	case Sampler::AddressMode::Repeat: return vk::SamplerAddressMode::eRepeat;
+	case Sampler::AddressMode::MirroredRepeat: return vk::SamplerAddressMode::eMirroredRepeat;
+	case Sampler::AddressMode::ClampToEdge: return vk::SamplerAddressMode::eClampToEdge;
+	case Sampler::AddressMode::ClampToBorder: return vk::SamplerAddressMode::eClampToBorder;
+	case Sampler::AddressMode::MirrorClampToEdge: return vk::SamplerAddressMode::eMirrorClampToEdge;
 	default: abort();
 	}
 }
@@ -439,7 +439,7 @@ static vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcep
 	}
 }
 /**
- * @brief Returns Vulkan sampler comparison operatotion.
+ * @brief Returns Vulkan sampler comparison operation.
  * @param compareOperation target sampler compare operation
  */
 static vk::CompareOp toVkCompareOp(Sampler::CompareOp compareOperation) noexcept

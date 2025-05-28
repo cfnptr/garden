@@ -38,14 +38,16 @@ class VulkanSwapchain final : public Swapchain
 {
 public:
 	/**
-	 * @brief Vulkan swapchain buffer data container.
+	 * @brief Vulkan swapchain in0flight frame data container.
 	 */
-	struct VkBuffer final : public Swapchain::Buffer
+	struct InFlightFrame
 	{
-		uint32 secondaryCommandBufferIndex = 0;
-		vk::CommandBuffer primaryCommandBuffer;
 		vector<vk::CommandPool> secondaryCommandPools;
 		vector<vk::CommandBuffer> secondaryCommandBuffers;
+		vk::Fence fence;
+		vk::Semaphore imageAvailableSemaphore;
+		vk::CommandBuffer primaryCommandBuffer;
+		uint32 secondaryCommandBufferIndex = 0;
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		vk::QueryPool queryPool;
@@ -55,14 +57,11 @@ public:
 private:
 	uint16 _alignment = 0;
 	VulkanAPI* vulkanAPI = nullptr;
-	vector<VkBuffer*> vulkanBuffers;
+	InFlightFrame inFlightFrames[inFlightCount];
+	vector<vk::Semaphore> renderFinishedSemaphores;
 	vector<vk::Format> colorAttachmentFormats;
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
-	vk::Fence fences[frameLag];
-	vk::Semaphore imageAcquiredSemaphores[frameLag];
-	vk::Semaphore drawCompleteSemaphores[frameLag];
 	vk::SwapchainKHR instance = {};
-	uint32 frameIndex = 0;
 
 	VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize,
 		bool useVsync, bool useTripleBuffering);
@@ -70,7 +69,7 @@ private:
 
 	friend class garden::VulkanAPI;
 public:
-	VkBuffer* getCurrentVkBuffer() const noexcept { return vulkanBuffers[bufferIndex]; }
+	InFlightFrame& getInFlightFrame() noexcept { return inFlightFrames[inFlightIndex]; }
 
 	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) final;
 	bool acquireNextImage(ThreadPool* threadPool) final;

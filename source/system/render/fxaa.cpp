@@ -151,27 +151,22 @@ void FxaaRenderSystem::preUiRender()
 void FxaaRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize)
+	if (framebuffer)
 	{
-		if (framebuffer)
-		{
-			auto deferredSystem = DeferredRenderSystem::Instance::get();
-			auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[0]); // Reusing G-Buffer memory.
-			GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[0]); // Reusing G-Buffer memory.
+		GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
-			auto framebufferView = graphicsSystem->get(framebuffer);
-			Framebuffer::OutputAttachment colorAttachment(gBufferView->getDefaultView(), { false, false, true });
-			framebufferView->update(graphicsSystem->getScaledFramebufferSize(), &colorAttachment, 1);
-		}
-		if (descriptorSet)
-		{
-			graphicsSystem->destroy(descriptorSet);
-			auto uniforms = getUniforms();
-			descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-			SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
-		}
+		auto framebufferView = graphicsSystem->get(framebuffer);
+		Framebuffer::OutputAttachment colorAttachment(gBufferView->getDefaultView(), { false, false, true });
+		framebufferView->update(graphicsSystem->getScaledFramebufferSize(), &colorAttachment, 1);
+	}
+	if (descriptorSet)
+	{
+		graphicsSystem->destroy(descriptorSet);
+		auto uniforms = getUniforms();
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
 }
 

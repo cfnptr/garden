@@ -38,11 +38,11 @@ public:
 	struct HitGroupRegion final
 	{
 		uint64 deviceAddress = 0;
-		uint32 size = 0;
 		uint32 stride = 0;
+		uint32 size = 0;
 	};
 	/**
-	 * @brief Ray tracing pipeline varant group regions container.
+	 * @brief Ray tracing pipeline variant group regions container.
 	 */
 	struct SbtGroupRegions final
 	{

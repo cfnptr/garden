@@ -75,7 +75,7 @@ void CsmRenderEditorSystem::preUiRender()
 	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+		const auto& cameraConstants = graphicsSystem->getCameraConstants();
 		auto shadowColor = cameraConstants.shadowColor;
 		if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
 			graphicsSystem->setShadowColor(shadowColor);
@@ -141,9 +141,7 @@ void CsmRenderEditorSystem::uiRender()
 		return;
 
 	auto csmSystem = CsmRenderSystem::Instance::get();
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto framebufferView = graphicsSystem->get(deferredSystem->getUiFramebuffer());
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->farPlanes = (float4)f32x4(cameraConstants.nearPlane / csmSystem->getFarPlanes(), 0.0f);
 
@@ -158,10 +156,7 @@ void CsmRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void CsmRenderEditorSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize && cascadesDescriptorSet)
+	if (cascadesDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(cascadesDescriptorSet);

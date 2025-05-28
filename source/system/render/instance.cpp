@@ -21,10 +21,10 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSetBuffers& insta
 	bool isShadow, InstanceRenderSystem* system)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
-	instanceBuffers.resize(swapchainSize);
+	auto inFlightCount = graphicsSystem->getInFlightCount();
+	instanceBuffers.resize(inFlightCount);
 
-	for (uint32 i = 0; i < swapchainSize; i++)
+	for (uint32 i = 0; i < inFlightCount; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Storage, Buffer::CpuAccess::SequentialWrite,
 			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
@@ -139,7 +139,7 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	swapchainIndex = graphicsSystem->getSwapchainIndex();
+	inFlightIndex = graphicsSystem->getInFlightIndex();
 
 	if (shadowPass < 0)
 	{
@@ -160,7 +160,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 			}
 		}
 
-		auto bufferView = graphicsSystem->get(baseInstanceBuffers[swapchainIndex][0]);
+		auto bufferView = graphicsSystem->get(baseInstanceBuffers[inFlightIndex][0]);
 		instanceMap = bufferView->getMap();
 		descriptorSet = baseDescriptorSet;
 		pipelineView = graphicsSystem->get(basePipeline);
@@ -185,7 +185,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 			}
 		}
 
-		auto bufferView = graphicsSystem->get(shadowInstanceBuffers[swapchainIndex][0]);
+		auto bufferView = graphicsSystem->get(shadowInstanceBuffers[inFlightIndex][0]);
 		instanceMap = bufferView->getMap();
 		descriptorSet = shadowDescriptorSet;
 		pipelineView = graphicsSystem->get(shadowPipeline);
@@ -202,12 +202,12 @@ void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCoun
 	ID<Buffer> instanceBuffer; uint64 dataBinarySize;
 	if (shadowPass < 0)
 	{
-		instanceBuffer = baseInstanceBuffers[swapchainIndex][0];
+		instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
 		dataBinarySize = drawCount * getBaseInstanceDataSize();
 	}
 	else
 	{
-		instanceBuffer = shadowInstanceBuffers[swapchainIndex][0];
+		instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
 		dataBinarySize = (shadowDrawIndex + drawCount) * getShadowInstanceDataSize();
 		shadowDrawIndex += drawCount;
 	}
@@ -220,27 +220,6 @@ void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCoun
 void InstanceRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.bufferCount)
-	{
-		if (!baseInstanceBuffers.empty())
-		{
-			auto bufferSize = graphicsSystem->get(baseInstanceBuffers[0][0])->getBinarySize();
-			graphicsSystem->destroy(baseInstanceBuffers);
-			createInstanceBuffers(bufferSize, baseInstanceBuffers, false, this);
-		}
-		if (!shadowInstanceBuffers.empty())
-		{
-			auto bufferSize = graphicsSystem->get(shadowInstanceBuffers[0][0])->getBinarySize();
-			graphicsSystem->destroy(shadowInstanceBuffers);
-			createInstanceBuffers(bufferSize, shadowInstanceBuffers, false, this);
-		}
-	}
-
-	// Recreating descriptor sets for all possible swapchain changes.
-	// Because we are not sure which ones are required for function overrides.
-
 	if (baseDescriptorSet)
 	{
 		graphicsSystem->destroy(baseDescriptorSet);

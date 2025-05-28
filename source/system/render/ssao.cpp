@@ -78,16 +78,16 @@ static DescriptorSet::Uniforms getUniforms(ID<Buffer> sampleBuffer, ID<Image> no
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
+	auto inFlightCount = graphicsSystem->getInFlightCount();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "gBufferNormals", DescriptorSet::Uniform(gFramebufferView->getColorAttachments()[
-			DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },
+			DeferredRenderSystem::normalsGBuffer].imageView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(
-			gFramebufferView->getDepthStencilAttachment().imageView, 1, swapchainSize) },
-		{ "samples", DescriptorSet::Uniform(sampleBuffer, 1, swapchainSize) },
-		{ "noise", DescriptorSet::Uniform(graphicsSystem->get(noiseTexture)->getDefaultView(), 1, swapchainSize) },
+			gFramebufferView->getDepthStencilAttachment().imageView, 1, inFlightCount) },
+		{ "samples", DescriptorSet::Uniform(sampleBuffer, 1, inFlightCount) },
+		{ "noise", DescriptorSet::Uniform(graphicsSystem->get(noiseTexture)->getDefaultView(), 1, inFlightCount) },
 		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCameraConstantsBuffers()) }
 	};
 
@@ -200,7 +200,8 @@ void SsaoRenderSystem::aoRender()
 		0.0f, 0.0f, 0.0f, 1.0f
 	);
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
 	pushConstants->uvToView = (float4x4)(cameraConstants.inverseProj * uvToNDC);
 	pushConstants->uvToView[0][3] = radius;
@@ -211,7 +212,7 @@ void SsaoRenderSystem::aoRender()
 	SET_GPU_DEBUG_LABEL("SSAO", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, graphicsSystem->getSwapchainIndex());
+	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
 	pipelineView->pushConstants();
 	pipelineView->drawFullscreen();
 
@@ -220,10 +221,7 @@ void SsaoRenderSystem::aoRender()
 
 void SsaoRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if ((swapchainChanges.bufferCount || swapchainChanges.framebufferSize) && descriptorSet)
+	if (descriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);

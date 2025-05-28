@@ -358,12 +358,12 @@ void VulkanCommandBuffer::submit()
 
 	auto vulkanAPI = VulkanAPI::get();
 	auto swapchain = vulkanAPI->vulkanSwapchain;
-	auto swapchainBuffer = swapchain->getCurrentVkBuffer();
-
+	
 	vk::Queue queue;
 	if (type == CommandBufferType::Frame)
 	{
-		instance = swapchainBuffer->primaryCommandBuffer;
+		auto& inFlightFrame = swapchain->getInFlightFrame();
+		instance = inFlightFrame.primaryCommandBuffer;
 	}
 	else
 	{
@@ -403,9 +403,10 @@ void VulkanCommandBuffer::submit()
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (type == CommandBufferType::Frame && vulkanAPI->recordGpuTime)
 	{
-		instance.resetQueryPool(swapchainBuffer->queryPool, 0, 2);
-		instance.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, swapchainBuffer->queryPool, 0);
-		swapchainBuffer->isPoolClean = true;
+		auto& inFlightFrame = swapchain->getInFlightFrame();
+		instance.resetQueryPool(inFlightFrame.queryPool, 0, 2);
+		instance.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, inFlightFrame.queryPool, 0);
+		inFlightFrame.isPoolClean = true;
 		// TODO: record transfer and compute command buffer perf.
 	}
 	#endif
@@ -414,9 +415,10 @@ void VulkanCommandBuffer::submit()
 
 	if (type == CommandBufferType::Frame)
 	{
-		auto imageView = vulkanAPI->imagePool.get(swapchainBuffer->colorImage);
+		auto swapchainImage = swapchain->getCurrentImage();
+		auto imageView = vulkanAPI->imagePool.get(swapchainImage);
 		auto vkImage = (VkImage)ResourceExt::getInstance(**imageView);
-		auto& oldImageState = vulkanAPI->getImageState(swapchainBuffer->colorImage, 0, 0);
+		auto& oldImageState = vulkanAPI->getImageState(swapchainImage, 0, 0);
 
 		if (!hasAnyCommand)
 		{
@@ -455,7 +457,10 @@ void VulkanCommandBuffer::submit()
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (vulkanAPI->recordGpuTime)
-			instance.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, swapchainBuffer->queryPool, 1);
+		{
+			auto& inFlightFrame = swapchain->getInFlightFrame();
+			instance.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, inFlightFrame.queryPool, 1);
+		}
 		#endif
 	}
 
@@ -481,11 +486,15 @@ void VulkanCommandBuffer::submit()
 		for (auto& state : states)
 			state.access = state.stage = 0;
 	}
+
 	{
-		auto swapchainView = imagePool.get(swapchainBuffer->colorImage);
+		auto swapchainView = imagePool.get(swapchain->getCurrentImage());
 		auto& states = ImageExt::getBarrierStates(**swapchainView);
 		for (auto& state : states)
+		{
+			state.access = 0;
 			state.stage = (uint32)vk::PipelineStageFlagBits::eBottomOfPipe;
+		}
 	}
 
 	auto& bufferPool = vulkanAPI->bufferPool;
@@ -1544,12 +1553,12 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	
 	auto buildData = (const uint8*)AccelerationStructureExt::getBuildData(**asView);
 	auto buildDataHeader = *((const AccelerationStructure::BuildDataHeader*)buildData);
-	auto builDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
-	auto syncBuffers = (ID<Buffer>*)(buildData + builDataOffset);
-	builDataOffset += buildDataHeader.bufferCount * sizeof(ID<Buffer>);
-	auto asArray = (const vk::AccelerationStructureGeometryKHR*)(buildData + builDataOffset);
-	builDataOffset += buildDataHeader.geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
-	auto rangeInfos = (const vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + builDataOffset);
+	auto buildDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
+	auto syncBuffers = (ID<Buffer>*)(buildData + buildDataOffset);
+	buildDataOffset += buildDataHeader.bufferCount * sizeof(ID<Buffer>);
+	auto asArray = (const vk::AccelerationStructureGeometryKHR*)(buildData + buildDataOffset);
+	buildDataOffset += buildDataHeader.geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
+	auto rangeInfos = (const vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + buildDataOffset);
 
 	info.flags = toVkBuildFlagsAS(asView->getFlags());
 	info.mode = command.isUpdate ? vk::BuildAccelerationStructureModeKHR::eUpdate :

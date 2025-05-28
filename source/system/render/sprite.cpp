@@ -115,7 +115,7 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 		return;
 
 	DescriptorSet::Range dsRange[2];
-	dsRange[0] = DescriptorSet::Range(descriptorSet, 1, swapchainIndex);
+	dsRange[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
 	dsRange[1] = DescriptorSet::Range((ID<DescriptorSet>)spriteRenderView->descriptorSet);
 
 	auto instanceData = (BaseInstanceData*)(instanceMap + drawIndex * getBaseInstanceDataSize());

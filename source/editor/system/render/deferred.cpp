@@ -276,7 +276,7 @@ void DeferredRenderEditorSystem::ldrRender()
 	if (!pipelineView->isReady() || !graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto pushConstants = pipelineView->getPushConstants<BufferPC>();
 	pushConstants->invViewProj = (float4x4)cameraConstants.invViewProj;
 	pushConstants->drawMode = (int32)drawMode;
@@ -302,10 +302,7 @@ void DeferredRenderEditorSystem::ldrRender()
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize && bufferDescriptorSet)
+	if (bufferDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(bufferDescriptorSet);

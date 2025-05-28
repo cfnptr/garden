@@ -177,10 +177,7 @@ void AutoExposureRenderSystem::render()
 //**********************************************************************************************************************
 void AutoExposureRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.framebufferSize && histogramDescriptorSet)
+	if (histogramDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(histogramDescriptorSet);

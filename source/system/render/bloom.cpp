@@ -268,34 +268,29 @@ void BloomRenderSystem::preLdrRender()
 void BloomRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-	
-	if (swapchainChanges.framebufferSize)
+	graphicsSystem->destroy(descriptorSets);
+	descriptorSets.clear();
+
+	if (bloomBuffer)
 	{
-		graphicsSystem->destroy(descriptorSets);
-		descriptorSets.clear();
+		graphicsSystem->destroy(bloomBuffer);
+		graphicsSystem->destroy(imageViews);
+		bloomBuffer = createBloomBuffer(imageViews);
+	}
+	if (!framebuffers.empty())
+	{
+		graphicsSystem->destroy(framebuffers);
+		createBloomFramebuffers(imageViews, framebuffers);
 
-		if (bloomBuffer)
+		if (downsamplePipeline)
 		{
-			graphicsSystem->destroy(bloomBuffer);
-			graphicsSystem->destroy(imageViews);
-			bloomBuffer = createBloomBuffer(imageViews);
+			auto pipelineView = graphicsSystem->get(downsamplePipeline);
+			pipelineView->updateFramebuffer(framebuffers[0]);
 		}
-		if (!framebuffers.empty())
+		if (upsamplePipeline)
 		{
-			graphicsSystem->destroy(framebuffers);
-			createBloomFramebuffers(imageViews, framebuffers);
-
-			if (downsamplePipeline)
-			{
-				auto pipelineView = graphicsSystem->get(downsamplePipeline);
-				pipelineView->updateFramebuffer(framebuffers[0]);
-			}
-			if (upsamplePipeline)
-			{
-				auto pipelineView = graphicsSystem->get(upsamplePipeline);
-				pipelineView->updateFramebuffer(framebuffers[0]);
-			}
+			auto pipelineView = graphicsSystem->get(upsamplePipeline);
+			pipelineView->updateFramebuffer(framebuffers[0]);
 		}
 	}
 }

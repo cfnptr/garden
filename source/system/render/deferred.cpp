@@ -480,7 +480,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("Refracted Render Pass");
 		SET_GPU_DEBUG_LABEL("Refracted Pass", Color::transparent);
 
-		// TODO: generate blury HDR chain. (GGX based)
+		// TODO: generate blurry HDR chain. (GGX based)
 		// TODO: also detect if no one uses it and skip copy.
 
 		Image::copy(hdrBuffer, hdrCopyBuffer);
@@ -709,8 +709,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
 	}
 
-	// Deferred system notifies both framebufferSize and bufferCount changes!
-	if (swapchainChanges.framebufferSize || swapchainChanges.bufferCount)
+	if (swapchainChanges.framebufferSize)
 		Manager::Instance::get()->runEvent("GBufferRecreate");
 }
 

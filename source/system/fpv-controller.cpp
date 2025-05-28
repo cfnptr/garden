@@ -223,7 +223,7 @@ void FpvControllerSystem::updateCharacterControl()
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
-	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
+	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCameraConstants();
 
 	auto velocity = f32x4::zero;
 	if (inputSystem->getKeyboardState(KeyboardButton::W))

@@ -143,10 +143,10 @@ static DescriptorSet::Samplers getSamplers(ID<Sampler> sampler)
 static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Usage usage)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
-	buffers.resize(swapchainSize);
+	auto inFlightCount = graphicsSystem->getInFlightCount();
+	buffers.resize(inFlightCount);
 
-	for (uint32 i = 0; i < swapchainSize; i++)
+	for (uint32 i = 0; i < inFlightCount; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(usage, Buffer::CpuAccess::SequentialWrite,
 			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
@@ -217,7 +217,6 @@ void ImGuiRenderSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Render", ImGuiRenderSystem::render);
-	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ImGuiRenderSystem::swapchainRecreate);
 
 	auto& io = ImGui::GetIO();
 	auto graphicsAPI = GraphicsAPI::get();
@@ -337,7 +336,6 @@ void ImGuiRenderSystem::postDeinit()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ImGuiRenderSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ImGuiRenderSystem::swapchainRecreate);
 	}
 }
 
@@ -677,9 +675,9 @@ void ImGuiRenderSystem::uiRender()
 			createBuffers(indexBuffers, indexSize, Buffer::Usage::Index);
 		}
 
-		auto swapchainIndex = graphicsSystem->getSwapchainIndex();
-		vertexBuffer = vertexBuffers[swapchainIndex];
-		indexBuffer = indexBuffers[swapchainIndex];
+		auto inFlightIndex = graphicsSystem->getInFlightIndex();
+		vertexBuffer = vertexBuffers[inFlightIndex];
+		indexBuffer = indexBuffers[inFlightIndex];
 		auto vertexBufferView = graphicsSystem->get(vertexBuffer);
 		auto indexBufferView = graphicsSystem->get(indexBuffer);
 		auto vtxDst = (ImDrawVert*)vertexBufferView->getMap();
@@ -762,29 +760,6 @@ void ImGuiRenderSystem::uiRender()
 		}
 		globalIdxOffset += cmdList->IdxBuffer.Size;
 		globalVtxOffset += cmdList->VtxBuffer.Size;
-	}
-}
-
-//**********************************************************************************************************************
-void ImGuiRenderSystem::swapchainRecreate()
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.bufferCount)
-	{
-		auto vertexSize = vertexBuffers.empty() ? 0 : graphicsSystem->get(vertexBuffers[0])->getBinarySize();
-		auto indexSize = indexBuffers.empty() ? 0 : graphicsSystem->get(indexBuffers[0])->getBinarySize();
-
-		for (auto buffer : indexBuffers)
-			graphicsSystem->destroy(buffer);
-		for (auto buffer : vertexBuffers)
-			graphicsSystem->destroy(buffer);
-
-		if (vertexSize > 0)
-			createBuffers(vertexBuffers, vertexSize, Buffer::Usage::Vertex);
-		if (indexSize > 0)
-			createBuffers(indexBuffers, indexSize, Buffer::Usage::Index);
 	}
 }
 

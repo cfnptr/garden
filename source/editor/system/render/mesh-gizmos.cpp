@@ -235,7 +235,7 @@ void MeshGizmosEditorSystem::render()
 		return;
 	}
 
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto model = transformView->calcModel(cameraConstants.cameraPos);
 	
 	auto windowSize = inputSystem->getWindowSize();

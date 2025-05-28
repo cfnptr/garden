@@ -64,7 +64,6 @@ private:
 	void update();
 	void render();
 	void uiRender();
-	void swapchainRecreate();
 
 	friend class ecsm::Manager;
 public:
