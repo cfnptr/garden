@@ -31,7 +31,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 	endif()
 
 	add_compile_options(-Wno-unused-function -Wno-unused-private-field 
-		-Wno-reorder-ctor -Wno-switch-default -Wno-nan-infinity-disabled)
+		-Wno-reorder-ctor -Wno-switch-default -Wno-nan-infinity-disabled 
+		-Wno-misleading-indentation -Wno-unused-command-line-argument)
 
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
