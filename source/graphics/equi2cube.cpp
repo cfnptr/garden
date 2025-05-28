@@ -83,7 +83,7 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 	{
 		auto errorString = string(error);
 		FreeEXRErrorMessage(error);
-		throw GardenError("Faield to store EXR image. ("
+		throw GardenError("Failed to store EXR image. ("
 			"path: " + filePath.generic_string() + ", "
 			"error: " + errorString + ")");
 	}

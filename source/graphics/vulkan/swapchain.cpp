@@ -168,61 +168,38 @@ static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 qu
 }
 
 //**********************************************************************************************************************
-static vector<VulkanSwapchain::VkBuffer*> createVkSwapchainBuffers(VulkanAPI* vulkanAPI,
+static vector<ID<Image>> createVkSwapchainImages(VulkanAPI* vulkanAPI,
 	vk::SwapchainKHR swapchain, uint2 framebufferSize, vk::Format surfaceFormat)
 {
-	auto images = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
+	auto vkImages = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
+	vector<ID<Image>> images(vkImages.size());
 	auto imageFormat = toImageFormat(surfaceFormat);
-	vector<VulkanSwapchain::VkBuffer*> buffers(images.size());
-	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
-
-	for (uint32 i = 0; i < (uint32)buffers.size(); i++)
+	
+	for (uint32 i = 0; i < (uint32)images.size(); i++)
 	{
-		auto buffer = new VulkanSwapchain::VkBuffer();
-		auto allocateResult = vulkanAPI->device.allocateCommandBuffers(&commandBufferInfo, &buffer->primaryCommandBuffer);
-		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
-
-		buffer->colorImage = vulkanAPI->imagePool.create((VkImage)images[i], imageFormat,
+		auto image = vulkanAPI->imagePool.create((VkImage)vkImages[i], imageFormat,
 			Image::Usage::TransferDst, Image::Strategy::Default, framebufferSize, 0);
-		buffer->secondaryCommandPools = createVkCommandPools(vulkanAPI->device, 
-			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
+		images[i] = image;
 
-		#if GARDEN_DEBUG
-		if (vulkanAPI->hasDebugUtils)
-		{
-			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
-			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
-				(uint64)(VkCommandBuffer)buffer->primaryCommandBuffer, name.c_str());
-			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-			auto imageView = vulkanAPI->imagePool.get(buffer->colorImage);
-			ResourceExt::getDebugName(**imageView) = name;
-		}
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		auto imageView = vulkanAPI->imagePool.get(images[i]);
+		auto name = "image.swapchain" + to_string(i);
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)
+			(VkImage)ResourceExt::getInstance(**imageView), name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		#endif
-
-		#if GARDEN_EDITOR
-		vk::QueryPoolCreateInfo queryPoolInfo({}, vk::QueryType::eTimestamp, 2);
-		buffer->queryPool = vulkanAPI->device.createQueryPool(queryPoolInfo);
-		#endif
-
-		buffers[i] = buffer;
 	}
 
-	return buffers;
+	return images;
 }
-static void destroyVkSwapchainBuffers(VulkanAPI* vulkanAPI, const vector<VulkanSwapchain::VkBuffer*>& buffers)
+static void destroyVkSwapchainImages(VulkanAPI* vulkanAPI, const vector<ID<Image>>& images)
 {
-	for (auto buffer : buffers)
+	for (auto image : images)
 	{
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		vulkanAPI->device.destroyQueryPool(buffer->queryPool);
-		#endif
-		for (auto commandPool : buffer->secondaryCommandPools)
-			vulkanAPI->device.destroyCommandPool(commandPool);
-		auto imageView = vulkanAPI->imagePool.get(buffer->colorImage);
+		auto imageView = vulkanAPI->imagePool.get(image);
 		if (imageView->hasDefaultView())
 			vulkanAPI->imageViewPool.destroy(imageView->getDefaultView());
-		vulkanAPI->imagePool.destroy(buffer->colorImage);
-		delete buffer;
+		vulkanAPI->imagePool.destroy(image);
 	}
 }
 
@@ -232,32 +209,68 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 {
 	this->vulkanAPI = vulkanAPI;
 
-	vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlagBits::eSignaled);
 	vk::SemaphoreCreateInfo semaphoreInfo;
+	vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlagBits::eSignaled);
+	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 
-	for (uint8 i = 0; i < frameLag; i++)
+	for (uint8 i = 0; i < inFlightCount; i++)
 	{
-		fences[i] = vulkanAPI->device.createFence(fenceInfo);
-		imageAcquiredSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
-		drawCompleteSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
+		auto& inFlightFrame = inFlightFrames[i];
+		inFlightFrame.fence = vulkanAPI->device.createFence(fenceInfo);
+		inFlightFrame.imageAvailableSemaphore = vulkanAPI->device.createSemaphore(semaphoreInfo);
+
+		auto allocateResult = vulkanAPI->device.allocateCommandBuffers(
+			&commandBufferInfo, &inFlightFrame.primaryCommandBuffer);
+		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
+		inFlightFrame.secondaryCommandPools = createVkCommandPools(vulkanAPI->device,
+			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		vk::QueryPoolCreateInfo queryPoolInfo({}, vk::QueryType::eTimestamp, 2);
+		inFlightFrame.queryPool = vulkanAPI->device.createQueryPool(queryPoolInfo);
+		#endif
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		if (vulkanAPI->hasDebugUtils)
+		{
+			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
+			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
+				(uint64)(VkCommandBuffer)inFlightFrame.primaryCommandBuffer, name.c_str());
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		}
+		#endif
 	}
 
 	vk::Format format;
 	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
-	vulkanBuffers = createVkSwapchainBuffers(vulkanAPI, instance, framebufferSize, format);
-	buffers.assign(vulkanBuffers.begin(), vulkanBuffers.end());
+	images = createVkSwapchainImages(vulkanAPI, instance, framebufferSize, format);
+
+	renderFinishedSemaphores.resize(images.size());
+	for (uint32 i = 0; i < (uint32)images.size(); i++)
+		renderFinishedSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
+
 	this->framebufferSize = framebufferSize;
 }
 VulkanSwapchain::~VulkanSwapchain()
 {
-	destroyVkSwapchainBuffers(vulkanAPI, vulkanBuffers);
+	destroyVkSwapchainImages(vulkanAPI, images);
 	vulkanAPI->device.destroySwapchainKHR(instance);
 
-	for (uint8 i = 0; i < frameLag; i++)
+	for (auto semaphore : renderFinishedSemaphores)
+		vulkanAPI->device.destroySemaphore(semaphore);
+
+	for (uint8 i = 0; i < inFlightCount; i++)
 	{
-		vulkanAPI->device.destroySemaphore(drawCompleteSemaphores[i]);
-		vulkanAPI->device.destroySemaphore(imageAcquiredSemaphores[i]);
-		vulkanAPI->device.destroyFence(fences[i]);
+		auto& inFlightFrame = inFlightFrames[i];
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		vulkanAPI->device.destroyQueryPool(inFlightFrame.queryPool);
+		#endif
+
+		for (auto commandPool : inFlightFrame.secondaryCommandPools)
+			vulkanAPI->device.destroyCommandPool(commandPool);
+		vulkanAPI->device.destroySemaphore(inFlightFrame.imageAvailableSemaphore);
+		vulkanAPI->device.destroyFence(inFlightFrame.fence);
 	}
 }
 
@@ -265,13 +278,23 @@ VulkanSwapchain::~VulkanSwapchain()
 void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
 	vulkanAPI->device.waitIdle();
-	destroyVkSwapchainBuffers(vulkanAPI, vulkanBuffers);
+	destroyVkSwapchainImages(vulkanAPI, images);
 
 	vk::Format format;
 	auto newInstance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, instance, format);
 	vulkanAPI->device.destroySwapchainKHR(instance);
-	vulkanBuffers = createVkSwapchainBuffers(vulkanAPI, newInstance, framebufferSize, format);
-	buffers.assign(vulkanBuffers.begin(), vulkanBuffers.end());
+	images = createVkSwapchainImages(vulkanAPI, newInstance, framebufferSize, format);
+
+	if (renderFinishedSemaphores.size() < images.size())
+	{
+		auto diff = (uint32)(images.size() - renderFinishedSemaphores.size());
+		auto offset = (uint32)renderFinishedSemaphores.size();
+		renderFinishedSemaphores.resize(images.size());
+		vk::SemaphoreCreateInfo semaphoreInfo;
+
+		for (uint32 i = offset; i < (uint32)images.size(); i++)
+			renderFinishedSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
+	}
 
 	this->framebufferSize = framebufferSize;
 	this->vsync = useVsync;
@@ -285,12 +308,12 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 {
 	SET_CPU_ZONE_SCOPED("Next Image Acquire");
 
-	auto fence = fences[frameIndex];
-	auto waitResult = vulkanAPI->device.waitForFences(1, &fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
+	auto& inFlightFrame = inFlightFrames[inFlightIndex];
+	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
 	
-	auto result = vulkanAPI->device.acquireNextImageKHR(instance,
-		UINT64_MAX, imageAcquiredSemaphores[frameIndex], {}, &bufferIndex);
+	auto result = vulkanAPI->device.acquireNextImageKHR(instance, UINT64_MAX, 
+		inFlightFrame.imageAvailableSemaphore, nullptr, &imageIndex);
 		
 	if (result == vk::Result::eErrorOutOfDateKHR)
 		return false;
@@ -298,27 +321,10 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 		throw GardenError("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
 
 	// Note: Should be called after image acquire, to prevent fences wait freeze.
-	vulkanAPI->device.resetFences(fence);
+	vulkanAPI->device.resetFences(inFlightFrame.fence);
 
-	auto buffer = vulkanBuffers[bufferIndex];
-	if (threadPool)
-	{
-		threadPool->addTasks([this, buffer](const ThreadPool::Task& task)
-		{
-			SET_CPU_ZONE_SCOPED("Command Pool Reset");
-			vulkanAPI->device.resetCommandPool(buffer->secondaryCommandPools[task.getTaskIndex()]);
-		},
-		(uint32)buffer->secondaryCommandPools.size());
-		threadPool->wait();
-	}
-	else
-	{
-		for (auto secondaryCommandPool : buffer->secondaryCommandPools)
-			vulkanAPI->device.resetCommandPool(secondaryCommandPool);
-	}
-
-	buffer->secondaryCommandBufferIndex = 0;
-	vmaSetCurrentFrameIndex(vulkanAPI->memoryAllocator, bufferIndex);
+	inFlightFrame.secondaryCommandBufferIndex = UINT32_MAX;
+	vmaSetCurrentFrameIndex(vulkanAPI->memoryAllocator, inFlightIndex);
 	this->threadPool = threadPool;
 	return true;
 }
@@ -326,17 +332,17 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 //**********************************************************************************************************************
 void VulkanSwapchain::submit()
 {
-	auto buffer = vulkanBuffers[bufferIndex];
+	auto& inFlightFrame = inFlightFrames[inFlightIndex];
 	vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	vk::SubmitInfo submitInfo(1, &imageAcquiredSemaphores[frameIndex], &pipelineStage, 
-		1, &buffer->primaryCommandBuffer, 1, &drawCompleteSemaphores[frameIndex]);
-	vulkanAPI->frameQueue.submit(submitInfo, fences[frameIndex]);
+	vk::SubmitInfo submitInfo(1, &inFlightFrame.imageAvailableSemaphore, &pipelineStage,
+		1, &inFlightFrame.primaryCommandBuffer, 1, &renderFinishedSemaphores[imageIndex]);
+	vulkanAPI->frameQueue.submit(submitInfo, inFlightFrame.fence);
 }
 bool VulkanSwapchain::present()
 {
-	vk::PresentInfoKHR presentInfo(1, &drawCompleteSemaphores[frameIndex], 1, &instance, &bufferIndex);
+	vk::PresentInfoKHR presentInfo(1, &renderFinishedSemaphores[imageIndex], 1, &instance, &imageIndex);
 	auto result = vulkanAPI->frameQueue.presentKHR(&presentInfo); // & is required here.
-	frameIndex = (frameIndex + 1) % frameLag;
+	inFlightIndex = (inFlightIndex + 1u) % inFlightCount;
 
 	if (result == vk::Result::eErrorOutOfDateKHR)
 		return false;
@@ -364,19 +370,40 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 		for (int32 i = 0; i < threadCount; i++)
 			secondaryCommandStates[i] = new VulkanAPI::atomic_bool_aligned();
 	}
-	
-	auto buffer = vulkanBuffers[bufferIndex];
-	if (buffer->secondaryCommandBufferIndex < buffer->secondaryCommandBuffers.size())
+
+	auto inFlightFrame = &inFlightFrames[inFlightIndex];
+	if (inFlightFrame->secondaryCommandBufferIndex == UINT32_MAX)
 	{
-		memcpy(vulkanAPI->secondaryCommandBuffers.data(),
-			buffer->secondaryCommandBuffers.data() + buffer->secondaryCommandBufferIndex,
-			threadCount * sizeof(vk::CommandBuffer));
+		inFlightFrame->primaryCommandBuffer.reset();
+		if (threadPool)
+		{
+			threadPool->addTasks([this, inFlightFrame](const ThreadPool::Task& task)
+			{
+				SET_CPU_ZONE_SCOPED("Command Pool Reset");
+				vulkanAPI->device.resetCommandPool(inFlightFrame->secondaryCommandPools[task.getTaskIndex()]);
+			},
+			(uint32)inFlightFrame->secondaryCommandPools.size());
+			threadPool->wait();
+		}
+		else
+		{
+			for (auto secondaryCommandPool : inFlightFrame->secondaryCommandPools)
+				vulkanAPI->device.resetCommandPool(secondaryCommandPool);
+		}
+		inFlightFrame->secondaryCommandBufferIndex = 0;
+	}
+
+	if (inFlightFrame->secondaryCommandBufferIndex < inFlightFrame->secondaryCommandBuffers.size())
+	{
+		memcpy(vulkanAPI->secondaryCommandBuffers.data(), inFlightFrame->secondaryCommandBuffers.data() + 
+			inFlightFrame->secondaryCommandBufferIndex, threadCount * sizeof(vk::CommandBuffer));
 	}
 	else
 	{
-		const auto& secondaryCommandPools = buffer->secondaryCommandPools;
-		buffer->secondaryCommandBuffers.resize(buffer->secondaryCommandBufferIndex + threadCount);
-		auto secondaryCommandBuffers = buffer->secondaryCommandBuffers.data() + buffer->secondaryCommandBufferIndex;
+		const auto& secondaryCommandPools = inFlightFrame->secondaryCommandPools;
+		inFlightFrame->secondaryCommandBuffers.resize(inFlightFrame->secondaryCommandBufferIndex + threadCount);
+		auto secondaryCommandBuffers = 
+			inFlightFrame->secondaryCommandBuffers.data() + inFlightFrame->secondaryCommandBufferIndex;
 		vk::CommandBufferAllocateInfo allocateInfo({}, vk::CommandBufferLevel::eSecondary, 1);
 		
 		for (int32 i = 0; i < threadCount; i++)
@@ -400,7 +427,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 		}
 	}
 
-	buffer->secondaryCommandBufferIndex += threadCount;
+	inFlightFrame->secondaryCommandBufferIndex += threadCount;
 
 	vk::CommandBufferInheritanceInfo inheritanceInfo(renderPass, subpassIndex, framebuffer, VK_FALSE); // TODO: occlusion query
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit |

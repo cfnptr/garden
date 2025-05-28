@@ -66,7 +66,7 @@ public:
 	 * mapping or repeating textures across a surface. The address mode defines how the GPU handles these 
 	 * out-of-range texture coordinates, affecting the appearance of textured objects in 3D scenes.
 	 */
-	enum class AddessMode : uint8
+	enum class AddressMode : uint8
 	{
 		Repeat,            /**< i = ​i % size */
 		MirroredRepeat,    /**< i = (size - 1) - mirror((i % (2 * size)) - size) */
@@ -131,9 +131,9 @@ public:
 		Filter minFilter = Filter::Nearest;                           /**< Minification filter to apply to lookups. */
 		Filter magFilter = Filter::Nearest;                           /**< Magnification filter to apply to lookups. */
 		Filter mipmapFilter = Filter::Nearest;                        /**< Mipmap filter to apply to lookups. */
-		AddessMode addressModeX = AddessMode::ClampToEdge;            /**< Addressing mode for U coordinates outside [0,1) */
-		AddessMode addressModeY = AddessMode::ClampToEdge;            /**< Addressing mode for V coordinates outside [0,1) */
-		AddessMode addressModeZ = AddessMode::ClampToEdge;            /**< Addressing mode for W coordinates outside [0,1) */
+		AddressMode addressModeX = AddressMode::ClampToEdge;            /**< Addressing mode for U coordinates outside [0,1) */
+		AddressMode addressModeY = AddressMode::ClampToEdge;            /**< Addressing mode for V coordinates outside [0,1) */
+		AddressMode addressModeZ = AddressMode::ClampToEdge;            /**< Addressing mode for W coordinates outside [0,1) */
 		CompareOp compareOperation = CompareOp::Less;                 /**< Comparison operator to apply to fetched data/ */
 		float maxAnisotropy = 1.0f;                                   /**< Anisotropy value clamp used by the sampler. */
 		float mipLodBias = 0.0f;                                      /**< Bias to be added to mipmap LOD calculation. */
@@ -156,7 +156,7 @@ public:
 		/**
 		 * @brief Sets sampler U, V and W coordinates addressing mode.
 		 */
-		void setAddressMode(AddessMode mode) noexcept { addressModeX = addressModeY = addressModeZ = mode; }
+		void setAddressMode(AddressMode mode) noexcept { addressModeX = addressModeY = addressModeZ = mode; }
 	};
 private:
 	State state = {};
@@ -192,13 +192,13 @@ public:
  * @param addressMode target sampler address mode name string (camelCase)
  * @throw GardenError on unknown sampler address mode.
  */
-static Sampler::AddessMode toAddressMode(string_view addressMode)
+static Sampler::AddressMode toAddressMode(string_view addressMode)
 {
-	if (addressMode == "repeat") return Sampler::AddessMode::Repeat;
-	if (addressMode == "mirroredRepeat") return Sampler::AddessMode::MirroredRepeat;
-	if (addressMode == "clampToEdge") return Sampler::AddessMode::ClampToEdge;
-	if (addressMode == "clampToBorder") return Sampler::AddessMode::ClampToBorder;
-	if (addressMode == "mirrorClampToEdge") return Sampler::AddessMode::MirrorClampToEdge;
+	if (addressMode == "repeat") return Sampler::AddressMode::Repeat;
+	if (addressMode == "mirroredRepeat") return Sampler::AddressMode::MirroredRepeat;
+	if (addressMode == "clampToEdge") return Sampler::AddressMode::ClampToEdge;
+	if (addressMode == "clampToBorder") return Sampler::AddressMode::ClampToBorder;
+	if (addressMode == "mirrorClampToEdge") return Sampler::AddressMode::MirrorClampToEdge;
 	throw GardenError("Unknown sampler address mode. (" + string(addressMode) + ")");
 }
 /**
@@ -244,7 +244,7 @@ constexpr string_view samplerFilterNames[(psize)Sampler::Filter::Count] =
 /**
  * @brief Sampler address mode name strings.
  */
-constexpr string_view addressModeNames[(psize)Sampler::AddessMode::Count] =
+constexpr string_view addressModeNames[(psize)Sampler::AddressMode::Count] =
 {
 	"Repeat", "MirroredRepeat", "ClampToEdge", "ClampToBorder", "MirrorClampToEdge"
 };
@@ -288,9 +288,9 @@ static string_view toString(Sampler::Filter samplerFilter) noexcept
  * @brief Returns sampler address mode name string.
  * @param memoryAccess target sampler address mode
  */
-static string_view toString(Sampler::AddessMode addressMode) noexcept
+static string_view toString(Sampler::AddressMode addressMode) noexcept
 {
-	GARDEN_ASSERT(addressMode < Sampler::AddessMode::Count);
+	GARDEN_ASSERT(addressMode < Sampler::AddressMode::Count);
 	return addressModeNames[(psize)addressMode];
 }
 /**

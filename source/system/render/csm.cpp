@@ -28,10 +28,10 @@ using namespace garden;
 static void createDataBuffers(DescriptorSetBuffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
-	dataBuffers.resize(swapchainSize);
+	auto inFlightCount = graphicsSystem->getInFlightCount();
+	dataBuffers.resize(inFlightCount);
 
-	for (uint32 i = 0; i < swapchainSize; i++)
+	for (uint32 i = 0; i < inFlightCount; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
 			sizeof(CsmRenderSystem::ShadowData), Buffer::Location::Auto, Buffer::Strategy::Size);
@@ -132,16 +132,16 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> shadowMap,
 	auto shadowMapView = graphicsSystem->get(shadowMap);
 	auto transparentMapView = graphicsSystem->get(transparentMap);
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
-	auto swapchainSize = graphicsSystem->getSwapchainSize();
+	auto inFlightCount = graphicsSystem->getInFlightCount();
 	
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "gBufferNormals", DescriptorSet::Uniform(gFramebuffer->getColorAttachments()[
-			DeferredRenderSystem::normalsGBuffer].imageView, 1, swapchainSize) },
-		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, swapchainSize) },
+			DeferredRenderSystem::normalsGBuffer].imageView, 1, inFlightCount) },
+		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, inFlightCount) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
-		{ "shadowMap", DescriptorSet::Uniform(shadowMapView->getDefaultView(), 1, swapchainSize) },
-		{ "transparentMap", DescriptorSet::Uniform(transparentMapView->getDefaultView(), 1, swapchainSize) }
+		{ "shadowMap", DescriptorSet::Uniform(shadowMapView->getDefaultView(), 1, inFlightCount) },
+		{ "transparentMap", DescriptorSet::Uniform(transparentMapView->getDefaultView(), 1, inFlightCount) }
 	};
 	return uniforms;
 }
@@ -212,7 +212,7 @@ void CsmRenderSystem::shadowRender()
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	if (cameraConstants.shadowColor.getW() <= 0.0f)
 		return;
 	
@@ -227,14 +227,14 @@ void CsmRenderSystem::shadowRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.csm");
 	}
 
-	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
-	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
+	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
 	dataBufferView->flush();
 
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, swapchainIndex);
+	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
 	pipelineView->drawFullscreen();
 
 	PbrLightingRenderSystem::Instance::get()->markAnyShadow();
@@ -242,10 +242,7 @@ void CsmRenderSystem::shadowRender()
 
 void CsmRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if ((swapchainChanges.bufferCount || swapchainChanges.framebufferSize) && descriptorSet)
+	if (descriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);
@@ -315,7 +312,7 @@ static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cam
 bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCurrentCameraConstants();
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	if (cameraConstants.shadowColor.getW() <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
 		return false;
 
@@ -350,8 +347,8 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		0.0f, 0.0f, 0.0f,  1.0f
 	);
 
-	auto swapchainIndex = graphicsSystem->getSwapchainIndex();
-	auto dataBufferView = graphicsSystem->get(dataBuffers[swapchainIndex][0]);
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
+	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
 	auto data = (ShadowData*)dataBufferView->getMap();
 	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
 	data->farPlanesIntens = float4((float3)(cameraConstants.nearPlane / 

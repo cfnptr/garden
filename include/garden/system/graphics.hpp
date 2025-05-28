@@ -145,13 +145,13 @@ public:
 
 	/**
 	 * @brief Sets shadow color and intensity
-	 * @details See the @ref getCurrentCameraConstants().
+	 * @details See the @ref getCameraConstants().
 	 * @param shadowColor target shadow color and intensity
 	 */
 	void setShadowColor(f32x4 shadowColor) noexcept { currentCameraConstants.shadowColor = shadowColor; }
 	/**
 	 * @brief Sets emissive coefficient. (Produces maximum brightness)
-	 * @details See the @ref getCurrentCameraConstants().
+	 * @details See the @ref getCameraConstants().
 	 * @param emissiveCoeff target emissive coefficient
 	 */
 	void setEmissiveCoeff(float emissiveCoeff) noexcept { currentCameraConstants.emissiveCoeff = emissiveCoeff; }
@@ -217,15 +217,15 @@ public:
 	const SwapchainChanges& getSwapchainChanges() const noexcept { return swapchainChanges; }
 
 	/**
-	 * @brief Returns current swapchain buffer count.
-	 * @details Triple buffering option affects buffer count.
+	 * @brief Returns total in-flight frame count.
+	 * @note Used for creating required uniform buffer count.
 	 */
-	uint32 getSwapchainSize() const noexcept;
+	uint32 getInFlightCount() const noexcept;
 	/**
-	 * @brief Returns current swapchain buffer index.
+	 * @brief Returns current in-flight frame index.
 	 * @details It changes after each framebuffer present on the screen.
 	 */
-	uint32 getSwapchainIndex() const noexcept;
+	uint32 getInFlightIndex() const noexcept;
 
 	/**
 	 * @brief Returns current swapchain asynchronous thread count.
@@ -927,7 +927,7 @@ public:
 	 * @param[in] geometryArray target triangle geometry array
 	 * @param geometryCount geometry array size
 	 * @param flags acceleration structure build flags
-	 * @param scratchBuffer AS build scractch buffer (null = auto create)
+	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
 	ID<Blas> createBlas(const Blas::TrianglesBuffer* geometryArray, 
 		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
@@ -937,7 +937,7 @@ public:
 	 * @param[in] geometryArray target AABB geometry array
 	 * @param geometryCount geometry array size
 	 * @param flags acceleration structure build flags
-	 * @param scratchBuffer AS build scractch buffer (null = auto create)
+	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
 	ID<Blas> createBlas(const Blas::AabbsBuffer* geometryArray, 
 		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
@@ -964,7 +964,7 @@ public:
 	 * 
 	 * @param instanceBuffer target TLAS instance buffer
 	 * @param flags acceleration structure build flags
-	 * @param scratchBuffer AS build scractch buffer (null = auto create)
+	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
 	ID<Tlas> createTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
 
@@ -1032,7 +1032,7 @@ public:
 	 * @brief Returns current render camera constants.
 	 * @details Useful for transformation matrices.
 	 */
-	const CameraConstants& getCurrentCameraConstants() const noexcept { return currentCameraConstants; }
+	const CameraConstants& getCameraConstants() const noexcept { return currentCameraConstants; }
 };
 
 } // namespace garden

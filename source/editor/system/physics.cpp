@@ -136,7 +136,7 @@ void PhysicsEditorSystem::preDepthLdrRender()
 
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
 	auto instance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->getInstance();
-	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
+	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCameraConstants();
 	renderer->setCameraPosition(cameraConstants.cameraPos);
 
 	JPH::BodyManager::DrawSettings drawSettings;
@@ -162,7 +162,7 @@ void PhysicsEditorSystem::depthLdrRender()
 		return;
 
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
-	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCurrentCameraConstants();
+	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCameraConstants();
 
 	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
 	renderer->draw(cameraConstants.viewProj);

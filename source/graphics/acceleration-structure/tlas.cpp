@@ -43,23 +43,23 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR));
 	_buildData = buildData;
 
-	auto builDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
-	auto builDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
-	auto syncBuffer = (ID<Buffer>*)(buildData + builDataOffset);
-	builDataOffset += sizeof(ID<Buffer>);
-	auto geometryAS = (vk::AccelerationStructureGeometryKHR*)(buildData + builDataOffset);
-	builDataOffset += sizeof(vk::AccelerationStructureGeometryKHR);
-	auto rangeInfo = (vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + builDataOffset);
+	auto buildDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
+	auto buildDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
+	auto syncBuffer = (ID<Buffer>*)(buildData + buildDataOffset);
+	buildDataOffset += sizeof(ID<Buffer>);
+	auto geometryAS = (vk::AccelerationStructureGeometryKHR*)(buildData + buildDataOffset);
+	buildDataOffset += sizeof(vk::AccelerationStructureGeometryKHR);
+	auto rangeInfo = (vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + buildDataOffset);
 
-	auto isntanceBufferView = vulkanAPI->bufferPool.get(instanceBuffer);
-	GARDEN_ASSERT(hasAnyFlag(isntanceBufferView->getUsage(), Buffer::Usage::DeviceAddress));
-	GARDEN_ASSERT(isntanceBufferView->getDeviceAddress()); // is ready
-	auto instanceCount = isntanceBufferView->getBinarySize() / sizeof(vk::AccelerationStructureInstanceKHR);
+	auto instanceBufferView = vulkanAPI->bufferPool.get(instanceBuffer);
+	GARDEN_ASSERT(hasAnyFlag(instanceBufferView->getUsage(), Buffer::Usage::DeviceAddress));
+	GARDEN_ASSERT(instanceBufferView->getDeviceAddress()); // is ready
+	auto instanceCount = instanceBufferView->getBinarySize() / sizeof(vk::AccelerationStructureInstanceKHR);
 
 	vk::AccelerationStructureGeometryKHR geometry;
 	geometry.geometryType = vk::GeometryTypeKHR::eInstances;
 	geometry.geometry.instances = vk::AccelerationStructureGeometryInstancesDataKHR();
-	geometry.geometry.instances.data.deviceAddress = isntanceBufferView->getDeviceAddress();
+	geometry.geometry.instances.data.deviceAddress = instanceBufferView->getDeviceAddress();
 	*geometryAS = geometry;
 	*rangeInfo = vk::AccelerationStructureBuildRangeInfoKHR(instanceCount, 0, 0, 0);
 	*syncBuffer = instanceBuffer;
@@ -91,9 +91,9 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	addressInfo.accelerationStructure = accelerationStructure;
 	deviceAddress = vulkanAPI->device.getAccelerationStructureAddressKHR(addressInfo);
 
-	builDataHeader->scratchSize = sizesInfo.buildScratchSize +
+	buildDataHeader->scratchSize = sizesInfo.buildScratchSize +
 		vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment;
-	builDataHeader->geometryCount = builDataHeader->bufferCount = 1;
+	buildDataHeader->geometryCount = buildDataHeader->bufferCount = 1;
 }
 
 Tlas::InstanceData::InstanceData(const f32x4x4& model, ID<Blas> blas, 
@@ -135,8 +135,8 @@ void Tlas::getInstanceData(const InstanceData* instanceArray, uint32 instanceCou
 			auto instance = instanceArray[i];
 			auto asView = vulkanAPI->blasPool.get(instance.blas);
 
-			vk::AccelerationStructureInstanceKHR vkInstance;
-			memcpy(vkInstance.transform.matrix.data(), instance.transform, sizeof(float) * 3 * 4);
+			VkAccelerationStructureInstanceKHR vkInstance;
+			memcpy(vkInstance.transform.matrix, instance.transform, sizeof(float) * 3 * 4);
 			vkInstance.instanceCustomIndex = instance.customIndex;
 			vkInstance.mask = instance.mask;
 			vkInstance.instanceShaderBindingTableRecordOffset = instance.sbtRecordOffset;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: Refactor this dumpster fire. Use prper C tokenizer and transpiler.
+// TODO: Refactor this dumpster fire. Use proper C tokenizer and transpiler.
 //       Or even better fork glslc compiler and integrate this into it.
 
 #include "garden/graphics/gslc.hpp"
@@ -133,8 +133,8 @@ namespace garden::graphics
 	};
 	struct RayTracingLineData final : public LineData
 	{
-		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, isCallableDataIn = 0, 
-			isRayPayloadOffset = 0, isHitAttributeOffset = 0, isCallableDataOffset = 0;
+		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, 
+			isCallableDataIn = 0, isRayPayloadOffset = 0, isCallableDataOffset = 0;
 	};
 
 	class CompileError final : public GardenError
@@ -599,7 +599,7 @@ static Sampler::Filter toSamplerFilter(string_view name, uint32 lineIndex)
 	try { return toSamplerFilter(name); }
 	catch (const exception&) { throw CompileError("unrecognized sampler filter type", lineIndex, string(name)); }
 }
-static Sampler::AddessMode toAddressMode(string_view name, uint32 lineIndex)
+static Sampler::AddressMode toAddressMode(string_view name, uint32 lineIndex)
 {
 	try { return toAddressMode(name); }
 	catch (const exception&)
@@ -1478,27 +1478,27 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				else if (lineData.word == "#attributeOffset")
 				{
 					if (shaderStage != ShaderStage::Vertex)
-						throw CompileError("#attributeOffset is accesible only in vertex shaders", fileData.lineIndex);
+						throw CompileError("#attributeOffset is accessible only in vertex shaders", fileData.lineIndex);
 					lineData.isAttributeOffset = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "depthLess")
 				{
 					if (shaderStage != ShaderStage::Fragment)
-						throw CompileError("depthLess is accesible only in fragment shaders", fileData.lineIndex);
+						throw CompileError("depthLess is accessible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(depth_less) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "depthGreater")
 				{
 					if (shaderStage != ShaderStage::Fragment)
-						throw CompileError("depthGreater is accesible only in fragment shaders", fileData.lineIndex);
+						throw CompileError("depthGreater is accessible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(depth_greater) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "earlyFragmentTests")
 				{
 					if (shaderStage != ShaderStage::Fragment)
-						throw CompileError("earlyFragmentTests is accesible only in fragment shaders", fileData.lineIndex);
+						throw CompileError("earlyFragmentTests is accessible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(early_fragment_tests) ";
 					overrideOutput = true;
 				}
@@ -1915,7 +1915,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				if (lineData.word == "rayPayload")
 				{
 					if (shaderStage != ShaderStage::RayGeneration)
-						throw CompileError("rayPayload is accesible only in ray generation shaders", fileData.lineIndex);
+						throw CompileError("rayPayload is accessible only in ray generation shaders", fileData.lineIndex);
 					lineData.isRayPayload = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "rayPayloadIn")
@@ -1923,20 +1923,13 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 					if (shaderStage != ShaderStage::AnyHit && shaderStage != 
 						ShaderStage::ClosestHit && shaderStage != ShaderStage::Miss)
 					{
-						throw CompileError("rayPayloadIn is accesible only in ray hit/miss shaders", fileData.lineIndex);
+						throw CompileError("rayPayloadIn is accessible only in ray hit/miss shaders", fileData.lineIndex);
 					}
 					lineData.isRayPayloadIn = 1; overrideOutput = true;
 				}
-				/*else if (lineData.word == "hitAttribute")
-				{
-					if (shaderStage != ShaderStage::Intersection)
-						throw CompileError("hitAttribute is accesible only in ray interestion shaders", fileData.lineIndex);
-					lineData.isHitAttribute = 1; overrideOutput = true;
-				}*/
 				else if (lineData.word == "callableData") { lineData.isCallableData = 1; overrideOutput = true; }
 				else if (lineData.word == "callableDataIn") { lineData.isCallableDataIn = 1; overrideOutput = true; }
 				else if (lineData.word == "#rayPayloadOffset") { lineData.isRayPayloadOffset = 1; overrideOutput = true; }
-				else if (lineData.word == "#hitAttributeOffset") { lineData.isHitAttributeOffset = 1; overrideOutput = true; }
 				else if (lineData.word == "#callableDataOffset") { lineData.isCallableDataOffset = 1; overrideOutput = true; }
 				else if (setCommonKeywords(fileData, lineData, overrideOutput)) { }
 				else onShaderGlobalVariable(lineData.word);
@@ -2250,7 +2243,7 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 		auto closestHitPath = shadersDirectory; closestHitPath += ".rchit.spv";
 		auto callablePath = shadersDirectory; callablePath += ".rcall.spv";
 		data.rayGenGroups.resize(1); data.missGroups.resize(1); data.hitGroups.resize(1);
-		// TODO: support multile ray tracing shaders shader1.rmiss, shader2.rchit
+		// TODO: support multiple ray tracing shaders shader1.rmiss, shader2.rchit
 
 		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 		auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1; uint64 itemIndex = 0;

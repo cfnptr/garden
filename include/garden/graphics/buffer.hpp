@@ -79,7 +79,7 @@ public:
 		Index         = 0x0008, /**< Buffer can be used by a graphics rendering commands. */
 		Uniform       = 0x0010, /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
 		Storage       = 0x0020, /**< Buffer can be used in a descriptor set. (Slower but has bigger capacity) */
-		Indirect      = 0x0040, /**< Buffer can be used by an inderect rendering commands. */
+		Indirect      = 0x0040, /**< Buffer can be used by an indirect rendering commands. */
 		DeviceAddress = 0x0080, /**< Buffer device address can be used inside shaders. */
 		StorageAS     = 0x0100, /**< Buffer can be used for a acceleration structure storage space. */
 		BuildInputAS  = 0x0200, /**< Buffer can be used as a read only input for acceleration structure build. */

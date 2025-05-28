@@ -29,6 +29,7 @@ namespace garden::graphics
  */
 class VulkanCommandBuffer final : public CommandBuffer
 {
+public:
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 

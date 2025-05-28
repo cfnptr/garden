@@ -217,8 +217,6 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 	}
 
 	vk::WriteDescriptorSet writeDescriptorSet;
-	auto uniformCount = pipelineUniforms.size();
-	auto bufferSize = uniformCount * newSetCount;
 	auto instances = newSetCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance;
 	uint32 imageInfoCapacity = 0, bufferInfoCapacity = 0, asInfoCapacity = 0, tlasCount = 0;
 
@@ -510,10 +508,7 @@ static void updateVkDescriptorSetResources(void* instance, const Pipeline::Unifo
 	}
 
 	if (!vulkanAPI->writeDescriptorSets.empty())
-	{
-		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets.size(), 
-			vulkanAPI->writeDescriptorSets.data(), 0, nullptr);
-	}
+		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
 
 	vulkanAPI->writeDescriptorSets.clear();
 	vulkanAPI->asWriteDescriptorSets.clear();

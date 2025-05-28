@@ -26,7 +26,7 @@ static ID<Buffer> createReadbackBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto size = (sizeof(ToneMappingRenderSystem::LuminanceData) + 
-		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getSwapchainSize();
+		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getInFlightCount();;
 	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::TransferDst, 
 		Buffer::CpuAccess::RandomReadWrite, size, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.editor.autoExposure.readback");
@@ -110,7 +110,7 @@ void AutoExposureRenderEditorSystem::preUiRender()
 		auto readbackBufferView = graphicsSystem->get(readbackBuffer);
 		auto size = sizeof(ToneMappingRenderSystem::LuminanceData) +
 			AutoExposureRenderSystem::histogramSize * sizeof(uint32);
-		auto offset = size * graphicsSystem->getSwapchainIndex();
+		auto offset = size * graphicsSystem->getInFlightIndex();
 		readbackBufferView->invalidate(size, offset);
 		auto map = readbackBufferView->getMap() + offset;
 		auto luminance = (const ToneMappingRenderSystem::LuminanceData*)map;
@@ -211,15 +211,7 @@ void AutoExposureRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void AutoExposureRenderEditorSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-
-	if (swapchainChanges.bufferCount && readbackBuffer)
-	{
-		graphicsSystem->destroy(readbackBuffer);
-		readbackBuffer = createReadbackBuffer();
-	}
-	if (swapchainChanges.framebufferSize && limitsDescriptorSet)
+	if (limitsDescriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(limitsDescriptorSet);

@@ -522,7 +522,6 @@ static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8
 
 	for (auto channel : channels)
 	{
-		psize dataOffset = 0;
 		switch (channel)
 		{
 		case BufferChannel::Positions:

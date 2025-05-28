@@ -115,10 +115,7 @@ void OitRenderSystem::preLdrRender()
 
 void OitRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
-	
-	if (swapchainChanges.framebufferSize && descriptorSet)
+	if (descriptorSet)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);

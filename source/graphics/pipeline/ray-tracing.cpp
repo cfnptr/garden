@@ -112,7 +112,7 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 
 	auto vulkanAPI = VulkanAPI::get();
 	vk::RayTracingPipelineCreateInfoKHR pipelineInfo({}, 
-		stageCount, stageInfos.data(), groupCount, shaderGroupInfos.data(), createData.maxRecursionDepth, 
+		stageCount, stageInfos.data(), groupCount, shaderGroupInfos.data(), 1, // TODO: createData.maxRecursionDepth, 
 		nullptr, nullptr, nullptr, (VkPipelineLayout)pipelineLayout, nullptr, -1);
 
 	for (uint8 i = 0; i < variantCount; i++)
@@ -197,20 +197,21 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 			sbtAddress += rayGenRegionSize;
 
 			sbtGroupRegion.missRegion.deviceAddress = sbtAddress;
-			sbtGroupRegion.missRegion.size = missRegionSize;
 			sbtGroupRegion.missRegion.stride = handleSizeAligned;
+			sbtGroupRegion.missRegion.size = missRegionSize;
+			
 			sbtAddress += missRegionSize;
 
 			sbtGroupRegion.hitRegion.deviceAddress = sbtAddress;
-			sbtGroupRegion.hitRegion.size = hitRegionSize;
 			sbtGroupRegion.hitRegion.stride = handleSizeAligned;
+			sbtGroupRegion.hitRegion.size = hitRegionSize;
 			sbtAddress += hitRegionSize;
 
 			if (callRegionSize > 0)
 			{
 				sbtGroupRegion.callRegion.deviceAddress = sbtAddress;
-				sbtGroupRegion.callRegion.size = callRegionSize;
 				sbtGroupRegion.callRegion.stride = handleSizeAligned;
+				sbtGroupRegion.callRegion.size = callRegionSize;
 				sbtAddress += callRegionSize;
 			}
 
@@ -223,7 +224,7 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 			for (uint8 i = 0; i < rayGenGroupCount; i++)
 			{
 				memcpy(sbtMap, handleData, handleSize);
-				sbtMap += handleSizeAligned;
+				sbtMap += rayGenRegionSize;
 				handleData += handleSize;
 			}
 			stagingMap += rayGenRegionSize;

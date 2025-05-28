@@ -27,7 +27,7 @@ namespace garden::graphics
 /**
  * @brief Optimal swapchain sync primitive count.
  */
-constexpr uint8 frameLag = 2;
+constexpr uint8 inFlightCount = 2;
 
 /**
  * @brief Base graphics swapchain class.
@@ -47,20 +47,12 @@ constexpr uint8 frameLag = 2;
  */
 class Swapchain
 {
-public:
-	/**
-	 * @brief Swapchain buffer data container.
-	 */
-	struct Buffer
-	{
-		ID<Image> colorImage = {};
-		virtual ~Buffer() { }
-	};
 protected:
-	vector<Buffer*> buffers;
+	vector<ID<Image>> images;
 	ThreadPool* threadPool = nullptr;
 	uint2 framebufferSize = uint2::zero;
-	uint32 bufferIndex = 0;
+	uint32 imageIndex = 0;
+	uint32 inFlightIndex = 0;
 	bool vsync = false;
 	bool tripleBuffering = false;
 
@@ -73,25 +65,29 @@ public:
 	virtual ~Swapchain() { }
 
 	/**
-	 * @brief Returns swapchain rendering buffers array.
+	 * @brief Returns swapchain rendering image array.
 	 */
-	const vector<Buffer*>& getBuffers() const noexcept { return buffers; }
+	const vector<ID<Image>>& getImages() const noexcept { return images; }
 	/**
-	 * @brief Returns swapchain rendering buffer count.
+	 * @brief Returns swapchain rendering image count.
 	 */
-	uint32 getBufferCount() const noexcept { return (uint32)buffers.size(); }
+	uint32 getImageCount() const noexcept { return (uint32)images.size(); }
 	/**
-	 * @brief Returns current (front) swapchain rendering buffer.
+	 * @brief Returns current (front) swapchain rendering image.
 	 */
-	Buffer* getCurrentBuffer() const noexcept { return buffers[bufferIndex]; }
+	ID<Image> getCurrentImage() const noexcept { return images[imageIndex]; }
 	/**
-	 * @brief Returns current (front) swapchain buffer index.
+	 * @brief Returns current (front) swapchain image index.
 	 */
-	uint32 getCurrentBufferIndex() const noexcept { return bufferIndex; }
+	uint32 getImageIndex() const noexcept { return imageIndex; }
 	/**
 	 * @brief Returns swapchain framebuffer size.
 	 */
 	uint2 getFramebufferSize() const noexcept { return framebufferSize; }
+	/**
+	 * @brief Returns current in-flight frame index.
+	 */
+	uint32 getInFlightIndex() const noexcept { return inFlightIndex; }
 	/**
 	 * @brief Does swapchain use vertical synchronization. (V-Sync)
 	 */

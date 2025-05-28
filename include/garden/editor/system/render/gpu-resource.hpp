@@ -61,8 +61,8 @@ public:
 	{ openTab(ID<Resource>(blas), TabType::Blases); }
 	void openTab(ID<Tlas> tlas) noexcept
 	{ openTab(ID<Resource>(tlas), TabType::Tlases); }
-	void openTab(ID<DescriptorSet> descriptrSet) noexcept
-	{ openTab(ID<Resource>(descriptrSet), TabType::DescriptorSets); }
+	void openTab(ID<DescriptorSet> descriptorSet) noexcept
+	{ openTab(ID<Resource>(descriptorSet), TabType::DescriptorSets); }
 	void openTab(ID<GraphicsPipeline> graphicsPipeline) noexcept
 	{ openTab(ID<Resource>(graphicsPipeline), TabType::GraphicsPipelines); }
 	void openTab(ID<ComputePipeline> computePipeline) noexcept

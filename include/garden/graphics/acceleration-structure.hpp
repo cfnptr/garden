@@ -114,7 +114,7 @@ protected:
 	 */
 	bool isBuilt() const noexcept { return !buildData; }
 	/**
-	 * @brief Returns true if acceleration structure storage is transfered and ready for rendering.
+	 * @brief Returns true if acceleration structure storage is transferred and ready for rendering.
 	 */
 	bool isStorageReady() const noexcept;
 

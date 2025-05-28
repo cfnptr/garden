@@ -56,7 +56,7 @@ public:
 	/**
 	 * @brief Generates and sets a new random UUID.
 	 * @note Trying to get maximum randomness internally.
-	 * @throw GardenError if UUID collision has occured
+	 * @throw GardenError if UUID collision has occurred
 	 */
 	void regenerateUUID();
 

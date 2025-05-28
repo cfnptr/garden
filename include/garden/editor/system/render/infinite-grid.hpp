@@ -41,7 +41,6 @@ private:
 	void deinit();
 	void preRender();
 	void render();
-	void swapchainRecreate();
 	void editorSettings();
 	
 	friend class ecsm::Manager;

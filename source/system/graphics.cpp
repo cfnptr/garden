@@ -74,25 +74,19 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 		appInfoSystem->getVersion(), windowSize, threadCount, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
-	auto swapchainImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
+	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->swapchain->getCurrentImage());
 	auto swapchainImageView = swapchainImage->getDefaultView();
 	auto framebufferSize = (uint2)swapchainImage->getSize();
 
 	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImageView);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
-	auto swapchainBufferCount = graphicsAPI->swapchain->getBufferCount();
-	const auto& swapchainBuffers = graphicsAPI->swapchain->getBuffers();
-	cameraConstantsBuffers.resize(swapchainBufferCount);
-
 	setShadowColor(f32x4(1.0f, 1.0f, 1.0f, 0.25f));
 	setEmissiveCoeff(100.0f);
 
-	for (uint32 i = 0; i < swapchainBufferCount; i++)
+	cameraConstantsBuffers.resize(inFlightCount);
+	for (uint32 i = 0; i < inFlightCount; i++)
 	{
-		SET_RESOURCE_DEBUG_NAME(swapchainBuffers[i]->colorImage, "image.swapchain" + to_string(i));
-
 		auto constantsBuffer = createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
 			sizeof(CameraConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
@@ -219,31 +213,13 @@ static f32x4x4 calcRelativeView(const TransformComponent* transform)
 	return view;
 }
 
-static void recreateCameraBuffers(DescriptorSetBuffers& cameraConstantsBuffers)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(cameraConstantsBuffers);
-
-	auto swapchainBufferCount = GraphicsAPI::get()->swapchain->getBufferCount();
-	cameraConstantsBuffers.resize(swapchainBufferCount);
-
-	for (uint32 i = 0; i < swapchainBufferCount; i++)
-	{
-		auto constantsBuffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
-			sizeof(CameraConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
-		cameraConstantsBuffers[i].resize(1); cameraConstantsBuffers[i][0] = constantsBuffer;
-	}
-}
-
 static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer, uint2 framebufferSize)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	auto swapchainBuffer = graphicsAPI->swapchain->getCurrentBuffer();
 	auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
-	auto colorImage = graphicsAPI->imagePool.get(swapchainBuffer->colorImage);
+	auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->swapchain->getCurrentImage());
 	FramebufferExt::getSize(**framebufferView) = framebufferSize;
-	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = colorImage->getDefaultView();
+	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getDefaultView();
 }
 
 //**********************************************************************************************************************
@@ -352,13 +328,7 @@ void GraphicsSystem::update()
 		outOfDateSwapchain = false;
 
 		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
-			to_string(framebufferSize.y) + " px, " + to_string(swapchain->getBufferCount()) + "B)");
-	}
-
-	if (swapchain->getBufferCount() != cameraConstantsBuffers.size())
-	{
-		recreateCameraBuffers(cameraConstantsBuffers);
-		swapchainChanges.bufferCount = true;
+			to_string(framebufferSize.y) + " px, " + to_string(swapchain->getImageCount()) + "I)");
 	}
 
 	if (isFramebufferSizeValid)
@@ -387,7 +357,7 @@ void GraphicsSystem::update()
 		prepareCameraConstants(camera, directionalLight,
 			getScaledFramebufferSize(), currentCameraConstants);
 		auto cameraBuffer = graphicsAPI->bufferPool.get(
-			cameraConstantsBuffers[swapchain->getCurrentBufferIndex()][0]);
+			cameraConstantsBuffers[swapchain->getInFlightIndex()][0]);
 		cameraBuffer->writeData(&currentCameraConstants);
 	}
 }
@@ -487,13 +457,13 @@ bool GraphicsSystem::hasRayTracing() const noexcept
 	return GraphicsAPI::get()->hasRayTracing();
 }
 
-uint32 GraphicsSystem::getSwapchainSize() const noexcept
+uint32 GraphicsSystem::getInFlightCount() const noexcept
 {
-	return (uint32)GraphicsAPI::get()->swapchain->getBufferCount();
+	return inFlightCount;
 }
-uint32 GraphicsSystem::getSwapchainIndex() const noexcept
+uint32 GraphicsSystem::getInFlightIndex() const noexcept
 {
-	return GraphicsAPI::get()->swapchain->getCurrentBufferIndex();
+	return GraphicsAPI::get()->swapchain->getInFlightIndex();
 }
 
 uint32 GraphicsSystem::getThreadCount() const noexcept

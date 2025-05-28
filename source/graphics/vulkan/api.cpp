@@ -49,13 +49,6 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 	const vk::DebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData)
 {
-	// TODO: investigate this error after driver/SDK updates.
-	if (callbackData->messageIdNumber == -1254218959 || callbackData->messageIdNumber == -2080204129 ||
-		callbackData->messageIdNumber == 774851941)
-	{
-		return VK_FALSE;
-	}
-
 	const char* severity;
 	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose)
 		severity = "VERBOSE";
@@ -460,7 +453,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
 	vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures;
 	vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures;
-	vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeloneFeatures;
+	vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures;
 	vk::PhysicalDeviceMaintenance4FeaturesKHR maintenance4Features;
 	vk::PhysicalDeviceMaintenance5FeaturesKHR maintenance5Features;
 
@@ -565,10 +558,10 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 	{
 		deviceFeatures.pNext = &accelerationStructureFeatures;
 		physicalDevice.getFeatures2(&deviceFeatures);
-		deviceFeatures.pNext = &rayTracingPipeloneFeatures;
+		deviceFeatures.pNext = &rayTracingPipelineFeatures;
 		physicalDevice.getFeatures2(&deviceFeatures);
 
-		if (accelerationStructureFeatures.accelerationStructure && rayTracingPipeloneFeatures.rayTracingPipeline)
+		if (accelerationStructureFeatures.accelerationStructure && rayTracingPipelineFeatures.rayTracingPipeline)
 		{
 			extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 			extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
@@ -653,10 +646,10 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		*lastPNext = &accelerationStructureFeatures;
 		lastPNext = &accelerationStructureFeatures.pNext;
 
-		rayTracingPipeloneFeatures = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR();
-		rayTracingPipeloneFeatures.rayTracingPipeline = VK_TRUE;
-		*lastPNext = &rayTracingPipeloneFeatures;
-		lastPNext = &rayTracingPipeloneFeatures.pNext;
+		rayTracingPipelineFeatures = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR();
+		rayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
+		*lastPNext = &rayTracingPipelineFeatures;
+		lastPNext = &rayTracingPipelineFeatures.pNext;
 	}
 
 	vk::DeviceCreateInfo deviceInfo({}, queueInfos, {}, extensions, {}, &deviceFeatures);
@@ -904,7 +897,7 @@ VulkanAPI::~VulkanAPI()
 	delete graphicsCommandBuffer;
 	delete frameCommandBuffer;
 
-	for (int i = 0; i < frameLag + 1; i++)
+	for (int i = 0; i < inFlightCount + 1; i++)
 		flushDestroyBuffer();
 	delete swapchain;
 
@@ -950,8 +943,8 @@ VulkanAPI::~VulkanAPI()
 void VulkanAPI::flushDestroyBuffer()
 {
 	auto& destroyBuffer = destroyBuffers[flushDestroyIndex];
-	flushDestroyIndex = (flushDestroyIndex + 1) % (frameLag + 1);
-	fillDestroyIndex = (fillDestroyIndex + 1) % (frameLag + 1);
+	flushDestroyIndex = (flushDestroyIndex + 1) % (inFlightCount + 1);
+	fillDestroyIndex = (fillDestroyIndex + 1) % (inFlightCount + 1);
 
 	if (destroyBuffer.empty())
 		return;

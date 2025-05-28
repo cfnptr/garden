@@ -39,7 +39,7 @@ bool LinkComponent::destroy()
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
-		GARDEN_ASSERT(result == 1); // Failed to remove link, corruped memory.
+		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
 	}
 	
 	if (!tag.empty())
@@ -62,7 +62,7 @@ void LinkComponent::regenerateUUID()
 	auto result = linkSystem->uuidMap.emplace(uuid, entity);
 	
 	if (!result.second)
-		throw GardenError("Link UUID collision occured.");
+		throw GardenError("Link UUID collision occurred.");
 }
 bool LinkComponent::trySetUUID(const Hash128& uuid)
 {
