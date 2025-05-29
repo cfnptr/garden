@@ -572,7 +572,6 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, int8 shadowPass)
 	{
 		auto sortedBuffer = sortedBuffers[i];
 		auto bufferDrawCount = sortedBuffer->drawCount.load();
-
 		if (bufferDrawCount == 0)
 			continue;
 
@@ -672,6 +671,29 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, int8 shadowPass)
 }
 
 //**********************************************************************************************************************
+void MeshRenderSystem::cleanupMeshes()
+{
+	for (uint32 i = 0; i < unsortedBufferCount; i++)
+	{
+		auto unsortedBuffer = unsortedBuffers[i];
+		if (unsortedBuffer->drawCount.load() == 0)
+			continue;
+		unsortedBuffer->meshSystem->renderCleanup();
+	}
+
+	if (sortedDrawIndex.load() > 0)
+	{
+		for (uint32 i = 0; i < sortedBufferCount; i++)
+		{
+			auto sortedBuffer = sortedBuffers[i];
+			if (sortedBuffer->drawCount.load() == 0)
+				continue;
+			sortedBuffer->meshSystem->renderCleanup();
+		}
+	}
+}
+
+//**********************************************************************************************************************
 void MeshRenderSystem::renderShadows()
 {
 	SET_CPU_ZONE_SCOPED("Shadows Mesh Render");
@@ -709,6 +731,8 @@ void MeshRenderSystem::renderShadows()
 				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
 			}
 		}
+
+		cleanupMeshes();
 	}
 }
 

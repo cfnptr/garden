@@ -25,7 +25,7 @@
 
 using namespace garden;
 
-static void createDataBuffers(DescriptorSetBuffers& dataBuffers)
+static void createDataBuffers(DescriptorSet::Buffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
@@ -126,7 +126,7 @@ static ID<GraphicsPipeline> createPipeline()
 }
 
 static DescriptorSet::Uniforms getUniforms(ID<Image> shadowMap, 
-	ID<Image> transparentMap, const DescriptorSetBuffers& dataBuffers)
+	ID<Image> transparentMap, const DescriptorSet::Buffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto shadowMapView = graphicsSystem->get(shadowMap);
@@ -412,7 +412,7 @@ ID<GraphicsPipeline> CsmRenderSystem::getPipeline()
 		pipeline = createPipeline();
 	return pipeline;
 }
-const DescriptorSetBuffers& CsmRenderSystem::getDataBuffers()
+const DescriptorSet::Buffers& CsmRenderSystem::getDataBuffers()
 {
 	if (dataBuffers.empty())
 		createDataBuffers(dataBuffers);

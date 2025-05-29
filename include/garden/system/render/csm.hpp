@@ -54,7 +54,7 @@ private:
 	vector<ID<ImageView>> transImageViews;
 	vector<ID<Framebuffer>> shadowFramebuffers;
 	vector<ID<Framebuffer>> transFramebuffers;
-	DescriptorSetBuffers dataBuffers;
+	DescriptorSet::Buffers dataBuffers;
 	ID<Image> shadowMap = {};
 	ID<Image> transparentMap = {};
 	ID<GraphicsPipeline> pipeline = {};
@@ -111,7 +111,7 @@ public:
 	/**
 	 * @brief Returns cascade shadow mapping data buffers.
 	 */
-	const DescriptorSetBuffers& getDataBuffers();
+	const DescriptorSet::Buffers& getDataBuffers();
 
 	/**
 	 * @brief Returns cascade shadow map buffer.

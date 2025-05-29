@@ -131,15 +131,16 @@ void FxaaRenderSystem::preUiRender()
 	}
 
 	auto framebufferView = graphicsSystem->get(framebuffer);
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->invFrameSize = float2::one / framebufferView->getSize();
+
+	PushConstants pc;
+	pc.invFrameSize = float2::one / framebufferView->getSize();
 
 	SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
 	framebufferView->beginRenderPass(float4::zero);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 	framebufferView->endRenderPass();
 

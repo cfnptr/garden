@@ -58,7 +58,8 @@ uniform set1 IblData
 uniform pushConstants
 {
 	float4x4 uvToWorld;
-	float4 shadowEmissive;
+	float3 shadowColor;
+	float emissiveCoeff;
 	float reflectanceCoeff;
 } pc;
 
@@ -71,7 +72,7 @@ void main()
 
 	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
 	
-	float4 shadow = float4(pc.shadowEmissive.rgb, gBuffer.shadow);
+	float4 shadow = float4(pc.shadowColor, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)
 	{
 		float4 accumShadow = texture(shadowBuffer, fs.texCoords);
@@ -88,7 +89,7 @@ void main()
 	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
 
 	if (USE_EMISSIVE_BUFFER)
-		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.shadowEmissive.a;
+		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.emissiveCoeff;
 	fb.hdr = float4(hdrColor, 1.0f);
 	
 	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.

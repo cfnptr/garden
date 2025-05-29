@@ -141,20 +141,22 @@ void InfiniteGridEditorSystem::render()
 	if (!pipelineView->isReady())
 		return;
 
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->meshColor = (float4)meshColor;
+	PushConstants pc;
+	pc.meshColor = (float4)meshColor;
+	pc.meshScale = meshScale;
+	pc.isHorizontal = isHorizontal;
+
 	if (isHorizontal)
 	{
-		pushConstants->axisColorX = (float4)axisColorYZ;
-		pushConstants->axisColorYZ = (float4)axisColorX;
+		pc.axisColorX = (float4)axisColorYZ;
+		pc.axisColorYZ = (float4)axisColorX;
 	}
 	else
 	{
-		pushConstants->axisColorX = (float4)axisColorX;
-		pushConstants->axisColorYZ = (float4)axisColorYZ;
+		pc.axisColorX = (float4)axisColorX;
+		pc.axisColorYZ = (float4)axisColorYZ;
 	}
-	pushConstants->meshScale = meshScale;
-	pushConstants->isHorizontal = isHorizontal;
+
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 	SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
@@ -163,7 +165,7 @@ void InfiniteGridEditorSystem::render()
 		pipelineView->bindAsync(0);
 		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(descriptorSet, inFlightIndex, 0);
-		pipelineView->pushConstantsAsync(0);
+		pipelineView->pushConstantsAsync(&pc, 0);
 		pipelineView->drawFullscreenAsync(0);
 	}
 	else
@@ -171,7 +173,7 @@ void InfiniteGridEditorSystem::render()
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
-		pipelineView->pushConstants();
+		pipelineView->pushConstants(&pc);
 		pipelineView->drawFullscreen();
 	}
 }

@@ -17,7 +17,7 @@ in float3 vs.position : f32;
 uniform pushConstants
 {
 	float4x4 mvp;
-	float4 color;
+	float3 color;
 	float renderScale;
 } pc;
 

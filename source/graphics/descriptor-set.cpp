@@ -243,7 +243,7 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 		{
 			for (uint32 i = 0; i < newSetCount; i++)
 				asInfoCapacity += (uint32)dsUniform.resourceSets[i].size();
-			tlasCount++;
+			tlasCount += newSetCount;
 		}
 		else abort();
 	}

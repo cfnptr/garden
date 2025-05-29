@@ -142,14 +142,15 @@ void BloomRenderEditorSystem::uiRender()
 		return;
 
 	auto bloomSystem = BloomRenderSystem::Instance::get();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->threshold = bloomSystem->threshold;
+
+	PushConstants pc;
+	pc.threshold = bloomSystem->threshold;
 
 	SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(thresholdDescriptorSet);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
 

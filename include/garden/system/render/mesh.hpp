@@ -113,6 +113,11 @@ protected:
 	 * @param shadowPass current shadow pass index (light pass = -1)
 	 */
 	virtual void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) { }
+	/**
+	 * @brief Cleans up data used for mesh rendering.
+	 * @warning Be careful with multithreaded code!
+	 */
+	virtual void renderCleanup() { }
 
 	friend class MeshRenderSystem;
 public:
@@ -238,6 +243,7 @@ private:
 	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, uint8 frustumPlaneCount, int8 shadowPass);
 	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
 	void renderSorted(const f32x4x4& viewProj, int8 shadowPass);
+	void cleanupMeshes();
 	void renderShadows();
 
 	void init();

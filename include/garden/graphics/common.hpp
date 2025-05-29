@@ -192,6 +192,18 @@ static string toStringList(ShaderStage shaderStage) noexcept
 	return list;
 }
 
+struct SvHash
+{
+	using is_transparent = void;
+	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
+};
+struct SvEqual
+{
+	using is_transparent = void;
+	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
+};
+
 #if GARDEN_DEBUG
 /***********************************************************************************************************************
  * @brief Command buffer debug marker.

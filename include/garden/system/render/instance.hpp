@@ -29,8 +29,8 @@ namespace garden
 class InstanceRenderSystem : public System, public IMeshRenderSystem
 {
 protected:
-	DescriptorSetBuffers baseInstanceBuffers = {};
-	DescriptorSetBuffers shadowInstanceBuffers = {};
+	DescriptorSet::Buffers baseInstanceBuffers = {};
+	DescriptorSet::Buffers shadowInstanceBuffers = {};
 	ID<GraphicsPipeline> basePipeline = {};
 	ID<GraphicsPipeline> shadowPipeline = {};
 	ID<DescriptorSet> baseDescriptorSet = {};
@@ -58,6 +58,7 @@ protected:
 	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) override;
 	void beginDrawAsync(int32 taskIndex) override;
 	void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) override;
+	void renderCleanup() override;
 
 	virtual DescriptorSet::Uniforms getBaseUniforms();
 	virtual DescriptorSet::Uniforms getShadowUniforms();

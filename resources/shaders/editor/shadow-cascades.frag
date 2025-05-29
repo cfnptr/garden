@@ -27,7 +27,7 @@ uniform sampler2D depthBuffer;
 
 uniform pushConstants
 {
-	float4 farPlanes;
+	float3 farPlanes;
 } pc;
 
 void main()

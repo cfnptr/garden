@@ -26,7 +26,7 @@ static ID<Buffer> createReadbackBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto size = (sizeof(ToneMappingRenderSystem::LuminanceData) + 
-		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getInFlightCount();;
+		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getInFlightCount();
 	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::TransferDst, 
 		Buffer::CpuAccess::RandomReadWrite, size, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.editor.autoExposure.readback");
@@ -196,15 +196,16 @@ void AutoExposureRenderEditorSystem::uiRender()
 		return;
 
 	auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->minLum = std::exp2(autoExposureSystem->minLogLum);
-	pushConstants->maxLum = std::exp2(autoExposureSystem->maxLogLum);
+
+	PushConstants pc;
+	pc.minLum = std::exp2(autoExposureSystem->minLogLum);
+	pc.maxLum = std::exp2(autoExposureSystem->maxLogLum);
 
 	SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(limitsDescriptorSet);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
 

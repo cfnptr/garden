@@ -53,14 +53,9 @@ class GraphicsSystem;
 struct SwapchainChanges final
 {
 	bool framebufferSize = false; /**< Is framebuffer size has been changed. */
-	bool bufferCount = false;     /**< Is swapchain buffer count been changed. */
+	bool imageCount = false;     /**< Is swapchain image count been changed. */
 	bool vsyncState = false;      /**< Is V-Sync state has been changed. */
 };
-
-/*
- * @brief Descriptor set buffer instances for each swapchain buffer.
- */
-using DescriptorSetBuffers = vector<vector<ID<Buffer>>>;
 
 /**
  * @brief Graphics GPU resource and command manager.
@@ -75,7 +70,7 @@ using DescriptorSetBuffers = vector<vector<ID<Buffer>>>;
  */
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
-	DescriptorSetBuffers cameraConstantsBuffers;
+	DescriptorSet::Buffers cameraConstantsBuffers;
 	CameraConstants currentCameraConstants = {};
 	uint64 frameIndex = 0, tickIndex = 0;
 	double beginSleepClock = 0.0;
@@ -280,7 +275,7 @@ public:
 	 * @brief Returns current render camera constants buffer.
 	 * @details Use it to access common camera properties inside shader. 
 	 */
-	const DescriptorSetBuffers& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
+	const DescriptorSet::Buffers& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
 
 	/**
 	 * @brief Manually signal swapchain changes.
@@ -521,7 +516,7 @@ public:
 	 * @brief Destroys descriptor set buffer instances for each swapchain.
 	 * @param[in] dsBuffer target descriptor set buffer instances or/and nulls
 	 */
-	void destroy(const DescriptorSetBuffers& dsBuffer)
+	void destroy(const DescriptorSet::Buffers& dsBuffer)
 	{
 		for (const auto& buffers : dsBuffer)
 		{

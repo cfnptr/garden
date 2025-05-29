@@ -148,17 +148,18 @@ void ToneMappingRenderSystem::ldrRender()
 		return;
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->frameIndex = (uint32)graphicsSystem->getFrameIndex();
-	pushConstants->exposureFactor = exposureFactor;
-	pushConstants->ditherIntensity = ditherIntensity;
-	pushConstants->bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
+
+	PushConstants pc;
+	pc.frameIndex = (uint32)graphicsSystem->getFrameIndex();
+	pc.exposureFactor = exposureFactor;
+	pc.ditherIntensity = ditherIntensity;
+	pc.bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
 
 	SET_GPU_DEBUG_LABEL("Tone Mapping", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
 

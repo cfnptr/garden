@@ -21,7 +21,7 @@ pipelineState
 uniform pushConstants
 {
 	float4x4 mvp;
-	float4 color;
+	float3 color;
 	float renderScale;
 } pc;
 
@@ -29,5 +29,5 @@ out float4 fb.color;
 
 void main()
 {
-	fb.color = pc.color;
+	fb.color = float4(pc.color, 0.0f);
 }

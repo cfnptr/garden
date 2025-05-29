@@ -430,6 +430,8 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		{
 			if (strcmp(properties.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
 				features.descriptorIndexing = true;
+			else if (strcmp(properties.extensionName, VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME) == 0)
+				features.scalarBlockLayout = true;
 			else if (strcmp(properties.extensionName, VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0)
 				features.bufferDeviceAddress = true;
 		}
@@ -451,11 +453,12 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemoryFeatures;
 	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
 	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
+	vk::PhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayoutFeatures;
 	vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures;
 	vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures;
 	vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures;
-	vk::PhysicalDeviceMaintenance4FeaturesKHR maintenance4Features;
-	vk::PhysicalDeviceMaintenance5FeaturesKHR maintenance5Features;
+	vk::PhysicalDeviceMaintenance4Features maintenance4Features;
+	vk::PhysicalDeviceMaintenance5Features maintenance5Features;
 
 	if (features.memoryBudget)
 		extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
@@ -492,6 +495,15 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			{
 				features.descriptorIndexing = false;
 			}
+		}
+		if (features.scalarBlockLayout)
+		{
+			deviceFeatures.pNext = &scalarBlockLayoutFeatures;
+			physicalDevice.getFeatures2(&deviceFeatures);
+			if (scalarBlockLayoutFeatures.scalarBlockLayout)
+				extensions.push_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
+			else
+				features.scalarBlockLayout = false;
 		}
 		if (features.bufferDeviceAddress)
 		{
@@ -624,6 +636,13 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
 		*lastPNext = &descriptorIndexingFeatures;
 		lastPNext = &descriptorIndexingFeatures.pNext;
+	}
+	if (features.scalarBlockLayout)
+	{
+		scalarBlockLayoutFeatures = vk::PhysicalDeviceScalarBlockLayoutFeatures();
+		scalarBlockLayoutFeatures.scalarBlockLayout = VK_TRUE;
+		*lastPNext = &scalarBlockLayoutFeatures;
+		lastPNext = &scalarBlockLayoutFeatures.pNext;
 	}
 	if (features.bufferDeviceAddress)
 	{

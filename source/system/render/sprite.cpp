@@ -121,11 +121,11 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	auto instanceData = (BaseInstanceData*)(instanceMap + drawIndex * getBaseInstanceDataSize());
 	setInstanceData(spriteRenderView, instanceData, viewProj, model, drawIndex, taskIndex);
 
-	auto pushConstants = (PushConstants*)pipelineView->getPushConstants(taskIndex);
-	setPushConstants(spriteRenderView, pushConstants, viewProj, model, drawIndex, taskIndex);
+	PushConstants pc;
+	setPushConstants(spriteRenderView, &pc, viewProj, model, drawIndex, taskIndex);
 
 	pipelineView->bindDescriptorSetsAsync(dsRange, 2, taskIndex);
-	pipelineView->pushConstantsAsync(taskIndex);
+	pipelineView->pushConstantsAsync(&pc, taskIndex);
 	pipelineView->drawAsync(taskIndex, {}, 6);
 }
 

@@ -59,7 +59,8 @@ public:
 	struct LightingPC final
 	{
 		float4x4 uvToWorld;
-		float4 shadowEmissive;
+		float3 shadowColor;
+		float emissiveCoeff;
 		float reflectanceCoeff;
 	};
 	struct SpecularPC final

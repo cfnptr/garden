@@ -66,12 +66,12 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	if (!pipelineView->isReady())
 		return;
 
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->mvp = (float4x4)viewProj;
+	PushConstants pc;
+	pc.mvp = (float4x4)viewProj;
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->draw(linesBuffer, (uint32)lines.size() * 2);
 	graphicsSystem->destroy(linesBuffer);
 	linesBuffer = {};
@@ -94,12 +94,12 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	if (!pipelineView->isReady())
 		return;
 
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->mvp = (float4x4)viewProj;
+	PushConstants pc;
+	pc.mvp = (float4x4)viewProj;
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->draw(trianglesBuffer, (uint32)triangles.size());
 	graphicsSystem->destroy(trianglesBuffer);
 	trianglesBuffer = {};

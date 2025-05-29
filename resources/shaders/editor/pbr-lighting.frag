@@ -33,19 +33,21 @@ out float4 fb.g5;
 
 uniform pushConstants
 {
-	float4 colorSpec;
+	float3 baseColor;
+	float specularFactor;
 	float4 mraor;
-	float4 emissive;
-	float4 giColor;
-	float shadow;
+	float3 emissiveColor;
+	float emissiveFactor;
+	float3 giColor;
 	float ccRoughness;
+	float shadow;
 } pc;
 
 void main()
 {
 	GBufferValues values = gBufferValuesDefault();
-	values.baseColor = pc.colorSpec.rgb;
-	values.specularFactor = pc.colorSpec.a;
+	values.baseColor = pc.baseColor;
+	values.specularFactor = pc.specularFactor;
 	values.metallic = pc.mraor.r;
 	values.roughness = pc.mraor.g;
 	values.ambientOcclusion = pc.mraor.b;
@@ -55,12 +57,12 @@ void main()
 
 	if (USE_EMISSIVE_BUFFER)
 	{
-		values.emissiveColor = pc.emissive.rgb;
-		values.emissiveFactor = pc.emissive.a;
+		values.emissiveColor = pc.emissiveColor;
+		values.emissiveFactor = pc.emissiveFactor;
 	}
 
 	if (USE_GI_BUFFER)
-		values.giColor = pc.giColor.rgb;
+		values.giColor = pc.giColor;
 
 	ENCODE_G_BUFFER_VALUES(values);
 }
