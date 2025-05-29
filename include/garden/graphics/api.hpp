@@ -184,10 +184,10 @@ public:
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
 		return barrierStates[imageView->getLayerCount() * mip + layer];
 	}
-	 /**
-	  * @brief Returns buffer memory barrier state.
-	  * @param buffer target buffer instance
-	  */
+	/**
+	 * @brief Returns buffer memory barrier state.
+	 * @param buffer target buffer instance
+	 */
 	Buffer::BarrierState& getBufferState(ID<Buffer> buffer) noexcept
 	{
 		return BufferExt::getBarrierState(**bufferPool.get(buffer));

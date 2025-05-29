@@ -26,7 +26,7 @@ namespace garden::graphics
 {
 
 /**
- * @brief Bindless graphics resource linear pool. 
+ * @brief Bindless graphics resource pool. 
  */
 class BindlessPool final
 {
@@ -94,12 +94,12 @@ public:
 	BindlessPool() noexcept = default;
 
 	/*******************************************************************************************************************
-	 * @brief Returns bindless descriptor set instance.
+	 * @brief Returns pool bindless descriptor set instance.
 	 */
 	ID<DescriptorSet> getDescriptorSet() const noexcept { return descriptorSet; }
 
 	/**
-	 * @brief Allocates a new bindless descriptor set buffer.
+	 * @brief Allocates a new bindless descriptor set buffer from the pool.
 	 *
 	 * @param name target bindless uniform name
 	 * @param buffer buffer to write into the descriptor set
@@ -110,7 +110,7 @@ public:
 		return allocate(name, ID<Resource>(buffer), frameIndex);
 	}
 	/**
-	 * @brief Allocates a new bindless descriptor set image view.
+	 * @brief Allocates a new bindless descriptor set image view from the pool.
 	 *
 	 * @param name target bindless uniform name
 	 * @param imageView image view to write into the descriptor set
@@ -121,7 +121,7 @@ public:
 		return allocate(name, ID<Resource>(imageView), frameIndex);
 	}
 	/**
-	 * @brief Allocates a new bindless descriptor set TLAS.
+	 * @brief Allocates a new bindless descriptor set TLAS from the pool.
 	 *
 	 * @param name target bindless uniform name
 	 * @param tlas TLAS to write into the descriptor set
@@ -132,7 +132,7 @@ public:
 		return allocate(name, ID<Resource>(tlas), frameIndex);
 	}
 	/**
-	 * @brief Frees bindless descriptor set resource.
+	 * @brief Frees bindless descriptor set resource in the pool.
 	 *
 	 * @param name target bindless uniform name
 	 * @param allocation allocated resource index
@@ -141,7 +141,7 @@ public:
 	void free(string_view name, uint32 allocation, uint64 frameIndex);
 
 	/**
-	 * @brief Destroys bindless descriptor set instance.
+	 * @brief Destroys pool bindless descriptor set instance.
 	 */
 	void destroy();
 };

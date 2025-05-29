@@ -202,18 +202,19 @@ void SsaoRenderSystem::aoRender()
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->uvToView = (float4x4)(cameraConstants.inverseProj * uvToNDC);
-	pushConstants->uvToView[0][3] = radius;
-	pushConstants->uvToView[1][3] = -bias;
-	pushConstants->uvToView[3][3] = intensity;
-	pushConstants->viewToUv = (float4x4)(ndcToUV * cameraConstants.projection);
+
+	PushConstants pc;
+	pc.uvToView = (float4x4)(cameraConstants.inverseProj * uvToNDC);
+	pc.uvToView[0][3] = radius;
+	pc.uvToView[1][3] = -bias;
+	pc.uvToView[3][3] = intensity;
+	pc.viewToUv = (float4x4)(ndcToUV * cameraConstants.projection);
 
 	SET_GPU_DEBUG_LABEL("SSAO", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 
 	PbrLightingRenderSystem::Instance::get()->markAnyAO();

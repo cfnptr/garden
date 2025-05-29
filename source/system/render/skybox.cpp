@@ -130,8 +130,9 @@ void SkyboxRenderSystem::depthHdrRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>(0);
-	pushConstants->viewProj = (float4x4)cameraConstants.viewProj;
+
+	PushConstants pc;
+	pc.viewProj = (float4x4)cameraConstants.viewProj;
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())
@@ -139,7 +140,7 @@ void SkyboxRenderSystem::depthHdrRender()
 		pipelineView->bindAsync(0, 0);
 		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
-		pipelineView->pushConstantsAsync(0);
+		pipelineView->pushConstantsAsync(&pc, 0);
 		pipelineView->drawAsync(0, {}, primitive::cubeVertices.size());
 	}
 	else
@@ -147,7 +148,7 @@ void SkyboxRenderSystem::depthHdrRender()
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(ID<DescriptorSet>(skyboxView->descriptorSet));
-		pipelineView->pushConstants();
+		pipelineView->pushConstants(&pc);
 		pipelineView->draw({}, primitive::cubeVertices.size());
 	}
 }

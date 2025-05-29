@@ -194,15 +194,14 @@ static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-
-	auto pushConstants = pipelineView->getPushConstants<MeshGizmosEditorSystem::PushConstants>();
-	pushConstants->patternScale = patternScale;
 	
 	for (const auto& mesh : gizmosMeshes)
 	{
-		pushConstants->mvp = (float4x4)(viewProj * mesh.model);
-		pushConstants->color = (float4)mesh.color;
-		pipelineView->pushConstants();
+		MeshGizmosEditorSystem::PushConstants pc;
+		pc.mvp = (float4x4)(viewProj * mesh.model);
+		pc.color = (float3)mesh.color;
+		pc.patternScale = patternScale;
+		pipelineView->pushConstants(&pc);
 		pipelineView->draw(mesh.vertexBuffer, mesh.vertexCount);
 	}
 }

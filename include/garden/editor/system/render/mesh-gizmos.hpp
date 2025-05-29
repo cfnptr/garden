@@ -25,7 +25,7 @@ public:
 	struct PushConstants final
 	{
 		float4x4 mvp;
-		float4 color;
+		float3 color;
 		float patternScale;
 	};
 	struct GizmosMesh final

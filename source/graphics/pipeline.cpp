@@ -361,11 +361,6 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 	}
 
 	auto graphicsAPI = GraphicsAPI::get();
-	if (pushConstantsSize > 0)
-	{
-		auto threadCount = asyncRecording ? graphicsAPI->threadCount : 1;
-		pushConstantsBuffer.resize(pushConstantsSize * threadCount);
-	}
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -805,8 +800,9 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 }
 
 //**********************************************************************************************************************
-void Pipeline::pushConstants()
+void Pipeline::pushConstants(const void* data)
 {
+	GARDEN_ASSERT(data);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(pushConstantsSize > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->isCurrentRenderPassAsync);
@@ -816,11 +812,12 @@ void Pipeline::pushConstants()
 	command.dataSize = pushConstantsSize;
 	command.shaderStages = pushConstantsMask;
 	command.pipelineLayout = pipelineLayout;
-	command.data = pushConstantsBuffer.data();
+	command.data = data;
 	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }
-void Pipeline::pushConstantsAsync(int32 threadIndex)
+void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 {
+	GARDEN_ASSERT(data);
 	GARDEN_ASSERT(instance); // is ready
 	GARDEN_ASSERT(asyncRecording);
 	GARDEN_ASSERT(pushConstantsSize > 0);
@@ -832,9 +829,8 @@ void Pipeline::pushConstantsAsync(int32 threadIndex)
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
-			vk::PipelineLayout((VkPipelineLayout)pipelineLayout),
-			(vk::ShaderStageFlags)pushConstantsMask, 0, pushConstantsSize,
-			(const uint8*)pushConstantsBuffer.data() + pushConstantsSize * threadIndex);
+			vk::PipelineLayout((VkPipelineLayout)pipelineLayout), 
+			(vk::ShaderStageFlags)pushConstantsMask, 0, pushConstantsSize, data);
 	}
 	else abort();
 }

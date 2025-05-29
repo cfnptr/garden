@@ -149,28 +149,20 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pipelineView->isReady())
 		return;
 
-	auto threadIndex = graphicsSystem->getThreadCount() - 1;
-	auto pushConstants = pipelineView->getPushConstants<LightingPC>(threadIndex);
-	pushConstants->colorSpec = (float4)colorSpecOverride;
-	pushConstants->mraor = (float4)mraorOverride;
-	pushConstants->emissive = (float4)emissiveOverride;
-	pushConstants->giColor = (float4)giColorOverride;
-	pushConstants->shadow = shadowOverride;
-	pushConstants->ccRoughness = ccRoughnessOverride;
-
 	SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
+		auto threadIndex = graphicsSystem->getThreadCount() - 1;
 		pipelineView->bindAsync(0, threadIndex);
 		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
-		pipelineView->pushConstantsAsync(threadIndex);
+		pipelineView->pushConstantsAsync(&lightingPC, threadIndex);
 		pipelineView->drawFullscreenAsync(threadIndex);
 	}
 	else
 	{
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
-		pipelineView->pushConstants();
+		pipelineView->pushConstants(&lightingPC);
 		pipelineView->drawFullscreen();
 		// TODO: also support translucent overrides.
 	}
@@ -194,22 +186,22 @@ void DeferredRenderEditorSystem::preLdrRender()
 		if (drawMode == DrawMode::Lighting)
 		{
 			ImGui::SeparatorText("Overrides");
-			ImGui::ColorEdit3("Base Color", &colorSpecOverride);
-			ImGui::SliderFloat("Specular Factor", &colorSpecOverride.floats.w, 0.0f, 1.0f);
-			ImGui::SliderFloat("Metallic", &mraorOverride.floats.x, 0.0f, 1.0f);
-			ImGui::SliderFloat("Roughness", &mraorOverride.floats.y, 0.0f, 1.0f);
-			ImGui::SliderFloat("Ambient Occlusion", &mraorOverride.floats.z, 0.0f, 1.0f);
-			ImGui::SliderFloat("Reflectance", &mraorOverride.floats.w, 0.0f, 1.0f);
-			ImGui::SliderFloat("Clear Coat Roughness", &ccRoughnessOverride, 0.0f, 1.0f);
-			ImGui::SliderFloat("G-Buffer Shadows", &shadowOverride, 0.0f, 1.0f);
+			ImGui::ColorEdit3("Base Color", &lightingPC.baseColor);
+			ImGui::SliderFloat("Specular Factor", &lightingPC.specularFactor, 0.0f, 1.0f);
+			ImGui::SliderFloat("Metallic", &lightingPC.mraor.x, 0.0f, 1.0f);
+			ImGui::SliderFloat("Roughness", &lightingPC.mraor.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("Ambient Occlusion", &lightingPC.mraor.z, 0.0f, 1.0f);
+			ImGui::SliderFloat("Reflectance", &lightingPC.mraor.w, 0.0f, 1.0f);
+			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.ccRoughness, 0.0f, 1.0f);
+			ImGui::SliderFloat("G-Buffer Shadows", &lightingPC.shadow, 0.0f, 1.0f);
 
 			ImGui::BeginDisabled(!deferredSystem->useEmissive());
-			ImGui::ColorEdit3("Emissive Color", &emissiveOverride);
-			ImGui::SliderFloat("Emissive Factor", &emissiveOverride.floats.w, 0.0f, 1.0f);
+			ImGui::ColorEdit3("Emissive Color", &lightingPC.emissiveColor);
+			ImGui::SliderFloat("Emissive Factor", &lightingPC.emissiveFactor, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 
 			ImGui::BeginDisabled(!deferredSystem->useGI());
-			ImGui::ColorEdit3("GI Color", &giColorOverride);
+			ImGui::ColorEdit3("GI Color", &lightingPC.giColor);
 			ImGui::EndDisabled();
 		}
 		else if ((drawMode == DrawMode::EmissiveColor || 
@@ -277,25 +269,26 @@ void DeferredRenderEditorSystem::ldrRender()
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto pushConstants = pipelineView->getPushConstants<BufferPC>();
-	pushConstants->invViewProj = (float4x4)cameraConstants.invViewProj;
-	pushConstants->drawMode = (int32)drawMode;
-	pushConstants->showChannelR = showChannelR ? 1.0f : 0.0f;
-	pushConstants->showChannelG = showChannelG ? 1.0f : 0.0f;
-	pushConstants->showChannelB = showChannelB ? 1.0f : 0.0f;
+
+	BufferPC pc;
+	pc.invViewProj = (float4x4)cameraConstants.invViewProj;
+	pc.drawMode = (int32)drawMode;
+	pc.showChannelR = showChannelR ? 1.0f : 0.0f;
+	pc.showChannelG = showChannelG ? 1.0f : 0.0f;
+	pc.showChannelB = showChannelB ? 1.0f : 0.0f;
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (((drawMode == DrawMode::EmissiveColor || drawMode == DrawMode::EmissiveFactor) && !deferredSystem->useEmissive()) ||
 		(drawMode == DrawMode::GiColor && !deferredSystem->useGI()))
 	{
-		pushConstants->drawMode = (int32)DrawMode::Off;
+		pc.drawMode = (int32)DrawMode::Off;
 	}
 
 	SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(bufferDescriptorSet);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
 

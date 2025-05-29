@@ -17,7 +17,7 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static void createInstanceBuffers(uint64 bufferSize, DescriptorSetBuffers& instanceBuffers, 
+static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& instanceBuffers, 
 	bool isShadow, InstanceRenderSystem* system)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -164,7 +164,6 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 		instanceMap = bufferView->getMap();
 		descriptorSet = baseDescriptorSet;
 		pipelineView = graphicsSystem->get(basePipeline);
-		shadowDrawIndex = 0;
 	}
 	else
 	{
@@ -199,21 +198,23 @@ void InstanceRenderSystem::beginDrawAsync(int32 taskIndex)
 }
 void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
-	ID<Buffer> instanceBuffer; uint64 dataBinarySize;
 	if (shadowPass < 0)
 	{
-		instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
-		dataBinarySize = drawCount * getBaseInstanceDataSize();
+		auto instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
+		auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
+		bufferView->flush(drawCount * getBaseInstanceDataSize());
 	}
 	else
 	{
-		instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
-		dataBinarySize = (shadowDrawIndex + drawCount) * getShadowInstanceDataSize();
 		shadowDrawIndex += drawCount;
 	}
-
+}
+void InstanceRenderSystem::renderCleanup()
+{
+	auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
 	auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
-	bufferView->flush(dataBinarySize);
+	bufferView->flush(shadowDrawIndex * getShadowInstanceDataSize());
+	shadowDrawIndex = 0;
 }
 
 //**********************************************************************************************************************

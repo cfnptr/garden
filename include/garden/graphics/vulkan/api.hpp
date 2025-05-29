@@ -52,6 +52,7 @@ public:
 		bool pageableMemory = false;
 		bool dynamicRendering = false;
 		bool descriptorIndexing = false;
+		bool scalarBlockLayout = false;
 		bool bufferDeviceAddress = false;
 		bool rayTracing = false;
 		bool maintenance4 = false;

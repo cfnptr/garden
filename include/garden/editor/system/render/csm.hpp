@@ -23,7 +23,7 @@ class CsmRenderEditorSystem final : public System
 {
 	struct PushConstants final
 	{
-		float4 farPlanes;
+		float3 farPlanes;
 	};
 
 	ID<GraphicsPipeline> cascadesPipeline = {};

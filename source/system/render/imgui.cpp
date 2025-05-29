@@ -700,15 +700,15 @@ void ImGuiRenderSystem::uiRender()
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto framebufferSize = framebufferView->getSize();
 
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->scale = float2(2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y);
-	pushConstants->translate = float2(-1.0f - drawData->DisplayPos.x * pushConstants->scale.x,
-		-1.0f - drawData->DisplayPos.y * pushConstants->scale.y);
+	PushConstants pc;
+	pc.scale = float2(2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y);
+	pc.translate = float2(-1.0f - drawData->DisplayPos.x * pc.scale.x,
+		-1.0f - drawData->DisplayPos.y * pc.scale.y);
 
 	SET_GPU_DEBUG_LABEL("ImGui", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewport();
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 
 	auto clipOff = drawData->DisplayPos;
 	auto clipScale = drawData->FramebufferScale;

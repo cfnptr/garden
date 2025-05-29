@@ -150,25 +150,25 @@ void AutoExposureRenderSystem::render()
 		auto histogramView = graphicsSystem->get(histogramBuffer);
 		histogramView->fill(0);
 
-		auto histogramPC = histogramPipelineView->getPushConstants<HistogramPC>();
-		histogramPC->minLogLum = minLogLum;
-		histogramPC->invLogLumRange = 1.0f / logLumRange;
+		HistogramPC histogramPC;
+		histogramPC.minLogLum = minLogLum;
+		histogramPC.invLogLumRange = 1.0f / logLumRange;
 
 		histogramPipelineView->bind();
 		histogramPipelineView->bindDescriptorSet(histogramDescriptorSet);
-		histogramPipelineView->pushConstants();
+		histogramPipelineView->pushConstants(&histogramPC);
 		histogramPipelineView->dispatch(framebufferSize);
 
-		auto averagePC = averagePipelineView->getPushConstants<AveragePC>();
-		averagePC->minLogLum = minLogLum;
-		averagePC->logLumRange = logLumRange;
-		averagePC->pixelCount = (float)framebufferSize.x * framebufferSize.y;
-		averagePC->darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
-		averagePC->brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
+		AveragePC averagePC;
+		averagePC.minLogLum = minLogLum;
+		averagePC.logLumRange = logLumRange;
+		averagePC.pixelCount = (float)framebufferSize.x * framebufferSize.y;
+		averagePC.darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
+		averagePC.brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
 
 		averagePipelineView->bind();
 		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
-		averagePipelineView->pushConstants();
+		averagePipelineView->pushConstants(&averagePC);
 		averagePipelineView->dispatch(1);
 	}
 	graphicsSystem->stopRecording();

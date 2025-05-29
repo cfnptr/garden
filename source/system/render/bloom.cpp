@@ -219,15 +219,15 @@ void BloomRenderSystem::preLdrRender()
 
 	SET_GPU_DEBUG_LABEL("Bloom", Color::transparent);
 	{
-		auto pushConstants = downsamplePipelineView->getPushConstants<PushConstants>();
-		pushConstants->threshold = threshold;
+		PushConstants pc;
+		pc.threshold = threshold;
 
 		SET_GPU_DEBUG_LABEL("Downsample", Color::transparent);
 		framebufferView->beginRenderPass(float4::zero);
 		downsamplePipelineView->bind(downsampleFirstVariant);
 		downsamplePipelineView->setViewportScissor();
 		downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
-		downsamplePipelineView->pushConstants();
+		downsamplePipelineView->pushConstants(&pc);
 		downsamplePipelineView->drawFullscreen();
 		framebufferView->endRenderPass();
 

@@ -17,7 +17,7 @@ out float4 fb.color;
 uniform pushConstants
 {
 	float4x4 mvp;
-	float4 color;
+	float3 color;
 	float renderScale;
 } pc;
 
@@ -25,5 +25,5 @@ void main()
 {
 	float2 fragCoord = floor(gl.fragCoord.xy * pc.renderScale);
 	bool isEven = mod(fragCoord.x + fragCoord.y, 2.0f) == 0.0f;
-	fb.color = isEven ? pc.color * 0.5f : pc.color * 0.25f;
+	fb.color = float4(isEven ? pc.color * 0.5f : pc.color * 0.25f, 0.0f);
 }

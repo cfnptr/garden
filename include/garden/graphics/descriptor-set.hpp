@@ -29,18 +29,6 @@ namespace garden::graphics
 class Pipeline;
 class DescriptorSetExt;
 
-struct SvHash
-{
-	using is_transparent = void;
-	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
-	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
-};
-struct SvEqual
-{
-	using is_transparent = void;
-	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
-};
-
 /***********************************************************************************************************************
  * @brief Shader resource container.
  * 
@@ -54,7 +42,12 @@ struct SvEqual
 class DescriptorSet final : public Resource
 {
 public:
-	/*******************************************************************************************************************
+	/*
+	 * @brief Descriptor set buffer instances for each in-flight frame.
+	 */
+	using Buffers = vector<vector<ID<Buffer>>>;
+
+	/**
 	 * @brief Descriptor set uniform resources container.
 	 * @details Resources like buffers, images and other types of data that shaders need to access.
 	 */
@@ -95,8 +88,7 @@ public:
 		 * @brief Creates a new descriptor set uniform out of buffers.
 		 * @param[in] buffers target buffer array
 		 */
-		Uniform(const vector<vector<ID<Buffer>>>& buffers) noexcept :
-			resourceSets(*((const vector<ResourceArray>*)&buffers)) { }
+		Uniform(const Buffers& buffers) noexcept : resourceSets(*((const vector<ResourceArray>*)&buffers)) { }
 		/**
 		 * @brief Creates a new descriptor set uniform out of image views.
 		 * @param[in] imageViews target image view array

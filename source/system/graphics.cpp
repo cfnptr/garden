@@ -38,15 +38,15 @@ namespace garden::graphics
 {
 	struct LinePC
 	{
-		f32x4x4 mvp;
-		f32x4 color;
-		f32x4 startPoint;
-		f32x4 endPoint;
+		float4x4 mvp;
+		float4 color;
+		float4 startPoint;
+		float4 endPoint;
 	};
 	struct AabbPC
 	{
-		f32x4x4 mvp;
-		f32x4 color;
+		float4x4 mvp;
+		float4 color;
 	};
 }
 
@@ -90,7 +90,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 		auto constantsBuffer = createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
 			sizeof(CameraConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
-		cameraConstantsBuffers[i].push_back(constantsBuffer);
+		cameraConstantsBuffers[i].resize(1); cameraConstantsBuffers[i][0] = constantsBuffer;
 	}
 }
 GraphicsSystem::~GraphicsSystem()
@@ -309,14 +309,14 @@ void GraphicsSystem::update()
 
 	SwapchainChanges newSwapchainChanges;
 	newSwapchainChanges.framebufferSize = inputSystem->getFramebufferSize() != swapchain->getFramebufferSize();
-	newSwapchainChanges.bufferCount = useTripleBuffering != swapchain->useTripleBuffering();
+	newSwapchainChanges.imageCount = useTripleBuffering != swapchain->useTripleBuffering();
 	newSwapchainChanges.vsyncState = useVsync != swapchain->useVsync();
 
 	auto swapchainRecreated = isFramebufferSizeValid && (newSwapchainChanges.framebufferSize ||
-		newSwapchainChanges.bufferCount || newSwapchainChanges.vsyncState || outOfDateSwapchain);
+		newSwapchainChanges.imageCount || newSwapchainChanges.vsyncState || outOfDateSwapchain);
 
 	swapchainChanges.framebufferSize |= newSwapchainChanges.framebufferSize;
-	swapchainChanges.bufferCount |= newSwapchainChanges.bufferCount;
+	swapchainChanges.imageCount |= newSwapchainChanges.imageCount;
 	swapchainChanges.vsyncState |= newSwapchainChanges.vsyncState;
 	
 	if (swapchainRecreated)
@@ -545,9 +545,9 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 //**********************************************************************************************************************
 void GraphicsSystem::recreateSwapchain(const SwapchainChanges& changes)
 {
-	GARDEN_ASSERT(changes.framebufferSize || changes.bufferCount || changes.vsyncState);
+	GARDEN_ASSERT(changes.framebufferSize || changes.imageCount || changes.vsyncState);
 	swapchainChanges.framebufferSize |= changes.framebufferSize;
-	swapchainChanges.bufferCount |= changes.bufferCount;
+	swapchainChanges.imageCount |= changes.imageCount;
 	swapchainChanges.vsyncState |= changes.vsyncState;
 	forceRecreateSwapchain = true;
 }
@@ -1242,15 +1242,15 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
 	pipelineView->updateFramebuffer(GraphicsAPI::get()->currentFramebuffer);
 
-	auto pushConstants = pipelineView->getPushConstants<LinePC>();
-	pushConstants->mvp = mvp;
-	pushConstants->color = color;
-	pushConstants->startPoint = f32x4(startPoint, 1.0f);
-	pushConstants->endPoint = f32x4(endPoint, 1.0f);
+	LinePC pc;
+	pc.mvp = (float4x4)mvp;
+	pc.color = (float4)color;
+	pc.startPoint = float4((float3)startPoint, 1.0f);
+	pc.endPoint = float4((float3)endPoint, 1.0f);
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->draw({}, 2);
 }
 void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
@@ -1264,13 +1264,13 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
 	pipelineView->updateFramebuffer(GraphicsAPI::get()->currentFramebuffer);
 
-	auto pushConstants = pipelineView->getPushConstants<AabbPC>();
-	pushConstants->mvp = mvp;
-	pushConstants->color = color;
+	AabbPC pc;
+	pc.mvp = (float4x4)mvp;
+	pc.color = (float4)color;
 
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->draw({}, 24);
 }
 #endif

@@ -129,7 +129,6 @@ public:
 	};
 protected:
 	Uniforms uniforms;
-	vector<uint8> pushConstantsBuffer;
 	vector<void*> samplers;
 	vector<void*> descriptorSetLayouts;
 	vector<void*> descriptorPools;
@@ -193,11 +192,6 @@ public:
 	 */
 	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
-	 * @brief Returns pipeline push constants data buffer.
-	 * @details You can use it to access written push constants data.
-	 */
-	const vector<uint8>& getPushConstantsBuffer() const noexcept { return pushConstantsBuffer; }
-	/**
 	 * @brief Returns pipeline push constants buffer size in bytes.
 	 * @details Calculated from the shader push constants structure during compilation.
 	 */
@@ -222,53 +216,6 @@ public:
 	 * @details Helps to reduce overhead associated with binding and switching resources like textures, buffers.
 	 */
 	bool isBindless() const noexcept { return maxBindlessCount > 0; }
-
-	/*******************************************************************************************************************
-	 * @brief Returns push constants data. (MT-Safe)
-	 * @details See the @ref Pipeline::pushConstants()
-	 * 
-	 * @param threadIndex thread index in the pool
-	 * @tparam T type of the structure with data
-	 */
-	template<typename T>
-	T* getPushConstants(int32 threadIndex = 0)
-	{
-		GARDEN_ASSERT(checkThreadIndex(threadIndex));
-		GARDEN_ASSERT(pushConstantsSize == sizeof(T));  // Different shader pushConstants size
-		return (T*)(pushConstantsBuffer.data() + pushConstantsSize * threadIndex);
-	}
-	/**
-	 * @brief Returns constant push constants data. (MT-Safe)
-	 * @details See the @ref Pipeline::pushConstants()
-	 * 
-	 * @param threadIndex thread index in the pool
-	 * @tparam T type of the structure with data
-	 */
-	template<typename T>
-	const T* getPushConstants(int32 threadIndex = 0) const { return getPushConstants<T>(); }
-
-	/**
-	 * @brief Returns push constants data. (MT-Safe)
-	 * @details See the @ref Pipeline::pushConstants()
-	 * @param threadIndex thread index in the pool
-	 */
-	uint8* getPushConstants(int32 threadIndex = 0)
-	{
-		GARDEN_ASSERT(asyncRecording);
-		GARDEN_ASSERT(checkThreadIndex(threadIndex));
-		return pushConstantsBuffer.data() + pushConstantsSize * threadIndex;
-	}
-	/**
-	 * @brief Returns push constants data. (MT-Safe)
-	 * @details See the @ref Pipeline::pushConstants()
-	 * @param threadIndex thread index in the pool
-	 */
-	const uint8* getPushConstants(int32 threadIndex = 0) const
-	{
-		GARDEN_ASSERT(asyncRecording);
-		GARDEN_ASSERT(checkThreadIndex(threadIndex));
-		return pushConstantsBuffer.data() + pushConstantsSize * threadIndex;
-	}
 
 	//******************************************************************************************************************
 	// Render commands
@@ -393,14 +340,18 @@ public:
 	 * Allow for rapid updating of shader data without the overhead associated with other resource updates like 
 	 * uniform buffers or descriptor sets. They are typically used to pass small-sized data such as 
 	 * transformation matrices, lighting parameters or simple control variables directly to shaders.
+	 *
+	 * @param[in] data target constants data
 	 */
-	void pushConstants();
+	void pushConstants(const void* data);
 	/**
 	 * @brief Pushes specified constants for subsequent rendering. (MT-Safe)
 	 * @details See the @ref Pipeline::pushConstants()
+	 *
+	 * @param[in] data target constants data
 	 * @param threadIndex thread index in the pool
 	 */
-	void pushConstantsAsync(int32 threadIndex);
+	void pushConstantsAsync(const void* data, int32 threadIndex);
 };
 
 /***********************************************************************************************************************
@@ -416,12 +367,6 @@ public:
 	 * @param[in] pipeline target pipeline instance
 	 */
 	static Pipeline::Uniforms& getUniforms(Pipeline& pipeline) noexcept { return pipeline.uniforms; }
-	/**
-	 * @brief Returns pipeline push constants buffer.
-	 * @warning In most cases you should use @ref Pipeline functions.
-	 * @param[in] pipeline target pipeline instance
-	 */
-	static vector<uint8>& getPushConstantsBuffer(Pipeline& pipeline) noexcept { return pipeline.pushConstantsBuffer; }
 	/**
 	 * @brief Returns pipeline sampler array.
 	 * @warning In most cases you should use @ref Pipeline functions.
@@ -505,7 +450,6 @@ public:
 	static void moveInternalObjects(Pipeline& source, Pipeline& destination) noexcept
 	{
 		PipelineExt::getUniforms(destination) = std::move(PipelineExt::getUniforms(source));
-		PipelineExt::getPushConstantsBuffer(destination) = std::move(PipelineExt::getPushConstantsBuffer(source));
 		PipelineExt::getSamplers(destination) = std::move(PipelineExt::getSamplers(source));
 		PipelineExt::getDescriptorSetLayouts(destination) = std::move(PipelineExt::getDescriptorSetLayouts(source));
 		PipelineExt::getDescriptorPools(destination) = std::move(PipelineExt::getDescriptorPools(source));

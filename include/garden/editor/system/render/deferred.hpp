@@ -39,24 +39,21 @@ class DeferredRenderEditorSystem final : public System
 	};
 	struct LightingPC final
 	{
-		float4 colorSpec;
-		float4 mraor;
-		float4 emissive;
-		float4 giColor;
-		float shadow;
-		float ccRoughness;
+		float3 baseColor = float3::one;
+		float specularFactor = 1.0f;
+		float4 mraor = float4(0.0f, 1.0f, 1.0f, 0.5f);
+		float3 emissiveColor = float3::zero;
+		float emissiveFactor = 0.0f;
+		float3 giColor = float3::one;
+		float ccRoughness = 0.0f;
+		float shadow = 1.0f;
 	};
 
-	f32x4 colorSpecOverride = f32x4::one;
-	f32x4 mraorOverride = f32x4(0.0f, 1.0f, 1.0f, 0.5f);
-	f32x4 emissiveOverride = f32x4::zero;
-	f32x4 giColorOverride = f32x4::one;
 	ID<Image> blackPlaceholder = {};
 	ID<GraphicsPipeline> bufferPipeline = {};
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
-	float shadowOverride = 1.0f;
-	float ccRoughnessOverride = 0.0f;
+	LightingPC lightingPC = {};
 	DrawMode drawMode = DrawMode::Off;
 	bool showChannelR = true;
 	bool showChannelG = true;

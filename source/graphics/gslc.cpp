@@ -83,7 +83,7 @@ namespace garden::graphics
 		string line; uint32 lineIndex = 1;
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
 		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, 
-			isRestrict = false, isVolatile = false, isCoherent = false;
+			isRestrict = false, isVolatile = false, isCoherent = false, isScalar = false;
 		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
 		Sampler::State samplerState;
@@ -105,11 +105,12 @@ namespace garden::graphics
 	struct LineData
 	{
 		string word, uniformName;
-		int8 isComparing = 0, isCompareOperation = 0, isAnisoFiltering = 0, isMaxAnisotropy = 0, 
-			isUnnormCoords = 0, isMipLodBias = 0, isMinLod = 0, isMaxLod = 0, isFilter = 0, 
-			isFilterMin = 0, isFilterMag = 0, isFilterMipmap = 0, isBorderColor = 0, 
-			isAddressMode = 0, isAddressModeX = 0, isAddressModeY = 0, isAddressModeZ = 0,
-			isSpecConst = 0, isFeature = 0, isVariantCount = 0;
+		int8 isSpecConst = 0;
+		bool isComparing = false, isCompareOperation = false, isAnisoFiltering = false, isMaxAnisotropy = false, 
+			isUnnormCoords = false, isMipLodBias = false, isMinLod = false, isMaxLod = false, isFilter = false, 
+			isFilterMin = false, isFilterMag = false, isFilterMipmap = false, isBorderColor = false, 
+			isAddressMode = false, isAddressModeX = false, isAddressModeY = false, isAddressModeZ = false,
+			isFeature = false, isVariantCount = false, isReference = false;
 		uint8 arraySize = 1;
 		GslDataType dataType = {}; Image::Format imageFormat = {};
 		bool isNewLine = true;
@@ -294,6 +295,13 @@ static string_view toGlslString(Image::Format imageFormat)
 }
 
 //******************************************************************************************************************
+static void endShaderUniform(FileData& fileData)
+{
+	fileData.isReadonly = fileData.isWriteonly = fileData.isMutable = fileData.isRestrict = 
+		fileData.isVolatile = fileData.isCoherent = fileData.isScalar = false;
+	fileData.isUniform = fileData.descriptorSetIndex = 0;
+}
+
 static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage shaderStage, 
 	uint8& bindingIndex, Pipeline::Uniforms& uniforms, Pipeline::SamplerStates& samplerStates)
 {
@@ -305,6 +313,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == "restrict") fileData.isRestrict = true;
 		else if (lineData.word == "volatile") fileData.isVolatile = true;
 		else if (lineData.word == "coherent") fileData.isCoherent = true;
+		else if (lineData.word == "scalar") fileData.isScalar = true;
+		else if (lineData.word == "reference") lineData.isReference = true;
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: do not move down.
 		{
 			auto index = strtoul(lineData.word.c_str() + 3, nullptr, 10);
@@ -314,14 +324,38 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		}
 		else if (fileData.isBuffer)
 		{
-			fileData.uniformType = GslUniformType::StorageBuffer;
-			fileData.outputStream.str(""); fileData.outputStream.clear();
-			fileData.outputStream << lineData.word << " ";
-			fileData.isBuffer = 0; fileData.isUniform = 4;
+			if (lineData.isReference)
+			{
+				fileData.outputFileStream << "layout(buffer_reference";
+				if (fileData.isScalar) fileData.outputFileStream << ", scalar";
+				else fileData.outputFileStream << ", std430";
+				fileData.outputFileStream << ") ";
+				if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
+				if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
+				if (fileData.isRestrict) fileData.outputFileStream << "restrict ";
+				if (fileData.isVolatile) fileData.outputFileStream << "volatile ";
+				if (fileData.isCoherent) fileData.outputFileStream << "coherent ";
+				fileData.outputFileStream << "buffer " << lineData.word;
+				endShaderUniform(fileData);
+			}
+			else
+			{
+				fileData.uniformType = GslUniformType::StorageBuffer;
+				fileData.outputStream.str(""); fileData.outputStream.clear();
+				fileData.outputStream << lineData.word << " ";
+				fileData.isBuffer = 0; fileData.isUniform = 4;
+			}
 		}
 		else if (lineData.word == toString(GslUniformType::PushConstants))
 		{
-			fileData.outputFileStream << "layout(push_constant) uniform pushConstants ";
+			fileData.outputFileStream << "layout(push_constant";
+			if (fileData.isScalar)
+			{
+				fileData.outputFileStream << ", scalar";
+				fileData.isScalar = false;
+			}
+			else fileData.outputFileStream << ", std430";
+			fileData.outputFileStream << ") uniform pushConstants ";
 			fileData.isUniform = 0; fileData.isPushConstants = 1;
 		}
 		else if (lineData.word == toString(GslUniformType::SubpassInput))
@@ -498,13 +532,17 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 	else if (fileData.uniformType == GslUniformType::UniformBuffer)
 	{
 		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
-			", set = " << to_string(fileData.descriptorSetIndex) <<
-			") uniform " << fileData.outputStream.str();
+			", set = " << to_string(fileData.descriptorSetIndex);
+		if (fileData.isScalar) fileData.outputFileStream << ", scalar";
+		fileData.outputFileStream << ") uniform " << fileData.outputStream.str();
 	}
 	else if (fileData.uniformType == GslUniformType::StorageBuffer)
 	{
 		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
-			", set = " << to_string(fileData.descriptorSetIndex) << ") ";
+			", set = " << to_string(fileData.descriptorSetIndex);
+		if (fileData.isScalar) fileData.outputFileStream << ", scalar";
+		else fileData.outputFileStream << ", std430";
+		fileData.outputFileStream << ") ";
 		if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
 		if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
 		if (fileData.isRestrict) fileData.outputFileStream << "restrict ";
@@ -557,9 +595,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		}
 	}
 
-	fileData.isReadonly = fileData.isWriteonly = fileData.isMutable = 
-		fileData.isRestrict = fileData.isVolatile = fileData.isCoherent = false;
-	fileData.isUniform = fileData.descriptorSetIndex = 0;
+	endShaderUniform(fileData);
 }
 
 //******************************************************************************************************************
@@ -630,23 +666,23 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 		}
 		else
 		{
-			if (lineData.word == "filter") lineData.isFilter = 1;
-			else if (lineData.word == "filterMin") lineData.isFilterMin = 1;
-			else if (lineData.word == "filterMag") lineData.isFilterMag = 1;
-			else if (lineData.word == "filterMipmap") lineData.isFilterMipmap = 1;
-			else if (lineData.word == "borderColor") lineData.isBorderColor = 1;
-			else if (lineData.word == "addressMode") lineData.isAddressMode = 1;
-			else if (lineData.word == "addressModeX") lineData.isAddressModeX = 1;
-			else if (lineData.word == "addressModeY") lineData.isAddressModeY = 1;
-			else if (lineData.word == "addressModeZ") lineData.isAddressModeZ = 1;
-			else if (lineData.word == "comparison") lineData.isComparing = 1;
-			else if (lineData.word == "compareOperation") lineData.isCompareOperation = 1;
-			else if (lineData.word == "anisoFiltering") lineData.isAnisoFiltering = 1;
-			else if (lineData.word == "maxAnisotropy") lineData.isMaxAnisotropy = 1;
-			else if (lineData.word == "unnormCoords") lineData.isUnnormCoords = 1;
-			else if (lineData.word == "mipLodBias") lineData.isMipLodBias = 1;
-			else if (lineData.word == "minLod") lineData.isMinLod = 1;
-			else if (lineData.word == "maxLod") lineData.isMaxLod = 1;
+			if (lineData.word == "filter") lineData.isFilter = true;
+			else if (lineData.word == "filterMin") lineData.isFilterMin = true;
+			else if (lineData.word == "filterMag") lineData.isFilterMag = true;
+			else if (lineData.word == "filterMipmap") lineData.isFilterMipmap = true;
+			else if (lineData.word == "borderColor") lineData.isBorderColor = true;
+			else if (lineData.word == "addressMode") lineData.isAddressMode = true;
+			else if (lineData.word == "addressModeX") lineData.isAddressModeX = true;
+			else if (lineData.word == "addressModeY") lineData.isAddressModeY = true;
+			else if (lineData.word == "addressModeZ") lineData.isAddressModeZ = true;
+			else if (lineData.word == "comparison") lineData.isComparing = true;
+			else if (lineData.word == "compareOperation") lineData.isCompareOperation = true;
+			else if (lineData.word == "anisoFiltering") lineData.isAnisoFiltering = true;
+			else if (lineData.word == "maxAnisotropy") lineData.isMaxAnisotropy = true;
+			else if (lineData.word == "unnormCoords") lineData.isUnnormCoords = true;
+			else if (lineData.word == "mipLodBias") lineData.isMipLodBias = true;
+			else if (lineData.word == "minLod") lineData.isMinLod = true;
+			else if (lineData.word == "maxLod") lineData.isMaxLod = true;
 			else throw CompileError("unrecognized sampler property", fileData.lineIndex, lineData.word);
 			fileData.outputStream << "//     " << lineData.word << " ";
 			fileData.isSamplerState = 2; 
@@ -667,87 +703,87 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 		if (lineData.isFilter)
 		{
 			fileData.samplerState.setFilter(toSamplerFilter(name, fileData.lineIndex));
-			lineData.isFilter = 0;
+			lineData.isFilter = false;
 		}
 		else if (lineData.isFilterMin)
 		{
 			fileData.samplerState.minFilter = toSamplerFilter(name, fileData.lineIndex);
-			lineData.isFilterMin = 0;
+			lineData.isFilterMin = false;
 		}
 		else if (lineData.isFilterMag)
 		{
 			fileData.samplerState.magFilter = toSamplerFilter(name,fileData.lineIndex);
-			lineData.isFilterMag = 0;
+			lineData.isFilterMag = false;
 		}
 		else if (lineData.isFilterMipmap)
 		{
 			fileData.samplerState.mipmapFilter = toSamplerFilter(name, fileData.lineIndex);
-			lineData.isFilterMag = 0;
+			lineData.isFilterMag = false;
 		}
 		else if (lineData.isBorderColor)
 		{
 			fileData.samplerState.borderColor = toBorderColor(name, fileData.lineIndex);
-			lineData.isBorderColor = 0;
+			lineData.isBorderColor = false;
 		}
 		else if (lineData.isAddressMode)
 		{
 			fileData.samplerState.setAddressMode(toAddressMode(name, fileData.lineIndex));
-			lineData.isAddressMode = 0;
+			lineData.isAddressMode = false;
 		}
 		else if (lineData.isAddressModeX)
 		{
 			fileData.samplerState.addressModeX = toAddressMode(name, fileData.lineIndex);
-			lineData.isAddressModeX = 0;
+			lineData.isAddressModeX = false;
 		}
 		else if (lineData.isAddressModeY)
 		{
 			fileData.samplerState.addressModeY = toAddressMode(name, fileData.lineIndex);
-			lineData.isAddressModeY = 0;
+			lineData.isAddressModeY = false;
 		}
 		else if (lineData.isAddressModeZ)
 		{
 			fileData.samplerState.addressModeZ = toAddressMode(name, fileData.lineIndex);
-			lineData.isAddressModeZ = 0;
+			lineData.isAddressModeZ = false;
 		}
 		else if (lineData.isComparing)
 		{
 			fileData.samplerState.comparison = toBoolState(name, fileData.lineIndex);
-			lineData.isComparing = 0;
+			lineData.isComparing = false;
 		}
 		else if (lineData.isCompareOperation)
 		{
 			fileData.samplerState.compareOperation = toCompareOperation(name, fileData.lineIndex);
-			lineData.isCompareOperation = 0;
+			lineData.isCompareOperation = false;
 		}
 		else if (lineData.isAnisoFiltering)
 		{
 			fileData.samplerState.anisoFiltering = toBoolState(name, fileData.lineIndex);
-			lineData.isAnisoFiltering = 0;
+			lineData.isAnisoFiltering = false;
 		}
 		else if (lineData.isMaxAnisotropy)
 		{
 			fileData.samplerState.maxAnisotropy = toFloatValue(name, fileData.lineIndex);
-			lineData.isMaxAnisotropy = 0;
+			lineData.isMaxAnisotropy = false;
 		}
 		else if (lineData.isUnnormCoords)
 		{
 			fileData.samplerState.unnormCoords = toBoolState(name, fileData.lineIndex);
-			lineData.isUnnormCoords = 0;
+			lineData.isUnnormCoords = false;
 		}
 		else if (lineData.isMipLodBias)
 		{
 			fileData.samplerState.mipLodBias = toFloatValue(name, fileData.lineIndex);
-			lineData.isMipLodBias = 0;
+			lineData.isMipLodBias = false;
 		}
 		else if (lineData.isMinLod)
 		{
 			fileData.samplerState.minLod = toFloatValue(name, fileData.lineIndex);
-			lineData.isMinLod = 0;
+			lineData.isMinLod = false;
 		}
 		else if (lineData.isMaxLod)
 		{
 			fileData.samplerState.maxLod = toFloatValue(name, fileData.lineIndex);
-			lineData.isMaxLod = 0;
+			lineData.isMaxLod = false;
 		}
 		else abort();
 
@@ -1101,14 +1137,20 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 //******************************************************************************************************************
 static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
-	if (lineData.word == "bindless")
+	if (lineData.word == "debugPrintf")
+		fileData.outputFileStream << "#extension GLSL_EXT_debug_printf : require";
+	else if (lineData.word == "bindless")
 		fileData.outputFileStream << "#extension GL_EXT_nonuniform_qualifier : require";
+	else if (lineData.word == "scalarLayout")
+		fileData.outputFileStream << "#extension GL_EXT_scalar_block_layout : require";
+	else if (lineData.word == "bufferReference")
+		fileData.outputFileStream << "#extension GL_EXT_buffer_reference : require";
 	else if (lineData.word == "subgroupBasic")
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_basic : require";
 	else if (lineData.word == "subgroupVote")
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_vote : require";
 	else throw CompileError("unknown GSL feature", fileData.lineIndex, lineData.word);
-	lineData.isFeature = 0;
+	lineData.isFeature = false;
 }
 
 static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& variantCount)
@@ -1118,48 +1160,38 @@ static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& 
 		throw CompileError("invalid variant count", fileData.lineIndex, lineData.word);
 	variantCount = (uint8)count;
 	fileData.outputFileStream << "layout(constant_id = 0) const uint gsl_variant = 0; ";
-	lineData.isVariantCount = 0;
+	lineData.isVariantCount = false;
 }
 
 //******************************************************************************************************************
-static void onShaderGlobalVariable(string& word)
+static void replaceVaribaleDot(string& word, const char* compare, bool toUpper = false) noexcept
+{
+	while (true)
+	{
+		auto index = word.find(compare);
+		if (index != string::npos && (index == 0 || (index > 0 &&
+			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
+		{
+			word[index + 2] = '_';
+			if (toUpper)
+				word[index + 3] = toupper(word[index + 3]);
+			continue;
+		}
+		break;
+	}
+}
+static void onShaderGlobalVariable(string& word) noexcept
 {
 	if (word.length() > 3)
 	{
-		auto index = word.find("vs.");
-		if (index != string::npos && (index == 0 || (index > 0 &&
-			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
-		{
-			word[index + 2] = '_'; return;
-		}
-		index = word.find("fs.");
-		if (index != string::npos && (index == 0 || (index > 0 &&
-			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
-		{
-			word[index + 2] = '_'; return;
-		}
-		index = word.find("fb.");
-		if (index != string::npos && (index == 0 || (index > 0 &&
-			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
-		{
-			word[index + 2] = '_'; return;
-		}
-		index = word.find("gl.");
-		if (index != string::npos && (index == 0 || (index > 0 &&
-			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
-		{
-			word[index + 2] = '_'; word[index + 3] = toupper(word[index + 3]); return;
-		}
+		replaceVaribaleDot(word, "vs.");
+		replaceVaribaleDot(word, "fs.");
+		replaceVaribaleDot(word, "fb.");
+		replaceVaribaleDot(word, "gl.", true);
 	}
+
 	if (word.length() > 4)
-	{
-		auto index = word.find("gsl.");
-		if (index != string::npos && (index == 0 || (index > 0 &&
-			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
-		{
-			word[index + 3] = '_'; return;
-		}
-	}
+		replaceVaribaleDot(word, "gsl.");
 }
 
 //******************************************************************************************************************
@@ -1179,7 +1211,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
 
 	// TODO: half2, double2?
-	outputFileStream << "#version 460\n"
+	outputFileStream << "#version 460\n#define printf debugPrintfEXT\n"
 		"#define int32 int\n#define uint32 uint\n"
 		"#define float2 vec2\n#define float3 vec3\n#define float4 vec4\n"
 		"#define int2 ivec2\n#define int3 ivec3\n#define int4 ivec4\n"
@@ -1285,8 +1317,8 @@ static bool setCommonKeywords(FileData& fileData, LineData& lineData, bool& over
 	if (lineData.word == "uniform") { fileData.isUniform = 1; return true; }
 	if (lineData.word == "buffer") { fileData.isUniform = fileData.isBuffer = 1; return true; }
 	if (lineData.word == "spec") { lineData.isSpecConst = 1; return true; }
-	if (lineData.word == "#feature") { lineData.isFeature = 1; return true; }
-	if (lineData.word == "#variantCount") { lineData.isVariantCount = 1; return true; }
+	if (lineData.word == "#feature") { lineData.isFeature = true; return true; }
+	if (lineData.word == "#variantCount") { lineData.isVariantCount = true; return true; }
 	if (lineData.word == "pushConstants") throw CompileError("missing 'uniform' keyword", fileData.lineIndex);
 	overrideOutput = false;
 	return false;

@@ -700,16 +700,17 @@ void PbrLightingRenderSystem::hdrRender()
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDescriptorSet);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
-	auto pushConstants = pipelineView->getPushConstants<LightingPC>();
-	pushConstants->uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
-	pushConstants->shadowEmissive = (float4)f32x4(cameraConstants.shadowColor, cameraConstants.emissiveCoeff);
-	pushConstants->reflectanceCoeff = reflectanceCoeff;
+	LightingPC pc;
+	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
+	pc.shadowColor = (float3)cameraConstants.shadowColor;
+	pc.emissiveCoeff = cameraConstants.emissiveCoeff;
+	pc.reflectanceCoeff = reflectanceCoeff;
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSets(descriptorSetRange, 2);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
 
@@ -1122,7 +1123,6 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	Image::copy(cubemap, specular, imageCopyRegion);
 
 	auto pipelineView = graphicsSystem->get(iblSpecularPipeline);
-	auto pushConstants = pipelineView->getPushConstants<PbrLightingRenderSystem::SpecularPC>();
 	pipelineView->bind();
 
 	cubemapSize /= 2;
@@ -1142,9 +1142,10 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 			"descriptorSet.lighting.iblSpecular" + to_string(*iblSpecularDescriptorSet));
 		pipelineView->bindDescriptorSet(iblSpecularDescriptorSet);
 
-		pushConstants->imageSize = cubemapSize;
-		pushConstants->itemCount = countBuffer[i];
-		pipelineView->pushConstants();
+		PbrLightingRenderSystem::SpecularPC pc;
+		pc.imageSize = cubemapSize;
+		pc.itemCount = countBuffer[i];
+		pipelineView->pushConstants(&pc);
 
 		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
 

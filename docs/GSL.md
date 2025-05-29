@@ -1,6 +1,6 @@
 # Garden Shading Language Documentation
 
-GSL is a custom shader language based on the [GLSL](https://www.khronos.org/opengl/wiki/Core_Language_(GLSL)) for [Vulkan API](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt). It was created for 
+GSL is a custom shader language based on the [GLSL](https://www.khronos.org/opengl/wiki/Core_Language_(GLSL)) [subset](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt) for the [Vulkan API](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt). It was created for 
 the [Garden](https://github.com/cfnptr/garden) game engine to simplify and standardize shader development.
 
 ## Variable Types
@@ -8,7 +8,7 @@ the [Garden](https://github.com/cfnptr/garden) game engine to simplify and stand
 All GLSL default variable types **vec2, ivec3, mat4**... are replaced with 
 more pleasant looking variants **float2, int3, float4x4**. Also built in variables **gl_Xxx** with **gl.xxx**. Don't be angry :)
 
-You can use **#include** directive, it's backed by the shaderc compiler internally.
+You can use `#include` directive, it's backed by the shaderc compiler internally.
 
 ## Vertex attributes
 
@@ -29,7 +29,7 @@ You can add offset to the vertex attributes. (in bytes)
 
 ## Pipeline state
 
-Shader parser gets pipeline state from the declared "pipelineState" properties in the shader.
+Shader parser gets pipeline state from the declared `pipelineState` properties in the shader.
 Also you can override pipeline state properties when loading pipeline in the code.
 
 ```
@@ -209,13 +209,13 @@ You will only make the depth smaller, compared to `gl.fragCoord.z`:
 depthLess out float gl.fragDepth;
 ```
 
-You will only make the depth larger, compared to gl.fragCoord.z:
+You will only make the depth larger, compared to `gl.fragCoord.z`:
 
 ```
 depthGreater out float gl.fragDepth;
 ```
 
-Forces depth and stencil tests to run before the fragment shader executes, when use `discard`:
+Forces depth and stencil tests to run before the fragment shader executes, when use `discard;`:
 
 ```
 earlyFragmentTests in;
@@ -260,23 +260,59 @@ spec const float SOME_THRESHOLD = 0.5f;
 
 ## Ray Tracing
 
-All ray tracing built-ins and functions are written without the **EXT*** postfix.
+All ray tracing built-ins and functions are written without the **EXT** postfix.
 
 ```
 uniform accelerationStructure tlas;
 rayPayload float4 payload;
 ```
 
+## Bindless
+
+Allows to declare uniforms without specified array size.
+
+```
+#feature bindless
+
+uniform sampler2D textures[];
+```
+
+## Buffer Reference
+
+You can access GPU storage buffer data by it device address, which can 
+be passed to the shader using push constants or another storage buffer.
+
+```
+#feature bufferReference
+#feature scalarLayout
+
+buffer reference scalar VertexBuffer
+{
+    float3 vertices[];
+};
+uniform pushConstants
+{
+    VertexBuffer vertexBuffer;
+} pc;
+```
+
+## Subgroup Vote
+
+TODO:
+
 ## Extension / Feature
 
-To enable specific GLSL feature extensions use this shorting:
+To enable specific GLSL extensions use this shorting:
 
 ```
 #feature bindless
 ```
 
-**Features**: [ bindless, subgroupBasic, subgroupVote ]
+**Features**: [ debugPrintf, bindless, scalarLayout, bufferReference, subgroupBasic, subgroupVote ]
 
-* bindless - GL_EXT_nonuniform_qualifier
-* subgroupBasic - GL_KHR_shader_subgroup_basic
-* subgroupVote - GL_KHR_shader_subgroup_vote
+* debugPrintf - [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
+* bindless - [GL_EXT_nonuniform_qualifier](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_nonuniform_qualifier.txt)
+* scalarLayout - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
+* bufferReference - [GL_EXT_buffer_reference](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_buffer_reference.txt)
+* subgroupBasic - [GL_KHR_shader_subgroup_basic](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
+* subgroupVote - [GL_KHR_shader_subgroup_vote](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)

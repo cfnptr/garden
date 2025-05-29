@@ -142,14 +142,15 @@ void CsmRenderEditorSystem::uiRender()
 
 	auto csmSystem = CsmRenderSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto pushConstants = pipelineView->getPushConstants<PushConstants>();
-	pushConstants->farPlanes = (float4)f32x4(cameraConstants.nearPlane / csmSystem->getFarPlanes(), 0.0f);
+
+	PushConstants pc;
+	pc.farPlanes = (float3)(cameraConstants.nearPlane / csmSystem->getFarPlanes());
 
 	SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(cascadesDescriptorSet);
-	pipelineView->pushConstants();
+	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
 
