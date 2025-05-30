@@ -47,6 +47,8 @@ public:
 	};
 	struct Features final
 	{
+		bool int8BitStorage = false;
+		bool float16Int8 = false;
 		bool memoryBudget = false;
 		bool memoryPriority = false;
 		bool pageableMemory = false;
