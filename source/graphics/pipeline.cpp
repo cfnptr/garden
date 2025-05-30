@@ -145,8 +145,8 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 					descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
 				}
 
-				descriptorBindingFlags[bindingIndex] = vk::DescriptorBindingFlagBits::eUpdateUnusedWhilePending |
-					vk::DescriptorBindingFlagBits::eUpdateAfterBind | vk::DescriptorBindingFlagBits::ePartiallyBound;
+				descriptorBindingFlags[bindingIndex] = vk::DescriptorBindingFlagBits::eUpdateAfterBind | 
+					vk::DescriptorBindingFlagBits::ePartiallyBound;
 				descriptorSetBinding.descriptorCount = maxBindlessCount;
 				isBindless = true;
 			}

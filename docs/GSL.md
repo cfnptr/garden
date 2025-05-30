@@ -157,10 +157,10 @@ uniform image2D someImage : unormR8G8B8A8;
 ### Image data shader interpretation formats:
 
 * **Unsigned integer formats**: [ uintR8, uintR8G8, uintR8G8B8A8, uintR16, uintR16G16, uintR16G16B16A16, uintR32, uintR32G32, uintR32G32B32A32, uintA2R10G10B10 ]</br>
-* **Signed integer formats**: [ intR8, intR8G8, intR8G8B8A8, intR16, intR16G16, intR16G16B16A16, intR32, intR32G32, intR32G32B32A32 ]</br>
+* **Signed integer formats**: [ sintR8, sintR8G8, sintR8G8B8A8, sintR16, sintR16G16, sintR16G16B16A16, sintR32, sintR32G32, sintR32G32B32A32 ]</br>
 * **Unsigned integer formats normalized to (0.0, 1.0)**: [ unormR8, unormR8G8, unormR8G8B8A8, unormR16, unormR16G16, unormR16G16B16A16, unormA2R10G10B10 ]</br>
 * **Signed integer formats normalized to (-1.0, 1.0)**: [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]</br>
-* **Floating point formats**: [ floatR16, floatR16G16, floatR16G16B16A16, floatR32, floatR32G32, floatR32G32B32A32, ufloatB10G11R11 ]</br>
+* **Floating point formats**: [ sfloatR16, sfloatR16G16, sfloatR16G16B16A16, sfloatR32, sfloatR32G32, sfloatR32G32B32A32, ufloatB10G11R11 ]</br>
 
 ## Storage Buffer
 
@@ -311,6 +311,9 @@ To enable specific GLSL extensions use this shorting:
 **Features**: [ debugPrintf, bindless, scalarLayout, bufferReference, subgroupBasic, subgroupVote ]
 
 * debugPrintf - [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
+* explicitTypes - [GL_EXT_shader_explicit_arithmetic_types](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_explicit_arithmetic_types.txt)
+* int8BitStorage - [GL_EXT_shader_8bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
+* int16BitStorage - [GL_EXT_shader_16bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
 * bindless - [GL_EXT_nonuniform_qualifier](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_nonuniform_qualifier.txt)
 * scalarLayout - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
 * bufferReference - [GL_EXT_buffer_reference](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_buffer_reference.txt)

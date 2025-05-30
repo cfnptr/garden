@@ -205,15 +205,15 @@ static Image::Format toImageFormat(string_view gslImageFormat)
 	if (gslImageFormat == "uintR32G32B32A32") return Image::Format::UintR32G32B32A32;
 	if (gslImageFormat == "uintA2R10G10B10") return Image::Format::UintA2R10G10B10;
 
-	if (gslImageFormat == "intR8") return Image::Format::SintR8;
-	if (gslImageFormat == "intR8G8") return Image::Format::SintR8G8;
-	if (gslImageFormat == "intR8G8B8A8") return Image::Format::SintR8G8B8A8;
-	if (gslImageFormat == "intR16") return Image::Format::SintR16;
-	if (gslImageFormat == "intR16G16") return Image::Format::SintR16G16;
-	if (gslImageFormat == "intR16G16B16A16") return Image::Format::SintR16G16B16A16;
-	if (gslImageFormat == "intR32") return Image::Format::SintR32;
-	if (gslImageFormat == "intR32G32") return Image::Format::SintR32G32;
-	if (gslImageFormat == "intR32G32B32A32") return Image::Format::SintR32G32B32A32;
+	if (gslImageFormat == "sintR8") return Image::Format::SintR8;
+	if (gslImageFormat == "sintR8G8") return Image::Format::SintR8G8;
+	if (gslImageFormat == "sintR8G8B8A8") return Image::Format::SintR8G8B8A8;
+	if (gslImageFormat == "sintR16") return Image::Format::SintR16;
+	if (gslImageFormat == "sintR16G16") return Image::Format::SintR16G16;
+	if (gslImageFormat == "sintR16G16B16A16") return Image::Format::SintR16G16B16A16;
+	if (gslImageFormat == "sintR32") return Image::Format::SintR32;
+	if (gslImageFormat == "sintR32G32") return Image::Format::SintR32G32;
+	if (gslImageFormat == "sintR32G32B32A32") return Image::Format::SintR32G32B32A32;
 
 	if (gslImageFormat == "unormR8") return Image::Format::UnormR8;
 	if (gslImageFormat == "unormR8G8") return Image::Format::UnormR8G8;
@@ -230,12 +230,12 @@ static Image::Format toImageFormat(string_view gslImageFormat)
 	if (gslImageFormat == "snormR16G16") return Image::Format::SnormR16G16;
 	if (gslImageFormat == "snormR16G16B16A16") return Image::Format::SnormR16G16B16A16;
 
-	if (gslImageFormat == "floatR16") return Image::Format::SfloatR16;
-	if (gslImageFormat == "floatR16G16") return Image::Format::SfloatR16G16;
-	if (gslImageFormat == "floatR16G16B16A16") return Image::Format::SfloatR16G16B16A16;
-	if (gslImageFormat == "floatR32") return Image::Format::SfloatR32;
-	if (gslImageFormat == "floatR32G32") return Image::Format::SfloatR32G32;
-	if (gslImageFormat == "floatR32G32B32A32") return Image::Format::SfloatR32G32B32A32;
+	if (gslImageFormat == "sfloatR16") return Image::Format::SfloatR16;
+	if (gslImageFormat == "sfloatR16G16") return Image::Format::SfloatR16G16;
+	if (gslImageFormat == "sfloatR16G16B16A16") return Image::Format::SfloatR16G16B16A16;
+	if (gslImageFormat == "sfloatR32") return Image::Format::SfloatR32;
+	if (gslImageFormat == "sfloatR32G32") return Image::Format::SfloatR32G32;
+	if (gslImageFormat == "sfloatR32G32B32A32") return Image::Format::SfloatR32G32B32A32;
 
 	if (gslImageFormat == "ufloatB10G11R11") return Image::Format::UfloatB10G11R11;
 
@@ -1138,7 +1138,13 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
 	if (lineData.word == "debugPrintf")
-		fileData.outputFileStream << "#extension GLSL_EXT_debug_printf : require";
+		fileData.outputFileStream << "#extension GL_EXT_debug_printf : require";
+	else if (lineData.word == "explicitTypes")
+		fileData.outputFileStream << "#extension GL_EXT_shader_explicit_arithmetic_types : require";
+	else if (lineData.word == "int8BitStorage")
+		fileData.outputFileStream << "#extension GL_EXT_shader_8bit_storage : require";
+	else if (lineData.word == "int16BitStorage")
+		fileData.outputFileStream << "#extension GL_EXT_shader_16bit_storage : require";
 	else if (lineData.word == "bindless")
 		fileData.outputFileStream << "#extension GL_EXT_nonuniform_qualifier : require";
 	else if (lineData.word == "scalarLayout")
@@ -1166,15 +1172,16 @@ static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& 
 //******************************************************************************************************************
 static void replaceVaribaleDot(string& word, const char* compare, bool toUpper = false) noexcept
 {
+	auto dotOffset = strlen(compare) - 1;
 	while (true)
 	{
 		auto index = word.find(compare);
 		if (index != string::npos && (index == 0 || (index > 0 &&
 			!isalpha(word[index - 1]) && !isalnum(word[index - 1]))))
 		{
-			word[index + 2] = '_';
+			word[index + dotOffset] = '_';
 			if (toUpper)
-				word[index + 3] = toupper(word[index + 3]);
+				word[index + dotOffset + 1] = toupper(word[index + 3]);
 			continue;
 		}
 		break;
@@ -1210,17 +1217,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
 
-	// TODO: half2, double2?
-	outputFileStream << "#version 460\n#define printf debugPrintfEXT\n"
-		"#define int32 int\n#define uint32 uint\n"
-		"#define float2 vec2\n#define float3 vec3\n#define float4 vec4\n"
-		"#define int2 ivec2\n#define int3 ivec3\n#define int4 ivec4\n"
-		"#define uint2 uvec2\n#define uint3 uvec3\n#define uint4 uvec4\n"
-		"#define bool2 bvec2\n#define bool3 bvec3\n#define bool4 bvec4\n"
-		"#define float2x2 mat2\n#define float3x3 mat3\n#define float4x4 mat4\n"
-		"#define float2x3 mat2x3\n#define float3x2 mat3x2\n"
-		"#define float2x4 mat2x4\n#define float4x2 mat4x2\n"
-		"#define float3x4 mat3x4\n#define float4x3 mat4x3\n"
+	outputFileStream << "#version 460\n#include \"types.gsl\"\n\n#define printf debugPrintfEXT\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	return true;
 }
@@ -1834,30 +1831,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n"
-		"#define accelerationStructure accelerationStructureEXT\n"
-		"#define gl_LaunchID gl_LaunchIDEXT\n#define gl_LaunchSize gl_LaunchSizeEXT\n"
-		"#define gl_InstanceCustomIndex gl_InstanceCustomIndexEXT\n#define gl_GeometryIndex gl_GeometryIndexEXT\n"
-		"#define gl_WorldRayOrigin gl_WorldRayOriginEXT\n#define gl_WorldRayDirection gl_WorldRayDirectionEXT\n"
-		"#define gl_ObjectRayOrigin gl_ObjectRayOriginEXT\n#define gl_ObjectRayDirection gl_ObjectRayDirectionEXT\n"
-		"#define gl_RayTmin gl_RayTminEXT\n#define gl_RayTmax gl_RayTmaxEXT\n"
-		"#define gl_RayTmin gl_RayTminEXT\n#define gl_RayTmax gl_RayTmaxEXT\n"
-		"#define gl_HitT gl_HitTEXT\n#define gl_HitKind gl_HitKindEXT\n"
-		"#define gl_ObjectToWorld gl_ObjectToWorldEXT\n#define gl_WorldToObject gl_WorldToObjectEXT\n"
-		"#define gl_WorldToObject3x4 gl_WorldToObject3x4EXT\n#define gl_ObjectToWorld3x4 gl_ObjectToWorld3x4EXT\n"
-		"#define gl_IncomingRayFlags gl_IncomingRayFlagsEXT\n#define gl_RayFlagsNone gl_RayFlagsNoneEXT\n"
-		"#define gl_RayFlagsOpaque gl_RayFlagsOpaqueEXT\n#define gl_RayFlagsNoOpaque gl_RayFlagsNoOpaqueEXT\n"
-		"#define gl_RayFlagsTerminateOnFirstHit gl_RayFlagsTerminateOnFirstHitEXT\n"
-		"#define gl_RayFlagsSkipClosestHitShader gl_RayFlagsSkipClosestHitShaderEXT\n"
-		"#define gl_RayFlagsCullBackFacingTriangles gl_RayFlagsCullBackFacingTrianglesEXT\n"
-		"#define gl_RayFlagsCullFrontFacingTriangles gl_RayFlagsCullFrontFacingTrianglesEXT\n"
-		"#define gl_RayFlagsCullOpaque gl_RayFlagsCullOpaqueEXT\n"
-		"#define gl_RayFlagsCullNoOpaque gl_RayFlagsCullNoOpaqueEXT\n"
-		"#define gl_HitKindFrontFacingTriangle gl_HitKindFrontFacingTriangleEXT\n"
-		"#define gl_HitKindBackFacingTriangle gl_HitKindBackFacingTriangleEXT\n"
-		"#define traceRay traceRayEXT\n#define terminateRay terminateRayEXT\n"
-		"#define reportIntersection reportIntersectionEXT\n#define ignoreIntersection ignoreIntersectionEXT\n"
-		"#define executeCallable executeCallableEXT\n#define hitAttribute hitAttributeEXT\n"
+	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 
 	// TODO: shaderRecordEXT support
