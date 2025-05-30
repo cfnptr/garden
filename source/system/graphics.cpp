@@ -545,56 +545,13 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 //**********************************************************************************************************************
 void GraphicsSystem::recreateSwapchain(const SwapchainChanges& changes)
 {
-	GARDEN_ASSERT(changes.framebufferSize || changes.imageCount || changes.vsyncState);
+	GARDEN_ASSERT_MSG(changes.framebufferSize || changes.imageCount || changes.vsyncState, 
+		"Redundant recreate swapchain call, no swapchain changes reported");
 	swapchainChanges.framebufferSize |= changes.framebufferSize;
 	swapchainChanges.imageCount |= changes.imageCount;
 	swapchainChanges.vsyncState |= changes.vsyncState;
 	forceRecreateSwapchain = true;
 }
-
-#if GARDEN_DEBUG || GARDEN_EDITOR
-//**********************************************************************************************************************
-void GraphicsSystem::setDebugName(ID<Buffer> buffer, const string& name)
-{
-	auto resource = GraphicsAPI::get()->bufferPool.get(buffer);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<Image> image, const string& name)
-{
-	auto resource = GraphicsAPI::get()->imagePool.get(image);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<ImageView> imageView, const string& name)
-{
-	auto resource = GraphicsAPI::get()->imageViewPool.get(imageView);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<Framebuffer> framebuffer, const string& name)
-{
-	auto resource = GraphicsAPI::get()->framebufferPool.get(framebuffer);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<Sampler> sampler, const string& name)
-{
-	auto resource = GraphicsAPI::get()->samplerPool.get(sampler);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string& name)
-{
-	auto resource = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<Blas> blas, const string& name)
-{
-	auto resource = GraphicsAPI::get()->blasPool.get(blas);
-	resource->setDebugName(name);
-}
-void GraphicsSystem::setDebugName(ID<Tlas> tlas, const string& name)
-{
-	auto resource = GraphicsAPI::get()->tlasPool.get(tlas);
-	resource->setDebugName(name);
-}
-#endif
 
 //**********************************************************************************************************************
 ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess,
@@ -841,7 +798,7 @@ void GraphicsSystem::destroy(ID<Image> image)
 	if (image)
 	{
 		auto imageView = graphicsAPI->imagePool.get(image);
-		GARDEN_ASSERT(!imageView->isSwapchain());
+		GARDEN_ASSERT_MSG(!imageView->isSwapchain(), "Can not destroy swapchain image");
 
 		if (imageView->hasDefaultView() && !graphicsAPI->forceResourceDestroy)
 			graphicsAPI->imageViewPool.destroy(imageView->getDefaultView());
@@ -862,7 +819,8 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto _image = graphicsAPI->imagePool.get(image);
-	GARDEN_ASSERT(ResourceExt::getInstance(**_image));
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**_image), 
+		"Image [" + _image->getDebugName() + "] is not ready");
 	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
 
@@ -874,7 +832,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 		layerCount = _image->getLayerCount();
 
 	if (type != Image::Type::Texture1DArray && type != Image::Type::Texture2DArray)
-		GARDEN_ASSERT(layerCount == 1);
+		GARDEN_ASSERT_MSG(layerCount == 1, "Texture array can not have layers");
 
 	auto imageView = graphicsAPI->imageViewPool.create(false, image,
 		type, format, baseLayer, layerCount, baseMip, mipCount);
@@ -895,7 +853,6 @@ View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
 }
 
 //**********************************************************************************************************************
-// TODO: add checks if attachments do not overlaps and repeat.
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	vector<Framebuffer::OutputAttachment>&& colorAttachments, Framebuffer::OutputAttachment depthStencilAttachment)
 {
@@ -903,19 +860,26 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 	auto graphicsAPI = GraphicsAPI::get();
 
+	// TODO: add checks if attachments do not overlaps and repeat.
 	// TODO: we can use attachments with different sizes, but should we?
+
 	#if GARDEN_DEBUG
 	uint32 validColorAttachCount = 0;
-	for	(auto colorAttachment : colorAttachments)
+	for	(uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 	{
+		auto colorAttachment = colorAttachments[i];
 		if (!colorAttachment.imageView)
 			continue;
 
 		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
-		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
+		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer color "
+			"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
+		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), 
+			"Incorrect framebuffer color attachment [" + to_string(i) + 
+			"] image view [" + imageView->getDebugName() + "] size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
+			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
 		validColorAttachCount++;
 	}
 	GARDEN_ASSERT((!colorAttachments.empty() && validColorAttachCount > 0) || colorAttachments.empty());
@@ -923,10 +887,13 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	if (depthStencilAttachment.imageView)
 	{
 		auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);
-		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
+		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect framebuffer depth/stencil " 
+			"attachment image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment));
+		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), "Incorrect "
+			"framebuffer depth/stencil attachment image view [" + imageView->getDebugName() + "] size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), "Missing "
+			"framebuffer depth/stencil attachment image view [" + imageView->getDebugName() + "] flag");
 	}
 	#endif
 
@@ -935,6 +902,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
+
+//**********************************************************************************************************************
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
@@ -945,33 +914,56 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 	psize outputAttachmentCount = 0;
 	for (const auto& subpass : subpasses)
 	{
-		for	(auto inputAttachment : subpass.inputAttachments)
+		const auto& inputAttachments = subpass.inputAttachments;
+		for	(uint32 i = 0; i < (uint32)inputAttachments.size(); i++)
 		{
-			GARDEN_ASSERT(inputAttachment.imageView);
-			GARDEN_ASSERT(inputAttachment.shaderStages != ShaderStage::None);
+			auto inputAttachment = inputAttachments[i];
 			auto imageView = graphicsAPI->imageViewPool.get(inputAttachment.imageView);
+			GARDEN_ASSERT_MSG(inputAttachment.imageView, "Incorrect framebuffer input "
+				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
+			GARDEN_ASSERT_MSG(inputAttachment.shaderStages != ShaderStage::None, "No framebuffer input "
+				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] shader stages");
+			
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-			GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
+			GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()),
+				"Incorrect framebuffer input attachment [" + to_string(i) + 
+				"] image view [" + imageView->getDebugName() + "] size at mip");
+			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment), "Missing framebuffer "
+				"input attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
 		}
 
-		for (auto outputAttachment : subpass.outputAttachments)
+		const auto& outputAttachments = subpass.outputAttachments;
+		for	(uint32 i = 0; i < (uint32)outputAttachments.size(); i++)
 		{
-			GARDEN_ASSERT(outputAttachment.imageView);
-			GARDEN_ASSERT((!outputAttachment.flags.clear && !outputAttachment.flags.load) ||
-				(outputAttachment.flags.clear && !outputAttachment.flags.load) ||
-				(!outputAttachment.flags.clear && outputAttachment.flags.load));
+			auto outputAttachment = outputAttachments[i];
 			auto imageView = graphicsAPI->imageViewPool.get(outputAttachment.imageView);
+			GARDEN_ASSERT_MSG(outputAttachment.imageView, "Framebuffer "
+				"output attachment [" + to_string(i) + "] image view is null");
+			GARDEN_ASSERT_MSG((!outputAttachment.flags.clear && !outputAttachment.flags.load) ||
+				(outputAttachment.flags.clear && !outputAttachment.flags.load) ||
+				(!outputAttachment.flags.clear && outputAttachment.flags.load),
+				"Incorrect framebuffer output attachment [" + to_string(i) + 
+				"] image view [" + imageView->getDebugName() + "] flags");
+			
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
+			GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()),
+				"Incorrect framebuffer output attachment [" + to_string(i) + 
+				"] image view [" + imageView->getDebugName() + "] size at mip");
 			#if GARDEN_DEBUG
 			if (isFormatColor(imageView->getFormat()))
-				GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
+			{
+				GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
+					"output attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] color flag");
+			}
 			#endif
 			outputAttachmentCount++;
 
 			for	(auto inputAttachment : subpass.inputAttachments)
-				GARDEN_ASSERT(outputAttachment.imageView != inputAttachment.imageView);
+			{
+				GARDEN_ASSERT_MSG(outputAttachment.imageView != inputAttachment.imageView, 
+					"Framebuffer output attachment [" + to_string(i) +  "] image view [" + 
+					imageView->getDebugName() + "] is also used as an input attachment");
+			}
 		}
 	}
 
@@ -1049,8 +1041,10 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
-	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
-	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), "Pipeline [" + 
+		pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
+		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 
 	// TODO: check if all items initialized if not using bindless.
 	#endif
@@ -1068,8 +1062,10 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->computePipelinePool.get(computePipeline);
-	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
-	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), "Pipeline [" + 
+		pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
+		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 
 	// TODO: check if all items initialized if not using bindless.
 	#endif
@@ -1087,8 +1083,10 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
-	GARDEN_ASSERT(ResourceExt::getInstance(**pipelineView)); // is ready
-	GARDEN_ASSERT(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size());
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), "Pipeline [" + 
+		pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
+		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 
 	// TODO: check if all items initialized if not using bindless.
 	#endif
@@ -1121,7 +1119,7 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::TrianglesBuffer* geometryArray,
 	auto blasView = graphicsAPI->blasPool.get(blas);
 	if (!isRecording())
 	{
-		startRecording(CommandBufferType::ComputeOnly);
+		startRecording(CommandBufferType::Compute);
 		blasView->build(scratchBuffer);
 		stopRecording();
 	}
@@ -1144,7 +1142,7 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::AabbsBuffer* geometryArray,
 	auto blasView = graphicsAPI->blasPool.get(blas);
 	if (!isRecording())
 	{
-		startRecording(CommandBufferType::ComputeOnly);
+		startRecording(CommandBufferType::Compute);
 		blasView->build(scratchBuffer);
 		stopRecording();
 	}
@@ -1163,18 +1161,20 @@ View<Blas> GraphicsSystem::get(ID<Blas> blas) const
 	return GraphicsAPI::get()->blasPool.get(blas);
 }
 
-ID<Tlas> GraphicsSystem::createTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+ID<Tlas> GraphicsSystem::createTlas(vector<Tlas::InstanceData>&& instances, 
+	ID<Buffer> instanceBuffer, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
 {
+	GARDEN_ASSERT(!instances.empty());
 	GARDEN_ASSERT(instanceBuffer);
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto tlas = graphicsAPI->tlasPool.create(instanceBuffer, flags);
+	auto tlas = graphicsAPI->tlasPool.create(std::move(instances), instanceBuffer, flags);
 	SET_RESOURCE_DEBUG_NAME(tlas, "tlas" + to_string(*tlas));
 
 	auto tlasView = graphicsAPI->tlasPool.get(tlas);
 	if (!isRecording())
 	{
-		startRecording(CommandBufferType::ComputeOnly);
+		startRecording(CommandBufferType::Compute);
 		tlasView->build(scratchBuffer);
 		stopRecording();
 	}
@@ -1215,7 +1215,7 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 		graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
 	case CommandBufferType::TransferOnly:
 		graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
-	case CommandBufferType::ComputeOnly:
+	case CommandBufferType::Compute:
 		graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
 	default: abort();
 	}
@@ -1227,6 +1227,20 @@ void GraphicsSystem::stopRecording()
 		throw GardenError("Not recording.");
 	#endif
 	GraphicsAPI::get()->currentCommandBuffer = nullptr;
+}
+bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
+{
+	switch (commandBufferType)
+	{
+	case CommandBufferType::Frame: return false;
+	case CommandBufferType::Graphics:
+		return GraphicsAPI::get()->graphicsCommandBuffer->isBusy();
+	case CommandBufferType::TransferOnly:
+		return GraphicsAPI::get()->transferCommandBuffer->isBusy();
+	case CommandBufferType::Compute:
+		return GraphicsAPI::get()->computeCommandBuffer->isBusy();
+	default: abort();
+	}
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
@@ -1272,5 +1286,47 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 	pipelineView->setViewportScissor();
 	pipelineView->pushConstants(&pc);
 	pipelineView->draw({}, 24);
+}
+
+//**********************************************************************************************************************
+void GraphicsSystem::setDebugName(ID<Buffer> buffer, const string& name)
+{
+	auto resource = GraphicsAPI::get()->bufferPool.get(buffer);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Image> image, const string& name)
+{
+	auto resource = GraphicsAPI::get()->imagePool.get(image);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<ImageView> imageView, const string& name)
+{
+	auto resource = GraphicsAPI::get()->imageViewPool.get(imageView);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Framebuffer> framebuffer, const string& name)
+{
+	auto resource = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Sampler> sampler, const string& name)
+{
+	auto resource = GraphicsAPI::get()->samplerPool.get(sampler);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string& name)
+{
+	auto resource = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Blas> blas, const string& name)
+{
+	auto resource = GraphicsAPI::get()->blasPool.get(blas);
+	resource->setDebugName(name);
+}
+void GraphicsSystem::setDebugName(ID<Tlas> tlas, const string& name)
+{
+	auto resource = GraphicsAPI::get()->tlasPool.get(tlas);
+	resource->setDebugName(name);
 }
 #endif

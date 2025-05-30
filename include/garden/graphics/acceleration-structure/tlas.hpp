@@ -71,7 +71,10 @@ public:
 		InstanceData() noexcept = default;
 	};
 private:
-	Tlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags);
+	uint16 _alignment = 0;
+	vector<InstanceData> instances;
+
+	Tlas(vector<InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFlagsAS flags);
 
 	friend class TlasExt;
 	friend class LinearPool<Tlas>;
@@ -83,17 +86,32 @@ public:
 	Tlas() = default;
 
 	/**
+	 * @brief Returns TLAS instance array.
+	 */
+	const vector<InstanceData>& getInstances() const noexcept { return instances; }
+
+	/**
 	 * @brief Returns TLAS buffer instance size in bytes.
 	 */
 	static uint32 getInstanceSize() noexcept;
 	/**
-	 * @brief Creates and returns TLAS instance buffer data.
+	 * @brief Fills up TLAS instance buffer data.
 	 * 
 	 * @param[in] instanceArray target TLAS instance array
 	 * @param instanceCount instance array size
 	 * @param[out] data output instance buffer data
 	 */
 	static void getInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept;
+
+	//******************************************************************************************************************
+	// Render commands
+	//******************************************************************************************************************
+
+	/**
+	 * @brief Actually builds top level acceleration structure.
+	 * @param scratchBuffer AS scratch buffer (null = auto temporary)
+	 */
+	void build(ID<Buffer> scratchBuffer = {}) final;
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Tlas::InstanceFlags)
@@ -125,5 +143,40 @@ static string toStringList(Tlas::InstanceFlags tlasInstanceFlags)
 	if (list.length() >= 3) list.resize(list.length() - 3);
 	return list;
 }
+
+/***********************************************************************************************************************
+ * @brief Graphics TLAS resource extension mechanism.
+ * @warning Use only if you know what you are doing!
+ */
+class TlasExt final
+{
+public:
+	/**
+	 * @brief Returns TLAS instance array.
+	 * @warning In most cases you should use @ref Tlas functions.
+	 * @param[in] tlas target TLAS instance
+	 */
+	static vector<Tlas::InstanceData>& getInstances(Tlas& tlas) noexcept { return tlas.instances; }
+
+	/**
+	 * @brief Creates a new TLAS data holder.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * 
+	 * @param[in] instances TLAS instance array
+	 * @param instanceBuffer target TLAS instance buffer
+	 * @param flags acceleration structure build flags
+	 */
+	static Tlas create(vector<Tlas::InstanceData>&& instances, 
+		ID<Buffer> instanceBuffer, BuildFlagsAS flags)
+	{
+		return Tlas(std::move(instances), instanceBuffer, flags);
+	}
+	/**
+	 * @brief Destroys TLAS instance.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * @param[in,out] tlas target TLAS instance
+	 */
+	static void destroy(Tlas& tlas) { tlas.destroy(); }
+};
 
 } // namespace garden::graphics

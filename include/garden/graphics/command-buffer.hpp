@@ -449,6 +449,10 @@ public:
 	 * @brief Submits recorded command to the GPU.
 	 */
 	virtual void submit() = 0;
+	/**
+	 * @brief Returns true if command buffer is busy right now.
+	 */
+	virtual bool isBusy() = 0;
 
 	void addLockedResource(ID<Buffer> resource)
 	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Buffer); }

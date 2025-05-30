@@ -206,10 +206,11 @@ bool Image::destroy()
 		auto imageInstance = graphicsAPI->imagePool.getID(this);
 		for (auto& imageView : graphicsAPI->imageViewPool)
 		{
-			if (!ResourceExt::getInstance(imageView) || imageView.getImage() != imageInstance)
+			if (!ResourceExt::getInstance(imageView))
 				continue;
-			throw GardenError("Image view is still using destroyed image. (image: " +
-				debugName + ", imageView: " + imageView.getDebugName() + ")");
+			GARDEN_ASSERT_MSG(imageInstance != imageView.getImage(), 
+				"Image view [" + imageView.getDebugName() + "] is "
+				"still using destroyed image [" + debugName + "]");
 		}
 	}
 	#endif
@@ -235,7 +236,7 @@ ID<ImageView> Image::getDefaultView()
 {
 	if (!defaultView)
 	{
-		GARDEN_ASSERT(instance); // is ready
+		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
 
 		auto graphicsAPI = GraphicsAPI::get();
 		auto image = graphicsAPI->imagePool.getID(this);
@@ -274,28 +275,10 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 	
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
-void Image::setDebugName(const string& name)
-{
-	Resource::setDebugName(name);
-
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->hasDebugUtils || !instance)
-			return;
-
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-	}
-	else abort();
-}
-#endif
-
 void Image::generateMips(Sampler::Filter filter)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
 
 	auto image = GraphicsAPI::get()->imagePool.getID(this);
 	auto layerCount = getLayerCount();
@@ -328,12 +311,12 @@ void Image::generateMips(Sampler::Filter filter)
 //**********************************************************************************************************************
 void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 {
-	GARDEN_ASSERT(regions);
-	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format));
-	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
+	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
@@ -352,12 +335,12 @@ void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 {
-	GARDEN_ASSERT(regions);
-	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatSint(format));
-	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
+	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isFormatSint(format), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
@@ -376,12 +359,12 @@ void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 {
-	GARDEN_ASSERT(regions);
-	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatUint(format));
-	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
+	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isFormatUint(format), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearImageCommand command;
@@ -400,12 +383,12 @@ void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
-	GARDEN_ASSERT(regions);
-	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(isFormatDepthOrStencil(format));
-	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
+	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isFormatDepthOrStencil(format), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
 	
 	ClearImageCommand command;
@@ -435,13 +418,16 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto srcView = graphicsAPI->imagePool.get(source);
-	GARDEN_ASSERT(srcView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(srcView->usage, Usage::TransferSrc));
+	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
+		"Missing source image [" + srcView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(srcView->instance, "Source image [" + srcView->getDebugName() + "] is not ready");
 
 	auto dstView = graphicsAPI->imagePool.get(destination);
-	GARDEN_ASSERT(dstView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(dstView->usage, Usage::TransferDst));
-	GARDEN_ASSERT(toBinarySize(srcView->format) == toBinarySize(dstView->format));
+	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst),
+		"Missing destination image [" + dstView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(toBinarySize(srcView->format) == toBinarySize(dstView->format), "Different source [" +
+		srcView->getDebugName() + "] and destination [" + dstView->getDebugName() + "] image format binary sizes");
+	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -496,12 +482,16 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto bufferView = graphicsAPI->bufferPool.get(source);
-	GARDEN_ASSERT(ResourceExt::getInstance(**bufferView)); // is ready
-	GARDEN_ASSERT(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc));
+	
+	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
+		"Missing source buffer [" + bufferView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**bufferView), "Buffer [" + 
+		bufferView->getDebugName() + "] is not ready");
 	
 	auto imageView = graphicsAPI->imagePool.get(destination);
-	GARDEN_ASSERT(imageView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(imageView->getUsage(), Usage::TransferDst));
+	GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferDst),
+		"Missing destination image [" + imageView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(imageView->instance, "Image [" + imageView->getDebugName() + "] is not ready");
 	
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -553,12 +543,15 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto imageView = graphicsAPI->imagePool.get(source);
-	GARDEN_ASSERT(imageView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(imageView->getUsage(), Usage::TransferSrc));
+	GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferSrc),
+		"Missing source image [" + imageView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(imageView->instance, "Image [" + imageView->getDebugName() + "] is not ready");
 
 	auto bufferView = graphicsAPI->bufferPool.get(destination);
-	GARDEN_ASSERT(ResourceExt::getInstance(**bufferView)); // is ready
-	GARDEN_ASSERT(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferDst));
+	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
+		"Missing destination buffer [" + bufferView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**bufferView), "Buffer [" + 
+		bufferView->getDebugName() + "] is not ready");
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -611,12 +604,14 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto srcView = graphicsAPI->imagePool.get(source);
-	GARDEN_ASSERT(srcView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(srcView->usage, Usage::TransferSrc));
+	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc),
+		"Missing source image [" + srcView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(srcView->instance, "Source image [" + srcView->getDebugName() + "] is not ready");
 
 	auto dstView = graphicsAPI->imagePool.get(destination);
-	GARDEN_ASSERT(dstView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(dstView->usage, Usage::TransferDst));
+	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst),
+		"Missing destination image [" + srcView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -666,6 +661,24 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }
+
+#if GARDEN_DEBUG || GARDEN_EDITOR
+void Image::setDebugName(const string& name)
+{
+	Resource::setDebugName(name);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils || !instance)
+			return;
+
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+	}
+	else abort();
+}
+#endif
 
 //**********************************************************************************************************************
 static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format format, 
@@ -737,10 +750,9 @@ bool ImageView::destroy()
 				{
 					for (auto resource : resourceArray)
 					{
-						if (ID<ImageView>(resource) != imageViewInstance)
-							continue;
-						throw GardenError("Descriptor set is still using destroyed image view. (imageView: " +
-							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+						GARDEN_ASSERT_MSG(imageViewInstance != ID<ImageView>(resource), 
+							"Descriptor set [" + descriptorSet.getDebugName() + "] is "
+							"still using destroyed image view [" + debugName + "]");
 					}
 				}
 			}
@@ -754,17 +766,14 @@ bool ImageView::destroy()
 			const auto& colorAttachments = framebuffer.getColorAttachments();
 			for (const auto& attachment : colorAttachments)
 			{
-				if (attachment.imageView != imageViewInstance)
-					continue;
-				throw GardenError("Framebuffer is still using destroyed image view. (imageView: " +
-					debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
+				GARDEN_ASSERT_MSG(imageViewInstance != attachment.imageView, 
+					"Framebuffer [" + framebuffer.getDebugName() + "] is "
+					"still using destroyed image view [" + debugName + "]");
 			}
 
-			if (framebuffer.getDepthStencilAttachment().imageView == imageViewInstance)
-			{
-				throw GardenError("Framebuffer is still using destroyed image view. (imageView: " +
-					debugName + ", framebuffer: " + framebuffer.getDebugName() + ")");
-			}
+			GARDEN_ASSERT_MSG(imageViewInstance != framebuffer.getDepthStencilAttachment().imageView, 
+				"Framebuffer [" + framebuffer.getDebugName() + "] is "
+				"still using destroyed image view [" + debugName + "]");
 		}
 	}
 	#endif

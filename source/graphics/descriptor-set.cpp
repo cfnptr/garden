@@ -35,8 +35,9 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 	auto vulkanAPI = VulkanAPI::get();
 	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
 	const auto& descriptorSetLayouts = PipelineExt::getDescriptorSetLayouts(**pipelineView);
-	GARDEN_ASSERT(index < descriptorSetLayouts.size());
-	GARDEN_ASSERT(descriptorSetLayouts[index]);
+	GARDEN_ASSERT_MSG(index < descriptorSetLayouts.size(), "Out of pipeline [" + pipelineView->getDebugName() + 
+		"] descriptor set count [" + to_string(descriptorSetLayouts.size()) + "]");
+	GARDEN_ASSERT_MSG(descriptorSetLayouts[index], "Assert " + pipelineView->getDebugName());
 
 	vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)descriptorSetLayouts[index];
 	vk::DescriptorPool descriptorPool = (VkDescriptorPool)PipelineExt::getDescriptorPools(**pipelineView)[index];
@@ -175,7 +176,7 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			for (const auto& resourceArray : pair.second.resourceSets)
 			{
 				for (auto resource : resourceArray)
-					GARDEN_ASSERT(resource);
+					GARDEN_ASSERT_MSG(resource, "New descriptor set uniform [" + pair.first + "] resource is null");
 			}
 		}
 	}
@@ -284,8 +285,8 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			}
 			else
 			{
-				// You should add 'mutable' keyword to the uniform to use dynamic samplers.
-				GARDEN_ASSERT(samplers.find(pair.first) == samplers.end());
+				GARDEN_ASSERT_MSG(samplers.find(pair.first) == samplers.end(), 
+					"Shader uniform [" + pair.first + "] is not marked as 'mutable'");
 			}
 
 			for (uint32 i = 0; i < newSetCount; i++)
@@ -546,7 +547,8 @@ bool DescriptorSet::destroy()
 //**********************************************************************************************************************
 void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 {
-	GARDEN_ASSERT(this->uniforms.size() == 0 || uniforms.size() == this->uniforms.size());
+	GARDEN_ASSERT_MSG(this->uniforms.size() == 0 || 
+		uniforms.size() == this->uniforms.size(), "Assert " + debugName);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
@@ -555,8 +557,9 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 	#if GARDEN_DEBUG
 	for (const auto& pair : uniforms)
 	{
-		GARDEN_ASSERT(!pair.first.empty());
-		GARDEN_ASSERT(setCount == pair.second.resourceSets.size());
+		GARDEN_ASSERT_MSG(setCount == pair.second.resourceSets.size(), "Different descriptor set [" + 
+			debugName + "] count and resource sets array size");
+		GARDEN_ASSERT_MSG(!pair.first.empty(), "Descriptor set [" + debugName + "] uniform name is empty");
 	}
 
 	auto maxBindlessCount = pipelineView->getMaxBindlessCount();
@@ -577,11 +580,13 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 
 			if (pipelineUniform.arraySize > 0)
 			{
-				GARDEN_ASSERT(resourceArray.size() == pipelineUniform.arraySize);
+				GARDEN_ASSERT_MSG(resourceArray.size() == pipelineUniform.arraySize, "Different descriptor set [" +
+					debugName + " and pipeline [" + pipelineView->getDebugName() + "] array uniform size");
 			}
 			else
 			{
-				GARDEN_ASSERT(resourceArray.size() == maxBindlessCount);
+				GARDEN_ASSERT_MSG(resourceArray.size() == maxBindlessCount, "Descriptor set [" + debugName + "] resource "
+					"array size is different from pipeline [" + pipelineView->getDebugName() + "] maximum bindless size");
 			}
 
 			for (auto resource : resourceArray)
@@ -593,35 +598,47 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 					uniformType == GslUniformType::SubpassInput)
 				{
 					auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
-					GARDEN_ASSERT(toImageType(uniformType) == imageView->getType());
+					GARDEN_ASSERT_MSG(toImageType(uniformType) == imageView->getType(), "Different descriptor set [" +
+						debugName + "] and pipeline uniform [" + pair.first + "] types");
 
 					auto image = graphicsAPI->imagePool.get(imageView->getImage());
 					if (isSamplerType(uniformType))
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Sampled));
+						GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Sampled), "Missing "
+							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
 					}
 					else if (isImageType(uniformType))
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Storage));
+						GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Storage), "Missing "
+							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
 					}
 					else
 					{
-						GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
+						GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment), "Missing "
+							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
 					}
 				}
 				else if (isBufferType(uniformType))
 				{
-					auto buffer = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
+					auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 					if (uniformType == GslUniformType::UniformBuffer)
 					{
-						GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Uniform));
+						GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Uniform), "Missing "
+							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
 					}
 					else
 					{
-						GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage));
+						GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Storage), "Missing "
+							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
 					}
 				}
-				else if (uniformType == GslUniformType::AccelerationStructure) { }
+				else if (uniformType == GslUniformType::AccelerationStructure)
+				{
+					auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
+					auto bufferView = graphicsAPI->bufferPool.get(tlasView->getStorageBuffer());
+					GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::StorageAS), "Missing "
+						"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
+				}
 				else abort();
 			}
 		}
@@ -646,12 +663,12 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 void DescriptorSet::updateUniform(string_view name, 
 	const UniformResource& uniform, uint32 elementIndex, uint32 setIndex)
 {
-	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(uniform.resource);
+	GARDEN_ASSERT_MSG(!name.empty(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(uniform.resource, "Assert " + debugName);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
-	GARDEN_ASSERT(elementIndex <= pipelineView->getMaxBindlessCount());
+	GARDEN_ASSERT_MSG(elementIndex <= pipelineView->getMaxBindlessCount(), "Assert " + debugName);
 
 	const auto& pipelineUniforms = pipelineView->getUniforms();
 	auto pipelineUniform = pipelineUniforms.find(name);
@@ -673,30 +690,41 @@ void DescriptorSet::updateUniform(string_view name,
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
 			if (isSamplerType(uniformType))
 			{
-				GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Sampled));
+				GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Sampled), "Missing "
+					"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
 			}
 			else if (isImageType(uniformType))
 			{
-				GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::Storage));
+				GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Storage), "Missing "
+					"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
 			}
 			else
 			{
-				GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
+				GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment), "Missing "
+					"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
 			}
 		}
 		else if (isBufferType(uniformType))
 		{
-			auto buffer = graphicsAPI->bufferPool.get(ID<Buffer>(uniform.resource));
+			auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(uniform.resource));
 			if (uniformType == GslUniformType::UniformBuffer)
 			{
-				GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Uniform));
+				GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Uniform), "Missing "
+					"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
 			}
 			else
 			{
-				GARDEN_ASSERT(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage));
+				GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Storage), "Missing "
+					"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
 			}
 		}
-		else if (uniformType == GslUniformType::AccelerationStructure) { }
+		else if (uniformType == GslUniformType::AccelerationStructure)
+		{
+			auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(uniform.resource));
+			auto bufferView = graphicsAPI->bufferPool.get(tlasView->getStorageBuffer());
+			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::StorageAS), "Missing "
+				"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
+		}
 		else abort();
 	}
 	#endif
@@ -706,12 +734,12 @@ void DescriptorSet::updateUniform(string_view name,
 
 void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint32 elementOffset, uint32 setIndex)
 {
-	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(elementCount > 0);
+	GARDEN_ASSERT_MSG(!name.empty(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(elementCount > 0, "Assert " + debugName);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
-	GARDEN_ASSERT(elementCount + elementOffset <= pipelineView->getMaxBindlessCount());
+	GARDEN_ASSERT_MSG(elementCount + elementOffset <= pipelineView->getMaxBindlessCount(), "Assert " + debugName);
 
 	const auto& pipelineUniforms = pipelineView->getUniforms();
 	auto pipelineUniform = pipelineUniforms.find(name);

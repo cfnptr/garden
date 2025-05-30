@@ -99,7 +99,7 @@ enum class CommandBufferType : uint8
 	Frame,        /**< Current frame command buffer. */
 	Graphics,     /**< Supports graphics, transfer and compute commands. */
 	TransferOnly, /**< Supports transfer only commands. */
-	ComputeOnly,  /**< Supports compute only commands. */
+	Compute,      /**< Supports compute and transfer commands. */
 	AsyncCompute, /**< Async compute command buffer, same support as compute. */
 	Count         /**< Command buffer type count. */
 };

@@ -262,7 +262,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 	}
 
 	if (graphicsIndex == UINT32_MAX)
-		throw GardenError("No Vulkan graphics queue with present.");
+		throw GardenError("No graphics queue with present on this GPU.");
 
 	for (uint32 i = 0; i < (uint32)properties.size(); i++)
 	{
@@ -285,13 +285,13 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 		}
 
 		if (transferIndex == UINT32_MAX)
-			throw GardenError("No Vulkan transfer queue.");
+			throw GardenError("No transfer queue on this GPU.");
 	}
 
 	for (uint32 i = 0; i < (uint32)properties.size(); i++)
 	{
-		if (properties[i].queueFlags & vk::QueueFlagBits::eCompute &&
-			graphicsIndex != i && transferIndex != i)
+		if (properties[i].queueFlags & (vk::QueueFlagBits::eCompute | 
+			vk::QueueFlagBits::eTransfer) && graphicsIndex != i && transferIndex != i)
 		{
 			computeIndex = i;
 			break;
@@ -302,7 +302,8 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 	{
 		for (uint32 i = 0; i < (uint32)properties.size(); i++)
 		{
-			if (properties[i].queueFlags & vk::QueueFlagBits::eCompute && graphicsIndex != i)
+			if (properties[i].queueFlags & (vk::QueueFlagBits::eCompute | 
+				vk::QueueFlagBits::eTransfer) && graphicsIndex != i)
 			{
 				computeIndex = i;
 				break;
@@ -313,7 +314,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 		{
 			for (uint32 i = 0; i < (uint32)properties.size(); i++)
 			{
-				if (properties[i].queueFlags & vk::QueueFlagBits::eCompute)
+				if (properties[i].queueFlags & (vk::QueueFlagBits::eCompute | vk::QueueFlagBits::eTransfer))
 				{
 					computeIndex = i;
 					break;
@@ -321,7 +322,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 			}
 
 			if (computeIndex == UINT32_MAX)
-				throw GardenError("No Vulkan compute queue.");
+				throw GardenError("No compute queue with transfer on this GPU.");
 		}
 	}
 
@@ -671,6 +672,13 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		lastPNext = &rayTracingPipelineFeatures.pNext;
 	}
 
+	#if 0 // Debug only
+	vk::PhysicalDeviceRayTracingValidationFeaturesNV rayTracingValidationFeatures;
+	rayTracingValidationFeatures.rayTracingValidation = VK_TRUE;
+	*lastPNext = &rayTracingValidationFeatures;
+	lastPNext = &rayTracingValidationFeatures.pNext;
+	#endif
+
 	vk::DeviceCreateInfo deviceInfo({}, queueInfos, {}, extensions, {}, &deviceFeatures);
 	auto device = physicalDevice.createDevice(deviceInfo);
 	volkLoadDevice(device);
@@ -896,9 +904,9 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	frameCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::Frame);
 	graphicsCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::Graphics);
 	transferCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::TransferOnly);
-	computeCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::ComputeOnly);
+	computeCommandBuffer = new VulkanCommandBuffer(this, CommandBufferType::Compute);
 
-	GARDEN_ASSERT(!vulkanInstance);
+	GARDEN_ASSERT_MSG(!vulkanInstance, "Graphics API is already initialized");
 	vulkanInstance = this;
 }
 
@@ -954,7 +962,7 @@ VulkanAPI::~VulkanAPI()
 
 	instance.destroy();
 
-	GARDEN_ASSERT(vulkanInstance);
+	GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not initialized");
 	vulkanInstance = nullptr;
 }
 

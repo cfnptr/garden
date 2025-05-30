@@ -51,7 +51,7 @@ void JsonSerializer::beginChild(string_view name)
 }
 void JsonSerializer::endChild()
 {
-	GARDEN_ASSERT(hierarchy.size() > 1); // No child to end.
+	GARDEN_ASSERT_MSG(hierarchy.size() > 1, "No child to end");
 	hierarchy.pop();
 }
 
@@ -128,7 +128,7 @@ void JsonSerializer::write(string_view value)
 
 void JsonSerializer::endArrayElement()
 {
-	GARDEN_ASSERT(hierarchy.size() > 1); // No element to end.
+	GARDEN_ASSERT_MSG(hierarchy.size() > 1, "No array element to end");
 	hierarchy.pop();
 }
 
@@ -361,7 +361,7 @@ bool JsonDeserializer::beginChild(string_view name)
 }
 void JsonDeserializer::endChild()
 {
-	GARDEN_ASSERT(hierarchy.size() > 1); // No child to end.
+	GARDEN_ASSERT_MSG(hierarchy.size() > 1, "No child to end");
 	hierarchy.pop();
 }
 
@@ -482,7 +482,7 @@ bool JsonDeserializer::read(string& value)
 
 void JsonDeserializer::endArrayElement()
 {
-	GARDEN_ASSERT(hierarchy.size() > 1); // No element to end.
+	GARDEN_ASSERT_MSG(hierarchy.size() > 1, "No array element to end");
 	hierarchy.pop();
 }
 

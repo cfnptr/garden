@@ -162,8 +162,8 @@ public:
 	 */
 	void addSharedPrefab(string_view path, const Hash128& uuid)
 	{
-		auto result = tryAddSharedPrefab(path, uuid);
-		GARDEN_ASSERT(result); // Shared prefab already exist
+		auto addResult = tryAddSharedPrefab(path, uuid);
+		GARDEN_ASSERT_MSG(addResult, "Shared prefab [" + string(path) + "] already exist");
 	}
 	/**
 	 * @brief Adds shared prefab to the map.
@@ -173,8 +173,8 @@ public:
 	 */
 	void addSharedPrefab(string_view path, ID<Entity> prefab)
 	{
-		auto result = tryAddSharedPrefab(path, prefab);
-		GARDEN_ASSERT(result); // Shared prefab already exist
+		auto addResult = tryAddSharedPrefab(path, prefab);
+		GARDEN_ASSERT_MSG(addResult, "Shared prefab [" + string(path) + "] already exist");
 	}
 
 	/*******************************************************************************************************************

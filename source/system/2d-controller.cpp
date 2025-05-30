@@ -76,7 +76,7 @@ void Controller2DSystem::init()
 	cameraView->p.orthographic.width = float2(-defaultSize, defaultSize) * aspectRatio;
 	cameraView->p.orthographic.height = float2(-defaultSize, defaultSize);
 
-	GARDEN_ASSERT(!graphicsSystem->camera); // Several main cameras detected!
+	GARDEN_ASSERT_MSG(!graphicsSystem->camera, "Detected several main cameras");
 	graphicsSystem->camera = camera;
 
 	#if GARDEN_EDITOR

@@ -123,9 +123,11 @@ void AutoExposureRenderSystem::render()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
 	auto histogramPipelineView = graphicsSystem->get(histogramPipeline);
 	auto averagePipelineView = graphicsSystem->get(averagePipeline);
-	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady())
+	auto luminanceBufferView = graphicsSystem->get(toneMappingSystem->getLuminanceBuffer());
+	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady() || !luminanceBufferView->isReady())
 		return;
 
 	if (!histogramDescriptorSet)

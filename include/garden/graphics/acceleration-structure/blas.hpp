@@ -82,4 +82,43 @@ public:
 	// TODO: void update(const TrianglesBuffer* geometryArray, uint32 geometryCount);
 };
 
+/***********************************************************************************************************************
+ * @brief Graphics BLAS resource extension mechanism.
+ * @warning Use only if you know what you are doing!
+ */
+class BlasExt final
+{
+public:
+	/**
+	 * @brief Creates a new TLAS data holder.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * 
+	 * @param[in] geometryArray target triangle geometry array
+	 * @param geometryCount geometry array size
+	 * @param flags acceleration structure build flags
+	 */
+	static Blas create(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags)
+	{
+		return Blas(geometryArray, geometryCount, flags);
+	}
+	/**
+	 * @brief Creates a new TLAS data holder.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * 
+	 * @param[in] geometryArray target AABB geometry array
+	 * @param geometryCount geometry array size
+	 * @param flags acceleration structure build flags
+	 */
+	static Blas create(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags)
+	{
+		return Blas(geometryArray, geometryCount, flags);
+	}
+	/**
+	 * @brief Destroys BLAS instance.
+	 * @warning In most cases you should use @ref GraphicsSystem functions.
+	 * @param[in,out] blas target BLAS instance
+	 */
+	static void destroy(Blas& blas) { blas.destroy(); }
+};
+
 } // namespace garden::graphics

@@ -177,7 +177,7 @@ public:
 		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
 		auto componentData = entityView->findComponent(typeid(C).hash_code());
-		GARDEN_ASSERT(componentData);
+		GARDEN_ASSERT_MSG(componentData, "Entity does not have component " + typeToString(typeid(C)));
 		return components.get(ID<C>(componentData->instance));
 	}
 	View<C> tryGetComponent(ID<Entity> entity) const

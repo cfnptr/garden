@@ -71,7 +71,7 @@ void FpvControllerSystem::init()
 	cameraView->type = ProjectionType::Perspective;
 	cameraView->p.perspective.aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
 
-	GARDEN_ASSERT(!graphicsSystem->camera); // Several main cameras detected!
+	GARDEN_ASSERT_MSG(!graphicsSystem->camera, "Detected several main cameras");
 	graphicsSystem->camera = camera;
 }
 void FpvControllerSystem::deinit()

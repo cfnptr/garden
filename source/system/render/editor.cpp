@@ -446,7 +446,7 @@ static void renderAddComponent(const EditorRenderSystem::EntityInspectors& entit
 			{
 				ComponentEntry entry(pair.first);
 				auto emplaceResult = currentNode->emplace(std::move(word), std::move(entry));
-				GARDEN_ASSERT(emplaceResult.second); // Corrupted memory
+				GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 				currentNode = &emplaceResult.first->second.nodes;
 			}
 			else

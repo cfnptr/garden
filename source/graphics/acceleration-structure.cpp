@@ -57,11 +57,26 @@ bool AccelerationStructure::destroy()
 				{
 					for (auto resource : resourceArray)
 					{
-						if (ID<Buffer>(resource) != storageBuffer)
-							continue;
-						throw GardenError("Descriptor set is still using destroyed AS storage. (storage: " +
-							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+						GARDEN_ASSERT_MSG(storageBuffer != ID<Buffer>(resource), 
+							"Descriptor set [" + descriptorSet.getDebugName() + "] is "
+							"still using destroyed AS storage [" + debugName + "]");
 					}
+				}
+			}
+		}
+
+		if (type == AccelerationStructure::Type::Blas)
+		{
+			auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this);
+			for (auto& tlas : graphicsAPI->tlasPool)
+			{
+				if (!tlas.instance)
+					continue;
+
+				for (const auto& instance : TlasExt::getInstances(tlas))
+				{
+					GARDEN_ASSERT_MSG(thisBlas != instance.blas, "TLAS [" + tlas.debugName + 
+						"] is still using destroyed BLAS [" + debugName + "]");
 				}
 			}
 		}
@@ -96,36 +111,14 @@ bool AccelerationStructure::isStorageReady() const noexcept
 	return storageView->isReady();
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
-//**********************************************************************************************************************
-void AccelerationStructure::setDebugName(const string& name)
-{
-	Resource::setDebugName(name);
-
-	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
-	storageView->setDebugName("buffer." + name);
-
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->hasDebugUtils || !instance)
-			return;
-
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(
-			vk::ObjectType::eAccelerationStructureKHR, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-	}
-	else abort();
-}
-#endif
-
 //**********************************************************************************************************************
 void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 {
-	GARDEN_ASSERT(!isBuilt());
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer != GraphicsAPI::get()->frameCommandBuffer);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
+		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!isBuilt(), "Acceleration structure [" + debugName + "] is already build");
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto destroyScratch = false;
@@ -148,20 +141,30 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	command.scratchBuffer = scratchBuffer;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
-	// Note: assuming that acceleration structure will be built on a separate compute queue.
 	auto bufferView = graphicsAPI->bufferPool.get(storageBuffer);
 	ResourceExt::getBusyLock(**bufferView)++;
 	bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
 	ResourceExt::getBusyLock(**bufferView)++;
 	busyLock++;
 
-	graphicsAPI->currentCommandBuffer->addLockedResource(storageBuffer);
-	graphicsAPI->currentCommandBuffer->addLockedResource(scratchBuffer);
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	currentCommandBuffer->addLockedResource(storageBuffer);
+	currentCommandBuffer->addLockedResource(scratchBuffer);
 
 	if (type == AccelerationStructure::Type::Blas)
-		graphicsAPI->currentCommandBuffer->addLockedResource(ID<Blas>(command.dstAS));
+		currentCommandBuffer->addLockedResource(ID<Blas>(command.dstAS));
 	else
-		graphicsAPI->currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
+		currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
+
+	auto buildDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
+	auto syncBuffers = (ID<Buffer>*)((uint8*)buildData + sizeof(AccelerationStructure::BuildDataHeader));
+	for (uint32 i = 0; i < buildDataHeader->bufferCount; i++)
+	{
+		auto buffer = syncBuffers[i];
+		bufferView = graphicsAPI->bufferPool.get(buffer);
+		ResourceExt::getBusyLock(**bufferView)++;
+		currentCommandBuffer->addLockedResource(buffer);
+	}
 
 	if (destroyScratch)
 		graphicsAPI->bufferPool.destroy(scratchBuffer);
@@ -180,3 +183,26 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	}
 
 */
+
+#if GARDEN_DEBUG || GARDEN_EDITOR
+//**********************************************************************************************************************
+void AccelerationStructure::setDebugName(const string& name)
+{
+	Resource::setDebugName(name);
+
+	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
+	storageView->setDebugName("buffer." + name);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils || !instance)
+			return;
+
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(
+			vk::ObjectType::eAccelerationStructureKHR, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+	}
+	else abort();
+}
+#endif

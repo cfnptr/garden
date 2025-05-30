@@ -28,6 +28,6 @@ void AtmosphereRenderSystem::initialize()
 }
 void AtmosphereRenderSystem::render()
 {
-
+ // || !graphicsSystem->canRender()
 }
 */

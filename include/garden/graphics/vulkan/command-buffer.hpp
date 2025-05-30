@@ -72,6 +72,7 @@ public:
 	~VulkanCommandBuffer() final;
 
 	void submit() final;
+	bool isBusy() final;
 };
 
 } // namespace garden::graphics

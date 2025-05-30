@@ -211,8 +211,11 @@ void MeshGizmosEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto selectedEntity = EditorRenderSystem::Instance::get()->selectedEntity;
-	if (!isEnabled || !selectedEntity || !graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
+	if (!isEnabled || !selectedEntity || !graphicsSystem->canRender() || 
+		!graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
+	{
 		return;
+	}
 
 	auto inputSystem = InputSystem::Instance::get();
 	if (!inputSystem->getMouseState(MouseButton::Left))

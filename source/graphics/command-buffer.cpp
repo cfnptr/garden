@@ -203,7 +203,7 @@ void CommandBuffer::addCommand(const NextSubpassCommand& command)
 void CommandBuffer::addCommand(const ExecuteCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(ExecuteCommandBase) + command.bufferCount * sizeof(void*));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(ExecuteCommandBase));
@@ -245,7 +245,7 @@ void CommandBuffer::addCommand(const ClearAttachmentsCommand& command)
 void CommandBuffer::addCommand(const BindPipelineCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(BindPipelineCommand);
 	auto allocation = (BindPipelineCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -257,7 +257,7 @@ void CommandBuffer::addCommand(const BindPipelineCommand& command)
 void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(BindDescriptorSetsCommandBase) + 
 		command.rangeCount * sizeof(DescriptorSet::Range));
 	auto allocation = allocateCommand(commandSize);
@@ -271,7 +271,7 @@ void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
 void CommandBuffer::addCommand(const PushConstantsCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize((psize)command.dataSize, dataAlignment));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(PushConstantsCommandBase));
@@ -335,7 +335,7 @@ void CommandBuffer::addCommand(const DrawIndexedCommand& command)
 void CommandBuffer::addCommand(const DispatchCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(DispatchCommand);
 	auto allocation = (DispatchCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -349,7 +349,7 @@ void CommandBuffer::addCommand(const DispatchCommand& command)
 void CommandBuffer::addCommand(const FillBufferCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(FillBufferCommand);
 	auto allocation = (FillBufferCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -361,7 +361,7 @@ void CommandBuffer::addCommand(const FillBufferCommand& command)
 void CommandBuffer::addCommand(const CopyBufferCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(CopyBufferCommandBase) + command.regionCount * sizeof(Buffer::CopyRegion));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(CopyBufferCommandBase));
@@ -377,7 +377,7 @@ void CommandBuffer::addCommand(const CopyBufferCommand& command)
 void CommandBuffer::addCommand(const ClearImageCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(ClearImageCommandBase) + command.regionCount * sizeof(Image::ClearRegion));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(ClearImageCommandBase));
@@ -391,7 +391,7 @@ void CommandBuffer::addCommand(const ClearImageCommand& command)
 void CommandBuffer::addCommand(const CopyImageCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(CopyImageCommandBase) +
 		command.regionCount * sizeof(Image::CopyImageRegion));
 	auto allocation = allocateCommand(commandSize);
@@ -406,7 +406,7 @@ void CommandBuffer::addCommand(const CopyImageCommand& command)
 void CommandBuffer::addCommand(const CopyBufferImageCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics ||
-		type == CommandBufferType::TransferOnly || type == CommandBufferType::ComputeOnly);
+		type == CommandBufferType::TransferOnly || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)(sizeof(CopyBufferImageCommandBase) +
 		command.regionCount * sizeof(Image::CopyBufferRegion));
 	auto allocation = allocateCommand(commandSize);
@@ -446,7 +446,7 @@ void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
 
 void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::ComputeOnly);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(BuildAccelerationStructureCommand);
 	auto allocation = (BuildAccelerationStructureCommand*)allocateCommand(commandSize);
 	*allocation = command;
@@ -457,7 +457,7 @@ void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
 }
 void CommandBuffer::addCommand(const TraceRaysCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::ComputeOnly);
+	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(TraceRaysCommand);
 	auto allocation = (TraceRaysCommand*)allocateCommand(commandSize);
 	*allocation = command;

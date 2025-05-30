@@ -98,7 +98,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 		throw GardenError("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
 	});
 
-	GARDEN_ASSERT(!apiInstance);
+	GARDEN_ASSERT_MSG(!apiInstance, "Graphics API is already initialized");
 	if (backendType == GraphicsBackend::VulkanAPI)
 	{
 		apiInstance = new VulkanAPI(appName, appDataName, appVersion, windowSize, 
@@ -107,7 +107,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 }
 void GraphicsAPI::terminate()
 {
-	GARDEN_ASSERT(apiInstance);
+	GARDEN_ASSERT_MSG(apiInstance, "Graphics API is not initialized");
 	delete apiInstance;
 	apiInstance = nullptr;
 	glfwTerminate();

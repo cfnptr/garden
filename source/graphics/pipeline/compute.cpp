@@ -64,10 +64,10 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 //**********************************************************************************************************************
 void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(areAllTrue(count > uint3::zero));
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(instance, "Compute pipeline [" + debugName + "] is not ready");
 
 	DispatchCommand command;
 	command.groupCount = (uint3)(isGlobalCount ? ceil(count / localSize) : count);

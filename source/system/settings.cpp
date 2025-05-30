@@ -111,7 +111,8 @@ void SettingsSystem::getInt(const string& name, int64& value)
 		items.emplace(name, Item(Type::Int, *((uint64*)&value)));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Int);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Int, 
+		"Incorrect setting [" + string(name) + "] type");
 	value = *((int64*)&searchResult->second.data);
 }
 
@@ -126,7 +127,8 @@ void SettingsSystem::getFloat(const string& name, double& value)
 		items.emplace(name, Item(Type::Float, *((uint64*)&value)));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Float);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Float, 
+		"Incorrect setting [" + string(name) + "] type");
 	value = *((double*)&searchResult->second.data);
 }
 
@@ -141,7 +143,8 @@ void SettingsSystem::getBool(const string& name, bool& value)
 		items.emplace(name, Item(Type::Bool, value));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Bool);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Bool, 
+		"Incorrect setting [" + string(name) + "] type");
 	value = searchResult->second.data;
 }
 
@@ -165,7 +168,8 @@ void SettingsSystem::getString(const string& name, string& value)
 		items.emplace(name, Item(Type::String, *((uint64*)&instance)));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::String);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::String, 
+		"Incorrect setting [" + string(name) + "] type");
 	value = string(*((const char**)&searchResult->second.data));
 }
 
@@ -185,7 +189,8 @@ void SettingsSystem::getColor(const string& name, Color& value)
 		items.emplace(name, Item(Type::Color, (uint32)value));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Color);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Color, 
+		"Incorrect setting [" + string(name) + "] type");
 	value = Color((uint32)searchResult->second.data);
 }
 
@@ -199,7 +204,8 @@ void SettingsSystem::setInt(const string& name, int64 value)
 		items.emplace(name, Item(Type::Int, *((uint64*)&value)));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Int);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Int, 
+		"Incorrect setting [" + string(name) + "] type");
 	*((int64*)&searchResult->second.data) = value;
 }
 
@@ -212,7 +218,8 @@ void SettingsSystem::setFloat(const string& name, double value)
 		items.emplace(name, Item(Type::Float, *((uint64*)&value)));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Float);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Float, 
+		"Incorrect setting [" + string(name) + "] type");
 	*((double*)&searchResult->second.data) = value;
 }
 
@@ -225,7 +232,8 @@ void SettingsSystem::setBool(const string& name, bool value)
 		items.emplace(name, Item(Type::Bool, value));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Bool);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Bool, 
+		"Incorrect setting [" + string(name) + "] type");
 	searchResult.value().data = value;
 }
 
@@ -243,7 +251,8 @@ void SettingsSystem::setString(const string& name, string_view value)
 		return;
 	}
 
-	GARDEN_ASSERT(searchResult->second.type == Type::String);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::String, 
+		"Incorrect setting [" + string(name) + "] type");
 	delete *((char**)&searchResult->second.data);
 	*((char**)&searchResult->second.data) = instance;
 }
@@ -257,6 +266,7 @@ void SettingsSystem::setColor(const string& name, Color value)
 		items.emplace(name, Item(Type::Color, (uint32)value));
 		return;
 	}
-	GARDEN_ASSERT(searchResult->second.type == Type::Color);
+	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Color, 
+		"Incorrect setting [" + string(name) + "] type");
 	searchResult.value().data = (uint32)value;
 }

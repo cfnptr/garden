@@ -21,13 +21,16 @@
 #include "garden/os.hpp"
 #include "garden/arch.hpp"
 #include "garden/simd.hpp"
-#include "garden/error.hpp"
-
-#include "math/types.hpp"
+#include "garden/malloc.hpp"
 #include "math/version.hpp"
 
 #include <filesystem>
 #include <string_view>
+
+namespace garden
+{
+	namespace fs = std::filesystem;
+}
 
 //******************************************************************************************************************
 #define __GARDEN__
@@ -62,7 +65,7 @@
 /**
  * @brief Garden resources directory path.
  */
-#define GARDEN_RESOURCES_PATH std::filesystem::path("@Garden_SOURCE_DIR@/resources")
+#define GARDEN_RESOURCES_PATH fs::path("@Garden_SOURCE_DIR@/resources")
 
 #if _WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
@@ -70,97 +73,33 @@
 
 /**
  * @brief Prints error and aborts program if statement is not true.
+ *
  * @param statement target statement
+ * @param[in] message error message
  */
-#define GARDEN_ASSERT(statement)                                           \
-{                                                                          \
-	if (!(statement))                                                      \
-	{                                                                      \
-		printf("Assertion failed: (%s), function %s, file %s, line %d.\n", \
-			#statement, __PRETTY_FUNCTION__, __FILE__, __LINE__);          \
-		abort();                                                           \
-	}                                                                      \
+#define GARDEN_ASSERT_MSG(statement, message)                                \
+{                                                                            \
+	if (!(statement))                                                        \
+	{                                                                        \
+		std::string msg = message;                                           \
+		printf("%s: (%s), function: %s, file: %s, line: %d.\n", msg.c_str(), \
+			#statement, __PRETTY_FUNCTION__, __FILE__, __LINE__);            \
+		fflush(stdout);                                                      \
+		abort();                                                             \
+	}                                                                        \
 } (void)0
 #else
 /**
  * @brief Prints error and aborts program if statement is not true.
+ *
  * @param statement target statement
+ * @param[in] message error message
  */
-#define GARDEN_ASSERT(statement) (void)0
+#define GARDEN_ASSERT_MSG(statement, message) (void)0
 #endif
 
-namespace garden
-{
-
-using namespace std;
-using namespace math;
-
-namespace fs = std::filesystem;
-
-/***************************************************************************************************************
- * @brief Allocates memory blocks.
- * @tparam T target element type
- * @param elementCount number of elements
- * @throw GardenError if failed to allocate
- */
-template<typename T>
-static T* malloc(psize elementCount)
-{
-	auto memoryBlock = ::malloc(elementCount * sizeof(T));
-	if (!memoryBlock)
-	{
-		throw GardenError("Failed to allocate memory block. ("
-			"size: " + to_string(elementCount * sizeof(T)) + ")");
-	}
-	return (T*)memoryBlock;
-}
 /**
- * @brief Allocates an array in memory with elements initialized to 0.
- * @tparam T target element type
- * @param elementCount number of elements
- * @throw GardenError if failed to allocate
+ * @brief Prints error and aborts program if statement is not true.
+ * @param statement target statement
  */
-template<typename T>
-static T* calloc(psize elementCount)
-{
-	auto memoryBlock = ::calloc(elementCount, sizeof(T));
-	if (!memoryBlock)
-	{
-		throw GardenError("Failed to allocate memory block. ("
-			"size: " + to_string(elementCount * sizeof(T)) + ")");
-	}
-	return (T*)memoryBlock;
-}
-/**
- * @brief Reallocates memory blocks.
- * @tparam T target element type
- * @param oldMemoryBlock old allocated memory block
- * @param elementCount number of elements
- * @throw GardenError if failed to reallocate
- */
-template<typename T>
-static T* realloc(T* oldMemoryBlock, psize elementCount)
-{
-	auto newMemoryBlock = ::realloc(oldMemoryBlock, elementCount * sizeof(T));
-	if (!newMemoryBlock)
-	{
-		throw GardenError("Failed to reallocate memory block. ("
-			"size: " + to_string(elementCount * sizeof(T)) + ")");
-	}
-	return (T*)newMemoryBlock;
-}
-
-/**
- * @brief Aligns size to the specified alignment.
- * 
- * @tparam T target size type
- * @param size size in bytes
- * @param alignment  alignment in bytes
- */
-template<typename T = size_t>
-constexpr T alignSize(T size, T alignment) noexcept
-{
-	return (size + (alignment - 1)) & ~(alignment - 1);
-}
-
-} // namespace garden
+#define GARDEN_ASSERT(statement) GARDEN_ASSERT_MSG(statement, "Assertion failed")

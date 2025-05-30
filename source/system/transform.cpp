@@ -473,12 +473,12 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 		auto& randomDevice = serializer.randomDevice;
 		uint32 uid[2] { randomDevice(), randomDevice() };
 		transformView->uid = *(uint64*)(uid);
-		GARDEN_ASSERT(transformView->uid); // Something is wrong with the random device.
+		GARDEN_ASSERT_MSG(transformView->uid, "Detected random device anomaly");
 	}
 
 	#if GARDEN_DEBUG
 	auto emplaceResult = serializedEntities.emplace(transformView->uid);
-	GARDEN_ASSERT(emplaceResult.second); // Detected several entities with the same UID.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected several entities with the same UID");
 	#endif
 
 	encodeBase64(uidStringCache, &transformView->uid, sizeof(uint64));
@@ -502,7 +502,7 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 			auto& randomDevice = serializer.randomDevice;
 			uint32 uid[2]{ randomDevice(), randomDevice() };
 			parentView->uid = *(uint64*)(uid);
-			GARDEN_ASSERT(parentView->uid); // Something is wrong with the random device.
+			GARDEN_ASSERT_MSG(parentView->uid, "Detected random device anomaly");
 		}
 		encodeBase64(uidStringCache, &parentView->uid, sizeof(uint64));
 		uidStringCache.resize(uidStringCache.length() - 1);

@@ -149,7 +149,7 @@ public:
 	 */
 	inline static VulkanAPI* get() noexcept
 	{
-		GARDEN_ASSERT(vulkanInstance);
+		GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not intialized");
 		return vulkanInstance;
 	}
 };

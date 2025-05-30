@@ -276,136 +276,17 @@ public:
 	 * @details Use it to access common camera properties inside shader. 
 	 */
 	const DescriptorSet::Buffers& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
+	/**
+	 * @brief Returns current render camera constants.
+	 * @details Useful for transformation matrices.
+	 */
+	const CameraConstants& getCameraConstants() const noexcept { return currentCameraConstants; }
 
 	/**
 	 * @brief Manually signal swapchain changes.
 	 * @param[in] changes target swapchain changes.
 	 */
 	void recreateSwapchain(const SwapchainChanges& changes);
-
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	/*******************************************************************************************************************
-	 * @brief Sets buffer debug name. (visible in GPU profiler)
-	 * @param buffer target buffer instance
-	 * @param[in] name buffer debug name
-	 */
-	void setDebugName(ID<Buffer> buffer, const string& name);
-	/**
-	 * @brief Sets buffer debug name. (visible in GPU profiler)
-	 * @param buffer target buffer instance
-	 * @param[in] name buffer debug name
-	 */
-	void setDebugName(const Ref<Buffer>& buffer, const string& name) { setDebugName(ID<Buffer>(buffer), name); }
-
-	/**
-	 * @brief Sets image debug name. (visible in GPU profiler)
-	 * @param image target image instance
-	 * @param[in] name image debug name
-	 */
-	void setDebugName(ID<Image> image, const string& name);
-	/**
-	 * @brief Sets image debug name. (visible in GPU profiler)
-	 * @param image target image instance
-	 * @param[in] name image debug name
-	 */
-	void setDebugName(const Ref<Image>& image, const string& name) { setDebugName(ID<Image>(image), name); }
-
-	/**
-	 * @brief Sets image debug name. (visible in GPU profiler)
-	 * @param imageView target image view instance
-	 * @param[in] name image view debug name
-	 */
-	void setDebugName(ID<ImageView> imageView, const string& name);
-	/**
-	 * @brief Sets image debug name. (visible in GPU profiler)
-	 * @param imageView target image view instance
-	 * @param[in] name image view debug name
-	 */
-	void setDebugName(const Ref<ImageView>& imageView, const string& name)
-	{
-		setDebugName(ID<ImageView>(imageView), name);
-	}
-
-	/**
-	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
-	 * @param framebuffer target framebuffer instance
-	 * @param[in] name framebuffer debug name
-	 */
-	void setDebugName(ID<Framebuffer> framebuffer, const string& name);
-	/**
-	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
-	 * @param instance target framebuffer instance
-	 * @param[in] name framebuffer debug name
-	 */
-	void setDebugName(const Ref<Framebuffer>& framebuffer, const string& name)
-	{
-		setDebugName(ID<Framebuffer>(framebuffer), name);
-	}
-
-	/**
-	 * @brief Sets sampler debug name. (visible in GPU profiler)
-	 * @param sampler target sampler instance
-	 * @param[in] name sampler debug name
-	 */
-	void setDebugName(ID<Sampler> sampler, const string& name);
-	 /**
-	  * @brief Sets sampler debug name. (visible in GPU profiler)
-	  * @param instance target sampler instance
-	  * @param[in] name sampler debug name
-	  */
-	void setDebugName(const Ref<Sampler>& sampler, const string& name)
-	{
-		setDebugName(ID<Sampler>(sampler), name);
-	}
-
-	/**
-	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
-	 * @param descriptorSet target descriptor set instance
-	 * @param[in] name descriptor set debug name
-	 */
-	void setDebugName(ID<DescriptorSet> descriptorSet, const string& name);
-	/**
-	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
-	 * @param descriptorSet target descriptor set instance
-	 * @param[in] name descriptor set debug name
-	 */
-	void setDebugName(const Ref<DescriptorSet>& descriptorSet, const string& name)
-	{
-		setDebugName(ID<DescriptorSet>(descriptorSet), name);
-	}
-
-	/**
-	 * @brief Sets BLAS set debug name. (visible in GPU profiler)
-	 * @param blas target BLAS instance
-	 * @param[in] name BLAS debug name
-	 */
-	void setDebugName(ID<Blas> blas, const string& name);
-	/**
-	 * @brief Sets BLAS debug name. (visible in GPU profiler)
-	 * @param blas target BLAS instance
-	 * @param[in] name BLAS debug name
-	 */
-	void setDebugName(const Ref<Blas>& blas, const string& name)
-	{
-		setDebugName(ID<Blas>(blas), name);
-	}
-
-	/**
-	 * @brief Sets TLAS set debug name. (visible in GPU profiler)
-	 * @param tlas target TLAS instance
-	 * @param[in] name TLAS debug name
-	 */
-	void setDebugName(ID<Tlas> tlas, const string& name);
-	/**
-	 * @brief Sets TLAS debug name. (visible in GPU profiler)
-	 * @param tlas target TLAS instance
-	 * @param[in] name TLAS debug name
-	 */
-	void setDebugName(const Ref<Tlas>& tlas, const string& name)
-	{
-		setDebugName(ID<Tlas>(tlas), name);
-	}
-	#endif
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new buffer instance.
@@ -928,6 +809,7 @@ public:
 		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
 	/**
 	 * @brief Create a new graphics bottom level acceleration structure instance. (BLAS)
+	 * @warning It containts build() render command recording inside!
 	 * 
 	 * @param[in] geometryArray target AABB geometry array
 	 * @param geometryCount geometry array size
@@ -956,12 +838,15 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Create a new graphics top level acceleration structure instance. (TLAS)
+	 * @warning It containts build() render command recording inside!
 	 * 
+	 * @param instances TLAS instance array
 	 * @param instanceBuffer target TLAS instance buffer
 	 * @param flags acceleration structure build flags
 	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
-	ID<Tlas> createTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+	ID<Tlas> createTlas(vector<Tlas::InstanceData>&& instances, ID<Buffer> instanceBuffer, 
+		BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
 
 	/**
 	 * @brief Destroys top level acceleration structure instance. (TLAS)
@@ -993,12 +878,18 @@ public:
 	 * @brief Starts command buffer commands recording. (Supports multithreading)
 	 * @param commandBufferType target command buffer type
 	 */
-	void startRecording(CommandBufferType commandBufferType = CommandBufferType::Frame);
+	void startRecording(CommandBufferType commandBufferType);
 	/**
 	 * @brief Stops command buffer commands recording.
 	 * @note You can still append more rendering command to the stopped command buffer.
 	 */
 	void stopRecording();
+	/**
+	 * @brief Returns true if target command is busy right now.
+	 * @warning This is expensive operation, call only couple of times per frame!
+	 * @param commandBufferType target command buffer type
+	 */
+	bool isBusy(CommandBufferType commandBufferType);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
@@ -1017,17 +908,120 @@ public:
 	 * @param color box wireframe color
 	 */
 	void drawAabb(const f32x4x4& mvp, f32x4 color = f32x4::one);
-	#endif
 
-	//******************************************************************************************************************
-	// Returns current render call data.
-	//******************************************************************************************************************
+	/*******************************************************************************************************************
+	 * @brief Sets buffer debug name. (visible in GPU profiler)
+	 * @param buffer target buffer instance
+	 * @param[in] name buffer debug name
+	 */
+	void setDebugName(ID<Buffer> buffer, const string& name);
+	/**
+	 * @brief Sets buffer debug name. (visible in GPU profiler)
+	 * @param buffer target buffer instance
+	 * @param[in] name buffer debug name
+	 */
+	void setDebugName(const Ref<Buffer>& buffer, const string& name) { setDebugName(ID<Buffer>(buffer), name); }
 
 	/**
-	 * @brief Returns current render camera constants.
-	 * @details Useful for transformation matrices.
+	 * @brief Sets image debug name. (visible in GPU profiler)
+	 * @param image target image instance
+	 * @param[in] name image debug name
 	 */
-	const CameraConstants& getCameraConstants() const noexcept { return currentCameraConstants; }
+	void setDebugName(ID<Image> image, const string& name);
+	/**
+	 * @brief Sets image debug name. (visible in GPU profiler)
+	 * @param image target image instance
+	 * @param[in] name image debug name
+	 */
+	void setDebugName(const Ref<Image>& image, const string& name) { setDebugName(ID<Image>(image), name); }
+
+	/**
+	 * @brief Sets image debug name. (visible in GPU profiler)
+	 * @param imageView target image view instance
+	 * @param[in] name image view debug name
+	 */
+	void setDebugName(ID<ImageView> imageView, const string& name);
+	/**
+	 * @brief Sets image debug name. (visible in GPU profiler)
+	 * @param imageView target image view instance
+	 * @param[in] name image view debug name
+	 */
+	void setDebugName(const Ref<ImageView>& imageView, const string& name)
+	{
+		setDebugName(ID<ImageView>(imageView), name);
+	}
+
+	/**
+	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
+	 * @param framebuffer target framebuffer instance
+	 * @param[in] name framebuffer debug name
+	 */
+	void setDebugName(ID<Framebuffer> framebuffer, const string& name);
+	/**
+	 * @brief Sets framebuffer debug name. (visible in GPU profiler)
+	 * @param instance target framebuffer instance
+	 * @param[in] name framebuffer debug name
+	 */
+	void setDebugName(const Ref<Framebuffer>& framebuffer, const string& name)
+	{
+		setDebugName(ID<Framebuffer>(framebuffer), name);
+	}
+
+	/**
+	 * @brief Sets sampler debug name. (visible in GPU profiler)
+	 * @param sampler target sampler instance
+	 * @param[in] name sampler debug name
+	 */
+	void setDebugName(ID<Sampler> sampler, const string& name);
+	 /**
+	  * @brief Sets sampler debug name. (visible in GPU profiler)
+	  * @param instance target sampler instance
+	  * @param[in] name sampler debug name
+	  */
+	void setDebugName(const Ref<Sampler>& sampler, const string& name) { setDebugName(ID<Sampler>(sampler), name); }
+
+	/**
+	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
+	 * @param descriptorSet target descriptor set instance
+	 * @param[in] name descriptor set debug name
+	 */
+	void setDebugName(ID<DescriptorSet> descriptorSet, const string& name);
+	/**
+	 * @brief Sets descriptor set debug name. (visible in GPU profiler)
+	 * @param descriptorSet target descriptor set instance
+	 * @param[in] name descriptor set debug name
+	 */
+	void setDebugName(const Ref<DescriptorSet>& descriptorSet, const string& name)
+	{
+		setDebugName(ID<DescriptorSet>(descriptorSet), name);
+	}
+
+	/**
+	 * @brief Sets BLAS set debug name. (visible in GPU profiler)
+	 * @param blas target BLAS instance
+	 * @param[in] name BLAS debug name
+	 */
+	void setDebugName(ID<Blas> blas, const string& name);
+	/**
+	 * @brief Sets BLAS debug name. (visible in GPU profiler)
+	 * @param blas target BLAS instance
+	 * @param[in] name BLAS debug name
+	 */
+	void setDebugName(const Ref<Blas>& blas, const string& name) { setDebugName(ID<Blas>(blas), name); }
+
+	/**
+	 * @brief Sets TLAS set debug name. (visible in GPU profiler)
+	 * @param tlas target TLAS instance
+	 * @param[in] name TLAS debug name
+	 */
+	void setDebugName(ID<Tlas> tlas, const string& name);
+	/**
+	 * @brief Sets TLAS debug name. (visible in GPU profiler)
+	 * @param tlas target TLAS instance
+	 * @param[in] name TLAS debug name
+	 */
+	void setDebugName(const Ref<Tlas>& tlas, const string& name) { setDebugName(ID<Tlas>(tlas), name); }
+	#endif
 };
 
 } // namespace garden

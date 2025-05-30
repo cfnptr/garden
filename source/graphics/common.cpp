@@ -24,7 +24,7 @@ using namespace garden::graphics;
 void DebugLabel::begin(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer); // Command recording is not started.
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + name);
 
 	BeginLabelCommand command;
 	command.name = name.c_str();
@@ -37,7 +37,7 @@ void DebugLabel::begin(const string& name, Color color)
 }
 void DebugLabel::end()
 {
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer); // Command recording is not started.
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	EndLabelCommand command;
 
 	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
@@ -48,7 +48,7 @@ void DebugLabel::end()
 void DebugLabel::insert(const string& name, Color color)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer); // Command recording is not started.
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + name);
 
 	InsertLabelCommand command;
 	command.name = name.c_str();

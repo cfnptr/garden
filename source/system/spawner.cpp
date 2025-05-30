@@ -320,7 +320,7 @@ void SpawnerSystem::deserialize(IDeserializer& deserializer, View<Component> com
 bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(uuid);
+	GARDEN_ASSERT_MSG(uuid, "Assert " + string(path));
 	auto linkSystem = LinkSystem::Instance::get();
 
 	auto searchResult = sharedPrefabs.find(path);
@@ -333,13 +333,13 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 	}
 
 	auto emplaceResult = sharedPrefabs.emplace(path, uuid);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return true;
 }
 bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(prefab);
+	GARDEN_ASSERT_MSG(prefab, "Assert " + string(path));
 	auto linkSystem = LinkSystem::Instance::get();
 
 	auto searchResult = sharedPrefabs.find(path);
@@ -364,7 +364,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 	if (searchResult == sharedPrefabs.end())
 	{
 		auto emplaceResult = sharedPrefabs.emplace(path, linkView->getUUID());
-		GARDEN_ASSERT(emplaceResult.second); // Corrupted memory.
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	}
 	else
 	{

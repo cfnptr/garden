@@ -134,7 +134,7 @@ void InfiniteGridEditorSystem::preRender()
 void InfiniteGridEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 	
 	auto pipelineView = graphicsSystem->get(pipeline);

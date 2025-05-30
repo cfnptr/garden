@@ -38,7 +38,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 		instance = createVkCommandBuffer(vulkanAPI->device, vulkanAPI->graphicsCommandPool); break;
 	case CommandBufferType::TransferOnly:
 		instance = createVkCommandBuffer(vulkanAPI->device, vulkanAPI->transferCommandPool); break;
-	case CommandBufferType::ComputeOnly:
+	case CommandBufferType::Compute:
 		instance = createVkCommandBuffer(vulkanAPI->device, vulkanAPI->computeCommandPool); break;
 	case CommandBufferType::Frame: break;
 	default: abort();
@@ -52,7 +52,8 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 		{
 		case CommandBufferType::Graphics: name = "commandBuffer.graphics"; break;
 		case CommandBufferType::TransferOnly: name = "commandBuffer.transferOnly"; break;
-		case CommandBufferType::ComputeOnly: name = "commandBuffer.computeOnly"; break;
+		case CommandBufferType::Compute: name = "commandBuffer.compute"; break;
+		case CommandBufferType::AsyncCompute: name = "commandBuffer.asyncCompute"; break;
 		case CommandBufferType::Frame: break;
 		default: abort();
 		}
@@ -315,7 +316,20 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(const DescriptorSet::Range* d
 			}
 			else if (uniform.type == GslUniformType::AccelerationStructure)
 			{
-				// Note: assuming that acceleration structure will be built on a separate compute queue.
+				Buffer::BarrierState newBufferState;
+				newBufferState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+				newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+				newPipelineStage |= newBufferState.stage;
+
+				for (uint32 j = descriptor.offset; j < setCount; j++)
+				{
+					const auto& resourceArray = dsUniform.resourceSets[j];
+					for (auto resource : resourceArray)
+					{
+						auto tlasView = vulkanAPI->tlasPool.get(ID<Tlas>(resource));
+						addBufferBarrier(vulkanAPI, newBufferState, tlasView->getStorageBuffer(), oldPipelineStage);
+					}
+				}
 			}
 			else abort();
 		}
@@ -391,7 +405,7 @@ void VulkanCommandBuffer::submit()
 
 		if (type == CommandBufferType::TransferOnly)
 			queue = vulkanAPI->transferQueue;
-		else if (type == CommandBufferType::ComputeOnly)
+		else if (type == CommandBufferType::Compute)
 			queue = vulkanAPI->computeQueue;
 		else
 			queue = vulkanAPI->graphicsQueue;
@@ -478,33 +492,21 @@ void VulkanCommandBuffer::submit()
 		submitInfo.pCommandBuffers = &instance;
 		queue.submit(submitInfo, (VkFence)fence);
 	}
-	
-	auto& imagePool = vulkanAPI->imagePool;
-	for (auto& image : imagePool)
-	{
-		auto& states = ImageExt::getBarrierStates(image);
-		for (auto& state : states)
-			state.access = state.stage = 0;
-	}
-
-	{
-		auto swapchainView = imagePool.get(swapchain->getCurrentImage());
-		auto& states = ImageExt::getBarrierStates(**swapchainView);
-		for (auto& state : states)
-		{
-			state.access = 0;
-			state.stage = (uint32)vk::PipelineStageFlagBits::eBottomOfPipe;
-		}
-	}
-
-	auto& bufferPool = vulkanAPI->bufferPool;
-	for (auto& buffer : bufferPool)
-		BufferExt::getBarrierState(buffer) = {};
 
 	std::swap(lockingResources, lockedResources);
 	size = lastSize = 0;
 	hasAnyCommand = false;
 	isRunning = true;
+}
+
+bool VulkanCommandBuffer::isBusy()
+{
+	SET_CPU_ZONE_SCOPED("Is Command Buffer Busy");
+
+	if (type == CommandBufferType::Frame)
+		return false;
+	vk::Fence fence((VkFence)this->fence);
+	return VulkanAPI::get()->device.getFenceStatus(fence) == vk::Result::eNotReady;
 }
 
 //**********************************************************************************************************************
@@ -922,7 +924,8 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		}
 		else if (attachment.index == colorAttachments.size())
 		{
-			GARDEN_ASSERT(framebufferView->getDepthStencilAttachment().imageView);
+			GARDEN_ASSERT_MSG(framebufferView->getDepthStencilAttachment().imageView, 
+				"Assert " + framebufferView->getDebugName());
 			attachmentView = framebufferView->getDepthStencilAttachment().imageView;
 		}
 		else abort();
@@ -1519,11 +1522,8 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 
 	uint32 newPipelineStage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
 	Buffer::BarrierState newBufferState;
-	newBufferState.access = (uint32)(vk::AccessFlagBits::eAccelerationStructureReadKHR |
-		vk::AccessFlagBits::eAccelerationStructureWriteKHR);
 	newBufferState.stage = newPipelineStage;
-	addBufferBarrier(vulkanAPI, newBufferState, command.scratchBuffer, vulkanAPI->asOldPipelineStage); // TODO: synchronize only used part of the scratch buffer.
-
+	
 	vk::AccelerationStructureBuildGeometryInfoKHR info;
 	View<AccelerationStructure> asView;
 	if (command.srcAS)
@@ -1533,8 +1533,8 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 		else
 			asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
 
-		addBufferBarrier(vulkanAPI, newBufferState, AccelerationStructureExt::
-			getStorageBuffer(**asView), vulkanAPI->asOldPipelineStage);
+		newBufferState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+		addBufferBarrier(vulkanAPI, newBufferState, asView->getStorageBuffer(), vulkanAPI->asOldPipelineStage);
 		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
 	}
 	if (command.typeAS == AccelerationStructure::Type::Blas)
@@ -1548,9 +1548,13 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 		asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
 	}
 
-	addBufferBarrier(vulkanAPI, newBufferState, AccelerationStructureExt::
-		getStorageBuffer(**asView), vulkanAPI->asOldPipelineStage);
-	
+	newBufferState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
+	addBufferBarrier(vulkanAPI, newBufferState, asView->getStorageBuffer(), vulkanAPI->asOldPipelineStage);
+
+	newBufferState.access = (uint32)(vk::AccessFlagBits::eAccelerationStructureReadKHR |
+		vk::AccessFlagBits::eAccelerationStructureWriteKHR);
+	addBufferBarrier(vulkanAPI, newBufferState, command.scratchBuffer, vulkanAPI->asOldPipelineStage); // TODO: synchronize only used part of the scratch buffer.
+
 	auto buildData = (const uint8*)AccelerationStructureExt::getBuildData(**asView);
 	auto buildDataHeader = *((const AccelerationStructure::BuildDataHeader*)buildData);
 	auto buildDataOffset = sizeof(AccelerationStructure::BuildDataHeader);

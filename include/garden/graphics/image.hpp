@@ -328,14 +328,6 @@ public:
 	static bool isSupported(Type type, Format format, Usage usage, 
 		uint3 size, uint8 mipCount = 1, uint32 layerCount = 1);
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	/**
-	 * @brief Sets image debug name. (Debug Only)
-	 * @param[in] name target debug name
-	 */
-	void setDebugName(const string& name) final;
-	#endif
-
 	//******************************************************************************************************************
 	// Render commands
 	//******************************************************************************************************************
@@ -764,6 +756,14 @@ public:
 	{ BlitRegion region; blit(source, destination, &region, 1, filter); }
 
 	// TODO: add support of self copying and blitting if regions not overlapping.
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Sets image debug name. (Debug Only)
+	 * @param[in] name target debug name
+	 */
+	void setDebugName(const string& name) final;
+	#endif
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)
