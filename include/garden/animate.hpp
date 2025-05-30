@@ -138,14 +138,14 @@ public:
 		GARDEN_ASSERT(!animatables.empty());
 		for (const auto& pair : animatables)
 		{
-			GARDEN_ASSERT(dynamic_cast<IAnimatable*>(pair.first));
-			GARDEN_ASSERT(pair.second);
+			GARDEN_ASSERT_MSG(dynamic_cast<IAnimatable*>(pair.first), "Not an IAnimatable system");
+			GARDEN_ASSERT_MSG(pair.second, "Animation frame is null");
 		}
 		auto firstKeyframe = keyframes.begin();
 		if (firstKeyframe != keyframes.end())
 		{
-			for (const auto& firstPair : firstKeyframe->second)
-				GARDEN_ASSERT(animatables.find(firstPair.first) != animatables.end());
+			for (const auto& keyframePair : firstKeyframe->second)
+				GARDEN_ASSERT(animatables.find(keyframePair.first) != animatables.end());
 		}
 		#endif
 		return keyframes.emplace(index, std::move(animatables));

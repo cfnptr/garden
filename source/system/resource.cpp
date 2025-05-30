@@ -1318,7 +1318,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
 	{
 		auto result = sharedImages.emplace(hash, imageRef);
-		GARDEN_ASSERT(result.second); // Corrupted shared images array.
+		GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	}
 
 	return imageRef;
@@ -1382,7 +1382,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
 	auto result = sharedDescriptorSets.emplace(hash, sharedDescriptorSet);
-	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
+	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	return sharedDescriptorSet;
 }
 Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash, 
@@ -1402,7 +1402,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
 	auto result = sharedDescriptorSets.emplace(hash, sharedDescriptorSet);
-	GARDEN_ASSERT(result.second); // Corrupted shared descriptor sets array.
+	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	return sharedDescriptorSet;
 }
 
@@ -1511,15 +1511,15 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	const GraphicsPipeline::StateOverrides* stateOverrides, GraphicsPipeline::ShaderOverrides* shaderOverrides)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(framebuffer);
+	GARDEN_ASSERT_MSG(framebuffer, "Assert " + path.generic_string());
 	// TODO: validate specConstValues and stateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto framebufferView = graphicsAPI->framebufferPool.get(framebuffer);
 	const auto& subpasses = framebufferView->getSubpasses();
 
-	GARDEN_ASSERT((subpasses.empty() && subpassIndex == 0) ||
-		(!subpasses.empty() && subpassIndex < subpasses.size()));
+	GARDEN_ASSERT_MSG((subpasses.empty() && subpassIndex == 0) || (!subpasses.empty() && 
+		subpassIndex < subpasses.size()), "Assert " + path.generic_string());
 
 	auto version = graphicsAPI->graphicsPipelineVersion++;
 	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path,
@@ -2539,7 +2539,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	if (loadShared)
 	{
 		auto result = sharedAnimations.emplace(hash, animationRef);
-		GARDEN_ASSERT(result.second); // Corrupted shared animations array.
+		GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	}
 
 	GARDEN_LOG_TRACE("Loaded animation. (path: " + path.generic_string() + ")");
@@ -2567,7 +2567,7 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animation, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(animation);
+	GARDEN_ASSERT_MSG(animation, "Assert " + path.generic_string());
 
 	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 	auto animationsPath = (directory.empty() ? appResourcesPath : directory) / "animations";

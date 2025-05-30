@@ -66,7 +66,7 @@ void MeshSelectorEditorSystem::deinit()
 void MeshSelectorEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->camera || !graphicsSystem->canRender())
 		return;
 
 	auto manager = Manager::Instance::get();

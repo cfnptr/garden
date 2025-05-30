@@ -123,18 +123,10 @@ protected:
 	 */
 	uint64 getScratchSize() const noexcept
 	{
-		GARDEN_ASSERT(!isBuilt());
+		GARDEN_ASSERT_MSG(!isBuilt(), "Acceleration structure already built");
 		auto header = (const BuildDataHeader*)buildData;
 		return header->scratchSize;
 	}
-
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	/**
-	 * @brief Sets acceleration structure debug name. (Debug Only)
-	 * @param[in] name target debug name
-	 */
-	void setDebugName(const string& name) final;
-	#endif
 
 	//******************************************************************************************************************
 	// Render commands
@@ -144,7 +136,15 @@ protected:
 	 * @brief Actually builds acceleration structure.
 	 * @param scratchBuffer AS scratch buffer (null = auto temporary)
 	 */
-	void build(ID<Buffer> scratchBuffer = {});
+	virtual void build(ID<Buffer> scratchBuffer = {});
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Sets acceleration structure debug name. (Debug Only)
+	 * @param[in] name target debug name
+	 */
+	void setDebugName(const string& name) final;
+	#endif
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(BuildFlagsAS)

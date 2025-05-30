@@ -257,9 +257,7 @@ public:
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) final;
-	#endif
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
 	static uint32 combinedSamplerCount; /**< Total descriptor pool combined sampler count. */
 	static uint32 uniformBufferCount;   /**< Total descriptor pool uniform buffer count. */
 	static uint32 storageImageCount;    /**< Total descriptor pool storage image count. */

@@ -256,7 +256,7 @@ public:
 	 */
 	inline static GraphicsAPI* get() noexcept
 	{
-		GARDEN_ASSERT(apiInstance);
+		GARDEN_ASSERT_MSG(apiInstance, "Graphics API is not initialized");
 		return apiInstance;
 	}
 };

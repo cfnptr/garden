@@ -207,7 +207,7 @@ public:
 		}
 		else
 		{
-			GARDEN_ASSERT(count + arrayOffset <= data.size());
+			GARDEN_ASSERT_MSG(count + arrayOffset <= data.size(), "Assert " + debugName);
 			return writeData(data.data() + arrayOffset, count * sizeof(T), bufferOffset * sizeof(T));
 		}
 	}
@@ -230,18 +230,10 @@ public:
 			return writeData(data.data() + arrayOffset, (data.size() - arrayOffset) * sizeof(T));
 		else
 		{
-			GARDEN_ASSERT(count + arrayOffset <= data.size());
+			GARDEN_ASSERT_MSG(count + arrayOffset <= data.size(), "Assert " + debugName);
 			return writeData(data.data() + arrayOffset, count * sizeof(T));
 		}
 	}
-
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	/**
-	 * @brief Sets buffer debug name. (Debug Only)
-	 * @param[in] name target debug name
-	 */
-	void setDebugName(const string& name) final;
-	#endif
 
 	//******************************************************************************************************************
 	// Render commands
@@ -315,6 +307,14 @@ public:
 	{ CopyRegion region; copy(source, destination, &region, 1); }
 
 	// TODO: Add support of self copying if regions not overlapping.
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Sets buffer debug name. (Debug Only)
+	 * @param[in] name target debug name
+	 */
+	void setDebugName(const string& name) final;
+	#endif
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Usage)

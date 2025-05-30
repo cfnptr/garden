@@ -138,7 +138,6 @@ void SpriteRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool is
 void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentView, type_index componentType)
 {
 	GARDEN_ASSERT(componentView);
-
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)

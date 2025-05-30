@@ -186,10 +186,9 @@ bool Buffer::destroy()
 				{
 					for (auto resource : resourceArray)
 					{
-						if (ID<Buffer>(resource) != bufferInstance)
-							continue;
-						throw GardenError("Descriptor set is still using destroyed buffer. (buffer: " +
-							debugName + ", descriptorSet: " + descriptorSet.getDebugName() + ")");
+						GARDEN_ASSERT_MSG(bufferInstance != ID<Buffer>(resource), 
+							"Descriptor set [" + descriptorSet.getDebugName() + "] is "
+							"still using destroyed buffer [" + debugName + "]");
 					}
 				}
 			}
@@ -227,9 +226,9 @@ bool Buffer::isMappable() const
 }
 void Buffer::invalidate(uint64 size, uint64 offset)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
-	GARDEN_ASSERT(isMappable());
+	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isMappable(), "Buffer [" + debugName + "] is not mappable");
+	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -242,9 +241,9 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 }
 void Buffer::flush(uint64 size, uint64 offset)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
-	GARDEN_ASSERT(isMappable());
+	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isMappable(), "Buffer [" + debugName + "] is not mappable");
+	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -257,10 +256,10 @@ void Buffer::flush(uint64 size, uint64 offset)
 }
 void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(data);
-	GARDEN_ASSERT((size == 0 && offset == 0) || size + offset <= binarySize);
-	GARDEN_ASSERT(isMappable());
+	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
+	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(isMappable(), "Buffer [" + debugName + "] is not mappable");
+	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
 	if (map)
 	{
@@ -284,34 +283,14 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 	else abort();
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
-//**********************************************************************************************************************
-void Buffer::setDebugName(const string& name)
-{
-	Resource::setDebugName(name);
-
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->hasDebugUtils || !instance)
-			return;
-
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eBuffer, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-	}
-	else abort();
-}
-#endif
-
 //**********************************************************************************************************************
 void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(size == 0 || size % 4 == 0);
-	GARDEN_ASSERT(size == 0 || size + offset <= binarySize);
-	GARDEN_ASSERT(hasAnyFlag(usage, Usage::TransferDst));
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT_MSG(size == 0 || size % 4 == 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(size == 0 || size + offset <= binarySize, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
 
 	FillBufferCommand command;
@@ -340,12 +319,15 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto srcView = graphicsAPI->bufferPool.get(source);
-	GARDEN_ASSERT(srcView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(srcView->usage, Usage::TransferSrc));
+	
+	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
+		"Missing source buffer [" + srcView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(srcView->instance, "Source buffer [" + srcView->getDebugName() + "] is not ready");
 
 	auto dstView = graphicsAPI->bufferPool.get(destination);
-	GARDEN_ASSERT(dstView->instance); // is ready
-	GARDEN_ASSERT(hasAnyFlag(dstView->usage, Usage::TransferDst));
+	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst), 
+		"Missing destination buffer [" + dstView->getDebugName() + "] flag");
+	GARDEN_ASSERT_MSG(dstView->instance, "Destination buffer [" + dstView->getDebugName() + "] is not ready");
 	
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -382,3 +364,22 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
 	}
 }
+
+#if GARDEN_DEBUG || GARDEN_EDITOR
+//**********************************************************************************************************************
+void Buffer::setDebugName(const string& name)
+{
+	Resource::setDebugName(name);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils || !instance)
+			return;
+
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eBuffer, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+	}
+	else abort();
+}
+#endif

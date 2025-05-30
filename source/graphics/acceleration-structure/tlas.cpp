@@ -53,7 +53,8 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 
 	auto instanceBufferView = vulkanAPI->bufferPool.get(instanceBuffer);
 	GARDEN_ASSERT(hasAnyFlag(instanceBufferView->getUsage(), Buffer::Usage::DeviceAddress));
-	GARDEN_ASSERT(instanceBufferView->getDeviceAddress()); // is ready
+	GARDEN_ASSERT_MSG(instanceBufferView->getDeviceAddress(), "Instance buffer [" + 
+		instanceBufferView->getDebugName() + "] is not ready");
 	auto instanceCount = instanceBufferView->getBinarySize() / sizeof(vk::AccelerationStructureInstanceKHR);
 
 	vk::AccelerationStructureGeometryKHR geometry;
@@ -106,9 +107,12 @@ Tlas::InstanceData::InstanceData(const f32x4x4& model, ID<Blas> blas,
 }
 
 //**********************************************************************************************************************
-Tlas::Tlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags) : AccelerationStructure(1, flags, Type::Tlas)
+Tlas::Tlas(vector<InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFlagsAS flags) : 
+	AccelerationStructure(1, flags, Type::Tlas), instances(std::move(instances))
 {
+	GARDEN_ASSERT(!this->instances.empty());
 	GARDEN_ASSERT(instanceBuffer);
+
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkTlas(instanceBuffer, flags, storageBuffer, instance, deviceAddress, buildData);
 	else abort();
@@ -125,8 +129,8 @@ void Tlas::getInstanceData(const InstanceData* instanceArray, uint32 instanceCou
 	GARDEN_ASSERT(instanceArray);
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(data);
-	auto instances = (vk::AccelerationStructureInstanceKHR*)data;
 
+	auto instances = (vk::AccelerationStructureInstanceKHR*)data;
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -146,4 +150,18 @@ void Tlas::getInstanceData(const InstanceData* instanceArray, uint32 instanceCou
 		}
 	}
 	else abort();
+}
+
+void Tlas::build(ID<Buffer> scratchBuffer)
+{
+	AccelerationStructure::build(scratchBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+
+	for (const auto& instance : instances)
+	{
+		auto blasView = graphicsAPI->blasPool.get(instance.blas);
+		ResourceExt::getBusyLock(**blasView)++;
+		currentCommandBuffer->addLockedResource(instance.blas);
+	}
 }

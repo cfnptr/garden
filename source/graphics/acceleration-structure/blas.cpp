@@ -35,13 +35,15 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 
 		auto vertexBufferView = vulkanAPI->bufferPool.get(geometry.vertexBuffer);
 		GARDEN_ASSERT(hasAnyFlag(vertexBufferView->getUsage(), Buffer::Usage::DeviceAddress));
-		GARDEN_ASSERT(vertexBufferView->getDeviceAddress()); // is ready
+		GARDEN_ASSERT_MSG(vertexBufferView->getDeviceAddress(), "Vertex buffer [" + 
+			vertexBufferView->getDebugName() + "] is not ready");
 		GARDEN_ASSERT(geometry.vertexCount + geometry.vertexOffset <= 
 			vertexBufferView->getBinarySize() / geometry.vertexSize);
 
 		auto indexBufferView = vulkanAPI->bufferPool.get(geometry.vertexBuffer);
 		GARDEN_ASSERT(hasAnyFlag(indexBufferView->getUsage(), Buffer::Usage::DeviceAddress));
-		GARDEN_ASSERT(indexBufferView->getDeviceAddress()); // is ready
+		GARDEN_ASSERT_MSG(indexBufferView->getDeviceAddress(), "Index buffer [" + 
+			indexBufferView->getDebugName() + "] is not ready");
 		GARDEN_ASSERT(geometry.primitiveCount + geometry.primitiveOffset <= 
 			indexBufferView->getBinarySize() / (toBinarySize(geometry.indexType) * 3));
 
@@ -88,7 +90,8 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 
 		auto aabbBufferView = vulkanAPI->bufferPool.get(geometry.aabbBuffer);
 		GARDEN_ASSERT(hasAnyFlag(aabbBufferView->getUsage(), Buffer::Usage::DeviceAddress));
-		GARDEN_ASSERT(aabbBufferView->getDeviceAddress()); // is ready
+		GARDEN_ASSERT_MSG(aabbBufferView->getDeviceAddress(), "AABB buffer [" + 
+			aabbBufferView->getDebugName() + "] is not ready");
 		GARDEN_ASSERT(geometry.aabbCount + geometry.aabbOffset <= 
 			aabbBufferView->getBinarySize() / geometry.aabbStride);
 

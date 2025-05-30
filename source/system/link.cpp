@@ -39,7 +39,7 @@ bool LinkComponent::destroy()
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
-		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
+		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
 	}
 	
 	if (!tag.empty())
@@ -53,7 +53,7 @@ void LinkComponent::regenerateUUID()
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
-		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
+		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
 	}
 
 	auto& randomDevice = linkSystem->randomDevice;
@@ -80,7 +80,7 @@ bool LinkComponent::trySetUUID(const Hash128& uuid)
 	{
 		auto linkSystem = LinkSystem::Instance::get();
 		auto result = linkSystem->uuidMap.erase(this->uuid);
-		GARDEN_ASSERT(result == 1); // Failed to remove link, corrupted memory.
+		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
 	}
 
 	this->uuid = uuid;

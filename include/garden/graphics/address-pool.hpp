@@ -55,11 +55,9 @@ public:
 
 	/**
 	 * @brief Allocates a new resource index in the device address pool.
-	 *
 	 * @param deviceAddress target buffer resource device address
-	 * @param[out] isExpanded pointer to the is expanded value
 	 */
-	uint32 allocate(uint64 deviceAddress = 0, bool* isExpanded = nullptr);
+	uint32 allocate(uint64 deviceAddress = 0);
 	/**
 	 * @brief Updates resource in the device address pool.
 	 *

@@ -152,10 +152,11 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 //**********************************************************************************************************************
 void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer != GraphicsAPI::get()->frameCommandBuffer);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
+		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
 	auto groupCount = rayGenGroupCount + missGroupCount + hitGroupCount + callGroupCount;	
 	sbtGroupRegions.resize(variantCount);
@@ -267,11 +268,11 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 //**********************************************************************************************************************
 void RayTracingPipeline::traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint3 count)
 {
-	GARDEN_ASSERT(instance); // is ready
-	GARDEN_ASSERT(!sbtGroupRegions.empty());
-	GARDEN_ASSERT(areAllTrue(count > uint3::zero));
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT_MSG(!sbtGroupRegions.empty(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentVariant = graphicsAPI->currentPipelineVariants[0];

@@ -93,6 +93,9 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {	
 	GARDEN_ASSERT(!filePath.empty());
+	GARDEN_ASSERT(!inputPath.empty());
+	GARDEN_ASSERT(!outputPath.empty());
+
 	auto path = inputPath / filePath;
 	vector<uint8> dataBuffer, equiData; uint2 equiSize;
 	float* pixels = nullptr; // width * height * RGBA

@@ -329,14 +329,15 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		auto renderType = meshSystem->getMeshRenderType();
 
 		#if GARDEN_DEBUG
-		// Supported only translucent or OIT meshes, not both.
 		if (oit)
 		{
-			GARDEN_ASSERT(renderType != MeshRenderType::Translucent);
+			GARDEN_ASSERT_MSG(renderType != MeshRenderType::Translucent, 
+				"Supported only translucent or OIT meshes, not both.");
 		}
 		else
 		{
-			GARDEN_ASSERT(renderType != MeshRenderType::OIT);
+			GARDEN_ASSERT_MSG(renderType != MeshRenderType::OIT, 
+				"Supported only translucent or OIT meshes, not both.");
 		}
 		#endif
 

@@ -1444,12 +1444,12 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 		auto& randomDevice = serializer.randomDevice;
 		uint32 uid[2] { randomDevice(), randomDevice() };
 		rigidbodyView->uid = *(uint64*)(uid);
-		GARDEN_ASSERT(rigidbodyView->uid); // Something is wrong with the random device.
+		GARDEN_ASSERT_MSG(rigidbodyView->uid, "Detected random device anomaly");
 	}
 
 	#if GARDEN_DEBUG
 	auto emplaceResult = serializedEntities.emplace(rigidbodyView->uid);
-	GARDEN_ASSERT(emplaceResult.second); // Detected several entities with the same UID.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected several entities with the same UID");
 	#endif
 
 	encodeBase64(valueStringCache, &rigidbodyView->uid, sizeof(uint64));
@@ -1542,7 +1542,7 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.endChild();
 
 		auto emplaceResult = serializedConstraints.emplace(rigidbodyView->entity);
-		GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	}
 }
 void PhysicsSystem::postSerialize(ISerializer& serializer)
@@ -1757,7 +1757,7 @@ ID<Shape> PhysicsSystem::createSharedEmptyShape(f32x4 centerOfMass)
 
 	auto instance = createEmptyShape(centerOfMass);
 	auto emplaceResult = sharedEmptyShapes.emplace(hash, instance);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return instance;
 }
 
@@ -1795,7 +1795,7 @@ ID<Shape> PhysicsSystem::createSharedBoxShape(f32x4 halfExtent, float convexRadi
 
 	auto instance = createBoxShape(halfExtent, convexRadius, density);
 	auto emplaceResult = sharedBoxShapes.emplace(hash, instance);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return instance;
 }
 
@@ -1830,7 +1830,7 @@ ID<Shape> PhysicsSystem::createSharedSphereShape(float radius, float density)
 
 	auto instance = createSphereShape(radius, density);
 	auto emplaceResult = sharedSphereShapes.emplace(hash, instance);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return instance;
 }
 
@@ -1868,7 +1868,7 @@ ID<Shape> PhysicsSystem::createSharedCapsuleShape(float halfheight, float radius
 
 	auto instance = createCapsuleShape(halfheight, radius, density);
 	auto emplaceResult = sharedCapsuleShapes.emplace(hash, instance);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return instance;
 }
 
@@ -1901,7 +1901,7 @@ ID<Shape> PhysicsSystem::createSharedRotTransShape(ID<Shape> innerShape, f32x4 p
 
 	auto instance = createRotTransShape(innerShape, position, rotation);
 	auto emplaceResult = sharedRotTransShapes.emplace(hash, instance);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return instance;
 }
 
@@ -1930,7 +1930,7 @@ ID<Shape> PhysicsSystem::createSharedCustomShape(void* shapeInstance)
 
 	auto instance = createCustomShape(shapeInstance);
 	auto emplaceResult = sharedCustomShapes.emplace(hash, instance);
-	GARDEN_ASSERT(emplaceResult.second); // Corrupted memory detected.
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	return instance;
 }
 

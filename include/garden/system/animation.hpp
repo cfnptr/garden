@@ -68,7 +68,7 @@ public:
 	auto emplaceAnimation(string&& path, Ref<Animation>&& animation)
 	{
 		GARDEN_ASSERT(!path.empty());
-		GARDEN_ASSERT(animation);
+		GARDEN_ASSERT_MSG(animation, "Assert " + path);
 		return animations.emplace(std::move(path), std::move(animation));
 	}
 

@@ -48,7 +48,7 @@ AddressPool::AddressPool(uint32 inFlightCount)
 }
 
 //**********************************************************************************************************************
-uint32 AddressPool::allocate(uint64 deviceAddress, bool* isExpanded)
+uint32 AddressPool::allocate(uint64 deviceAddress)
 {
 	uint32 allocation;
 	if (freeAllocs.empty())
@@ -60,20 +60,11 @@ uint32 AddressPool::allocate(uint64 deviceAddress, bool* isExpanded)
 		{
 			capacity = 16;
 			allocations.reserve(capacity);
-			addressBuffers = createAddressBuffers(capacity, inFlightCount);
-			if (isExpanded) *isExpanded = true;
 		}
 		else if (allocation == capacity)
 		{
 			capacity *= 2;
 			allocations.reserve(capacity);
-			destroyAddressBuffers(addressBuffers);
-			addressBuffers = createAddressBuffers(capacity, inFlightCount);
-			if (isExpanded) *isExpanded = true;
-		}
-		else
-		{
-			if (isExpanded) *isExpanded = false;
 		}
 	}
 	else
@@ -81,7 +72,6 @@ uint32 AddressPool::allocate(uint64 deviceAddress, bool* isExpanded)
 		allocation = freeAllocs.back();
 		freeAllocs.pop_back();
 		allocations[allocation] = deviceAddress;
-		if (isExpanded) *isExpanded = false;
 	}
 	
 	flushCount = 0;
@@ -102,7 +92,10 @@ void AddressPool::free(uint32 allocation)
 	#if GARDEN_DEBUG
 	GARDEN_ASSERT(allocation < allocations.size());
 	for (auto freeAlloc : freeAllocs)
-		GARDEN_ASSERT(allocation != freeAlloc); // Already destroyed.
+	{
+		GARDEN_ASSERT_MSG(allocation != freeAlloc, "Allocation [" + 
+			to_string(allocation) + "] is already freed");
+	}
 	#endif
 
 	freeAllocs.push_back(allocation);
@@ -113,6 +106,20 @@ void AddressPool::flush()
 	if (flushCount >= inFlightCount)
 		return;
 
+	if (!addressBuffers.empty())
+	{
+		auto bufferView = GraphicsAPI::get()->bufferPool.get(addressBuffers[0][0]);
+		if (bufferView->getBinarySize() < capacity * sizeof(uint64))
+		{
+			destroyAddressBuffers(addressBuffers);
+			addressBuffers = createAddressBuffers(capacity, inFlightCount);
+		}
+	}
+	else
+	{
+		addressBuffers = createAddressBuffers(capacity, inFlightCount);
+	}
+	
 	auto buffer = addressBuffers[inFlightIndex][0];
 	auto bufferView = GraphicsAPI::get()->bufferPool.get(buffer);
 	memcpy(bufferView->getMap(), allocations.data(), allocations.size() * sizeof(uint64));

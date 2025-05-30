@@ -403,8 +403,8 @@ void DeferredRenderSystem::render()
 	auto forwardSystem = ForwardRenderSystem::Instance::tryGet();
 	if (forwardSystem)
 	{
-		// Can not use deferred and forward render system at the same time.
-		GARDEN_ASSERT(!forwardSystem->isEnabled); 
+		GARDEN_ASSERT_MSG(!forwardSystem->isEnabled, 
+			"Can not use deferred and forward render system at the same time"); 
 	}
 	#endif
 

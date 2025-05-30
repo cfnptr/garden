@@ -368,8 +368,8 @@ static void recreateVkFramebuffer(uint2 size, const vector<Framebuffer::SubpassI
 			auto image = vulkanAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
 			GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
-			auto result = attachments.find(newInputAttachment);
-			GARDEN_ASSERT(result != attachments.end());
+			auto searchResult = attachments.find(newInputAttachment);
+			GARDEN_ASSERT(searchResult != attachments.end());
 			#endif
 		}
 
@@ -478,36 +478,48 @@ bool Framebuffer::destroy()
 void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 	uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT(subpasses.empty());
-	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(colorAttachmentCount > 0 || depthStencilAttachment.imageView);
+	GARDEN_ASSERT_MSG(subpasses.empty(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(colorAttachmentCount > 0 || depthStencilAttachment.imageView, "Assert " + debugName);
 
 	#if GARDEN_DEBUG
 	auto graphicsAPI = GraphicsAPI::get();
 
 	uint32 validColorAttachCount = 0;
-	for	(uint32 i = 0; i < colorAttachmentCount; i ++)
+	for	(uint32 i = 0; i < colorAttachmentCount; i++)
 	{
 		const auto& colorAttachment = colorAttachments[i];
 		if (!colorAttachment.imageView)
 			continue;
 
 		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
-		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
+		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer [" + debugName + "] "
+			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
+		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), 
+			"Incorrect framebuffer [" + debugName +"] color attachment [" + to_string(i) + "] "
+			"image view [" + imageView->getDebugName() + "] size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing "
+			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] "
+			"image view [" + imageView->getDebugName() + "] flag");
 		validColorAttachCount++;
 	}
-	GARDEN_ASSERT((colorAttachmentCount > 0 && validColorAttachCount > 0) || colorAttachmentCount == 0);
+
+	GARDEN_ASSERT_MSG((colorAttachmentCount > 0 && validColorAttachCount > 0) || 
+		colorAttachmentCount == 0, "Assert " + debugName);
 
 	if (depthStencilAttachment.imageView)
 	{
 		auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);
-		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
+		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect framebuffer [" + 
+			debugName + "] depth/stencil attachment image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment));
+		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()),
+			"Incorrect framebuffer [" + debugName +"] depth/stencil attachment "
+			"image view [" + imageView->getDebugName() + "] size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), 
+			"Missing framebuffer [" + debugName + "] depth/stencil attachment "
+			"image view [" + imageView->getDebugName() + "] flag");
 	}
 	#endif
 
@@ -523,30 +535,38 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments,
 	OutputAttachment depthStencilAttachment)
 {
-	GARDEN_ASSERT(subpasses.empty());
-	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
+	GARDEN_ASSERT_MSG(subpasses.empty(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!colorAttachments.empty() || depthStencilAttachment.imageView, "Assert " + debugName);
 
 	#if GARDEN_DEBUG
 	auto graphicsAPI = GraphicsAPI::get();
 
-	for	(const auto& colorAttachment : colorAttachments)
+	for	(uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 	{
-		GARDEN_ASSERT(colorAttachment.imageView);
+		auto colorAttachment = colorAttachments[i];
+		GARDEN_ASSERT_MSG(colorAttachment.imageView, "Framebuffer [" + debugName + "] "
+			"color attachment [" + to_string(i) + "] is null");
 		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
-		GARDEN_ASSERT(isFormatColor(imageView->getFormat()));
+		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer [" + 
+			debugName + "] color attachment [" + to_string(i) + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment));
+		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), "Incorrect "
+			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing "
+			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] flag");
 	}
 
 	if (depthStencilAttachment.imageView)
 	{
 		auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);
-		GARDEN_ASSERT(isFormatDepthOrStencil(imageView->getFormat()));
+		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect "
+			"framebuffer [" + debugName + "] depth/stencil attachment format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
-		GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment));
+		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), "Incorrect "
+			"framebuffer [" + debugName + "] depth/stencil attachment size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), "Missing "
+			"framebuffer [" + debugName + "] depth/stencil attachment flag");
 	}
 	#endif
 
@@ -558,8 +578,8 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 //**********************************************************************************************************************
 void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 {
-	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(subpasses.size() == this->subpasses.size());
+	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(subpasses.size() == this->subpasses.size(), "Assert " + debugName);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -571,38 +591,16 @@ void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 	this->size = size;
 }
 
-#if GARDEN_DEBUG || GARDEN_EDITOR
-//**********************************************************************************************************************
-void Framebuffer::setDebugName(const string& name)
-{
-	Resource::setDebugName(name);
-
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->hasDebugUtils || !instance || subpasses.empty())
-			return;
-
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-		nameInfo.objectType = vk::ObjectType::eRenderPass;
-		nameInfo.objectHandle = (uint64)renderPass;
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-	}
-	else abort();
-}
-#endif
-
 //**********************************************************************************************************************
 void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCount,
 	float clearDepth, uint32 clearStencil, int4 region, bool asyncRecording)
 {
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(clearColorCount == colorAttachments.size());
-	GARDEN_ASSERT(!clearColors || (clearColors && clearColorCount > 0));
-	GARDEN_ASSERT(region.x + region.z <= size.x);
-	GARDEN_ASSERT(region.y + region.w <= size.y);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(clearColorCount == colorAttachments.size(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!clearColors || (clearColors && clearColorCount > 0), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(region.x + region.z <= size.x, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(region.y + region.w <= size.y, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	
 	auto graphicsAPI = GraphicsAPI::get();
 	graphicsAPI->currentFramebuffer = graphicsAPI->framebufferPool.getID(this);
@@ -657,11 +655,12 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 //**********************************************************************************************************************
 void Framebuffer::nextSubpass(bool asyncRecording)
 {
-	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer == GraphicsAPI::get()->framebufferPool.getID(this));
-	GARDEN_ASSERT(GraphicsAPI::get()->currentSubpassIndex + 1 < subpasses.size());
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer == 
+		GraphicsAPI::get()->framebufferPool.getID(this), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentSubpassIndex + 1 < subpasses.size(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
+
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -701,8 +700,9 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 }
 void Framebuffer::endRenderPass()
 {
-	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer == GraphicsAPI::get()->framebufferPool.getID(this));
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer == 
+		GraphicsAPI::get()->framebufferPool.getID(this), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -725,8 +725,9 @@ void Framebuffer::endRenderPass()
 void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	uint8 attachmentCount, const ClearRegion* regions, uint32 regionCount)
 {
-	GARDEN_ASSERT(GraphicsAPI::get()->currentFramebuffer == GraphicsAPI::get()->framebufferPool.getID(this));
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer == 
+		GraphicsAPI::get()->framebufferPool.getID(this), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
 
 	ClearAttachmentsCommand command;
@@ -737,3 +738,25 @@ void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	command.regions = regions;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
+
+#if GARDEN_DEBUG || GARDEN_EDITOR
+//**********************************************************************************************************************
+void Framebuffer::setDebugName(const string& name)
+{
+	Resource::setDebugName(name);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!vulkanAPI->hasDebugUtils || !instance || subpasses.empty())
+			return;
+
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		nameInfo.objectType = vk::ObjectType::eRenderPass;
+		nameInfo.objectHandle = (uint64)renderPass;
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+	}
+	else abort();
+}
+#endif

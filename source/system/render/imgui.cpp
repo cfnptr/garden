@@ -267,7 +267,7 @@ void ImGuiRenderSystem::preInit()
 	#if GARDEN_DEBUG
 	auto fontString = (GARDEN_RESOURCES_PATH / fontPath).generic_string();
 	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), fontSize);
-	GARDEN_ASSERT(fontResult);
+	GARDEN_ASSERT_MSG(fontResult, "Failed to load ImGui font [" + fontString + "]");
 	#else
 	auto& packReader = ResourceSystem::Instance::get()->getPackReader();
 	auto fontIndex = packReader.getItemIndex(fontPath);

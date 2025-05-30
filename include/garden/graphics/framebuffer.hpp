@@ -287,14 +287,6 @@ public:
 	 */
 	void recreate(uint2 size, const vector<SubpassImages>& subpasses);
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	/**
-	 * @brief Sets framebuffer debug name. (Debug Only)
-	 * @param[in] name target debug name
-	 */
-	void setDebugName(const string& name) final;
-	#endif
-
 	//******************************************************************************************************************
 	// Render commands
 	//******************************************************************************************************************
@@ -461,6 +453,14 @@ public:
 		attachment.clearColor.deptStencilValue.stencil = stencil;
 		clearAttachment(attachment);
 	}
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Sets framebuffer debug name. (Debug Only)
+	 * @param[in] name target debug name
+	 */
+	void setDebugName(const string& name) final;
+	#endif
 };
 
 /***********************************************************************************************************************
