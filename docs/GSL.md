@@ -13,7 +13,7 @@ You can use `#include` directive, it's backed by the shaderc compiler internally
 ## Vertex attributes
 
 Shader parser automatically gets and calculates vertex attributes, so we do not need to explicitly specify layout. 
-Input attributes format can be specified using this syntax:
+Vertex input attributes format can be specified using this syntax:
 
 ```
 in float3 vs.variableName : f32;

@@ -15,10 +15,10 @@
 #ifndef NORMAL_MAPPING_GSL
 #define NORMAL_MAPPING_GSL
 
-float3x3 computeTBN(float4x4 model, float3 normal, float3 tangent)
+float3x3 computeTBN(float4x3 model, float3 normal, float3 tangent)
 {
-	float3 t = normalize((model * float4(tangent, 0.0)).xyz);
-	float3 n = normalize((model * float4(normal, 0.0)).xyz);
+	float3 t = normalize(model * float4(tangent, 0.0));
+	float3 n = normalize(model * float4(normal, 0.0));
 	t = normalize(t - dot(t, n) * n);
 	float3 b = cross(n, t);
 	return float3x3(t, b, n);

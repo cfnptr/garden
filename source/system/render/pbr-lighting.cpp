@@ -993,14 +993,14 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 
 	auto sampleCount = calcSampleCount(mipIndex);
 	auto invSampleCount = 1.0f / sampleCount;
-	auto roughness = mipToLinearRoughness(specularMipCount, mipIndex);
+	auto linearRoughness = mipToLinearRoughness(specularMipCount, mipIndex);
 	auto logOmegaP = log4((4.0f * (float)M_PI) / (6.0f * cubemapSize * cubemapSize));
 	float weight = 0.0f; uint32 count = 0;
 
 	for (uint32 i = 0; i < sampleCount; i++)
 	{
 		auto u = hammersley(i, invSampleCount);
-		auto h = importanceSamplingNdfDggx(u, roughness);
+		auto h = importanceSamplingNdfDggx(u, linearRoughness);
 		auto noh = h.getZ(), noh2 = noh * noh;
 		auto nol = 2.0f * noh2 - 1.0f;
 		auto l = f32x4(2.0f * noh * h.getX(), 2.0f * noh * h.getY(), nol);
@@ -1008,7 +1008,7 @@ static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
 		if (nol > 0.0f)
 		{
 			constexpr auto k = 1.0f; // log4(4.0f);
-			auto pdf = ggx(noh, roughness) / 4.0f;
+			auto pdf = ggx(noh, linearRoughness) / 4.0f;
 			auto omegaS = 1.0f / (sampleCount * pdf);
 			auto level = log4(omegaS) - logOmegaP + k;
 			auto mip = clamp(level, 0.0f, (float)(cubemapMipCount - 1));
