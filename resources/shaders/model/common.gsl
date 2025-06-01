@@ -23,7 +23,7 @@
 struct InstanceData
 {
 	float4x4 mvp;
-	float4x4 model;
+	float3x4 model;
 };
 
 GBufferValues fillModelGBuffer(sampler2D mraorMap, sampler2D normalMap, 

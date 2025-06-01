@@ -51,7 +51,7 @@ float lambert()
 //**********************************************************************************************************************
 float2 hammersley(uint32 index, float invSampleCount)
 {
-	const float tof = 0.5f / float(0x80000000U);
+	const float tof = 0.5f / float(0x80000000u);
 	uint32 bits = index;
 	bits = (bits << 16u) | (bits >> 16u);
 	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
