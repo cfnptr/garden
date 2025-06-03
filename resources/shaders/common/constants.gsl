@@ -26,6 +26,7 @@
 	float4 viewDir;          \
 	float4 lightDir;         \
 	float4 shadowColor;      \
+	float4 skyColor;         \
 	float2 frameSize;        \
 	float2 invFrameSize;     \
 	float2 invFrameSize2;    \

@@ -81,13 +81,14 @@ public:
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
 	 */
 	struct RayTracingCreateData : public CreateData
-	{
-		uint8 maxRecursionDepth = 0;
-		uint16 _alignment = 0;
+	{	
+		uint8 _alignment0 = 0;
+		uint16 _alignment1 = 0;
 		vector<vector<uint8>> rayGenGroups;
 		vector<vector<uint8>> missGroups;
 		vector<HitGroupData> hitGroups;
 		vector<vector<uint8>> callGroups;
+		uint32 rayRecursionDepth = 1;
 	};
 private:
 	uint8 rayGenGroupCount = 0;

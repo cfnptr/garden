@@ -69,14 +69,9 @@ public:
 		uint32 itemCount;
 	};
 
-	/**
-	 * @brief PBR lighting rendering shadow buffer count.
-	 */
-	static constexpr uint8 shadowBufferCount = 1;
-	/**
-	 * @brief PBR lighting rendering AO buffer count. (Ambient Occlusion)
-	 */
-	static constexpr uint8 aoBufferCount = 2;
+	static constexpr uint8 shadowBufferCount = 1; /**< PBR lighting rendering shadow buffer count. */
+	static constexpr uint8 aoBufferCount = 2; /**< PBR lighting rendering AO buffer count. (Ambient Occlusion) */
+	static constexpr Image::Format shadowBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
 	ID<Image> dfgLUT = {};
 	ID<Image> shadowBuffer = {};
@@ -188,9 +183,10 @@ public:
 	 * @param[out] sh spherical harmonics buffer instance
 	 * @param[out] specular specular cubemap instance
 	 * @param strategy graphics memory allocation strategy
+	 * @param[out] shBuffer spherical harmonics data buffer or null
 	 */
-	void loadCubemap(const fs::path& path, Ref<Image>& cubemap, Ref<Buffer>& sh,
-		Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size);
+	void loadCubemap(const fs::path& path, Ref<Image>& cubemap, Ref<Buffer>& sh, Ref<Image>& specular, 
+		Memory::Strategy strategy = Memory::Strategy::Size, vector<f32x4>* shBuffer = nullptr);
 
 	/**
 	 * @brief Creates PBR lighting descriptor set.

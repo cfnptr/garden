@@ -573,6 +573,14 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 						auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
 						ResourceExt::getBusyLock(**tlasView)++;
 						currentCommandBuffer->addLockedResource(ID<Tlas>(resource));
+
+						auto& instances = TlasExt::getInstances(**tlasView);
+						for (const auto& instance : instances)
+						{
+							auto blasView = graphicsAPI->blasPool.get(instance.blas);
+							ResourceExt::getBusyLock(**blasView)++;
+							currentCommandBuffer->addLockedResource(instance.blas);
+						}
 					}
 				}
 			}

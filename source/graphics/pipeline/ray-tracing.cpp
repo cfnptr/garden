@@ -111,8 +111,11 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 	}
 
 	auto vulkanAPI = VulkanAPI::get();
+	GARDEN_ASSERT(createData.rayRecursionDepth > 0);
+	GARDEN_ASSERT(createData.rayRecursionDepth <= vulkanAPI->rtProperties.maxRayRecursionDepth);
+
 	vk::RayTracingPipelineCreateInfoKHR pipelineInfo({}, 
-		stageCount, stageInfos.data(), groupCount, shaderGroupInfos.data(), 1, // TODO: createData.maxRecursionDepth, 
+		stageCount, stageInfos.data(), groupCount, shaderGroupInfos.data(), createData.rayRecursionDepth, 
 		nullptr, nullptr, nullptr, (VkPipelineLayout)pipelineLayout, nullptr, -1);
 
 	for (uint8 i = 0; i < variantCount; i++)

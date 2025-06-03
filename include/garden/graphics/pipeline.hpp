@@ -122,6 +122,7 @@ public:
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
+		uint32 rayRecursionDepth = 0;
 		ShaderStage pushConstantsStages = {};
 		uint16 pushConstantsSize = 0;
 		uint8 descriptorSetCount = 0;

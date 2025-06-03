@@ -42,10 +42,13 @@ public:
 	 */
 	static constexpr uint8 cascadeCount = 3;
 
+	static constexpr Image::Format depthFormat = Image::Format::UnormD16;
+	static constexpr Image::Format transparentFormat = Image::Format::SfloatR16G16B16A16;
+
 	struct ShadowData final
 	{
 		float4x4 lightSpace[cascadeCount];
-		float4 farPlanesIntens;
+		float4 farPlanes;
 		float4 lightDirBias;
 	};
 private:
@@ -55,7 +58,7 @@ private:
 	vector<ID<Framebuffer>> shadowFramebuffers;
 	vector<ID<Framebuffer>> transFramebuffers;
 	DescriptorSet::Buffers dataBuffers;
-	ID<Image> shadowMap = {};
+	ID<Image> depthMap = {};
 	ID<Image> transparentMap = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
@@ -114,11 +117,11 @@ public:
 	const DescriptorSet::Buffers& getDataBuffers();
 
 	/**
-	 * @brief Returns cascade shadow map buffer.
+	 * @brief Returns cascade shadow mapping depth map buffer.
 	 */
-	ID<Image> getShadowMap();
+	ID<Image> getDepthMap();
 	/**
-	 * @brief Returns cascade transparent map buffer.
+	 * @brief Returns cascade shadow mapping transparent map buffer.
 	 */
 	ID<Image> getTransparentMap();
 	
