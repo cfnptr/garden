@@ -81,7 +81,8 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImageView);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
-	setShadowColor(f32x4(1.0f, 1.0f, 1.0f, 0.25f));
+	setShadowColor(float3::one, 0.25f);
+	setSkyColor(float3::one);
 	setEmissiveCoeff(100.0f);
 
 	cameraConstantsBuffers.resize(inFlightCount);

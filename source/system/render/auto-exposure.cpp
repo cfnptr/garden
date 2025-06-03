@@ -171,7 +171,7 @@ void AutoExposureRenderSystem::render()
 		averagePipelineView->bind();
 		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
 		averagePipelineView->pushConstants(&averagePC);
-		averagePipelineView->dispatch(1);
+		averagePipelineView->dispatch(1, false);
 	}
 	graphicsSystem->stopRecording();
 }

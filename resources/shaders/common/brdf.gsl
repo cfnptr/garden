@@ -152,15 +152,16 @@ float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float roughness, f
 	return textureLod(iblSpecular, r, lod + offset).rgb;
 }
 
-float3 diffuseIrradiance(float3 normal, const float4 iblSH[SH_COEFF_COUNT])
+float3 diffuseIrradiance(float3 normal, const float4 shBuffer[SH_COEFF_COUNT])
 {
-	return max(iblSH[0].xyz +
-		iblSH[1].xyz * (normal.y) + iblSH[2].xyz * (normal.z) + iblSH[3].xyz * (normal.x) +
-		iblSH[4].xyz * (normal.y * normal.x) +
-		iblSH[5].xyz * (normal.y * normal.z) +
-		iblSH[6].xyz * (3.0f * normal.z * normal.z - 1.0f) +
-		iblSH[7].xyz * (normal.z * normal.x) +
-		iblSH[8].xyz * (normal.x * normal.x - normal.y * normal.y), 0.0f);
+	float3 irradiance = shBuffer[0].xyz +
+		shBuffer[1].xyz * (normal.y) + shBuffer[2].xyz * (normal.z) + shBuffer[3].xyz * (normal.x) +
+		shBuffer[4].xyz * (normal.y * normal.x) +
+		shBuffer[5].xyz * (normal.y * normal.z) +
+		shBuffer[6].xyz * (3.0f * normal.z * normal.z - 1.0f) +
+		shBuffer[7].xyz * (normal.z * normal.x) +
+		shBuffer[8].xyz * (normal.x * normal.x - normal.y * normal.y);
+	return max(irradiance, 0.0f);
 }
 
 #endif // BRDF_GSL

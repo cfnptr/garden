@@ -41,20 +41,20 @@ static void createDataBuffers(DescriptorSet::Buffers& dataBuffers)
 }
 
 //**********************************************************************************************************************
-static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
+static ID<Image> createDepthData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
-	constexpr auto shadowFormat = Image::Format::UnormD16;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(shadowFormat, Image::Usage::DepthStencilAttachment | Image::Usage::Sampled, 
-		{ Image::Layers(CsmRenderSystem::cascadeCount) }, uint2(shadowMapSize), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.csm.shadowMap");
+	auto image = graphicsSystem->createImage(CsmRenderSystem::depthFormat, 
+		Image::Usage::DepthStencilAttachment | Image::Usage::Sampled, { Image::Layers(CsmRenderSystem::cascadeCount) }, 
+		uint2(shadowMapSize), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.csm.depthMap");
 	imageViews.resize(CsmRenderSystem::cascadeCount);
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		auto imageView = graphicsSystem->createImageView(image, 
-			Image::Type::Texture2D, shadowFormat, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.csm.shadowCascade" + to_string(i));
+			Image::Type::Texture2D, CsmRenderSystem::depthFormat, 0, 1, i, 1);
+		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.csm.depthCascade" + to_string(i));
 		imageViews[i] = imageView;
 	}
 	
@@ -62,17 +62,17 @@ static ID<Image> createShadowData(vector<ID<ImageView>>& imageViews, uint32 shad
 }
 static ID<Image> createTransparentData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
-	constexpr auto transparentFormat = Image::Format::UfloatB10G11R11;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(transparentFormat, Image::Usage::ColorAttachment | Image::Usage::Sampled, 
-		{ Image::Layers(CsmRenderSystem::cascadeCount) }, uint2(shadowMapSize), Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(CsmRenderSystem::transparentFormat, 
+		Image::Usage::ColorAttachment | Image::Usage::Sampled, { Image::Layers(CsmRenderSystem::cascadeCount) }, 
+		uint2(shadowMapSize), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.csm.transparentMap");
 	imageViews.resize(CsmRenderSystem::cascadeCount);
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		auto imageView = graphicsSystem->createImageView(image, 
-			Image::Type::Texture2D, transparentFormat, 0, 1, i, 1);
+			Image::Type::Texture2D, CsmRenderSystem::transparentFormat, 0, 1, i, 1);
 		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.csm.transparentCascade" + to_string(i));
 		imageViews[i] = imageView;
 	}
@@ -125,11 +125,11 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowFramebuffers()[0]);
 }
 
-static DescriptorSet::Uniforms getUniforms(ID<Image> shadowMap, 
+static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap, 
 	ID<Image> transparentMap, const DescriptorSet::Buffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto shadowMapView = graphicsSystem->get(shadowMap);
+	auto depthMapView = graphicsSystem->get(depthMap);
 	auto transparentMapView = graphicsSystem->get(transparentMap);
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
 	auto inFlightCount = graphicsSystem->getInFlightCount();
@@ -140,7 +140,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> shadowMap,
 			DeferredRenderSystem::normalsGBuffer].imageView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, inFlightCount) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
-		{ "shadowMap", DescriptorSet::Uniform(shadowMapView->getDefaultView(), 1, inFlightCount) },
+		{ "depthMap", DescriptorSet::Uniform(depthMapView->getDefaultView(), 1, inFlightCount) },
 		{ "transparentMap", DescriptorSet::Uniform(transparentMapView->getDefaultView(), 1, inFlightCount) }
 	};
 	return uniforms;
@@ -176,8 +176,8 @@ void CsmRenderSystem::init()
 		pipeline = createPipeline();
 	if (dataBuffers.empty())
 		createDataBuffers(dataBuffers);
-	if (!shadowMap)
-		shadowMap = createShadowData(shadowImageViews, shadowMapSize);
+	if (!depthMap)
+		depthMap = createDepthData(shadowImageViews, shadowMapSize);
 	if (!transparentMap)
 		transparentMap = createTransparentData(transImageViews, shadowMapSize);
 	
@@ -197,7 +197,7 @@ void CsmRenderSystem::deinit()
 		graphicsSystem->destroy(transImageViews);
 		graphicsSystem->destroy(shadowImageViews);
 		graphicsSystem->destroy(transparentMap);
-		graphicsSystem->destroy(shadowMap);
+		graphicsSystem->destroy(depthMap);
 		graphicsSystem->destroy(dataBuffers);
 		graphicsSystem->destroy(pipeline);
 
@@ -222,7 +222,7 @@ void CsmRenderSystem::shadowRender()
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms(shadowMap, transparentMap, dataBuffers);
+		auto uniforms = getUniforms(depthMap, transparentMap, dataBuffers);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.csm");
 	}
@@ -246,7 +246,7 @@ void CsmRenderSystem::gBufferRecreate()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms(shadowMap, transparentMap, dataBuffers);
+		auto uniforms = getUniforms(depthMap, transparentMap, dataBuffers);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.csm");
 	}
@@ -351,8 +351,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
 	auto data = (ShadowData*)dataBufferView->getMap();
 	data->lightSpace[passIndex] = (float4x4)(ndcToCoords * viewProj * cameraConstants.invViewProj * coordsToNDC);
-	data->farPlanesIntens = float4((float3)(cameraConstants.nearPlane / 
-		farPlanes), 1.0f - cameraConstants.shadowColor.getW());
+	data->farPlanes = float4((float3)(cameraConstants.nearPlane / farPlanes), 0.0f);
 	data->lightDirBias = float4((float3)-cameraConstants.lightDir, biasNormalFactor);
 	return true;
 }
@@ -419,11 +418,11 @@ const DescriptorSet::Buffers& CsmRenderSystem::getDataBuffers()
 	return dataBuffers;
 }
 
-ID<Image> CsmRenderSystem::getShadowMap()
+ID<Image> CsmRenderSystem::getDepthMap()
 {
-	if (!shadowMap)
-		shadowMap = createShadowData(shadowImageViews, shadowMapSize);
-	return shadowMap;
+	if (!depthMap)
+		depthMap = createDepthData(shadowImageViews, shadowMapSize);
+	return depthMap;
 }
 ID<Image> CsmRenderSystem::getTransparentMap()
 {
@@ -434,8 +433,8 @@ ID<Image> CsmRenderSystem::getTransparentMap()
 
 const vector<ID<Framebuffer>>& CsmRenderSystem::getShadowFramebuffers()
 {
-	if (!shadowMap)
-		shadowMap = createShadowData(shadowImageViews, shadowMapSize);
+	if (!depthMap)
+		depthMap = createDepthData(shadowImageViews, shadowMapSize);
 	if (shadowFramebuffers.empty())
 		createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
 	return shadowFramebuffers;

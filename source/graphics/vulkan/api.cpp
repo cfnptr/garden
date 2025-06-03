@@ -794,7 +794,7 @@ static vk::CommandPool createVkCommandPool(vk::Device device, uint32 queueFamily
 	return device.createCommandPool(commandPoolInfo);
 }
 
-static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
+static vk::DescriptorPool createVkDescriptorPool(vk::Device device, const VulkanAPI::Features& features)
 {
 	vector<vk::DescriptorPoolSize> sizes;
 	if (GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT > 0)
@@ -822,7 +822,7 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device)
 		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment,
 			GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT));
 	}
-	if (GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT > 0)
+	if (GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT > 0 && features.rayTracing)
 	{
 		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR,
 			GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT));
@@ -956,7 +956,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	graphicsCommandPool = createVkCommandPool(device, graphicsQueueFamilyIndex);
 	transferCommandPool = createVkCommandPool(device, transferQueueFamilyIndex);
 	computeCommandPool = createVkCommandPool(device, computeQueueFamilyIndex);
-	descriptorPool = createVkDescriptorPool(device);
+	descriptorPool = createVkDescriptorPool(device, features);
 	pipelineCache = createPipelineCache(appDataName, appVersion, device, deviceProperties, isCacheLoaded);
 
 	if (features.rayTracing)

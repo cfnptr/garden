@@ -25,7 +25,7 @@
 
 #define SHADOW_MAP_DATA                            \
 	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT]; \
-	float4 farPlanesIntens;                        \
+	float4 farPlanes;                        \
 	float4 lightDirBias;
 
 const float2 poissonDisk[SHADOW_MAP_SAMPLE_COUNT] = float2[]
@@ -70,38 +70,38 @@ void computeCsmData(float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], float2 texCoo
 }
 
 //**********************************************************************************************************************
-float evaluateCsmShadows(sampler2DArrayShadow shadowMap, uint32 cascadeID, float3 lightCoords)
+float evaluateCsmShadows(sampler2DArrayShadow depthMap, uint32 cascadeID, float3 lightCoords)
 {
 	if (lightCoords.z < 0.0f)
 		return 0.0f;
 
 	float angle = toFloat(iqint(lightCoords.xy)) * (M_PI * 2.0f);
 	float2x2 rotation = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
-	float2 texelSize = 2.0f / textureSize(shadowMap, 0).xy; // Bigger texel size - x2.
+	float2 texelSize = 2.0f / textureSize(depthMap, 0).xy; // Bigger texel size - x2.
 	float shadow = 0.0f;
 
 	for (int32 i = 0; i < SHADOW_MAP_SAMPLE_COUNT; i++)
 	{
 		float2 texCoords = rotation * poissonDisk[i] * texelSize + lightCoords.xy;
-		shadow += texture(shadowMap, float4(texCoords, cascadeID, lightCoords.z));
+		shadow += texture(depthMap, float4(texCoords, cascadeID, lightCoords.z));
 	}
 
-	return shadow * (1.0f / SHADOW_MAP_SAMPLE_COUNT);
+	return 1.0f - shadow * (1.0f / SHADOW_MAP_SAMPLE_COUNT);
 }
-float3 evaluateCsmTransparency(sampler2DArray transparentMap, uint32 cascadeID, float3 lightCoords)
+float4 evaluateCsmTransparency(sampler2DArray transparentMap, uint32 cascadeID, float3 lightCoords)
 {
 	if (lightCoords.z < 0.0f)
-		return float3(1.0f);
+		return float4(1.0f);
 
 	float angle = toFloat(iqint(lightCoords.xy)) * (M_PI * 2.0f);
 	float2x2 rotation = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
 	float2 texelSize = 2.0f / textureSize(transparentMap, 0).xy; // Bigger texel size - x2.
-	float3 transparency = float3(0.0f);
+	float4 transparency = float4(0.0f);
 
 	for (int32 i = 0; i < SHADOW_MAP_SAMPLE_COUNT; i++)
 	{
 		float2 texCoords = rotation * poissonDisk[i] * texelSize + lightCoords.xy;
-		transparency += texture(transparentMap, float3(texCoords, cascadeID)).rgb;
+		transparency += texture(transparentMap, float3(texCoords, cascadeID));
 	}
 
 	return transparency * (1.0f / SHADOW_MAP_SAMPLE_COUNT);

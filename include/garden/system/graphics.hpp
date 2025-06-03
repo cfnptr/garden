@@ -143,7 +143,19 @@ public:
 	 * @details See the @ref getCameraConstants().
 	 * @param shadowColor target shadow color and intensity
 	 */
-	void setShadowColor(f32x4 shadowColor) noexcept { currentCameraConstants.shadowColor = shadowColor; }
+	void setShadowColor(float3 shadowColor, float intensity = 1.0f) noexcept
+	{
+		currentCameraConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
+	}
+	/**
+	 * @brief Sets sky color and intensity. (Pre multiplied with 1/Pi)
+	 * @details See the @ref getCameraConstants().
+	 * @param skyColor target the color and intensity
+	 */
+	void setSkyColor(float3 skyColor, float intensity = 1.0f) noexcept
+	{
+		currentCameraConstants.skyColor = (f32x4)float4(skyColor, intensity);
+	}
 	/**
 	 * @brief Sets emissive coefficient. (Produces maximum brightness)
 	 * @details See the @ref getCameraConstants().

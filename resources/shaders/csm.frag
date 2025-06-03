@@ -36,7 +36,7 @@ uniform sampler2DArrayShadow
 	comparison = on;
 	filter = linear;
 	addressMode = clampToBorder;
-} shadowMap;
+} depthMap;
 uniform sampler2DArray
 {
 	filter = linear;
@@ -52,16 +52,16 @@ uniform ShadowData
 void main()
 {
 	float pixelDepth = texture(depthBuffer, fs.texCoords).r;
-	if (pixelDepth < shadowData.farPlanesIntens.z)
+	if (pixelDepth < shadowData.farPlanes.z)
 		discard;
 
 	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
 	uint32 cascadeID; float3 lightCoords;
-	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, shadowData.farPlanesIntens.xyz, 
+	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, shadowData.farPlanes.xyz, 
 		shadowData.lightDirBias.xyz, shadowData.lightDirBias.w, normal, cascadeID, lightCoords);
-	float shadow = evaluateCsmShadows(shadowMap, cascadeID, lightCoords);
+	float shadow = evaluateCsmShadows(depthMap, cascadeID, lightCoords);
 
-	float3 transparency = evaluateCsmTransparency(transparentMap, cascadeID, lightCoords);
-	transparency = mix(transparency, float3(1.0f), shadow);
-	fb.shadow = float4(transparency, 1.0f - shadow * shadowData.farPlanesIntens.w);
+	float4 transparency = evaluateCsmTransparency(transparentMap, cascadeID, lightCoords);
+	transparency = mix(float4(1.0f), transparency, shadow); // Note: fix for peter-panning.
+	fb.shadow = transparency * float4(float3(1.0f), shadow);
 }

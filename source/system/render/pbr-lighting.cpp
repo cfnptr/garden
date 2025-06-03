@@ -186,10 +186,9 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 //**********************************************************************************************************************
 static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 {
-	constexpr auto shadowFormat = Image::Format::SfloatR16G16B16A16;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(shadowFormat, Image::Usage::ColorAttachment | 
+	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::shadowBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::Storage | Image::Usage::TransferDst, 
 		mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadowBuffer");
@@ -197,7 +196,7 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
 	{
 		shadowImageViews[i] = graphicsSystem->createImageView(image,
-			Image::Type::Texture2D, shadowFormat, 0, 1, i, 1);
+			Image::Type::Texture2D, PbrLightingRenderSystem::shadowBufferFormat, 0, 1, i, 1);
 		SET_RESOURCE_DEBUG_NAME(shadowImageViews[i], "imageView.lighting.shadow" + to_string(i));
 	}
 
@@ -702,7 +701,7 @@ void PbrLightingRenderSystem::hdrRender()
 
 	LightingPC pc;
 	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
-	pc.shadowColor = (float3)cameraConstants.shadowColor;
+	pc.shadowColor = (float3)(cameraConstants.shadowColor * cameraConstants.shadowColor.getW());
 	pc.emissiveCoeff = cameraConstants.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;
 
@@ -926,11 +925,10 @@ static void calcIblSH(f32x4* shBufferData, const f32x4** faces, uint32 cubemapSi
 }
 
 //**********************************************************************************************************************
-static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
-	const vector<const void*>& _pixels, uint32 cubemapSize, Buffer::Strategy strategy)
+static ID<Buffer> generateIblSH(ThreadSystem* threadSystem, const vector<const void*>& _pixels, 
+	vector<f32x4>& shBuffer, uint32 cubemapSize, Buffer::Strategy strategy)
 {
 	auto faces = (const f32x4**)_pixels.data();
-	vector<f32x4> shBuffer;
 	uint32 bufferCount;
 
 	if (threadSystem)
@@ -968,6 +966,7 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 			for (uint32 j = 0; j < shCoeffCount; j++)
 				shBufferData[j] += data[j];
 		}
+		shBuffer.resize(shCoeffCount);
 	}
 
 	for (uint32 i = 0; i < shCoeffCount; i++)
@@ -976,9 +975,9 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem,
 	deringingSH(shBufferData);
 	shaderPreprocessSH(shBufferData);
 
-	// TODO: check if final SH is the same as debug in release build.
-	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::TransferDst | Buffer::Usage::Uniform,
-		Buffer::CpuAccess::None, shBuffer, 0, 0, Buffer::Location::PreferGPU, strategy);
+	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::TransferDst | 
+		Buffer::Usage::Uniform, Buffer::CpuAccess::None, shBufferData, 
+		shCoeffCount * sizeof(f32x4), Buffer::Location::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************
@@ -1161,7 +1160,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 
 //**********************************************************************************************************************
 void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
-	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy)
+	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy, vector<f32x4>* shBuffer)
 {
 	GARDEN_ASSERT(!path.empty());
 	
@@ -1186,8 +1185,12 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 	auto cubemapView = graphicsSystem->get(cubemap);
 	cubemapView->generateMips();
 
+	vector<f32x4> localSH;
+	if (!shBuffer)
+		shBuffer = &localSH;
+
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	sh = Ref<Buffer>(generateIblSH(threadSystem, mips[0], cubemapSize, strategy));
+	sh = Ref<Buffer>(generateIblSH(threadSystem, mips[0], *shBuffer, cubemapSize, strategy));
 	SET_RESOURCE_DEBUG_NAME(sh, "buffer.sh." + path.generic_string());
 
 	specular = Ref<Image>(generateIblSpecular(threadSystem, 

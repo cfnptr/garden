@@ -24,7 +24,7 @@
  *   2. UnormA2B10G10R10 (Clear Coat Normal, Clear Coat Roughness)
  *   3. UnormA2B10G10R10 (Encoded Normal, Shadow)
  *   4. SrgbB8G8R8A8     (Emissive Color and Factor) [optional]
- *   5. SrgbB8G8R8A8     (GI Color, <unused>) [optional]
+ *   5. UnormA2B10G10R10 (Global Illumination Color) [optional]
  */
 
 // TODO: Sheen rendering.
@@ -80,7 +80,7 @@ public:
 	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbB8G8R8A8;
-	static constexpr Image::Format gBufferFormat5 = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format gBufferFormat5 = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format depthStencilFormat = Image::Format::SfloatD32;
 	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format ldrBufferFormat = Image::Format::SrgbB8G8R8A8;

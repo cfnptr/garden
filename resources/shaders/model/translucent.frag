@@ -104,14 +104,14 @@ void main()
 	GBufferValues values = fillModelGBuffer(mraorMap, normalMap, emissiveMap, fs.tbn, fs.texCoords, baseColor);
 	values.specularFactor = 1.0f; values.ambientOcclusion = 1.0f; values.transmission = 0.0f;
 
-	float4 shadow = float4(cc.shadowColor.rgb, 1.0f);
-	if (gl.fragCoord.z >= shadowData.farPlanesIntens.z)
+	float4 shadow = float4(cc.shadowColor.rgb * cc.shadowColor.a, 1.0f);
+	if (gl.fragCoord.z >= shadowData.farPlanes.z)
 	{
 		uint32 cascadeID; float3 lightCoords;
 		computeCsmData(shadowData.lightSpace, gl.fragCoord.xy * cc.invFrameSize, 
-			gl.fragCoord.z, shadowData.farPlanesIntens.xyz, shadowData.lightDirBias.xyz,
+			gl.fragCoord.z, shadowData.farPlanes.xyz, shadowData.lightDirBias.xyz,
 			shadowData.lightDirBias.w, values.normal, cascadeID, lightCoords);
-		shadow.a -= evaluateCsmShadows(shadowMap, cascadeID, lightCoords) * shadowData.farPlanesIntens.w;
+		shadow.a = evaluateCsmShadows(shadowMap, cascadeID, lightCoords);
 	}
 
 	float3 viewDirection = calcViewDirection(fs.worldPos);

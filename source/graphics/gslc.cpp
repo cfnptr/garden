@@ -68,6 +68,7 @@ namespace garden::graphics
 	{
 		uint8 _alignment = 0;
 		ShaderStage pushConstantsStages = {};
+		uint32 rayRecursionDepth = 0;
 		// should be aligned.
 	};
 }
@@ -135,7 +136,8 @@ namespace garden::graphics
 	struct RayTracingLineData final : public LineData
 	{
 		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, 
-			isCallableDataIn = 0, isRayPayloadOffset = 0, isCallableDataOffset = 0;
+			isCallableDataIn = 0, isRayPayloadOffset = 0, isCallableDataOffset = 0,
+			isRayRecursionDepth = 0;
 	};
 
 	class CompileError final : public GardenError
@@ -1630,8 +1632,8 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	values.specConstCount = (uint8)data.specConsts.size();
 	values.vertexAttributeCount = (uint8)data.vertexAttributes.size();
 	values.blendStateCount = (uint8)data.blendStates.size();
-	values.pushConstantsStages = data.pushConstantsStages;
 	values.vertexAttributesSize = data.vertexAttributesSize;
+	values.pushConstantsStages = data.pushConstantsStages;
 	values.pipelineState = data.pipelineState;
 	
 	ofstream headerStream;
@@ -1914,6 +1916,14 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				fileData.outputFileStream << "// #callableDataOffset ";
 				fileData.callableDataIndex += (uint8)offset; lineData.isCallableDataOffset = 0;
 			}
+			else if (lineData.isRayRecursionDepth)
+			{
+				auto depth = strtoul(lineData.word.c_str(), nullptr, 10);
+				if (depth < 1)
+					throw CompileError("invalid max ray recursion depth", fileData.lineIndex, lineData.word);
+				fileData.outputFileStream << "// #rayRecursionDepth ";
+				data.rayRecursionDepth = (uint32)depth; lineData.isRayRecursionDepth = 0;
+			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
 				bindingIndex, pushConstantsSize, variantCount, shaderStage)) { }
 			else
@@ -1937,6 +1947,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				else if (lineData.word == "callableDataIn") { lineData.isCallableDataIn = 1; overrideOutput = true; }
 				else if (lineData.word == "#rayPayloadOffset") { lineData.isRayPayloadOffset = 1; overrideOutput = true; }
 				else if (lineData.word == "#callableDataOffset") { lineData.isCallableDataOffset = 1; overrideOutput = true; }
+				else if (lineData.word == "#rayRecursionDepth") { lineData.isRayRecursionDepth = 1; overrideOutput = true; }
 				else if (setCommonKeywords(fileData, lineData, overrideOutput)) { }
 				else onShaderGlobalVariable(lineData.word);
 			}
@@ -2079,6 +2090,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 	values.pushConstantsSize = data.pushConstantsSize;
 	values.specConstCount = (uint8)data.specConsts.size();
 	values.pushConstantsStages = data.pushConstantsStages;
+	values.rayRecursionDepth = data.rayRecursionDepth;
 	
 	ofstream headerStream;
 	auto headerFilePath = outputPath / data.shaderPath; headerFilePath += ".gslh";
@@ -2188,10 +2200,10 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
 		dataOffset, values.specConstCount, data.specConsts);
 
+	data.pushConstantsStages = values.pushConstantsStages;
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
 	data.variantCount = values.variantCount;
-	data.pushConstantsStages = values.pushConstantsStages;
 	data.pipelineState = values.pipelineState;
 	data.vertexAttributesSize = values.vertexAttributesSize;
 }
@@ -2226,13 +2238,13 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
 		dataOffset, values.specConstCount, data.specConsts);
 
+	if (values.pushConstantsSize > 0)
+		data.pushConstantsStages = ShaderStage::Compute;
+
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
 	data.variantCount = values.variantCount;
 	data.localSize = values.localSize;
-
-	if (data.pushConstantsSize > 0)
-		data.pushConstantsStages = ShaderStage::Compute;
 }
 
 //******************************************************************************************************************
@@ -2314,10 +2326,11 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
 		dataOffset, values.specConstCount, data.specConsts);
 
+	data.rayRecursionDepth = values.rayRecursionDepth;
+	data.pushConstantsStages = values.pushConstantsStages;
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
 	data.variantCount = values.variantCount;
-	data.pushConstantsStages = values.pushConstantsStages;
 }
 
 #ifdef GSL_COMPILER

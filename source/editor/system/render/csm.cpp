@@ -78,9 +78,9 @@ void CsmRenderEditorSystem::preUiRender()
 		const auto& cameraConstants = graphicsSystem->getCameraConstants();
 		auto shadowColor = cameraConstants.shadowColor;
 		if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
-			graphicsSystem->setShadowColor(shadowColor);
+			graphicsSystem->setShadowColor((float3)shadowColor, shadowColor.getW());
 		if (ImGui::SliderFloat("Alpha", &shadowColor.floats.w, 0.0f, 1.0f))
-			graphicsSystem->setShadowColor(shadowColor);
+			graphicsSystem->setShadowColor((float3)shadowColor, shadowColor.getW());
 
 		ImGui::DragFloat("Distance", &csmSystem->distance, 1.0f);
 		ImGui::DragFloat("Bias Constant Factor", &csmSystem->biasConstantFactor, 0.01f);

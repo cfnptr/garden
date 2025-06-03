@@ -35,22 +35,11 @@ public:
 		float threshold;
 	};
 
-	/**
-	 * @brief Maximum bloom buffer mip level count.
-	 */
-	static constexpr uint8 maxBloomMipCount = 7;
-	/**
-	 * @brief First downsample step shader variant.
-	 */
-	static constexpr uint8 downsampleFirstVariant = 0;
-	/**
-	 * @brief 6x6 downsample step shader variant.
-	 */
-	static constexpr uint8 downsample6x6Variant = 1;
-	/**
-	 * @brief Generic downsample step shader variant.
-	 */
-	static constexpr uint8 downsampleBaseVariant = 2;
+	static constexpr uint8 maxBloomMipCount = 7;       /**< Maximum bloom buffer mip level count. */
+	static constexpr uint8 downsampleFirstVariant = 0; /**< First downsample step shader variant. */
+	static constexpr uint8 downsample6x6Variant = 1;   /**< 6x6 downsample step shader variant. */
+	static constexpr uint8 downsampleBaseVariant = 2;  /**< Generic downsample step shader variant. */
+	static constexpr Image::Format bufferFormat = Image::Format::UfloatB10G11R11;
 private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
 	ID<GraphicsPipeline> upsamplePipeline = {};
