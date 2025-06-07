@@ -83,10 +83,12 @@ float4 map(float4 value, float4 inMin, float4 inMax, float4 outMin, float4 outMa
 }
 
 float max(float a, float b, float c) { return max(max(a, b), c); }
+float max(float a, float b, float c, float d) { return max(max(max(a, b), c), d); }
 float max(float3 v) { return max(max(v.x, v.y), v.z); }
 float max(float4 v) { return max(max(max(v.x, v.y), v.z), v.w); }
 
 float min(float a, float b, float c) { return min(min(a, b), c); }
+float min(float a, float b, float c, float d) { return min(min(min(a, b), c), d); }
 float min(float3 v) { return min(min(v.x, v.y), v.z); }
 float min(float4 v) { return min(min(min(v.x, v.y), v.z), v.w); }
 

@@ -43,7 +43,7 @@ public:
 	static constexpr uint8 cascadeCount = 3;
 
 	static constexpr Image::Format depthFormat = Image::Format::UnormD16;
-	static constexpr Image::Format transparentFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format transparentFormat = Image::Format::SrgbB8G8R8A8;
 
 	struct ShadowData final
 	{

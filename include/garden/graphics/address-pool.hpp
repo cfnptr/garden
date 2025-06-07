@@ -26,28 +26,41 @@ namespace garden::graphics
 {
 
 /**
- * @brief Graphics resource device address pool. 
+ * @brief Graphics buffer resource device address pool. 
  */
 class AddressPool final
 {
-	vector<uint64> allocations;
+	vector<ID<Buffer>> resources;
+	vector<uint64> deviceAddresses;
+	vector<ID<Buffer>> barrierBuffers;
 	vector<uint32> freeAllocs;
 	DescriptorSet::Buffers addressBuffers = {};
 	uint32 inFlightCount = 0;
 	uint32 inFlightIndex = 0;
 	uint32 capacity = 0;
 	uint32 flushCount = 0;
+	Buffer::Usage addressBufferUsage = {};
 public:
-	/**
-	 * @brief Creates a new device address pool instance.
-	 * @param inFlightCount total in-flight frame count
-	 */
-	AddressPool(uint32 inFlightCount);
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	string debugName = "unnamed";
+	#endif
 
 	/**
-	 * @brief Returns device address pool allocations.
+	 * @brief Creates a new device address pool instance.
+	 *
+	 * @param inFlightCount total in-flight frame count
+	 * @param addressBufferUsage additional address buffer usage flags
 	 */
-	const vector<uint64>& getAllocations() const noexcept { return allocations; }
+	AddressPool(uint32 inFlightCount, Buffer::Usage addressBufferUsage = {});
+
+	/**
+	 * @brief Returns device address pool resources.
+	 */
+	const vector<ID<Buffer>>& getResources() const noexcept { return resources; }
+	/**
+	 * @brief Returns device address pool buffer addresses.
+	 */
+	const vector<uint64>& getDeviceAddresses() const noexcept { return deviceAddresses; }
 	/**
 	 * @brief Returns pool device address buffers.
 	 */
@@ -55,16 +68,16 @@ public:
 
 	/**
 	 * @brief Allocates a new resource index in the device address pool.
-	 * @param deviceAddress target buffer resource device address
+	 * @param buffer target buffer resource or null
 	 */
-	uint32 allocate(uint64 deviceAddress = 0);
+	uint32 allocate(ID<Buffer> buffer = {});
 	/**
 	 * @brief Updates resource in the device address pool.
 	 *
 	 * @param allocation target allocated buffer resource index
-	 * @param newDeviceAddress new buffer resource device address
+	 * @param newBuffer new buffer resource
 	 */
-	void update(uint32 allocation, uint64 newDeviceAddress);
+	void update(uint32 allocation, ID<Buffer> newBuffer);
 	/**
 	 * @brief Frees device address pool resource allocation.
 	 * @param allocation target allocated buffer resource index
@@ -84,6 +97,17 @@ public:
 	 * @brief Destroys device address pool buffers.
 	 */
 	void destroy();
+
+	//******************************************************************************************************************
+	// Render commands
+	//******************************************************************************************************************
+
+	/**
+	 * @brief Adds buffer memory barriers.
+	 * @warning Address pool buffers are not synchronized on the GPU automatically!
+	 * @param newState new buffer barrier state
+	 */
+	void addBufferBarriers(Buffer::BarrierState newState);
 };
 
 } // namespace garden::graphics

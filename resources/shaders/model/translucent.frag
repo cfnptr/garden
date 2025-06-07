@@ -42,11 +42,6 @@ out float4 fb.accum;
 out float fb.reveal;
 
 //**********************************************************************************************************************
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
-
 uniform set1 sampler2D
 {
 	filter = linear;
@@ -104,7 +99,7 @@ void main()
 	GBufferValues values = fillModelGBuffer(mraorMap, normalMap, emissiveMap, fs.tbn, fs.texCoords, baseColor);
 	values.specularFactor = 1.0f; values.ambientOcclusion = 1.0f; values.transmission = 0.0f;
 
-	float4 shadow = float4(cc.shadowColor.rgb * cc.shadowColor.a, 1.0f);
+	float4 shadow = float4(cc.shadowColor.rgb, 1.0f);
 	if (gl.fragCoord.z >= shadowData.farPlanes.z)
 	{
 		uint32 cascadeID; float3 lightCoords;
@@ -112,6 +107,7 @@ void main()
 			gl.fragCoord.z, shadowData.farPlanes.xyz, shadowData.lightDirBias.xyz,
 			shadowData.lightDirBias.w, values.normal, cascadeID, lightCoords);
 		shadow.a = evaluateCsmShadows(shadowMap, cascadeID, lightCoords);
+		shadow.rgb *= mix(cc.shadowColor.a, 1.0f, shadow.a);
 	}
 
 	float3 viewDirection = calcViewDirection(fs.worldPos);

@@ -1816,7 +1816,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 //******************************************************************************************************************
 static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& outputPath,
 	const vector<fs::path>& includePaths, GslCompiler::RayTracingData& data, uint8& bindingIndex, 
-	uint16& pushConstantsSize, uint8& variantCount, ShaderStage shaderStage)
+	uint16& pushConstantsSize, uint8& variantCount, uint32& rayRecursionDepth, ShaderStage shaderStage)
 {
 	RayTracingFileData fileData;
 	auto filePath = data.shaderPath;
@@ -1921,8 +1921,8 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				auto depth = strtoul(lineData.word.c_str(), nullptr, 10);
 				if (depth < 1)
 					throw CompileError("invalid max ray recursion depth", fileData.lineIndex, lineData.word);
-				fileData.outputFileStream << "// #rayRecursionDepth ";
-				data.rayRecursionDepth = (uint32)depth; lineData.isRayRecursionDepth = 0;
+				fileData.outputFileStream << "#define gsl_rayRecursionDepth " << lineData.word;
+				rayRecursionDepth = (uint32)depth; lineData.isRayRecursionDepth = 0;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
 				bindingIndex, pushConstantsSize, variantCount, shaderStage)) { }
@@ -2007,20 +2007,22 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 		anyHitPushConstantsSize = 0, closHitPushConstantsSize = 0, callPushConstantsSize = 0;
 	uint8 rayGenVariantCount = 1, missVariantCount = 1, intersectVariantCount = 1, 
 		anyHitVariantCount = 1, closHitVariantCount = 1, callVariantCount = 1;
+	uint32 rayGenRayRecDepth = 1, missRayRecDepth = 1, intersectRayRecDepth = 1, 
+		anyHitRayRecDepth = 1, closHitRayRecDepth = 1, callRayRecDepth = 1;
 	uint8 bindingIndex = 0;
 
-	auto compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, data, 
-		bindingIndex, rayGenPushConstantsSize, rayGenVariantCount, ShaderStage::RayGeneration);
-	compileResult &= compileRayTracingShader(inputPath, outputPath, includePaths, data, 
-		bindingIndex, missPushConstantsSize, missVariantCount, ShaderStage::Miss);
-	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, 
-		bindingIndex, intersectPushConstantsSize, intersectVariantCount, ShaderStage::Intersection);
-	auto hitCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, data, 
-		bindingIndex, anyHitPushConstantsSize, anyHitVariantCount, ShaderStage::AnyHit);
-	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, 
-		bindingIndex, closHitPushConstantsSize, closHitVariantCount, ShaderStage::ClosestHit);
-	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, 
-		bindingIndex, callPushConstantsSize, callVariantCount, ShaderStage::Callable);
+	auto compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
+		rayGenPushConstantsSize, rayGenVariantCount, rayGenRayRecDepth, ShaderStage::RayGeneration);
+	compileResult &= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
+		missPushConstantsSize, missVariantCount, missRayRecDepth, ShaderStage::Miss);
+	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
+		intersectPushConstantsSize, intersectVariantCount, intersectRayRecDepth, ShaderStage::Intersection);
+	auto hitCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
+		anyHitPushConstantsSize, anyHitVariantCount, anyHitRayRecDepth, ShaderStage::AnyHit);
+	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
+		closHitPushConstantsSize, closHitVariantCount, closHitRayRecDepth, ShaderStage::ClosestHit);
+	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
+		callPushConstantsSize, callVariantCount, callRayRecDepth, ShaderStage::Callable);
 	if (!compileResult || !hitCompileResult) return false;
 
 	if (rayGenVariantCount > 1 && missVariantCount > 1 && rayGenVariantCount != missVariantCount)
@@ -2060,6 +2062,17 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 		throw CompileError("different ray generation and callable shader push constants size");
 	}
 
+	if (rayGenRayRecDepth > 1 && missRayRecDepth > 1 && rayGenRayRecDepth != missRayRecDepth)
+		throw CompileError("different ray generation and miss shader ray recursion depth");
+	if (rayGenRayRecDepth > 1 && intersectRayRecDepth > 1 && rayGenRayRecDepth != intersectRayRecDepth)
+		throw CompileError("different ray generation and intersection shader ray recursion depth");
+	if (rayGenRayRecDepth > 1 && anyHitRayRecDepth > 1 && rayGenRayRecDepth != anyHitRayRecDepth)
+		throw CompileError("different ray generation and any hit shader ray recursion depth");
+	if (rayGenRayRecDepth > 1 && closHitRayRecDepth > 1 && rayGenRayRecDepth != closHitRayRecDepth)
+		throw CompileError("different ray generation and closest hit shader ray recursion depth");
+	if (rayGenRayRecDepth > 1 && callRayRecDepth > 1 && rayGenRayRecDepth != callRayRecDepth)
+		throw CompileError("different ray generation and callable shader ray recursion depth");
+
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
@@ -2072,7 +2085,10 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 	if (callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
 	
 	data.pushConstantsSize = rayGenPushConstantsSize;
-	data.variantCount = rayGenVariantCount;
+	data.variantCount = max(max(max(max(max(rayGenVariantCount, missVariantCount), 
+		intersectVariantCount), anyHitVariantCount), closHitVariantCount), callVariantCount);
+	data.rayRecursionDepth = max(max(max(max(max(rayGenRayRecDepth, missRayRecDepth), 
+		intersectRayRecDepth), anyHitRayRecDepth), closHitRayRecDepth), callRayRecDepth);
 
 	data.descriptorSetCount = 0;
 	for (const auto& uniform : data.uniforms)

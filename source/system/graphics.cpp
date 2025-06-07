@@ -477,8 +477,8 @@ ID<Buffer> GraphicsSystem::getCubeVertexBuffer()
 {
 	if (!cubeVertexBuffer)
 	{
-		cubeVertexBuffer = createBuffer(Buffer::Usage::Vertex |
-			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, cubeVertices);
+		cubeVertexBuffer = createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst |
+			Buffer::Usage::TransferQ, Buffer::CpuAccess::None, cubeVertices);
 		SET_RESOURCE_DEBUG_NAME(cubeVertexBuffer, "buffer.vertex.cube");
 	}
 	return cubeVertexBuffer;
@@ -487,8 +487,8 @@ ID<Buffer> GraphicsSystem::getQuadVertexBuffer()
 {
 	if (!quadVertexBuffer)
 	{
-		quadVertexBuffer = createBuffer(Buffer::Usage::Vertex |
-			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, quadVertices);
+		quadVertexBuffer = createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst |
+			Buffer::Usage::TransferQ, Buffer::CpuAccess::None, quadVertices);
 		SET_RESOURCE_DEBUG_NAME(quadVertexBuffer, "buffer.vertex.quad");
 	}
 	return quadVertexBuffer;
@@ -560,11 +560,6 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 {
 	GARDEN_ASSERT(size > 0);
 
-	#if GARDEN_DEBUG
-	if (data)
-		GARDEN_ASSERT(hasAnyFlag(usage, Buffer::Usage::TransferDst));
-	#endif
-
 	auto graphicsAPI = GraphicsAPI::get();
 	auto buffer = graphicsAPI->bufferPool.create(usage, cpuAccess, location, strategy, size, 0);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
@@ -578,11 +573,16 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 		}
 		else
 		{
+			GARDEN_ASSERT(hasAnyFlag(usage, Buffer::Usage::TransferDst));
 			auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, size, 0);
 			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging" + to_string(*stagingBuffer));
 			auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 			stagingBufferView->writeData(data, size);
+
+			#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+			BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+			#endif
 
 			if (!isRecording())
 			{
@@ -689,7 +689,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	if (stagingCount > 0)
 	{
 		GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, stagingSize, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.imageStaging" + to_string(*stagingBuffer));
 		
@@ -700,9 +700,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		}
 		else
 		{
-			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Usage::TransferDst |
-				Image::Usage::TransferSrc, Image::Strategy::Speed, u32x4(size, mipCount), 0);
+			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Usage::TransferSrc | 
+				Image::Usage::TransferDst, Image::Strategy::Speed, u32x4(size, mipCount), 0);
 			SET_RESOURCE_DEBUG_NAME(targetImage, "image.staging" + to_string(*targetImage));
+
+			#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+			auto targetImageView = graphicsAPI->imagePool.get(targetImage);
+			ImageExt::getUsage(**targetImageView) |= Image::Usage::TransferQ | Image::Usage::ComputeQ;
+			#endif
 		}
 
 		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
@@ -742,6 +747,10 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		GARDEN_ASSERT(stagingSize == stagingOffset);
 
 		stagingBufferView->flush();
+
+		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+		#endif
 
 		if (format != dataFormat)
 		{
@@ -1108,7 +1117,7 @@ View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const
 
 //**********************************************************************************************************************
 ID<Blas> GraphicsSystem::createBlas(const Blas::TrianglesBuffer* geometryArray, 
-	uint32 geometryCount, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+	uint32 geometryCount, BuildFlagsAS flags)
 {
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
@@ -1116,22 +1125,10 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::TrianglesBuffer* geometryArray,
 	auto graphicsAPI = GraphicsAPI::get();
 	auto blas = graphicsAPI->blasPool.create(geometryArray, geometryCount, flags);
 	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
-
-	auto blasView = graphicsAPI->blasPool.get(blas);
-	if (!isRecording())
-	{
-		startRecording(CommandBufferType::Compute);
-		blasView->build(scratchBuffer);
-		stopRecording();
-	}
-	else
-	{
-		blasView->build(scratchBuffer);
-	}
 	return blas;
 }
 ID<Blas> GraphicsSystem::createBlas(const Blas::AabbsBuffer* geometryArray, 
-	uint32 geometryCount, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+	uint32 geometryCount, BuildFlagsAS flags)
 {
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
@@ -1139,18 +1136,6 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::AabbsBuffer* geometryArray,
 	auto graphicsAPI = GraphicsAPI::get();
 	auto blas = graphicsAPI->blasPool.create(geometryArray, geometryCount, flags);
 	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
-
-	auto blasView = graphicsAPI->blasPool.get(blas);
-	if (!isRecording())
-	{
-		startRecording(CommandBufferType::Compute);
-		blasView->build(scratchBuffer);
-		stopRecording();
-	}
-	else
-	{
-		blasView->build(scratchBuffer);
-	}
 	return blas;
 }
 void GraphicsSystem::destroy(ID<Blas> blas)
@@ -1163,7 +1148,7 @@ View<Blas> GraphicsSystem::get(ID<Blas> blas) const
 }
 
 ID<Tlas> GraphicsSystem::createTlas(vector<Tlas::InstanceData>&& instances, 
-	ID<Buffer> instanceBuffer, BuildFlagsAS flags, ID<Buffer> scratchBuffer)
+	ID<Buffer> instanceBuffer, BuildFlagsAS flags)
 {
 	GARDEN_ASSERT(!instances.empty());
 	GARDEN_ASSERT(instanceBuffer);
@@ -1171,18 +1156,6 @@ ID<Tlas> GraphicsSystem::createTlas(vector<Tlas::InstanceData>&& instances,
 	auto graphicsAPI = GraphicsAPI::get();
 	auto tlas = graphicsAPI->tlasPool.create(std::move(instances), instanceBuffer, flags);
 	SET_RESOURCE_DEBUG_NAME(tlas, "tlas" + to_string(*tlas));
-
-	auto tlasView = graphicsAPI->tlasPool.get(tlas);
-	if (!isRecording())
-	{
-		startRecording(CommandBufferType::Compute);
-		tlasView->build(scratchBuffer);
-		stopRecording();
-	}
-	else
-	{
-		tlasView->build(scratchBuffer);
-	}
 	return tlas;
 }
 void GraphicsSystem::destroy(ID<Tlas> tlas)

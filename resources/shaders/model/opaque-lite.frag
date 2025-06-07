@@ -30,11 +30,6 @@ out float4 fb.g3;
 out float4 fb.g4;
 out float4 fb.g5;
 
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
-
 uniform set1 sampler2D
 {
 	filter = linear;

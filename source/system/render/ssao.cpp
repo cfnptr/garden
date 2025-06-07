@@ -39,8 +39,9 @@ static ID<Buffer> createSampleBuffer(uint32 sampleCount)
 		ssaoKernel[i] = f32x4(sample * scale * randomFloats(generator), 0.0f);
 	}
 
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Uniform | Buffer::Usage::TransferDst, 
-		Buffer::CpuAccess::None, ssaoKernel, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Uniform | 
+		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
+		ssaoKernel, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.ssao.sample");
 	return buffer;
 }
@@ -58,7 +59,7 @@ static ID<Image> createNoiseTexture()
 	}
 
 	auto texture = GraphicsSystem::Instance::get()->createImage(Image::Format::SfloatR16G16B16A16,
-		Image::Usage::TransferDst | Image::Usage::Sampled, { { ssaoNoise.data() } },
+		Image::Usage::Sampled | Image::Usage::TransferDst, { { ssaoNoise.data() } },
 		uint2(NOISE_SIZE), Image::Strategy::Size, Image::Format::SfloatR32G32B32A32);
 	SET_RESOURCE_DEBUG_NAME(texture, "image.ssao.random");
 	return texture;

@@ -36,11 +36,6 @@ uniform pushConstants
 	float alphaCutoff;
 } pc;
 
-buffer readonly Instance
-{
-	InstanceData data[];
-} instance;
-
 uniform set1 sampler2D
 {
 	filter = linear;

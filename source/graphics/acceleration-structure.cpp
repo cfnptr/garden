@@ -119,13 +119,29 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
 		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!isBuilt(), "Acceleration structure [" + debugName + "] is already build");
+
 	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::ComputeQ), 
+			"Acceleration structure [" + debugName + "] does not have compute queue flag");
+
+		if (scratchBuffer)
+		{
+			auto bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
+			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
+				"Scratch buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+		}
+	}
+	#endif
 
 	auto destroyScratch = false;
 	if (!scratchBuffer)
 	{
-		auto data = (const BuildDataHeader*)buildData;
-		scratchBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::DeviceAddress | Buffer::Usage::Storage, 
+		auto data = (const BuildDataHeader*)buildData; // Note: no need of ComputeQ for an internal scratch.
+		scratchBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage | Buffer::Usage::DeviceAddress, 
 			Buffer::CpuAccess::None, Buffer::Location::PreferGPU, Buffer::Strategy::Speed, data->scratchSize , 0);
 		destroyScratch = true;
 	}
@@ -191,7 +207,7 @@ void AccelerationStructure::setDebugName(const string& name)
 	Resource::setDebugName(name);
 
 	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
-	storageView->setDebugName("buffer." + name);
+	storageView->setDebugName("asBuffer.storage." + name);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{

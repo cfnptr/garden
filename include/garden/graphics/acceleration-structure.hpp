@@ -39,11 +39,12 @@ class AccelerationStructureExt;
 enum class BuildFlagsAS : uint8
 {
 	None            = 0x00, /**< No acceleration structure build flags specified, zero mask. */
-	AllowUpdate     = 0x01, /**< Allows to update acceleration structure geometry positions. */
-	AllowCompaction = 0x02, /**< Allows to compact acceleration structure storage. */
-	PreferFastTrace = 0x04, /**< Prioritize trace performance over AS build time. */
-	PreferFastBuild = 0x08, /**< Prioritize AS build time over trace performance. */
-	PreferLowMemory = 0x10  /**< Minimize memory usage at expense of AS build time and trace performance. */
+	ComputeQ        = 0x01, /**< Allows to use AS in the compute command buffer. */
+	AllowUpdate     = 0x02, /**< Allows to update acceleration structure geometry positions. */
+	AllowCompaction = 0x04, /**< Allows to compact acceleration structure storage. */
+	PreferFastTrace = 0x08, /**< Prioritize trace performance over AS build time. */
+	PreferFastBuild = 0x10, /**< Prioritize AS build time over trace performance. */
+	PreferLowMemory = 0x20  /**< Minimize memory usage at expense of AS build time and trace performance. */
 };
 
 constexpr uint8 asBuildFlagCount = 5; /**< Ray tracing acceleration structure build flag count. */

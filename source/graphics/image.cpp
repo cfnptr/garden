@@ -90,10 +90,37 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageInfo.usage = (VkImageUsageFlags)toVkImageUsages(usage);
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // TODO: multi queue
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.queueFamilyIndexCount = 0;
 	imageInfo.pQueueFamilyIndices = nullptr;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	auto vulkanAPI = VulkanAPI::get();
+
+	uint32 queueFamilyIndices[3];
+	if (hasAnyFlag(usage, Image::Usage::TransferQ | Image::Usage::ComputeQ))
+	{
+		imageInfo.queueFamilyIndexCount = 1;
+
+		if (hasAnyFlag(usage, Image::Usage::TransferQ) && 
+			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->transferQueueFamilyIndex)
+		{
+			queueFamilyIndices[imageInfo.queueFamilyIndexCount++] = vulkanAPI->transferQueueFamilyIndex;
+		}
+		if (hasAnyFlag(usage, Image::Usage::ComputeQ) &&
+			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex)
+		{
+			queueFamilyIndices[imageInfo.queueFamilyIndexCount++] = vulkanAPI->computeQueueFamilyIndex;
+		}
+
+		if (imageInfo.queueFamilyIndexCount > 1)
+		{
+			queueFamilyIndices[0] = vulkanAPI->graphicsQueueFamilyIndex;
+			imageInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+			imageInfo.pQueueFamilyIndices = queueFamilyIndices;
+		}
+		else imageInfo.queueFamilyIndexCount = 0;
+	}
 
 	if (type == Image::Type::Texture3D)
 	{
@@ -109,7 +136,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 	if (type == Image::Type::Cubemap)
 		imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-	auto vulkanAPI = VulkanAPI::get();
+	
 
 	#if GARDEN_DEBUG
 	vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
@@ -280,7 +307,22 @@ void Image::generateMips(Sampler::Filter filter)
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
 
-	auto image = GraphicsAPI::get()->imagePool.getID(this);
+	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferQ), 
+			"Image [" + debugName + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
+			"Image [" + debugName + "] does not have compute queue flag");
+	}
+	#endif
+
+	auto image = graphicsAPI->imagePool.getID(this);
 	auto layerCount = getLayerCount();
 	auto mipSize = size;
 
@@ -317,7 +359,16 @@ void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
+
 	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
+			"Image [" + debugName + "] does not have compute queue flag");
+	}
+	#endif
 
 	ClearImageCommand command;
 	command.clearType = 1;
@@ -341,7 +392,16 @@ void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatSint(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
+
 	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
+			"Image [" + debugName + "] does not have compute queue flag");
+	}
+	#endif
 
 	ClearImageCommand command;
 	command.clearType = 2;
@@ -365,7 +425,16 @@ void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatUint(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
+
 	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
+			"Image [" + debugName + "] does not have compute queue flag");
+	}
+	#endif
 
 	ClearImageCommand command;
 	command.clearType = 3;
@@ -389,8 +458,17 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatDepthOrStencil(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
+
 	auto graphicsAPI = GraphicsAPI::get();
-	
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
+			"Image [" + debugName + "] does not have compute queue flag");
+	}
+	#endif
+
 	ClearImageCommand command;
 	command.regionCount = count;
 	command.image = graphicsAPI->imagePool.getID(this);
@@ -415,6 +493,7 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto srcView = graphicsAPI->imagePool.get(source);
@@ -430,6 +509,27 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
 
 	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::TransferQ),
+			"Source image [" + srcView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::ComputeQ),
+			"Source image [" + srcView->getDebugName() + "] does not have compute queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::TransferQ),
+			"Destination image [" + dstView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::ComputeQ),
+			"Destination image [" + dstView->getDebugName() + "] does not have compute queue flag");
+	}
+
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
@@ -479,10 +579,10 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto bufferView = graphicsAPI->bufferPool.get(source);
-	
 	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
 		"Missing source buffer [" + bufferView->getDebugName() + "] flag");
 	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**bufferView), "Buffer [" + 
@@ -494,6 +594,27 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	GARDEN_ASSERT_MSG(imageView->instance, "Image [" + imageView->getDebugName() + "] is not ready");
 	
 	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ),
+			"Source buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
+			"Source buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferQ),
+			"Destination image [" + imageView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::ComputeQ),
+			"Destination image [" + imageView->getDebugName() + "] does not have compute queue flag");
+	}
+
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
@@ -540,6 +661,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
 	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto imageView = graphicsAPI->imagePool.get(source);
@@ -554,6 +676,27 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 		bufferView->getDebugName() + "] is not ready");
 
 	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferQ),
+			"Source image [" + imageView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::ComputeQ),
+			"Source image [" + imageView->getDebugName() + "] does not have compute queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ),
+			"Destination buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
+			"Destination buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+	}
+
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];

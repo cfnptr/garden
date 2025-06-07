@@ -153,7 +153,7 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 }
 
 //**********************************************************************************************************************
-void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions)
+void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions, bool computeQ)
 {
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
@@ -178,19 +178,25 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 		auto callRegionSize = alignSize(callGroupCount * handleSizeAligned, baseAlignment);
 		auto sbtSize = (rayGenRegionSize + missRegionSize + hitRegionSize + callRegionSize) * variantCount + baseAlignment;
 
-		sbtBuffer = vulkanAPI->bufferPool.create(Buffer::Usage::TransferDst | 
-			Buffer::Usage::SBT | Buffer::Usage::DeviceAddress, Buffer::CpuAccess::None, 
+		auto sbtUsage = Buffer::Usage::SBT | Buffer::Usage::DeviceAddress | Buffer::Usage::TransferDst;
+		if (computeQ) sbtUsage |= Buffer::Usage::ComputeQ;
+		sbtBuffer = vulkanAPI->bufferPool.create(sbtUsage, Buffer::CpuAccess::None, 
 			Buffer::Location::PreferGPU, Buffer::Strategy::Size, sbtSize, 0);
-		auto sbtBufferView = vulkanAPI->bufferPool.get(sbtBuffer);
-		auto sbtAddress = alignSize(sbtBufferView->getDeviceAddress(), (uint64)baseAlignment);
-		auto sbtOffset = sbtAddress - sbtBufferView->getDeviceAddress();
-
 		auto stagingBuffer = vulkanAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 			Buffer::CpuAccess::RandomReadWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, sbtSize, 0);
+
+		auto sbtBufferView = vulkanAPI->bufferPool.get(sbtBuffer);
 		auto stagingBufferView = vulkanAPI->bufferPool.get(stagingBuffer);
+		auto sbtAddress = alignSize(sbtBufferView->getDeviceAddress(), (uint64)baseAlignment);
+		auto sbtOffset = sbtAddress - sbtBufferView->getDeviceAddress();
 		auto stagingMap = stagingBufferView->getMap() + sbtOffset;
 		vector<uint8> handles(groupCount * handleSize);
 		auto handleData = handles.data();
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		sbtBufferView->setDebugName("buffer.sbt." + pipelinePath.generic_string());
+		stagingBufferView->setDebugName("buffer.staging.sbt." + pipelinePath.generic_string());
+		#endif
 	
 		for (uint8 i = 0; i < variantCount; i++)
 		{
@@ -262,6 +268,11 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 		}
 
 		stagingBufferView->flush();
+
+		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::ComputeQ;
+		#endif
+
 		Buffer::copy(stagingBuffer, sbtBuffer);
 		vulkanAPI->bufferPool.destroy(stagingBuffer);
 	}

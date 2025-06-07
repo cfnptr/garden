@@ -57,7 +57,7 @@ void FpvControllerSystem::init()
 
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->setPosition(f32x4(0.0f, 2.0f, -2.0f));
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	transformView->debugName = "Main Camera";
 	#endif
 

@@ -159,15 +159,17 @@ public:
 	 */
 	enum class Usage : uint32
 	{
-		None                   = 0x00, /**< No image usage specified, zero mask. */
-		TransferSrc            = 0x01, /**< Image can be used as the source of a transfer command. */
-		TransferDst            = 0x02, /**< Image can be used as the destination of a transfer command. */
-		Sampled                = 0x04, /**< Image can be used as image sampler in shaders. (Read only) */
-		Storage                = 0x08, /**< Image can be used as storage buffer in shaders. (Read and write) */
-		ColorAttachment        = 0x10, /**< Image can be used as the framebuffer color attachment. */
-		DepthStencilAttachment = 0x20, /**< Image can be used as the framebuffer depth or/and stencil attachment. */
-		InputAttachment        = 0x40, /**< Image can be used as the framebuffer subpass input attachment. */
-		Fullscreen             = 0x80, /**< Image will be the size of the window or larger. (Better optimization) */
+		None                   = 0x0000, /**< No image usage specified, zero mask. */
+		TransferQ              = 0x0001, /**< Image can be used in the transfer command buffer. */
+		ComputeQ               = 0x0002, /**< Image can be used in the compute command buffer. */
+		TransferSrc            = 0x0004, /**< Image can be used as the source of a transfer command. */
+		TransferDst            = 0x0008, /**< Image can be used as the destination of a transfer command. */
+		Sampled                = 0x0010, /**< Image can be used as image sampler in shaders. (Read only) */
+		Storage                = 0x0020, /**< Image can be used as storage buffer in shaders. (Read and write) */
+		ColorAttachment        = 0x0040, /**< Image can be used as the framebuffer color attachment. */
+		DepthStencilAttachment = 0x0080, /**< Image can be used as the framebuffer depth or/and stencil attachment. */
+		InputAttachment        = 0x0100, /**< Image can be used as the framebuffer subpass input attachment. */
+		Fullscreen             = 0x0200, /**< Image will be the size of the window or larger. (Better optimization) */
 	};
 
 	static constexpr uint8 usageCount = 8; /**< Image usage type count. */

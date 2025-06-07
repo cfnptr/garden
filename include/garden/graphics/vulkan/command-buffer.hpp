@@ -38,6 +38,7 @@ public:
 	void addRenderPassBarriers(psize offset, uint32& oldPipelineStage, uint32& newPipelineStage);
 	void processPipelineBarriers(uint32 oldStage, uint32 newStage);
 
+	void processCommand(const BufferBarrierCommand& command) final;
 	void processCommand(const BeginRenderPassCommand& command) final;
 	void processCommand(const NextSubpassCommand& command) final;
 	void processCommand(const ExecuteCommand& command) final;

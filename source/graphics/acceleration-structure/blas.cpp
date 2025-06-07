@@ -161,10 +161,13 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 	auto sizesInfo =  vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
 		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, maxPrimitiveCounts);
 
+	auto storageUsage = Buffer::Usage::StorageAS | Buffer::Usage::DeviceAddress;
+	if (hasAnyFlag(flags, BuildFlagsAS::ComputeQ))
+		storageUsage |= Buffer::Usage::ComputeQ;
 	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
 		Buffer::Strategy::Speed : Buffer::Strategy::Size;
-	storage = vulkanAPI->bufferPool.create(Buffer::Usage::DeviceAddress | Buffer::Usage::StorageAS, 
-		Buffer::CpuAccess::None, Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
+	storage = vulkanAPI->bufferPool.create(storageUsage, Buffer::CpuAccess::None, 
+		Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
 	auto storageView = vulkanAPI->bufferPool.get(storage);
 
 	vk::AccelerationStructureCreateInfoKHR createInfo;

@@ -32,7 +32,7 @@ struct Command
 {
 	enum class Type : uint8
 	{
-		Unknown, BeginRenderPass, NextSubpass, Execute, EndRenderPass, ClearAttachments,
+		Unknown, BufferBarrier, BeginRenderPass, NextSubpass, Execute, EndRenderPass, ClearAttachments,
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor,
 		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
 		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
@@ -51,6 +51,19 @@ struct Command
 	Type type = {};
 
 	Command(Type type) noexcept : type(type) { }
+};
+
+struct BufferBarrierCommandBase : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	uint32 bufferCount = 0;
+	Buffer::BarrierState newState = {}; // TODO: state for each buffer?
+	BufferBarrierCommandBase() noexcept : Command(Type::BufferBarrier) { }
+};
+struct BufferBarrierCommand final : public BufferBarrierCommandBase
+{
+	const ID<Buffer>* buffers = nullptr;
 };
 
 //**********************************************************************************************************************
@@ -364,6 +377,7 @@ protected:
 	Command* allocateCommand(uint32 size);
 	void processCommands();
 
+	virtual void processCommand(const BufferBarrierCommand& command) = 0;
 	virtual void processCommand(const BeginRenderPassCommand& command) = 0;
 	virtual void processCommand(const NextSubpassCommand& command) = 0;
 	virtual void processCommand(const ExecuteCommand& command) = 0;
@@ -415,6 +429,7 @@ public:
 	 */
 	CommandBufferType getType() const noexcept { return type; }
 
+	void addCommand(const BufferBarrierCommand& command);
 	void addCommand(const BeginRenderPassCommand& command);
 	void addCommand(const NextSubpassCommand& command);
 	void addCommand(const ExecuteCommand& command);

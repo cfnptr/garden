@@ -20,9 +20,11 @@
 struct InstanceData
 {
 	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
-	float4 texWinBorder;
+	float4 color;
+	float2 uvSize;
+	float2 uvOffset;
+	float2 textureBorder;
+	float2 windowBorder;
 };
 
 float mapAxis(float coord, float textureBorder, float windowBorder)

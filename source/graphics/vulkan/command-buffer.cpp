@@ -587,6 +587,21 @@ static bool findLastSubpassInput(const vector<Framebuffer::Subpass>& subpasses,
 }
 
 //**********************************************************************************************************************
+void VulkanCommandBuffer::processCommand(const BufferBarrierCommand& command)
+{
+	SET_CPU_ZONE_SCOPED("BufferBarrier Command Process");
+
+	auto vulkanAPI = VulkanAPI::get();
+	auto commandBufferData = (const uint8*)&command;
+	auto buffers = (const ID<Buffer>*)(commandBufferData + sizeof(BufferBarrierCommandBase));
+	uint32 oldPipelineStage = 0;
+
+	for (uint32 i = 0; i < command.bufferCount; i++)
+		addBufferBarrier(vulkanAPI, command.newState, buffers[i], oldPipelineStage);
+	processPipelineBarriers(oldPipelineStage, command.newState.stage);
+}
+
+//**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("BeginRenderPass Command Process");

@@ -92,6 +92,33 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 	bufferInfo.queueFamilyIndexCount = 0;
 	bufferInfo.pQueueFamilyIndices = nullptr;
 
+	auto vulkanAPI = VulkanAPI::get();
+
+	uint32 queueFamilyIndices[3];
+	if (hasAnyFlag(usage, Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ))
+	{
+		bufferInfo.queueFamilyIndexCount = 1;
+
+		if (hasAnyFlag(usage, Buffer::Usage::TransferQ) && 
+			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->transferQueueFamilyIndex)
+		{
+			queueFamilyIndices[bufferInfo.queueFamilyIndexCount++] = vulkanAPI->transferQueueFamilyIndex;
+		}
+		if (hasAnyFlag(usage, Buffer::Usage::ComputeQ) &&
+			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex)
+		{
+			queueFamilyIndices[bufferInfo.queueFamilyIndexCount++] = vulkanAPI->computeQueueFamilyIndex;
+		}
+
+		if (bufferInfo.queueFamilyIndexCount > 1)
+		{
+			queueFamilyIndices[0] = vulkanAPI->graphicsQueueFamilyIndex;
+			bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+			bufferInfo.pQueueFamilyIndices = queueFamilyIndices;
+		}
+		else bufferInfo.queueFamilyIndexCount = 0;
+	}
+
 	VmaAllocationCreateInfo allocationCreateInfo = {};
 	allocationCreateInfo.flags = toVmaMemoryAccess(cpuAccess) | toVmaMemoryStrategy(strategy);
 	allocationCreateInfo.usage = toVmaMemoryUsage(location);
@@ -100,9 +127,8 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 	if (cpuAccess != Buffer::CpuAccess::None)
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-	// TODO: VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT?
+	// TODO: suport for systems without proper BAR memory. VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
 
-	auto vulkanAPI = VulkanAPI::get();
 	VkBuffer vmaInstance; VmaAllocation vmaAllocation;
 	auto result = vmaCreateBuffer(vulkanAPI->memoryAllocator,
 		&bufferInfo, &allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
@@ -291,7 +317,21 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+
 	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferQ), 
+			"Buffer [" + debugName + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
+			"Buffer [" + debugName + "] does not have compute queue flag");
+	}
+	#endif
 
 	FillBufferCommand command;
 	command.buffer = graphicsAPI->bufferPool.getID(this);
@@ -319,7 +359,6 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	auto graphicsAPI = GraphicsAPI::get();
 
 	auto srcView = graphicsAPI->bufferPool.get(source);
-	
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
 		"Missing source buffer [" + srcView->getDebugName() + "] flag");
 	GARDEN_ASSERT_MSG(srcView->instance, "Source buffer [" + srcView->getDebugName() + "] is not ready");
@@ -330,6 +369,27 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	GARDEN_ASSERT_MSG(dstView->instance, "Destination buffer [" + dstView->getDebugName() + "] is not ready");
 	
 	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::TransferQ),
+			"Source buffer [" + srcView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::ComputeQ),
+			"Source buffer [" + srcView->getDebugName() + "] does not have compute queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::TransferQ),
+			"Destination buffer [" + dstView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::ComputeQ),
+			"Destination buffer [" + dstView->getDebugName() + "] does not have compute queue flag");
+	}
+
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];

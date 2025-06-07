@@ -356,10 +356,8 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 
 static void checkFramebufferSubpass(GraphicsAPI* graphicsAPI, ID<Framebuffer> framebuffer, uint8 subpassIndex)
 {
-	#if GARDEN_DEBUG
 	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
-	#endif
 }
 
 //**********************************************************************************************************************

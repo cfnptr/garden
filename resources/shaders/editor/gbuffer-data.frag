@@ -138,7 +138,7 @@ void main()
 	}
 	else if (pc.drawMode == GI_COLOR_DRAW_MODE)
 	{
-		fb.color = float4(gBuffer.giColor, 1.0f);
+		fb.color = float4(gammaCorrection(gBuffer.giColor), 1.0f);
 	}
 	else if (pc.drawMode == HDR_DRAW_MODE)
 	{

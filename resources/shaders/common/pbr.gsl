@@ -48,8 +48,8 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 	float3 fr = e * radiance * energyCompensation * gBuffer.specularFactor;
 
 	float3 diffuseColor = computeDiffuseColor(gBuffer.baseColor, gBuffer.metallic);
-	float3 irradiance = mix(gBuffer.giColor * shadow.rgb, diffuseIrradiance(gBuffer.normal, shBuffer), shadow.a);
-	float3 fd = diffuseColor * irradiance * (1.0f - e);
+	float3 irradiance = mix(gBuffer.giColor, diffuseIrradiance(gBuffer.normal, shBuffer), shadow.a);
+	float3 fd = diffuseColor * (1.0f - e) * irradiance * shadow.rgb;
 
 	if (USE_SUB_SURFACE_SCATTERING && gBuffer.thickness < 1.0f && gBuffer.transmission == 0.0f)
 	{

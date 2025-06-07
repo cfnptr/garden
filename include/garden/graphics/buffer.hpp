@@ -73,17 +73,19 @@ public:
 	enum class Usage : uint32
 	{
 		None          = 0x0000, /**< No buffer usage specified, zero mask. */
-		TransferSrc   = 0x0001, /**< Buffer can be used as the source of a transfer command. */
-		TransferDst   = 0x0002, /**< Buffer can be used as the destination of a transfer command. */
-		Vertex        = 0x0004, /**< Buffer can be used by a graphics rendering commands. */
-		Index         = 0x0008, /**< Buffer can be used by a graphics rendering commands. */
-		Uniform       = 0x0010, /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
-		Storage       = 0x0020, /**< Buffer can be used in a descriptor set. (Slower but has bigger capacity) */
-		Indirect      = 0x0040, /**< Buffer can be used by an indirect rendering commands. */
-		DeviceAddress = 0x0080, /**< Buffer device address can be used inside shaders. */
-		StorageAS     = 0x0100, /**< Buffer can be used for a acceleration structure storage space. */
-		BuildInputAS  = 0x0200, /**< Buffer can be used as a read only input for acceleration structure build. */
-		SBT           = 0x0400  /**< Buffer can be used as a ray tracing shader binding table. */
+		TransferQ     = 0x0001, /**< Buffer can be used in the transfer command buffer. */
+		ComputeQ      = 0x0002, /**< Buffer can be used in the compute command buffer. */
+		TransferSrc   = 0x0004, /**< Buffer can be used as the source of a transfer command. */
+		TransferDst   = 0x0008, /**< Buffer can be used as the destination of a transfer command. */
+		Vertex        = 0x0010, /**< Buffer can be used by a graphics rendering commands. */
+		Index         = 0x0020, /**< Buffer can be used by a graphics rendering commands. */
+		Uniform       = 0x0040, /**< Buffer can be used in a descriptor set. (Faster but has small capacity) */
+		Storage       = 0x0080, /**< Buffer can be used in a descriptor set. (Slower but has bigger capacity) */
+		Indirect      = 0x0100, /**< Buffer can be used by an indirect rendering commands. */
+		DeviceAddress = 0x0200, /**< Buffer device address can be used inside shaders. */
+		StorageAS     = 0x0400, /**< Buffer can be used for a acceleration structure storage space. */
+		BuildInputAS  = 0x0800, /**< Buffer can be used as a read only input for acceleration structure build. */
+		SBT           = 0x1000  /**< Buffer can be used as a ray tracing shader binding table. */
 	};
 
 	static constexpr uint8 usageCount = 10; /**< Buffer usage type count. */

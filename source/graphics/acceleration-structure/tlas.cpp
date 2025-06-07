@@ -75,10 +75,13 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	auto sizesInfo = vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
 		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, instanceCount);
 
+	auto storageUsage = Buffer::Usage::StorageAS | Buffer::Usage::DeviceAddress;
+	if (hasAnyFlag(flags, BuildFlagsAS::ComputeQ))
+		storageUsage |= Buffer::Usage::ComputeQ;
 	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
 		Buffer::Strategy::Speed : Buffer::Strategy::Size;
-	storage = vulkanAPI->bufferPool.create(Buffer::Usage::DeviceAddress | Buffer::Usage::StorageAS, 
-		Buffer::CpuAccess::None, Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
+	storage = vulkanAPI->bufferPool.create(storageUsage, Buffer::CpuAccess::None, 
+		Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
 	auto storageView = vulkanAPI->bufferPool.get(storage);
 
 	vk::AccelerationStructureCreateInfoKHR createInfo;
