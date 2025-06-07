@@ -35,8 +35,8 @@ buffer readonly Instance
 
 void main()
 {
-	float4x3 model = transpose(instance.data[pc.instanceIndex].model);
-	gl.position = instance.data[pc.instanceIndex].mvp * float4(vs.position, 1.0f);
-	fs.tbn = computeTBN(model, vs.normal, vs.tangent.xyz);
+	InstanceData instance = instance.data[pc.instanceIndex];
+	gl.position = instance.mvp * float4(vs.position, 1.0f);
+	fs.tbn = computeTBN(transpose(instance.model), vs.normal, vs.tangent.xyz);
 	fs.texCoords = vs.texCoords;
 }

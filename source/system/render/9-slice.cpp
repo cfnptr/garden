@@ -48,10 +48,8 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	SpriteRenderSystem::setInstanceData(spriteRenderView,
 		instanceData, viewProj, model, drawIndex, threadIndex);
 
-	auto textureBorder = nineSliceRenderView->textureBorder;
-	auto windowBorder = nineSliceRenderView->windowBorder;
-	nineSliceInstanceData->texWinBorder = f32x4(textureBorder.x, textureBorder.y, 
-		windowBorder.x, windowBorder.y) / f32x4(imageSize.x, imageSize.y, scale.x, scale.y);
+	nineSliceInstanceData->textureBorder = nineSliceRenderView->textureBorder / imageSize;
+	nineSliceInstanceData->windowBorder = nineSliceRenderView->windowBorder / scale;
 }
 
 //**********************************************************************************************************************

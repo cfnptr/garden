@@ -120,8 +120,9 @@ public:
 	 *
 	 * @param[out] sbtBuffer created STB buffer instance
 	 * @param[out] sbtGroupRegions shader group region array
+	 * @param computeQ SBT buffer can be used in the compute command buffer
 	 */
-	void createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions);
+	void createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions, bool computeQ = false);
 
 	/**
 	 * @brief Executes ray tracing shader with specified SBT and 3D generation group size.

@@ -28,4 +28,8 @@ float3x3 tbnToTangentSpace(float3x3 tbn)
 	return transpose(tbn);
 }
 
+float3 tbnGetTangent(float3x3 tbn) { return tbn[0]; }
+float3 tbnGetBitangent(float3x3 tbn) { return tbn[1]; }
+float3 tbnGetNormal(float3x3 tbn) { return tbn[2]; }
+
 #endif // NORMAL_MAPPING_GSL

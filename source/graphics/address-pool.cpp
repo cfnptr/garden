@@ -18,14 +18,16 @@
 using namespace garden;
 using namespace garden::graphics;
 
-static DescriptorSet::Buffers createAddressBuffers(uint32 capacity, uint32 inFlightCount)
+static DescriptorSet::Buffers createAddressBuffers(uint32 capacity, 
+	uint32 inFlightCount, Buffer::Usage addressBufferUsage)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	DescriptorSet::Buffers addressBuffers(inFlightCount);
 
 	for (auto& addressBuffer : addressBuffers)
 	{
-		auto buffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage, Buffer::CpuAccess::SequentialWrite, 
+		auto buffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage | 
+			addressBufferUsage, Buffer::CpuAccess::SequentialWrite, 
 			Buffer::Location::Auto, Buffer::Strategy::Size, sizeof(uint64) * capacity, 0);
 		addressBuffer.resize(1); addressBuffer[0] = buffer;
 	}
@@ -42,46 +44,62 @@ static void destroyAddressBuffers(const DescriptorSet::Buffers& addressBuffers)
 	}
 }
 
-AddressPool::AddressPool(uint32 inFlightCount)
+AddressPool::AddressPool(uint32 inFlightCount, Buffer::Usage addressBufferUsage)
 {
 	this->inFlightCount = inFlightCount;
+	this->addressBufferUsage = addressBufferUsage;
 }
 
 //**********************************************************************************************************************
-uint32 AddressPool::allocate(uint64 deviceAddress)
+uint32 AddressPool::allocate(ID<Buffer> buffer)
 {
+	uint64 deviceAddress = 0;
+	if (buffer)
+	{
+		auto bufferView = GraphicsAPI::get()->bufferPool.get(buffer);
+		deviceAddress = bufferView->getDeviceAddress();
+	}
+
 	uint32 allocation;
 	if (freeAllocs.empty())
 	{
-		allocation = (uint32)allocations.size();
-		allocations.push_back(deviceAddress);
+		allocation = (uint32)resources.size();
+		resources.push_back(buffer);
+		deviceAddresses.push_back(deviceAddress);
 
 		if (capacity == 0)
 		{
 			capacity = 16;
-			allocations.reserve(capacity);
+			resources.reserve(capacity);
+			deviceAddresses.reserve(capacity);
+			barrierBuffers.resize(capacity);
 		}
 		else if (allocation == capacity)
 		{
 			capacity *= 2;
-			allocations.reserve(capacity);
+			resources.reserve(capacity);
+			deviceAddresses.reserve(capacity);
+			barrierBuffers.resize(capacity);
 		}
 	}
 	else
 	{
 		allocation = freeAllocs.back();
 		freeAllocs.pop_back();
-		allocations[allocation] = deviceAddress;
+		resources[allocation] = buffer;
+		deviceAddresses[allocation] = deviceAddress;
 	}
 	
 	flushCount = 0;
 	return allocation;
 }
-void AddressPool::update(uint32 allocation, uint64 newDeviceAddress)
+void AddressPool::update(uint32 allocation, ID<Buffer> newBuffer)
 {
-	GARDEN_ASSERT(newDeviceAddress);
-	GARDEN_ASSERT(allocation < allocations.size());
-	allocations[allocation] = newDeviceAddress;
+	GARDEN_ASSERT(newBuffer);
+	GARDEN_ASSERT(allocation < resources.size());
+	auto bufferView = GraphicsAPI::get()->bufferPool.get(newBuffer);
+	resources[allocation] = newBuffer;
+	deviceAddresses[allocation] = bufferView->getDeviceAddress();
 	flushCount = 0;
 }
 void AddressPool::free(uint32 allocation)
@@ -90,7 +108,7 @@ void AddressPool::free(uint32 allocation)
 		return;
 
 	#if GARDEN_DEBUG
-	GARDEN_ASSERT(allocation < allocations.size());
+	GARDEN_ASSERT(allocation < resources.size());
 	for (auto freeAlloc : freeAllocs)
 	{
 		GARDEN_ASSERT_MSG(allocation != freeAlloc, "Allocation [" + 
@@ -98,31 +116,54 @@ void AddressPool::free(uint32 allocation)
 	}
 	#endif
 
+	// Note: do not remove cleaners! We need it for addBufferBarriers().
+	resources[allocation] = {};
+	deviceAddresses[allocation] = 0;
 	freeAllocs.push_back(allocation);
 }
 
+//**********************************************************************************************************************
 void AddressPool::flush()
 {
 	if (flushCount >= inFlightCount)
 		return;
 
+	auto graphicsAPI = GraphicsAPI::get();
+	auto newAddressBuffer = false;
+
 	if (!addressBuffers.empty())
 	{
-		auto bufferView = GraphicsAPI::get()->bufferPool.get(addressBuffers[0][0]);
+		auto bufferView = graphicsAPI->bufferPool.get(addressBuffers[0][0]);
 		if (bufferView->getBinarySize() < capacity * sizeof(uint64))
 		{
 			destroyAddressBuffers(addressBuffers);
-			addressBuffers = createAddressBuffers(capacity, inFlightCount);
+			addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
+			newAddressBuffer = true;
 		}
 	}
 	else
 	{
-		addressBuffers = createAddressBuffers(capacity, inFlightCount);
+		addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
+		newAddressBuffer = true;
 	}
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	if (newAddressBuffer)
+	{
+		for (const auto& buffers : addressBuffers)
+		{
+			for (auto buffer : buffers)
+			{
+				auto bufferView = graphicsAPI->bufferPool.get(buffer);
+				bufferView->setDebugName(debugName + to_string(*buffer));
+			}
+		}
+	}
+	#endif
 	
 	auto buffer = addressBuffers[inFlightIndex][0];
-	auto bufferView = GraphicsAPI::get()->bufferPool.get(buffer);
-	memcpy(bufferView->getMap(), allocations.data(), allocations.size() * sizeof(uint64));
+	auto bufferView = graphicsAPI->bufferPool.get(buffer);
+	memcpy(bufferView->getMap(), deviceAddresses.data(), deviceAddresses.size() * sizeof(uint64));
 	bufferView->flush();
 	flushCount++;
 }
@@ -134,7 +175,58 @@ void AddressPool::nextFrame()
 void AddressPool::destroy()
 {
 	destroyAddressBuffers(addressBuffers);
-	allocations.clear();
+	resources.clear();
+	deviceAddresses.clear();
 	freeAllocs.clear();
 	addressBuffers.clear();
+}
+
+//**********************************************************************************************************************
+void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
+{
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->transferCommandBuffer)
+	{
+		for (uint32 i = 0; i < (uint32)resources.size(); i++)
+		{
+			if (!resources[i])
+				continue;
+			auto bufferView = graphicsAPI->bufferPool.get(resources[i]);
+			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ), 
+				"Buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
+		}
+	}
+	else if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->computeCommandBuffer)
+	{
+		for (uint32 i = 0; i < (uint32)resources.size(); i++)
+		{
+			if (!resources[i])
+				continue;
+			auto bufferView = graphicsAPI->bufferPool.get(resources[i]);
+			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
+				"Buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+		}
+	}
+	#endif
+
+	auto buffers = resources.data();
+	auto barriers = barrierBuffers.data();
+	auto bufferCount = (uint32)resources.size();
+	uint32 barrierCount = 0;
+
+	for (uint32 i = 0; i < bufferCount; i++)
+	{
+		if (!buffers[i])
+			continue;
+		barriers[barrierCount++] = buffers[i];
+	}
+
+	BufferBarrierCommand command;
+	command.newState = newState;
+	command.bufferCount = barrierCount;
+	command.buffers = barriers;
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }

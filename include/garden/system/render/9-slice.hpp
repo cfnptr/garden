@@ -60,7 +60,8 @@ class NineSliceRenderSystem : public SpriteRenderSystem
 public:
 	struct NineSliceInstanceData : public BaseInstanceData
 	{
-		f32x4 texWinBorder = f32x4::zero;
+		float2 textureBorder = float2::zero;
+		float2 windowBorder = float2::zero;
 	};
 protected:
 	NineSliceRenderSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }

@@ -24,7 +24,7 @@ static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(useHdrColorBuffer ? 
 		ForwardRenderSystem::hdrBufferFormat : ForwardRenderSystem::colorBufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc, 
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::Fullscreen, 
 		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.color");
 	return image;
@@ -33,7 +33,7 @@ static ID<Image> createUiBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(ForwardRenderSystem::uiBufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst,
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::Fullscreen,
 		{ { nullptr } }, graphicsSystem->getFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.ui");
 	return image;

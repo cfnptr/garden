@@ -41,9 +41,8 @@ uniform set1 sampler2DArray
 
 void main()
 {
-	float4 colorFactor = instance.data[pc.instanceIndex].colorFactor;
-	float2 uvSize = instance.data[pc.instanceIndex].sizeOffset.xy;
-	float2 uvOffset = instance.data[pc.instanceIndex].sizeOffset.zw;
-	float3 texCoords = float3(fs.texCoords * uvSize + uvOffset, pc.colorMapLayer);
-	fb.color = texture(colorMap, texCoords) * colorFactor;
+	InstanceData instance = instance.data[pc.instanceIndex];
+	float3 texCoords = float3(fs.texCoords * instance.uvSize + 
+		instance.uvOffset, pc.colorMapLayer);
+	fb.color = texture(colorMap, texCoords) * instance.color;
 }

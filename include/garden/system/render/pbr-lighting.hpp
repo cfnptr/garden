@@ -59,7 +59,7 @@ public:
 	struct LightingPC final
 	{
 		float4x4 uvToWorld;
-		float3 shadowColor;
+		float4 shadow;
 		float emissiveCoeff;
 		float reflectanceCoeff;
 	};
@@ -71,7 +71,7 @@ public:
 
 	static constexpr uint8 shadowBufferCount = 1; /**< PBR lighting rendering shadow buffer count. */
 	static constexpr uint8 aoBufferCount = 2; /**< PBR lighting rendering AO buffer count. (Ambient Occlusion) */
-	static constexpr Image::Format shadowBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormB8G8R8A8;
 private:
 	ID<Image> dfgLUT = {};
 	ID<Image> shadowBuffer = {};

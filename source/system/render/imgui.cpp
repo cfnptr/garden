@@ -279,8 +279,9 @@ void ImGuiRenderSystem::preInit()
 
 	unsigned char* pixels; int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	fontTexture = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
-		Image::Usage::TransferDst, { { pixels } }, uint2(width, height), Image::Strategy::Size);
+	fontTexture = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, 
+		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 
+		{ { pixels } }, uint2(width, height), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(fontTexture, "image.imgui.fontTexture");
 
 	auto fontTextureView = graphicsSystem->get(fontTexture);

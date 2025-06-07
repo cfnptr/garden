@@ -543,6 +543,14 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 						ResourceExt::getBusyLock(**imageView)++;
 						currentCommandBuffer->addLockedResource(ID<ImageView>(resource));
 						currentCommandBuffer->addLockedResource(imageViewView->getImage());
+
+						#if GARDEN_DEBUG
+						if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+						{
+							GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Image::Usage::ComputeQ), 
+								"Image [" + imageView->getDebugName() + "] does not have compute queue flag");
+						}
+						#endif
 					}
 				}
 			}
@@ -558,6 +566,14 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 						auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 						ResourceExt::getBusyLock(**bufferView)++;
 						currentCommandBuffer->addLockedResource(ID<Buffer>(resource));
+
+						#if GARDEN_DEBUG
+						if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+						{
+							GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
+								"Buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+						}
+						#endif
 					}
 				}
 			}
@@ -580,7 +596,25 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 							auto blasView = graphicsAPI->blasPool.get(instance.blas);
 							ResourceExt::getBusyLock(**blasView)++;
 							currentCommandBuffer->addLockedResource(instance.blas);
+
+							#if GARDEN_DEBUG
+							if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+							{
+								auto bufferView = graphicsAPI->bufferPool.get(blasView->getStorageBuffer());
+								GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
+									"BLAS buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+							}
+							#endif
 						}
+
+						#if GARDEN_DEBUG
+						if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+						{
+							auto bufferView = graphicsAPI->bufferPool.get(tlasView->getStorageBuffer());
+							GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
+								"TLAS buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+						}
+						#endif
 					}
 				}
 			}

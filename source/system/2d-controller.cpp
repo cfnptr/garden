@@ -58,7 +58,7 @@ void Controller2DSystem::init()
 
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->setPosition(f32x4(0.0f, 0.0f, -0.5f));
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	transformView->debugName = "Main Camera";
 	#endif
 

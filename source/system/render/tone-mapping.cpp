@@ -29,8 +29,8 @@ static ID<Buffer> createLuminanceBuffer()
 	#endif
 
 	constexpr float data[2] = { 1.0f / ToneMappingRenderSystem::lumToExp, 1.0f };
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Storage | 
-		Buffer::Usage::Uniform | Buffer::Usage::TransferDst | usage, Buffer::CpuAccess::None, data, 
+	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Storage | Buffer::Usage::Uniform | 
+		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | usage, Buffer::CpuAccess::None, data, 
 		sizeof(ToneMappingRenderSystem::LuminanceData), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
 	return buffer;

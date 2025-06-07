@@ -18,8 +18,9 @@
 struct InstanceData
 {
 	float4x4 mvp;
-	float4 colorFactor;
-	float4 sizeOffset;
+	float4 color;
+	float2 uvSize;
+	float2 uvOffset
 };
 
 #endif // SPRITE_GSL

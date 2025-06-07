@@ -331,16 +331,16 @@ void ResourceSystem::dequeueBuffers()
 				graphicsAPI->forceResourceDestroy = false;
 			}
 			
-			auto staging = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+			auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
 				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
-			SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loaded" + to_string(*staging));
+			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
 
-			auto stagingView = graphicsAPI->bufferPool.get(staging);
-			BufferExt::moveInternalObjects(item.staging, **stagingView);
+			auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
+			BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
 			graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-			Buffer::copy(staging, item.bufferInstance);
+			Buffer::copy(stagingBuffer, item.bufferInstance);
 			graphicsSystem->stopRecording();
-			graphicsAPI->bufferPool.destroy(staging);
+			graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 			loadedBuffer = item.bufferInstance;
 			loadedBufferPath = std::move(item.path);
@@ -403,16 +403,17 @@ void ResourceSystem::dequeueImages()
 				image.setDebugName(image.getDebugName());
 				#endif
 
-				auto staging = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
-					Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
-				SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
+				auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc | 
+					Buffer::Usage::TransferQ, Buffer::CpuAccess::SequentialWrite, 
+					Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
+				SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
 
-				auto stagingView = graphicsAPI->bufferPool.get(staging);
-				BufferExt::moveInternalObjects(item.staging, **stagingView);
+				auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
+				BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
 				graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-				Image::copy(staging, item.instance);
+				Image::copy(stagingBuffer, item.instance);
 				graphicsSystem->stopRecording();
-				graphicsAPI->bufferPool.destroy(staging);
+				graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 				loadedImage = item.instance;
 				loadedImagePaths = std::move(item.paths);
@@ -1165,10 +1166,11 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags)
 {
 	// TODO: allow to load file with image paths to load image arrays.
-	#if GARDEN_DEBUG || GARDEN_EDITOR
 	GARDEN_ASSERT(!paths.empty());
 	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
+	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferQ));
 
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (paths.size() > 1)
 	{
 		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray));
@@ -1257,8 +1259,9 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			{
 				ImageExt::create(type, format, data->usage, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->version),
-				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto,
-					Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
+				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
+					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: staging does not need TransferQ flag.
+					formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
 				std::move(paths), realSize, data->instance,
 			};
 
@@ -1294,19 +1297,20 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto staging = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite,
-			Buffer::Location::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
-		SET_RESOURCE_DEBUG_NAME(staging, "buffer.staging.loadedImage" + to_string(*staging));
-		auto stagingView = graphicsAPI->bufferPool.get(staging);
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
+			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, 
+			Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
+		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 
-		copyLoadedImageData(pixelArrays, stagingView->getMap(),
+		copyLoadedImageData(pixelArrays, stagingBufferView->getMap(),
 			realSize, imageSize, formatBinarySize, flags);
-		stagingView->flush();
+		stagingBufferView->flush();
 
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		Image::copy(staging, image);
+		Image::copy(stagingBuffer, image);
 		graphicsSystem->stopRecording();
-		graphicsAPI->bufferPool.destroy(staging);
+		graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 		LoadedImageItem item;
 		item.paths = paths;

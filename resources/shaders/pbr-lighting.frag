@@ -58,7 +58,7 @@ uniform set1 IblData
 uniform pushConstants
 {
 	float4x4 uvToWorld;
-	float3 shadowColor;
+	float4 shadow;
 	float emissiveCoeff;
 	float reflectanceCoeff;
 } pc;
@@ -72,12 +72,14 @@ void main()
 
 	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
 	
-	float4 shadow = float4(pc.shadowColor, gBuffer.shadow);
+	float4 shadow = float4(pc.shadow.rgb, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)
 	{
 		float4 accumShadow = texture(shadowBuffer, fs.texCoords);
-		shadow = float4(shadow.rgb * accumShadow.rgb, min(shadow.a, accumShadow.a));
+		shadow.a = min(shadow.a, accumShadow.a);
+		shadow.rgb *= accumShadow.rgb;
 	}
+	shadow.rgb *= mix(pc.shadow.a, 1.0f, shadow.a);
 
 	if (USE_AO_BUFFER)
 		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, texture(aoBuffer, fs.texCoords).r);

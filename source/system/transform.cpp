@@ -240,10 +240,7 @@ bool TransformComponent::tryAddChild(ID<Entity> child)
 	if (childTransformView->parent)
 		return false;
 
-	#if GARDEN_DEBUG
 	GARDEN_ASSERT(!hasAncestor(child));
-	#endif
-
 	if (childCount() == childCapacity())
 	{
 		if (childs)
@@ -509,7 +506,7 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 		serializer.write("parent", uidStringCache);
 	}
 
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!transformView->debugName.empty())
 		serializer.write("debugName", transformView->debugName);
 	#endif
@@ -559,7 +556,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		}
 	}
 
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	deserializer.read("debugName", transformView->debugName);
 	#endif
 }

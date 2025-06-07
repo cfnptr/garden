@@ -97,7 +97,7 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 	destinationView->colorMap = sourceView->colorMap;
 	destinationView->descriptorSet = sourceView->descriptorSet;
 	destinationView->colorMapLayer = sourceView->colorMapLayer;
-	destinationView->colorFactor = sourceView->colorFactor;
+	destinationView->color = sourceView->color;
 	destinationView->uvSize = sourceView->uvSize;
 	destinationView->uvOffset = sourceView->uvOffset;
 
@@ -137,9 +137,9 @@ void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	instanceData->mvp = (float4x4)(viewProj * model);
-	instanceData->colorFactor = (float4)spriteRenderView->colorFactor;
-	auto uvSize = spriteRenderView->uvSize, uvOffset = spriteRenderView->uvOffset;
-	instanceData->sizeOffset = float4(uvSize.x, uvSize.y, uvOffset.x, uvOffset.y);
+	instanceData->color = (float4)spriteRenderView->color;
+	instanceData->uvSize = spriteRenderView->uvSize;
+	instanceData->uvOffset = spriteRenderView->uvOffset;
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
@@ -174,8 +174,8 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 		serializer.write("isEnabled", false);
 	if (spriteRenderView->colorMapLayer != 0.0f)
 		serializer.write("colorMapLayer", spriteRenderView->colorMapLayer);
-	if (spriteRenderView->colorFactor != f32x4::one)
-		serializer.write("colorFactor", (float4)spriteRenderView->colorFactor);
+	if (spriteRenderView->color != f32x4::one)
+		serializer.write("color", (float4)spriteRenderView->color);
 	if (spriteRenderView->uvSize != float2::one)
 		serializer.write("uvSize", spriteRenderView->uvSize);
 	if (spriteRenderView->uvOffset != float2::zero)
@@ -193,7 +193,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	deserializer.read("aabb", spriteRenderView->aabb);
 	deserializer.read("isEnabled", spriteRenderView->isEnabled);
 	deserializer.read("colorMapLayer", spriteRenderView->colorMapLayer);
-	deserializer.read("colorFactor", spriteRenderView->colorFactor);
+	deserializer.read("color", spriteRenderView->color);
 	deserializer.read("uvSize", spriteRenderView->uvSize);
 	deserializer.read("uvOffset", spriteRenderView->uvOffset);
 
@@ -209,7 +209,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	if (spriteRenderView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Usage::TransferDst | Image::Usage::Sampled, 1, Image::Strategy::Default, flags);
+		Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
 }
 
 //**********************************************************************************************************************
@@ -218,8 +218,8 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 	auto spriteFrameView = View<SpriteAnimationFrame>(frame);
 	if (spriteFrameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)spriteFrameView->isEnabled);
-	if (spriteFrameView->animateColorFactor)
-		serializer.write("colorFactor", (float4)spriteFrameView->colorFactor);
+	if (spriteFrameView->animateColor)
+		serializer.write("color", (float4)spriteFrameView->color);
 	if (spriteFrameView->animateUvSize)
 		serializer.write("uvSize", spriteFrameView->uvSize);
 	if (spriteFrameView->animateUvOffset)
@@ -246,8 +246,8 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 
 	if (frameA->animateIsEnabled)
 		spriteRenderView->isEnabled = (bool)round(t);
-	if (frameA->animateColorFactor)
-		spriteRenderView->colorFactor = lerp(frameA->colorFactor, frameB->colorFactor, t);
+	if (frameA->animateColor)
+		spriteRenderView->color = lerp(frameA->color, frameB->color, t);
 	if (frameA->animateUvSize)
 		spriteRenderView->uvSize = lerp(frameA->uvSize, frameB->uvSize, t);
 	if (frameA->animateUvOffset)
@@ -288,7 +288,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	auto boolValue = true;
 	frame.animateIsEnabled = deserializer.read("isEnabled", boolValue);
 	frame.isEnabled = boolValue;
-	frame.animateColorFactor = deserializer.read("colorFactor", frame.colorFactor);
+	frame.animateColor = deserializer.read("color", frame.color);
 	frame.animateUvSize = deserializer.read("uvSize", frame.uvSize);
 	frame.animateUvOffset = deserializer.read("uvOffset", frame.uvOffset);
 	frame.animateColorMapLayer = deserializer.read("colorMapLayer", frame.colorMapLayer);
@@ -309,7 +309,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	if (frame.isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Usage::TransferDst | Image::Usage::Sampled, 1, Image::Strategy::Default, flags);
+		Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
 	frame.descriptorSet = {}; // See the imageLoaded()
 }
 

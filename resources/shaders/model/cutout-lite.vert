@@ -34,7 +34,8 @@ buffer readonly Instance
 
 void main()
 {
-	gl.position = instance.data[pc.instanceIndex].mvp * float4(vs.position, 1.0f);
-	fs.normal = float3x3(instance.data[pc.instanceIndex].model) * vs.normal;
+	InstanceData instance = instance.data[pc.instanceIndex];
+	gl.position = instance.mvp * float4(vs.position, 1.0f);
+	fs.normal = float3x3(instance.model) * vs.normal;
 	fs.texCoords = vs.texCoords;
 }

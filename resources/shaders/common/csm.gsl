@@ -25,7 +25,7 @@
 
 #define SHADOW_MAP_DATA                            \
 	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT]; \
-	float4 farPlanes;                        \
+	float4 farPlanes;                              \
 	float4 lightDirBias;
 
 const float2 poissonDisk[SHADOW_MAP_SAMPLE_COUNT] = float2[]

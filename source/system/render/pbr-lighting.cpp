@@ -189,7 +189,7 @@ static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::shadowBufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::Storage | Image::Usage::TransferDst, 
+		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::Fullscreen, 
 		mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadowBuffer");
 
@@ -241,8 +241,8 @@ static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
 	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
-		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Fullscreen | Image::Usage::Storage | 
-		Image::Usage::TransferDst, mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
+		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
+		Image::Usage::Fullscreen, mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.aoBuffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
@@ -388,8 +388,9 @@ static ID<Image> createDfgLUT()
 	}
 	
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, Image::Usage::TransferDst |
-		Image::Usage::Sampled, { { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
+	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, 
+		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::ComputeQ, 
+		{ { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
 	return image;
 }
@@ -701,7 +702,7 @@ void PbrLightingRenderSystem::hdrRender()
 
 	LightingPC pc;
 	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
-	pc.shadowColor = (float3)(cameraConstants.shadowColor * cameraConstants.shadowColor.getW());
+	pc.shadow = (float4)cameraConstants.shadowColor;
 	pc.emissiveCoeff = cameraConstants.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;
 
@@ -975,9 +976,9 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem, const vector<const v
 	deringingSH(shBufferData);
 	shaderPreprocessSH(shBufferData);
 
-	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::TransferDst | 
-		Buffer::Usage::Uniform, Buffer::CpuAccess::None, shBufferData, 
-		shCoeffCount * sizeof(f32x4), Buffer::Location::PreferGPU, strategy);
+	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Uniform | 
+		Buffer::Usage::TransferDst | Buffer::Usage::ComputeQ, Buffer::CpuAccess::None, 
+		shBufferData, shCoeffCount * sizeof(f32x4), Buffer::Location::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************
@@ -1054,8 +1055,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	for (uint8 i = 0; i < specularMipCount; i++)
 		mips[i] = Image::Layers(6);
 
-	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::TransferDst | 
-		Image::Usage::Storage | Image::Usage::Sampled, mips, uint2(cubemapSize), strategy);
+	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  
+		Image::Usage::Storage | Image::Usage::TransferDst, mips, uint2(cubemapSize), strategy);
 
 	uint64 specularCacheSize = 0;
 	for (uint8 i = 1; i < specularMipCount; i++)
@@ -1178,8 +1179,9 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
 
-	cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::TransferDst | 
-		Image::Usage::TransferSrc | Image::Usage::Sampled, mips, size, strategy, Image::Format::SfloatR32G32B32A32));
+	cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, 
+		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferSrc, 
+		mips, size, strategy, Image::Format::SfloatR32G32B32A32));
 	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);

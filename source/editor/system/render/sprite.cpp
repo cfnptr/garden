@@ -158,7 +158,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
 		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath,
-			Image::Usage::TransferDst | Image::Usage::Sampled, 1, Image::Strategy::Default, flags);
+			Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
 	}
 
@@ -233,11 +233,11 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		ImGui::EndPopup();
 	}
 
-	ImGui::SliderFloat4("Color Factor", &componentView->colorFactor, 0.0f, 1.0f);
+	ImGui::SliderFloat4("Color", &componentView->color, 0.0f, 1.0f);
 	if (ImGui::BeginPopupContextItem("colorFactor"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->colorFactor = f32x4::one;
+			componentView->color = f32x4::one;
 		ImGui::EndPopup();
 	}
 }

@@ -815,21 +815,16 @@ public:
 	 * @param[in] geometryArray target triangle geometry array
 	 * @param geometryCount geometry array size
 	 * @param flags acceleration structure build flags
-	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
-	ID<Blas> createBlas(const Blas::TrianglesBuffer* geometryArray, 
-		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+	ID<Blas> createBlas(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags = {});
 	/**
 	 * @brief Create a new graphics bottom level acceleration structure instance. (BLAS)
-	 * @warning It containts build() render command recording inside!
 	 * 
 	 * @param[in] geometryArray target AABB geometry array
 	 * @param geometryCount geometry array size
 	 * @param flags acceleration structure build flags
-	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
-	ID<Blas> createBlas(const Blas::AabbsBuffer* geometryArray, 
-		uint32 geometryCount, BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+	ID<Blas> createBlas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags = {});
 
 	/**
 	 * @brief Destroys bottom level acceleration structure instance. (BLAS)
@@ -850,15 +845,12 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Create a new graphics top level acceleration structure instance. (TLAS)
-	 * @warning It containts build() render command recording inside!
 	 * 
 	 * @param instances TLAS instance array
 	 * @param instanceBuffer target TLAS instance buffer
 	 * @param flags acceleration structure build flags
-	 * @param scratchBuffer AS build scratch buffer (null = auto create)
 	 */
-	ID<Tlas> createTlas(vector<Tlas::InstanceData>&& instances, ID<Buffer> instanceBuffer, 
-		BuildFlagsAS flags = {}, ID<Buffer> scratchBuffer = {});
+	ID<Tlas> createTlas(vector<Tlas::InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFlagsAS flags = {});
 
 	/**
 	 * @brief Destroys top level acceleration structure instance. (TLAS)

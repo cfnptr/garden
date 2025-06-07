@@ -29,7 +29,7 @@ namespace garden
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
-	f32x4 colorFactor = f32x4::one;        /**< Texture color multiplier. */
+	f32x4 color = f32x4::one;        /**< Texture color multiplier. */
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
 	float2 uvSize = float2::one;           /**< Texture UV size. */
@@ -50,7 +50,7 @@ struct SpriteAnimationFrame : public AnimationFrame
 {
 	uint8 isEnabled : 1;
 	uint8 animateIsEnabled : 1;
-	uint8 animateColorFactor : 1;
+	uint8 animateColor : 1;
 	uint8 animateUvSize : 1;
 	uint8 animateUvOffset : 1;
 	uint8 animateColorMapLayer : 1;
@@ -61,7 +61,7 @@ protected:
 public:
 	float2 uvSize = float2::one;
 	float2 uvOffset = float2::zero;
-	f32x4 colorFactor = f32x4::one;
+	f32x4 color = f32x4::one;
 	Ref<Image> colorMap = {};
 	Ref<DescriptorSet> descriptorSet = {};
 	float colorMapLayer = 0.0f;
@@ -70,12 +70,12 @@ public:
 	fs::path colorMapPath = {};
 	#endif
 
-	SpriteAnimationFrame() : isEnabled(true), animateIsEnabled(false), animateColorFactor(false), animateUvSize(false),
+	SpriteAnimationFrame() : isEnabled(true), animateIsEnabled(false), animateColor(false), animateUvSize(false),
 		animateUvOffset(false), animateColorMapLayer(false), animateColorMap(false), isArray(false) { }
 
 	bool hasAnimation() override
 	{
-		return animateIsEnabled | animateColorFactor | animateUvSize | 
+		return animateIsEnabled | animateColor | animateUvSize | 
 			animateUvOffset | animateColorMapLayer | animateColorMap;
 	}
 };
@@ -89,8 +89,9 @@ public:
 	struct BaseInstanceData
 	{
 		float4x4 mvp = float4x4::zero;
-		float4 colorFactor = float4::zero;
-		float4 sizeOffset = float4::zero;
+		float4 color = float4::zero;
+		float2 uvSize = float2::zero;
+		float2 uvOffset = float2::zero;
 	};
 	struct PushConstants
 	{
