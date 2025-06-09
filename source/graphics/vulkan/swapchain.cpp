@@ -181,7 +181,7 @@ static vector<ID<Image>> createVkSwapchainImages(VulkanAPI* vulkanAPI,
 			Image::Usage::TransferDst, Image::Strategy::Default, framebufferSize, 0);
 		images[i] = image;
 
-		#if GARDEN_DEBUG || GARDEN_EDITOR
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		auto imageView = vulkanAPI->imagePool.get(images[i]);
 		auto name = "image.swapchain" + to_string(i);
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)
@@ -230,7 +230,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 		inFlightFrame.queryPool = vulkanAPI->device.createQueryPool(queryPoolInfo);
 		#endif
 
-		#if GARDEN_DEBUG || GARDEN_EDITOR
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
@@ -415,7 +415,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 			secondaryCommandBuffers[i] = commandBuffer;
 			vulkanAPI->secondaryCommandBuffers[i] = commandBuffer;
 
-			#if GARDEN_DEBUG
+			#if GARDEN_DEBUG // No GARDEN_EDITOR
 			if (vulkanAPI->hasDebugUtils)
 			{
 				auto objectName = debugName + ".secondaryCommandBuffer" + to_string(i);

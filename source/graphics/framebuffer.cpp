@@ -747,6 +747,7 @@ void Framebuffer::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils || !instance || subpasses.empty())
 			return;
@@ -756,6 +757,7 @@ void Framebuffer::setDebugName(const string& name)
 		nameInfo.objectType = vk::ObjectType::eRenderPass;
 		nameInfo.objectHandle = (uint64)renderPass;
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		#endif
 	}
 	else abort();
 }
