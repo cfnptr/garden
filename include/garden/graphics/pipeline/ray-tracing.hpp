@@ -42,7 +42,7 @@ public:
 		uint32 size = 0;
 	};
 	/**
-	 * @brief Ray tracing pipeline variant group regions container.
+	 * @brief Ray tracing pipeline variant SBT group regions container.
 	 */
 	struct SbtGroupRegions final
 	{
@@ -50,6 +50,14 @@ public:
 		HitGroupRegion missRegion;
 		HitGroupRegion hitRegion;
 		HitGroupRegion callRegion;
+	};
+	/**
+	 * @brief Ray tracing pipeline shader binding table container;
+	 */
+	struct SBT final
+	{
+		vector<SbtGroupRegions> groupRegions;
+		ID<Buffer> buffer = {};
 	};
 
 	/**
@@ -117,41 +125,38 @@ public:
 
 	/**
 	 * @brief Creates and transfers ray tracing pipeline shader binding table. (SBT)
-	 *
-	 * @param[out] sbtBuffer created STB buffer instance
-	 * @param[out] sbtGroupRegions shader group region array
 	 * @param computeQ SBT buffer can be used in the compute command buffer
 	 */
-	void createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions, bool computeQ = false);
+	SBT createSBT(bool computeQ = false);
 
 	/**
 	 * @brief Executes ray tracing shader with specified SBT and 3D generation group size.
 	 * 
-	 * @param[in] sbtGroupRegions target SBT group region array
+	 * @param[in] sbt target RT pipeline shader binding table
 	 * @param count ray tracing generation group 3D size
 	 */
-	void traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint3 count);
+	void traceRays(const SBT& sbt, uint3 count);
 	/**
 	 * @brief Executes ray tracing shader with specified SBT and 2D generation group size.
 	 * @details See the @ref traceRays().
 	 * 
-	 * @param[in] sbtGroupRegions target SBT group region array
+	 * @param[in] sbt target RT pipeline shader binding table
 	 * @param count ray tracing generation group 2D size
 	 */
-	void traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint2 count)
+	void traceRays(const SBT& sbt, uint2 count)
 	{
-		traceRays(sbtGroupRegions, uint3(count.x, count.y, 1));
+		traceRays(sbt, uint3(count.x, count.y, 1));
 	}
 	/**
 	 * @brief Executes ray tracing shader with specified SBT and 1D generation group size.
 	 * @details See the @ref traceRays().
 	 * 
-	 * @param[in] sbtGroupRegions target SBT group region array
+	 * @param[in] sbt target RT pipeline shader binding table
 	 * @param count ray tracing generation group 1D size
 	 */
-	void traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint32 count)
+	void traceRays(const SBT& sbt, uint32 count)
 	{
-		traceRays(sbtGroupRegions, uint3(count, 1, 1));
+		traceRays(sbt, uint3(count, 1, 1));
 	}
 };
 

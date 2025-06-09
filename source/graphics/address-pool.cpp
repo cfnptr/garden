@@ -95,12 +95,18 @@ uint32 AddressPool::allocate(ID<Buffer> buffer)
 }
 void AddressPool::update(uint32 allocation, ID<Buffer> newBuffer)
 {
-	GARDEN_ASSERT(newBuffer);
 	GARDEN_ASSERT(allocation < resources.size());
-	auto bufferView = GraphicsAPI::get()->bufferPool.get(newBuffer);
+	if (newBuffer)
+	{
+		auto bufferView = GraphicsAPI::get()->bufferPool.get(newBuffer);
+		deviceAddresses[allocation] = bufferView->getDeviceAddress();
+		flushCount = 0;
+	}
+	else
+	{
+		deviceAddresses[allocation] = 0;
+	}
 	resources[allocation] = newBuffer;
-	deviceAddresses[allocation] = bufferView->getDeviceAddress();
-	flushCount = 0;
 }
 void AddressPool::free(uint32 allocation)
 {
@@ -222,6 +228,7 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 		if (!buffers[i])
 			continue;
 		barriers[barrierCount++] = buffers[i];
+		// TODO: check state before adding, and skip buffers without changes
 	}
 
 	BufferBarrierCommand command;

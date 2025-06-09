@@ -313,7 +313,8 @@ struct TraceRaysCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	uint3 groupCount = uint3::zero;
-	RayTracingPipeline::SbtGroupRegions sbt;
+	RayTracingPipeline::SbtGroupRegions sbtRegions = {};
+	ID<Buffer> sbtBuffer = {};
 	TraceRaysCommand() noexcept : Command(Type::TraceRays) { }
 };
 

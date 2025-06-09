@@ -33,10 +33,10 @@ public:
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 
-	void addDescriptorSetBarriers(const DescriptorSet::Range* descriptorSetRange,
-		uint32 rangeCount, uint32& oldStage, uint32& newStage);
-	void addRenderPassBarriers(psize offset, uint32& oldPipelineStage, uint32& newPipelineStage);
-	void processPipelineBarriers(uint32 oldStage, uint32 newStage);
+	void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
+		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
+	void addRenderPassBarriers(psize offset);
+	void processPipelineBarriers();
 
 	void processCommand(const BufferBarrierCommand& command) final;
 	void processCommand(const BeginRenderPassCommand& command) final;
