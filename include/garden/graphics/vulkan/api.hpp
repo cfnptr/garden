@@ -118,7 +118,7 @@ public:
 	vk::PhysicalDeviceProperties2 deviceProperties;
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
 	Features features = {};
-	uint32 asOldPipelineStage = 0;
+	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 	bool isCacheLoaded = false;
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR

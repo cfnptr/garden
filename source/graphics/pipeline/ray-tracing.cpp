@@ -153,7 +153,7 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 }
 
 //**********************************************************************************************************************
-void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions>& sbtGroupRegions, bool computeQ)
+RayTracingPipeline::SBT RayTracingPipeline::createSBT(bool computeQ)
 {
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
@@ -161,8 +161,9 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
+	SBT sbt;
+	sbt.groupRegions.resize(variantCount);
 	auto groupCount = rayGenGroupCount + missGroupCount + hitGroupCount + callGroupCount;	
-	sbtGroupRegions.resize(variantCount);
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -180,12 +181,12 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 
 		auto sbtUsage = Buffer::Usage::SBT | Buffer::Usage::DeviceAddress | Buffer::Usage::TransferDst;
 		if (computeQ) sbtUsage |= Buffer::Usage::ComputeQ;
-		sbtBuffer = vulkanAPI->bufferPool.create(sbtUsage, Buffer::CpuAccess::None, 
+		sbt.buffer = vulkanAPI->bufferPool.create(sbtUsage, Buffer::CpuAccess::None, 
 			Buffer::Location::PreferGPU, Buffer::Strategy::Size, sbtSize, 0);
 		auto stagingBuffer = vulkanAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 			Buffer::CpuAccess::RandomReadWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, sbtSize, 0);
 
-		auto sbtBufferView = vulkanAPI->bufferPool.get(sbtBuffer);
+		auto sbtBufferView = vulkanAPI->bufferPool.get(sbt.buffer);
 		auto stagingBufferView = vulkanAPI->bufferPool.get(stagingBuffer);
 		auto sbtAddress = alignSize(sbtBufferView->getDeviceAddress(), (uint64)baseAlignment);
 		auto sbtOffset = sbtAddress - sbtBufferView->getDeviceAddress();
@@ -200,7 +201,7 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 	
 		for (uint8 i = 0; i < variantCount; i++)
 		{
-			auto& sbtGroupRegion = sbtGroupRegions[i];
+			auto& sbtGroupRegion = sbt.groupRegions[i];
 			sbtGroupRegion.rayGenRegion.deviceAddress = sbtAddress;
 			sbtGroupRegion.rayGenRegion.stride = rayGenRegionSize;
 			sbtGroupRegion.rayGenRegion.size = rayGenRegionSize; // Note: must be equal to its stride member.
@@ -273,16 +274,19 @@ void RayTracingPipeline::createSBT(ID<Buffer>& sbtBuffer, vector<SbtGroupRegions
 		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::ComputeQ;
 		#endif
 
-		Buffer::copy(stagingBuffer, sbtBuffer);
+		Buffer::copy(stagingBuffer, sbt.buffer);
 		vulkanAPI->bufferPool.destroy(stagingBuffer);
 	}
 	else abort();
+
+	return sbt;
 }
 
 //**********************************************************************************************************************
-void RayTracingPipeline::traceRays(const vector<SbtGroupRegions>& sbtGroupRegions, uint3 count)
+void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 {
-	GARDEN_ASSERT_MSG(!sbtGroupRegions.empty(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(sbt.buffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!sbt.groupRegions.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
@@ -293,6 +297,7 @@ void RayTracingPipeline::traceRays(const vector<SbtGroupRegions>& sbtGroupRegion
 
 	TraceRaysCommand command;
 	command.groupCount = count;
-	command.sbt = sbtGroupRegions[currentVariant];
+	command.sbtRegions = sbt.groupRegions[currentVariant];
+	command.sbtBuffer = sbt.buffer;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }

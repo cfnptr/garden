@@ -95,8 +95,8 @@ float2 raycast2I(Aabb aabb, Ray ray, out uint32 sideIndex)
 	float t0 = max(tMin); float t1 = min(tMax);
 	float3 axisMask = step(abs(t0 - tMin), float3(FLOAT_EPS6));
 	float3 axisIndex = float3(0.0f, 2.0f, 4.0f);
-	float3 directionOffset = step(float3(0.0f), ray.direction);
-	sideIndex = max(uint32(dot(axisMask, axisIndex + directionOffset)), 5u);
+	float3 directionOffset = step(float3(0.0f), -ray.direction);
+	sideIndex = min(uint32(dot(axisMask, axisIndex + directionOffset)), 5u);
 	return float2(t0, t1);
 }
 float2 raycast2(Aabb aabb, Ray ray, out uint32 sideIndex)

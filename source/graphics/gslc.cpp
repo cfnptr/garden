@@ -1921,7 +1921,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				auto depth = strtoul(lineData.word.c_str(), nullptr, 10);
 				if (depth < 1)
 					throw CompileError("invalid max ray recursion depth", fileData.lineIndex, lineData.word);
-				fileData.outputFileStream << "#define gsl_rayRecursionDepth " << lineData.word;
+				fileData.outputFileStream << "#define gsl_rayRecursionDepth ";
 				rayRecursionDepth = (uint32)depth; lineData.isRayRecursionDepth = 0;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
