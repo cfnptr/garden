@@ -211,6 +211,7 @@ void AccelerationStructure::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils || !instance)
 			return;
@@ -218,6 +219,7 @@ void AccelerationStructure::setDebugName(const string& name)
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(
 			vk::ObjectType::eAccelerationStructureKHR, (uint64)instance, name.c_str());
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		#endif
 	}
 	else abort();
 }

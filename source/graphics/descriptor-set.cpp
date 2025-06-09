@@ -765,6 +765,7 @@ void DescriptorSet::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils)
 			return;
@@ -787,6 +788,7 @@ void DescriptorSet::setDebugName(const string& name)
 			nameInfo.pObjectName = name.c_str();
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
+		#endif
 	}
 	else abort();
 }

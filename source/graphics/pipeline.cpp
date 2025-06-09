@@ -45,7 +45,7 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 		samplers[i] = (VkSampler)sampler;
 		immutableSamplers.emplace(it->first, sampler);
 
-		#if GARDEN_DEBUG
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "sampler." + pipelinePath.generic_string() + "." + it->first;
@@ -184,7 +184,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
 			descriptorPools[dsIndex] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
 
-			#if GARDEN_DEBUG
+			#if GARDEN_DEBUG // No GARDEN_EDITOR
 			if (vulkanAPI->hasDebugUtils)
 			{
 				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(dsIndex);
@@ -198,7 +198,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		descriptorSetLayouts[dsIndex] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
 		samplerArrays.clear();
 
-		#if GARDEN_DEBUG
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(dsIndex);
@@ -251,7 +251,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Shade
 	auto vulkanAPI = VulkanAPI::get();
 	auto layout = vulkanAPI->device.createPipelineLayout(pipelineLayoutInfo);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG // No GARDEN_EDITOR
 	if (vulkanAPI->hasDebugUtils)
 	{
 		auto name = "pipelineLayout." + pipelinePath.generic_string();
@@ -333,7 +333,7 @@ static vector<void*> createVkShaders(const vector<uint8>* codeArray, uint8 shade
 			(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
 		shaders[i] = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
 
-		#if GARDEN_DEBUG
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		if (vulkanAPI->hasDebugUtils)
 		{
 			auto _name = "shaderModule." + pipelinePath.generic_string() + to_string(i);

@@ -812,12 +812,14 @@ void Image::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils || !instance)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)instance, name.c_str());
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		#endif
 	}
 	else abort();
 }
@@ -941,12 +943,14 @@ void ImageView::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImageView, (uint64)instance, name.c_str());
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		#endif
 	}
 	else abort();
 }
