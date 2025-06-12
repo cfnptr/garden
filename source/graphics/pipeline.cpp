@@ -499,8 +499,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
-	uint32 variantIndexValue = variantIndex;
-	memcpy((void*)info->pData, &variantIndexValue, sizeof(uint32));
+	*((uint32*)info->pData) = variantIndex;
 }
 
 //**********************************************************************************************************************
@@ -641,6 +640,7 @@ void Pipeline::bind(uint8 variant)
 
 	if (type == PipelineType::Graphics)
 	{
+		GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			busyLock++;

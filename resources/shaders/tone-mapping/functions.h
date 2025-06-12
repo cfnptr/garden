@@ -12,12 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/fullscreen.gsl"
+#ifndef TONE_MAPPING_FUNCTIONS_H
+#define TONE_MAPPING_FUNCTIONS_H
 
-out noperspective float2 fs.texCoords;
+#define TONE_MAPPER_ACES 0
+#define TONE_MAPPER_UCHIMURA 1
+#define TONE_MAPPER_COUNT 2
 
-void main()
+#ifdef __GARDEN__
+static const char* TONE_MAPPER_NAMES[TONE_MAPPER_COUNT] =
 {
-	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
-	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
-}
+	"ACES", "Uchimura", 
+};
+#endif
+
+#endif // TONE_MAPPING_FUNCTIONS_H

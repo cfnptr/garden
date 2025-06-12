@@ -26,19 +26,19 @@ out float4 fb.color;
 uniform sampler2D
 {
 	filter = linear;
-} srcTexture;
+} srcBuffer;
 
 void main()
 {
 	float3 c0, c1; // tent filter
-	c0  = textureOffset(srcTexture, fs.texCoords, int2(-1, -1)).rgb;
-	c0 += textureOffset(srcTexture, fs.texCoords, int2( 1, -1)).rgb;
-	c0 += textureOffset(srcTexture, fs.texCoords, int2( 1,  1)).rgb;
-	c0 += textureOffset(srcTexture, fs.texCoords, int2(-1,  1)).rgb;
-	c0 += texture(srcTexture, fs.texCoords).rgb * 4.0f;
-	c1  = textureOffset(srcTexture, fs.texCoords, int2(-1,  0)).rgb;
-	c1 += textureOffset(srcTexture, fs.texCoords, int2( 0, -1)).rgb;
-	c1 += textureOffset(srcTexture, fs.texCoords, int2( 1,  0)).rgb;
-	c1 += textureOffset(srcTexture, fs.texCoords, int2( 0,  1)).rgb;
+	c0  = textureOffset(srcBuffer, fs.texCoords, int2(-1, -1)).rgb;
+	c0 += textureOffset(srcBuffer, fs.texCoords, int2( 1, -1)).rgb;
+	c0 += textureOffset(srcBuffer, fs.texCoords, int2( 1,  1)).rgb;
+	c0 += textureOffset(srcBuffer, fs.texCoords, int2(-1,  1)).rgb;
+	c0 += texture(srcBuffer, fs.texCoords).rgb * 4.0f;
+	c1  = textureOffset(srcBuffer, fs.texCoords, int2(-1,  0)).rgb;
+	c1 += textureOffset(srcBuffer, fs.texCoords, int2( 0, -1)).rgb;
+	c1 += textureOffset(srcBuffer, fs.texCoords, int2( 1,  0)).rgb;
+	c1 += textureOffset(srcBuffer, fs.texCoords, int2( 0,  1)).rgb;
 	fb.color = float4((c0 + c1 * 2.0f) * (1.0f / 16.0f), 0.0f);
 }

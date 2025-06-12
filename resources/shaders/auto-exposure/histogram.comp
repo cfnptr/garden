@@ -53,7 +53,7 @@ void main()
 	int2 hdrSize = textureSize(hdrBuffer, 0);
 	int2 globalID = int2(gl.globalInvocationID.xy);
 
-	if (globalID.x < hdrSize.x && globalID.y < hdrSize.y)
+	if (all(lessThan(globalID, hdrSize)))
 	{
 		float3 hdrColor = texelFetch(hdrBuffer, globalID, 0).rgb;
 		uint32 binIndex = colorToBin(hdrColor, pc.minLogLum, pc.invLogLumRange);

@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #variantCount 3
-#define DOWNSAMPLE_FIRST_VARIANT 0
-#define DOWNSAMPLE_6X6_VARIANT 1
 
 spec const bool USE_THRESHOLD = false;
 spec const bool USE_ANTI_FLICKERING = true;
 
 #include "bloom/common.gsl"
+#include "bloom/variants.h"
 
 pipelineState
 {
@@ -32,7 +31,7 @@ out float4 fb.color;
 uniform sampler2D
 {
 	filter = linear;
-} srcTexture;
+} srcBuffer;
 
 uniform pushConstants
 {
@@ -43,19 +42,19 @@ void main()
 {
 	float3 color;
 
-	if (gsl.variant == DOWNSAMPLE_FIRST_VARIANT)
+	if (gsl.variant == BLOOM_DOWNSAMPLE_BASE)
 	{
-		color = downsample(srcTexture, fs.texCoords,
+		color = downsample(srcBuffer, fs.texCoords,
 			pc.threshold, USE_THRESHOLD, USE_ANTI_FLICKERING);
 		color = max(color, 0.0001f);
 	}
-	else if (gsl.variant == DOWNSAMPLE_6X6_VARIANT)
+	else if (gsl.variant == BLOOM_DOWNSAMPLE_6X6)
 	{
-		color = downsample6x6(srcTexture, fs.texCoords);
+		color = downsample6x6(srcBuffer, fs.texCoords);
 	}
-	else
+	else // gsl.variant == BLOOM_DOWNSAMPLE_FIRST
 	{
-		color = downsample(srcTexture, fs.texCoords, 0.0f, false, false);
+		color = downsample(srcBuffer, fs.texCoords, 0.0f, false, false);
 	}
 
 	fb.color = float4(color, 0.0f);

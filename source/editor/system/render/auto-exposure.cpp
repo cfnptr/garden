@@ -74,7 +74,7 @@ void AutoExposureRenderEditorSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(limitsDescriptorSet);
+		graphicsSystem->destroy(limitsDS);
 		graphicsSystem->destroy(limitsPipeline);
 		graphicsSystem->destroy(readbackBuffer);
 		
@@ -158,11 +158,11 @@ void AutoExposureRenderEditorSystem::preUiRender()
 			auto pipelineView = graphicsSystem->get(limitsPipeline);
 			if (pipelineView->isReady())
 			{
-				if (!limitsDescriptorSet)
+				if (!limitsDS)
 				{
 					auto uniforms = getLimitsUniforms();
-					limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.editor.autoExposure.limits");
+					limitsDS = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
+					SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
 				}
 			}
 			else
@@ -204,7 +204,7 @@ void AutoExposureRenderEditorSystem::uiRender()
 	SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(limitsDescriptorSet);
+	pipelineView->bindDescriptorSet(limitsDS);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
@@ -212,13 +212,13 @@ void AutoExposureRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void AutoExposureRenderEditorSystem::gBufferRecreate()
 {
-	if (limitsDescriptorSet)
+	if (limitsDS)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(limitsDescriptorSet);
+		graphicsSystem->destroy(limitsDS);
 		auto uniforms = getLimitsUniforms();
-		limitsDescriptorSet = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(limitsDescriptorSet, "descriptorSet.editor.autoExposure.limits");
+		limitsDS = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
 	}
 }
 

@@ -122,7 +122,7 @@ static ID<GraphicsPipeline> createPipeline()
 {
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useShadowBuffer());
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowFramebuffers()[0]);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowBaseFB());
 }
 
 static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap, 

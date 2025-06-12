@@ -30,7 +30,7 @@ class AutoExposureRenderEditorSystem final : public System
 	vector<float> histogramSamples;
 	ID<Buffer> readbackBuffer = {};
 	ID<GraphicsPipeline> limitsPipeline = {};
-	ID<DescriptorSet> limitsDescriptorSet = {};
+	ID<DescriptorSet> limitsDS = {};
 	bool visualizeLimits = false;
 	bool showWindow = false;
 

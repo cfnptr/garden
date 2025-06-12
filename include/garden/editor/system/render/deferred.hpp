@@ -14,6 +14,7 @@
 
 #pragma once
 #include "garden/system/render/editor.hpp"
+#include "editor/gbuffer-data.h"
 
 #if GARDEN_EDITOR
 namespace garden
@@ -21,14 +22,6 @@ namespace garden
 
 class DeferredRenderEditorSystem final : public System
 {
-	enum class DrawMode : uint8
-	{
-		Off, BaseColor, SpecularFactor, Transmission, Metallic, Roughness, MaterialAO, Reflectance, 
-		ClearCoatRoughness, Normals, MaterialShadows, EmissiveColor, EmissiveFactor, GiColor, 
-		Lighting, HdrBuffer, OitAccumColor, OitAccumAlpha, OitRevealage, Depth, WorldPositions, 
-		GlobalShadowColor, GlobalShadowAlpha, GlobalAO, DenoisedGlobalAO, Count
-	};
-
 	struct BufferPC final
 	{
 		float4x4 invViewProj;
@@ -54,7 +47,7 @@ class DeferredRenderEditorSystem final : public System
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
 	LightingPC lightingPC = {};
-	DrawMode drawMode = DrawMode::Off;
+	uint8 drawMode = G_BUFFER_DRAW_MODE_OFF;
 	bool showChannelR = true;
 	bool showChannelG = true;
 	bool showChannelB = true;

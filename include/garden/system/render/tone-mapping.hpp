@@ -19,17 +19,10 @@
 
 #pragma once
 #include "garden/system/graphics.hpp"
+#include "tone-mapping/functions.h"
 
 namespace garden
 {
-
-/**
- * @brief Tone mapping functions.
- */
-enum class ToneMapper : uint8
-{
-	ACES, Uchimura, Count
-};
 
 /**
  * @brief Tone mapping rendering system.
@@ -59,8 +52,8 @@ private:
 	ID<DescriptorSet> descriptorSet = {};
 	ID<Buffer> luminanceBuffer = {};
 	bool useBloomBuffer = false;
-	ToneMapper toneMapper = {};
-	uint16 _alignment1 = 0;
+	uint8 toneMapper = TONE_MAPPER_ACES;
+	uint16 _alignment = 0;
 
 	/**
 	 * @brief Creates a new tone mapping rendering system instance.
@@ -69,7 +62,8 @@ private:
 	 * @param toneMapper target tone mapping function
 	 * @param setSingleton set system singleton instance
 	 */
-	ToneMappingRenderSystem(bool useBloomBuffer = false, ToneMapper toneMapper = {}, bool setSingleton = true);
+	ToneMappingRenderSystem(bool useBloomBuffer = false, 
+		uint8 toneMapper = TONE_MAPPER_ACES, bool setSingleton = true);
 	/**
 	 * @brief Destroys tone mapping rendering system instance.
 	 */
@@ -93,14 +87,14 @@ public:
 	/**
 	 * @brief Returns current tone mapping function.
 	 */
-	ToneMapper getToneMapper() const noexcept { return toneMapper; }
+	uint8 getToneMapper() const noexcept { return toneMapper; }
 	/**
 	 * @brief Sets tone mapping pipeline constants. (Recreates pipeline!)
 	 * 
 	 * @param useBloomBuffer use bloom (light glow) buffer for tone mapping
 	 * @param toneMapper target tone mapping function
 	 */
-	void setConsts(bool useBloomBuffer, ToneMapper toneMapper);
+	void setConsts(bool useBloomBuffer, uint8 toneMapper);
 
 	/**
 	 * @brief Returns tone mapping graphics pipeline.

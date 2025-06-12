@@ -34,6 +34,13 @@ enum class SpawnMode : uint8
 {
 	OneShot, Manual, Count // TODO: add instance pool mode.
 };
+/**
+ * @brief Common entity spawn mode names.
+ */
+static constexpr const char* spawnModeNames[(uint8)SpawnMode::Count] =
+{
+	"One Shot", "Manual"
+};
 
 /**
  * @brief Contains information about entity spawn points and spawning mode.

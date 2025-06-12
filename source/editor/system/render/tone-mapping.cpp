@@ -55,9 +55,7 @@ void ToneMappingRenderEditorSystem::preUiRender()
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
-
-		constexpr auto toneMapperTypes = "ACES\0Uchimura\0\0";
-		if (ImGui::Combo("Tone Mapper", &toneMapper, toneMapperTypes))
+		if (ImGui::Combo("Tone Mapper", toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
 			toneMappingSystem->setConsts(toneMappingSystem->getUseBloomBuffer(), toneMapper);
 
 		ImGui::DragFloat("Exposure Factor", &toneMappingSystem->exposureFactor, 0.01f, 0.0f, FLT_MAX);

@@ -12,32 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define RADIUS 2
+#ifndef BLOOM_VARIANTS_H
+#define BLOOM_VARIANTS_H
 
-pipelineState
-{
-	faceCulling = off;
-}
+#define BLOOM_DOWNSAMPLE_FIRST 0
+#define BLOOM_DOWNSAMPLE_6X6 1
+#define BLOOM_DOWNSAMPLE_BASE 2
+#define BLOOM_DOWNSAMPLE_COUNT 3
 
-in noperspective float2 fs.texCoords;
-out float4 fb.color;
-
-uniform sampler2D aoBuffer;
-
-void main()
-{
-	float2 texelSize = 1.0f / textureSize(aoBuffer, 0);
-	float result = 0.0;
-	
-	for (int32 x = -RADIUS; x < RADIUS; x++) 
-	{
-		for (int32 y = -RADIUS; y < RADIUS; y++) 
-		{
-			float2 offset = float2(x, y) * texelSize;
-			result += texture(aoBuffer, fs.texCoords + offset).r;
-		}
-	}
-	
-	result *= 1.0f / (RADIUS * RADIUS * RADIUS * RADIUS);
-	fb.color = float4(result);
-}
+#endif // BLOOM_VARIANTS_H

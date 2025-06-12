@@ -12,37 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "garden/system/render/editor.hpp"
+#ifndef HIZ_VARIANTS_H
+#define HIZ_VARIANTS_H
 
-#if GARDEN_EDITOR
-namespace garden
-{
+#define HIZ_VARIANT_FIRST 0
+#define HIZ_VARIANT_BASE 1
+#define HIZ_VARIANT_COUNT 2
 
-class CsmRenderEditorSystem final : public System
-{
-	struct PushConstants final
-	{
-		float3 farPlanes;
-	};
-
-	ID<GraphicsPipeline> cascadesPipeline = {};
-	ID<DescriptorSet> cascadesDS = {};
-	bool visualizeCascades = false;
-	bool showWindow = false;
-
-	CsmRenderEditorSystem();
-	~CsmRenderEditorSystem();
-
-	void init();
-	void deinit();
-	void preUiRender();
-	void uiRender();
-	void gBufferRecreate();
-	void editorBarToolPP();
-	
-	friend class ecsm::Manager;
-};
-
-} // namespace garden
-#endif
+#endif // HIZ_VARIANTS_H

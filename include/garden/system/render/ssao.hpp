@@ -51,6 +51,8 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 sampleCount = 32;
+	bool isInitialized = false;
+	uint16 _alignment = 0;
 
 	/**
 	 * @brief Creates a new screen space ambient occlusion rendering system instance. (SSAO)
@@ -70,10 +72,10 @@ private:
 
 	friend class ecsm::Manager;
 public:
+	bool isEnabled = true; /**< Is screen space ambient occlusion rendering enabled. */
 	float radius = 0.5f;
 	float bias = 0.025f;
 	float intensity = 0.75f;
-	bool isEnabled = true;
 
 	/**
 	 * @brief Returns screen space ambient occlusion sample buffer size.
