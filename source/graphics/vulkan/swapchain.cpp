@@ -181,12 +181,16 @@ static vector<ID<Image>> createVkSwapchainImages(VulkanAPI* vulkanAPI,
 			Image::Usage::TransferDst, Image::Strategy::Default, framebufferSize, 0);
 		images[i] = image;
 
-		#if GARDEN_DEBUG // No GARDEN_EDITOR
-		auto imageView = vulkanAPI->imagePool.get(images[i]);
+		#if GARDEN_DEBUG || GARDEN_DEBUG
 		auto name = "image.swapchain" + to_string(i);
+		auto imageView = vulkanAPI->imagePool.get(images[i]);
+		ResourceExt::getDebugName(**imageView) = name;
+
+		#if GARDEN_DEBUG // No GARDEN_EDITOR
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)
 			(VkImage)ResourceExt::getInstance(**imageView), name.c_str());
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+		#endif
 		#endif
 	}
 

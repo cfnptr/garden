@@ -40,12 +40,11 @@ using namespace math;
  * @param[in] items all available item list
  */
 template<typename T = int>
-static bool Combo(const char* label, T* currentItem, const char* items)
+static bool Combo(const char* label, T& currentItem, const char* const items[], int itemsCount)
 {
-	GARDEN_ASSERT(currentItem);
-	auto item = (int)*currentItem;
-	auto result = ImGui::Combo(label, &item, items);
-	*currentItem = (T)item;
+	auto item = (int)currentItem;
+	auto result = ImGui::Combo(label, &item, items, itemsCount);
+	currentItem = (T)item;
 	return result;
 }
 

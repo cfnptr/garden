@@ -23,8 +23,8 @@ namespace garden
 
 class ToneMappingRenderEditorSystem final : public System
 {
-	ToneMapper toneMapper = {};
 	float exposureLuminance = 1.0f;
+	uint8 toneMapper = {};
 	bool showWindow = false;
 
 	ToneMappingRenderEditorSystem();

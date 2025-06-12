@@ -256,7 +256,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 
 	for (uint8 i = 0; i < variantCount; i++)
 	{
-		if (i > 1)
+		if (variantCount > 1)
 		{
 			for (auto& specializationInfo : specializationInfos)
 				setVkVariantIndex(&specializationInfo, i);

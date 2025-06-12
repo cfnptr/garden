@@ -239,16 +239,16 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::aoBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(Image::Format::UnormR8, 
-		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
-		Image::Usage::Fullscreen, mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
+	Image::Mips mips; mips.assign(PbrLightingRenderSystem::aoBufferCount, { nullptr });
+	auto image = graphicsSystem->createImage(Image::Format::UnormR8, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::Fullscreen, 
+		mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.aoBuffer");
 
 	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
 	{
 		aoImageViews[i] = graphicsSystem->createImageView(image,
-			Image::Type::Texture2D, Image::Format::UnormR8, 0, 1, i, 1);
+			Image::Type::Texture2D, Image::Format::UnormR8, i, 1, 0, 1);
 		SET_RESOURCE_DEBUG_NAME(aoImageViews[i], "imageView.lighting.ao" + to_string(i));
 	}
 
@@ -275,6 +275,7 @@ static void createAoFramebuffers(ID<Framebuffer>* aoFramebuffers, const ID<Image
 		{ Framebuffer::OutputAttachment(aoImageViews[i], { true, false, true }) };
 		aoFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(aoFramebuffers[i], "framebuffer.lighting.ao" + to_string(i));
+		framebufferSize = max(framebufferSize / 2u, uint2::one);
 	}
 }
 static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
@@ -299,10 +300,10 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT,
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
-		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ? // TODO: [1]
-			shadowImageViews[0] : graphicsSystem->getWhiteTexture()) },
-		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[1] ?
-			aoImageViews[1] : graphicsSystem->getWhiteTexture()) },
+		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[PbrLightingRenderSystem::denoiseBufferIndex] ?
+			shadowImageViews[PbrLightingRenderSystem::denoiseBufferIndex] : graphicsSystem->getWhiteTexture()) },
+		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[PbrLightingRenderSystem::denoiseBufferIndex] ?
+			aoImageViews[PbrLightingRenderSystem::denoiseBufferIndex] : graphicsSystem->getWhiteTexture()) },
 		{ "dfgLUT", DescriptorSet::Uniform(graphicsSystem->get(dfgLUT)->getDefaultView()) }
 	};
 
@@ -318,12 +319,13 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT,
 static DescriptorSet::Uniforms getShadowDenoiseUniforms(
 	ID<ImageView> shadowImageViews[PbrLightingRenderSystem::shadowBufferCount])
 {
-	return { { "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0]) } };
+	return { { "shadowBuffer", DescriptorSet::Uniform(
+		shadowImageViews[PbrLightingRenderSystem::denoiseBufferIndex]) } };
 }
 static DescriptorSet::Uniforms getAoDenoiseUniforms(
 	ID<ImageView> aoImageViews[PbrLightingRenderSystem::aoBufferCount])
 {
-	return { { "aoBuffer", DescriptorSet::Uniform(aoImageViews[0]) } };
+	return { { "aoBuffer", DescriptorSet::Uniform(aoImageViews[PbrLightingRenderSystem::denoiseBufferIndex]) } };
 }
 
 static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool useAoBuffer)
@@ -347,7 +349,8 @@ static ID<ComputePipeline> createIblSpecularPipeline()
 static ID<GraphicsPipeline> createAoDenoisePipeline(
 	const ID<Framebuffer> aoFramebuffers[PbrLightingRenderSystem::aoBufferCount])
 {
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("denoise/ao", aoFramebuffers[1]);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("denoise/ao", 
+		aoFramebuffers[PbrLightingRenderSystem::denoiseBufferIndex]);
 }
 
 //**********************************************************************************************************************
@@ -483,16 +486,14 @@ void PbrLightingRenderSystem::init()
 
 	if (!lightingPipeline)
 		lightingPipeline = createLightingPipeline(hasShadowBuffer, hasAoBuffer);
-	if (!iblSpecularPipeline)
-		iblSpecularPipeline = createIblSpecularPipeline();
 }
 void PbrLightingRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(aoDenoiseDescriptorSet);
-		graphicsSystem->destroy(lightingDescriptorSet);
+		graphicsSystem->destroy(aoDenoiseDS);
+		graphicsSystem->destroy(lightingDS);
 		graphicsSystem->destroy(iblSpecularPipeline);
 		graphicsSystem->destroy(lightingPipeline);
 		graphicsSystem->destroy(aoDenoisePipeline);
@@ -520,11 +521,11 @@ void PbrLightingRenderSystem::preHdrRender()
 	hasAnyShadow = hasAnyAO = false;
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
-	if (pipelineView->isReady() && !lightingDescriptorSet)
+	if (pipelineView->isReady() && !lightingDS)
 	{
 		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
-		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
+		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
 	}
 
 	auto manager = Manager::Instance::get();
@@ -564,7 +565,7 @@ void PbrLightingRenderSystem::preHdrRender()
 				createShadowFramebuffers(shadowFramebuffers, shadowImageViews);
 		
 			SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
-			auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
+			auto framebufferView = graphicsSystem->get(shadowFramebuffers[baseBufferIndex]);
 			framebufferView->beginRenderPass(float4::one);
 			event->run();
 			framebufferView->endRenderPass();
@@ -585,7 +586,7 @@ void PbrLightingRenderSystem::preHdrRender()
 				aoDenoisePipeline = createAoDenoisePipeline(aoFramebuffers);
 
 			SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
-			auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
+			auto framebufferView = graphicsSystem->get(aoFramebuffers[baseBufferIndex]);
 			framebufferView->beginRenderPass(float4::one);
 			event->run();
 			framebufferView->endRenderPass();
@@ -624,23 +625,23 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasAnyAO)
 	{
-		auto aoPipelineView = graphicsSystem->get(aoDenoisePipeline);
-		if (aoPipelineView->isReady())
+		auto denoisePipelineView = graphicsSystem->get(aoDenoisePipeline);
+		if (denoisePipelineView->isReady())
 		{
-			if (!aoDenoiseDescriptorSet)
+			if (!aoDenoiseDS)
 			{
 				auto uniforms = getAoDenoiseUniforms(aoImageViews);
-				aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
-				SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.aoDenoise");
+				aoDenoiseDS = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
+				SET_RESOURCE_DEBUG_NAME(aoDenoiseDS, "descriptorSet.lighting.aoDenoise");
 			}
 
 			SET_GPU_DEBUG_LABEL("AO Denoise Pass", Color::transparent);
-			auto framebufferView = graphicsSystem->get(aoFramebuffers[1]);
+			auto framebufferView = graphicsSystem->get(aoFramebuffers[denoiseBufferIndex]);
 			framebufferView->beginRenderPass(float4::one);
-			aoPipelineView->bind();
-			aoPipelineView->setViewportScissor();
-			aoPipelineView->bindDescriptorSet(aoDenoiseDescriptorSet);
-			aoPipelineView->drawFullscreen();
+			denoisePipelineView->bind();
+			denoisePipelineView->setViewportScissor();
+			denoisePipelineView->bindDescriptorSet(aoDenoiseDS);
+			denoisePipelineView->drawFullscreen();
 			framebufferView->endRenderPass();
 		}
 	}
@@ -662,7 +663,7 @@ void PbrLightingRenderSystem::hdrRender()
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	auto dfgLutView = graphicsSystem->get(dfgLUT);
-	if (!pipelineView->isReady() || !dfgLutView->isReady() || !lightingDescriptorSet)
+	if (!pipelineView->isReady() || !dfgLutView->isReady() || !lightingDS)
 		return;
 
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
@@ -697,7 +698,7 @@ void PbrLightingRenderSystem::hdrRender()
 	);
 
 	DescriptorSet::Range descriptorSetRange[2];
-	descriptorSetRange[0] = DescriptorSet::Range(lightingDescriptorSet);
+	descriptorSetRange[0] = DescriptorSet::Range(lightingDS);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
 	LightingPC pc;
@@ -718,7 +719,7 @@ void PbrLightingRenderSystem::hdrRender()
 void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	
 	if (aoBuffer)
 	{
 		destroyAoBuffer(aoBuffer, aoImageViews);
@@ -726,11 +727,13 @@ void PbrLightingRenderSystem::gBufferRecreate()
 	}
 	if (aoFramebuffers[0])
 	{
+		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 		for (uint32 i = 0; i < aoBufferCount; i++)
 		{
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[i]);
 			Framebuffer::OutputAttachment colorAttachment(aoImageViews[i], { true, false, true });
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
+			framebufferSize = max(framebufferSize / 2u, uint2::one);
 		}
 	}
 
@@ -741,6 +744,7 @@ void PbrLightingRenderSystem::gBufferRecreate()
 	}
 	if (shadowFramebuffers[0])
 	{
+		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 		for (uint32 i = 0; i < shadowBufferCount; i++)
 		{
 			auto framebufferView = graphicsSystem->get(shadowFramebuffers[i]);
@@ -749,19 +753,19 @@ void PbrLightingRenderSystem::gBufferRecreate()
 		}
 	}
 
-	if (lightingDescriptorSet)
+	if (lightingDS)
 	{
-		graphicsSystem->destroy(lightingDescriptorSet);
+		graphicsSystem->destroy(lightingDS);
 		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews);
-		lightingDescriptorSet = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(lightingDescriptorSet, "descriptorSet.lighting.base");
+		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
 	}
-	if (aoDenoiseDescriptorSet)
+	if (aoDenoiseDS)
 	{
-		graphicsSystem->destroy(aoDenoiseDescriptorSet);
+		graphicsSystem->destroy(aoDenoiseDS);
 		auto uniforms = getAoDenoiseUniforms(aoImageViews);
-		aoDenoiseDescriptorSet = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(aoDenoiseDescriptorSet, "descriptorSet.lighting.aoDenoise");
+		aoDenoiseDS = graphicsSystem->createDescriptorSet(aoDenoisePipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(aoDenoiseDS, "descriptorSet.lighting.aoDenoise");
 	}
 
 	if (aoBuffer || aoFramebuffers[0])
@@ -786,8 +790,8 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer)
 	this->hasAoBuffer = useAoBuffer;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(lightingDescriptorSet);
-	lightingDescriptorSet = {};
+	graphicsSystem->destroy(lightingDS);
+	lightingDS = {};
 
 	for (auto& pbrLighting : components)
 	{
@@ -1175,6 +1179,9 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 
 	for (uint8 i = 1; i < mipCount; i++)
 		mips[i] = Image::Layers(6);
+
+	if (!iblSpecularPipeline)
+		iblSpecularPipeline = createIblSpecularPipeline();
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);

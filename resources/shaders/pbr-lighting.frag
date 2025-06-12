@@ -39,7 +39,10 @@ uniform sampler2D g5;
 
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer;
-uniform sampler2D aoBuffer;
+uniform sampler2D
+{
+	filter = linear;
+} aoBuffer;
 
 uniform sampler2D
 {

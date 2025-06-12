@@ -59,8 +59,8 @@ public:
 private:
 	ID<ComputePipeline> histogramPipeline = {};
 	ID<ComputePipeline> averagePipeline = {};
-	ID<DescriptorSet> histogramDescriptorSet = {};
-	ID<DescriptorSet> averageDescriptorSet = {};
+	ID<DescriptorSet> histogramDS = {};
+	ID<DescriptorSet> averageDS = {};
 	ID<Buffer> histogramBuffer = {};
 
 	/**

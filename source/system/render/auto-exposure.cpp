@@ -99,8 +99,8 @@ void AutoExposureRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(averageDescriptorSet);
-		graphicsSystem->destroy(histogramDescriptorSet);
+		graphicsSystem->destroy(averageDS);
+		graphicsSystem->destroy(histogramDS);
 		graphicsSystem->destroy(histogramPipeline);
 		graphicsSystem->destroy(histogramBuffer);
 
@@ -130,15 +130,15 @@ void AutoExposureRenderSystem::render()
 	if (!histogramPipelineView->isReady() || !averagePipelineView->isReady() || !luminanceBufferView->isReady())
 		return;
 
-	if (!histogramDescriptorSet)
+	if (!histogramDS)
 	{
 		auto uniforms = getHistogramUniforms(histogramBuffer);
-		histogramDescriptorSet = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.autoExposure.histogram");
+		histogramDS = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(histogramDS, "descriptorSet.autoExposure.histogram");
 		
 		uniforms = getAverageUniforms(histogramBuffer);
-		averageDescriptorSet = graphicsSystem->createDescriptorSet(averagePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(averageDescriptorSet, "descriptorSet.autoExposure.average");
+		averageDS = graphicsSystem->createDescriptorSet(averagePipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(averageDS, "descriptorSet.autoExposure.average");
 	}
 
 	auto inputSystem = InputSystem::Instance::get();
@@ -157,7 +157,7 @@ void AutoExposureRenderSystem::render()
 		histogramPC.invLogLumRange = 1.0f / logLumRange;
 
 		histogramPipelineView->bind();
-		histogramPipelineView->bindDescriptorSet(histogramDescriptorSet);
+		histogramPipelineView->bindDescriptorSet(histogramDS);
 		histogramPipelineView->pushConstants(&histogramPC);
 		histogramPipelineView->dispatch(framebufferSize);
 
@@ -169,7 +169,7 @@ void AutoExposureRenderSystem::render()
 		averagePC.brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
 
 		averagePipelineView->bind();
-		averagePipelineView->bindDescriptorSet(averageDescriptorSet);
+		averagePipelineView->bindDescriptorSet(averageDS);
 		averagePipelineView->pushConstants(&averagePC);
 		averagePipelineView->dispatch(1, false);
 	}
@@ -179,13 +179,13 @@ void AutoExposureRenderSystem::render()
 //**********************************************************************************************************************
 void AutoExposureRenderSystem::gBufferRecreate()
 {
-	if (histogramDescriptorSet)
+	if (histogramDS)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(histogramDescriptorSet);
+		graphicsSystem->destroy(histogramDS);
 		auto uniforms = getHistogramUniforms(histogramBuffer);
-		histogramDescriptorSet = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(histogramDescriptorSet, "descriptorSet.autoExposure.histogram");
+		histogramDS = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(histogramDS, "descriptorSet.autoExposure.histogram");
 	}
 }
 

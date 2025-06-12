@@ -64,7 +64,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useB
 	return uniforms;
 }
 
-static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneMapper)
+static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, uint8 toneMapper)
 {
 	Pipeline::SpecConstValues specConsts =
 	{
@@ -78,9 +78,11 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, ToneMapper toneM
 }
 
 //**********************************************************************************************************************
-ToneMappingRenderSystem::ToneMappingRenderSystem(bool useBloomBuffer, ToneMapper toneMapper, bool setSingleton) :
+ToneMappingRenderSystem::ToneMappingRenderSystem(bool useBloomBuffer, uint8 toneMapper, bool setSingleton) :
 	Singleton(setSingleton), useBloomBuffer(useBloomBuffer), toneMapper(toneMapper)
 {
+	GARDEN_ASSERT(toneMapper < TONE_MAPPER_COUNT);
+
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingRenderSystem::deinit);
 }
@@ -176,8 +178,10 @@ void ToneMappingRenderSystem::gBufferRecreate()
 	}
 }
 
-void ToneMappingRenderSystem::setConsts(bool useBloomBuffer, ToneMapper toneMapper)
+void ToneMappingRenderSystem::setConsts(bool useBloomBuffer, uint8 toneMapper)
 {
+	GARDEN_ASSERT(toneMapper < TONE_MAPPER_COUNT);
+
 	if (this->useBloomBuffer == useBloomBuffer && this->toneMapper == toneMapper)
 		return;
 

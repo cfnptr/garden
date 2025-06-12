@@ -55,7 +55,7 @@ void CsmRenderEditorSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(cascadesDescriptorSet);
+		graphicsSystem->destroy(cascadesDS);
 		graphicsSystem->destroy(cascadesPipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", CsmRenderEditorSystem::preUiRender);
@@ -113,11 +113,11 @@ void CsmRenderEditorSystem::preUiRender()
 			auto pipelineView = graphicsSystem->get(cascadesPipeline);
 			if (pipelineView->isReady())
 			{
-				if (!cascadesDescriptorSet)
+				if (!cascadesDS)
 				{
 					auto uniforms = getCascadesUniforms();
-					cascadesDescriptorSet = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.editor.csm.cascades");
+					cascadesDS = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
+					SET_RESOURCE_DEBUG_NAME(cascadesDS, "descriptorSet.editor.csm.cascades");
 				}
 			}
 			else
@@ -149,7 +149,7 @@ void CsmRenderEditorSystem::uiRender()
 	SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(cascadesDescriptorSet);
+	pipelineView->bindDescriptorSet(cascadesDS);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
@@ -157,13 +157,13 @@ void CsmRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void CsmRenderEditorSystem::gBufferRecreate()
 {
-	if (cascadesDescriptorSet)
+	if (cascadesDS)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(cascadesDescriptorSet);
+		graphicsSystem->destroy(cascadesDS);
 		auto uniforms = getCascadesUniforms();
-		cascadesDescriptorSet = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(cascadesDescriptorSet, "descriptorSet.editor.csm.cascades");
+		cascadesDS = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(cascadesDS, "descriptorSet.editor.csm.cascades");
 	}
 }
 

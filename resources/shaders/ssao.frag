@@ -71,7 +71,7 @@ void main()
 	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
 	normal = normalize(float3x3(cc.view) * normal);
 
-	float2 noiseScale = textureSize(gBufferNormals, 0) * (1.0f / NOISE_SIZE);
+	const float2 noiseScale = (textureSize(depthBuffer, 0) / 2) * (1.0f / NOISE_SIZE);
 	float3 random = texture(noise, fs.texCoords * noiseScale).xyz;
 
 	float3 tangent = normalize(random - normal * dot(random, normal));

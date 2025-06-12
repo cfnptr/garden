@@ -17,8 +17,6 @@
 
 #include "common/math.gsl"
 
-#define EPSILON 0.00001f
-
 pipelineState
 {
 	faceCulling = off;
@@ -30,12 +28,13 @@ out float4 fb.hdr;
 uniform sampler2D accumBuffer;
 uniform sampler2D revealBuffer;
 
+#define EPSILON 0.00001f
+
 bool isApproximatelyEqual(float a, float b)
 {
     return abs(a - b) <= (abs(a) < abs(b) ? abs(b) : abs(a)) * EPSILON;
 }
 
-//**********************************************************************************************************************
 void main()
 {
 	float revealage = texelFetch(revealBuffer, int2(gl.fragCoord.xy), 0).r;

@@ -27,7 +27,7 @@ class BloomRenderEditorSystem final : public System
 	};
 
 	ID<GraphicsPipeline> thresholdPipeline = {};
-	ID<DescriptorSet> thresholdDescriptorSet = {};
+	ID<DescriptorSet> thresholdDS = {};
 	bool visualizeThreshold = false;
 	bool showWindow = false;
 

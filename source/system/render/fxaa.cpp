@@ -88,7 +88,8 @@ void FxaaRenderSystem::init()
 		if (!framebuffer)
 			framebuffer = createFramebuffer();
 		if (!pipeline)
-			pipeline = createPipeline(getFramebuffer());
+			pipeline = createPipeline(framebuffer);
+		isInitialized = true;
 	}
 }
 void FxaaRenderSystem::deinit()
@@ -113,10 +114,14 @@ void FxaaRenderSystem::preUiRender()
 	if (!isEnabled)
 		return;
 	
-	if (!framebuffer)
-		framebuffer = createFramebuffer();
-	if (!pipeline)
-		pipeline = createPipeline(getFramebuffer());
+	if (!isInitialized)
+	{
+		if (!framebuffer)
+			framebuffer = createFramebuffer();
+		if (!pipeline)
+			pipeline = createPipeline(framebuffer);
+		isInitialized = true;
+	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);

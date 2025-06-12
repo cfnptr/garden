@@ -45,6 +45,7 @@ private:
 	ID<Framebuffer> framebuffer = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
+	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new fast approximate anti-aliasing rendering system instance. (FXAA)

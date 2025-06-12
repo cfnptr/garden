@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define ACES_TONE_MAPPER 0
-#define UCHIMURA_TONE_MAPPER 1
-
+#include "tone-mapping/functions.h"
 spec const bool USE_BLOOM_BUFFER = true;
-spec const uint32 TONE_MAPPER = ACES_TONE_MAPPER;
+spec const uint32 TONE_MAPPER = TONE_MAPPER_ACES;
 
 #include "common/random.gsl"
 #include "common/color-space.gsl"
@@ -69,7 +67,7 @@ void main()
 	hdrColor = yxyToRgb(yxyColor);
 
 	float3 tonemappedColor;
-	if (TONE_MAPPER == ACES_TONE_MAPPER)
+	if (TONE_MAPPER == TONE_MAPPER_ACES)
 		tonemappedColor = aces(hdrColor);
 	else
 		tonemappedColor = uchimura(hdrColor);

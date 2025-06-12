@@ -56,7 +56,7 @@ void BloomRenderEditorSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(thresholdDescriptorSet);
+		graphicsSystem->destroy(thresholdDS);
 		graphicsSystem->destroy(thresholdPipeline);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", BloomRenderEditorSystem::preUiRender);
@@ -116,11 +116,11 @@ void BloomRenderEditorSystem::preUiRender()
 			auto pipelineView = graphicsSystem->get(thresholdPipeline);
 			if (pipelineView->isReady())
 			{
-				if (!thresholdDescriptorSet)
+				if (!thresholdDS)
 				{
 					auto uniforms = getThresholdUniforms();
-					thresholdDescriptorSet = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(thresholdDescriptorSet, "descriptorSet.editor.bloom.threshold");
+					thresholdDS = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
+					SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
 				}
 			}
 			else
@@ -149,7 +149,7 @@ void BloomRenderEditorSystem::uiRender()
 	SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(thresholdDescriptorSet);
+	pipelineView->bindDescriptorSet(thresholdDS);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
@@ -157,13 +157,13 @@ void BloomRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void BloomRenderEditorSystem::gBufferRecreate()
 {
-	if (thresholdDescriptorSet)
+	if (thresholdDS)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(thresholdDescriptorSet);
+		graphicsSystem->destroy(thresholdDS);
 		auto uniforms = getThresholdUniforms();
-		thresholdDescriptorSet = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(thresholdDescriptorSet, "descriptorSet.editor.bloom.threshold");
+		thresholdDS = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
 	}
 }
 

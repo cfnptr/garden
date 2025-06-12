@@ -563,8 +563,8 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	ImGui::PushID("constraints");
 
 	ImGui::BeginDisabled(!rigidbodyView->getShape());
-	constexpr auto cTypes = "Fixed\0Point\00";
-	ImGui::Combo("Type", &cache.constraintType, cTypes);
+	constexpr const char* constraintNames[(uint8)ConstraintType::Count] = { "Fixed", "Point" };
+	ImGui::Combo("Type", cache.constraintType, constraintNames, (int)ConstraintType::Count);
 
 	auto name = cache.constraintTarget ? "Entity " + to_string(*cache.constraintTarget) : "";
 	if (cache.constraintTarget)
@@ -654,7 +654,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 			}
 
 			auto type = constraint.type;
-			ImGui::Combo("Type", &type, cTypes);
+			ImGui::Combo("Type", type, constraintNames, (int)ConstraintType::Count);
 
 			if (constraint.otherBody)
 			{
@@ -1002,10 +1002,10 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	ImGui::EndDisabled();
 
 	ImGui::BeginDisabled(shape && !rigidbodyView->canBeKinematicOrDynamic());
-	constexpr auto mTypes = "Static\0Kinematic\0Dynamic\00";
 	if (shape)
 		rigidbodyCache.motionType = rigidbodyView->getMotionType();
-	if (ImGui::Combo("Motion Type", &rigidbodyCache.motionType, mTypes))
+	constexpr const char* motionNames[(uint8)MotionType::Count] = { "Static", "Kinematic", "Dynamic" };
+	if (ImGui::Combo("Motion Type", rigidbodyCache.motionType, motionNames, (int)MotionType::Count))
 	{
 		if (rigidbodyCache.motionType != MotionType::Static)
 			rigidbodyCache.allowedDOF = AllowedDOF::All;
@@ -1133,8 +1133,8 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 
 	// TODO: shape rotation
 
-	constexpr auto sTypes = "None\0Empty\0Box\0Capsule\0Custom\00";
-	if ((ImGui::Combo("Type", &shapeType, sTypes) || isChanged))
+	constexpr const char* shapeNames[5] = { "None", "Empty", "Box", "Capsule", "Custom" };
+	if ((ImGui::Combo("Type", &shapeType, shapeNames, 5) || isChanged))
 	{
 		cache.convexRadius = max(cache.convexRadius, 0.0f);
 		cache.shapeSize = max(cache.shapeSize, f32x4(cache.convexRadius * 2.0f));

@@ -36,9 +36,6 @@ public:
 	};
 
 	static constexpr uint8 maxBloomMipCount = 7;       /**< Maximum bloom buffer mip level count. */
-	static constexpr uint8 downsampleFirstVariant = 0; /**< First downsample step shader variant. */
-	static constexpr uint8 downsample6x6Variant = 1;   /**< 6x6 downsample step shader variant. */
-	static constexpr uint8 downsampleBaseVariant = 2;  /**< Generic downsample step shader variant. */
 	static constexpr Image::Format bufferFormat = Image::Format::UfloatB10G11R11;
 private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
@@ -47,9 +44,10 @@ private:
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
+	bool isInitialized = false;
 	bool useThreshold = false;
 	bool useAntiFlickering = false;
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new bloom (light glow) rendering system instance.
@@ -103,6 +101,10 @@ public:
 	 * @brief Returns bloom buffer.
 	 */
 	ID<Image> getBloomBuffer();
+	/**
+	 * @brief Returns bloom buffer image views.
+	 */
+	const vector<ID<ImageView>>& getImageViews();
 	/**
 	 * @brief Returns bloom framebuffer array.
 	 */

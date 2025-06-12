@@ -40,6 +40,8 @@ uniform pushConstants
 	uint32 itemCount;
 } pc;
 
+// TODO: utilize shader memory or subgroups
+
 //**********************************************************************************************************************
 void main()
 {
