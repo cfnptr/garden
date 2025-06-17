@@ -42,34 +42,34 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::tryGet();
-	ID<ImageView> shadowBuffer, shadowDenoiseBuffer, aoBuffer, aoDenoiseBuffer;
+	ID<ImageView> shadowBuffer, shadowDenoisedBuffer, aoBuffer, aoDenoisedBuffer;
 
 	if (pbrLightingSystem)
 	{
-		shadowBuffer = pbrLightingSystem->getShadowBaseView();
-		shadowBuffer = pbrLightingSystem->getShadowDenoiseView();
+		shadowBuffer = pbrLightingSystem->getShadowImageView();
+		shadowDenoisedBuffer = pbrLightingSystem->getShadowDenoisedView();
 		aoBuffer = pbrLightingSystem->getAoBaseView();
-		aoDenoiseBuffer = pbrLightingSystem->getAoDenoiseView();
+		aoDenoisedBuffer = pbrLightingSystem->getAoDenoisedView();
 
 		if (!shadowBuffer)
 		{
 			getBlackPlaceholder(blackPlaceholder);
 			auto imageView = graphicsSystem->get(blackPlaceholder);
-			shadowBuffer = shadowDenoiseBuffer = imageView->getDefaultView();
+			shadowBuffer = shadowDenoisedBuffer = imageView->getDefaultView();
 		}
 		if (!aoBuffer)
 		{
 			getBlackPlaceholder(blackPlaceholder);
 			auto imageView = graphicsSystem->get(blackPlaceholder);
-			aoBuffer = aoDenoiseBuffer = imageView->getDefaultView();
+			aoBuffer = aoDenoisedBuffer = imageView->getDefaultView();
 		}
 	}
 	else
 	{
 		getBlackPlaceholder(blackPlaceholder);
 		auto imageView = graphicsSystem->get(blackPlaceholder);
-		shadowBuffer = shadowDenoiseBuffer = imageView->getDefaultView();
-		aoBuffer = aoDenoiseBuffer = imageView->getDefaultView();
+		shadowBuffer = shadowDenoisedBuffer = imageView->getDefaultView();
+		aoBuffer = aoDenoisedBuffer = imageView->getDefaultView();
 	}
 
 	DescriptorSet::Uniforms uniforms =
@@ -79,9 +79,9 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		{ "oitRevealBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[1].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowBuffer) },
-		{ "shadowDenoiseBuffer", DescriptorSet::Uniform(aoDenoiseBuffer) },
+		{ "shadowDenoisedBuffer", DescriptorSet::Uniform(shadowDenoisedBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
-		{ "aoDenoiseBuffer", DescriptorSet::Uniform(aoDenoiseBuffer) },
+		{ "aoDenoisedBuffer", DescriptorSet::Uniform(aoDenoisedBuffer) },
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)

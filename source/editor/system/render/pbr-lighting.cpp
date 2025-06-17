@@ -19,7 +19,6 @@
 
 using namespace garden;
 
-//**********************************************************************************************************************
 PbrLightingRenderEditorSystem::PbrLightingRenderEditorSystem()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderEditorSystem::init);
@@ -36,6 +35,9 @@ PbrLightingRenderEditorSystem::~PbrLightingRenderEditorSystem()
 
 void PbrLightingRenderEditorSystem::init()
 {
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", PbrLightingRenderEditorSystem::preUiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", PbrLightingRenderEditorSystem::editorBarToolPP);
+
 	EditorRenderSystem::Instance::get()->registerEntityInspector<PbrLightingRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
@@ -46,10 +48,35 @@ void PbrLightingRenderEditorSystem::init()
 void PbrLightingRenderEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingRenderComponent>();
+
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", PbrLightingRenderEditorSystem::preUiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", PbrLightingRenderEditorSystem::editorBarToolPP);
+	}
 }
 
 //**********************************************************************************************************************
+void PbrLightingRenderEditorSystem::preUiRender()
+{
+	if (!showWindow)
+		return;
+
+	if (ImGui::Begin("PBR Lighting", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+		ImGui::DragFloat("Reflectance Coeff", &pbrLightingSystem->reflectanceCoeff, 0.1f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Denoise Sharpness", &pbrLightingSystem->denoiseSharpness, 0.1f, 0.0f, FLT_MAX);
+	}
+	ImGui::End();
+}
+
+void PbrLightingRenderEditorSystem::editorBarToolPP()
+{
+	if (ImGui::MenuItem("PBR Lighting"))
+		showWindow = true;
+}
+
 void PbrLightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)

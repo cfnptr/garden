@@ -174,7 +174,6 @@ void GraphicsSystem::preInit()
 	{
 		settingsSystem->getBool("useVsync", useVsync);
 		settingsSystem->getInt("maxFPS", maxFPS);
-		settingsSystem->getFloat("renderScale", renderScale);
 	}
 }
 void GraphicsSystem::preDeinit()
@@ -419,8 +418,20 @@ void GraphicsSystem::present()
 }
 
 //**********************************************************************************************************************
+float GraphicsSystem::getRenderScale()
+{
+	if (renderScale == 0.0f)
+	{
+		// Note: renderScale should be the same across init stages.
+		auto settingsSystem = SettingsSystem::Instance::tryGet();
+		if (settingsSystem)
+			settingsSystem->getFloat("renderScale", renderScale);
+	}
+	return renderScale;
+}
 void GraphicsSystem::setRenderScale(float renderScale)
 {
+	GARDEN_ASSERT(renderScale > 0.0f);
 	if (renderScale == this->renderScale)
 		return;
 

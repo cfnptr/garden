@@ -122,7 +122,7 @@ static ID<GraphicsPipeline> createPipeline()
 {
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useShadowBuffer());
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowBaseFB());
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowFramebuffer());
 }
 
 static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap, 
@@ -136,7 +136,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap,
 	
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "gBufferNormals", DescriptorSet::Uniform(gFramebuffer->getColorAttachments()[
+		{ "gNormals", DescriptorSet::Uniform(gFramebuffer->getColorAttachments()[
 			DeferredRenderSystem::normalsGBuffer].imageView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, inFlightCount) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },

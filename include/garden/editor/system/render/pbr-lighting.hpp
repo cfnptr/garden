@@ -21,11 +21,15 @@ namespace garden
 
 class PbrLightingRenderEditorSystem final : public System
 {
+	bool showWindow = false;
+	
 	PbrLightingRenderEditorSystem();
 	~PbrLightingRenderEditorSystem() final;
 
 	void init();
 	void deinit();
+	void preUiRender();
+	void editorBarToolPP();
 	
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;

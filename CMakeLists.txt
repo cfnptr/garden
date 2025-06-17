@@ -45,7 +45,7 @@ option(GARDEN_RELEASE_DEBUGGING "Build Garden debugging code in the release buil
 option(GARDEN_DEBUG_PACK_RESOURCES "Pack and load resources in the debug build." OFF)
 option(GARDEN_USE_GAPI_VALIDATIONS "Use graphics API validation layers." ON)
 option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
-option(GARDEN_USE_FIDELITY_FX "Use FidelityFX SDK for FSR, SSAO, SSR, etc." ON)
+option(GARDEN_USE_ASAN "Use Clang address sanitizer." OFF)
 
 string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 

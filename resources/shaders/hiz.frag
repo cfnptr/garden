@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: support different depth buffer data format.
-
 #include "hiz/variants.h"
 #include "common/depth.gsl"
 
@@ -42,7 +40,7 @@ void main()
 		const float2 srcSize = 1.0f / float2(textureSize(srcBuffer, 0));
 		float2 texCoords = (float2(fragCoords) + 0.5f) * srcSize;
 		float4 d = textureGather(srcBuffer, texCoords, 0);
-		depth = max(max(d.x, d.y), max(d.z, d.w));
+		depth = min(min(d.x, d.y), min(d.z, d.w));
 
 		bool2 isPrevLevelOdd = equal(textureSize(srcBuffer, 0) & 1, int2(1));
 		if (isPrevLevelOdd.x)
@@ -50,15 +48,15 @@ void main()
 			float4 c = textureGatherOffset(srcBuffer, texCoords, int2(1, 0), 0);
 			if (isPrevLevelOdd.x)
 			{
-				int2 coords = max(fragCoords + int2(2, 2), textureSize(srcBuffer, 0) - 1);
-				depth = max(depth, texelFetch(srcBuffer, coords, 0).r);
+				int2 coords = min(fragCoords + int2(2, 2), textureSize(srcBuffer, 0) - 1);
+				depth = min(depth, texelFetch(srcBuffer, coords, 0).r);
 			}
-			depth = max(depth, max(c.y, c.z));
+			depth = min(depth, min(c.y, c.z));
 		}
 		if (isPrevLevelOdd.y)
 		{
 			float4 c = textureGatherOffset(srcBuffer, texCoords, int2(0, 1), 0);
-			depth = max(depth, max(c.x, c.y));
+			depth = min(depth, min(c.x, c.y));
 		}
 	}
 	else // gsl.variant == HIZ_VARIANT_FIRST

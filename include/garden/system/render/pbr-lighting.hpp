@@ -69,23 +69,24 @@ public:
 		uint32 itemCount;
 	};
 
-	static constexpr uint8 baseBufferIndex = 1;    /**< Base AO buffer index. (Half reslution) */
-	static constexpr uint8 denoiseBufferIndex = 0; /**< Denoised AO buffer index. (Full reslution) */
 	static constexpr uint8 shadowBufferCount = 2;  /**< PBR lighting rendering shadow buffer count. */
-	static constexpr uint8 aoBufferCount = 2;      /**< PBR lighting rendering AO buffer count. (Ambient Occlusion) */
+	static constexpr uint8 aoBufferCount = 3;  /**< PBR lighting rendering AO buffer count. (Ambient Occlusion) */
+
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 private:
 	ID<Image> dfgLUT = {};
 	ID<Image> shadowBuffer = {};
 	ID<Image> aoBuffer = {};
+	ID<Image> aoDenBuffer = {};
 	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
 	ID<ImageView> aoImageViews[aoBufferCount] = {};
-	ID<Framebuffer> shadowFramebuffers[shadowBufferCount] = {};
+	ID<Framebuffer> shadowFramebuffers[shadowBufferCount + 1] = {};
 	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
-	ID<GraphicsPipeline> aoDenoisePipeline = {};
 	ID<DescriptorSet> lightingDS = {};
+	ID<DescriptorSet> shadowDenoiseDS = {};
 	ID<DescriptorSet> aoDenoiseDS = {};
 	bool hasShadowBuffer = false;
 	bool hasAoBuffer = false;
@@ -115,6 +116,7 @@ private:
 	friend class ecsm::Manager;
 public:
 	float reflectanceCoeff = 1.0f;
+	float denoiseSharpness = 50.0f;
 
 	/*******************************************************************************************************************
 	 * @brief Use shadow buffer for PBR lighting rendering.
@@ -141,10 +143,6 @@ public:
 	 * @brief Returns PBR lighting IBL specular graphics pipeline. (Image Based Lighting)
 	 */
 	ID<ComputePipeline> getIblSpecularPipeline();
-	/**
-	 * @brief Returns PBR lighting AO denoise graphics pipeline. (Ambient Occlusion)
-	 */
-	ID<GraphicsPipeline> getAoDenoisePipeline();
 
 	/**
 	 * @brief Returns PBR lighting shadow framebuffer array.
@@ -157,19 +155,19 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
 	 */
-	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[baseBufferIndex]; }
-	/**
-	 * @brief Returns PBR lighting shadow denoise framebuffer.
-	 */
-	ID<Framebuffer> getShadowDenoiseFB() { return getShadowFramebuffers()[denoiseBufferIndex]; }
+	ID<Framebuffer> getShadowFramebuffer() { return getShadowFramebuffers()[0]; }
 	/**
 	 * @brief Returns PBR lighting AO base framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoBaseFB() { return getAoFramebuffers()[baseBufferIndex]; }
+	ID<Framebuffer> getAoBaseFB() { return getAoFramebuffers()[2]; }
 	/**
-	 * @brief Returns PBR lighting AO denoise framebuffer. (Ambient Occlusion)
+	 * @brief Returns PBR lighting AO temporary framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoDenoiseFB() { return getAoFramebuffers()[denoiseBufferIndex]; }
+	ID<Framebuffer> getAoTemporaryFB() { return getAoFramebuffers()[1]; }
+	/**
+	 * @brief Returns PBR lighting AO denoised framebuffer. (Ambient Occlusion)
+	 */
+	ID<Framebuffer> getAoDenoisedFB() { return getAoFramebuffers()[0]; }
 
 	/**
 	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
@@ -183,6 +181,10 @@ public:
 	 * @brief Returns PBR lighting AO buffer. (Ambient Occlusion)
 	 */
 	ID<Image> getAoBuffer();
+	/**
+	 * @brief Returns PBR lighting AO denoise buffer. (Ambient Occlusion)
+	 */
+	ID<Image> getAoDenBuffer();
 
 	/**
 	 * @brief Returns PBR lighting shadow image view array.
@@ -195,19 +197,23 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base image view.
 	 */
-	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[baseBufferIndex]; }
+	ID<ImageView> getShadowImageView() { return getShadowImageViews()[0]; }
 	/**
-	 * @brief Returns PBR lighting shadow denoise image view.
+	 * @brief Returns PBR lighting shadow denoised image view.
 	 */
-	ID<ImageView> getShadowDenoiseView() { return getShadowImageViews()[denoiseBufferIndex]; }
+	ID<ImageView> getShadowDenoisedView() { return getShadowImageViews()[1]; }
 	/**
 	 * @brief Returns PBR lighting AO base image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoBaseView() { return getAoImageViews()[baseBufferIndex]; }
+	ID<ImageView> getAoBaseView() { return getAoImageViews()[2]; }
 	/**
-	 * @brief Returns PBR lighting AO denoise image view. (Ambient Occlusion)
+	 * @brief Returns PBR lighting AO temporary image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoDenoiseView() { return getAoImageViews()[denoiseBufferIndex]; }
+	ID<ImageView> getAoTemporaryView() { return getAoImageViews()[1]; }
+	/**
+	 * @brief Returns PBR lighting AO denoised image view. (Ambient Occlusion)
+	 */
+	ID<ImageView> getAoDenoisedView() { return getAoImageViews()[0]; }
 
 	/*******************************************************************************************************************
 	 * @brief Loads cubemap rendering data from the resource pack.
