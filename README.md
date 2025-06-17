@@ -7,9 +7,9 @@ modern C++ and utilizing the Vulkan API for rendering, it is aimed at providing 
 toolset for creating high-performance, visually stunning games. The main features of the engine include 
 extensible architecture, built-in editor, convenient creation of rendering pipelines using a custom 
 shader language (GSL), and automatic placement of GPU memory barriers, which are necessary in recent 
-graphics APIs. See the [features](FEATURES.md) list.
+graphics APIs.
 
-Also check out the Garden [demo](https://github.com/cfnptr/garden-demo) app.
+Check out the Garden [demo](https://github.com/cfnptr/garden-demo) app.
 
 ## Supported operating systems
 

@@ -81,7 +81,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> greenTexture = {};
 	ID<ImageView> normalMapTexture = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
-	float renderScale = 1.0f;
+	float renderScale = 0.0f;
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
@@ -131,7 +131,7 @@ public:
 	 * @brief Returns frame render scale.
 	 * @details Useful for scaling forward/deferred framebuffer.
 	 */
-	float getRenderScale() const noexcept { return renderScale; }
+	float getRenderScale();
 	/**
 	 * @brief Sets frame render scale.
 	 * @note It signals swapchain size change.

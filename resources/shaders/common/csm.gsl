@@ -77,7 +77,7 @@ float evaluateCsmShadows(sampler2DArrayShadow depthMap, uint32 cascadeID, float3
 
 	float angle = toFloat(iqint(lightCoords.xy)) * (M_PI * 2.0f);
 	float2x2 rotation = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
-	float2 texelSize = 2.0f / textureSize(depthMap, 0).xy; // Bigger texel size - x2.
+	float2 texelSize = 3.0f / textureSize(depthMap, 0).xy; // Bigger texel size - x3.
 	float shadow = 0.0f;
 
 	for (int32 i = 0; i < SHADOW_MAP_SAMPLE_COUNT; i++)

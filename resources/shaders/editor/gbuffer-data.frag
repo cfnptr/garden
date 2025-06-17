@@ -40,9 +40,9 @@ uniform sampler2D oitAccumBuffer;
 uniform sampler2D oitRevealBuffer;
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer;
-uniform sampler2D shadowDenoiseBuffer;
+uniform sampler2D shadowDenoisedBuffer;
 uniform sampler2D aoBuffer;
-uniform sampler2D aoDenoiseBuffer;
+uniform sampler2D aoDenoisedBuffer;
 
 uniform pushConstants
 {
@@ -158,12 +158,12 @@ void main()
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_D_SHADOW_COLOR)
 	{
-		float3 shadowColor = texture(shadowDenoiseBuffer, fs.texCoords).rgb;
+		float3 shadowColor = texture(shadowDenoisedBuffer, fs.texCoords).rgb;
 		fb.color = float4(shadowColor, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_D_SHADOW_ALPHA)
 	{
-		float shadowAlpha = texture(shadowDenoiseBuffer, fs.texCoords).a;
+		float shadowAlpha = texture(shadowDenoisedBuffer, fs.texCoords).a;
 		fb.color = float4(float3(shadowAlpha), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_AO)
@@ -173,7 +173,7 @@ void main()
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_D_AO)
 	{
-		float ao = texture(aoDenoiseBuffer, fs.texCoords).r;
+		float ao = texture(aoDenoisedBuffer, fs.texCoords).r;
 		fb.color = float4(float3(ao), 1.0f);
 	}
 	else

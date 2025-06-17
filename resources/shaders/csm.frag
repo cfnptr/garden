@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: support regular depth buffer. spec const float FAR_DEPTH_VALUE = 0.0f;
 #define USE_EMISSIVE_BUFFER false 
 #define USE_GI_BUFFER false 
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
@@ -28,7 +27,7 @@ pipelineState
 in noperspective float2 fs.texCoords;
 out float4 fb.shadow;
 
-uniform sampler2D gBufferNormals;
+uniform sampler2D gNormals;
 uniform sampler2D depthBuffer;
 
 uniform sampler2DArrayShadow
@@ -55,7 +54,7 @@ void main()
 	if (pixelDepth < shadowData.farPlanes.z)
 		discard;
 
-	float3 normal = decodeNormal(texture(gBufferNormals, fs.texCoords));
+	float3 normal = decodeNormal(texture(gNormals, fs.texCoords));
 	uint32 cascadeID; float3 lightCoords;
 	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, shadowData.farPlanes.xyz, 
 		shadowData.lightDirBias.xyz, shadowData.lightDirBias.w, normal, cascadeID, lightCoords);

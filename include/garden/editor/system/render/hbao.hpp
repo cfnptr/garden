@@ -19,12 +19,12 @@
 namespace garden
 {
 
-class SsaoRenderEditorSystem final : public System
+class HbaoRenderEditorSystem final : public System
 {
 	bool showWindow = false;
 
-	SsaoRenderEditorSystem();
-	~SsaoRenderEditorSystem();
+	HbaoRenderEditorSystem();
+	~HbaoRenderEditorSystem();
 
 	void init();
 	void deinit();

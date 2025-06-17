@@ -294,8 +294,8 @@ void EditorRenderSystem::showOptionsWindow()
 		else if (renderScale <= 1.5f) renderScaleType = 3;
 		else renderScaleType = 4;
 
-		constexpr auto renderScaleTypes = " 50%\0 75%\0 100%\0 150%\0 200%\0\0";
-		if (ImGui::Combo("Render Scale", &renderScaleType, renderScaleTypes))
+		constexpr const char* scaleNames[5] = { " 50%", " 75%", " 100%", " 150%", " 200%" };
+		if (ImGui::Combo("Render Scale", &renderScaleType, scaleNames, 5))
 		{
 			switch (renderScaleType)
 			{

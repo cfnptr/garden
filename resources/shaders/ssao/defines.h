@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/fullscreen.gsl"
+#ifndef HBAO_DEFINES_H
+#define HBAO_DEFINES_H
 
-out noperspective float2 fs.texCoords;
+#define SSAO_NOISE_SIZE 4
+#define SSAO_DIRECTION_COUNT 8
 
-void main()
-{
-	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
-	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
-}
+#endif // HBAO_DEFINES_H
