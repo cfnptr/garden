@@ -15,6 +15,15 @@
 #ifndef NORMAL_MAPPING_GSL
 #define NORMAL_MAPPING_GSL
 
+float3 packNormal(float3 packedNormal)
+{
+	return fma(packedNormal, float3(0.5f), float3(0.5f));
+}
+float3 unpackNormal(float3 packedNormal)
+{
+	return fma(packedNormal, float3(2.0f), float3(-1.0f));
+}
+
 float3x3 computeTBN(float4x3 model, float3 normal, float3 tangent)
 {
 	float3 t = normalize(model * float4(tangent, 0.0));

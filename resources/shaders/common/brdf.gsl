@@ -82,19 +82,19 @@ float3 computeDiffuseColor(float3 baseColor, float metallic)
 	return baseColor * (1.0f - metallic);
 }
 
-float2 sampleDFG(sampler2D dfgLUT, float nov, float roughness)
+float2 sampleDFG(sampler2D dfgLUT, float nov, float perceptualRoughness)
 {
-	return texture(dfgLUT, float2(nov, roughness)).xy;
+	return texture(dfgLUT, float2(nov, perceptualRoughness)).xy;
 }
-float3 specularDFG(sampler2D dfgLUT, float nov, float roughness, float3 f0)
+float3 specularDFG(sampler2D dfgLUT, float nov, float perceptualRoughness, float3 f0)
 {
-	float2 dfg = sampleDFG(dfgLUT, nov, roughness);
+	float2 dfg = sampleDFG(dfgLUT, nov, perceptualRoughness);
 	return mix(dfg.xxx, dfg.yyy, f0);
 }
 
-float3 computeEnergyCompensation(sampler2D dfgLUT, float nov, float roughness, float3 f0)
+float3 computeEnergyCompensation(sampler2D dfgLUT, float nov, float perceptualRoughness, float3 f0)
 {
-	float2 dfg = sampleDFG(dfgLUT, nov, roughness);
+	float2 dfg = sampleDFG(dfgLUT, nov, perceptualRoughness);
 	return 1.0f + f0 * (1.0f / dfg.y - 1.0f);
 }
 
@@ -116,9 +116,8 @@ float3 computeReflectedVector(float linearRoughness, float3 normal, float3 refle
 }
 
 //**********************************************************************************************************************
-float3 specularLobe(float noh, float nov, float nol, float loh, float3 f0, float roughness)
+float3 specularLobe(float noh, float nov, float nol, float loh, float3 f0, float linearRoughness)
 {
-	float linearRoughness = roughness * roughness;
 	float distribution = ggx(noh, linearRoughness);
 	float visibility = smithGGXCorrelated(nov, nol, linearRoughness);
 	float f90 = clamp(dot(f0, float3(50.0f * 0.33f)), 0.0f, 1.0f);
@@ -146,9 +145,9 @@ float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float perceptualRo
 	float lod = perceptualRoughnessToLod(iblSpecular, perceptualRoughness);
 	return textureLod(iblSpecular, r, lod).rgb;
 }
-float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float roughness, float offset)
+float3 prefilteredRadiance(samplerCube iblSpecular, float3 r, float linearRoughness, float offset)
 {
-	float lod = iblRoughnessOneLevel(iblSpecular) * roughness;
+	float lod = iblRoughnessOneLevel(iblSpecular) * linearRoughness;
 	return textureLod(iblSpecular, r, lod + offset).rgb;
 }
 

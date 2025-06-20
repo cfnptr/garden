@@ -104,13 +104,17 @@ void OitRenderSystem::preLdrRender()
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 
-	SET_GPU_DEBUG_LABEL("OIT Compose", Color::transparent);
-	framebufferView->beginRenderPass(float4::zero);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet);
-	pipelineView->drawFullscreen();
-	framebufferView->endRenderPass();
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	{
+		SET_GPU_DEBUG_LABEL("OIT Compose", Color::transparent);
+		framebufferView->beginRenderPass(float4::zero);
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet);
+		pipelineView->drawFullscreen();
+		framebufferView->endRenderPass();
+	}
+	graphicsSystem->stopRecording();
 }
 
 void OitRenderSystem::gBufferRecreate()

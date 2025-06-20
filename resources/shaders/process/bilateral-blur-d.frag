@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "common/depth.gsl"
+
 const uint32 KERNEL_RADIUS = 5;
 const float BLUR_SIGMA = KERNEL_RADIUS * 0.5f;
 const float BLUR_FALLOFF = 1.0f / (2.0f * BLUR_SIGMA * BLUR_SIGMA);
@@ -34,12 +36,14 @@ uniform sampler2D hizBuffer;
 uniform pushConstants
 {
 	float2 texelSize;
+	float nearPlane;
 	float sharpness;
 } pc;
 
 float4 depthBilateralBlur(float2 texCoords, uint32 r, float depth, inout float weight)
 {
-	float d = texture(hizBuffer, texCoords).x;
+	float d = texture(hizBuffer, texCoords).r;
+	d = calcLinearDepthIRZ(d, pc.nearPlane);
 	float4 c = texture(srcBuffer, texCoords);
 	float diff = (d - depth) * pc.sharpness;
 	float w = exp2((r * r * -BLUR_FALLOFF) - diff * diff);
@@ -48,7 +52,8 @@ float4 depthBilateralBlur(float2 texCoords, uint32 r, float depth, inout float w
 }
 void main()
 {
-	float depth = texture(hizBuffer, fs.texCoords).x;
+	float depth = texture(hizBuffer, fs.texCoords).r;
+	depth = calcLinearDepthIRZ(depth, pc.nearPlane);
 	float4 total = texture(srcBuffer, fs.texCoords);
 	float weight = 1.0f;
 

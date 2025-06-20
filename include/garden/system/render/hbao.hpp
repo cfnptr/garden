@@ -40,6 +40,7 @@ public:
 		float novBias;
 		float aoMultiplier;
 		uint32 projOrtho;
+		float nearPlane;
 	};
 private:
 	ID<Image> noiseImage = {};

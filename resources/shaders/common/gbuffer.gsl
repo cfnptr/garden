@@ -84,6 +84,9 @@ GBufferValues gBufferValuesDefault()
 	return values;
 }
 
+float packRoughness(float linearRoughness) { return sqrt(linearRoughness); }
+float unpackRoughness(float perceptualRoughness) { return perceptualRoughness * perceptualRoughness; }
+
 //**********************************************************************************************************************
 // Signed Octahedron Normal Encoding (R10G10B10A2)
 // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html

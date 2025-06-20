@@ -172,16 +172,19 @@ void AutoExposureRenderEditorSystem::preUiRender()
 		}
 
 		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+		graphicsSystem->startRecording(CommandBufferType::Frame);
+		{
+			SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data", Color::transparent);
+			Buffer::CopyRegion copyRegion;
+			copyRegion.dstOffset = offset;
+			copyRegion.size = sizeof(ToneMappingRenderSystem::LuminanceData);
+			Buffer::copy(toneMappingSystem->getLuminanceBuffer(), readbackBuffer, copyRegion);
 
-		SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data", Color::transparent);
-		Buffer::CopyRegion copyRegion;
-		copyRegion.dstOffset = offset;
-		copyRegion.size = sizeof(ToneMappingRenderSystem::LuminanceData);
-		Buffer::copy(toneMappingSystem->getLuminanceBuffer(), readbackBuffer, copyRegion);
-
-		copyRegion.dstOffset = offset + sizeof(ToneMappingRenderSystem::LuminanceData);
-		copyRegion.size = AutoExposureRenderSystem::histogramSize * sizeof(uint32);
-		Buffer::copy(autoExposureSystem->getHistogramBuffer(), readbackBuffer, copyRegion);
+			copyRegion.dstOffset = offset + sizeof(ToneMappingRenderSystem::LuminanceData);
+			copyRegion.size = AutoExposureRenderSystem::histogramSize * sizeof(uint32);
+			Buffer::copy(autoExposureSystem->getHistogramBuffer(), readbackBuffer, copyRegion);
+		}
+		graphicsSystem->stopRecording();
 	}
 	ImGui::End();
 }

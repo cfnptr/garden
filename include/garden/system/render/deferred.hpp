@@ -60,19 +60,19 @@ namespace garden
 class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>
 {
 public:
-	static constexpr uint8 baseColorGBuffer = 0;   /**< Index of the G-Buffer with encoded base color. */
-	static constexpr uint8 specFactorGBuffer = 0;  /**< Index of the G-Buffer with encoded specular factor. */
-	static constexpr uint8 metallicGBuffer = 1;    /**< Index of the G-Buffer with encoded metallic. */
-	static constexpr uint8 roughnessGBuffer = 1;   /**< Index of the G-Buffer with encoded roughness. */
-	static constexpr uint8 materialAoGBuffer = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
-	static constexpr uint8 reflectanceGBuffer = 1; /**< Index of the G-Buffer with encoded reflectance. */
-	static constexpr uint8 ccNormalsGBuffer = 2;   /**< Index of the G-Buffer with encoded clear coat normals. */
-	static constexpr uint8 ccRoughnessGBuffer = 2; /**< Index of the G-Buffer with encoded clear coat roughness. */
-	static constexpr uint8 normalsGBuffer = 3;     /**< Index of the G-Buffer with encoded normals. */
-	static constexpr uint8 shadowGBuffer = 3;      /**< Index of the G-Buffer with encoded shadow. */
-	static constexpr uint8 emColorGBuffer = 4;     /**< Index of the G-Buffer with encoded emissive color. */
-	static constexpr uint8 emFactorGBuffer = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 giGBuffer = 5;          /**< Index of the G-Buffer with encoded global illumination color. */
+	static constexpr uint8 gBufferBaseColor = 0;   /**< Index of the G-Buffer with encoded base color. */
+	static constexpr uint8 gBufferSpecFactor = 0;  /**< Index of the G-Buffer with encoded specular factor. */
+	static constexpr uint8 gBuffermetallic = 1;    /**< Index of the G-Buffer with encoded metallic. */
+	static constexpr uint8 gBufferRoughness = 1;   /**< Index of the G-Buffer with encoded roughness. */
+	static constexpr uint8 gBufferMaterialAO = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
+	static constexpr uint8 gBufferReflectance = 1; /**< Index of the G-Buffer with encoded reflectance. */
+	static constexpr uint8 gBufferCcNormals = 2;   /**< Index of the G-Buffer with encoded clear coat normals. */
+	static constexpr uint8 gBufferCcRoughness = 2; /**< Index of the G-Buffer with encoded clear coat roughness. */
+	static constexpr uint8 gBufferNormals = 3;     /**< Index of the G-Buffer with encoded normals. */
+	static constexpr uint8 gBufferShadow = 3;      /**< Index of the G-Buffer with encoded shadow. */
+	static constexpr uint8 gBufferEmColor = 4;     /**< Index of the G-Buffer with encoded emissive color. */
+	static constexpr uint8 gBufferEmFactor = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
+	static constexpr uint8 gBufferGI = 5;          /**< Index of the G-Buffer with encoded global illumination color. */
 	static constexpr uint8 gBufferCount = 6;       /**< Deferred rendering G-Buffer count. */
 
 	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;

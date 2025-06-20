@@ -43,6 +43,7 @@ uniform sampler2D shadowBuffer;
 uniform sampler2D shadowDenoisedBuffer;
 uniform sampler2D aoBuffer;
 uniform sampler2D aoDenoisedBuffer;
+uniform sampler2D reflectionBuffer;
 
 uniform pushConstants
 {
@@ -175,6 +176,11 @@ void main()
 	{
 		float ao = texture(aoDenoisedBuffer, fs.texCoords).r;
 		fb.color = float4(float3(ao), 1.0f);
+	}
+	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_REFLECTIONS)
+	{
+		float3 refl = texture(reflectionBuffer, fs.texCoords).rgb;
+		fb.color = float4(refl, 1.0f);
 	}
 	else
 	{

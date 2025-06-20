@@ -22,16 +22,6 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static void getBlackPlaceholder(ID<Image>& blackPlaceholder)
-{
-	if (!blackPlaceholder)
-	{
-		blackPlaceholder = GraphicsSystem::Instance::get()->createImage(Image::Format::UnormR8,
-			Image::Usage::Sampled, { { nullptr } }, uint2::one, Image::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(blackPlaceholder, "image.editor.deferred.blackPlaceholder");
-	}
-}
-
 static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -42,7 +32,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::tryGet();
-	ID<ImageView> shadowBuffer, shadowDenoisedBuffer, aoBuffer, aoDenoisedBuffer;
+	ID<ImageView> shadowBuffer, shadowDenoisedBuffer, aoBuffer, aoDenoisedBuffer, reflectionBuffer;
 
 	if (pbrLightingSystem)
 	{
@@ -50,26 +40,21 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		shadowDenoisedBuffer = pbrLightingSystem->getShadowDenoisedView();
 		aoBuffer = pbrLightingSystem->getAoBaseView();
 		aoDenoisedBuffer = pbrLightingSystem->getAoDenoisedView();
+		reflectionBuffer = pbrLightingSystem->getReflImageView();
 
 		if (!shadowBuffer)
-		{
-			getBlackPlaceholder(blackPlaceholder);
-			auto imageView = graphicsSystem->get(blackPlaceholder);
-			shadowBuffer = shadowDenoisedBuffer = imageView->getDefaultView();
-		}
+			shadowBuffer = shadowDenoisedBuffer = graphicsSystem->getEmptyTexture();
 		if (!aoBuffer)
-		{
-			getBlackPlaceholder(blackPlaceholder);
-			auto imageView = graphicsSystem->get(blackPlaceholder);
-			aoBuffer = aoDenoisedBuffer = imageView->getDefaultView();
-		}
+			aoBuffer = aoDenoisedBuffer = graphicsSystem->getEmptyTexture();
+		if (!reflectionBuffer)
+			reflectionBuffer = graphicsSystem->getEmptyTexture();
 	}
 	else
 	{
-		getBlackPlaceholder(blackPlaceholder);
-		auto imageView = graphicsSystem->get(blackPlaceholder);
-		shadowBuffer = shadowDenoisedBuffer = imageView->getDefaultView();
-		aoBuffer = aoDenoisedBuffer = imageView->getDefaultView();
+		auto emptyTexture = graphicsSystem->getEmptyTexture();
+		shadowBuffer = shadowDenoisedBuffer = emptyTexture;
+		aoBuffer = aoDenoisedBuffer = emptyTexture;
+		reflectionBuffer = emptyTexture;
 	}
 
 	DescriptorSet::Uniforms uniforms =
@@ -82,6 +67,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		{ "shadowDenoisedBuffer", DescriptorSet::Uniform(shadowDenoisedBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
 		{ "aoDenoisedBuffer", DescriptorSet::Uniform(aoDenoisedBuffer) },
+		{ "reflectionBuffer", DescriptorSet::Uniform(reflectionBuffer) },
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)

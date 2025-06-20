@@ -698,7 +698,13 @@ void MeshRenderSystem::cleanupMeshes()
 void MeshRenderSystem::renderShadows()
 {
 	SET_CPU_ZONE_SCOPED("Shadows Mesh Render");
-	SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	{
+		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+	}
+	graphicsSystem->stopRecording();
 
 	const auto& systems = Manager::Instance::get()->getSystems();
 	for (const auto& pair : systems)
@@ -716,9 +722,11 @@ void MeshRenderSystem::renderShadows()
 
 			prepareMeshes(viewProj, cameraOffset, Plane::frustumCount, i);
 
+			graphicsSystem->startRecording(CommandBufferType::Frame);
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
 			{
 				SET_CPU_ZONE_SCOPED("Opaque/Color Shadow Render");
+				SET_GPU_DEBUG_LABEL("Opaque/Color Shadow Pass", Color::transparent);
 				renderUnsorted(viewProj, MeshRenderType::Opaque, i);
 				renderUnsorted(viewProj, MeshRenderType::Color, i);
 				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
@@ -726,11 +734,13 @@ void MeshRenderSystem::renderShadows()
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
 			{
 				SET_CPU_ZONE_SCOPED("Translucent/Refracted/OIT Shadow Render");
+				SET_GPU_DEBUG_LABEL("Translucent/Refracted/OIT Shadow Pass", Color::transparent);
 				renderUnsorted(viewProj, MeshRenderType::Refracted, i);
 				renderUnsorted(viewProj, MeshRenderType::OIT, i);
 				renderSorted(viewProj, i);
 				shadowSystem->endShadowRender(i, MeshRenderType::Translucent);
 			}
+			graphicsSystem->stopRecording();
 		}
 
 		cleanupMeshes();

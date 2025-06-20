@@ -137,7 +137,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap,
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "gNormals", DescriptorSet::Uniform(gFramebuffer->getColorAttachments()[
-			DeferredRenderSystem::normalsGBuffer].imageView, 1, inFlightCount) },
+			DeferredRenderSystem::gBufferNormals].imageView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, inFlightCount) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
 		{ "depthMap", DescriptorSet::Uniform(depthMapView->getDefaultView(), 1, inFlightCount) },

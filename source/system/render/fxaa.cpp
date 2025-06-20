@@ -135,23 +135,26 @@ void FxaaRenderSystem::preUiRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
 
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(framebuffer);
+	auto fxaaBufferView = graphicsSystem->get(framebufferView->getColorAttachments()[0].imageView);
 
 	PushConstants pc;
 	pc.invFrameSize = float2::one / framebufferView->getSize();
 
-	SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
-	framebufferView->beginRenderPass(float4::zero);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
-	framebufferView->endRenderPass();
-
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto fxaaBufferView = graphicsSystem->get(framebufferView->getColorAttachments()[0].imageView);
-	Image::copy(fxaaBufferView->getImage(), deferredSystem->getLdrBuffer());
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	{
+		SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
+		framebufferView->beginRenderPass(float4::zero);
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+		framebufferView->endRenderPass();
+		Image::copy(fxaaBufferView->getImage(), deferredSystem->getLdrBuffer());
+	}
+	graphicsSystem->stopRecording();
 }
 
 void FxaaRenderSystem::gBufferRecreate()
