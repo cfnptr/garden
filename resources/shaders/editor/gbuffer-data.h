@@ -42,7 +42,8 @@
 #define G_BUFFER_DRAW_MODE_GLOBAL_D_SHADOW_ALPHA 24
 #define G_BUFFER_DRAW_MODE_GLOBAL_AO 25
 #define G_BUFFER_DRAW_MODE_GLOBAL_D_AO 26
-#define G_BUFFER_DRAW_MODE_COUNT 27
+#define G_BUFFER_DRAW_MODE_GLOBAL_REFLECTIONS 27
+#define G_BUFFER_DRAW_MODE_COUNT 28
 
 #ifdef __GARDEN__
 static const char* G_BUFFER_DRAW_MODE_NAMES[G_BUFFER_DRAW_MODE_COUNT] =
@@ -53,7 +54,8 @@ static const char* G_BUFFER_DRAW_MODE_NAMES[G_BUFFER_DRAW_MODE_COUNT] =
 	"GI Color", "Lighting", "HDR Buffer", "OIT Accum Color", "OI Accum Alpha",
 	"OIT Revealage", "Depth Buffer", "World Positions", "Global Shadow Color",
 	"Global Shadow Alpha", "Global Denoised Shadow Color", 
-	"Global Denoised Shadow Alpha", "Global AO", "Global Denoised AO"
+	"Global Denoised Shadow Alpha", "Global AO", "Global Denoised AO",
+	"Global Reflections"
 };
 #endif
 

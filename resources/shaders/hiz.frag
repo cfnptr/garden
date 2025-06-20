@@ -13,19 +13,12 @@
 // limitations under the License.
 
 #include "hiz/variants.h"
-#include "common/depth.gsl"
-
 #variantCount 2
 
 pipelineState
 {
 	faceCulling = off;
 }
-
-uniform pushConstants
-{
-	float nearPlane;
-} pc;
 
 uniform sampler2D srcBuffer;
 out float4 fb.depth;
@@ -61,9 +54,7 @@ void main()
 	}
 	else // gsl.variant == HIZ_VARIANT_FIRST
 	{
-		
-		float d = texelFetch(srcBuffer, int2(gl.fragCoord.xy), 0).r;
-		depth = calcLinearDepthIRZ(d, pc.nearPlane);
+		depth = texelFetch(srcBuffer, int2(gl.fragCoord.xy), 0).r;
 	}
 
 	fb.depth = float4(depth);

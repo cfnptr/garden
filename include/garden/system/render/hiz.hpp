@@ -30,11 +30,6 @@ namespace garden
 class HizRenderSystem final : public System, public Singleton<HizRenderSystem>
 {
 public:
-	struct PushConstants final
-	{
-		float nearPlane;
-	};
-
 	static constexpr Image::Format bufferFormat = Image::Format::SfloatR16;
 private:
 	ID<GraphicsPipeline> pipeline = {};
@@ -56,8 +51,10 @@ private:
 	void init();
 	void deinit();
 	void preHdrRender();
+	void preUiRender();
 	void gBufferRecreate();
 
+	void downsampleHiz(uint8 levelCount);
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is hierarchical depth (Z) buffer rendering enabled. */

@@ -36,9 +36,12 @@ public:
 	struct BilateralBlurPC final
 	{
 		float2 texelSize;
+		float nearPlane;
 		float sharpness;
 	};
 private:
+	ID<ComputePipeline> downsampleNormPipeline = {};
+	ID<ComputePipeline> downsampleNormAPipeline = {};
 	ID<GraphicsPipeline> boxBlurPipeline = {};
 	ID<GraphicsPipeline> bilatBlurDPipeline = {};
 
@@ -56,6 +59,14 @@ private:
 	friend class ecsm::Manager;
 public:
 	/**
+	 * @brief Returns GPU process downsample normals pipeline.
+	 */
+	ID<ComputePipeline> getDownsampleNorm();
+	/**
+	 * @brief Returns GPU process downsample normals array pipeline.
+	 */
+	ID<ComputePipeline> getDownsampleNormA();
+	/**
 	 * @brief Returns GPU process box blur pipeline.
 	 */
 	ID<GraphicsPipeline> getBoxBlur();
@@ -67,6 +78,19 @@ public:
 	//******************************************************************************************************************
 	// Render commands
 	//******************************************************************************************************************
+
+	/**
+	 * @brief Records image mips generation command.
+	 *
+	 * @param image target image to generate mips for
+	 * @param pipeline mip generation compute pipeline
+	 */
+	void generateMips(ID<Image> image, ID<ComputePipeline> pipeline);
+	/**
+	 * @brief Records normal map mips generation command.
+	 * @param normalMap target normal map image
+	 */
+	void normalMapMips(ID<Image> normalMap);
 	
 	/**
 	 * @brief Records bilateral blur command. (Depth aware)

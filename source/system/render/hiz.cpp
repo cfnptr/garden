@@ -55,7 +55,7 @@ static void createHizFramebuffers(const vector<ID<ImageView>>& imageViews, vecto
 	for (uint8 i = 0; i < mipCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(imageViews[i], { true, false, true }) };
+		{ Framebuffer::OutputAttachment(imageViews[i], { false, false, true }) };
 		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.hiz" + to_string(i));
 		framebuffers[i] = framebuffer;
@@ -115,6 +115,7 @@ HizRenderSystem::~HizRenderSystem()
 void HizRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", HizRenderSystem::preHdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", HizRenderSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HizRenderSystem::gBufferRecreate);
 
 	if (!hizBuffer)
@@ -139,11 +140,8 @@ void HizRenderSystem::deinit()
 	}
 }
 
-//**********************************************************************************************************************
-void HizRenderSystem::preHdrRender()
+void HizRenderSystem::downsampleHiz(uint8 levelCount)
 {
-	SET_CPU_ZONE_SCOPED("HiZ Pre UI Render");
-
 	if (!isEnabled)
 	{
 		if (hizBuffer)
@@ -162,18 +160,15 @@ void HizRenderSystem::preHdrRender()
 	if (descriptorSets.empty())
 		createHizDescriptorSets(pipeline, imageViews, descriptorSets);
 	
-	auto mipCount = (uint8)imageViews.size();
-	auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto framebufferView = graphicsSystem->get(framebuffers[0]);
 	pipelineView->updateFramebuffer(framebuffers[0]);
 
+	if (levelCount > (uint8)imageViews.size())
+		levelCount = (uint8)imageViews.size();
+
+	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("HiZ", Color::transparent);
-
-		PushConstants pc;
-		pc.nearPlane = cameraConstants.nearPlane;
-		pipelineView->pushConstants(&pc);
-
+		SET_GPU_DEBUG_LABEL("HiZ Downsample", Color::transparent);
 		framebufferView->beginRenderPass(float4::zero);
 		pipelineView->bind(HIZ_VARIANT_FIRST);
 		pipelineView->setViewportScissor();
@@ -181,7 +176,7 @@ void HizRenderSystem::preHdrRender()
 		pipelineView->drawFullscreen();
 		framebufferView->endRenderPass();
 		
-		for (uint8 i = 1; i < mipCount; i++)
+		for (uint8 i = 1; i < levelCount; i++)
 		{
 			framebufferView = graphicsSystem->get(framebuffers[i]);
 			pipelineView->updateFramebuffer(framebuffers[i]);
@@ -193,6 +188,19 @@ void HizRenderSystem::preHdrRender()
 			framebufferView->endRenderPass();
 		}
 	}
+	graphicsSystem->stopRecording();
+}
+
+//**********************************************************************************************************************
+void HizRenderSystem::preHdrRender()
+{
+	SET_CPU_ZONE_SCOPED("HiZ Pre HDR Render");
+	downsampleHiz(2); // Note: second mip is used for SSAO.
+}
+void HizRenderSystem::preUiRender()
+{
+	SET_CPU_ZONE_SCOPED("HiZ Pre UI Render");
+	downsampleHiz(UINT8_MAX);
 }
 
 void HizRenderSystem::gBufferRecreate()

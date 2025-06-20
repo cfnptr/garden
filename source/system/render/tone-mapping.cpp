@@ -215,14 +215,26 @@ ID<Buffer> ToneMappingRenderSystem::getLuminanceBuffer()
 void ToneMappingRenderSystem::setLuminance(float luminance)
 {
 	auto exposure = 1.0f / (luminance * lumToExp + 0.0001f);
-	auto luminanceBufferView = GraphicsSystem::Instance::get()->get(luminanceBuffer);
-	luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
-	luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
+
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	{
+		luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
+		luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
+	}
+	graphicsSystem->stopRecording();
 }
 void ToneMappingRenderSystem::setExposure(float exposure)
 {
 	auto luminance = (1.0f / exposure) * (1.0f / lumToExp) - 0.0001f;
-	auto luminanceBufferView = GraphicsSystem::Instance::get()->get(luminanceBuffer);
-	luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
-	luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
+
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	{
+		luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
+		luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
+	}
+	graphicsSystem->stopRecording();
 }

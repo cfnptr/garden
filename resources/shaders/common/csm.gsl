@@ -70,13 +70,18 @@ void computeCsmData(float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], float2 texCoo
 }
 
 //**********************************************************************************************************************
+float2x2 calcRandomShadowRot(float2 lightCoords)
+{
+	float angle = toFloat(iqint(lightCoords)) * (M_PI * 2.0f);
+	return float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
+}
+
 float evaluateCsmShadows(sampler2DArrayShadow depthMap, uint32 cascadeID, float3 lightCoords)
 {
 	if (lightCoords.z < 0.0f)
 		return 0.0f;
 
-	float angle = toFloat(iqint(lightCoords.xy)) * (M_PI * 2.0f);
-	float2x2 rotation = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
+	float2x2 rotation = calcRandomShadowRot(lightCoords.xy);
 	float2 texelSize = 3.0f / textureSize(depthMap, 0).xy; // Bigger texel size - x3.
 	float shadow = 0.0f;
 
@@ -93,9 +98,8 @@ float4 evaluateCsmTransparency(sampler2DArray transparentMap, uint32 cascadeID, 
 	if (lightCoords.z < 0.0f)
 		return float4(1.0f);
 
-	float angle = toFloat(iqint(lightCoords.xy)) * (M_PI * 2.0f);
-	float2x2 rotation = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
-	float2 texelSize = 2.0f / textureSize(transparentMap, 0).xy; // Bigger texel size - x2.
+	float2x2 rotation = calcRandomShadowRot(lightCoords.xy);
+	float2 texelSize = 3.0f / textureSize(transparentMap, 0).xy; // Bigger texel size - x3.
 	float4 transparency = float4(0.0f);
 
 	for (int32 i = 0; i < SHADOW_MAP_SAMPLE_COUNT; i++)

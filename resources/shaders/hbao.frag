@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSIVE_BUFFER false
-#define USE_GI_BUFFER false
-
 #include "ssao/defines.h"
-#include "common/gbuffer.gsl"
-#include "common/constants.gsl"
+#include "common/depth.gsl"
 
 spec const uint32 STEP_COUNT = 4;
 
@@ -35,10 +31,6 @@ uniform sampler2D
 {
 	addressMode = repeat;
 } noise;
-uniform CameraConstants 
-{
-	CAMERA_CONSTANTS
-} cc;
 
 uniform pushConstants
 {
@@ -50,6 +42,7 @@ uniform pushConstants
 	float novBias;
 	float aoMultiplier;
 	uint32 projOrtho;
+	float nearPlane;
 } pc;
 
 //**********************************************************************************************************************
@@ -60,6 +53,7 @@ float3 texCoordsToView(float2 texCoords, float eyeZ)
 float3 fetchViewPos(float2 texCoords)
 {
 	float depth = texture(hizBuffer, texCoords).r;
+	depth = calcLinearDepthIRZ(depth, pc.nearPlane); // TODO: support othrographic depth linearization.
 	return texCoordsToView(texCoords, depth);
 }
 float3 minDiff(float3 pos, float3 pr, float3 pl)

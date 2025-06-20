@@ -35,12 +35,12 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 	sampler2D dfgLUT, const float4 shBuffer[SH_COEFF_COUNT], samplerCube iblSpecular)
 {
 	float roughness = max(gBuffer.roughness, 0.045f); // Perceptual.
-	float nov = max(dot(gBuffer.normal, viewDirection), 1e-4f);
+	float nov = max(dot(gBuffer.normal, -viewDirection), 1e-4f);
 	float reflectance = computeDielectricF0(gBuffer.reflectance);
 	float3 f0 = computeF0(gBuffer.baseColor, gBuffer.metallic, reflectance);
 	float3 e = specularDFG(dfgLUT, nov, roughness, f0);
-	float3 reflected = reflect(-viewDirection, gBuffer.normal);
-	float linearRoughness = roughness * roughness;
+	float3 reflected = reflect(viewDirection, gBuffer.normal);
+	float linearRoughness = unpackRoughness(roughness * roughness);
 	float3 r = computeReflectedVector(linearRoughness, gBuffer.normal, reflected);
 	
 	float3 radiance = prefilteredRadiance(iblSpecular, r, roughness) * shadow.a;
@@ -54,7 +54,7 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 	if (USE_SUB_SURFACE_SCATTERING && gBuffer.thickness < 1.0f && gBuffer.transmission == 0.0f)
 	{
 		float3 viewDependent = prefilteredRadiance(iblSpecular, 
-			-viewDirection, linearRoughness, 1.0 + gBuffer.thickness);
+			viewDirection, linearRoughness, 1.0 + gBuffer.thickness);
 		float attenuation = (1.0 - gBuffer.thickness) / (2.0 * M_PI);
 		fd += gBuffer.subsurfaceColor * (irradiance + viewDependent) * attenuation;
 		// If have cloth model:  fd *= clamp(gBuffer.subsurfaceColor + nov, 0.0f, 1.0f);
@@ -71,14 +71,14 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 
 	if (gBuffer.clearCoatRoughness > 0.0)
 	{
-		float clearCoatNov = max(dot(gBuffer.normal, viewDirection), 1e-4f);
-		float3 clearCoatR = reflect(-viewDirection, gBuffer.clearCoatNormal);
+		float clearCoatNov = max(dot(gBuffer.normal, -viewDirection), 1e-4f);
+		float3 clearCoatR = reflect(viewDirection, gBuffer.clearCoatNormal);
 		float fc = schlick(0.04f, 1.0f, clearCoatNov);
 		float attenuation = 1.0f - fc;
 		fd *= attenuation; fr *= attenuation;
 
 		float clearCoatRoughness = max(gBuffer.clearCoatRoughness, 0.045f); // Perceptual.
-		float ccLinearRoughness = clearCoatRoughness * clearCoatRoughness;
+		float ccLinearRoughness = unpackRoughness(clearCoatRoughness);
 		float specularAO = specularAoLagarde(clearCoatNov, gBuffer.ambientOcclusion, ccLinearRoughness);
 		fr += prefilteredRadiance(iblSpecular, clearCoatR, clearCoatRoughness) * (specularAO * fc);
     }

@@ -18,6 +18,14 @@
 
 using namespace garden;
 
+static ID<ComputePipeline> createDownsampleNorm()
+{
+	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm", false, false);
+}
+static ID<ComputePipeline> createDownsampleNormA()
+{
+	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm-a", false, false);
+}
 static ID<GraphicsPipeline> createBoxBlur()
 {
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/box-blur",
@@ -27,17 +35,6 @@ static ID<GraphicsPipeline> createBilateralBlurD()
 {
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d",
 		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), false, false);
-}
-
-static DescriptorSet::Uniforms getBilatBlurDUniforms(ID<ImageView> srcBuffer, ID<ImageView> tmpBuffer)
-{
-	auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews()[0];
-	DescriptorSet::Uniforms uniforms
-	{
-		{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBuffer } }) },
-		{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
-	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************
@@ -62,6 +59,18 @@ void GpuProcessSystem::deinit()
 	}
 }
 
+ID<ComputePipeline> GpuProcessSystem::getDownsampleNorm()
+{
+	if (!downsampleNormPipeline)
+		downsampleNormPipeline = createDownsampleNorm();
+	return downsampleNormPipeline;
+}
+ID<ComputePipeline> GpuProcessSystem::getDownsampleNormA()
+{
+	if (!downsampleNormAPipeline)
+		downsampleNormAPipeline = createDownsampleNormA();
+	return downsampleNormAPipeline;
+}
 ID<GraphicsPipeline> GpuProcessSystem::getBoxBlur()
 {
 	if (!boxBlurPipeline)
@@ -73,6 +82,78 @@ ID<GraphicsPipeline> GpuProcessSystem::getBilateralBlurD()
 	if (!bilatBlurDPipeline)
 		bilatBlurDPipeline = createBilateralBlurD();
 	return bilatBlurDPipeline;
+}
+
+//**********************************************************************************************************************
+void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipeline)
+{
+	GARDEN_ASSERT(image);
+	GARDEN_ASSERT(pipeline);
+	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto baseImageView = graphicsSystem->get(image);
+	auto mipCount = baseImageView->getMipCount();
+	GARDEN_ASSERT_MSG(mipCount > 1, "Image have only one mip level");
+
+	auto imageType = baseImageView->getType();
+	auto layerCount = baseImageView->getLayerCount();
+	vector<ID<ImageView>> imageViews(mipCount);
+	auto imageSize = max((uint2)baseImageView->getSize() / 2, uint2(1));
+	auto pipelineView = graphicsSystem->get(pipeline);
+	pipelineView->bind();
+
+	imageViews[0] = graphicsSystem->createImageView(
+		image, imageType, Image::Format::Undefined, 0, 1);
+	SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.normalMap.mip0");
+
+	for (uint8 i = 1; i < mipCount; i++)
+	{
+		imageViews[i] = graphicsSystem->createImageView(
+			image, imageType, Image::Format::Undefined, i, 1);
+		SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.normalMap.mip" + to_string(i));
+
+		DescriptorSet::Uniforms uniforms
+		{
+			{ "srcBuffer", DescriptorSet::Uniform(imageViews[i - 1]) },
+			{ "dstBuffer", DescriptorSet::Uniform(imageViews[i]) }
+		};
+		auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.normalMapMips" + to_string(i));
+
+		pipelineView->bindDescriptorSet(descriptorSet);
+		pipelineView->dispatch(uint3(imageSize, layerCount));
+
+		graphicsSystem->destroy(descriptorSet);
+		imageSize = max(imageSize / 2, uint2(1));
+	}
+
+	for (auto imageView : imageViews)
+		graphicsSystem->destroy(imageView);
+}
+void GpuProcessSystem::normalMapMips(ID<Image> normalMap)
+{
+	GARDEN_ASSERT(normalMap);
+	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto normalMapView = graphicsSystem->get(normalMap);
+
+	ID<ComputePipeline> pipeline;
+	if (normalMapView->getLayerCount() > 1)
+	{
+		if (!downsampleNormAPipeline)
+			downsampleNormAPipeline = createDownsampleNormA();
+		pipeline = downsampleNormAPipeline;
+	}
+	else
+	{
+		if (!downsampleNormPipeline)
+			downsampleNormPipeline = createDownsampleNorm();
+		pipeline = downsampleNormPipeline;
+	}
+
+	generateMips(normalMap, pipeline);
 }
 
 //**********************************************************************************************************************
@@ -91,14 +172,22 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> d
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!descriptorSet)
 	{
-		auto uniforms = getBilatBlurDUniforms(srcBuffer, tmpBuffer);
+		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews()[0];
+		DescriptorSet::Uniforms uniforms
+		{
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBuffer } }) },
+			{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
+		};
 		descriptorSet = graphicsSystem->createDescriptorSet(bilatBlurDPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bilateralBlurD" + to_string(*descriptorSet));
 	}
 
+	auto& cameraConstants = graphicsSystem->getCameraConstants();
+
 	BilateralBlurPC pc;
+	pc.nearPlane = cameraConstants.nearPlane;
 	pc.sharpness = sharpness;
-	
+
 	auto pipelineView = graphicsSystem->get(bilatBlurDPipeline);
 	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
 	auto texelSize = scale / framebufferView->getSize();

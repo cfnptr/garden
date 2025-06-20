@@ -101,4 +101,8 @@ int32 getHighest(float3 value)
 	return value.x > value.y ? (value.z > value.x ? 2 : 0) : (value.z > value.y ? 2 : 1);
 }
 
+float distanceSq(float2 a, float2 b) { a -= b; return dot(a, a); }
+float distanceSq(float3 a, float3 b) { a -= b; return dot(a, a); }
+float distanceSq(float4 a, float4 b) { a -= b; return dot(a, a); }
+
 #endif // MATH_GSL

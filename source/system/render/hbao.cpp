@@ -58,15 +58,12 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> noiseImage)
 {
 	auto hizSystem = HizRenderSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto inFlightCount = graphicsSystem->getInFlightCount();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "hizBuffer", DescriptorSet::Uniform(hizSystem->getImageViews()[1], 1, inFlightCount) },
-		{ "noise", DescriptorSet::Uniform(graphicsSystem->get(noiseImage)->getDefaultView(), 1, inFlightCount) },
-		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCameraConstantsBuffers()) }
+		{ "hizBuffer", DescriptorSet::Uniform(hizSystem->getImageViews()[1]) },
+		{ "noise", DescriptorSet::Uniform(graphicsSystem->get(noiseImage)->getDefaultView()) },
 	};
-
 	return uniforms;
 }
 
@@ -162,7 +159,6 @@ void HbaoRenderSystem::aoRender()
 	auto cameraView = CameraSystem::Instance::get()->getComponent(graphicsSystem->camera);
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getCurrentFramebuffer());
 	auto aoFrameSize = framebufferView->getSize();
-	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto& cameraConstants = graphicsSystem->getCameraConstants();
 	auto& proj = cameraConstants.projection;
 
@@ -185,6 +181,8 @@ void HbaoRenderSystem::aoRender()
 	{
 		// TODO: check if ortho projInfo is correct.
 		// If not, problem is in difference between GLM and our ortho.
+		abort(); // TODO: support othrographic depth linearization.
+
 		pc.projInfo = float4
 		(
 			2.0f / (proj.c0.getX()),
@@ -203,11 +201,12 @@ void HbaoRenderSystem::aoRender()
 	pc.powExponent = intensity;
 	pc.novBias = clamp(bias, 0.0f, 1.0f);
 	pc.aoMultiplier = 1.0f / (1.0f - pc.novBias);
+	pc.nearPlane = cameraConstants.nearPlane;
 
 	SET_GPU_DEBUG_LABEL("HBAO", Color::transparent);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
+	pipelineView->bindDescriptorSet(descriptorSet);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 

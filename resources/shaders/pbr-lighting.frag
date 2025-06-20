@@ -14,6 +14,7 @@
 
 spec const bool USE_SHADOW_BUFFER = false;
 spec const bool USE_AO_BUFFER = false;
+spec const bool USE_REFLECTION_BUFFER = false;
 spec const bool USE_EMISSIVE_BUFFER = false;
 spec const bool USE_GI_BUFFER = false;
 #define USE_SUB_SURFACE_SCATTERING false
@@ -38,10 +39,8 @@ uniform sampler2D g5;
 
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer;
-uniform sampler2D
-{
-	filter = linear;
-} aoBuffer;
+uniform sampler2D aoBuffer;
+uniform sampler2D reflBuffer;
 
 uniform sampler2D
 {
@@ -88,8 +87,8 @@ void main()
 	// TODO: or maybe we can utilize filament micro/macro AO?
 	gBuffer.reflectance *= pc.reflectanceCoeff;
 
-	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
-	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);
+	float4 worldPos = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
+	float3 viewDirection = calcViewDirection(worldPos.xyz / worldPos.w);
 	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
 
 	if (USE_EMISSIVE_BUFFER)

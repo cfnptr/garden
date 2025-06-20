@@ -70,6 +70,6 @@ void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 	GARDEN_ASSERT_MSG(instance, "Compute pipeline [" + debugName + "] is not ready");
 
 	DispatchCommand command;
-	command.groupCount = (uint3)(isGlobalCount ? ceil(count / localSize) : count);
+	command.groupCount = isGlobalCount ?  (uint3)ceil((float3)count / localSize) : count;
 	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }
