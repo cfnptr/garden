@@ -43,6 +43,11 @@ namespace garden
 class ThreadPool final
 {
 public:
+	static constexpr float priorityNormal = 0.0f;
+	static constexpr float priorityHigh = 1.0f;
+	static constexpr float priorityCritical = 10.0f;
+	static constexpr float priorityLow = -1.0f;
+
 	/*******************************************************************************************************************
 	 * @brief Task is a unit of work that needs to be performed asynchronously.
 	 */

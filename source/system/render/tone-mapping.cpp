@@ -66,15 +66,19 @@ static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useB
 
 static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, uint8 toneMapper)
 {
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	Pipeline::SpecConstValues specConsts =
 	{
 		{ "USE_BLOOM_BUFFER", Pipeline::SpecConstValue(useBloomBuffer) },
 		{ "TONE_MAPPER", Pipeline::SpecConstValue((uint32)toneMapper) }
 	};
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("tone-mapping",
-		deferredSystem->getLdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConsts);
+	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConsts;
+	options.useAsyncRecording = deferredSystem->useAsyncRecording();
+	
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"tone-mapping", deferredSystem->getLdrFramebuffer(), options);
 }
 
 //**********************************************************************************************************************

@@ -14,6 +14,7 @@
 
 #include "garden/system/spawner.hpp"
 #include "garden/system/link.hpp"
+#include "garden/system/input.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"

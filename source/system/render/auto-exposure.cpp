@@ -58,11 +58,13 @@ static DescriptorSet::Uniforms getAverageUniforms(ID<Buffer> histogramBuffer)
 
 static ID<ComputePipeline> createHistogramPipeline()
 {
-	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/histogram");
+	ResourceSystem::ComputeOptions options;
+	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/histogram", options);
 }
 static ID<ComputePipeline> createAveragePipeline()
 {
-	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/average");
+	ResourceSystem::ComputeOptions options;
+	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/average", options);
 }
 
 //**********************************************************************************************************************

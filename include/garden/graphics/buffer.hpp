@@ -439,6 +439,7 @@ public:
 		MemoryExt::getBinarySize(destination) = MemoryExt::getBinarySize(source);
 		ResourceExt::getInstance(destination) = ResourceExt::getInstance(source);
 		BufferExt::getMap(destination) = BufferExt::getMap(source);
+		BufferExt::getDeviceAddress(destination) = BufferExt::getDeviceAddress(source);
 		ResourceExt::getInstance(source) = nullptr;
 	}
 	/**

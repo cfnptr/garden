@@ -15,6 +15,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
+#include "garden/system/graphics.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
@@ -46,7 +47,7 @@ namespace garden::graphics
 {
 	struct ImageLoadData final
 	{
-		uint64 version = 0;
+		uint64 imageVersion = 0;
 		vector<fs::path> paths;
 		ID<Image> instance = {};
 		Image::Usage usage = {};
@@ -68,7 +69,7 @@ namespace garden::graphics
 
 	struct PipelineLoadData
 	{
-		uint64 version = 0;
+		uint64 pipelineVersion = 0;
 		fs::path shaderPath;
 		Pipeline::SpecConstValues specConstValues;
 		Pipeline::SamplerStates samplerStateOverrides;
@@ -169,6 +170,7 @@ void ResourceSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		GraphicsAPI::get()->forceResourceDestroy = true;
 		while (!loadedImageQueue.empty())
 		{
 			auto& item = loadedImageQueue.front();
@@ -183,6 +185,11 @@ void ResourceSystem::deinit()
 			BufferExt::destroy(item.buffer);
 			loadedBufferQueue.pop();
 		}
+		while (!loadedRayTracingQueue.empty())
+		{
+			PipelineExt::destroy(loadedRayTracingQueue.front().pipeline);
+			loadedRayTracingQueue.pop();
+		}
 		while (!loadedComputeQueue.empty())
 		{
 			PipelineExt::destroy(loadedComputeQueue.front().pipeline);
@@ -193,6 +200,7 @@ void ResourceSystem::deinit()
 			PipelineExt::destroy(loadedGraphicsQueue.front().pipeline);
 			loadedGraphicsQueue.pop();
 		}
+		GraphicsAPI::get()->forceResourceDestroy = false;
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 	}
@@ -210,37 +218,36 @@ void ResourceSystem::dequeuePipelines()
 	while (!loadedGraphicsQueue.empty())
 	{
 		auto& item = loadedGraphicsQueue.front();
-		if (*item.instance <= graphicsOccupancy)
+
+		if (item.renderPass)
 		{
-			auto& pipeline = graphicsPipelines[*item.instance - 1];
-			if (PipelineExt::getVersion(pipeline) == PipelineExt::getVersion(item.pipeline))
+			auto& shareCount = graphicsAPI->renderPasses.at(item.renderPass);
+			if (shareCount == 0)
 			{
-				GraphicsPipelineExt::moveInternalObjects(item.pipeline, pipeline);
-				GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " + pipeline.getPath().generic_string() + ")");
+				graphicsAPI->destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer, nullptr, item.renderPass);
+				graphicsAPI->renderPasses.erase(item.renderPass);
 			}
 			else
 			{
-				graphicsAPI->forceResourceDestroy = true;
-				PipelineExt::destroy(item.pipeline);
-				graphicsAPI->forceResourceDestroy = false;
-			}
-			
-			if (item.renderPass)
-			{
-				auto& shareCount = graphicsAPI->renderPasses.at(item.renderPass);
-				if (shareCount == 0)
-				{
-					graphicsAPI->destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer,
-						nullptr, item.renderPass);
-					graphicsAPI->renderPasses.erase(item.renderPass);
-				}
-				else
-				{
-					shareCount--;
-				}
+				shareCount--;
 			}
 		}
+
+		auto pipeline = *item.instance <= graphicsOccupancy ? 
+			&graphicsPipelines[*item.instance - 1] : nullptr;
+		
+		if (!pipeline || PipelineExt::getVersion(*pipeline) != PipelineExt::getVersion(item.pipeline))
+		{
+			graphicsAPI->forceResourceDestroy = true;
+			PipelineExt::destroy(item.pipeline);
+			graphicsAPI->forceResourceDestroy = false;
+			loadedGraphicsQueue.pop();
+			continue;
+		}
+		
+		GraphicsPipelineExt::moveInternalObjects(item.pipeline, *pipeline);
 		loadedGraphicsQueue.pop();
+		GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " + pipeline->getPath().generic_string() + ")");
 	}
 
 	auto computePipelines = graphicsAPI->computePipelinePool.getData();
@@ -249,22 +256,21 @@ void ResourceSystem::dequeuePipelines()
 	while (!loadedComputeQueue.empty())
 	{
 		auto& item = loadedComputeQueue.front();
-		if (*item.instance <= computeOccupancy)
+		auto pipeline = *item.instance <= computeOccupancy ? 
+			&computePipelines[*item.instance - 1] : nullptr;
+
+		if (!pipeline || PipelineExt::getVersion(*pipeline) != PipelineExt::getVersion(item.pipeline))
 		{
-			auto& pipeline = computePipelines[*item.instance - 1];
-			if (PipelineExt::getVersion(pipeline) == PipelineExt::getVersion(item.pipeline))
-			{
-				ComputePipelineExt::moveInternalObjects(item.pipeline, pipeline);
-				GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + pipeline.getPath().generic_string() + ")");
-			}
-			else
-			{
-				graphicsAPI->forceResourceDestroy = true;
-				PipelineExt::destroy(item.pipeline);
-				graphicsAPI->forceResourceDestroy = false;
-			}
+			graphicsAPI->forceResourceDestroy = true;
+			PipelineExt::destroy(item.pipeline);
+			graphicsAPI->forceResourceDestroy = false;
+			loadedComputeQueue.pop();
+			continue;
 		}
+
+		ComputePipelineExt::moveInternalObjects(item.pipeline, *pipeline);
 		loadedComputeQueue.pop();
+		GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + pipeline->getPath().generic_string() + ")");
 	}
 
 	auto rayTracingPipelines = graphicsAPI->rayTracingPipelinePool.getData();
@@ -273,22 +279,21 @@ void ResourceSystem::dequeuePipelines()
 	while (!loadedRayTracingQueue.empty())
 	{
 		auto& item = loadedRayTracingQueue.front();
-		if (*item.instance <= rayTracingOccupancy)
+		auto pipeline = *item.instance <= rayTracingOccupancy ? 
+			&rayTracingPipelines[*item.instance - 1] : nullptr;
+
+		if (!pipeline || PipelineExt::getVersion(*pipeline) != PipelineExt::getVersion(item.pipeline))
 		{
-			auto& pipeline = rayTracingPipelines[*item.instance - 1];
-			if (PipelineExt::getVersion(pipeline) == PipelineExt::getVersion(item.pipeline))
-			{
-				RayTracingPipelineExt::moveInternalObjects(item.pipeline, pipeline);
-				GARDEN_LOG_TRACE("Loaded ray tracing pipeline. (path: " + pipeline.getPath().generic_string() + ")");
-			}
-			else
-			{
-				graphicsAPI->forceResourceDestroy = true;
-				PipelineExt::destroy(item.pipeline);
-				graphicsAPI->forceResourceDestroy = false;
-			}
+			graphicsAPI->forceResourceDestroy = true;
+			PipelineExt::destroy(item.pipeline);
+			graphicsAPI->forceResourceDestroy = false;
+			loadedRayTracingQueue.pop();
+			continue;
 		}
+
+		RayTracingPipelineExt::moveInternalObjects(item.pipeline, *pipeline);
 		loadedRayTracingQueue.pop();
+		GARDEN_LOG_TRACE("Loaded ray tracing pipeline. (path: " + pipeline->getPath().generic_string() + ")");
 	}
 }
 
@@ -314,44 +319,38 @@ void ResourceSystem::dequeueBuffers()
 	while (!loadedBufferQueue.empty())
 	{
 		auto& item = loadedBufferQueue.front();
-		if (*item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy()) // getOccupancy() required, do not optimize!
-		{
-			auto& buffer = graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1];
-			if (MemoryExt::getVersion(buffer) == MemoryExt::getVersion(item.buffer))
-			{
-				BufferExt::moveInternalObjects(item.buffer, buffer);
-				#if GARDEN_DEBUG || GARDEN_EDITOR
-				buffer.setDebugName(buffer.getDebugName());
-				#endif
-			}
-			else
-			{
-				graphicsAPI->forceResourceDestroy = true;
-				BufferExt::destroy(item.buffer);
-				graphicsAPI->forceResourceDestroy = false;
-			}
-			
-			auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
-				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
-			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
+		auto buffer = *item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy() ? // getOccupancy() required, do not optimize!
+			&graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1] : nullptr;
 
-			auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
-			BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
-			graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-			Buffer::copy(stagingBuffer, item.bufferInstance);
-			graphicsSystem->stopRecording();
-			graphicsAPI->bufferPool.destroy(stagingBuffer);
-
-			loadedBuffer = item.bufferInstance;
-			loadedBufferPath = std::move(item.path);
-			manager->runEvent("BufferLoaded");
-		}
-		else
+		if (!buffer || MemoryExt::getVersion(*buffer) != MemoryExt::getVersion(item.buffer))
 		{
 			graphicsAPI->forceResourceDestroy = true;
-			BufferExt::destroy(item.staging);
+			BufferExt::destroy(item.buffer);
 			graphicsAPI->forceResourceDestroy = false;
+			loadedBufferQueue.pop();
+			continue;
 		}
+
+		BufferExt::moveInternalObjects(item.buffer, *buffer);
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		buffer->setDebugName(buffer->getDebugName());
+		#endif
+
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
+
+		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
+		BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		Buffer::copy(stagingBuffer, item.bufferInstance);
+		graphicsSystem->stopRecording();
+		graphicsAPI->bufferPool.destroy(stagingBuffer);
+
+		loadedBuffer = item.bufferInstance;
+		loadedBufferPath = std::move(item.path);
+		manager->runEvent("BufferLoaded");
+
 		loadedBufferQueue.pop();
 	}
 
@@ -393,45 +392,38 @@ void ResourceSystem::dequeueImages()
 	while (!loadedImageQueue.empty())
 	{
 		auto& item = loadedImageQueue.front();
-		if (*item.instance <= imageOccupancy)
-		{
-			auto& image = images[*item.instance - 1];
-			if (MemoryExt::getVersion(image) == MemoryExt::getVersion(item.image))
-			{
-				ImageExt::moveInternalObjects(item.image, image);
-				#if GARDEN_DEBUG || GARDEN_EDITOR
-				image.setDebugName(image.getDebugName());
-				#endif
+		auto image = *item.instance <= imageOccupancy ? & images[*item.instance - 1] : nullptr;
 
-				auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc | 
-					Buffer::Usage::TransferQ, Buffer::CpuAccess::SequentialWrite, 
-					Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
-				SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
-
-				auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
-				BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
-				graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-				Image::copy(stagingBuffer, item.instance);
-				graphicsSystem->stopRecording();
-				graphicsAPI->bufferPool.destroy(stagingBuffer);
-
-				loadedImage = item.instance;
-				loadedImagePaths = std::move(item.paths);
-				manager->runEvent("ImageLoaded");
-			}
-			else
-			{
-				graphicsAPI->forceResourceDestroy = true;
-				ImageExt::destroy(item.image);
-				graphicsAPI->forceResourceDestroy = false;
-			}
-		}
-		else
+		if (!image || MemoryExt::getVersion(*image) != MemoryExt::getVersion(item.image))
 		{
 			graphicsAPI->forceResourceDestroy = true;
-			BufferExt::destroy(item.staging);
+			ImageExt::destroy(item.image);
 			graphicsAPI->forceResourceDestroy = false;
+			loadedImageQueue.pop();
+			continue;
 		}
+
+		ImageExt::moveInternalObjects(item.image, *image);
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		image->setDebugName(image->getDebugName());
+		#endif
+
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc | 
+			Buffer::Usage::TransferQ, Buffer::CpuAccess::SequentialWrite, 
+			Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
+
+		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
+		BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		Image::copy(stagingBuffer, item.instance);
+		graphicsSystem->stopRecording();
+		graphicsAPI->bufferPool.destroy(stagingBuffer);
+
+		loadedImage = item.instance;
+		loadedImagePaths = std::move(item.paths);
+		manager->runEvent("ImageLoaded");
+
 		loadedImageQueue.pop();
 	}
 
@@ -1163,7 +1155,7 @@ static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcep
 
 //**********************************************************************************************************************
 Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::Usage usage,
-	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags)
+	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags, float taskPriority)
 {
 	// TODO: allow to load file with image paths to load image arrays.
 	GARDEN_ASSERT(!paths.empty());
@@ -1215,8 +1207,8 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	}
 	
 	auto graphicsAPI = GraphicsAPI::get();
-	auto version = graphicsAPI->imageVersion++;
-	auto image = graphicsAPI->imagePool.create(usage, strategy, version);
+	auto imageVersion = graphicsAPI->imageVersion++;
+	auto image = graphicsAPI->imagePool.create(usage, strategy, imageVersion);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto resource = graphicsAPI->imagePool.get(image);
@@ -1230,7 +1222,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	if (!hasAnyFlag(flags, ImageLoadFlags::LoadSync) && threadSystem)
 	{
 		auto data = new ImageLoadData();
-		data->version = version;
+		data->imageVersion = imageVersion;
 		data->paths = paths;
 		data->instance = image;
 		data->usage = usage;
@@ -1258,7 +1250,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			ImageQueueItem item =
 			{
 				ImageExt::create(type, format, data->usage, data->strategy, 
-					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->version),
+					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: staging does not need TransferQ flag.
 					formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
@@ -1269,11 +1261,13 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 				realSize, imageSize, formatBinarySize, data->flags);
 			item.staging.flush();
 
-			delete data;
 			queueLocker.lock();
 			loadedImageQueue.push(std::move(item));
 			queueLocker.unlock();
-		});
+
+			delete data;
+		},
+		taskPriority);
 	}
 	else
 	{
@@ -1346,7 +1340,8 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 }
 
 //**********************************************************************************************************************
-Ref<Buffer> ResourceSystem::loadBuffer(const vector<fs::path>& path, Buffer::Strategy strategy, BufferLoadFlags flags)
+Ref<Buffer> ResourceSystem::loadBuffer(const vector<fs::path>& path, 
+	Buffer::Strategy strategy, BufferLoadFlags flags, float taskPriority)
 {
 	GARDEN_ASSERT(!path.empty());
 	abort(); // TODO: load plain buffer binary data.
@@ -1510,9 +1505,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
-	ID<Framebuffer> framebuffer,  bool useAsyncRecording, bool loadAsync, uint8 subpassIndex,
-	uint32 maxBindlessCount, const Pipeline::SpecConstValues* specConstValues,
-	const GraphicsPipeline::StateOverrides* stateOverrides, GraphicsPipeline::ShaderOverrides* shaderOverrides)
+	ID<Framebuffer> framebuffer, const GraphicsOptions& options)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(framebuffer, "Assert " + path.generic_string());
@@ -1522,12 +1515,12 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	auto framebufferView = graphicsAPI->framebufferPool.get(framebuffer);
 	const auto& subpasses = framebufferView->getSubpasses();
 
-	GARDEN_ASSERT_MSG((subpasses.empty() && subpassIndex == 0) || (!subpasses.empty() && 
-		subpassIndex < subpasses.size()), "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG((subpasses.empty() && options.subpassIndex == 0) || (!subpasses.empty() && 
+		options.subpassIndex < subpasses.size()), "Assert " + path.generic_string());
 
-	auto version = graphicsAPI->graphicsPipelineVersion++;
-	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path,
-		maxBindlessCount, useAsyncRecording, version, framebuffer, subpassIndex);
+	auto pipelineVersion = graphicsAPI->graphicsPipelineVersion++;
+	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path, options.maxBindlessCount, 
+		options.useAsyncRecording, pipelineVersion, framebuffer, options.subpassIndex);
 
 	void* renderPass = nullptr;
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -1557,7 +1550,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	}
 	else
 	{
-		const auto& outputAttachments = subpasses[subpassIndex].outputAttachments;
+		const auto& outputAttachments = subpasses[options.subpassIndex].outputAttachments;
 		if (!outputAttachments.empty())
 		{
 			auto attachment = graphicsAPI->imageViewPool.get(
@@ -1576,32 +1569,32 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	}
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (loadAsync && threadSystem && !shaderOverrides)
+	if (options.loadAsync && threadSystem && !options.shaderOverrides)
 	{
+		GARDEN_ASSERT_MSG(!options.shaderOverrides, "Nothing to load asynchronously");
 		auto data = new GraphicsPipelineLoadData();
 		data->shaderPath = path;
-		data->version = version;
+		data->pipelineVersion = pipelineVersion;
 		data->renderPass = renderPass;
-		data->subpassIndex = subpassIndex;
+		data->subpassIndex = options.subpassIndex;
 		data->colorFormats = std::move(colorFormats);
-		if (specConstValues)
-			data->specConstValues = *specConstValues;
+		if (options.specConstValues)
+			data->specConstValues = std::move(*options.specConstValues);
+		if (options.samplerStateOverrides)
+			data->samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		if (options.pipelineStateOverrides)
+			data->pipelineStateOverrides = std::move(*options.pipelineStateOverrides);
+		if (options.blendStateOverrides)
+			data->blendStateOverrides = std::move(*options.blendStateOverrides);
 		data->instance = pipeline;
-		data->maxBindlessCount = maxBindlessCount;
+		data->maxBindlessCount = options.maxBindlessCount;
 		data->depthStencilFormat = depthStencilFormat;
-		data->subpassIndex = subpassIndex;
-		data->useAsyncRecording = useAsyncRecording;
+		data->subpassIndex = options.subpassIndex;
+		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
 		data->cachePath = appCachePath;
 		#endif
-
-		if (stateOverrides)
-		{
-			data->samplerStateOverrides = stateOverrides->samplerStates;
-			data->pipelineStateOverrides = stateOverrides->pipelineStates;
-			data->blendStateOverrides = stateOverrides->blendStates;
-		}
 		
 		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
 		{
@@ -1611,7 +1604,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
-			pipelineData.pipelineVersion = data->version;
+			pipelineData.pipelineVersion = data->pipelineVersion;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			pipelineData.colorFormats = std::move(data->colorFormats);
 			pipelineData.pipelineStateOverrides = std::move(data->pipelineStateOverrides);
@@ -1639,25 +1632,32 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 				data->renderPass, data->instance
 			};
 
-			delete data;
 			queueLocker.lock();
 			loadedGraphicsQueue.push(std::move(item));
 			queueLocker.unlock();
+
+			delete data;
 		},
-		pipelineTaskPriority);
+		options.taskPriority);
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
 		GslCompiler::GraphicsData pipelineData;
-		if (specConstValues)
-			pipelineData.specConstValues = *specConstValues;
-		pipelineData.pipelineVersion = version;
-		pipelineData.maxBindlessCount = maxBindlessCount;
+		if (options.specConstValues)
+			pipelineData.specConstValues = std::move(*options.specConstValues);
+		if (options.samplerStateOverrides)
+			pipelineData.samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		if (options.pipelineStateOverrides)
+			pipelineData.pipelineStateOverrides = std::move(*options.pipelineStateOverrides);
+		if (options.blendStateOverrides)
+			pipelineData.blendStateOverrides = std::move(*options.blendStateOverrides);
+		pipelineData.pipelineVersion = pipelineVersion;
+		pipelineData.maxBindlessCount = options.maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
 		pipelineData.renderPass = renderPass;
-		pipelineData.subpassIndex = subpassIndex;
+		pipelineData.subpassIndex = options.subpassIndex;
 		pipelineData.depthStencilFormat = depthStencilFormat;
 		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
@@ -1667,18 +1667,11 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.cachePath = appCachePath;
 		#endif
 
-		if (stateOverrides)
+		if (options.shaderOverrides)
 		{
-			pipelineData.samplerStateOverrides = stateOverrides->samplerStates;
-			pipelineData.pipelineStateOverrides = stateOverrides->pipelineStates;
-			pipelineData.blendStateOverrides = stateOverrides->blendStates;
-		}
-
-		if (shaderOverrides)
-		{
-			pipelineData.headerData = std::move(shaderOverrides->headerData);
-			pipelineData.vertexCode = std::move(shaderOverrides->vertexCode);
-			pipelineData.fragmentCode = std::move(shaderOverrides->fragmentCode);
+			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
+			pipelineData.vertexCode = std::move(options.shaderOverrides->vertexCode);
+			pipelineData.fragmentCode = std::move(options.shaderOverrides->fragmentCode);
 			GslCompiler::loadGraphicsShaders(pipelineData);
 		}
 		else
@@ -1691,7 +1684,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			}
 		}
 			
-		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, useAsyncRecording);
+		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, options.useAsyncRecording);
 		auto pipelineView = graphicsAPI->graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
@@ -1760,32 +1753,30 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 }
 
 //**********************************************************************************************************************
-ID<ComputePipeline> ResourceSystem::loadComputePipeline(
-	const fs::path& path, bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount, 
-	const Pipeline::SpecConstValues* specConstValues,
-	const Pipeline::SamplerStates* samplerStateOverrides, 
-	ComputePipeline::ShaderOverrides* shaderOverrides)
+ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, const ComputeOptions& options)
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto version = graphicsAPI->computePipelineVersion++;
-	auto pipeline = graphicsAPI->computePipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
+	auto pipelineVersion = graphicsAPI->computePipelineVersion++;
+	auto pipeline = graphicsAPI->computePipelinePool.create(path, 
+		options.maxBindlessCount, options.useAsyncRecording, pipelineVersion);
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (loadAsync && threadSystem && !shaderOverrides)
+	if (options.loadAsync && threadSystem && !options.shaderOverrides)
 	{
+		GARDEN_ASSERT_MSG(!options.shaderOverrides, "Nothing to load asynchronously");
 		auto data = new ComputePipelineLoadData();
-		data->version = version;
+		data->pipelineVersion = pipelineVersion;
 		data->shaderPath = path;
-		if (specConstValues)
-			data->specConstValues = *specConstValues;
-		if (samplerStateOverrides)
-			data->samplerStateOverrides = *samplerStateOverrides;
-		data->maxBindlessCount = maxBindlessCount;
+		if (options.specConstValues)
+			data->specConstValues = std::move(*options.specConstValues);
+		if (options.samplerStateOverrides)
+			data->samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		data->maxBindlessCount = options.maxBindlessCount;
 		data->instance = pipeline;
-		data->useAsyncRecording = useAsyncRecording;
+		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
 		data->cachePath = appCachePath;
@@ -1799,7 +1790,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
-			pipelineData.pipelineVersion = data->version;
+			pipelineData.pipelineVersion = data->pipelineVersion;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
@@ -1821,12 +1812,13 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 				data->instance
 			};
 
-			delete data;
 			queueLocker.lock();
 			loadedComputeQueue.push(std::move(item));
 			queueLocker.unlock();
+
+			delete data;
 		},
-		pipelineTaskPriority);
+		options.taskPriority);
 	}
 	else
 	{
@@ -1834,12 +1826,12 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 
 		GslCompiler::ComputeData pipelineData;
 		
-		if (specConstValues)
-			pipelineData.specConstValues = *specConstValues;
-		if (samplerStateOverrides)
-			pipelineData.samplerStateOverrides = *samplerStateOverrides;
-		pipelineData.pipelineVersion = version;
-		pipelineData.maxBindlessCount = maxBindlessCount;
+		if (options.specConstValues)
+			pipelineData.specConstValues = std::move(*options.specConstValues);
+		if (options.samplerStateOverrides)
+			pipelineData.samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		pipelineData.pipelineVersion = pipelineVersion;
+		pipelineData.maxBindlessCount = options.maxBindlessCount;
 		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
 		pipelineData.threadIndex = -1;
@@ -1848,10 +1840,10 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 		pipelineData.cachePath = appCachePath;
 		#endif
 		
-		if (shaderOverrides)
+		if (options.shaderOverrides)
 		{
-			pipelineData.headerData = std::move(shaderOverrides->headerData);
-			pipelineData.code = std::move(shaderOverrides->code);
+			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
+			pipelineData.code = std::move(options.shaderOverrides->code);
 			GslCompiler::loadComputeShader(pipelineData);
 		}
 		else
@@ -1864,7 +1856,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(
 			}
 		}
 
-		auto computePipeline = ComputePipelineExt::create(pipelineData, useAsyncRecording);
+		auto computePipeline = ComputePipelineExt::create(pipelineData, options.useAsyncRecording);
 		auto pipelineView = graphicsAPI->computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + path.generic_string() + ")");
@@ -1974,32 +1966,30 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 }
 
 //**********************************************************************************************************************
-ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
-	const fs::path& path, bool useAsyncRecording, bool loadAsync, uint32 maxBindlessCount, 
-	const Pipeline::SpecConstValues* specConstValues,
-	const Pipeline::SamplerStates* samplerStateOverrides, 
-	RayTracingPipeline::ShaderOverrides* shaderOverrides)
+ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& path, const RayTracingOptions& options)
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto version = graphicsAPI->rayTracingPipelineVersion++;
-	auto pipeline = graphicsAPI->rayTracingPipelinePool.create(path, maxBindlessCount, useAsyncRecording, version);
+	auto pipelineVersion = graphicsAPI->rayTracingPipelineVersion++;
+	auto pipeline = graphicsAPI->rayTracingPipelinePool.create(path, 
+		options.maxBindlessCount, options.useAsyncRecording, pipelineVersion);
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (loadAsync && threadSystem && !shaderOverrides)
+	if (options.loadAsync && threadSystem && !options.shaderOverrides)
 	{
+		GARDEN_ASSERT_MSG(!options.shaderOverrides, "Nothing to load asynchronously");
 		auto data = new RayTracingPipelineLoadData();
-		data->version = version;
+		data->pipelineVersion = pipelineVersion;
 		data->shaderPath = path;
-		if (specConstValues)
-			data->specConstValues = *specConstValues;
-		if (samplerStateOverrides)
-			data->samplerStateOverrides = *samplerStateOverrides;
-		data->maxBindlessCount = maxBindlessCount;
+		if (options.specConstValues)
+			data->specConstValues = std::move(*options.specConstValues);
+		if (options.samplerStateOverrides)
+			data->samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		data->maxBindlessCount = options.maxBindlessCount;
 		data->instance = pipeline;
-		data->useAsyncRecording = useAsyncRecording;
+		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
 		data->cachePath = appCachePath;
@@ -2013,7 +2003,7 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 			pipelineData.shaderPath = std::move(data->shaderPath);
 			pipelineData.specConstValues = std::move(data->specConstValues);
 			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
-			pipelineData.pipelineVersion = data->version;
+			pipelineData.pipelineVersion = data->pipelineVersion;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
@@ -2035,12 +2025,13 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 				data->instance
 			};
 
-			delete data;
 			queueLocker.lock();
 			loadedRayTracingQueue.push(std::move(item));
 			queueLocker.unlock();
+
+			delete data;
 		},
-		pipelineTaskPriority);
+		options.taskPriority);
 	}
 	else
 	{
@@ -2048,12 +2039,12 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 
 		GslCompiler::RayTracingData pipelineData;
 		
-		if (specConstValues)
-			pipelineData.specConstValues = *specConstValues;
-		if (samplerStateOverrides)
-			pipelineData.samplerStateOverrides = *samplerStateOverrides;
-		pipelineData.pipelineVersion = version;
-		pipelineData.maxBindlessCount = maxBindlessCount;
+		if (options.specConstValues)
+			pipelineData.specConstValues = std::move(*options.specConstValues);
+		if (options.samplerStateOverrides)
+			pipelineData.samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		pipelineData.pipelineVersion = pipelineVersion;
+		pipelineData.maxBindlessCount = options.maxBindlessCount;
 		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
 		pipelineData.threadIndex = -1;
@@ -2062,13 +2053,13 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 		pipelineData.cachePath = appCachePath;
 		#endif
 		
-		if (shaderOverrides)
+		if (options.shaderOverrides)
 		{
-			pipelineData.headerData = std::move(shaderOverrides->headerData);
-			pipelineData.rayGenGroups = std::move(shaderOverrides->rayGenGroups);
-			pipelineData.missGroups = std::move(shaderOverrides->missGroups);
-			pipelineData.hitGroups = std::move(shaderOverrides->hitGroups);
-			pipelineData.callGroups = std::move(shaderOverrides->callGroups);
+			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
+			pipelineData.rayGenGroups = std::move(options.shaderOverrides->rayGenGroups);
+			pipelineData.missGroups = std::move(options.shaderOverrides->missGroups);
+			pipelineData.hitGroups = std::move(options.shaderOverrides->hitGroups);
+			pipelineData.callGroups = std::move(options.shaderOverrides->callGroups);
 			GslCompiler::loadRayTracingShaders(pipelineData);
 		}
 		else
@@ -2081,7 +2072,7 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 			}
 		}
 
-		auto rayTracingPipeline = RayTracingPipelineExt::create(pipelineData, useAsyncRecording);
+		auto rayTracingPipeline = RayTracingPipelineExt::create(pipelineData, options.useAsyncRecording);
 		auto pipelineView = graphicsAPI->rayTracingPipelinePool.get(pipeline);
 		RayTracingPipelineExt::moveInternalObjects(rayTracingPipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded ray tracing pipeline. (path: " + path.generic_string() + ")");

@@ -92,7 +92,8 @@ static void createHizDescriptorSets(ID<GraphicsPipeline> pipeline,
 
 static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 {
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("hiz", framebuffer);
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("hiz", framebuffer, options);
 }
 
 //**********************************************************************************************************************

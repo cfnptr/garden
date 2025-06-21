@@ -106,8 +106,9 @@ void CsmRenderEditorSystem::preUiRender()
 			if (!cascadesPipeline)
 			{
 				auto deferredSystem = DeferredRenderSystem::Instance::get();
+				ResourceSystem::GraphicsOptions options;
 				cascadesPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-					"editor/shadow-cascades", deferredSystem->getUiFramebuffer());
+					"editor/shadow-cascades", deferredSystem->getUiFramebuffer(), options);
 			}
 
 			auto pipelineView = graphicsSystem->get(cascadesPipeline);

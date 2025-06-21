@@ -37,7 +37,8 @@ static ID<Framebuffer> createFramebuffer()
 }
 static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 {
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer);
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer, options);
 }
 
 static DescriptorSet::Uniforms getUniforms()

@@ -48,11 +48,15 @@ static ID<Image> createNoiseImage()
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 {
-	Pipeline::SpecConstValues specConsts = { { "STEP_COUNT", Pipeline::SpecConstValue(stepCount) } };
 	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useAoBuffer());
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("hbao",
-		pbrLightingSystem->getAoBaseFB(), false, true, 0, 0, &specConsts);
+
+	Pipeline::SpecConstValues specConsts = { { "STEP_COUNT", Pipeline::SpecConstValue(stepCount) } };
+	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConsts;
+
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"hbao", pbrLightingSystem->getAoBaseFB(), options);
 }
 static DescriptorSet::Uniforms getUniforms(ID<Image> noiseImage)
 {

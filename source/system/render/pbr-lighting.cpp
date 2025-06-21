@@ -405,12 +405,18 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 		{ "USE_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 	};
 
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("pbr-lighting", 
-		deferredSystem->getHdrFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConstValues);
+	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConstValues;
+	options.useAsyncRecording = deferredSystem->useAsyncRecording();
+
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"pbr-lighting", deferredSystem->getHdrFramebuffer(), options);
 }
 static ID<ComputePipeline> createIblSpecularPipeline()
 {
-	return ResourceSystem::Instance::get()->loadComputePipeline("ibl-specular", false, false);
+	ResourceSystem::ComputeOptions options;
+	options.loadAsync = false;
+	return ResourceSystem::Instance::get()->loadComputePipeline("ibl-specular", options);
 }
 
 //**********************************************************************************************************************

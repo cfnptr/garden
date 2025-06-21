@@ -20,21 +20,31 @@ using namespace garden;
 
 static ID<ComputePipeline> createDownsampleNorm()
 {
-	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm", false, false);
+	ResourceSystem::ComputeOptions options;
+	options.loadAsync = false;
+	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm", options);
 }
 static ID<ComputePipeline> createDownsampleNormA()
 {
-	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm-a", false, false);
+	ResourceSystem::ComputeOptions options;
+	options.loadAsync = false;
+	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm-a", options);
 }
 static ID<GraphicsPipeline> createBoxBlur()
 {
+	ResourceSystem::GraphicsOptions options;
+	options.loadAsync = false;
+
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/box-blur",
-		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), false, false);
+		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), options);
 }
 static ID<GraphicsPipeline> createBilateralBlurD()
 {
+	ResourceSystem::GraphicsOptions options;
+	options.loadAsync = false;
+
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d",
-		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), false, false);
+		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), options);
 }
 
 //**********************************************************************************************************************

@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/camera.hpp"
+#include "garden/system/graphics.hpp"
 #include "garden/system/transform.hpp"
 #include "math/matrix/transform.hpp"
 

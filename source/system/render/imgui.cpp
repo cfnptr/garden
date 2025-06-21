@@ -114,7 +114,8 @@ static ID<GraphicsPipeline> createPipeline()
 		framebuffer = DeferredRenderSystem::Instance::get()->getUiFramebuffer();
 	else
 		framebuffer = ForwardRenderSystem::Instance::get()->getColorFramebuffer();
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("imgui", framebuffer);
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("imgui", framebuffer, options);
 }
 static ID<Sampler> createLinearSampler()
 {

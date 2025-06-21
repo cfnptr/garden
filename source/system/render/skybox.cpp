@@ -25,8 +25,11 @@ using namespace garden::primitive;
 static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("skybox", 
-		deferredSystem->getDepthHdrFramebuffer(), deferredSystem->useAsyncRecording());
+	ResourceSystem::GraphicsOptions options;
+	options.useAsyncRecording = deferredSystem->useAsyncRecording();
+
+	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"skybox", deferredSystem->getDepthHdrFramebuffer(), options);
 	return skyboxPipeline;
 }
 
