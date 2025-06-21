@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/graphics/vulkan/api.hpp"
+#include "garden/system/graphics.hpp"
 #include "garden/file.hpp"
 
 using namespace garden;

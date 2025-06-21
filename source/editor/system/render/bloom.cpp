@@ -108,8 +108,9 @@ void BloomRenderEditorSystem::preUiRender()
 			if (!thresholdPipeline)
 			{
 				auto deferredSystem = DeferredRenderSystem::Instance::get();
+				ResourceSystem::GraphicsOptions options;
 				thresholdPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-					"editor/bloom-threshold", deferredSystem->getUiFramebuffer());
+					"editor/bloom-threshold", deferredSystem->getUiFramebuffer(), options);
 			}
 
 			auto graphicsSystem = GraphicsSystem::Instance::get();

@@ -19,6 +19,7 @@
 #include "garden/json-serialize.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/thread.hpp"
+#include "garden/system/graphics.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"

@@ -22,8 +22,9 @@ using namespace garden;
 static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	ResourceSystem::GraphicsOptions options;
 	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"oit", deferredSystem->getHdrFramebuffer());
+		"oit", deferredSystem->getHdrFramebuffer(), options);
 	return skyboxPipeline;
 }
 static DescriptorSet::Uniforms getUniforms()

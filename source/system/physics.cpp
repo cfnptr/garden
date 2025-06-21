@@ -2012,6 +2012,7 @@ void PhysicsSystem::destroyShared(ID<Shape> shape)
 
 void PhysicsSystem::optimizeBroadPhase()
 {
+	SET_CPU_ZONE_SCOPED("Broad Phase Optimize");
 	auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
 	physicsInstance->OptimizeBroadPhase();
 }

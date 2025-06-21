@@ -20,7 +20,9 @@
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
 #include "garden/resource/image.hpp"
-#include "garden/system/graphics.hpp"
+#include "garden/graphics/pipeline/compute.hpp"
+#include "garden/graphics/pipeline/graphics.hpp"
+#include "garden/graphics/pipeline/ray-tracing.hpp"
 #include <queue>
 
 #if GARDEN_PACK_RESOURCES
@@ -29,6 +31,8 @@
 
 namespace garden
 {
+
+using namespace garden::graphics;
 
 /**
  * @brief Additional buffer load flags.
@@ -71,33 +75,71 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
 class ResourceSystem : public System, public Singleton<ResourceSystem>
 {
 public:
-	static const vector<string_view> imageFileExts;
-	static const vector<ImageFileType> imageFileTypes;
+	static const vector<string_view> imageFileExts;    /**< Supported image file extensions. */
+	static const vector<ImageFileType> imageFileTypes; /**< Supported image file types. */
+
+	/**
+	 * @brief Pipeline load options container.
+	 */
+	struct PipelineOptions
+	{
+		Pipeline::SpecConstValues* specConstValues = nullptr;     /**< Specialization constants array or null. */
+		Pipeline::SamplerStates* samplerStateOverrides = nullptr; /**< Pipeline sampler state overrides or null. */
+		uint32 maxBindlessCount = 0;    /**< Maximum pipeline bindless descriptor array size. */
+		float taskPriority = 10.0f;     /**< Thread pool pipeline load task priority. */
+		bool useAsyncRecording = false; /**< Can be used for multithreaded commands recording. */
+		bool loadAsync = true;          /**< Load pipeline asynchronously without blocking. [See isReady() func] */
+	};
+	/**
+	 * @brief Graphics pipeline load options container.
+	 */
+	struct GraphicsOptions final : public PipelineOptions
+	{
+		uint8 subpassIndex = 0; /**< Graphics pipeline framebuffer subpass index. */
+		GraphicsPipeline::PipelineStates* pipelineStateOverrides = nullptr; /**< Pipeline state overrides or null. */
+		GraphicsPipeline::BlendStates* blendStateOverrides = nullptr; /**< Pipeline blend state overrides or null. */
+		GraphicsPipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */
+	};
+	/**
+	 * @brief Compute pipeline load options container.
+	 */
+	struct ComputeOptions final : public PipelineOptions
+	{
+		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */
+	};
+	/**
+	 * @brief Ray tracing pipeline load options container.
+	 */
+	struct RayTracingOptions final : public PipelineOptions
+	{
+		RayTracingPipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */
+	};
 protected:
-	struct GraphicsQueueItem
+	//******************************************************************************************************************
+	struct GraphicsQueueItem final
 	{
 		GraphicsPipeline pipeline;
 		void* renderPass = nullptr;
 		ID<GraphicsPipeline> instance = {};
 	};
-	struct ComputeQueueItem
+	struct ComputeQueueItem final
 	{
 		ComputePipeline pipeline;
 		ID<ComputePipeline> instance = {};
 	};
-	struct RayTracingQueueItem
+	struct RayTracingQueueItem final
 	{
 		RayTracingPipeline pipeline;
 		ID<RayTracingPipeline> instance = {};
 	};
-	struct BufferQueueItem
+	struct BufferQueueItem final
 	{
 		Buffer buffer;
 		Buffer staging;
 		fs::path path = "";
 		ID<Buffer> bufferInstance = {};
 	};
-	struct ImageQueueItem
+	struct ImageQueueItem final
 	{
 		Image image;
 		Buffer staging;
@@ -106,12 +148,12 @@ protected:
 		ID<Image> instance = {};
 	};
 
-	struct LoadedBufferItem
+	struct LoadedBufferItem final
 	{
 		fs::path path = "";
 		ID<Buffer> instance = {};
 	};
-	struct LoadedImageItem
+	struct LoadedImageItem final
 	{
 		vector<fs::path> paths = {};
 		ID<Image> instance = {};
@@ -163,8 +205,6 @@ protected:
 	
 	friend class ecsm::Manager;
 public:
-	float pipelineTaskPriority = 10.0f; /**< Background pipeline loading tasks priority. */
-
 	/*******************************************************************************************************************
 	 * @brief Loads image data (pixels) from the resource pack.
 	 * @note Loads from the images directory in debug build.
@@ -221,9 +261,11 @@ public:
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
 	 * @param flags additional image load flags
+	 * @param taskPriority thread pool image load task priority
 	 */
-	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Usage usage, uint8 maxMipCount = 1,
-		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None);
+	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Usage usage, 
+		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
+		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f);
 
 	/**
 	 * @brief Loads image from the resource pack.
@@ -234,11 +276,13 @@ public:
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
 	 * @param flags additional image load flags
+	 * @param taskPriority thread pool image load task priority
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Usage usage, uint8 maxMipCount = 1,
-		Image::Strategy strategy = Buffer::Strategy::Default, ImageLoadFlags flags = ImageLoadFlags::None)
+	Ref<Image> loadImage(const fs::path& path, Image::Usage usage, 
+		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
+		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f)
 	{
-		return loadImageArray({ path }, usage, maxMipCount, strategy, flags);
+		return loadImageArray({ path }, usage, maxMipCount, strategy, flags, taskPriority);
 	}
 
 	/**
@@ -265,10 +309,10 @@ public:
 	 * @param[in] path target buffer resource path
 	 * @param strategy buffers memory allocation strategy
 	 * @param flags additional buffer load flags
+	 * @param taskPriority thread pool buffer load task priority
 	 */
-	Ref<Buffer> loadBuffer(const vector<fs::path>& path, 
-		Buffer::Strategy strategy = Buffer::Strategy::Default, 
-		BufferLoadFlags flags = BufferLoadFlags::None);
+	Ref<Buffer> loadBuffer(const vector<fs::path>& path, Buffer::Strategy strategy = Buffer::Strategy::Default, 
+		BufferLoadFlags flags = BufferLoadFlags::None, float taskPriority = 0.0f);
 	/**
 	 * @brief Destroys shared buffer if it's the last one.
 	 * @param[in] buffer target shared buffer reference
@@ -315,61 +359,32 @@ public:
 	 * 
 	 * @param[in] path target graphics pipeline resource path
 	 * @param framebuffer parent pipeline framebuffer
-	 * @param useAsyncRecording can be used for multithreaded commands recording
-	 * @param loadAsync load pipeline asynchronously without blocking
-	 * @param subpassIndex framebuffer subpass index
-	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or null
-	 * @param[in] stateOverrides pipeline state overrides or null
-	 * @param[in,out] shaderOverrides pipeline shader code overrides or null
+	 * @param[in,out] options graphics pipeline load options
 	 * 
 	 * @throw GardenError if failed to load graphics pipeline.
 	 */
-	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, ID<Framebuffer> framebuffer, 
-		bool useAsyncRecording = false, bool loadAsync = true, uint8 subpassIndex = 0,
-		uint32 maxBindlessCount = 0, const Pipeline::SpecConstValues* specConstValues = nullptr,
-		const GraphicsPipeline::StateOverrides* stateOverrides = nullptr,
-		GraphicsPipeline::ShaderOverrides* shaderOverrides = nullptr);
-	
+	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, 
+		ID<Framebuffer> framebuffer, const GraphicsOptions& options);
 	/**
 	 * @brief Loads compute pipeline from the resource pack shaders.
 	 * @note Loads from the shaders directory in debug build.
 	 * 
 	 * @param[in] path target compute pipeline resource path
-	 * @param useAsyncRecording can be used for multithreaded commands recording
-	 * @param loadAsync load pipeline asynchronously without blocking
-	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or null
-	 * @param[in] samplerStateOverrides sampler state override array or null
-	 * @param[in,out] shaderOverrides pipeline shader code overrides or null
+	 * @param[in,out] options compute pipeline load options
 	 * 
 	 * @throw GardenError if failed to load compute pipeline.
 	 */
-	ID<ComputePipeline> loadComputePipeline(const fs::path& path,
-		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const Pipeline::SpecConstValues* specConstValues = nullptr,
-		const Pipeline::SamplerStates* samplerStateOverrides = nullptr,
-		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr);
-
+	ID<ComputePipeline> loadComputePipeline(const fs::path& path, const ComputeOptions& options);
 	/**
 	 * @brief Loads ray tracing pipeline from the resource pack shaders.
 	 * @note Loads from the shaders directory in debug build.
 	 * 
 	 * @param[in] path target ray tracing pipeline resource path
-	 * @param useAsyncRecording can be used for multithreaded commands recording
-	 * @param loadAsync load pipeline asynchronously without blocking
-	 * @param maxBindlessCount maximum bindless descriptor count
-	 * @param[in] specConsts specialization constants array or null
-	 * @param[in] samplerStateOverrides sampler state override array or null
-	 * @param[in,out] shaderOverrides pipeline shader code overrides or null
+	 * @param[in,out] options ray tracing pipeline load options
 	 * 
 	 * @throw GardenError if failed to load ray tracing pipeline.
 	 */
-	ID<RayTracingPipeline> loadRayTracingPipeline(const fs::path& path,
-		bool useAsyncRecording = false, bool loadAsync = true, uint32 maxBindlessCount = 0,
-		const Pipeline::SpecConstValues* specConstValues = nullptr,
-		const Pipeline::SamplerStates* samplerStateOverrides = nullptr,
-		RayTracingPipeline::ShaderOverrides* shaderOverrides = nullptr);
+	ID<RayTracingPipeline> loadRayTracingPipeline(const fs::path& path, const RayTracingOptions& options);
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.

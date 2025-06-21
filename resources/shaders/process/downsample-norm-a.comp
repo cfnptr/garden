@@ -21,9 +21,8 @@ uniform writeonly restrict image2DArray dstBuffer : unormR8G8B8A8;
 
 void main()
 {
-	int3 size = imageSize(dstBuffer);
 	int3 pos = int3(gl.globalInvocationID);
-	if (pos.x >= size.x || pos.y >= size.y || pos.z >= size.z)
+	if (any(greaterThanEqual(pos, imageSize(dstBuffer))))
 		return;
 
 	int3 samplePos = int3(pos.xy * 2, pos.z);
@@ -31,8 +30,8 @@ void main()
 	float4 s10 = imageLoad(srcBuffer, samplePos + int3(1, 0, 0));
 	float4 s01 = imageLoad(srcBuffer, samplePos + int3(0, 1, 0));
 	float4 s11 = imageLoad(srcBuffer, samplePos + int3(1, 1, 0));
-	float3 normal = (unpackNormal(s00.xyz) + unpackNormal(s10.xyz) + 
-		unpackNormal(s01.xyz) + unpackNormal(s11.xyz)) * (1.0f / 4.0f);
+	float3 normal = normalize((unpackNormal(s00.xyz) + unpackNormal(s10.xyz) + 
+		unpackNormal(s01.xyz) + unpackNormal(s11.xyz)) * (1.0f / 4.0f));
 	float w = (s00.w + s10.w + s01.w + s11.w) * (1.0f / 4.0f);
 	imageStore(dstBuffer, pos, float4(packNormal(normal), w));
 }

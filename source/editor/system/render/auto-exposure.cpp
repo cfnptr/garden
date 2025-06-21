@@ -152,8 +152,9 @@ void AutoExposureRenderEditorSystem::preUiRender()
 			if (!limitsPipeline)
 			{	
 				auto deferredSystem = DeferredRenderSystem::Instance::get();
+				ResourceSystem::GraphicsOptions options;
 				limitsPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer());
+					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer(), options);
 			}
 			auto pipelineView = graphicsSystem->get(limitsPipeline);
 			if (pipelineView->isReady())

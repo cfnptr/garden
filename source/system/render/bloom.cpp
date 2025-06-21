@@ -107,21 +107,24 @@ static void createBloomDescriptorSets(ID<GraphicsPipeline> downsamplePipeline, I
 static ID<GraphicsPipeline> createDownsamplePipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
+	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+	toneMappingSystem->setConsts(true, toneMappingSystem->getToneMapper());
+
 	Pipeline::SpecConstValues specConsts =
 	{
 		{ "USE_THRESHOLD", Pipeline::SpecConstValue(useThreshold) },
 		{ "USE_ANTI_FLICKERING", Pipeline::SpecConstValue(useAntiFlickering) }
 	};
 
-	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
-	toneMappingSystem->setConsts(true, toneMappingSystem->getToneMapper());
+	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConsts;
 
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"bloom/downsample", framebuffer, false, true, 0, 0, &specConsts);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("bloom/downsample", framebuffer, options);
 }
 static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 {
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("bloom/upsample", framebuffer);
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("bloom/upsample", framebuffer, options);
 }
 
 //**********************************************************************************************************************

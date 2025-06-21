@@ -97,8 +97,9 @@ void MeshGizmosEditorSystem::init()
 	else
 		framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
 
-	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer);
-	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer);
+	ResourceSystem::GraphicsOptions options;
+	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer, options);
+	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer, options);
 
 	graphicsSystem->getCubeVertexBuffer(); // Note: allocating default cube in advance.
 	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 

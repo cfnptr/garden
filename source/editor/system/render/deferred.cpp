@@ -134,8 +134,13 @@ void DeferredRenderEditorSystem::deferredRender()
 			{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
 			{ "USE_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 		};
-		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline("editor/pbr-lighting",
-			deferredSystem->getGFramebuffer(), deferredSystem->useAsyncRecording(), true, 0, 0, &specConstValues);
+
+		ResourceSystem::GraphicsOptions options;
+		options.useAsyncRecording = deferredSystem->useAsyncRecording();
+		options.specConstValues = &specConstValues;
+
+		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+			"editor/pbr-lighting", deferredSystem->getGFramebuffer(), options);
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -222,8 +227,9 @@ void DeferredRenderEditorSystem::preLdrRender()
 	if (!bufferPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		ResourceSystem::GraphicsOptions options;
 		bufferPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/gbuffer-data", deferredSystem->getLdrFramebuffer());
+			"editor/gbuffer-data", deferredSystem->getLdrFramebuffer(), options);
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();

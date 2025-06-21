@@ -159,7 +159,9 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
 	auto framebuffer = deferredSystem ? deferredSystem->getHdrFramebuffer() : 
 		ForwardRenderSystem::Instance::get()->getColorFramebuffer();
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, true);
+	ResourceSystem::GraphicsOptions options;
+	options.useAsyncRecording = true;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, options);
 }
 
 //**********************************************************************************************************************
@@ -184,6 +186,7 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!spriteRenderView->colorMapPath.empty())
 		serializer.write("colorMapPath", spriteRenderView->colorMapPath.generic_string());
+	serializer.write("taskPriority", spriteRenderView->taskPriority);
 	#endif
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
@@ -205,11 +208,14 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	spriteRenderView->colorMapPath = colorMapPath;
 	#endif
 
+	float taskPriority = 0.0f;
+	deserializer.read("taskPriority", taskPriority);
+
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (spriteRenderView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
+		Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags, taskPriority);
 }
 
 //**********************************************************************************************************************
@@ -235,6 +241,7 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 		if (spriteFrameView->isArray)
 			serializer.write("isArray", true);
 	}
+	serializer.write("taskPriority", spriteFrameView->taskPriority);
 	#endif
 }
 void SpriteRenderSystem::animateAsync(View<Component> component,
@@ -305,12 +312,15 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	deserializer.read("isArray", boolValue);
 	frame.isArray = boolValue;
 
+	float taskPriority = 0.0f;
+	deserializer.read("taskPriority", taskPriority);
+
 	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
 	if (frame.isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
-	frame.descriptorSet = {}; // See the imageLoaded()
+	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, Image::Usage::Sampled | 
+		Image::Usage::TransferDst, 1, Image::Strategy::Default, flags, taskPriority);
+	frame.descriptorSet = {}; // Note: See the imageLoaded()
 }
 
 //**********************************************************************************************************************

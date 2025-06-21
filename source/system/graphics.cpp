@@ -1234,8 +1234,11 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 {
 	if (!linePipeline)
 	{
+		ResourceSystem::GraphicsOptions options;
+		options.loadAsync = false;
+
 		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/wireframe-line", swapchainFramebuffer, false, false);
+			"editor/wireframe-line", swapchainFramebuffer, options);
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
@@ -1256,8 +1259,11 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 {
 	if (!aabbPipeline)
 	{
+		ResourceSystem::GraphicsOptions options;
+		options.loadAsync = false;
+
 		aabbPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/aabb-lines", GraphicsAPI::get()->currentFramebuffer, false, false);
+			"editor/aabb-lines", GraphicsAPI::get()->currentFramebuffer, options);
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);

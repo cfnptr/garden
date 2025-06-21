@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/graphics/vulkan/api.hpp"
+#include "garden/system/input.hpp"
 #include "garden/file.hpp"
 #include "mpio/os.hpp"
 

@@ -29,7 +29,7 @@ namespace garden
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
-	f32x4 color = f32x4::one;        /**< Texture color multiplier. */
+	f32x4 color = f32x4::one;              /**< Texture color multiplier. */
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
 	float2 uvSize = float2::one;           /**< Texture UV size. */
@@ -37,6 +37,7 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = {};            /**< Color map texture path. */
+	float taskPriority = 0.0f;             /**< Texture load task priority. */
 	#endif
 
 	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
@@ -68,6 +69,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = {};
+	float taskPriority = 0.0f;
 	#endif
 
 	SpriteAnimationFrame() : isEnabled(true), animateIsEnabled(false), animateColor(false), animateUvSize(false),

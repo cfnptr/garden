@@ -258,16 +258,6 @@ public:
 	};
 
 	/**
-	 * @brief Graphics pipeline properties overrides.
-	 * @details It allows to override properties specified in the shader file.
-	 */
-	struct StateOverrides final
-	{
-		PipelineStates pipelineStates;
-		SamplerStates samplerStates;
-		BlendStates blendStates;
-	};
-	/**
 	 * @brief Graphics pipeline shader code overrides.
 	 * @details It allows to override pipeline shader code.
 	 */
@@ -277,7 +267,6 @@ public:
 		vector<uint8> vertexCode;
 		vector<uint8> fragmentCode;
 	};
-
 	/**
 	 * @brief Graphics pipeline create data container.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
