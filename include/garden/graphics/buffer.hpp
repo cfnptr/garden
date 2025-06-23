@@ -73,7 +73,7 @@ public:
 	enum class Usage : uint32
 	{
 		None          = 0x0000, /**< No buffer usage specified, zero mask. */
-		TransferQ     = 0x0001, /**< Buffer can be used in the transfer command buffer. */
+		TransferQ     = 0x0001, /**< Buffer can be used in the transfer only command buffer. */
 		ComputeQ      = 0x0002, /**< Buffer can be used in the compute command buffer. */
 		TransferSrc   = 0x0004, /**< Buffer can be used as the source of a transfer command. */
 		TransferDst   = 0x0008, /**< Buffer can be used as the destination of a transfer command. */

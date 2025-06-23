@@ -30,15 +30,14 @@ namespace garden::graphics
  */
 class AddressPool final
 {
+	vector<uint8> isFlushed;
 	vector<ID<Buffer>> resources;
 	vector<uint64> deviceAddresses;
 	vector<ID<Buffer>> barrierBuffers;
 	vector<uint32> freeAllocs;
 	DescriptorSet::Buffers addressBuffers = {};
 	uint32 inFlightCount = 0;
-	uint32 inFlightIndex = 0;
 	uint32 capacity = 0;
-	uint32 flushCount = 0;
 	Buffer::Usage addressBufferUsage = {};
 public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -85,13 +84,14 @@ public:
 	void free(uint32 allocation);
 
 	/**
-	 * @brief Flushes current in-flight device address buffer.
+	 * @brief Recreates device address pool buffers.
 	 */
-	void flush();
+	void recreate();
 	/**
-	 * @brief Update in-flight frame counter.
+	 * @brief Flushes current in-flight device address buffer.
+	 * @param inFlightIndex current in flight frame index
 	 */
-	void nextFrame();
+	void flush(uint32 inFlightIndex);
 
 	/**
 	 * @brief Destroys device address pool buffers.

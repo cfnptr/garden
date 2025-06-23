@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/address-pool.hpp"
-#include "garden/graphics/api.hpp"
+#include "garden/graphics/vulkan/command-buffer.hpp"
 
 using namespace garden;
 using namespace garden::graphics;
@@ -44,7 +44,7 @@ static void destroyAddressBuffers(const DescriptorSet::Buffers& addressBuffers)
 	}
 }
 
-AddressPool::AddressPool(uint32 inFlightCount, Buffer::Usage addressBufferUsage)
+AddressPool::AddressPool(uint32 inFlightCount, Buffer::Usage addressBufferUsage) : isFlushed(inFlightCount, 0)
 {
 	this->inFlightCount = inFlightCount;
 	this->addressBufferUsage = addressBufferUsage;
@@ -90,7 +90,7 @@ uint32 AddressPool::allocate(ID<Buffer> buffer)
 		deviceAddresses[allocation] = deviceAddress;
 	}
 	
-	flushCount = 0;
+	memset(isFlushed.data(), 0, inFlightCount);
 	return allocation;
 }
 void AddressPool::update(uint32 allocation, ID<Buffer> newBuffer)
@@ -100,7 +100,7 @@ void AddressPool::update(uint32 allocation, ID<Buffer> newBuffer)
 	{
 		auto bufferView = GraphicsAPI::get()->bufferPool.get(newBuffer);
 		deviceAddresses[allocation] = bufferView->getDeviceAddress();
-		flushCount = 0;
+		memset(isFlushed.data(), 0, inFlightCount);
 	}
 	else
 	{
@@ -129,9 +129,32 @@ void AddressPool::free(uint32 allocation)
 }
 
 //**********************************************************************************************************************
-void AddressPool::flush()
+void AddressPool::recreate()
 {
-	if (flushCount >= inFlightCount)
+	if (addressBuffers.empty())
+		return;
+
+	destroyAddressBuffers(addressBuffers);
+	addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	auto graphicsAPI = GraphicsAPI::get();
+	for (const auto& buffers : addressBuffers)
+	{
+		for (auto buffer : buffers)
+		{
+			auto bufferView = graphicsAPI->bufferPool.get(buffer);
+			bufferView->setDebugName(debugName + to_string(*buffer));
+		}
+	}
+	#endif
+}
+
+void AddressPool::flush(uint32 inFlightIndex)
+{
+	GARDEN_ASSERT(inFlightIndex < inFlightCount);
+
+	if (isFlushed[inFlightIndex])
 		return;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -171,11 +194,8 @@ void AddressPool::flush()
 	auto bufferView = graphicsAPI->bufferPool.get(buffer);
 	memcpy(bufferView->getMap(), deviceAddresses.data(), deviceAddresses.size() * sizeof(uint64));
 	bufferView->flush();
-	flushCount++;
-}
-void AddressPool::nextFrame()
-{
-	inFlightIndex = (inFlightIndex + 1) % inFlightCount;
+
+	isFlushed[inFlightIndex] = 1;
 }
 
 void AddressPool::destroy()
@@ -223,13 +243,19 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 	auto bufferCount = (uint32)resources.size();
 	uint32 barrierCount = 0;
 
-	for (uint32 i = 0; i < bufferCount; i++)
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (!buffers[i])
-			continue;
-		barriers[barrierCount++] = buffers[i];
-		// TODO: check state before adding, and skip buffers without changes
+		for (uint32 i = 0; i < bufferCount; i++)
+		{
+			if (!buffers[i])
+				continue;
+
+			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
+			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView)))
+				barriers[barrierCount++] = buffers[i];
+		}
 	}
+	else abort();
 
 	BufferBarrierCommand command;
 	command.newState = newState;

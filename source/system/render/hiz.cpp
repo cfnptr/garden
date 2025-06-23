@@ -72,11 +72,11 @@ static void createHizDescriptorSets(ID<GraphicsPipeline> pipeline,
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto depthBufferView = graphicsSystem->get(deferredSystem->getDepthStencilBuffer());
+	auto gFramebuffer = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto mipCount = (uint8)imageViews.size();
 	descriptorSets.resize(mipCount);
 
-	auto uniforms = getUniforms(depthBufferView->getDefaultView());
+	auto uniforms = getUniforms(gFramebuffer->getDepthStencilAttachment().imageView);
 	auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz0");
 	descriptorSets[0] = descriptorSet;

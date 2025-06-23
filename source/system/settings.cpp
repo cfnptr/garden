@@ -234,7 +234,7 @@ void SettingsSystem::setBool(const string& name, bool value)
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Bool, 
 		"Incorrect setting [" + string(name) + "] type");
-	searchResult.value().data = value;
+	searchResult->second.data = value;
 }
 
 void SettingsSystem::setString(const string& name, string_view value)
@@ -268,5 +268,5 @@ void SettingsSystem::setColor(const string& name, Color value)
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Color, 
 		"Incorrect setting [" + string(name) + "] type");
-	searchResult.value().data = (uint32)value;
+	searchResult->second.data = (uint32)value;
 }

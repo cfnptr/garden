@@ -79,22 +79,6 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
 }
 
 //**********************************************************************************************************************
-constexpr uint32 writeAccessMask =
-	VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-	VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT |
-	VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
-	VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
-
-constexpr bool isDifferentState(const Image::BarrierState& oldState, const Image::BarrierState& newState) noexcept
-{
-	return oldState.layout != newState.layout || (oldState.access & writeAccessMask);
-}
-constexpr bool isDifferentState(const Buffer::BarrierState& oldState) noexcept
-{
-	return oldState.access & writeAccessMask;
-}
-
-//**********************************************************************************************************************
 static void addImageBarrier(VulkanAPI* vulkanAPI, const Image::BarrierState& oldImageState, 
 	const Image::BarrierState& newImageState, vk::Image image, uint32 baseMip, uint32 mipCount, 
 	uint32 baseLayer, uint32 layerCount, vk::ImageAspectFlags aspectFlags)
@@ -115,7 +99,7 @@ static void addImageBarrier(VulkanAPI* vulkanAPI,
 	auto& oldImageState = vulkanAPI->getImageState(
 		view->getImage(), view->getBaseMip(), view->getBaseLayer());
 
-	if (isDifferentState(oldImageState, newImageState))
+	if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 	{
 		addImageBarrier(vulkanAPI, oldImageState, newImageState, (VkImage)ResourceExt::getInstance(
 			**image), view->getBaseMip(), 1, view->getBaseLayer(), 1, aspectFlags);
@@ -139,7 +123,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, const Image::BarrierState& ne
 	if (ImageExt::isFullBarrier(**imageView) && newFullBarrier)
 	{
 		auto& oldImageState = vulkanAPI->getImageState(image, 0, 0);
-		if (isDifferentState(oldImageState, newImageState))
+		if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 		{
 			addImageBarrier(vulkanAPI, oldImageState, newImageState, 
 				vkImage, 0, mipCount, 0, layerCount, aspectFlags);
@@ -159,7 +143,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, const Image::BarrierState& ne
 			for (uint32 layer = baseLayer; layer < layerCount; layer++)
 			{
 				auto& oldImageState = vulkanAPI->getImageState(image, mip, layer);
-				if (isDifferentState(oldImageState, newImageState))
+				if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 				{
 					addImageBarrier(vulkanAPI, oldImageState, newImageState, 
 						vkImage, mip, 1, layer, 1, aspectFlags);
@@ -173,8 +157,8 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, const Image::BarrierState& ne
 	ImageExt::isFullBarrier(**imageView) = newFullBarrier;
 }
 
-static void addBufferBarrier(VulkanAPI* vulkanAPI, const Buffer::BarrierState& newBufferState, 
-	ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0)
+void VulkanCommandBuffer::addBufferBarrier(VulkanAPI* vulkanAPI, 
+	const Buffer::BarrierState& newBufferState, ID<Buffer> buffer, uint64 size, uint64 offset)
 {
 	// TODO: we can specify only required buffer range, not full range.
 	auto& oldBufferState = vulkanAPI->getBufferState(buffer);

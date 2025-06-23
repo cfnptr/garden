@@ -33,7 +33,9 @@ public:
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 
-	void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
+	static void addBufferBarrier(VulkanAPI* vulkanAPI, const Buffer::BarrierState& newBufferState, 
+		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
+	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
 		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
 	void addRenderPassBarriers(psize offset);
 	void processPipelineBarriers();
@@ -68,12 +70,28 @@ public:
 	void processCommand(const EndLabelCommand& command) final;
 	void processCommand(const InsertLabelCommand& command) final;
 	#endif
-public:
+
 	VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType type);
 	~VulkanCommandBuffer() final;
 
 	void submit() final;
 	bool isBusy() final;
+
+	static constexpr uint32 writeAccessMask =
+		VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+		VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT |
+		VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
+		VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
+
+	static constexpr bool isDifferentState(const Image::BarrierState& oldState, 
+		const Image::BarrierState& newState) noexcept
+	{
+		return oldState.layout != newState.layout || (oldState.access & writeAccessMask);
+	}
+	static constexpr bool isDifferentState(const Buffer::BarrierState& oldState) noexcept
+	{
+		return oldState.access & writeAccessMask;
+	}
 };
 
 } // namespace garden::graphics
