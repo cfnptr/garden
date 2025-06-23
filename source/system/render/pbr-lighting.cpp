@@ -814,20 +814,13 @@ void PbrLightingRenderSystem::hdrRender()
 	}
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	static const auto uvToNDC = f32x4x4
-	(
-		2.0f, 0.0f, 0.0f, -1.0f,
-		0.0f, 2.0f, 0.0f, -1.0f,
-		0.0f, 0.0f, 1.0f,  0.0f,
-		0.0f, 0.0f, 0.0f,  1.0f
-	);
 
 	DescriptorSet::Range descriptorSetRange[2];
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDS);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
 	LightingPC pc;
-	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * uvToNDC);
+	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * f32x4x4::uvToNDC);
 	pc.shadow = (float4)cameraConstants.shadowColor;
 	pc.emissiveCoeff = cameraConstants.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;

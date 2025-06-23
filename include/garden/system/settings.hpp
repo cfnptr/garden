@@ -19,8 +19,9 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "ecsm.hpp"
 #include "math/color.hpp"
+#include "ecsm.hpp"
+#include <map>
 
 namespace garden
 {
@@ -47,7 +48,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	};
 
 	void* confReader = nullptr;
-	tsl::robin_map<string, Item> items;
+	map<string, Item> items;
 
 	/**
 	 * @brief Creates a new settings system instance.

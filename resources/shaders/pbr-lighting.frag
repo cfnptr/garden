@@ -87,8 +87,8 @@ void main()
 	// TODO: or maybe we can utilize filament micro/macro AO?
 	gBuffer.reflectance *= pc.reflectanceCoeff;
 
-	float4 worldPos = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
-	float3 viewDirection = calcViewDirection(worldPos.xyz / worldPos.w);
+	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
+	float3 viewDirection = calcViewDirection(worldPosition.xyz / worldPosition.w);
 	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
 
 	if (USE_EMISSIVE_BUFFER)

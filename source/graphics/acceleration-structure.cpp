@@ -27,6 +27,21 @@ bool AccelerationStructure::destroy()
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
+	if (type == AccelerationStructure::Type::Blas)
+	{
+		for (auto& tlas : graphicsAPI->tlasPool)
+		{
+			if (!tlas.instance)
+				continue;
+
+			for (const auto& instance : TlasExt::getInstances(tlas))
+			{
+				auto blasView = graphicsAPI->blasPool.get(instance.blas);
+				if (this->instance == blasView->instance)
+					return false;
+			}
+		}
+	}
 
 	#if GARDEN_DEBUG
 	if (!graphicsAPI->forceResourceDestroy)
@@ -61,22 +76,6 @@ bool AccelerationStructure::destroy()
 							"Descriptor set [" + descriptorSet.getDebugName() + "] is "
 							"still using destroyed AS storage [" + debugName + "]");
 					}
-				}
-			}
-		}
-
-		if (type == AccelerationStructure::Type::Blas)
-		{
-			auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this);
-			for (auto& tlas : graphicsAPI->tlasPool)
-			{
-				if (!tlas.instance)
-					continue;
-
-				for (const auto& instance : TlasExt::getInstances(tlas))
-				{
-					GARDEN_ASSERT_MSG(thisBlas != instance.blas, "TLAS [" + tlas.debugName + 
-						"] is still using destroyed BLAS [" + debugName + "]");
 				}
 			}
 		}

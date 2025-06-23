@@ -144,8 +144,8 @@ void main()
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_WORLD_POSITION)
 	{
 		float depth = texture(depthBuffer, fs.texCoords).r;
-		float3 worldPos = calcWorldPosition(depth, fs.texCoords, pc.invViewProj);
-		fb.color = float4(log(abs(worldPos) + float3(1.0f)) * 0.1f, 1.0f);
+		float3 worldPosition = calcWorldPosition(depth, fs.texCoords, pc.invViewProj);
+		fb.color = float4(log(abs(worldPosition) + float3(1.0f)) * 0.1f, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_SHADOW_COLOR)
 	{
