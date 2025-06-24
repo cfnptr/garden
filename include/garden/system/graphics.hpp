@@ -650,6 +650,15 @@ public:
 	 * @param sampler target sampler instance or null
 	 */
 	void destroy(ID<Sampler> sampler);
+	/**
+	 * @brief Destroys vector with sampler instances.
+	 * @param[in] samplers target vector with sampler instances or/and nulls
+	 */
+	void destroy(const vector<ID<Sampler>>& samplers)
+	{
+		for (auto sampler : samplers)
+			destroy(sampler);
+	}
 
 	/**
 	 * @brief Returns sampler data accessor.
@@ -831,6 +840,15 @@ public:
 	 * @param blas target BLAS instance or null
 	 */
 	void destroy(ID<Blas> blas);
+	/**
+	 * @brief Destroys vector with BLAS instances.
+	 * @param[in] samplers target vector with BLAS instances or/and nulls
+	 */
+	void destroy(const vector<ID<Blas>>& blases)
+	{
+		for (auto blas : blases)
+			destroy(blas);
+	}
 
 	/**
 	 * @brief Returns bottom level acceleration structure data accessor. (BLAS)
@@ -857,6 +875,15 @@ public:
 	 * @param tlas target TLAS instance or null
 	 */
 	void destroy(ID<Tlas> tlas);
+	/**
+	 * @brief Destroys vector with TLAS instances.
+	 * @param[in] samplers target vector with TLAS instances or/and nulls
+	 */
+	void destroy(const vector<ID<Tlas>>& tlases)
+	{
+		for (auto tlas : tlases)
+			destroy(tlas);
+	}
 
 	/**
 	 * @brief Returns top level acceleration structure data accessor. (TLAS)

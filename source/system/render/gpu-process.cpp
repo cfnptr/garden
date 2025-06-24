@@ -138,8 +138,7 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 		imageSize = max(imageSize / 2, uint2(1));
 	}
 
-	for (auto imageView : imageViews)
-		graphicsSystem->destroy(imageView);
+	graphicsSystem->destroy(imageViews);
 }
 void GpuProcessSystem::normalMapMips(ID<Image> normalMap)
 {

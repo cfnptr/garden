@@ -340,9 +340,9 @@ void GraphicsSystem::update()
 			outOfDateSwapchain = true;
 			GARDEN_LOG_DEBUG("Out of date swapchain. [Acquire]");
 		}
-	}
 
-	updateCurrentFramebuffer(swapchainFramebuffer, swapchain->getFramebufferSize());
+		updateCurrentFramebuffer(swapchainFramebuffer, swapchain->getFramebufferSize());
+	}
 	
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
@@ -352,7 +352,7 @@ void GraphicsSystem::update()
 		forceRecreateSwapchain = false;
 	}
 
-	if (camera)
+	if (camera && isFramebufferSizeValid)
 	{
 		prepareCameraConstants(camera, directionalLight,
 			getScaledFramebufferSize(), currentCameraConstants);

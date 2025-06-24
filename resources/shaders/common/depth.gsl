@@ -56,5 +56,10 @@ float3 calcViewDirection(float depth, float2 texCoords, float4x4 invViewProj)
 	float3 worldPosition = calcWorldPosition(depth, texCoords, invViewProj);
 	return calcViewDirection(worldPosition);
 }
+float3 calcViewDirectionUV(float2 texCoords, float depth, float4x4 uvToWorld)
+{
+	float4 position = uvToWorld * float4(texCoords, depth, 1.0f);
+	return calcViewDirection(position.xyz / position.w);
+}
 
 #endif // DEPTH_GSL

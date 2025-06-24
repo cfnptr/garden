@@ -70,7 +70,7 @@ private:
 public:
 	bool isEnabled = true; /**< Is screen space horizon-based ambient occlusion rendering enabled. */
 	float radius = 0.5f;
-	float bias = 0.3f;
+	float bias = 0.4f;
 	float intensity = 1.0f;
 
 	/**

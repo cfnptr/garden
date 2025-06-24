@@ -309,10 +309,8 @@ void ImGuiRenderSystem::postDeinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		for (auto buffer : indexBuffers)
-			graphicsSystem->destroy(buffer);
-		for (auto buffer : vertexBuffers)
-			graphicsSystem->destroy(buffer);
+		graphicsSystem->destroy(indexBuffers);
+		graphicsSystem->destroy(vertexBuffers);
 		graphicsSystem->destroy(fontDescriptorSet);
 		graphicsSystem->destroy(fontTexture);
 		graphicsSystem->destroy(pipeline);
@@ -666,14 +664,12 @@ void ImGuiRenderSystem::uiRender()
 
 		if (vertexBuffers.size() == 0 || graphicsSystem->get(vertexBuffers[0])->getBinarySize() < vertexSize)
 		{
-			for (auto buffer : vertexBuffers)
-				graphicsSystem->destroy(buffer);
+			graphicsSystem->destroy(vertexBuffers);
 			createBuffers(vertexBuffers, vertexSize, Buffer::Usage::Vertex);
 		}
 		if (indexBuffers.size() == 0 || graphicsSystem->get(indexBuffers[0])->getBinarySize() < indexSize)
 		{
-			for (auto buffer : indexBuffers)
-				graphicsSystem->destroy(buffer);
+			graphicsSystem->destroy(indexBuffers);
 			createBuffers(indexBuffers, indexSize, Buffer::Usage::Index);
 		}
 
