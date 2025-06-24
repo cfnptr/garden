@@ -86,7 +86,7 @@ public:
 	static constexpr bool isDifferentState(const Image::BarrierState& oldState, 
 		const Image::BarrierState& newState) noexcept
 	{
-		return oldState.layout != newState.layout || (oldState.access & writeAccessMask);
+		return oldState.layout != newState.layout || (oldState.access & writeAccessMask) || oldState.layoutTransition;
 	}
 	static constexpr bool isDifferentState(const Buffer::BarrierState& oldState) noexcept
 	{

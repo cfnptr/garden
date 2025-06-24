@@ -90,9 +90,11 @@ private:
 	vector<ID<Framebuffer>> reflFramebuffers;
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
+	ID<GraphicsPipeline> shadowBlurPipeline = {};
+	ID<GraphicsPipeline> aoBlurPipeline = {};
 	ID<DescriptorSet> lightingDS = {};
-	ID<DescriptorSet> shadowDenoiseDS = {};
-	ID<DescriptorSet> aoDenoiseDS = {};
+	ID<DescriptorSet> shadowBlurDS = {};
+	ID<DescriptorSet> aoBlurDS = {};
 	bool hasShadowBuffer = false;
 	bool hasAoBuffer = false;
 	bool hasReflBuffer = false;

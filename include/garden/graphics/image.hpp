@@ -240,6 +240,7 @@ public:
 		uint32 access = 0;
 		uint32 layout = 0;
 		uint32 stage = 0;
+		bool layoutTransition = false;
 	};
 
 	using Layers = vector<const void*>;
