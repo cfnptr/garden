@@ -131,11 +131,9 @@ void AddressPool::free(uint32 allocation)
 //**********************************************************************************************************************
 void AddressPool::recreate()
 {
-	if (addressBuffers.empty())
-		return;
-
 	destroyAddressBuffers(addressBuffers);
 	addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
+	memset(isFlushed.data(), 0, inFlightCount);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto graphicsAPI = GraphicsAPI::get();
@@ -150,7 +148,7 @@ void AddressPool::recreate()
 	#endif
 }
 
-void AddressPool::flush(uint32 inFlightIndex)
+void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 {
 	GARDEN_ASSERT(inFlightIndex < inFlightCount);
 
@@ -158,7 +156,7 @@ void AddressPool::flush(uint32 inFlightIndex)
 		return;
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto newAddressBuffer = false;
+	newAddressBuffer = false;
 
 	if (!addressBuffers.empty())
 	{

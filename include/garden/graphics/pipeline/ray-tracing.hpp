@@ -125,9 +125,9 @@ public:
 
 	/**
 	 * @brief Creates and transfers ray tracing pipeline shader binding table. (SBT)
-	 * @param computeQ SBT buffer can be used in the compute command buffer
+	 * @param flags additional SBT buffer flags
 	 */
-	SBT createSBT(bool computeQ = false);
+	SBT createSBT(Buffer::Usage flags = {});
 
 	/**
 	 * @brief Executes ray tracing shader with specified SBT and 3D generation group size.

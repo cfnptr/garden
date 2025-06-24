@@ -75,7 +75,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       uses: pierotofy/set-swap-space@master
       with:
-        swap-size-gb: 10
+        swap-size-gb: 15
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build

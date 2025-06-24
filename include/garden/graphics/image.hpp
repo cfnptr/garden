@@ -106,28 +106,28 @@ public:
 		SintR32G32,         /**< 32-bit signed integer (red and green channel) format. */
 		SintR32G32B32A32,   /**< 32-bit signed integer (red, green, blue, alpha channel) format. */
 
-		UnormR8,            /**< 8-bit normalized uint as float (red only channel) format. */
-		UnormR8G8,          /**< 8-bit normalized uint as float (red and green channel) format. */
-		UnormR8G8B8A8,      /**< 8-bit normalized uint as float (red, green, blue, alpha channel) format. */
-		UnormB8G8R8A8,      /**< 8-bit normalized uint as float (blue, green, red, alpha channel) format. */
-		UnormR16,           /**< 16-bit normalized uint as float (red only channel) format. */
-		UnormR16G16,        /**< 16-bit normalized uint as float (red and green channel) format. */
-		UnormR16G16B16A16,  /**< 16-bit normalized uint as float (red, green, blue, alpha channel) format. */
-		UnormR5G6B5,        /**< normalized uint as float (5-bit red, 6-bit green, 5-bit blue channel) format. */
-		UnormA1R5G5B5,      /**< normalized uint as float (1-bit alpha, 5-bit red/green/blue channel) format. */
-		UnormR5G5B5A1,      /**< normalized uint as float (5-bit red/green/blue channel, 1-bit alpha) format. */
-		UnormB5G5R5A1,      /**< normalized uint as float (5-bit blue/green/red channel, 1-bit alpha) format. */
-		UnormR4G4B4A4,      /**< normalized uint as float (4-bit red/green/blue/alpha channel) format. */
-		UnormB4G4R4A4,      /**< normalized uint as float (4-bit blue/green/red/alpha channel) format. */
-		UnormA2R10G10B10,   /**< normalized uint as float (2-bit alpha, 10-bit red/green/blue channel) format. */
-		UnormA2B10G10R10,   /**< normalized uint as float (2-bit alpha, 10-bit blue/green/red channel) format. */
+		UnormR8,            /**< 8-bit normalized uint as float (red only channel) format. [0.0, 1.0] */
+		UnormR8G8,          /**< 8-bit normalized uint as float (red and green channel) format. [0.0, 1.0] */
+		UnormR8G8B8A8,      /**< 8-bit normalized uint as float (red, green, blue, alpha channel) format. [0.0, 1.0] */
+		UnormB8G8R8A8,      /**< 8-bit normalized uint as float (blue, green, red, alpha channel) format. [0.0, 1.0] */
+		UnormR16,           /**< 16-bit normalized uint as float (red only channel) format. [0.0, 1.0] */
+		UnormR16G16,        /**< 16-bit normalized uint as float (red and green channel) format. [0.0, 1.0] */
+		UnormR16G16B16A16,  /**< 16-bit normalized uint as float (red, green, blue, alpha channel) format. [0.0, 1.0] */
+		UnormR5G6B5,        /**< normalized uint as float (5-bit red, 6-bit green, 5-bit blue channel) format. [0.0, 1.0] */
+		UnormA1R5G5B5,      /**< normalized uint as float (1-bit alpha, 5-bit red/green/blue channel) format. [0.0, 1.0] */
+		UnormR5G5B5A1,      /**< normalized uint as float (5-bit red/green/blue channel, 1-bit alpha) format. [0.0, 1.0] */
+		UnormB5G5R5A1,      /**< normalized uint as float (5-bit blue/green/red channel, 1-bit alpha) format. [0.0, 1.0] */
+		UnormR4G4B4A4,      /**< normalized uint as float (4-bit red/green/blue/alpha channel) format. [0.0, 1.0] */
+		UnormB4G4R4A4,      /**< normalized uint as float (4-bit blue/green/red/alpha channel) format. [0.0, 1.0] */
+		UnormA2R10G10B10,   /**< normalized uint as float (2-bit alpha, 10-bit red/green/blue channel) format. [0.0, 1.0] */
+		UnormA2B10G10R10,   /**< normalized uint as float (2-bit alpha, 10-bit blue/green/red channel) format. [0.0, 1.0] */
 
-		SnormR8,            /**< 8-bit normalized uint as float (red only channel) format. */
-		SnormR8G8,          /**< 8-bit normalized uint as float (red and green channel) format. */
-		SnormR8G8B8A8,      /**< 8-bit normalized uint as float (red, green, blue, alpha channel) format. */
-		SnormR16,           /**< 16-bit normalized uint as float (red only channel) format. */
-		SnormR16G16,        /**< 16-bit normalized uint as float (red and green channel) format. */
-		SnormR16G16B16A16,  /**< 16-bit normalized uint as float (red, green, blue, alpha channel) format. */
+		SnormR8,            /**< 8-bit normalized int as float (red only channel) format. [-1.0, 1.0] */
+		SnormR8G8,          /**< 8-bit normalized int as float (red and green channel) format. [-1.0, 1.0] */
+		SnormR8G8B8A8,      /**< 8-bit normalized int as float (red, green, blue, alpha channel) format. [-1.0, 1.0] */
+		SnormR16,           /**< 16-bit normalized int as float (red only channel) format. [-1.0, 1.0] */
+		SnormR16G16,        /**< 16-bit normalized int as float (red and green channel) format. [-1.0, 1.0] */
+		SnormR16G16B16A16,  /**< 16-bit normalized int as float (red, green, blue, alpha channel) format. [-1.0, 1.0] */
 
 		SfloatR16,          /**< 16-bit signed floating point (red only channel) format. */
 		SfloatR16G16,       /**< 16-bit signed floating point (red and green channel) format. */

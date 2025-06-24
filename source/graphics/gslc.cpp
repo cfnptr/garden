@@ -1139,23 +1139,23 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 //******************************************************************************************************************
 static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
-	if (lineData.word == "debugPrintf")
+	if (lineData.word == "ext.debugPrintf")
 		fileData.outputFileStream << "#extension GL_EXT_debug_printf : require";
-	else if (lineData.word == "explicitTypes")
+	else if (lineData.word == "ext.explicitTypes")
 		fileData.outputFileStream << "#extension GL_EXT_shader_explicit_arithmetic_types : require";
-	else if (lineData.word == "int8BitStorage")
+	else if (lineData.word == "ext.int8BitStorage")
 		fileData.outputFileStream << "#extension GL_EXT_shader_8bit_storage : require";
-	else if (lineData.word == "int16BitStorage")
+	else if (lineData.word == "ext.int16BitStorage")
 		fileData.outputFileStream << "#extension GL_EXT_shader_16bit_storage : require";
-	else if (lineData.word == "bindless")
+	else if (lineData.word == "ext.bindless")
 		fileData.outputFileStream << "#extension GL_EXT_nonuniform_qualifier : require";
-	else if (lineData.word == "scalarLayout")
+	else if (lineData.word == "ext.scalarLayout")
 		fileData.outputFileStream << "#extension GL_EXT_scalar_block_layout : require";
-	else if (lineData.word == "bufferReference")
+	else if (lineData.word == "ext.bufferReference")
 		fileData.outputFileStream << "#extension GL_EXT_buffer_reference : require";
-	else if (lineData.word == "subgroupBasic")
+	else if (lineData.word == "ext.subgroupBasic")
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_basic : require";
-	else if (lineData.word == "subgroupVote")
+	else if (lineData.word == "ext.subgroupVote")
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_vote : require";
 	else throw CompileError("unknown GSL feature", fileData.lineIndex, lineData.word);
 	lineData.isFeature = false;

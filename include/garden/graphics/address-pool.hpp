@@ -87,11 +87,23 @@ public:
 	 * @brief Recreates device address pool buffers.
 	 */
 	void recreate();
+	
+	/**
+	 * @brief Flushes current in-flight device address buffer.
+	 *
+	 * @param inFlightIndex current in flight frame index
+	 * @param newAddressBuffer is address buffer was recreated
+	 */
+	void flush(uint32 inFlightIndex, bool& newAddressBuffer);
 	/**
 	 * @brief Flushes current in-flight device address buffer.
 	 * @param inFlightIndex current in flight frame index
 	 */
-	void flush(uint32 inFlightIndex);
+	void flush(uint32 inFlightIndex)
+	{
+		bool newAddressBuffer;
+		flush(inFlightIndex, newAddressBuffer);
+	}
 
 	/**
 	 * @brief Destroys device address pool buffers.

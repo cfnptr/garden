@@ -16,20 +16,20 @@
 #define G_BUFFER_DATA_H
 
 #define G_BUFFER_DRAW_MODE_OFF 0
-#define G_BUFFER_DRAW_MODE_BASE_COLOR 1
-#define G_BUFFER_DRAW_MODE_SPECULAR_FACTOR 2
-#define G_BUFFER_DRAW_MODE_TRANSMISSION 3
-#define G_BUFFER_DRAW_MODE_METALLIC 4
-#define G_BUFFER_DRAW_MODE_ROUGHNESS 5
-#define G_BUFFER_DRAW_MODE_MATERIAL_AO 6
-#define G_BUFFER_DRAW_MODE_REFLECTANCE 7
-#define G_BUFFER_DRAW_MODE_CC_ROUGHNESS 8
-#define G_BUFFER_DRAW_MODE_NORMALS 9
-#define G_BUFFER_DRAW_MODE_MATERIAL_SHADOWS 10
-#define G_BUFFER_DRAW_MODE_EMISSIVE_COLOR 11
-#define G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR 12
-#define G_BUFFER_DRAW_MODE_GI_COLOR 13
-#define G_BUFFER_DRAW_MODE_LIGHTING 14
+#define G_BUFFER_DRAW_MODE_LIGHTING 1
+#define G_BUFFER_DRAW_MODE_BASE_COLOR 2
+#define G_BUFFER_DRAW_MODE_SPECULAR_FACTOR 3
+#define G_BUFFER_DRAW_MODE_TRANSMISSION 4
+#define G_BUFFER_DRAW_MODE_METALLIC 5
+#define G_BUFFER_DRAW_MODE_ROUGHNESS 6
+#define G_BUFFER_DRAW_MODE_MATERIAL_AO 7
+#define G_BUFFER_DRAW_MODE_REFLECTANCE 8
+#define G_BUFFER_DRAW_MODE_CC_ROUGHNESS 9
+#define G_BUFFER_DRAW_MODE_NORMALS 10
+#define G_BUFFER_DRAW_MODE_MATERIAL_SHADOWS 11
+#define G_BUFFER_DRAW_MODE_EMISSIVE_COLOR 12
+#define G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR 13
+#define G_BUFFER_DRAW_MODE_GI_COLOR 14
 #define G_BUFFER_DRAW_MODE_HDR_BUFFER 15
 #define G_BUFFER_DRAW_MODE_OIT_ACCUM_COLOR 16
 #define G_BUFFER_DRAW_MODE_OIT_ACCUM_ALPHA 17
@@ -48,10 +48,10 @@
 #ifdef __GARDEN__
 static const char* G_BUFFER_DRAW_MODE_NAMES[G_BUFFER_DRAW_MODE_COUNT] =
 {
-	"Off", "Base Color", "Specular Factor", "Transmission", "Metallic", 
-	"Roughness", "Material AO", "Reflectance", "Clear Coat Roughness", 
+	"Off", "Lighting", "Base Color", "Specular Factor", "Transmission", 
+	"Metallic", "Roughness", "Material AO", "Reflectance", "Clear Coat Roughness", 
 	"Normals", "Material Shadows", "Emissive Color", "Emissive Factor", 
-	"GI Color", "Lighting", "HDR Buffer", "OIT Accum Color", "OI Accum Alpha",
+	"GI Color", "HDR Buffer", "OIT Accum Color", "OI Accum Alpha",
 	"OIT Revealage", "Depth Buffer", "World Positions", "Global Shadow Color",
 	"Global Shadow Alpha", "Global Denoised Shadow Color", 
 	"Global Denoised Shadow Alpha", "Global AO", "Global Denoised AO",

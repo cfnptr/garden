@@ -153,6 +153,17 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		auto threadIndex = graphicsSystem->getThreadCount() - 1;
+		pipelineView->bindAsync(0, threadIndex);
+		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
+		pipelineView->pushConstantsAsync(&lightingPC, threadIndex);
+		pipelineView->drawFullscreenAsync(threadIndex);
+	}
+	else
+	{
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->pushConstants(&lightingPC);
+		pipelineView->drawFullscreen();
 		// TODO: also support translucent overrides.
 	}
 }

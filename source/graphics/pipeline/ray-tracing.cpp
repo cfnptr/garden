@@ -153,7 +153,7 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 }
 
 //**********************************************************************************************************************
-RayTracingPipeline::SBT RayTracingPipeline::createSBT(bool computeQ)
+RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 {
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
@@ -179,9 +179,8 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(bool computeQ)
 		auto callRegionSize = alignSize(callGroupCount * handleSizeAligned, baseAlignment);
 		auto sbtSize = (rayGenRegionSize + missRegionSize + hitRegionSize + callRegionSize) * variantCount + baseAlignment;
 
-		auto sbtUsage = Buffer::Usage::SBT | Buffer::Usage::DeviceAddress | Buffer::Usage::TransferDst;
-		if (computeQ) sbtUsage |= Buffer::Usage::ComputeQ;
-		sbt.buffer = vulkanAPI->bufferPool.create(sbtUsage, Buffer::CpuAccess::None, 
+		constexpr auto sbtUsage = Buffer::Usage::SBT | Buffer::Usage::DeviceAddress | Buffer::Usage::TransferDst;
+		sbt.buffer = vulkanAPI->bufferPool.create(sbtUsage | flags, Buffer::CpuAccess::None, 
 			Buffer::Location::PreferGPU, Buffer::Strategy::Size, sbtSize, 0);
 		auto stagingBuffer = vulkanAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 			Buffer::CpuAccess::RandomReadWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, sbtSize, 0);
@@ -271,7 +270,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(bool computeQ)
 		stagingBufferView->flush();
 
 		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::ComputeQ;
+		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
 		#endif
 
 		Buffer::copy(stagingBuffer, sbt.buffer);

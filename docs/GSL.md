@@ -272,7 +272,7 @@ rayPayload float4 payload;
 Allows to declare uniforms without specified array size.
 
 ```
-#feature bindless
+#feature ext.bindless
 
 uniform sampler2D textures[];
 ```
@@ -283,8 +283,8 @@ You can access GPU storage buffer data by it device address, which can
 be passed to the shader using push constants or another storage buffer.
 
 ```
-#feature bufferReference
-#feature scalarLayout
+#feature ext.bufferReference
+#feature ext.scalarLayout
 
 buffer reference scalar VertexBuffer
 {
@@ -305,17 +305,17 @@ TODO:
 To enable specific GLSL extensions use this shorting:
 
 ```
-#feature bindless
+#feature ext.bindless
 ```
 
-**Features**: [ debugPrintf, bindless, scalarLayout, bufferReference, subgroupBasic, subgroupVote ]
+**Features**:
 
-* debugPrintf - [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
-* explicitTypes - [GL_EXT_shader_explicit_arithmetic_types](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_explicit_arithmetic_types.txt)
-* int8BitStorage - [GL_EXT_shader_8bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
-* int16BitStorage - [GL_EXT_shader_16bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
-* bindless - [GL_EXT_nonuniform_qualifier](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_nonuniform_qualifier.txt)
-* scalarLayout - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
-* bufferReference - [GL_EXT_buffer_reference](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_buffer_reference.txt)
-* subgroupBasic - [GL_KHR_shader_subgroup_basic](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
-* subgroupVote - [GL_KHR_shader_subgroup_vote](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
+* ext.debugPrintf - [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
+* ext.explicitTypes - [GL_EXT_shader_explicit_arithmetic_types](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_explicit_arithmetic_types.txt)
+* ext.int8BitStorage - [GL_EXT_shader_8bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
+* ext.int16BitStorage - [GL_EXT_shader_16bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
+* ext.bindless - [GL_EXT_nonuniform_qualifier](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_nonuniform_qualifier.txt)
+* ext.scalarLayout - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
+* ext.bufferReference - [GL_EXT_buffer_reference](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_buffer_reference.txt)
+* ext.subgroupBasic - [GL_KHR_shader_subgroup_basic](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
+* ext.subgroupVote - [GL_KHR_shader_subgroup_vote](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)

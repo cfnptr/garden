@@ -40,7 +40,7 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 	float3 f0 = computeF0(gBuffer.baseColor, gBuffer.metallic, reflectance);
 	float3 e = specularDFG(dfgLUT, nov, roughness, f0);
 	float3 reflected = reflect(viewDirection, gBuffer.normal);
-	float linearRoughness = unpackRoughness(roughness * roughness);
+	float linearRoughness = unpackRoughness(roughness);
 	float3 r = computeReflectedVector(linearRoughness, gBuffer.normal, reflected);
 	
 	float3 radiance = prefilteredRadiance(iblSpecular, r, roughness) * shadow.a;
