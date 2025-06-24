@@ -90,8 +90,7 @@ static void addImageBarrier(VulkanAPI* vulkanAPI, const Image::BarrierState& old
 			aspectFlags, baseMip, mipCount, baseLayer, layerCount));
 	vulkanAPI->imageMemoryBarriers.push_back(imageMemoryBarrier);
 }
-static void addImageBarrier(VulkanAPI* vulkanAPI, 
-	const Image::BarrierState& newImageState, ID<ImageView> imageView, 
+static void addImageBarrier(VulkanAPI* vulkanAPI, Image::BarrierState newImageState, ID<ImageView> imageView, 
 	vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor)
 {
 	auto view = vulkanAPI->imageViewPool.get(imageView);
@@ -106,12 +105,13 @@ static void addImageBarrier(VulkanAPI* vulkanAPI,
 		vulkanAPI->oldPipelineStage |= oldImageState.stage;
 		vulkanAPI->newPipelineStage |= newImageState.stage;
 	}
-	
+	newImageState.layoutTransition = oldImageState.layout != newImageState.layout;
+
 	oldImageState = newImageState;
 	ImageExt::isFullBarrier(**image) = image->getMipCount() == 1 && image->getLayerCount() == 1;
 }
 
-static void addImageBarriers(VulkanAPI* vulkanAPI, const Image::BarrierState& newImageState, 
+static void addImageBarriers(VulkanAPI* vulkanAPI, Image::BarrierState newImageState, 
 	ID<Image> image, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
 	auto imageView = vulkanAPI->imagePool.get(image);
@@ -130,6 +130,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, const Image::BarrierState& ne
 			vulkanAPI->oldPipelineStage |= oldImageState.stage;
 			vulkanAPI->newPipelineStage |= newImageState.stage;
 		}
+		newImageState.layoutTransition = oldImageState.layout != newImageState.layout;
 
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
 		for (auto& oldBarrierState : barrierStates)
@@ -150,6 +151,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, const Image::BarrierState& ne
 					vulkanAPI->oldPipelineStage |= oldImageState.stage;
 					vulkanAPI->newPipelineStage |= newImageState.stage;
 				}
+				newImageState.layoutTransition = oldImageState.layout != newImageState.layout;
 				oldImageState = newImageState;
 			}
 		}

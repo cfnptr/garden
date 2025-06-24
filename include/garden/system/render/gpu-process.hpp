@@ -42,8 +42,6 @@ public:
 private:
 	ID<ComputePipeline> downsampleNormPipeline = {};
 	ID<ComputePipeline> downsampleNormAPipeline = {};
-	ID<GraphicsPipeline> boxBlurPipeline = {};
-	ID<GraphicsPipeline> bilatBlurDPipeline = {};
 
 	/**
 	 * @brief Creates a new GPU data processing system instance.
@@ -66,14 +64,6 @@ public:
 	 * @brief Returns GPU process downsample normals array pipeline.
 	 */
 	ID<ComputePipeline> getDownsampleNormA();
-	/**
-	 * @brief Returns GPU process box blur pipeline.
-	 */
-	ID<GraphicsPipeline> getBoxBlur();
-	/**
-	 * @brief Returns GPU process bilateral blur pipeline. (Depth aware)
-	 */
-	ID<GraphicsPipeline> getBilateralBlurD();
 
 	//******************************************************************************************************************
 	// Render commands
@@ -101,11 +91,12 @@ public:
 	 * @param tmpFramebuffer temporary framebuffer
 	 * @param scale texel size scale
 	 * @param sharpness blur sharpness
-	 * @param[in,out] descriptorSet blur descriptor set
+	 * @param[in,out] pipeline bilateral blur graphics pipeline
+	 * @param[in,out] descriptorSet bilateral blur descriptor set
 	 */
 	void bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,
-		ID<ImageView> tmpBuffer, ID<Framebuffer> tmpFramebuffer,
-		float2 scale, float sharpness, ID<DescriptorSet>& descriptorSet);
+		ID<ImageView> tmpBuffer, ID<Framebuffer> tmpFramebuffer, float2 scale, float sharpness, 
+		ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
 };
 
 } // namespace garden

@@ -30,21 +30,17 @@ static ID<ComputePipeline> createDownsampleNormA()
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm-a", options);
 }
-static ID<GraphicsPipeline> createBoxBlur()
+static ID<GraphicsPipeline> createBoxBlur(ID<Framebuffer> framebuffer)
 {
 	ResourceSystem::GraphicsOptions options;
 	options.loadAsync = false;
-
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/box-blur",
-		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), options);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/box-blur", framebuffer, options);
 }
-static ID<GraphicsPipeline> createBilateralBlurD()
+static ID<GraphicsPipeline> createBilateralBlurD(ID<Framebuffer> framebuffer)
 {
 	ResourceSystem::GraphicsOptions options;
 	options.loadAsync = false;
-
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d",
-		GraphicsSystem::Instance::get()->getSwapchainFramebuffer(), options);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d", framebuffer, options);
 }
 
 //**********************************************************************************************************************
@@ -64,8 +60,8 @@ void GpuProcessSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(bilatBlurDPipeline);
-		graphicsSystem->destroy(boxBlurPipeline);
+		graphicsSystem->destroy(downsampleNormAPipeline);
+		graphicsSystem->destroy(downsampleNormPipeline);
 	}
 }
 
@@ -80,18 +76,6 @@ ID<ComputePipeline> GpuProcessSystem::getDownsampleNormA()
 	if (!downsampleNormAPipeline)
 		downsampleNormAPipeline = createDownsampleNormA();
 	return downsampleNormAPipeline;
-}
-ID<GraphicsPipeline> GpuProcessSystem::getBoxBlur()
-{
-	if (!boxBlurPipeline)
-		boxBlurPipeline = createBoxBlur();
-	return boxBlurPipeline;
-}
-ID<GraphicsPipeline> GpuProcessSystem::getBilateralBlurD()
-{
-	if (!bilatBlurDPipeline)
-		bilatBlurDPipeline = createBilateralBlurD();
-	return bilatBlurDPipeline;
 }
 
 //**********************************************************************************************************************
@@ -166,8 +150,9 @@ void GpuProcessSystem::normalMapMips(ID<Image> normalMap)
 }
 
 //**********************************************************************************************************************
-void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer, ID<ImageView> tmpBuffer, 
-	ID<Framebuffer> tmpFramebuffer, float2 scale, float sharpness, ID<DescriptorSet>& descriptorSet)
+void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer, 
+	ID<ImageView> tmpBuffer, ID<Framebuffer> tmpFramebuffer, float2 scale, 
+	float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet)
 {
 	GARDEN_ASSERT(srcBuffer);
 	GARDEN_ASSERT(dstFramebuffer);
@@ -175,8 +160,8 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> d
 	GARDEN_ASSERT(tmpFramebuffer);
 	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
 
-	if (!bilatBlurDPipeline)
-		bilatBlurDPipeline = createBilateralBlurD();
+	if (!pipeline)
+		pipeline = createBilateralBlurD(dstFramebuffer);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!descriptorSet)
@@ -187,7 +172,7 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> d
 			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBuffer } }) },
 			{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
 		};
-		descriptorSet = graphicsSystem->createDescriptorSet(bilatBlurDPipeline, std::move(uniforms));
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bilateralBlurD" + to_string(*descriptorSet));
 	}
 
@@ -197,7 +182,7 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> d
 	pc.nearPlane = cameraConstants.nearPlane;
 	pc.sharpness = sharpness;
 
-	auto pipelineView = graphicsSystem->get(bilatBlurDPipeline);
+	auto pipelineView = graphicsSystem->get(pipeline);
 	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
 	auto texelSize = scale / framebufferView->getSize();
 	pipelineView->updateFramebuffer(tmpFramebuffer);

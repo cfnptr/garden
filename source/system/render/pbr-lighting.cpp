@@ -333,7 +333,7 @@ static ID<Image> createReflectionBuffer(vector<ID<ImageView>>& reflImageViews)
 	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::reflBufferFormat, 
 		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
 		Image::Usage::Fullscreen, mips, reflBufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.refBuffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.reflBuffer");
 
 	for (uint8 i = 0; i < mipCount; i++)
 	{
@@ -577,9 +577,11 @@ void PbrLightingRenderSystem::deinit()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		// TODO: graphicsSystem->destroy(reflDenoiseDS);
-		graphicsSystem->destroy(aoDenoiseDS);
-		graphicsSystem->destroy(shadowDenoiseDS);
+		graphicsSystem->destroy(aoBlurDS);
+		graphicsSystem->destroy(shadowBlurDS);
 		graphicsSystem->destroy(lightingDS);
+		graphicsSystem->destroy(aoBlurPipeline);
+		graphicsSystem->destroy(shadowBlurPipeline);
 		graphicsSystem->destroy(iblSpecularPipeline);
 		graphicsSystem->destroy(lightingPipeline);
 		graphicsSystem->destroy(reflFramebuffers);
@@ -750,8 +752,9 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasAnyShadow)
 	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[2],
-			shadowImageViews[1], shadowFramebuffers[1], float2(1.0f), denoiseSharpness, shadowDenoiseDS);
+		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], 
+			shadowFramebuffers[2], shadowImageViews[1], shadowFramebuffers[1], 
+			float2(1.0f), denoiseSharpness, shadowBlurPipeline, shadowBlurDS);
 		hasAnyShadow = false;
 	}
 	else if (shadowBuffer)
@@ -762,8 +765,9 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasAnyAO)
 	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0],
-			aoImageViews[1], aoFramebuffers[1], float2(1.0f), denoiseSharpness, aoDenoiseDS);
+		GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], 
+			aoFramebuffers[0], aoImageViews[1], aoFramebuffers[1], 
+			float2(1.0f), denoiseSharpness, aoBlurPipeline, aoBlurDS);
 		hasAnyAO = false;
 	}
 	else if (aoBuffer)
@@ -901,15 +905,15 @@ void PbrLightingRenderSystem::gBufferRecreate()
 		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
 	}
 
-	if (shadowDenoiseDS)
+	if (shadowBlurDS)
 	{
-		graphicsSystem->destroy(shadowDenoiseDS);
-		shadowDenoiseDS = {};
+		graphicsSystem->destroy(shadowBlurDS);
+		shadowBlurDS = {};
 	}
-	if (aoDenoiseDS)
+	if (aoBlurDS)
 	{
-		graphicsSystem->destroy(aoDenoiseDS);
-		aoDenoiseDS = {};
+		graphicsSystem->destroy(aoBlurDS);
+		aoBlurDS = {};
 	}
 	/** TODO: destroy downsample descriptor sets.
 	if (reflDenoiseDS)
