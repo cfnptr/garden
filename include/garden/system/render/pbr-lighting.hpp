@@ -270,6 +270,18 @@ public:
 
 	/**
 	 * @brief Creates PBR lighting descriptor set.
+	 *
+	 * @param sh spherical harmonics buffer instance
+	 * @param specular specular cubemap instance
+	 * @param pipeline target descriptor set pipeline ({} = lighting)
+	 * @param type descriptor set pipeline type
+	 * @param index index of the descriptor set in the shader
+	 */
+	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
+		ID<Pipeline> pipeline, PipelineType type, uint8 index);
+	/**
+	 * @brief Creates PBR lighting graphics descriptor set.
+	 * @return A new descriptor set if resources are ready, otherwise null.
 	 * 
 	 * @param sh spherical harmonics buffer instance
 	 * @param specular specular cubemap instance
@@ -277,7 +289,38 @@ public:
 	 * @param index index of the descriptor set in the shader
 	 */
 	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
-		ID<GraphicsPipeline> pipeline = {}, uint8 index = 1);
+		ID<GraphicsPipeline> pipeline, uint8 index = 1)
+	{
+		return createDescriptorSet(sh, specular, ID<Pipeline>(pipeline), PipelineType::Graphics, index);
+	}
+	/**
+	 * @brief Creates PBR lighting compute descriptor set.
+	 * @return A new descriptor set if resources are ready, otherwise null.
+	 * 
+	 * @param sh spherical harmonics buffer instance
+	 * @param specular specular cubemap instance
+	 * @param pipeline target descriptor set pipeline ({} = lighting)
+	 * @param index index of the descriptor set in the shader
+	 */
+	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
+		ID<ComputePipeline> pipeline, uint8 index = 1)
+	{
+		return createDescriptorSet(sh, specular, ID<Pipeline>(pipeline), PipelineType::Compute, index);
+	}
+	/**
+	 * @brief Creates PBR lighting ray tracing descriptor set.
+	 * @return A new descriptor set if resources are ready, otherwise null.
+	 * 
+	 * @param sh spherical harmonics buffer instance
+	 * @param specular specular cubemap instance
+	 * @param pipeline target descriptor set pipeline ({} = lighting)
+	 * @param index index of the descriptor set in the shader
+	 */
+	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
+		ID<RayTracingPipeline> pipeline, uint8 index = 1)
+	{
+		return createDescriptorSet(sh, specular, ID<Pipeline>(pipeline), PipelineType::RayTracing, index);
+	}
 
 	/**
 	 * @brief Marks that there is rendered shadow data on the current frame.

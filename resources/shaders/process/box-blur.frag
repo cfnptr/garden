@@ -35,7 +35,7 @@ void main()
 		for (int32 x = -1; x <= 1; x++)
 		{
 			float2 offset = float2(x, y) * pc.texelSize;
-			sum += texture(srcBuffer, fs.texCoords + offset);
+			sum += textureLod(srcBuffer, fs.texCoords + offset, 0.0f);
 		}
 	}
 	fb.data = sum * (1.0f / 9.0f);

@@ -29,6 +29,6 @@ uniform samplerCube
 
 void main()
 {
-	float3 color = texture(cubemap, fs.texCoords).rgb;
+	float3 color = textureLod(cubemap, fs.texCoords, 0.0f).rgb;
 	fb.hdr = float4(color, 1.0f);
 }

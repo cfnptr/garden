@@ -38,7 +38,7 @@ uniform pushConstants
 
 void main()
 {
-	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
+	float3 hdrColor = textureLod(hdrBuffer, fs.texCoords, 0.0f).rgb;
 	float lum = rgbToLum(hdrColor);
 
 	if (lum < pc.minLum)

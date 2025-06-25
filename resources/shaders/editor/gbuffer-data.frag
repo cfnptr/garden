@@ -118,68 +118,68 @@ void main()
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_HDR_BUFFER)
 	{
-		float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
+		float3 hdrColor = textureLod(hdrBuffer, fs.texCoords, 0.0f).rgb;
 		fb.color = float4(gammaCorrection(hdrColor), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_OIT_ACCUM_COLOR)
 	{
-		float3 oitColor = texture(oitAccumBuffer, fs.texCoords).rgb;
+		float3 oitColor = textureLod(oitAccumBuffer, fs.texCoords, 0.0f).rgb;
 		fb.color = float4(gammaCorrection(oitColor), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_OIT_ACCUM_ALPHA)
 	{
-		float oitAlpha = texture(oitAccumBuffer, fs.texCoords).a;
+		float oitAlpha = textureLod(oitAccumBuffer, fs.texCoords, 0.0f).a;
 		fb.color = float4(float3(oitAlpha), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_OIT_REVEAL)
 	{
-		float oitReveal = texture(oitRevealBuffer, fs.texCoords).r;
+		float oitReveal = textureLod(oitRevealBuffer, fs.texCoords, 0.0f).r;
 		fb.color = float4(float3(oitReveal), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_DEPTH_BUFFER)
 	{
-		float depth = texture(depthBuffer, fs.texCoords).r;
+		float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
 		fb.color = float4(float3(pow(depth, (1.0f / 2.0f))), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_WORLD_POSITION)
 	{
-		float depth = texture(depthBuffer, fs.texCoords).r;
+		float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
 		float3 worldPosition = calcWorldPosition(depth, fs.texCoords, pc.invViewProj);
 		fb.color = float4(log(abs(worldPosition) + float3(1.0f)) * 0.1f, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_SHADOW_COLOR)
 	{
-		float3 shadowColor = texture(shadowBuffer, fs.texCoords).rgb;
+		float3 shadowColor = textureLod(shadowBuffer, fs.texCoords, 0.0f).rgb;
 		fb.color = float4(shadowColor, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_SHADOW_ALPHA)
 	{
-		float shadowAlpha = texture(shadowBuffer, fs.texCoords).a;
+		float shadowAlpha = textureLod(shadowBuffer, fs.texCoords, 0.0f).a;
 		fb.color = float4(float3(shadowAlpha), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_D_SHADOW_COLOR)
 	{
-		float3 shadowColor = texture(shadowDenoisedBuffer, fs.texCoords).rgb;
+		float3 shadowColor = textureLod(shadowDenoisedBuffer, fs.texCoords, 0.0f).rgb;
 		fb.color = float4(shadowColor, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_D_SHADOW_ALPHA)
 	{
-		float shadowAlpha = texture(shadowDenoisedBuffer, fs.texCoords).a;
+		float shadowAlpha = textureLod(shadowDenoisedBuffer, fs.texCoords, 0.0f).a;
 		fb.color = float4(float3(shadowAlpha), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_AO)
 	{
-		float ao = texture(aoBuffer, fs.texCoords).r;
+		float ao = textureLod(aoBuffer, fs.texCoords, 0.0f).r;
 		fb.color = float4(float3(ao), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_D_AO)
 	{
-		float ao = texture(aoDenoisedBuffer, fs.texCoords).r;
+		float ao = textureLod(aoDenoisedBuffer, fs.texCoords, 0.0f).r;
 		fb.color = float4(float3(ao), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_REFLECTIONS)
 	{
-		float3 refl = texture(reflectionBuffer, fs.texCoords).rgb;
+		float3 refl = textureLod(reflectionBuffer, fs.texCoords, 0.0f).rgb;
 		fb.color = float4(refl, 1.0f);
 	}
 	else

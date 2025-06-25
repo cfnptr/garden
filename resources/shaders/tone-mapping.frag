@@ -52,11 +52,11 @@ out float4 fb.ldr;
 //**********************************************************************************************************************
 void main()
 {
-	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
+	float3 hdrColor = textureLod(hdrBuffer, fs.texCoords, 0.0f).rgb;
 
 	if (USE_BLOOM_BUFFER)
 	{
-		float3 bloomColor = min(texture(bloomBuffer, fs.texCoords).rgb, 65500.0f); // r11b11b10
+		float3 bloomColor = min(textureLod(bloomBuffer, fs.texCoords, 0.0f).rgb, 65500.0f); // r11b11b10
 		hdrColor = mix(hdrColor, bloomColor, pc.bloomIntensity);
 	}
 

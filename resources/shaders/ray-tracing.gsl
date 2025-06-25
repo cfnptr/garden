@@ -61,4 +61,19 @@
 #define ignoreIntersection ignoreIntersectionEXT
 #define executeCallable executeCallableEXT
 
+float2 lodFootprint(float distance, float tanHalfFov, float texelDensity, float2 texelSize)
+{
+	return (distance * tanHalfFov * (2.0f * texelDensity)) * texelSize;
+}
+float approxLod(float2 footprint, float2 textureSize)
+{
+	footprint *= textureSize;
+	return log2(max(footprint.x, footprint.y));
+}
+float approxLod(float distance, float tanHalfFov, float texelDensity, float2 texelSize, float2 textureSize)
+{
+	float2 footprint = lodFootprint(distance, tanHalfFov, texelDensity, texelSize);
+	return approxLod(footprint, textureSize);
+}
+
 #endif // RAY_TRACING_GSL

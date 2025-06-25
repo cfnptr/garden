@@ -67,7 +67,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	float depth = texture(depthBuffer, fs.texCoords).r;
+	float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
 	if (depth < FLOAT32_MIN)
 		discard;
 
@@ -76,14 +76,14 @@ void main()
 	float4 shadow = float4(pc.shadow.rgb, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)
 	{
-		float4 accumShadow = texture(shadowBuffer, fs.texCoords);
+		float4 accumShadow = textureLod(shadowBuffer, fs.texCoords, 0.0f);
 		shadow.a = min(shadow.a, accumShadow.a);
 		shadow.rgb *= accumShadow.rgb;
 	}
 	shadow.rgb *= mix(pc.shadow.a, 1.0f, shadow.a);
 
 	if (USE_AO_BUFFER)
-		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, texture(aoBuffer, fs.texCoords).r);
+		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, textureLod(aoBuffer, fs.texCoords, 0.0f).r);
 	// TODO: or maybe we can utilize filament micro/macro AO?
 	gBuffer.reflectance *= pc.reflectanceCoeff;
 
@@ -95,5 +95,5 @@ void main()
 	fb.hdr = float4(hdrColor, 1.0f);
 	
 	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.
-	//fb.hdr *= texture(aoBuffer, fs.texCoords).r;
+	//fb.hdr *= textureLod(aoBuffer, fs.texCoords, 0.0f).r;
 }

@@ -189,14 +189,14 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2,
 	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
 	GBufferData data;
-	data.g[0] = texture(s0, texCoords);
-	data.g[1] = texture(s1, texCoords);
-	data.g[2] = texture(s2, texCoords);
-	data.g[3] = texture(s3, texCoords);
+	data.g[0] = textureLod(s0, texCoords, 0.0f);
+	data.g[1] = textureLod(s1, texCoords, 0.0f);
+	data.g[2] = textureLod(s2, texCoords, 0.0f);
+	data.g[3] = textureLod(s3, texCoords, 0.0f);
 	if (USE_EMISSIVE_BUFFER)
-		data.g[4] = texture(s4, texCoords);
+		data.g[4] = textureLod(s4, texCoords, 0.0f);
 	if (USE_GI_BUFFER)
-		data.g[5] = texture(s5, texCoords);
+		data.g[5] = textureLod(s5, texCoords, 0.0f);
 	return data;
 }
 GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, 

@@ -177,7 +177,7 @@ void HbaoRenderSystem::aoRender()
 			-(1.0f + proj.c2.getY()) / proj.c1.getY()
 		);
 
-		projScale = (float)aoFrameSize.y / (tanf(
+		projScale = (float)aoFrameSize.y / (std::tan(
 			cameraView->p.perspective.fieldOfView * 0.5f) * 2.0f);
 		pc.projOrtho = 0;
 	}
