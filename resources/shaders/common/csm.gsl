@@ -105,7 +105,7 @@ float4 evaluateCsmTransparency(sampler2DArray transparentMap, uint32 cascadeID, 
 	for (int32 i = 0; i < SHADOW_MAP_SAMPLE_COUNT; i++)
 	{
 		float2 texCoords = rotation * poissonDisk[i] * texelSize + lightCoords.xy;
-		transparency += texture(transparentMap, float3(texCoords, cascadeID));
+		transparency += textureLod(transparentMap, float3(texCoords, cascadeID), 0.0f);
 	}
 
 	return transparency * (1.0f / SHADOW_MAP_SAMPLE_COUNT);

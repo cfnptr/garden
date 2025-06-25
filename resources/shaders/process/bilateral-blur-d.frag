@@ -42,9 +42,9 @@ uniform pushConstants
 
 float4 depthBilateralBlur(float2 texCoords, uint32 r, float depth, inout float weight)
 {
-	float d = texture(hizBuffer, texCoords).r;
+	float d = textureLod(hizBuffer, texCoords, 0.0f).r;
 	d = calcLinearDepthIRZ(d, pc.nearPlane);
-	float4 c = texture(srcBuffer, texCoords);
+	float4 c = textureLod(srcBuffer, texCoords, 0.0f);
 	float diff = (d - depth) * pc.sharpness;
 	float w = exp2((r * r * -BLUR_FALLOFF) - diff * diff);
 	weight += w;
@@ -52,9 +52,9 @@ float4 depthBilateralBlur(float2 texCoords, uint32 r, float depth, inout float w
 }
 void main()
 {
-	float depth = texture(hizBuffer, fs.texCoords).r;
+	float depth = textureLod(hizBuffer, fs.texCoords, 0.0f).r;
 	depth = calcLinearDepthIRZ(depth, pc.nearPlane);
-	float4 total = texture(srcBuffer, fs.texCoords);
+	float4 total = textureLod(srcBuffer, fs.texCoords, 0.0f);
 	float weight = 1.0f;
 
 	for (uint32 r = 1; r <= KERNEL_RADIUS; r++)

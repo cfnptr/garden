@@ -812,7 +812,7 @@ void PbrLightingRenderSystem::hdrRender()
 	if (!pbrLightingView->descriptorSet)
 	{
 		auto descriptorSet = createDescriptorSet( // TODO: maybe create shared DS?
-			ID<Buffer>(pbrLightingView->sh), ID<Image>(pbrLightingView->specular));
+			ID<Buffer>(pbrLightingView->sh), ID<Image>(pbrLightingView->specular), ID<GraphicsPipeline>());
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
 		pbrLightingView->descriptorSet = descriptorSet;
 	}
@@ -1403,13 +1403,15 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 
 //**********************************************************************************************************************
 Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh, 
-	ID<Image> specular, ID<GraphicsPipeline> pipeline, uint8 index)
+	ID<Image> specular, ID<Pipeline> pipeline, PipelineType type, uint8 index)
 {
 	GARDEN_ASSERT(sh);
 	GARDEN_ASSERT(specular);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto specularView = graphicsSystem->get(specular);
+	if (!specularView->isReady())
+		return {};
 
 	DescriptorSet::Uniforms iblUniforms =
 	{ 
@@ -1417,7 +1419,30 @@ Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh,
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 
-	auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline ? 
-		pipeline : lightingPipeline, std::move(iblUniforms), {}, index);
+	ID<DescriptorSet> descriptorSet;
+	if (!pipeline)
+	{
+		descriptorSet = graphicsSystem->createDescriptorSet(
+			lightingPipeline, std::move(iblUniforms), {}, index);
+	}
+	else
+	{
+		if (type == PipelineType::Graphics)
+		{
+			descriptorSet = graphicsSystem->createDescriptorSet(
+				ID<GraphicsPipeline>(pipeline), std::move(iblUniforms), {}, index);
+		}
+		else if (type == PipelineType::Compute)
+		{
+			descriptorSet = graphicsSystem->createDescriptorSet(
+				ID<ComputePipeline>(pipeline), std::move(iblUniforms), {}, index);
+		}
+		else if (type == PipelineType::RayTracing)
+		{
+			descriptorSet = graphicsSystem->createDescriptorSet(
+				ID<RayTracingPipeline>(pipeline), std::move(iblUniforms), {}, index);
+		}
+		else abort();
+	}
 	return Ref<DescriptorSet>(descriptorSet);
 }

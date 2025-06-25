@@ -52,7 +52,7 @@ float3 texCoordsToView(float2 texCoords, float eyeZ)
 }
 float3 fetchViewPos(float2 texCoords)
 {
-	float depth = texture(hizBuffer, texCoords).r;
+	float depth = textureLod(hizBuffer, texCoords, 0.0f).r;
 	depth = calcLinearDepthIRZ(depth, pc.nearPlane); // TODO: support othrographic depth linearization.
 	return texCoordsToView(texCoords, depth);
 }
@@ -115,7 +115,7 @@ void main()
 	float3 viewPos = fetchViewPos(fs.texCoords);
 	float3 viewNormal = reconstructNormal(fs.texCoords, viewPos);
 	float radiusP = pc.radiusToScreen / (pc.projOrtho != 0 ? 1.0f : viewPos.z);
-	float3 rand = texture(noise, gl.fragCoord.xy / SSAO_NOISE_SIZE).xyz;
+	float3 rand = textureLod(noise, gl.fragCoord.xy / SSAO_NOISE_SIZE, 0.0f).xyz;
 	float ao = computeCoarseAO(fs.texCoords, radiusP, rand, viewPos, viewNormal);
 	fb.ao = float4(pow(ao, pc.powExponent));
 }

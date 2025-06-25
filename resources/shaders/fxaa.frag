@@ -54,14 +54,14 @@ uniform sampler2D
 void main()
 {
 	// Color and luma at the current fragment
-	float3 colorCenter = texture(ldrBuffer, fs.texCoords).rgb;
-	float lumaCenter = rgbToLuma(texture(hdrBuffer, fs.texCoords).rgb);
+	float3 colorCenter = textureLod(ldrBuffer, fs.texCoords, 0.0f).rgb;
+	float lumaCenter = rgbToLuma(textureLod(hdrBuffer, fs.texCoords, 0.0f).rgb);
 	
 	// Luma at the four direct neighbours of the current fragment.
-	float lumaDown 	= rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2( 0, -1)).rgb);
-	float lumaUp 	= rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2( 0,  1)).rgb);
-	float lumaLeft 	= rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2(-1,  0)).rgb);
-	float lumaRight = rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2( 1,  0)).rgb);
+	float lumaDown 	= rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2( 0, -1)).rgb);
+	float lumaUp 	= rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2( 0,  1)).rgb);
+	float lumaLeft 	= rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2(-1,  0)).rgb);
+	float lumaRight = rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2( 1,  0)).rgb);
 	
 	// Find the maximum and minimum luma around the current fragment.
 	float lumaMin = min(lumaCenter, min(min(lumaDown, lumaUp), min(lumaLeft, lumaRight)));
@@ -79,10 +79,10 @@ void main()
 	}
 	
 	// Query the 4 remaining corners lumas.
-	float lumaDownLeft 	= rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2(-1, -1)).rgb);
-	float lumaUpRight 	= rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2( 1,  1)).rgb);
-	float lumaUpLeft 	= rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2(-1,  1)).rgb);
-	float lumaDownRight = rgbToLuma(textureOffset(hdrBuffer, fs.texCoords, int2( 1, -1)).rgb);
+	float lumaDownLeft 	= rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2(-1, -1)).rgb);
+	float lumaUpRight 	= rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2( 1,  1)).rgb);
+	float lumaUpLeft 	= rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2(-1,  1)).rgb);
+	float lumaDownRight = rgbToLuma(textureLodOffset(hdrBuffer, fs.texCoords, 0.0f, int2( 1, -1)).rgb);
 	
 	// Combine the four edges lumas (using intermediary
 	// variables for future computations with the same values).
@@ -134,11 +134,11 @@ void main()
 	}
 	
 	// Shift UV in the correct direction by half a pixel.
-	float2 currentUv = fs.texCoords;
+	float2 currentUV = fs.texCoords;
 	if (isHorizontal)
-		currentUv.y += stepLength * 0.5f;
+		currentUV.y += stepLength * 0.5f;
 	else
-		currentUv.x += stepLength * 0.5f;
+		currentUV.x += stepLength * 0.5f;
 	
 	// Compute offset (for each iteration step) in the right direction.
 	float2 offset = isHorizontal ?
@@ -146,13 +146,13 @@ void main()
 
 	// Compute UVs to explore on each side of the edge,
 	// orthogonally. The QUALITY allows us to step faster.
-	float2 uv1 = currentUv - offset * QUALITY(0);
-	float2 uv2 = currentUv + offset * QUALITY(0);
+	float2 uv1 = currentUV - offset * QUALITY(0);
+	float2 uv2 = currentUV + offset * QUALITY(0);
 	
 	// Read the lumas at both current extremities of the exploration
 	// segment, and compute the delta wrt to the local average luma.
-	float lumaEnd1 = rgbToLuma(texture(hdrBuffer, uv1).rgb);
-	float lumaEnd2 = rgbToLuma(texture(hdrBuffer, uv2).rgb);
+	float lumaEnd1 = rgbToLuma(textureLod(hdrBuffer, uv1, 0.0f).rgb);
+	float lumaEnd2 = rgbToLuma(textureLod(hdrBuffer, uv2, 0.0f).rgb);
 	lumaEnd1 -= lumaLocalAverage;
 	lumaEnd2 -= lumaLocalAverage;
 	
@@ -176,14 +176,14 @@ void main()
 			// If needed, read luma in 1st direction, compute delta.
 			if (!reached1)
 			{
-				lumaEnd1 = rgbToLuma(texture(hdrBuffer, uv1).rgb);
+				lumaEnd1 = rgbToLuma(textureLod(hdrBuffer, uv1, 0.0f).rgb);
 				lumaEnd1 = lumaEnd1 - lumaLocalAverage;
 			}
 
 			// If needed, read luma in opposite direction, compute delta.
 			if (!reached2)
 			{
-				lumaEnd2 = rgbToLuma(texture(hdrBuffer, uv2).rgb);
+				lumaEnd2 = rgbToLuma(textureLod(hdrBuffer, uv2, 0.0f).rgb);
 				lumaEnd2 = lumaEnd2 - lumaLocalAverage;
 			}
 
@@ -252,13 +252,13 @@ void main()
 	finalOffset = max(finalOffset, subPixelOffsetFinal);
 	
 	// Compute the final UV coordinates.
-	float2 finalUv = fs.texCoords;
+	float2 finalUV = fs.texCoords;
 	if (isHorizontal)
-		finalUv.y += finalOffset * stepLength;
+		finalUV.y += finalOffset * stepLength;
 	else
-		finalUv.x += finalOffset * stepLength;
+		finalUV.x += finalOffset * stepLength;
 	
 	// Read the color at the new UV coordinates, and use it.
-	float3 finalColor = texture(ldrBuffer, finalUv).rgb;
+	float3 finalColor = textureLod(ldrBuffer, finalUV, 0.0f).rgb;
 	fb.ldr = float4(finalColor, 1.0f);
 }

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSIVE_BUFFER false 
-#define USE_GI_BUFFER false 
+#define USE_EMISSIVE_BUFFER false
+#define USE_GI_BUFFER false
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
 
 #include "common/csm.gsl"
@@ -50,11 +50,11 @@ uniform ShadowData
 //**********************************************************************************************************************
 void main()
 {
-	float pixelDepth = texture(depthBuffer, fs.texCoords).r;
+	float pixelDepth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
 	if (pixelDepth < shadowData.farPlanes.z)
 		discard;
 
-	float3 normal = decodeNormal(texture(gNormals, fs.texCoords));
+	float3 normal = decodeNormal(textureLod(gNormals, fs.texCoords, 0.0f));
 	uint32 cascadeID; float3 lightCoords;
 	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, shadowData.farPlanes.xyz, 
 		shadowData.lightDirBias.xyz, shadowData.lightDirBias.w, normal, cascadeID, lightCoords);

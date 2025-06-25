@@ -84,7 +84,7 @@ float3 computeDiffuseColor(float3 baseColor, float metallic)
 
 float2 sampleDFG(sampler2D dfgLUT, float nov, float perceptualRoughness)
 {
-	return texture(dfgLUT, float2(nov, perceptualRoughness)).xy;
+	return textureLod(dfgLUT, float2(nov, perceptualRoughness), 0.0f).xy;
 }
 float3 specularDFG(sampler2D dfgLUT, float nov, float perceptualRoughness, float3 f0)
 {

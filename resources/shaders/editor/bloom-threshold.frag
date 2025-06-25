@@ -32,7 +32,7 @@ uniform pushConstants
 
 void main()
 {
-	float3 hdrColor = texture(hdrBuffer, fs.texCoords).rgb;
+	float3 hdrColor = textureLod(hdrBuffer, fs.texCoords, 0.0f).rgb;
 	float3 color = downsample(hdrBuffer, fs.texCoords, 0.0f, true, true);
 	if (any(lessThan(color, float3(pc.threshold))))
 		fb.color = float4(0.8f, 0.0f, 0.0f, 0.5f);
