@@ -61,8 +61,10 @@ public:
 	{
 		float4x4 uvToWorld;
 		float4 shadow;
+		float reflLodOffset;
 		float emissiveCoeff;
 		float reflectanceCoeff;
+		
 	};
 	struct SpecularPC final
 	{
@@ -78,23 +80,28 @@ public:
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
 	ID<Image> dfgLUT = {};
+	ID<Buffer> reflKernel = {};
 	ID<Image> shadowBuffer = {};
 	ID<Image> aoBuffer = {};
 	ID<Image> aoDenBuffer = {};
-	ID<Image> reflectionBuffer = {};
+	ID<Image> reflBuffer = {};
 	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
 	ID<Framebuffer> shadowFramebuffers[shadowBufferCount + 1] = {};
 	ID<ImageView> aoImageViews[aoBufferCount] = {};
 	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
 	vector<ID<ImageView>> reflImageViews;
 	vector<ID<Framebuffer>> reflFramebuffers;
+	vector<ID<DescriptorSet>> reflBlurDSes;
+	ID<ImageView> reflBufferView = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
 	ID<GraphicsPipeline> shadowBlurPipeline = {};
 	ID<GraphicsPipeline> aoBlurPipeline = {};
+	ID<GraphicsPipeline> reflBlurPipeline = {};
 	ID<DescriptorSet> lightingDS = {};
 	ID<DescriptorSet> shadowBlurDS = {};
 	ID<DescriptorSet> aoBlurDS = {};
+	float reflLodOffset = 0.0f;
 	bool hasShadowBuffer = false;
 	bool hasAoBuffer = false;
 	bool hasReflBuffer = false;
@@ -152,6 +159,11 @@ public:
 	void setConsts(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer);
 
 	/**
+	 * @brief Returns PBR lighting reflections LOD offset.
+	 */
+	float getReflLodOffset() const noexcept { return reflLodOffset; }
+
+	/**
 	 * @brief Returns PBR lighting graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getLightingPipeline();
@@ -198,6 +210,10 @@ public:
 	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
 	 */
 	ID<Image> getDfgLUT();
+	/**
+	 * @brief Returns PBR lighting reflections blur kernel.
+	 */
+	ID<Buffer> getReflKernel();
 
 	/**
 	 * @brief Returns PBR lighting shadow buffer.

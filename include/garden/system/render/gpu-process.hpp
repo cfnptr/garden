@@ -33,6 +33,11 @@ public:
 	{
 		float2 texelSize;
 	};
+	struct GaussianBlurPC final
+	{
+		float2 texelSize;
+		uint32 count;
+	};
 	struct BilateralBlurPC final
 	{
 		float2 texelSize;
@@ -81,22 +86,52 @@ public:
 	 * @param normalMap target normal map image
 	 */
 	void normalMapMips(ID<Image> normalMap);
-	
+
+	/**
+	 * @brief Calculates gaussian blur kernel buffer coefficient count.
+	 * @param kernelWidth gaussian blur kernel width
+	 */
+	static constexpr uint8 calcGaussCoeffCount(uint8 kernelWidth) noexcept
+	{
+		return (kernelWidth - 1u) / 4u + 1u;
+	}
+	/**
+	 * @brief Calculates gaussian blur kernel coefficients.
+	 *
+	 * @param sigma ammount of bluring
+	 * @param[out] target gaussian kernel coefficients
+	 * @param coeffCount coefficients buffer size
+	 */
+	static void calcGaussCoeffs(float sigma, float2* coeffs, uint8 coeffCount) noexcept;
+
+	/**
+	 * @brief Records gaussian blur command.
+	 *
+	 * @param srcBuffer source data buffer
+	 * @param dstFramebuffer destination framebuffer
+	 * @param tmpFramebuffer temporary framebuffer
+	 * @param kernelBuffer blur coefficients buffer
+	 * @param coeffCount kernel buffer coefficient count
+	 * @param reinhard use reinhard weighted filter
+	 * @param[in,out] pipeline gaussian blur graphics pipeline
+	 * @param[in,out] descriptorSet gaussian blur descriptor set
+	 */
+	void gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer, 
+		ID<Framebuffer> tmpFramebuffer, ID<Buffer> kernelBuffer, uint8 coeffCount, 
+		bool reinhard, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
+
 	/**
 	 * @brief Records bilateral blur command. (Depth aware)
 	 *
 	 * @param srcBuffer source data buffer
 	 * @param dstFramebuffer destination framebuffer
-	 * @param tmpBuffer temporary data buffer
 	 * @param tmpFramebuffer temporary framebuffer
-	 * @param scale texel size scale
 	 * @param sharpness blur sharpness
 	 * @param[in,out] pipeline bilateral blur graphics pipeline
 	 * @param[in,out] descriptorSet bilateral blur descriptor set
 	 */
-	void bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,
-		ID<ImageView> tmpBuffer, ID<Framebuffer> tmpFramebuffer, float2 scale, float sharpness, 
-		ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
+	void bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,  ID<Framebuffer> tmpFramebuffer, 
+		float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
 };
 
 } // namespace garden

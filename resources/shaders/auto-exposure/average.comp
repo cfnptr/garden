@@ -19,7 +19,7 @@
 
 localSize = 256, 1, 1;
 
-buffer readonly Histogram
+buffer restrict readonly Histogram
 {
 	uint32 data[];
 } histogram;

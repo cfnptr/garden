@@ -936,6 +936,19 @@ bool ImageView::destroy()
 	return true;
 }
 
+uint2 ImageView::calcSize(uint8 mipOffset) const noexcept
+{
+	GARDEN_ASSERT(mipOffset < mipCount);
+	auto imageView = GraphicsAPI::get()->imagePool.get(image);
+	return calcSizeAtMip((uint2)imageView->getSize(), baseMip + mipOffset);
+}
+u32x4 ImageView::calcSize3(uint8 mipOffset) const noexcept
+{
+	GARDEN_ASSERT(mipOffset < mipCount);
+	auto imageView = GraphicsAPI::get()->imagePool.get(image);
+	return calcSizeAtMip3(imageView->getSize(), baseMip + mipOffset);
+}
+
 #if GARDEN_DEBUG || GARDEN_EDITOR
 void ImageView::setDebugName(const string& name)
 {

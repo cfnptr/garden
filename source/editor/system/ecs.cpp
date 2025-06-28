@@ -164,7 +164,7 @@ static void renderRegisteredComponents()
 	const auto& componentTypes = Manager::Instance::get()->getComponentTypes();
 	for (const auto& pair : componentTypes)
 	{
-		auto name = pair.second->getComponentName();
+		auto name = string(pair.second->getComponentName());
 		if (name.empty())
 			name = typeToString(pair.first);
 		ImGui::TreeNodeEx(string(name).c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);

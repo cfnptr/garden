@@ -12,26 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CONSTANTS_GSL
-#define CONSTANTS_GSL
+#ifndef GAUSSIAN_BLUR_H
+#define GAUSSIAN_BLUR_H
 
-#define CAMERA_CONSTANTS     \
-	float4x4 view;           \
-	float4x4 projection;     \
-	float4x4 viewProj;       \
-	float4x4 inverseView;    \
-	float4x4 inverseProj;    \
-	float4x4 invViewProj;    \
-	float4 cameraPos;        \
-	float4 viewDir;          \
-	float4 lightDir;         \
-	float4 shadowColor;      \
-	float4 skyColor;         \
-	float2 frameSize;        \
-	float2 invFrameSize;     \
-	float2 invFrameSize2;    \
-	float nearPlane;         \
-	float emissiveCoeff;     \
-	float anglePerPixel;
+#define GAUSSIAN_BLUR_BASE 0
+#define GAUSSIAN_BLUR_REINHARD 1
+#define GAUSSIAN_BLUR_COUNT 2
 
-#endif // CONSTANTS_GSL
+#endif // GAUSSIAN_BLUR_H

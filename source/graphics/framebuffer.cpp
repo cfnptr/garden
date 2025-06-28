@@ -366,7 +366,7 @@ static void recreateVkFramebuffer(uint2 size, const vector<Framebuffer::SubpassI
 			#if GARDEN_DEBUG
 			auto imageView = vulkanAPI->imageViewPool.get(newInputAttachment);
 			auto image = vulkanAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()));
+			GARDEN_ASSERT(size == imageView->calcSize());
 			GARDEN_ASSERT(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment));
 			auto searchResult = attachments.find(newInputAttachment);
 			GARDEN_ASSERT(searchResult != attachments.end());
@@ -496,8 +496,8 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer [" + debugName + "] "
 			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), 
-			"Incorrect framebuffer [" + debugName +"] color attachment [" + to_string(i) + "] "
+		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect "
+			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] "
 			"image view [" + imageView->getDebugName() + "] size at mip");
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing "
 			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] "
@@ -514,8 +514,8 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect framebuffer [" + 
 			debugName + "] depth/stencil attachment image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()),
-			"Incorrect framebuffer [" + debugName +"] depth/stencil attachment "
+		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect "
+			"framebuffer [" + debugName + "] depth/stencil attachment "
 			"image view [" + imageView->getDebugName() + "] size at mip");
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), 
 			"Missing framebuffer [" + debugName + "] depth/stencil attachment "
@@ -551,8 +551,8 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer [" + 
 			debugName + "] color attachment [" + to_string(i) + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), "Incorrect "
-			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] size at mip");
+		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer [" + 
+			debugName + "] color attachment [" + to_string(i) + "] size at mip");
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing "
 			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] flag");
 	}
@@ -563,10 +563,10 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect "
 			"framebuffer [" + debugName + "] depth/stencil attachment format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), "Incorrect "
-			"framebuffer [" + debugName + "] depth/stencil attachment size at mip");
-		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), "Missing "
-			"framebuffer [" + debugName + "] depth/stencil attachment flag");
+		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer [" + 
+			debugName + "] depth/stencil attachment size at mip");
+		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), 
+			"Missing framebuffer [" + debugName + "] depth/stencil attachment flag");
 	}
 	#endif
 

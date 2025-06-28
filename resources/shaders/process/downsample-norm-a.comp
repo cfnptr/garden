@@ -16,8 +16,8 @@
 
 localSize = 16, 16, 1;
 
-uniform readonly restrict image2DArray srcBuffer : unormR8G8B8A8;
-uniform writeonly restrict image2DArray dstBuffer : unormR8G8B8A8;
+uniform restrict readonly image2DArray srcBuffer : unormR8G8B8A8;
+uniform restrict writeonly image2DArray dstBuffer : unormR8G8B8A8;
 
 void main()
 {

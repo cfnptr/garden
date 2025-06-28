@@ -29,7 +29,7 @@ static ID<Image> createHizBuffer(vector<ID<ImageView>>& imageViews)
 
 	Image::Mips mips(mipCount);
 	for (uint8 i = 0; i < mipCount; i++)
-		mips[i].push_back(nullptr);
+		mips[i].resize(1);
 
 	auto image = graphicsSystem->createImage(HizRenderSystem::bufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::TransferDst, mips, hizBufferSize, Image::Strategy::Size);
@@ -116,7 +116,6 @@ HizRenderSystem::~HizRenderSystem()
 void HizRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", HizRenderSystem::preHdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", HizRenderSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HizRenderSystem::gBufferRecreate);
 
 	if (!hizBuffer)
@@ -196,11 +195,6 @@ void HizRenderSystem::downsampleHiz(uint8 levelCount)
 void HizRenderSystem::preHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("HiZ Pre HDR Render");
-	downsampleHiz(2); // Note: second mip is used for SSAO.
-}
-void HizRenderSystem::preUiRender()
-{
-	SET_CPU_ZONE_SCOPED("HiZ Pre UI Render");
 	downsampleHiz(UINT8_MAX);
 }
 

@@ -51,7 +51,6 @@ private:
 	void init();
 	void deinit();
 	void preHdrRender();
-	void preUiRender();
 	void gBufferRecreate();
 
 	void downsampleHiz(uint8 levelCount);

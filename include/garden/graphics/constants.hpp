@@ -42,6 +42,7 @@ struct CameraConstants final
 	float2 invFrameSizeSq = float2::zero; /**< Inverse frame size * 2 in pixels. */
 	float nearPlane = 0.0f;               /**< Near frustum plane. */
 	float emissiveCoeff = 0.0f;           /**< Produces maximum brightness. */
+	float anglePerPixel = 0.0f;           /**< Vertical field-of-view per pixel. */
 };
 
 } // namespace garden::graphics

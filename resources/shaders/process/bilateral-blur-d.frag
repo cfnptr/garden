@@ -14,9 +14,10 @@
 
 #include "common/depth.gsl"
 
+// TODO: spec const
 const uint32 KERNEL_RADIUS = 5;
 const float BLUR_SIGMA = KERNEL_RADIUS * 0.5f;
-const float BLUR_FALLOFF = 1.0f / (2.0f * BLUR_SIGMA * BLUR_SIGMA);
+const float BLUR_FALLOFF = 1.0f / (-2.0f * BLUR_SIGMA * BLUR_SIGMA);
 
 pipelineState
 {
@@ -46,27 +47,28 @@ float4 depthBilateralBlur(float2 texCoords, uint32 r, float depth, inout float w
 	d = calcLinearDepthIRZ(d, pc.nearPlane);
 	float4 c = textureLod(srcBuffer, texCoords, 0.0f);
 	float diff = (d - depth) * pc.sharpness;
-	float w = exp2((r * r * -BLUR_FALLOFF) - diff * diff);
+	float w = exp2((r * r * BLUR_FALLOFF) - diff * diff);
 	weight += w;
 	return c * w;
 }
+
 void main()
 {
 	float depth = textureLod(hizBuffer, fs.texCoords, 0.0f).r;
 	depth = calcLinearDepthIRZ(depth, pc.nearPlane);
-	float4 total = textureLod(srcBuffer, fs.texCoords, 0.0f);
+	float4 sum = textureLod(srcBuffer, fs.texCoords, 0.0f);
 	float weight = 1.0f;
 
-	for (uint32 r = 1; r <= KERNEL_RADIUS; r++)
+	for (int32 r = 1; r <= KERNEL_RADIUS; r++)
 	{
-		float2 texCoords = fs.texCoords + pc.texelSize * r;
-		total += depthBilateralBlur(texCoords, r, depth, weight);  
+		float2 texCoords = fma(pc.texelSize, float2(r), fs.texCoords);
+		sum += depthBilateralBlur(texCoords, r, depth, weight);
 	}
-	for (uint32 r = 1; r <= KERNEL_RADIUS; r++)
+	for (int32 r = -1; r >= -KERNEL_RADIUS; r--)
 	{
-		float2 texCoords = fs.texCoords - pc.texelSize * r;
-		total += depthBilateralBlur(texCoords, r, depth, weight);  
+		float2 texCoords = fma(pc.texelSize, float2(r), fs.texCoords);
+		sum += depthBilateralBlur(texCoords, r, depth, weight);
 	}
 
-	fb.data = total / weight;
+	fb.data = sum / weight;
 }

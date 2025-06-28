@@ -846,6 +846,17 @@ public:
 	 */
 	bool isDefault() const noexcept { return _default; }
 
+	/**
+	 * @brief Calculates size of the image at the view mip level.
+	 * @param mipOffset image view base mip offset
+	 */
+	uint2 calcSize(uint8 mipOffset = 0) const noexcept;
+	/**
+	 * @brief Calculates size of the image at the view mip level.
+	 * @param mipOffset image view base mip offset
+	 */
+	u32x4 calcSize3(uint8 mipOffset = 0) const noexcept;
+
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Sets image view debug name. (Debug Only)

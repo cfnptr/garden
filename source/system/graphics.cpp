@@ -247,11 +247,22 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	{
 		cameraConstants.projection = cameraView->calcProjection();
 		cameraConstants.nearPlane = cameraView->getNearPlane();
+
+		if (cameraView->type == ProjectionType::Perspective)
+		{
+			cameraConstants.anglePerPixel = std::atan((2.0f * std::tan(
+				cameraView->p.perspective.fieldOfView * 0.5f)) / scaledFramebufferSize.y);
+		}
+		else
+		{
+			cameraConstants.anglePerPixel = 0.0f;
+		}
 	}
 	else
 	{
 		cameraConstants.projection = f32x4x4::identity;
 		cameraConstants.nearPlane = defaultHmdDepth;
+		cameraConstants.anglePerPixel = 0.0f;
 	}
 
 	cameraConstants.viewProj = cameraConstants.projection * cameraConstants.view;
@@ -896,9 +907,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer color "
 			"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), 
-			"Incorrect framebuffer color attachment [" + to_string(i) + 
-			"] image view [" + imageView->getDebugName() + "] size at mip");
+		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer color attachment [" + 
+			to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
 			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
 		validColorAttachCount++;
@@ -911,8 +921,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect framebuffer depth/stencil " 
 			"attachment image view [" + imageView->getDebugName() + "] format");
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()), "Incorrect "
-			"framebuffer depth/stencil attachment image view [" + imageView->getDebugName() + "] size at mip");
+		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer depth/stencil "
+			"attachment image view [" + imageView->getDebugName() + "] size at mip");
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), "Missing "
 			"framebuffer depth/stencil attachment image view [" + imageView->getDebugName() + "] flag");
 	}
@@ -946,9 +956,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] shader stages");
 			
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()),
-				"Incorrect framebuffer input attachment [" + to_string(i) + 
-				"] image view [" + imageView->getDebugName() + "] size at mip");
+			GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer input attachment [" + 
+				to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
 			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment), "Missing framebuffer "
 				"input attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
 		}
@@ -967,9 +976,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 				"] image view [" + imageView->getDebugName() + "] flags");
 			
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT_MSG(size == calcSizeAtMip((uint2)image->getSize(), imageView->getBaseMip()),
-				"Incorrect framebuffer output attachment [" + to_string(i) + 
-				"] image view [" + imageView->getDebugName() + "] size at mip");
+			GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer output attachment [" + 
+				to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
 			#if GARDEN_DEBUG
 			if (isFormatColor(imageView->getFormat()))
 			{

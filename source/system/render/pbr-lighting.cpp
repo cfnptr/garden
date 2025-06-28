@@ -17,18 +17,22 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/camera.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
 
 #include "math/brdf.hpp"
 #include "math/sh.hpp"
 
-#define SPECULAR_SAMPLE_COUNT 1024
-
 using namespace garden;
 using namespace math::sh;
 using namespace math::ibl;
 using namespace math::brdf;
+
+static constexpr uint32 specularSampleCount = 1024;
+static constexpr uint32 reflectionsKernelWidth = 21; // TODO: move this to settings
+static constexpr float reflectionsSigma0 = (reflectionsKernelWidth + 1) / 6.0f;
+static constexpr auto reflectionsCoeffCount = GpuProcessSystem::calcGaussCoeffCount(reflectionsKernelWidth);
 
 namespace garden::graphics
 {
@@ -139,15 +143,15 @@ static float smithGGXCorrelated(float nov, float nol, float a) noexcept
 }
 static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
 {
+	constexpr auto invSampleCount = 1.0f / specularSampleCount;
 	auto nov = clamp((x + 0.5f) / iblDfgSize, 0.0f, 1.0f);
 	auto coord = clamp((iblDfgSize - y + 0.5f) / iblDfgSize, 0.0f, 1.0f);
 	auto v = f32x4(sqrt(1.0f - nov * nov), 0.0f, nov);
-	auto invSampleCount = 1.0f / SPECULAR_SAMPLE_COUNT;
 	auto linearRoughness = coord * coord;
 
 	auto r = float2(0.0f);
 
-	for (uint32 i = 0; i < SPECULAR_SAMPLE_COUNT; i++)
+	for (uint32 i = 0; i < specularSampleCount; i++)
 	{
 		auto u = hammersley(i, invSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
@@ -167,13 +171,13 @@ static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
 		}
 	}
 
-	return r * (4.0f / SPECULAR_SAMPLE_COUNT);
+	return r * (4.0f / specularSampleCount);
 }
 
 static float mipToLinearRoughness(uint8 lodCount, uint8 mip) noexcept
 {
 	constexpr auto a = 2.0f, b = -1.0f;
-	auto lod = clamp((float)mip / (lodCount - 1), 0.0f, 1.0f);
+	auto lod = clamp((float)mip / ((int)lodCount - 1), 0.0f, 1.0f);
 	auto perceptualRoughness = clamp((sqrt(
 		a * a + 4.0f * b * lod) - a) / (2.0f * b), 0.0f, 1.0f);
 	return perceptualRoughness * perceptualRoughness;
@@ -181,7 +185,7 @@ static float mipToLinearRoughness(uint8 lodCount, uint8 mip) noexcept
 
 static uint32 calcSampleCount(uint8 mipLevel) noexcept
 {
-	return SPECULAR_SAMPLE_COUNT * (uint32)exp2((float)std::max(mipLevel - 1, 0));
+	return specularSampleCount * (uint32)exp2((float)std::max((int)mipLevel - 1, 0));
 }
 
 //**********************************************************************************************************************
@@ -319,29 +323,40 @@ static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 }
 
 //**********************************************************************************************************************
-static ID<Image> createReflectionBuffer(vector<ID<ImageView>>& reflImageViews)
+static ID<Image> createReflBuffer(vector<ID<ImageView>>& reflImageViews, 
+	ID<ImageView>& reflBufferView, vector<ID<DescriptorSet>>& reflBlurDSes)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto reflBufferSize = graphicsSystem->getScaledFramebufferSize();
-	auto mipCount = calcMipCount(reflBufferSize);
-	reflImageViews.resize(mipCount);
+	auto roughnessLodCount = calcMipCount(reflBufferSize); // We don't go lower than 16 texel in one dimension.
+	roughnessLodCount = (uint8)std::max(std::min(4, (int)roughnessLodCount), (int)roughnessLodCount - 4);
+	reflImageViews.resize(roughnessLodCount * 2);
+	reflBlurDSes.resize(roughnessLodCount);
 
-	Image::Mips mips(mipCount);
-	for (uint8 i = 0; i < mipCount; i++)
-		mips[i].push_back(nullptr);
+	Image::Mips mips(roughnessLodCount);
+	for (uint8 i = 0; i < roughnessLodCount; i++)
+		mips[i].resize(2);
 
 	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::reflBufferFormat, 
 		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
-		Image::Usage::Fullscreen, mips, reflBufferSize, Image::Strategy::Size);
+		Image::Usage::TransferSrc | Image::Usage::Fullscreen, mips, reflBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.reflBuffer");
 
-	for (uint8 i = 0; i < mipCount; i++)
+	for (uint8 mip = 0; mip < roughnessLodCount; mip++)
 	{
-		auto imageView = graphicsSystem->createImageView(image, 
-			Image::Type::Texture2D, PbrLightingRenderSystem::reflBufferFormat, i, 1, 0, 1);
-		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.lighting.reflBuffer" + to_string(i));
-		reflImageViews[i] = imageView;
+		auto mipOffset = mip * 2;
+		for (uint8 layer = 0; layer < 2; layer++)
+		{
+			auto imageView = graphicsSystem->createImageView(image, 
+				Image::Type::Texture2D, PbrLightingRenderSystem::reflBufferFormat, mip, 1, layer, 1);
+			SET_RESOURCE_DEBUG_NAME(imageView, "imageView.lighting.reflBuffer" + to_string(mipOffset + layer));
+			reflImageViews[mipOffset + layer] = imageView;
+		}
 	}
+
+	reflBufferView = graphicsSystem->createImageView(image, Image::Type::Texture2D, 
+		PbrLightingRenderSystem::reflBufferFormat, 0, 0, 0, 1);
+	SET_RESOURCE_DEBUG_NAME(reflBufferView, "imageView.lighting.reflBuffer");
 	return image;
 }
 static void createReflFramebuffers(const vector<ID<ImageView>>& reflImageViews, 
@@ -349,28 +364,28 @@ static void createReflFramebuffers(const vector<ID<ImageView>>& reflImageViews,
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	auto mipCount = (uint8)reflImageViews.size();
-	reflFramebuffers.resize(mipCount);
+	auto mipCount2 = (uint8)reflImageViews.size();
+	reflFramebuffers.resize(mipCount2);
 
-	for (uint8 i = 0; i < mipCount; i++)
+	for (uint8 i = 0; i < mipCount2; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
 		{ Framebuffer::OutputAttachment(reflImageViews[i], { false, false, true }) };
 		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.lighting.reflection" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.lighting.reflections" + to_string(i));
 		reflFramebuffers[i] = framebuffer;
-		framebufferSize = max(framebufferSize / 2u, uint2::one);
+
+		if (i % 2 != 0)
+			framebufferSize = max(framebufferSize / 2u, uint2::one);
 	}
 }
 
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<ImageView>* shadowImageViews, 
-	const ID<ImageView>* aoImageViews, ID<Image> reflectionBuffer)
+	const ID<ImageView>* aoImageViews, ID<ImageView> reflBufferView)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
-	auto reflBufferView = reflectionBuffer ? 
-		graphicsSystem->get(reflectionBuffer)->getDefaultView() : graphicsSystem->getEmptyTexture();
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 
 	DescriptorSet::Uniforms uniforms =
@@ -380,7 +395,8 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<Im
 			shadowImageViews[0] : graphicsSystem->getWhiteTexture()) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[0] ?
 			aoImageViews[0] : graphicsSystem->getWhiteTexture()) },
-		{ "reflBuffer", DescriptorSet::Uniform(reflBufferView) },
+		{ "reflBuffer", DescriptorSet::Uniform(reflBufferView ?
+			reflBufferView : graphicsSystem->getEmptyTexture()) },
 		{ "dfgLUT", DescriptorSet::Uniform(graphicsSystem->get(dfgLUT)->getDefaultView()) }
 	};
 
@@ -425,7 +441,6 @@ static ID<Image> createDfgLUT()
 	vector<float2> pixels(iblDfgSize * iblDfgSize);
 	auto pixelData = pixels.data();
 
-	// TODO: check if release build DFG image looks the same as debug.
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 	{
@@ -462,6 +477,19 @@ static ID<Image> createDfgLUT()
 		{ { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
 	return image;
+}
+
+static ID<Buffer> createReflKernel()
+{
+	float2 coeffs[reflectionsCoeffCount];
+	GpuProcessSystem::calcGaussCoeffs(reflectionsSigma0, coeffs, reflectionsCoeffCount);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto kernel = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst | 
+		Buffer::Usage::TransferQ, Buffer::CpuAccess::None, coeffs, reflectionsCoeffCount * sizeof(float2), 
+		Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(kernel, "buffer.uniform.lighting.reflKernel");
+	return kernel;
 }
 
 //**********************************************************************************************************************
@@ -545,6 +573,8 @@ void PbrLightingRenderSystem::init()
 
 	if (!dfgLUT)
 		dfgLUT = createDfgLUT();
+	if (!reflKernel)
+		reflKernel = createReflKernel();
 
 	if (hasShadowBuffer)
 	{
@@ -562,8 +592,8 @@ void PbrLightingRenderSystem::init()
 	}
 	if (hasReflBuffer)
 	{
-		if (!reflectionBuffer)
-			reflectionBuffer = createReflectionBuffer(reflImageViews);
+		if (!reflBuffer)
+			reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
 		if (reflFramebuffers.empty())
 			createReflFramebuffers(reflImageViews, reflFramebuffers);
 	}
@@ -576,26 +606,67 @@ void PbrLightingRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		// TODO: graphicsSystem->destroy(reflDenoiseDS);
+		graphicsSystem->destroy(reflBlurDSes);
 		graphicsSystem->destroy(aoBlurDS);
 		graphicsSystem->destroy(shadowBlurDS);
 		graphicsSystem->destroy(lightingDS);
+		graphicsSystem->destroy(reflBlurPipeline);
 		graphicsSystem->destroy(aoBlurPipeline);
 		graphicsSystem->destroy(shadowBlurPipeline);
 		graphicsSystem->destroy(iblSpecularPipeline);
 		graphicsSystem->destroy(lightingPipeline);
+		graphicsSystem->destroy(reflBufferView);
 		graphicsSystem->destroy(reflFramebuffers);
 		graphicsSystem->destroy(reflImageViews);
-		graphicsSystem->destroy(reflectionBuffer);
+		graphicsSystem->destroy(reflBuffer);
 		destroyAoFramebuffers(aoFramebuffers);
 		destroyAoBuffer(aoBuffer, aoImageViews, aoDenBuffer);
 		destroyShadowFramebuffers(aoFramebuffers);
 		destroyShadowBuffer(shadowBuffer, shadowImageViews);
+		graphicsSystem->destroy(reflKernel);
 		graphicsSystem->destroy(dfgLUT);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingRenderSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", PbrLightingRenderSystem::hdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingRenderSystem::gBufferRecreate);
+	}
+}
+
+//**********************************************************************************************************************
+static float calcReflLodOffset(uint2 framebufferSize)
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto cameraView = CameraSystem::Instance::get()->getComponent(graphicsSystem->camera);
+	constexpr float d = 1.0f; // Texel size of the reflection buffer in world units at 1 meter.
+	auto texelSizeAtOneMeter = (d * std::tan(cameraView->p.perspective.fieldOfView * 0.5f)) / framebufferSize.y;
+	return -std::log2((M_SQRT2 * reflectionsSigma0) * texelSizeAtOneMeter);
+}
+static void downsampleReflections(const vector<ID<ImageView>>& reflImageViews, 
+	const vector<ID<Framebuffer>>& reflFramebuffers, ID<Buffer> reflKernel, 
+	ID<GraphicsPipeline>& reflBlurPipeline, vector<ID<DescriptorSet>>& reflBlurDSes)
+{
+	SET_GPU_DEBUG_LABEL("Reflections Downsample", Color::transparent);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
+	auto roughnessLodCount = (uint8)(reflImageViews.size() / 2);
+	auto image = graphicsSystem->get(reflImageViews[0])->getImage();
+	auto reinhard = true;
+
+	Image::BlitRegion blitRegion;
+	blitRegion.layerCount = 1;
+	
+	// TODO: potentially we can reduce VRAM usage by using only one 0 mip level TMP buffer instead of all mips TMP.
+	for (uint8 i = 1; i < roughnessLodCount; i++)
+	{
+		blitRegion.srcMipLevel = i - 1;
+		blitRegion.dstMipLevel = i;
+		Image::blit(image, image, blitRegion, Sampler::Filter::Linear);
+
+		auto i2 = i * 2;
+		gpuProcessSystem->gaussianBlur(reflImageViews[i2], reflFramebuffers[i2], reflFramebuffers[i2 + 1], 
+			reflKernel, reflectionsCoeffCount, reinhard, reflBlurPipeline, reflBlurDSes[i]);
+		reinhard = false;
 	}
 }
 
@@ -611,10 +682,13 @@ void PbrLightingRenderSystem::preHdrRender()
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	if (pipelineView->isReady() && !lightingDS)
 	{
-		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflectionBuffer);
+		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflBufferView);
 		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
 	}
+
+	auto framebufferView = graphicsSystem->get(reflFramebuffers[0]);
+	reflLodOffset = calcReflLodOffset(framebufferView->getSize());
 
 	auto manager = Manager::Instance::get();
 	if (hasReflBuffer)
@@ -649,12 +723,12 @@ void PbrLightingRenderSystem::preHdrRender()
 		auto event = &manager->getEvent("ReflRender");
 		if (event->hasSubscribers())
 		{
-			if (!reflectionBuffer)
-				reflectionBuffer = createReflectionBuffer(reflImageViews);
+			if (!reflBuffer)
+				reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
 			if (reflFramebuffers.empty())
 				createReflFramebuffers(reflImageViews, reflFramebuffers);
 
-			auto framebufferView = graphicsSystem->get(reflFramebuffers[0]);
+			framebufferView = graphicsSystem->get(reflFramebuffers[0]);
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Reflection Pass", Color::transparent);
@@ -677,7 +751,7 @@ void PbrLightingRenderSystem::preHdrRender()
 			if (!shadowFramebuffers[0])
 				createShadowFramebuffers(shadowImageViews, shadowFramebuffers);
 
-			auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
+			framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
@@ -700,7 +774,7 @@ void PbrLightingRenderSystem::preHdrRender()
 			if (!aoFramebuffers[0])
 				createAoFramebuffers(aoImageViews, aoFramebuffers);
 
-			auto framebufferView = graphicsSystem->get(aoFramebuffers[2]);
+			framebufferView = graphicsSystem->get(aoFramebuffers[2]);
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
@@ -739,22 +813,22 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
-	if (hasAnyRefl) // Note: reflections go first
+	if (hasAnyRefl) // Note: reflections go first.
 	{
-		// TODO: downsample reflection buffer based on roughness.
+		downsampleReflections(reflImageViews, reflFramebuffers, 
+			reflKernel, reflBlurPipeline, reflBlurDSes);
 		hasAnyRefl = false;
 	}
-	else if (reflectionBuffer)
+	else if (reflBuffer)
 	{
-		auto imageView = graphicsSystem->get(reflectionBuffer);
+		auto imageView = graphicsSystem->get(reflBuffer);
 		imageView->clear(float4::zero);
 	}
 
 	if (hasAnyShadow)
 	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], 
-			shadowFramebuffers[2], shadowImageViews[1], shadowFramebuffers[1], 
-			float2(1.0f), denoiseSharpness, shadowBlurPipeline, shadowBlurDS);
+		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[2], 
+			shadowFramebuffers[1], denoiseSharpness, shadowBlurPipeline, shadowBlurDS);
 		hasAnyShadow = false;
 	}
 	else if (shadowBuffer)
@@ -765,9 +839,8 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasAnyAO)
 	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], 
-			aoFramebuffers[0], aoImageViews[1], aoFramebuffers[1], 
-			float2(1.0f), denoiseSharpness, aoBlurPipeline, aoBlurDS);
+		GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
+			aoFramebuffers[1], denoiseSharpness, aoBlurPipeline, aoBlurDS);
 		hasAnyAO = false;
 	}
 	else if (aoBuffer)
@@ -792,7 +865,8 @@ void PbrLightingRenderSystem::hdrRender()
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	auto dfgLutView = graphicsSystem->get(dfgLUT);
-	if (!pipelineView->isReady() || !dfgLutView->isReady() || !lightingDS)
+	auto reflKernelView = graphicsSystem->get(reflKernel);
+	if (!pipelineView->isReady() || !dfgLutView->isReady() || !reflKernelView->isReady() || !lightingDS)
 		return;
 
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
@@ -817,15 +891,16 @@ void PbrLightingRenderSystem::hdrRender()
 		pbrLightingView->descriptorSet = descriptorSet;
 	}
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-
 	DescriptorSet::Range descriptorSetRange[2];
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDS);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
+
 	LightingPC pc;
 	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * f32x4x4::uvToNDC);
 	pc.shadow = (float4)cameraConstants.shadowColor;
+	pc.reflLodOffset = reflLodOffset;
 	pc.emissiveCoeff = cameraConstants.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;
 
@@ -842,11 +917,28 @@ void PbrLightingRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 
-	if (reflectionBuffer)
+	if (shadowBlurDS)
 	{
+		graphicsSystem->destroy(shadowBlurDS);
+		shadowBlurDS = {};
+	}
+	if (aoBlurDS)
+	{
+		graphicsSystem->destroy(aoBlurDS);
+		aoBlurDS = {};
+	}
+	if (!reflBlurDSes.empty())
+	{
+		graphicsSystem->destroy(reflBlurDSes);
+		reflBlurDSes = {};
+	}
+
+	if (reflBuffer)
+	{
+		graphicsSystem->destroy(reflBufferView);
 		graphicsSystem->destroy(reflImageViews);
-		graphicsSystem->destroy(reflectionBuffer);
-		reflectionBuffer = createReflectionBuffer(reflImageViews);
+		graphicsSystem->destroy(reflBuffer);
+		reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
 	}
 	if (!reflFramebuffers.empty())
 	{
@@ -900,34 +992,16 @@ void PbrLightingRenderSystem::gBufferRecreate()
 	if (lightingDS)
 	{
 		graphicsSystem->destroy(lightingDS);
-		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflectionBuffer);
+		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflBufferView);
 		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
 	}
-
-	if (shadowBlurDS)
-	{
-		graphicsSystem->destroy(shadowBlurDS);
-		shadowBlurDS = {};
-	}
-	if (aoBlurDS)
-	{
-		graphicsSystem->destroy(aoBlurDS);
-		aoBlurDS = {};
-	}
-	/** TODO: destroy downsample descriptor sets.
-	if (reflDenoiseDS)
-	{
-		graphicsSystem->destroy(reflDenoiseDS);
-		reflDenoiseDS = {};
-	}
-	*/
 
 	if (aoBuffer || aoFramebuffers[0])
 		Manager::Instance::get()->runEvent("AoRecreate");
 	if (shadowBuffer || shadowFramebuffers[0])
 		Manager::Instance::get()->runEvent("ShadowRecreate");
-	if (reflectionBuffer || !reflFramebuffers.empty())
+	if (reflBuffer || !reflFramebuffers.empty())
 		Manager::Instance::get()->runEvent("ReflRecreate");
 }
 
@@ -991,15 +1065,17 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, 
 	{
 		if (useReflBuffer)
 		{
-			reflectionBuffer = createReflectionBuffer(reflImageViews);
+			reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
 			createReflFramebuffers(reflImageViews, reflFramebuffers);
 		}
 		else
 		{
+			graphicsSystem->destroy(reflBufferView);
 			graphicsSystem->destroy(reflFramebuffers);
 			graphicsSystem->destroy(reflImageViews);
-			graphicsSystem->destroy(reflectionBuffer);
-			reflectionBuffer = {}; reflImageViews = {}; reflFramebuffers = {};
+			graphicsSystem->destroy(reflBuffer);
+			reflBuffer = {}; reflImageViews = {}; 
+			reflFramebuffers = {}; reflBufferView = {};
 		}
 	}
 
@@ -1050,6 +1126,12 @@ ID<Image> PbrLightingRenderSystem::getDfgLUT()
 		dfgLUT = createDfgLUT();
 	return dfgLUT;
 }
+ID<Buffer> PbrLightingRenderSystem::getReflKernel()
+{
+	if (!reflKernel)
+		reflKernel = createReflKernel();
+	return reflKernel;
+}
 
 ID<Image> PbrLightingRenderSystem::getShadowBuffer()
 {
@@ -1071,9 +1153,9 @@ ID<Image> PbrLightingRenderSystem::getAoDenBuffer()
 }
 ID<Image> PbrLightingRenderSystem::getReflBuffer()
 {
-	if (!reflectionBuffer && hasReflBuffer)
-		reflectionBuffer = createReflectionBuffer(reflImageViews);
-	return reflectionBuffer;
+	if (!reflBuffer && hasReflBuffer)
+		reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
+	return reflBuffer;
 }
 
 const ID<ImageView>* PbrLightingRenderSystem::getShadowImageViews()
@@ -1090,8 +1172,8 @@ const ID<ImageView>* PbrLightingRenderSystem::getAoImageViews()
 }
 const vector<ID<ImageView>>& PbrLightingRenderSystem::getReflImageViews()
 {
-	if (!reflectionBuffer && hasReflBuffer)
-		reflectionBuffer = createReflectionBuffer(reflImageViews);
+	if (!reflBuffer && hasReflBuffer)
+		reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
 	return reflImageViews;
 }
 

@@ -18,7 +18,6 @@
 #define AABB_GSL
 
 #include "common/ray.gsl"
-#include "common/math.gsl"
 
 struct Aabb
 {

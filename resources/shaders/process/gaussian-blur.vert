@@ -12,26 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CONSTANTS_GSL
-#define CONSTANTS_GSL
+#include "common/fullscreen.gsl"
 
-#define CAMERA_CONSTANTS     \
-	float4x4 view;           \
-	float4x4 projection;     \
-	float4x4 viewProj;       \
-	float4x4 inverseView;    \
-	float4x4 inverseProj;    \
-	float4x4 invViewProj;    \
-	float4 cameraPos;        \
-	float4 viewDir;          \
-	float4 lightDir;         \
-	float4 shadowColor;      \
-	float4 skyColor;         \
-	float2 frameSize;        \
-	float2 invFrameSize;     \
-	float2 invFrameSize2;    \
-	float nearPlane;         \
-	float emissiveCoeff;     \
-	float anglePerPixel;
+out noperspective float2 fs.texCoords;
 
-#endif // CONSTANTS_GSL
+void main()
+{
+	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
+}
