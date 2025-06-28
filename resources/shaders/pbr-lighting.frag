@@ -17,7 +17,8 @@ spec const bool USE_AO_BUFFER = false;
 spec const bool USE_REFLECTION_BUFFER = false;
 spec const bool USE_EMISSIVE_BUFFER = false;
 spec const bool USE_GI_BUFFER = false;
-#define USE_SUB_SURFACE_SCATTERING false
+
+// TODO: or maybe we can utilize filament micro/macro AO?
 
 #include "common/pbr.gsl"
 #include "common/depth.gsl"
@@ -40,7 +41,11 @@ uniform sampler2D g5;
 uniform sampler2D depthBuffer;
 uniform sampler2D shadowBuffer;
 uniform sampler2D aoBuffer;
-uniform sampler2D reflBuffer;
+
+uniform sampler2D
+{
+	filter = linear;
+} reflBuffer;
 
 uniform sampler2D
 {
@@ -60,6 +65,7 @@ uniform pushConstants
 {
 	float4x4 uvToWorld;
 	float4 shadow;
+	float reflLodOffset;
 	float emissiveCoeff;
 	float reflectanceCoeff;
 } pc;
@@ -68,10 +74,11 @@ uniform pushConstants
 void main()
 {
 	float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
-	if (depth < FLOAT32_MIN)
+	if (depth == 0.0f)
 		discard;
 
 	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	gBuffer.reflectance *= pc.reflectanceCoeff;
 	
 	float4 shadow = float4(pc.shadow.rgb, gBuffer.shadow);
 	if (USE_SHADOW_BUFFER)
@@ -82,18 +89,23 @@ void main()
 	}
 	shadow.rgb *= mix(pc.shadow.a, 1.0f, shadow.a);
 
+	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
+	worldPosition.xyz /= worldPosition.w;
+	float3 viewDirection = calcViewDirection(worldPosition.xyz);
+
 	if (USE_AO_BUFFER)
-		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, textureLod(aoBuffer, fs.texCoords, 0.0f).r);
-	// TODO: or maybe we can utilize filament micro/macro AO?
-	gBuffer.reflectance *= pc.reflectanceCoeff;
+	{
+		float ao = textureLod(aoBuffer, fs.texCoords, 0.0f).r;
+		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, ao);
+	}
+	if (USE_REFLECTION_BUFFER)
+	{
+		float lod = reflectionsLod(gBuffer.roughness, length(worldPosition.xyz), pc.reflLodOffset);
+		gBuffer.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
+	}
 
-	float3 viewDirection = calcViewDirectionUV(fs.texCoords, depth, pc.uvToWorld);
 	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
-
 	if (USE_EMISSIVE_BUFFER)
 		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.emissiveCoeff;
 	fb.hdr = float4(hdrColor, 1.0f);
-	
-	// TODO: temporal. integrate ssao into the pbr like it's done in the filament.
-	//fb.hdr *= textureLod(aoBuffer, fs.texCoords, 0.0f).r;
 }

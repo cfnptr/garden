@@ -15,6 +15,7 @@
 #include "garden/system/render/gpu-process.hpp"
 #include "garden/system/render/hiz.hpp"
 #include "garden/system/resource.hpp"
+#include "process/gaussian-blur.h"
 
 using namespace garden;
 
@@ -41,6 +42,12 @@ static ID<GraphicsPipeline> createBilateralBlurD(ID<Framebuffer> framebuffer)
 	ResourceSystem::GraphicsOptions options;
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d", framebuffer, options);
+}
+static ID<GraphicsPipeline> createGaussianBlur(ID<Framebuffer> framebuffer)
+{
+	ResourceSystem::GraphicsOptions options;
+	options.loadAsync = false;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/gaussian-blur", framebuffer, options);
 }
 
 //**********************************************************************************************************************
@@ -150,26 +157,115 @@ void GpuProcessSystem::normalMapMips(ID<Image> normalMap)
 }
 
 //**********************************************************************************************************************
-void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer, 
-	ID<ImageView> tmpBuffer, ID<Framebuffer> tmpFramebuffer, float2 scale, 
-	float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet)
+void GpuProcessSystem::calcGaussCoeffs(float sigma, float2* coeffs, uint8 coeffCount) noexcept
+{
+	GARDEN_ASSERT(sigma > 0.0f);
+	GARDEN_ASSERT(coeffs);
+	GARDEN_ASSERT(coeffCount > 0);
+	
+	auto alpha = 1.0f / (-2.0f * sigma * sigma);
+	auto totalWeight = 1.0f;
+	coeffs[0] = float2(1.0f, 0.0f);
+
+	for (uint8 i = 1; i < coeffCount; i++)
+	{
+		auto x0 = float(i * 2 - 1), x1 = float(i * 2);
+		auto k0 = std::exp(alpha * x0 * x0);
+		auto k1 = std::exp(alpha * x1 * x1);
+		auto k = k0 + k1, o = k1 / k;
+		coeffs[i] = float2(k, o);
+		totalWeight += (k0 + k1) * 2.0f;
+    }
+
+	for (uint8 i = 0; i < coeffCount; i++)
+		coeffs[i].x /= totalWeight;
+}
+
+void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,
+	ID<Framebuffer> tmpFramebuffer, ID<Buffer> kernelBuffer, uint8 coeffCount, bool reinhard, 
+	ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet)
 {
 	GARDEN_ASSERT(srcBuffer);
 	GARDEN_ASSERT(dstFramebuffer);
-	GARDEN_ASSERT(tmpBuffer);
 	GARDEN_ASSERT(tmpFramebuffer);
+	GARDEN_ASSERT(kernelBuffer);
+	GARDEN_ASSERT(coeffCount > 0);
+	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+
+	if (!pipeline)
+		pipeline = createGaussianBlur(dstFramebuffer);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
+
+	if (!descriptorSet)
+	{
+		DescriptorSet::Uniforms uniforms 
+		{
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, 
+				{ framebufferView->getColorAttachments()[0].imageView } })},
+			{ "kernel", DescriptorSet::Uniform(kernelBuffer, 1, 2) }
+		};
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.gaussianBlur" + to_string(*descriptorSet));
+	}
+
+	auto variant = reinhard ? GAUSSIAN_BLUR_REINHARD : GAUSSIAN_BLUR_BASE;
+	auto texelSize = float2(1.0f) / graphicsSystem->get(srcBuffer)->calcSize();
+
+	GaussianBlurPC pc;
+	pc.count = coeffCount;
+
+	auto pipelineView = graphicsSystem->get(pipeline);
+	pipelineView->updateFramebuffer(tmpFramebuffer);
+	pc.texelSize = float2(texelSize.x, 0.0f);
+
+	SET_GPU_DEBUG_LABEL("Gaussian Blur", Color::transparent);
+
+	framebufferView->beginRenderPass(float4::zero);
+	pipelineView->bind(variant);
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(descriptorSet, 0);
+	pipelineView->pushConstants(&pc);
+	pipelineView->drawFullscreen();
+	framebufferView->endRenderPass();
+
+	framebufferView = graphicsSystem->get(dstFramebuffer);
+	pipelineView->updateFramebuffer(dstFramebuffer);
+	pc.texelSize = float2(0.0f, texelSize.y);
+
+	framebufferView->beginRenderPass(float4::zero);
+	pipelineView->bind(variant);
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(descriptorSet, 1);
+	pipelineView->pushConstants(&pc);
+	pipelineView->drawFullscreen();
+	framebufferView->endRenderPass();
+}
+
+//**********************************************************************************************************************
+void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,
+	ID<Framebuffer> tmpFramebuffer, float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet)
+{
+	GARDEN_ASSERT(srcBuffer);
+	GARDEN_ASSERT(dstFramebuffer);
+	GARDEN_ASSERT(tmpFramebuffer);
+	GARDEN_ASSERT(sharpness > 0.0f);
 	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
 
 	if (!pipeline)
 		pipeline = createBilateralBlurD(dstFramebuffer);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
+
 	if (!descriptorSet)
 	{
 		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews()[0];
 		DescriptorSet::Uniforms uniforms
 		{
-			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBuffer } }) },
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, 
+				{ framebufferView->getColorAttachments()[0].imageView } }) },
 			{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
 		};
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
@@ -177,14 +273,13 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> d
 	}
 
 	auto& cameraConstants = graphicsSystem->getCameraConstants();
+	auto texelSize = float2(1.0f) / graphicsSystem->get(srcBuffer)->calcSize();
 
 	BilateralBlurPC pc;
 	pc.nearPlane = cameraConstants.nearPlane;
 	pc.sharpness = sharpness;
 
 	auto pipelineView = graphicsSystem->get(pipeline);
-	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
-	auto texelSize = scale / framebufferView->getSize();
 	pipelineView->updateFramebuffer(tmpFramebuffer);
 	pc.texelSize = float2(texelSize.x, 0.0f);
 
@@ -209,6 +304,4 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> d
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 	framebufferView->endRenderPass();
-
-	pipelineView->updateFramebuffer(graphicsSystem->getSwapchainFramebuffer());
 }

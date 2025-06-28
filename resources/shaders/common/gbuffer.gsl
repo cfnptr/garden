@@ -56,6 +56,7 @@ struct GBufferValues
 	float emissiveFactor;
 	float3 subsurfaceColor;
 	float thickness;
+	float4 reflectionColor;
 	float3 refractedColor;
 	float3 giColor;
 };
@@ -79,13 +80,11 @@ GBufferValues gBufferValuesDefault()
 	values.emissiveFactor = 0.0f;
 	values.subsurfaceColor = float3(0.0f);
 	values.thickness = 1.0f;
+	values.reflectionColor = float4(0.0f);
 	values.refractedColor = float3(0.0f);
 	values.giColor = float3(1.0f);
 	return values;
 }
-
-float packRoughness(float linearRoughness) { return sqrt(linearRoughness); }
-float unpackRoughness(float perceptualRoughness) { return perceptualRoughness * perceptualRoughness; }
 
 //**********************************************************************************************************************
 // Signed Octahedron Normal Encoding (R10G10B10A2)
@@ -212,6 +211,7 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	values.ambientOcclusion = decodeAmbientOcclusion(data);
 	values.reflectance = decodeReflectance(data);
 	values.absorptionColor = values.baseColor;
+	values.transmission = 0.0f;
 	values.clearCoatNormal = decodeClearCoatNormal(data);
 	values.clearCoatRoughness = decodeClearCoatRoughness(data);
 	values.normal = decodeNormal(data);
@@ -226,7 +226,9 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	if (USE_GI_BUFFER)
 		values.giColor = decodeGiColor(data);
 
-	values.transmission = 0.0f;
+	values.subsurfaceColor = float3(0.0f);
+	values.thickness = 1.0f;
+	values.reflectionColor = float4(0.0f);
 	values.refractedColor = float3(0.0f);
 	return values;
 }

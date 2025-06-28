@@ -43,10 +43,7 @@ float3 schlick(float voh, float3 f0, float f90)
 {
 	return f0 + (f90 - f0) * pow(1.0f - voh, 5.0f);
 }
-float lambert()
-{
-	return 1.0f / M_PI;
-}
+float lambert() { return 1.0f / M_PI; }
 
 //**********************************************************************************************************************
 float2 hammersley(uint32 index, float invSampleCount)
@@ -161,6 +158,16 @@ float3 diffuseIrradiance(float3 normal, const float4 shBuffer[SH_COEFF_COUNT])
 		shBuffer[7].xyz * (normal.z * normal.x) +
 		shBuffer[8].xyz * (normal.x * normal.x - normal.y * normal.y);
 	return max(irradiance, 0.0f);
+}
+
+float packRoughness(float linearRoughness) { return sqrt(linearRoughness); }
+float unpackRoughness(float perceptualRoughness) { return perceptualRoughness * perceptualRoughness; }
+
+float reflectionsLod(float perceptualRoughness, float distance, float reflLodOffset)
+{
+	const float invLog2sqrt5 = 0.8614f;
+	float roughness = unpackRoughness(max(perceptualRoughness, 0.045f));
+    return (log2(roughness / max(distance, 1.0f)) + reflLodOffset) * invLog2sqrt5;
 }
 
 #endif // BRDF_GSL
