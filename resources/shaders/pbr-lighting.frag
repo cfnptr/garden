@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-spec const bool USE_SHADOW_BUFFER = false;
-spec const bool USE_AO_BUFFER = false;
-spec const bool USE_REFLECTION_BUFFER = false;
-spec const bool USE_EMISSIVE_BUFFER = false;
-spec const bool USE_GI_BUFFER = false;
-
 // TODO: or maybe we can utilize filament micro/macro AO?
+
+#define USE_EMISSIVE_BUFFER
+#define USE_GI_BUFFER
+
+spec const bool HAS_SHADOW_BUFFER = false;
+spec const bool HAS_AO_BUFFER = false;
+spec const bool HAS_REFLECTION_BUFFER = false;
+spec const bool HAS_EMISSIVE_BUFFER = false;
+spec const bool HAS_GI_BUFFER = false;
 
 #include "common/pbr.gsl"
 #include "common/depth.gsl"
@@ -64,7 +67,7 @@ uniform set1 IblData
 uniform pushConstants
 {
 	float4x4 uvToWorld;
-	float4 shadow;
+	float4 shadowColor;
 	float reflLodOffset;
 	float emissiveCoeff;
 	float reflectanceCoeff;
@@ -77,35 +80,35 @@ void main()
 	if (depth == 0.0f)
 		discard;
 
-	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
-	gBuffer.reflectance *= pc.reflectanceCoeff;
+	GBufferValues values = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	values.reflectance *= pc.reflectanceCoeff;
 	
-	float4 shadow = float4(pc.shadow.rgb, gBuffer.shadow);
-	if (USE_SHADOW_BUFFER)
+	float4 shadow = float4(pc.shadowColor.rgb, values.shadow);
+	if (HAS_SHADOW_BUFFER)
 	{
 		float4 accumShadow = textureLod(shadowBuffer, fs.texCoords, 0.0f);
 		shadow.a = min(shadow.a, accumShadow.a);
 		shadow.rgb *= accumShadow.rgb;
 	}
-	shadow.rgb *= mix(pc.shadow.a, 1.0f, shadow.a);
+	shadow.rgb *= mix(pc.shadowColor.a, 1.0f, shadow.a);
 
 	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
 	worldPosition.xyz /= worldPosition.w;
 	float3 viewDirection = calcViewDirection(worldPosition.xyz);
 
-	if (USE_AO_BUFFER)
+	if (HAS_AO_BUFFER)
 	{
 		float ao = textureLod(aoBuffer, fs.texCoords, 0.0f).r;
-		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, ao);
+		values.ambientOcclusion = min(values.ambientOcclusion, ao);
 	}
-	if (USE_REFLECTION_BUFFER)
+	if (HAS_REFLECTION_BUFFER)
 	{
-		float lod = reflectionsLod(gBuffer.roughness, length(worldPosition.xyz), pc.reflLodOffset);
-		gBuffer.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
+		float lod = reflectionsLod(values.roughness, length(worldPosition.xyz), pc.reflLodOffset);
+		values.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
 	}
 
-	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
-	if (USE_EMISSIVE_BUFFER)
-		hdrColor += gBuffer.emissiveColor * gBuffer.emissiveFactor * pc.emissiveCoeff;
+	float3 hdrColor = evaluateIBL(values, shadow, viewDirection, dfgLUT, sh.data, specular);
+	if (HAS_EMISSIVE_BUFFER)
+		hdrColor += values.emissiveColor * values.emissiveFactor * pc.emissiveCoeff;
 	fb.hdr = float4(hdrColor, 1.0f);
 }

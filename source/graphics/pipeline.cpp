@@ -477,7 +477,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 		if (specConstValues.find(pair.first) == specConstValues.end())
 		{
 			throw GardenError("Missing required pipeline spec const. ("
-				"specConst: " + pair.first + ","
+				"specConst: " + pair.first + ", "
 				"pipelinePath: " + path.generic_string() + ")");
 		}
 		#endif

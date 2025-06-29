@@ -30,7 +30,7 @@ using namespace math::ibl;
 using namespace math::brdf;
 
 static constexpr uint32 specularSampleCount = 1024;
-static constexpr uint32 reflectionsKernelWidth = 21; // TODO: move this to settings
+static constexpr uint32 reflectionsKernelWidth = 21;
 static constexpr float reflectionsSigma0 = (reflectionsKernelWidth + 1) / 6.0f;
 static constexpr auto reflectionsCoeffCount = GpuProcessSystem::calcGaussCoeffCount(reflectionsKernelWidth);
 
@@ -414,11 +414,11 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	Pipeline::SpecConstValues specConstValues =
 	{
-		{ "USE_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
-		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) },
-		{ "USE_REFLECTION_BUFFER", Pipeline::SpecConstValue(useReflBuffer) },
-		{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
-		{ "USE_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
+		{ "HAS_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
+		{ "HAS_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) },
+		{ "HAS_REFLECTION_BUFFER", Pipeline::SpecConstValue(useReflBuffer) },
+		{ "HAS_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
+		{ "HAS_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 	};
 
 	ResourceSystem::GraphicsOptions options;
@@ -813,18 +813,6 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
-	if (hasAnyRefl) // Note: reflections go first.
-	{
-		downsampleReflections(reflImageViews, reflFramebuffers, 
-			reflKernel, reflBlurPipeline, reflBlurDSes);
-		hasAnyRefl = false;
-	}
-	else if (reflBuffer)
-	{
-		auto imageView = graphicsSystem->get(reflBuffer);
-		imageView->clear(float4::zero);
-	}
-
 	if (hasAnyShadow)
 	{
 		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[2], 
@@ -849,6 +837,18 @@ void PbrLightingRenderSystem::preHdrRender()
 		imageView->clear(float4::one);
 		imageView = graphicsSystem->get(aoDenBuffer);
 		imageView->clear(float4::one);
+	}
+
+	if (hasAnyRefl)
+	{
+		downsampleReflections(reflImageViews, reflFramebuffers, 
+			reflKernel, reflBlurPipeline, reflBlurDSes);
+		hasAnyRefl = false;
+	}
+	else if (reflBuffer)
+	{
+		auto imageView = graphicsSystem->get(reflBuffer);
+		imageView->clear(float4::zero);
 	}
 
 	graphicsSystem->stopRecording();
@@ -899,7 +899,7 @@ void PbrLightingRenderSystem::hdrRender()
 
 	LightingPC pc;
 	pc.uvToWorld = (float4x4)(cameraConstants.invViewProj * f32x4x4::uvToNDC);
-	pc.shadow = (float4)cameraConstants.shadowColor;
+	pc.shadowColor = (float4)cameraConstants.shadowColor;
 	pc.reflLodOffset = reflLodOffset;
 	pc.emissiveCoeff = cameraConstants.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;

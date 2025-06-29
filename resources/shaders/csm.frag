@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSIVE_BUFFER false
-#define USE_GI_BUFFER false
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
 
 #include "common/csm.gsl"

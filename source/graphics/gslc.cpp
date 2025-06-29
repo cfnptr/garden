@@ -494,8 +494,6 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 	else
 	{
 		auto& uniform = uniforms.at(lineData.uniformName);
-		if (hasAnyFlag(uniform.shaderStages, shaderStage))
-			throw CompileError("duplicate uniform name", fileData.lineIndex, lineData.uniformName);
 		if (fileData.uniformType != uniform.type)
 		{
 			throw CompileError("different uniform type with the same name",
@@ -1815,19 +1813,12 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 
 //******************************************************************************************************************
 static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& outputPath,
-	const vector<fs::path>& includePaths, GslCompiler::RayTracingData& data, uint8& bindingIndex, 
-	uint16& pushConstantsSize, uint8& variantCount, uint32& rayRecursionDepth, ShaderStage shaderStage)
+	const vector<fs::path>& includePaths, GslCompiler::RayTracingData& data, 
+	uint8& bindingIndex, uint16& pushConstantsSize, uint8& variantCount, 
+	uint32& rayRecursionDepth, uint8 groupIndex, ShaderStage shaderStage)
 {
 	RayTracingFileData fileData;
-	auto filePath = data.shaderPath;
-	if (shaderStage == ShaderStage::RayGeneration) filePath += ".rgen";
-	else if (shaderStage == ShaderStage::Intersection) filePath += ".rint";
-	else if (shaderStage == ShaderStage::AnyHit) filePath += ".rahit";
-	else if (shaderStage == ShaderStage::ClosestHit) filePath += ".rchit";
-	else if (shaderStage == ShaderStage::Miss) filePath += ".rmiss";
-	else if (shaderStage == ShaderStage::Callable) filePath += ".rcall";
-	else abort();
-
+	auto filePath = data.shaderPath; filePath += toShaderStageExt(shaderStage);
 	auto inputFilePath = inputPath / filePath, outputFilePath = outputPath / filePath;
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
 		fileData.inputFileStream, fileData.outputFileStream);
@@ -1930,8 +1921,11 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			{
 				if (lineData.word == "rayPayload")
 				{
-					if (shaderStage != ShaderStage::RayGeneration)
-						throw CompileError("rayPayload is accessible only in ray generation shaders", fileData.lineIndex);
+					if (shaderStage != ShaderStage::RayGeneration && shaderStage != 
+						ShaderStage::ClosestHit && shaderStage != ShaderStage::Miss)
+					{
+						throw CompileError("rayPayload is accessible only in ray gen/chit/miss shaders", fileData.lineIndex);
+					}
 					lineData.isRayPayload = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "rayPayloadIn")
@@ -1966,27 +1960,33 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	vector<uint8>* shaderCode;
 	if (shaderStage == ShaderStage::RayGeneration)
 	{
-		data.rayGenGroups.resize(1); shaderCode = &data.rayGenGroups[0];
+		if (data.rayGenGroups.size() <= groupIndex) data.rayGenGroups.push_back({});
+		shaderCode = &data.rayGenGroups[groupIndex];
 	}
 	else if (shaderStage == ShaderStage::Miss)
 	{
-		data.missGroups.resize(1); shaderCode = &data.missGroups[0];
+		if (data.missGroups.size() <= groupIndex) data.missGroups.push_back({});
+		shaderCode = &data.missGroups[groupIndex];
 	}
 	else if (shaderStage == ShaderStage::Intersection)
 	{
-		data.hitGroups.resize(1); shaderCode = &data.hitGroups[0].intersectionCode;
+		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
+		shaderCode = &data.hitGroups[groupIndex].intersectionCode;
 	}
 	else if (shaderStage == ShaderStage::AnyHit)
 	{
-		data.hitGroups.resize(1); shaderCode = &data.hitGroups[0].anyHitCode;
+		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
+		shaderCode = &data.hitGroups[groupIndex].anyHitCode;
 	}
 	else if (shaderStage == ShaderStage::ClosestHit)
 	{
-		data.hitGroups.resize(1); shaderCode = &data.hitGroups[0].closestHitCode;
+		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
+		shaderCode = &data.hitGroups[groupIndex].closestHitCode;
 	}
 	else if (shaderStage == ShaderStage::Callable)
 	{
-		data.callGroups.resize(1); shaderCode = &data.callGroups[0];
+		if (data.callGroups.size() <= groupIndex) data.callGroups.push_back({});
+		shaderCode = &data.callGroups[groupIndex];
 	}
 	else abort();
 
@@ -1999,96 +1999,137 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 }
 
 //******************************************************************************************************************
+namespace garden
+{
+	struct RayTracingShaderValues final
+	{
+		uint16 rayGenPushConstantsSize = 0, missPushConstantsSize = 0, intersectPushConstantsSize = 0, 
+			anyHitPushConstantsSize = 0, closHitPushConstantsSize = 0, callPushConstantsSize = 0;
+		uint8 rayGenVariantCount = 1, missVariantCount = 1, intersectVariantCount = 1, 
+			anyHitVariantCount = 1, closHitVariantCount = 1, callVariantCount = 1;
+		uint32 rayGenRayRecDepth = 1, missRayRecDepth = 1, intersectRayRecDepth = 1, 
+			anyHitRayRecDepth = 1, closHitRayRecDepth = 1, callRayRecDepth = 1;
+	};
+}
+static void checkRtShaderValues(const RayTracingShaderValues& b, const RayTracingShaderValues& v)
+{
+	if (b.rayGenVariantCount > 1 && v.rayGenVariantCount > 1 && b.rayGenVariantCount != v.rayGenVariantCount)
+		throw CompileError("different ray generation shaders variant count");
+	if (b.rayGenVariantCount > 1 && v.missVariantCount > 1 && b.rayGenVariantCount != v.missVariantCount)
+		throw CompileError("different ray generation and miss shader variant count");
+	if (b.rayGenVariantCount > 1 && v.intersectVariantCount > 1 && b.rayGenVariantCount != v.intersectVariantCount)
+		throw CompileError("different ray generation and intersection shader variant count");
+	if (b.rayGenVariantCount > 1 && v.anyHitVariantCount > 1 && b.rayGenVariantCount != v.anyHitVariantCount)
+		throw CompileError("different ray generation and any hit shader variant count");
+	if (b.rayGenVariantCount > 1 && v.closHitVariantCount > 1 && b.rayGenVariantCount != v.closHitVariantCount)
+		throw CompileError("different ray generation and closest hit shader variant count");
+	if (b.rayGenVariantCount > 1 && v.callVariantCount > 1 && b.rayGenVariantCount != v.callVariantCount)
+		throw CompileError("different ray generation and callable shader variant count");
+
+	if (b.rayGenRayRecDepth > 1 && v.rayGenRayRecDepth > 1 && b.rayGenRayRecDepth != v.rayGenRayRecDepth)
+		throw CompileError("different ray generation shaders ray recursion depth");
+	if (b.rayGenRayRecDepth > 1 && v.missRayRecDepth > 1 && b.rayGenRayRecDepth != v.missRayRecDepth)
+		throw CompileError("different ray generation and miss shader ray recursion depth");
+	if (b.rayGenRayRecDepth > 1 && v.intersectRayRecDepth > 1 && b.rayGenRayRecDepth != v.intersectRayRecDepth)
+		throw CompileError("different ray generation and intersection shader ray recursion depth");
+	if (b.rayGenRayRecDepth > 1 && v.anyHitRayRecDepth > 1 && b.rayGenRayRecDepth != v.anyHitRayRecDepth)
+		throw CompileError("different ray generation and any hit shader ray recursion depth");
+	if (b.rayGenRayRecDepth > 1 && v.closHitRayRecDepth > 1 && b.rayGenRayRecDepth != v.closHitRayRecDepth)
+		throw CompileError("different ray generation and closest hit shader ray recursion depth");
+	if (b.rayGenRayRecDepth > 1 && v.callRayRecDepth > 1 && b.rayGenRayRecDepth != v.callRayRecDepth)
+		throw CompileError("different ray generation and callable shader ray recursion depth");
+}
+
+//******************************************************************************************************************
 bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath, 
 	const fs::path& outputPath, const vector<fs::path>& includePaths, RayTracingData& data)
 {
 	GARDEN_ASSERT(!data.shaderPath.empty());
-	uint16 rayGenPushConstantsSize = 0, missPushConstantsSize = 0, intersectPushConstantsSize = 0, 
-		anyHitPushConstantsSize = 0, closHitPushConstantsSize = 0, callPushConstantsSize = 0;
-	uint8 rayGenVariantCount = 1, missVariantCount = 1, intersectVariantCount = 1, 
-		anyHitVariantCount = 1, closHitVariantCount = 1, callVariantCount = 1;
-	uint32 rayGenRayRecDepth = 1, missRayRecDepth = 1, intersectRayRecDepth = 1, 
-		anyHitRayRecDepth = 1, closHitRayRecDepth = 1, callRayRecDepth = 1;
-	uint8 bindingIndex = 0;
+	RayTracingShaderValues bValues; uint8 bindingIndex = 0;
+	uint8 rayGenGroupIndex = 0, missGroupIndex = 0, hitGroupIndex = 0, callGroupIndex = 0;
 
-	auto compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		rayGenPushConstantsSize, rayGenVariantCount, rayGenRayRecDepth, ShaderStage::RayGeneration);
-	compileResult &= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		missPushConstantsSize, missVariantCount, missRayRecDepth, ShaderStage::Miss);
-	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		intersectPushConstantsSize, intersectVariantCount, intersectRayRecDepth, ShaderStage::Intersection);
-	auto hitCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		anyHitPushConstantsSize, anyHitVariantCount, anyHitRayRecDepth, ShaderStage::AnyHit);
-	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		closHitPushConstantsSize, closHitVariantCount, closHitRayRecDepth, ShaderStage::ClosestHit);
-	compileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		callPushConstantsSize, callVariantCount, callRayRecDepth, ShaderStage::Callable);
+	auto compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+		data, bindingIndex, bValues.rayGenPushConstantsSize, bValues.rayGenVariantCount, 
+		bValues.rayGenRayRecDepth, rayGenGroupIndex, ShaderStage::RayGeneration);
+	compileResult &= compileRayTracingShader(inputPath, outputPath, includePaths, 
+		data, bindingIndex, bValues.missPushConstantsSize, bValues.missVariantCount, 
+		bValues.missRayRecDepth, missGroupIndex, ShaderStage::Miss);
+	auto hitCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+		data, bindingIndex, bValues.anyHitPushConstantsSize, bValues.anyHitVariantCount, 
+		bValues.anyHitRayRecDepth, hitGroupIndex, ShaderStage::AnyHit);
+	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
+		data, bindingIndex, bValues.closHitPushConstantsSize, bValues.closHitVariantCount, 
+		bValues.closHitRayRecDepth, hitGroupIndex, ShaderStage::ClosestHit);
+	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
+		data, bindingIndex, bValues.intersectPushConstantsSize, bValues.intersectVariantCount, 
+		bValues.intersectRayRecDepth, hitGroupIndex, ShaderStage::Intersection);
 	if (!compileResult || !hitCompileResult) return false;
 
-	if (rayGenVariantCount > 1 && missVariantCount > 1 && rayGenVariantCount != missVariantCount)
-		throw CompileError("different ray generation and miss shader variant count");
-	if (rayGenVariantCount > 1 && intersectVariantCount > 1 && rayGenVariantCount != intersectVariantCount)
-		throw CompileError("different ray generation and intersection shader variant count");
-	if (rayGenVariantCount > 1 && anyHitVariantCount > 1 && rayGenVariantCount != anyHitVariantCount)
-		throw CompileError("different ray generation and any hit shader variant count");
-	if (rayGenVariantCount > 1 && closHitVariantCount > 1 && rayGenVariantCount != closHitVariantCount)
-		throw CompileError("different ray generation and closest hit shader variant count");
-	if (rayGenVariantCount > 1 && callVariantCount > 1 && rayGenVariantCount != callVariantCount)
-		throw CompileError("different ray generation and callable shader variant count");
+	auto callCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+		data, bindingIndex, bValues.callPushConstantsSize, bValues.callVariantCount, 
+		bValues.callRayRecDepth, callGroupIndex, ShaderStage::Callable);
+	if (callCompileResult) callGroupIndex++;
 
-	if (rayGenPushConstantsSize > 0 && missPushConstantsSize > 0 &&
-		rayGenPushConstantsSize != missPushConstantsSize)
-	{
-		throw CompileError("different ray generation and miss shader push constants size");
-	}
-	if (rayGenPushConstantsSize > 0 && intersectPushConstantsSize > 0 &&
-		rayGenPushConstantsSize != intersectPushConstantsSize)
-	{
-		throw CompileError("different ray generation and intersection shader push constants size");
-	}
-	if (rayGenPushConstantsSize > 0 && anyHitPushConstantsSize > 0 &&
-		rayGenPushConstantsSize != anyHitPushConstantsSize)
-	{
-		throw CompileError("different ray generation and any hit shader push constants size");
-	}
-	if (rayGenPushConstantsSize > 0 && closHitPushConstantsSize > 0 &&
-		rayGenPushConstantsSize != closHitPushConstantsSize)
-	{
-		throw CompileError("different ray generation and closest hit shader push constants size");
-	}
-	if (rayGenPushConstantsSize > 0 && callPushConstantsSize > 0 &&
-		rayGenPushConstantsSize != callPushConstantsSize)
-	{
-		throw CompileError("different ray generation and callable shader push constants size");
-	}
+	checkRtShaderValues(bValues, bValues);
+	rayGenGroupIndex++; missGroupIndex++; hitGroupIndex++;
 
-	if (rayGenRayRecDepth > 1 && missRayRecDepth > 1 && rayGenRayRecDepth != missRayRecDepth)
-		throw CompileError("different ray generation and miss shader ray recursion depth");
-	if (rayGenRayRecDepth > 1 && intersectRayRecDepth > 1 && rayGenRayRecDepth != intersectRayRecDepth)
-		throw CompileError("different ray generation and intersection shader ray recursion depth");
-	if (rayGenRayRecDepth > 1 && anyHitRayRecDepth > 1 && rayGenRayRecDepth != anyHitRayRecDepth)
-		throw CompileError("different ray generation and any hit shader ray recursion depth");
-	if (rayGenRayRecDepth > 1 && closHitRayRecDepth > 1 && rayGenRayRecDepth != closHitRayRecDepth)
-		throw CompileError("different ray generation and closest hit shader ray recursion depth");
-	if (rayGenRayRecDepth > 1 && callRayRecDepth > 1 && rayGenRayRecDepth != callRayRecDepth)
-		throw CompileError("different ray generation and callable shader ray recursion depth");
+	uint8 groupIndex = 1;
+	while (true)
+	{
+		RayTracingShaderValues hgValues;
+		data.shaderPath.replace_extension(to_string(groupIndex++));
+		compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.rayGenPushConstantsSize, hgValues.rayGenVariantCount, 
+			hgValues.rayGenRayRecDepth, rayGenGroupIndex, ShaderStage::RayGeneration);
+		if (compileResult) rayGenGroupIndex++;
+
+		auto groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.missPushConstantsSize, hgValues.missVariantCount, 
+			hgValues.missRayRecDepth, missGroupIndex, ShaderStage::Miss);
+		compileResult |= groupCompileResult;
+		if (groupCompileResult) missGroupIndex++;
+		
+		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.intersectPushConstantsSize, hgValues.intersectVariantCount, 
+			hgValues.intersectRayRecDepth, hitGroupIndex, ShaderStage::Intersection);
+		groupCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.anyHitPushConstantsSize, hgValues.anyHitVariantCount, 
+			hgValues.anyHitRayRecDepth, hitGroupIndex, ShaderStage::AnyHit);
+		groupCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.closHitPushConstantsSize, hgValues.closHitVariantCount, 
+			hgValues.closHitRayRecDepth, hitGroupIndex, ShaderStage::ClosestHit);
+		compileResult |= groupCompileResult;
+		if (groupCompileResult) hitGroupIndex++;
+
+		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.callPushConstantsSize, hgValues.callVariantCount, 
+			hgValues.callRayRecDepth, callGroupIndex, ShaderStage::Callable);
+		compileResult |= groupCompileResult;
+		if (groupCompileResult) callGroupIndex++;
+		
+		if (!compileResult)
+			break;
+
+		checkRtShaderValues(bValues, hgValues);
+	}
+	data.shaderPath.replace_extension();
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
 	data.pushConstantsStages = ShaderStage::None;
-	if (rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
-	if (missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
-	if (intersectPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Intersection;
-	if (anyHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::AnyHit;
-	if (closHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::ClosestHit;
-	if (callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
+	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
+	if (bValues.missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
+	if (bValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Intersection;
+	if (bValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::AnyHit;
+	if (bValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::ClosestHit;
+	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
 	
-	data.pushConstantsSize = rayGenPushConstantsSize;
-	data.variantCount = max(max(max(max(max(rayGenVariantCount, missVariantCount), 
-		intersectVariantCount), anyHitVariantCount), closHitVariantCount), callVariantCount);
-	data.rayRecursionDepth = max(max(max(max(max(rayGenRayRecDepth, missRayRecDepth), 
-		intersectRayRecDepth), anyHitRayRecDepth), closHitRayRecDepth), callRayRecDepth);
+	data.pushConstantsSize = bValues.rayGenPushConstantsSize;
+	data.variantCount = max(max(max(max(max(bValues.rayGenVariantCount, bValues.missVariantCount), 
+		bValues.intersectVariantCount), bValues.anyHitVariantCount), bValues.closHitVariantCount), bValues.callVariantCount);
+	data.rayRecursionDepth = max(max(max(max(max(bValues.rayGenRayRecDepth, bValues.missRayRecDepth), 
+		bValues.intersectRayRecDepth), bValues.anyHitRayRecDepth), bValues.closHitRayRecDepth), bValues.callRayRecDepth);
 
 	data.descriptorSetCount = 0;
 	for (const auto& uniform : data.uniforms)
@@ -2165,10 +2206,10 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 {
 	if (!data.shaderPath.empty())
 	{
-		auto shadersDirectory = "shaders" / data.shaderPath;
-		auto headerPath = shadersDirectory; headerPath += ".gslh";
-		auto vertexPath = shadersDirectory; vertexPath += ".vert.spv";
-		auto fragmentPath = shadersDirectory; fragmentPath += ".frag.spv";
+		auto shadersPath = "shaders" / data.shaderPath;
+		auto headerPath = shadersPath; headerPath += ".gslh";
+		auto vertexPath = shadersPath; vertexPath += ".vert.spv";
+		auto fragmentPath = shadersPath; fragmentPath += ".frag.spv";
 
 		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 		auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1; uint64 itemIndex = 0;
@@ -2229,9 +2270,9 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 {
 	if (!data.shaderPath.empty())
 	{
-		auto shadersDirectory = "shaders" / data.shaderPath;
-		auto headerPath = shadersDirectory; headerPath += ".gslh";
-		auto computePath = shadersDirectory; computePath += ".comp.spv";
+		auto shadersPath = "shaders" / data.shaderPath;
+		auto headerPath = shadersPath; headerPath += ".gslh";
+		auto computePath = shadersPath; computePath += ".comp.spv";
 
 		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 		auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1;
@@ -2268,68 +2309,143 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 {
 	if (!data.shaderPath.empty())
 	{
-		auto shadersDirectory = "shaders" / data.shaderPath;
-		auto headerPath = shadersDirectory; headerPath += ".gslh";
-		auto rayGenerationPath = shadersDirectory; rayGenerationPath += ".rgen.spv";
-		auto missPath = shadersDirectory; missPath += ".rmiss.spv";
-		auto intersectionPath = shadersDirectory; intersectionPath += ".rint.spv";
-		auto anyHitPath = shadersDirectory; anyHitPath += ".rahit.spv";
-		auto closestHitPath = shadersDirectory; closestHitPath += ".rchit.spv";
-		auto callablePath = shadersDirectory; callablePath += ".rcall.spv";
+		auto shadersPath = "shaders" / data.shaderPath;
+		auto headerPath = shadersPath; headerPath += ".gslh";
+		auto rayGenerationPath = shadersPath; rayGenerationPath += ".rgen.spv";
+		auto missPath = shadersPath; missPath += ".rmiss.spv";
+		auto intersectionPath = shadersPath; intersectionPath += ".rint.spv";
+		auto anyHitPath = shadersPath; anyHitPath += ".rahit.spv";
+		auto closestHitPath = shadersPath; closestHitPath += ".rchit.spv";
+		auto callablePath = shadersPath; callablePath += ".rcall.spv";
 		data.rayGenGroups.resize(1); data.missGroups.resize(1); data.hitGroups.resize(1);
-		// TODO: support multiple ray tracing shaders shader1.rmiss, shader2.rchit
 
 		#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
 		auto threadIndex = data.threadIndex < 0 ? 0 : data.threadIndex + 1; uint64 itemIndex = 0;
 		data.packReader->readItemData(headerPath, data.headerData, threadIndex);
 		data.packReader->readItemData(rayGenerationPath, data.rayGenGroups[0], threadIndex);
 		data.packReader->readItemData(missPath, data.missGroups[0], threadIndex);
-		if (data.packReader->getItemIndex(intersectionPath, itemIndex))
-		{
-			data.packReader->readItemData(itemIndex, data.hitGroups[0].intersectionCode, threadIndex);
-			data.hitGroups[0].hasIntersectShader = true;
-		}
-		if (data.packReader->getItemIndex(anyHitPath, itemIndex))
-		{
-			data.packReader->readItemData(itemIndex, data.hitGroups[0].anyHitCode, threadIndex);
-			data.hitGroups[0].hasAnyHitShader = true;
-		}
-		if (data.packReader->getItemIndex(closestHitPath, itemIndex))
-		{
-			data.packReader->readItemData(itemIndex, data.hitGroups[0].closestHitCode, threadIndex);
-			data.hitGroups[0].hasClosHitShader = true;
-		}
-		if (data.packReader->getItemIndex(callablePath, itemIndex))
-		{
-			data.callGroups.resize(1);
-			data.packReader->readItemData(itemIndex, data.callGroups[0], threadIndex);
-		}
 		#else
 		File::loadBinary(data.cachePath / headerPath, data.headerData);
 		File::loadBinary(data.cachePath / rayGenerationPath, data.rayGenGroups[0]);
 		File::loadBinary(data.cachePath / missPath, data.missGroups[0]);
-		if (fs::exists(data.cachePath / intersectionPath))
-		{
-			File::loadBinary(data.cachePath / intersectionPath, data.hitGroups[0].intersectionCode);
-			data.hitGroups[0].hasIntersectShader = true;
-		}
-		if (fs::exists(data.cachePath / anyHitPath))
-		{
-			File::loadBinary(data.cachePath / anyHitPath, data.hitGroups[0].anyHitCode);
-			data.hitGroups[0].hasAnyHitShader = true;
-		}
-		if (fs::exists(data.cachePath / closestHitPath))
-		{
-			File::loadBinary(data.cachePath / closestHitPath, data.hitGroups[0].closestHitCode);
-			data.hitGroups[0].hasClosHitShader = true;
-		}
-		if (fs::exists(data.cachePath / callablePath))
-		{
-			data.callGroups.resize(1);
-			File::loadBinary(data.cachePath / callablePath, data.callGroups[0]);
-		}
 		#endif
+
+		for (uint8 i = 1; i < UINT8_MAX - 1; i++)
+		{
+			rayGenerationPath = shadersPath; rayGenerationPath += "." + to_string(i) + ".rgen.spv";
+
+			#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+			if (data.packReader->getItemIndex(rayGenerationPath, itemIndex))
+			{
+				data.rayGenGroups.push_back({});
+				data.packReader->readItemData(itemIndex, data.rayGenGroups[i], threadIndex);
+			}
+			else break;
+			#else
+			if (fs::exists(data.cachePath / rayGenerationPath))
+			{
+				data.rayGenGroups.push_back({});
+				File::loadBinary(data.cachePath / rayGenerationPath, data.rayGenGroups[i]);
+			}
+			else break;
+			#endif
+		}
+		for (uint8 i = 1; i < UINT8_MAX - 1; i++)
+		{
+			missPath = shadersPath; missPath += "." + to_string(i) + ".rmiss.spv";
+
+			#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+			if (data.packReader->getItemIndex(missPath, itemIndex))
+			{
+				data.missGroups.push_back({});
+				data.packReader->readItemData(itemIndex, data.missGroups[i], threadIndex);
+			}
+			else break;
+			#else
+			if (fs::exists(data.cachePath / missPath))
+			{
+				data.missGroups.push_back({});
+				File::loadBinary(data.cachePath / missPath, data.missGroups[i]);
+			}
+			else break;
+			#endif
+		}
+		for (uint8 i = 0; i < UINT8_MAX - 1; i++)
+		{
+			#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+			if (data.packReader->getItemIndex(callablePath, itemIndex))
+			{
+				data.callGroups.push_back({});
+				data.packReader->readItemData(itemIndex, data.callGroups[i], threadIndex);
+			}
+			else break;
+			#else
+			if (fs::exists(data.cachePath / callablePath))
+			{
+				data.callGroups.push_back({});
+				File::loadBinary(data.cachePath / callablePath, data.callGroups[i]);
+			}
+			else break;
+			#endif
+
+			callablePath = shadersPath; callablePath += "." + to_string(i + 1) + ".rcall.spv";
+		}
+
+		for (uint8 i = 0; i < UINT8_MAX - 1; i++)
+		{
+			auto anyLoaded = false;
+
+			#if GARDEN_PACK_RESOURCES && !defined(GSL_COMPILER)
+			if (data.packReader->getItemIndex(intersectionPath, itemIndex))
+			{
+				if (data.hitGroups.size() <= i) data.hitGroups.push_back({});
+				data.packReader->readItemData(itemIndex, data.hitGroups[i].intersectionCode, threadIndex);
+				anyLoaded = true;
+			}
+			if (data.packReader->getItemIndex(anyHitPath, itemIndex))
+			{
+				if (data.hitGroups.size() <= i) data.hitGroups.push_back({});
+				data.packReader->readItemData(itemIndex, data.hitGroups[i].anyHitCode, threadIndex);
+				anyLoaded = true;
+			}
+			if (data.packReader->getItemIndex(closestHitPath, itemIndex))
+			{
+				if (data.hitGroups.size() <= i) data.hitGroups.push_back({});
+				data.packReader->readItemData(itemIndex, data.hitGroups[i].closestHitCode, threadIndex);
+				anyLoaded = true;
+			}
+			#else
+			if (fs::exists(data.cachePath / intersectionPath))
+			{
+				if (data.hitGroups.size() <= i) data.hitGroups.push_back({});
+				File::loadBinary(data.cachePath / intersectionPath, data.hitGroups[i].intersectionCode);
+				anyLoaded = true;
+			}
+			if (fs::exists(data.cachePath / anyHitPath))
+			{
+				if (data.hitGroups.size() <= i) data.hitGroups.push_back({});
+				File::loadBinary(data.cachePath / anyHitPath, data.hitGroups[i].anyHitCode);
+				anyLoaded = true;
+			}
+			if (fs::exists(data.cachePath / closestHitPath))
+			{
+				if (data.hitGroups.size() <= i) data.hitGroups.push_back({});
+				File::loadBinary(data.cachePath / closestHitPath, data.hitGroups[i].closestHitCode);
+				anyLoaded = true;
+			}
+			#endif
+
+			if (!anyLoaded)
+				break;
+
+			intersectionPath = shadersPath; intersectionPath += "." + to_string(i + 1) + ".rint.spv";
+			anyHitPath = shadersPath; anyHitPath += "." + to_string(i + 1) + ".rahit.spv";
+			closestHitPath = shadersPath; closestHitPath += "." + to_string(i + 1) + ".rchit.spv";
+		}
 	}
+
+	if (data.hitGroups[0].anyHitCode.empty() && data.hitGroups[0].closestHitCode.empty())
+		throw GardenError("No ray tracing hit shader in the first group.");
 	
 	RayTracingGslValues values; uint32 dataOffset = 0;
 	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();

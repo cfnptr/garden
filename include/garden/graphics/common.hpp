@@ -192,6 +192,29 @@ static string toStringList(ShaderStage shaderStage) noexcept
 	return list;
 }
 
+/**
+ * @brief Returns shader stage file extension.
+ * @param shaderStage target shader stage
+ */
+static string_view toShaderStageExt(ShaderStage shaderStage)
+{
+	switch (shaderStage)
+	{
+	case ShaderStage::Vertex: return ".vert";
+	case ShaderStage::Fragment: return ".frag";
+	case ShaderStage::Compute: return ".comp";
+	case ShaderStage::RayGeneration: return ".rgen";
+	case ShaderStage::Intersection: return ".rint";
+	case ShaderStage::AnyHit: return ".rahit";
+	case ShaderStage::ClosestHit: return ".rchit";
+	case ShaderStage::Miss: return ".rmiss";
+	case ShaderStage::Callable: return ".rcall";
+	case ShaderStage::Mesh: return ".mesh";
+	case ShaderStage::Task: return ".task";
+	default: throw GardenError("Unknown shader stage. (" + string(toString(shaderStage)) + ")");
+	}
+}
+
 struct SvHash
 {
 	using is_transparent = void;

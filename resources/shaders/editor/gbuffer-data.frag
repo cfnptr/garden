@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSIVE_BUFFER true
-#define USE_GI_BUFFER true
+#define USE_EMISSIVE_BUFFER
+#define USE_GI_BUFFER
+
+#define HAS_EMISSIVE_BUFFER true
+#define HAS_GI_BUFFER true
 
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
@@ -57,7 +60,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	const GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	const GBufferValues values = DECODE_G_BUFFER_VALUES(fs.texCoords);
 
 	if (pc.drawMode == G_BUFFER_DRAW_MODE_OFF)
 	{
@@ -65,56 +68,56 @@ void main()
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_BASE_COLOR)
 	{
-		fb.color = float4(gBuffer.baseColor, 1.0f);
+		fb.color = float4(values.baseColor, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_SPECULAR_FACTOR)
 	{
-		fb.color = float4(float3(gBuffer.specularFactor), 1.0f);
+		fb.color = float4(float3(values.specularFactor), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_TRANSMISSION)
 	{
-		fb.color = float4(float3(gBuffer.transmission), 1.0f);
+		fb.color = float4(float3(values.transmission), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_METALLIC)
 	{
-		fb.color = float4(float3(gBuffer.metallic), 1.0f);
+		fb.color = float4(float3(values.metallic), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_ROUGHNESS)
 	{
-		fb.color = float4(float3(gBuffer.roughness), 1.0f);
+		fb.color = float4(float3(values.roughness), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_MATERIAL_AO)
 	{
-		fb.color = float4(float3(gBuffer.ambientOcclusion), 1.0f);
+		fb.color = float4(float3(values.ambientOcclusion), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_REFLECTANCE)
 	{
-		fb.color = float4(float3(gBuffer.reflectance), 1.0f);
+		fb.color = float4(float3(values.reflectance), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS)
 	{
-		fb.color = float4(float3(gBuffer.clearCoatRoughness), 1.0f);
+		fb.color = float4(float3(values.clearCoatRoughness), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_NORMALS)
 	{
-		float3 normal = gBuffer.normal * 0.5f + 0.5f;
+		float3 normal = values.normal * 0.5f + 0.5f;
 		fb.color = float4(gammaCorrection(normal, DEFAULT_GAMMA), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_MATERIAL_SHADOWS)
 	{
-		fb.color = float4(float3(gBuffer.shadow), 1.0f);
+		fb.color = float4(float3(values.shadow), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR)
 	{
-		fb.color = float4(gBuffer.emissiveColor, 1.0f);
+		fb.color = float4(values.emissiveColor, 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR)
 	{
-		fb.color = float4(float3(gBuffer.emissiveFactor), 1.0f);
+		fb.color = float4(float3(values.emissiveFactor), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GI_COLOR)
 	{
-		fb.color = float4(gammaCorrection(gBuffer.giColor), 1.0f);
+		fb.color = float4(gammaCorrection(values.giColor), 1.0f);
 	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_HDR_BUFFER)
 	{

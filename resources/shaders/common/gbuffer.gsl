@@ -146,10 +146,14 @@ void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g
 	g2 = encodeGBuffer2(values.clearCoatNormal, values.clearCoatRoughness);
 	g3 = encodeGBuffer3(values.normal, values.shadow);
 
-	if (USE_EMISSIVE_BUFFER)
+	#ifdef USE_EMISSIVE_BUFFER
+	if (HAS_EMISSIVE_BUFFER)
 		g4 = encodeGBuffer4(values.emissiveColor, values.emissiveFactor);
-	if (USE_GI_BUFFER)
+	#endif
+	#ifdef USE_GI_BUFFER
+	if (HAS_GI_BUFFER)
 		g5 = encodeGBuffer5(values.giColor);
+	#endif
 }
 
 #define ENCODE_G_BUFFER_VALUES(values) encodeGBufferValues(values, fb_g0, fb_g1, fb_g2, fb_g3, fb_g4, fb_g5)
@@ -192,10 +196,15 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2,
 	data.g[1] = textureLod(s1, texCoords, 0.0f);
 	data.g[2] = textureLod(s2, texCoords, 0.0f);
 	data.g[3] = textureLod(s3, texCoords, 0.0f);
-	if (USE_EMISSIVE_BUFFER)
+
+	#ifdef USE_EMISSIVE_BUFFER
+	if (HAS_EMISSIVE_BUFFER)
 		data.g[4] = textureLod(s4, texCoords, 0.0f);
-	if (USE_GI_BUFFER)
+	#endif
+	#ifdef USE_GI_BUFFER
+	if (HAS_GI_BUFFER)
 		data.g[5] = textureLod(s5, texCoords, 0.0f);
+	#endif
 	return data;
 }
 GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, 
@@ -217,14 +226,17 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	values.normal = decodeNormal(data);
 	values.shadow = decodeShadow(data);
 
-	if (USE_EMISSIVE_BUFFER)
+	#ifdef USE_EMISSIVE_BUFFER
+	if (HAS_EMISSIVE_BUFFER)
 	{
 		values.emissiveColor = decodeEmissiveColor(data);
 		values.emissiveFactor = decodeEmissiveFactor(data);
 	}
-
-	if (USE_GI_BUFFER)
+	#endif
+	#ifdef USE_GI_BUFFER
+	if (HAS_GI_BUFFER)
 		values.giColor = decodeGiColor(data);
+	#endif
 
 	values.subsurfaceColor = float3(0.0f);
 	values.thickness = 1.0f;
