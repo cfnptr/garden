@@ -68,9 +68,6 @@ public:
 		vector<uint8> intersectionCode;
 		vector<uint8> anyHitCode;
 		vector<uint8> closestHitCode;
-		bool hasIntersectShader = false;
-		bool hasAnyHitShader = false;
-		bool hasClosHitShader = false;
 	};
 	/**
 	 * @brief Ray tracing pipeline shader code overrides.
@@ -212,14 +209,10 @@ public:
 	 */
 	static void moveInternalObjects(RayTracingPipeline& source, RayTracingPipeline& destination) noexcept
 	{
-		RayTracingPipelineExt::getRayGenGroupCount(destination) = 
-			std::move(RayTracingPipelineExt::getRayGenGroupCount(source));
-		RayTracingPipelineExt::getMissGroupCount(destination) = 
-			std::move(RayTracingPipelineExt::getMissGroupCount(source));
-		RayTracingPipelineExt::getHitGroupCount(destination) = 
-			std::move(RayTracingPipelineExt::getHitGroupCount(source));
-		RayTracingPipelineExt::getCallGroupCount(destination) = 
-			std::move(RayTracingPipelineExt::getCallGroupCount(source));
+		RayTracingPipelineExt::getRayGenGroupCount(destination) = RayTracingPipelineExt::getRayGenGroupCount(source);
+		RayTracingPipelineExt::getMissGroupCount(destination) = RayTracingPipelineExt::getMissGroupCount(source);
+		RayTracingPipelineExt::getHitGroupCount(destination) = RayTracingPipelineExt::getHitGroupCount(source);
+		RayTracingPipelineExt::getCallGroupCount(destination) = RayTracingPipelineExt::getCallGroupCount(source);
 		PipelineExt::moveInternalObjects(source, destination);
 	}
 };

@@ -25,8 +25,41 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 		this->instance = malloc<vk::Pipeline>(variantCount);
 
 	auto groupCount = rayGenGroupCount + missGroupCount + hitGroupCount + callGroupCount;
-	vector<ShaderStage> shaderStages; vector<vector<uint8>> codeArray;
+	vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroupInfos(groupCount);
+	uint32 groupIndex = 0, stageIndex = 0;
 
+	for (uint8 i = 0; i < rayGenGroupCount; i++)
+	{
+		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+	}
+	for (uint8 i = 0; i < missGroupCount; i++)
+	{
+		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+	}
+	for (const auto& hitGroup : createData.hitGroups)
+	{
+		auto groupType = hitGroup.intersectionCode.empty() ? 
+			vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup : 
+			vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup;
+		vk::RayTracingShaderGroupCreateInfoKHR groupInfo(groupType);
+
+		if (!hitGroup.closestHitCode.empty())
+			groupInfo.closestHitShader = stageIndex++;
+		if (!hitGroup.anyHitCode.empty())
+			groupInfo.anyHitShader = stageIndex++;
+		if (!hitGroup.intersectionCode.empty())
+			groupInfo.intersectionShader = stageIndex++;
+		shaderGroupInfos[groupIndex++] = groupInfo;
+	}
+	for (uint8 i = 0; i < callGroupCount; i++)
+	{
+		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+	}
+
+	vector<ShaderStage> shaderStages; vector<vector<uint8>> codeArray;
 	for (const auto& rayGenCode : createData.rayGenGroups)
 	{
 		shaderStages.push_back(ShaderStage::RayGeneration);
@@ -74,40 +107,6 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(shaderStage), (VkShaderModule)shaders[i], 
 			"main", specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr);
 		stageInfos[i] = stageInfo;
-	}
-
-	vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroupInfos(groupCount);
-	uint32 groupIndex = 0, stageIndex = 0;
-
-	for (uint8 i = 0; i < rayGenGroupCount; i++)
-	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
-	}
-	for (uint8 i = 0; i < missGroupCount; i++)
-	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
-	}
-	for (const auto& hitGroup : createData.hitGroups)
-	{
-		auto groupType = hitGroup.hasIntersectShader ?
-			vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup :
-			vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup;
-		vk::RayTracingShaderGroupCreateInfoKHR groupInfo(groupType);
-
-		if (hitGroup.hasClosHitShader)
-			groupInfo.closestHitShader = stageIndex++;
-		if (hitGroup.hasAnyHitShader)
-			groupInfo.anyHitShader = stageIndex++;
-		if (hitGroup.hasIntersectShader)
-			groupInfo.intersectionShader = stageIndex++;
-		shaderGroupInfos[groupIndex++] = groupInfo;
-	}
-	for (uint8 i = 0; i < callGroupCount; i++)
-	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
 	}
 
 	auto vulkanAPI = VulkanAPI::get();

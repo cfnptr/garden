@@ -131,8 +131,8 @@ void DeferredRenderEditorSystem::deferredRender()
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		Pipeline::SpecConstValues specConstValues =
 		{
-			{ "USE_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
-			{ "USE_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
+			{ "HAS_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
+			{ "HAS_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 		};
 
 		ResourceSystem::GraphicsOptions options;

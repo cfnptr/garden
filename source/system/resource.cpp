@@ -1426,10 +1426,10 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
-	auto shadersDirectory = "shaders" / data.shaderPath;
-	auto headerPath = shadersDirectory; headerPath += ".gslh";
-	auto vertexPath = shadersDirectory; vertexPath += ".vert";
-	auto fragmentPath = shadersDirectory; fragmentPath += ".frag";
+	auto shadersPath = "shaders" / data.shaderPath;
+	auto headerPath = shadersPath; headerPath += ".gslh";
+	auto vertexPath = shadersPath; vertexPath += ".vert";
+	auto fragmentPath = shadersPath; fragmentPath += ".frag";
 
 	fs::path vertexInputPath, fragmentInputPath;
 	auto hasVertexShader = File::tryGetResourcePath(data.resourcesPath, vertexPath, vertexInputPath);
@@ -1697,9 +1697,9 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
-	auto shadersDirectory = "shaders" / data.shaderPath;
-	auto headerPath = shadersDirectory; headerPath += ".gslh";
-	auto computePath = shadersDirectory; computePath += ".comp";
+	auto shadersPath = "shaders" / data.shaderPath;
+	auto headerPath = shadersPath; headerPath += ".gslh";
+	auto computePath = shadersPath; computePath += ".comp";
 
 	fs::path computeInputPath;
 	if (!File::tryGetResourcePath(data.resourcesPath, computePath, computeInputPath))
@@ -1869,14 +1869,14 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
-	auto shadersDirectory = "shaders" / data.shaderPath;
-	auto headerPath = shadersDirectory; headerPath += ".gslh";
-	auto rayGenerationPath = shadersDirectory; rayGenerationPath += ".rgen";
-	auto missPath = shadersDirectory; missPath += ".rmiss";
-	auto intersectionPath = shadersDirectory; intersectionPath += ".rint";
-	auto anyHitPath = shadersDirectory; anyHitPath += ".rahit";
-	auto closestHitPath = shadersDirectory; closestHitPath += ".rchit";
-	auto callablePath = shadersDirectory; callablePath += ".rcall";
+	auto shadersPath = "shaders" / data.shaderPath;
+	auto headerPath = shadersPath; headerPath += ".gslh";
+	auto rayGenerationPath = shadersPath; rayGenerationPath += ".rgen";
+	auto missPath = shadersPath; missPath += ".rmiss";
+	auto intersectionPath = shadersPath; intersectionPath += ".rint";
+	auto anyHitPath = shadersPath; anyHitPath += ".rahit";
+	auto closestHitPath = shadersPath; closestHitPath += ".rchit";
+	auto callablePath = shadersPath; callablePath += ".rcall";
 
 	fs::path rayGenInputPath, missInputPath, intersectInputPath, closHitInputPath, anyHitInputPath, callInputPath;
 	auto hasRayGenShader = File::tryGetResourcePath(data.resourcesPath, rayGenerationPath, rayGenInputPath);
@@ -1885,11 +1885,6 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	auto hasAnyHitShader = File::tryGetResourcePath(data.resourcesPath, anyHitPath, anyHitInputPath);
 	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
 	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
-
-	data.hitGroups.resize(1);
-	data.hitGroups[0].hasIntersectShader = hasIntersectShader;
-	data.hitGroups[0].hasAnyHitShader = hasAnyHitShader;
-	data.hitGroups[0].hasClosHitShader = hasClosHitShader;
 
 	if (!hasRayGenShader || !hasMissShader)
 	{
@@ -1912,6 +1907,8 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	auto anyHitOutputPath = data.cachePath / anyHitPath;
 	auto closHitOutputPath = data.cachePath / closestHitPath;
 	auto callOutputPath = data.cachePath / callablePath;
+
+	// !!! TODO: chec for changes in additional ray tracing shader hit groups shaders. rt-shader.1.rchit.spv
 
 	if (!fs::exists(headerFilePath) ||
 		(!fs::exists(rayGenOutputPath) || fs::last_write_time(rayGenInputPath) > fs::last_write_time(rayGenOutputPath)) ||

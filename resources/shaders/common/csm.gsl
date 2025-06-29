@@ -72,7 +72,7 @@ void computeCsmData(float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], float2 texCoo
 //**********************************************************************************************************************
 float2x2 calcRandomShadowRot(float2 lightCoords)
 {
-	float angle = toFloat(iqint(lightCoords)) * (M_PI * 2.0f);
+	float angle = toFloat01(iqint(lightCoords)) * (M_PI * 2.0f);
 	return float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
 }
 

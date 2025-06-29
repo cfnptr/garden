@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-spec const bool USE_EMISSIVE_BUFFER = false;
-spec const bool USE_GI_BUFFER = false;
+#define USE_EMISSIVE_BUFFER
+#define USE_GI_BUFFER
+
+spec const bool HAS_EMISSIVE_BUFFER = false;
+spec const bool HAS_GI_BUFFER = false;
 
 #include "common/gbuffer.gsl"
 
