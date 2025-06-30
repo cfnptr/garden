@@ -46,6 +46,7 @@ public:
 		uint32 primitiveOffset = 0;
 		IndexType indexType = {};
 		bool isOpaqueOnly = false;
+		bool noDuplicateAnyHit = false;
 	};
 	/**
 	 * @brief Blas AABB data container.
@@ -57,6 +58,7 @@ public:
 		uint32 aabbCount = 0;
 		uint32 aabbOffset = 0;
 		bool isOpaqueOnly = false;
+		bool noDuplicateAnyHit = false;
 	};
 private:
 	Blas(const TrianglesBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags);

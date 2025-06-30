@@ -61,13 +61,9 @@ void main()
 
 	for (int32 r = 1; r <= KERNEL_RADIUS; r++)
 	{
-		float2 texCoords = fma(pc.texelSize, float2(r), fs.texCoords);
-		sum += depthBilateralBlur(texCoords, r, depth, weight);
-	}
-	for (int32 r = -1; r >= -KERNEL_RADIUS; r--)
-	{
-		float2 texCoords = fma(pc.texelSize, float2(r), fs.texCoords);
-		sum += depthBilateralBlur(texCoords, r, depth, weight);
+		float2 offset = pc.texelSize * r;
+		sum += depthBilateralBlur(fs.texCoords + offset, r, depth, weight);
+		sum += depthBilateralBlur(fs.texCoords - offset, r, depth, weight);
 	}
 
 	fb.data = sum / weight;

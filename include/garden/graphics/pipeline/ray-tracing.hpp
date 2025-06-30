@@ -78,8 +78,8 @@ public:
 		vector<uint8> headerData;
 		vector<vector<uint8>> rayGenGroups;
 		vector<vector<uint8>> missGroups;
-		vector<HitGroupData> hitGroups;
 		vector<vector<uint8>> callGroups;
+		vector<HitGroupData> hitGroups;
 	};
 	/**
 	 * @brief Ray tracing pipeline create data container.
@@ -91,15 +91,15 @@ public:
 		uint16 _alignment1 = 0;
 		vector<vector<uint8>> rayGenGroups;
 		vector<vector<uint8>> missGroups;
-		vector<HitGroupData> hitGroups;
 		vector<vector<uint8>> callGroups;
+		vector<HitGroupData> hitGroups;
 		uint32 rayRecursionDepth = 1;
 	};
 private:
 	uint8 rayGenGroupCount = 0;
 	uint8 missGroupCount = 0;
-	uint8 hitGroupCount = 0;
 	uint8 callGroupCount = 0;
+	uint8 hitGroupCount = 0;
 
 	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
 		Pipeline(PipelineType::RayTracing, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
@@ -177,17 +177,17 @@ public:
 	 */
 	static uint8& getMissGroupCount(RayTracingPipeline& pipeline) { return pipeline.missGroupCount; }
 	/**
-	 * @brief Returns ray tracing pipeline ray hit shader group count.
-	 * @warning In most cases you should use @ref GraphicsPipeline functions.
-	 * @param[in] pipeline target ray tracing pipeline instance
-	 */
-	static uint8& getHitGroupCount(RayTracingPipeline& pipeline) { return pipeline.hitGroupCount; }
-	/**
 	 * @brief Returns ray tracing pipeline callable shader group count.
 	 * @warning In most cases you should use @ref GraphicsPipeline functions.
 	 * @param[in] pipeline target ray tracing pipeline instance
 	 */
 	static uint8& getCallGroupCount(RayTracingPipeline& pipeline) { return pipeline.callGroupCount; }
+	/**
+	 * @brief Returns ray tracing pipeline ray hit shader group count.
+	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @param[in] pipeline target ray tracing pipeline instance
+	 */
+	static uint8& getHitGroupCount(RayTracingPipeline& pipeline) { return pipeline.hitGroupCount; }
 
 	/**
 	 * @brief Creates a new ray tracing pipeline data.
@@ -211,8 +211,8 @@ public:
 	{
 		RayTracingPipelineExt::getRayGenGroupCount(destination) = RayTracingPipelineExt::getRayGenGroupCount(source);
 		RayTracingPipelineExt::getMissGroupCount(destination) = RayTracingPipelineExt::getMissGroupCount(source);
-		RayTracingPipelineExt::getHitGroupCount(destination) = RayTracingPipelineExt::getHitGroupCount(source);
 		RayTracingPipelineExt::getCallGroupCount(destination) = RayTracingPipelineExt::getCallGroupCount(source);
+		RayTracingPipelineExt::getHitGroupCount(destination) = RayTracingPipelineExt::getHitGroupCount(source);
 		PipelineExt::moveInternalObjects(source, destination);
 	}
 };

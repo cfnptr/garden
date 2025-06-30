@@ -74,7 +74,7 @@ void main()
 
 	float3 ldrColor = gammaCorrectionPrecise(tonemappedColor); // TODO: set precise or not via spec const?
 
-	float random = toFloat(pcg(uint3(gl.fragCoord.xy, pc.frameIndex)).x);
+	float random = toFloat01(pcg(uint3(gl.fragCoord.xy, pc.frameIndex)).x);
 	ldrColor += mix(-pc.ditherIntensity, pc.ditherIntensity, random);
 	fb.ldr = float4(ldrColor, 1.0f);
 }

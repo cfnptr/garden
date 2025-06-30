@@ -417,7 +417,7 @@ static ID<GraphicsPipeline> createLightingPipeline(bool useShadowBuffer, bool us
 		{ "HAS_SHADOW_BUFFER", Pipeline::SpecConstValue(useShadowBuffer) },
 		{ "HAS_AO_BUFFER", Pipeline::SpecConstValue(useAoBuffer) },
 		{ "HAS_REFLECTION_BUFFER", Pipeline::SpecConstValue(useReflBuffer) },
-		{ "HAS_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
+		{ "HAS_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmission()) },
 		{ "HAS_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 	};
 

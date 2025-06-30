@@ -21,7 +21,7 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool useGI)
+static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmission, bool useGI)
 {
 	constexpr auto usage = Image::Usage::ColorAttachment | Image::Usage::Sampled | 
 		Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::Fullscreen;
@@ -32,7 +32,7 @@ static void createGBuffers(vector<ID<Image>>& gBuffers, bool useEmissive, bool u
 		DeferredRenderSystem::gBufferFormat1,
 		DeferredRenderSystem::gBufferFormat2,
 		DeferredRenderSystem::gBufferFormat3,
-		useEmissive ? DeferredRenderSystem::gBufferFormat4 : Image::Format::Undefined,
+		useEmission ? DeferredRenderSystem::gBufferFormat4 : Image::Format::Undefined,
 		useGI ? DeferredRenderSystem::gBufferFormat5 : Image::Format::Undefined,
 	};
 
@@ -256,8 +256,8 @@ static ID<Framebuffer> createOitFramebuffer(ID<Image> oitAccumBuffer,
 }
 
 //**********************************************************************************************************************
-DeferredRenderSystem::DeferredRenderSystem(bool useEmissive, bool useGI, bool useAsyncRecording, bool setSingleton) : 
-	Singleton(setSingleton), emissive(useEmissive), gi(useGI), asyncRecording(useAsyncRecording)
+DeferredRenderSystem::DeferredRenderSystem(bool useEmission, bool useGI, bool useAsyncRecording, bool setSingleton) : 
+	Singleton(setSingleton), emission(useEmission), gi(useGI), asyncRecording(useAsyncRecording)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreDeferredRender");
@@ -325,7 +325,7 @@ void DeferredRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 
 	if (gBuffers.empty())
-		createGBuffers(gBuffers, emissive, gi);
+		createGBuffers(gBuffers, emission, gi);
 	if (!hdrBuffer)
 		hdrBuffer = createHdrBuffer(false);
 	if (!hdrCopyBuffer)
@@ -592,6 +592,13 @@ void DeferredRenderSystem::render()
 		graphicsSystem->stopRecording();
 	}
 
+	event = &manager->getEvent("PreUiRender");
+	if (event->hasSubscribers())
+	{
+		SET_CPU_ZONE_SCOPED("Pre UI Render");
+		event->run();
+	}
+
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_CPU_ZONE_SCOPED("Copy LDR to UI");
@@ -602,12 +609,6 @@ void DeferredRenderSystem::render()
 	}
 	graphicsSystem->stopRecording();
 
-	event = &manager->getEvent("PreUiRender");
-	if (event->hasSubscribers())
-	{
-		SET_CPU_ZONE_SCOPED("Pre UI Render");
-		event->run();
-	}
 	event = &manager->getEvent("UiRender");
 	if (event->hasSubscribers())
 	{
@@ -649,7 +650,7 @@ void DeferredRenderSystem::swapchainRecreate()
 	{
 		auto destroyUI = uiBuffer != gBuffers[0];
 		graphicsSystem->destroy(gBuffers);
-		createGBuffers(gBuffers, emissive, gi);
+		createGBuffers(gBuffers, emission, gi);
 		graphicsSystem->destroy(hdrBuffer);
 		hdrBuffer = createHdrBuffer(false);
 		graphicsSystem->destroy(hdrCopyBuffer);
@@ -749,7 +750,7 @@ void DeferredRenderSystem::swapchainRecreate()
 const vector<ID<Image>>& DeferredRenderSystem::getGBuffers()
 {
 	if (gBuffers.empty())
-		createGBuffers(gBuffers, emissive, gi);
+		createGBuffers(gBuffers, emission, gi);
 	return gBuffers;
 }
 ID<Image> DeferredRenderSystem::getHdrBuffer()

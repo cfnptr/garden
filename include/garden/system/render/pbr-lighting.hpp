@@ -75,7 +75,7 @@ public:
 	static constexpr uint8 shadowBufferCount = 2;  /**< PBR lighting rendering shadow buffer count. */
 	static constexpr uint8 aoBufferCount = 3;      /**< PBR lighting rendering AO buffer count. (Ambient Occlusion) */
 
-	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:

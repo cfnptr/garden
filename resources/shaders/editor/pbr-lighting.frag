@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSIVE_BUFFER
+#define USE_EMISSION_BUFFER
 #define USE_GI_BUFFER
 
-spec const bool HAS_EMISSIVE_BUFFER = false;
+spec const bool HAS_EMISSION_BUFFER = false;
 spec const bool HAS_GI_BUFFER = false;
 
 #include "common/gbuffer.gsl"
@@ -58,14 +58,14 @@ void main()
 	values.clearCoatRoughness = pc.ccRoughness;
 	values.shadow = pc.shadow;
 
-	if (USE_EMISSIVE_BUFFER)
-	{
-		values.emissiveColor = pc.emissiveColor;
-		values.emissiveFactor = pc.emissiveFactor;
-	}
+	#ifdef USE_EMISSION_BUFFER
+	values.emissiveColor = pc.emissiveColor;
+	values.emissiveFactor = pc.emissiveFactor;
+	#endif
 
-	if (USE_GI_BUFFER)
-		values.giColor = pc.giColor;
+	#ifdef USE_GI_BUFFER
+	values.giColor = pc.giColor;
+	#endif
 
 	ENCODE_G_BUFFER_VALUES(values);
 }

@@ -14,13 +14,17 @@
 
 // TODO: or maybe we can utilize filament micro/macro AO?
 
-#define USE_EMISSIVE_BUFFER
+#define USE_AMBIENT_OCCLUSION
+#define USE_CLEAR_COAT
+#define USE_LIGHT_EMISSION
+#define USE_SPECULAR_FACTOR
+#define USE_EMISSION_BUFFER
 #define USE_GI_BUFFER
 
 spec const bool HAS_SHADOW_BUFFER = false;
 spec const bool HAS_AO_BUFFER = false;
 spec const bool HAS_REFLECTION_BUFFER = false;
-spec const bool HAS_EMISSIVE_BUFFER = false;
+spec const bool HAS_EMISSION_BUFFER = false;
 spec const bool HAS_GI_BUFFER = false;
 
 #include "common/pbr.gsl"
@@ -81,6 +85,7 @@ void main()
 		discard;
 
 	GBufferValues values = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	values.emissiveFactor *= pc.emissiveCoeff;
 	values.reflectance *= pc.reflectanceCoeff;
 	
 	float4 shadow = float4(pc.shadowColor.rgb, values.shadow);
@@ -94,7 +99,6 @@ void main()
 
 	float4 worldPosition = pc.uvToWorld * float4(fs.texCoords, depth, 1.0f);
 	worldPosition.xyz /= worldPosition.w;
-	float3 viewDirection = calcViewDirection(worldPosition.xyz);
 
 	if (HAS_AO_BUFFER)
 	{
@@ -103,12 +107,11 @@ void main()
 	}
 	if (HAS_REFLECTION_BUFFER)
 	{
-		float lod = reflectionsLod(values.roughness, length(worldPosition.xyz), pc.reflLodOffset);
+		float lod = calcReflectionsLod(values.roughness, length(worldPosition.xyz), pc.reflLodOffset);
 		values.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
 	}
 
+	float3 viewDirection = calcViewDirection(worldPosition.xyz);
 	float3 hdrColor = evaluateIBL(values, shadow, viewDirection, dfgLUT, sh.data, specular);
-	if (HAS_EMISSIVE_BUFFER)
-		hdrColor += values.emissiveColor * values.emissiveFactor * pc.emissiveCoeff;
 	fb.hdr = float4(hdrColor, 1.0f);
 }

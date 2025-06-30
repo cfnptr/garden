@@ -1873,54 +1873,49 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	auto headerPath = shadersPath; headerPath += ".gslh";
 	auto rayGenerationPath = shadersPath; rayGenerationPath += ".rgen";
 	auto missPath = shadersPath; missPath += ".rmiss";
+	auto callablePath = shadersPath; callablePath += ".rcall";
 	auto intersectionPath = shadersPath; intersectionPath += ".rint";
 	auto anyHitPath = shadersPath; anyHitPath += ".rahit";
 	auto closestHitPath = shadersPath; closestHitPath += ".rchit";
-	auto callablePath = shadersPath; callablePath += ".rcall";
 
 	fs::path rayGenInputPath, missInputPath, intersectInputPath, closHitInputPath, anyHitInputPath, callInputPath;
 	auto hasRayGenShader = File::tryGetResourcePath(data.resourcesPath, rayGenerationPath, rayGenInputPath);
 	auto hasMissShader = File::tryGetResourcePath(data.resourcesPath, missPath, missInputPath);
+	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
 	auto hasIntersectShader = File::tryGetResourcePath(data.resourcesPath, intersectionPath, intersectInputPath);
 	auto hasAnyHitShader = File::tryGetResourcePath(data.resourcesPath, anyHitPath, anyHitInputPath);
 	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
-	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
 
-	if (!hasRayGenShader || !hasMissShader)
-	{
-		throw GardenError("Ray tracing shader file does not exist or it is ambiguous. ("
-			"path: " + data.shaderPath.generic_string() + ")");
-	}
-	if (!hasIntersectShader && !hasClosHitShader && !hasAnyHitShader && !hasCallableShader)
+	if (!hasRayGenShader || !hasMissShader || (!hasIntersectShader && !hasClosHitShader && !hasAnyHitShader))
 	{
 		throw GardenError("Ray tracing shader file does not exist or it is ambiguous. ("
 			"path: " + data.shaderPath.generic_string() + ")");
 	}
 
-	rayGenerationPath += ".spv"; missPath += ".spv"; intersectionPath += ".spv";
-	anyHitPath += ".spv"; closestHitPath += ".spv"; callablePath += ".spv";
+	rayGenerationPath += ".spv"; missPath += ".spv"; callablePath += ".spv";
+	intersectionPath += ".spv"; anyHitPath += ".spv"; closestHitPath += ".spv"; 
 
 	auto headerFilePath = data.cachePath / headerPath;
 	auto rayGenOutputPath = data.cachePath / rayGenerationPath;
 	auto missOutputPath = data.cachePath / missPath;
+	auto callOutputPath = data.cachePath / callablePath;
 	auto intersectOutputPath = data.cachePath / intersectionPath;
 	auto anyHitOutputPath = data.cachePath / anyHitPath;
 	auto closHitOutputPath = data.cachePath / closestHitPath;
-	auto callOutputPath = data.cachePath / callablePath;
 
 	// !!! TODO: chec for changes in additional ray tracing shader hit groups shaders. rt-shader.1.rchit.spv
 
 	if (!fs::exists(headerFilePath) ||
 		(!fs::exists(rayGenOutputPath) || fs::last_write_time(rayGenInputPath) > fs::last_write_time(rayGenOutputPath)) ||
 		(!fs::exists(missOutputPath) || fs::last_write_time(missInputPath) > fs::last_write_time(missOutputPath)) ||
+		(hasCallableShader && (!fs::exists(callOutputPath) ||
+		fs::last_write_time(callInputPath) > fs::last_write_time(callOutputPath))) ||
 		(hasIntersectShader && (!fs::exists(intersectOutputPath) ||
 		fs::last_write_time(intersectInputPath) > fs::last_write_time(intersectOutputPath))) ||
 		(hasAnyHitShader && (!fs::exists(anyHitOutputPath) ||
 		fs::last_write_time(anyHitInputPath) > fs::last_write_time(anyHitOutputPath))) ||
 		(hasClosHitShader && (!fs::exists(closHitOutputPath) ||
-		fs::last_write_time(closHitInputPath) > fs::last_write_time(closHitOutputPath))) ||
-		(hasCallableShader && (!fs::exists(callOutputPath) ||
-		fs::last_write_time(callInputPath) > fs::last_write_time(callOutputPath))))
+		fs::last_write_time(closHitInputPath) > fs::last_write_time(closHitOutputPath))))
 	{
 		const vector<fs::path> includePaths =
 		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
@@ -2055,8 +2050,8 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& pa
 			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
 			pipelineData.rayGenGroups = std::move(options.shaderOverrides->rayGenGroups);
 			pipelineData.missGroups = std::move(options.shaderOverrides->missGroups);
-			pipelineData.hitGroups = std::move(options.shaderOverrides->hitGroups);
 			pipelineData.callGroups = std::move(options.shaderOverrides->callGroups);
+			pipelineData.hitGroups = std::move(options.shaderOverrides->hitGroups);
 			GslCompiler::loadRayTracingShaders(pipelineData);
 		}
 		else
