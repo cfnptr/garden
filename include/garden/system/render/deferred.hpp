@@ -117,18 +117,18 @@ private:
 	ID<Framebuffer> refractedFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
-	bool emissive = false;
+	bool emission = false;
 	bool gi = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
 	 * 
-	 * @param useEmissive use emissive buffer
-	 * @param useSSS use sub surface scattering
+	 * @param useEmission use light emission buffer
+	 * @param useGI use global illumination buffer
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param setSingleton set system singleton instance
 	 */
-	DeferredRenderSystem(bool useEmissive = true, bool useGI = true, 
+	DeferredRenderSystem(bool useEmission = true, bool useGI = true, 
 		bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
@@ -151,11 +151,11 @@ public:
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
 	/**
-	 * @brief Use emissive buffer.
+	 * @brief Use light emission.
 	 */
-	bool useEmissive() const noexcept { return emissive; }
+	bool useEmission() const noexcept { return emission; }
 	/**
-	 * @brief Use sub surface scattering.
+	 * @brief Use global illumination.
 	 */
 	bool useGI() const noexcept { return gi; }
 

@@ -135,9 +135,8 @@ namespace garden::graphics
 	};
 	struct RayTracingLineData final : public LineData
 	{
-		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, 
-			isCallableDataIn = 0, isRayPayloadOffset = 0, isCallableDataOffset = 0,
-			isRayRecursionDepth = 0;
+		int8 isRayPayload = 0, isRayPayloadIn = 0, isCallableData = 0, isCallableDataIn = 0, 
+			isRayPayloadOffset = 0, isCallableDataOffset = 0, isRayRecursionDepth = 0;
 	};
 
 	class CompileError final : public GardenError
@@ -1968,6 +1967,11 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 		if (data.missGroups.size() <= groupIndex) data.missGroups.push_back({});
 		shaderCode = &data.missGroups[groupIndex];
 	}
+	else if (shaderStage == ShaderStage::Callable)
+	{
+		if (data.callGroups.size() <= groupIndex) data.callGroups.push_back({});
+		shaderCode = &data.callGroups[groupIndex];
+	}
 	else if (shaderStage == ShaderStage::Intersection)
 	{
 		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
@@ -1982,11 +1986,6 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	{
 		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
 		shaderCode = &data.hitGroups[groupIndex].closestHitCode;
-	}
-	else if (shaderStage == ShaderStage::Callable)
-	{
-		if (data.callGroups.size() <= groupIndex) data.callGroups.push_back({});
-		shaderCode = &data.callGroups[groupIndex];
 	}
 	else abort();
 
@@ -2003,12 +2002,12 @@ namespace garden
 {
 	struct RayTracingShaderValues final
 	{
-		uint16 rayGenPushConstantsSize = 0, missPushConstantsSize = 0, intersectPushConstantsSize = 0, 
-			anyHitPushConstantsSize = 0, closHitPushConstantsSize = 0, callPushConstantsSize = 0;
-		uint8 rayGenVariantCount = 1, missVariantCount = 1, intersectVariantCount = 1, 
-			anyHitVariantCount = 1, closHitVariantCount = 1, callVariantCount = 1;
-		uint32 rayGenRayRecDepth = 1, missRayRecDepth = 1, intersectRayRecDepth = 1, 
-			anyHitRayRecDepth = 1, closHitRayRecDepth = 1, callRayRecDepth = 1;
+		uint16 rayGenPushConstantsSize = 0, missPushConstantsSize = 0, callPushConstantsSize = 0,
+			intersectPushConstantsSize = 0, anyHitPushConstantsSize = 0, closHitPushConstantsSize = 0;
+		uint8 rayGenVariantCount = 1, missVariantCount = 1, callVariantCount = 1, 
+			intersectVariantCount = 1, anyHitVariantCount = 1, closHitVariantCount = 1;
+		uint32 rayGenRayRecDepth = 1, missRayRecDepth = 1, callRayRecDepth = 1,
+			intersectRayRecDepth = 1, anyHitRayRecDepth = 1, closHitRayRecDepth = 1;
 	};
 }
 static void checkRtShaderValues(const RayTracingShaderValues& b, const RayTracingShaderValues& v)
@@ -2017,27 +2016,27 @@ static void checkRtShaderValues(const RayTracingShaderValues& b, const RayTracin
 		throw CompileError("different ray generation shaders variant count");
 	if (b.rayGenVariantCount > 1 && v.missVariantCount > 1 && b.rayGenVariantCount != v.missVariantCount)
 		throw CompileError("different ray generation and miss shader variant count");
+	if (b.rayGenVariantCount > 1 && v.callVariantCount > 1 && b.rayGenVariantCount != v.callVariantCount)
+		throw CompileError("different ray generation and callable shader variant count");
 	if (b.rayGenVariantCount > 1 && v.intersectVariantCount > 1 && b.rayGenVariantCount != v.intersectVariantCount)
 		throw CompileError("different ray generation and intersection shader variant count");
 	if (b.rayGenVariantCount > 1 && v.anyHitVariantCount > 1 && b.rayGenVariantCount != v.anyHitVariantCount)
 		throw CompileError("different ray generation and any hit shader variant count");
 	if (b.rayGenVariantCount > 1 && v.closHitVariantCount > 1 && b.rayGenVariantCount != v.closHitVariantCount)
 		throw CompileError("different ray generation and closest hit shader variant count");
-	if (b.rayGenVariantCount > 1 && v.callVariantCount > 1 && b.rayGenVariantCount != v.callVariantCount)
-		throw CompileError("different ray generation and callable shader variant count");
 
 	if (b.rayGenRayRecDepth > 1 && v.rayGenRayRecDepth > 1 && b.rayGenRayRecDepth != v.rayGenRayRecDepth)
 		throw CompileError("different ray generation shaders ray recursion depth");
 	if (b.rayGenRayRecDepth > 1 && v.missRayRecDepth > 1 && b.rayGenRayRecDepth != v.missRayRecDepth)
 		throw CompileError("different ray generation and miss shader ray recursion depth");
+	if (b.rayGenRayRecDepth > 1 && v.callRayRecDepth > 1 && b.rayGenRayRecDepth != v.callRayRecDepth)
+		throw CompileError("different ray generation and callable shader ray recursion depth");
 	if (b.rayGenRayRecDepth > 1 && v.intersectRayRecDepth > 1 && b.rayGenRayRecDepth != v.intersectRayRecDepth)
 		throw CompileError("different ray generation and intersection shader ray recursion depth");
 	if (b.rayGenRayRecDepth > 1 && v.anyHitRayRecDepth > 1 && b.rayGenRayRecDepth != v.anyHitRayRecDepth)
 		throw CompileError("different ray generation and any hit shader ray recursion depth");
 	if (b.rayGenRayRecDepth > 1 && v.closHitRayRecDepth > 1 && b.rayGenRayRecDepth != v.closHitRayRecDepth)
 		throw CompileError("different ray generation and closest hit shader ray recursion depth");
-	if (b.rayGenRayRecDepth > 1 && v.callRayRecDepth > 1 && b.rayGenRayRecDepth != v.callRayRecDepth)
-		throw CompileError("different ray generation and callable shader ray recursion depth");
 }
 
 //******************************************************************************************************************
@@ -2046,7 +2045,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 {
 	GARDEN_ASSERT(!data.shaderPath.empty());
 	RayTracingShaderValues bValues; uint8 bindingIndex = 0;
-	uint8 rayGenGroupIndex = 0, missGroupIndex = 0, hitGroupIndex = 0, callGroupIndex = 0;
+	uint8 rayGenGroupIndex = 0, missGroupIndex = 0, callGroupIndex = 0, hitGroupIndex = 0;
 
 	auto compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.rayGenPushConstantsSize, bValues.rayGenVariantCount, 
@@ -2088,6 +2087,12 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 			hgValues.missRayRecDepth, missGroupIndex, ShaderStage::Miss);
 		compileResult |= groupCompileResult;
 		if (groupCompileResult) missGroupIndex++;
+
+		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
+			data, bindingIndex, hgValues.callPushConstantsSize, hgValues.callVariantCount, 
+			hgValues.callRayRecDepth, callGroupIndex, ShaderStage::Callable);
+		compileResult |= groupCompileResult;
+		if (groupCompileResult) callGroupIndex++;
 		
 		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.intersectPushConstantsSize, hgValues.intersectVariantCount, 
@@ -2100,12 +2105,6 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 			hgValues.closHitRayRecDepth, hitGroupIndex, ShaderStage::ClosestHit);
 		compileResult |= groupCompileResult;
 		if (groupCompileResult) hitGroupIndex++;
-
-		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
-			data, bindingIndex, hgValues.callPushConstantsSize, hgValues.callVariantCount, 
-			hgValues.callRayRecDepth, callGroupIndex, ShaderStage::Callable);
-		compileResult |= groupCompileResult;
-		if (groupCompileResult) callGroupIndex++;
 		
 		if (!compileResult)
 			break;
@@ -2120,16 +2119,16 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 	data.pushConstantsStages = ShaderStage::None;
 	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
 	if (bValues.missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
+	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
 	if (bValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Intersection;
 	if (bValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::AnyHit;
 	if (bValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::ClosestHit;
-	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
 	
 	data.pushConstantsSize = bValues.rayGenPushConstantsSize;
 	data.variantCount = max(max(max(max(max(bValues.rayGenVariantCount, bValues.missVariantCount), 
-		bValues.intersectVariantCount), bValues.anyHitVariantCount), bValues.closHitVariantCount), bValues.callVariantCount);
+		bValues.callVariantCount), bValues.intersectVariantCount), bValues.anyHitVariantCount), bValues.closHitVariantCount);
 	data.rayRecursionDepth = max(max(max(max(max(bValues.rayGenRayRecDepth, bValues.missRayRecDepth), 
-		bValues.intersectRayRecDepth), bValues.anyHitRayRecDepth), bValues.closHitRayRecDepth), bValues.callRayRecDepth);
+		bValues.callRayRecDepth), bValues.intersectRayRecDepth), bValues.anyHitRayRecDepth), bValues.closHitRayRecDepth);
 
 	data.descriptorSetCount = 0;
 	for (const auto& uniform : data.uniforms)

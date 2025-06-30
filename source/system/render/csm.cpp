@@ -175,19 +175,22 @@ void CsmRenderSystem::init()
 	if (settingsSystem)
 		settingsSystem->getInt("csm.shadowMapSize", shadowMapSize);
 
-	if (!pipeline)
-		pipeline = createPipeline();
-	if (dataBuffers.empty())
-		createDataBuffers(dataBuffers);
-	if (!depthMap)
-		depthMap = createDepthData(shadowImageViews, shadowMapSize);
-	if (!transparentMap)
-		transparentMap = createTransparentData(transImageViews, shadowMapSize);
+	if (isEnabled)
+	{
+		if (!pipeline)
+			pipeline = createPipeline();
+		if (dataBuffers.empty())
+			createDataBuffers(dataBuffers);
+		if (!depthMap)
+			depthMap = createDepthData(shadowImageViews, shadowMapSize);
+		if (!transparentMap)
+			transparentMap = createTransparentData(transImageViews, shadowMapSize);
 	
-	if (shadowFramebuffers.empty())
-		createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
-	if (transFramebuffers.empty())
-		createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
+		if (shadowFramebuffers.empty())
+			createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
+		if (transFramebuffers.empty())
+			createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
+	}
 }
 void CsmRenderSystem::deinit()
 {
@@ -213,6 +216,27 @@ void CsmRenderSystem::deinit()
 void CsmRenderSystem::shadowRender()
 {
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
+
+	if (!isEnabled)
+		return;
+
+	if (!isInitialized)
+	{
+		if (!pipeline)
+			pipeline = createPipeline();
+		if (dataBuffers.empty())
+			createDataBuffers(dataBuffers);
+		if (!depthMap)
+			depthMap = createDepthData(shadowImageViews, shadowMapSize);
+		if (!transparentMap)
+			transparentMap = createTransparentData(transImageViews, shadowMapSize);
+	
+		if (shadowFramebuffers.empty())
+			createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
+		if (transFramebuffers.empty())
+			createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
+		isInitialized = true;
+	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
@@ -314,6 +338,9 @@ static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cam
 //**********************************************************************************************************************
 bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset)
 {
+	if (!isEnabled)
+		return false;
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	if (cameraConstants.shadowColor.getW() <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)

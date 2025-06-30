@@ -163,7 +163,7 @@ float3 diffuseIrradiance(float3 normal, const float4 shBuffer[SH_COEFF_COUNT])
 float packRoughness(float linearRoughness) { return sqrt(linearRoughness); }
 float unpackRoughness(float perceptualRoughness) { return perceptualRoughness * perceptualRoughness; }
 
-float reflectionsLod(float perceptualRoughness, float distance, float reflLodOffset)
+float calcReflectionsLod(float perceptualRoughness, float distance, float reflLodOffset)
 {
 	const float invLog2sqrt5 = 0.8614f;
 	float roughness = unpackRoughness(max(perceptualRoughness, 0.045f));

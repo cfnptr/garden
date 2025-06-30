@@ -24,7 +24,7 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 	if (variantCount > 1)
 		this->instance = malloc<vk::Pipeline>(variantCount);
 
-	auto groupCount = rayGenGroupCount + missGroupCount + hitGroupCount + callGroupCount;
+	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;
 	vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroupInfos(groupCount);
 	uint32 groupIndex = 0, stageIndex = 0;
 
@@ -34,6 +34,11 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
 	}
 	for (uint8 i = 0; i < missGroupCount; i++)
+	{
+		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+	}
+	for (uint8 i = 0; i < callGroupCount; i++)
 	{
 		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
 			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
@@ -53,11 +58,6 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 			groupInfo.intersectionShader = stageIndex++;
 		shaderGroupInfos[groupIndex++] = groupInfo;
 	}
-	for (uint8 i = 0; i < callGroupCount; i++)
-	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
-	}
 
 	vector<ShaderStage> shaderStages; vector<vector<uint8>> codeArray;
 	for (const auto& rayGenCode : createData.rayGenGroups)
@@ -69,6 +69,11 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 	{
 		shaderStages.push_back(ShaderStage::Miss);
 		codeArray.push_back(std::move(missCode));
+	}
+	for (const auto& callCode : createData.callGroups)
+	{
+		shaderStages.push_back(ShaderStage::Callable);
+		codeArray.push_back(std::move(callCode));
 	}
 	for (const auto& hitGroup : createData.hitGroups)
 	{
@@ -87,11 +92,6 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 			shaderStages.push_back(ShaderStage::Intersection);
 			codeArray.push_back(std::move(hitGroup.intersectionCode));
 		}
-	}
-	for (const auto& callCode : createData.callGroups)
-	{
-		shaderStages.push_back(ShaderStage::Callable);
-		codeArray.push_back(std::move(callCode));
 	}
 
 	auto stageCount = (uint8)shaderStages.size();
@@ -143,8 +143,8 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 {
 	this->rayGenGroupCount = (uint32)createData.rayGenGroups.size();
 	this->missGroupCount = (uint32)createData.missGroups.size();
-	this->hitGroupCount = (uint32)createData.hitGroups.size();
 	this->callGroupCount = (uint32)createData.callGroups.size();
+	this->hitGroupCount = (uint32)createData.hitGroups.size();
 	
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
@@ -162,7 +162,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 
 	SBT sbt;
 	sbt.groupRegions.resize(variantCount);
-	auto groupCount = rayGenGroupCount + missGroupCount + hitGroupCount + callGroupCount;	
+	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;	
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -174,9 +174,9 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 
 		auto rayGenRegionSize = alignSize(rayGenGroupCount * handleSizeAligned, baseAlignment);  
 		auto missRegionSize = alignSize(missGroupCount * handleSizeAligned, baseAlignment);
-		auto hitRegionSize = alignSize(hitGroupCount * handleSizeAligned, baseAlignment);
 		auto callRegionSize = alignSize(callGroupCount * handleSizeAligned, baseAlignment);
-		auto sbtSize = (rayGenRegionSize + missRegionSize + hitRegionSize + callRegionSize) * variantCount + baseAlignment;
+		auto hitRegionSize = alignSize(hitGroupCount * handleSizeAligned, baseAlignment);
+		auto sbtSize = (rayGenRegionSize + missRegionSize + callRegionSize + hitRegionSize) * variantCount + baseAlignment;
 
 		constexpr auto sbtUsage = Buffer::Usage::SBT | Buffer::Usage::DeviceAddress | Buffer::Usage::TransferDst;
 		sbt.buffer = vulkanAPI->bufferPool.create(sbtUsage | flags, Buffer::CpuAccess::None, 
@@ -208,13 +208,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			sbtGroupRegion.missRegion.deviceAddress = sbtAddress;
 			sbtGroupRegion.missRegion.stride = handleSizeAligned;
 			sbtGroupRegion.missRegion.size = missRegionSize;
-			
 			sbtAddress += missRegionSize;
-
-			sbtGroupRegion.hitRegion.deviceAddress = sbtAddress;
-			sbtGroupRegion.hitRegion.stride = handleSizeAligned;
-			sbtGroupRegion.hitRegion.size = hitRegionSize;
-			sbtAddress += hitRegionSize;
 
 			if (callRegionSize > 0)
 			{
@@ -223,6 +217,11 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 				sbtGroupRegion.callRegion.size = callRegionSize;
 				sbtAddress += callRegionSize;
 			}
+
+			sbtGroupRegion.hitRegion.deviceAddress = sbtAddress;
+			sbtGroupRegion.hitRegion.stride = handleSizeAligned;
+			sbtGroupRegion.hitRegion.size = hitRegionSize;
+			sbtAddress += hitRegionSize;
 
 			vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[i] : (VkPipeline)instance;
 			auto result = vulkanAPI->device.getRayTracingShaderGroupHandlesKHR(
@@ -248,15 +247,6 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			stagingMap += missRegionSize;
 
 			sbtMap = stagingMap;
-			for (uint8 i = 0; i < hitGroupCount; i++)
-			{
-				memcpy(sbtMap, handleData, handleSize);
-				sbtMap += handleSizeAligned;
-				handleData += handleSize;
-			}
-			stagingMap += hitRegionSize;
-
-			sbtMap = stagingMap;
 			for (uint8 i = 0; i < callGroupCount; i++)
 			{
 				memcpy(sbtMap, handleData, handleSize);
@@ -264,6 +254,15 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 				handleData += handleSize;
 			}
 			stagingMap += callRegionSize;
+
+			sbtMap = stagingMap;
+			for (uint8 i = 0; i < hitGroupCount; i++)
+			{
+				memcpy(sbtMap, handleData, handleSize);
+				sbtMap += handleSizeAligned;
+				handleData += handleSize;
+			}
+			stagingMap += hitRegionSize;
 		}
 
 		stagingBufferView->flush();

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "hiz/variants.h"
+#include "common/math.gsl"
+
 #variantCount 2
 
 pipelineState
@@ -32,8 +34,7 @@ void main()
 		int2 fragCoords = int2(gl.fragCoord.xy) * 2;
 		const float2 srcSize = 1.0f / float2(textureSize(srcBuffer, 0));
 		float2 texCoords = (float2(fragCoords) + 0.5f) * srcSize;
-		float4 d = textureGather(srcBuffer, texCoords, 0);
-		depth = min(min(d.x, d.y), min(d.z, d.w));
+		depth = min(textureGather(srcBuffer, texCoords, 0));
 
 		bool2 isPrevLevelOdd = equal(textureSize(srcBuffer, 0) & 1, int2(1));
 		if (isPrevLevelOdd.x)

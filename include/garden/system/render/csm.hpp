@@ -63,6 +63,7 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 shadowMapSize = 2048;
+	uint32 isInitialized = false;
 
 	/**
 	 * @brief Creates a new cascade shadow maps rendering system instance.
@@ -92,6 +93,7 @@ public:
 	float biasSlopeFactor = -1.75f;
 	float biasNormalFactor = 0.0002f;
 	float zCoeff = 10.0f;
+	bool isEnabled = true; /**< Is cascade shadow maps rendering enabled. */
 
 	/**
 	 * @brief Returns frustum far planes for each shadow map cascade.

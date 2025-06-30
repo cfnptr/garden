@@ -131,7 +131,7 @@ void DeferredRenderEditorSystem::deferredRender()
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		Pipeline::SpecConstValues specConstValues =
 		{
-			{ "HAS_EMISSIVE_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmissive()) },
+			{ "HAS_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmission()) },
 			{ "HAS_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
 		};
 
@@ -191,7 +191,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.ccRoughness, 0.0f, 1.0f);
 			ImGui::SliderFloat("G-Buffer Shadows", &lightingPC.shadow, 0.0f, 1.0f);
 
-			ImGui::BeginDisabled(!deferredSystem->useEmissive());
+			ImGui::BeginDisabled(!deferredSystem->useEmission());
 			ImGui::ColorEdit3("Emissive Color", &lightingPC.emissiveColor);
 			ImGui::SliderFloat("Emissive Factor", &lightingPC.emissiveFactor, 0.0f, 1.0f);
 			ImGui::EndDisabled();
@@ -201,9 +201,9 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::EndDisabled();
 		}
 		else if ((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || 
-			drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->useEmissive())
+			drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->useEmission())
 		{
-			ImGui::TextDisabled("Emissive buffer is disabled in deferred system!");
+			ImGui::TextDisabled("Emission buffer is disabled in deferred system!");
 		}
 		else if (drawMode == G_BUFFER_DRAW_MODE_GI_COLOR && !deferredSystem->useGI())
 		{
@@ -276,7 +276,7 @@ void DeferredRenderEditorSystem::ldrRender()
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && 
-		!deferredSystem->useEmissive()) || (drawMode == G_BUFFER_DRAW_MODE_GI_COLOR && !deferredSystem->useGI()))
+		!deferredSystem->useEmission()) || (drawMode == G_BUFFER_DRAW_MODE_GI_COLOR && !deferredSystem->useGI()))
 	{
 		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
 	}

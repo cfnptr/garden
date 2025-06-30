@@ -41,4 +41,16 @@ float3 tbnGetTangent(float3x3 tbn) { return tbn[0]; }
 float3 tbnGetBitangent(float3x3 tbn) { return tbn[1]; }
 float3 tbnGetNormal(float3x3 tbn) { return tbn[2]; }
 
+float3 snapNormal(float3 normal)
+{
+	float3 a = abs(normal); float3 axis;
+	if (a.x > a.y && a.x > a.z)
+		axis = float3(sign(normal.x), 0.0f, 0.0f);
+	else if (a.y > a.z)
+		axis = float3(0.0f, sign(normal.y), 0.0f);
+	else
+		axis = float3(0.0f, 0.0f, sign(normal.z));
+	return axis;
+}
+
 #endif // NORMAL_MAPPING_GSL

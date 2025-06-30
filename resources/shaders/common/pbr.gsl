@@ -54,6 +54,7 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 	float3 irradiance = mix(gBuffer.giColor, diffuseIrradiance(gBuffer.normal, shBuffer), shadow.a);
 	float3 fd = diffuseColor * (1.0f - e) * irradiance * shadow.rgb;
 
+	#ifdef USE_SUBSURFACE_SCATTERING
 	if (gBuffer.thickness < 1.0f && gBuffer.transmission == 0.0f)
 	{
 		float3 viewDependent = prefilteredRadiance(iblSpecular, 
@@ -62,16 +63,20 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 		fd += gBuffer.subsurfaceColor * (irradiance + viewDependent) * attenuation;
 		// If have cloth model:  fd *= clamp(gBuffer.subsurfaceColor + nov, 0.0f, 1.0f);
 	}
+	#endif
 
+	#ifdef USE_AMBIENT_OCCLUSION
 	if (gBuffer.ambientOcclusion < 1.0f)
 	{
 		float specularAO = specularAoLagarde(nov, gBuffer.ambientOcclusion, linearRoughness);
 		fr *= gtaoMultiBounce(specularAO, f0);
 		fd *= gtaoMultiBounce(gBuffer.ambientOcclusion, diffuseColor);
 	}
+	#endif
 
 	/// TODO: evaluateSheenIBL();
 
+	#ifdef USE_CLEAR_COAT
 	if (gBuffer.clearCoatRoughness > 0.0)
 	{
 		float clearCoatNov = max(dot(gBuffer.clearCoatNormal, -viewDirection), 1e-4f);
@@ -85,7 +90,15 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 		float specularAO = specularAoLagarde(clearCoatNov, gBuffer.ambientOcclusion, ccLinearRoughness);
 		fr += prefilteredRadiance(iblSpecular, clearCoatR, clearCoatRoughness) * (specularAO * fc);
     }
+	#endif
 
+	#ifdef USE_LIGHT_EMISSION
+	float3 fe = gBuffer.emissiveColor * gBuffer.emissiveFactor;
+	#else
+	float3 fe = float3(0.0f);
+	#endif
+
+	#ifdef USE_LIGHT_ABSORPTION
 	if (gBuffer.transmission > 0.0f)
 	{
 		float3 ft = gBuffer.refractedColor;
@@ -93,11 +106,20 @@ float3 evaluateIBL(const GBufferValues gBuffer, float4 shadow, float3 viewDirect
 			gBuffer.thickness)) * (1.0f - e) * gBuffer.transmission;
 		fd = fd * (1.0f - gBuffer.transmission) + ft;
 	}
+	#else
+		#ifndef USE_SPECULAR_FACTOR
+		fe *= gBuffer.specularFactor;
+		#endif
+	#endif
 
 	fr = fr * (1.0f - gBuffer.reflectionColor.a) + 
 		(e * gBuffer.reflectionColor.rgb * energyCompensation);
+
+	#ifdef USE_SPECULAR_FACTOR
 	fr *= gBuffer.specularFactor;
-	return fd + fr;
+	#endif
+
+	return fd + fr + fe;
 }
 
 // TODO: support anisotropy shading model for brushed metals.

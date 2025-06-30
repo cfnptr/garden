@@ -61,6 +61,8 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 		
 		if (geometry.isOpaqueOnly)
 			as.flags = vk::GeometryFlagBitsKHR::eOpaque;
+		if (geometry.noDuplicateAnyHit)
+			as.flags = vk::GeometryFlagBitsKHR::eNoDuplicateAnyHitInvocation;
 		asArray[i] = as;
 
 		vk::AccelerationStructureBuildRangeInfoKHR rangeInfo;
@@ -103,6 +105,8 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 		
 		if (geometry.isOpaqueOnly)
 			as.flags = vk::GeometryFlagBitsKHR::eOpaque;
+		if (geometry.noDuplicateAnyHit)
+			as.flags = vk::GeometryFlagBitsKHR::eNoDuplicateAnyHitInvocation;
 		asArray[i] = as;
 
 		vk::AccelerationStructureBuildRangeInfoKHR rangeInfo;

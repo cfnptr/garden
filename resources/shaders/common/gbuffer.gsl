@@ -19,20 +19,29 @@
 
 #include "common/math.gsl"
 
-#define BASE_COLOR_G_BUFFER 0
-#define SPECULAR_FACTOR_G_BUFFER 0
-#define METALLIC_G_BUFFER 1
-#define ROUGHNESS_G_BUFFER 1
-#define AO_G_BUFFER 1
-#define REFLECTANCE_G_BUFFER 1
-#define CC_NORMALS_G_BUFFER 2
-#define CC_ROUGHNESS_G_BUFFER 2
-#define NORMALS_G_BUFFER 3
-#define SHADOW_G_BUFFER 3
-#define EM_COLOR_G_BUFFER 4
-#define EM_FACTOR_G_BUFFER 4
-#define GI_G_BUFFER 5
+#define G_BUFFER_BASE_COLOR 0
+#define G_BUFFER_SPEC_FACTOR 0
+#define G_BUFFER_METALLIC 1
+#define G_BUFFER_ROUGHNESS 1
+#define G_BUFFER_MATERIAL_AO 1
+#define G_BUFFER_REFLECTANCE 1
+#define G_BUFFER_CC_NORMALS 2
+#define G_BUFFER_CC_ROUGHNESS 2
+#define G_BUFFER_NORMALS 3
+#define G_BUFFER_SHADOW 3
+#define G_BUFFER_EM_COLOR 4
+#define G_BUFFER_EM_FACTOR 4
+#define G_BUFFER_GI 5
 #define G_BUFFER_COUNT 6
+
+#define G_BUFFER_SPEC_FACTOR_COMP 3
+#define G_BUFFER_METALLIC_COMP 0
+#define G_BUFFER_ROUGHNESS_COMP 1
+#define G_BUFFER_MATERIAL_AO_COMP 2
+#define G_BUFFER_REFLECTANCE_COMP 3
+#define G_BUFFER_CC_ROUGHNESS_COMP 0
+#define G_BUFFER_SHADOW_COMP 0
+#define G_BUFFER_EM_FACTOR_COMP 3
 
 struct GBufferData
 {
@@ -146,8 +155,8 @@ void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g
 	g2 = encodeGBuffer2(values.clearCoatNormal, values.clearCoatRoughness);
 	g3 = encodeGBuffer3(values.normal, values.shadow);
 
-	#ifdef USE_EMISSIVE_BUFFER
-	if (HAS_EMISSIVE_BUFFER)
+	#ifdef USE_EMISSION_BUFFER
+	if (HAS_EMISSION_BUFFER)
 		g4 = encodeGBuffer4(values.emissiveColor, values.emissiveFactor);
 	#endif
 	#ifdef USE_GI_BUFFER
@@ -160,32 +169,32 @@ void encodeGBufferValues(const GBufferValues values, out float4 g0, out float4 g
 
 //**********************************************************************************************************************
 float3 decodeBaseColor(float4 gBufferData) { return gBufferData.rgb; }
-float decodeSpecularFactor(float4 gBufferData) { return gBufferData.a; }
-float decodeMetallic(float4 gBufferData) { return gBufferData.r; }
-float decodeRoughness(float4 gBufferData) { return gBufferData.g; }
-float decodeAmbientOcclusion(float4 gBufferData) { return gBufferData.b; }
-float decodeReflectance(float4 gBufferData) { return gBufferData.a; }
+float decodeSpecularFactor(float4 gBufferData) { return gBufferData[G_BUFFER_SPEC_FACTOR_COMP]; }
+float decodeMetallic(float4 gBufferData) { return gBufferData[G_BUFFER_METALLIC_COMP]; }
+float decodeRoughness(float4 gBufferData) { return gBufferData[G_BUFFER_ROUGHNESS_COMP]; }
+float decodeAmbientOcclusion(float4 gBufferData) { return gBufferData[G_BUFFER_MATERIAL_AO_COMP]; }
+float decodeReflectance(float4 gBufferData) { return gBufferData[G_BUFFER_REFLECTANCE_COMP]; }
 float3 decodeClearCoatNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba); }
-float decodeClearCoatRoughness(float4 gBufferData) { return gBufferData.r; }
+float decodeClearCoatRoughness(float4 gBufferData) { return gBufferData[G_BUFFER_CC_ROUGHNESS_COMP]; }
 float3 decodeNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba); }
-float decodeShadow(float4 gBufferData) { return gBufferData.r; }
+float decodeShadow(float4 gBufferData) { return gBufferData[G_BUFFER_SHADOW_COMP]; }
 float3 decodeEmissiveColor(float4 gBufferData) { return gBufferData.rgb; }
-float decodeEmissiveFactor(float4 gBufferData) { return gBufferData.a; }
+float decodeEmissiveFactor(float4 gBufferData) { return gBufferData[G_BUFFER_EM_FACTOR_COMP]; }
 float3 decodeGiColor(float4 gBufferData) { return gBufferData.rgb; }
 
-float3 decodeBaseColor(const GBufferData data) { return decodeBaseColor(data.g[BASE_COLOR_G_BUFFER]); }
-float decodeSpecularFactor(const GBufferData data) { return decodeSpecularFactor(data.g[SPECULAR_FACTOR_G_BUFFER]); }
-float decodeMetallic(const GBufferData data) { return decodeMetallic(data.g[METALLIC_G_BUFFER]); }
-float decodeRoughness(const GBufferData data) { return decodeRoughness(data.g[ROUGHNESS_G_BUFFER]); }
-float decodeAmbientOcclusion(const GBufferData data) { return decodeAmbientOcclusion(data.g[AO_G_BUFFER]); }
-float decodeReflectance(const GBufferData data) { return decodeReflectance(data.g[REFLECTANCE_G_BUFFER]); }
-float3 decodeClearCoatNormal(const GBufferData data) { return decodeClearCoatNormal(data.g[CC_NORMALS_G_BUFFER]); }
-float decodeClearCoatRoughness(const GBufferData data) { return decodeClearCoatRoughness(data.g[CC_ROUGHNESS_G_BUFFER]); }
-float3 decodeNormal(const GBufferData data) { return decodeNormal(data.g[NORMALS_G_BUFFER]); }
-float decodeShadow(const GBufferData data) { return decodeShadow(data.g[SHADOW_G_BUFFER]); }
-float3 decodeEmissiveColor(const GBufferData data) { return decodeEmissiveColor(data.g[EM_COLOR_G_BUFFER]); }
-float decodeEmissiveFactor(const GBufferData data) { return decodeEmissiveFactor(data.g[EM_FACTOR_G_BUFFER]); }
-float3 decodeGiColor(const GBufferData data) { return decodeGiColor(data.g[GI_G_BUFFER]); }
+float3 decodeBaseColor(const GBufferData data) { return decodeBaseColor(data.g[G_BUFFER_BASE_COLOR]); }
+float decodeSpecularFactor(const GBufferData data) { return decodeSpecularFactor(data.g[G_BUFFER_SPEC_FACTOR]); }
+float decodeMetallic(const GBufferData data) { return decodeMetallic(data.g[G_BUFFER_METALLIC]); }
+float decodeRoughness(const GBufferData data) { return decodeRoughness(data.g[G_BUFFER_ROUGHNESS]); }
+float decodeAmbientOcclusion(const GBufferData data) { return decodeAmbientOcclusion(data.g[G_BUFFER_MATERIAL_AO]); }
+float decodeReflectance(const GBufferData data) { return decodeReflectance(data.g[G_BUFFER_REFLECTANCE]); }
+float3 decodeClearCoatNormal(const GBufferData data) { return decodeClearCoatNormal(data.g[G_BUFFER_CC_NORMALS]); }
+float decodeClearCoatRoughness(const GBufferData data) { return decodeClearCoatRoughness(data.g[G_BUFFER_CC_ROUGHNESS]); }
+float3 decodeNormal(const GBufferData data) { return decodeNormal(data.g[G_BUFFER_NORMALS]); }
+float decodeShadow(const GBufferData data) { return decodeShadow(data.g[G_BUFFER_SHADOW]); }
+float3 decodeEmissiveColor(const GBufferData data) { return decodeEmissiveColor(data.g[G_BUFFER_EM_COLOR]); }
+float decodeEmissiveFactor(const GBufferData data) { return decodeEmissiveFactor(data.g[G_BUFFER_EM_FACTOR]); }
+float3 decodeGiColor(const GBufferData data) { return decodeGiColor(data.g[G_BUFFER_GI]); }
 
 //**********************************************************************************************************************
 GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, 
@@ -197,8 +206,8 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2,
 	data.g[2] = textureLod(s2, texCoords, 0.0f);
 	data.g[3] = textureLod(s3, texCoords, 0.0f);
 
-	#ifdef USE_EMISSIVE_BUFFER
-	if (HAS_EMISSIVE_BUFFER)
+	#ifdef USE_EMISSION_BUFFER
+	if (HAS_EMISSION_BUFFER)
 		data.g[4] = textureLod(s4, texCoords, 0.0f);
 	#endif
 	#ifdef USE_GI_BUFFER
@@ -226,8 +235,8 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2,
 	values.normal = decodeNormal(data);
 	values.shadow = decodeShadow(data);
 
-	#ifdef USE_EMISSIVE_BUFFER
-	if (HAS_EMISSIVE_BUFFER)
+	#ifdef USE_EMISSION_BUFFER
+	if (HAS_EMISSION_BUFFER)
 	{
 		values.emissiveColor = decodeEmissiveColor(data);
 		values.emissiveFactor = decodeEmissiveFactor(data);

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSIVE_BUFFER
+#define USE_EMISSION_BUFFER
 #define USE_GI_BUFFER
 
-#define HAS_EMISSIVE_BUFFER true
+#define HAS_EMISSION_BUFFER true
 #define HAS_GI_BUFFER true
 
 #include "common/depth.gsl"
