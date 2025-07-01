@@ -31,30 +31,30 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
-	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::tryGet();
-	ID<ImageView> shadowBuffer, shadowDenoisedBuffer, aoBuffer, aoDenoisedBuffer, reflectionBuffer;
+	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
+	ID<ImageView> shadowBuffer, shadowBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer;
 
 	if (pbrLightingSystem)
 	{
-		shadowBuffer = pbrLightingSystem->getShadowImageView();
-		shadowDenoisedBuffer = pbrLightingSystem->getShadowDenoisedView();
+		shadowBuffer = pbrLightingSystem->getShadowBaseView();
+		shadowBlurBuffer = pbrLightingSystem->getShadowBlurView();
 		aoBuffer = pbrLightingSystem->getAoBaseView();
-		aoDenoisedBuffer = pbrLightingSystem->getAoDenoisedView();
-		reflectionBuffer = pbrLightingSystem->getReflImageView();
+		aoBlurBuffer = pbrLightingSystem->getAoBlurView();
+		reflBuffer = pbrLightingSystem->getReflBaseView();
 
 		if (!shadowBuffer)
-			shadowBuffer = shadowDenoisedBuffer = graphicsSystem->getEmptyTexture();
+			shadowBuffer = shadowBlurBuffer = graphicsSystem->getEmptyTexture();
 		if (!aoBuffer)
-			aoBuffer = aoDenoisedBuffer = graphicsSystem->getEmptyTexture();
-		if (!reflectionBuffer)
-			reflectionBuffer = graphicsSystem->getEmptyTexture();
+			aoBuffer = aoBlurBuffer = graphicsSystem->getEmptyTexture();
+		if (!reflBuffer)
+			reflBuffer = graphicsSystem->getEmptyTexture();
 	}
 	else
 	{
 		auto emptyTexture = graphicsSystem->getEmptyTexture();
-		shadowBuffer = shadowDenoisedBuffer = emptyTexture;
-		aoBuffer = aoDenoisedBuffer = emptyTexture;
-		reflectionBuffer = emptyTexture;
+		shadowBuffer = shadowBlurBuffer = emptyTexture;
+		aoBuffer = aoBlurBuffer = emptyTexture;
+		reflBuffer = emptyTexture;
 	}
 
 	DescriptorSet::Uniforms uniforms =
@@ -64,10 +64,10 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		{ "oitRevealBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[1].imageView) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowBuffer) },
-		{ "shadowDenoisedBuffer", DescriptorSet::Uniform(shadowDenoisedBuffer) },
+		{ "shadowBlurBuffer", DescriptorSet::Uniform(shadowBlurBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
-		{ "aoDenoisedBuffer", DescriptorSet::Uniform(aoDenoisedBuffer) },
-		{ "reflectionBuffer", DescriptorSet::Uniform(reflectionBuffer) },
+		{ "aoBlurBuffer", DescriptorSet::Uniform(aoBlurBuffer) },
+		{ "reflBuffer", DescriptorSet::Uniform(reflBuffer) },
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
@@ -123,7 +123,7 @@ void DeferredRenderEditorSystem::deinit()
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::deferredRender()
 {
-	if (drawMode != G_BUFFER_DRAW_MODE_LIGHTING)
+	if (drawMode != G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		return;
 
 	if (!pbrLightingPipeline)
@@ -179,7 +179,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 		ImGui::Combo("Draw Mode", drawMode, G_BUFFER_DRAW_MODE_NAMES, G_BUFFER_DRAW_MODE_COUNT);
 
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		if (drawMode == G_BUFFER_DRAW_MODE_LIGHTING)
+		if (drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		{
 			ImGui::SeparatorText("Overrides");
 			ImGui::ColorEdit3("Base Color", &lightingPC.baseColor);
@@ -205,7 +205,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 		{
 			ImGui::TextDisabled("Emission buffer is disabled in deferred system!");
 		}
-		else if (drawMode == G_BUFFER_DRAW_MODE_GI_COLOR && !deferredSystem->useGI())
+		else if (drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER && !deferredSystem->useGI())
 		{
 			ImGui::TextDisabled("GI buffer is disabled in deferred system!");
 		}
@@ -232,7 +232,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 	}
 	ImGui::End();
 
-	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING)
+	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		return;
 
 	if (!bufferPipeline)
@@ -256,7 +256,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::ldrRender()
 {
-	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING)
+	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -276,7 +276,7 @@ void DeferredRenderEditorSystem::ldrRender()
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && 
-		!deferredSystem->useEmission()) || (drawMode == G_BUFFER_DRAW_MODE_GI_COLOR && !deferredSystem->useGI()))
+		!deferredSystem->useEmission()) || (drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER && !deferredSystem->useGI()))
 	{
 		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
 	}

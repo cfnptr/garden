@@ -120,12 +120,11 @@ static void createTransparentFramebuffers(const vector<ID<ImageView>>& transImag
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
-	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useShadowBuffer());
 
 	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"csm", pbrLightingSystem->getShadowFramebuffer(), options);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowBaseFB(), options);
 }
 
 static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap, 
@@ -264,7 +263,7 @@ void CsmRenderSystem::shadowRender()
 	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
 	pipelineView->drawFullscreen();
 
-	PbrLightingRenderSystem::Instance::get()->markAnyShadow();
+	PbrLightingSystem::Instance::get()->markAnyShadow();
 }
 
 void CsmRenderSystem::gBufferRecreate()

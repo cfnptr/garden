@@ -19,70 +19,70 @@
 
 using namespace garden;
 
-PbrLightingRenderEditorSystem::PbrLightingRenderEditorSystem()
+PbrLightingEditorSystem::PbrLightingEditorSystem()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingRenderEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingEditorSystem::deinit);
 }
-PbrLightingRenderEditorSystem::~PbrLightingRenderEditorSystem()
+PbrLightingEditorSystem::~PbrLightingEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingEditorSystem::deinit);
 	}
 }
 
-void PbrLightingRenderEditorSystem::init()
+void PbrLightingEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", PbrLightingRenderEditorSystem::preUiRender);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", PbrLightingRenderEditorSystem::editorBarToolPP);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", PbrLightingEditorSystem::preUiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", PbrLightingEditorSystem::editorBarToolPP);
 
-	EditorRenderSystem::Instance::get()->registerEntityInspector<PbrLightingRenderComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<PbrLightingComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	},
 	inspectorPriority);
 }
-void PbrLightingRenderEditorSystem::deinit()
+void PbrLightingEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingRenderComponent>();
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingComponent>();
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", PbrLightingRenderEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", PbrLightingRenderEditorSystem::editorBarToolPP);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", PbrLightingEditorSystem::preUiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", PbrLightingEditorSystem::editorBarToolPP);
 	}
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderEditorSystem::preUiRender()
+void PbrLightingEditorSystem::preUiRender()
 {
 	if (!showWindow)
 		return;
 
 	if (ImGui::Begin("PBR Lighting", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+		auto pbrLightingSystem = PbrLightingSystem::Instance::get();
 		ImGui::DragFloat("Reflectance Coeff", &pbrLightingSystem->reflectanceCoeff, 0.1f, 0.0f, FLT_MAX);
-		ImGui::DragFloat("Denoise Sharpness", &pbrLightingSystem->denoiseSharpness, 0.1f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Blur Sharpness", &pbrLightingSystem->blurSharpness, 0.1f, 0.0f, FLT_MAX);
 	}
 	ImGui::End();
 }
 
-void PbrLightingRenderEditorSystem::editorBarToolPP()
+void PbrLightingEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("PBR Lighting"))
 		showWindow = true;
 }
 
-void PbrLightingRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
+void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)
 		return;
 
-	auto pbrLightingView = PbrLightingRenderSystem::Instance::get()->getComponent(entity);
+	auto pbrLightingView = PbrLightingSystem::Instance::get()->getComponent(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	editorSystem->drawResource(pbrLightingView->cubemap, "Cubemap");
 	editorSystem->drawResource(pbrLightingView->sh, "SH");

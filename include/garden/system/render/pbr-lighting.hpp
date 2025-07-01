@@ -17,8 +17,6 @@
  * @brief PBR lighting rendering functions. (Physically Based Rendering)
  */
 
-// TODO: I have failed to find good denoiser for shadows. Research this field.
-
 #pragma once
 #include "garden/system/graphics.hpp"
 
@@ -28,7 +26,7 @@ namespace garden
 /**
  * @brief PBR lighting rendering data container. (Physically Based Rendering)
  */
-struct PbrLightingRenderComponent final : public Component
+struct PbrLightingComponent final : public Component
 {
 	Ref<Image> cubemap = {};               /**< PBR lighting cubemap image. */
 	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
@@ -37,8 +35,8 @@ struct PbrLightingRenderComponent final : public Component
 private:
 	bool destroy();
 
-	friend class LinearPool<PbrLightingRenderComponent>;
-	friend class ComponentSystem<PbrLightingRenderComponent>;
+	friend class LinearPool<PbrLightingComponent>;
+	friend class ComponentSystem<PbrLightingComponent>;
 };
 
 /**
@@ -53,8 +51,7 @@ private:
  * 	                 PreAoRender, AoRender, PostAoRender, AoRecreate, 
  *                   PreReflRender, ReflRender, PostReflRender, ReflRecreate.
  */
-class PbrLightingRenderSystem final : public ComponentSystem<PbrLightingRenderComponent>, 
-	public Singleton<PbrLightingRenderSystem>
+class PbrLightingSystem final : public ComponentSystem<PbrLightingComponent>, public Singleton<PbrLightingSystem>
 {
 public:
 	struct LightingPC final
@@ -72,9 +69,8 @@ public:
 		uint32 itemCount;
 	};
 
-	static constexpr uint8 shadowBufferCount = 2;  /**< PBR lighting rendering shadow buffer count. */
-	static constexpr uint8 aoBufferCount = 3;      /**< PBR lighting rendering AO buffer count. (Ambient Occlusion) */
-
+	static constexpr uint8 accumBufferCount = 3;      /**< PBR lighting accumulation buffer count. */
+	static constexpr Framebuffer::OutputAttachment::Flags accumBufferFlags = { false, false, true };
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
@@ -82,13 +78,14 @@ private:
 	ID<Image> dfgLUT = {};
 	ID<Buffer> reflKernel = {};
 	ID<Image> shadowBuffer = {};
+	ID<Image> shadowBlurBuffer = {};
 	ID<Image> aoBuffer = {};
-	ID<Image> aoDenBuffer = {};
+	ID<Image> aoBlurBuffer = {};
 	ID<Image> reflBuffer = {};
-	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
-	ID<Framebuffer> shadowFramebuffers[shadowBufferCount + 1] = {};
-	ID<ImageView> aoImageViews[aoBufferCount] = {};
-	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
+	ID<ImageView> shadowImageViews[accumBufferCount] = {};
+	ID<Framebuffer> shadowFramebuffers[accumBufferCount + 1] = {};
+	ID<ImageView> aoImageViews[accumBufferCount] = {};
+	ID<Framebuffer> aoFramebuffers[accumBufferCount] = {};
 	vector<ID<ImageView>> reflImageViews;
 	vector<ID<Framebuffer>> reflFramebuffers;
 	vector<ID<DescriptorSet>> reflBlurDSes;
@@ -117,12 +114,12 @@ private:
 	 * @param useReflBuffer create and use reflection buffer for rendering
 	 * @param setSingleton set system singleton instance
 	 */
-	PbrLightingRenderSystem(bool useShadowBuffer = true, bool useAoBuffer = true, 
+	PbrLightingSystem(bool useShadowBuffer = true, bool useAoBuffer = true, 
 		bool useReflBuffer = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
 	 */
-	~PbrLightingRenderSystem() final;
+	~PbrLightingSystem() final;
 
 	void init();
 	void deinit();
@@ -134,7 +131,7 @@ private:
 	friend class ecsm::Manager;
 public:
 	float reflectanceCoeff = 1.0f;
-	float denoiseSharpness = 50.0f;
+	float blurSharpness = 50.0f;
 
 	/*******************************************************************************************************************
 	 * @brief Use shadow buffer for PBR lighting rendering.
@@ -188,7 +185,15 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
 	 */
-	ID<Framebuffer> getShadowFramebuffer() { return getShadowFramebuffers()[0]; }
+	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[2]; }
+	/**
+	 * @brief Returns PBR lighting shadow temporary framebuffer.
+	 */
+	ID<Framebuffer> getShadowTempFB() { return getShadowFramebuffers()[1]; }
+	/**
+	 * @brief Returns PBR lighting shadow blur framebuffer.
+	 */
+	ID<Framebuffer> getShadowBlurFB() { return getShadowFramebuffers()[0]; }
 	/**
 	 * @brief Returns PBR lighting AO base framebuffer. (Ambient Occlusion)
 	 */
@@ -196,15 +201,15 @@ public:
 	/**
 	 * @brief Returns PBR lighting AO temporary framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoTemporaryFB() { return getAoFramebuffers()[1]; }
+	ID<Framebuffer> getAoTempFB() { return getAoFramebuffers()[1]; }
 	/**
-	 * @brief Returns PBR lighting AO denoised framebuffer. (Ambient Occlusion)
+	 * @brief Returns PBR lighting AO blur framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoDenoisedFB() { return getAoFramebuffers()[0]; }
+	ID<Framebuffer> getAoBlurFB() { return getAoFramebuffers()[0]; }
 	/**
 	 * @brief Returns PBR lighting reflection base framebuffer.
 	 */
-	ID<Framebuffer> getReflFramebuffer() { return getReflFramebuffers()[0]; }
+	ID<Framebuffer> getReflBaseFB() { return getReflFramebuffers()[0]; }
 
 	/**
 	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
@@ -220,13 +225,17 @@ public:
 	 */
 	ID<Image> getShadowBuffer();
 	/**
+	 * @brief Returns PBR lighting shadow buffer.
+	 */
+	ID<Image> getShadBlurBuffer();
+	/**
 	 * @brief Returns PBR lighting AO buffer. (Ambient Occlusion)
 	 */
 	ID<Image> getAoBuffer();
 	/**
-	 * @brief Returns PBR lighting AO denoise buffer. (Ambient Occlusion)
+	 * @brief Returns PBR lighting AO blur buffer. (Ambient Occlusion)
 	 */
-	ID<Image> getAoDenBuffer();
+	ID<Image> getAoBlurBuffer();
 	/**
 	 * @brief Returns PBR lighting reflection buffer.
 	 */
@@ -248,11 +257,15 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base image view.
 	 */
-	ID<ImageView> getShadowImageView() { return getShadowImageViews()[0]; }
+	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[2]; }
 	/**
-	 * @brief Returns PBR lighting shadow denoised image view.
+	 * @brief Returns PBR lighting shadow temporary image view.
 	 */
-	ID<ImageView> getShadowDenoisedView() { return getShadowImageViews()[1]; }
+	ID<ImageView> getShadowTempView() { return getShadowImageViews()[1]; }
+	/**
+	 * @brief Returns PBR lighting shadow blur image view.
+	 */
+	ID<ImageView> getShadowBlurView() { return getShadowImageViews()[0]; }
 	/**
 	 * @brief Returns PBR lighting AO base image view. (Ambient Occlusion)
 	 */
@@ -260,15 +273,15 @@ public:
 	/**
 	 * @brief Returns PBR lighting AO temporary image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoTemporaryView() { return getAoImageViews()[1]; }
+	ID<ImageView> getAoTempView() { return getAoImageViews()[1]; }
 	/**
-	 * @brief Returns PBR lighting AO denoised image view. (Ambient Occlusion)
+	 * @brief Returns PBR lighting AO blur image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoDenoisedView() { return getAoImageViews()[0]; }
+	ID<ImageView> getAoBlurView() { return getAoImageViews()[0]; }
 	/**
 	 * @brief Returns PBR lighting reflection base image view.
 	 */
-	ID<ImageView> getReflImageView() { return getReflImageViews()[0]; }
+	ID<ImageView> getReflBaseView() { return getReflImageViews()[0]; }
 
 	/*******************************************************************************************************************
 	 * @brief Loads cubemap rendering data from the resource pack.
@@ -352,7 +365,7 @@ public:
 	 * @brief Marks that there is rendered reflection data on the current frame.
 	 * @details See the @ref useReflBuffer().
 	 */
-	void markAnyRefl() noexcept { hasAnyRefl = true; }
+	void markAnyReflection() noexcept { hasAnyRefl = true; }
 };
 
 } // namespace garden

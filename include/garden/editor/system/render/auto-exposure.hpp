@@ -19,7 +19,7 @@
 namespace garden
 {
 
-class AutoExposureRenderEditorSystem final : public System
+class AutoExposureEditorSystem final : public System
 {
 	struct PushConstants final
 	{
@@ -34,8 +34,8 @@ class AutoExposureRenderEditorSystem final : public System
 	bool visualizeLimits = false;
 	bool showWindow = false;
 
-	AutoExposureRenderEditorSystem();
-	~AutoExposureRenderEditorSystem() final;
+	AutoExposureEditorSystem();
+	~AutoExposureEditorSystem() final;
 
 	void init();
 	void deinit();
