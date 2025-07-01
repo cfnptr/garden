@@ -35,7 +35,7 @@ namespace garden
 /**
  * @brief Automatic exposure (AE) rendering system. (Eye light adaptation)
  */
-class AutoExposureRenderSystem final : public System, public Singleton<AutoExposureRenderSystem>
+class AutoExposureSystem final : public System, public Singleton<AutoExposureSystem>
 {
 public:
 	struct HistogramPC final
@@ -67,11 +67,11 @@ private:
 	 * @brief Creates a new automatic exposure (AE) rendering system instance. (Eye light adaptation)
 	 * @param setSingleton set system singleton instance
 	 */
-	AutoExposureRenderSystem(bool setSingleton = true);
+	AutoExposureSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys automatic exposure (AE) rendering system instance. (Eye light adaptation)
 	 */
-	~AutoExposureRenderSystem() final;
+	~AutoExposureSystem() final;
 
 	void init();
 	void deinit();

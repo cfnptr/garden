@@ -18,43 +18,43 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-ToneMappingRenderEditorSystem::ToneMappingRenderEditorSystem()
+ToneMappingEditorSystem::ToneMappingEditorSystem()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingRenderEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingEditorSystem::deinit);
 }
-ToneMappingRenderEditorSystem::~ToneMappingRenderEditorSystem()
+ToneMappingEditorSystem::~ToneMappingEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingRenderEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingEditorSystem::deinit);
 	}
 }
 
-void ToneMappingRenderEditorSystem::init()
+void ToneMappingEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", ToneMappingRenderEditorSystem::preUiRender);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", ToneMappingRenderEditorSystem::editorBarToolPP);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", ToneMappingEditorSystem::preUiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", ToneMappingEditorSystem::editorBarToolPP);
 }
-void ToneMappingRenderEditorSystem::deinit()
+void ToneMappingEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", ToneMappingRenderEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", ToneMappingRenderEditorSystem::editorBarToolPP);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", ToneMappingEditorSystem::preUiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", ToneMappingEditorSystem::editorBarToolPP);
 	}
 }
 
 //**********************************************************************************************************************
-void ToneMappingRenderEditorSystem::preUiRender()
+void ToneMappingEditorSystem::preUiRender()
 {
 	if (!showWindow)
 		return;
 
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+		auto toneMappingSystem = ToneMappingSystem::Instance::get();
 		if (ImGui::Combo("Tone Mapper", toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
 			toneMappingSystem->setConsts(toneMappingSystem->getUseBloomBuffer(), toneMapper);
 
@@ -80,7 +80,7 @@ void ToneMappingRenderEditorSystem::preUiRender()
 	ImGui::End();
 }
 
-void ToneMappingRenderEditorSystem::editorBarToolPP()
+void ToneMappingEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("Tone Mapping (HDR)"))
 		showWindow = true;

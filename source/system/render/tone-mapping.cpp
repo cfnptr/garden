@@ -28,10 +28,10 @@ static ID<Buffer> createLuminanceBuffer()
 	constexpr auto usage = Buffer::Usage::None;
 	#endif
 
-	constexpr float data[2] = { 1.0f / ToneMappingRenderSystem::lumToExp, 1.0f };
+	constexpr float data[2] = { 1.0f / ToneMappingSystem::lumToExp, 1.0f };
 	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Storage | Buffer::Usage::Uniform | 
 		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | usage, Buffer::CpuAccess::None, data, 
-		sizeof(ToneMappingRenderSystem::LuminanceData), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+		sizeof(ToneMappingSystem::LuminanceData), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
 	return buffer;
 }
@@ -82,37 +82,37 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, uint8 toneMapper
 }
 
 //**********************************************************************************************************************
-ToneMappingRenderSystem::ToneMappingRenderSystem(bool useBloomBuffer, uint8 toneMapper, bool setSingleton) :
+ToneMappingSystem::ToneMappingSystem(bool useBloomBuffer, uint8 toneMapper, bool setSingleton) :
 	Singleton(setSingleton), useBloomBuffer(useBloomBuffer), toneMapper(toneMapper)
 {
 	GARDEN_ASSERT(toneMapper < TONE_MAPPER_COUNT);
 
-	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingRenderSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingSystem::deinit);
 }
-ToneMappingRenderSystem::~ToneMappingRenderSystem()
+ToneMappingSystem::~ToneMappingSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingRenderSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingSystem::deinit);
 	}
 
 	unsetSingleton();
 }
 
-void ToneMappingRenderSystem::init()
+void ToneMappingSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", ToneMappingRenderSystem::preLdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", ToneMappingRenderSystem::ldrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingRenderSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", ToneMappingSystem::ldrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingSystem::gBufferRecreate);
 
 	if (!luminanceBuffer)
 		luminanceBuffer = createLuminanceBuffer();
 	if (!pipeline)
 		pipeline = createPipeline(useBloomBuffer, toneMapper);
 }
-void ToneMappingRenderSystem::deinit()
+void ToneMappingSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
@@ -121,14 +121,14 @@ void ToneMappingRenderSystem::deinit()
 		graphicsSystem->destroy(pipeline);
 		graphicsSystem->destroy(luminanceBuffer);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", ToneMappingRenderSystem::preLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", ToneMappingRenderSystem::ldrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingRenderSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", ToneMappingSystem::ldrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingSystem::gBufferRecreate);
 	}
 }
 
 //**********************************************************************************************************************
-void ToneMappingRenderSystem::preLdrRender()
+void ToneMappingSystem::preLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Tone Mapping Pre LDR Render");
 
@@ -142,7 +142,7 @@ void ToneMappingRenderSystem::preLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
 	}
 }
-void ToneMappingRenderSystem::ldrRender()
+void ToneMappingSystem::ldrRender()
 {
 	SET_CPU_ZONE_SCOPED("Tone Mapping LDR Render");
 
@@ -170,7 +170,7 @@ void ToneMappingRenderSystem::ldrRender()
 }
 
 //**********************************************************************************************************************
-void ToneMappingRenderSystem::gBufferRecreate()
+void ToneMappingSystem::gBufferRecreate()
 {
 	if (descriptorSet)
 	{
@@ -182,7 +182,7 @@ void ToneMappingRenderSystem::gBufferRecreate()
 	}
 }
 
-void ToneMappingRenderSystem::setConsts(bool useBloomBuffer, uint8 toneMapper)
+void ToneMappingSystem::setConsts(bool useBloomBuffer, uint8 toneMapper)
 {
 	GARDEN_ASSERT(toneMapper < TONE_MAPPER_COUNT);
 
@@ -203,20 +203,20 @@ void ToneMappingRenderSystem::setConsts(bool useBloomBuffer, uint8 toneMapper)
 	}
 }
 
-ID<GraphicsPipeline> ToneMappingRenderSystem::getPipeline()
+ID<GraphicsPipeline> ToneMappingSystem::getPipeline()
 {
 	if (!pipeline)
 		pipeline = createPipeline(useBloomBuffer, toneMapper);
 	return pipeline;
 }
-ID<Buffer> ToneMappingRenderSystem::getLuminanceBuffer()
+ID<Buffer> ToneMappingSystem::getLuminanceBuffer()
 {
 	if (!luminanceBuffer)
 		luminanceBuffer = createLuminanceBuffer();
 	return luminanceBuffer;
 }
 
-void ToneMappingRenderSystem::setLuminance(float luminance)
+void ToneMappingSystem::setLuminance(float luminance)
 {
 	auto exposure = 1.0f / (luminance * lumToExp + 0.0001f);
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -229,7 +229,7 @@ void ToneMappingRenderSystem::setLuminance(float luminance)
 	}
 	graphicsSystem->stopRecording();
 }
-void ToneMappingRenderSystem::setExposure(float exposure)
+void ToneMappingSystem::setExposure(float exposure)
 {
 	auto luminance = (1.0f / exposure) * (1.0f / lumToExp) - 0.0001f;
 	auto graphicsSystem = GraphicsSystem::Instance::get();

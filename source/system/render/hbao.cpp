@@ -48,7 +48,7 @@ static ID<Image> createNoiseImage()
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 {
-	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
 	GARDEN_ASSERT(pbrLightingSystem->useAoBuffer());
 
 	Pipeline::SpecConstValues specConsts = { { "STEP_COUNT", Pipeline::SpecConstValue(stepCount) } };
@@ -98,7 +98,7 @@ void HbaoRenderSystem::init()
 	if (settingsSystem)
 		settingsSystem->getBool("hbao.isEnabled", isEnabled);
 
-	auto pbrLightingSystem = PbrLightingRenderSystem::Instance::get();
+	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
 	if (isEnabled && pbrLightingSystem->useAoBuffer())
 	{
 		if (!noiseImage)
@@ -214,7 +214,7 @@ void HbaoRenderSystem::aoRender()
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 
-	PbrLightingRenderSystem::Instance::get()->markAnyAO();
+	PbrLightingSystem::Instance::get()->markAnyAO();
 }
 
 void HbaoRenderSystem::gBufferRecreate()

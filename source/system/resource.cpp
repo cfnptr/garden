@@ -1484,7 +1484,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 		
 		if (!compileResult)
 			throw GardenError("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		GARDEN_LOG_TRACE("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
 	#endif
@@ -1733,7 +1733,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 		
 		if (!compileResult)
 			throw GardenError("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		GARDEN_LOG_TRACE("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
 	#endif
@@ -1938,7 +1938,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 		
 		if (!compileResult)
 			throw GardenError("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		GARDEN_LOG_TRACE("Compiled ray tracing shaders. (path: " + data.shaderPath.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Compiled ray tracing shaders. (path: " + data.shaderPath.generic_string() + ")");
 		return true;
 	}
 	#endif

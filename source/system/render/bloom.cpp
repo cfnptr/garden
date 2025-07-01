@@ -107,7 +107,7 @@ static void createBloomDescriptorSets(ID<GraphicsPipeline> downsamplePipeline, I
 static ID<GraphicsPipeline> createDownsamplePipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
-	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	toneMappingSystem->setConsts(true, toneMappingSystem->getToneMapper());
 
 	Pipeline::SpecConstValues specConsts =

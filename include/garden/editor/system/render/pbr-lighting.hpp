@@ -19,12 +19,12 @@
 namespace garden
 {
 
-class PbrLightingRenderEditorSystem final : public System
+class PbrLightingEditorSystem final : public System
 {
 	bool showWindow = false;
 	
-	PbrLightingRenderEditorSystem();
-	~PbrLightingRenderEditorSystem() final;
+	PbrLightingEditorSystem();
+	~PbrLightingEditorSystem() final;
 
 	void init();
 	void deinit();

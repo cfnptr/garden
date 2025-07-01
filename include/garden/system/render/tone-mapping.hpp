@@ -27,7 +27,7 @@ namespace garden
 /**
  * @brief Tone mapping rendering system.
  */
-class ToneMappingRenderSystem final : public System, public Singleton<ToneMappingRenderSystem>
+class ToneMappingSystem final : public System, public Singleton<ToneMappingSystem>
 {
 public:
 	struct PushConstants final
@@ -58,16 +58,16 @@ private:
 	/**
 	 * @brief Creates a new tone mapping rendering system instance.
 	 *
-	 * @param useShadowBuffer use bloom (light glow) buffer for tone mapping
+	 * @param useBloomBuffer use bloom (light glow) buffer for tone mapping
 	 * @param toneMapper target tone mapping function
 	 * @param setSingleton set system singleton instance
 	 */
-	ToneMappingRenderSystem(bool useBloomBuffer = false, 
+	ToneMappingSystem(bool useBloomBuffer = false, 
 		uint8 toneMapper = TONE_MAPPER_ACES, bool setSingleton = true);
 	/**
 	 * @brief Destroys tone mapping rendering system instance.
 	 */
-	~ToneMappingRenderSystem() final;
+	~ToneMappingSystem() final;
 
 	void init();
 	void deinit();

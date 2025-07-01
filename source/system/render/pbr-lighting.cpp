@@ -189,136 +189,75 @@ static uint32 calcSampleCount(uint8 mipLevel) noexcept
 }
 
 //**********************************************************************************************************************
-static ID<Image> createShadowBuffer(ID<ImageView>* shadowImageViews)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	Image::Mips mips(1); mips[0].assign(PbrLightingRenderSystem::shadowBufferCount, nullptr);
-	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::shadowBufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::Fullscreen, 
-		mips, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.shadowBuffer");
-
-	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
-	{
-		shadowImageViews[i] = graphicsSystem->createImageView(image,
-			Image::Type::Texture2D, PbrLightingRenderSystem::shadowBufferFormat, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(shadowImageViews[i], "imageView.lighting.shadow" + to_string(i));
-	}
-
-	return image;
-}
-static void destroyShadowBuffer(ID<Image> shadowBuffer, ID<ImageView>* shadowImageViews)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount; i++)
-	{
-		graphicsSystem->destroy(shadowImageViews[i]);
-		shadowImageViews[i] = {};
-	}
-	graphicsSystem->destroy(shadowBuffer);
-}
-
-static void createShadowFramebuffers(const ID<ImageView>* shadowImageViews, ID<Framebuffer>* shadowFramebuffers)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	const Framebuffer::OutputAttachment::Flags attachmentFlags = { false, false, true };
-
-	vector<Framebuffer::OutputAttachment> colorAttachments
-	{ Framebuffer::OutputAttachment(shadowImageViews[0], attachmentFlags) };
-	shadowFramebuffers[0] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[0], "framebuffer.lighting.shadow0");
-
-	colorAttachments = { Framebuffer::OutputAttachment(shadowImageViews[1], attachmentFlags) };
-	shadowFramebuffers[1] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[1], "framebuffer.lighting.shadow1");
-
-	colorAttachments = { Framebuffer::OutputAttachment(shadowImageViews[0], attachmentFlags) };
-	shadowFramebuffers[2] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[2], "framebuffer.lighting.shadow2");
-}
-static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	for (uint32 i = 0; i < PbrLightingRenderSystem::shadowBufferCount + 1; i++)
-	{
-		graphicsSystem->destroy(shadowFramebuffers[i]);
-		shadowFramebuffers[i] = {};
-	}
-}
-
-//**********************************************************************************************************************
-static ID<Image> createAoBuffer(ID<ImageView>* aoImageViews, ID<Image>& aoDenBuffer)
+static ID<Image> createAccumBuffers(Image::Format format, 
+	ID<ImageView>* imageViews, ID<Image>& blurBuffer, const string& debugName)
 {
 	constexpr auto usage = Image::Usage::ColorAttachment | Image::Usage::Sampled | 
 		Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::Fullscreen;
 	constexpr auto strategy = Image::Strategy::Size;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	Image::Mips mips; mips.assign(PbrLightingRenderSystem::aoBufferCount - 1, { nullptr });
+	Image::Mips mips; mips.assign(PbrLightingSystem::accumBufferCount - 1, { nullptr });
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 
-	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::aoBufferFormat, 
-		usage, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.aoBuffer");
-	aoDenBuffer = graphicsSystem->createImage(PbrLightingRenderSystem::aoBufferFormat, 
-		usage, { { nullptr } }, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(aoDenBuffer, "image.lighting.aoDenBuffer");
+	auto buffer = graphicsSystem->createImage(format, usage, mips, framebufferSize, strategy);
+	SET_RESOURCE_DEBUG_NAME(buffer, "image.lighting." + debugName + ".buffer");
+	blurBuffer = graphicsSystem->createImage(format, usage, { { nullptr } }, framebufferSize, strategy);
+	SET_RESOURCE_DEBUG_NAME(blurBuffer, "image.lighting." + debugName + ".blurBuffer");
 
-	auto denBufferView = graphicsSystem->get(aoDenBuffer);
-	aoImageViews[0] = denBufferView->getDefaultView();
-	SET_RESOURCE_DEBUG_NAME(aoImageViews[0], "imageView.lighting.aoDen");
+	auto blurBufferView = graphicsSystem->get(blurBuffer);
+	imageViews[0] = blurBufferView->getDefaultView();
+	SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.lighting." + debugName + ".blurBuffer");
 
-	for (uint32 i = 1; i < PbrLightingRenderSystem::aoBufferCount; i++)
+	for (uint32 i = 1; i < PbrLightingSystem::accumBufferCount; i++)
 	{
-		aoImageViews[i] = graphicsSystem->createImageView(image,
-			Image::Type::Texture2D, PbrLightingRenderSystem::aoBufferFormat, i - 1, 1, 0, 1);
-		SET_RESOURCE_DEBUG_NAME(aoImageViews[i], "imageView.lighting.ao" + to_string(i));
+		imageViews[i] = graphicsSystem->createImageView(buffer, Image::Type::Texture2D, format, i - 1, 1, 0, 1);
+		SET_RESOURCE_DEBUG_NAME(imageViews[i], "imageView.lighting." + debugName + to_string(i));
 	}
-	return image;
+	return buffer;
 }
-static void destroyAoBuffer(ID<Image> aoBuffer, ID<ImageView>* aoImageViews, ID<Image> aoDenBuffer)
+static void destroyAccumBuffers(ID<Image> buffer, ID<ImageView>* imageViews, ID<Image> blurBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 
-	aoImageViews[0] = {};
-	for (uint32 i = 1; i < PbrLightingRenderSystem::aoBufferCount; i++)
+	imageViews[0] = {};
+	for (uint32 i = 1; i < PbrLightingSystem::accumBufferCount; i++)
 	{
-		graphicsSystem->destroy(aoImageViews[i]);
-		aoImageViews[i] = {};
+		graphicsSystem->destroy(imageViews[i]);
+		imageViews[i] = {};
 	}
 
-	graphicsSystem->destroy(aoDenBuffer);
-	graphicsSystem->destroy(aoBuffer);
+	graphicsSystem->destroy(blurBuffer);
+	graphicsSystem->destroy(buffer);
 }
 
-static void createAoFramebuffers(const ID<ImageView>* aoImageViews, ID<Framebuffer>* aoFramebuffers)
+static void createAccumFramebuffers(const ID<ImageView>* imageViews, 
+	ID<Framebuffer>* framebuffers, const string& debugName)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-	const Framebuffer::OutputAttachment::Flags attachmentFlags = { false, false, true };
 
 	vector<Framebuffer::OutputAttachment> colorAttachments
-	{ Framebuffer::OutputAttachment(aoImageViews[0], attachmentFlags) };
-	aoFramebuffers[0] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[0], "framebuffer.lighting.aoDen");
+	{ Framebuffer::OutputAttachment(imageViews[0], PbrLightingSystem::accumBufferFlags) };
+	framebuffers[0] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffers[0], "framebuffer.lighting." + debugName + ".blur");
 
-	colorAttachments = { Framebuffer::OutputAttachment(aoImageViews[1], attachmentFlags) };
-	aoFramebuffers[1] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[1], "framebuffer.lighting.ao1");
+	colorAttachments = { Framebuffer::OutputAttachment(imageViews[1], PbrLightingSystem::accumBufferFlags) };
+	framebuffers[1] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffers[1], "framebuffer.lighting." + debugName + "1");
 
 	framebufferSize = max(framebufferSize / 2u, uint2::one);
-	colorAttachments = { Framebuffer::OutputAttachment(aoImageViews[2], attachmentFlags) };
-	aoFramebuffers[2] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[2], "framebuffer.lighting.ao2");
+	colorAttachments = { Framebuffer::OutputAttachment(imageViews[2], PbrLightingSystem::accumBufferFlags) };
+	framebuffers[2] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffers[2], "framebuffer.lighting." + debugName + "1");
 }
-static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
+static void destroyAccumFramebuffers(ID<Framebuffer>* framebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	for (uint32 i = 0; i < PbrLightingRenderSystem::aoBufferCount; i++)
+	for (uint32 i = 0; i < PbrLightingSystem::accumBufferCount; i++)
 	{
-		graphicsSystem->destroy(aoFramebuffers[i]);
-		aoFramebuffers[i] = {};
+		graphicsSystem->destroy(framebuffers[i]);
+		framebuffers[i] = {};
 	}
 }
 
@@ -337,9 +276,9 @@ static ID<Image> createReflBuffer(vector<ID<ImageView>>& reflImageViews,
 	for (uint8 i = 0; i < roughnessLodCount; i++)
 		mips[i].resize(2);
 
-	auto image = graphicsSystem->createImage(PbrLightingRenderSystem::reflBufferFormat, 
-		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
-		Image::Usage::TransferSrc | Image::Usage::Fullscreen, mips, reflBufferSize, Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(PbrLightingSystem::reflBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::TransferSrc | 
+		Image::Usage::Fullscreen, mips, reflBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.reflBuffer");
 
 	for (uint8 mip = 0; mip < roughnessLodCount; mip++)
@@ -347,15 +286,15 @@ static ID<Image> createReflBuffer(vector<ID<ImageView>>& reflImageViews,
 		auto mipOffset = mip * 2;
 		for (uint8 layer = 0; layer < 2; layer++)
 		{
-			auto imageView = graphicsSystem->createImageView(image, 
-				Image::Type::Texture2D, PbrLightingRenderSystem::reflBufferFormat, mip, 1, layer, 1);
+			auto imageView = graphicsSystem->createImageView(image, Image::Type::Texture2D, 
+				PbrLightingSystem::reflBufferFormat, mip, 1, layer, 1);
 			SET_RESOURCE_DEBUG_NAME(imageView, "imageView.lighting.reflBuffer" + to_string(mipOffset + layer));
 			reflImageViews[mipOffset + layer] = imageView;
 		}
 	}
 
-	reflBufferView = graphicsSystem->createImageView(image, Image::Type::Texture2D, 
-		PbrLightingRenderSystem::reflBufferFormat, 0, 0, 0, 1);
+	reflBufferView = graphicsSystem->createImageView(image, 
+		Image::Type::Texture2D, PbrLightingSystem::reflBufferFormat, 0, 0, 0, 1);
 	SET_RESOURCE_DEBUG_NAME(reflBufferView, "imageView.lighting.reflBuffer");
 	return image;
 }
@@ -370,7 +309,7 @@ static void createReflFramebuffers(const vector<ID<ImageView>>& reflImageViews,
 	for (uint8 i = 0; i < mipCount2; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(reflImageViews[i], { false, false, true }) };
+		{ Framebuffer::OutputAttachment(reflImageViews[i], PbrLightingSystem::accumBufferFlags) };
 		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.lighting.reflections" + to_string(i));
 		reflFramebuffers[i] = framebuffer;
@@ -493,7 +432,7 @@ static ID<Buffer> createReflKernel()
 }
 
 //**********************************************************************************************************************
-bool PbrLightingRenderComponent::destroy()
+bool PbrLightingComponent::destroy()
 {
 	if (!entity)
 		return false;
@@ -510,9 +449,8 @@ bool PbrLightingRenderComponent::destroy()
 	return true;
 }
 
-PbrLightingRenderSystem::PbrLightingRenderSystem(bool useShadowBuffer, 
-	bool useAoBuffer, bool useReflBuffer, bool setSingleton) : Singleton(setSingleton), 
-	hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer), hasReflBuffer(useReflBuffer)
+PbrLightingSystem::PbrLightingSystem(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer, bool setSingleton) : 
+	Singleton(setSingleton), hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer), hasReflBuffer(useReflBuffer)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreShadowRender");
@@ -530,15 +468,15 @@ PbrLightingRenderSystem::PbrLightingRenderSystem(bool useShadowBuffer,
 	manager->registerEvent("PostReflRender");
 	manager->registerEvent("ReflRecreate");
 
-	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingRenderSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingSystem::deinit);
 }
-PbrLightingRenderSystem::~PbrLightingRenderSystem()
+PbrLightingSystem::~PbrLightingSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingRenderSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingSystem::deinit);
 
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreShadowRender");
@@ -565,11 +503,11 @@ PbrLightingRenderSystem::~PbrLightingRenderSystem()
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::init()
+void PbrLightingSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", PbrLightingRenderSystem::preHdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", PbrLightingRenderSystem::hdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", PbrLightingRenderSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", PbrLightingSystem::hdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
 
 	if (!dfgLUT)
 		dfgLUT = createDfgLUT();
@@ -579,16 +517,16 @@ void PbrLightingRenderSystem::init()
 	if (hasShadowBuffer)
 	{
 		if (!shadowBuffer)
-			shadowBuffer = createShadowBuffer(shadowImageViews);
+			shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
 		if (!shadowFramebuffers[0])
-			createShadowFramebuffers(shadowImageViews, shadowFramebuffers);
+			createAccumFramebuffers(shadowImageViews, shadowFramebuffers, "shadow");
 	}
 	if (hasAoBuffer)
 	{
 		if (!aoBuffer)
-			aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
+			aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
 		if (!aoFramebuffers[0])
-			createAoFramebuffers(aoImageViews, aoFramebuffers);
+			createAccumFramebuffers(aoImageViews, aoFramebuffers, "ao");
 	}
 	if (hasReflBuffer)
 	{
@@ -601,7 +539,7 @@ void PbrLightingRenderSystem::init()
 	if (!lightingPipeline)
 		lightingPipeline = createLightingPipeline(hasShadowBuffer, hasAoBuffer, hasReflBuffer);
 }
-void PbrLightingRenderSystem::deinit()
+void PbrLightingSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
@@ -619,16 +557,16 @@ void PbrLightingRenderSystem::deinit()
 		graphicsSystem->destroy(reflFramebuffers);
 		graphicsSystem->destroy(reflImageViews);
 		graphicsSystem->destroy(reflBuffer);
-		destroyAoFramebuffers(aoFramebuffers);
-		destroyAoBuffer(aoBuffer, aoImageViews, aoDenBuffer);
-		destroyShadowFramebuffers(aoFramebuffers);
-		destroyShadowBuffer(shadowBuffer, shadowImageViews);
+		destroyAccumFramebuffers(aoFramebuffers);
+		destroyAccumBuffers(aoBuffer, aoImageViews, aoBlurBuffer);
+		destroyAccumFramebuffers(aoFramebuffers);
+		destroyAccumBuffers(shadowBuffer, shadowImageViews, shadowBlurBuffer);
 		graphicsSystem->destroy(reflKernel);
 		graphicsSystem->destroy(dfgLUT);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingRenderSystem::preHdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", PbrLightingRenderSystem::hdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingRenderSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", PbrLightingSystem::hdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
 	}
 }
 
@@ -671,7 +609,7 @@ static void downsampleReflections(const vector<ID<ImageView>>& reflImageViews,
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::preHdrRender()
+void PbrLightingSystem::preHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("PBR Lighting Pre HDR Render");
 
@@ -693,7 +631,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	auto manager = Manager::Instance::get();
 	if (hasReflBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Pre Refl Render");
+		SET_CPU_ZONE_SCOPED("Pre Reflections Render");
 
 		auto event = &manager->getEvent("PreReflRender");
 		if (event->hasSubscribers())
@@ -701,7 +639,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	}
 	if (hasShadowBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Pre Shadow Render");
+		SET_CPU_ZONE_SCOPED("Pre Shadows Render");
 
 		auto event = &manager->getEvent("PreShadowRender");
 		if (event->hasSubscribers())
@@ -718,7 +656,7 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasReflBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Refl Render Pass");
+		SET_CPU_ZONE_SCOPED("Reflections Render Pass");
 
 		auto event = &manager->getEvent("ReflRender");
 		if (event->hasSubscribers())
@@ -741,20 +679,20 @@ void PbrLightingRenderSystem::preHdrRender()
 	}
 	if (hasShadowBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Shadow Render Pass");
+		SET_CPU_ZONE_SCOPED("Shadows Render Pass");
 
 		auto event = &manager->getEvent("ShadowRender");
 		if (event->hasSubscribers())
 		{
 			if (!shadowBuffer)
-				shadowBuffer = createShadowBuffer(shadowImageViews);
+				shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
 			if (!shadowFramebuffers[0])
-				createShadowFramebuffers(shadowImageViews, shadowFramebuffers);
+				createAccumFramebuffers(shadowImageViews, shadowFramebuffers, "shadow");
 
-			framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
+			framebufferView = graphicsSystem->get(shadowFramebuffers[2]);
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
-				SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+				SET_GPU_DEBUG_LABEL("Shadows Pass", Color::transparent);
 				framebufferView->beginRenderPass(float4::one);
 				event->run();
 				framebufferView->endRenderPass();
@@ -770,9 +708,9 @@ void PbrLightingRenderSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			if (!aoBuffer)
-				aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
+				aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
 			if (!aoFramebuffers[0])
-				createAoFramebuffers(aoImageViews, aoFramebuffers);
+				createAccumFramebuffers(aoImageViews, aoFramebuffers, "ao");
 
 			framebufferView = graphicsSystem->get(aoFramebuffers[2]);
 			graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -788,7 +726,7 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasReflBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Post Refl Render");
+		SET_CPU_ZONE_SCOPED("Post Reflections Render");
 
 		auto event = &manager->getEvent("PostReflRender");
 		if (event->hasSubscribers())
@@ -796,7 +734,7 @@ void PbrLightingRenderSystem::preHdrRender()
 	}
 	if (hasShadowBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Post Shadow Render");
+		SET_CPU_ZONE_SCOPED("Post Shadows Render");
 
 		auto event = &manager->getEvent("PostShadowRender");
 		if (event->hasSubscribers())
@@ -815,8 +753,8 @@ void PbrLightingRenderSystem::preHdrRender()
 
 	if (hasAnyShadow)
 	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[2], 
-			shadowFramebuffers[1], denoiseSharpness, shadowBlurPipeline, shadowBlurDS);
+		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[2], shadowFramebuffers[0], 
+			shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS);
 		hasAnyShadow = false;
 	}
 	else if (shadowBuffer)
@@ -828,14 +766,14 @@ void PbrLightingRenderSystem::preHdrRender()
 	if (hasAnyAO)
 	{
 		GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
-			aoFramebuffers[1], denoiseSharpness, aoBlurPipeline, aoBlurDS);
+			aoFramebuffers[1], blurSharpness, aoBlurPipeline, aoBlurDS);
 		hasAnyAO = false;
 	}
 	else if (aoBuffer)
 	{
 		auto imageView = graphicsSystem->get(aoBuffer);
 		imageView->clear(float4::one);
-		imageView = graphicsSystem->get(aoDenBuffer);
+		imageView = graphicsSystem->get(aoBlurBuffer);
 		imageView->clear(float4::one);
 	}
 
@@ -855,7 +793,7 @@ void PbrLightingRenderSystem::preHdrRender()
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::hdrRender()
+void PbrLightingSystem::hdrRender()
 {
 	SET_CPU_ZONE_SCOPED("PBR Lighting HDR Render");
 
@@ -913,7 +851,7 @@ void PbrLightingRenderSystem::hdrRender()
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::gBufferRecreate()
+void PbrLightingSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 
@@ -948,13 +886,14 @@ void PbrLightingRenderSystem::gBufferRecreate()
 	
 	if (aoBuffer)
 	{
-		destroyAoBuffer(aoBuffer, aoImageViews, aoDenBuffer);
-		aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
+		destroyAccumBuffers(aoBuffer, aoImageViews, aoBlurBuffer);
+		aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
 	}
 	if (aoFramebuffers[0])
 	{
 		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-		auto colorAttachment = Framebuffer::OutputAttachment(aoImageViews[0], { false, false, true });
+		auto colorAttachment = Framebuffer::OutputAttachment(
+			aoImageViews[0], PbrLightingSystem::accumBufferFlags);
 		auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
 		framebufferView->update(framebufferSize, &colorAttachment, 1);
 
@@ -970,13 +909,14 @@ void PbrLightingRenderSystem::gBufferRecreate()
 
 	if (shadowBuffer)
 	{
-		destroyShadowBuffer(shadowBuffer, shadowImageViews);
-		shadowBuffer = createShadowBuffer(shadowImageViews);
+		destroyAccumBuffers(shadowBuffer, shadowImageViews, shadowBlurBuffer);
+		shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
 	}
 	if (shadowFramebuffers[0])
 	{
 		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
-		auto colorAttachment = Framebuffer::OutputAttachment(shadowImageViews[0], { false, false, true });
+		auto colorAttachment = Framebuffer::OutputAttachment(
+			shadowImageViews[0], PbrLightingSystem::accumBufferFlags);
 		auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
 		framebufferView->update(framebufferSize, &colorAttachment, 1);
 
@@ -984,7 +924,8 @@ void PbrLightingRenderSystem::gBufferRecreate()
 		framebufferView = graphicsSystem->get(shadowFramebuffers[1]);
 		framebufferView->update(framebufferSize, &colorAttachment, 1);
 
-		colorAttachment.imageView = shadowImageViews[0];
+		framebufferSize = max(framebufferSize / 2u, uint2::one);
+		colorAttachment.imageView = shadowImageViews[2];
 		framebufferView = graphicsSystem->get(shadowFramebuffers[2]);
 		framebufferView->update(framebufferSize, &colorAttachment, 1);
 	}
@@ -1006,13 +947,13 @@ void PbrLightingRenderSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
-string_view PbrLightingRenderSystem::getComponentName() const
+string_view PbrLightingSystem::getComponentName() const
 {
 	return "PBR Lighting";
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer)
+void PbrLightingSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer)
 {
 	if (this->hasShadowBuffer == useShadowBuffer && this->hasAoBuffer == useAoBuffer)
 		return;
@@ -1037,13 +978,13 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, 
 	{
 		if (useShadowBuffer)
 		{
-			shadowBuffer = createShadowBuffer(shadowImageViews);
-			createShadowFramebuffers(shadowImageViews, shadowFramebuffers);
+			shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
+			createAccumFramebuffers(shadowImageViews, shadowFramebuffers, "shadow");
 		}
 		else
 		{
-			destroyShadowFramebuffers(shadowFramebuffers);
-			destroyShadowBuffer(shadowBuffer, shadowImageViews);
+			destroyAccumFramebuffers(shadowFramebuffers);
+			destroyAccumBuffers(shadowBuffer, shadowImageViews, shadowBlurBuffer);
 			shadowBuffer = {};
 		}
 	}
@@ -1051,13 +992,13 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, 
 	{
 		if (useAoBuffer)
 		{
-			aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
-			createAoFramebuffers(aoImageViews, aoFramebuffers);
+			aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
+			createAccumFramebuffers(aoImageViews, aoFramebuffers, "ao");
 		}
 		else
 		{
-			destroyAoFramebuffers(aoFramebuffers);
-			destroyAoBuffer(aoBuffer, aoImageViews, aoDenBuffer);
+			destroyAccumFramebuffers(aoFramebuffers);
+			destroyAccumBuffers(aoBuffer, aoImageViews, aoBlurBuffer);
 			aoBuffer = {};
 		}
 	}
@@ -1087,32 +1028,32 @@ void PbrLightingRenderSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, 
 }
 
 //**********************************************************************************************************************
-ID<GraphicsPipeline> PbrLightingRenderSystem::getLightingPipeline()
+ID<GraphicsPipeline> PbrLightingSystem::getLightingPipeline()
 {
 	if (!lightingPipeline)
 		lightingPipeline = createLightingPipeline(hasShadowBuffer, hasAoBuffer, hasReflBuffer);
 	return lightingPipeline;
 }
-ID<ComputePipeline> PbrLightingRenderSystem::getIblSpecularPipeline()
+ID<ComputePipeline> PbrLightingSystem::getIblSpecularPipeline()
 {
 	if (!iblSpecularPipeline)
 		iblSpecularPipeline = createIblSpecularPipeline();
 	return iblSpecularPipeline;
 }
 
-const ID<Framebuffer>* PbrLightingRenderSystem::getShadowFramebuffers()
+const ID<Framebuffer>* PbrLightingSystem::getShadowFramebuffers()
 {
 	if (!shadowFramebuffers[0])
-		createShadowFramebuffers(getShadowImageViews(), shadowFramebuffers);
+		createAccumFramebuffers(getShadowImageViews(), shadowFramebuffers, "shadow");
 	return shadowFramebuffers;
 }
-const ID<Framebuffer>* PbrLightingRenderSystem::getAoFramebuffers()
+const ID<Framebuffer>* PbrLightingSystem::getAoFramebuffers()
 {
 	if (!aoFramebuffers[0])
-		createAoFramebuffers(getAoImageViews(), aoFramebuffers);
+		createAccumFramebuffers(getAoImageViews(), aoFramebuffers, "ao");
 	return aoFramebuffers;
 }
-const vector<ID<Framebuffer>>& PbrLightingRenderSystem::getReflFramebuffers()
+const vector<ID<Framebuffer>>& PbrLightingSystem::getReflFramebuffers()
 {
 	if (reflFramebuffers.empty())
 		createReflFramebuffers(getReflImageViews(), reflFramebuffers);
@@ -1120,57 +1061,63 @@ const vector<ID<Framebuffer>>& PbrLightingRenderSystem::getReflFramebuffers()
 }
 
 //**********************************************************************************************************************
-ID<Image> PbrLightingRenderSystem::getDfgLUT()
+ID<Image> PbrLightingSystem::getDfgLUT()
 {
 	if (!dfgLUT)
 		dfgLUT = createDfgLUT();
 	return dfgLUT;
 }
-ID<Buffer> PbrLightingRenderSystem::getReflKernel()
+ID<Buffer> PbrLightingSystem::getReflKernel()
 {
 	if (!reflKernel)
 		reflKernel = createReflKernel();
 	return reflKernel;
 }
 
-ID<Image> PbrLightingRenderSystem::getShadowBuffer()
+ID<Image> PbrLightingSystem::getShadowBuffer()
 {
 	if (!shadowBuffer && hasShadowBuffer)
-		shadowBuffer = createShadowBuffer(shadowImageViews);
+		shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
 	return shadowBuffer;
 }
-ID<Image> PbrLightingRenderSystem::getAoBuffer()
+ID<Image> PbrLightingSystem::getShadBlurBuffer()
+{
+	if (!shadowBuffer && hasShadowBuffer)
+		shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
+	return shadowBlurBuffer;
+}
+ID<Image> PbrLightingSystem::getAoBuffer()
 {
 	if (!aoBuffer && hasAoBuffer)
-		aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
+		aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
 	return aoBuffer;
 }
-ID<Image> PbrLightingRenderSystem::getAoDenBuffer()
+ID<Image> PbrLightingSystem::getAoBlurBuffer()
 {
 	if (!aoBuffer && hasAoBuffer)
-		aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
-	return aoDenBuffer;
+		aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
+	return aoBlurBuffer;
 }
-ID<Image> PbrLightingRenderSystem::getReflBuffer()
+ID<Image> PbrLightingSystem::getReflBuffer()
 {
 	if (!reflBuffer && hasReflBuffer)
 		reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
 	return reflBuffer;
 }
 
-const ID<ImageView>* PbrLightingRenderSystem::getShadowImageViews()
+const ID<ImageView>* PbrLightingSystem::getShadowImageViews()
 {
 	if (!shadowBuffer && hasShadowBuffer)
-		shadowBuffer = createShadowBuffer(shadowImageViews);
+		shadowBuffer = createAccumBuffers(shadowBufferFormat, shadowImageViews, shadowBlurBuffer, "shadow");
 	return shadowImageViews;
 }
-const ID<ImageView>* PbrLightingRenderSystem::getAoImageViews()
+const ID<ImageView>* PbrLightingSystem::getAoImageViews()
 {
 	if (!aoBuffer && hasAoBuffer)
-		aoBuffer = createAoBuffer(aoImageViews, aoDenBuffer);
+		aoBuffer = createAccumBuffers(aoBufferFormat, aoImageViews, aoBlurBuffer, "ao");
 	return aoImageViews;
 }
-const vector<ID<ImageView>>& PbrLightingRenderSystem::getReflImageViews()
+const vector<ID<ImageView>>& PbrLightingSystem::getReflImageViews()
 {
 	if (!reflBuffer && hasReflBuffer)
 		reflBuffer = createReflBuffer(reflImageViews, reflBufferView, reflBlurDSes);
@@ -1420,7 +1367,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 			"descriptorSet.lighting.iblSpecular" + to_string(*iblSpecularDescriptorSet));
 		pipelineView->bindDescriptorSet(iblSpecularDescriptorSet);
 
-		PbrLightingRenderSystem::SpecularPC pc;
+		PbrLightingSystem::SpecularPC pc;
 		pc.imageSize = cubemapSize;
 		pc.itemCount = countBuffer[i];
 		pipelineView->pushConstants(&pc);
@@ -1438,7 +1385,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 }
 
 //**********************************************************************************************************************
-void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
+void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy, vector<f32x4>* shBuffer)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -1484,7 +1431,7 @@ void PbrLightingRenderSystem::loadCubemap(const fs::path& path, Ref<Image>& cube
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> PbrLightingRenderSystem::createDescriptorSet(ID<Buffer> sh, 
+Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Buffer> sh, 
 	ID<Image> specular, ID<Pipeline> pipeline, PipelineType type, uint8 index)
 {
 	GARDEN_ASSERT(sh);

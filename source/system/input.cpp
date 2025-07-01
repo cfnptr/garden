@@ -37,11 +37,9 @@ static void updateWindowMode()
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	if (glfwGetWindowAttrib(window, GLFW_DECORATED) == GLFW_FALSE)
 	{
-		glfwSetWindowMonitor(window, nullptr,
-			videoMode->width / 2 - InputSystem::defaultWindowWidth / 2,
-			videoMode->height / 2 - InputSystem::defaultWindowHeight / 2,
-			InputSystem::defaultWindowWidth, InputSystem::defaultWindowHeight,
-			videoMode->refreshRate);
+		int width = 0, height = 0; glfwGetWindowSize(window, &width, &height);
+		glfwSetWindowMonitor(window, nullptr, videoMode->width / 2 - width / 2, videoMode->height / 2 - height / 2,
+			InputSystem::defaultWindowWidth, InputSystem::defaultWindowHeight, videoMode->refreshRate);
 		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
 	}
 	else
@@ -126,7 +124,7 @@ void InputSystem::preInit()
 	glfwSetDropCallback(window, (GLFWdropfun)InputSystem::onFileDrop);
 	glfwSetCharCallback(window, (GLFWcharfun)InputSystem::onKeyboardChar);
 
-	int width = 0.0, height = 0.0;
+	int width = 0, height = 0;
 	glfwGetFramebufferSize(window, &width, &height);
 	newFramebufferSize = currFramebufferSize = uint2((uint32)width, (uint32)height);
 

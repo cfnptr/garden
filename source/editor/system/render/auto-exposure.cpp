@@ -25,8 +25,8 @@ using namespace garden;
 static ID<Buffer> createReadbackBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto size = (sizeof(ToneMappingRenderSystem::LuminanceData) + 
-		AutoExposureRenderSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getInFlightCount();
+	auto size = (sizeof(ToneMappingSystem::LuminanceData) + 
+		AutoExposureSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getInFlightCount();
 	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::TransferDst, 
 		Buffer::CpuAccess::RandomReadWrite, size, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.editor.autoExposure.readback");
@@ -36,7 +36,7 @@ static ID<Buffer> createReadbackBuffer()
 static DescriptorSet::Uniforms getLimitsUniforms()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	auto hdrFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getHdrFramebuffer());
 				
 	DescriptorSet::Uniforms uniforms =
@@ -48,28 +48,28 @@ static DescriptorSet::Uniforms getLimitsUniforms()
 }
 
 //**********************************************************************************************************************
-AutoExposureRenderEditorSystem::AutoExposureRenderEditorSystem()
+AutoExposureEditorSystem::AutoExposureEditorSystem()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureRenderEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureEditorSystem::deinit);
 }
-AutoExposureRenderEditorSystem::~AutoExposureRenderEditorSystem()
+AutoExposureEditorSystem::~AutoExposureEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureRenderEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureEditorSystem::deinit);
 	}
 }
 
-void AutoExposureRenderEditorSystem::init()
+void AutoExposureEditorSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AutoExposureRenderEditorSystem::preUiRender);
-	ECSM_SUBSCRIBE_TO_EVENT("UiRender", AutoExposureRenderEditorSystem::uiRender);
-	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
-	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AutoExposureRenderEditorSystem::editorBarToolPP);
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AutoExposureEditorSystem::preUiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("UiRender", AutoExposureEditorSystem::uiRender);
+	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AutoExposureEditorSystem::editorBarToolPP);
 }
-void AutoExposureRenderEditorSystem::deinit()
+void AutoExposureEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
@@ -78,15 +78,15 @@ void AutoExposureRenderEditorSystem::deinit()
 		graphicsSystem->destroy(limitsPipeline);
 		graphicsSystem->destroy(readbackBuffer);
 		
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AutoExposureRenderEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", AutoExposureRenderEditorSystem::uiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureRenderEditorSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", AutoExposureRenderEditorSystem::editorBarToolPP);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AutoExposureEditorSystem::preUiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", AutoExposureEditorSystem::uiRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", AutoExposureEditorSystem::editorBarToolPP);
 	}
 }
 
 //**********************************************************************************************************************
-void AutoExposureRenderEditorSystem::preUiRender()
+void AutoExposureEditorSystem::preUiRender()
 {
 	if (!showWindow)
 		return;
@@ -96,10 +96,10 @@ void AutoExposureRenderEditorSystem::preUiRender()
 		if (!readbackBuffer)
 		{
 			readbackBuffer = createReadbackBuffer();
-			histogramSamples.resize(AutoExposureRenderSystem::histogramSize);
+			histogramSamples.resize(AutoExposureSystem::histogramSize);
 		}
 
-		auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
+		auto autoExposureSystem = AutoExposureSystem::Instance::get();
 		ImGui::Checkbox("Enabled", &autoExposureSystem->isEnabled);
 		ImGui::DragFloat("Min Log Luminance", &autoExposureSystem->minLogLum, 0.1f);
 		ImGui::DragFloat("Max Log Luminance", &autoExposureSystem->maxLogLum, 0.1f);
@@ -108,22 +108,21 @@ void AutoExposureRenderEditorSystem::preUiRender()
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		auto readbackBufferView = graphicsSystem->get(readbackBuffer);
-		auto size = sizeof(ToneMappingRenderSystem::LuminanceData) +
-			AutoExposureRenderSystem::histogramSize * sizeof(uint32);
+		auto size = sizeof(ToneMappingSystem::LuminanceData) + AutoExposureSystem::histogramSize * sizeof(uint32);
 		auto offset = size * graphicsSystem->getInFlightIndex();
 		readbackBufferView->invalidate(size, offset);
 		auto map = readbackBufferView->getMap() + offset;
-		auto luminance = (const ToneMappingRenderSystem::LuminanceData*)map;
-		auto histogram = (const uint32*)(map + sizeof(ToneMappingRenderSystem::LuminanceData));
+		auto luminance = (const ToneMappingSystem::LuminanceData*)map;
+		auto histogram = (const uint32*)(map + sizeof(ToneMappingSystem::LuminanceData));
 		uint32 maxHistogramValue = 0;
 
-		for (uint16 i = 0; i < AutoExposureRenderSystem::histogramSize; i++)
+		for (uint16 i = 0; i < AutoExposureSystem::histogramSize; i++)
 		{
 			if (histogram[i] > maxHistogramValue)
 				maxHistogramValue = histogram[i];
 		}
 
-		for (uint16 i = 0; i < AutoExposureRenderSystem::histogramSize; i++)
+		for (uint16 i = 0; i < AutoExposureSystem::histogramSize; i++)
 			histogramSamples[i] = (float)histogram[i] / maxHistogramValue;
 
 		ImGui::SeparatorText("Visualizer");
@@ -145,7 +144,7 @@ void AutoExposureRenderEditorSystem::preUiRender()
 		}
 
 		ImGui::PlotHistogram("Histogram", histogramSamples.data(),
-			AutoExposureRenderSystem::histogramSize, 0, nullptr, 0.0f, 1.0f, { 320.0f, 64.0f });
+			AutoExposureSystem::histogramSize, 0, nullptr, 0.0f, 1.0f, { 320.0f, 64.0f });
 
 		if (visualizeLimits)
 		{
@@ -172,24 +171,24 @@ void AutoExposureRenderEditorSystem::preUiRender()
 			}
 		}
 
-		auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+		auto toneMappingSystem = ToneMappingSystem::Instance::get();
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data", Color::transparent);
 			Buffer::CopyRegion copyRegion;
 			copyRegion.dstOffset = offset;
-			copyRegion.size = sizeof(ToneMappingRenderSystem::LuminanceData);
+			copyRegion.size = sizeof(ToneMappingSystem::LuminanceData);
 			Buffer::copy(toneMappingSystem->getLuminanceBuffer(), readbackBuffer, copyRegion);
 
-			copyRegion.dstOffset = offset + sizeof(ToneMappingRenderSystem::LuminanceData);
-			copyRegion.size = AutoExposureRenderSystem::histogramSize * sizeof(uint32);
+			copyRegion.dstOffset = offset + sizeof(ToneMappingSystem::LuminanceData);
+			copyRegion.size = AutoExposureSystem::histogramSize * sizeof(uint32);
 			Buffer::copy(autoExposureSystem->getHistogramBuffer(), readbackBuffer, copyRegion);
 		}
 		graphicsSystem->stopRecording();
 	}
 	ImGui::End();
 }
-void AutoExposureRenderEditorSystem::uiRender()
+void AutoExposureEditorSystem::uiRender()
 {
 	if (!visualizeLimits)
 		return;
@@ -199,7 +198,7 @@ void AutoExposureRenderEditorSystem::uiRender()
 	if (!pipelineView->isReady())
 		return;
 
-	auto autoExposureSystem = AutoExposureRenderSystem::Instance::get();
+	auto autoExposureSystem = AutoExposureSystem::Instance::get();
 
 	PushConstants pc;
 	pc.minLum = std::exp2(autoExposureSystem->minLogLum);
@@ -214,7 +213,7 @@ void AutoExposureRenderEditorSystem::uiRender()
 }
 
 //**********************************************************************************************************************
-void AutoExposureRenderEditorSystem::gBufferRecreate()
+void AutoExposureEditorSystem::gBufferRecreate()
 {
 	if (limitsDS)
 	{
@@ -226,7 +225,7 @@ void AutoExposureRenderEditorSystem::gBufferRecreate()
 	}
 }
 
-void AutoExposureRenderEditorSystem::editorBarToolPP()
+void AutoExposureEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("Automatic Exposure (AE)"))
 		showWindow = true;

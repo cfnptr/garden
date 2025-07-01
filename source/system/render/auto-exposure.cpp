@@ -28,7 +28,7 @@ static ID<Buffer> createHistogramBuffer()
 	#endif
 	
 	auto buffer = GraphicsSystem::Instance::get()->createBuffer(usage, Buffer::CpuAccess::None, 
-		AutoExposureRenderSystem::histogramSize * sizeof(uint32), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+		AutoExposureSystem::histogramSize * sizeof(uint32), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.autoExposure.histogram");
 	return buffer;
 }
@@ -47,7 +47,7 @@ static DescriptorSet::Uniforms getHistogramUniforms(ID<Buffer> histogramBuffer)
 }
 static DescriptorSet::Uniforms getAverageUniforms(ID<Buffer> histogramBuffer)
 {
-	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "histogram", DescriptorSet::Uniform(histogramBuffer) },
@@ -68,26 +68,26 @@ static ID<ComputePipeline> createAveragePipeline()
 }
 
 //**********************************************************************************************************************
-AutoExposureRenderSystem::AutoExposureRenderSystem(bool setSingleton) : Singleton(setSingleton)
+AutoExposureSystem::AutoExposureSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureRenderSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureSystem::deinit);
 }
-AutoExposureRenderSystem::~AutoExposureRenderSystem()
+AutoExposureSystem::~AutoExposureSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureRenderSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureSystem::deinit);
 	}
 
 	unsetSingleton();
 }
 
-void AutoExposureRenderSystem::init()
+void AutoExposureSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Render", AutoExposureRenderSystem::render);
-	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureRenderSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("Render", AutoExposureSystem::render);
+	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
 
 	if (!histogramBuffer)
 		histogramBuffer = createHistogramBuffer();
@@ -96,7 +96,7 @@ void AutoExposureRenderSystem::init()
 	if (!averagePipeline)
 		averagePipeline = createAveragePipeline();
 }
-void AutoExposureRenderSystem::deinit()
+void AutoExposureSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
@@ -106,8 +106,8 @@ void AutoExposureRenderSystem::deinit()
 		graphicsSystem->destroy(histogramPipeline);
 		graphicsSystem->destroy(histogramBuffer);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", AutoExposureRenderSystem::render);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureRenderSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", AutoExposureSystem::render);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
 	}
 }
 
@@ -117,7 +117,7 @@ static float calcTimeCoeff(float adaptationRate, float deltaTime) noexcept
 	return std::clamp(1.0f - std::exp(-deltaTime * adaptationRate), 0.0f, 1.0f);
 }
 
-void AutoExposureRenderSystem::render()
+void AutoExposureSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Auto Exposure Render");
 
@@ -125,7 +125,7 @@ void AutoExposureRenderSystem::render()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto toneMappingSystem = ToneMappingRenderSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	auto histogramPipelineView = graphicsSystem->get(histogramPipeline);
 	auto averagePipelineView = graphicsSystem->get(averagePipeline);
 	auto luminanceBufferView = graphicsSystem->get(toneMappingSystem->getLuminanceBuffer());
@@ -179,7 +179,7 @@ void AutoExposureRenderSystem::render()
 }
 
 //**********************************************************************************************************************
-void AutoExposureRenderSystem::gBufferRecreate()
+void AutoExposureSystem::gBufferRecreate()
 {
 	if (histogramDS)
 	{
@@ -191,20 +191,20 @@ void AutoExposureRenderSystem::gBufferRecreate()
 	}
 }
 
-ID<ComputePipeline> AutoExposureRenderSystem::getHistogramPipeline()
+ID<ComputePipeline> AutoExposureSystem::getHistogramPipeline()
 {
 	if (!histogramPipeline)
 		histogramPipeline = createHistogramPipeline();
 	return histogramPipeline;
 }
-ID<ComputePipeline> AutoExposureRenderSystem::getAveragePipeline()
+ID<ComputePipeline> AutoExposureSystem::getAveragePipeline()
 {
 	if (!averagePipeline)
 		averagePipeline = createAveragePipeline();
 	return averagePipeline;
 }
 
-ID<Buffer> AutoExposureRenderSystem::getHistogramBuffer()
+ID<Buffer> AutoExposureSystem::getHistogramBuffer()
 {
 	if (!histogramBuffer)
 		histogramBuffer = createHistogramBuffer();

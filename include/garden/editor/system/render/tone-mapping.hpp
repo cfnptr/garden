@@ -21,14 +21,14 @@
 namespace garden
 {
 
-class ToneMappingRenderEditorSystem final : public System
+class ToneMappingEditorSystem final : public System
 {
 	float exposureLuminance = 1.0f;
 	uint8 toneMapper = {};
 	bool showWindow = false;
 
-	ToneMappingRenderEditorSystem();
-	~ToneMappingRenderEditorSystem() final;
+	ToneMappingEditorSystem();
+	~ToneMappingEditorSystem() final;
 
 	void init();
 	void deinit();
