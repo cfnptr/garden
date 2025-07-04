@@ -95,7 +95,27 @@ bool AccelerationStructure::destroy()
 				GraphicsAPI::DestroyResourceType::Blas : GraphicsAPI::DestroyResourceType::Tlas;
 			vulkanAPI->destroyResource(resourceType, instance);
 		}
+		
 		vulkanAPI->bufferPool.destroy(storageBuffer);
+
+		if (buildData)
+		{
+			auto buildDataHeader = (BuildDataHeader*)buildData;
+			auto data = (CompactData*)buildDataHeader->compactData;
+			if (data)
+			{
+				if (data->queryPoolRef == 0)
+				{
+					if (vulkanAPI->forceResourceDestroy)
+						vulkanAPI->device.destroyQueryPool((VkQueryPool)data->queryPool);
+					else
+						vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::QueryPool, data->queryPool);
+					delete data;
+				}
+				else data->queryPoolRef--;
+			}
+		}
+		free(buildData);
 	}
 	else abort();
 
@@ -104,8 +124,6 @@ bool AccelerationStructure::destroy()
 
 bool AccelerationStructure::isStorageReady() const noexcept
 {
-	if (!isBuilt())
-		return false;
 	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
 	return storageView->isReady();
 }
@@ -117,9 +135,10 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
 		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!isBuilt(), "Acceleration structure [" + debugName + "] is already build");
+	GARDEN_ASSERT_MSG(buildData, "Acceleration structure [" + debugName + "] is already build");
 
 	auto graphicsAPI = GraphicsAPI::get();
+	auto buildDataHeader = (const BuildDataHeader*)buildData;
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->computeCommandBuffer)
@@ -139,9 +158,13 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	auto destroyScratch = false;
 	if (!scratchBuffer)
 	{
-		auto data = (const BuildDataHeader*)buildData; // Note: no need of ComputeQ for an internal scratch.
-		scratchBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage | Buffer::Usage::DeviceAddress, 
-			Buffer::CpuAccess::None, Buffer::Location::PreferGPU, Buffer::Strategy::Speed, data->scratchSize , 0);
+		scratchBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage | 
+			Buffer::Usage::DeviceAddress, Buffer::CpuAccess::None, Buffer::Location::PreferGPU, 
+			Buffer::Strategy::Speed, buildDataHeader->scratchSize , 0);
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		auto bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
+		bufferView->setDebugName(debugName + ".scratchBuffer");
+		#endif
 		destroyScratch = true;
 	}
 
@@ -171,7 +194,6 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	else
 		currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
 
-	auto buildDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
 	auto syncBuffers = (ID<Buffer>*)((uint8*)buildData + sizeof(AccelerationStructure::BuildDataHeader));
 	for (uint32 i = 0; i < buildDataHeader->bufferCount; i++)
 	{
@@ -184,20 +206,6 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	if (destroyScratch)
 		graphicsAPI->bufferPool.destroy(scratchBuffer);
 }
-
-/* TODO: add compact acceleration structure operation with ability to pass custom query pool. Add query pool abstraction.
-
-	vk::QueryPool queryPool;
-	if (hasAnyFlag(flags, BuildFlagsAS::AllowCompaction))
-	{
-		vk::QueryPoolCreateInfo createInfo;
-		createInfo.queryType = vk::QueryType::eAccelerationStructureCompactedSizeKHR;
-		createInfo.queryCount = 1; 
-		queryPool = vulkanAPI->device.createQueryPool(createInfo);
-		vulkanAPI->device.resetQueryPool(queryPool, 0, 1);
-	}
-
-*/
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
@@ -223,3 +231,28 @@ void AccelerationStructure::setDebugName(const string& name)
 	else abort();
 }
 #endif
+
+//**********************************************************************************************************************
+void AccelerationStructure::_createVkInstance(uint64 size, uint8 type, 
+	BuildFlagsAS flags, ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress)
+{
+	auto vulkanAPI = VulkanAPI::get();
+	auto storageUsage = Buffer::Usage::StorageAS | Buffer::Usage::DeviceAddress;
+	if (hasAnyFlag(flags, BuildFlagsAS::ComputeQ))
+		storageUsage |= Buffer::Usage::ComputeQ;
+	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
+		Buffer::Strategy::Speed : Buffer::Strategy::Size;
+	storageBuffer = vulkanAPI->bufferPool.create(storageUsage, Buffer::CpuAccess::None, 
+		Buffer::Location::PreferGPU, storageStrategy, size, 0);
+	auto storageView = vulkanAPI->bufferPool.get(storageBuffer);
+
+	vk::AccelerationStructureCreateInfoKHR createInfo;
+	createInfo.buffer = (VkBuffer)ResourceExt::getInstance(**storageView);
+	createInfo.size = size; createInfo.type = (vk::AccelerationStructureTypeKHR)type;
+	auto accelerationStructure = vulkanAPI->device.createAccelerationStructureKHR(createInfo);
+	instance = accelerationStructure;
+
+	vk::AccelerationStructureDeviceAddressInfoKHR addressInfo;
+	addressInfo.accelerationStructure = accelerationStructure;
+	deviceAddress = vulkanAPI->device.getAccelerationStructureAddressKHR(addressInfo);
+}

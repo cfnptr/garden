@@ -211,11 +211,17 @@ public:
 	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
+
 	/**
 	 * @brief Returns true if target GPU has ray tracing support.
 	 * @note Without hardware support we can't use ray tracing pipelines.
 	 */
 	bool hasRayTracing() const noexcept;
+	/**
+	 * @brief Returns true if target GPU has ray query support.
+	 * @note Without hardware support we can't use ray query in shaders.
+	 */
+	bool hasRayQuery() const noexcept;
 
 	/**
 	 * @brief Returns current swapchain changes.

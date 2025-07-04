@@ -63,6 +63,7 @@ public:
 private:
 	Blas(const TrianglesBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags);
 	Blas(const AabbsBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags);
+	Blas(uint64 size, BuildFlagsAS flags);
 
 	friend class BlasExt;
 	friend class LinearPool<Blas>;
@@ -78,10 +79,17 @@ public:
 	//******************************************************************************************************************
 
 	/**
+	 * @brief Reduces BLAS memory usage after build.
+	 * @return A new compacted BLAS instance.
+	 */
+	ID<Blas> compact();
+
+	/**
 	 * @brief Updates bottom level acceleration structure geometry positions.
 	 * @warning Only positions can be updated! If changed geometry count you should rebuild BLAS instead.
 	 */
 	// TODO: void update(const TrianglesBuffer* geometryArray, uint32 geometryCount);
+	
 };
 
 /***********************************************************************************************************************

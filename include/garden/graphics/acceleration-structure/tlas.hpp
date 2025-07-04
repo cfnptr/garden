@@ -112,6 +112,8 @@ public:
 	 * @param scratchBuffer AS scratch buffer (null = auto temporary)
 	 */
 	void build(ID<Buffer> scratchBuffer = {}) final;
+
+	// TODO: add TLAS compaction if needed.
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Tlas::InstanceFlags)

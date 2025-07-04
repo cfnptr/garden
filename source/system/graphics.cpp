@@ -475,9 +475,14 @@ bool GraphicsSystem::isCurrentRenderPassAsync() const noexcept
 {
 	return GraphicsAPI::get()->isCurrentRenderPassAsync;
 }
+
 bool GraphicsSystem::hasRayTracing() const noexcept
 {
 	return GraphicsAPI::get()->hasRayTracing();
+}
+bool GraphicsSystem::hasRayQuery() const noexcept
+{
+	return GraphicsAPI::get()->hasRayQuery();
 }
 
 uint32 GraphicsSystem::getInFlightCount() const noexcept

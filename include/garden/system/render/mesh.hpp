@@ -261,6 +261,8 @@ private:
 	friend class GizmosEditorSystem;
 	friend class SelectorEditorSystem;
 public:
+	bool isOpaqueOnly = false; /** Render only opaque meshes. */
+
 	/**
 	 * @brief Use multithreaded command buffer recording.
 	 * @warning Be careful when writing asynchronous code!

@@ -319,3 +319,4 @@ To enable specific GLSL extensions use this shorting:
 * ext.bufferReference - [GL_EXT_buffer_reference](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_buffer_reference.txt)
 * ext.subgroupBasic - [GL_KHR_shader_subgroup_basic](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
 * ext.subgroupVote - [GL_KHR_shader_subgroup_vote](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
+* ext.rayQuery - [GL_EXT_ray_query](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_ray_query.txt)

@@ -37,7 +37,7 @@ struct Command
 		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
 		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		SetDepthBias, // TODO: other dynamic setters
-		BuildAccelerationStructure, TraceRays,
+		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays,
 
 		#if GARDEN_DEBUG
 		BeginLabel, EndLabel, InsertLabel,
@@ -298,7 +298,7 @@ struct SetDepthBiasCommand final : public Command
 };
 
 //**********************************************************************************************************************
-struct BuildAccelerationStructureCommand : public Command
+struct BuildAccelerationStructureCommand final : public Command
 {
 	uint8 _alignment0 = 0;
 	uint8 isUpdate = 0;
@@ -307,6 +307,15 @@ struct BuildAccelerationStructureCommand : public Command
 	ID<AccelerationStructure> dstAS = {};
 	ID<Buffer> scratchBuffer = {};
 	BuildAccelerationStructureCommand() noexcept : Command(Type::BuildAccelerationStructure) { }
+};
+struct CopyAccelerationStructureCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint8 isCompact = 0;
+	AccelerationStructure::Type typeAS = {};
+	ID<AccelerationStructure> srcAS = {};
+	ID<AccelerationStructure> dstAS = {};
+	CopyAccelerationStructureCommand() noexcept : Command(Type::CopyAccelerationStructure) { }
 };
 struct TraceRaysCommand final : public Command
 {
@@ -401,6 +410,7 @@ protected:
 	virtual void processCommand(const BlitImageCommand& command) = 0;
 	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 	virtual void processCommand(const BuildAccelerationStructureCommand& command) = 0;
+	virtual void processCommand(const CopyAccelerationStructureCommand& command) = 0;
 	virtual void processCommand(const TraceRaysCommand& command) = 0;
 
 	#if GARDEN_DEBUG
@@ -453,6 +463,7 @@ public:
 	void addCommand(const BlitImageCommand& command);
 	void addCommand(const SetDepthBiasCommand& command);
 	void addCommand(const BuildAccelerationStructureCommand& command);
+	void addCommand(const CopyAccelerationStructureCommand& command);
 	void addCommand(const TraceRaysCommand& command);
 
 	#if GARDEN_DEBUG

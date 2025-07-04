@@ -103,6 +103,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const BlitImageCommand*)command); break;
 		case Command::Type::BuildAccelerationStructure:
 			processCommand(*(const BuildAccelerationStructureCommand*)command); break;
+		case Command::Type::CopyAccelerationStructure:
+			processCommand(*(const CopyAccelerationStructureCommand*)command); break;
 		case Command::Type::TraceRays:
 			processCommand(*(const TraceRaysCommand*)command); break;
 
@@ -450,9 +452,20 @@ void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
 
 void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
 {
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Compute);
+	GARDEN_ASSERT(type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(BuildAccelerationStructureCommand);
 	auto allocation = (BuildAccelerationStructureCommand*)allocateCommand(commandSize);
+	*allocation = command;
+	allocation->thisSize = commandSize;
+	allocation->lastSize = lastSize;
+	lastSize = commandSize;
+	hasAnyCommand = true;
+}
+void CommandBuffer::addCommand(const CopyAccelerationStructureCommand& command)
+{
+	GARDEN_ASSERT(type == CommandBufferType::Compute);
+	auto commandSize = (uint32)sizeof(CopyAccelerationStructureCommand);
+	auto allocation = (CopyAccelerationStructureCommand*)allocateCommand(commandSize);
 	*allocation = command;
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;

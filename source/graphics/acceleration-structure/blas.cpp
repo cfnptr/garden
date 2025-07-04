@@ -123,7 +123,7 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 
 //**********************************************************************************************************************
 static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 geometryType,
-	BuildFlagsAS flags, ID<Buffer>& storage, void*& instance, uint64& deviceAddress, void*& _buildData)
+	BuildFlagsAS flags, ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress, void*& _buildData)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	auto buildData = malloc<uint8>(
@@ -162,33 +162,16 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 		maxPrimitiveCounts[i] = rangeInfos[i].primitiveCount;
 
 	// TODO: also support building on the host (CPU). Currently only relevant for AMD and mobile GPUs.
-	auto sizesInfo =  vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
+	auto sizesInfo = vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
 		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, maxPrimitiveCounts);
-
-	auto storageUsage = Buffer::Usage::StorageAS | Buffer::Usage::DeviceAddress;
-	if (hasAnyFlag(flags, BuildFlagsAS::ComputeQ))
-		storageUsage |= Buffer::Usage::ComputeQ;
-	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
-		Buffer::Strategy::Speed : Buffer::Strategy::Size;
-	storage = vulkanAPI->bufferPool.create(storageUsage, Buffer::CpuAccess::None, 
-		Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
-	auto storageView = vulkanAPI->bufferPool.get(storage);
-
-	vk::AccelerationStructureCreateInfoKHR createInfo;
-	createInfo.buffer = (VkBuffer)ResourceExt::getInstance(**storageView);
-	createInfo.size = sizesInfo.accelerationStructureSize;
-	createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-	auto accelerationStructure = vulkanAPI->device.createAccelerationStructureKHR(createInfo);
-	instance = accelerationStructure;
-
-	vk::AccelerationStructureDeviceAddressInfoKHR addressInfo;
-	addressInfo.accelerationStructure = accelerationStructure;
-	deviceAddress = vulkanAPI->device.getAccelerationStructureAddressKHR(addressInfo);
+	AccelerationStructure::_createVkInstance(sizesInfo.accelerationStructureSize, 
+		(uint8)vk::AccelerationStructureTypeKHR::eBottomLevel, flags, storageBuffer, instance, deviceAddress);
 
 	buildDataHeader->scratchSize = sizesInfo.buildScratchSize +
 		vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment;
 	buildDataHeader->geometryCount = geometryCount;
 	buildDataHeader->bufferCount = geometryCount * geometryType;
+	buildDataHeader->queryPoolIndex = 0;
 }
 
 //**********************************************************************************************************************
@@ -211,4 +194,92 @@ Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFl
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkBlas(geometryArray, geometryCount, 1, flags, storageBuffer, instance, deviceAddress, buildData);
 	else abort();
+}
+Blas::Blas(uint64 size, BuildFlagsAS flags)
+{
+	GARDEN_ASSERT(size > 0);
+
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		AccelerationStructure::_createVkInstance(size, (uint8)vk::AccelerationStructureTypeKHR::eBottomLevel, 
+			flags, storageBuffer, instance, deviceAddress);
+	}
+	else abort();
+}
+
+//**********************************************************************************************************************
+ID<Blas> Blas::compact()
+{
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
+		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::AllowCompaction), 
+		"BLAS [" + debugName + "] compaction is not allowed");
+	GARDEN_ASSERT_MSG(buildData, "BLAS [" + debugName + "] is already compacted");
+	GARDEN_ASSERT_MSG(isStorageReady(), "BLAS [" + debugName + "] storage is not ready");
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto buildDataHeader = (const BuildDataHeader*)buildData;
+	auto data = (CompactData*)buildDataHeader->compactData;
+
+	uint64 compactSize;
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (!data->queryResults[0])
+		{
+			auto vkResult = vulkanAPI->device.getQueryPoolResults((VkQueryPool)data->queryPool, 
+				0, data->queryResults.size(), sizeof(uint64), data->queryResults.data(), 
+				sizeof(uint64), vk::QueryResultFlagBits::eWait);
+			if (vkResult != vk::Result::eSuccess)
+				throw GardenError("Failed to get compacted BLAS sizes.");
+		}
+		compactSize = (uint64)data->queryResults[buildDataHeader->queryPoolIndex];
+
+		if (data->queryPoolRef == 0)
+		{
+			vulkanAPI->device.destroyQueryPool((VkQueryPool)data->queryPool);
+			delete data;
+		}
+		else data->queryPoolRef--;
+	}
+	else abort();
+
+	free(buildData);
+	buildData = nullptr;
+
+	auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this); // Do not move!
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	auto thisDebugName = debugName;
+	#endif
+
+	auto compactBlas = graphicsAPI->blasPool.create(compactSize, flags);
+	auto compactBlasView = graphicsAPI->blasPool.get(compactBlas);
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	compactBlasView->setDebugName(thisDebugName);
+	#endif
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+
+	CopyAccelerationStructureCommand command;
+	command.isCompact = true;
+	command.typeAS = Type::Blas;
+	command.srcAS = ID<AccelerationStructure>(thisBlas);
+	command.dstAS = ID<AccelerationStructure>(compactBlas);
+	currentCommandBuffer->addCommand(command);
+
+	// Note: blasPool.create() call invalidates this instance.
+	auto thisBlasView = graphicsAPI->blasPool.get(thisBlas);
+	ResourceExt::getBusyLock(**thisBlasView)++;
+	ResourceExt::getBusyLock(**compactBlasView)++;
+	auto storageView = graphicsAPI->bufferPool.get(thisBlasView->getStorageBuffer());
+	ResourceExt::getBusyLock(**storageView)++;
+	storageView = graphicsAPI->bufferPool.get(compactBlasView->getStorageBuffer());
+	ResourceExt::getBusyLock(**storageView)++;
+
+	currentCommandBuffer->addLockedResource(thisBlas);
+	currentCommandBuffer->addLockedResource(compactBlas);
+	currentCommandBuffer->addLockedResource(thisBlasView->getStorageBuffer());
+	currentCommandBuffer->addLockedResource(compactBlasView->getStorageBuffer());
+	return compactBlas;
 }

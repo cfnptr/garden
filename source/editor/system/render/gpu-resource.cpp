@@ -1225,13 +1225,9 @@ static void renderRayTracingPipelines(uint32& selectedItem, string& searchString
 static void renderDetailsAS(const AccelerationStructure& as, ID<AccelerationStructure> instance,
 	GpuResourceEditorSystem::TabType& openNextTab, uint32& selectedItem)
 {
-	auto isBuilt = as.isBuilt();
 	auto isStorageReady = as.isStorageReady();
 	ImGui::TextWrapped("Build flags: %s", toStringList(as.getFlags()).c_str());
 	ImGui::TextWrapped("Geometry count: %lu", (unsigned long)as.getGeometryCount());
-	if (!as.isBuilt())
-		ImGui::TextWrapped("Scratch size: %lu", (unsigned long)as.getScratchSize());
-	ImGui::Checkbox("Built", &isBuilt); ImGui::SameLine();
 	ImGui::Checkbox("Storage Ready", &isStorageReady);
 	ImGui::Spacing();
 
