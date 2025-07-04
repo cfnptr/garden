@@ -57,6 +57,7 @@ public:
 		bool scalarBlockLayout = false;
 		bool bufferDeviceAddress = false;
 		bool rayTracing = false;
+		bool rayQuery = false;
 		bool maintenance4 = false;
 		bool maintenance5 = false;
 	};
@@ -99,6 +100,7 @@ public:
 	vector<vk::DescriptorImageInfo> descriptorImageInfos;
 	vector<vk::DescriptorBufferInfo> descriptorBufferInfos;
 	vector<vk::AccelerationStructureKHR> asDescriptorInfos;
+	vector<vk::MemoryBarrier> memoryBarriers;
 	vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
 	vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
 	vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
@@ -110,9 +112,10 @@ public:
 	vector<vk::ImageCopy> imageCopies;
 	vector<vk::BufferImageCopy> bufferImageCopies;
 	vector<vk::ImageBlit> imageBlits;
-	vector<void**> asBuildData;
+	vector<void*> asBuildData;
 	vector<vk::AccelerationStructureBuildGeometryInfoKHR> asGeometryInfos;
 	vector<const vk::AccelerationStructureBuildRangeInfoKHR*> asRangeInfos;
+	vector<vk::AccelerationStructureKHR> asWriteProperties;
 	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
 	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
 	vk::PhysicalDeviceProperties2 deviceProperties;
@@ -145,6 +148,10 @@ public:
 	 * @brief Returns true if ray tracing supported.
 	 */
 	bool hasRayTracing() const final { return features.rayTracing; }
+	/**
+	 * @brief Returns true if ray query supported.
+	 */
+	bool hasRayQuery() const final { return features.rayQuery; }
 
 	/**
 	 * @brief Returns Vulkan graphics API instance.
@@ -677,13 +684,13 @@ static constexpr vk::BuildAccelerationStructureFlagsKHR toVkBuildFlagsAS(BuildFl
  */
 static vk::SamplerCreateInfo getVkSamplerCreateInfo(const Sampler::State& state) noexcept
 {
-	return vk::SamplerCreateInfo({}, toVkFilter(state.magFilter), toVkFilter(state.minFilter),
-		toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.addressModeX),
-		toVkSamplerAddressMode(state.addressModeY), toVkSamplerAddressMode(state.addressModeZ),
-		state.mipLodBias, state.anisoFiltering, state.maxAnisotropy,
-		state.comparison, toVkCompareOp(state.compareOperation), state.minLod,
-		state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod,
+	return vk::SamplerCreateInfo({}, toVkFilter(state.magFilter), toVkFilter(state.minFilter), 
+		toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.addressModeX), 
+		toVkSamplerAddressMode(state.addressModeY), toVkSamplerAddressMode(state.addressModeZ), 
+		state.mipLodBias, state.anisoFiltering, state.maxAnisotropy, 
+		state.comparison, toVkCompareOp(state.compareOperation), state.minLod, 
+		state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod, 
 		toVkBorderColor(state.borderColor), state.unnormCoords);
-} 
+}
 
 } // namespace garden

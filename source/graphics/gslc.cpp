@@ -1154,6 +1154,8 @@ static void onShaderFeature(FileData& fileData, LineData& lineData)
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_basic : require";
 	else if (lineData.word == "ext.subgroupVote")
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_vote : require";
+	else if (lineData.word == "ext.rayQuery")
+		fileData.outputFileStream << "#extension GL_EXT_ray_query : require\n#include \"ray-tracing.gsl\"";
 	else throw CompileError("unknown GSL feature", fileData.lineIndex, lineData.word);
 	lineData.isFeature = false;
 }

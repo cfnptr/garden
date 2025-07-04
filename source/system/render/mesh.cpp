@@ -102,11 +102,23 @@ void MeshRenderSystem::prepareSystems()
 	const auto& systems = manager->getSystems();
 	meshSystems.clear();
 
-	for (const auto& pair : systems)
+	if (isOpaqueOnly)
 	{
-		auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
-		if (meshSystem)
-			meshSystems.push_back(meshSystem);
+		for (const auto& pair : systems)
+		{
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
+			if (meshSystem && meshSystem->getMeshRenderType() == MeshRenderType::Opaque)
+				meshSystems.push_back(meshSystem);
+		}
+	}
+	else
+	{
+		for (const auto& pair : systems)
+		{
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
+			if (meshSystem)
+				meshSystems.push_back(meshSystem);
+		}
 	}
 
 	#if GARDEN_EDITOR
@@ -731,7 +743,7 @@ void MeshRenderSystem::renderShadows()
 				renderUnsorted(viewProj, MeshRenderType::Color, i);
 				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
 			}
-			if (shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
+			if (!isOpaqueOnly && shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
 			{
 				SET_CPU_ZONE_SCOPED("Translucent/Refracted/OIT Shadow Render");
 				SET_GPU_DEBUG_LABEL("Translucent/Refracted/OIT Shadow Pass", Color::transparent);
@@ -774,9 +786,13 @@ void MeshRenderSystem::forwardRender()
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, -1);
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, -1);
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, -1);
-	renderSorted(cameraConstants.viewProj, -1);
+
+	if (!isOpaqueOnly)
+	{
+		renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
+		renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, -1);
+		renderSorted(cameraConstants.viewProj, -1);
+	}
 }
 
 //**********************************************************************************************************************
@@ -821,7 +837,7 @@ void MeshRenderSystem::refractedRender()
 	SET_CPU_ZONE_SCOPED("Mesh Refracted Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
+	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
@@ -832,7 +848,7 @@ void MeshRenderSystem::translucentRender()
 	SET_CPU_ZONE_SCOPED("Mesh Translucent Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
+	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
@@ -843,7 +859,7 @@ void MeshRenderSystem::oitRender()
 	SET_CPU_ZONE_SCOPED("Mesh OIT Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
+	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();

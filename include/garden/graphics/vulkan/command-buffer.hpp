@@ -37,8 +37,8 @@ public:
 		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
 	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
 		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
-	void addRenderPassBarriers(psize offset);
-	void processPipelineBarriers();
+	void addRenderPassBarriers(VulkanAPI* vulkanAPI, psize offset);
+	void processPipelineBarriers(VulkanAPI* vulkanAPI);
 
 	void processCommand(const BufferBarrierCommand& command) final;
 	void processCommand(const BeginRenderPassCommand& command) final;
@@ -63,6 +63,7 @@ public:
 	void processCommand(const BlitImageCommand& command) final;
 	void processCommand(const SetDepthBiasCommand& command) final;
 	void processCommand(const BuildAccelerationStructureCommand& command) final;
+	void processCommand(const CopyAccelerationStructureCommand& command) final;
 	void processCommand(const TraceRaysCommand& command) final;
 
 	#if GARDEN_DEBUG

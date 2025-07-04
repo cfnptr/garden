@@ -48,24 +48,24 @@ uniform pushConstants
 
 void main()
 {
-	GBufferValues values = gBufferValuesDefault();
-	values.baseColor = pc.baseColor;
-	values.specularFactor = pc.specularFactor;
-	values.metallic = pc.mraor.r;
-	values.roughness = pc.mraor.g;
-	values.ambientOcclusion = pc.mraor.b;
-	values.reflectance = pc.mraor.a;
-	values.clearCoatRoughness = pc.ccRoughness;
-	values.shadow = pc.shadow;
+	GBufferValues gBuffer = gBufferValuesDefault();
+	gBuffer.baseColor = pc.baseColor;
+	gBuffer.specularFactor = pc.specularFactor;
+	gBuffer.metallic = pc.mraor.r;
+	gBuffer.roughness = pc.mraor.g;
+	gBuffer.ambientOcclusion = pc.mraor.b;
+	gBuffer.reflectance = pc.mraor.a;
+	gBuffer.clearCoatRoughness = pc.ccRoughness;
+	gBuffer.shadow = pc.shadow;
 
 	#ifdef USE_EMISSION_BUFFER
-	values.emissiveColor = pc.emissiveColor;
-	values.emissiveFactor = pc.emissiveFactor;
+	gBuffer.emissiveColor = pc.emissiveColor;
+	gBuffer.emissiveFactor = pc.emissiveFactor;
 	#endif
 
 	#ifdef USE_GI_BUFFER
-	values.giColor = pc.giColor;
+	gBuffer.giColor = pc.giColor;
 	#endif
 
-	ENCODE_G_BUFFER_VALUES(values);
+	ENCODE_G_BUFFER_VALUES(gBuffer);
 }

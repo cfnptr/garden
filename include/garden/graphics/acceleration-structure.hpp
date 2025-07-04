@@ -66,6 +66,15 @@ public:
 	};
 
 	/**
+	 * @brief Acceleration structure compact data.
+	 */
+	struct CompactData final
+	{
+		vector<uint64> queryResults;
+		void* queryPool = nullptr;
+		uint32 queryPoolRef = 0;
+	};
+	/**
 	 * @brief Acceleration structure build data array header.
 	 */
 	struct BuildDataHeader final
@@ -73,6 +82,8 @@ public:
 		uint64 scratchSize = 0;
 		uint32 geometryCount = 0;
 		uint32 bufferCount = 0;
+		CompactData* compactData = nullptr;
+		uint32 queryPoolIndex = 0;
 	};
 protected:
 	ID<Buffer> storageBuffer = {};
@@ -111,11 +122,7 @@ protected:
 	 */
 	ID<Buffer> getStorageBuffer() const noexcept { return storageBuffer; }
 	/**
-	 * @brief Returns true if acceleration structure is built and can be used.
-	 */
-	bool isBuilt() const noexcept { return !buildData; }
-	/**
-	 * @brief Returns true if acceleration structure storage is transferred and ready for rendering.
+	 * @brief Returns true if acceleration structure storage is ready for rendering.
 	 */
 	bool isStorageReady() const noexcept;
 
@@ -124,7 +131,7 @@ protected:
 	 */
 	uint64 getScratchSize() const noexcept
 	{
-		GARDEN_ASSERT_MSG(!isBuilt(), "Acceleration structure already built");
+		GARDEN_ASSERT_MSG(buildData, "Acceleration structure already built");
 		auto header = (const BuildDataHeader*)buildData;
 		return header->scratchSize;
 	}
@@ -146,6 +153,9 @@ protected:
 	 */
 	void setDebugName(const string& name) final;
 	#endif
+
+	static void _createVkInstance(uint64 size, uint8 type, BuildFlagsAS flags, 
+		ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(BuildFlagsAS)

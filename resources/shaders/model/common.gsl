@@ -30,18 +30,18 @@ GBufferValues fillModelGBuffer(sampler2D mraorMap, sampler2D normalMap,
 	float3 normal = texture(normalMap, texCoords).xyz;
 	float4 emissive = texture(emissiveMap, texCoords);
 
-	GBufferValues values = gBufferValuesDefault();
-	values.baseColor = color.rgb;
-	values.specularFactor = color.a;
-	values.metallic = mraor.r;
-	values.roughness = mraor.g;
-	values.ambientOcclusion = mraor.b;
-	values.reflectance = mraor.a;
-	values.absorptionColor = color.rgb;
-	values.normal = tbn * fma(normal, float3(2.0f), float3(-1.0f));
-	values.emissiveColor = emissive.rgb;
-	values.emissiveFactor = emissive.a;
-	return values;
+	GBufferValues gBuffer = gBufferValuesDefault();
+	gBuffer.baseColor = color.rgb;
+	gBuffer.specularFactor = color.a;
+	gBuffer.metallic = mraor.r;
+	gBuffer.roughness = mraor.g;
+	gBuffer.ambientOcclusion = mraor.b;
+	gBuffer.reflectance = mraor.a;
+	gBuffer.absorptionColor = color.rgb;
+	gBuffer.normal = tbn * fma(normal, float3(2.0f), float3(-1.0f));
+	gBuffer.emissiveColor = emissive.rgb;
+	gBuffer.emissiveFactor = emissive.a;
+	return gBuffer;
 }
 GBufferValues fillModelGBufferLite(sampler2D mraorMap, 
 	sampler2D emissiveMap, float2 texCoords, float4 color, float3 normal)
@@ -49,18 +49,18 @@ GBufferValues fillModelGBufferLite(sampler2D mraorMap,
 	float4 mraor = texture(mraorMap, texCoords);
 	float4 emissive = texture(emissiveMap, texCoords);
 
-	GBufferValues values = gBufferValuesDefault();
-	values.baseColor = color.rgb;
-	values.specularFactor = color.a;
-	values.metallic = mraor.r;
-	values.roughness = mraor.g;
-	values.ambientOcclusion = mraor.b;
-	values.reflectance = mraor.a;
-	values.absorptionColor = color.rgb;
-	values.normal = normal;
-	values.emissiveColor = emissive.rgb;
-	values.emissiveFactor = emissive.a;
-	return values;
+	GBufferValues gBuffer = gBufferValuesDefault();
+	gBuffer.baseColor = color.rgb;
+	gBuffer.specularFactor = color.a;
+	gBuffer.metallic = mraor.r;
+	gBuffer.roughness = mraor.g;
+	gBuffer.ambientOcclusion = mraor.b;
+	gBuffer.reflectance = mraor.a;
+	gBuffer.absorptionColor = color.rgb;
+	gBuffer.normal = normal;
+	gBuffer.emissiveColor = emissive.rgb;
+	gBuffer.emissiveFactor = emissive.a;
+	return gBuffer;
 }
 
 #endif // MODEL_GSL

@@ -68,7 +68,7 @@ public:
 	enum class DestroyResourceType : uint32
 	{
 		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout, Sampler, 
-		Framebuffer, ImageView, Image, Tlas, Blas, Buffer, Count
+		Framebuffer, ImageView, Image, Tlas, Blas, Buffer, QueryPool, Count
 	};
 	/**
 	 * @brief Graphics resource destroy data container.
@@ -246,6 +246,10 @@ public:
 	 * @brief Returns true if ray tracing supported.
 	 */
 	virtual bool hasRayTracing() const { return false; }
+	/**
+	 * @brief Returns true if ray query supported.
+	 */
+	virtual bool hasRayQuery() const { return false; }
 
 	/**
 	 * @brief Is graphics API initialized.

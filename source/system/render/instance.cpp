@@ -65,15 +65,6 @@ void InstanceRenderSystem::init()
 		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
 	else
 		ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
-
-	if (!basePipeline)
-		basePipeline = createBasePipeline();
-	if (!shadowPipeline)
-		shadowPipeline = createShadowPipeline();
-
-	createInstanceBuffers(getBaseInstanceDataSize() * 16, baseInstanceBuffers, false, this);
-	if (shadowPipeline)
-		createInstanceBuffers(getShadowInstanceDataSize() * 16, shadowInstanceBuffers, true, this);
 }
 void InstanceRenderSystem::deinit()
 {
@@ -100,7 +91,15 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (shadowPass < 0)
 	{
-		if (!basePipeline || !graphicsSystem->get(basePipeline)->isReady())
+		if (!basePipeline)
+			basePipeline = createBasePipeline();
+		if (!basePipeline)
+			return false;
+
+		if (baseInstanceBuffers.empty())
+			createInstanceBuffers(getBaseInstanceDataSize() * 16, baseInstanceBuffers, false, this);
+
+		if (!graphicsSystem->get(basePipeline)->isReady())
 			return false;
 
 		if (!baseDescriptorSet)
@@ -117,10 +116,18 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 	}
 	else
 	{
-		if (!shadowPipeline || !graphicsSystem->get(shadowPipeline)->isReady())
+		if (!shadowPipeline)
+			shadowPipeline = createShadowPipeline();
+		if (!shadowPipeline)
 			return false;
 
-		if (!shadowDescriptorSet && shadowPipeline)
+		if (shadowInstanceBuffers.empty())
+			createInstanceBuffers(getShadowInstanceDataSize() * 16, shadowInstanceBuffers, true, this);
+
+		if (!graphicsSystem->get(shadowPipeline)->isReady())
+			return false;
+
+		if (!shadowDescriptorSet)
 		{
 			auto uniforms = getShadowUniforms();
 			if (uniforms.empty())
@@ -153,10 +160,13 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 			{
 				graphicsSystem->destroy(baseDescriptorSet);
 				auto uniforms = getBaseUniforms();
-				baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
-				#if GARDEN_DEBUG
-				SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
-				#endif
+				if (!uniforms.empty())
+				{
+					baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+					#if GARDEN_DEBUG
+					SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+					#endif
+				}
 			}
 		}
 
@@ -177,10 +187,13 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 			{
 				graphicsSystem->destroy(shadowDescriptorSet);
 				auto uniforms = getShadowUniforms();
-				shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
-				#if GARDEN_DEBUG
-				SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
-				#endif
+				if (!uniforms.empty())
+				{
+					shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+					#if GARDEN_DEBUG
+					SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+					#endif
+				}
 			}
 		}
 
@@ -211,10 +224,13 @@ void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCoun
 }
 void InstanceRenderSystem::renderCleanup()
 {
-	auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
-	auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
-	bufferView->flush(shadowDrawIndex * getShadowInstanceDataSize());
-	shadowDrawIndex = 0;
+	if (shadowDrawIndex > 0)
+	{
+		auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
+		auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
+		bufferView->flush(shadowDrawIndex * getShadowInstanceDataSize());
+		shadowDrawIndex = 0;
+	}
 }
 
 //**********************************************************************************************************************
@@ -225,30 +241,40 @@ void InstanceRenderSystem::gBufferRecreate()
 	{
 		graphicsSystem->destroy(baseDescriptorSet);
 		auto uniforms = getBaseUniforms();
-		baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
-		#if GARDEN_DEBUG
-		SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
-		#endif
+		if (!uniforms.empty())
+		{
+			baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+			#if GARDEN_DEBUG
+			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+			#endif
+		}
 	}
 	if (shadowDescriptorSet)
 	{
 		graphicsSystem->destroy(shadowDescriptorSet);
 		auto uniforms = getShadowUniforms();
-		shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
-		#if GARDEN_DEBUG
-		SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
-		#endif
+		if (!uniforms.empty())
+		{
+			shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+			#if GARDEN_DEBUG
+			SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+			#endif
+		}
 	}
 }
 
 //**********************************************************************************************************************
 DescriptorSet::Uniforms InstanceRenderSystem::getBaseUniforms()
 {
+	if (baseInstanceBuffers.empty())
+		return {};
 	DescriptorSet::Uniforms baseUniforms = { { "instance", DescriptorSet::Uniform(baseInstanceBuffers) } };
 	return baseUniforms;
 }
 DescriptorSet::Uniforms InstanceRenderSystem::getShadowUniforms()
 {
+	if (shadowInstanceBuffers.empty())
+		return {};
 	DescriptorSet::Uniforms baseUniforms = { { "instance", DescriptorSet::Uniform(shadowInstanceBuffers) } };
 	return baseUniforms;
 }

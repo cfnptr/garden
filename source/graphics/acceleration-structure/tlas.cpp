@@ -36,7 +36,7 @@ static constexpr VkGeometryInstanceFlagsKHR toVkInstanceFlagsAS(Tlas::InstanceFl
 
 //**********************************************************************************************************************
 static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags, 
-	ID<Buffer>& storage, void*& instance, uint64& deviceAddress, void*& _buildData)
+	ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress, void*& _buildData)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	auto buildData = malloc<uint8>(sizeof(AccelerationStructure::BuildDataHeader) + sizeof(ID<Buffer>) +
@@ -74,30 +74,13 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 
 	auto sizesInfo = vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
 		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, instanceCount);
-
-	auto storageUsage = Buffer::Usage::StorageAS | Buffer::Usage::DeviceAddress;
-	if (hasAnyFlag(flags, BuildFlagsAS::ComputeQ))
-		storageUsage |= Buffer::Usage::ComputeQ;
-	auto storageStrategy = hasAnyFlag(flags, BuildFlagsAS::PreferFastBuild) ? 
-		Buffer::Strategy::Speed : Buffer::Strategy::Size;
-	storage = vulkanAPI->bufferPool.create(storageUsage, Buffer::CpuAccess::None, 
-		Buffer::Location::PreferGPU, storageStrategy, sizesInfo.accelerationStructureSize, 0);
-	auto storageView = vulkanAPI->bufferPool.get(storage);
-
-	vk::AccelerationStructureCreateInfoKHR createInfo;
-	createInfo.buffer = (VkBuffer)ResourceExt::getInstance(**storageView);
-	createInfo.size = sizesInfo.accelerationStructureSize;
-	createInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
-	auto accelerationStructure = vulkanAPI->device.createAccelerationStructureKHR(createInfo);
-	instance = accelerationStructure;
-
-	vk::AccelerationStructureDeviceAddressInfoKHR addressInfo;
-	addressInfo.accelerationStructure = accelerationStructure;
-	deviceAddress = vulkanAPI->device.getAccelerationStructureAddressKHR(addressInfo);
+	AccelerationStructure::_createVkInstance(sizesInfo.accelerationStructureSize, 
+		(uint8)vk::AccelerationStructureTypeKHR::eTopLevel, flags, storageBuffer, instance, deviceAddress);
 
 	buildDataHeader->scratchSize = sizesInfo.buildScratchSize +
 		vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment;
 	buildDataHeader->geometryCount = buildDataHeader->bufferCount = 1;
+	buildDataHeader->queryPoolIndex = 0;
 }
 
 Tlas::InstanceData::InstanceData(const f32x4x4& model, ID<Blas> blas, 

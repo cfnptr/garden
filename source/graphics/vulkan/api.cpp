@@ -410,7 +410,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 	};
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
-	auto hasDeferredHostOperations = false, hasAccelerationStructure = false, hasRayTracingPipeline = false;
+	auto hasDeferredHostOperations = false, hasAccelerationStructure = false;
 
 	for (const auto& properties : extensionProperties)
 	{
@@ -425,7 +425,9 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		else if (strcmp(properties.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0)
 			hasAccelerationStructure = true;
 		else if (strcmp(properties.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0)
-			hasRayTracingPipeline = true;
+			features.rayTracing = true;
+		else if (strcmp(properties.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0)
+			features.rayQuery = true;
 
 		if (versionMinor < 2)
 		{
@@ -467,6 +469,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
+		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
 		vk::PhysicalDeviceMaintenance4Features maintenance4;
 		vk::PhysicalDeviceMaintenance5Features maintenance5;
 
@@ -494,8 +497,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		physicalDevice.getFeatures2(&vkFeatures->device);
 		if (vkFeatures->pageableMemory.pageableDeviceLocalMemory)
 			extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
-		else
-			features.pageableMemory = false;
+		else features.pageableMemory = false;
 	}
 
 	if (versionMinor < 2)
@@ -521,8 +523,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			physicalDevice.getFeatures2(&vkFeatures->device);
 			if (vkFeatures->float16Int8.shaderFloat16 && vkFeatures->float16Int8.shaderInt8)
 				extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
-			else
-				features.float16Int8 = false;
+			else features.float16Int8 = false;
 		}
 		if (features.descriptorIndexing)
 		{
@@ -548,8 +549,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			physicalDevice.getFeatures2(&vkFeatures->device);
 			if (vkFeatures->scalarBlockLayout.scalarBlockLayout)
 				extensions.push_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
-			else
-				features.scalarBlockLayout = false;
+			else features.scalarBlockLayout = false;
 		}
 		if (features.bufferDeviceAddress)
 		{
@@ -557,8 +557,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			physicalDevice.getFeatures2(&vkFeatures->device);
 			if (vkFeatures->bufferDeviceAddress.bufferDeviceAddress)
 				extensions.push_back(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-			else
-				features.bufferDeviceAddress = false;
+			else features.bufferDeviceAddress = false;
 		}
 	}
 	else
@@ -578,8 +577,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			physicalDevice.getFeatures2(&vkFeatures->device);
 			if (vkFeatures->dynamicRendering.dynamicRendering)
 				extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-			else
-				features.dynamicRendering = false;
+			else features.dynamicRendering = false;
 		}
 		if (features.maintenance4)
 		{
@@ -587,8 +585,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			physicalDevice.getFeatures2(&vkFeatures->device);
 			if (vkFeatures->maintenance4.maintenance4)
 				extensions.push_back(VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
-			else
-				features.maintenance4 = false;
+			else features.maintenance4 = false;
 		}
 	}
 	else
@@ -605,8 +602,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 			physicalDevice.getFeatures2(&vkFeatures->device);
 			if (vkFeatures->maintenance5.maintenance5)
 				extensions.push_back(VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
-			else
-				features.maintenance5 = false;
+			else features.maintenance5 = false;
 		}
 	}
 	else
@@ -614,25 +610,42 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		features.maintenance5 = true;
 	}
 
-	if (hasDeferredHostOperations && hasAccelerationStructure && hasRayTracingPipeline && 
+	if (hasDeferredHostOperations && hasAccelerationStructure && 
 		features.descriptorIndexing && features.bufferDeviceAddress)
 	{
 		vkFeatures->device.pNext = &vkFeatures->accelerationStructure;
-		vkFeatures->accelerationStructure.pNext = &vkFeatures->rayTracingPipeline,
 		physicalDevice.getFeatures2(&vkFeatures->device);
 
-		if (vkFeatures->accelerationStructure.accelerationStructure && 
-			vkFeatures->rayTracingPipeline.rayTracingPipeline)
+		if (vkFeatures->accelerationStructure.accelerationStructure)
 		{
 			extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 			extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-			extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-			features.rayTracing = true;
+
+			if (features.rayTracing)
+			{
+				vkFeatures->device.pNext = &vkFeatures->rayTracingPipeline;
+				physicalDevice.getFeatures2(&vkFeatures->device);
+				if (vkFeatures->rayTracingPipeline.rayTracingPipeline)
+					extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+				else features.rayTracing = false;
+			}
+			if (features.rayQuery)
+			{
+				vkFeatures->device.pNext = &vkFeatures->rayQuery;
+				physicalDevice.getFeatures2(&vkFeatures->device);
+				if (vkFeatures->rayQuery.rayQuery)
+					extensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+				else features.rayQuery = false;
+			}
 		}
 		else
 		{
-			features.rayTracing = false;
+			features.rayTracing = features.rayQuery = false;
 		}
+	}
+	else
+	{
+		features.rayTracing = features.rayQuery = false;
 	}
 
 	vkFeatures->device.features = vk::PhysicalDeviceFeatures();
@@ -726,17 +739,26 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		*lastPNext = &vkFeatures->dynamicRendering;
 		lastPNext = &vkFeatures->dynamicRendering.pNext;
 	}
-	if (features.rayTracing)
+	if (features.rayTracing || features.rayQuery)
 	{
 		vkFeatures->accelerationStructure = vk::PhysicalDeviceAccelerationStructureFeaturesKHR();
 		vkFeatures->accelerationStructure.accelerationStructure = VK_TRUE;
 		*lastPNext = &vkFeatures->accelerationStructure;
 		lastPNext = &vkFeatures->accelerationStructure.pNext;
-
+	}
+	if (features.rayTracing)
+	{
 		vkFeatures->rayTracingPipeline = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR();
 		vkFeatures->rayTracingPipeline.rayTracingPipeline = VK_TRUE;
 		*lastPNext = &vkFeatures->rayTracingPipeline;
 		lastPNext = &vkFeatures->rayTracingPipeline.pNext;
+	}
+	if (features.rayQuery)
+	{
+		vkFeatures->rayQuery = vk::PhysicalDeviceRayQueryFeaturesKHR();
+		vkFeatures->rayQuery.rayQuery = VK_TRUE;
+		*lastPNext = &vkFeatures->rayQuery;
+		lastPNext = &vkFeatures->rayQuery.pNext;
 	}
 
 	#if 0 // Debug only
@@ -1102,6 +1124,9 @@ void VulkanAPI::flushDestroyBuffer()
 			break;
 		case GraphicsAPI::DestroyResourceType::Buffer:
 			vmaDestroyBuffer(memoryAllocator, (VkBuffer)resource.data0, (VmaAllocation)resource.data1);
+			break;
+		case GraphicsAPI::DestroyResourceType::QueryPool:
+			device.destroyQueryPool((VkQueryPool)resource.data0);
 			break;
 		default: abort();
 		}

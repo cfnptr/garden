@@ -84,11 +84,11 @@ void main()
 	if (depth == 0.0f)
 		discard;
 
-	GBufferValues values = DECODE_G_BUFFER_VALUES(fs.texCoords);
-	values.emissiveFactor *= pc.emissiveCoeff;
-	values.reflectance *= pc.reflectanceCoeff;
+	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	gBuffer.emissiveFactor *= pc.emissiveCoeff;
+	gBuffer.reflectance *= pc.reflectanceCoeff;
 	
-	float4 shadow = float4(pc.shadowColor.rgb, values.shadow);
+	float4 shadow = float4(pc.shadowColor.rgb, gBuffer.shadow);
 	if (HAS_SHADOW_BUFFER)
 	{
 		float4 accumShadow = textureLod(shadowBuffer, fs.texCoords, 0.0f);
@@ -103,15 +103,15 @@ void main()
 	if (HAS_AO_BUFFER)
 	{
 		float ao = textureLod(aoBuffer, fs.texCoords, 0.0f).r;
-		values.ambientOcclusion = min(values.ambientOcclusion, ao);
+		gBuffer.ambientOcclusion = min(gBuffer.ambientOcclusion, ao);
 	}
 	if (HAS_REFLECTION_BUFFER)
 	{
-		float lod = calcReflectionsLod(values.roughness, length(worldPosition.xyz), pc.reflLodOffset);
-		values.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
+		float lod = calcReflectionsLod(gBuffer.roughness, length(worldPosition.xyz), pc.reflLodOffset);
+		gBuffer.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
 	}
 
 	float3 viewDirection = calcViewDirection(worldPosition.xyz);
-	float3 hdrColor = evaluateIBL(values, shadow, viewDirection, dfgLUT, sh.data, specular);
+	float3 hdrColor = evaluateIBL(gBuffer, shadow, viewDirection, dfgLUT, sh.data, specular);
 	fb.hdr = float4(hdrColor, 1.0f);
 }
