@@ -129,9 +129,10 @@ public:
 	 * @param sharpness blur sharpness
 	 * @param[in,out] pipeline bilateral blur graphics pipeline
 	 * @param[in,out] descriptorSet bilateral blur descriptor set
+	 * @param kernelRadius radius of the blur kernel
 	 */
 	void bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,  ID<Framebuffer> tmpFramebuffer, 
-		float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
+		float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet, uint8 kernelRadius = 3);
 };
 
 } // namespace garden

@@ -14,10 +14,9 @@
 
 #include "common/depth.gsl"
 
-// TODO: spec const
-const uint32 KERNEL_RADIUS = 3;
-const float BLUR_SIGMA = KERNEL_RADIUS * 0.5f;
-const float BLUR_FALLOFF = 1.0f / (-2.0f * BLUR_SIGMA * BLUR_SIGMA);
+spec const uint32 KERNEL_RADIUS = 3;
+#define BLUR_SIGMA (KERNEL_RADIUS * 0.5f)
+#define BLUR_FALLOFF (1.0f / (-2.0f * BLUR_SIGMA * BLUR_SIGMA))
 
 pipelineState
 {

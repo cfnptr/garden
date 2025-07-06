@@ -29,7 +29,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 MeshRenderSystem::MeshRenderSystem(bool useOIT, bool useAsyncRecording, bool useAsyncPreparing, bool setSingleton) :
-	Singleton(setSingleton), oit(useOIT), asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
+	Singleton(setSingleton), hasOIT(useOIT), asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
@@ -56,12 +56,19 @@ void MeshRenderSystem::init()
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
+		ECSM_SUBSCRIBE_TO_EVENT("PreRefractedRender", MeshRenderSystem::preRefractedRender);
 		ECSM_SUBSCRIBE_TO_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+		ECSM_SUBSCRIBE_TO_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
 
-		if (oit)
+		if (hasOIT)
+		{
+			ECSM_SUBSCRIBE_TO_EVENT("PreOitRender", MeshRenderSystem::preOitRender);
 			ECSM_SUBSCRIBE_TO_EVENT("OitRender", MeshRenderSystem::oitRender);
+		}
 		else
+		{
 			ECSM_SUBSCRIBE_TO_EVENT("Translucent", MeshRenderSystem::translucentRender);
+		}
 	}
 }
 void MeshRenderSystem::deinit()
@@ -78,12 +85,19 @@ void MeshRenderSystem::deinit()
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("PreRefractedRender", MeshRenderSystem::preRefractedRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
 
-			if (oit)
+			if (hasOIT)
+			{
+				ECSM_UNSUBSCRIBE_FROM_EVENT("PreOitRender", MeshRenderSystem::preOitRender);
 				ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", MeshRenderSystem::oitRender);
+			}
 			else
+			{
 				ECSM_UNSUBSCRIBE_FROM_EVENT("Translucent", MeshRenderSystem::translucentRender);
+			}
 		}
 
 		for (auto buffer : sortedBuffers)
@@ -335,13 +349,14 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	uint32 sortedMeshMaxCount = 0;
 	sortedDrawIndex.store(0);
 	unsortedBufferCount = sortedBufferCount = 0;
+	hasAnyRefr = hasAnyOIT = false;
 
 	for (auto meshSystem : meshSystems)
 	{
 		auto renderType = meshSystem->getMeshRenderType();
 
 		#if GARDEN_DEBUG
-		if (oit)
+		if (hasOIT)
 		{
 			GARDEN_ASSERT_MSG(renderType != MeshRenderType::Translucent, 
 				"Supported only translucent or OIT meshes, not both.");
@@ -353,18 +368,20 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		}
 		#endif
 
-		if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque || 
-			renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
-		{
-			unsortedBufferCount++;
-		}
-		else if (renderType == MeshRenderType::Translucent)
+		if (renderType == MeshRenderType::Translucent)
 		{
 			const auto& componentPool = meshSystem->getMeshComponentPool();
 			sortedMeshMaxCount += componentPool.getCount();
 			sortedBufferCount++;
+			
 		}
-		else abort();
+		else
+		{
+			hasAnyRefr |= renderType == MeshRenderType::Refracted;
+			hasAnyOIT |= renderType == MeshRenderType::OIT;
+			hasAnyTransDepth |= renderType == MeshRenderType::TransDepth;
+			unsortedBufferCount++;
+		}
 	}
 
 	if (unsortedBuffers.size() < unsortedBufferCount)
@@ -404,49 +421,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		auto componentCount = componentPool.getCount();
 		auto renderType = meshSystem->getMeshRenderType();
 		
-		if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque || 
-			renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
-		{
-			auto unsortedBuffer = unsortedBuffers[unsortedBufferIndex++];
-			unsortedBuffer->meshSystem = meshSystem;
-			unsortedBuffer->drawCount.store(0);
-
-			if (componentCount == 0 || !meshSystem->isDrawReady(shadowPass))
-				continue;
-
-			if (unsortedBuffer->combinedMeshes.size() < componentCount)
-				unsortedBuffer->combinedMeshes.resize(componentCount);
-			
-			if (threadSystem)
-			{
-				auto& threadPool = threadSystem->getForegroundPool();
-				if (unsortedBuffer->threadMeshes.size() < threadPool.getThreadCount())
-					unsortedBuffer->threadMeshes.resize(threadPool.getThreadCount());
-
-				threadPool.addItems([=](const ThreadPool::Task& task)
-				{
-					prepareUnsortedMeshes(cameraOffset, cameraPosition, frustumPlanes, unsortedBuffer, 
-						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), shadowPass, true);
-				},
-				componentPool.getOccupancy());
-			}
-			else
-			{
-				prepareUnsortedMeshes(cameraOffset, cameraPosition, frustumPlanes,
-					unsortedBuffer, 0, componentPool.getOccupancy(), 0, shadowPass, false);
-			}
-
-			#if GARDEN_EDITOR
-			if (graphicsEditorSystem)
-			{
-				if (renderType == MeshRenderType::OIT)
-					graphicsEditorSystem->translucentTotalCount += componentCount;
-				else
-					graphicsEditorSystem->opaqueTotalCount += componentCount;
-			}
-			#endif	
-		}
-		else if (renderType == MeshRenderType::Translucent)
+		if (renderType == MeshRenderType::Translucent)
 		{
 			auto bufferIndex = sortedBufferIndex++;
 			auto sortedBuffer = sortedBuffers[bufferIndex];
@@ -482,6 +457,47 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 				graphicsEditorSystem->translucentTotalCount += componentCount;
 			#endif	
 		}
+		else
+		{
+			auto unsortedBuffer = unsortedBuffers[unsortedBufferIndex++];
+			unsortedBuffer->meshSystem = meshSystem;
+			unsortedBuffer->drawCount.store(0);
+
+			if (componentCount == 0 || !meshSystem->isDrawReady(shadowPass))
+				continue;
+
+			if (unsortedBuffer->combinedMeshes.size() < componentCount)
+				unsortedBuffer->combinedMeshes.resize(componentCount);
+			
+			if (threadSystem)
+			{
+				auto& threadPool = threadSystem->getForegroundPool();
+				if (unsortedBuffer->threadMeshes.size() < threadPool.getThreadCount())
+					unsortedBuffer->threadMeshes.resize(threadPool.getThreadCount());
+
+				threadPool.addItems([=](const ThreadPool::Task& task)
+				{
+					prepareUnsortedMeshes(cameraOffset, cameraPosition, frustumPlanes, unsortedBuffer, 
+						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), shadowPass, true);
+				},
+				componentPool.getOccupancy());
+			}
+			else
+			{
+				prepareUnsortedMeshes(cameraOffset, cameraPosition, frustumPlanes,
+					unsortedBuffer, 0, componentPool.getOccupancy(), 0, shadowPass, false);
+			}
+
+			#if GARDEN_EDITOR
+			if (graphicsEditorSystem)
+			{
+				if (renderType == MeshRenderType::OIT || renderType == MeshRenderType::TransDepth)
+					graphicsEditorSystem->translucentTotalCount += componentCount;
+				else
+					graphicsEditorSystem->opaqueTotalCount += componentCount;
+			}
+			#endif	
+		}
 	}		
 
 	if (!meshSystems.empty())
@@ -495,7 +511,8 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 			for (uint32 i = 0; i < unsortedBufferCount; i++)
 			{
 				auto unsortedBuffer = unsortedBuffers[i];
-				if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::OIT)
+				auto renderType = unsortedBuffer->meshSystem->getMeshRenderType();
+				if (renderType == MeshRenderType::OIT || renderType == MeshRenderType::TransDepth)
 					graphicsEditorSystem->translucentDrawCount += unsortedBuffer->drawCount.load();
 				else
 					graphicsEditorSystem->opaqueDrawCount += unsortedBuffer->drawCount.load();
@@ -741,6 +758,7 @@ void MeshRenderSystem::renderShadows()
 				SET_GPU_DEBUG_LABEL("Opaque/Color Shadow Pass", Color::transparent);
 				renderUnsorted(viewProj, MeshRenderType::Opaque, i);
 				renderUnsorted(viewProj, MeshRenderType::Color, i);
+				// Note: no TransDepth rendering for shadows, expected RT instead.
 				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
 			}
 			if (!isOpaqueOnly && shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
@@ -791,6 +809,7 @@ void MeshRenderSystem::forwardRender()
 	{
 		renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
 		renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, -1);
+		renderUnsorted(cameraConstants.viewProj, MeshRenderType::TransDepth, -1);
 		renderSorted(cameraConstants.viewProj, -1);
 	}
 }
@@ -832,6 +851,16 @@ void MeshRenderSystem::depthHdrRender()
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, -1);
 }
+void MeshRenderSystem::preRefractedRender()
+{
+	SET_CPU_ZONE_SCOPED("Mesh Pre Refracted Render");
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!hasAnyRefr || !graphicsSystem->camera)
+		return;
+
+	DeferredRenderSystem::Instance::get()->markAnyRefraction();
+}
 void MeshRenderSystem::refractedRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Refracted Render");
@@ -853,6 +882,27 @@ void MeshRenderSystem::translucentRender()
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderSorted(cameraConstants.viewProj, -1);
+}
+void MeshRenderSystem::transDepthRender()
+{
+	SET_CPU_ZONE_SCOPED("Mesh Translucent Depth Render");
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (isOpaqueOnly || !graphicsSystem->camera)
+		return;
+
+	const auto& cameraConstants = graphicsSystem->getCameraConstants();
+	renderUnsorted(cameraConstants.viewProj, MeshRenderType::TransDepth, -1);
+}
+void MeshRenderSystem::preOitRender()
+{
+	SET_CPU_ZONE_SCOPED("Mesh Pre OIT Render");
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!hasAnyOIT || !graphicsSystem->camera)
+		return;
+
+	DeferredRenderSystem::Instance::get()->markAnyOIT();
 }
 void MeshRenderSystem::oitRender()
 {

@@ -50,43 +50,23 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::init()
 {
-	if (Manager::Instance::get()->has<OitRenderSystem>())
+	if (OitRenderSystem::Instance::has())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
 		ECSM_SUBSCRIBE_TO_EVENT("OitRender", InfiniteGridEditorSystem::render);
-
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		ResourceSystem::GraphicsOptions options;
-		options.useAsyncRecording = true;
-
-		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/infinite-grid/oit", deferredSystem->getOitFramebuffer(), options);
 	}
 	else
 	{
-		ID<Framebuffer> framebuffer; bool useAsyncRecording;
 		if (DeferredRenderSystem::Instance::has())
 		{
 			ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", InfiniteGridEditorSystem::preRender);
 			ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", InfiniteGridEditorSystem::render);
-
-			framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
 		}
 		else
 		{
 			ECSM_SUBSCRIBE_TO_EVENT("PreDepthForwardRender", InfiniteGridEditorSystem::preRender);
 			ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", InfiniteGridEditorSystem::render);
-
-			auto forwardSystem = ForwardRenderSystem::Instance::get();
-			framebuffer = forwardSystem->getFullFramebuffer();
-			useAsyncRecording = forwardSystem->useAsyncRecording();
 		}
-
-		ResourceSystem::GraphicsOptions options;
-		options.useAsyncRecording = useAsyncRecording;
-
-		pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/infinite-grid/translucent", framebuffer, options);
 	}
 
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
@@ -110,7 +90,7 @@ void InfiniteGridEditorSystem::deinit()
 		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 
-		if (Manager::Instance::get()->has<OitRenderSystem>())
+		if (OitRenderSystem::Instance::has())
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", InfiniteGridEditorSystem::render);
@@ -131,6 +111,39 @@ void InfiniteGridEditorSystem::preRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->camera)
 		return;
+
+	if (!pipeline)
+	{
+		if (OitRenderSystem::Instance::has())
+		{
+			auto deferredSystem = DeferredRenderSystem::Instance::get();
+			ResourceSystem::GraphicsOptions options;
+			options.useAsyncRecording = true;
+
+			pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+				"editor/infinite-grid/oit", deferredSystem->getOitFramebuffer(), options);
+		}
+		else
+		{
+			ID<Framebuffer> framebuffer; bool useAsyncRecording;
+			if (DeferredRenderSystem::Instance::has())
+			{
+				framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
+			}
+			else
+			{
+				auto forwardSystem = ForwardRenderSystem::Instance::get();
+				framebuffer = forwardSystem->getFullFramebuffer();
+				useAsyncRecording = forwardSystem->useAsyncRecording();
+			}
+
+			ResourceSystem::GraphicsOptions options;
+			options.useAsyncRecording = useAsyncRecording;
+
+			pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+				"editor/infinite-grid/translucent", framebuffer, options);
+		}
+	}
 	
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (pipelineView->isReady() && !descriptorSet)

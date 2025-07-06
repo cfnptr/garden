@@ -37,9 +37,12 @@ static ID<GraphicsPipeline> createBoxBlur(ID<Framebuffer> framebuffer)
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/box-blur", framebuffer, options);
 }
-static ID<GraphicsPipeline> createBilateralBlurD(ID<Framebuffer> framebuffer)
+static ID<GraphicsPipeline> createBilateralBlurD(ID<Framebuffer> framebuffer, uint32 kernelRadius)
 {
+	Pipeline::SpecConstValues specConsts = { { "KERNEL_RADIUS", Pipeline::SpecConstValue(kernelRadius) }, };
+
 	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConsts;
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d", framebuffer, options);
 }
@@ -244,17 +247,19 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 }
 
 //**********************************************************************************************************************
-void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,
-	ID<Framebuffer> tmpFramebuffer, float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet)
+void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, 
+	ID<Framebuffer> dstFramebuffer, ID<Framebuffer> tmpFramebuffer, float sharpness, 
+	ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet, uint8 kernelRadius)
 {
 	GARDEN_ASSERT(srcBuffer);
 	GARDEN_ASSERT(dstFramebuffer);
 	GARDEN_ASSERT(tmpFramebuffer);
 	GARDEN_ASSERT(sharpness > 0.0f);
+	GARDEN_ASSERT(kernelRadius > 0);
 	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
 
 	if (!pipeline)
-		pipeline = createBilateralBlurD(dstFramebuffer);
+		pipeline = createBilateralBlurD(dstFramebuffer, kernelRadius);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(tmpFramebuffer);

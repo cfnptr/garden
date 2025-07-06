@@ -113,9 +113,9 @@ private:
 	uint8 _alignment = 0;
 	uint8* map = nullptr;
 	uint64 deviceAddress = 0;
-	Usage usage = {};
 	BarrierState barrierState = {};
-
+	Usage usage = {};
+	
 	Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 size, uint64 version);
 	Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 version) noexcept :
 		Memory(0, cpuAccess, location, strategy, version), usage(usage) { }

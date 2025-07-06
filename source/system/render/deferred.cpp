@@ -257,7 +257,7 @@ static ID<Framebuffer> createOitFramebuffer(ID<Image> oitAccumBuffer,
 
 //**********************************************************************************************************************
 DeferredRenderSystem::DeferredRenderSystem(bool useEmission, bool useGI, bool useAsyncRecording, bool setSingleton) : 
-	Singleton(setSingleton), emission(useEmission), gi(useGI), asyncRecording(useAsyncRecording)
+	Singleton(setSingleton), hasEmission(useEmission), hasGI(useGI), asyncRecording(useAsyncRecording)
 {
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreDeferredRender");
@@ -270,6 +270,8 @@ DeferredRenderSystem::DeferredRenderSystem(bool useEmission, bool useGI, bool us
 	manager->registerEvent("RefractedRender");
 	manager->registerEvent("PreTranslucentRender");
 	manager->registerEvent("TranslucentRender");
+	manager->registerEvent("PreTransDepthRender");
+	manager->registerEvent("TransDepthRender");
 	manager->registerEvent("PreOitRender");
 	manager->registerEvent("OitRender");
 	manager->registerEvent("PreLdrRender");
@@ -301,6 +303,8 @@ DeferredRenderSystem::~DeferredRenderSystem()
 		manager->unregisterEvent("RefractedRender");
 		manager->unregisterEvent("PreTranslucentRender");
 		manager->unregisterEvent("TranslucentRender");
+		manager->unregisterEvent("PreTransDepthRender");
+		manager->unregisterEvent("TransDepthRender");
 		manager->unregisterEvent("PreOitRender");
 		manager->unregisterEvent("OitRender");
 		manager->unregisterEvent("PreLdrRender");
@@ -325,7 +329,7 @@ void DeferredRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 
 	if (gBuffers.empty())
-		createGBuffers(gBuffers, emission, gi);
+		createGBuffers(gBuffers, hasEmission, hasGI);
 	if (!hdrBuffer)
 		hdrBuffer = createHdrBuffer(false);
 	if (!ldrBuffer)
@@ -347,8 +351,6 @@ void DeferredRenderSystem::init()
 		depthLdrFramebuffer = createDepthLdrFramebuffer(ldrBuffer, depthStencilBuffer);
 	if (!uiFramebuffer)
 		uiFramebuffer = createUiFramebuffer(uiBuffer);
-	if (!refractedFramebuffer)
-		refractedFramebuffer = createRefractedFramebuffer(hdrBuffer, gBuffers[gBufferNormals], depthStencilBuffer);
 }
 void DeferredRenderSystem::deinit()
 {
@@ -473,9 +475,16 @@ void DeferredRenderSystem::render()
 		event->run();
 	}
 	event = &manager->getEvent("RefractedRender");
-	if (event->hasSubscribers())
+	if (hasAnyRefr && event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Refracted Render Pass");
+
+		if (!refractedFramebuffer)
+		{
+			refractedFramebuffer = createRefractedFramebuffer(hdrBuffer, 
+				gBuffers[gBufferNormals], depthStencilBuffer);
+		}
+
 		static const array<float4, 2> clearColors = { float4::zero, float4::zero };
 		auto framebufferView = graphicsSystem->get(refractedFramebuffer);
 		
@@ -491,13 +500,14 @@ void DeferredRenderSystem::render()
 			Image::copy(hdrBuffer, hdrCopyBuffer);
 			Image::copy(depthStencilBuffer, depthCopyBuffer);
 			// TODO: generate blurry HDR chain. (GGX based)
-			// TODO: also detect if no one uses it and skip copy.
 
 			framebufferView->beginRenderPass(clearColors, 0.0f, 0, int4::zero, asyncRecording);
 			event->run();
 			framebufferView->endRenderPass();
 		}
 		graphicsSystem->stopRecording();
+
+		hasAnyRefr = false;
 	}
 
 	event = &manager->getEvent("PreTranslucentRender");
@@ -529,7 +539,7 @@ void DeferredRenderSystem::render()
 		event->run();
 	}
 	event = &manager->getEvent("OitRender");
-	if (event->hasSubscribers())
+	if (hasAnyOit && event->hasSubscribers())
 	{
 		if (!oitAccumBuffer)
 			oitAccumBuffer = createOitAccumBuffer();
@@ -550,6 +560,8 @@ void DeferredRenderSystem::render()
 			framebufferView->endRenderPass();
 		}
 		graphicsSystem->stopRecording();
+
+		hasAnyOit = false;
 	}
 
 	event = &manager->getEvent("PreLdrRender");
@@ -654,7 +666,7 @@ void DeferredRenderSystem::swapchainRecreate()
 	{
 		auto destroyUI = uiBuffer != gBuffers[0];
 		graphicsSystem->destroy(gBuffers);
-		createGBuffers(gBuffers, emission, gi);
+		createGBuffers(gBuffers, hasEmission, hasGI);
 		graphicsSystem->destroy(hdrBuffer);
 		hdrBuffer = createHdrBuffer(false);
 		if (hdrCopyBuffer)
@@ -703,21 +715,23 @@ void DeferredRenderSystem::swapchainRecreate()
 			depthStencilAttachment.setFlags(DeferredRenderSystem::oitBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
 		}
-
-		bufferView = graphicsSystem->get(hdrBuffer);
-		auto framebufferView = graphicsSystem->get(refractedFramebuffer);
-		colorAttachments[0] = Framebuffer::OutputAttachment(
-			bufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
-		bufferView = graphicsSystem->get(gBuffers[gBufferNormals]);
-		colorAttachments[1] = Framebuffer::OutputAttachment(
-			bufferView->getDefaultView(), DeferredRenderSystem::normalsBufferFlags);
-		depthStencilAttachment.setFlags(DeferredRenderSystem::hdrBufferDepthFlags);
-		framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
+		if (refractedFramebuffer)
+		{
+			bufferView = graphicsSystem->get(hdrBuffer);
+			auto framebufferView = graphicsSystem->get(refractedFramebuffer);
+			colorAttachments[0] = Framebuffer::OutputAttachment(
+				bufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
+			bufferView = graphicsSystem->get(gBuffers[gBufferNormals]);
+			colorAttachments[1] = Framebuffer::OutputAttachment(
+				bufferView->getDefaultView(), DeferredRenderSystem::normalsBufferFlags);
+			depthStencilAttachment.setFlags(DeferredRenderSystem::hdrBufferDepthFlags);
+			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
+		}
 
 		bufferView = graphicsSystem->get(uiBuffer);
 		colorAttachments[0] = Framebuffer::OutputAttachment(
 			bufferView->getDefaultView(), DeferredRenderSystem::uiBufferFlags);
-		framebufferView = graphicsSystem->get(uiFramebuffer);
+		auto framebufferView = graphicsSystem->get(uiFramebuffer);
 		framebufferView->update(graphicsSystem->getFramebufferSize(), colorAttachments, 1);
 
 		bufferView = graphicsSystem->get(ldrBuffer);
@@ -769,7 +783,7 @@ void DeferredRenderSystem::swapchainRecreate()
 const vector<ID<Image>>& DeferredRenderSystem::getGBuffers()
 {
 	if (gBuffers.empty())
-		createGBuffers(gBuffers, emission, gi);
+		createGBuffers(gBuffers, hasEmission, hasGI);
 	return gBuffers;
 }
 ID<Image> DeferredRenderSystem::getHdrBuffer()

@@ -84,7 +84,32 @@ static void addMemoryBarrier(VulkanAPI* vulkanAPI, vk::AccessFlags srcAccess, vk
 	vk::MemoryBarrier memoryBarrier(srcAccess, dstAccess);
 	vulkanAPI->memoryBarriers.push_back(memoryBarrier);
 }
+static void addMemoryBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& oldState, Buffer::BarrierState newState)
+{
+	if (VulkanCommandBuffer::isDifferentState(oldState))
+	{
+		addMemoryBarrier(vulkanAPI, vk::AccessFlags(oldState.access), vk::AccessFlags(newState.access));
+		vulkanAPI->oldPipelineStage |= oldState.stage;
+		vulkanAPI->newPipelineStage |= newState.stage;
+	}
+	oldState = newState;
+}
+static void addMemoryBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& srcOldState, 
+	Buffer::BarrierState& dstOldState, Buffer::BarrierState srcNewState, Buffer::BarrierState dstNewState)
+{
+	if (VulkanCommandBuffer::isDifferentState(srcOldState) || VulkanCommandBuffer::isDifferentState(dstOldState))
+	{
+		addMemoryBarrier(vulkanAPI, vk::AccessFlags(srcOldState.access | dstOldState.access), 
+			vk::AccessFlags(srcNewState.access | dstNewState.access));
+		vulkanAPI->oldPipelineStage |= srcOldState.stage | dstOldState.stage;
+		vulkanAPI->newPipelineStage |= srcNewState.stage | dstNewState.stage;
+	}
 
+	srcOldState = srcNewState;
+	dstOldState = dstNewState;
+}
+
+//**********************************************************************************************************************
 static void addImageBarrier(VulkanAPI* vulkanAPI, const Image::BarrierState& oldImageState, 
 	const Image::BarrierState& newImageState, vk::Image image, uint32 baseMip, uint32 mipCount, 
 	uint32 baseLayer, uint32 layerCount, vk::ImageAspectFlags aspectFlags)
@@ -111,8 +136,7 @@ static void addImageBarrier(VulkanAPI* vulkanAPI, Image::BarrierState newImageSt
 		vulkanAPI->oldPipelineStage |= oldImageState.stage;
 		vulkanAPI->newPipelineStage |= newImageState.stage;
 	}
-	newImageState.layoutTransition = oldImageState.layout != newImageState.layout;
-
+	VulkanCommandBuffer::updateLayoutTrans(oldImageState, newImageState);
 	oldImageState = newImageState;
 	ImageExt::isFullBarrier(**image) = image->getMipCount() == 1 && image->getLayerCount() == 1;
 }
@@ -128,7 +152,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::BarrierState newImageS
 		baseLayer == 0 && layerCount == imageView->getLayerCount();
 	if (ImageExt::isFullBarrier(**imageView) && newFullBarrier)
 	{
-		auto& oldImageState = vulkanAPI->getImageState(image, 0, 0);
+		const auto& oldImageState = vulkanAPI->getImageState(image, 0, 0);
 		if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 		{
 			addImageBarrier(vulkanAPI, oldImageState, newImageState, 
@@ -136,7 +160,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::BarrierState newImageS
 			vulkanAPI->oldPipelineStage |= oldImageState.stage;
 			vulkanAPI->newPipelineStage |= newImageState.stage;
 		}
-		newImageState.layoutTransition = oldImageState.layout != newImageState.layout;
+		VulkanCommandBuffer::updateLayoutTrans(oldImageState, newImageState);
 
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
 		for (auto& oldBarrierState : barrierStates)
@@ -157,7 +181,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::BarrierState newImageS
 					vulkanAPI->oldPipelineStage |= oldImageState.stage;
 					vulkanAPI->newPipelineStage |= newImageState.stage;
 				}
-				newImageState.layoutTransition = oldImageState.layout != newImageState.layout;
+				VulkanCommandBuffer::updateLayoutTrans(oldImageState, newImageState);
 				oldImageState = newImageState;
 			}
 		}
@@ -165,8 +189,9 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::BarrierState newImageS
 	ImageExt::isFullBarrier(**imageView) = newFullBarrier;
 }
 
+//**********************************************************************************************************************
 void VulkanCommandBuffer::addBufferBarrier(VulkanAPI* vulkanAPI, 
-	const Buffer::BarrierState& newBufferState, ID<Buffer> buffer, uint64 size, uint64 offset)
+	Buffer::BarrierState newBufferState, ID<Buffer> buffer, uint64 size, uint64 offset)
 {
 	// TODO: we can specify only required buffer range, not full range.
 	auto& oldBufferState = vulkanAPI->getBufferState(buffer);
@@ -181,7 +206,6 @@ void VulkanCommandBuffer::addBufferBarrier(VulkanAPI* vulkanAPI,
 		vulkanAPI->oldPipelineStage |= oldBufferState.stage;
 		vulkanAPI->newPipelineStage |= newBufferState.stage;
 	}
-
 	oldBufferState = newBufferState;
 }
 
@@ -307,9 +331,9 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 			}
 			else if (uniform.type == GslUniformType::AccelerationStructure)
 			{
-				Buffer::BarrierState newBufferState;
-				newBufferState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
-				newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+				Buffer::BarrierState newAsState;
+				newAsState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+				newAsState.stage = (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR;
 
 				for (uint32 j = descriptor.offset; j < setCount; j++)
 				{
@@ -317,7 +341,8 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 					for (auto resource : resourceArray)
 					{
 						auto tlasView = vulkanAPI->tlasPool.get(ID<Tlas>(resource));
-						addBufferBarrier(vulkanAPI, newBufferState, tlasView->getStorageBuffer());
+						auto& oldAsState = AccelerationStructureExt::getBarrierState(**tlasView);
+						addMemoryBarrier(vulkanAPI, oldAsState, newAsState);
 					}
 				}
 			}
@@ -332,7 +357,8 @@ void VulkanCommandBuffer::processPipelineBarriers(VulkanAPI* vulkanAPI)
 	SET_CPU_ZONE_SCOPED("Pipeline Barriers Process");
 
 	if (vulkanAPI->imageMemoryBarriers.empty() && 
-		vulkanAPI->bufferMemoryBarriers.empty() && vulkanAPI->memoryBarriers.empty())
+		vulkanAPI->bufferMemoryBarriers.empty() && 
+		vulkanAPI->memoryBarriers.empty())
 	{
 		return;
 	}
@@ -1511,41 +1537,42 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	auto vulkanAPI = VulkanAPI::get();
 	auto scratchBufferView = vulkanAPI->bufferPool.get(command.scratchBuffer);
 
-	Buffer::BarrierState newBufferState;
-	newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
+	Buffer::BarrierState srcNewState, dstNewState, tmpState;
+	srcNewState.stage = dstNewState.stage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
 
 	vk::AccelerationStructureBuildGeometryInfoKHR info;
-	View<AccelerationStructure> asView;
+	View<AccelerationStructure> srcAsView, dstAsView;
 	if (command.srcAS)
 	{
 		if (command.typeAS == AccelerationStructure::Type::Blas)
-			asView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
+			srcAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
 		else
-			asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
+			srcAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
 
-		newBufferState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
-		addBufferBarrier(vulkanAPI, newBufferState, asView->getStorageBuffer());
-		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
+		srcNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
 	}
 	if (command.typeAS == AccelerationStructure::Type::Blas)
 	{
 		info.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-		asView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
+		dstAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
 	}
 	else
 	{
 		info.type = vk::AccelerationStructureTypeKHR::eTopLevel;
-		asView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
+		dstAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
 	}
+	dstNewState.access |= (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
 
-	newBufferState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
-	addBufferBarrier(vulkanAPI, newBufferState, asView->getStorageBuffer());
+	auto srcOldAsState = command.srcAS ? &AccelerationStructureExt::getBarrierState(**srcAsView) : &tmpState;
+	auto& dstOldAsState = AccelerationStructureExt::getBarrierState(**dstAsView);
+	addMemoryBarrier(vulkanAPI, *srcOldAsState, dstOldAsState, srcNewState, dstNewState);
 
-	newBufferState.access = (uint32)(vk::AccessFlagBits::eAccelerationStructureReadKHR |
+	dstNewState.access = (uint32)(vk::AccessFlagBits::eAccelerationStructureReadKHR |
 		vk::AccessFlagBits::eAccelerationStructureWriteKHR);
-	addBufferBarrier(vulkanAPI, newBufferState, command.scratchBuffer); // TODO: synchronize only used part of the scratch buffer.
+	addBufferBarrier(vulkanAPI, dstNewState, command.scratchBuffer); // TODO: synchronize only used part of the scratch buffer.
 
-	auto buildData = (uint8*)AccelerationStructureExt::getBuildData(**asView);
+	auto buildData = (uint8*)AccelerationStructureExt::getBuildData(**dstAsView);
 	auto buildDataHeader = ((AccelerationStructure::BuildDataHeader*)buildData);
 	auto buildDataOffset = sizeof(AccelerationStructure::BuildDataHeader);
 	auto syncBuffers = (ID<Buffer>*)(buildData + buildDataOffset);
@@ -1554,24 +1581,24 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	buildDataOffset += buildDataHeader->geometryCount * sizeof(vk::AccelerationStructureGeometryKHR);
 	auto rangeInfos = (const vk::AccelerationStructureBuildRangeInfoKHR*)(buildData + buildDataOffset);
 
-	info.flags = toVkBuildFlagsAS(asView->getFlags());
+	info.flags = toVkBuildFlagsAS(dstAsView->getFlags());
 	info.mode = command.isUpdate ? vk::BuildAccelerationStructureModeKHR::eUpdate :
 		vk::BuildAccelerationStructureModeKHR::eBuild;
-	info.dstAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
+	info.dstAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**dstAsView);
 	info.scratchData = alignSize(scratchBufferView->getDeviceAddress(), 
 		(uint64)vulkanAPI->asProperties.minAccelerationStructureScratchOffsetAlignment);
 	info.geometryCount = buildDataHeader->geometryCount;
 	info.pGeometries = asArray;
 
-	newBufferState.access = (uint32)vk::AccessFlagBits::eShaderRead;
+	dstNewState.access = (uint32)vk::AccessFlagBits::eShaderRead;
 	for (uint32 i = 0; i < buildDataHeader->bufferCount; i++)
-		addBufferBarrier(vulkanAPI, newBufferState, syncBuffers[i]);
+		addBufferBarrier(vulkanAPI, dstNewState, syncBuffers[i]);
 
 	vulkanAPI->asGeometryInfos.push_back(info);
 	vulkanAPI->asRangeInfos.push_back(rangeInfos);
 	vulkanAPI->asBuildData.push_back(buildData);
 
-	if (hasAnyFlag(asView->getFlags(), BuildFlagsAS::AllowCompaction))
+	if (hasAnyFlag(dstAsView->getFlags(), BuildFlagsAS::AllowCompaction))
 	{
 		buildDataHeader->queryPoolIndex = UINT32_MAX;
 		vulkanAPI->asWriteProperties.push_back(info.dstAccelerationStructure);
@@ -1579,7 +1606,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	else
 	{
 		buildDataHeader->queryPoolIndex = 0;
-		AccelerationStructureExt::getBuildData(**asView) = nullptr;
+		AccelerationStructureExt::getBuildData(**dstAsView) = nullptr;
 	}
 	
 	auto commandOffset = (((const uint8*)&command) - data) + command.thisSize;
@@ -1614,17 +1641,18 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 			createInfo.queryType = vk::QueryType::eAccelerationStructureCompactedSizeKHR;
 			createInfo.queryCount = (uint32)vulkanAPI->asWriteProperties.size(); 
 			auto queryPool = (vk::QueryPool)vulkanAPI->device.createQueryPool(createInfo);
-			vulkanAPI->device.resetQueryPool(queryPool, 0, createInfo.queryCount);
 
 			auto compactData = new AccelerationStructure::CompactData();
 			compactData->queryResults.resize(createInfo.queryCount);
 			compactData->queryPool = queryPool;
 			compactData->queryPoolRef = createInfo.queryCount - 1;
 
-			vk::MemoryBarrier barrier(vk::AccessFlagBits::eAccelerationStructureWriteKHR, 
-				vk::AccessFlagBits::eAccelerationStructureReadKHR);
-			instance.pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, 
-				vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, {}, 1, &barrier, 0, nullptr, 0, nullptr);
+			dstNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+			auto& oldAsState = AccelerationStructureExt::getBarrierState(**dstAsView);
+			addMemoryBarrier(vulkanAPI, oldAsState, dstNewState);
+			processPipelineBarriers(vulkanAPI);
+
+			instance.resetQueryPool(queryPool, 0, createInfo.queryCount);
 			instance.writeAccelerationStructuresPropertiesKHR(vulkanAPI->asWriteProperties, 
 				vk::QueryType::eAccelerationStructureCompactedSizeKHR, queryPool, 0);
 
@@ -1665,24 +1693,28 @@ void VulkanCommandBuffer::processCommand(const CopyAccelerationStructureCommand&
 
 	if (command.typeAS == AccelerationStructure::Type::Blas)
 	{
-		auto asView = vulkanAPI->blasPool.get(ID<Blas>(command.srcAS));
-		copyInfo.src = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
-		asView = vulkanAPI->blasPool.get(ID<Blas>(command.dstAS));
-		copyInfo.dst = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
+		srcAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
+		copyInfo.src = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
+		dstAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
+		copyInfo.dst = (VkAccelerationStructureKHR)ResourceExt::getInstance(**dstAsView);
 	}
 	else
 	{
-		auto asView = vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS));
-		copyInfo.src = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
-		asView = vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS));
-		copyInfo.dst = (VkAccelerationStructureKHR)ResourceExt::getInstance(**asView);
+		srcAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
+		copyInfo.src = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
+		dstAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
+		copyInfo.dst = (VkAccelerationStructureKHR)ResourceExt::getInstance(**dstAsView);
 	}
 
-	// TODO: detect previous acceleration structure access instead of always write.
-	vk::MemoryBarrier barrier(vk::AccessFlagBits::eAccelerationStructureWriteKHR, 
-		vk::AccessFlagBits::eAccelerationStructureReadKHR | vk::AccessFlagBits::eAccelerationStructureWriteKHR);
-	instance.pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, 
-		vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, {}, 1, &barrier, 0, nullptr, 0, nullptr);
+	Buffer::BarrierState srcNewState, dstNewState;
+	srcNewState.stage = dstNewState.stage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
+	srcNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+	dstNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
+	auto& srcOldState = AccelerationStructureExt::getBarrierState(**srcAsView);
+	auto& dstOldState = AccelerationStructureExt::getBarrierState(**dstAsView);
+	addMemoryBarrier(vulkanAPI, srcOldState, dstOldState, srcNewState, dstNewState);
+	processPipelineBarriers(vulkanAPI);
+
 	instance.copyAccelerationStructureKHR(copyInfo);
 }
 

@@ -2073,6 +2073,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 
 	checkRtShaderValues(bValues, bValues);
 	rayGenGroupIndex++; missGroupIndex++; hitGroupIndex++;
+	data.pushConstantsStages = ShaderStage::None;
 
 	uint8 groupIndex = 1;
 	while (true)
@@ -2112,13 +2113,18 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 			break;
 
 		checkRtShaderValues(bValues, hgValues);
+		if (hgValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
+		if (hgValues.missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
+		if (hgValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
+		if (hgValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Intersection;
+		if (hgValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::AnyHit;
+		if (hgValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::ClosestHit;
 	}
 	data.shaderPath.replace_extension();
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
-	data.pushConstantsStages = ShaderStage::None;
 	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
 	if (bValues.missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
 	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;

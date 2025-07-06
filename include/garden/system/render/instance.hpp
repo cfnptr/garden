@@ -77,7 +77,7 @@ public:
 	 * @brief Returns mesh instance shadow graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getShadowPipeline();
-	
+
 	/**
 	 * @brief Returns mesh base instance data size in bytes.
 	 */

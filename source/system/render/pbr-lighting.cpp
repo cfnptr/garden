@@ -754,7 +754,7 @@ void PbrLightingSystem::preHdrRender()
 	if (hasAnyShadow)
 	{
 		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[2], shadowFramebuffers[0], 
-			shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS);
+			shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
 		hasAnyShadow = false;
 	}
 	else if (shadowBuffer)

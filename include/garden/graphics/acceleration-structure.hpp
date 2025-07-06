@@ -89,6 +89,7 @@ protected:
 	ID<Buffer> storageBuffer = {};
 	uint64 deviceAddress = 0;
 	void* buildData = nullptr;
+	Buffer::BarrierState barrierState = {};
 	uint32 geometryCount = 0;
 	Type type = {};
 	BuildFlagsAS flags = {};
@@ -215,6 +216,12 @@ public:
 	 * @param[in] as target acceleration structure instance
 	 */
 	static void*& getBuildData(AccelerationStructure& as) noexcept { return as.buildData; }
+	/**
+	 * @brief Returns acceleration structure memory barrier state.
+	 * @warning In most cases you should use @ref AccelerationStructure functions.
+	 * @param[in] as target acceleration structure instance
+	 */
+	static Buffer::BarrierState& getBarrierState(AccelerationStructure& as) noexcept { return as.barrierState; }
 	/**
 	 * @brief Returns acceleration structure type.
 	 * @warning In most cases you should use @ref AccelerationStructure functions.

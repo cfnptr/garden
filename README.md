@@ -69,21 +69,21 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ### CMake variables
 
-| Name                      | Description                        | Default value                      |
-|---------------------------|------------------------------------|------------------------------------|
-| GARDEN_APP_NAME           | Application name                   | `Garden App`                       |
-| GARDEN_APP_NAME_LOWERCASE | Application lowercase name         | `garden-app`                       |
-| GARDEN_APP_NAMESPACE      | Application C++ namespace name     | `garden::app`                      |
-| GARDEN_APP_FILE_NAME      | Application file name (executable) | `Garden App`                       |
-| GARDEN_APP_ICON_PATH      | Application icon file path         |                                    |
-| GARDEN_APP_DESCRIPTION    | Application description            | `Made using Garden engine.`        |
-| GARDEN_APP_CREATOR        | Application creator (company)      | `Garden`                           |
-| GARDEN_APP_COPYRIGHT      | Application copyright (license)    | `20XX {name} All rights reserved.` |
-| GARDEN_APP_VERSION_MAJOR  | Application major version          | `1`                                |
-| GARDEN_APP_VERSION_MINOR  | Application minor version          | `0`                                |
-| GARDEN_APP_VERSION_PATCH  | Application patch version          | `0`                                |
-| GARDEN_APP_RESOURCES_DIR  | Application resources directory    | `garden/resources/default`         |
-| GARDEN_APP_CACHE_DIR      | Application cache directory        | `garden/.cache`                    |
+| Name                      | Description                        | Default value                       |
+|---------------------------|------------------------------------|-------------------------------------|
+| GARDEN_APP_NAME           | Application name                   | `Garden App`                        |
+| GARDEN_APP_NAME_LOWERCASE | Application lowercase name         | `garden-app`                        |
+| GARDEN_APP_NAMESPACE      | Application C++ namespace name     | `garden::app`                       |
+| GARDEN_APP_FILE_NAME      | Application file name (executable) | `Garden App`                        |
+| GARDEN_APP_ICON_PATH      | Application icon file path         |                                     |
+| GARDEN_APP_DESCRIPTION    | Application description            | `Made using Garden engine.`         |
+| GARDEN_APP_CREATOR        | Application creator (company)      | `Garden`                            |
+| GARDEN_APP_COPYRIGHT      | Application copyright (license)    | `20XX {name}. All rights reserved.` |
+| GARDEN_APP_VERSION_MAJOR  | Application major version          | `1`                                 |
+| GARDEN_APP_VERSION_MINOR  | Application minor version          | `0`                                 |
+| GARDEN_APP_VERSION_PATCH  | Application patch version          | `0`                                 |
+| GARDEN_APP_RESOURCES_DIR  | Application resources directory    | `garden/resources/default`          |
+| GARDEN_APP_CACHE_DIR      | Application cache directory        | `garden/.cache`                     |
 
 ### CMake targets
 
