@@ -62,9 +62,6 @@ void OitRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", OitRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", OitRenderSystem::gBufferRecreate);
-
-	if (!pipeline)
-		pipeline = createPipeline();
 }
 void OitRenderSystem::deinit()
 {
@@ -88,8 +85,12 @@ void OitRenderSystem::preLdrRender()
 		return;
 		
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	if (!graphicsSystem->camera || !deferredSystem->hasAnyOIT())
 		return;
+
+	if (!pipeline)
+		pipeline = createPipeline();
 
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
@@ -102,7 +103,6 @@ void OitRenderSystem::preLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);

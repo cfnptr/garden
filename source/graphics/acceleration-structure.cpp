@@ -106,10 +106,7 @@ bool AccelerationStructure::destroy()
 			{
 				if (data->queryPoolRef == 0)
 				{
-					if (vulkanAPI->forceResourceDestroy)
-						vulkanAPI->device.destroyQueryPool((VkQueryPool)data->queryPool);
-					else
-						vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::QueryPool, data->queryPool);
+					vulkanAPI->device.destroyQueryPool((VkQueryPool)data->queryPool);
 					delete data;
 				}
 				else data->queryPoolRef--;

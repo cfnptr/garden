@@ -389,14 +389,13 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderType)
 {
 	ID<Framebuffer> framebuffer; const float4* clearColors; uint8 clearColorCount;
-	if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque)
+	if (renderType == MeshRenderType::Opaque)
 	{
 		framebuffer = shadowFramebuffers[passIndex];
 		clearColors = nullptr;
 		clearColorCount = 0;
 	}
-	else if (renderType == MeshRenderType::Translucent || 
-		renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
+	else if (renderType == MeshRenderType::Translucent)
 	{
 		framebuffer = transFramebuffers[passIndex];
 		clearColors = &float4::one;
@@ -413,15 +412,10 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderType)
 {
 	ID<Framebuffer> framebuffer;
-	if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque )
-	{
+	if (renderType == MeshRenderType::Opaque)
 		framebuffer = shadowFramebuffers[passIndex];
-	}
-	else if (renderType == MeshRenderType::Translucent || 
-		renderType == MeshRenderType::OIT || renderType == MeshRenderType::Refracted)
-	{
+	else if (renderType == MeshRenderType::Translucent)
 		framebuffer = transFramebuffers[passIndex];
-	}
 	else abort();
 
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);

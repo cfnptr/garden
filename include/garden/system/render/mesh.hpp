@@ -34,6 +34,7 @@ enum class MeshRenderType : uint8
 	Translucent, /**< Allows some light to pass through, enabling partial transparency. */
 	OIT,         /**< Order independent transparency. (Faster than Translucent type) */
 	Refracted,   /**< Refracted or absorbed light rendering. */
+	TransDepth,  /**< Translucent depth only rendering. (Useful for ray tracing) */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -217,10 +218,12 @@ private:
 	vector<IMeshRenderSystem*> meshSystems;
 	uint32 unsortedBufferCount = 0;
 	uint32 sortedBufferCount = 0;
-	bool oit = false;
+	bool hasOIT = false;
 	bool asyncRecording = false;
 	bool asyncPreparing = false;
-	uint8 _alignment = 0;
+	bool hasAnyRefr = false;
+	bool hasAnyOIT = false;
+	bool hasAnyTransDepth = false;
 	atomic<uint32> sortedDrawIndex = 0; // Always last.
 
 	/**
@@ -253,8 +256,11 @@ private:
 	void preDeferredRender();
 	void deferredRender();
 	void depthHdrRender();
+	void preRefractedRender();
 	void refractedRender();
 	void translucentRender();
+	void transDepthRender();
+	void preOitRender();
 	void oitRender();
 
 	friend class ecsm::Manager;

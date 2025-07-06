@@ -237,10 +237,14 @@ public:
 	 */
 	struct BarrierState final
 	{
-		uint32 access = 0;
-		uint32 layout = 0;
-		uint32 stage = 0;
-		bool layoutTransition = false;
+		uint32 access = 0; /**< Image access type mask. */
+		uint32 layout = 0; /**< Target image data layout type. */
+		uint32 stage = 0;  /**< Pipeline stage type. */
+		uint8 fragLayoutTrans : 1;  /**< Fragment pipeline stage image layout transition. */
+		uint8 transLayoutTrans : 1; /**< Transfer pipeline stage image layout transition. */
+		uint8 rtLayoutTrans : 1;    /**< Ray tracing pipeline stage image layout transition. */
+		uint8 _unused : 5;          /**< Unused pipeline stage image layout transition. */
+		BarrierState() : fragLayoutTrans(0), transLayoutTrans(0), rtLayoutTrans(0), _unused(0) { }
 	};
 
 	using Layers = vector<const void*>;

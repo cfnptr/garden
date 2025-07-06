@@ -51,6 +51,7 @@ namespace garden
  *   PreDepthHdrRender, DepthHdrRender, 
  *   PreRefractedRender, RefractedRender, 
  *   PreTranslucentRender, TranslucentRender, 
+ *   PreTransDepthRender, TransDepthRender, 
  *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
  *   PreDepthLdrRender, DepthLdrRender, 
@@ -117,8 +118,10 @@ private:
 	ID<Framebuffer> refractedFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	bool asyncRecording = false;
-	bool emission = false;
-	bool gi = false;
+	bool hasEmission = false;
+	bool hasGI = false;
+	bool hasAnyRefr = false;
+	bool hasAnyOit = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
@@ -151,13 +154,30 @@ public:
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
 	/**
-	 * @brief Use light emission.
+	 * @brief Use light emission buffer.
 	 */
-	bool useEmission() const noexcept { return emission; }
+	bool useEmission() const noexcept { return hasEmission; }
 	/**
-	 * @brief Use global illumination.
+	 * @brief Use global illumination buffer.
 	 */
-	bool useGI() const noexcept { return gi; }
+	bool useGI() const noexcept { return hasGI; }
+
+	/**
+	 * @brief Marks that there is rendered refraction data on the current frame.
+	 */
+	void markAnyRefraction() noexcept { hasAnyRefr = true; }
+	/**
+	 * @brief Returns if there is rendered refraction data on the current frame.
+	 */
+	bool hasAnyRefraction() const noexcept { return hasAnyRefr; }
+	/**
+	 * @brief Marks that there is rendered OIT data on the current frame.
+	 */
+	void markAnyOIT() noexcept { hasAnyOit = true; }
+	/**
+	 * @brief Returns if there is rendered OIT data on the current frame.
+	 */
+	bool hasAnyOIT() const noexcept { return hasAnyOit; }
 
 	/**
 	 * @brief Returns deferred G-Buffer array.

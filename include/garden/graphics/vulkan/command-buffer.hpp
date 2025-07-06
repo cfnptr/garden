@@ -33,7 +33,7 @@ public:
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 
-	static void addBufferBarrier(VulkanAPI* vulkanAPI, const Buffer::BarrierState& newBufferState, 
+	static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState newBufferState, 
 		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
 	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
 		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
@@ -84,14 +84,52 @@ public:
 		VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
 		VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
 
-	static constexpr bool isDifferentState(const Image::BarrierState& oldState, 
-		const Image::BarrierState& newState) noexcept
+	static constexpr bool isDifferentState(const Image::BarrierState& oldState, const Image::BarrierState& newState) noexcept
 	{
-		return oldState.layout != newState.layout || (oldState.access & writeAccessMask) || oldState.layoutTransition;
+		auto layoutTransition = false;
+		switch (newState.stage)
+		{
+			case (uint32)vk::PipelineStageFlagBits::eFragmentShader: layoutTransition = oldState.fragLayoutTrans; break;
+			case (uint32)vk::PipelineStageFlagBits::eTransfer: layoutTransition = oldState.transLayoutTrans; break;
+			case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR: layoutTransition = oldState.rtLayoutTrans; break;
+			default: layoutTransition = false; break; // TODO: other stages.
+		}
+		return oldState.layout != newState.layout || (oldState.access & writeAccessMask) || layoutTransition;
 	}
 	static constexpr bool isDifferentState(const Buffer::BarrierState& oldState) noexcept
 	{
 		return oldState.access & writeAccessMask;
+	}
+
+	static constexpr void updateLayoutTrans(const Image::BarrierState& oldState, Image::BarrierState& newState) noexcept
+	{
+		if (oldState.layout != newState.layout)
+		{
+			newState.fragLayoutTrans = newState.transLayoutTrans = newState.rtLayoutTrans = 0;
+			switch (newState.stage)
+			{
+				case (uint32)vk::PipelineStageFlagBits::eFragmentShader:
+					newState.transLayoutTrans = newState.rtLayoutTrans = 1; break;
+				case (uint32)vk::PipelineStageFlagBits::eTransfer:
+					newState.fragLayoutTrans = newState.rtLayoutTrans = 1; break;
+				case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR:
+					newState.fragLayoutTrans = newState.transLayoutTrans = 1; break;
+				// TODO: other stages.
+			}
+			return;
+		}
+
+		newState.fragLayoutTrans = oldState.fragLayoutTrans;
+		newState.transLayoutTrans = oldState.transLayoutTrans;
+		newState.rtLayoutTrans = oldState.rtLayoutTrans;
+
+		switch (newState.stage)
+		{
+			case (uint32)vk::PipelineStageFlagBits::eFragmentShader: newState.fragLayoutTrans = 0; break;
+			case (uint32)vk::PipelineStageFlagBits::eTransfer: newState.transLayoutTrans = 0; break;
+			case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR: newState.rtLayoutTrans = 0; break;
+			// TODO: other stages.
+		}
 	}
 };
 
