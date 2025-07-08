@@ -1352,9 +1352,11 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 
 		GraphicsLineData lineData;
 		auto outPosition = fileData.outputFileStream.tellp();
+		uint32 wordIndex = 0;
 
 		while (fileData.inputStream >> lineData.word)
 		{
+			wordIndex++;
 			if (lineData.word.empty()) continue;
 
 			if (lineData.word.length() >= 2)
@@ -1501,8 +1503,9 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				bindingIndex, pushConstantsSize, variantCount, shaderStage)) { }
 			else
 			{
-				if (lineData.word == "in") { lineData.isIn = 1; overrideOutput = true; }
-				else if (lineData.word == "out" && !lineData.isDepthOverride) { lineData.isOut = 1; overrideOutput = true; }
+				if (lineData.word == "in" && wordIndex == 1) { lineData.isIn = 1; overrideOutput = true; }
+				else if (lineData.word == "out" && wordIndex == 1 && !lineData.isDepthOverride)
+				{ lineData.isOut = 1; overrideOutput = true; }
 				else if (lineData.word == "pipelineState") { fileData.isPipelineState = 1; overrideOutput = true; }
 				else if (lineData.word == "#attachmentOffset") { lineData.isAttachmentOffset = 1; overrideOutput = true; }
 				else if (lineData.word == "#attributeOffset")

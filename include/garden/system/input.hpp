@@ -177,7 +177,7 @@ private:
 	float2 accumMouseScroll = float2::zero;
 	float2 newMouseScroll = float2::zero;
 	float2 currMouseScroll = float2::zero;
-	double time = 0.0, systemTime = 0.0, deltaTime = 0.0;
+	double currentTime = 0.0, systemTime = 0.0, deltaTime = 0.0;
 	const fs::path* currFileDropPath = nullptr;
 	CursorMode newCursorMode = CursorMode::Normal;
 	CursorMode currCursorMode = CursorMode::Normal;
@@ -225,7 +225,7 @@ public:
 	 * @details You can use it to implement time based events or delays.
 	 * @note It is affected by the timeMultiplier value.
 	 */
-	double getTime() const noexcept { return time; }
+	double getCurrentTime() const noexcept { return currentTime; }
 	/**
 	 * @brief Returns time elapsed between two previous frames. (in seconds)
 	 * @note It is affected by the timeMultiplier value.

@@ -258,10 +258,10 @@ void InputSystem::input()
 	eventLocker.unlock();
 	#endif
 
-	auto currentTime = glfwGetTime();
-	deltaTime = (currentTime - systemTime) * timeMultiplier;
-	time += deltaTime;
-	systemTime = currentTime;
+	auto time = glfwGetTime();
+	deltaTime = (time - systemTime) * timeMultiplier;
+	currentTime += deltaTime;
+	systemTime = time;
 
 	if (!currFileDrops.empty())
 	{

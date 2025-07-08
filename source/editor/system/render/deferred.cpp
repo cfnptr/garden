@@ -131,8 +131,8 @@ void DeferredRenderEditorSystem::deferredRender()
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		Pipeline::SpecConstValues specConstValues =
 		{
-			{ "HAS_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmission()) },
-			{ "HAS_GI_BUFFER", Pipeline::SpecConstValue(deferredSystem->useGI()) },
+			{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->useClearCoat()) },
+			{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmission()) }
 		};
 
 		ResourceSystem::GraphicsOptions options;
@@ -188,27 +188,28 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::SliderFloat("Roughness", &lightingPC.mraor.y, 0.0f, 1.0f);
 			ImGui::SliderFloat("Ambient Occlusion", &lightingPC.mraor.z, 0.0f, 1.0f);
 			ImGui::SliderFloat("Reflectance", &lightingPC.mraor.w, 0.0f, 1.0f);
-			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.ccRoughness, 0.0f, 1.0f);
 			ImGui::SliderFloat("G-Buffer Shadows", &lightingPC.shadow, 0.0f, 1.0f);
+
+			ImGui::BeginDisabled(!deferredSystem->useClearCoat());
+			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.ccRoughness, 0.0f, 1.0f);
+			ImGui::EndDisabled();
 
 			ImGui::BeginDisabled(!deferredSystem->useEmission());
 			ImGui::ColorEdit3("Emissive Color", &lightingPC.emissiveColor);
 			ImGui::SliderFloat("Emissive Factor", &lightingPC.emissiveFactor, 0.0f, 1.0f);
 			ImGui::EndDisabled();
-
-			ImGui::BeginDisabled(!deferredSystem->useGI());
-			ImGui::ColorEdit3("GI Color", &lightingPC.giColor);
-			ImGui::EndDisabled();
+		}
+		else if ((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || 
+			drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->useClearCoat())
+		{
+			ImGui::TextDisabled("Clear coat buffer is disabled in deferred system!");
 		}
 		else if ((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || 
 			drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->useEmission())
 		{
 			ImGui::TextDisabled("Emission buffer is disabled in deferred system!");
 		}
-		else if (drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER && !deferredSystem->useGI())
-		{
-			ImGui::TextDisabled("GI buffer is disabled in deferred system!");
-		}
+		
 		else if (drawMode > G_BUFFER_DRAW_MODE_OFF)
 		{
 			ImGui::SeparatorText("Channels");
@@ -275,8 +276,8 @@ void DeferredRenderEditorSystem::ldrRender()
 	pc.showChannelB = showChannelB ? 1.0f : 0.0f;
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	if (((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && 
-		!deferredSystem->useEmission()) || (drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER && !deferredSystem->useGI()))
+	if (((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->useClearCoat()) || 
+		((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->useEmission()))
 	{
 		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
 	}

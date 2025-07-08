@@ -148,7 +148,7 @@ void SpawnerComponent::spawn(uint32 count)
 	}
 
 	if (delay != 0.0f)
-		delayTime = InputSystem::Instance::get()->getTime() + delay;
+		delayTime = InputSystem::Instance::get()->getCurrentTime() + delay;
 }
 void SpawnerComponent::destroySpawned()
 {
@@ -213,7 +213,7 @@ void SpawnerSystem::update()
 	SET_CPU_ZONE_SCOPED("Spawners Update");
 
 	auto transformSystem = TransformSystem::Instance::get();
-	auto currentTime = InputSystem::Instance::get()->getTime();
+	auto currentTime = InputSystem::Instance::get()->getCurrentTime();
 
 	for (auto& spawner : components)
 	{

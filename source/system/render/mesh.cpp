@@ -58,6 +58,7 @@ void MeshRenderSystem::init()
 		ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
 		ECSM_SUBSCRIBE_TO_EVENT("PreRefractedRender", MeshRenderSystem::preRefractedRender);
 		ECSM_SUBSCRIBE_TO_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+		ECSM_SUBSCRIBE_TO_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
 		ECSM_SUBSCRIBE_TO_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
 
 		if (hasOIT)
@@ -87,6 +88,7 @@ void MeshRenderSystem::deinit()
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreRefractedRender", MeshRenderSystem::preRefractedRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
 
 			if (hasOIT)
@@ -349,7 +351,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	uint32 sortedMeshMaxCount = 0;
 	sortedDrawIndex.store(0);
 	unsortedBufferCount = sortedBufferCount = 0;
-	hasAnyRefr = hasAnyOIT = false;
+	hasAnyRefr = hasAnyOIT = hasAnyTransDepth = false;
 
 	for (auto meshSystem : meshSystems)
 	{
@@ -377,9 +379,6 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		}
 		else
 		{
-			hasAnyRefr |= renderType == MeshRenderType::Refracted;
-			hasAnyOIT |= renderType == MeshRenderType::OIT;
-			hasAnyTransDepth |= renderType == MeshRenderType::TransDepth;
 			unsortedBufferCount++;
 		}
 	}
@@ -468,6 +467,10 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 
 			if (unsortedBuffer->combinedMeshes.size() < componentCount)
 				unsortedBuffer->combinedMeshes.resize(componentCount);
+
+			hasAnyRefr |= renderType == MeshRenderType::Refracted;
+			hasAnyOIT |= renderType == MeshRenderType::OIT;
+			hasAnyTransDepth |= renderType == MeshRenderType::TransDepth;
 			
 			if (threadSystem)
 			{
@@ -882,6 +885,16 @@ void MeshRenderSystem::translucentRender()
 
 	const auto& cameraConstants = graphicsSystem->getCameraConstants();
 	renderSorted(cameraConstants.viewProj, -1);
+}
+void MeshRenderSystem::preTransDepthRender()
+{
+	SET_CPU_ZONE_SCOPED("Mesh Pre Translucent Depth Render");
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!hasAnyTransDepth || !graphicsSystem->camera)
+		return;
+
+	DeferredRenderSystem::Instance::get()->markAnyTransDepth();
 }
 void MeshRenderSystem::transDepthRender()
 {

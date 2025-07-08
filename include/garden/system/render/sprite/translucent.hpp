@@ -44,7 +44,7 @@ class TransSpriteSystem final : public SpriteRenderCompSystem<
 	 */
 	TransSpriteSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroys opaque translucent rendering system instance.
+	 * @brief Destroys translucent sprite rendering system instance.
 	 */
 	~TransSpriteSystem() final;
 

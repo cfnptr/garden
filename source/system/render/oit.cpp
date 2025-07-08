@@ -83,7 +83,7 @@ void OitRenderSystem::preLdrRender()
 
 	if (!isEnabled)
 		return;
-		
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (!graphicsSystem->camera || !deferredSystem->hasAnyOIT())

@@ -67,27 +67,26 @@ public:
 	static constexpr uint8 gBufferRoughness = 1;   /**< Index of the G-Buffer with encoded roughness. */
 	static constexpr uint8 gBufferMaterialAO = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
 	static constexpr uint8 gBufferReflectance = 1; /**< Index of the G-Buffer with encoded reflectance. */
-	static constexpr uint8 gBufferCcNormals = 2;   /**< Index of the G-Buffer with encoded clear coat normals. */
-	static constexpr uint8 gBufferCcRoughness = 2; /**< Index of the G-Buffer with encoded clear coat roughness. */
-	static constexpr uint8 gBufferNormals = 3;     /**< Index of the G-Buffer with encoded normals. */
-	static constexpr uint8 gBufferShadow = 3;      /**< Index of the G-Buffer with encoded shadow. */
+	static constexpr uint8 gBufferNormals = 2;     /**< Index of the G-Buffer with encoded normals. */
+	static constexpr uint8 gBufferShadow = 2;      /**< Index of the G-Buffer with encoded shadow. */
+	static constexpr uint8 gBufferCcNormals = 3;   /**< Index of the G-Buffer with encoded clear coat normals. */
+	static constexpr uint8 gBufferCcRoughness = 3; /**< Index of the G-Buffer with encoded clear coat roughness. */
 	static constexpr uint8 gBufferEmColor = 4;     /**< Index of the G-Buffer with encoded emissive color. */
 	static constexpr uint8 gBufferEmFactor = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 gBufferGI = 5;          /**< Index of the G-Buffer with encoded global illumination color. */
-	static constexpr uint8 gBufferCount = 6;       /**< Deferred rendering G-Buffer count. */
+	static constexpr uint8 gBufferCount = 5;       /**< Deferred rendering G-Buffer count. */
 
 	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormB8G8R8A8;
 	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbB8G8R8A8;
-	static constexpr Image::Format gBufferFormat5 = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format depthStencilFormat = Image::Format::SfloatD32;
 	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format ldrBufferFormat = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format oitAccumBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
+	static constexpr Image::Format transBufferFormat = Image::Format::UnormR8;
 
 	static constexpr Framebuffer::OutputAttachment::Flags gBufferFlags = { false, false, true};
 	static constexpr Framebuffer::OutputAttachment::Flags gBufferDepthFlags = { true, false, true};
@@ -99,6 +98,8 @@ public:
 	static constexpr Framebuffer::OutputAttachment::Flags oitBufferFlags = { true, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags oitBufferDepthFlags = { false, true, false };
 	static constexpr Framebuffer::OutputAttachment::Flags normalsBufferFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags transBufferFlags = { true, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags transBufferDepthFlags = { false, true, true };
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
@@ -109,6 +110,7 @@ private:
 	ID<Image> oitRevealBuffer = {};
 	ID<Image> depthStencilBuffer = {};
 	ID<Image> depthCopyBuffer = {};
+	ID<Image> transBuffer = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
 	ID<Framebuffer> depthHdrFramebuffer = {};
@@ -117,21 +119,23 @@ private:
 	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> refractedFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
+	ID<Framebuffer> transDepthFramebuffer = {};
 	bool asyncRecording = false;
+	bool hasClearCoat = false;
 	bool hasEmission = false;
-	bool hasGI = false;
 	bool hasAnyRefr = false;
 	bool hasAnyOit = false;
+	bool hasAnyTD = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
 	 * 
+	 * @param useClearCoat use clear coat buffer
 	 * @param useEmission use light emission buffer
-	 * @param useGI use global illumination buffer
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param setSingleton set system singleton instance
 	 */
-	DeferredRenderSystem(bool useEmission = true, bool useGI = true, 
+	DeferredRenderSystem(bool useClearCoat = true, bool useEmission = true, 
 		bool useAsyncRecording = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
@@ -154,13 +158,13 @@ public:
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
 	/**
+	 * @brief Use clear coat buffer.
+	 */
+	bool useClearCoat() const noexcept { return hasClearCoat; }
+	/**
 	 * @brief Use light emission buffer.
 	 */
 	bool useEmission() const noexcept { return hasEmission; }
-	/**
-	 * @brief Use global illumination buffer.
-	 */
-	bool useGI() const noexcept { return hasGI; }
 
 	/**
 	 * @brief Marks that there is rendered refraction data on the current frame.
@@ -178,6 +182,14 @@ public:
 	 * @brief Returns if there is rendered OIT data on the current frame.
 	 */
 	bool hasAnyOIT() const noexcept { return hasAnyOit; }
+	/**
+	 * @brief Marks that there is rendered translucent depth data on the current frame.
+	 */
+	void markAnyTransDepth() noexcept { hasAnyTD = true; }
+	/**
+	 * @brief Returns if there is rendered translucent depth data on the current frame.
+	 */
+	bool hasAnyTransDepth() const noexcept { return hasAnyTD; }
 
 	/**
 	 * @brief Returns deferred G-Buffer array.
@@ -216,6 +228,10 @@ public:
 	 * @brief Returns deferred depth copy buffer.
 	 */
 	ID<Image> getDepthCopyBuffer();
+	/**
+	 * @brief Returns deferred transparent buffer.
+	 */
+	ID<Image> getTransBuffer();
 
 	/**
 	 * @brief Returns deferred G-Buffer framebuffer.
@@ -249,6 +265,10 @@ public:
 	 * @brief Returns deferred OIT framebuffer. (Order Independent Transparency)
 	 */
 	ID<Framebuffer> getOitFramebuffer();
+	/**
+	 * @brief Returns deferred transparent depth framebuffer.
+	 */
+	ID<Framebuffer> getTransDepthFramebuffer();
 };
 
 } // namespace garden

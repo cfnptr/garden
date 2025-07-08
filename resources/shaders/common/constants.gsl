@@ -31,6 +31,8 @@
 	float2 invFrameSize;     \
 	float2 invFrameSize2;    \
 	float nearPlane;         \
+	float currentTime;       \
+	float deltaTime;         \
 	float emissiveCoeff;     \
 	float anglePerPixel;
 

@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSION_BUFFER
-#define USE_GI_BUFFER
+#define USE_SPECULAR_FACTOR
+#define USE_AMBIENT_OCCLUSION
+#define USE_LIGHT_SHADOW
+#define USE_CLEAR_COAT
+#define USE_LIGHT_EMISSION
 
-#define HAS_EMISSION_BUFFER true
-#define HAS_GI_BUFFER true
+#define USE_CLEAR_COAT_BUFFER true
+#define USE_EMISSION_BUFFER true
 
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
@@ -37,7 +40,6 @@ uniform sampler2D g1;
 uniform sampler2D g2;
 uniform sampler2D g3;
 uniform sampler2D g4;
-uniform sampler2D g5;
 
 uniform sampler2D hdrBuffer;
 uniform sampler2D depthBuffer;
@@ -100,10 +102,10 @@ void main()
 		float ao = textureLod(aoBuffer, fs.texCoords, 0.0f).r;
 		fb.color = float4(float3(ao), 1.0f);
 	}
-	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER)
-	{
-		fb.color = float4(gammaCorrection(gBuffer.giColor), 1.0f);
-	}
+	//else if (pc.drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER)
+	//{
+	//	fb.color = float4(gammaCorrection(gBuffer.giColor), 1.0f);
+	//}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_OIT_ACCUM_COLOR)
 	{
 		float3 oitColor = textureLod(oitAccumBuffer, fs.texCoords, 0.0f).rgb;
@@ -133,7 +135,7 @@ void main()
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_REFLECTANCE)
 		fb.color = float4(float3(gBuffer.reflectance), 1.0f);
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_MATERIAL_SHADOW)
-		fb.color = float4(float3(gBuffer.shadow), 1.0f);
+		fb.color = float4(float3(gBuffer.shadow.a), 1.0f);
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR)
 		fb.color = float4(gBuffer.emissiveColor, 1.0f);
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR)
