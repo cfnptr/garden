@@ -1330,19 +1330,19 @@ void PhysicsSystem::simulate()
 
 		#if (GARDEN_DEBUG || GARDEN_EDITOR) && defined(JPH_TRACK_BROADPHASE_STATS)
 		static auto lastBroadphaseTime = 0.0;
-		if (logBroadPhaseStats && lastBroadphaseTime < inputSystem->getTime())
+		if (logBroadPhaseStats && lastBroadphaseTime < inputSystem->getCurrentTime())
 		{
 			physicsInstance->ReportBroadphaseStats();
-			lastBroadphaseTime = inputSystem->getTime() + statsLogRate;
+			lastBroadphaseTime = inputSystem->getCurrentTime() + statsLogRate;
 		}
 		#endif
 
 		#if (GARDEN_DEBUG || GARDEN_EDITOR) && defined(JPH_TRACK_NARROWPHASE_STATS)
 		static auto lastNarrowphaseTime = 0.0;
-		if (logNarrowPhaseStats && lastNarrowphaseTime < inputSystem->getTime())
+		if (logNarrowPhaseStats && lastNarrowphaseTime < inputSystem->getCurrentTime())
 		{
 			JPH::NarrowPhaseStat::sReportStats();
-			lastNarrowphaseTime = inputSystem->getTime() + statsLogRate;
+			lastNarrowphaseTime = inputSystem->getCurrentTime() + statsLogRate;
 		}
 		#endif
 

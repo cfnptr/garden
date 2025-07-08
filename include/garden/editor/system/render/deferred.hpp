@@ -37,9 +37,8 @@ class DeferredRenderEditorSystem final : public System
 		float4 mraor = float4(0.0f, 1.0f, 1.0f, 0.5f);
 		float3 emissiveColor = float3::zero;
 		float emissiveFactor = 0.0f;
-		float3 giColor = float3::one;
-		float ccRoughness = 0.0f;
 		float shadow = 1.0f;
+		float ccRoughness = 0.0f;
 	};
 
 	ID<Image> blackPlaceholder = {};

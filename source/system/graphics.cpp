@@ -28,6 +28,7 @@
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
 
+#include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
 #include "garden/os.hpp"
 
@@ -227,6 +228,9 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	uint2 scaledFramebufferSize, CameraConstants& cameraConstants)
 {
 	auto manager = Manager::Instance::get();
+	auto inputSystem = InputSystem::Instance::get();
+	cameraConstants.currentTime = inputSystem->getCurrentTime();
+	cameraConstants.deltaTime = inputSystem->getDeltaTime();
 
 	auto transformView = manager->tryGet<TransformComponent>(camera);
 	if (transformView)
@@ -250,8 +254,8 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 
 		if (cameraView->type == ProjectionType::Perspective)
 		{
-			cameraConstants.anglePerPixel = std::atan((2.0f * std::tan(
-				cameraView->p.perspective.fieldOfView * 0.5f)) / scaledFramebufferSize.y);
+			cameraConstants.anglePerPixel = calcAnglePerPixel(
+				cameraView->p.perspective.fieldOfView, scaledFramebufferSize.y);
 		}
 		else
 		{

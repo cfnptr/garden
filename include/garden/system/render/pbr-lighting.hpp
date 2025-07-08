@@ -49,7 +49,8 @@ private:
  * 
  * Registers events: PreShadowRender, ShadowRender, PostShadowRender ShadowRecreate, 
  * 	                 PreAoRender, AoRender, PostAoRender, AoRecreate, 
- *                   PreReflRender, ReflRender, PostReflRender, ReflRecreate.
+ *                   PreReflRender, ReflRender, PostReflRender, ReflRecreate,
+ *                   PreGiRender, GiRender, PostGiRender, GiRecreate.
  */
 class PbrLightingSystem final : public ComponentSystem<PbrLightingComponent>, public Singleton<PbrLightingSystem>
 {
@@ -74,6 +75,7 @@ public:
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format giBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
 	ID<Image> dfgLUT = {};
 	ID<Buffer> reflKernel = {};
@@ -82,6 +84,8 @@ private:
 	ID<Image> aoBuffer = {};
 	ID<Image> aoBlurBuffer = {};
 	ID<Image> reflBuffer = {};
+	ID<Image> giBuffer = {};
+	ID<Framebuffer> giFramebuffer = {};
 	ID<ImageView> shadowImageViews[accumBufferCount] = {};
 	ID<Framebuffer> shadowFramebuffers[accumBufferCount + 1] = {};
 	ID<ImageView> aoImageViews[accumBufferCount] = {};
@@ -102,9 +106,11 @@ private:
 	bool hasShadowBuffer = false;
 	bool hasAoBuffer = false;
 	bool hasReflBuffer = false;
+	bool hasGiBuffer = false;
 	bool hasAnyShadow = false;
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
+	bool hasAnyGI = false;
 
 	/**
 	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
@@ -112,10 +118,11 @@ private:
 	 * @param useShadowBuffer create and use shadow buffer for rendering
 	 * @param useAoBuffer create and use ambient occlusion buffer for rendering
 	 * @param useReflBuffer create and use reflection buffer for rendering
+	 * @param useGiBuffer create and use global illumination buffer for rendering
 	 * @param setSingleton set system singleton instance
 	 */
 	PbrLightingSystem(bool useShadowBuffer = true, bool useAoBuffer = true, 
-		bool useReflBuffer = true, bool setSingleton = true);
+		bool useReflBuffer = true, bool useGiBuffer = true, bool setSingleton = true);
 	/**
 	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
 	 */
@@ -146,14 +153,19 @@ public:
 	 */
 	bool useReflBuffer() const noexcept { return hasReflBuffer; }
 	/**
+	 * @brief Use global illumination buffer for PBR lighting rendering.
+	 */
+	bool useGiBuffer() const noexcept { return hasGiBuffer; }
+	/**
 	 * @brief Enables or disables use of the shadow and ambient occlusion buffers.
 	 * @details It destroys existing buffers on use set to false.
 	 * 
 	 * @param useShadowBuffer use shadow buffer for rendering
 	 * @param useAoBuffer use ambient occlusion buffer for rendering
 	 * @param useReflBUffer use reflection buffer for rendering
+	 * @param useGiBuffer use global illumination buffer for rendering
 	 */
-	void setConsts(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer);
+	void setConsts(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer, bool useGiBuffer);
 
 	/**
 	 * @brief Returns PBR lighting reflections LOD offset.
@@ -181,6 +193,10 @@ public:
 	 * @brief Returns PBR lighting reflection framebuffer array.
 	 */
 	const vector<ID<Framebuffer>>& getReflFramebuffers();
+	/**
+	 * @brief Returns PBR lighting global illumination framebuffer.
+	 */
+	ID<Framebuffer> getGiFramebuffer();
 
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
@@ -240,6 +256,10 @@ public:
 	 * @brief Returns PBR lighting reflection buffer.
 	 */
 	ID<Image> getReflBuffer();
+	/**
+	 * @brief Returns PBR lighting global illumination buffer.
+	 */
+	ID<Image> getGiBuffer();
 
 	/**
 	 * @brief Returns PBR lighting shadow image view array.

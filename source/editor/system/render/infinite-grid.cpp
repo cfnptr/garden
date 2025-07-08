@@ -144,14 +144,19 @@ void InfiniteGridEditorSystem::preRender()
 				"editor/infinite-grid/translucent", framebuffer, options);
 		}
 	}
-	
+
 	auto pipelineView = graphicsSystem->get(pipeline);
-	if (pipelineView->isReady() && !descriptorSet)
+	if (!pipelineView->isReady())
+		return;
+
+	if (!descriptorSet)
 	{
 		auto uniforms = getUniforms();
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}
+
+	DeferredRenderSystem::Instance::get()->markAnyOIT();
 }
 void InfiniteGridEditorSystem::render()
 {

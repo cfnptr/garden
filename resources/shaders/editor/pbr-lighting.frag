@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define USE_EMISSION_BUFFER
-#define USE_GI_BUFFER
+#define USE_SPECULAR_FACTOR
+#define USE_AMBIENT_OCCLUSION
+#define USE_LIGHT_SHADOW
+#define USE_CLEAR_COAT
+#define USE_LIGHT_EMISSION
 
-spec const bool HAS_EMISSION_BUFFER = false;
-spec const bool HAS_GI_BUFFER = false;
+spec const bool USE_CLEAR_COAT_BUFFER = false;
+spec const bool USE_EMISSION_BUFFER = false;
 
 #include "common/gbuffer.gsl"
 
@@ -32,7 +35,6 @@ out float4 fb.g1;
 out float4 fb.g2;
 out float4 fb.g3;
 out float4 fb.g4;
-out float4 fb.g5;
 
 uniform pushConstants
 {
@@ -41,9 +43,8 @@ uniform pushConstants
 	float4 mraor;
 	float3 emissiveColor;
 	float emissiveFactor;
-	float3 giColor;
-	float ccRoughness;
 	float shadow;
+	float ccRoughness;
 } pc;
 
 void main()
@@ -55,17 +56,9 @@ void main()
 	gBuffer.roughness = pc.mraor.g;
 	gBuffer.ambientOcclusion = pc.mraor.b;
 	gBuffer.reflectance = pc.mraor.a;
+	gBuffer.shadow.a = pc.shadow;
 	gBuffer.clearCoatRoughness = pc.ccRoughness;
-	gBuffer.shadow = pc.shadow;
-
-	#ifdef USE_EMISSION_BUFFER
 	gBuffer.emissiveColor = pc.emissiveColor;
 	gBuffer.emissiveFactor = pc.emissiveFactor;
-	#endif
-
-	#ifdef USE_GI_BUFFER
-	gBuffer.giColor = pc.giColor;
-	#endif
-
 	ENCODE_G_BUFFER_VALUES(gBuffer);
 }

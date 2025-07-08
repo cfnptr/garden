@@ -259,6 +259,7 @@ private:
 	void preRefractedRender();
 	void refractedRender();
 	void translucentRender();
+	void preTransDepthRender();
 	void transDepthRender();
 	void preOitRender();
 	void oitRender();
