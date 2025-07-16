@@ -131,8 +131,8 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap,
 	ID<Image> transparentMap, const DescriptorSet::Buffers& dataBuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto depthMapView = graphicsSystem->get(depthMap);
-	auto transparentMapView = graphicsSystem->get(transparentMap);
+	auto depthMapView = graphicsSystem->get(depthMap)->getDefaultView();
+	auto transparentMapView = graphicsSystem->get(transparentMap)->getDefaultView();
 	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	
@@ -142,8 +142,8 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap,
 			DeferredRenderSystem::gBufferNormals].imageView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(gFramebuffer->getDepthStencilAttachment().imageView, 1, inFlightCount) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
-		{ "depthMap", DescriptorSet::Uniform(depthMapView->getDefaultView(), 1, inFlightCount) },
-		{ "transparentMap", DescriptorSet::Uniform(transparentMapView->getDefaultView(), 1, inFlightCount) }
+		{ "depthMap", DescriptorSet::Uniform(depthMapView, 1, inFlightCount) },
+		{ "transparentMap", DescriptorSet::Uniform(transparentMapView, 1, inFlightCount) }
 	};
 	return uniforms;
 }

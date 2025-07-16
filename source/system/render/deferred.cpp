@@ -136,14 +136,13 @@ static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<I
 			continue;
 		}
 
-		auto gBufferView = graphicsSystem->get(gBuffers[i]);
-		colorAttachments[i] = Framebuffer::OutputAttachment(
-			gBufferView->getDefaultView(), DeferredRenderSystem::gBufferFlags);
+		auto gBufferView = graphicsSystem->get(gBuffers[i])->getDefaultView();
+		colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView, DeferredRenderSystem::gBufferFlags);
 	}
 
-	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
+	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilBufferView->getDefaultView(), DeferredRenderSystem::gBufferDepthFlags);
+		depthStencilBufferView, DeferredRenderSystem::gBufferDepthFlags);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment); 
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.gBuffer");
@@ -153,10 +152,10 @@ static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<I
 static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto hdrBufferView = graphicsSystem->get(hdrBuffer);
+	auto hdrBufferView = graphicsSystem->get(hdrBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags) };
+	{ Framebuffer::OutputAttachment(hdrBufferView, DeferredRenderSystem::hdrBufferFlags) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
@@ -166,13 +165,13 @@ static ID<Framebuffer> createHdrFramebuffer(ID<Image> hdrBuffer)
 static ID<Framebuffer> createDepthHdrFramebuffer(ID<Image> hdrBuffer, ID<Image> depthStencilBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto hdrBufferView = graphicsSystem->get(hdrBuffer);
-	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
+	auto hdrBufferView = graphicsSystem->get(hdrBuffer)->getDefaultView();
+	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags) };
+	{ Framebuffer::OutputAttachment(hdrBufferView, DeferredRenderSystem::hdrBufferFlags) };
 	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilBufferView->getDefaultView(), DeferredRenderSystem::hdrBufferDepthFlags);
+		depthStencilBufferView, DeferredRenderSystem::hdrBufferDepthFlags);
 
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
@@ -182,10 +181,10 @@ static ID<Framebuffer> createDepthHdrFramebuffer(ID<Image> hdrBuffer, ID<Image> 
 static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer);
+	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), DeferredRenderSystem::ldrBufferFlags) };
+	{ Framebuffer::OutputAttachment(ldrBufferView, DeferredRenderSystem::ldrBufferFlags) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
@@ -195,13 +194,13 @@ static ID<Framebuffer> createLdrFramebuffer(ID<Image> ldrBuffer)
 static ID<Framebuffer> createDepthLdrFramebuffer(ID<Image> ldrBuffer, ID<Image> depthStencilBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer);
-	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
+	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView->getDefaultView(), DeferredRenderSystem::ldrBufferFlags) };
+	{ Framebuffer::OutputAttachment(ldrBufferView, DeferredRenderSystem::ldrBufferFlags) };
 	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilBufferView->getDefaultView(), DeferredRenderSystem::ldrBufferDepthFlags);
+		depthStencilBufferView, DeferredRenderSystem::ldrBufferDepthFlags);
 
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
@@ -211,10 +210,10 @@ static ID<Framebuffer> createDepthLdrFramebuffer(ID<Image> ldrBuffer, ID<Image> 
 static ID<Framebuffer> createUiFramebuffer(ID<Image> uiBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto uiBufferView = graphicsSystem->get(uiBuffer);
+	auto uiBufferView = graphicsSystem->get(uiBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(uiBufferView->getDefaultView(), DeferredRenderSystem::uiBufferFlags) };
+	{ Framebuffer::OutputAttachment(uiBufferView, DeferredRenderSystem::uiBufferFlags) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getFramebufferSize(), std::move(colorAttachments));
@@ -225,18 +224,18 @@ static ID<Framebuffer> createRefractedFramebuffer(ID<Image> hdrBuffer,
 	ID<Image> normalsBuffer, ID<Image> depthStencilBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto hdrBufferView = graphicsSystem->get(hdrBuffer);
-	auto normalsBufferView = graphicsSystem->get(normalsBuffer);
-	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
+	auto hdrBufferView = graphicsSystem->get(hdrBuffer)->getDefaultView();
+	auto normalsBufferView = graphicsSystem->get(normalsBuffer)->getDefaultView();
+	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{
-		Framebuffer::OutputAttachment(hdrBufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags),
-		Framebuffer::OutputAttachment(normalsBufferView->getDefaultView(), DeferredRenderSystem::normalsBufferFlags),
+		Framebuffer::OutputAttachment(hdrBufferView, DeferredRenderSystem::hdrBufferFlags),
+		Framebuffer::OutputAttachment(normalsBufferView, DeferredRenderSystem::normalsBufferFlags),
 	};
 
 	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilBufferView->getDefaultView(), DeferredRenderSystem::hdrBufferDepthFlags);
+		depthStencilBufferView, DeferredRenderSystem::hdrBufferDepthFlags);
 
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
@@ -247,17 +246,17 @@ static ID<Framebuffer> createOitFramebuffer(ID<Image> oitAccumBuffer,
 	ID<Image> oitRevealBuffer, ID<Image> depthStencilBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto oitAccumBufferView = graphicsSystem->get(oitAccumBuffer);
-	auto oitRevealBufferView = graphicsSystem->get(oitRevealBuffer);
-	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer);
+	auto oitAccumBufferView = graphicsSystem->get(oitAccumBuffer)->getDefaultView();
+	auto oitRevealBufferView = graphicsSystem->get(oitRevealBuffer)->getDefaultView();
+	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{
-		Framebuffer::OutputAttachment(oitAccumBufferView->getDefaultView(), DeferredRenderSystem::oitBufferFlags),
-		Framebuffer::OutputAttachment(oitRevealBufferView->getDefaultView(), DeferredRenderSystem::oitBufferFlags)
+		Framebuffer::OutputAttachment(oitAccumBufferView, DeferredRenderSystem::oitBufferFlags),
+		Framebuffer::OutputAttachment(oitRevealBufferView, DeferredRenderSystem::oitBufferFlags)
 	};
 	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilBufferView->getDefaultView(), DeferredRenderSystem::oitBufferDepthFlags);
+		depthStencilBufferView, DeferredRenderSystem::oitBufferDepthFlags);
 
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
@@ -267,14 +266,14 @@ static ID<Framebuffer> createOitFramebuffer(ID<Image> oitAccumBuffer,
 static ID<Framebuffer> createTransDepthFramebuffer(ID<Image> transBuffer, ID<Image> depthBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto transBufferView = graphicsSystem->get(transBuffer);
-	auto depthBufferView = graphicsSystem->get(depthBuffer);
-	GARDEN_ASSERT(transBufferView->getFormat() == Image::Format::UnormR8);
+	auto transBufferView = graphicsSystem->get(transBuffer)->getDefaultView();
+	auto depthBufferView = graphicsSystem->get(depthBuffer)->getDefaultView();
+	GARDEN_ASSERT(graphicsSystem->get(transBuffer)->getFormat() == Image::Format::UnormR8);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(transBufferView->getDefaultView(), DeferredRenderSystem::transBufferFlags) };
+	{ Framebuffer::OutputAttachment(transBufferView, DeferredRenderSystem::transBufferFlags) };
 	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthBufferView->getDefaultView(), DeferredRenderSystem::transBufferDepthFlags);
+		depthBufferView, DeferredRenderSystem::transBufferDepthFlags);
 
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
@@ -772,81 +771,71 @@ void DeferredRenderSystem::swapchainRecreate()
 		
 		if (transDepthFramebuffer)
 		{
-			auto bufferView = graphicsSystem->get(transBuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::transBufferFlags);
-			bufferView = graphicsSystem->get(depthCopyBuffer);
-			depthStencilAttachment.imageView = bufferView->getDefaultView();
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				transBuffer)->getDefaultView(), DeferredRenderSystem::transBufferFlags);
+			depthStencilAttachment.imageView = graphicsSystem->get(depthCopyBuffer)->getDefaultView();
 			auto framebufferView = graphicsSystem->get(transDepthFramebuffer);
 			depthStencilAttachment.setFlags(DeferredRenderSystem::transBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
 		}
 
-		auto bufferView = graphicsSystem->get(depthStencilBuffer);
-		depthStencilAttachment.imageView = bufferView->getDefaultView();
+		depthStencilAttachment.imageView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 
 		if (oitFramebuffer)
 		{
-			bufferView = graphicsSystem->get(oitAccumBuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::oitBufferFlags);
-			bufferView = graphicsSystem->get(oitRevealBuffer);
-			colorAttachments[1] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::oitBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				oitAccumBuffer)->getDefaultView(), DeferredRenderSystem::oitBufferFlags);
+			colorAttachments[1] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				oitRevealBuffer)->getDefaultView(), DeferredRenderSystem::oitBufferFlags);
 			auto framebufferView = graphicsSystem->get(oitFramebuffer);
 			depthStencilAttachment.setFlags(DeferredRenderSystem::oitBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
 		}
 		if (refractedFramebuffer)
 		{
-			bufferView = graphicsSystem->get(hdrBuffer);
 			auto framebufferView = graphicsSystem->get(refractedFramebuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
-			bufferView = graphicsSystem->get(gBuffers[gBufferNormals]);
-			colorAttachments[1] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::normalsBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				hdrBuffer)->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
+			colorAttachments[1] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				gBuffers[gBufferNormals])->getDefaultView(), DeferredRenderSystem::normalsBufferFlags);
 			depthStencilAttachment.setFlags(DeferredRenderSystem::hdrBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
 		}
 		if (uiBuffer)
 		{
-			bufferView = graphicsSystem->get(uiBuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::uiBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				uiBuffer)->getDefaultView(), DeferredRenderSystem::uiBufferFlags);
 			auto framebufferView = graphicsSystem->get(uiFramebuffer);
 			framebufferView->update(graphicsSystem->getFramebufferSize(), colorAttachments, 1);
 		}
 		if (depthLdrFramebuffer)
 		{
-			bufferView = graphicsSystem->get(ldrBuffer);
 			auto framebufferView = graphicsSystem->get(depthLdrFramebuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::ldrBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				ldrBuffer)->getDefaultView(), DeferredRenderSystem::ldrBufferFlags);
 			depthStencilAttachment.setFlags(DeferredRenderSystem::ldrBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
 		}
 		if (ldrFramebuffer)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::ldrBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				ldrBuffer)->getDefaultView(), DeferredRenderSystem::ldrBufferFlags);
 			auto framebufferView = graphicsSystem->get(ldrFramebuffer);
 			framebufferView->update(framebufferSize, colorAttachments, 1);
 		}
 		if (depthHdrFramebuffer)
 		{
-			bufferView = graphicsSystem->get(hdrBuffer);
 			auto framebufferView = graphicsSystem->get(depthHdrFramebuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				hdrBuffer)->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
 			depthStencilAttachment.setFlags(DeferredRenderSystem::hdrBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
 		}
 		if (hdrFramebuffer)
 		{
 			auto framebufferView = graphicsSystem->get(hdrFramebuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				bufferView->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
+			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				hdrBuffer)->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 1);
 		}	
 
@@ -859,9 +848,8 @@ void DeferredRenderSystem::swapchainRecreate()
 				continue;
 			}
 
-			auto gBufferView = graphicsSystem->get(gBuffers[i]);
-			colorAttachments[i] = Framebuffer::OutputAttachment(
-				gBufferView->getDefaultView(), DeferredRenderSystem::gBufferFlags);
+			colorAttachments[i] = Framebuffer::OutputAttachment(graphicsSystem->get(
+				gBuffers[i])->getDefaultView(), DeferredRenderSystem::gBufferFlags);
 		}
 		depthStencilAttachment.setFlags(DeferredRenderSystem::gBufferDepthFlags);
 		framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);

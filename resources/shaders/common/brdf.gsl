@@ -59,7 +59,7 @@ float2 hammersley(uint32 index, float invSampleCount)
 }
 float3 importanceSamplingNdfDggx(float2 u, float a)
 {
-	float a2 = a * a; float phi = 2.0f * M_PI * u.x;
+	float a2 = a * a; float phi = float(2.0 * M_PI) * u.x;
 	float cosTheta2 = (1.0f - u.y) / (1.0f + (a2 - 1.0f) * u.y);
 	float cosTheta = sqrt(cosTheta2);
 	float sinTheta = sqrt(1.0f - cosTheta2);

@@ -24,11 +24,12 @@ static ID<Framebuffer> createFramebuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[0]); // Reusing G-Buffer memory.
-	GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+	auto gBuffer = deferredSystem->getGBuffers()[0]; // Reusing G-Buffer memory.
+	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); 
+	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(gBufferView->getDefaultView(), FxaaRenderSystem::framebufferFlags) };
+	{ Framebuffer::OutputAttachment(gBufferView, FxaaRenderSystem::framebufferFlags) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
@@ -164,12 +165,12 @@ void FxaaRenderSystem::gBufferRecreate()
 	if (framebuffer)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		auto gBufferView = graphicsSystem->get(deferredSystem->getGBuffers()[0]); // Reusing G-Buffer memory.
-		GARDEN_ASSERT(gBufferView->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+		auto gBuffer = deferredSystem->getGBuffers()[0]; // Reusing G-Buffer memory.
+		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView();
+		GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 		auto framebufferView = graphicsSystem->get(framebuffer);
-		Framebuffer::OutputAttachment colorAttachment(
-			gBufferView->getDefaultView(), FxaaRenderSystem::framebufferFlags);
+		Framebuffer::OutputAttachment colorAttachment(gBufferView, FxaaRenderSystem::framebufferFlags);
 		framebufferView->update(graphicsSystem->getScaledFramebufferSize(), &colorAttachment, 1);
 	}
 	if (descriptorSet)

@@ -123,6 +123,9 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT,
 
 	#ifdef USE_LIGHT_EMISSION
 	terms.fe = gBuffer.emissiveColor * gBuffer.emissiveFactor;
+		#ifndef USE_SPECULAR_FACTOR
+		terms.fe *= gBuffer.baseAlpha;
+		#endif
 	#endif
 
 	#ifdef USE_LIGHT_ABSORPTION
@@ -133,14 +136,8 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT,
 			gBuffer.thickness)) * (1.0f - terms.e) * gBuffer.transmission;
 		terms.fd = fma(terms.fd, float3(1.0f - gBuffer.transmission), ft);
 	}
-	#ifdef USE_LIGHT_EMISSION
-	terms.fe *= 1.0f - gBuffer.transmission;
 	#endif
-	#else
-		#if defined(USE_LIGHT_EMISSION) && !defined(USE_SPECULAR_FACTOR)
-		terms.fe *= gBuffer.baseAlpha;
-		#endif
-	#endif
+
 	#ifdef USE_REFLECTIONS
 	terms.fr = fma(terms.fr, float3(1.0f - reflectionColor.a), 
 		terms.e * reflectionColor.rgb * energyCompensation);
