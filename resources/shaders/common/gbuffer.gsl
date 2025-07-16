@@ -114,7 +114,7 @@ GBufferValues gBufferValuesDefault()
 	#endif
 	#ifdef USE_LIGHT_ABSORPTION
 	gBuffer.refractedColor = float3(0.0f);
-	gBuffer.absorptionColor = float3(1.0f);
+	gBuffer.absorptionColor = float3(0.0f);
 	gBuffer.transmission = 0.0f;
 	#endif
 	#ifdef USE_CLEAR_COAT
@@ -291,8 +291,8 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1,
 	#endif
 	#ifdef USE_LIGHT_ABSORPTION
 	gBuffer.refractedColor = float3(0.0f);
-	gBuffer.absorptionColor = gBuffer.baseColor;
-	gBuffer.transmission = 1.0f;
+	gBuffer.absorptionColor = float3(0.0f);
+	gBuffer.transmission = 0.0f;
 	#endif
 	#ifdef USE_CLEAR_COAT
 	if (USE_CLEAR_COAT_BUFFER)

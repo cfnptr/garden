@@ -333,10 +333,10 @@ static ID<Image> createGiBuffer()
 static ID<Framebuffer> createGiFramebuffer(ID<Image> giBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto giBufferView = graphicsSystem->get(giBuffer);
+	auto giBufferView = graphicsSystem->get(giBuffer)->getDefaultView();
 	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(giBufferView->getDefaultView(), PbrLightingSystem::accumBufferFlags) };
+	{ Framebuffer::OutputAttachment(giBufferView, PbrLightingSystem::accumBufferFlags) };
 	auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.lighting.gi");
 	return framebuffer;
