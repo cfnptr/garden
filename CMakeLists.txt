@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(GARDEN_ENABLE_IPO "Enable interprocedural optimization (IPO/LTO) for the garden target." OFF)
 #***********************************************************************************************************************
 cmake_minimum_required(VERSION 3.24)
 
+
+# Prevent in-tree builds (must use a separate build directory)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
-	message(FATAL_ERROR "Prevented in-tree build")
+	message(FATAL_ERROR "Prevented in-tree build. Please create a separate build directory and run CMake from there (e.g., mkdir build && cd build && cmake ..)")
 endif()
 
-if(NOT CMAKE_BUILD_TYPE MATCHES "Debug|Release|RelWithDebInfo|MinSizeRel")
-	# Check if VS Code option "Set Build Type On Multi Config" is enabled.
-	message(FATAL_ERROR "CMAKE_BUILD_TYPE is not declared!")
-else()
-	message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+# Set default build type if not specified (for single-config generators)
+if(NOT DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_GENERATOR MATCHES "Multi-Config")
+	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+	message(STATUS "CMAKE_BUILD_TYPE was not set. Defaulting to Release.")
+endif()
+
+# Warn if build type is not set for single-config generators
+if(NOT CMAKE_BUILD_TYPE MATCHES "Debug|Release|RelWithDebInfo|MinSizeRel" AND NOT CMAKE_GENERATOR MATCHES "Multi-Config")
+	message(WARNING "CMAKE_BUILD_TYPE is not set to a valid value! Supported: Debug, Release, RelWithDebInfo, MinSizeRel.")
 endif()
 
 if(TARGET garden)
@@ -330,10 +337,16 @@ file(GLOB IMGUI_MISC_SOURCES libraries/imgui/misc/cpp/*.cpp)
 list(APPEND GARDEN_INCLUDE_DIRS libraries/imgui)
 list(APPEND GARDEN_SOURCES ${IMGUI_SOURCES} ${IMGUI_MISC_SOURCES})
 
+
+
 add_library(garden STATIC ${GARDEN_SOURCES})
 target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
+
+# Explicitly disable IPO/LTO by default
+set_property(TARGET garden PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+
 
 if(GARDEN_BUILD_GSLC)
 	add_executable(gslc source/graphics/gslc.cpp)
