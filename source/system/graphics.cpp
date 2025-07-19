@@ -254,7 +254,7 @@ static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLigh
 
 		if (cameraView->type == ProjectionType::Perspective)
 		{
-			cameraConstants.anglePerPixel = calcAnglePerPixel(
+			cameraConstants.anglePerPixel = math::calcAnglePerPixel(
 				cameraView->p.perspective.fieldOfView, scaledFramebufferSize.y);
 		}
 		else
