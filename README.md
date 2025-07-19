@@ -1,5 +1,11 @@
 # Garden
 
+## Compilation Status
+
+[![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu%2024.04-Success-brightgreen?logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![Windows](https://img.shields.io/badge/Windows-Unknown-lightgrey?logo=windows&logoColor=white)](https://www.microsoft.com/windows/)
+[![macOS](https://img.shields.io/badge/macOS-Unknown-lightgrey?logo=apple&logoColor=white)](https://www.apple.com/macos/)
+
 ![Engine screenshot](docs/engine-screenshot.png)
 
 Garden is an open source, cross platform game engine designed for efficiency and flexibility. Written in 
@@ -10,6 +16,12 @@ shader language (GSL), and automatic placement of GPU memory barriers, which are
 graphics APIs.
 
 Check out the Garden [demo](https://github.com/cfnptr/garden-demo) app.
+
+## Recent Improvements
+
+* **🛡️ Stack Overflow Prevention**: Replaced recursive functions in editor system with stack-based implementations to prevent potential crashes with deeply nested structures
+* **🐧 Ubuntu 24.04 Support**: Verified compilation and functionality on Ubuntu 24.04 LTS
+* **⚡ Enhanced Performance**: Improved memory management and reduced call stack usage in critical editor paths
 
 ## Supported operating systems
 
@@ -40,12 +52,19 @@ At least GPU with Vulkan API 1.1 support.
 These requirements are based on the support of the [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) instruction set in the x86 architecture.
 If you want, you can freely disable it and compile for any other architecture, including **ARM**.
 
-## Build requirements ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
+## Build requirements 
 
-* C++17 compiler
+![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
+
+### Development tools
+
+* C++17 compiler (GCC 9.0+, Clang 10.0+, MSVC 19.20+)
 * [Git 2.39+](https://git-scm.com)
 * [CMake 3.25+](https://cmake.org)
 * [Vulkan SDK 1.4+](https://vulkan.lunarg.com/)
+
+### Platform-specific package managers
+
 * [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
 * [brew](https://brew.sh/) (macOS only)
 
