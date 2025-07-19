@@ -369,11 +369,35 @@ namespace garden
 	};
 }
 
-// TODO: replace with stack based recursion.
+struct MenuFrame
+{
+	const ComponentEntry::Nodes* nodes;
+	bool menuOpened;
+	ComponentEntry::Nodes::const_iterator iterator;
+	ComponentEntry::Nodes::const_iterator end;
+};
+
+// Stack-based implementation to prevent stack overflow
 static void renderWordNode(const ComponentEntry::Nodes& nodes, ID<Entity> selectedEntity)
 {
-	for (const auto& pair : nodes)
+	std::vector<MenuFrame> stack;
+	stack.push_back({&nodes, false, nodes.begin(), nodes.end()});
+	
+	while (!stack.empty())
 	{
+		auto& frame = stack.back();
+		
+		if (frame.iterator == frame.end)
+		{
+			if (frame.menuOpened)
+				ImGui::EndMenu();
+			stack.pop_back();
+			continue;
+		}
+		
+		const auto& pair = *frame.iterator;
+		++frame.iterator;
+		
 		if (pair.second.nodes.empty())
 		{
 			if (ImGui::MenuItem(pair.first.c_str()))
@@ -383,8 +407,8 @@ static void renderWordNode(const ComponentEntry::Nodes& nodes, ID<Entity> select
 		{
 			if (ImGui::BeginMenu(pair.first.c_str()))
 			{
-				renderWordNode(pair.second.nodes, selectedEntity);
-				ImGui::EndMenu();
+				frame.menuOpened = true;
+				stack.push_back({&pair.second.nodes, false, pair.second.nodes.begin(), pair.second.nodes.end()});
 			}
 		}
 	}
@@ -785,12 +809,38 @@ static void updateDirectoryClick(const string& filename, const fs::directory_ent
 		ImGui::EndPopup();
 	}
 }
+
+struct DirectoryFrame
+{
+	fs::path path;
+	fs::directory_iterator iterator;
+	fs::directory_iterator end;
+	bool treeNodeOpened;
+};
+
+// Stack-based implementation to prevent stack overflow
 static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	auto dirIterator = fs::directory_iterator(path);
-	for (const auto& entry : dirIterator)
+	
+	std::vector<DirectoryFrame> stack;
+	stack.push_back({path, fs::directory_iterator(path), fs::directory_iterator(), false});
+	
+	while (!stack.empty())
 	{
+		auto& frame = stack.back();
+		
+		if (frame.iterator == frame.end)
+		{
+			if (frame.treeNodeOpened)
+				ImGui::TreePop();
+			stack.pop_back();
+			continue;
+		}
+		
+		const auto& entry = *frame.iterator;
+		++frame.iterator;
+		
 		if (!entry.is_directory())
 			continue;
 
@@ -806,9 +856,9 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 		if (ImGui::TreeNodeEx(filename.c_str(), flags))
 		{
 			updateDirectoryClick(filename, entry, selectedEntry);
+			frame.treeNodeOpened = true;
 			if (hasDirectories)
-				renderDirectory(entry.path(), selectedEntry); // TODO: use stack instead of recursion here!
-			ImGui::TreePop();
+				stack.push_back({entry.path(), fs::directory_iterator(entry.path()), fs::directory_iterator(), false});
 		}
 		else
 		{
@@ -816,6 +866,7 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 		}
 		ImGui::PopID();
 	}
+	
 	ImGui::PopStyleColor();
 }
 

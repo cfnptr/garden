@@ -169,45 +169,109 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 	}
 }
 
+struct HierarchyFrame
+{
+	ID<Entity> entity;
+	uint32 childIndex;
+	uint32 childCount;
+	bool treeNodeOpened;
+	bool styleColorPushed;
+};
+
 //**********************************************************************************************************************
+// Stack-based implementation to prevent stack overflow
 static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
-	auto transformView = TransformSystem::Instance::get()->getComponent(renderEntity);
-	auto debugName = transformView->debugName.empty() ? 
-		"Entity " + to_string(*renderEntity) : transformView->debugName;
+	auto transformSystem = TransformSystem::Instance::get();
+	std::vector<HierarchyFrame> stack;
 	
-	auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow);
-	if (transformView->getEntity() == selectedEntity)
-		flags |= ImGuiTreeNodeFlags_Selected;
-	if (transformView->getChildCount() == 0)
-		flags |= ImGuiTreeNodeFlags_Leaf;
+	auto transformView = transformSystem->getComponent(renderEntity);
+	stack.push_back({renderEntity, 0, transformView->getChildCount(), false, false});
 	
-	ImGui::PushID(to_string(*renderEntity).c_str());
-
-	if (!transformView->isActive())
-		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-
-	if (ImGui::TreeNodeEx(debugName.c_str(), flags))
+	while (!stack.empty())
 	{
-		if (!transformView->isActive())
-			ImGui::PopStyleColor();
-		updateHierarchyClick(renderEntity);
-
-		transformView = TransformSystem::Instance::get()->getComponent(renderEntity); // Do not optimize!!!
-		for (uint32 i = 0; i < transformView->getChildCount(); i++)
+		auto& frame = stack.back();
+		
+		// If we've processed all children, clean up and pop
+		if (frame.childIndex >= frame.childCount)
 		{
-			renderHierarchyEntity(transformView->getChild(i), selectedEntity); // TODO: use stack instead of recursion!
-			transformView = TransformSystem::Instance::get()->getComponent(renderEntity); // Do not optimize!!!
+			if (frame.treeNodeOpened)
+				ImGui::TreePop();
+			if (frame.styleColorPushed)
+				ImGui::PopStyleColor();
+			ImGui::PopID();
+			stack.pop_back();
+			continue;
 		}
-		ImGui::TreePop();
+		
+		// If this is the first time processing this entity, set it up
+		if (frame.childIndex == 0)
+		{
+			transformView = transformSystem->getComponent(frame.entity);
+			auto debugName = transformView->debugName.empty() ? 
+				"Entity " + to_string(*frame.entity) : transformView->debugName;
+			
+			auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow);
+			if (transformView->getEntity() == selectedEntity)
+				flags |= ImGuiTreeNodeFlags_Selected;
+			if (transformView->getChildCount() == 0)
+				flags |= ImGuiTreeNodeFlags_Leaf;
+			
+			ImGui::PushID(to_string(*frame.entity).c_str());
+
+			if (!transformView->isActive())
+			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+				frame.styleColorPushed = true;
+			}
+
+			if (ImGui::TreeNodeEx(debugName.c_str(), flags))
+			{
+				frame.treeNodeOpened = true;
+				if (frame.styleColorPushed)
+				{
+					ImGui::PopStyleColor();
+					frame.styleColorPushed = false;
+				}
+				updateHierarchyClick(frame.entity);
+
+				// If no children, we'll clean up on next iteration
+				if (frame.childCount == 0)
+				{
+					frame.childIndex = frame.childCount; // Mark as done
+					continue;
+				}
+			}
+			else
+			{
+				if (frame.styleColorPushed)
+				{
+					ImGui::PopStyleColor();
+					frame.styleColorPushed = false;
+				}
+				updateHierarchyClick(frame.entity);
+				frame.childIndex = frame.childCount; // Mark as done, skip children
+				continue;
+			}
+		}
+		
+		// Process next child if tree node is opened
+		if (frame.treeNodeOpened && frame.childIndex < frame.childCount)
+		{
+			transformView = transformSystem->getComponent(frame.entity); // Do not optimize!!!
+			auto childEntity = transformView->getChild(frame.childIndex);
+			frame.childIndex++;
+			
+			// Add child to stack
+			auto childTransformView = transformSystem->getComponent(childEntity);
+			stack.push_back({childEntity, 0, childTransformView->getChildCount(), false, false});
+		}
+		else
+		{
+			// Skip remaining children if tree node is not opened
+			frame.childIndex = frame.childCount;
+		}
 	}
-	else
-	{
-		if (!transformView->isActive())
-			ImGui::PopStyleColor();
-		updateHierarchyClick(renderEntity);
-	}
-	ImGui::PopID();
 }
 
 //**********************************************************************************************************************
