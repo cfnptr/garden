@@ -1335,8 +1335,7 @@ void ResourceSystem::destroyShared(const Ref<Image>& image)
 		break;
 	}
 
-	if (image.isLastRef())
-		GraphicsSystem::Instance::get()->destroy(ID<Image>(image));
+	GraphicsSystem::Instance::get()->destroy(image);
 }
 
 //**********************************************************************************************************************
@@ -1359,8 +1358,7 @@ void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
 		break;
 	}
 
-	if (buffer.isLastRef())
-		GraphicsSystem::Instance::get()->destroy(ID<Buffer>(buffer));
+	GraphicsSystem::Instance::get()->destroy(buffer);
 }
 
 //**********************************************************************************************************************
@@ -1418,8 +1416,7 @@ void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
 		break;
 	}
 
-	if (descriptorSet.isLastRef())
-		GraphicsSystem::Instance::get()->destroy(ID<DescriptorSet>(descriptorSet));
+	GraphicsSystem::Instance::get()->destroy(descriptorSet);
 }
 
 //**********************************************************************************************************************
@@ -2546,8 +2543,7 @@ void ResourceSystem::destroyShared(const Ref<Animation>& animation)
 		break;
 	}
 
-	if (animation.isLastRef())
-		AnimationSystem::Instance::get()->destroy(ID<Animation>(animation));
+	AnimationSystem::Instance::get()->destroy(animation);
 }
 
 //**********************************************************************************************************************

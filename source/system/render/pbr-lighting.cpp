@@ -470,14 +470,10 @@ bool PbrLightingComponent::destroy()
 		return false;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (cubemap.isLastRef())
-		graphicsSystem->destroy(ID<Image>(cubemap));
-	if (sh.isLastRef())
-		graphicsSystem->destroy(ID<Buffer>(sh));
-	if (specular.isLastRef())
-		graphicsSystem->destroy(ID<Image>(specular));
-	if (descriptorSet.isLastRef())
-		graphicsSystem->destroy(ID<DescriptorSet>(descriptorSet));
+	graphicsSystem->destroy(cubemap);
+	graphicsSystem->destroy(sh);
+	graphicsSystem->destroy(specular);
+	graphicsSystem->destroy(descriptorSet);
 	return true;
 }
 
@@ -1052,8 +1048,7 @@ void PbrLightingSystem::setConsts(bool useShadowBuffer, bool useAoBuffer, bool u
 	{
 		if (!pbrLighting.getEntity())
 			continue;
-		if (pbrLighting.descriptorSet.isLastRef())
-			graphicsSystem->destroy(ID<DescriptorSet>(pbrLighting.descriptorSet));
+		graphicsSystem->destroy(pbrLighting.descriptorSet);
 		pbrLighting.descriptorSet = {};
 	}
 

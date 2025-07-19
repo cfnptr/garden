@@ -1,0 +1,53 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef RAY_QUERY_GSL
+#define RAY_QUERY_GSL
+
+#include "ray-tracing.gsl"
+
+#define rayQuery rayQueryEXT
+
+#define gl_RayQueryCommittedIntersectionNone gl_RayQueryCommittedIntersectionNoneEXT
+#define gl_RayQueryCommittedIntersectionTriangle gl_RayQueryCommittedIntersectionTriangleEXT
+#define gl_RayQueryCommittedIntersectionGenerated gl_RayQueryCommittedIntersectionGeneratedEXT
+
+#define gl_RayQueryCandidateIntersectionTriangle gl_RayQueryCandidateIntersectionTriangleEXT
+#define gl_RayQueryCandidateIntersectionAABB gl_RayQueryCandidateIntersectionAABBEXT
+
+#define rayQueryInitialize rayQueryInitializeEXT
+#define rayQueryProceed rayQueryProceedEXT
+#define rayQueryTerminate rayQueryTerminateEXT
+#define rayQueryGenerateIntersection rayQueryGenerateIntersectionEXT
+#define rayQueryConfirmIntersection rayQueryConfirmIntersectionEXT
+#define rayQueryGetIntersectionType rayQueryGetIntersectionTypeEXT
+#define rayQueryGetRayTMin rayQueryGetRayTMinEXT
+#define rayQueryGetRayFlags rayQueryGetRayFlagsEXT
+#define rayQueryGetWorldRayOrigin rayQueryGetWorldRayOriginEXT
+#define rayQueryGetWorldRayDirection rayQueryGetWorldRayDirectionEXT
+#define rayQueryGetIntersectionT rayQueryGetIntersectionTEXT
+#define rayQueryGetIntersectionInstanceCustomIndex rayQueryGetIntersectionInstanceCustomIndexEXT
+#define rayQueryGetIntersectionInstanceId rayQueryGetIntersectionInstanceIdEXT
+#define rayQueryGetIntersectionInstanceShaderBindingTableRecordOffset rayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetEXT
+#define rayQueryGetIntersectionGeometryIndex rayQueryGetIntersectionGeometryIndexEXT
+#define rayQueryGetIntersectionPrimitiveIndex rayQueryGetIntersectionPrimitiveIndexEXT
+#define rayQueryGetIntersectionBarycentrics rayQueryGetIntersectionBarycentricsEXT
+#define rayQueryGetIntersectionFrontFace rayQueryGetIntersectionFrontFaceEXT
+#define rayQueryGetIntersectionCandidateAABBOpaque rayQueryGetIntersectionCandidateAABBOpaqueEXT
+#define rayQueryGetIntersectionObjectRayDirection rayQueryGetIntersectionObjectRayDirectionEXT
+#define rayQueryGetIntersectionObjectRayOrigin rayQueryGetIntersectionObjectRayOriginEXT
+#define rayQueryGetIntersectionObjectToWorld rayQueryGetIntersectionObjectToWorldEXT
+#define rayQueryGetIntersectionWorldToObject rayQueryGetIntersectionWorldToObjectEXT
+
+#endif // RAY_QUERY_GSL

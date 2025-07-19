@@ -403,6 +403,15 @@ public:
 	 */
 	void destroy(ID<Buffer> buffer);
 	/**
+	 * @brief Destroys shared buffer instance.
+	 * @param[in] buffer target buffer reference or null
+	 */
+	void destroy(const Ref<Buffer>& buffer)
+	{
+		if (buffer.isLastRef())
+			destroy(ID<Buffer>(buffer));
+	}
+	/**
 	 * @brief Destroys vector with buffer instances.
 	 * @param[in] buffers target vector with buffer instances or/and nulls
 	 */
@@ -543,6 +552,15 @@ public:
 	 */
 	void destroy(ID<Image> image);
 	/**
+	 * @brief Destroys shared image instance.
+	 * @param[in] image target image reference or null
+	 */
+	void destroy(const Ref<Image>& image)
+	{
+		if (image.isLastRef())
+			destroy(ID<Image>(image));
+	}
+	/**
 	 * @brief Destroys vector with image instances.
 	 * @param[in] images target vector with image instances or/and nulls
 	 */
@@ -582,6 +600,15 @@ public:
 	 * @param imageView target image view instance or null
 	 */
 	void destroy(ID<ImageView> imageView);
+	/**
+	 * @brief Destroys shared image view instance.
+	 * @param[in] imageView target image view reference or null
+	 */
+	void destroy(const Ref<ImageView>& imageView)
+	{
+		if (imageView.isLastRef())
+			destroy(ID<ImageView>(imageView));
+	}
 	/**
 	 * @brief Destroys vector with image view instances.
 	 * @param[in] imageViews target vector with image view instances or/and nulls
@@ -626,6 +653,15 @@ public:
 	 */
 	void destroy(ID<Framebuffer> framebuffer);
 	/**
+	 * @brief Destroys shared framebuffer instance.
+	 * @param[in] framebuffer target framebuffer reference or null
+	 */
+	void destroy(const Ref<Framebuffer>& framebuffer)
+	{
+		if (framebuffer.isLastRef())
+			destroy(ID<Framebuffer>(framebuffer));
+	}
+	/**
 	 * @brief Destroys vector with framebuffer instances.
 	 * @param[in] framebuffers target vector with framebuffer instances or/and nulls
 	 */
@@ -657,6 +693,15 @@ public:
 	 */
 	void destroy(ID<Sampler> sampler);
 	/**
+	 * @brief Destroys shared sampler instance.
+	 * @param[in] sampler target sampler reference or null
+	 */
+	void destroy(const Ref<Sampler>& sampler)
+	{
+		if (sampler.isLastRef())
+			destroy(ID<Sampler>(sampler));
+	}
+	/**
 	 * @brief Destroys vector with sampler instances.
 	 * @param[in] samplers target vector with sampler instances or/and nulls
 	 */
@@ -682,6 +727,15 @@ public:
 	 * @param graphicsPipeline target graphics pipeline instance or null
 	 */
 	void destroy(ID<GraphicsPipeline> graphicsPipeline);
+	/**
+	 * @brief Destroys shared graphics pipeline instance.
+	 * @param[in] graphicsPipeline target graphics pipeline reference or null
+	 */
+	void destroy(const Ref<GraphicsPipeline>& graphicsPipeline)
+	{
+		if (graphicsPipeline.isLastRef())
+			destroy(ID<GraphicsPipeline>(graphicsPipeline));
+	}
 	/**
 	 * @brief Destroys vector with graphics pipeline instances.
 	 * @param[in] graphicsPipelines target vector with graphics pipeline instances or/and nulls
@@ -712,6 +766,15 @@ public:
 	 */
 	void destroy(ID<ComputePipeline> computePipeline);
 	/**
+	 * @brief Destroys shared compute pipeline instance.
+	 * @param[in] computePipeline target compute pipeline reference or null
+	 */
+	void destroy(const Ref<ComputePipeline>& computePipeline)
+	{
+		if (computePipeline.isLastRef())
+			destroy(ID<ComputePipeline>(computePipeline));
+	}
+	/**
 	 * @brief Destroys vector with compute pipeline instances.
 	 * @param[in] computePipelines target vector with compute pipeline instances or/and nulls
 	 */
@@ -740,6 +803,15 @@ public:
 	 * @param rayTracingPipeline target ray tracing pipeline instance or null
 	 */
 	void destroy(ID<RayTracingPipeline> rayTracingPipeline);
+	/**
+	 * @brief Destroys shared ray tracing pipeline instance.
+	 * @param[in] rayTracingPipeline target ray tracing pipeline reference or null
+	 */
+	void destroy(const Ref<RayTracingPipeline>& rayTracingPipeline)
+	{
+		if (rayTracingPipeline.isLastRef())
+			destroy(ID<RayTracingPipeline>(rayTracingPipeline));
+	}
 	/**
 	 * @brief Destroys vector with ray tracing pipeline instances.
 	 * @param[in] rayTracingPipelines target vector with ray tracing pipeline instances or/and nulls
@@ -801,6 +873,15 @@ public:
 	 */
 	void destroy(ID<DescriptorSet> descriptorSet);
 	/**
+	 * @brief Destroys shared descriptor set instance.
+	 * @param[in] descriptorSet target descriptor set reference or null
+	 */
+	void destroy(const Ref<DescriptorSet>& descriptorSet)
+	{
+		if (descriptorSet.isLastRef())
+			destroy(ID<DescriptorSet>(descriptorSet));
+	}
+	/**
 	 * @brief Destroys vector with descriptor set instances.
 	 * @param[in] descriptorSets target vector with descriptor set instances or/and nulls
 	 */
@@ -847,6 +928,15 @@ public:
 	 */
 	void destroy(ID<Blas> blas);
 	/**
+	 * @brief Destroys shared bottom level acceleration structure instance.
+	 * @param[in] blas target BLAS reference or null
+	 */
+	void destroy(const Ref<Blas>& blas)
+	{
+		if (blas.isLastRef())
+			destroy(ID<Blas>(blas));
+	}
+	/**
 	 * @brief Destroys vector with BLAS instances.
 	 * @param[in] samplers target vector with BLAS instances or/and nulls
 	 */
@@ -881,6 +971,15 @@ public:
 	 * @param tlas target TLAS instance or null
 	 */
 	void destroy(ID<Tlas> tlas);
+	/**
+	 * @brief Destroys shared top level acceleration structure instance.
+	 * @param[in] tlas target TLAS reference or null
+	 */
+	void destroy(const Ref<Tlas>& tlas)
+	{
+		if (tlas.isLastRef())
+			destroy(ID<Tlas>(tlas));
+	}
 	/**
 	 * @brief Destroys vector with TLAS instances.
 	 * @param[in] samplers target vector with TLAS instances or/and nulls
