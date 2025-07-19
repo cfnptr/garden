@@ -170,44 +170,93 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 }
 
 //**********************************************************************************************************************
+// Stack-based implementation to avoid recursion depth limits
 static void renderHierarchyEntity(ID<Entity> renderEntity, ID<Entity> selectedEntity)
 {
-	auto transformView = TransformSystem::Instance::get()->getComponent(renderEntity);
-	auto debugName = transformView->debugName.empty() ? 
-		"Entity " + to_string(*renderEntity) : transformView->debugName;
-	
-	auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow);
-	if (transformView->getEntity() == selectedEntity)
-		flags |= ImGuiTreeNodeFlags_Selected;
-	if (transformView->getChildCount() == 0)
-		flags |= ImGuiTreeNodeFlags_Leaf;
-	
-	ImGui::PushID(to_string(*renderEntity).c_str());
-
-	if (!transformView->isActive())
-		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-
-	if (ImGui::TreeNodeEx(debugName.c_str(), flags))
+	struct HierarchyFrame
 	{
-		if (!transformView->isActive())
-			ImGui::PopStyleColor();
-		updateHierarchyClick(renderEntity);
-
-		transformView = TransformSystem::Instance::get()->getComponent(renderEntity); // Do not optimize!!!
-		for (uint32 i = 0; i < transformView->getChildCount(); i++)
+		ID<Entity> entity;
+		uint32 currentChildIndex;
+		uint32 childCount;
+		bool treeNodeOpened;
+		bool styleColorPushed;
+		
+		HierarchyFrame(ID<Entity> e) 
+			: entity(e), currentChildIndex(0), childCount(0), 
+			  treeNodeOpened(false), styleColorPushed(false) {}
+	};
+	
+	std::vector<HierarchyFrame> hierarchyStack;
+	hierarchyStack.emplace_back(renderEntity);
+	
+	while (!hierarchyStack.empty())
+	{
+		auto& frame = hierarchyStack.back();
+		
+		// Initialize frame on first visit
+		if (frame.currentChildIndex == 0 && frame.childCount == 0)
 		{
-			renderHierarchyEntity(transformView->getChild(i), selectedEntity); // TODO: use stack instead of recursion!
-			transformView = TransformSystem::Instance::get()->getComponent(renderEntity); // Do not optimize!!!
+			auto transformView = TransformSystem::Instance::get()->getComponent(frame.entity);
+			auto debugName = transformView->debugName.empty() ? 
+				"Entity " + to_string(*frame.entity) : transformView->debugName;
+			
+			auto flags = (int)(ImGuiTreeNodeFlags_OpenOnArrow);
+			if (transformView->getEntity() == selectedEntity)
+				flags |= ImGuiTreeNodeFlags_Selected;
+			if (transformView->getChildCount() == 0)
+				flags |= ImGuiTreeNodeFlags_Leaf;
+			
+			frame.childCount = transformView->getChildCount();
+			
+			ImGui::PushID(to_string(*frame.entity).c_str());
+
+			if (!transformView->isActive())
+			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+				frame.styleColorPushed = true;
+			}
+
+			if (ImGui::TreeNodeEx(debugName.c_str(), flags))
+			{
+				frame.treeNodeOpened = true;
+				if (frame.styleColorPushed)
+					ImGui::PopStyleColor();
+				updateHierarchyClick(frame.entity);
+				
+				// Continue to process children
+				continue;
+			}
+			else
+			{
+				if (frame.styleColorPushed)
+					ImGui::PopStyleColor();
+				updateHierarchyClick(frame.entity);
+				ImGui::PopID();
+				hierarchyStack.pop_back();
+				continue;
+			}
 		}
-		ImGui::TreePop();
+		
+		// Process children
+		if (frame.currentChildIndex < frame.childCount)
+		{
+			// Get current transform view (refreshed for each child as per original code)
+			auto transformView = TransformSystem::Instance::get()->getComponent(frame.entity);
+			auto childEntity = transformView->getChild(frame.currentChildIndex);
+			++frame.currentChildIndex;
+			
+			// Push child frame
+			hierarchyStack.emplace_back(childEntity);
+		}
+		else
+		{
+			// Finished processing all children
+			if (frame.treeNodeOpened)
+				ImGui::TreePop();
+			ImGui::PopID();
+			hierarchyStack.pop_back();
+		}
 	}
-	else
-	{
-		if (!transformView->isActive())
-			ImGui::PopStyleColor();
-		updateHierarchyClick(renderEntity);
-	}
-	ImGui::PopID();
 }
 
 //**********************************************************************************************************************

@@ -369,22 +369,54 @@ namespace garden
 	};
 }
 
-// TODO: replace with stack based recursion.
+// Stack-based implementation to avoid recursion depth limits
 static void renderWordNode(const ComponentEntry::Nodes& nodes, ID<Entity> selectedEntity)
 {
-	for (const auto& pair : nodes)
+	struct MenuFrame
 	{
+		const ComponentEntry::Nodes* nodes;
+		ComponentEntry::Nodes::const_iterator current;
+		ComponentEntry::Nodes::const_iterator end;
+		bool menuOpened;
+		
+		MenuFrame(const ComponentEntry::Nodes* n) 
+			: nodes(n), current(n->begin()), end(n->end()), menuOpened(false) {}
+	};
+	
+	std::vector<MenuFrame> menuStack;
+	menuStack.emplace_back(&nodes);
+	
+	while (!menuStack.empty())
+	{
+		auto& frame = menuStack.back();
+		
+		// If we've processed all items in current frame
+		if (frame.current == frame.end)
+		{
+			// Close menu if we opened one
+			if (frame.menuOpened)
+				ImGui::EndMenu();
+			menuStack.pop_back();
+			continue;
+		}
+		
+		const auto& pair = *frame.current;
+		++frame.current;
+		
 		if (pair.second.nodes.empty())
 		{
+			// Leaf node - render menu item
 			if (ImGui::MenuItem(pair.first.c_str()))
 				Manager::Instance::get()->add(selectedEntity, pair.second.componentType);
 		}
 		else
 		{
+			// Branch node - try to open submenu
 			if (ImGui::BeginMenu(pair.first.c_str()))
 			{
-				renderWordNode(pair.second.nodes, selectedEntity);
-				ImGui::EndMenu();
+				frame.menuOpened = true;
+				// Push new frame for submenu
+				menuStack.emplace_back(&pair.second.nodes);
 			}
 		}
 	}
@@ -785,15 +817,61 @@ static void updateDirectoryClick(const string& filename, const fs::directory_ent
 		ImGui::EndPopup();
 	}
 }
+// Stack-based implementation to avoid recursion depth limits
 static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 {
-	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	auto dirIterator = fs::directory_iterator(path);
-	for (const auto& entry : dirIterator)
+	struct DirectoryFrame
 	{
-		if (!entry.is_directory())
+		fs::path currentPath;
+		std::vector<fs::directory_entry> entries;
+		size_t currentIndex;
+		bool treeNodeOpened;
+		
+		DirectoryFrame(const fs::path& p) 
+			: currentPath(p), currentIndex(0), treeNodeOpened(false)
+		{
+			// Collect directory entries
+			if (fs::exists(p) && fs::is_directory(p))
+			{
+				try 
+				{
+					auto dirIterator = fs::directory_iterator(p);
+					for (const auto& entry : dirIterator)
+					{
+						if (entry.is_directory())
+							entries.push_back(entry);
+					}
+				}
+				catch (const fs::filesystem_error&)
+				{
+					// Handle permission errors or other filesystem issues
+				}
+			}
+		}
+	};
+	
+	std::vector<DirectoryFrame> directoryStack;
+	directoryStack.emplace_back(path);
+	
+	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	
+	while (!directoryStack.empty())
+	{
+		auto& frame = directoryStack.back();
+		
+		// If we've processed all entries in current frame
+		if (frame.currentIndex >= frame.entries.size())
+		{
+			// Close tree node if we opened one
+			if (frame.treeNodeOpened)
+				ImGui::TreePop();
+			directoryStack.pop_back();
 			continue;
-
+		}
+		
+		const auto& entry = frame.entries[frame.currentIndex];
+		++frame.currentIndex;
+		
 		auto hasDirectories = isHasDirectories(entry.path());
 		auto flags = (int)ImGuiTreeNodeFlags_OpenOnArrow;
 		if (!hasDirectories)
@@ -803,12 +881,20 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 
 		auto filename = entry.path().filename().generic_string();
 		ImGui::PushID(entry.path().generic_string().c_str());
+		
 		if (ImGui::TreeNodeEx(filename.c_str(), flags))
 		{
 			updateDirectoryClick(filename, entry, selectedEntry);
 			if (hasDirectories)
-				renderDirectory(entry.path(), selectedEntry); // TODO: use stack instead of recursion here!
-			ImGui::TreePop();
+			{
+				frame.treeNodeOpened = true;
+				// Push new frame for subdirectory
+				directoryStack.emplace_back(entry.path());
+			}
+			else
+			{
+				ImGui::TreePop();
+			}
 		}
 		else
 		{
@@ -816,6 +902,7 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 		}
 		ImGui::PopID();
 	}
+	
 	ImGui::PopStyleColor();
 }
 
