@@ -344,7 +344,12 @@ target_include_directories(garden PUBLIC ${GARDEN_INCLUDE_DIRS})
 target_link_libraries(garden PUBLIC ${GARDEN_LINK_LIBS})
 target_link_directories(garden PUBLIC ${GARDEN_LINK_DIRS})
 
-# Explicitly disable IPO/LTO by default
+
+# Explicitly disable IPO/LTO globally, regardless of submodule settings
+set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "Enable interprocedural optimizations" FORCE)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "Global IPO/LTO setting" FORCE)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF CACHE BOOL "IPO/LTO for Release" FORCE)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DISTRIBUTION OFF CACHE BOOL "IPO/LTO for Distribution" FORCE)
 set_property(TARGET garden PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 
 
