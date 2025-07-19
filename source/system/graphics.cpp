@@ -35,6 +35,12 @@
 using namespace garden;
 using namespace garden::primitive;
 
+//**********************************************************************************************************************
+static float calcAnglePerPixel(float fieldOfView, float screenHeight) noexcept
+{
+	return fieldOfView / screenHeight;
+}
+
 namespace garden::graphics
 {
 	struct LinePC
