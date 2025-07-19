@@ -136,8 +136,6 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 	if (type == Image::Type::Cubemap)
 		imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-	
-
 	#if GARDEN_DEBUG
 	vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
 	imageFormatInfo.format = vk::Format(imageInfo.format);

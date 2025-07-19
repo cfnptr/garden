@@ -139,6 +139,7 @@ public:
 	 * @note Expected to use the resource system to load animations.
 	 */
 	ID<Animation> createAnimation() { return animations.create(); }
+
 	/**
 	 * @brief Returns animation view.
 	 * @param animation target animation instance
@@ -149,11 +150,21 @@ public:
 	 * @param animation target animation instance
 	 */
 	View<Animation> get(const Ref<Animation>& animation) { return animations.get(animation); }
+
 	/**
 	 * @brief Destroys animation instance.
 	 * @param animation target animation instance or null
 	 */
 	void destroy(ID<Animation> animation) { animations.destroy(animation); }
+	/**
+	 * @brief Destroys shared animation instance.
+	 * @param animation target animation reference or null
+	 */
+	void destroy(const Ref<Animation>& animation)
+	{
+		if (animation.isLastRef())
+			animations.destroy(ID<Animation>(animation));
+	}
 };
 
 } // namespace garden
