@@ -429,32 +429,6 @@ bool Shape::isLastRef() const
 }
 
 //**********************************************************************************************************************
-bool RigidbodyComponent::destroy()
-{
-	if (!entity)
-		return false;
-
-	if (instance)
-	{
-		auto body = (JPH::Body*)instance;
-		auto physicsSystem = PhysicsSystem::Instance::get();
-		auto bodyInterface = (JPH::BodyInterface*)physicsSystem->bodyInterface;
-		destroyAllConstraints();
-
-		if (inSimulation)
-		{
-			bodyInterface->SetUserData(body->GetID(), 0);
-			bodyInterface->RemoveBody(body->GetID());
-		}
-
-		bodyInterface->DestroyBody(body->GetID());
-		physicsSystem->destroyShared(shape);
-	}
-
-	return true;
-}
-
-//**********************************************************************************************************************
 void RigidbodyComponent::setShape(ID<Shape> shape, MotionType motionType, int32 collisionLayer, 
 	bool activate, bool allowDynamicOrKinematic, AllowedDOF allowedDOF)
 {
@@ -1030,7 +1004,6 @@ PhysicsSystem::~PhysicsSystem()
 	}
 	else
 	{
-		components.clear(false);
 		shapes.clear(false);
 	}
 
@@ -1357,16 +1330,29 @@ void PhysicsSystem::simulate()
 }
 
 //**********************************************************************************************************************
+void PhysicsSystem::resetComponent(View<Component> component, bool full)
+{
+	auto rigidbodyView = View<RigidbodyComponent>(component);
+	rigidbodyView->setShape({});
+	rigidbodyView->destroyAllConstraints();
+
+	if (full)
+	{
+		rigidbodyView->lastPosition = f32x4::zero;
+		rigidbodyView->lastRotation = quat::identity;
+		rigidbodyView->uid = 0;
+		rigidbodyView->inSimulation = true;
+		rigidbodyView->eventListener = "";
+	}
+}
 void PhysicsSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<RigidbodyComponent>(source);
 	auto destinationView = View<RigidbodyComponent>(destination);
-	destinationView->destroy();
-
 	destinationView->inSimulation = sourceView->inSimulation;
+
 	auto isActive = sourceView->isActive();
 	auto motionType = sourceView->getMotionType();
-
 	destinationView->setShape(sourceView->shape, motionType, sourceView->getCollisionLayer(), 
 		isActive, sourceView->canBeKinematicOrDynamic(), sourceView->getAllowedDOF());
 	destinationView->setSensor(sourceView->isSensor());

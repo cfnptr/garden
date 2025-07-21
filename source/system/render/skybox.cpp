@@ -33,17 +33,6 @@ static ID<GraphicsPipeline> createPipeline()
 	return skyboxPipeline;
 }
 
-bool SkyboxRenderComponent::destroy()
-{
-	if (!entity)
-		return false;
-
-	auto resourceSystem = ResourceSystem::Instance::get();
-	resourceSystem->destroyShared(descriptorSet);
-	resourceSystem->destroyShared(cubemap);
-	return true;
-}
-
 SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderSystem::init);
@@ -56,14 +45,25 @@ SkyboxRenderSystem::~SkyboxRenderSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderSystem::deinit);
 	}
-	else
-	{
-		components.clear(false);
-	}
 
 	unsetSingleton();
 }
 
+void SkyboxRenderSystem::resetComponent(View<Component> component, bool full)
+{
+	auto resourceSystem = ResourceSystem::Instance::get();
+	auto skyboxView = View<SkyboxRenderComponent>(component);
+	resourceSystem->destroyShared(skyboxView->cubemap);
+	resourceSystem->destroyShared(skyboxView->descriptorSet);
+	skyboxView->cubemap = {}; skyboxView->descriptorSet = {}; 
+}
+void SkyboxRenderSystem::copyComponent(View<Component> source, View<Component> destination)
+{
+	auto destinationView = View<SkyboxRenderComponent>(destination);
+	const auto sourceView = View<SkyboxRenderComponent>(source);
+	destinationView->cubemap = sourceView->cubemap;
+	destinationView->descriptorSet = sourceView->descriptorSet;
+}
 string_view SkyboxRenderSystem::getComponentName() const
 {
 	return "Skybox";

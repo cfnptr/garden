@@ -25,26 +25,6 @@ using namespace ecsm;
 using namespace garden;
 using namespace garden::physics;
 
-//**********************************************************************************************************************
-bool CharacterComponent::destroy()
-{
-	if (!entity)
-		return false;
-	
-	if (instance)
-	{
-		auto instance = (JPH::CharacterVirtual*)this->instance;
-		auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-			CharacterSystem::Instance::get()->charVsCharCollision;
-		charVsCharCollision->Remove(instance);
-		delete instance;
-		PhysicsSystem::Instance::get()->destroyShared(shape);
-	}
-	
-	return true;
-}
-
-//**********************************************************************************************************************
 void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrationDepth)
 {
 	if (this->shape == shape)
@@ -409,12 +389,9 @@ CharacterSystem::~CharacterSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 		delete (JPH::CharacterVsCharacterCollisionSimple*)charVsCharCollision;
-	else
-		components.clear(false);
 	unsetSingleton();
 }
 
-//**********************************************************************************************************************
 ID<Component> CharacterSystem::createComponent(ID<Entity> entity)
 {
 	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
@@ -432,12 +409,18 @@ void CharacterSystem::destroyComponent(ID<Component> instance)
 		transformView->modelWithAncestors = rigidbodyView->getMotionType() == MotionType::Static;
 	components.destroy(ID<CharacterComponent>(instance));
 }
+void CharacterSystem::resetComponent(View<Component> component, bool full)
+{
+	auto characterView = View<CharacterComponent>(component);
+	characterView->setShape({});
+
+	if (full)
+		characterView->inSimulation = true;
+}
 void CharacterSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<CharacterComponent>(source);
 	auto destinationView = View<CharacterComponent>(destination);
-	destinationView->destroy();
-
 	destinationView->inSimulation = sourceView->inSimulation;
 	destinationView->setShape(sourceView->shape, sourceView->getMass());
 
@@ -455,7 +438,6 @@ string_view CharacterSystem::getComponentName() const
 void CharacterSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto characterView = View<CharacterComponent>(component);
-
 	if (characterView->shape)
 	{
 		auto mass = characterView->getMass();
@@ -480,7 +462,6 @@ void CharacterSystem::serialize(ISerializer& serializer, const View<Component> c
 void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto characterView = View<CharacterComponent>(component);
-
 	if (deserializer.read("shapeType", valueStringCache))
 	{
 		auto physicsSystem = PhysicsSystem::Instance::get();

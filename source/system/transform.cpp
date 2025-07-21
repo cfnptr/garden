@@ -433,12 +433,24 @@ void TransformSystem::destroyComponent(ID<Component> instance)
 	#endif
 	components.destroy(ID<TransformComponent>(instance));
 }
+void TransformSystem::resetComponent(View<Component> component, bool full)
+{
+	auto transformView = View<TransformComponent>(component);
+	transformView->setParent({});
+	transformView->removeAllChilds();
+
+	if (full)
+	{
+		transformView->setPosition(f32x4::zero);
+		transformView->setScale(f32x4::one);
+		transformView->setRotation(quat::identity);
+		transformView->uid = 0;
+	}
+}
 void TransformSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<TransformComponent>(source);
 	auto destinationView = View<TransformComponent>(destination);
-	destinationView->destroy();
-
 	destinationView->posChildCount = sourceView->posChildCount;
 	destinationView->childCount() = 0;
 	destinationView->scaleChildCap = sourceView->scaleChildCap;
@@ -453,11 +465,6 @@ void TransformSystem::copyComponent(View<Component> source, View<Component> dest
 string_view TransformSystem::getComponentName() const
 {
 	return "Transform";
-}
-void TransformSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
 }
 
 //**********************************************************************************************************************
@@ -603,10 +610,6 @@ ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserial
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	return {};
 }
-View<AnimationFrame> TransformSystem::getAnimation(ID<AnimationFrame> frame)
-{
-	return View<AnimationFrame>(animationFrames.get(ID<TransformFrame>(frame)));
-}
 
 //**********************************************************************************************************************
 void TransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -621,10 +624,6 @@ void TransformSystem::animateAsync(View<Component> component, View<AnimationFram
 		transformView->setScale(lerp(frameA->scale, frameB->scale, t));
 	if (frameA->animateRotation)
 		transformView->rotation = slerp(frameA->rotation, frameB->rotation, t);
-}
-void TransformSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	animationFrames.destroy(ID<TransformFrame>(frame));
 }
 
 //**********************************************************************************************************************

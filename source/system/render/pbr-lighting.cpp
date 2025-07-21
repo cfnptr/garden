@@ -464,19 +464,6 @@ static ID<Buffer> createReflKernel()
 }
 
 //**********************************************************************************************************************
-bool PbrLightingComponent::destroy()
-{
-	if (!entity)
-		return false;
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(cubemap);
-	graphicsSystem->destroy(sh);
-	graphicsSystem->destroy(specular);
-	graphicsSystem->destroy(descriptorSet);
-	return true;
-}
-
 PbrLightingSystem::PbrLightingSystem(bool useShadowBuffer, bool useAoBuffer, 
 	bool useReflBuffer, bool useGiBuffer, bool setSingleton) : Singleton(setSingleton), 
 	hasShadowBuffer(useShadowBuffer), hasAoBuffer(useAoBuffer),
@@ -533,10 +520,6 @@ PbrLightingSystem::~PbrLightingSystem()
 		manager->unregisterEvent("GiRender");
 		manager->unregisterEvent("PostGiRender");
 		manager->unregisterEvent("GiRecreate");
-	}
-	else
-	{
-		components.clear(false);
 	}
 
 	unsetSingleton();
@@ -1021,6 +1004,28 @@ void PbrLightingSystem::gBufferRecreate()
 }
 
 //**********************************************************************************************************************
+void PbrLightingSystem::resetComponent(View<Component> component, bool full)
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pbrLightingView = View<PbrLightingComponent>(component);
+	graphicsSystem->destroy(pbrLightingView->cubemap);
+	graphicsSystem->destroy(pbrLightingView->sh);
+	graphicsSystem->destroy(pbrLightingView->specular);
+	graphicsSystem->destroy(pbrLightingView->descriptorSet);
+	pbrLightingView->cubemap = {};
+	pbrLightingView->sh = {};
+	pbrLightingView->specular = {};
+	pbrLightingView->descriptorSet = {};
+}
+void PbrLightingSystem::copyComponent(View<Component> source, View<Component> destination)
+{
+	auto destinationView = View<PbrLightingComponent>(destination);
+	const auto sourceView = View<PbrLightingComponent>(source);
+	destinationView->cubemap = sourceView->cubemap;
+	destinationView->sh = sourceView->sh;
+	destinationView->specular = sourceView->specular;
+	destinationView->descriptorSet = sourceView->descriptorSet;
+}
 string_view PbrLightingSystem::getComponentName() const
 {
 	return "PBR Lighting";

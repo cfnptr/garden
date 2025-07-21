@@ -18,6 +18,16 @@
 using namespace garden;
 
 //**********************************************************************************************************************
+void NineSliceRenderSystem::resetComponent(View<Component> component, bool full)
+{
+	SpriteRenderSystem::resetComponent(component, full);
+	if (full)
+	{
+		auto nineSliceRenderView = View<NineSliceRenderComponent>(component);
+		nineSliceRenderView->textureBorder = float2::zero;
+		nineSliceRenderView->windowBorder = float2::zero;
+	}
+}
 void NineSliceRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	SpriteRenderSystem::copyComponent(source, destination);

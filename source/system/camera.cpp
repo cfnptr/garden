@@ -39,14 +39,25 @@ float CameraComponent::getNearPlane() const noexcept
 CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton) { }
 CameraSystem::~CameraSystem() { unsetSingleton(); }
 
+void CameraSystem::resetComponent(View<Component> component, bool full)
+{
+	if (full)
+	{
+		auto cameraView = View<CameraComponent>(component);
+		cameraView->p = {};
+		cameraView->type = ProjectionType::Perspective;
+	}
+}
+void CameraSystem::copyComponent(View<Component> source, View<Component> destination)
+{
+	const auto sourceView = View<CameraComponent>(source);
+	auto destinationView = View<CameraComponent>(destination);
+	destinationView->p = sourceView->p;
+	destinationView->type = sourceView->type;
+}
 string_view CameraSystem::getComponentName() const
 {
 	return "Camera";
-}
-void CameraSystem::disposeComponents()
-{
-	components.dispose();
-	animationFrames.dispose();
 }
 
 //**********************************************************************************************************************
@@ -141,10 +152,6 @@ ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserialize
 		return ID<AnimationFrame>(animationFrames.create(frame));
 	return {};
 }
-View<AnimationFrame> CameraSystem::getAnimation(ID<AnimationFrame> frame)
-{
-	return View<AnimationFrame>(animationFrames.get(ID<CameraFrame>(frame)));
-}
 
 //**********************************************************************************************************************
 void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -189,8 +196,4 @@ void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> 
 				frameA->c.orthographic.depth, frameB->c.orthographic.depth, t);
 		}
 	}
-}
-void CameraSystem::destroyAnimation(ID<AnimationFrame> frame)
-{
-	animationFrames.destroy(ID<CameraFrame>(frame));
 }

@@ -30,17 +30,13 @@ struct SkyboxRenderComponent final : public Component
 {
 	Ref<Image> cubemap = {};               /**< Skybox cubemap texture. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Skybox descriptor set. */
-private:
-	bool destroy();
-	
-	friend class LinearPool<SkyboxRenderComponent>;
-	friend class ComponentSystem<SkyboxRenderComponent>;
 };
 
 /**
  * @brief Skybox rendering system.
  */
-class SkyboxRenderSystem final : public ComponentSystem<SkyboxRenderComponent>, public Singleton<SkyboxRenderSystem>
+class SkyboxRenderSystem final : public ComponentSystem<
+	SkyboxRenderComponent, false>, public Singleton<SkyboxRenderSystem>
 {
 public:
 	struct PushConstants final
@@ -65,7 +61,10 @@ private:
 	void imageLoaded();
 	void depthHdrRender();
 
+	void resetComponent(View<Component> component, bool full) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
+
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is skybox rendering enabled. */

@@ -68,11 +68,7 @@ private:
 	bool inSimulation = true;
 	uint8 _alignment0 = 0;
 
-	bool destroy();
-
 	friend class CharacterSystem;
-	friend class LinearPool<CharacterComponent>;
-	friend class ComponentSystem<CharacterComponent>;
 public:
 	uint16 collisionLayer = (uint16)CollisionLayer::Moving; /**< Character collision layer index. */
 
@@ -257,7 +253,7 @@ public:
  *   Support for specifying a local coordinate system that allows e.g. walking around in a flying space ship that is 
  *     equipped with 'inertial dampers' (a sci-fi concept often used in games).
  */
-class CharacterSystem final : public ComponentSystem<CharacterComponent>, 
+class CharacterSystem final : public ComponentSystem<CharacterComponent, false>, 
 	public Singleton<CharacterSystem>, public ISerializable
 {
 	vector<ID<Entity>> entityStack;
@@ -276,6 +272,7 @@ public:
 
 	ID<Component> createComponent(ID<Entity> entity) final;
 	void destroyComponent(ID<Component> instance) final;
+	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 

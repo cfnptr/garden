@@ -548,14 +548,9 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 			ImGui::EndPopup();
 			return false;
 		}
+
 		if (ImGui::MenuItem("Reset Component"))
-		{
-			auto manager = Manager::Instance::get();
-			auto tmpEntity = manager->createEntity();
-			manager->add(tmpEntity, componentType);
-			manager->copy(tmpEntity, selectedEntity, componentType);
-			manager->destroy(tmpEntity);
-		}
+			Manager::Instance::get()->reset(selectedEntity, componentType);
 
 		if (ImGui::MenuItem("Copy Component Name"))
 			ImGui::SetClipboardText(string(componentName).c_str());

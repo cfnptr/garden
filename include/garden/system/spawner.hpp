@@ -47,7 +47,7 @@ static constexpr const char* spawnModeNames[(uint8)SpawnMode::Count] =
  */
 struct SpawnerComponent final : public Component
 {
-	fs::path path = {};       /**< Target prefab scene path. */
+	fs::path path = "";       /**< Target prefab scene path. */
 	Hash128 prefab = {};      /**< Target runtime prefab entity UUID. */
 	uint32 maxCount = 1;      /**< Maximal automatic entity spawn count. */
 	float delay = 0.0f;       /**< Delay before next entity spawn. (seconds) */
@@ -59,11 +59,7 @@ private:
 	double delayTime = 0.0;
 	vector<Hash128> spawnedEntities;
 
-	bool destroy();
-
 	friend class SpawnerSystem;
-	friend class LinearPool<SpawnerComponent>;
-	friend class ComponentSystem<SpawnerComponent>;
 public:
 	/**
 	 * @brief Returns spawned entity array.
@@ -101,7 +97,7 @@ public:
 /***********************************************************************************************************************
  * @brief Provides spawning of pre-defined entities (prefabs) at runtime.
  */
-class SpawnerSystem final : public ComponentSystem<SpawnerComponent>, 
+class SpawnerSystem final : public ComponentSystem<SpawnerComponent, false>, 
 	public Singleton<SpawnerSystem>, public ISerializable
 {
 public:
@@ -123,6 +119,7 @@ private:
 	void preInit();
 	void update();
 
+	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 

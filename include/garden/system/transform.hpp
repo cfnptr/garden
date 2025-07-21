@@ -289,13 +289,12 @@ struct TransformFrame final : public AnimationFrame
  * Fundamental aspect of the engine architecture that handles the 
  * positioning, rotation, scaling and other properties of objects within the 3D space.
  */
-class TransformSystem final : public ComponentSystem<TransformComponent>, 
-	public Singleton<TransformSystem>, public ISerializable, public IAnimatable
+class TransformSystem final : public CompAnimSystem<TransformComponent, TransformFrame, true, false>, 
+	public Singleton<TransformSystem>, public ISerializable
 {
 	using EntityParentPair = pair<ID<Entity>, uint64>;
 	using EntityDuplicatePair = pair<ID<Entity>, ID<Entity>>;
 
-	LinearPool<TransformFrame, false> animationFrames;
 	vector<ID<Entity>> entityStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
 	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
@@ -317,9 +316,9 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 	~TransformSystem() final;
 
 	void destroyComponent(ID<Component> instance) final;
+	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
-	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void postSerialize(ISerializer& serializer) final;
@@ -328,10 +327,8 @@ class TransformSystem final : public ComponentSystem<TransformComponent>,
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
 	
 	friend class ecsm::Manager;
 public:

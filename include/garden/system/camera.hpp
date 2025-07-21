@@ -173,11 +173,9 @@ public:
 /***********************************************************************************************************************
  * @brief Handles camera projections.
  */
-class CameraSystem final : public ComponentSystem<CameraComponent, false>, 
-	public Singleton<CameraSystem>, public ISerializable, public IAnimatable
+class CameraSystem final : public CompAnimSystem<CameraComponent, CameraFrame, false, false>, 
+	public Singleton<CameraSystem>, public ISerializable
 {
-	LinearPool<CameraFrame, false> animationFrames;
-
 	/**
 	 * @brief Creates a new camera system instance.
 	 * @param setSingleton set system singleton instance
@@ -188,18 +186,17 @@ class CameraSystem final : public ComponentSystem<CameraComponent, false>,
 	 */
 	~CameraSystem() final;
 
+	void resetComponent(View<Component> component, bool full) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
-	void disposeComponents() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
-	void destroyAnimation(ID<AnimationFrame> frame) final;
 
 	friend class ecsm::Manager;
 };
