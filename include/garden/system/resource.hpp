@@ -174,15 +174,15 @@ protected:
 	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
 	vector<fs::path> loadedImagePaths = {};
-	fs::path loadedBufferPath = {};
+	fs::path loadedBufferPath = "";
 	Version appVersion = {};
 
 	#if GARDEN_PACK_RESOURCES
 	pack::Reader packReader = {};
 	#endif
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path appResourcesPath = {};
-	fs::path appCachePath = {};
+	fs::path appResourcesPath = "";
+	fs::path appCachePath = "";
 	#endif
 
 	/**

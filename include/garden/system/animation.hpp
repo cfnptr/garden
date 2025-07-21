@@ -42,11 +42,7 @@ private:
 	uint16 _alignment = 0;
 	Animations animations;
 
-	bool destroy();
-
 	friend class AnimationSystem;
-	friend class LinearPool<AnimationComponent>;
-	friend class ComponentSystem<AnimationComponent>;
 public:
 	/**
 	 * @brief Returns animations map.
@@ -92,7 +88,7 @@ public:
 /***********************************************************************************************************************
  * @brief Handles entity properties animation.
  */
-class AnimationSystem final : public ComponentSystem<AnimationComponent>, 
+class AnimationSystem final : public ComponentSystem<AnimationComponent, false>, 
 	public Singleton<AnimationSystem>, public ISerializable
 {
 public:
@@ -116,6 +112,7 @@ private:
 
 	void update();
 
+	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	void disposeComponents() final;

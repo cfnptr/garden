@@ -38,11 +38,7 @@ private:
 	Hash128 uuid = {}; /**< Entity universally unique identifier (UUID) */
 	string tag = {};   /**< Entity tag (Can be used by several entities) */
 
-	bool destroy();
-
 	friend class LinkSystem;
-	friend class LinearPool<LinkComponent>;
-	friend class ComponentSystem<LinkComponent>;
 public:
 	/**
 	 * @brief Returns entity universally unique identifier (UUID).
@@ -75,7 +71,8 @@ public:
 /***********************************************************************************************************************
  * @brief Handles fast entity search by unique identifier or tag.
  */
-class LinkSystem final : public ComponentSystem<LinkComponent>, public Singleton<LinkSystem>, public ISerializable
+class LinkSystem final : public ComponentSystem<LinkComponent, false>, 
+	public Singleton<LinkSystem>, public ISerializable
 {
 public:
 	using UuidMap = tsl::robin_map<Hash128, ID<Entity>>;
@@ -96,6 +93,7 @@ private:
 	 */
 	~LinkSystem() final;
 
+	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 

@@ -30,23 +30,6 @@ static void eraseEntityTag(LinkSystem::TagMap& tagMap, ID<Entity> entity, string
 }
 
 //**********************************************************************************************************************
-bool LinkComponent::destroy()
-{
-	if (!entity)
-		return false;
-
-	auto linkSystem = LinkSystem::Instance::get();
-	if (uuid)
-	{
-		auto result = linkSystem->uuidMap.erase(uuid);
-		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
-	}
-	
-	if (!tag.empty())
-		eraseEntityTag(linkSystem->tagMap, entity, tag);
-	return true;
-}
-
 void LinkComponent::regenerateUUID()
 {
 	auto linkSystem = LinkSystem::Instance::get();
@@ -102,19 +85,27 @@ void LinkComponent::setTag(string_view tag)
 
 //**********************************************************************************************************************
 LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton) { }
-LinkSystem::~LinkSystem()
-{
-	if (!Manager::Instance::get()->isRunning)
-		components.clear(false);
-	unsetSingleton();
-}
+LinkSystem::~LinkSystem() { unsetSingleton(); }
 
-//**********************************************************************************************************************
+void LinkSystem::resetComponent(View<Component> component, bool full)
+{
+	auto linkView = View<LinkComponent>(component);
+	if (linkView->uuid)
+	{
+		auto result = uuidMap.erase(linkView->uuid);
+		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
+		linkView->uuid = {};
+	}
+	if (!linkView->tag.empty())
+	{
+		eraseEntityTag(tagMap, linkView->entity, linkView->tag);
+		linkView->tag = {};
+	}
+}
 void LinkSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<LinkComponent>(source);
 	auto destinationView = View<LinkComponent>(destination);
-	destinationView->destroy();
 
 	if (sourceView->uuid)
 		destinationView->regenerateUUID();

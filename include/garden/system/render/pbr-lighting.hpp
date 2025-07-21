@@ -32,11 +32,6 @@ struct PbrLightingComponent final : public Component
 	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
 	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
-private:
-	bool destroy();
-
-	friend class LinearPool<PbrLightingComponent>;
-	friend class ComponentSystem<PbrLightingComponent>;
 };
 
 /**
@@ -52,7 +47,8 @@ private:
  *                   PreReflRender, ReflRender, PostReflRender, ReflRecreate,
  *                   PreGiRender, GiRender, PostGiRender, GiRecreate.
  */
-class PbrLightingSystem final : public ComponentSystem<PbrLightingComponent>, public Singleton<PbrLightingSystem>
+class PbrLightingSystem final : public ComponentSystem<
+	PbrLightingComponent, false>, public Singleton<PbrLightingSystem>
 {
 public:
 	struct LightingPC final
@@ -70,7 +66,7 @@ public:
 		uint32 itemCount;
 	};
 
-	static constexpr uint8 accumBufferCount = 3;      /**< PBR lighting accumulation buffer count. */
+	static constexpr uint8 accumBufferCount = 3; /**< PBR lighting accumulation buffer count. */
 	static constexpr Framebuffer::OutputAttachment::Flags accumBufferFlags = { false, false, true };
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
@@ -134,7 +130,10 @@ private:
 	void hdrRender();
 	void gBufferRecreate();
 
+	void resetComponent(View<Component> component, bool full) final;
+	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
+
 	friend class ecsm::Manager;
 public:
 	float reflectanceCoeff = 1.0f;

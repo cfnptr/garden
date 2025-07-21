@@ -21,22 +21,6 @@
 
 using namespace garden;
 
-//**********************************************************************************************************************
-bool AnimationComponent::destroy()
-{
-	if (!entity)
-		return false;
-
-	if (!animations.empty())
-	{
-		auto resourceSystem = ResourceSystem::Instance::get();
-		for (const auto& pair : animations)
-			resourceSystem->destroyShared(pair.second);
-	}
-	
-	return true;
-}
-
 bool AnimationComponent::getActiveLooped(bool& isLooped) const
 {
 	if (active.empty())
@@ -64,8 +48,6 @@ AnimationSystem::~AnimationSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
-	else
-		components.clear(false);
 
 	unsetSingleton();
 }
@@ -214,12 +196,21 @@ static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponen
 }
 
 //**********************************************************************************************************************
+void AnimationSystem::resetComponent(View<Component> component, bool full)
+{
+	auto animationView = View<AnimationComponent>(component);
+	if (!animationView->animations.empty())
+	{
+		auto resourceSystem = ResourceSystem::Instance::get();
+		for (const auto& pair : animationView->animations)
+			resourceSystem->destroyShared(pair.second);
+		animationView->animations.clear();
+	}
+}
 void AnimationSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<AnimationComponent>(source);
 	auto destinationView = View<AnimationComponent>(destination);
-	destinationView->destroy();
-
 	destinationView->animations = sourceView->animations;
 	destinationView->active = sourceView->active;
 	destinationView->frame = sourceView->frame;

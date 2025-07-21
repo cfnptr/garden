@@ -24,15 +24,6 @@
 
 using namespace garden;
 
-//**********************************************************************************************************************
-bool SpawnerComponent::destroy()
-{
-	if (!entity)
-		return false;
-	destroySpawned();
-	return true;
-}
-
 ID<Entity> SpawnerComponent::loadPrefab()
 {
 	if (prefab)
@@ -178,10 +169,6 @@ SpawnerSystem::~SpawnerSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SpawnerSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", SpawnerSystem::update);
 	}
-	else
-	{
-		components.clear(false);
-	}
 
 	unsetSingleton();
 }
@@ -241,12 +228,15 @@ void SpawnerSystem::update()
 }
 
 //**********************************************************************************************************************
+void SpawnerSystem::resetComponent(View<Component> component, bool full)
+{
+	auto spawnerView = View<SpawnerComponent>(component);
+	spawnerView->destroySpawned();
+}
 void SpawnerSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<SpawnerComponent>(source);
 	auto destinationView = View<SpawnerComponent>(destination);
-	destinationView->destroy();
-
 	destinationView->path = sourceView->path;
 	destinationView->prefab = sourceView->prefab;
 	destinationView->maxCount = sourceView->maxCount;

@@ -82,6 +82,29 @@ void SpriteRenderSystem::imageLoaded()
 	}
 }
 
+void SpriteRenderSystem::resetComponent(View<Component> component, bool full)
+{
+	auto resourceSystem = ResourceSystem::Instance::get();
+	auto spriteRenderView = View<SpriteRenderComponent>(component);
+	resourceSystem->destroyShared(spriteRenderView->colorMap);
+	resourceSystem->destroyShared(spriteRenderView->descriptorSet);
+	spriteRenderView->colorMap = {}; spriteRenderView->descriptorSet = {};
+
+	if (full)
+	{
+		spriteRenderView->isEnabled = true;
+		spriteRenderView->aabb = Aabb::one;
+		spriteRenderView->color = f32x4::one;
+		spriteRenderView->uvSize = float2::one;
+		spriteRenderView->uvOffset = float2::zero;;
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		spriteRenderView->colorMapPath = "";
+		spriteRenderView->taskPriority = 0.0f;
+		#endif
+		spriteRenderView->colorMapLayer = 0.0f;
+		spriteRenderView->isArray = false;
+	}
+}
 void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	auto destinationView = View<SpriteRenderComponent>(destination);
@@ -323,24 +346,16 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	frame.descriptorSet = {}; // Note: See the imageLoaded()
 }
 
-//**********************************************************************************************************************
-void SpriteRenderSystem::destroyResources(View<SpriteAnimationFrame> frameView)
+void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
-	resourceSystem->destroyShared(frameView->colorMap);
-	resourceSystem->destroyShared(frameView->descriptorSet);
-	frameView->colorMap = {};
-	frameView->descriptorSet = {};
-}
-void SpriteRenderSystem::destroyResources(View<SpriteRenderComponent> spriteRenderView)
-{
-	auto resourceSystem = ResourceSystem::Instance::get();
-	resourceSystem->destroyShared(spriteRenderView->colorMap);
-	resourceSystem->destroyShared(spriteRenderView->descriptorSet);
-	spriteRenderView->colorMap = {};
-	spriteRenderView->descriptorSet = {};
+	auto spriteFrameView = View<SpriteAnimationFrame>(frame);
+	resourceSystem->destroyShared(spriteFrameView->colorMap);
+	resourceSystem->destroyShared(spriteFrameView->descriptorSet);
+	spriteFrameView->colorMap = {}; spriteFrameView->descriptorSet = {};
 }
 
+//**********************************************************************************************************************
 Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(string_view path, ID<Image> colorMap)
 {
 	GARDEN_ASSERT(!path.empty());

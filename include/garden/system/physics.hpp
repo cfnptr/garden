@@ -354,14 +354,10 @@ private:
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 
-	bool destroy();
-
 	friend class PhysicsSystem;
 	friend struct CharacterComponent;
-	friend class LinearPool<RigidbodyComponent>;
-	friend class ComponentSystem<RigidbodyComponent>;
 public:
-	string eventListener; /**< Rigidbody events listener name. */
+	string eventListener = ""; /**< Rigidbody events listener name. */
 
 	/**
 	 * @brief Returns rigidbody constraint array.
@@ -639,7 +635,7 @@ public:
  * @brief Provides an approximate simulation of rigid body dynamics (including collision detection).
  * @details Registers events: Simulate.
  */
-class PhysicsSystem final : public ComponentSystem<RigidbodyComponent>, 
+class PhysicsSystem final : public ComponentSystem<RigidbodyComponent, false>, 
 	public Singleton<PhysicsSystem>, public ISerializable
 {
 public:
@@ -737,6 +733,7 @@ private:
 	void processSimulate();
 	void interpolateResult(float t);
 
+	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	void disposeComponents() final;

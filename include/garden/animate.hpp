@@ -77,9 +77,9 @@ public:
 	virtual ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) = 0;
 	/**
 	 * @brief Returns system animation frame view.
-	 * @param frame target system animation frame instance
+	 * @param instance target system animation frame instance
 	 */
-	virtual View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) = 0;
+	virtual View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) = 0;
 	/**
 	 * @brief Asynchronously animates system component data. (From multiple threads)
 	 * @details Component data are interpolated between two frames.
@@ -92,12 +92,18 @@ public:
 	virtual void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) = 0;
 	/**
 	 * @brief Destroys system animation frame instance.
-	 * @param frame target system animation frame instance
+	 * @param instance target system animation frame instance
 	 */
-	virtual void destroyAnimation(ID<AnimationFrame> frame) = 0;
+	virtual void destroyAnimation(ID<AnimationFrame> instance) = 0;
+	/**
+	 * @brief Resets system animation frame data.
+	 * @param frame target system animation frame view
+	 * @param full reset all animation frame data
+	 */
+	virtual void resetAnimation(View<AnimationFrame> frame, bool full) = 0;
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Animation keyframes container.
  */
 struct Animation final
@@ -110,9 +116,6 @@ public:
 	float frameRate = 30.0f; /**< Animation frame rate per second. */
 	bool isLooped = true;    /**< Is animation played infinitely. */
 private:
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
-
 	/**
 	 * @brief Destroys animation keyframes.
 	 * @details It destroys all contained system animation frames.
@@ -174,6 +177,68 @@ public:
 	 * @warning Invalidates keyframes map!
 	 */
 	static void destroyKeyframes(const Keyframes& keyframes);
+};
+
+/***********************************************************************************************************************
+ * @brief Base system class with components and animation frames.
+ * @details See the @ref System.
+ *
+ * @tparam C type of the system component
+ * @tparam A type of the system animation frame
+ *
+ * @tparam DestroyComponents system should call destroy() function of the components
+ * @tparam DestroyAnimationFrames system should call destroy() function of the animation frames
+ */
+template<class C = Component, class A = AnimationFrame, 
+	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+class CompAnimSystem : public ComponentSystem<C, DestroyComponents>, public IAnimatable
+{
+public:
+	typedef A AnimationFrameType; /**< Type of the system animation frame. */
+	using AnimationFrames = LinearPool<A, DestroyAnimationFrames>; /**< System animation frame pool type. */
+protected:
+	AnimationFrames animationFrames; /**< System animation frame pool. */
+
+	/**
+	 * @brief Destroys system animation frame instance.
+	 * @details You should use @ref AnimationSystem to destroy animation frames.
+	 */
+	void destroyAnimation(ID<AnimationFrame> instance) override
+	{
+		auto frame = animationFrames.get(ID<A>(instance));
+		resetAnimation(View<AnimationFrame>(frame), false);
+		animationFrames.destroy(ID<A>(instance));
+	}
+	/**
+	 * @brief Resets system animation frame data.
+	 * @details You should use @ref AnimationSystem to destroy animation frames.
+	 */
+	void resetAnimation(View<AnimationFrame> frame, bool full) override
+	{
+		if (full)
+		{
+			auto frameView = View<A>(frame);
+			**frameView = A();
+		}
+	}
+public:
+	/**
+	 * @brief Returns system animation frame view.
+	 * @param instance target system animation frame instance
+	 */
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) override
+	{
+		return View<AnimationFrame>(animationFrames.get(ID<A>(instance)));
+	}
+	/**
+	 * @brief Actually destroys system components and animation frames.
+	 * @details Items not destroyed immediately, only after the dispose call.
+	 */
+	void disposeComponents() override
+	{
+		ComponentSystem<C, DestroyComponents>::disposeComponents();
+		animationFrames.dispose();
+	}
 };
 
 } // namespace garden

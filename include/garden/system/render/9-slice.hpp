@@ -66,6 +66,7 @@ public:
 protected:
 	NineSliceRenderSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
 
+	void resetComponent(View<Component> component, bool full) override;
 	void copyComponent(View<Component> source, View<Component> destination) override;
 
 	uint64 getBaseInstanceDataSize() override;
@@ -93,23 +94,12 @@ protected:
 
 	NineSliceRenderCompSystem(const fs::path& pipelinePath) : NineSliceRenderSystem(pipelinePath) { }
 
-	ID<Component> createComponent(ID<Entity> entity) override
-	{
-		return ID<Component>(components.create());
-	}
+	ID<Component> createComponent(ID<Entity> entity) override { return ID<Component>(components.create()); }
 	void destroyComponent(ID<Component> instance) override
 	{
-		auto componentView = components.get(ID<C>(instance));
-		destroyResources(View<SpriteRenderComponent>(componentView));
+		auto component = components.get(ID<C>(instance));
+		resetComponent(View<Component>(component), false);
 		components.destroy(ID<C>(instance));
-	}
-	void copyComponent(View<Component> source, View<Component> destination) override
-	{
-		const auto sourceView = View<C>(source);
-		auto destinationView = View<C>(destination);
-		if constexpr (DestroyComponents)
-			destinationView->destroy();
-		**destinationView = **sourceView;
 	}
 
 	string_view getComponentName() const override
@@ -117,10 +107,7 @@ protected:
 		static const string name = typeToString(typeid(C));
 		return name;
 	}
-	type_index getComponentType() const override
-	{
-		return typeid(C);
-	}
+	type_index getComponentType() const override { return typeid(C); }
 	View<Component> getComponent(ID<Component> instance) override
 	{
 		return View<Component>(components.get(ID<C>(instance)));
@@ -135,19 +122,14 @@ protected:
 	{
 		return *((LinearPool<MeshRenderComponent>*)&components);
 	}
-	psize getMeshComponentSize() const override
-	{
-		return sizeof(C);
-	}
+	psize getMeshComponentSize() const override { return sizeof(C); }
 
 	LinearPool<SpriteAnimationFrame>& getAnimationFramePool() override
 	{
 		return *((LinearPool<SpriteAnimationFrame>*)&animationFrames);
 	}
-	psize getAnimationFrameSize() const override
-	{
-		return sizeof(A);
-	}
+	psize getAnimationFrameSize() const override { return sizeof(A); }
+
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) override
 	{
 		A frame;
@@ -156,39 +138,54 @@ protected:
 			return ID<AnimationFrame>(animationFrames.create(frame));
 		return {};
 	}
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> frame) override
+	View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) override
 	{
-		return View<AnimationFrame>(animationFrames.get(ID<A>(frame)));
+		return View<AnimationFrame>(animationFrames.get(ID<A>(instance)));
 	}
-	void destroyAnimation(ID<AnimationFrame> frame) override
+	void destroyAnimation(ID<AnimationFrame> instance) override
 	{
-		auto frameView = animationFrames.get(ID<A>(frame));
-		destroyResources(View<SpriteAnimationFrame>(frameView));
-		animationFrames.destroy(ID<A>(frame));
+		auto frame = animationFrames.get(ID<A>(instance));
+		resetAnimation(View<AnimationFrame>(frame), false);
+		animationFrames.destroy(ID<A>(instance));
 	}
 public:
 	bool hasComponent(ID<Entity> entity) const
 	{
-		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
 		return entityView->findComponent(typeid(C).hash_code());
 	}
 	View<C> getComponent(ID<Entity> entity) const
 	{
-		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
 		auto componentData = entityView->findComponent(typeid(C).hash_code());
-		GARDEN_ASSERT_MSG(componentData, "Entity does not have component " + typeToString(typeid(C)));
+		if (!componentData)
+		{
+			throw EcsmError("Component is not added. ("
+				"type: " + typeToString(typeid(C)) + ", "
+				"entity:" + std::to_string(*entity) + ")");
+		}
 		return components.get(ID<C>(componentData->instance));
 	}
 	View<C> tryGetComponent(ID<Entity> entity) const
 	{
-		assert(entity);
 		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
 		auto componentData = entityView->findComponent(typeid(C).hash_code());
 		if (!componentData)
 			return {};
 		return components.get(ID<C>(componentData->instance));
+	}
+	void resetComponentData(ID<Entity> entity, bool full = true)
+	{
+		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
+		auto componentData = entityView->findComponent(typeid(C).hash_code());
+		if (!componentData)
+		{
+			throw EcsmError("Component is not added. ("
+				"type: " + typeToString(typeid(C)) + ", "
+				"entity:" + std::to_string(*entity) + ")");
+		}
+		auto component = components.get(ID<C>(componentData->instance));
+		resetComponent(View<Component>(component), full);
 	}
 };
 

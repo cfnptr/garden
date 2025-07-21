@@ -12,13 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RAY_GSL
-#define RAY_GSL
+#ifndef CONE_TRACING_GSL
+#define CONE_TRACING_GSL
 
-struct Ray
-{
-	float3 origin;
-	float3 direction;
-};
+#include "common/cone-ray.gsl"
 
-#endif // RAY_GSL
+#define DIFFUSE_CONE_COUNT 6
+
+const float diffuseConeWeights[DIFFUSE_CONE_COUNT] = 
+	float[DIFFUSE_CONE_COUNT](0.25f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f);
+
+const float3 diffuseConeDirs[DIFFUSE_CONE_COUNT] = float3[DIFFUSE_CONE_COUNT]
+( 
+	float3( 0.0f,       0.0f,      1.0f),
+	float3( 0.0f,       0.866025f, 0.5f),
+	float3( 0.823639f,  0.267617f, 0.5f),
+	float3( 0.509037f, -0.700629f, 0.5f),
+	float3(-0.509037f, -0.700629f, 0.5f),
+	float3(-0.823639f,  0.267617f, 0.5f)
+);
+
+#endif // CONE_TRACING_GSL
