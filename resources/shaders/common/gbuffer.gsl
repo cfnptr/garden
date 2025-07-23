@@ -95,7 +95,7 @@ struct GBufferValues
 GBufferValues gBufferValuesDefault()
 {
 	GBufferValues gBuffer;
-	gBuffer.viewDirection = float3(0.0f, 0.0f, 1.0f);
+	gBuffer.viewDirection = float3(0.0f, 0.0f, -1.0f);
 	gBuffer.baseColor = float3(1.0f);
 	#ifdef USE_SPECULAR_FACTOR
 	gBuffer.specularFactor = 1.0f;
@@ -272,7 +272,7 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1,
 	GBufferData data = decodeGBufferData(s0, s1, s2, s3, s4, texCoords);
 
 	GBufferValues gBuffer;
-	gBuffer.viewDirection = float3(0.0f, 0.0f, 1.0f);
+	gBuffer.viewDirection = float3(0.0f, 0.0f, -1.0f);
 	gBuffer.baseColor = decodeBaseColor(data);
 	#ifdef USE_SPECULAR_FACTOR
 	gBuffer.specularFactor = decodeSpecularFactor(data);

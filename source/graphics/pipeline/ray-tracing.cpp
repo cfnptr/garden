@@ -290,6 +290,20 @@ void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
 	auto graphicsAPI = GraphicsAPI::get();
+	#if GARDEN_DEBUG
+	auto bufferView = graphicsAPI->bufferPool.get(sbt.buffer);
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ),
+			"SBT buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
+	}
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
+			"SBT buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+	}
+	#endif
+
 	auto currentVariant = graphicsAPI->currentPipelineVariants[0];
 
 	TraceRaysCommand command;

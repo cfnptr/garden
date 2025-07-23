@@ -194,12 +194,12 @@ public:
 	 * @brief Returns current frame index since the application launch.
 	 * @details It does not count frames when the window is minimized.
 	 */
-	uint64 getFrameIndex() const noexcept { return frameIndex; }
+	uint64 getCurrentFrameIndex() const noexcept { return frameIndex; }
 	/**
 	 * @brief Returns current tick index since the application launch.
 	 * @details Each tick is a update function call by the manager.
 	 */
-	uint64 getTickIndex() const noexcept { return tickIndex; }
+	uint64 getCurrentTickIndex() const noexcept { return tickIndex; }
 
 	/**
 	 * @brief Can a frame be rendered on the current tick.

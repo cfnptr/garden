@@ -34,23 +34,27 @@ struct IblTerms
 {
 	float3 e;
 	float3 fd;
+	#ifndef USE_DIFFUSE_ONLY
 	float3 fr;
+	#endif
 	#ifdef USE_LIGHT_EMISSION
 	float3 fe;
 	#endif
 };
 
 //**********************************************************************************************************************
-IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT, 
-	const float4 shBuffer[SH_COEFF_COUNT], samplerCube iblSpecular)
+IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT, const float4 shBuffer[SH_COEFF_COUNT]
+	#ifndef USE_DIFFUSE_ONLY
+	, samplerCube iblSpecular
+	#endif
+	)
 {
-	IblTerms terms; terms.fr = float3(0.0f);
+	IblTerms terms;
 	float roughness = max(gBuffer.roughness, 0.045f); // Perceptual.
 	float linearRoughness = unpackRoughness(roughness);
 	float nov = max(dot(gBuffer.normal, -gBuffer.viewDirection), 1e-4f);
 	float reflectance = computeDielectricF0(gBuffer.reflectance);
 	float3 f0 = computeF0(gBuffer.baseColor, gBuffer.metallic, reflectance);
-	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, roughness, f0);
 	terms.e = specularDFG(dfgLUT, nov, roughness, f0);
 
 	#ifdef USE_REFLECTIONS
@@ -59,12 +63,17 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT,
 	const float4 reflectionColor = float4(0.0f);
 	#endif
 
+	#ifndef USE_DIFFUSE_ONLY
+	terms.fr = float3(0.0f);
+	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, roughness, f0);
+
 	if (reflectionColor.a < 1.0f)
 	{
 		float3 reflected = reflect(gBuffer.viewDirection, gBuffer.normal);
 		float3 r = computeReflectedVector(linearRoughness, gBuffer.normal, reflected);
 		terms.fr = terms.e * prefilteredRadiance(iblSpecular, r, roughness) * energyCompensation;
 	}
+	#endif
 
 	#ifdef USE_LIGHT_SHADOW
 	float4 shadow = gBuffer.shadow;
@@ -94,8 +103,10 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT,
 	if (gBuffer.ambientOcclusion < 1.0f)
 	{
 		float specularAO = specularAoLagarde(nov, gBuffer.ambientOcclusion, linearRoughness);
-		terms.fr *= gtaoMultiBounce(specularAO, f0);
 		terms.fd *= gtaoMultiBounce(gBuffer.ambientOcclusion, diffuseColor);
+		#ifndef USE_DIFFUSE_ONLY
+		terms.fr *= gtaoMultiBounce(specularAO, f0);
+		#endif
 	}
 	#endif
 
@@ -108,16 +119,20 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT,
 		float3 clearCoatR = reflect(gBuffer.viewDirection, gBuffer.clearCoatNormal);
 		float fc = schlick(0.04f, 1.0f, clearCoatNov);
 		float attenuation = 1.0f - fc;
-		terms.fd *= attenuation; terms.fr *= attenuation;
-
+		terms.fd *= attenuation;
+		
+		#ifndef USE_DIFFUSE_ONLY
 		float clearCoatRoughness = max(gBuffer.clearCoatRoughness, 0.045f); // Perceptual.
 		float ccLinearRoughness = unpackRoughness(clearCoatRoughness);
-		#ifdef USE_AMBIENT_OCCLUSION
-		float specularAO = specularAoLagarde(clearCoatNov, gBuffer.ambientOcclusion, ccLinearRoughness);
-		#else
-		const float specularAO = 1.0f;
+			#ifdef USE_AMBIENT_OCCLUSION
+			float specularAO = specularAoLagarde(
+				clearCoatNov, gBuffer.ambientOcclusion, ccLinearRoughness);
+			#else
+			const float specularAO = 1.0f;
+			#endif
+		terms.fr = fma(terms.fr, float3(attenuation), prefilteredRadiance(
+			iblSpecular, clearCoatR, clearCoatRoughness) * (specularAO * fc));
 		#endif
-		terms.fr += prefilteredRadiance(iblSpecular, clearCoatR, clearCoatRoughness) * (specularAO * fc);
     }
 	#endif
 
@@ -138,12 +153,14 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT,
 	}
 	#endif
 
-	#ifdef USE_REFLECTIONS
-	terms.fr = fma(terms.fr, float3(1.0f - reflectionColor.a), 
-		terms.e * reflectionColor.rgb * energyCompensation);
-	#endif
-	#ifdef USE_SPECULAR_FACTOR
-	terms.fr *= gBuffer.specularFactor;
+	#ifndef USE_DIFFUSE_ONLY
+		#ifdef USE_REFLECTIONS
+		terms.fr = fma(terms.fr, float3(1.0f - reflectionColor.a), 
+			terms.e * reflectionColor.rgb * energyCompensation);
+		#endif
+		#ifdef USE_SPECULAR_FACTOR
+		terms.fr *= gBuffer.specularFactor;
+		#endif
 	#endif
 	return terms;
 }
