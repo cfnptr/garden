@@ -156,7 +156,7 @@ void ToneMappingSystem::ldrRender()
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 
 	PushConstants pc;
-	pc.frameIndex = (uint32)graphicsSystem->getFrameIndex();
+	pc.frameIndex = (uint32)graphicsSystem->getCurrentFrameIndex();
 	pc.exposureFactor = exposureFactor;
 	pc.ditherIntensity = ditherIntensity;
 	pc.bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;

@@ -1451,6 +1451,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	{
 		const vector<fs::path> includePaths =
 		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+		auto dataPath = data.shaderPath;
 
 		fs::path inputPath, outputPath;
 		if (hasVertexShader)
@@ -1467,21 +1468,20 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 		auto compileResult = false;
 		try
 		{
-			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
+			data.shaderPath = dataPath.filename();
 			compileResult = GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, data);
-			data.shaderPath = dataPath;
 		}
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() << "(.frag): " << e.what() << "\n"; // TODO: get info which stage throw.
-			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + data.shaderPath.generic_string() + ")");
+			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + dataPath.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
-			throw GardenError("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		GARDEN_LOG_DEBUG("Compiled graphics shaders. (path: " + data.shaderPath.generic_string() + ")");
+			throw GardenError("Shader files does not exist. (path: " + dataPath.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Compiled graphics shaders. (path: " + dataPath.generic_string() + ")");
 		return true;
 	}
 	#endif
@@ -1711,26 +1711,26 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 	{
 		const vector<fs::path> includePaths =
 		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+		auto dataPath = data.shaderPath;
 
 		auto compileResult = false;
 		try
 		{
-			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
+			data.shaderPath = dataPath.filename();
 			compileResult = GslCompiler::compileComputeShader(computeInputPath.parent_path(),
 				computeOutputPath.parent_path(), includePaths, data);
-			data.shaderPath = dataPath;
 		}
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() << ": " << e.what() << "\n";
-			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + data.shaderPath.generic_string() + ")");
+			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + dataPath.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
-			throw GardenError("Shader file does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		GARDEN_LOG_DEBUG("Compiled compute shader. (path: " + data.shaderPath.generic_string() + ")");
+			throw GardenError("Shader file does not exist. (path: " + dataPath.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Compiled compute shader. (path: " + dataPath.generic_string() + ")");
 		return true;
 	}
 	#endif
@@ -1916,26 +1916,26 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	{
 		const vector<fs::path> includePaths =
 		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+		auto dataPath = data.shaderPath;
 
 		auto compileResult = false;
 		try
 		{
-			auto dataPath = data.shaderPath; data.shaderPath = dataPath.filename();
+			data.shaderPath = dataPath.filename();
 			compileResult = GslCompiler::compileRayTracingShaders(rayGenInputPath.parent_path(), 
 				rayGenOutputPath.parent_path(), includePaths, data);
-			data.shaderPath = dataPath;
 		}
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << rayGenInputPath.generic_string() << "(.rXXX): " << e.what() << "\n"; // TODO: get info which stage throw.
-			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + data.shaderPath.generic_string() + ")");
+			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + dataPath.generic_string() + ")");
 			return false;
 		}
 		
 		if (!compileResult)
-			throw GardenError("Shader files does not exist. (path: " + data.shaderPath.generic_string() + ")");
-		GARDEN_LOG_DEBUG("Compiled ray tracing shaders. (path: " + data.shaderPath.generic_string() + ")");
+			throw GardenError("Shader files does not exist. (path: " + dataPath.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Compiled ray tracing shaders. (path: " + dataPath.generic_string() + ")");
 		return true;
 	}
 	#endif

@@ -523,7 +523,11 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 
 		for (const auto& dsUniform : dsUniforms)
 		{
-			const auto& pipelineUniform = pipelineUniforms.at(dsUniform.first);
+			auto searchResult = pipelineUniforms.find(dsUniform.first);
+			if (searchResult == pipelineUniforms.end())
+				continue;
+
+			const auto& pipelineUniform = searchResult->second;
 			auto uniformType = pipelineUniform.type;
 
 			if (isSamplerType(uniformType) || isImageType(uniformType) ||
