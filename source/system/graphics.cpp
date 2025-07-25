@@ -688,19 +688,17 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	else abort();
 	#endif
 
-	if (type != Image::Type::Texture3D)
-		size.setZ(layerCount);
 	if (dataFormat == Image::Format::Undefined)
 		dataFormat = format;
 
-	auto mipSize = (uint2)size;
+	auto mipSize = (uint3)size;
 	auto formatBinarySize = (uint64)toBinarySize(dataFormat);
 	uint64 stagingSize = 0; uint32 stagingCount = 0;
 
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];
-		auto binarySize = formatBinarySize * mipSize.x * mipSize.y;
+		auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
 		for (auto layerData : mipData)
 		{
@@ -710,11 +708,15 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			stagingCount++;
 		}
 
-		mipSize = max(mipSize / 2u, uint2::one);
+		mipSize = max(mipSize / 2u, uint3::one);
 	}
 
+	auto imageSize = u32x4(size, mipCount);
+	if (type != Image::Type::Texture3D)
+		imageSize.setZ(layerCount);
+
 	auto graphicsAPI = GraphicsAPI::get();
-	auto image = graphicsAPI->imagePool.create(type, format, usage, strategy, u32x4(size, mipCount), 0);
+	auto image = graphicsAPI->imagePool.create(type, format, usage, strategy, imageSize, 0);
 	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
 	if (stagingCount > 0)
@@ -732,7 +734,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		else
 		{
 			targetImage = graphicsAPI->imagePool.create(type, dataFormat, Image::Usage::TransferSrc | 
-				Image::Usage::TransferDst, Image::Strategy::Speed, u32x4(size, mipCount), 0);
+				Image::Usage::TransferDst, Image::Strategy::Speed, imageSize, 0);
 			SET_RESOURCE_DEBUG_NAME(targetImage, "image.staging" + to_string(*targetImage));
 
 			#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
@@ -745,13 +747,13 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		auto stagingMap = stagingBufferView->getMap();
 		vector<Image::CopyBufferRegion> regions(stagingCount);
 		uint64 stagingOffset = 0; uint32 copyIndex = 0;
-		mipSize = (uint2)size;
+		mipSize = (uint3)size;
 
 		for (uint8 mip = 0; mip < mipCount; mip++)
 		{
 			const auto& mipData = data[mip].data();
 			auto mipLayerCount = (uint32)data[mip].size();
-			auto binarySize = formatBinarySize * mipSize.x * mipSize.y;
+			auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
 
 			for (uint32 layer = 0; layer < mipLayerCount; layer++)
 			{
@@ -761,7 +763,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 				Image::CopyBufferRegion region;
 				region.bufferOffset = stagingOffset;
-				region.imageExtent = uint3(mipSize, 1);
+				region.imageExtent = mipSize;
 				region.imageBaseLayer = layer;
 				region.imageLayerCount = 1;
 				region.imageMipLevel = mip;
@@ -771,7 +773,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				stagingOffset += binarySize;
 			}
 
-			mipSize = max(mipSize / 2u, uint2::one);
+			mipSize = max(mipSize / 2u, uint3::one);
 		}
 
 		GARDEN_ASSERT(stagingCount == copyIndex);
@@ -796,18 +798,18 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 			vector<Image::BlitRegion> blitRegions(mipCount);
-			mipSize = (uint2)size;
+			mipSize = (uint3)size;
 
 			for (uint8 i = 0; i < mipCount; i++)
 			{
 				Image::BlitRegion region;
-				region.srcExtent = uint3(mipSize, 1);
-				region.dstExtent = uint3(mipSize, 1);
+				region.srcExtent = mipSize;
+				region.dstExtent = mipSize;
 				region.layerCount = layerCount;
 				region.srcMipLevel = i;
 				region.dstMipLevel = i;
 				blitRegions[i] = region;
-				mipSize = max(mipSize / 2u, uint2::one);
+				mipSize = max(mipSize / 2u, uint3::one);
 			}
 
 			Image::blit(targetImage, image, blitRegions);

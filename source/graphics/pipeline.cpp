@@ -793,12 +793,12 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 		auto descriptor = descriptorSetRange[i];
 		GARDEN_ASSERT_MSG(descriptor.set,"Pipeline [" + debugName + "] "
 			"descriptor set [" + to_string(i) +  "] is null");
+		auto thisPipeline = graphicsAPI->getPipeline(type, this);
 		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
+		GARDEN_ASSERT_MSG(thisPipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
+			to_string(i) +  "] pipeline is different from this pipeline [" + debugName + "]");
 		GARDEN_ASSERT_MSG(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount(),
 			"Out of pipeline [" + debugName + "] descriptor set count range");
-		auto pipeline = graphicsAPI->getPipeline(descriptorSetView->getPipelineType(), this);
-		GARDEN_ASSERT_MSG(pipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
-			to_string(i) +  "] pipeline is different from this pipeline [" + debugName + "]");
 	}
 	#endif
 

@@ -89,6 +89,9 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	editorSystem->drawResource(pbrLightingView->specular, "Specular");
 	editorSystem->drawResource(pbrLightingView->descriptorSet);
 
+	auto isReady = pbrLightingView->isReady();
+	ImGui::Checkbox("Ready", &isReady);
+
 	// TODO: allow to select cubemap from file
 }
 #endif
