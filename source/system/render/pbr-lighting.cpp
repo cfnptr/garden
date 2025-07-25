@@ -636,7 +636,10 @@ void PbrLightingSystem::preHdrRender()
 		return;
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
-	if (pipelineView->isReady() && !lightingDS)
+	if (!pipelineView->isReady())
+		return;
+
+	if (!lightingDS)
 	{
 		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflBufferView, giBuffer);
 		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
@@ -846,10 +849,14 @@ void PbrLightingSystem::hdrRender()
 		return;
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
-	auto dfgLutView = graphicsSystem->get(dfgLUT);
-	auto reflKernelView = graphicsSystem->get(reflKernel);
-	if (!pipelineView->isReady() || !dfgLutView->isReady() || !reflKernelView->isReady() || !lightingDS)
-		return;
+	if (!isLoaded)
+	{
+		auto dfgLutView = graphicsSystem->get(dfgLUT);
+		auto reflKernelView = graphicsSystem->get(reflKernel);
+		if (!dfgLutView->isReady() || !reflKernelView->isReady() || !lightingDS)
+			return;
+		isLoaded = true;
+	}
 
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
 	if (transformView && !transformView->isActive())
@@ -859,16 +866,21 @@ void PbrLightingSystem::hdrRender()
 	if (!pbrLightingView || !pbrLightingView->cubemap || !pbrLightingView->sh || !pbrLightingView->specular)
 		return;
 
-	auto cubemapView = graphicsSystem->get(pbrLightingView->cubemap);
-	auto shView = graphicsSystem->get(pbrLightingView->sh);
-	auto specularView = graphicsSystem->get(pbrLightingView->specular);
-	if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
-		return;
-	
+	if (!pbrLightingView->dataReady)
+	{
+		auto cubemapView = graphicsSystem->get(pbrLightingView->cubemap);
+		auto shView = graphicsSystem->get(pbrLightingView->sh);
+		auto specularView = graphicsSystem->get(pbrLightingView->specular);
+		if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
+			return;
+		pbrLightingView->dataReady = true;
+	}
+
 	if (!pbrLightingView->descriptorSet)
 	{
-		auto descriptorSet = createDescriptorSet( // TODO: maybe create shared DS?
-			ID<Buffer>(pbrLightingView->sh), ID<Image>(pbrLightingView->specular), ID<GraphicsPipeline>());
+		auto descriptorSet = createDescriptorSet(graphicsSystem->camera, ID<GraphicsPipeline>());
+		if (!descriptorSet)
+			return;
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
 		pbrLightingView->descriptorSet = descriptorSet;
 	}
@@ -1540,20 +1552,24 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 }
 
 //**********************************************************************************************************************
-Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Buffer> sh, 
-	ID<Image> specular, ID<Pipeline> pipeline, PipelineType type, uint8 index)
+Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity, 
+	ID<Pipeline> pipeline, PipelineType type, uint8 index)
 {
-	GARDEN_ASSERT(sh);
-	GARDEN_ASSERT(specular);
+	GARDEN_ASSERT(entity);
+
+	auto pbrLightingView = tryGetComponent(entity);
+	if (!isLoaded || !pbrLightingView || !pbrLightingView->isReady() || 
+		!pbrLightingView->sh || !pbrLightingView->specular)
+	{
+		return {};
+	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto specularView = graphicsSystem->get(specular);
-	if (!specularView->isReady())
-		return {};
+	auto specularView = graphicsSystem->get(pbrLightingView->specular);
 
 	DescriptorSet::Uniforms iblUniforms =
 	{ 
-		{ "sh", DescriptorSet::Uniform(sh) },
+		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->sh)) },
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 

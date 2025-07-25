@@ -23,6 +23,8 @@
 namespace garden
 {
 
+class PbrLightingSystem;
+
 /**
  * @brief PBR lighting rendering data container. (Physically Based Rendering)
  */
@@ -32,6 +34,14 @@ struct PbrLightingComponent final : public Component
 	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
 	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
+private:
+	bool dataReady = false;
+	friend class PbrLightingSystem;
+public:
+	/**
+	 * @brief Are PBR lighting data transfered and ready.
+	 */
+	bool isReady() const noexcept { return dataReady; }
 };
 
 /**
@@ -107,6 +117,7 @@ private:
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
 	bool hasAnyGI = false;
+	bool isLoaded = false;
 
 	/**
 	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
@@ -319,55 +330,48 @@ public:
 	/**
 	 * @brief Creates PBR lighting descriptor set.
 	 *
-	 * @param sh spherical harmonics buffer instance
-	 * @param specular specular cubemap instance
+	 * @param entity target PBR lighting entity
 	 * @param pipeline target descriptor set pipeline ({} = lighting)
 	 * @param type descriptor set pipeline type
 	 * @param index index of the descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
+	Ref<DescriptorSet> createDescriptorSet(ID<Entity> entity, 
 		ID<Pipeline> pipeline, PipelineType type, uint8 index);
 	/**
 	 * @brief Creates PBR lighting graphics descriptor set.
 	 * @return A new descriptor set if resources are ready, otherwise null.
 	 * 
-	 * @param sh spherical harmonics buffer instance
-	 * @param specular specular cubemap instance
+	 * @param entity target PBR lighting entity
 	 * @param pipeline target descriptor set pipeline ({} = lighting)
 	 * @param index index of the descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
-		ID<GraphicsPipeline> pipeline, uint8 index = 1)
+	Ref<DescriptorSet> createDescriptorSet(ID<Entity> entity, ID<GraphicsPipeline> pipeline, uint8 index = 1)
 	{
-		return createDescriptorSet(sh, specular, ID<Pipeline>(pipeline), PipelineType::Graphics, index);
+		return createDescriptorSet(entity, ID<Pipeline>(pipeline), PipelineType::Graphics, index);
 	}
 	/**
 	 * @brief Creates PBR lighting compute descriptor set.
 	 * @return A new descriptor set if resources are ready, otherwise null.
 	 * 
-	 * @param sh spherical harmonics buffer instance
-	 * @param specular specular cubemap instance
+	 * @param entity target PBR lighting entity
 	 * @param pipeline target descriptor set pipeline ({} = lighting)
 	 * @param index index of the descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
-		ID<ComputePipeline> pipeline, uint8 index = 1)
+	Ref<DescriptorSet> createDescriptorSet(ID<Entity> entity, ID<ComputePipeline> pipeline, uint8 index = 1)
 	{
-		return createDescriptorSet(sh, specular, ID<Pipeline>(pipeline), PipelineType::Compute, index);
+		return createDescriptorSet(entity, ID<Pipeline>(pipeline), PipelineType::Compute, index);
 	}
 	/**
 	 * @brief Creates PBR lighting ray tracing descriptor set.
 	 * @return A new descriptor set if resources are ready, otherwise null.
 	 * 
-	 * @param sh spherical harmonics buffer instance
-	 * @param specular specular cubemap instance
+	 * @param entity target PBR lighting entity
 	 * @param pipeline target descriptor set pipeline ({} = lighting)
 	 * @param index index of the descriptor set in the shader
 	 */
-	Ref<DescriptorSet> createDescriptorSet(ID<Buffer> sh, ID<Image> specular, 
-		ID<RayTracingPipeline> pipeline, uint8 index = 1)
+	Ref<DescriptorSet> createDescriptorSet(ID<Entity> entity, ID<RayTracingPipeline> pipeline, uint8 index = 1)
 	{
-		return createDescriptorSet(sh, specular, ID<Pipeline>(pipeline), PipelineType::RayTracing, index);
+		return createDescriptorSet(entity, ID<Pipeline>(pipeline), PipelineType::RayTracing, index);
 	}
 
 	/**
