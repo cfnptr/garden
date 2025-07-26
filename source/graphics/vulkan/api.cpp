@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/vulkan/command-buffer.hpp"
-#include "garden/hash.hpp"
-
 #define VMA_IMPLEMENTATION
 #define VOLK_IMPLEMENTATION
-#include "garden/graphics/vulkan/vma.hpp"
+
+#include "garden/graphics/vulkan/api.hpp"
+#include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/graphics/glfw.hpp" // Do not move it.
+#include "garden/hash.hpp"
 
 #include "mpio/directory.hpp"
 
