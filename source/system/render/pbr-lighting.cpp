@@ -47,7 +47,7 @@ namespace garden::graphics
 	};
 }
 
-#if 0 // Used to precompute Ki coeffs.
+#if 0 // Note: Used to precompute Ki coeffs.
 //**********************************************************************************************************************
 static uint32 factorial(uint32 x) noexcept
 {
@@ -60,7 +60,7 @@ static double factorial(int32 n, int32 d) noexcept
 	auto r = 1.0;
 	if (n == d)
 	{
-		// Intentionally left blank
+		// Note: Intentionally left blank
 	}
 	else if (n > d)
 	{
@@ -267,7 +267,7 @@ static ID<Image> createReflBuffer(vector<ID<ImageView>>& reflImageViews,
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto reflBufferSize = graphicsSystem->getScaledFramebufferSize();
-	auto roughnessLodCount = calcMipCount(reflBufferSize); // We don't go lower than 16 texel in one dimension.
+	auto roughnessLodCount = calcMipCount(reflBufferSize); // Note: We don't go lower than 16 texel in one dimension.
 	roughnessLodCount = (uint8)std::max(std::min(4, (int)roughnessLodCount), (int)roughnessLodCount - 4);
 	reflImageViews.resize(roughnessLodCount * 2);
 	reflBlurDSes.resize(roughnessLodCount);
@@ -593,7 +593,7 @@ static float calcReflLodOffset(uint2 framebufferSize)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto cameraView = CameraSystem::Instance::get()->getComponent(graphicsSystem->camera);
-	constexpr float d = 1.0f; // Texel size of the reflection buffer in world units at 1 meter.
+	constexpr float d = 1.0f; // Note: Texel size of the reflection buffer in world units at 1 meter.
 	auto texelSizeAtOneMeter = (d * std::tan(cameraView->p.perspective.fieldOfView * 0.5f)) / framebufferSize.y;
 	return -std::log2((M_SQRT2 * reflectionsSigma0) * texelSizeAtOneMeter);
 }
@@ -996,13 +996,10 @@ void PbrLightingSystem::gBufferRecreate()
 		graphicsSystem->destroy(giFramebuffer);
 		giFramebuffer = createGiFramebuffer(giBuffer);
 	}
-
 	if (lightingDS)
 	{
 		graphicsSystem->destroy(lightingDS);
-		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflBufferView, giBuffer);
-		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
+		lightingDS = {};
 	}
 
 	if (aoBuffer || aoFramebuffers[0])

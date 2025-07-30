@@ -302,7 +302,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 	{
 		auto unsortedBuffer = unsortedBuffers[i];
 		if (unsortedBuffer->meshSystem->getMeshRenderType() == MeshRenderType::OIT ||
-			unsortedBuffer->drawCount.load() == 0) // Note: no need to sort OIT meshes at all.
+			unsortedBuffer->drawCount.load() == 0) // Note: No need to sort OIT meshes at all.
 		{
 			continue;
 		}
@@ -558,7 +558,7 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 				auto meshSystem = unsortedBuffer->meshSystem;
 				const auto& meshes = unsortedBuffer->combinedMeshes;
 				auto itemCount = task.getItemCount();
-				auto taskIndex = task.getTaskIndex(); // Using task index to preserve items order.
+				auto taskIndex = task.getTaskIndex(); // Note: Using task index to preserve items order.
 				auto taskCount = itemCount - task.getItemOffset();
 
 				meshSystem->beginDrawAsync(taskIndex);
@@ -571,7 +571,7 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 				meshSystem->endDrawAsync(taskCount, taskIndex);
 			},
 			drawCount);
-			threadPool.wait(); // Required
+			threadPool.wait(); // Note: Required
 		}
 		else
 		{
@@ -625,7 +625,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, int8 shadowPass)
 			auto meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 			auto bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
 			auto itemCount = task.getItemCount();
-			auto taskIndex = task.getTaskIndex(); // Using task index to preserve items order.
+			auto taskIndex = task.getTaskIndex(); // Note: Using task index to preserve items order.
 			meshSystem->beginDrawAsync(taskIndex);
 
 			uint32 currentDrawCount = 0;
@@ -654,7 +654,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, int8 shadowPass)
 			meshSystem->endDrawAsync(currentDrawCount, taskIndex);
 		},
 		drawCount);
-		threadPool.wait(); // Required
+		threadPool.wait(); // Note: Required
 	}
 	else
 	{
@@ -761,7 +761,7 @@ void MeshRenderSystem::renderShadows()
 				SET_GPU_DEBUG_LABEL("Opaque/Color Shadow Pass", Color::transparent);
 				renderUnsorted(viewProj, MeshRenderType::Opaque, i);
 				renderUnsorted(viewProj, MeshRenderType::Color, i);
-				// Note: no TransDepth rendering for shadows, expected RT instead.
+				// Note: No TransDepth rendering for shadows, expected RT instead.
 				shadowSystem->endShadowRender(i, MeshRenderType::Opaque);
 			}
 			if (!isOpaqueOnly && shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))

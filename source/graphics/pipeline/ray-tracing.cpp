@@ -202,7 +202,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			auto& sbtGroupRegion = sbt.groupRegions[i];
 			sbtGroupRegion.rayGenRegion.deviceAddress = sbtAddress;
 			sbtGroupRegion.rayGenRegion.stride = rayGenRegionSize;
-			sbtGroupRegion.rayGenRegion.size = rayGenRegionSize; // Note: must be equal to its stride member.
+			sbtGroupRegion.rayGenRegion.size = rayGenRegionSize; // Note: Must be equal to its stride member.
 			sbtAddress += rayGenRegionSize;
 
 			sbtGroupRegion.missRegion.deviceAddress = sbtAddress;

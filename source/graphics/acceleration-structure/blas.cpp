@@ -54,7 +54,7 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 		as.geometry.triangles.vertexData.deviceAddress = vertexBufferView->getDeviceAddress(); // TODO: support case when pos is not first component.
 		as.geometry.triangles.vertexStride = geometry.vertexSize;
 		as.geometry.triangles.maxVertex = (geometry.vertexCount > 0 ?  geometry.vertexCount : 
-			vertexBufferView->getBinarySize() / geometry.vertexSize - geometry.vertexOffset) - 1; // -1 required!
+			vertexBufferView->getBinarySize() / geometry.vertexSize - geometry.vertexOffset) - 1; // Note: -1 required!
 		as.geometry.triangles.indexType = toVkIndexType(geometry.indexType);
 		as.geometry.triangles.indexData.deviceAddress = indexBufferView->getDeviceAddress();
 		as.geometry.triangles.transformData = nullptr; // Identity transform TODO:
@@ -249,7 +249,7 @@ ID<Blas> Blas::compact()
 	free(buildData);
 	buildData = nullptr;
 
-	auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this); // Do not move!
+	auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this); // Note: Do not move!
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto thisDebugName = debugName;
 	#endif

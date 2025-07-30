@@ -98,7 +98,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto path = inputPath / filePath;
 	vector<uint8> dataBuffer, equiData; uint2 equiSize;
-	float* pixels = nullptr; // width * height * RGBA
+	float* pixels = nullptr; // Note: width * height * RGBA
 	int sizeX = 0, sizeY = 0;
 
 	if (!File::tryLoadBinary(path, dataBuffer))
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 				if (!convertResult)
 					return;
 
-				// Sending one batched message due to multithreading.
+				// Note: Sending one batched message due to multithreading.
 				cout << string("Converting ") + arg + "\n" << flush;
 
 				auto result = Equi2Cube::convertImage(arg, inputPath, outputPath);

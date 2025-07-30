@@ -48,6 +48,13 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 	auto test = graphicsAPI->descriptorSetPool.get(descriptorSet);
 	test->getIndex();
 }
+void BindlessPool::destroy()
+{
+	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
+	
+	descriptorSet = {};
+	uniformData.clear();
+}
 
 //**********************************************************************************************************************
 uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 frameIndex)
@@ -61,6 +68,7 @@ uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 fr
 	auto uniform = dsUniforms.find(name);
 	if (uniform == dsUniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
+
 	auto& allocData = uniformData.at(name);
 
 	uint32 allocation = UINT32_MAX;
@@ -86,8 +94,23 @@ uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 fr
 
 	auto& resourceSet = uniform.value().resourceSets[0];
 	resourceSet[allocation] = resource;
-	descriptorSetView->updateResources(name, 1, allocation);
 	return allocation;
+}
+void BindlessPool::update(string_view name, uint32 allocation, ID<Resource> resource, uint64 frameIndex)
+{
+	GARDEN_ASSERT(!name.empty());
+	GARDEN_ASSERT_MSG(resource, "Assert " + string(name));
+	GARDEN_ASSERT_MSG(descriptorSet, "Assert " + string(name));
+
+	auto descriptorSetView = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
+	auto& dsUniforms = descriptorSetView->getUniforms();
+	auto uniform = dsUniforms.find(name);
+	if (uniform == dsUniforms.end())
+		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
+
+	auto& resourceSet = uniform.value().resourceSets[0];
+	GARDEN_ASSERT(allocation < resourceSet.size());
+	resourceSet[allocation] = resource;
 }
 void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
 {
@@ -102,24 +125,23 @@ void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
 	auto uniform = dsUniforms.find(name);
 	if (uniform == dsUniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
-	auto& allocData = uniformData.at(name);
 
-	#if GARDEN_DEBUG	
+	auto& allocData = uniformData.at(name);
+	#if GARDEN_DEBUG
 	GARDEN_ASSERT(allocation < allocData.occupancy);
 	for (auto freeAlloc : allocData.freeAllocs)
-		GARDEN_ASSERT(allocation != freeAlloc.first); // Already destroyed.
+		GARDEN_ASSERT_MSG(allocation != freeAlloc.first, "Already freed allocation");
 	#endif
 
 	auto& resourceSet = uniform.value().resourceSets[0];
 	resourceSet[allocation] = {};
-	allocData.freeAllocs.emplace_back(allocation, frameIndex + inFlightCount + 1);
+	allocData.freeAllocs.emplace_back(allocation, frameIndex + (inFlightCount + 1));
 }
 
-//**********************************************************************************************************************
-void BindlessPool::destroy()
+void BindlessPool::flush(string_view name)
 {
-	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
-	
-	descriptorSet = {};
-	uniformData.clear();
+	GARDEN_ASSERT_MSG(descriptorSet, "Assert " + string(name));
+	auto descriptorSetView = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
+	auto& allocData = uniformData.at(name);
+	descriptorSetView->updateResources(name, allocData.occupancy);
 }

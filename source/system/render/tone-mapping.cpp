@@ -174,11 +174,8 @@ void ToneMappingSystem::gBufferRecreate()
 {
 	if (descriptorSet)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms(luminanceBuffer, useBloomBuffer);
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
+		GraphicsSystem::Instance::get()->destroy(descriptorSet);
+		descriptorSet = {};
 	}
 }
 

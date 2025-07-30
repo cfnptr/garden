@@ -56,20 +56,20 @@ namespace garden::graphics
 		uint16 vertexAttributesSize = 0;
 		ShaderStage pushConstantsStages = {};
 		GraphicsPipeline::State pipelineState = {};
-		// should be aligned.
+		// Note: Should be aligned.
 	};
 	struct ComputeGslValues final : public GslValues
 	{
 		uint8 _alignment = 0;
 		uint3 localSize = uint3::zero;
-		// should be aligned.
+		// Note: Should be aligned.
 	};
 	struct RayTracingGslValues final : public GslValues
 	{
 		uint8 _alignment = 0;
 		ShaderStage pushConstantsStages = {};
 		uint32 rayRecursionDepth = 0;
-		// should be aligned.
+		// Note: Should be aligned.
 	};
 }
 
@@ -316,7 +316,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == "coherent") fileData.isCoherent = true;
 		else if (lineData.word == "scalar") fileData.isScalar = true;
 		else if (lineData.word == "reference") lineData.isReference = true;
-		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: do not move down.
+		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: Do not move down.
 		{
 			auto index = strtoul(lineData.word.c_str() + 3, nullptr, 10);
 			if (index > UINT8_MAX)
@@ -2230,7 +2230,7 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		#else
 		File::loadBinary(data.cachePath / headerPath, data.headerData);
 		File::loadBinary(data.cachePath / vertexPath, data.vertexCode);
-		if (fs::exists(data.cachePath / fragmentPath)) // It's allowed to have only vertex shader.
+		if (fs::exists(data.cachePath / fragmentPath)) // Note: It's allowed to have only vertex shader.
 			File::loadBinary(data.cachePath / fragmentPath, data.fragmentCode);
 		#endif
 	}
@@ -2582,7 +2582,7 @@ int main(int argc, char *argv[])
 				if (!compileResult)
 					return;
 
-				// Sending one batched message due to multithreading.
+				// Note: Sending one batched message due to multithreading.
 				cout << string("Compiling ") + arg + "\n" << flush;
 				auto result = false;
 

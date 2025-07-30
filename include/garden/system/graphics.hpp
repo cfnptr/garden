@@ -458,7 +458,7 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Type type, Image::Format format, Image::Usage usage, const Image::Mips& data, u32x4 size,
+		Image::Type type, Image::Format format, Image::Usage usage, const Image::Mips& data, uint3 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined);
 	/**
 	 * @brief Creates a new 3D image (texture) instance.
@@ -473,7 +473,7 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Usage usage, const Image::Mips& data, u32x4 size,
+		Image::Format format, Image::Usage usage, const Image::Mips& data, uint3 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		return createImage(Image::Type::Texture3D, format, usage, data, size, strategy, dataFormat);
@@ -497,7 +497,7 @@ public:
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture2DArray : Image::Type::Texture2D;
-		return createImage(imageType, format, usage, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
+		return createImage(imageType, format, usage, data, uint3(size.x, size.y, 1), strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new 1D image (texture) instance.
@@ -513,12 +513,12 @@ public:
 	 * @throw GardenError if failed to allocate image.
 	 */
 	ID<Image> createImage(
-		Image::Format format, Image::Usage usage, const Image::Mips& data, int32 size,
+		Image::Format format, Image::Usage usage, const Image::Mips& data, uint32 size,
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
 		auto imageType = data[0].size() > 1 ? Image::Type::Texture1DArray : Image::Type::Texture1D;
-		return createImage(imageType, format, usage, data, u32x4(size, 1, 1), strategy, dataFormat);
+		return createImage(imageType, format, usage, data, uint3(size, 1, 1), strategy, dataFormat);
 	}
 	/**
 	 * @brief Creates a new cubemap image (texture) instance.
@@ -537,7 +537,7 @@ public:
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
-		return createImage(Image::Type::Cubemap, format, usage, data, u32x4(size.x, size.y, 1), strategy, dataFormat);
+		return createImage(Image::Type::Cubemap, format, usage, data, uint3(size.x, size.y, 1), strategy, dataFormat);
 	}
 
 	/* 

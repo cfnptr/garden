@@ -88,7 +88,7 @@ static void animateComponent(const AnimationSystem::Animations* animations, Anim
 		keyframeB--;
 		animationComp.frame = keyframeB->first == 0 ? 0.0f : fmod(animationComp.frame, (float)keyframeB->first);
 		keyframeB = keyframes.lower_bound((int32)ceil(animationComp.frame));
-		GARDEN_ASSERT(keyframeB != keyframes.end()); // Something went wrong :(
+		GARDEN_ASSERT_MSG(keyframeB != keyframes.end(), "Something went wrong :(");
 	}
 
 	auto keyframeA = keyframeB;

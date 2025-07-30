@@ -42,6 +42,7 @@ class BindlessPool final
 	ID<DescriptorSet> descriptorSet = {};
 
 	uint32 allocate(string_view name, ID<Resource> resource, uint64 frameIndex);
+	void update(string_view name, uint32 allocation, ID<Resource> resource, uint64 frameIndex);
 public:
 	/**
 	 * @brief Creates a new bindless pool instance.
@@ -131,6 +132,44 @@ public:
 	{
 		return allocate(name, ID<Resource>(tlas), frameIndex);
 	}
+
+	/**
+	 * @brief Updates bindless descriptor set buffer instance.
+	 *
+	 * @param name target bindless uniform name
+	 * @param allocation allocated buffer resource index
+	 * @param buffer buffer to update or null
+	 * @param frameIndex current rendering frame index
+	 */
+	void update(string_view name, uint32 allocation, ID<Buffer> buffer, uint64 frameIndex)
+	{
+		update(name, allocation, ID<Resource>(buffer), frameIndex);
+	}
+	/**
+	 * @brief Updates bindless descriptor set image view instance.
+	 *
+	 * @param name target bindless uniform name
+	 * @param allocation allocated image view resource index
+	 * @param imageView image view to update or null
+	 * @param frameIndex current rendering frame index
+	 */
+	void update(string_view name, uint32 allocation, ID<ImageView> imageView, uint64 frameIndex)
+	{
+		update(name, allocation, ID<Resource>(imageView), frameIndex);
+	}
+	/**
+	 * @brief Updates bindless descriptor set TLAS instance.
+	 *
+	 * @param name target bindless uniform name
+	 * @param allocation allocated TLAS resource index
+	 * @param tlas TLAS to write update or null
+	 * @param frameIndex current rendering frame index
+	 */
+	void update(string_view name, uint32 allocation, ID<Tlas> tlas, uint64 frameIndex)
+	{
+		update(name, allocation, ID<Resource>(tlas), frameIndex);
+	}
+
 	/**
 	 * @brief Frees bindless descriptor set resource in the pool.
 	 *
@@ -140,6 +179,11 @@ public:
 	 */
 	void free(string_view name, uint32 allocation, uint64 frameIndex);
 
+	/**
+	 * @brief Flushes bindless descriptor pool resources. (Actually writes to the DS)
+	 * @param name target bindless uniform name
+	 */
+	void flush(string_view name);
 	/**
 	 * @brief Destroys pool bindless descriptor set instance.
 	 */

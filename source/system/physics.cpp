@@ -912,7 +912,7 @@ void RigidbodyComponent::destroyAllConstraints()
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
 	auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
-	auto hasEntities = Manager::Instance::get()->getEntities().getCount() > 0; // Detecting termination cleanup
+	auto hasEntities = Manager::Instance::get()->getEntities().getCount() > 0; // Note: Detecting termination cleanup
 
 	for (auto i = constraints.rbegin(); i != constraints.rend(); i++)
 	{
@@ -1015,7 +1015,7 @@ PhysicsSystem::~PhysicsSystem()
 //**********************************************************************************************************************
 void PhysicsSystem::preInit()
 {
-	// Note! You should register all custom physics shapes before this function call.
+	// Note: You should register all custom physics shapes before this function call!
 
 	// Register all physics types with the factory and install their collision handlers with the CollisionDispatch class.
 	JPH::RegisterTypes();
@@ -1279,7 +1279,7 @@ void PhysicsSystem::simulate()
 
 		if (cascadeLagCount > simulationRate * cascadeLagThreshold)
 		{
-			// Trying to recover from a cascade chain lag. (snowball effect)
+			// Note: Trying to recover from a cascade chain lag. (snowball effect)
 			stepCount = 1;
 			cascadeLagCount = 0;
 		}

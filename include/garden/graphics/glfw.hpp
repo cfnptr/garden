@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Note: no pragma once here.
+// Note: No pragma once here.
 
 #define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"

@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 				if (!convertResult)
 					return;
 
-				// Sending one batched message due to multithreading.
+				// Note: Sending one batched message due to multithreading.
 				cout << string("Converting ") + arg + "\n" << flush;
 
 				try

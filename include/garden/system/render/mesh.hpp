@@ -198,7 +198,7 @@ public:
 		bool operator<(const SortedMesh& m) const noexcept { return distanceSq > m.distanceSq; }
 	};
 
-	// Note: aligning to the cache line size to prevent cache misses.
+	// Note: Aligning to the cache line size to prevent cache misses.
 	struct alignas(64) MeshBuffer
 	{
 		IMeshRenderSystem* meshSystem = nullptr;

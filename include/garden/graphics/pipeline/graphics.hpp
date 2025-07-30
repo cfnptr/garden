@@ -232,7 +232,7 @@ public:
 		CullFace cullFace = CullFace::Back;                            /**< Triangle culling mode. */
 		FrontFace frontFace = FrontFace::CounterClockwise;             /**< Polygon front-facing orientation. */
 		uint16 _alignment = 0;                                         /**< [structure alignment] */
-		// Note: should be aligned.
+		// Note: Should be aligned.
 
 		State() : depthTesting(0), depthWriting(0), depthClamping(0),
 			depthBiasing(0), faceCulling(1), discarding(0), _unused(0) { }

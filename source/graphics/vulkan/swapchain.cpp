@@ -186,7 +186,7 @@ static vector<ID<Image>> createVkSwapchainImages(VulkanAPI* vulkanAPI,
 		auto imageView = vulkanAPI->imagePool.get(images[i]);
 		ResourceExt::getDebugName(**imageView) = name;
 
-		#if GARDEN_DEBUG // No GARDEN_EDITOR
+		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)
 			(VkImage)ResourceExt::getInstance(**imageView), name.c_str());
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
@@ -234,7 +234,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 		inFlightFrame.queryPool = vulkanAPI->device.createQueryPool(queryPoolInfo);
 		#endif
 
-		#if GARDEN_DEBUG // No GARDEN_EDITOR
+		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		if (vulkanAPI->hasDebugUtils)
 		{
 			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
@@ -304,7 +304,7 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 	this->vsync = useVsync;
 	this->tripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
-	// Do not reset frameIndex here, temporal systems use it.
+	// Note: Do not reset frameIndex here, temporal systems use it.
 }
 
 //**********************************************************************************************************************
@@ -313,7 +313,7 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 	SET_CPU_ZONE_SCOPED("Next Image Acquire");
 
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
-	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, 10000000000); // Note: emergency 10 seconds timeout.
+	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, 10000000000); // Note: Emergency 10 seconds timeout.
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
 	
 	auto result = vulkanAPI->device.acquireNextImageKHR(instance, UINT64_MAX, 
@@ -345,7 +345,7 @@ void VulkanSwapchain::submit()
 bool VulkanSwapchain::present()
 {
 	vk::PresentInfoKHR presentInfo(1, &renderFinishedSemaphores[imageIndex], 1, &instance, &imageIndex);
-	auto result = vulkanAPI->frameQueue.presentKHR(&presentInfo); // & is required here.
+	auto result = vulkanAPI->frameQueue.presentKHR(&presentInfo); // Note: & is required here.
 	inFlightIndex = (inFlightIndex + 1u) % inFlightCount;
 
 	if (result == vk::Result::eErrorOutOfDateKHR)
@@ -419,7 +419,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 			secondaryCommandBuffers[i] = commandBuffer;
 			vulkanAPI->secondaryCommandBuffers[i] = commandBuffer;
 
-			#if GARDEN_DEBUG // No GARDEN_EDITOR
+			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 			if (vulkanAPI->hasDebugUtils)
 			{
 				auto objectName = debugName + ".secondaryCommandBuffer" + to_string(i);
