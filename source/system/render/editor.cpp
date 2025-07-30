@@ -24,7 +24,7 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/graphics/api.hpp"
-#include "garden/graphics/glfw.hpp" // Do not move it.
+#include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/editor/system/render/gpu-resource.hpp"
 #include "garden/profiler.hpp"
 
@@ -541,7 +541,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		if (ImGui::MenuItem("Remove Component"))
 		{
 			auto manager = Manager::Instance::get();
-			auto selected = selectedEntity; // Do not optimize, required for transforms.
+			auto selected = selectedEntity; // Note: Do not optimize, required for transforms.
 			manager->remove(selectedEntity, componentType);
 			if (!manager->hasComponents(selected))
 				manager->destroy(selected);

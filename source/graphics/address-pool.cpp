@@ -28,7 +28,7 @@ static DescriptorSet::Buffers createAddressBuffers(uint32 capacity,
 	{
 		auto buffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage | 
 			addressBufferUsage, Buffer::CpuAccess::SequentialWrite, 
-			Buffer::Location::Auto, Buffer::Strategy::Size, sizeof(uint64) * capacity, 0);
+			Buffer::Location::Auto, Buffer::Strategy::Default, sizeof(uint64) * capacity, 0);
 		addressBuffer.resize(1); addressBuffer[0] = buffer;
 	}
 
@@ -122,7 +122,7 @@ void AddressPool::free(uint32 allocation)
 	}
 	#endif
 
-	// Note: do not remove cleaners! We need it for addBufferBarriers().
+	// Note: Do not remove cleaners! We need it for addBufferBarriers().
 	resources[allocation] = {};
 	deviceAddresses[allocation] = 0;
 	freeAllocs.push_back(allocation);

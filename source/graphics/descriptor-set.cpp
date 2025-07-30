@@ -581,7 +581,7 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 			if (pipelineUniform.arraySize > 0)
 			{
 				GARDEN_ASSERT_MSG(resourceArray.size() == pipelineUniform.arraySize, "Different descriptor set [" +
-					debugName + " and pipeline [" + pipelineView->getDebugName() + "] array uniform size");
+					debugName + "] and pipeline [" + pipelineView->getDebugName() + "] array uniform size");
 			}
 			else
 			{
@@ -765,7 +765,7 @@ void DescriptorSet::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // No GARDEN_EDITOR
+		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils)
 			return;

@@ -270,11 +270,8 @@ void CsmRenderSystem::gBufferRecreate()
 {
 	if (descriptorSet)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms(depthMap, transparentMap, dataBuffers);
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.csm");
+		GraphicsSystem::Instance::get()->destroy(descriptorSet);
+		descriptorSet = {};
 	}
 }
 

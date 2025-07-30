@@ -24,7 +24,7 @@ static ID<Framebuffer> createFramebuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gBuffer = deferredSystem->getGBuffers()[0]; // Reusing G-Buffer memory.
+	auto gBuffer = deferredSystem->getGBuffers()[0]; // Note: Reusing G-Buffer memory.
 	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); 
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
@@ -165,7 +165,7 @@ void FxaaRenderSystem::gBufferRecreate()
 	if (framebuffer)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		auto gBuffer = deferredSystem->getGBuffers()[0]; // Reusing G-Buffer memory.
+		auto gBuffer = deferredSystem->getGBuffers()[0]; // Note: Reusing G-Buffer memory.
 		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView();
 		GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
@@ -176,9 +176,7 @@ void FxaaRenderSystem::gBufferRecreate()
 	if (descriptorSet)
 	{
 		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms();
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
+		descriptorSet = {};
 	}
 }
 

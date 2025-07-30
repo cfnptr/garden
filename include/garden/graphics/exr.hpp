@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Note: no pragma once here.
+// Note: No pragma once here.
 
 #define TINYEXR_USE_MINIZ 0
 #define TINYEXR_USE_STB_ZLIB 0

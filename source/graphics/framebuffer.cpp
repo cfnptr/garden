@@ -273,7 +273,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 		subpassDescriptions[i] = subpassDescription;
 	}
 
-	// Note: required for loadOp/storeOp.
+	// Note: Eequired for loadOp/storeOp.
 	if (!subpassDependencies.empty())
 	{
 		auto firstDependency = subpassDependencies.begin();
@@ -747,7 +747,7 @@ void Framebuffer::setDebugName(const string& name)
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // No GARDEN_EDITOR
+		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->hasDebugUtils || !instance || subpasses.empty())
 			return;

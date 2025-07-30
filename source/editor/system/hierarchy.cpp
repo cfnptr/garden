@@ -278,7 +278,7 @@ void HierarchyEditorSystem::preUiRender()
 		const auto& components = TransformSystem::Instance::get()->getComponents();
 		if (searchString.empty())
 		{
-			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
+			for (uint32 i = 0; i < components.getOccupancy(); i++) // Note: Do not optimize occupancy!!!
 			{
 				auto transformView = &((const TransformComponent*)components.getData())[i];
 				if (!transformView->getEntity() || transformView->getParent())
@@ -288,7 +288,7 @@ void HierarchyEditorSystem::preUiRender()
 		}
 		else
 		{
-			for (uint32 i = 0; i < components.getOccupancy(); i++) // Do not optimize occupancy!!!
+			for (uint32 i = 0; i < components.getOccupancy(); i++) // Note: Do not optimize occupancy!!!
 			{
 				auto transformView = &((const TransformComponent*)components.getData())[i];
 				if (!transformView->getEntity())
@@ -314,8 +314,8 @@ void HierarchyEditorSystem::preUiRender()
 		const auto& entities = Manager::Instance::get()->getEntities();
 		auto hasSeparator = false;
 
-		// Entities without transform component
-		for (uint32 i = 0; i < entities.getOccupancy(); i++)  // Do not optimize occupancy!!!
+		// Note: Entities without transform component.
+		for (uint32 i = 0; i < entities.getOccupancy(); i++)  // Note: Do not optimize occupancy!!!
 		{
 			auto entityView = &(entities.getData()[i]);
 			if (!entityView->hasComponents() || entityView->findComponent(typeid(TransformComponent).hash_code()))

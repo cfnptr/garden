@@ -40,7 +40,7 @@ namespace garden
 class VulkanAPI final : public GraphicsAPI
 {
 public:
-	// Note: aligning to the cache line size to prevent cache misses.
+	// Note: Aligning to the cache line size to prevent cache misses.
 	struct alignas(64) atomic_bool_aligned final : atomic_bool
 	{
 		atomic_bool_aligned() : atomic_bool(false) { }

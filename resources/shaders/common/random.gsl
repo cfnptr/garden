@@ -89,13 +89,13 @@ uint3 pcg(float3 f) { return pcg(floatBitsToUint(f)); }
 uint3 pcg16(float3 f) { return pcg16(floatBitsToUint(f)); }
 uint4 pcg(float4 f) { return pcg(floatBitsToUint(f)); }
 
-// Note: returns random float in [0.0, 1.0] range.
+// Note: Returns random float in [0.0, 1.0] range.
 float  toFloat01(uint32 hash) { return hash * (1.0f / float(0xffffffffu)); }
 float2 toFloat01(uint2 hash)  { return hash * (1.0f / float(0xffffffffu)); }
 float3 toFloat01(uint3 hash)  { return hash * (1.0f / float(0xffffffffu)); }
 float4 toFloat01(uint4 hash)  { return hash * (1.0f / float(0xffffffffu)); }
 
-// Note: returns random float in [-1.0, 1.0] range.
+// Note: Returns random float in [-1.0, 1.0] range.
 float  toFloat11(uint32 hash) { return fma(toFloat01(hash), 2.0f, -1.0f); }
 float2 toFloat11(uint2 hash)  { return fma(toFloat01(hash), float2(2.0f), float2(-1.0f)); }
 float3 toFloat11(uint3 hash)  { return fma(toFloat01(hash), float3(2.0f), float3(-1.0f)); }

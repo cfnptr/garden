@@ -137,8 +137,10 @@ void AutoExposureSystem::render()
 		auto uniforms = getHistogramUniforms(histogramBuffer);
 		histogramDS = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(histogramDS, "descriptorSet.autoExposure.histogram");
-		
-		uniforms = getAverageUniforms(histogramBuffer);
+	}
+	if (!averageDS)
+	{
+		auto uniforms = getAverageUniforms(histogramBuffer);
 		averageDS = graphicsSystem->createDescriptorSet(averagePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(averageDS, "descriptorSet.autoExposure.average");
 	}
@@ -183,11 +185,8 @@ void AutoExposureSystem::gBufferRecreate()
 {
 	if (histogramDS)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(histogramDS);
-		auto uniforms = getHistogramUniforms(histogramBuffer);
-		histogramDS = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(histogramDS, "descriptorSet.autoExposure.histogram");
+		GraphicsSystem::Instance::get()->destroy(histogramDS);
+		histogramDS = {};
 	}
 }
 

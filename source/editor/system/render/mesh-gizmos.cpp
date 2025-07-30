@@ -101,7 +101,7 @@ void MeshGizmosEditorSystem::init()
 	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer, options);
 	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer, options);
 
-	graphicsSystem->getCubeVertexBuffer(); // Note: allocating default cube in advance.
+	graphicsSystem->getCubeVertexBuffer(); // Note: Allocating default cube in advance.
 	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
 		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
 		arrowVertices, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
@@ -350,7 +350,7 @@ void MeshGizmosEditorSystem::render()
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
 		if (rigidbodyView && rigidbodyView->getShape())
 		{
-			// We can also move Dynamic body with moveKinematic, but no need here.
+			// Note: We can also move Dynamic body with moveKinematic, but no need here.
 			if (rigidbodyView->getMotionType() == MotionType::Kinematic)
 			{
 				rigidbodyView->moveKinematic(rigidbodyView->getPosition() + cursorTrans,

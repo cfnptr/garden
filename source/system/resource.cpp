@@ -319,7 +319,7 @@ void ResourceSystem::dequeueBuffers()
 	while (!loadedBufferQueue.empty())
 	{
 		auto& item = loadedBufferQueue.front();
-		auto buffer = *item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy() ? // getOccupancy() required, do not optimize!
+		auto buffer = *item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy() ? // Note: getOccupancy() required, do not optimize!
 			&graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1] : nullptr;
 
 		if (!buffer || MemoryExt::getVersion(*buffer) != MemoryExt::getVersion(item.buffer))
@@ -1252,7 +1252,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 				ImageExt::create(type, format, data->usage, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
-					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: staging does not need TransferQ flag.
+					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: Staging does not need TransferQ flag.
 					formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
 				std::move(paths), realSize, data->instance,
 			};
@@ -2233,7 +2233,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 
 	if (addRootEntity)
 	{
-		// Reducing root component memory consumption after serialization completion.
+		// Note: Reducing root component memory consumption after serialization completion.
 		auto transformView = manager->tryGet<TransformComponent>(rootEntity);
 		if (transformView)
 			transformView->shrinkChilds();

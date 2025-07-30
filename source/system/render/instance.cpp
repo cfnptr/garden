@@ -245,29 +245,11 @@ void InstanceRenderSystem::gBufferRecreate()
 	{
 		graphicsSystem->destroy(baseDescriptorSet);
 		baseDescriptorSet = {};
-
-		auto uniforms = getBaseUniforms();
-		if (!uniforms.empty())
-		{
-			baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
-			#if GARDEN_DEBUG
-			SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
-			#endif
-		}
 	}
 	if (shadowDescriptorSet)
 	{
 		graphicsSystem->destroy(shadowDescriptorSet);
 		shadowDescriptorSet = {};
-
-		auto uniforms = getShadowUniforms();
-		if (!uniforms.empty())
-		{
-			shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
-			#if GARDEN_DEBUG
-			SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
-			#endif
-		}
 	}
 }
 

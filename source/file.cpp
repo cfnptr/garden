@@ -20,7 +20,7 @@ using namespace garden;
 void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 {
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
-	// No need to set stream exception bits.
+	// Note: No need to set stream exception bits.
 
 	if (!inputStream.is_open())
 		throw GardenError("Failed to open input binary file. (path: " + filePath.generic_string() + ")");
@@ -56,7 +56,7 @@ bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
 void File::storeBinary(const fs::path& filePath, const vector<uint8>& data)
 {
 	ofstream outputStream(filePath, ios::out | ios::binary);
-	// No need to set stream exception bits.
+	// Note: No need to set stream exception bits.
 
 	if (!outputStream.is_open())
 		throw GardenError("Failed to open output binary file. (path: " + filePath.generic_string() + ")");

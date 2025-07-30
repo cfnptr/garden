@@ -122,11 +122,8 @@ void OitRenderSystem::gBufferRecreate()
 {
 	if (descriptorSet)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		auto uniforms = getUniforms();
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
+		GraphicsSystem::Instance::get()->destroy(descriptorSet);
+		descriptorSet = {};
 	}
 }
 

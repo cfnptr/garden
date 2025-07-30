@@ -17,7 +17,7 @@
 #include "garden/system/render/forward.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/graphics/api.hpp"
-#include "garden/graphics/glfw.hpp" // Defined before ImGUI
+#include "garden/graphics/glfw.hpp" // Note: Defined before ImGUI
 #include "garden/graphics/imgui.hpp"
 #include "garden/profiler.hpp"
 
@@ -186,7 +186,7 @@ ImGuiRenderSystem::~ImGuiRenderSystem()
 #ifdef _WIN32
 static WNDPROC prevWndProc = nullptr;
 
-// GLFW doesn't allow to distinguish Mouse vs TouchScreen vs Pen.
+// Note: GLFW doesn't allow to distinguish Mouse vs TouchScreen vs Pen.
 // Add support for Win32 (based on imgui_impl_win32), because we rely on _TouchScreen info to trickle inputs differently.
 static ImGuiMouseSource getMouseSourceFromMessageExtraInfo()
 {
@@ -255,7 +255,7 @@ void ImGuiRenderSystem::preInit()
     IM_UNUSED(mainViewport);
 	#endif
 
-    // Windows: register a WndProc hook so we can intercept some messages.
+    // Note: Register a WndProc hook so we can intercept some messages.
 	#ifdef _WIN32
     prevWndProc = (WNDPROC)::GetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC);
     GARDEN_ASSERT(prevWndProc != nullptr);

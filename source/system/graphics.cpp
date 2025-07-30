@@ -24,7 +24,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/glfw.hpp" // Do not move it.
+#include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
 
@@ -101,7 +101,7 @@ GraphicsSystem::~GraphicsSystem()
 
 	if (Manager::Instance::get()->isRunning)
 	{
-		// Note: constants buffers and other resources will destroyed by terminating graphics API.
+		// Note: Constants buffers and other resources will destroyed by terminating graphics API.
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
@@ -643,11 +643,11 @@ View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
 
 //**********************************************************************************************************************
 ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Image::Usage usage,
-	const Image::Mips& data, u32x4 size, Image::Strategy strategy, Image::Format dataFormat)
+	const Image::Mips& data, uint3 size, Image::Strategy strategy, Image::Format dataFormat)
 {
 	GARDEN_ASSERT(format != Image::Format::Undefined);
 	GARDEN_ASSERT(!data.empty());
-	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
+	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
 
 	auto mipCount = (uint8)data.size();
 	auto layerCount = (uint32)data[0].size();
@@ -655,13 +655,13 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	#if GARDEN_DEBUG
 	if (type == Image::Type::Texture1D)
 	{
-		GARDEN_ASSERT(size.getY() == 1);
-		GARDEN_ASSERT(size.getZ() == 1);
+		GARDEN_ASSERT(size.y == 1);
+		GARDEN_ASSERT(size.z == 1);
 		GARDEN_ASSERT(layerCount == 1);
 	}
 	else if (type == Image::Type::Texture2D)
 	{
-		GARDEN_ASSERT(size.getZ() == 1);
+		GARDEN_ASSERT(size.z == 1);
 		GARDEN_ASSERT(layerCount == 1);
 	}
 	else if (type == Image::Type::Texture3D)
@@ -670,19 +670,19 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	}
 	else if (type == Image::Type::Texture1DArray)
 	{
-		GARDEN_ASSERT(size.getY() == 1);
-		GARDEN_ASSERT(size.getZ() == 1);
+		GARDEN_ASSERT(size.y == 1);
+		GARDEN_ASSERT(size.z == 1);
 		GARDEN_ASSERT(layerCount >= 1);
 	}
 	else if (type == Image::Type::Texture2DArray)
 	{
-		GARDEN_ASSERT(size.getZ() == 1);
+		GARDEN_ASSERT(size.z == 1);
 		GARDEN_ASSERT(layerCount >= 1);
 	}
 	else if (type == Image::Type::Cubemap)
 	{
-		GARDEN_ASSERT(size.getX() == size.getY());
-		GARDEN_ASSERT(size.getZ() == 1);
+		GARDEN_ASSERT(size.x == size.y);
+		GARDEN_ASSERT(size.z == 1);
 		GARDEN_ASSERT(layerCount == 6);
 	}
 	else abort();
@@ -711,7 +711,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		mipSize = max(mipSize / 2u, uint3::one);
 	}
 
-	auto imageSize = u32x4(size, mipCount);
+	auto imageSize = u32x4(u32x4(size), mipCount);
 	if (type != Image::Type::Texture3D)
 		imageSize.setZ(layerCount);
 

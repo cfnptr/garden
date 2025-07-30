@@ -17,7 +17,7 @@
 
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/vulkan/command-buffer.hpp"
-#include "garden/graphics/glfw.hpp" // Do not move it.
+#include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/hash.hpp"
 
 #include "mpio/directory.hpp"
@@ -691,7 +691,7 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		*lastPNext = &vkFeatures->maintenance4;
 		lastPNext = &vkFeatures->maintenance4.pNext;
 	}
-	if (features.maintenance5 && features.dynamicRendering) // dynamicRendering required
+	if (features.maintenance5 && features.dynamicRendering) // Note: dynamicRendering required.
 	{
 		vkFeatures->maintenance5 = vk::PhysicalDeviceMaintenance5FeaturesKHR();
 		vkFeatures->maintenance5.maintenance5 = VK_TRUE;
@@ -1003,7 +1003,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 //**********************************************************************************************************************
 VulkanAPI::~VulkanAPI()
 {
-	// Should be set here, to destroy resources.
+	// Note: Should be set here, to destroy resources.
 	forceResourceDestroy = false;
 
 	for (auto secondaryCommandState : secondaryCommandStates)

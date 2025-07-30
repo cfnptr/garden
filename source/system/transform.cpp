@@ -77,7 +77,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 	if (selfActive == isActive)
 		return;
 
-	selfActive = isActive; // Do not move this setter!
+	selfActive = isActive; // Note: Do not move this setter!
 
 	auto transformSystem = TransformSystem::Instance::get();
 	entityStack.push_back(entity);

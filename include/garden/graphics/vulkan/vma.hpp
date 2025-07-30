@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Note: no pragma once here.
+// Note: No pragma once here.
 
 #define VK_ENABLE_BETA_EXTENSIONS
 

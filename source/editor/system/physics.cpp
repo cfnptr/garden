@@ -63,7 +63,7 @@ void PhysicsEditorSystem::init()
 }
 void PhysicsEditorSystem::deinit()
 {
-	delete (PhysicsDebugRenderer*)debugRenderer; // Note! Always destroying.
+	delete (PhysicsDebugRenderer*)debugRenderer; // Note: Always destroying!
 
 	if (Manager::Instance::get()->isRunning)
 	{

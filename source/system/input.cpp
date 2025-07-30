@@ -17,7 +17,7 @@
 #include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/graphics/glfw.hpp" // Do not move it.
+#include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/profiler.hpp"
 #include "mpmt/thread.hpp"
 
@@ -204,7 +204,7 @@ void InputSystem::input()
 	#if GARDEN_OS_WINDOWS
 		#if GARDEN_DEBUG
 		if (mpmt::Thread::isCurrentMain())
-			throw GardenError("Expected to run on a render thread."); // See the startRenderThread().
+			throw GardenError("Expected to run on a render thread."); // Note: See the startRenderThread().
 		#endif
 
 	eventLocker.lock();
@@ -458,8 +458,8 @@ void InputSystem::startRenderThread()
 		inputSystem->eventLocker.unlock();
 		#endif
 
-		if (newCursorMode != -1)
-			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
+		//if (newCursorMode != -1)
+			// glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
 		if (newCursorType != -1)
 		{
 			glfwSetCursor(window, newCursorType == (int)CursorType::Default ?
