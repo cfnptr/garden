@@ -97,6 +97,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 						// TODO: allow to specify sampler states for separate uniform array elements?
 						vector<vk::Sampler> samplers(uniform.arraySize, *&immutableSamplers.at(pair.first));
 						samplerArrays.push_back(std::move(samplers));
+						descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
 					}
 					else
 					{
