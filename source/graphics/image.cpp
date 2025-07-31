@@ -533,9 +533,8 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 		auto region = regions[i];
 		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->getLayerCount());
 		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->getLayerCount());
-		GARDEN_ASSERT(region.srcMipLevel <= srcView->getMipCount());
-		GARDEN_ASSERT(region.dstMipLevel <= dstView->getMipCount());
-		GARDEN_ASSERT((region.extent == uint3::zero && region.srcOffset == uint3::zero) || region.extent != uint3::zero);
+		GARDEN_ASSERT(region.srcMipLevel < srcView->getMipCount());
+		GARDEN_ASSERT(region.dstMipLevel < dstView->getMipCount());
 
 		if (region.extent == uint3::zero)
 		{
@@ -544,10 +543,14 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip3(srcView->size, region.srcMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.extent + region.srcOffset <= (uint3)mipImageSize));
-			mipImageSize = calcSizeAtMip3(srcView->size, region.dstMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.extent + region.dstOffset <= (uint3)mipImageSize));
+			auto mipImageSize = (uint3)calcSizeAtMip3(srcView->size, region.srcMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.srcOffset < mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.extent <= mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.extent + region.srcOffset <= mipImageSize));
+			mipImageSize = (uint3)calcSizeAtMip3(dstView->size, region.dstMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.dstOffset < mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.extent <= mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.extent + region.dstOffset <= mipImageSize));
 		}
 	}
 	#endif
@@ -617,7 +620,7 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	{
 		auto region = regions[i];
 		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->getLayerCount());
-		GARDEN_ASSERT(region.imageMipLevel <= imageView->getMipCount());
+		GARDEN_ASSERT(region.imageMipLevel < imageView->getMipCount());
 
 		if (region.imageExtent == uint3::zero)
 		{
@@ -625,11 +628,23 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip3(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= (uint3)mipImageSize));
+			auto mipImageSize = (uint3)calcSizeAtMip3(imageView->size, region.imageMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.imageOffset < mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.imageExtent <= mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= mipImageSize));
 		}
-
-		// TODO: check out of buffer/image bounds.
+		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
+		{
+			auto regionBinarySize = region.imageExtent.x * region.imageExtent.y * 
+				region.imageExtent.z * toBinarySize(imageView->format);
+			GARDEN_ASSERT(region.bufferOffset < bufferView->getBinarySize());
+			GARDEN_ASSERT(regionBinarySize <= bufferView->getBinarySize());
+			GARDEN_ASSERT(regionBinarySize + region.bufferOffset <= bufferView->getBinarySize());
+		}
+		else
+		{
+			// TODO: check buffer out of bounds
+		}
 	}
 	#endif
 
@@ -699,7 +714,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	{
 		auto region = regions[i];
 		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->getLayerCount());
-		GARDEN_ASSERT(region.imageMipLevel <= imageView->getMipCount());
+		GARDEN_ASSERT(region.imageMipLevel < imageView->getMipCount());
 
 		if (region.imageExtent == uint3::zero)
 		{
@@ -707,11 +722,23 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 		}
 		else
 		{
-			auto mipImageSize = calcSizeAtMip3(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= (uint3)mipImageSize));
+			auto mipImageSize = (uint3)calcSizeAtMip3(imageView->size, region.imageMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.imageOffset < mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.imageExtent <= mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= mipImageSize));
 		}
-
-		// TODO: check out of buffer/image bounds.
+		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
+		{
+			auto regionBinarySize = region.imageExtent.x * region.imageExtent.y * 
+				region.imageExtent.z * toBinarySize(imageView->format);
+			GARDEN_ASSERT(region.bufferOffset < bufferView->getBinarySize());
+			GARDEN_ASSERT(regionBinarySize <= bufferView->getBinarySize());
+			GARDEN_ASSERT(regionBinarySize + region.bufferOffset <= bufferView->getBinarySize());
+		}
+		else
+		{
+			// TODO: check buffer out of bounds
+		}
 	}
 	#endif
 
@@ -760,8 +787,8 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		auto region = regions[i];
 		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->getLayerCount());
 		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->getLayerCount());
-		GARDEN_ASSERT(region.srcMipLevel <= srcView->getMipCount());
-		GARDEN_ASSERT(region.dstMipLevel <= dstView->getMipCount());
+		GARDEN_ASSERT(region.srcMipLevel < srcView->getMipCount());
+		GARDEN_ASSERT(region.dstMipLevel < dstView->getMipCount());
 
 		if (region.srcExtent == uint3::zero)
 		{
@@ -770,6 +797,8 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		else
 		{
 			auto mipImageSize = calcSizeAtMip3(srcView->size, region.srcMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.srcOffset < (uint3)mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.srcExtent <= (uint3)mipImageSize));
 			GARDEN_ASSERT(areAllTrue(region.srcExtent + region.srcOffset <= (uint3)mipImageSize));
 		}
 		if (region.dstExtent == uint3::zero)
@@ -779,6 +808,8 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		else
 		{
 			auto mipImageSize = calcSizeAtMip3(dstView->size, region.dstMipLevel);
+			GARDEN_ASSERT(areAllTrue(region.dstOffset < (uint3)mipImageSize));
+			GARDEN_ASSERT(areAllTrue(region.dstExtent <= (uint3)mipImageSize));
 			GARDEN_ASSERT(areAllTrue(region.dstExtent + region.dstOffset <= (uint3)mipImageSize));
 		}
 

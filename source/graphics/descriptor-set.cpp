@@ -219,7 +219,7 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 
 	vk::WriteDescriptorSet writeDescriptorSet;
 	auto instances = newSetCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance;
-	uint32 imageInfoCapacity = 0, bufferInfoCapacity = 0, asInfoCapacity = 0, tlasCount = 0;
+	uint32 imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
 
 	for	(const auto& pair : pipelineUniforms)
 	{
@@ -233,30 +233,27 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			uniformType == GslUniformType::SubpassInput)
 		{
 			for (uint32 i = 0; i < newSetCount; i++)
-				imageInfoCapacity += (uint32)dsUniform.resourceSets[i].size();
+				imageInfoCount += (uint32)dsUniform.resourceSets[i].size();
 		}
 		else if (isBufferType(uniformType))
 		{
 			for (uint32 i = 0; i < newSetCount; i++)
-				bufferInfoCapacity += (uint32)dsUniform.resourceSets[i].size();
+				bufferInfoCount += (uint32)dsUniform.resourceSets[i].size();
 		}
 		else if (uniformType == GslUniformType::AccelerationStructure)
 		{
 			for (uint32 i = 0; i < newSetCount; i++)
-				asInfoCapacity += (uint32)dsUniform.resourceSets[i].size();
+				asInfoCount += (uint32)dsUniform.resourceSets[i].size();
 			tlasCount += newSetCount;
 		}
 		else abort();
 	}
 
-	if (vulkanAPI->descriptorImageInfos.capacity() < imageInfoCapacity)
-		vulkanAPI->descriptorImageInfos.reserve(imageInfoCapacity);
-	if (vulkanAPI->descriptorBufferInfos.capacity() < bufferInfoCapacity)
-		vulkanAPI->descriptorBufferInfos.reserve(bufferInfoCapacity);
-	if (vulkanAPI->asDescriptorInfos.capacity() < asInfoCapacity)
-		vulkanAPI->asDescriptorInfos.reserve(asInfoCapacity);
-	if (vulkanAPI->asWriteDescriptorSets.capacity() < tlasCount)
-		vulkanAPI->asWriteDescriptorSets.reserve(tlasCount);
+	vulkanAPI->descriptorImageInfos.resize(imageInfoCount);
+	vulkanAPI->descriptorBufferInfos.resize(bufferInfoCount);
+	vulkanAPI->asDescriptorInfos.resize(asInfoCount);
+	vulkanAPI->asWriteDescriptorSets.resize(tlasCount);
+	imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
 
 	for	(const auto& pair : pipelineUniforms)
 	{
@@ -292,11 +289,11 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
 				const auto& resourceArray = dsUniform.resourceSets[i];
-				auto infoOffset = vulkanAPI->descriptorImageInfos.size();
 				auto hasAnyResource = false;
 
-				for (auto resource : resourceArray)
+				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
+					auto resource = resourceArray[j];
 					if (resource)
 					{
 						auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
@@ -307,16 +304,17 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 					{
 						imageInfo.imageView = nullptr;
 					}
-					vulkanAPI->descriptorImageInfos.push_back(imageInfo);
+					vulkanAPI->descriptorImageInfos[imageInfoCount + j] = imageInfo;
 				}
-				
+
 				if (!hasAnyResource)
 					continue;
 
 				writeDescriptorSet.dstSet = instances[i];
 				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
-				writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos[infoOffset];
+				writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos[imageInfoCount];
 				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+				imageInfoCount += writeDescriptorSet.descriptorCount;
 			}
 		}
 		else if (isBufferType(uniformType))
@@ -328,11 +326,11 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
 				const auto& resourceArray = dsUniform.resourceSets[i];
-				auto infoOffset = vulkanAPI->descriptorBufferInfos.size();
 				auto hasAnyResource = false;
 
-				for (auto resource : resourceArray)
+				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
+					auto resource = resourceArray[j];
 					if (resource)
 					{
 						auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resource));
@@ -345,7 +343,7 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 						bufferInfo.buffer = nullptr;
 						bufferInfo.range = 0;
 					}
-					vulkanAPI->descriptorBufferInfos.push_back(bufferInfo);
+					vulkanAPI->descriptorBufferInfos[bufferInfoCount + j] = bufferInfo;
 				}
 				
 				if (!hasAnyResource)
@@ -353,8 +351,9 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 
 				writeDescriptorSet.dstSet = instances[i];
 				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
-				writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos[infoOffset];
+				writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos[bufferInfoCount];
 				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+				bufferInfoCount += writeDescriptorSet.descriptorCount;
 			}
 		}
 		else if (uniformType == GslUniformType::AccelerationStructure)
@@ -366,11 +365,11 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			for (uint32 i = 0; i < newSetCount; i++)
 			{
 				const auto& resourceArray = dsUniform.resourceSets[i];
-				auto infoOffset = vulkanAPI->asDescriptorInfos.size();
 				auto hasAnyResource = false;
 
-				for (auto resource : resourceArray)
+				for (uint32 j = 0; j < (uint32)resourceArray.size(); j++)
 				{
+					auto resource = resourceArray[j];
 					vk::AccelerationStructureKHR accelerationStructure;
 					if (resource)
 					{
@@ -382,34 +381,29 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 					{
 						accelerationStructure = nullptr;
 					}
-
-					vulkanAPI->asDescriptorInfos.push_back(accelerationStructure);
+					vulkanAPI->asDescriptorInfos[asInfoCount + j] = accelerationStructure;
 				}
 				
 				if (!hasAnyResource)
 					continue;
 
 				asWriteDescriptorSet.accelerationStructureCount = (uint32)resourceArray.size();
-				asWriteDescriptorSet.pAccelerationStructures = &vulkanAPI->asDescriptorInfos[infoOffset];
-				vulkanAPI->asWriteDescriptorSets.push_back(asWriteDescriptorSet);
+				asWriteDescriptorSet.pAccelerationStructures = &vulkanAPI->asDescriptorInfos[asInfoCount];
+				auto asWriteDescriptorSetPtr = &vulkanAPI->asWriteDescriptorSets[tlasCount++];
+				*asWriteDescriptorSetPtr = asWriteDescriptorSet;
 
 				writeDescriptorSet.dstSet = instances[i];
-				writeDescriptorSet.descriptorCount = (uint32)resourceArray.size();
-				writeDescriptorSet.pNext = &vulkanAPI->asWriteDescriptorSets[
-					vulkanAPI->asWriteDescriptorSets.size() - 1];
+				writeDescriptorSet.descriptorCount = asWriteDescriptorSet.accelerationStructureCount;
+				writeDescriptorSet.pNext = asWriteDescriptorSetPtr;
 				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+				asInfoCount += writeDescriptorSet.descriptorCount;
 			}
 		}
 	}
 
 	if (!vulkanAPI->writeDescriptorSets.empty())
 		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
-
 	vulkanAPI->writeDescriptorSets.clear();
-	vulkanAPI->asWriteDescriptorSets.clear();
-	vulkanAPI->descriptorImageInfos.clear();
-	vulkanAPI->descriptorBufferInfos.clear();
-	vulkanAPI->asDescriptorInfos.clear();
 }
 
 //**********************************************************************************************************************
@@ -423,99 +417,100 @@ static void updateVkDescriptorSetResources(void* instance, const Pipeline::Unifo
 	if (isSamplerType(uniformType) || isImageType(uniformType) ||
 		uniformType == GslUniformType::SubpassInput)
 	{
-		if (vulkanAPI->descriptorImageInfos.capacity() < elementCount)
-			vulkanAPI->descriptorImageInfos.reserve(elementCount);
+		vulkanAPI->descriptorImageInfos.resize(elementCount);
 	}
 	else if (isBufferType(uniformType))
 	{
-		if (vulkanAPI->descriptorBufferInfos.capacity() < elementCount)
-			vulkanAPI->descriptorBufferInfos.reserve(elementCount);
+		vulkanAPI->descriptorBufferInfos.resize(elementCount);
 	}
 	else if (uniformType == GslUniformType::AccelerationStructure)
 	{
-		if (vulkanAPI->asDescriptorInfos.capacity() < elementCount)
-			vulkanAPI->asDescriptorInfos.reserve(elementCount);
-		if (vulkanAPI->asWriteDescriptorSets.capacity() < elementCount)
-			vulkanAPI->asWriteDescriptorSets.reserve(elementCount);
+		vulkanAPI->asDescriptorInfos.resize(elementCount);
 	}
 	else abort();
 
 	vk::WriteDescriptorSet writeDescriptorSet((VkDescriptorSet)instance, 
-		pipelineUniform.bindingIndex, 0, 1, toVkDescriptorType(uniformType));
+		pipelineUniform.bindingIndex, elementOffset, elementCount, toVkDescriptorType(uniformType));
+	auto count = elementOffset + elementCount;
+	auto hasAnyResource = false;
 
 	if (isSamplerType(uniformType) || isImageType(uniformType))
 	{
 		vk::DescriptorImageInfo imageInfo({}, {}, isImageType(uniformType) ? 
 			vk::ImageLayout::eGeneral : vk::ImageLayout::eShaderReadOnlyOptimal);
-
-		for (uint32 i = elementOffset, c = elementOffset + elementCount; i < c; i++)
+		for (uint32 i = 0, e = elementOffset; e < count; i++, e++)
 		{
-			if (!resourceArray[i])
-				continue;
-
-			auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resourceArray[i]));
-			imageInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
-			vulkanAPI->descriptorImageInfos.push_back(imageInfo);
-
-			writeDescriptorSet.dstArrayElement = i;
-			writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos[
-				vulkanAPI->descriptorImageInfos.size() - 1];
-			vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+			auto resource = resourceArray[e];
+			if (resource)
+			{
+				auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
+				imageInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
+				hasAnyResource = true;
+			}
+			else
+			{
+				imageInfo.imageView = nullptr;
+			}
+			vulkanAPI->descriptorImageInfos[i] = imageInfo;
 		}
+
+		if (hasAnyResource)
+			writeDescriptorSet.pImageInfo = vulkanAPI->descriptorImageInfos.data();
 	}
 	else if (isBufferType(uniformType))
 	{
 		vk::DescriptorBufferInfo bufferInfo({}, 0, 0);
-
-		for (uint32 i = elementOffset, c = elementOffset + elementCount; i < c; i++)
+		for (uint32 i = 0, e = elementOffset; e < count; i++, e++)
 		{
-			if (!resourceArray[i])
-				continue;
-
-			auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resourceArray[i]));
-			bufferInfo.buffer = (VkBuffer)ResourceExt::getInstance(**buffer);
-			bufferInfo.range = buffer->getBinarySize();
-			vulkanAPI->descriptorBufferInfos.push_back(bufferInfo);
-
-			writeDescriptorSet.dstArrayElement = i;
-			writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos[
-				vulkanAPI->descriptorBufferInfos.size() - 1];
-			vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+			auto resource = resourceArray[e];
+			if (resource)
+			{
+				auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resource));
+				bufferInfo.buffer = (VkBuffer)ResourceExt::getInstance(**buffer);
+				bufferInfo.range = buffer->getBinarySize();
+				hasAnyResource = true;
+			}
+			else
+			{
+				bufferInfo.buffer = nullptr;
+				bufferInfo.range = 0;
+			}
+			vulkanAPI->descriptorBufferInfos[i] = bufferInfo;
 		}
+
+		if (hasAnyResource)
+			writeDescriptorSet.pBufferInfo = vulkanAPI->descriptorBufferInfos.data();
 	}
 	else if (uniformType == GslUniformType::AccelerationStructure)
 	{
-		vk::WriteDescriptorSetAccelerationStructureKHR asWriteDescriptorSet(1);
-
-		for (uint32 i = elementOffset, c = elementOffset + elementCount; i < c; i++)
+		for (uint32 i = 0, e = elementOffset; e < count; i++, e++)
 		{
-			if (!resourceArray[i])
-				continue;
+			auto resource = resourceArray[e];
+			vk::AccelerationStructureKHR accelerationStructure;
+			if (resource)
+			{
+				auto tlas = vulkanAPI->tlasPool.get(ID<Tlas>(resource));
+				accelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**tlas);
+				hasAnyResource = true;
+			}
+			else
+			{
+				accelerationStructure = nullptr;
+			}
+			vulkanAPI->asDescriptorInfos[i] = accelerationStructure;
+		}
 
-			auto tlas = vulkanAPI->tlasPool.get(ID<Tlas>(resourceArray[i]));
-			vk::AccelerationStructureKHR accelerationStructure = 
-				(VkAccelerationStructureKHR)ResourceExt::getInstance(**tlas);
-			vulkanAPI->asDescriptorInfos.push_back(accelerationStructure);
-
-			asWriteDescriptorSet.pAccelerationStructures = &vulkanAPI->asDescriptorInfos[
-				vulkanAPI->asDescriptorInfos.size() - 1];
-			vulkanAPI->asWriteDescriptorSets.push_back(asWriteDescriptorSet);
-
-			writeDescriptorSet.dstArrayElement = i;
-			writeDescriptorSet.pNext = &vulkanAPI->asWriteDescriptorSets[
-				vulkanAPI->asWriteDescriptorSets.size() - 1];
-			vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
+		if (hasAnyResource)
+		{
+			vk::WriteDescriptorSetAccelerationStructureKHR asWriteDescriptorSet;
+			asWriteDescriptorSet.accelerationStructureCount = elementCount;
+			asWriteDescriptorSet.pAccelerationStructures = vulkanAPI->asDescriptorInfos.data();
+			writeDescriptorSet.pNext = &asWriteDescriptorSet;
 		}
 	}
 
 	if (!vulkanAPI->writeDescriptorSets.empty())
-		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
-
-	vulkanAPI->writeDescriptorSets.clear();
-	vulkanAPI->asWriteDescriptorSets.clear();
-	vulkanAPI->descriptorImageInfos.clear();
-	vulkanAPI->descriptorBufferInfos.clear();
-	vulkanAPI->asDescriptorInfos.clear();
+		vulkanAPI->device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 }
 
 //**********************************************************************************************************************
