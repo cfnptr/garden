@@ -16,6 +16,8 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/profiler.hpp"
 
+// TODO: Add stencil support like in the deferred system.
+
 using namespace garden;
 
 //**********************************************************************************************************************
@@ -192,7 +194,7 @@ void ForwardRenderSystem::render()
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Forward Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0x00, int4::zero, asyncRecording);
+			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, asyncRecording);
 			event->run();
 			framebufferView->endRenderPass();
 		}
@@ -215,7 +217,7 @@ void ForwardRenderSystem::render()
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Depth Forward Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0x00, int4::zero, asyncRecording);
+			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, asyncRecording);
 			event->run();
 			framebufferView->endRenderPass();
 		}

@@ -121,7 +121,7 @@ namespace garden::graphics
 		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygon = 0, isDiscarding = 0,
 			isDepthTesting = 0, isDepthWriting = 0, isDepthClamping = 0,
 			isDepthBiasing = 0, isDepthCompare = 0, isDepthOverride = 0,
-			isFaceCulling = 0, isCullFace = 0, isFrontFace = 0,
+			isStencilTesting = 0, isFaceCulling = 0, isCullFace = 0, isFrontFace = 0,
 			isBlending = 0, isColorMask = 0, isSrcBlendFactor = 0,
 			isDstBlendFactor = 0, isSrcColorFactor = 0,isDstColorFactor = 0,
 			isSrcAlphaFactor = 0, isDstAlphaFactor = 0, isBlendOperation = 0,
@@ -831,6 +831,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word == "depthClamping") lineData.isDepthClamping = 1;
 			else if (lineData.word == "depthBiasing") lineData.isDepthBiasing = 1;
 			else if (lineData.word == "depthCompare") lineData.isDepthCompare = 1;
+			else if (lineData.word == "stencilTesting") lineData.isStencilTesting = 1;
 			else if (lineData.word == "faceCulling") lineData.isFaceCulling = 1;
 			else if (lineData.word == "cullFace") lineData.isCullFace = 1;
 			else if (lineData.word == "frontFace") lineData.isFrontFace = 1;
@@ -966,6 +967,8 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		{ state.depthBiasing = toBoolState(name, fileData.lineIndex); lineData.isDepthBiasing = 0; }
 		else if (lineData.isDepthCompare)
 		{ state.depthCompare = toCompareOperation(name, fileData.lineIndex); lineData.isDepthCompare = 0; }
+		else if (lineData.isStencilTesting)
+		{ state.stencilTesting = toBoolState(name, fileData.lineIndex); lineData.isStencilTesting = 0; }
 		else if (lineData.isFaceCulling)
 		{ state.faceCulling = toBoolState(name, fileData.lineIndex); lineData.isFaceCulling = 0; }
 		else if (lineData.isCullFace)

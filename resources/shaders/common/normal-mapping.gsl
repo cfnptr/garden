@@ -32,6 +32,14 @@ float3x3 computeTBN(float4x3 model, float3 normal, float3 tangent)
 	float3 b = cross(n, t);
 	return float3x3(t, b, n);
 }
+float3x3 approximateTBN(float3 normal)
+{
+	float3 up = abs(normal.z) < 0.999f ? 
+		float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+    float3 tangent = normalize(cross(up, normal));
+	float3 bitangent = cross(normal, tangent);
+	return float3x3(tangent, bitangent, normal);
+}
 float3x3 tbnToTangentSpace(float3x3 tbn)
 {
 	return transpose(tbn);

@@ -347,7 +347,10 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<Im
 	const ID<ImageView>* aoImageViews, ID<ImageView> reflBufferView, ID<Image> giBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto depthBufferView = deferredSystem->getDepthImageView();
+	auto dfgLutView = graphicsSystem->get(dfgLUT)->getDefaultView();
 	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
 	
 	graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -357,7 +360,7 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<Im
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
+		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowImageViews[0] ?
 			shadowImageViews[0] : graphicsSystem->getWhiteTexture()) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoImageViews[0] ?
@@ -366,7 +369,7 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<Im
 			reflBufferView : graphicsSystem->getEmptyTexture()) },
 		{ "giBuffer", DescriptorSet::Uniform(giBuffer ?
 			graphicsSystem->get(giBuffer)->getDefaultView() : graphicsSystem->getEmptyTexture()) },
-		{ "dfgLUT", DescriptorSet::Uniform(graphicsSystem->get(dfgLUT)->getDefaultView()) }
+		{ "dfgLUT", DescriptorSet::Uniform(dfgLutView) }
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
@@ -1562,12 +1565,12 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto specularView = graphicsSystem->get(pbrLightingView->specular);
+	auto specularView = graphicsSystem->get(pbrLightingView->specular)->getDefaultView();
 
 	DescriptorSet::Uniforms iblUniforms =
 	{ 
 		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->sh)) },
-		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
+		{ "specular", DescriptorSet::Uniform(specularView) }
 	};
 
 	ID<DescriptorSet> descriptorSet;

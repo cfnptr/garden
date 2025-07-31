@@ -144,8 +144,9 @@ public:
 
 		UnormD16,           /**< 16-bit normalized uint as float depth format. */
 		SfloatD32,          /**< 32-bit signed floating point depth format. */
+		UintS8,             /**< 8-bit unsigned integer stencil format. */
 		UnormD24UintS8,     /**< 24-bit normalized uint as float depth and 8-bit unsigned integer stencil format. */
-		SfloatD32Uint8S,    /**< 32-bit signed floating depth and 8-bit unsigned integer stencil format. */
+		SfloatD32UintS8,    /**< 32-bit signed floating depth and 8-bit unsigned integer stencil format. */
 
 		Count               /**< Image data format count. */
 		// TODO: A8B8G8R8
@@ -895,15 +896,15 @@ static constexpr bool isFormatDepthOnly(Image::Format formatType)
  */
 static constexpr bool isFormatStencilOnly(Image::Format formatType)
 {
-	return false; // TODO:
+	return formatType == Image::Format::UintS8;
 }
 /**
  * @brief Is the image data format a combined depth/stencil.
  * @param formatType target image format
  */
-static constexpr bool isFormatDepthStencil(Image::Format formatType)
+static constexpr bool isFormatDepthAndStencil(Image::Format formatType)
 {
-	return Image::Format::UnormD24UintS8 <= formatType && formatType <= Image::Format::SfloatD32Uint8S;
+	return Image::Format::UnormD24UintS8 <= formatType && formatType <= Image::Format::SfloatD32UintS8;
 }
 /**
  * @brief Is the image data format a depth or stencil.
@@ -911,7 +912,7 @@ static constexpr bool isFormatDepthStencil(Image::Format formatType)
  */
 static constexpr bool isFormatDepthOrStencil(Image::Format formatType)
 {
-	return Image::Format::UnormD16 <= formatType && formatType <= Image::Format::SfloatD32Uint8S;
+	return Image::Format::UnormD16 <= formatType && formatType <= Image::Format::SfloatD32UintS8;
 }
 /**
  * @brief Is the image data format an unsigned integer.
@@ -1047,8 +1048,9 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 	
 	case Image::Format::UnormD16: return 2;
 	case Image::Format::SfloatD32: return 4;
+	case Image::Format::UintS8: return 1;
 	case Image::Format::UnormD24UintS8: return 4;
-	case Image::Format::SfloatD32Uint8S: return 5;
+	case Image::Format::SfloatD32UintS8: return 5;
 	
 	default: return 0;
 	}
@@ -1183,7 +1185,7 @@ constexpr string_view imageFormatNames[(psize)Image::Format::Count] =
 
 	"SrgbR8G8B8A8", "SrgbB8G8R8A8", 
 
-	"UnormD16", "SfloatD32", "UnormD24UintS8", "SfloatD32Uint8S"
+	"UnormD16", "SfloatD32", "UintS8", "UnormD24UintS8", "SfloatD32UintS8"
 };
 
 /**

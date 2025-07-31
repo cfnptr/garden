@@ -76,7 +76,7 @@ static void createHizDescriptorSets(ID<GraphicsPipeline> pipeline,
 	auto mipCount = (uint8)imageViews.size();
 	descriptorSets.resize(mipCount);
 
-	auto uniforms = getUniforms(gFramebuffer->getDepthStencilAttachment().imageView);
+	auto uniforms = getUniforms(deferredSystem->getDepthImageView());
 	auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz0");
 	descriptorSets[0] = descriptorSet;

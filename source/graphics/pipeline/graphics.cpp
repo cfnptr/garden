@@ -267,7 +267,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			createData.pipelineState : pipelineStateSearch->second;
 
 		#if GARDEN_DEBUG
-		if (pipelineState.depthTesting || pipelineState.depthWriting)
+		if (pipelineState.depthTesting || pipelineState.depthWriting || pipelineState.stencilTesting)
 		{
 			GARDEN_ASSERT_MSG(createData.depthStencilFormat != Image::Format::Undefined, 
 				"No depth/stencil buffer in framebuffer for graphics pipeline [" + 
@@ -290,6 +290,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			depthStencilInfo.depthTestEnable = pipelineState.depthTesting;
 			depthStencilInfo.depthWriteEnable = pipelineState.depthWriting;
 			depthStencilInfo.depthCompareOp = toVkCompareOp(pipelineState.depthCompare);
+			depthStencilInfo.stencilTestEnable = pipelineState.stencilTesting;
 			depthStencilInfo.minDepthBounds = 0.0f;
 			depthStencilInfo.maxDepthBounds = 1.0f;
 			// TODO: stencil testing, depth boundsTesting

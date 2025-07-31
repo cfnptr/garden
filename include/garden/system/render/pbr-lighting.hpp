@@ -389,6 +389,11 @@ public:
 	 * @details See the @ref useReflBuffer().
 	 */
 	void markAnyReflection() noexcept { hasAnyRefl = true; }
+	/**
+	 * @brief Marks that there is rendered global illumination data on the current frame.
+	 * @details See the @ref useGiBuffer().
+	 */
+	void markAnyGI() noexcept { hasAnyGI = true; }
 };
 
 } // namespace garden

@@ -50,6 +50,8 @@ in float3 fs.farPoint;
 out float4 fb.accum;
 out float fb.reveal;
 
+earlyFragmentTests in;
+
 void main()
 {
 	float t = intersectGrid(fs.nearPoint, fs.farPoint, pc.isHorizontal);
