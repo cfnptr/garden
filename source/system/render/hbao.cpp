@@ -62,11 +62,13 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> noiseImage)
 {
 	auto hizSystem = HizRenderSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto hizBufferView = hizSystem->getImageViews()[1];
+	auto noiseView = graphicsSystem->get(noiseImage)->getDefaultView();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "hizBuffer", DescriptorSet::Uniform(hizSystem->getImageViews()[1]) },
-		{ "noise", DescriptorSet::Uniform(graphicsSystem->get(noiseImage)->getDefaultView()) },
+		{ "hizBuffer", DescriptorSet::Uniform(hizBufferView) },
+		{ "noise", DescriptorSet::Uniform(noiseView) },
 	};
 	return uniforms;
 }

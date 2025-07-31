@@ -35,6 +35,8 @@ uniform set1 sampler2DArray
 	addressMode = repeat;
 } colorMap;
 
+earlyFragmentTests in;
+
 void main()
 {
 	InstanceData instance = instance.data[pc.instanceIndex];

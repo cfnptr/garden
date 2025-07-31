@@ -219,6 +219,7 @@ public:
 		uint8 depthWriting : 1;                                        /**< Is depth value writing enabled. */
 		uint8 depthClamping : 1;                                       /**< Is depth value clamping enabled. */
 		uint8 depthBiasing : 1;                                        /**< Is depth value biasing enabled. */
+		uint8 stencilTesting : 1;                                      /**< Is stencil value testing enabled. */
 		uint8 faceCulling : 1;                                         /**< Is face culling enabled. */
 		uint8 discarding : 1;                                          /**< Is fragment discarding enabled. */
 		uint8 _unused : 1;                                             /**< [reserved for future use] */
@@ -234,8 +235,8 @@ public:
 		uint16 _alignment = 0;                                         /**< [structure alignment] */
 		// Note: Should be aligned.
 
-		State() : depthTesting(0), depthWriting(0), depthClamping(0),
-			depthBiasing(0), faceCulling(1), discarding(0), _unused(0) { }
+		State() : depthTesting(0), depthWriting(0), depthClamping(0), depthBiasing(0), 
+			stencilTesting(0), faceCulling(1), discarding(0), _unused(0) { }
 	};
 
 	using PipelineStates = tsl::robin_map<uint8, State>;

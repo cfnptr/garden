@@ -23,9 +23,8 @@ using namespace garden;
 
 static DescriptorSet::Uniforms getCascadesUniforms()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());		
-	return { { "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) } };
+	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthImageView();
+	return { { "depthBuffer", DescriptorSet::Uniform(depthBufferView) } };
 }
 
 //**********************************************************************************************************************

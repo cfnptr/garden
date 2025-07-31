@@ -262,6 +262,7 @@ ID<ImageView> Image::getDefaultView()
 	if (!defaultView)
 	{
 		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
+		GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(format), "Can't create default view for depth/stencil format");
 
 		auto graphicsAPI = GraphicsAPI::get();
 		auto image = graphicsAPI->imagePool.getID(this);
@@ -860,13 +861,15 @@ static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format 
 {
 	auto vulkanAPI = VulkanAPI::get();
 	auto imageView = vulkanAPI->imagePool.get(image);
+	auto aspectFlags = toVkImageAspectFlags(format);
+	if (isFormatDepthAndStencil(imageView->getFormat()))
+		format = imageView->getFormat();
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
 		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity),
 		// TODO: utilize component swizzle
-		vk::ImageSubresourceRange(toVkImageAspectFlags(format),
-			baseMip, mipCount, baseLayer, layerCount));
+		vk::ImageSubresourceRange(aspectFlags, baseMip, mipCount, baseLayer, layerCount));
 	return (VkImageView)vulkanAPI->device.createImageView(imageViewInfo);
 }
 

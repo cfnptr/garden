@@ -29,6 +29,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
+	auto depthBufferView = deferredSystem->getDepthImageView();
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
 	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
@@ -62,7 +63,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
 		{ "oitAccumBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[0].imageView) },
 		{ "oitRevealBuffer", DescriptorSet::Uniform(oitFramebufferView->getColorAttachments()[1].imageView) },
-		{ "depthBuffer", DescriptorSet::Uniform(gFramebufferView->getDepthStencilAttachment().imageView) },
+		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
 		{ "shadowBuffer", DescriptorSet::Uniform(shadowBuffer) },
 		{ "shadowBlurBuffer", DescriptorSet::Uniform(shadowBlurBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },

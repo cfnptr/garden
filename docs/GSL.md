@@ -55,9 +55,9 @@ pipelineState
 * **depthWriting** [ on | off ] - Enable or disable writing into the depth buffer. (off)
 * **depthClamping** [ on | off ] - Controls whether to clamp the fragment’s depth values. (off)
 * **depthBiasing** [ on | off ] - Controls whether to bias fragment depth values. (off)
-
 * **depthCompare** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value used for depth buffer comparisons. (greater)
+* **stencilTesting** [ on | off ] - If enabled, do stencil comparisons and update the stencil buffer. (off)
 
 > // TODO: depthBiasConstant, depthBiasSlope, depthBiasClamp.
 

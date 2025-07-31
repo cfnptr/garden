@@ -44,6 +44,8 @@ in float3 fs.farPoint;
 
 out float4 fb.color;
 
+earlyFragmentTests in;
+
 void main()
 {
 	float t = intersectGrid(fs.nearPoint, fs.farPoint, pc.isHorizontal);

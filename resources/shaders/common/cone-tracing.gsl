@@ -19,8 +19,8 @@
 
 #define DIFFUSE_CONE_COUNT 6
 
-const float diffuseConeWeights[DIFFUSE_CONE_COUNT] = 
-	float[DIFFUSE_CONE_COUNT](0.25f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f);
+const float diffuseConeWeights[DIFFUSE_CONE_COUNT] = float[DIFFUSE_CONE_COUNT](
+	0.25f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f);
 
 const float3 diffuseConeDirs[DIFFUSE_CONE_COUNT] = float3[DIFFUSE_CONE_COUNT]
 ( 
