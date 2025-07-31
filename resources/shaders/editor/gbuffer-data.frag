@@ -48,6 +48,7 @@ uniform sampler2D shadowBuffer;
 uniform sampler2D shadowBlurBuffer;
 uniform sampler2D aoBuffer;
 uniform sampler2D aoBlurBuffer;
+uniform sampler2D giBuffer;
 uniform sampler2D oitAccumBuffer;
 uniform sampler2D oitRevealBuffer;
 
@@ -102,10 +103,11 @@ void main()
 		float ao = textureLod(aoBuffer, fs.texCoords, 0.0f).r;
 		fb.color = float4(float3(ao), 1.0f);
 	}
-	//else if (pc.drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER)
-	//{
-	//	fb.color = float4(gammaCorrection(gBuffer.giColor), 1.0f);
-	//}
+	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GI_BUFFER)
+	{
+		float3 giColor = textureLod(giBuffer, fs.texCoords, 0.0f).rgb;
+		fb.color = float4(gammaCorrection(giColor), 1.0f);
+	}
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_OIT_ACCUM_COLOR)
 	{
 		float3 oitColor = textureLod(oitAccumBuffer, fs.texCoords, 0.0f).rgb;

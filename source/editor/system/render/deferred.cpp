@@ -33,7 +33,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
 	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
-	ID<ImageView> shadowBuffer, shadowBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer;
+	ID<ImageView> shadowBuffer, shadowBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer, giBuffer;
 
 	if (pbrLightingSystem)
 	{
@@ -42,6 +42,8 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		aoBuffer = pbrLightingSystem->getAoBaseView();
 		aoBlurBuffer = pbrLightingSystem->getAoBlurView();
 		reflBuffer = pbrLightingSystem->getReflBaseView();
+		giBuffer = pbrLightingSystem->getGiBuffer() ? graphicsSystem->get(
+			pbrLightingSystem->getGiBuffer())->getDefaultView() : graphicsSystem->getEmptyTexture();
 
 		if (!shadowBuffer)
 			shadowBuffer = shadowBlurBuffer = graphicsSystem->getEmptyTexture();
@@ -55,7 +57,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		auto emptyTexture = graphicsSystem->getEmptyTexture();
 		shadowBuffer = shadowBlurBuffer = emptyTexture;
 		aoBuffer = aoBlurBuffer = emptyTexture;
-		reflBuffer = emptyTexture;
+		reflBuffer = emptyTexture; giBuffer = emptyTexture;
 	}
 
 	DescriptorSet::Uniforms uniforms =
@@ -69,6 +71,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
 		{ "aoBlurBuffer", DescriptorSet::Uniform(aoBlurBuffer) },
 		{ "reflBuffer", DescriptorSet::Uniform(reflBuffer) },
+		{ "giBuffer", DescriptorSet::Uniform(giBuffer) }
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
