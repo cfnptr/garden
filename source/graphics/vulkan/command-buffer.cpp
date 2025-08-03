@@ -1345,7 +1345,7 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 		{
 			auto mipImageSize = calcSizeAtMip3(srcImage->getSize(), region.srcMipLevel);
 			extent = vk::Extent3D(mipImageSize.getX(), mipImageSize.getY(), 
-				srcImage->getType() == Image::Type::Texture3D ? srcImage->getSize().getZ() : 1);
+				srcImage->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
 		}
 		else
 		{
@@ -1406,7 +1406,7 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		{
 			auto mipImageSize = calcSizeAtMip3(image->getSize(), region.imageMipLevel);
 			dstExtent = vk::Extent3D(mipImageSize.getX(), mipImageSize.getY(), 
-				image->getType() == Image::Type::Texture3D ? image->getSize().getZ() : 1);
+				image->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
 		}
 		else
 		{
@@ -1478,7 +1478,7 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 		{
 			auto mipImageSize = calcSizeAtMip3(srcImage->getSize(), region.srcMipLevel);
 			srcBounds[1] = vk::Offset3D(mipImageSize.getX(), mipImageSize.getY(), 
-				srcImage->getType() == Image::Type::Texture3D ? srcImage->getSize().getZ() : 1);
+				srcImage->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
 		}
 		else
 		{
@@ -1488,7 +1488,7 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 		{
 			auto mipImageSize = calcSizeAtMip3(dstImage->getSize(), region.dstMipLevel);
 			dstBounds[1] = vk::Offset3D(mipImageSize.getX(), mipImageSize.getY(), 
-				dstImage->getType() == Image::Type::Texture3D ? dstImage->getSize().getZ() : 1);
+				dstImage->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
 		}
 		else
 		{
