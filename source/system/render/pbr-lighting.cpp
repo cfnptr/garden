@@ -834,9 +834,10 @@ void PbrLightingSystem::preHdrRender()
 
 	if (!hasAnyGI && giBuffer)
 	{
-		auto imageView = graphicsSystem->get(giBuffer);
 		auto& cameraConstants = graphicsSystem->getCameraConstants();
-		imageView->clear((float4)cameraConstants.skyColor);
+		auto skyColor = (float3)(cameraConstants.skyColor * cameraConstants.skyColor.getW());
+		auto imageView = graphicsSystem->get(giBuffer);
+		imageView->clear(float4(skyColor, 1.0f));
 	}
 
 	graphicsSystem->stopRecording();
@@ -996,8 +997,12 @@ void PbrLightingSystem::gBufferRecreate()
 	}
 	if (giFramebuffer)
 	{
-		graphicsSystem->destroy(giFramebuffer);
-		giFramebuffer = createGiFramebuffer(giBuffer);
+		auto giBufferView = graphicsSystem->get(giBuffer)->getDefaultView();
+		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+		auto colorAttachment = Framebuffer::OutputAttachment(
+			giBufferView, PbrLightingSystem::accumBufferFlags);
+		auto framebufferView = graphicsSystem->get(giFramebuffer);
+		framebufferView->update(framebufferSize, &colorAttachment, 1);
 	}
 	if (lightingDS)
 	{
