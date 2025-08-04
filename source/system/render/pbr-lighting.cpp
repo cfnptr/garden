@@ -686,6 +686,7 @@ void PbrLightingSystem::preHdrRender()
 			event->run();
 	}
 
+	graphicsSystem->startRecording(CommandBufferType::Frame);
 	if (hasShadowBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Shadows Render Pass");
@@ -694,14 +695,24 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			framebufferView = graphicsSystem->get(shadowFramebuffers[2]);
-			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Shadows Pass", Color::transparent);
 				framebufferView->beginRenderPass(float4::one);
 				event->run();
 				framebufferView->endRenderPass();
 			}
-			graphicsSystem->stopRecording();
+		}
+
+		if (hasAnyShadow)
+		{
+			GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[2], shadowFramebuffers[0], 
+				shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
+			hasAnyShadow = false;
+		}
+		else
+		{
+			auto imageView = graphicsSystem->get(shadowBuffer);
+			imageView->clear(float4::one);
 		}
 	}
 	if (hasAoBuffer)
@@ -712,14 +723,26 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			framebufferView = graphicsSystem->get(aoFramebuffers[2]);
-			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
 				framebufferView->beginRenderPass(float4::one);
 				event->run();
 				framebufferView->endRenderPass();
 			}
-			graphicsSystem->stopRecording();
+		}
+
+		if (hasAnyAO)
+		{
+			GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
+				aoFramebuffers[1], blurSharpness, aoBlurPipeline, aoBlurDS);
+			hasAnyAO = false;
+		}
+		else
+		{
+			auto imageView = graphicsSystem->get(aoBuffer);
+			imageView->clear(float4::one);
+			imageView = graphicsSystem->get(aoBlurBuffer);
+			imageView->clear(float4::one);
 		}
 	}
 	if (hasReflBuffer)
@@ -730,14 +753,24 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			framebufferView = graphicsSystem->get(reflFramebuffers[0]);
-			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("Reflection Pass", Color::transparent);
 				framebufferView->beginRenderPass(float4::zero);
 				event->run();
 				framebufferView->endRenderPass();
 			}
-			graphicsSystem->stopRecording();
+		}
+
+		if (hasAnyRefl)
+		{
+			downsampleReflections(reflImageViews, reflFramebuffers, 
+				reflKernel, reflBlurPipeline, reflBlurDSes);
+			hasAnyRefl = false;
+		}
+		else
+		{
+			auto imageView = graphicsSystem->get(reflBuffer);
+			imageView->clear(float4::zero);
 		}
 	}
 	if (hasGiBuffer)
@@ -748,16 +781,23 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			framebufferView = graphicsSystem->get(giFramebuffer);
-			graphicsSystem->startRecording(CommandBufferType::Frame);
 			{
 				SET_GPU_DEBUG_LABEL("GI Pass", Color::transparent);
 				framebufferView->beginRenderPass(float4::zero);
 				event->run();
 				framebufferView->endRenderPass();
 			}
-			graphicsSystem->stopRecording();
+		}
+
+		if (!hasAnyGI)
+		{
+			auto& cameraConstants = graphicsSystem->getCameraConstants();
+			auto skyColor = (float3)cameraConstants.skyColor;
+			auto imageView = graphicsSystem->get(giBuffer);
+			imageView->clear(float4(skyColor, 1.0f));
 		}
 	}
+	graphicsSystem->stopRecording();
 
 	if (hasReflBuffer)
 	{
@@ -791,56 +831,6 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 			event->run();
 	}
-
-	graphicsSystem->startRecording(CommandBufferType::Frame);
-
-	if (hasAnyShadow)
-	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[2], shadowFramebuffers[0], 
-			shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
-		hasAnyShadow = false;
-	}
-	else if (shadowBuffer)
-	{
-		auto imageView = graphicsSystem->get(shadowBuffer);
-		imageView->clear(float4::one);
-	}
-
-	if (hasAnyAO)
-	{
-		GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
-			aoFramebuffers[1], blurSharpness, aoBlurPipeline, aoBlurDS);
-		hasAnyAO = false;
-	}
-	else if (aoBuffer)
-	{
-		auto imageView = graphicsSystem->get(aoBuffer);
-		imageView->clear(float4::one);
-		imageView = graphicsSystem->get(aoBlurBuffer);
-		imageView->clear(float4::one);
-	}
-
-	if (hasAnyRefl)
-	{
-		downsampleReflections(reflImageViews, reflFramebuffers, 
-			reflKernel, reflBlurPipeline, reflBlurDSes);
-		hasAnyRefl = false;
-	}
-	else if (reflBuffer)
-	{
-		auto imageView = graphicsSystem->get(reflBuffer);
-		imageView->clear(float4::zero);
-	}
-
-	if (!hasAnyGI && giBuffer)
-	{
-		auto& cameraConstants = graphicsSystem->getCameraConstants();
-		auto skyColor = (float3)(cameraConstants.skyColor * cameraConstants.skyColor.getW());
-		auto imageView = graphicsSystem->get(giBuffer);
-		imageView->clear(float4(skyColor, 1.0f));
-	}
-
-	graphicsSystem->stopRecording();
 }
 
 //**********************************************************************************************************************

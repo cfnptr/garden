@@ -203,10 +203,10 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 
 	if (!descriptorSet)
 	{
+		auto srcBufferView = framebufferView->getColorAttachments()[0].imageView;
 		DescriptorSet::Uniforms uniforms 
 		{
-			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, 
-				{ framebufferView->getColorAttachments()[0].imageView } })},
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { srcBufferView } })},
 			{ "kernel", DescriptorSet::Uniform(kernelBuffer, 1, 2) }
 		};
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
@@ -267,10 +267,10 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 	if (!descriptorSet)
 	{
 		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews()[0];
+		auto srcBufferView = framebufferView->getColorAttachments()[0].imageView;
 		DescriptorSet::Uniforms uniforms
 		{
-			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, 
-				{ framebufferView->getColorAttachments()[0].imageView } }) },
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { srcBufferView } }) },
 			{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
 		};
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));

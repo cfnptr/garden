@@ -48,13 +48,15 @@ static DescriptorSet::Uniforms getUniforms()
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
+	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
+	auto ldrBufferView = ldrFramebufferView->getColorAttachments()[0].imageView;
 
 	// TODO: support forward rendering too
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
-		{ "ldrBuffer", DescriptorSet::Uniform(ldrFramebufferView->getColorAttachments()[0].imageView) },
+		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
+		{ "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) },
 	};
 	return uniforms;
 }

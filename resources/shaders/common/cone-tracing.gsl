@@ -15,8 +15,6 @@
 #ifndef CONE_TRACING_GSL
 #define CONE_TRACING_GSL
 
-#include "common/cone-ray.gsl"
-
 #define DIFFUSE_CONE_COUNT 6
 
 const float diffuseConeWeights[DIFFUSE_CONE_COUNT] = float[DIFFUSE_CONE_COUNT](

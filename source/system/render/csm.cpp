@@ -135,13 +135,13 @@ static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap,
 	auto depthMapView = graphicsSystem->get(depthMap)->getDefaultView();
 	auto transparentMapView = graphicsSystem->get(transparentMap)->getDefaultView();
 	auto gFramebuffer = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto gNormalsView = gFramebuffer->getColorAttachments()[DeferredRenderSystem::gBufferNormals].imageView;
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "gNormals", DescriptorSet::Uniform(gFramebuffer->getColorAttachments()[
-			DeferredRenderSystem::gBufferNormals].imageView, 1, inFlightCount) },
+		{ "gNormals", DescriptorSet::Uniform(gNormalsView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView, 1, inFlightCount) },
 		{ "shadowData", DescriptorSet::Uniform(dataBuffers) },
 		{ "depthMap", DescriptorSet::Uniform(depthMapView, 1, inFlightCount) },
