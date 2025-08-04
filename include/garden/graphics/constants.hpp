@@ -33,6 +33,7 @@ struct CameraConstants final
 	f32x4x4 inverseProj = f32x4x4::zero;  /**< Inverse projection matrix. */
 	f32x4x4 invViewProj = f32x4x4::zero;  /**< Inverse view * projection matrix. */
 	f32x4 cameraPos = f32x4::zero;        /**< Camera position in world space. */
+	f32x4 giBufferPos = f32x4::zero;      /**< Global illumination buffer position in world space. */
 	f32x4 viewDir = f32x4::zero;          /**< View direction in world space. */
 	f32x4 lightDir = f32x4::zero;         /**< Light direction in world space. */
 	f32x4 shadowColor = f32x4::zero;      /**< Shadow color and intensity. */

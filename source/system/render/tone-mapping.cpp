@@ -43,6 +43,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useB
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
 
 	ID<ImageView> bloomBufferView;
 	if (bloomSystem && useBloomBuffer)
@@ -57,7 +58,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useB
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) },
+		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
 		{ "bloomBuffer", DescriptorSet::Uniform(bloomBufferView) },
 		{ "luminance", DescriptorSet::Uniform(luminanceBuffer) }
 	};

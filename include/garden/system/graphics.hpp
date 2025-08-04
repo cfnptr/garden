@@ -139,22 +139,33 @@ public:
 	void setRenderScale(float renderScale);
 
 	/**
+	 * @brief Sets global illumination buffer world space position.
+	 * @details See the @ref getCameraConstants().
+	 * @param giBufferPos target GI buffer position
+	 */
+	void setGiBufferPos(float3 giBufferPos, float intensity = 1.0f) noexcept
+	{
+		currentCameraConstants.giBufferPos = (f32x4)float4(giBufferPos, 0.0f);
+	}
+	/**
 	 * @brief Sets shadow color and intensity
 	 * @details See the @ref getCameraConstants().
-	 * @param shadowColor target shadow color and intensity
+	 *
+	 * @param shadowColor target shadow color value
+	 * @param intensity shadow intensity value
 	 */
 	void setShadowColor(float3 shadowColor, float intensity = 1.0f) noexcept
 	{
 		currentCameraConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
 	}
 	/**
-	 * @brief Sets sky color and intensity. (Pre multiplied with 1/Pi)
+	 * @brief Sets sky color and intensity. (Pre multiplied with 1/Pi!)
 	 * @details See the @ref getCameraConstants().
-	 * @param skyColor target the color and intensity
+	 * @param skyColor target sky color value
 	 */
-	void setSkyColor(float3 skyColor, float intensity = 1.0f) noexcept
+	void setSkyColor(float3 skyColor) noexcept
 	{
-		currentCameraConstants.skyColor = (f32x4)float4(skyColor, intensity);
+		currentCameraConstants.skyColor = (f32x4)float4(skyColor, 0.0f);
 	}
 	/**
 	 * @brief Sets emissive coefficient. (Produces maximum brightness)

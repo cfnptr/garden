@@ -23,6 +23,7 @@
 	float4x4 inverseProj;    \
 	float4x4 invViewProj;    \
 	float4 cameraPos;        \
+	float4 giBufferPos;      \
 	float4 viewDir;          \
 	float4 lightDir;         \
 	float4 shadowColor;      \

@@ -16,7 +16,7 @@
 
 localSize = 16, 16, 1;
 
-uniform restrict readonly image2D srcBuffer : unormR8G8B8A8;
+uniform sampler2DArray srcBuffer;
 uniform restrict writeonly image2D dstBuffer : unormR8G8B8A8;
 
 void main()
@@ -26,10 +26,10 @@ void main()
 		return;
 
 	int2 samplePos = pos * 2;
-	float4 s00 = imageLoad(srcBuffer, samplePos);
-	float4 s10 = imageLoad(srcBuffer, samplePos + int2(1, 0));
-	float4 s01 = imageLoad(srcBuffer, samplePos + int2(0, 1));
-	float4 s11 = imageLoad(srcBuffer, samplePos + int2(1, 1));
+	float4 s00 = texelFetch(srcBuffer, samplePos, 0);
+	float4 s10 = texelFetch(srcBuffer, samplePos + int2(1, 0), 0);
+	float4 s01 = texelFetch(srcBuffer, samplePos + int2(0, 1), 0);
+	float4 s11 = texelFetch(srcBuffer, samplePos + int2(1, 1), 0);
 	float3 normal = normalize((unpackNormal(s00.xyz) + unpackNormal(s10.xyz) + 
 		unpackNormal(s01.xyz) + unpackNormal(s11.xyz)) * (1.0f / 4.0f));
 	float w = (s00.w + s10.w + s01.w + s11.w) * (1.0f / 4.0f);

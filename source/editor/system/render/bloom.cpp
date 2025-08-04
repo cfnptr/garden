@@ -24,9 +24,11 @@ using namespace garden;
 
 static DescriptorSet::Uniforms getThresholdUniforms()
 {
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto hdrFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getHdrFramebuffer());
-	return { { "hdrBuffer", DescriptorSet::Uniform(hdrFramebufferView->getColorAttachments()[0].imageView) } };
+	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
+	return { { "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) } };
 }
 
 //**********************************************************************************************************************
