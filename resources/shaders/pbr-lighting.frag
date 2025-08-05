@@ -25,6 +25,7 @@
 spec const bool USE_SHADOW_BUFFER = false;
 spec const bool USE_AO_BUFFER = false;
 spec const bool USE_REFLECTION_BUFFER = false;
+spec const bool USE_REFLECTION_BLUR = false;
 spec const bool USE_GI_BUFFER = false;
 spec const bool USE_CLEAR_COAT_BUFFER = false;
 spec const bool USE_EMISSION_BUFFER = false;
@@ -108,7 +109,8 @@ void main()
 	}
 	if (USE_REFLECTION_BUFFER)
 	{
-		float lod = calcReflectionsLod(gBuffer.roughness, length(worldPosition.xyz), pc.reflLodOffset);
+		float lod = USE_REFLECTION_BLUR ? calcReflectionsLod(gBuffer.roughness, 
+			length(worldPosition.xyz), pc.reflLodOffset) : 0.0f;
 		gBuffer.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
 	}
 

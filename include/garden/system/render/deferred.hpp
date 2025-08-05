@@ -21,10 +21,9 @@
  * G-Buffer structure:
  *   0. SrgbB8G8R8A8       (Base Color, Specular Factor)
  *   1. UnormB8G8R8A8      (Metallic, Roughness, Ambient Occlusion, Reflectance)
- *   2. UnormA2B10G10R10   (Clear Coat Normal, Clear Coat Roughness)
- *   3. UnormA2B10G10R10   (Encoded Normal, Shadow)
+ *   2. UnormA2B10G10R10   (Encoded Normal, Shadow)
+ *   3. UnormA2B10G10R10   (Clear Coat Normal and Roughness) [optional]
  *   4. SrgbB8G8R8A8       (Emissive Color and Factor) [optional]
- *   5. SfloatR16G16B16A16 (Global Illumination Color) [optional]
  */
 
 // TODO: Sheen rendering.
