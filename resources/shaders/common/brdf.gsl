@@ -21,6 +21,8 @@
 #include "common/ibl.gsl"
 #include "common/math.gsl"
 
+#define MIN_ROUGHNESS 0.045f
+
 float ggx(float noh, float roughness)
 {
 	float oneMinusNohSquared = 1.0f - noh * noh;
@@ -165,9 +167,9 @@ float unpackRoughness(float perceptualRoughness) { return perceptualRoughness * 
 
 float calcReflectionsLod(float perceptualRoughness, float distance, float reflLodOffset)
 {
-	const float invLog2sqrt5 = 0.8614f;
-	float roughness = unpackRoughness(max(perceptualRoughness, 0.045f));
-    return (log2(roughness / max(distance, 1.0f)) + reflLodOffset) * invLog2sqrt5;
+	const float invLog2Sqrt5 = 0.8614f;
+	float roughness = unpackRoughness(max(perceptualRoughness, MIN_ROUGHNESS));
+	return (log2(roughness / max(distance, 1.0f)) + reflLodOffset) * invLog2Sqrt5;
 }
 
 #endif // BRDF_GSL

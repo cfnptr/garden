@@ -52,7 +52,7 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT, const float4
 	)
 {
 	IblTerms terms;
-	float roughness = max(gBuffer.roughness, 0.045f); // Perceptual.
+	float roughness = max(gBuffer.roughness, MIN_ROUGHNESS); // Perceptual.
 	float linearRoughness = unpackRoughness(roughness);
 	float nov = max(dot(gBuffer.normal, -gBuffer.viewDirection), 1e-4f);
 	float reflectance = computeDielectricF0(gBuffer.reflectance);
@@ -69,7 +69,7 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT, const float4
 	terms.fr = float3(0.0f);
 	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, roughness, f0);
 
-	if (reflectionColor.a < 1.0f && roughness < M_SQRT1_2)
+	if (reflectionColor.a < 1.0f)
 	{
 		float3 reflected = reflect(gBuffer.viewDirection, gBuffer.normal);
 		float3 r = computeReflectedVector(linearRoughness, gBuffer.normal, reflected);
@@ -130,7 +130,7 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT, const float4
 		
 		#ifndef USE_DIFFUSE_ONLY
 		float3 clearCoatR = reflect(gBuffer.viewDirection, gBuffer.clearCoatNormal);
-		float clearCoatRoughness = max(gBuffer.clearCoatRoughness, 0.045f); // Perceptual.
+		float clearCoatRoughness = max(gBuffer.clearCoatRoughness, MIN_ROUGHNESS); // Perceptual.
 		float ccLinearRoughness = unpackRoughness(clearCoatRoughness);
 			#ifdef USE_AMBIENT_OCCLUSION
 			float specularAO = specularAoLagarde(

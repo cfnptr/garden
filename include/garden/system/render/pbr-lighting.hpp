@@ -61,6 +61,19 @@ class PbrLightingSystem final : public ComponentSystem<
 	PbrLightingComponent, false>, public Singleton<PbrLightingSystem>
 {
 public:
+	/**
+	 * @brief PBR lighting rendering system initialization options.
+	 */
+	struct Options final
+	{
+		bool useShadowBuffer = true; /**< Create and use shadow buffer for rendering. */
+		bool useAoBuffer = true;     /**< Create and use ambient occlusion buffer for rendering. */
+		bool useReflBuffer = true;   /**< Create and use reflection buffer for rendering. */
+		bool useGiBuffer = true;     /**< Create and use global illumination buffer for rendering. */
+		bool useReflBlur = true;     /**< Create and use reflection buffer blur chain. */
+		Options() { }
+	};
+
 	struct LightingPC final
 	{
 		float4x4 uvToWorld;
@@ -109,10 +122,7 @@ private:
 	ID<DescriptorSet> shadowBlurDS = {};
 	ID<DescriptorSet> aoBlurDS = {};
 	float reflLodOffset = 0.0f;
-	bool hasShadowBuffer = false;
-	bool hasAoBuffer = false;
-	bool hasReflBuffer = false;
-	bool hasGiBuffer = false;
+	Options options;
 	bool hasAnyShadow = false;
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
@@ -122,14 +132,10 @@ private:
 	/**
 	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
 	 * 
-	 * @param useShadowBuffer create and use shadow buffer for rendering
-	 * @param useAoBuffer create and use ambient occlusion buffer for rendering
-	 * @param useReflBuffer create and use reflection buffer for rendering
-	 * @param useGiBuffer create and use global illumination buffer for rendering
+	 * @param options target system initialization options
 	 * @param setSingleton set system singleton instance
 	 */
-	PbrLightingSystem(bool useShadowBuffer = true, bool useAoBuffer = true, 
-		bool useReflBuffer = true, bool useGiBuffer = true, bool setSingleton = true);
+	PbrLightingSystem(Options options = {}, bool setSingleton = true);
 	/**
 	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
 	 */
@@ -151,31 +157,15 @@ public:
 	float blurSharpness = 50.0f;
 
 	/*******************************************************************************************************************
-	 * @brief Use shadow buffer for PBR lighting rendering.
+	 * @brief Returns PBR lighting rendering system options.
 	 */
-	bool useShadowBuffer() const noexcept { return hasShadowBuffer; }
+	Options getOptions() const noexcept { return options; }
 	/**
-	 * @brief Use ambient occlusion buffer for PBR lighting rendering.
-	 */
-	bool useAoBuffer() const noexcept { return hasAoBuffer; }
-	/**
-	 * @brief Use reflection buffer for PBR lighting rendering.
-	 */
-	bool useReflBuffer() const noexcept { return hasReflBuffer; }
-	/**
-	 * @brief Use global illumination buffer for PBR lighting rendering.
-	 */
-	bool useGiBuffer() const noexcept { return hasGiBuffer; }
-	/**
-	 * @brief Enables or disables use of the shadow and ambient occlusion buffers.
+	 * @brief Enables or disables use of the specific system rendering options.
 	 * @details It destroys existing buffers on use set to false.
-	 * 
-	 * @param useShadowBuffer use shadow buffer for rendering
-	 * @param useAoBuffer use ambient occlusion buffer for rendering
-	 * @param useReflBUffer use reflection buffer for rendering
-	 * @param useGiBuffer use global illumination buffer for rendering
+	 * @param options target system options
 	 */
-	void setConsts(bool useShadowBuffer, bool useAoBuffer, bool useReflBuffer, bool useGiBuffer);
+	void setOptions(Options options);
 
 	/**
 	 * @brief Returns PBR lighting reflections LOD offset.

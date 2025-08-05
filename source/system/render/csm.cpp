@@ -121,7 +121,7 @@ static void createTransparentFramebuffers(const vector<ID<ImageView>>& transImag
 static ID<GraphicsPipeline> createPipeline()
 {
 	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
-	GARDEN_ASSERT(pbrLightingSystem->useShadowBuffer());
+	GARDEN_ASSERT(pbrLightingSystem->getOptions().useShadowBuffer);
 
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowBaseFB(), options);
