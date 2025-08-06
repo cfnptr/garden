@@ -352,8 +352,9 @@ static ID<Framebuffer> createGiFramebuffer(ID<Image> giBuffer)
 }
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<ImageView>* shadowImageViews, 
-	const ID<ImageView>* aoImageViews, ID<ImageView> reflBufferView, ID<Image> giBuffer)
+static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, 
+	const ID<ImageView>* shadowImageViews, const ID<ImageView>* aoImageViews, 
+	const vector<ID<ImageView>>& reflImageViews, ID<ImageView> reflBufferView, ID<Image> giBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -361,6 +362,9 @@ static DescriptorSet::Uniforms getLightingUniforms(ID<Image> dfgLUT, const ID<Im
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	auto dfgLutView = graphicsSystem->get(dfgLUT)->getDefaultView();
 	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
+
+	if (!reflBufferView && !reflImageViews.empty())
+		reflBufferView = reflImageViews[0];
 	
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	graphicsSystem->getEmptyTexture();
@@ -650,7 +654,8 @@ void PbrLightingSystem::preHdrRender()
 
 	if (!lightingDS)
 	{
-		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, aoImageViews, reflBufferView, giBuffer);
+		auto uniforms = getLightingUniforms(dfgLUT, shadowImageViews, 
+			aoImageViews, reflImageViews, reflBufferView, giBuffer);
 		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
 	}
@@ -939,8 +944,19 @@ void PbrLightingSystem::gBufferRecreate()
 	}
 	if (!reflFramebuffers.empty())
 	{
-		graphicsSystem->destroy(reflFramebuffers);
-		createReflFramebuffers(reflImageViews, reflFramebuffers);
+		if (reflFramebuffers.size() == 1)
+		{
+			auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+			auto colorAttachment = Framebuffer::OutputAttachment(
+				reflImageViews[0], PbrLightingSystem::accumBufferFlags);
+			auto framebufferView = graphicsSystem->get(reflFramebuffers[0]);
+			framebufferView->update(framebufferSize, &colorAttachment, 1);
+		}
+		else
+		{
+			graphicsSystem->destroy(reflFramebuffers);
+			createReflFramebuffers(reflImageViews, reflFramebuffers);
+		}
 	}
 	
 	if (aoBuffer)
