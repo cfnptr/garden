@@ -122,7 +122,6 @@ private:
 	ID<Framebuffer> ldrFramebuffer = {};
 	ID<Framebuffer> depthLdrFramebuffer = {};
 	ID<Framebuffer> uiFramebuffer = {};
-	ID<Framebuffer> refractedFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	ID<Framebuffer> transDepthFramebuffer = {};
 	bool asyncRecording = false;
@@ -281,10 +280,6 @@ public:
 	 * @brief Returns deferred UI framebuffer. (User Interface)
 	 */
 	ID<Framebuffer> getUiFramebuffer();
-	/**
-	 * @brief Returns deferred refracted framebuffer. (HDR + Depth + Normals)
-	 */
-	ID<Framebuffer> getRefractedFramebuffer();
 	/**
 	 * @brief Returns deferred OIT framebuffer. (Order Independent Transparency)
 	 */

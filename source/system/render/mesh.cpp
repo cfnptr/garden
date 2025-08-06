@@ -733,9 +733,7 @@ void MeshRenderSystem::renderShadows()
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
-	{
-		SET_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
-	}
+	BEGIN_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
 	graphicsSystem->stopRecording();
 
 	const auto& systems = Manager::Instance::get()->getSystems();
@@ -778,6 +776,10 @@ void MeshRenderSystem::renderShadows()
 
 		cleanupMeshes();
 	}
+
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	END_GPU_DEBUG_LABEL();
+	graphicsSystem->stopRecording();
 }
 
 //**********************************************************************************************************************

@@ -258,27 +258,6 @@ static ID<Framebuffer> createUiFramebuffer(ID<Image> uiBuffer)
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.ui");
 	return framebuffer;
 }
-static ID<Framebuffer> createRefractedFramebuffer(ID<Image> hdrBuffer, 
-	ID<Image> normalsBuffer, ID<ImageView> depthStencilIV)
-{
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto hdrBufferView = graphicsSystem->get(hdrBuffer)->getDefaultView();
-	auto normalsBufferView = graphicsSystem->get(normalsBuffer)->getDefaultView();
-
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{
-		Framebuffer::OutputAttachment(hdrBufferView, DeferredRenderSystem::hdrBufferFlags),
-		Framebuffer::OutputAttachment(normalsBufferView, DeferredRenderSystem::normalsBufferFlags),
-	};
-
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilIV, DeferredRenderSystem::hdrBufferDepthFlags);
-
-	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFramebufferSize(), 
-		std::move(colorAttachments), depthStencilAttachment);
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.refracted");
-	return framebuffer;
-}
 static ID<Framebuffer> createOitFramebuffer(ID<Image> oitAccumBuffer, 
 	ID<Image> oitRevealBuffer, ID<ImageView> depthStencilIV)
 {
@@ -414,7 +393,6 @@ void DeferredRenderSystem::deinit()
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(transDepthFramebuffer);
 		graphicsSystem->destroy(oitFramebuffer);
-		graphicsSystem->destroy(refractedFramebuffer);
 		graphicsSystem->destroy(uiFramebuffer);
 		graphicsSystem->destroy(depthLdrFramebuffer);
 		graphicsSystem->destroy(ldrFramebuffer);
@@ -551,21 +529,16 @@ void DeferredRenderSystem::render()
 		if (!depthCopyBuffer)
 			depthCopyBuffer = createDepthStencilBuffer(hasStencil, true);
 
-		if (!refractedFramebuffer)
-		{
-			refractedFramebuffer = createRefractedFramebuffer(hdrBuffer, 
-				gBuffers[gBufferNormals], depthStencilIV);
-		}
-
-		static const array<float4, 2> clearColors = { float4::zero, float4::zero };
-		auto framebufferView = graphicsSystem->get(refractedFramebuffer);
+		if (!depthHdrFramebuffer)
+			depthHdrFramebuffer = createDepthHdrFramebuffer(hdrBuffer, depthStencilIV);
+		auto framebufferView = graphicsSystem->get(depthHdrFramebuffer);
 		
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Refracted Pass", Color::transparent);
 			Image::copy(hdrBuffer, hdrCopyBuffer); // TODO: generate blurry HDR chain. (GGX based)
 			Image::copy(depthStencilBuffer, depthCopyBuffer);
-			framebufferView->beginRenderPass(clearColors, 0.0f, 0, int4::zero, asyncRecording);
+			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, asyncRecording);
 			event->run();
 			framebufferView->endRenderPass();
 		}
@@ -839,16 +812,6 @@ void DeferredRenderSystem::swapchainRecreate()
 			depthStencilAttachment.setFlags(DeferredRenderSystem::oitBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
 		}
-		if (refractedFramebuffer)
-		{
-			auto framebufferView = graphicsSystem->get(refractedFramebuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
-				hdrBuffer)->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
-			colorAttachments[1] = Framebuffer::OutputAttachment(graphicsSystem->get(
-				gBuffers[gBufferNormals])->getDefaultView(), DeferredRenderSystem::normalsBufferFlags);
-			depthStencilAttachment.setFlags(DeferredRenderSystem::hdrBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
-		}
 		if (uiBuffer)
 		{
 			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
@@ -1029,15 +992,6 @@ ID<Framebuffer> DeferredRenderSystem::getUiFramebuffer()
 	if (!uiFramebuffer)
 		uiFramebuffer = createUiFramebuffer(getUiBuffer());
 	return uiFramebuffer;
-}
-ID<Framebuffer> DeferredRenderSystem::getRefractedFramebuffer()
-{
-	if (!refractedFramebuffer)
-	{
-		refractedFramebuffer = createRefractedFramebuffer(getHdrBuffer(), 
-			getGBuffers()[gBufferNormals], getDepthStencilIV());
-	}
-	return refractedFramebuffer;
 }
 ID<Framebuffer> DeferredRenderSystem::getOitFramebuffer()
 {
