@@ -23,10 +23,10 @@
 #define SHADOW_MAP_MAX_CASCADE_COUNT 4
 #define SHADOW_MAP_SAMPLE_COUNT 8
 
-#define SHADOW_MAP_DATA                            \
-	float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT]; \
-	float4 farPlanes;                              \
-	float4 lightDirBias;
+#define SHADOW_MAP_DATA                              \
+	float4x4 uvToLight[SHADOW_MAP_CASCADE_COUNT];    \
+	float4 farPlanes;                                \
+	float4 sunDirBias;
 
 const float2 poissonDisk[SHADOW_MAP_SAMPLE_COUNT] = float2[]
 (
@@ -41,32 +41,37 @@ const float2 poissonDisk[SHADOW_MAP_SAMPLE_COUNT] = float2[]
 );
 
 //**********************************************************************************************************************
-void computeCsmData(float4x4 lightSpace[SHADOW_MAP_CASCADE_COUNT], float2 texCoords, float pixelDepth, 
-	float3 farPlanes, float3 lightDir, float bias, float3 normal, out uint32 cascadeID, out float3 lightCoords)
+uint32 computeCsmCascadeID(float3 farPlanes, float pixelDepth)
 {
 	if (SHADOW_MAP_CASCADE_COUNT == 4) // Tuned for maximum 4 cascades
 	{
 		float3 steps = step(farPlanes, float3(pixelDepth));
-		cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y + steps.z);
+		return (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y + steps.z);
 	}
-	else if (SHADOW_MAP_CASCADE_COUNT == 3)
+	if (SHADOW_MAP_CASCADE_COUNT == 3)
 	{
 		float2 steps = step(farPlanes.xy, float2(pixelDepth));
-		cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y);
+		return (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps.x + steps.y);
 	}
-	else if (SHADOW_MAP_CASCADE_COUNT == 2)
+	if (SHADOW_MAP_CASCADE_COUNT == 2)
 	{
 		float steps = step(farPlanes.x, pixelDepth);
-		cascadeID = (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps);
+		return (SHADOW_MAP_CASCADE_COUNT - 1) - uint32(steps);
 	}
-	else
-	{
-		cascadeID = 0;
-	}
-	
-	float4 lightProj = lightSpace[cascadeID] * float4(texCoords, pixelDepth, 1.0f);
+	return 0;
+}
+float computeCsmOffsetZ(float3 sunDir, float3 normal, float bias)
+{
+	return (1.0f - dot(normal, sunDir)) * bias;
+}
+
+void computeCsmData(float4x4 uvToLight[SHADOW_MAP_CASCADE_COUNT], float2 texCoords, float pixelDepth, 
+	float3 farPlanes, float3 sunDir, float bias, float3 normal, out uint32 cascadeID, out float3 lightCoords)
+{
+	cascadeID = computeCsmCascadeID(farPlanes, pixelDepth);
+	float4 lightProj = uvToLight[cascadeID] * float4(texCoords, pixelDepth, 1.0f);
 	lightCoords = lightProj.xyz / lightProj.w;
-	lightCoords.z += (1.0f - dot(normal, lightDir)) * bias;
+	lightCoords.z += computeCsmOffsetZ(sunDir, normal, bias);
 }
 
 //**********************************************************************************************************************
@@ -76,7 +81,11 @@ float2x2 calcRandomShadowRot(float2 lightCoords)
 	return float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
 }
 
-float evaluateCsmShadows(sampler2DArrayShadow depthMap, uint32 cascadeID, float3 lightCoords)
+float evaluateCsmShadowTap(sampler2DArrayShadow depthMap, uint32 cascadeID, float3 lightCoords)
+{
+	return 1.0f - texture(depthMap, float4(lightCoords.xy, cascadeID, lightCoords.z));
+}
+float evaluateCsmShadow(sampler2DArrayShadow depthMap, uint32 cascadeID, float3 lightCoords)
 {
 	if (lightCoords.z < 0.0f)
 		return 0.0f;
@@ -93,6 +102,7 @@ float evaluateCsmShadows(sampler2DArrayShadow depthMap, uint32 cascadeID, float3
 
 	return 1.0f - shadow * (1.0f / SHADOW_MAP_SAMPLE_COUNT);
 }
+
 float4 evaluateCsmTransparency(sampler2DArray transparentMap, uint32 cascadeID, float3 lightCoords)
 {
 	if (lightCoords.z < 0.0f)

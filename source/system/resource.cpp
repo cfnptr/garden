@@ -1700,7 +1700,10 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 
 	fs::path computeInputPath;
 	if (!File::tryGetResourcePath(data.resourcesPath, computePath, computeInputPath))
-		throw GardenError("Compute shader file does not exist, or it is ambiguous.");
+	{
+		throw GardenError("Compute shader file does not exist, or it is ambiguous. ("
+			"path: " + data.shaderPath.generic_string() + ")");
+	}
 
 	computePath += ".spv";
 	auto headerFilePath = data.cachePath / headerPath;

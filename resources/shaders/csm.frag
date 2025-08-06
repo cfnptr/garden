@@ -54,9 +54,9 @@ void main()
 
 	float3 normal = decodeNormal(textureLod(gNormals, fs.texCoords, 0.0f));
 	uint32 cascadeID; float3 lightCoords;
-	computeCsmData(shadowData.lightSpace, fs.texCoords, pixelDepth, shadowData.farPlanes.xyz, 
-		shadowData.lightDirBias.xyz, shadowData.lightDirBias.w, normal, cascadeID, lightCoords);
-	float shadow = evaluateCsmShadows(depthMap, cascadeID, lightCoords);
+	computeCsmData(shadowData.uvToLight, fs.texCoords, pixelDepth, shadowData.farPlanes.xyz, 
+		shadowData.sunDirBias.xyz, shadowData.sunDirBias.w, normal, cascadeID, lightCoords);
+	float shadow = evaluateCsmShadow(depthMap, cascadeID, lightCoords);
 
 	float4 transparency = evaluateCsmTransparency(transparentMap, cascadeID, lightCoords);
 	transparency = mix(float4(1.0f), transparency, shadow); // Note: Fix for peter-panning.
