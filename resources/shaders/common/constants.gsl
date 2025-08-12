@@ -15,7 +15,7 @@
 #ifndef CONSTANTS_GSL
 #define CONSTANTS_GSL
 
-#define CAMERA_CONSTANTS     \
+#define COMMON_CONSTANTS     \
 	float4x4 view;           \
 	float4x4 projection;     \
 	float4x4 viewProj;       \
@@ -35,6 +35,7 @@
 	float currentTime;       \
 	float deltaTime;         \
 	float emissiveCoeff;     \
-	float anglePerPixel;
+	float anglePerPixel;     \
+	float ggxLodOffset;
 
 #endif // CONSTANTS_GSL

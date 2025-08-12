@@ -74,7 +74,7 @@ uniform pushConstants
 {
 	float4x4 uvToWorld;
 	float4 shadowColor;
-	float reflLodOffset;
+	float ggxLodOffset;
 	float emissiveCoeff;
 	float reflectanceCoeff;
 } pc;
@@ -109,8 +109,8 @@ void main()
 	}
 	if (USE_REFLECTION_BUFFER)
 	{
-		float lod = USE_REFLECTION_BLUR ? calcReflectionsLod(gBuffer.roughness, 
-			length(worldPosition.xyz), pc.reflLodOffset) : 0.0f;
+		float lod = USE_REFLECTION_BLUR ? calcGgxLod(gBuffer.roughness, 
+			length(worldPosition.xyz), pc.ggxLodOffset) : 0.0f;
 		gBuffer.reflectionColor = textureLod(reflBuffer, fs.texCoords, lod);
 	}
 

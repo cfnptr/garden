@@ -404,8 +404,8 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto cameraPosition = cameraConstants.cameraPos;
+	const auto& cc = graphicsSystem->getCommonConstants();
+	auto cameraPosition = cc.cameraPos;
 	uint32 unsortedBufferIndex = 0, sortedBufferIndex = 0;
 	Plane frustumPlanes[Plane::frustumCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);
@@ -794,8 +794,8 @@ void MeshRenderSystem::preForwardRender()
 	prepareSystems();
 	renderShadows();
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	prepareMeshes(cc.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 
 void MeshRenderSystem::forwardRender()
@@ -806,16 +806,16 @@ void MeshRenderSystem::forwardRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, -1);
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
+	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
 
 	if (!isOpaqueOnly)
 	{
-		renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
-		renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, -1);
-		renderUnsorted(cameraConstants.viewProj, MeshRenderType::TransDepth, -1);
-		renderSorted(cameraConstants.viewProj, -1);
+		renderUnsorted(cc.viewProj, MeshRenderType::Refracted, -1);
+		renderUnsorted(cc.viewProj, MeshRenderType::OIT, -1);
+		renderUnsorted(cc.viewProj, MeshRenderType::TransDepth, -1);
+		renderSorted(cc.viewProj, -1);
 	}
 }
 
@@ -831,8 +831,8 @@ void MeshRenderSystem::preDeferredRender()
 	prepareSystems();
 	renderShadows();
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	prepareMeshes(cameraConstants.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	prepareMeshes(cc.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 void MeshRenderSystem::deferredRender()
 {
@@ -842,8 +842,8 @@ void MeshRenderSystem::deferredRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Opaque, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
 }
 void MeshRenderSystem::depthHdrRender()
 {
@@ -853,8 +853,8 @@ void MeshRenderSystem::depthHdrRender()
 	if (!graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Color, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
 }
 void MeshRenderSystem::preRefractedRender()
 {
@@ -874,8 +874,8 @@ void MeshRenderSystem::refractedRender()
 	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::Refracted, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderUnsorted(cc.viewProj, MeshRenderType::Refracted, -1);
 }
 void MeshRenderSystem::translucentRender()
 {
@@ -885,8 +885,8 @@ void MeshRenderSystem::translucentRender()
 	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderSorted(cameraConstants.viewProj, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderSorted(cc.viewProj, -1);
 }
 void MeshRenderSystem::preTransDepthRender()
 {
@@ -906,8 +906,8 @@ void MeshRenderSystem::transDepthRender()
 	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::TransDepth, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderUnsorted(cc.viewProj, MeshRenderType::TransDepth, -1);
 }
 void MeshRenderSystem::preOitRender()
 {
@@ -927,6 +927,6 @@ void MeshRenderSystem::oitRender()
 	if (isOpaqueOnly || !graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	renderUnsorted(cameraConstants.viewProj, MeshRenderType::OIT, -1);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	renderUnsorted(cc.viewProj, MeshRenderType::OIT, -1);
 }

@@ -62,8 +62,8 @@ void ToneMappingEditorSystem::preUiRender()
 		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		const auto& cameraConstants = graphicsSystem->getCameraConstants();
-		auto emissiveCoeff = cameraConstants.emissiveCoeff;
+		const auto& commonConstants = graphicsSystem->getCommonConstants();
+		auto emissiveCoeff = commonConstants.emissiveCoeff;
 		if (ImGui::DragFloat("Emissive Coefficient", &emissiveCoeff, 0.1f, 0.0f, FLT_MAX))
 			graphicsSystem->setEmissiveCoeff(emissiveCoeff);
 

@@ -78,7 +78,7 @@ public:
 	{
 		float4x4 uvToWorld;
 		float4 shadowColor;
-		float reflLodOffset;
+		float ggxLodOffset;
 		float emissiveCoeff;
 		float reflectanceCoeff;
 		
@@ -89,15 +89,15 @@ public:
 		uint32 itemCount;
 	};
 
-	static constexpr uint8 accumBufferCount = 3; /**< PBR lighting accumulation buffer count. */
-	static constexpr Framebuffer::OutputAttachment::Flags accumBufferFlags = { false, false, true };
+	static constexpr uint8 shadowBufferCount = 2;
+	static constexpr uint8 aoBufferCount = 3;
+	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format giBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
 	ID<Image> dfgLUT = {};
-	ID<Buffer> reflKernel = {};
 	ID<Image> shadowBuffer = {};
 	ID<Image> shadowBlurBuffer = {};
 	ID<Image> aoBuffer = {};
@@ -105,10 +105,10 @@ private:
 	ID<Image> reflBuffer = {};
 	ID<Image> giBuffer = {};
 	ID<Framebuffer> giFramebuffer = {};
-	ID<ImageView> shadowImageViews[accumBufferCount] = {};
-	ID<Framebuffer> shadowFramebuffers[accumBufferCount + 1] = {};
-	ID<ImageView> aoImageViews[accumBufferCount] = {};
-	ID<Framebuffer> aoFramebuffers[accumBufferCount] = {};
+	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
+	ID<Framebuffer> shadowFramebuffers[shadowBufferCount + 1] = {};
+	ID<ImageView> aoImageViews[aoBufferCount] = {};
+	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
 	vector<ID<ImageView>> reflImageViews;
 	vector<ID<Framebuffer>> reflFramebuffers;
 	vector<ID<DescriptorSet>> reflBlurDSes;
@@ -121,7 +121,6 @@ private:
 	ID<DescriptorSet> lightingDS = {};
 	ID<DescriptorSet> shadowBlurDS = {};
 	ID<DescriptorSet> aoBlurDS = {};
-	float reflLodOffset = 0.0f;
 	Options options;
 	bool hasAnyShadow = false;
 	bool hasAnyAO = false;
@@ -168,11 +167,6 @@ public:
 	void setOptions(Options options);
 
 	/**
-	 * @brief Returns PBR lighting reflections LOD offset.
-	 */
-	float getReflLodOffset() const noexcept { return reflLodOffset; }
-
-	/**
 	 * @brief Returns PBR lighting graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getLightingPipeline();
@@ -201,15 +195,11 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
 	 */
-	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[2]; }
+	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[0]; }
 	/**
 	 * @brief Returns PBR lighting shadow temporary framebuffer.
 	 */
 	ID<Framebuffer> getShadowTempFB() { return getShadowFramebuffers()[1]; }
-	/**
-	 * @brief Returns PBR lighting shadow blur framebuffer.
-	 */
-	ID<Framebuffer> getShadowBlurFB() { return getShadowFramebuffers()[0]; }
 	/**
 	 * @brief Returns PBR lighting AO base framebuffer. (Ambient Occlusion)
 	 */
@@ -232,9 +222,9 @@ public:
 	 */
 	ID<Image> getDfgLUT();
 	/**
-	 * @brief Returns PBR lighting reflections blur kernel.
+	 * @brief Returns PBR lighting spherical GGX distribution blur kernel.
 	 */
-	ID<Buffer> getReflKernel();
+	ID<Buffer> getGgxKernel();
 
 	/**
 	 * @brief Returns PBR lighting shadow buffer.
@@ -273,19 +263,19 @@ public:
 	 * @brief Returns PBR lighting reflection image view array.
 	 */
 	const vector<ID<ImageView>>& getReflImageViews();
+	/**
+	 * @brief Returns PBR lighting reflection buffer image view.
+	 */
+	ID<ImageView> getReflBufferView();
 
 	/**
 	 * @brief Returns PBR lighting shadow base image view.
 	 */
-	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[2]; }
+	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[0]; }
 	/**
 	 * @brief Returns PBR lighting shadow temporary image view.
 	 */
 	ID<ImageView> getShadowTempView() { return getShadowImageViews()[1]; }
-	/**
-	 * @brief Returns PBR lighting shadow blur image view.
-	 */
-	ID<ImageView> getShadowBlurView() { return getShadowImageViews()[0]; }
 	/**
 	 * @brief Returns PBR lighting AO base image view. (Ambient Occlusion)
 	 */

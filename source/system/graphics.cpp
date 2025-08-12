@@ -30,6 +30,7 @@
 
 #include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
+#include "math/brdf.hpp"
 #include "garden/os.hpp"
 
 using namespace garden;
@@ -86,13 +87,13 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	setSkyColor(float3::one);
 	setEmissiveCoeff(100.0f);
 
-	cameraConstantsBuffers.resize(inFlightCount);
+	commonConstantsBuffers.resize(inFlightCount);
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
 		auto constantsBuffer = createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
-			sizeof(CameraConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
-		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.cameraConstants" + to_string(i));
-		cameraConstantsBuffers[i].resize(1); cameraConstantsBuffers[i][0] = constantsBuffer;
+			sizeof(CommonConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.commonConstants" + to_string(i));
+		commonConstantsBuffers[i].resize(1); commonConstantsBuffers[i][0] = constantsBuffer;
 	}
 }
 GraphicsSystem::~GraphicsSystem()
@@ -224,75 +225,71 @@ static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer, uint2
 }
 
 //**********************************************************************************************************************
-static void prepareCameraConstants(ID<Entity> camera, ID<Entity> directionalLight,
-	uint2 scaledFramebufferSize, CameraConstants& cameraConstants)
+static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLight,
+	uint2 scaledFramebufferSize, CommonConstants& cc)
 {
 	auto manager = Manager::Instance::get();
 	auto inputSystem = InputSystem::Instance::get();
-	cameraConstants.currentTime = inputSystem->getCurrentTime();
-	cameraConstants.deltaTime = inputSystem->getDeltaTime();
+	cc.currentTime = inputSystem->getCurrentTime();
+	cc.deltaTime = inputSystem->getDeltaTime();
 
 	auto transformView = manager->tryGet<TransformComponent>(camera);
 	if (transformView)
 	{
-		cameraConstants.view = calcRelativeView(*transformView);
-		setTranslation(cameraConstants.view, f32x4::zero);
-		cameraConstants.cameraPos = transformView->getPosition();
-		cameraConstants.cameraPos.fixW();
+		cc.view = calcRelativeView(*transformView);
+		setTranslation(cc.view, f32x4::zero);
+		cc.cameraPos = transformView->getPosition();
+		cc.cameraPos.fixW();
 	}
 	else
 	{
-		cameraConstants.view = f32x4x4::identity;
-		cameraConstants.cameraPos = f32x4::zero;
+		cc.view = f32x4x4::identity;
+		cc.cameraPos = f32x4::zero;
 	}
 
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
 	if (cameraView)
 	{
-		cameraConstants.projection = cameraView->calcProjection();
-		cameraConstants.nearPlane = cameraView->getNearPlane();
+		cc.projection = cameraView->calcProjection();
+		cc.nearPlane = cameraView->getNearPlane();
 
 		if (cameraView->type == ProjectionType::Perspective)
 		{
-			cameraConstants.anglePerPixel = calcAnglePerPixel(
-				cameraView->p.perspective.fieldOfView, scaledFramebufferSize.y);
+			cc.anglePerPixel = calcAnglePerPixel(cameraView->p.perspective.fieldOfView, scaledFramebufferSize.y);
+			cc.ggxLodOffset = brdf::calcGgxLodOffset(scaledFramebufferSize, cameraView->p.perspective.fieldOfView);
 		}
-		else
-		{
-			cameraConstants.anglePerPixel = 0.0f;
-		}
+		else cc.anglePerPixel = cc.ggxLodOffset = 0.0f;
 	}
 	else
 	{
-		cameraConstants.projection = f32x4x4::identity;
-		cameraConstants.nearPlane = defaultHmdDepth;
-		cameraConstants.anglePerPixel = 0.0f;
+		cc.projection = f32x4x4::identity;
+		cc.nearPlane = defaultHmdDepth;
+		cc.anglePerPixel = 0.0f;
 	}
 
-	cameraConstants.viewProj = cameraConstants.projection * cameraConstants.view;
-	cameraConstants.inverseView = inverse4x4(cameraConstants.view);
-	cameraConstants.inverseProj = inverse4x4(cameraConstants.projection);
-	cameraConstants.invViewProj = inverse4x4(cameraConstants.viewProj);
-	cameraConstants.viewDir = normalize3(cameraConstants.inverseView * f32x4(f32x4::front, 1.0f));
-	cameraConstants.viewDir.fixW();
+	cc.viewProj = cc.projection * cc.view;
+	cc.inverseView = inverse4x4(cc.view);
+	cc.inverseProj = inverse4x4(cc.projection);
+	cc.invViewProj = inverse4x4(cc.viewProj);
+	cc.viewDir = normalize3(cc.inverseView * f32x4(f32x4::front, 1.0f));
+	cc.viewDir.fixW();
 
 	if (directionalLight)
 	{
 		auto lightTransformView = manager->tryGet<TransformComponent>(directionalLight);
 		if (lightTransformView)
-			cameraConstants.lightDir = normalize3(lightTransformView->getRotation() * f32x4::front);
-		else
-			cameraConstants.lightDir = f32x4::bottom;
+			cc.lightDir = normalize3(lightTransformView->getRotation() * f32x4::front);
+		else cc.lightDir = f32x4::bottom;
 	}
 	else
 	{
-		cameraConstants.lightDir = f32x4::bottom;
+		cc.lightDir = f32x4::bottom;
 	}
-	cameraConstants.lightDir.fixW();
+	cc.lightDir.fixW();
 
-	cameraConstants.frameSize = scaledFramebufferSize;
-	cameraConstants.invFrameSize = 1.0f / (float2)scaledFramebufferSize;
-	cameraConstants.invFrameSizeSq = cameraConstants.invFrameSize * 2.0f;
+	cc.frameSize = scaledFramebufferSize;
+	cc.invFrameSize = 1.0f / (float2)scaledFramebufferSize;
+	cc.invFrameSizeSq = cc.invFrameSize * 2.0f;
 }
 
 static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
@@ -369,11 +366,9 @@ void GraphicsSystem::update()
 
 	if (camera && isFramebufferSizeValid)
 	{
-		prepareCameraConstants(camera, directionalLight,
-			getScaledFramebufferSize(), currentCameraConstants);
-		auto cameraBuffer = graphicsAPI->bufferPool.get(
-			cameraConstantsBuffers[swapchain->getInFlightIndex()][0]);
-		cameraBuffer->writeData(&currentCameraConstants);
+		prepareCommonConstants(camera, directionalLight, getScaledFramebufferSize(), currentCommonConstants);
+		auto cameraBuffer = graphicsAPI->bufferPool.get(commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
+		cameraBuffer->writeData(&currentCommonConstants);
 	}
 }
 

@@ -34,9 +34,9 @@ uniform pushConstants
 	bool isHorizontal;
 } pc;
 
-uniform CameraConstants
+uniform CommonConstants
 {
-	CAMERA_CONSTANTS
+	COMMON_CONSTANTS
 } cc;
 
 in float3 fs.nearPoint;

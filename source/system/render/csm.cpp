@@ -240,8 +240,8 @@ void CsmRenderSystem::shadowRender()
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	if (cameraConstants.shadowColor.getW() <= 0.0f)
+	const auto& cc = graphicsSystem->getCommonConstants();
+	if (cc.shadowColor.getW() <= 0.0f)
 		return;
 	
 	auto pipelineView = graphicsSystem->get(pipeline);
@@ -340,8 +340,8 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		return false;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	if (cameraConstants.shadowColor.getW() <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
+	const auto& cc = graphicsSystem->getCommonConstants();
+	if (cc.shadowColor.getW() <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
 		return false;
 
 	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
@@ -356,17 +356,15 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		farPlane *= cascadeSplits[passIndex];
 	farPlanes[passIndex] = farPlane;
 
-	viewProj = calcLightViewProj(cameraConstants.view, 
-		cameraConstants.lightDir, cameraOffset, cameraView->p.perspective.fieldOfView, 
+	viewProj = calcLightViewProj(cc.view, cc.lightDir, cameraOffset, cameraView->p.perspective.fieldOfView, 
 		cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff, shadowMapSize);
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
 	auto data = (ShadowData*)dataBufferView->getMap();
-	data->uvToLight[passIndex] = (float4x4)(f32x4x4::ndcToUV * 
-		viewProj * cameraConstants.invViewProj * f32x4x4::uvToNDC);
-	data->farPlanes = float4((float3)(cameraConstants.nearPlane / farPlanes), 0.0f);
-	data->sunDirBias = float4((float3)-cameraConstants.lightDir, biasNormalFactor);
+	data->uvToLight[passIndex] = (float4x4)(f32x4x4::ndcToUV * viewProj * cc.invViewProj * f32x4x4::uvToNDC);
+	data->farPlanes = float4((float3)(cc.nearPlane / farPlanes), 0.0f);
+	data->sunDirBias = float4((float3)-cc.lightDir, biasNormalFactor);
 	return true;
 }
 

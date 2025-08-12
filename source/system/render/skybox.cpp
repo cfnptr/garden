@@ -131,10 +131,10 @@ void SkyboxRenderSystem::depthHdrRender()
 	if (!pipelineView->isReady() || !cubemapView->isReady())
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 
 	PushConstants pc;
-	pc.viewProj = (float4x4)cameraConstants.viewProj;
+	pc.viewProj = (float4x4)cc.viewProj;
 
 	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
 	if (graphicsSystem->isCurrentRenderPassAsync())

@@ -73,8 +73,8 @@ void MeshSelectorEditorSystem::render()
 	auto inputSystem = InputSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto cameraPosition = cameraConstants.cameraPos;
+	const auto& commonConstants = graphicsSystem->getCommonConstants();
+	auto cameraPosition = commonConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 
 	auto updateSelector = !ImGui::GetIO().WantCaptureMouse && !lastDragging &&
@@ -87,8 +87,8 @@ void MeshSelectorEditorSystem::render()
 		auto windowSize = inputSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
-		auto globalDirection = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
+		auto globalOrigin = commonConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
+		auto globalDirection = commonConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
 		globalOrigin /= globalOrigin.getW(); globalDirection /= globalDirection.getW();
 		globalDirection -= globalOrigin;
 
@@ -172,7 +172,7 @@ void MeshSelectorEditorSystem::render()
 		if (transformView && selectedEntityAabb != Aabb::inf)
 		{
 			auto model = transformView->calcModel(cameraPosition);
-			auto mvp = cameraConstants.viewProj * model * translate(
+			auto mvp = commonConstants.viewProj * model * translate(
 				selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 
 			SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);

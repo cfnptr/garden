@@ -165,11 +165,11 @@ float3 diffuseIrradiance(float3 normal, const float4 shBuffer[SH_COEFF_COUNT])
 float packRoughness(float linearRoughness) { return sqrt(linearRoughness); }
 float unpackRoughness(float perceptualRoughness) { return perceptualRoughness * perceptualRoughness; }
 
-float calcReflectionsLod(float perceptualRoughness, float distance, float reflLodOffset)
+float calcGgxLod(float perceptualRoughness, float distance, float ggxLodOffset)
 {
 	const float invLog2Sqrt5 = 0.8614f;
 	float roughness = unpackRoughness(max(perceptualRoughness, MIN_ROUGHNESS));
-	return (log2(roughness / max(distance, 1.0f)) + reflLodOffset) * invLog2Sqrt5;
+	return (log2(roughness / max(distance, 1.0f)) + ggxLodOffset) * invLog2Sqrt5;
 }
 
 #endif // BRDF_GSL

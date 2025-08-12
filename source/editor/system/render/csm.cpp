@@ -74,8 +74,8 @@ void CsmRenderEditorSystem::preUiRender()
 	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		const auto& cameraConstants = graphicsSystem->getCameraConstants();
-		auto shadowColor = cameraConstants.shadowColor;
+		const auto& cc = graphicsSystem->getCommonConstants();
+		auto shadowColor = cc.shadowColor;
 		if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
 			graphicsSystem->setShadowColor((float3)shadowColor, shadowColor.getW());
 		if (ImGui::SliderFloat("Alpha", &shadowColor.floats.w, 0.0f, 1.0f))
@@ -141,10 +141,10 @@ void CsmRenderEditorSystem::uiRender()
 		return;
 
 	auto csmSystem = CsmRenderSystem::Instance::get();
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 
 	PushConstants pc;
-	pc.farPlanes = (float3)(cameraConstants.nearPlane / csmSystem->getFarPlanes());
+	pc.farPlanes = (float3)(cc.nearPlane / csmSystem->getFarPlanes());
 
 	SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
 	pipelineView->bind();
