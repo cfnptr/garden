@@ -223,13 +223,13 @@ void FpvControllerSystem::updateCharacterControl()
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
-	const auto& cameraConstants = GraphicsSystem::Instance::get()->getCameraConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 
 	auto velocity = f32x4::zero;
 	if (inputSystem->getKeyboardState(KeyboardButton::W))
-		velocity = cameraConstants.viewDir;
+		velocity = cc.viewDir;
 	if (inputSystem->getKeyboardState(KeyboardButton::S))
-		velocity -= cameraConstants.viewDir;
+		velocity -= cc.viewDir;
 	if (velocity != f32x4::zero)
 	{
 		velocity.setY(0.0f);
@@ -237,9 +237,9 @@ void FpvControllerSystem::updateCharacterControl()
 	}
 
 	if (inputSystem->getKeyboardState(KeyboardButton::D))
-		velocity += cameraConstants.inverseView * f32x4(f32x4::right, 1.0f);
+		velocity += cc.inverseView * f32x4(f32x4::right, 1.0f);
 	if (inputSystem->getKeyboardState(KeyboardButton::A))
-		velocity -= cameraConstants.inverseView * f32x4(f32x4::right, 1.0f);
+		velocity -= cc.inverseView * f32x4(f32x4::right, 1.0f);
 	if (velocity != f32x4::zero)
 	{
 		velocity.setY(0.0f);

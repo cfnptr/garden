@@ -41,7 +41,7 @@ static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
 	if (pbrLightingSystem)
 	{
 		shadowBuffer = pbrLightingSystem->getShadowBaseView();
-		shadowBlurBuffer = pbrLightingSystem->getShadowBlurView();
+		shadowBlurBuffer = pbrLightingSystem->getShadowTempView();
 		aoBuffer = pbrLightingSystem->getAoBaseView();
 		aoBlurBuffer = pbrLightingSystem->getAoBlurView();
 		reflBuffer = pbrLightingSystem->getReflBaseView();
@@ -273,10 +273,10 @@ void DeferredRenderEditorSystem::ldrRender()
 	if (!pipelineView->isReady() || !graphicsSystem->camera)
 		return;
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 
 	BufferPC pc;
-	pc.invViewProj = (float4x4)cameraConstants.invViewProj;
+	pc.invViewProj = (float4x4)cc.invViewProj;
 	pc.drawMode = (int32)drawMode;
 	pc.showChannelR = showChannelR ? 1.0f : 0.0f;
 	pc.showChannelG = showChannelG ? 1.0f : 0.0f;

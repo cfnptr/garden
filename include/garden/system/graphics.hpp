@@ -70,8 +70,8 @@ struct SwapchainChanges final
  */
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
-	DescriptorSet::Buffers cameraConstantsBuffers;
-	CameraConstants currentCameraConstants = {};
+	DescriptorSet::Buffers commonConstantsBuffers;
+	CommonConstants currentCommonConstants = {};
 	uint64 frameIndex = 0, tickIndex = 0;
 	double beginSleepClock = 0.0;
 	ID<Buffer> cubeVertexBuffer = {};
@@ -140,39 +140,39 @@ public:
 
 	/**
 	 * @brief Sets global illumination buffer world space position.
-	 * @details See the @ref getCameraConstants().
+	 * @details See the @ref getCommonConstants().
 	 * @param giBufferPos target GI buffer position
 	 */
 	void setGiBufferPos(float3 giBufferPos, float intensity = 1.0f) noexcept
 	{
-		currentCameraConstants.giBufferPos = (f32x4)float4(giBufferPos, 0.0f);
+		currentCommonConstants.giBufferPos = (f32x4)float4(giBufferPos, 0.0f);
 	}
 	/**
 	 * @brief Sets shadow color and intensity
-	 * @details See the @ref getCameraConstants().
+	 * @details See the @ref getCommonConstants().
 	 *
 	 * @param shadowColor target shadow color value
 	 * @param intensity shadow intensity value
 	 */
 	void setShadowColor(float3 shadowColor, float intensity = 1.0f) noexcept
 	{
-		currentCameraConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
+		currentCommonConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
 	}
 	/**
 	 * @brief Sets sky color and intensity. (Pre multiplied with 1/Pi!)
-	 * @details See the @ref getCameraConstants().
+	 * @details See the @ref getCommonConstants().
 	 * @param skyColor target sky color value
 	 */
 	void setSkyColor(float3 skyColor) noexcept
 	{
-		currentCameraConstants.skyColor = (f32x4)float4(skyColor, 0.0f);
+		currentCommonConstants.skyColor = (f32x4)float4(skyColor, 0.0f);
 	}
 	/**
 	 * @brief Sets emissive coefficient. (Produces maximum brightness)
-	 * @details See the @ref getCameraConstants().
+	 * @details See the @ref getCommonConstants().
 	 * @param emissiveCoeff target emissive coefficient
 	 */
-	void setEmissiveCoeff(float emissiveCoeff) noexcept { currentCameraConstants.emissiveCoeff = emissiveCoeff; }
+	void setEmissiveCoeff(float emissiveCoeff) noexcept { currentCommonConstants.emissiveCoeff = emissiveCoeff; }
 
 	/**
 	 * @brief Returns swapchain framebuffer size.
@@ -301,15 +301,15 @@ public:
 	 */
 	ID<Framebuffer> getSwapchainFramebuffer() const noexcept { return swapchainFramebuffer; }
 	/**
-	 * @brief Returns current render camera constants buffer.
+	 * @brief Returns current render common constants buffer.
 	 * @details Use it to access common camera properties inside shader. 
 	 */
-	const DescriptorSet::Buffers& getCameraConstantsBuffers() const noexcept { return cameraConstantsBuffers; }
+	const DescriptorSet::Buffers& getCommonConstantsBuffers() const noexcept { return commonConstantsBuffers; }
 	/**
-	 * @brief Returns current render camera constants.
+	 * @brief Returns current render common constants.
 	 * @details Useful for transformation matrices.
 	 */
-	const CameraConstants& getCameraConstants() const noexcept { return currentCameraConstants; }
+	const CommonConstants& getCommonConstants() const noexcept { return currentCommonConstants; }
 
 	/**
 	 * @brief Manually signal swapchain changes.

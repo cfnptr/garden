@@ -45,6 +45,7 @@ public:
 		float sharpness;
 	};
 private:
+	ID<Buffer> ggxBlurKernel = {};
 	ID<ComputePipeline> downsampleNormPipeline = {};
 	ID<ComputePipeline> downsampleNormAPipeline = {};
 
@@ -61,6 +62,10 @@ private:
 	void deinit();
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Returns spherical GGX distribution blur kernel.
+	 */
+	ID<Buffer> getGgxBlurKernel();
 	/**
 	 * @brief Returns GPU process downsample normals pipeline.
 	 */
@@ -87,14 +92,6 @@ public:
 	 */
 	void normalMapMips(ID<Image> normalMap);
 
-	/**
-	 * @brief Calculates gaussian blur kernel buffer coefficient count.
-	 * @param kernelWidth gaussian blur kernel width
-	 */
-	static constexpr uint8 calcGaussCoeffCount(uint8 kernelWidth) noexcept
-	{
-		return (kernelWidth - 1u) / 4u + 1u;
-	}
 	/**
 	 * @brief Calculates gaussian blur kernel coefficients.
 	 *
@@ -133,6 +130,27 @@ public:
 	 */
 	void bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,  ID<Framebuffer> tmpFramebuffer, 
 		float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet, uint8 kernelRadius = 3);
+
+	/**
+	 * @brief Prepares spherical GGX distribution blur data.
+	 * 
+	 * @param buffer target blur buffer
+	 * @param[in,out] imageViews GGX blur image views
+	 * @param[in,out] framebuffers GGX blur framebuffers
+	 */
+	void prepareGgxBlur(ID<Image> buffer, vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers);
+	/**
+	 * @brief Records spherical GGX distribution blur command.
+	 * @return True if all resources are ready and blur command has been recorder.
+	 * 
+	 * @param buffer target blur buffer
+	 * @param[in] imageViews GGX blur image views
+	 * @param[in] framebuffers GGX blur framebuffers
+	 * @param[in,out] pipeline GGX blur graphics pipeline
+	 * @param[in,out] descriptorSets GGX blur descriptor sets
+	 */
+	bool ggxBlur(ID<Image> buffer, const vector<ID<ImageView>>& imageViews, const vector<ID<Framebuffer>>& framebuffers, 
+		ID<GraphicsPipeline>& pipeline, vector<ID<DescriptorSet>>& descriptorSets);
 };
 
 } // namespace garden

@@ -16,9 +16,24 @@
 #include "garden/system/render/hiz.hpp"
 #include "garden/system/resource.hpp"
 #include "process/gaussian-blur.h"
+#include "math/brdf.hpp"
 
 using namespace garden;
 
+static ID<Buffer> createGgxKernel()
+{
+	float2 coeffs[brdf::ggxCoeffCount];
+	GpuProcessSystem::calcGaussCoeffs(brdf::ggxSigma0, coeffs, brdf::ggxCoeffCount);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto kernel = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst | 
+		Buffer::Usage::TransferQ, Buffer::CpuAccess::None, coeffs, brdf::ggxCoeffCount * 
+		sizeof(float2), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(kernel, "buffer.uniform.ggxBlurKernel");
+	return kernel;
+}
+
+//**********************************************************************************************************************
 static ID<ComputePipeline> createDownsampleNorm()
 {
 	ResourceSystem::ComputeOptions options;
@@ -72,9 +87,16 @@ void GpuProcessSystem::deinit()
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(downsampleNormAPipeline);
 		graphicsSystem->destroy(downsampleNormPipeline);
+		graphicsSystem->destroy(ggxBlurKernel);
 	}
 }
 
+ID<Buffer> GpuProcessSystem::getGgxBlurKernel()
+{
+	if (!ggxBlurKernel)
+		ggxBlurKernel = createGgxKernel();
+	return ggxBlurKernel;
+}
 ID<ComputePipeline> GpuProcessSystem::getDownsampleNorm()
 {
 	if (!downsampleNormPipeline)
@@ -277,11 +299,11 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bilateralBlurD" + to_string(*descriptorSet));
 	}
 
-	auto& cameraConstants = graphicsSystem->getCameraConstants();
+	auto& cc = graphicsSystem->getCommonConstants();
 	auto texelSize = float2(1.0f) / graphicsSystem->get(srcBuffer)->calcSize();
 
 	BilateralBlurPC pc;
-	pc.nearPlane = cameraConstants.nearPlane;
+	pc.nearPlane = cc.nearPlane;
 	pc.sharpness = sharpness;
 
 	auto pipelineView = graphicsSystem->get(pipeline);
@@ -309,4 +331,96 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 	framebufferView->endRenderPass();
+}
+
+//**********************************************************************************************************************
+void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, 
+	vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
+{
+	GARDEN_ASSERT(buffer);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto bufferView = graphicsSystem->get(buffer);
+	auto roughnessLodCount = bufferView->getMipCount();
+	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);
+	GARDEN_ASSERT(bufferView->getMipCount() > 1);
+
+	if (imageViews.empty())
+	{
+		auto bufferFormat = bufferView->getFormat();
+		imageViews.resize(roughnessLodCount * 2);
+		auto imageViewData = imageViews.data();
+
+		for (uint8 layer = 0; layer < 2; layer++)
+		{
+			for (uint8 mip = 0; mip < roughnessLodCount; mip++)
+			{
+				auto index = layer * roughnessLodCount + mip;
+				auto imageView = graphicsSystem->createImageView(buffer, 
+					Image::Type::Texture2D, bufferFormat, mip, 1, layer, 1);
+				SET_RESOURCE_DEBUG_NAME(imageView, "imageView.ggxBlur.buffer" + to_string(index));
+				imageViewData[index] = imageView;
+			}
+		}
+	}
+	if (framebuffers.empty())
+	{
+		framebuffers.resize(roughnessLodCount * 2);
+		auto framebufferData = framebuffers.data();
+		auto imageViewData = imageViews.data();
+
+		for (uint8 layer = 0; layer < 2; layer++)
+		{
+			auto framebufferSize = (uint2)bufferView->getSize();
+			for (uint8 mip = 0; mip < roughnessLodCount; mip++)
+			{
+				auto index = layer * roughnessLodCount + mip;
+				vector<Framebuffer::OutputAttachment> colorAttachments =
+				{ Framebuffer::OutputAttachment(imageViewData[index], { false, false, true }) };
+				auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+				SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.ggxBlur" + to_string(index));
+				framebufferData[index] = framebuffer;
+				framebufferSize = max(framebufferSize / 2u, uint2::one);
+			}
+		}
+	}
+}
+bool GpuProcessSystem::ggxBlur(ID<Image> buffer, 
+	const vector<ID<ImageView>>& imageViews, const vector<ID<Framebuffer>>& framebuffers, 
+	ID<GraphicsPipeline>& pipeline, vector<ID<DescriptorSet>>& descriptorSets)
+{
+	GARDEN_ASSERT(buffer);
+	GARDEN_ASSERT(imageViews.size() > 2);
+	GARDEN_ASSERT(framebuffers.size() > 2);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto blurKernel = getGgxBlurKernel();
+	if (!graphicsSystem->get(blurKernel)->isReady())
+		return false;
+
+	auto roughnessLodCount = imageViews.size() / 2;
+	if (descriptorSets.size() < roughnessLodCount)
+		descriptorSets.resize(roughnessLodCount);
+
+	Image::BlitRegion blitRegion;
+	blitRegion.layerCount = 1;
+
+	auto imageViewData = imageViews.data();
+	auto framebufferData = framebuffers.data();
+	auto reinhard = true;
+
+	SET_GPU_DEBUG_LABEL("GGX Blur", Color::transparent);
+	
+	for (uint8 i = 1; i < roughnessLodCount; i++)
+	{
+		blitRegion.srcMipLevel = i - 1;
+		blitRegion.dstMipLevel = i;
+		Image::blit(buffer, buffer, blitRegion, Sampler::Filter::Linear);
+
+		gaussianBlur(imageViewData[i], framebufferData[i], framebuffers[roughnessLodCount + i], 
+			ggxBlurKernel, brdf::ggxCoeffCount, reinhard, pipeline, descriptorSets[i]);
+		reinhard = false;
+	}
+
+	return true;
 }

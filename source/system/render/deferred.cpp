@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "garden/system/render/gpu-process.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/profiler.hpp"
+#include "math/brdf.hpp"
 
 // TODO: allow to disable OIT and other buffers creation/usage.
 
@@ -67,10 +69,22 @@ static ID<Image> createDepthStencilBuffer(bool useStencil, bool isCopy)
 static ID<Image> createHdrBuffer(bool isCopy)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto image = graphicsSystem->createImage(DeferredRenderSystem::hdrBufferFormat, 
-		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | 
-		Image::Usage::Fullscreen | Image::Usage::TransferSrc | Image::Usage::TransferDst, 
-		{ { nullptr } }, graphicsSystem->getScaledFramebufferSize(), Image::Strategy::Size);
+	auto hdrBufferSize = graphicsSystem->getScaledFramebufferSize();
+
+	uint8 lodCount = 1, layerCount = 1;
+	if (isCopy)
+	{
+		lodCount = brdf::calcGgxBlurLodCount(hdrBufferSize);
+		layerCount = 2;
+	}
+
+	Image::Mips mips(lodCount);
+	for (uint8 i = 0; i < lodCount; i++)
+		mips[i].resize(layerCount);
+
+	auto image = graphicsSystem->createImage(DeferredRenderSystem::hdrBufferFormat, Image::Usage::ColorAttachment | 
+		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::Fullscreen | Image::Usage::TransferSrc | 
+		Image::Usage::TransferDst, mips, hdrBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.hdr" + string(isCopy ? "Copy" : ""));
 	return image;
 }
@@ -162,6 +176,13 @@ static ID<ImageView> createStencilImageView(ID<Image> depthStencilBuffer)
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.deferred.stencil");
 	return imageView;
 }
+static ID<ImageView> createHdrCopyIV(ID<Image> hdrCopyBuffer)
+{
+	auto imageView = GraphicsSystem::Instance::get()->createImageView(hdrCopyBuffer, 
+		Image::Type::Texture2D, DeferredRenderSystem::hdrBufferFormat, 0, 0, 0, 1);
+	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.deferred.hdrCopy");
+	return imageView;
+}
 
 //**********************************************************************************************************************
 static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<ImageView> depthStencilIV)
@@ -245,6 +266,8 @@ static ID<Framebuffer> createDepthLdrFramebuffer(ID<Image> ldrBuffer, ID<ImageVi
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.depthLdr");
 	return framebuffer;
 }
+
+//**********************************************************************************************************************
 static ID<Framebuffer> createUiFramebuffer(ID<Image> uiBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -399,6 +422,7 @@ void DeferredRenderSystem::deinit()
 		graphicsSystem->destroy(depthHdrFramebuffer);
 		graphicsSystem->destroy(hdrFramebuffer);
 		graphicsSystem->destroy(gFramebuffer);
+		graphicsSystem->destroy(hdrCopyIV);
 		graphicsSystem->destroy(stencilImageView);
 		graphicsSystem->destroy(depthImageView);
 		graphicsSystem->destroy(depthCopyIV);
@@ -411,6 +435,10 @@ void DeferredRenderSystem::deinit()
 		if (uiBuffer != gBuffers[0])
 			graphicsSystem->destroy(uiBuffer);
 		graphicsSystem->destroy(ldrBuffer);
+		graphicsSystem->destroy(hdrCopyBlurDSes);
+		graphicsSystem->destroy(hdrCopyBlurFBs);
+		graphicsSystem->destroy(hdrCopyBlurViews);
+		graphicsSystem->destroy(hdrCopyBlurPipeline);
 		graphicsSystem->destroy(hdrCopyBuffer);
 		graphicsSystem->destroy(hdrBuffer);
 		graphicsSystem->destroy(gBuffers);
@@ -529,6 +557,9 @@ void DeferredRenderSystem::render()
 		if (!depthCopyBuffer)
 			depthCopyBuffer = createDepthStencilBuffer(hasStencil, true);
 
+		auto gpuProcessSystem = GpuProcessSystem::Instance::get();
+		gpuProcessSystem->prepareGgxBlur(hdrCopyBuffer, hdrCopyBlurViews, hdrCopyBlurFBs);
+
 		if (!depthHdrFramebuffer)
 			depthHdrFramebuffer = createDepthHdrFramebuffer(hdrBuffer, depthStencilIV);
 		auto framebufferView = graphicsSystem->get(depthHdrFramebuffer);
@@ -536,8 +567,13 @@ void DeferredRenderSystem::render()
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Refracted Pass", Color::transparent);
-			Image::copy(hdrBuffer, hdrCopyBuffer); // TODO: generate blurry HDR chain. (GGX based)
+
 			Image::copy(depthStencilBuffer, depthCopyBuffer);
+			Image::copy(hdrBuffer, hdrCopyBuffer);
+
+			gpuProcessSystem->ggxBlur(hdrCopyBuffer, hdrCopyBlurViews, 
+				hdrCopyBlurFBs, hdrCopyBlurPipeline, hdrCopyBlurDSes);
+
 			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, asyncRecording);
 			event->run();
 			framebufferView->endRenderPass();
@@ -741,28 +777,37 @@ void DeferredRenderSystem::swapchainRecreate()
 
 	if (swapchainChanges.framebufferSize)
 	{
+		auto destroyUI = uiBuffer != gBuffers[0];
 		graphicsSystem->destroy(depthImageView);
 		graphicsSystem->destroy(stencilImageView);
 		graphicsSystem->destroy(depthCopyIV);
-		depthImageView = stencilImageView = depthCopyIV = {}; 
+		depthImageView = stencilImageView = depthCopyIV = {};
 
-		auto destroyUI = uiBuffer != gBuffers[0];
 		graphicsSystem->destroy(gBuffers);
 		createGBuffers(gBuffers, hasClearCoat, hasEmission);
+
 		graphicsSystem->destroy(hdrBuffer);
 		hdrBuffer = createHdrBuffer(false);
+
+		graphicsSystem->destroy(hdrCopyBlurDSes);
+		graphicsSystem->destroy(hdrCopyBlurFBs);
+		graphicsSystem->destroy(hdrCopyBlurViews);
+		graphicsSystem->destroy(hdrCopyIV);
+		hdrCopyIV = {}; hdrCopyBlurViews = {};
+		hdrCopyBlurFBs = {}; hdrCopyBlurDSes = {};
 		if (hdrCopyBuffer)
 		{
 			graphicsSystem->destroy(hdrCopyBuffer);
 			hdrCopyBuffer = createHdrBuffer(true);
 		}
+
 		graphicsSystem->destroy(ldrBuffer);
 		ldrBuffer = createLdrBuffer();
+
 		if (destroyUI)
-		{
 			graphicsSystem->destroy(uiBuffer);
-		}
 		uiBuffer = graphicsSystem->getRenderScale() != 1.0f ? createUiBuffer() : gBuffers[0];
+
 		if (oitAccumBuffer)
 		{
 			graphicsSystem->destroy(oitAccumBuffer);
@@ -773,10 +818,12 @@ void DeferredRenderSystem::swapchainRecreate()
 			graphicsSystem->destroy(oitRevealBuffer);
 			oitRevealBuffer = createOitRevealBuffer();
 		}
+
 		graphicsSystem->destroy(depthStencilBuffer);
 		depthStencilBuffer = createDepthStencilBuffer(hasStencil, false);
 		graphicsSystem->destroy(depthStencilIV);
 		depthStencilIV = createDepthStencilIV(depthStencilBuffer, hasStencil);
+
 		if (depthCopyBuffer)
 		{
 			graphicsSystem->destroy(depthCopyBuffer);
@@ -956,6 +1003,18 @@ ID<ImageView> DeferredRenderSystem::getStencilImageView()
 		stencilImageView = createStencilImageView(getDepthStencilBuffer());
 	return stencilImageView;
 }
+ID<ImageView> DeferredRenderSystem::getHdrCopyIV()
+{
+	if (!hdrCopyIV)
+		hdrCopyIV = createHdrCopyIV(getHdrCopyBuffer());
+	return hdrCopyIV;
+}
+const vector<ID<ImageView>>& DeferredRenderSystem::getHdrCopyBlurViews()
+{
+	if (hdrCopyBlurViews.empty())
+		GpuProcessSystem::Instance::get()->prepareGgxBlur(hdrCopyBuffer, hdrCopyBlurViews, hdrCopyBlurFBs);
+	return hdrCopyBlurViews;
+}
 
 ID<Framebuffer> DeferredRenderSystem::getGFramebuffer()
 {
@@ -1004,4 +1063,10 @@ ID<Framebuffer> DeferredRenderSystem::getTransDepthFramebuffer()
 	if (!transDepthFramebuffer)
 		transDepthFramebuffer = createTransDepthFramebuffer(getTransBuffer(), getDepthStencilIV());
 	return transDepthFramebuffer;
+}
+const vector<ID<Framebuffer>>& DeferredRenderSystem::getHdrCopyBlurFBs()
+{
+	if (hdrCopyBlurFBs.empty())
+		GpuProcessSystem::Instance::get()->prepareGgxBlur(hdrCopyBuffer, hdrCopyBlurViews, hdrCopyBlurFBs);
+	return hdrCopyBlurFBs;
 }

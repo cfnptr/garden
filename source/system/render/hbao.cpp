@@ -165,8 +165,8 @@ void HbaoRenderSystem::aoRender()
 	auto cameraView = CameraSystem::Instance::get()->getComponent(graphicsSystem->camera);
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getCurrentFramebuffer());
 	auto aoFrameSize = framebufferView->getSize();
-	auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto& proj = cameraConstants.projection;
+	auto& cc = graphicsSystem->getCommonConstants();
+	auto& proj = cc.projection;
 
 	PushConstants pc; float projScale;
 	if (cameraView->type == ProjectionType::Perspective)
@@ -207,7 +207,7 @@ void HbaoRenderSystem::aoRender()
 	pc.powExponent = intensity;
 	pc.novBias = clamp(bias, 0.0f, 1.0f);
 	pc.aoMultiplier = 1.0f / (1.0f - pc.novBias);
-	pc.nearPlane = cameraConstants.nearPlane;
+	pc.nearPlane = cc.nearPlane;
 
 	SET_GPU_DEBUG_LABEL("HBAO", Color::transparent);
 	pipelineView->bind();

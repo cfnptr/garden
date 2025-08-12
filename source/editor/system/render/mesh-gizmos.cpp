@@ -239,8 +239,8 @@ void MeshGizmosEditorSystem::render()
 		return;
 	}
 
-	const auto& cameraConstants = graphicsSystem->getCameraConstants();
-	auto model = transformView->calcModel(cameraConstants.cameraPos);
+	const auto& cc = graphicsSystem->getCommonConstants();
+	auto model = transformView->calcModel(cc.cameraPos);
 	
 	auto windowSize = inputSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();
@@ -274,8 +274,8 @@ void MeshGizmosEditorSystem::render()
 	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal)
 	{
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
-		auto globalDirection = cameraConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
+		auto globalOrigin = cc.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
+		auto globalDirection = cc.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
 		globalOrigin /= globalOrigin.getW();
 		globalDirection = globalDirection / globalDirection.getW() - globalOrigin;
 		
@@ -313,12 +313,10 @@ void MeshGizmosEditorSystem::render()
 	{
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalLastPos = cameraConstants.invViewProj * 
-			f32x4(ndcPosition.x, ndcPosition.y, 0.0f, 1.0f);
+		auto globalLastPos = cc.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0f, 1.0f);
 		cursorPosition += inputSystem->getCursorDelta();
 		ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalNewPos = cameraConstants.invViewProj * 
-			f32x4(ndcPosition.x, ndcPosition.y, 0.0f, 1.0f);
+		auto globalNewPos = cc.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0f, 1.0f);
 
 		if (dragMode != 1)
 		{
@@ -372,8 +370,8 @@ void MeshGizmosEditorSystem::render()
 	}
 
 	SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
-	renderGizmosMeshes(gizmosMeshes, backPipelineView, cameraConstants.viewProj, patternScale, false);
-	renderGizmosMeshes(gizmosMeshes, frontPipelineView, cameraConstants.viewProj, patternScale, true);
+	renderGizmosMeshes(gizmosMeshes, backPipelineView, cc.viewProj, patternScale, false);
+	renderGizmosMeshes(gizmosMeshes, frontPipelineView, cc.viewProj, patternScale, true);
 	gizmosMeshes.clear();
 }
 

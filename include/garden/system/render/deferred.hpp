@@ -116,6 +116,7 @@ private:
 	ID<ImageView> depthCopyIV = {};
 	ID<ImageView> depthImageView = {};
 	ID<ImageView> stencilImageView = {};
+	ID<ImageView> hdrCopyIV = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
 	ID<Framebuffer> depthHdrFramebuffer = {};
@@ -124,6 +125,10 @@ private:
 	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	ID<Framebuffer> transDepthFramebuffer = {};
+	ID<GraphicsPipeline> hdrCopyBlurPipeline = {};
+	vector<ID<ImageView>> hdrCopyBlurViews;
+	vector<ID<Framebuffer>> hdrCopyBlurFBs;
+	vector<ID<DescriptorSet>> hdrCopyBlurDSes;
 	bool asyncRecording = false;
 	bool hasStencil = false;
 	bool hasClearCoat = false;
@@ -255,6 +260,14 @@ public:
 	 * @brief Returns deferred stencil buffer image view.
 	 */
 	ID<ImageView> getStencilImageView();
+	/**
+	 * @brief Returns deferred HDR copy buffer image view.
+	 */
+	ID<ImageView> getHdrCopyIV();
+	/**
+	 * @brief Returns deferred HDR copy blur image views
+	 */
+	const vector<ID<ImageView>>& getHdrCopyBlurViews();
 
 	/**
 	 * @brief Returns deferred G-Buffer framebuffer.
@@ -288,6 +301,10 @@ public:
 	 * @brief Returns deferred transparent depth framebuffer.
 	 */
 	ID<Framebuffer> getTransDepthFramebuffer();
+	/**
+	 * @brief Returns deferred HDR copy blur framebuffers.
+	 */
+	const vector<ID<Framebuffer>>& getHdrCopyBlurFBs();
 };
 
 } // namespace garden

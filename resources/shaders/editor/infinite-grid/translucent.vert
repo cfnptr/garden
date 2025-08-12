@@ -16,9 +16,9 @@
 #include "common/constants.gsl"
 #include "common/fullscreen.gsl"
 
-uniform CameraConstants
+uniform CommonConstants
 {
-	CAMERA_CONSTANTS
+	COMMON_CONSTANTS
 } cc;
 
 out float3 fs.nearPoint;
