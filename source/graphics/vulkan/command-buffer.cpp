@@ -45,7 +45,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 	}
 
 	#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-	if (vulkanAPI->hasDebugUtils)
+	if (vulkanAPI->features.hasDebugUtils)
 	{
 		const char* name = nullptr;
 		switch (type)
@@ -1757,6 +1757,11 @@ void VulkanCommandBuffer::processCommand(const TraceRaysCommand& command)
 
 	instance.traceRaysKHR(&rayGenRegion, &missRegion, &hitRegion, &callRegion, 
 		command.groupCount.x, command.groupCount.y, command.groupCount.z);
+}
+
+void VulkanCommandBuffer::processCommand(const CustomRenderCommand& command)
+{
+	command.onCommand(this, command.argument);
 }
 
 #if GARDEN_DEBUG

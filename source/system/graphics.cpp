@@ -159,7 +159,8 @@ static void logVkGpuInfo()
 	GARDEN_LOG_INFO("Driver version: " + getVkDeviceDriverVersion());
 	GARDEN_LOG_INFO(vulkanAPI->isCacheLoaded ? 
 		"Loaded existing pipeline cache." : "Created a new pipeline cache.");
-	GARDEN_LOG_INFO("Has ray tracing support: " + to_string(vulkanAPI->features.rayTracing));
+	GARDEN_LOG_INFO("Has ray tracing support: " + string(vulkanAPI->features.rayTracing ? "yes" : "no"));
+	GARDEN_LOG_INFO("Has ray query support: " + string(vulkanAPI->features.rayQuery ? "yes" : "no"));
 }
 
 void GraphicsSystem::preInit()
@@ -302,6 +303,21 @@ static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
 	// TODO: use loop with empty cycles to improve sleep precision.
 }
 
+static void disposeGpuResources(GraphicsAPI* graphicsAPI)
+{
+	graphicsAPI->tlasPool.dispose();
+	graphicsAPI->blasPool.dispose();
+	graphicsAPI->descriptorSetPool.dispose();
+	graphicsAPI->rayTracingPipelinePool.dispose();
+	graphicsAPI->computePipelinePool.dispose();
+	graphicsAPI->graphicsPipelinePool.dispose();
+	graphicsAPI->samplerPool.dispose();
+	graphicsAPI->framebufferPool.dispose();
+	graphicsAPI->imageViewPool.dispose();
+	graphicsAPI->imagePool.dispose();
+	graphicsAPI->bufferPool.dispose();
+}
+
 //**********************************************************************************************************************
 void GraphicsSystem::input()
 {
@@ -360,6 +376,15 @@ void GraphicsSystem::update()
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 		Manager::Instance::get()->runEvent("SwapchainRecreate");
+
+		if (!forceRecreateSwapchain)
+		{
+			auto graphicsAPI = GraphicsAPI::get();
+			graphicsAPI->forceResourceDestroy = true;
+			disposeGpuResources(graphicsAPI);
+			graphicsAPI->forceResourceDestroy = false;
+		}
+
 		swapchainChanges = {};
 		forceRecreateSwapchain = false;
 	}
@@ -386,17 +411,7 @@ void GraphicsSystem::present()
 		graphicsAPI->frameCommandBuffer->submit();
 	}
 	
-	graphicsAPI->tlasPool.dispose();
-	graphicsAPI->blasPool.dispose();
-	graphicsAPI->descriptorSetPool.dispose();
-	graphicsAPI->rayTracingPipelinePool.dispose();
-	graphicsAPI->computePipelinePool.dispose();
-	graphicsAPI->graphicsPipelinePool.dispose();
-	graphicsAPI->samplerPool.dispose();
-	graphicsAPI->framebufferPool.dispose();
-	graphicsAPI->imageViewPool.dispose();
-	graphicsAPI->imagePool.dispose();
-	graphicsAPI->bufferPool.dispose();
+	disposeGpuResources(graphicsAPI);
 
 	if (isFramebufferSizeValid)
 	{
@@ -420,6 +435,7 @@ void GraphicsSystem::present()
 		limitFrameRate(beginSleepClock, maxFPS);
 	}
 
+	wasTeleported = false;
 	tickIndex++;
 
 	#if GARDEN_TRACY_PROFILER
@@ -459,7 +475,7 @@ uint2 GraphicsSystem::getFramebufferSize() const noexcept
 uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
 {
 	auto framebufferSize = GraphicsAPI::get()->swapchain->getFramebufferSize();
-	return max((uint2)(float2(framebufferSize) * renderScale), uint2::one);
+	return max((uint2)(float2(framebufferSize) * renderScale + 0.5f), uint2::one);
 }
 
 ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
@@ -1240,6 +1256,17 @@ bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 		return GraphicsAPI::get()->computeCommandBuffer->isBusy();
 	default: abort();
 	}
+}
+
+void GraphicsSystem::customCommand(void(*onCommand)(void*, void*), void* argument)
+{
+	GARDEN_ASSERT(onCommand);
+	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	
+	CustomRenderCommand command;
+	command.onCommand = onCommand;
+	command.argument = argument;
+	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR

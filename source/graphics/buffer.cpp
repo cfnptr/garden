@@ -435,7 +435,7 @@ void Buffer::setDebugName(const string& name)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->hasDebugUtils || !instance)
+		if (!vulkanAPI->features.hasDebugUtils || !instance)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eBuffer, (uint64)instance, name.c_str());

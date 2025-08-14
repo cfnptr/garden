@@ -47,8 +47,10 @@ option(GARDEN_USE_GAPI_VALIDATIONS "Use graphics API validation layers." ON)
 option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
 option(GARDEN_USE_ASAN "Use Clang address sanitizer." OFF)
 
-string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
+# By enabling this option you agree to the NVIDIA RTX SDKs license.
+option(GARDEN_USE_NVIDIA_DLSS "Use Nvidia DLSS SDK." OFF)
 
+string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 if(NOT DEFINED GARDEN_APP_NAME)
 	set(GARDEN_APP_NAME "Garden App")
 endif()
@@ -119,7 +121,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 if(GARDEN_USE_CLANG)
-	message(STATUS "Using Clang compiler for the Linux build")
+	message(STATUS "Using Clang compiler.")
 endif()
 
 include(TestBigEndian)
@@ -185,6 +187,11 @@ if(GARDEN_USE_TRACY_PROFILER)
 else()
 	set(GARDEN_TRACY_PROFILER 0)
 endif()
+if(GARDEN_USE_NVIDIA_DLSS)
+	set(GARDEN_NVIDIA_DLSS 1)
+else()
+	set(GARDEN_NVIDIA_DLSS 0)
+endif()
 
 math(EXPR GARDEN_APP_VERSION "((${GARDEN_APP_VERSION_MAJOR} << 24) | (${GARDEN_APP_VERSION_MINOR} << 16) | (${GARDEN_APP_VERSION_PATCH} << 8))")
 set(GARDEN_APP_VERSION_STRING "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
@@ -208,8 +215,6 @@ endif()
 include(cmake/publish-functions.cmake)
 include(cmake/compile-options.cmake)
 include(cmake/gather-git-info.cmake)
-
-configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include resources/shaders 
@@ -321,6 +326,12 @@ if(GARDEN_USE_TRACY_PROFILER)
 	add_subdirectory(libraries/tracy)
 	list(APPEND GARDEN_LINK_LIBS Tracy::TracyClient)
 endif()
+
+if(GARDEN_USE_NVIDIA_DLSS)
+	include(cmake/nvidia-dlss.cmake)
+endif()
+
+configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
 #***********************************************************************************************************************
 file(GLOB_RECURSE GARDEN_SOURCES source/*.cpp)

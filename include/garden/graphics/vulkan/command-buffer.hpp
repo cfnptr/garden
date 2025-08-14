@@ -65,6 +65,7 @@ public:
 	void processCommand(const BuildAccelerationStructureCommand& command) final;
 	void processCommand(const CopyAccelerationStructureCommand& command) final;
 	void processCommand(const TraceRaysCommand& command) final;
+	void processCommand(const CustomRenderCommand& command) final;
 
 	#if GARDEN_DEBUG
 	void processCommand(const BeginLabelCommand& command) final;

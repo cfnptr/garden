@@ -46,7 +46,7 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 		immutableSamplers.emplace(it->first, sampler);
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-		if (vulkanAPI->hasDebugUtils)
+		if (vulkanAPI->features.hasDebugUtils)
 		{
 			auto name = "sampler." + pipelinePath.generic_string() + "." + it->first;
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(
@@ -186,7 +186,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			descriptorPools[dsIndex] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-			if (vulkanAPI->hasDebugUtils)
+			if (vulkanAPI->features.hasDebugUtils)
 			{
 				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(dsIndex);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorPool,
@@ -200,7 +200,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		samplerArrays.clear();
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-		if (vulkanAPI->hasDebugUtils)
+		if (vulkanAPI->features.hasDebugUtils)
 		{
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(dsIndex);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
@@ -253,7 +253,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Shade
 	auto layout = vulkanAPI->device.createPipelineLayout(pipelineLayoutInfo);
 
 	#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-	if (vulkanAPI->hasDebugUtils)
+	if (vulkanAPI->features.hasDebugUtils)
 	{
 		auto name = "pipelineLayout." + pipelinePath.generic_string();
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::ePipelineLayout,
@@ -335,7 +335,7 @@ static vector<void*> createVkShaders(const vector<uint8>* codeArray, uint8 shade
 		shaders[i] = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-		if (vulkanAPI->hasDebugUtils)
+		if (vulkanAPI->features.hasDebugUtils)
 		{
 			auto _name = "shaderModule." + pipelinePath.generic_string() + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eShaderModule, (uint64)shaders[i], _name.c_str());

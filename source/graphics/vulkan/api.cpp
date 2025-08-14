@@ -19,8 +19,11 @@
 #include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/hash.hpp"
-
 #include "mpio/directory.hpp"
+
+#if GARDEN_NVIDIA_DLSS
+#include "nvsdk_ngx_vk.h"
+#endif
 
 #include <vector>
 #include <fstream>
@@ -29,7 +32,6 @@
 using namespace garden;
 
 #if GARDEN_DEBUG
-//**********************************************************************************************************************
 constexpr vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
 	//vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
 	vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -85,18 +87,38 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 	return false;
 }
 
+#if GARDEN_NVIDIA_DLSS
+//**********************************************************************************************************************
+static NVSDK_NGX_FeatureDiscoveryInfo getDlssDiscoveryInfo()
+{
+	NVSDK_NGX_FeatureDiscoveryInfo discoveryInfo;
+	memset(&discoveryInfo, 0, sizeof(NVSDK_NGX_FeatureDiscoveryInfo));
+	discoveryInfo.SDKVersion = NVSDK_NGX_Version_API;
+	discoveryInfo.FeatureID = NVSDK_NGX_Feature_SuperSampling;
+	discoveryInfo.ApplicationDataPath = L".";
+
+	#if defined(GARDEN_NVIDIA_DLSS_PROJECT_ID)
+	discoveryInfo.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Project_Id;
+	discoveryInfo.Identifier.v.ProjectDesc.ProjectId = GARDEN_NVIDIA_DLSS_PROJECT_ID;
+	discoveryInfo.Identifier.v.ProjectDesc.EngineType = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
+	discoveryInfo.Identifier.v.ProjectDesc.EngineVersion = GARDEN_VERSION_STRING;
+	#elif defined(GARDEN_NVIDIA_DLSS_APPLICATION_ID)
+	discoveryInfo.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Application_Id;
+	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APPLICATION_ID;
+	#endif
+
+	return discoveryInfo;
+}
+#endif
+
 //**********************************************************************************************************************
 static vk::Instance createVkInstance(const string& appName, Version appVersion,
-	uint32& instanceVersionMajor, uint32& instanceVersionMinor
-	#if GARDEN_DEBUG
-	, bool& hasDebugUtils
-	#endif
-	)
+	uint32& instanceVersionMajor, uint32& instanceVersionMinor, VulkanAPI::Features& features)
 {
 	auto getInstanceVersion = (PFN_vkEnumerateInstanceVersion)
 		vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion");
 	if (!getInstanceVersion)
-		throw GardenError("Vulkan API 1.0 is not supported.");
+		throw GardenError("Vulkan API 1.0 version is not supported.");
 
 	uint32 installedVersion = 0;
 	auto vkResult = (vk::Result)getInstanceVersion(&installedVersion);
@@ -108,9 +130,9 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	// instanceVersionMinor = 2; // TODO: debugging
 
 	#if GARDEN_OS_MACOS
-	// TODO: remove after MoltenVK 1.3 support on mac.
-	if (instanceVersionMinor >= 3)
-		instanceVersionMinor = 2;
+	// TODO: remove after MoltenVK 1.4 support on mac.
+	if (instanceVersionMinor > 3)
+		instanceVersionMinor = 3;
 	#endif
 
 	auto vkEngineVersion = VK_MAKE_API_VERSION(0,
@@ -142,6 +164,8 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	const void* instanceInfoNext = nullptr;
 
 	#if GARDEN_DEBUG
+	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
+	#endif
 
 	#if GARDEN_GAPI_VALIDATIONS
 	for	(const auto& properties : layerProperties)
@@ -154,19 +178,57 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	}
 	#endif
 
-	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
-	hasDebugUtils = false;
+	#if GARDEN_DEBUG
 	for	(const auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName.data(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
-		{
+			features.hasDebugUtils = true;
+	}
+
+	if (features.hasDebugUtils)
+	{
+		if (!hasExtension(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-			debugUtilsInfo.messageSeverity = debugMessageSeverity;
-			debugUtilsInfo.messageType = debugMessageType;
-			debugUtilsInfo.pfnUserCallback = vkDebugMessengerCallback;
-			instanceInfoNext = &debugUtilsInfo;
-			hasDebugUtils = true;
+		debugUtilsInfo.messageSeverity = debugMessageSeverity;
+		debugUtilsInfo.messageType = debugMessageType;
+		debugUtilsInfo.pfnUserCallback = vkDebugMessengerCallback;
+		instanceInfoNext = &debugUtilsInfo;
+	}
+	#endif
+
+	#if GARDEN_NVIDIA_DLSS
+	auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
+	uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
+	auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(
+		&dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
+	features.hasNvidiaDlss = ngxResult == NVSDK_NGX_Result_Success;
+
+	if (features.hasNvidiaDlss)
+	{
+		for (uint32 i = 0; i < dlssExtensionCount; i++)
+		{
+			auto hasNvidiaDlss = false;
+			for	(const auto& properties : extensionProperties)
+			{
+				if (strcmp(properties.extensionName.data(), dlssExtensions[i].extensionName) != 0)
+					continue;
+				hasNvidiaDlss = true;
+				break;
+			}
+
+			if (hasNvidiaDlss)
+				continue;
+			features.hasNvidiaDlss = false;
 			break;
+		}
+
+		if (features.hasNvidiaDlss)
+		{
+			for (uint32 i = 0; i < dlssExtensionCount; i++)
+			{
+				if (!hasExtension(extensions, dlssExtensions[i].extensionName))
+					extensions.push_back(dlssExtensions[i].extensionName);
+			}
 		}
 	}
 	#endif
@@ -335,9 +397,10 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 }
 
 //**********************************************************************************************************************
-static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versionMajor, uint32 versionMinor,
-	uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex, uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount,
-	uint32 transferQueueMaxCount, uint32 computeQueueMaxCount, uint32& frameQueueIndex, uint32& graphicsQueueIndex,
+static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physicalDevice, 
+	uint32 versionMajor, uint32 versionMinor, uint32 graphicsQueueFamilyIndex, uint32 transferQueueFamilyIndex, 
+	uint32 computeQueueFamilyIndex, uint32 graphicsQueueMaxCount, uint32 transferQueueMaxCount, 
+	uint32 computeQueueMaxCount, uint32& frameQueueIndex, uint32& graphicsQueueIndex,
 	uint32& transferQueueIndex, uint32& computeQueueIndex, VulkanAPI::Features& features)
 {
 	uint32 graphicsQueueCount = 1, transferQueueCount = 0, computeQueueCount = 0;
@@ -647,6 +710,47 @@ static vk::Device createVkDevice(vk::PhysicalDevice physicalDevice, uint32 versi
 		features.rayTracing = features.rayQuery = false;
 	}
 
+	#if GARDEN_NVIDIA_DLSS
+	uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
+	if (features.hasNvidiaDlss)
+	{
+		auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
+		auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureDeviceExtensionRequirements(instance, 
+			physicalDevice, &dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
+		if (ngxResult != NVSDK_NGX_Result_Success)
+			features.hasNvidiaDlss = false;
+
+		if (features.hasNvidiaDlss)
+		{
+			for (uint32 i = 0; i < dlssExtensionCount; i++)
+			{
+				auto hasNvidiaDlss = false;
+				for	(const auto& properties : extensionProperties)
+				{
+					if (strcmp(properties.extensionName.data(), dlssExtensions[i].extensionName) != 0)
+						continue;
+					hasNvidiaDlss = true;
+					break;
+				}
+
+				if (hasNvidiaDlss)
+					continue;
+				features.hasNvidiaDlss = false;
+				break;
+			}
+
+			if (features.hasNvidiaDlss)
+			{
+				for (uint32 i = 0; i < dlssExtensionCount; i++)
+				{
+					if (!hasExtension(extensions, dlssExtensions[i].extensionName))
+						extensions.push_back(dlssExtensions[i].extensionName);
+				}
+			}
+		}
+	}
+	#endif
+
 	vkFeatures->device.features = vk::PhysicalDeviceFeatures();
 	vkFeatures->device.features.independentBlend = VK_TRUE;
 	vkFeatures->device.features.depthClamp = VK_TRUE;
@@ -948,12 +1052,11 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	if (volkInitialize() != VK_SUCCESS)
 		throw GardenError("Failed to load Vulkan loader.");
 
+	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, features);
+
 	#if GARDEN_DEBUG
-	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, hasDebugUtils);
-	if (hasDebugUtils)
+	if (features.hasDebugUtils)
 		debugMessenger = createVkDebugMessenger(instance);
-	#else
-	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor);
 	#endif
 	
 	physicalDevice = getBestPhysicalDevice(instance);
@@ -965,7 +1068,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	surface = createVkSurface(instance, (GLFWwindow*)window);
 	getVkQueueFamilyIndices(physicalDevice, surface, graphicsQueueFamilyIndex, transferQueueFamilyIndex, 
 		computeQueueFamilyIndex, graphicsQueueMaxCount, transferQueueMaxCount, computeQueueMaxCount);
-	device = createVkDevice(physicalDevice, versionMajor, versionMinor, graphicsQueueFamilyIndex, 
+	device = createVkDevice(instance, physicalDevice, versionMajor, versionMinor, graphicsQueueFamilyIndex, 
 		transferQueueFamilyIndex, computeQueueFamilyIndex, graphicsQueueMaxCount, transferQueueMaxCount, 
 		computeQueueMaxCount, frameQueueIndex, graphicsQueueIndex, transferQueueIndex, computeQueueIndex, features);
 	memoryAllocator = createVmaMemoryAllocator(versionMajor, versionMinor, instance, physicalDevice, device, features);
@@ -1046,7 +1149,7 @@ VulkanAPI::~VulkanAPI()
 	instance.destroySurfaceKHR(surface);
 
 	#if GARDEN_DEBUG
-	if (hasDebugUtils)
+	if (features.hasDebugUtils)
 		instance.destroy(debugMessenger, nullptr);
 	#endif
 

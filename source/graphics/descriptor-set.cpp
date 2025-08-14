@@ -762,7 +762,7 @@ void DescriptorSet::setDebugName(const string& name)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->hasDebugUtils)
+		if (!vulkanAPI->features.hasDebugUtils)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSet, 0);
