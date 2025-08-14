@@ -235,7 +235,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 		#endif
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-		if (vulkanAPI->hasDebugUtils)
+		if (vulkanAPI->features.hasDebugUtils)
 		{
 			auto name = "commandBuffer.graphics.swapchain" + to_string(i);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,
@@ -420,7 +420,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 			vulkanAPI->secondaryCommandBuffers[i] = commandBuffer;
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-			if (vulkanAPI->hasDebugUtils)
+			if (vulkanAPI->features.hasDebugUtils)
 			{
 				auto objectName = debugName + ".secondaryCommandBuffer" + to_string(i);
 				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eCommandBuffer,

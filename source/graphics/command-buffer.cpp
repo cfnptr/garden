@@ -107,6 +107,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const CopyAccelerationStructureCommand*)command); break;
 		case Command::Type::TraceRays:
 			processCommand(*(const TraceRaysCommand*)command); break;
+		case Command::Type::Custom:
+			processCommand(*(const CustomRenderCommand*)command); break;
 
 		#if GARDEN_DEBUG
 		case Command::Type::BeginLabel:
@@ -117,7 +119,7 @@ void CommandBuffer::processCommands()
 			processCommand(*(const InsertLabelCommand*)command); break;
 		#endif
 
-		default: abort();
+		default: abort(); // Not implemented redering command. 
 		}
 
 		offset += command->thisSize;
@@ -477,6 +479,16 @@ void CommandBuffer::addCommand(const TraceRaysCommand& command)
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Compute);
 	auto commandSize = (uint32)sizeof(TraceRaysCommand);
 	auto allocation = (TraceRaysCommand*)allocateCommand(commandSize);
+	*allocation = command;
+	allocation->thisSize = commandSize;
+	allocation->lastSize = lastSize;
+	lastSize = commandSize;
+	hasAnyCommand = true;
+}
+void CommandBuffer::addCommand(const CustomRenderCommand& command)
+{
+	auto commandSize = (uint32)sizeof(CustomRenderCommand);
+	auto allocation = (CustomRenderCommand*)allocateCommand(commandSize);
 	*allocation = command;
 	allocation->thisSize = commandSize;
 	allocation->lastSize = lastSize;

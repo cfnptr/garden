@@ -37,7 +37,7 @@ struct Command
 		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
 		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		SetDepthBias, // TODO: other dynamic setters
-		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays,
+		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays, Custom,
 
 		#if GARDEN_DEBUG
 		BeginLabel, EndLabel, InsertLabel,
@@ -327,6 +327,15 @@ struct TraceRaysCommand final : public Command
 	TraceRaysCommand() noexcept : Command(Type::TraceRays) { }
 };
 
+struct CustomRenderCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	void(*onCommand)(void*, void*) = nullptr;
+	void* argument = nullptr;
+	CustomRenderCommand() noexcept : Command(Type::Custom) { }
+};
+
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
 struct BeginLabelCommandBase : public Command
@@ -412,6 +421,7 @@ protected:
 	virtual void processCommand(const BuildAccelerationStructureCommand& command) = 0;
 	virtual void processCommand(const CopyAccelerationStructureCommand& command) = 0;
 	virtual void processCommand(const TraceRaysCommand& command) = 0;
+	virtual void processCommand(const CustomRenderCommand& command) = 0;
 
 	#if GARDEN_DEBUG
 	virtual void processCommand(const BeginLabelCommand& command) = 0;
@@ -465,6 +475,7 @@ public:
 	void addCommand(const BuildAccelerationStructureCommand& command);
 	void addCommand(const CopyAccelerationStructureCommand& command);
 	void addCommand(const TraceRaysCommand& command);
+	void addCommand(const CustomRenderCommand& command);
 
 	#if GARDEN_DEBUG
 	void addCommand(const BeginLabelCommand& command);

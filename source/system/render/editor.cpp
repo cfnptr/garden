@@ -326,7 +326,7 @@ void EditorRenderSystem::showOptionsWindow()
 		if (appInfoSystem && ImGui::CollapsingHeader("Storage"))
 		{
 			ImGui::Indent();
-			auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
+			auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName()) / "cache";
 			auto cachePath = appDataPath / "cache";
 			int fileCount = 0; uint64 binarySize = 0;
 

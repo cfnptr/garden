@@ -86,6 +86,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
 	bool outOfDateSwapchain = false;
+	bool wasTeleported = false;
 	SwapchainChanges swapchainChanges;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -126,6 +127,17 @@ public:
 	uint16 maxFPS = 60;               /**< Frames per second limit. */
 	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
 	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
+
+	/**
+	 * @brief Returns true if scene was drastically changed.
+	 * @details Used to fix temporal rendering ghosting.
+	 */
+	bool isTeleported() const noexcept { return wasTeleported; }
+	/**
+	 * @brief Marks that scene was drastically changed.
+	 * @note Always call this if player was teleported or switched level.
+	 */
+	void markTeleported() { wasTeleported = true; }
 
 	/**
 	 * @brief Returns frame render scale.
@@ -1037,6 +1049,15 @@ public:
 	 * @param commandBufferType target command buffer type
 	 */
 	bool isBusy(CommandBufferType commandBufferType);
+
+	/**
+	 * @brief Records custom rendering command.
+	 * @warning Use only if you know what you are doing!
+	 *
+	 * @param onCommand callback executed on command writing
+	 * @param argument custom callback function argument
+	 */
+	void customCommand(void(*onCommand)(void* commandBuffer, void* argument), void* argument = nullptr);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

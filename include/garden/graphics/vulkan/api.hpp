@@ -47,6 +47,7 @@ public:
 	};
 	struct Features final
 	{
+		bool hasDebugUtils = false;
 		bool int8BitStorage = false;
 		bool float16Int8 = false;
 		bool memoryBudget = false;
@@ -60,6 +61,7 @@ public:
 		bool rayQuery = false;
 		bool maintenance4 = false;
 		bool maintenance5 = false;
+		bool hasNvidiaDlss = false;
 	};
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
@@ -126,7 +128,6 @@ public:
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	vk::DebugUtilsMessengerEXT debugMessenger;
-	bool hasDebugUtils = false;
 	#endif
 
 	inline static VulkanAPI* vulkanInstance = nullptr;

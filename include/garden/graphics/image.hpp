@@ -281,7 +281,7 @@ public:
 
 	/**
 	 * @brief Returns image size in texels.
-	 * @details Unused image size dimensions always have size of 1.
+	 * @note Unused image size dimensions always have size of 1.
 	 */
 	u32x4 getSize() const noexcept { return size; }
 	/**
