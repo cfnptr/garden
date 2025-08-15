@@ -4,7 +4,7 @@ To create a custom component, you need to declare a new system that will store a
 your components. The component itself contains only data and functions to handle this 
 data. All other component logic should reside in the system.
 
-First, declare a new component in the header file of your system 
+First, declare a new component in the new C++ header file of your system 
 `include/my-app/system/my-system.hpp`, by inheriting it from the base **Component** structure.
 
 #### my-system.hpp
@@ -31,7 +31,7 @@ struct MyCustomComponent : public Component
 Next, declare a new system by inheriting from **ComponentSystem<>**, which already includes 
 some functions necessary for the system to work with components. You can also inherit from 
 the base **System** class and manually define all required functions. After declaring your 
-system’s functions in the header file, you also need to implement the logic for these 
+system's functions in the header file, you also need to implement the logic for these 
 functions in the system *.cpp* file `source/system/my-system.cpp`.
 
 #### my-system.hpp
@@ -55,7 +55,7 @@ class MyCustomSystem : public ComponentSystem<MyCustomComponent, false>
 
 using namespace my::app;
 
-const std::string& MyCustomSystem::getComponentName() const
+const std::string_view MyCustomSystem::getComponentName() const
 {
     static const string name = "My Custom";
     return name;
@@ -110,6 +110,8 @@ manager->destroy(someEntity);
 
 //...
 ```
+
+For more **ComponentSystem** functions see the ECSM [documentation](https://cfnptr.github.io/ecsm/classecsm_1_1ComponentSystem.html).
 
 ## Additionally
 
@@ -222,5 +224,5 @@ auto transformView = manager->get<TransformComponent>(someEntity);
 //...
 ```
 
-**Note!** It’s better to access a component using the system instance rather than 
+**Note!** It's better to access a component using the system instance rather than 
 the **Manager**, as this bypasses the system lookup inside, improving performance.

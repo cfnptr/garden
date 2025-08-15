@@ -10,7 +10,7 @@ more pleasant looking variants **float2, int3, float4x4**. Also built in variabl
 
 You can use `#include` directive, it's backed by the shaderc compiler internally.
 
-## Vertex attributes
+## Vertex Attributes
 
 Shader parser automatically gets and calculates vertex attributes, so we do not need to explicitly specify layout. 
 Vertex input attributes format can be specified using this syntax:
@@ -27,7 +27,7 @@ You can add offset to the vertex attributes. (in bytes)
 #attributeOffset 16
 ```
 
-## Pipeline state
+## Pipeline State
 
 Shader parser gets pipeline state from the declared `pipelineState` properties in the shader.
 Also you can override pipeline state properties when loading pipeline in the code.
@@ -58,8 +58,7 @@ pipelineState
 * **depthCompare** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value used for depth buffer comparisons. (greater)
 * **stencilTesting** [ on | off ] - If enabled, do stencil comparisons and update the stencil buffer. (off)
-
-> // TODO: depthBiasConstant, depthBiasSlope, depthBiasClamp.
+// TODO: depthBiasConstant, depthBiasSlope, depthBiasClamp.
 
 ### Culling
 
@@ -83,20 +82,24 @@ pipelineState
 
 > Where [X] is index of the framebuffer attachment.
 
+**add** - Adds the source to the destination. [O = dS + sD]
+**sub** - Subtracts the destination from the source. [O = dS - sD].
+**revSub** - Subtracts the source from the destination. [O = dD - sS].
+**min** - Minimum of the source and destination values per component. [O = min(dS, sD)]
+**max** - Maximum of the source and destination values per component. [O = max(dS, sD)]
+
 **Blending scale factors**: [ zero | one | srcColor | oneMinusSrcColor | dstColor | oneMinusDstColor | srcAlpha | 
     oneMinusSrcAlpha | dstAlpha | oneMinusDstAlpha | constColor | oneMinusConstColor | constAlpha | 
     oneMinusConstAlpha | src1Color | oneMinusSrc1Color | src1Alpha | oneMinusSrc1Alpha | srcAlphaSaturate ]
 
-**revSub** - Subtracts the source from the destination (O = dD - sS).
-
 Color blending example: Orgb = srgb * Srgb + drgb * Drgb.</br>
 Alpha blending example: Oa = sa * Sa + da * Da.
 
-> // TODO: blending constant color.
+// TODO: blending constant color.
 
 ## Push Constants
 
-Push constants allow to pass some small data (128 bytes) to the shader for each draw call.
+Push constants allow to pass some small data (128 bytes) to the shader for each draw or compute call.
 
 ```
 uniform pushConstants
@@ -106,7 +109,7 @@ uniform pushConstants
 } pc;
 ```
 
-## Sampler
+## Sampler (SRV)
 
 Shader parser gets sampler state from the properties, written inside sampler declaration block.
 Also you can use dynamic samplers by marking uniform with `mutable` keyword.
@@ -146,9 +149,10 @@ uniform samplerCube someSampler;
 
 ```
 #attachmentOffset 1
+uniform subpassInput someSubpass;
 ```
 
-## Image / Texture
+## Image / Texture (UAV)
 
 ```
 uniform image2D someImage : unormR8G8B8A8;
@@ -162,7 +166,7 @@ uniform image2D someImage : unormR8G8B8A8;
 * **Signed integer formats normalized to (-1.0, 1.0)**: [ snormR8, snormR8G8, snormR8G8B8A8, snormR16, snormR16G16, snormR16G16B16A16 ]</br>
 * **Floating point formats**: [ sfloatR16, sfloatR16G16, sfloatR16G16B16A16, sfloatR32, sfloatR32G32, sfloatR32G32B32A32, ufloatB10G11R11 ]</br>
 
-## Storage Buffer
+## Storage Buffer (UAV)
 
 ```
 struct InstanceData
@@ -191,7 +195,7 @@ uniform set2 SomeBuffer
 } uniformBuffer;
 ```
 
-## Compute Shader
+## Compute Shader (.comp)
 
 Compute shader local group size is specified a lot simpler:
 
@@ -267,12 +271,26 @@ uniform accelerationStructure tlas;
 rayPayload float4 payload;
 ```
 
+### Ray Tracing Shaders
+
+**.rgen** - Ray generation shader
+**.rint** - Ray custom intersection shader
+**.rahit** - Ray any hit shader
+**.rchit** - Ray closest hit shader
+**.rmiss** - Ray miss shader
+**.rcall** - Callable shader
+
 ## Bindless
 
 Allows to declare uniforms without specified array size.
 
 ```
 #feature ext.bindless
+
+uniform SomeBuffer
+{
+    float someValue;
+} someBuffers[];
 
 uniform sampler2D textures[];
 ```
@@ -290,6 +308,11 @@ buffer reference scalar VertexBuffer
 {
     float3 vertices[];
 };
+
+buffer readonly VertexBuffers
+{
+	VertexBuffer data[];
+} vertexBuffers;
 uniform pushConstants
 {
     VertexBuffer vertexBuffer;
