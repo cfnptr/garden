@@ -31,7 +31,8 @@
 #define G_BUFFER_CC_ROUGHNESS 3
 #define G_BUFFER_EM_COLOR 4
 #define G_BUFFER_EM_FACTOR 4
-#define G_BUFFER_COUNT 5
+#define G_BUFFER_VELOCITY 5
+#define G_BUFFER_COUNT 6
 
 #define G_BUFFER_SPEC_FACTOR_COMP 3
 #define G_BUFFER_METALLIC_COMP 0
@@ -87,6 +88,9 @@ struct GBufferValues
 	#ifdef USE_GLOBAL_ILLUMINATION
 	float3 giColor;
 	#endif
+	#ifdef USE_MOTION_VECTORS
+	float2 velocity;
+	#endif
 	#if defined(USE_LIGHT_ABSORPTION) || defined(USE_SUBSURFACE_SCATTERING)
 	float thickness;
 	#endif
@@ -133,6 +137,9 @@ GBufferValues gBufferValuesDefault()
 	#endif
 	#ifdef USE_GLOBAL_ILLUMINATION
 	gBuffer.giColor = float3(1.0f);
+	#endif
+	#ifdef USE_MOTION_VECTORS
+	gBuffer.velocity = float2(0.0f);
 	#endif
 	#if defined(USE_LIGHT_ABSORPTION) || defined(USE_SUBSURFACE_SCATTERING)
 	gBuffer.thickness = 1.0f;
@@ -187,9 +194,13 @@ float4 encodeGBuffer4(float3 emissiveColor, float emissiveFactor)
 {
 	return float4(emissiveColor, emissiveFactor);
 }
+float4 encodeGBuffer5(float2 velocity)
+{
+	return float4(velocity, float2(0.0f));
+}
 
 void encodeGBufferValues(const GBufferValues gBuffer, out float4 g0, 
-	out float4 g1, out float4 g2, out float4 g3, out float4 g4)
+	out float4 g1, out float4 g2, out float4 g3, out float4 g4, out float4 g5)
 {
 	#ifdef USE_SPECULAR_FACTOR
 	float specularFactor = gBuffer.specularFactor;
@@ -217,9 +228,13 @@ void encodeGBufferValues(const GBufferValues gBuffer, out float4 g0,
 	if (USE_EMISSION_BUFFER)
 		g4 = encodeGBuffer4(gBuffer.emissiveColor, gBuffer.emissiveFactor);
 	#endif
+	#ifdef USE_MOTION_VECTORS
+	if (USE_VELOCITY_BUFFER)
+		g5 = encodeGBuffer5(gBuffer.velocity);
+	#endif
 }
 
-#define ENCODE_G_BUFFER_VALUES(gBuffer) encodeGBufferValues(gBuffer, fb_g0, fb_g1, fb_g2, fb_g3, fb_g4)
+#define ENCODE_G_BUFFER_VALUES(gBuffer) encodeGBufferValues(gBuffer, fb_g0, fb_g1, fb_g2, fb_g3, fb_g4, fb_g5)
 
 //**********************************************************************************************************************
 float3 decodeBaseColor(float4 gBufferData) { return gBufferData.rgb; }
@@ -234,6 +249,7 @@ float3 decodeNormal(float4 gBufferData) { return decodeNormalOct(gBufferData.gba
 float decodeShadow(float4 gBufferData) { return gBufferData[G_BUFFER_SHADOW_COMP]; }
 float3 decodeEmissiveColor(float4 gBufferData) { return gBufferData.rgb; }
 float decodeEmissiveFactor(float4 gBufferData) { return gBufferData[G_BUFFER_EM_FACTOR_COMP]; }
+float2 decodeVelocity(float4 gBufferData) { return gBufferData.rg; }
 
 float3 decodeBaseColor(const GBufferData data) { return decodeBaseColor(data.g[G_BUFFER_BASE_COLOR]); }
 float decodeSpecularFactor(const GBufferData data) { return decodeSpecularFactor(data.g[G_BUFFER_SPEC_FACTOR]); }
@@ -247,9 +263,11 @@ float3 decodeNormal(const GBufferData data) { return decodeNormal(data.g[G_BUFFE
 float decodeShadow(const GBufferData data) { return decodeShadow(data.g[G_BUFFER_SHADOW]); }
 float3 decodeEmissiveColor(const GBufferData data) { return decodeEmissiveColor(data.g[G_BUFFER_EM_COLOR]); }
 float decodeEmissiveFactor(const GBufferData data) { return decodeEmissiveFactor(data.g[G_BUFFER_EM_FACTOR]); }
+float2 decodeVelocity(const GBufferData data) { return decodeVelocity(data.g[G_BUFFER_VELOCITY]); }
 
 //**********************************************************************************************************************
-GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
+GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, 
+	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
 	GBufferData data;
 	data.g[0] = textureLod(s0, texCoords, 0.0f);
@@ -264,12 +282,16 @@ GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2
 	if (USE_EMISSION_BUFFER)
 		data.g[4] = textureLod(s4, texCoords, 0.0f);
 	#endif
+	#ifdef USE_MOTION_VECTORS
+	if (USE_VELOCITY_BUFFER)
+		data.g[5] = textureLod(s5, texCoords, 0.0f);
+	#endif
 	return data;
 }
-GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, 
-	sampler2D s2, sampler2D s3, sampler2D s4, float2 texCoords)
+GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, 
+	sampler2D s3, sampler2D s4, sampler2D s5, float2 texCoords)
 {
-	GBufferData data = decodeGBufferData(s0, s1, s2, s3, s4, texCoords);
+	GBufferData data = decodeGBufferData(s0, s1, s2, s3, s4, s5, texCoords);
 
 	GBufferValues gBuffer;
 	gBuffer.viewDirection = float3(0.0f, 0.0f, -1.0f);
@@ -317,13 +339,13 @@ GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1,
 	#ifdef USE_GLOBAL_ILLUMINATION
 	gBuffer.giColor = float3(1.0f);
 	#endif
+	#ifdef USE_MOTION_VECTORS
+	gBuffer.velocity = decodeVelocity(data);
+	#endif
 	#if defined(USE_LIGHT_ABSORPTION) || defined(USE_SUBSURFACE_SCATTERING)
 	gBuffer.thickness = 1.0f;
 	#endif
 	return gBuffer;
 }
-
-#define DECODE_G_BUFFER_DATA(texCoords) decodeGBufferData(g0, g1, g2, g3, g4, texCoords)
-#define DECODE_G_BUFFER_VALUES(texCoords) decodeGBufferValues(g0, g1, g2, g3, g4, texCoords)
 
 #endif // GBUFFER_GSL

@@ -31,6 +31,7 @@ struct CommonConstants final
 	f32x4x4 inverseView = f32x4x4::zero;  /**< Camera inverse view matrix. */
 	f32x4x4 inverseProj = f32x4x4::zero;  /**< Camera inverse projection matrix. */
 	f32x4x4 invViewProj = f32x4x4::zero;  /**< Camera inverse (view * projection) matrix. */
+	f32x4x4 prevViewProj = f32x4x4::zero; /**< Camera previous frame (view * projection) matrix. */
 	f32x4 cameraPos = f32x4::zero;        /**< Camera position in world space. */
 	f32x4 giBufferPos = f32x4::zero;      /**< Global illumination buffer position in world space. */
 	f32x4 viewDir = f32x4::zero;          /**< Camera view direction in world space. */

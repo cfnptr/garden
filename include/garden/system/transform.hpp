@@ -65,10 +65,12 @@ public:
 	 * @brief Sets entity position in the 3D space relative to the parent.
 	 * @param position target entity position in 3D space
 	 */
-	void setPosition(f32x4 position) noexcept
-	{
-		posChildCount = f32x4(position, posChildCount.getW());
-	}
+	void setPosition(f32x4 position) noexcept { posChildCount = f32x4(position, posChildCount.getW()); }
+	/**
+	 * @brief Sets entity position in the 3D space relative to the parent.
+	 * @param position target entity position in 3D space
+	 */
+	void setPosition(float3 position) noexcept { posChildCount = f32x4(f32x4(position), posChildCount.getW()); }
 
 	/**
 	 * @brief Returns entity scale in the 3D space relative to the parent.
@@ -78,10 +80,12 @@ public:
 	 * @brief Sets entity scale in the 3D space relative to the parent.
 	 * @param scale target entity scale in 3D space
 	 */
-	void setScale(f32x4 scale) noexcept
-	{
-		scaleChildCap = f32x4(scale, scaleChildCap.getW());
-	}
+	void setScale(f32x4 scale) noexcept { scaleChildCap = f32x4(scale, scaleChildCap.getW()); }
+	/**
+	 * @brief Sets entity scale in the 3D space relative to the parent.
+	 * @param scale target entity scale in 3D space
+	 */
+	void setScale(float3 scale) noexcept { scaleChildCap = f32x4(f32x4(scale), scaleChildCap.getW()); }
 
 	/**
 	 * @brief Returns entity rotation in the 3D space relative to the parent.

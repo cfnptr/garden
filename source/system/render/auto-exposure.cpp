@@ -149,7 +149,7 @@ void AutoExposureSystem::render()
 	}
 
 	auto inputSystem = InputSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	auto logLumRange = maxLogLum - minLogLum;
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 

@@ -42,7 +42,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useB
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
 
 	ID<ImageView> bloomBufferView;
@@ -76,7 +76,7 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, uint8 toneMapper
 
 	ResourceSystem::GraphicsOptions options;
 	options.specConstValues = &specConsts;
-	options.useAsyncRecording = deferredSystem->useAsyncRecording();
+	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 	
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"tone-mapping", deferredSystem->getLdrFramebuffer(), options);
@@ -104,7 +104,6 @@ ToneMappingSystem::~ToneMappingSystem()
 
 void ToneMappingSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", ToneMappingSystem::ldrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingSystem::gBufferRecreate);
 
@@ -122,27 +121,12 @@ void ToneMappingSystem::deinit()
 		graphicsSystem->destroy(pipeline);
 		graphicsSystem->destroy(luminanceBuffer);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", ToneMappingSystem::ldrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingSystem::gBufferRecreate);
 	}
 }
 
 //**********************************************************************************************************************
-void ToneMappingSystem::preLdrRender()
-{
-	SET_CPU_ZONE_SCOPED("Tone Mapping Pre LDR Render");
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pipelineView = graphicsSystem->get(pipeline);
-
-	if (pipelineView->isReady() && !descriptorSet)
-	{
-		auto uniforms = getUniforms(luminanceBuffer, useBloomBuffer);
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
-	}
-}
 void ToneMappingSystem::ldrRender()
 {
 	SET_CPU_ZONE_SCOPED("Tone Mapping LDR Render");
@@ -153,6 +137,20 @@ void ToneMappingSystem::ldrRender()
 
 	if (!pipelineView->isReady() || !luminanceBufferView->isReady())
 		return;
+
+	if (lastUpscaleState != graphicsSystem->useUpscaling)
+	{
+		graphicsSystem->destroy(descriptorSet);
+		lastUpscaleState = graphicsSystem->useUpscaling;
+		descriptorSet = {}; 
+	}
+
+	if (!descriptorSet)
+	{
+		auto uniforms = getUniforms(luminanceBuffer, useBloomBuffer);
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
+	}
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 

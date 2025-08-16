@@ -52,8 +52,9 @@ private:
 	ID<DescriptorSet> descriptorSet = {};
 	ID<Buffer> luminanceBuffer = {};
 	bool useBloomBuffer = false;
+	bool lastUpscaleState = false;
 	uint8 toneMapper = TONE_MAPPER_ACES;
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new tone mapping rendering system instance.
@@ -71,7 +72,6 @@ private:
 
 	void init();
 	void deinit();
-	void preLdrRender();
 	void ldrRender();
 	void gBufferRecreate();
 

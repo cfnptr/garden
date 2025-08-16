@@ -24,6 +24,7 @@
  *   2. UnormA2B10G10R10   (Encoded Normal, Shadow)
  *   3. UnormA2B10G10R10   (Clear Coat Normal and Roughness) [optional]
  *   4. SrgbB8G8R8A8       (Emissive Color and Factor) [optional]
+ *   5. SfloatR16G16       (Velocity) [optional]
  */
 
 // TODO: Sheen rendering.
@@ -60,6 +61,19 @@ namespace garden
 class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>
 {
 public:
+	/**
+	 * @brief Deferred rendering system initialization options.
+	 */
+	struct Options final
+	{
+		bool useStencil = false;       /**< Create and use stencil buffer for rendering. */
+		bool useClearCoat = true;      /**< Create and use clear coat buffer for rendering. */
+		bool useEmission = true;       /**< Create and use light emission buffer for rendering. */
+		bool useVelocity = true;       /**< Create and use reflection buffer for rendering. */
+		bool useAsyncRecording = true; /**< Use multithreaded render commands recording. */
+		Options() { }
+	};
+
 	static constexpr uint8 gBufferBaseColor = 0;   /**< Index of the G-Buffer with encoded base color. */
 	static constexpr uint8 gBufferSpecFactor = 0;  /**< Index of the G-Buffer with encoded specular factor. */
 	static constexpr uint8 gBufferMetallic = 1;    /**< Index of the G-Buffer with encoded metallic. */
@@ -72,13 +86,15 @@ public:
 	static constexpr uint8 gBufferCcRoughness = 3; /**< Index of the G-Buffer with encoded clear coat roughness. */
 	static constexpr uint8 gBufferEmColor = 4;     /**< Index of the G-Buffer with encoded emissive color. */
 	static constexpr uint8 gBufferEmFactor = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 gBufferCount = 5;       /**< Deferred rendering G-Buffer count. */
+	static constexpr uint8 gBufferVelocity = 5;    /**< Index of the G-Buffer with encoded velocity. */
+	static constexpr uint8 gBufferCount = 6;       /**< Deferred rendering G-Buffer count. */
 
 	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormB8G8R8A8;
 	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format gBufferFormat5 = Image::Format::SfloatR16G16;
 	static constexpr Image::Format depthStencilFormat = Image::Format::SfloatD32UintS8;
 	static constexpr Image::Format depthFormat = Image::Format::SfloatD32;
 	static constexpr Image::Format stencilFormat = Image::Format::UintS8;
@@ -101,6 +117,7 @@ public:
 	static constexpr Framebuffer::OutputAttachment::Flags normalsBufferFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferFlags = { true, false, true};
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferDepthFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags upscaleHdrFlags = { false, false, true };
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
@@ -112,6 +129,7 @@ private:
 	ID<Image> depthStencilBuffer = {};
 	ID<Image> depthCopyBuffer = {};
 	ID<Image> transBuffer = {};
+	ID<Image> upscaleHdrBuffer = {};
 	ID<ImageView> depthStencilIV = {};
 	ID<ImageView> depthCopyIV = {};
 	ID<ImageView> depthImageView = {};
@@ -125,14 +143,12 @@ private:
 	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	ID<Framebuffer> transDepthFramebuffer = {};
+	ID<Framebuffer> upscaleHdrFramebuffer = {};
 	ID<GraphicsPipeline> hdrCopyBlurPipeline = {};
 	vector<ID<ImageView>> hdrCopyBlurViews;
 	vector<ID<Framebuffer>> hdrCopyBlurFBs;
 	vector<ID<DescriptorSet>> hdrCopyBlurDSes;
-	bool asyncRecording = false;
-	bool hasStencil = false;
-	bool hasClearCoat = false;
-	bool hasEmission = false;
+	Options options = {};
 	bool hasAnyRefr = false;
 	bool hasAnyOit = false;
 	bool hasAnyTD = false;
@@ -140,14 +156,10 @@ private:
 	/**
 	 * @brief Creates a new deferred rendering system instance.
 	 * 
-	 * @param useStencil use stencil buffer
-	 * @param useClearCoat use clear coat buffer
-	 * @param useEmission use light emission buffer
-	 * @param useAsyncRecording use multithreaded render commands recording
+	 * @param options target system initialization options
 	 * @param setSingleton set system singleton instance
 	 */
-	DeferredRenderSystem(bool useStencil = false, bool useClearCoat = true, 
-		bool useEmission = true, bool useAsyncRecording = true, bool setSingleton = true);
+	DeferredRenderSystem(Options options = {}, bool setSingleton = true);
 	/**
 	 * @brief Destroys deferred rendering system instance.
 	 */
@@ -160,22 +172,18 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true;        /**< Is deferred rendering enabled. */
+	bool isEnabled = true; /**< Is deferred rendering enabled. */
 
-	/**
-	 * @brief Use multithreaded command buffer recording.
-	 * @warning Be careful when writing asynchronous code!
+	/*******************************************************************************************************************
+	 * @brief Returns deferred rendering system options.
 	 */
-	bool useAsyncRecording() const noexcept { return asyncRecording; }
-
+	Options getOptions() const noexcept { return options; }
 	/**
-	 * @brief Use clear coat buffer.
+	 * @brief Enables or disables use of the specific system rendering options.
+	 * @details It destroys existing buffers on use set to false.
+	 * @param options target rendering system options
 	 */
-	bool useClearCoat() const noexcept { return hasClearCoat; }
-	/**
-	 * @brief Use light emission buffer.
-	 */
-	bool useEmission() const noexcept { return hasEmission; }
+	void setOptions(Options options);
 
 	/**
 	 * @brief Marks that there is rendered refraction data on the current frame.
@@ -243,6 +251,10 @@ public:
 	 * @brief Returns deferred transparent buffer.
 	 */
 	ID<Image> getTransBuffer();
+	/**
+	 * @brief Returns deferred upscale HDR buffer.
+	 */
+	ID<Image> getUpscaleHdrBuffer();
 
 	/**
 	 * @brief Returns deferred depth/stencil buffer image view.
@@ -301,6 +313,10 @@ public:
 	 * @brief Returns deferred transparent depth framebuffer.
 	 */
 	ID<Framebuffer> getTransDepthFramebuffer();
+	/**
+	 * @brief Returns deferred upscale HDR framebuffer.
+	 */
+	ID<Framebuffer> getUpscaleHdrFramebuffer();
 	/**
 	 * @brief Returns deferred HDR copy blur framebuffers.
 	 */

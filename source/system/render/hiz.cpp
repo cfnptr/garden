@@ -23,7 +23,7 @@ using namespace garden;
 static ID<Image> createHizBuffer(vector<ID<ImageView>>& imageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto hizBufferSize =  graphicsSystem->getScaledFramebufferSize();
+	auto hizBufferSize =  graphicsSystem->getScaledFrameSize();
 	auto mipCount = calcMipCount(hizBufferSize);
 	imageViews.resize(mipCount);
 
@@ -48,7 +48,7 @@ static ID<Image> createHizBuffer(vector<ID<ImageView>>& imageViews)
 static void createHizFramebuffers(const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	auto mipCount = (uint8)imageViews.size();
 	framebuffers.resize(mipCount);
 

@@ -22,6 +22,7 @@
 	float4x4 inverseView;    \
 	float4x4 inverseProj;    \
 	float4x4 invViewProj;    \
+	float4x4 prevViewProj;   \
 	float4 cameraPos;        \
 	float4 giBufferPos;      \
 	float4 viewDir;          \

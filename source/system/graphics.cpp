@@ -268,7 +268,10 @@ static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLigh
 		cc.anglePerPixel = 0.0f;
 	}
 
-	cc.viewProj = cc.projection * cc.view;
+	auto viewProj = cc.projection * cc.view;
+	cc.prevViewProj = cc.prevViewProj.c0.getX() == 0.0f ? viewProj : cc.viewProj;
+	cc.viewProj = viewProj;
+
 	cc.inverseView = inverse4x4(cc.view);
 	cc.inverseProj = inverse4x4(cc.projection);
 	cc.invViewProj = inverse4x4(cc.viewProj);
@@ -391,7 +394,7 @@ void GraphicsSystem::update()
 
 	if (camera && isFramebufferSizeValid)
 	{
-		prepareCommonConstants(camera, directionalLight, getScaledFramebufferSize(), currentCommonConstants);
+		prepareCommonConstants(camera, directionalLight, getScaledFrameSize(), currentCommonConstants);
 		auto cameraBuffer = graphicsAPI->bufferPool.get(commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
 		cameraBuffer->writeData(&currentCommonConstants);
 	}
@@ -444,24 +447,18 @@ void GraphicsSystem::present()
 }
 
 //**********************************************************************************************************************
-float GraphicsSystem::getRenderScale()
+uint2 GraphicsSystem::getScaledFrameSize()
 {
-	if (renderScale == 0.0f)
-	{
-		// Note: renderScale should be the same across init stages.
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
-		if (settingsSystem)
-			settingsSystem->getFloat("renderScale", renderScale);
-	}
-	return renderScale;
+	if (scaledFrameSize == uint2::zero)
+		return GraphicsAPI::get()->swapchain->getFramebufferSize();
+	return scaledFrameSize;
 }
-void GraphicsSystem::setRenderScale(float renderScale)
+void GraphicsSystem::setScaledFrameSize(uint2 frameSize)
 {
-	GARDEN_ASSERT(renderScale > 0.0f);
-	if (renderScale == this->renderScale)
+	GARDEN_ASSERT(areAllTrue(frameSize > uint2::zero));
+	if (frameSize == scaledFrameSize)
 		return;
-
-	this->renderScale = renderScale;
+	scaledFrameSize = frameSize;
 
 	SwapchainChanges swapchainChanges;
 	swapchainChanges.framebufferSize = true;
@@ -471,11 +468,6 @@ void GraphicsSystem::setRenderScale(float renderScale)
 uint2 GraphicsSystem::getFramebufferSize() const noexcept
 {
 	return GraphicsAPI::get()->swapchain->getFramebufferSize();
-}
-uint2 GraphicsSystem::getScaledFramebufferSize() const noexcept
-{
-	auto framebufferSize = GraphicsAPI::get()->swapchain->getFramebufferSize();
-	return max((uint2)(float2(framebufferSize) * renderScale + 0.5f), uint2::one);
 }
 
 ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
