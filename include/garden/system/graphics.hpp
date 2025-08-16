@@ -81,7 +81,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> greenTexture = {};
 	ID<ImageView> normalMapTexture = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
-	float renderScale = 0.0f;
+	uint2 scaledFrameSize = uint2::zero;
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
@@ -127,6 +127,7 @@ public:
 	uint16 maxFPS = 60;               /**< Frames per second limit. */
 	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
 	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
+	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, etc.) */
 
 	/**
 	 * @brief Returns true if scene was drastically changed.
@@ -140,15 +141,16 @@ public:
 	void markTeleported() { wasTeleported = true; }
 
 	/**
-	 * @brief Returns frame render scale.
-	 * @details Useful for scaling forward/deferred framebuffer.
+	 * @brief Returns scaled frame size in texels.
+	 * @details Useful for scaling forward/deferred framebuffers.
 	 */
-	float getRenderScale();
+	uint2 getScaledFrameSize();
 	/**
-	 * @brief Sets frame render scale.
+	 * @brief Sets scaled frame size in texels.
 	 * @note It signals swapchain size change.
+	 * @param frameSize target scaled frame size
 	 */
-	void setRenderScale(float renderScale);
+	void setScaledFrameSize(uint2 frameSize);
 
 	/**
 	 * @brief Sets global illumination buffer world space position.
@@ -195,7 +197,7 @@ public:
 	 * @brief Returns scaled by render scale framebuffer size.
 	 * @details Useful for scaling forward/deferred framebuffer.
 	 */
-	uint2 getScaledFramebufferSize() const noexcept;
+	uint2 getScaledFrameSize() const noexcept { return scaledFrameSize; }
 
 	/**
 	 * @brief Returns current render pass framebuffer.

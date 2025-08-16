@@ -14,7 +14,7 @@ auto manager = Manager::Instance::get();
 auto player = manager->createEntity();
 
 auto transformView = manager->add<TransformComponent>(player);
-transformView->setPosition(f32x4(1.0f, 2.0f, 3.0f));
+transformView->setPosition(float3(1.0f, 2.0f, 3.0f));
 
 auto healthView = manager->add<HealthComponent>(player);
 healthView->value = 100.0f;

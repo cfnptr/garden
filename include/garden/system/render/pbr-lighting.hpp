@@ -121,7 +121,7 @@ private:
 	ID<DescriptorSet> lightingDS = {};
 	ID<DescriptorSet> shadowBlurDS = {};
 	ID<DescriptorSet> aoBlurDS = {};
-	Options options;
+	Options options = {};
 	bool hasAnyShadow = false;
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
@@ -162,7 +162,7 @@ public:
 	/**
 	 * @brief Enables or disables use of the specific system rendering options.
 	 * @details It destroys existing buffers on use set to false.
-	 * @param options target system options
+	 * @param options target PBR lighting system options
 	 */
 	void setOptions(Options options);
 

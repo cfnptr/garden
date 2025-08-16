@@ -32,7 +32,7 @@ static ID<Framebuffer> createFramebuffer()
 	{ Framebuffer::OutputAttachment(gBufferView, FxaaRenderSystem::framebufferFlags) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
-		graphicsSystem->getScaledFramebufferSize(), std::move(colorAttachments));
+		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.fxaa");
 	return framebuffer;
 }
@@ -173,7 +173,7 @@ void FxaaRenderSystem::gBufferRecreate()
 
 		auto framebufferView = graphicsSystem->get(framebuffer);
 		Framebuffer::OutputAttachment colorAttachment(gBufferView, FxaaRenderSystem::framebufferFlags);
-		framebufferView->update(graphicsSystem->getScaledFramebufferSize(), &colorAttachment, 1);
+		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
 	if (descriptorSet)
 	{

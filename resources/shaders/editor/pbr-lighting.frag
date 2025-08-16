@@ -35,6 +35,7 @@ out float4 fb.g1;
 out float4 fb.g2;
 out float4 fb.g3;
 out float4 fb.g4;
+out float4 fb.g5;
 
 uniform pushConstants
 {

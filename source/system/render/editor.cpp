@@ -284,35 +284,6 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
-		auto renderScale = 1.0f;
-		if (settingsSystem)
-			settingsSystem->getFloat("renderScale", renderScale);
-	
-		int renderScaleType;
-		if (renderScale <= 0.5f) renderScaleType = 0;
-		else if (renderScale <= 0.75f) renderScaleType = 1;
-		else if (renderScale <= 1.0f) renderScaleType = 2;
-		else if (renderScale <= 1.5f) renderScaleType = 3;
-		else renderScaleType = 4;
-
-		constexpr const char* scaleNames[5] = { " 50%", " 75%", " 100%", " 150%", " 200%" };
-		if (ImGui::Combo("Render Scale", &renderScaleType, scaleNames, 5))
-		{
-			switch (renderScaleType)
-			{
-			case 0: renderScale = 0.50f; break;
-			case 1: renderScale = 0.75f; break;
-			case 2: renderScale = 1.0f; break;
-			case 3: renderScale = 1.5f; break;
-			case 4: renderScale = 2.0f; break;
-			default: abort();
-			}
-			
-			graphicsSystem->setRenderScale(renderScale);
-			if (settingsSystem)
-				settingsSystem->setFloat("renderScale", renderScale);
-		}
-
 		auto frameRate = (int)graphicsSystem->maxFPS;
 		if (ImGui::DragInt("Max FPS", &frameRate, 1, 1, UINT16_MAX))
 		{
@@ -326,7 +297,7 @@ void EditorRenderSystem::showOptionsWindow()
 		if (appInfoSystem && ImGui::CollapsingHeader("Storage"))
 		{
 			ImGui::Indent();
-			auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName()) / "cache";
+			auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
 			auto cachePath = appDataPath / "cache";
 			int fileCount = 0; uint64 binarySize = 0;
 

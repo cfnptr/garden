@@ -17,9 +17,11 @@
 #define USE_LIGHT_SHADOW
 #define USE_CLEAR_COAT
 #define USE_LIGHT_EMISSION
+#define USE_MOTION_VECTORS
 
 #define USE_CLEAR_COAT_BUFFER true
 #define USE_EMISSION_BUFFER true
+#define USE_VELOCITY_BUFFER true
 
 #include "common/depth.gsl"
 #include "common/gbuffer.gsl"
@@ -40,6 +42,7 @@ uniform sampler2D g1;
 uniform sampler2D g2;
 uniform sampler2D g3;
 uniform sampler2D g4;
+uniform sampler2D g5;
 
 uniform sampler2D hdrBuffer;
 uniform sampler2D depthBuffer;
@@ -64,7 +67,7 @@ uniform pushConstants
 //**********************************************************************************************************************
 void main()
 {
-	const GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	const GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g5, fs.texCoords);
 
 	if (pc.drawMode == G_BUFFER_DRAW_MODE_OFF)
 		discard;
@@ -146,6 +149,8 @@ void main()
 		fb.color = float4(float3(gBuffer.clearCoatRoughness), 1.0f);
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL)
 		fb.color = float4(gammaCorrection(packNormal(gBuffer.clearCoatNormal), DEFAULT_GAMMA), 1.0f);
+	else if (pc.drawMode == G_BUFFER_DRAW_MODE_VELOCITY)
+		fb.color = float4(abs(gBuffer.velocity), float2(0.0f));
 
 	else if (pc.drawMode == G_BUFFER_DRAW_MODE_GLOBAL_BLURED_SHADOW_COLOR)
 	{

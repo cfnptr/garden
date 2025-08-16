@@ -320,23 +320,28 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 	if (!dlssSystem->feature)
 		return;
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	if (hdrFramebufferView->getSize() != dlssSystem->optimalSize)
+		return;
+
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		NVSDK_NGX_VK_DLSS_Eval_Params evalParams;
 		memset(&evalParams, 0, sizeof(NVSDK_NGX_VK_DLSS_Eval_Params));
 
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-		auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 		auto inputResource = imageToNgxResource(hdrFramebufferView->getColorAttachments()[0].imageView);
 		auto outputResource = imageToNgxResource(hdrFramebufferView->getColorAttachments()[0].imageView); // TODO:
 		auto depthResource = imageToNgxResource(gFramebufferView->getDepthStencilAttachment().imageView);
+		auto velocityResource = imageToNgxResource(gFramebufferView->getColorAttachments()[
+			DeferredRenderSystem::gBufferVelocity].imageView);
 
 		evalParams.Feature.pInColor = &inputResource;
 		evalParams.Feature.pInOutput = &outputResource;
 		evalParams.pInDepth = &depthResource;
-		//evalParams.pInMotionVectors = &motionVectorsResource;
+		evalParams.pInMotionVectors = &velocityResource;
 		// evalParams.pInExposureTexture = &exposureResource;
 		//evalParams.InJitterOffsetX = jitterOffset.x;
 		//evalParams.InJitterOffsetY = jitterOffset.y;

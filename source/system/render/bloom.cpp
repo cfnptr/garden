@@ -28,7 +28,7 @@ using namespace garden;
 static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto bloomBufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2::one);
+	auto bloomBufferSize = max(graphicsSystem->getScaledFrameSize() / 2u, uint2::one);
 	auto mipCount = std::min(BloomRenderSystem::maxBloomMipCount, calcMipCount(bloomBufferSize));
 	imageViews.resize(mipCount);
 
@@ -53,7 +53,7 @@ static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
 static void createBloomFramebuffers(const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = max(graphicsSystem->getScaledFramebufferSize() / 2u, uint2::one);
+	auto framebufferSize = max(graphicsSystem->getScaledFrameSize() / 2u, uint2::one);
 	auto mipCount = (uint8)imageViews.size();
 	framebuffers.resize(mipCount);
 

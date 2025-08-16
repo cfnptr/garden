@@ -86,7 +86,7 @@ void main()
 	if (depth == 0.0f)
 		discard;
 
-	GBufferValues gBuffer = DECODE_G_BUFFER_VALUES(fs.texCoords);
+	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g0, fs.texCoords);
 	gBuffer.emissiveFactor *= pc.emissiveCoeff;
 	gBuffer.reflectance *= pc.reflectanceCoeff;
 	

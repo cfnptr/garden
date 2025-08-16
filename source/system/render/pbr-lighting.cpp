@@ -194,7 +194,7 @@ static ID<Image> createAoBuffers(ID<ImageView>* aoImageViews, ID<Image>& aoBlurB
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	Image::Mips mips; mips.assign(PbrLightingSystem::aoBufferCount - 1, { nullptr });
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 
 	auto aoBuffer = graphicsSystem->createImage(
 		PbrLightingSystem::aoBufferFormat, usage, mips, framebufferSize, strategy);
@@ -233,7 +233,7 @@ static void destroyAoBuffers(ID<Image> aoBuffer, ID<ImageView>* aoImageViews, ID
 static void createAoFramebuffers(const ID<ImageView>* aoImageViews, ID<Framebuffer>* aoFramebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments
 	{ Framebuffer::OutputAttachment(aoImageViews[0], PbrLightingSystem::framebufferFlags) };
@@ -263,7 +263,7 @@ static void destroyAoFramebuffers(ID<Framebuffer>* aoFramebuffers)
 static ID<Image> createShadowBuffers(ID<ImageView>* imageViews)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 
 	auto buffer = graphicsSystem->createImage(PbrLightingSystem::shadowBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::Fullscreen, 
@@ -292,7 +292,7 @@ static void destroyShadowBuffers(ID<Image> shadowBuffer, ID<ImageView>* shadowIm
 static void createShadowFramebuffers(const ID<ImageView>* shadowImageViews, ID<Framebuffer>* shadowFramebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 
 	for (uint8 i = 0; i < PbrLightingSystem::shadowBufferCount; i++)
 	{
@@ -316,7 +316,7 @@ static void destroyShadowFramebuffers(ID<Framebuffer>* shadowFramebuffers)
 static ID<Image> createReflBuffer(ID<ImageView>& reflBufferView, bool useBlur)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto reflBufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto reflBufferSize = graphicsSystem->getScaledFrameSize();
 
 	uint8 lodCount = 1, layerCount = 1;
 	if (useBlur)
@@ -343,7 +343,7 @@ static void createReflData(ID<ImageView> reflBufferView,
 	vector<ID<ImageView>>& reflImageViews, vector<ID<Framebuffer>>& reflFramebuffers)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	reflImageViews.resize(1); reflFramebuffers.resize(1);
 	reflImageViews[0] = reflBufferView;
 
@@ -358,7 +358,7 @@ static void createReflData(ID<ImageView> reflBufferView,
 static ID<Image> createGiBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	auto buffer = graphicsSystem->createImage(PbrLightingSystem::giBufferFormat, 
 		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
 		Image::Usage::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
@@ -369,7 +369,7 @@ static ID<Framebuffer> createGiFramebuffer(ID<Image> giBuffer)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto giBufferView = graphicsSystem->get(giBuffer)->getDefaultView();
-	auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(giBufferView, PbrLightingSystem::framebufferFlags) };
 	auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
@@ -426,13 +426,13 @@ static ID<GraphicsPipeline> createLightingPipeline(PbrLightingSystem::Options pb
 		{ "USE_REFLECTION_BUFFER", Pipeline::SpecConstValue(pbrOptions.useReflBuffer) },
 		{ "USE_REFLECTION_BLUR", Pipeline::SpecConstValue(pbrOptions.useReflBlur) },
 		{ "USE_GI_BUFFER", Pipeline::SpecConstValue(pbrOptions.useGiBuffer) },
-		{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->useClearCoat()) },
-		{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmission()) }
+		{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useClearCoat) },
+		{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useEmission) }
 	};
 
 	ResourceSystem::GraphicsOptions pipelineOptions;
 	pipelineOptions.specConstValues = &specConstValues;
-	pipelineOptions.useAsyncRecording = deferredSystem->useAsyncRecording();
+	pipelineOptions.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"pbr-lighting", deferredSystem->getHdrFramebuffer(), pipelineOptions);
@@ -913,7 +913,7 @@ void PbrLightingSystem::gBufferRecreate()
 		}
 		else
 		{
-			auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+			auto framebufferSize = graphicsSystem->getScaledFrameSize();
 			auto colorAttachment = Framebuffer::OutputAttachment(
 				reflImageViews[0], PbrLightingSystem::framebufferFlags);
 			auto framebufferView = graphicsSystem->get(reflFramebuffers[0]);
@@ -928,7 +928,7 @@ void PbrLightingSystem::gBufferRecreate()
 	}
 	if (aoFramebuffers[0])
 	{
-		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+		auto framebufferSize = graphicsSystem->getScaledFrameSize();
 		auto colorAttachment = Framebuffer::OutputAttachment(
 			aoImageViews[0], PbrLightingSystem::framebufferFlags);
 		auto framebufferView = graphicsSystem->get(aoFramebuffers[0]);
@@ -951,7 +951,7 @@ void PbrLightingSystem::gBufferRecreate()
 	}
 	if (shadowFramebuffers[0])
 	{
-		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+		auto framebufferSize = graphicsSystem->getScaledFrameSize();
 		for (uint8 i = 0; i < PbrLightingSystem::shadowBufferCount; i++)
 		{
 			auto colorAttachment = Framebuffer::OutputAttachment(
@@ -969,7 +969,7 @@ void PbrLightingSystem::gBufferRecreate()
 	if (giFramebuffer)
 	{
 		auto giBufferView = graphicsSystem->get(giBuffer)->getDefaultView();
-		auto framebufferSize = graphicsSystem->getScaledFramebufferSize();
+		auto framebufferSize = graphicsSystem->getScaledFrameSize();
 		auto colorAttachment = Framebuffer::OutputAttachment(
 			giBufferView, PbrLightingSystem::framebufferFlags);
 		auto framebufferView = graphicsSystem->get(giFramebuffer);

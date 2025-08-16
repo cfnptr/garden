@@ -138,12 +138,12 @@ void DeferredRenderEditorSystem::deferredRender()
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		Pipeline::SpecConstValues specConstValues =
 		{
-			{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->useClearCoat()) },
-			{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->useEmission()) }
+			{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useClearCoat) },
+			{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useEmission) }
 		};
 
 		ResourceSystem::GraphicsOptions options;
-		options.useAsyncRecording = deferredSystem->useAsyncRecording();
+		options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 		options.specConstValues = &specConstValues;
 
 		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
@@ -197,24 +197,28 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::SliderFloat("Reflectance", &lightingPC.mraor.w, 0.0f, 1.0f);
 			ImGui::SliderFloat("G-Buffer Shadows", &lightingPC.shadow, 0.0f, 1.0f);
 
-			ImGui::BeginDisabled(!deferredSystem->useClearCoat());
+			ImGui::BeginDisabled(!deferredSystem->getOptions().useClearCoat);
 			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.ccRoughness, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 
-			ImGui::BeginDisabled(!deferredSystem->useEmission());
+			ImGui::BeginDisabled(!deferredSystem->getOptions().useEmission);
 			ImGui::ColorEdit3("Emissive Color", &lightingPC.emissiveColor);
 			ImGui::SliderFloat("Emissive Factor", &lightingPC.emissiveFactor, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 		}
 		else if ((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || 
-			drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->useClearCoat())
+			drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->getOptions().useClearCoat)
 		{
 			ImGui::TextDisabled("Clear coat buffer is disabled in deferred system!");
 		}
 		else if ((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || 
-			drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->useEmission())
+			drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->getOptions().useEmission)
 		{
 			ImGui::TextDisabled("Emission buffer is disabled in deferred system!");
+		}
+		else if (drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity)
+		{
+			ImGui::TextDisabled("Velocity buffer is disabled in deferred system!");
 		}
 		
 		else if (drawMode > G_BUFFER_DRAW_MODE_OFF)
@@ -283,8 +287,11 @@ void DeferredRenderEditorSystem::ldrRender()
 	pc.showChannelB = showChannelB ? 1.0f : 0.0f;
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	if (((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->useClearCoat()) || 
-		((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->useEmission()))
+	if (((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || drawMode == 
+			G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->getOptions().useClearCoat) || 
+		((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == 
+			G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->getOptions().useEmission) ||
+		(drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity))
 	{
 		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
 	}
