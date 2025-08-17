@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Random Number Generators.
-// Usefull link: https://www.shadertoy.com/view/XlGcRh
+// Useful link: https://www.shadertoy.com/view/XlGcRh
 
 #ifndef RANDOM_GSL
 #define RANDOM_GSL

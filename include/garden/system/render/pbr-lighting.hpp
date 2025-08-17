@@ -81,7 +81,6 @@ public:
 		float ggxLodOffset;
 		float emissiveCoeff;
 		float reflectanceCoeff;
-		
 	};
 	struct SpecularPC final
 	{

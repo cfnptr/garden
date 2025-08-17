@@ -141,10 +141,9 @@ void ToneMappingSystem::ldrRender()
 	if (lastUpscaleState != graphicsSystem->useUpscaling)
 	{
 		graphicsSystem->destroy(descriptorSet);
-		lastUpscaleState = graphicsSystem->useUpscaling;
 		descriptorSet = {}; 
+		lastUpscaleState = graphicsSystem->useUpscaling;
 	}
-
 	if (!descriptorSet)
 	{
 		auto uniforms = getUniforms(luminanceBuffer, useBloomBuffer);

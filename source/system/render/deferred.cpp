@@ -204,6 +204,7 @@ static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<I
 		colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView, DeferredRenderSystem::gBufferFlags);
 	}
 
+	colorAttachments[DeferredRenderSystem::gBufferVelocity].flags = DeferredRenderSystem::velocityFlags;
 	Framebuffer::OutputAttachment depthStencilAttachment(
 		depthStencilIV, DeferredRenderSystem::gBufferDepthFlags);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
@@ -452,7 +453,7 @@ void DeferredRenderSystem::render()
 	{
 		if (upscaleHdrFramebuffer == hdrFramebuffer)
 		{
-			upscaleHdrBuffer = {};
+			upscaleHdrFramebuffer = {}; upscaleHdrBuffer = {};
 			upscaleHdrFramebuffer = getUpscaleHdrFramebuffer();
 		}
 	}
@@ -462,7 +463,7 @@ void DeferredRenderSystem::render()
 		{
 			graphicsSystem->destroy(upscaleHdrFramebuffer);
 			graphicsSystem->destroy(upscaleHdrBuffer);
-			upscaleHdrBuffer = {};
+			upscaleHdrFramebuffer = {}; upscaleHdrBuffer = {};
 			upscaleHdrFramebuffer = getUpscaleHdrFramebuffer();
 		}
 	}
@@ -776,7 +777,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		graphicsSystem->destroy(gBuffers);
 
 		gBuffers = {}; hdrBuffer = hdrCopyBuffer = ldrBuffer = uiBuffer = oitAccumBuffer = 
-			oitRevealBuffer = depthStencilBuffer = depthCopyBuffer = transBuffer = upscaleHdrBuffer;
+			oitRevealBuffer = depthStencilBuffer = depthCopyBuffer = transBuffer = upscaleHdrBuffer = {};
 
 		auto framebufferSize = graphicsSystem->getScaledFrameSize();
 		Framebuffer::OutputAttachment colorAttachments[gBufferCount];
@@ -798,6 +799,7 @@ void DeferredRenderSystem::swapchainRecreate()
 				colorAttachments[i] = Framebuffer::OutputAttachment(graphicsSystem->get(
 					_gBuffers[i])->getDefaultView(), DeferredRenderSystem::gBufferFlags);
 			}
+			colorAttachments[DeferredRenderSystem::gBufferVelocity].flags = DeferredRenderSystem::velocityFlags;
 			depthStencilAttachment.setFlags(DeferredRenderSystem::gBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
 		}
@@ -868,6 +870,11 @@ void DeferredRenderSystem::swapchainRecreate()
 
 	if (swapchainChanges.framebufferSize)
 		Manager::Instance::get()->runEvent("GBufferRecreate");
+}
+
+void DeferredRenderSystem::setOptions(Options options)
+{
+	abort(); // TODO:
 }
 
 //**********************************************************************************************************************
@@ -1035,7 +1042,7 @@ ID<Framebuffer> DeferredRenderSystem::getUpscaleHdrFramebuffer()
 	if (!upscaleHdrFramebuffer)
 	{
 		upscaleHdrFramebuffer = GraphicsSystem::Instance::get()->useUpscaling ? 
-			createHdrFramebuffer(getHdrBuffer(), true) : getHdrFramebuffer();
+			createHdrFramebuffer(getUpscaleHdrBuffer(), true) : getHdrFramebuffer();
 	}
 	return upscaleHdrFramebuffer;
 }

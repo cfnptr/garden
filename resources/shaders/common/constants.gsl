@@ -31,12 +31,15 @@
 	float4 skyColor;         \
 	float2 frameSize;        \
 	float2 invFrameSize;     \
-	float2 invFrameSize2;    \
+	float2 invFrameSizeSq;   \
+	float2 jitterOffset;     \
+	float2 prevJitterOffset; \
 	float nearPlane;         \
 	float currentTime;       \
 	float deltaTime;         \
 	float emissiveCoeff;     \
 	float anglePerPixel;     \
+	float mipLodBias;        \
 	float ggxLodOffset;
 
 #endif // CONSTANTS_GSL

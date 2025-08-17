@@ -32,7 +32,7 @@ DlssRenderSystem::DlssRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", DlssRenderSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", DlssRenderSystem::postDeinit);
-	ECSM_SUBSCRIBE_TO_EVENT("Render", DlssRenderSystem::render);
+	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DlssRenderSystem::swapchainRecreate);
 }
 DlssRenderSystem::~DlssRenderSystem()
@@ -41,7 +41,7 @@ DlssRenderSystem::~DlssRenderSystem()
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", DlssRenderSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", DlssRenderSystem::postDeinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", DlssRenderSystem::render);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", DlssRenderSystem::swapchainRecreate);
 	}
 
@@ -53,24 +53,32 @@ static void onDlssLog(const char* message, NVSDK_NGX_Logging_Level loggingLevel,
 	std::cout << message;
 }
 
-static NVSDK_NGX_Resource_VK imageToNgxResource(ID<ImageView> imageView)
+//**********************************************************************************************************************
+static NVSDK_NGX_Resource_VK imageToNgxResource(VulkanAPI* vulkanAPI, 
+	VulkanCommandBuffer* vkCommandBuffer, ID<ImageView> imageView)
 {
-	auto graphicsAPI = GraphicsAPI::get();
-	auto imageViewView = graphicsAPI->imageViewPool.get(imageView);
-	auto baseImageView = graphicsAPI->imagePool.get(imageViewView->getImage());
-	auto imageSize = imageViewView->calcSize();
+	Image::BarrierState newImageState;
+	newImageState.access = (uint32)vk::AccessFlagBits::eShaderWrite;
+	newImageState.layout = (uint32)vk::ImageLayout::eGeneral;
+	newImageState.stage = (uint32)vk::PipelineStageFlagBits::eComputeShader;
+	vkCommandBuffer->addImageBarrier(vulkanAPI, newImageState, imageView);
+
+	auto imageViewView = vulkanAPI->imageViewPool.get(imageView);
+	auto baseImageView = vulkanAPI->imagePool.get(imageViewView->getImage());
 	auto isStorage = hasAnyFlag(baseImageView->getUsage(), Image::Usage::Storage);
+	auto imageSize = imageViewView->calcSize();
 
     VkImageSubresourceRange subresourceRange;
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.aspectMask = isFormatDepthOrStencil(imageViewView->getFormat()) ?
+		VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 	subresourceRange.baseMipLevel = imageViewView->getBaseMip();
 	subresourceRange.levelCount = imageViewView->getMipCount();
 	subresourceRange.baseArrayLayer = imageViewView->getBaseLayer();
 	subresourceRange.layerCount = imageViewView->getLayerCount();
-	
+
     return NVSDK_NGX_Create_ImageView_Resource_VK(
 		(VkImageView)ResourceExt::getInstance(**imageViewView), (VkImage)ResourceExt::getInstance(**baseImageView), 
-		subresourceRange, (VkFormat)toVkFormat(baseImageView->getFormat()), imageSize.x, imageSize.y, isStorage);
+		subresourceRange, (VkFormat)toVkFormat(imageViewView->getFormat()), imageSize.x, imageSize.y, isStorage);
 }
 
 //**********************************************************************************************************************
@@ -153,9 +161,7 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	NVSDK_NGX_PerfQuality_Value perfQuality, NVSDK_NGX_DLSS_Hint_Render_Preset renderPreset, 
 	uint2& optimalSize, uint2& minSize, uint2& maxSize, float& sharpness)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getFramebufferSize();
-
+	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
 	unsigned int optimalWidth = 0, optimalHeight = 0, maxWidth = 0, 
 		maxHeight = 0, minWidth = 0, minHeight = 0;
 	auto ngxResult = NGX_DLSS_GET_OPTIMAL_SETTINGS(ngxParameters, framebufferSize.x, framebufferSize.y,
@@ -174,7 +180,7 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	// TODO: try to pass exposure manually. ExposureValue = MidGray / (AverageLuma * (1.0 - MidGray))
 
 	if (DeferredRenderSystem::Instance::tryGet())
-		createParams.InFeatureCreateFlags = NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
+		createParams.InFeatureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
 
 	createParams.Feature.InTargetWidth = framebufferSize.x;
 	createParams.Feature.InTargetHeight = framebufferSize.y;
@@ -307,7 +313,7 @@ void DlssRenderSystem::postDeinit()
 void DlssRenderSystem::createDlssFeatureCommand(void* commandBuffer, void* argument)
 {
 	auto dlssSystem = (DlssRenderSystem*)argument;
-	destroyDlssFeature((NVSDK_NGX_Handle*)dlssSystem->feature);
+	GARDEN_ASSERT(!dlssSystem->feature);
 
 	dlssSystem->feature = createDlssFeature((CommandBuffer*)commandBuffer, 
 		(NVSDK_NGX_Parameter*)dlssSystem->parameters, (NVSDK_NGX_PerfQuality_Value)dlssSystem->quality, {},
@@ -317,59 +323,68 @@ void DlssRenderSystem::createDlssFeatureCommand(void* commandBuffer, void* argum
 void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 {
 	auto dlssSystem = (DlssRenderSystem*)argument;
-	if (!dlssSystem->feature)
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	if (!dlssSystem->feature || deferredSystem->getHdrFramebuffer() == deferredSystem->getUpscaleHdrFramebuffer())
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	if (hdrFramebufferView->getSize() != dlssSystem->optimalSize)
+	if (gFramebufferView->getSize() != dlssSystem->optimalSize)
 		return;
 
+	auto& jitterOffsets = graphicsSystem->getJitterOffsets();
+	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()];
+	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto upscaleHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
+	auto inputSize = hdrFramebufferView->getSize();
+
+	NVSDK_NGX_Result ngxResult;
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		NVSDK_NGX_VK_DLSS_Eval_Params evalParams;
 		memset(&evalParams, 0, sizeof(NVSDK_NGX_VK_DLSS_Eval_Params));
 
-		auto inputResource = imageToNgxResource(hdrFramebufferView->getColorAttachments()[0].imageView);
-		auto outputResource = imageToNgxResource(hdrFramebufferView->getColorAttachments()[0].imageView); // TODO:
-		auto depthResource = imageToNgxResource(gFramebufferView->getDepthStencilAttachment().imageView);
-		auto velocityResource = imageToNgxResource(gFramebufferView->getColorAttachments()[
-			DeferredRenderSystem::gBufferVelocity].imageView);
+		auto vulkanAPI = VulkanAPI::get();
+		auto vkCommandBuffer = (VulkanCommandBuffer*)commandBuffer;
+		auto inputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer,	
+			hdrFramebufferView->getColorAttachments()[0].imageView);
+		auto outputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
+			upscaleHdrFramebufferView->getColorAttachments()[0].imageView);
+		auto depthResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
+			gFramebufferView->getDepthStencilAttachment().imageView);
+		auto velocityResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
+			gFramebufferView->getColorAttachments()[DeferredRenderSystem::gBufferVelocity].imageView);
+		vkCommandBuffer->processPipelineBarriers(vulkanAPI);
 
 		evalParams.Feature.pInColor = &inputResource;
 		evalParams.Feature.pInOutput = &outputResource;
 		evalParams.pInDepth = &depthResource;
 		evalParams.pInMotionVectors = &velocityResource;
-		// evalParams.pInExposureTexture = &exposureResource;
-		//evalParams.InJitterOffsetX = jitterOffset.x;
-		//evalParams.InJitterOffsetY = jitterOffset.y;
+		// TODO: evalParams.pInExposureTexture = &exposureResource;
+		evalParams.InJitterOffsetX = jitterOffset.x;
+		evalParams.InJitterOffsetY = jitterOffset.y;
 		evalParams.InReset = graphicsSystem->isTeleported() ? 1 : 0;
-		//evalParams.InMVScaleX = mVScale.x;
-		//evalParams.InMVScaleY = mVScale.y;
-		//evalParams.InColorSubrectBase        = renderingOffset;
-		//evalParams.InDepthSubrectBase        = renderingOffset;
-		//evalParams.InTranslucencySubrectBase = renderingOffset;
-		//evalParams.InMVSubrectBase           = renderingOffset;
-		//evalParams.InRenderSubrectDimensions = renderingSize;
+		evalParams.InRenderSubrectDimensions.Width = inputSize.x;
+		evalParams.InRenderSubrectDimensions.Height = inputSize.y;
+		evalParams.InMVScaleX = inputSize.x * -0.5f;
+		evalParams.InMVScaleY = inputSize.y * -0.5f;
 
-		auto vkCommandBuffer = (VulkanCommandBuffer*)commandBuffer;
-		auto ngxResult = NGX_VULKAN_EVALUATE_DLSS_EXT(
+		ngxResult = NGX_VULKAN_EVALUATE_DLSS_EXT(
 			vkCommandBuffer->instance, (NVSDK_NGX_Handle*)dlssSystem->feature, 
 			(NVSDK_NGX_Parameter*)dlssSystem->parameters, &evalParams);
-		if (ngxResult != NVSDK_NGX_Result_Success)
-		{
-			auto ngxResStr = wstring(GetNGXResultAsString(ngxResult));
-			GARDEN_LOG_ERROR("Failed to evaluate Nvidia DLSS. ("
-				"result: " + string(ngxResStr.begin(), ngxResStr.end()) + ")");
-		}
 	}
 	else abort();
+
+	if (ngxResult != NVSDK_NGX_Result_Success)
+	{
+		auto ngxResStr = wstring(GetNGXResultAsString(ngxResult));
+		GARDEN_LOG_ERROR("Failed to evaluate Nvidia DLSS. ("
+			"result: " + string(ngxResStr.begin(), ngxResStr.end()) + ")");
+	}
 }
 
 //**********************************************************************************************************************
-void DlssRenderSystem::render()
+void DlssRenderSystem::preLdrRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!parameters || !graphicsSystem->canRender() || !graphicsSystem->camera)
@@ -380,9 +395,16 @@ void DlssRenderSystem::render()
 		BEGIN_GPU_DEBUG_LABEL("DLSS Evaluate", Color::transparent);
 		if (!feature)
 			graphicsSystem->customCommand(createDlssFeatureCommand, this);
-		//graphicsSystem->customCommand(evaluateDlssCommand, this);
+		graphicsSystem->customCommand(evaluateDlssCommand, this);
 	}
 	graphicsSystem->stopRecording();
+
+	if (feature)
+	{
+		graphicsSystem->setScaledFrameSize(optimalSize);
+		graphicsSystem->setMipLodBias(calcMipLodBias());
+		graphicsSystem->useUpscaling = graphicsSystem->useJittering = true;
+	}
 }
 
 void DlssRenderSystem::swapchainRecreate()
@@ -390,8 +412,27 @@ void DlssRenderSystem::swapchainRecreate()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
-	if (swapchainChanges.framebufferSize)
+	if (swapchainChanges.framebufferSize && maxSize != graphicsSystem->getFramebufferSize())
+	{
 		destroyDlssFeature((NVSDK_NGX_Handle*)feature);
+		feature = {};
+	}
+}
+
+void DlssRenderSystem::setQuality(DlssQuality quality)
+{
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		VulkanAPI::get()->device.waitIdle();
+	else abort();
+
+	destroyDlssFeature((NVSDK_NGX_Handle*)feature);
+	feature = {};
+	this->quality = quality;
+}
+
+float DlssRenderSystem::calcMipLodBias(float nativeBias) noexcept
+{
+	return nativeBias + std::log2((float)optimalSize.x / maxSize.x) - 1.0f + FLT_EPSILON;
 }
 
 #endif // GARDEN_NVIDIA_DLSS

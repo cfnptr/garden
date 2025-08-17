@@ -59,7 +59,7 @@ class DlssRenderSystem final : public System, public Singleton<DlssRenderSystem>
 
 	void preInit();
 	void postDeinit();
-	void render();
+	void preLdrRender();
 	void swapchainRecreate();
 	
 	static void createDlssFeatureCommand(void* commandBuffer, void* argument);
@@ -67,7 +67,21 @@ class DlssRenderSystem final : public System, public Singleton<DlssRenderSystem>
 
 	friend class ecsm::Manager;
 public:
-	// TODO: setQuality.
+	/**
+	 * @brief Returns Nvidia DLSS quality mode.
+	 */
+	DlssQuality getQuality() const noexcept { return quality; }
+	/**
+	 * @brief Sets Nvidia DLSS quality mode.
+	 * @param quality target DLSS quality
+	 */
+	void setQuality(DlssQuality quality);
+
+	/**
+	 * @brief Calculates upscaled mip-map LOD bias.
+	 * @param nativeBias native mip LOD bias
+	 */
+	float calcMipLodBias(float nativeBias = 0.0f) noexcept;
 };
 
 } // namespace garden
