@@ -30,6 +30,7 @@
 
 #include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
+#include "math/random.hpp"
 #include "math/brdf.hpp"
 #include "garden/os.hpp"
 
@@ -50,6 +51,21 @@ namespace garden::graphics
 		float4x4 mvp;
 		float4 color;
 	};
+}
+
+static uint32 calcPhaseCount(uint2 inputSize, uint2 outputSize, uint32 basePhaseCount = 8) noexcept
+{
+	return basePhaseCount * (outputSize.x / inputSize.y) ^ 2;
+}
+static void calcJitterOffsets(vector<float2>& jitterOffsets, 
+	uint2 inputSize, uint2 outputSize, uint32 basePhaseCount = 8)
+{
+	auto totalPhaseCount = calcPhaseCount(inputSize, outputSize, basePhaseCount);
+	jitterOffsets.resize(totalPhaseCount);
+	auto offsets = jitterOffsets.data();
+
+	for (uint32 i = 0; i < totalPhaseCount; i++)
+		offsets[i] = float2(halton(i + 1, 2), halton(i + 1, 3)) - 0.5f;
 }
 
 //**********************************************************************************************************************
@@ -79,6 +95,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->swapchain->getCurrentImage());
 	auto swapchainImageView = swapchainImage->getDefaultView();
 	auto framebufferSize = (uint2)swapchainImage->getSize();
+	calcJitterOffsets(jitterOffsets, framebufferSize, framebufferSize);
 
 	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImageView);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
@@ -226,8 +243,8 @@ static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer, uint2
 }
 
 //**********************************************************************************************************************
-static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLight,
-	uint2 scaledFramebufferSize, CommonConstants& cc)
+static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLight, uint2 scaledFramebufferSize, 
+	CommonConstants& cc, const vector<float2>& jitterOffsets, uint64 frameIndex, bool useJittering)
 {
 	auto manager = Manager::Instance::get();
 	auto inputSystem = InputSystem::Instance::get();
@@ -268,10 +285,21 @@ static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLigh
 		cc.anglePerPixel = 0.0f;
 	}
 
-	auto viewProj = cc.projection * cc.view;
-	cc.prevViewProj = cc.prevViewProj.c0.getX() == 0.0f ? viewProj : cc.viewProj;
-	cc.viewProj = viewProj;
+	auto hasPrevVP = cc.prevViewProj.c0.getX() != 0.0f;
+	if (useJittering)
+	{
+		auto jitterOffset = jitterOffsets[frameIndex % jitterOffsets.size()] / scaledFramebufferSize;
+		cc.projection.c2.setX(cc.projection.c2.getX() + jitterOffset.x);
+		cc.projection.c2.setY(cc.projection.c2.getY() + jitterOffset.y);
+		cc.prevJitterOffset = hasPrevVP ? cc.jitterOffset : jitterOffset;
+		cc.jitterOffset = jitterOffset;
+	}
+	else cc.jitterOffset = cc.prevJitterOffset = float2::zero;
 
+	auto viewProj = cc.projection * cc.view;
+	cc.prevViewProj = hasPrevVP ? cc.viewProj : viewProj;
+
+	cc.viewProj = viewProj;
 	cc.inverseView = inverse4x4(cc.view);
 	cc.inverseProj = inverse4x4(cc.projection);
 	cc.invViewProj = inverse4x4(cc.viewProj);
@@ -378,6 +406,11 @@ void GraphicsSystem::update()
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
+
+		auto framebufferSize = swapchain->getFramebufferSize();
+		calcJitterOffsets(jitterOffsets, scaledFrameSize == uint2::zero ? 
+			framebufferSize : scaledFrameSize, framebufferSize);
+
 		Manager::Instance::get()->runEvent("SwapchainRecreate");
 
 		if (!forceRecreateSwapchain)
@@ -394,7 +427,8 @@ void GraphicsSystem::update()
 
 	if (camera && isFramebufferSizeValid)
 	{
-		prepareCommonConstants(camera, directionalLight, getScaledFrameSize(), currentCommonConstants);
+		prepareCommonConstants(camera, directionalLight, getScaledFrameSize(), 
+			currentCommonConstants, jitterOffsets, frameIndex, useJittering);
 		auto cameraBuffer = graphicsAPI->bufferPool.get(commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
 		cameraBuffer->writeData(&currentCommonConstants);
 	}
@@ -431,6 +465,7 @@ void GraphicsSystem::present()
 			outOfDateSwapchain = true;
 			GARDEN_LOG_DEBUG("Out of date swapchain. [Present]");
 		}
+
 		frameIndex++;
 	}
 	else

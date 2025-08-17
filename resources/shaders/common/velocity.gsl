@@ -15,11 +15,11 @@
 #ifndef VELOCITY_GSL
 #define VELOCITY_GSL
 
-float2 calcVelocity(float4 currNdcPos, float4 prevNdcPos)
+float2 calcVelocity(float4 currNdcPos, float4 prevNdcPos, float2 currJitter, float2 prevJitter)
 {
-	float2 currentPos = currNdcPos.xy / currNdcPos.w;
+	float2 currentPos = currNdcPos.xy / currNdcPos.w; 
 	float2 previousPos = prevNdcPos.xy / prevNdcPos.w;
-	return currentPos - previousPos;
+	return (currentPos - currJitter) - (previousPos - prevJitter);
 }
 
 #endif // VELOCITY_GSL

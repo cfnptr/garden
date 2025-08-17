@@ -25,28 +25,31 @@ using namespace math;
  */
 struct CommonConstants final
 {
-	f32x4x4 view = f32x4x4::zero;         /**< Camera view matrix. */
-	f32x4x4 projection = f32x4x4::zero;   /**< Camera projection matrix. */
-	f32x4x4 viewProj = f32x4x4::zero;     /**< Camera view * projection matrix. */
-	f32x4x4 inverseView = f32x4x4::zero;  /**< Camera inverse view matrix. */
-	f32x4x4 inverseProj = f32x4x4::zero;  /**< Camera inverse projection matrix. */
-	f32x4x4 invViewProj = f32x4x4::zero;  /**< Camera inverse (view * projection) matrix. */
-	f32x4x4 prevViewProj = f32x4x4::zero; /**< Camera previous frame (view * projection) matrix. */
-	f32x4 cameraPos = f32x4::zero;        /**< Camera position in world space. */
-	f32x4 giBufferPos = f32x4::zero;      /**< Global illumination buffer position in world space. */
-	f32x4 viewDir = f32x4::zero;          /**< Camera view direction in world space. */
-	f32x4 lightDir = f32x4::zero;         /**< Light direction in world space. (From sun to world) */
-	f32x4 shadowColor = f32x4::zero;      /**< Shadow color and intensity. */
-	f32x4 skyColor = f32x4::zero;         /**< Sky color and intensity.*/
-	float2 frameSize = float2::zero;      /**< Frame size in pixels. */
-	float2 invFrameSize = float2::zero;   /**< Inverse frame size in pixels. */
-	float2 invFrameSizeSq = float2::zero; /**< Inverse frame size * 2 in pixels. */
-	float nearPlane = 0.0f;               /**< Near frustum plane. */
-	float currentTime = 0.0f;             /**< Time since start of the program. (In seconds) */
-	float deltaTime = 0.0f;               /**< Time elapsed between two previous frames. (In seconds) */
-	float emissiveCoeff = 0.0f;           /**< Maximum brightness coefficient. */
-	float anglePerPixel = 0.0f;           /**< Vertical field-of-view per pixel. */
-	float ggxLodOffset = 0.0f;            /**< Spherical GGX distribution blur LOD offset. */
+	f32x4x4 view = f32x4x4::zero;           /**< Camera view matrix. */
+	f32x4x4 projection = f32x4x4::zero;     /**< Camera projection matrix. */
+	f32x4x4 viewProj = f32x4x4::zero;       /**< Camera view * projection matrix. */
+	f32x4x4 inverseView = f32x4x4::zero;    /**< Camera inverse view matrix. */
+	f32x4x4 inverseProj = f32x4x4::zero;    /**< Camera inverse projection matrix. */
+	f32x4x4 invViewProj = f32x4x4::zero;    /**< Camera inverse (view * projection) matrix. */
+	f32x4x4 prevViewProj = f32x4x4::zero;   /**< Camera previous frame (view * projection) matrix. */
+	f32x4 cameraPos = f32x4::zero;          /**< Camera position in world space. */
+	f32x4 giBufferPos = f32x4::zero;        /**< Global illumination buffer position in world space. */
+	f32x4 viewDir = f32x4::zero;            /**< Camera view direction in world space. */
+	f32x4 lightDir = f32x4::zero;           /**< Light direction in world space. (From sun to world) */
+	f32x4 shadowColor = f32x4::zero;        /**< Shadow color and intensity. */
+	f32x4 skyColor = f32x4::zero;           /**< Sky color and intensity.*/
+	float2 frameSize = float2::zero;        /**< Frame size in pixels. */
+	float2 invFrameSize = float2::zero;     /**< Inverse frame size in pixels. */
+	float2 invFrameSizeSq = float2::zero;   /**< Inverse frame size * 2 in pixels. */
+	float2 jitterOffset = float2::zero;     /**< Frame sub-pixel jittering offsets. */
+	float2 prevJitterOffset = float2::zero; /**< Previous frame sub-pixel jittering offsets. */
+	float nearPlane = 0.0f;                 /**< Camera near frustum plane. */
+	float currentTime = 0.0f;               /**< Time since start of the program. (In seconds) */
+	float deltaTime = 0.0f;                 /**< Time elapsed between two previous frames. (In seconds) */
+	float emissiveCoeff = 0.0f;             /**< Maximum brightness coefficient. */
+	float anglePerPixel = 0.0f;             /**< Vertical field-of-view per pixel. */
+	float mipLodBias = 0.0f;                /**< Preferred mip-map LOD bias. */
+	float ggxLodOffset = 0.0f;              /**< Spherical GGX distribution blur LOD offset. */
 };
 
 } // namespace garden::graphics

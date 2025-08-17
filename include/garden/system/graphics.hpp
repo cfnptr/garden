@@ -72,6 +72,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
 	DescriptorSet::Buffers commonConstantsBuffers;
 	CommonConstants currentCommonConstants = {};
+	vector<float2> jitterOffsets;
 	uint64 frameIndex = 0, tickIndex = 0;
 	double beginSleepClock = 0.0;
 	ID<Buffer> cubeVertexBuffer = {};
@@ -127,9 +128,10 @@ public:
 	uint16 maxFPS = 60;               /**< Frames per second limit. */
 	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
 	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
-	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, etc.) */
+	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */
+	bool useJittering = false;        /**< Use sub pixel jittering. (Temporal anti alisaing) */
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns true if scene was drastically changed.
 	 * @details Used to fix temporal rendering ghosting.
 	 */
@@ -187,8 +189,14 @@ public:
 	 * @param emissiveCoeff target emissive coefficient
 	 */
 	void setEmissiveCoeff(float emissiveCoeff) noexcept { currentCommonConstants.emissiveCoeff = emissiveCoeff; }
-
 	/**
+	 * @brief Sets mip-map LOD bias. (Useful for upscaling)
+	 * @details See the @ref getCommonConstants().
+	 * @param mipLodBias target mip LOD bias
+	 */
+	void setMipLodBias(float mipLodBias) noexcept { currentCommonConstants.mipLodBias = mipLodBias; }
+
+	/*******************************************************************************************************************
 	 * @brief Returns swapchain framebuffer size.
 	 * @note It may differ from the input framebuffer size.
 	 */
@@ -198,6 +206,11 @@ public:
 	 * @details Useful for scaling forward/deferred framebuffer.
 	 */
 	uint2 getScaledFrameSize() const noexcept { return scaledFrameSize; }
+	/**
+	 * @brief Returns sub-pixel jittering offsets.
+	 * @details Useful for temporal anti-alisaing. (TAA, DLSS, FSR, XeSS, etc)
+	 */
+	const vector<float2>& getJitterOffsets() const noexcept { return jitterOffsets; }
 
 	/**
 	 * @brief Returns current render pass framebuffer.
@@ -215,7 +228,7 @@ public:
 	 */
 	bool isCurrentRenderPassAsync() const noexcept;
 
-	/*******************************************************************************************************************
+	/**
 	 * @brief Returns current frame index since the application launch.
 	 * @details It does not count frames when the window is minimized.
 	 */
@@ -226,7 +239,7 @@ public:
 	 */
 	uint64 getCurrentTickIndex() const noexcept { return tickIndex; }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Can a frame be rendered on the current tick.
 	 * @details In some cases we can't render to the window. (ex. it may be hidden) 
 	 */
