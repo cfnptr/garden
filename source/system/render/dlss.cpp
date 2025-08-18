@@ -190,12 +190,12 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 
 	// TODO: support variable ratio
 
-	// TODO:
-	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, renderPreset);
+	// TODO: renderPreset
+	NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, NVSDK_NGX_DLSS_Hint_Render_Preset_F);
+    NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_K);
+    NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_K);
+    NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_K);
+    NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, NVSDK_NGX_DLSS_Hint_Render_Preset_F);
 
 	NVSDK_NGX_Handle* ngxFeature = nullptr;
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -333,7 +333,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 		return;
 
 	auto& jitterOffsets = graphicsSystem->getJitterOffsets();
-	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()];
+	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()] * 0.5f;
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto upscaleHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
 	auto inputSize = hdrFramebufferView->getSize();

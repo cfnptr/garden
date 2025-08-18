@@ -23,10 +23,17 @@ pipelineState
 	blending0 = on;
 }
 
+in noperspective float2 fs.texCoords;
 out float4 fb.hdr;
 
-uniform sampler2D accumBuffer;
-uniform sampler2D revealBuffer;
+uniform sampler2D 
+{
+	filter = linear;
+} accumBuffer;
+uniform sampler2D
+{
+	filter = linear;
+} revealBuffer;
 
 #define EPSILON 0.00001f
 
@@ -37,12 +44,11 @@ bool isApproximatelyEqual(float a, float b)
 
 void main()
 {
-	float revealage = texelFetch(revealBuffer, int2(gl.fragCoord.xy), 0).r;
+	float revealage = texture(revealBuffer,  fs.texCoords).r;
 	if (isApproximatelyEqual(revealage, 1.0f))
 		discard;
 
-	float4 accumulation = texelFetch(accumBuffer, int2(gl.fragCoord.xy), 0);
-	
+	float4 accumulation = texture(accumBuffer,  fs.texCoords);
 	if (isinf(max(abs(accumulation.rgb))))
 		accumulation.rgb = float3(accumulation.a);
 

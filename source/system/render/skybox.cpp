@@ -28,9 +28,8 @@ static ID<GraphicsPipeline> createPipeline()
 	ResourceSystem::GraphicsOptions options;
 	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 
-	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"skybox", deferredSystem->getDepthHdrFramebuffer(), options);
-	return skyboxPipeline;
 }
 
 SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSingleton)

@@ -65,7 +65,7 @@ static void calcJitterOffsets(vector<float2>& jitterOffsets,
 	auto offsets = jitterOffsets.data();
 
 	for (uint32 i = 0; i < totalPhaseCount; i++)
-		offsets[i] = float2(halton(i + 1, 2), halton(i + 1, 3)) - 0.5f;
+		offsets[i] = fma(float2(halton(i + 1, 2), halton(i + 1, 3)), float2(2.0f), float2(-1.0f));
 }
 
 //**********************************************************************************************************************
