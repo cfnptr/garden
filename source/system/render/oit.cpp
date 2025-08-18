@@ -23,9 +23,8 @@ static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	ResourceSystem::GraphicsOptions options;
-	auto skyboxPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"oit", deferredSystem->getHdrFramebuffer(), options);
-	return skyboxPipeline;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"oit", deferredSystem->getUpscaleHdrFramebuffer(), options);
 }
 static DescriptorSet::Uniforms getUniforms()
 {
@@ -103,7 +102,7 @@ void OitRenderSystem::preLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}
 
-	auto framebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
+	auto framebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
