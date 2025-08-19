@@ -117,13 +117,6 @@ void HizRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", HizRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HizRenderSystem::gBufferRecreate);
-
-	if (!hizBuffer)
-		hizBuffer = createHizBuffer(imageViews);
-	if (framebuffers.empty())
-		createHizFramebuffers(imageViews, framebuffers);
-	if (!pipeline)
-		pipeline = createPipeline(framebuffers[0]);
 }
 void HizRenderSystem::deinit()
 {
@@ -150,6 +143,17 @@ void HizRenderSystem::downsampleHiz(uint8 levelCount)
 			imageView->clear(float4::zero);
 		}
 		return;
+	}
+
+	if (!isInitialized)
+	{
+		if (!hizBuffer)
+			hizBuffer = createHizBuffer(imageViews);
+		if (framebuffers.empty())
+			createHizFramebuffers(imageViews, framebuffers);
+		if (!pipeline)
+			pipeline = createPipeline(framebuffers[0]);
+		isInitialized = true;
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();

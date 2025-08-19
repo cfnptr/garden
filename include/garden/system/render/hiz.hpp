@@ -37,6 +37,7 @@ private:
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
+	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new hierarchical depth (Z) buffer rendering system instance. (Hi-Z)

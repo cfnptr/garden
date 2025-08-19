@@ -73,9 +73,6 @@ void SkyboxRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
 	ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
-
-	if (!pipeline)
-		pipeline = createPipeline();
 }
 void SkyboxRenderSystem::deinit()
 {
@@ -124,6 +121,9 @@ void SkyboxRenderSystem::depthHdrRender()
 	auto skyboxView = tryGetComponent(graphicsSystem->camera);
 	if (!skyboxView || !skyboxView->cubemap || !skyboxView->descriptorSet)
 		return;
+
+	if (!pipeline)
+		pipeline = createPipeline();
 
 	auto pipelineView = graphicsSystem->get(pipeline);
 	auto cubemapView = graphicsSystem->get(skyboxView->cubemap);

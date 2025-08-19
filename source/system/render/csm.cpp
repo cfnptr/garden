@@ -175,23 +175,6 @@ void CsmRenderSystem::init()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getInt("csm.shadowMapSize", shadowMapSize);
-
-	if (isEnabled)
-	{
-		if (!pipeline)
-			pipeline = createPipeline();
-		if (dataBuffers.empty())
-			createDataBuffers(dataBuffers);
-		if (!depthMap)
-			depthMap = createDepthData(shadowImageViews, shadowMapSize);
-		if (!transparentMap)
-			transparentMap = createTransparentData(transImageViews, shadowMapSize);
-	
-		if (shadowFramebuffers.empty())
-			createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
-		if (transFramebuffers.empty())
-			createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
-	}
 }
 void CsmRenderSystem::deinit()
 {

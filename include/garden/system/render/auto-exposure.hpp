@@ -62,6 +62,7 @@ private:
 	ID<DescriptorSet> histogramDS = {};
 	ID<DescriptorSet> averageDS = {};
 	ID<Buffer> histogramBuffer = {};
+	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new automatic exposure (AE) rendering system instance. (Eye light adaptation)

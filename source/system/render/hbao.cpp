@@ -99,16 +99,6 @@ void HbaoRenderSystem::init()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getBool("hbao.isEnabled", isEnabled);
-
-	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
-	if (isEnabled && pbrLightingSystem->getOptions().useAoBuffer)
-	{
-		if (!noiseImage)
-			noiseImage = createNoiseImage();
-		if (!pipeline)
-			pipeline = createPipeline(stepCount);
-		isInitialized = true;
-	}
 }
 void HbaoRenderSystem::deinit()
 {
