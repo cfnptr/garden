@@ -14,91 +14,88 @@
 
 // Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
-// TODO: spec const int32?
-#define RAY_MARCH_MIN_SPP 4
-#define RAY_MARCH_MAX_SPP 14
-
-in float2 fs.texCoords;
-out float4 fb.color;
-
-void main()
-{
-
-}
-
-/*
+#define USE_OPTICAL_DEPTH_ONLY
 #include "atmosphere/common.gsl"
+
+// #define RAY_MARCH_SPP_MIN 4 // TODO: move where needed
+// #define RAY_MARCH_SPP_MAX 14
 
 pipelineState
 {
 	faceCulling = off;
 }
 
-in float2 fs.texCoords;
-out float4 fb.color;
+in noperspective  float2 fs.texCoords;
+out float4 fb.trans;
 
 uniform pushConstants
 {
-	float4 data0;
-	float4 data1;
-	float4 data2;
-	float4 data3;
-	float4 data4;
-	float4 data5;
-	float4 data6;
-	float4 sunDir; // .w is unused
+	float3 rayleighScattering;
+	float rayDensityExpScale;
+	float3 mieExtinction;
+	float mieDensityExpScale;
+	float3 absorptionExtinction;
+	float miePhaseG;
+	float3 sunDir;
+	float absDensity0LayerWidth;
+	float absDensity0ConstantTerm;
+	float absDensity0LinearTerm;
+	float absDensity1ConstantTerm;
+	float absDensity1LinearTerm;
+	float bottomRadius;
+	float topRadius;
 } pc;
 
-AtmosphereParameters getAtmosphereParameters()
+AtmosphereParams getAtmosphereParams()
 {
-	AtmosphereParameters parameters;
-	parameters.absorptionExtinction = data5.xyz;
-
-	// Traslation from Bruneton2017 parameterisation.
-	parameters.rayleighDensityExpScale = pc.data0.w;
-	parameters.mieDensityExpScale = pc.data1.w;
-	parameters.absorptionDensity0LayerWidth = pc.data5.w;
-	parameters.absorptionDensity0ConstantTerm = pc.data6.x;
-	parameters.absorptionDensity0LinearTerm = pc.data6.y;
-	parameters.absorptionDensity1ConstantTerm = pc.data6.z;
-	parameters.absorptionDensity1LinearTerm = pc.data6.w;
-
-	parameters.miePhaseG = pc.data2.w;
-	parameters.rayleighScattering = pc.data0.xyz;
-	parameters.mieScattering = pc.data1.xyz;
-	parameters.mieAbsorption = pc.data3.xyz;
-	parameters.mieExtinction = pc.data2.xyz;
-	parameters.groundAlbedo = pc.data4.xyz;
-	parameters.bottomRadius = pc.data3.w;
-	parameters.topRadius = pc.data4.w;
-	return parameters;
+	AtmosphereParams params;
+	params.rayleighScattering = pc.rayleighScattering;
+	params.rayDensityExpScale = pc.rayDensityExpScale;
+	params.mieExtinction = pc.mieExtinction;
+	params.mieDensityExpScale = pc.mieDensityExpScale;
+	params.absorptionExtinction = pc.absorptionExtinction;
+	params.miePhaseG = pc.miePhaseG;
+	params.absDensity0LayerWidth = pc.absDensity0LayerWidth;
+	params.absDensity0ConstantTerm = pc.absDensity0ConstantTerm;
+	params.absDensity0LinearTerm = pc.absDensity0LinearTerm;
+	params.absDensity1ConstantTerm = pc.absDensity1ConstantTerm;
+	params.absDensity1LinearTerm = pc.absDensity1LinearTerm;
+	params.bottomRadius = pc.bottomRadius;
+	params.topRadius = pc.topRadius;
+	return params;
 }
 
 //**********************************************************************************************************************
+void uvToTransmittanceRMU(float2 uv, out float r, out float mu)
+{
+	const float2 transmittanceLutSize = float2(TRANSMITTANCE_LUT_WIDTH, TRANSMITTANCE_LUT_HEIGHT);
+	float2 muR = (uv - 0.5f / transmittanceLutSize) / (1.0f - 1.0f / transmittanceLutSize);
+
+	// Distance to top atmosphere boundary for a horizontal ray at ground level.
+	float h = sqrt(pc.topRadius * pc.topRadius - pc.bottomRadius * pc.bottomRadius);
+	float rHor = h * muR.y; // Distance to the horizon, from which we can compute r.
+	r = sqrt(rHor * rHor + pc.bottomRadius * pc.bottomRadius);
+
+	// Distance to the top atmosphere boundary for the ray (r, mu), and its minimum and maximum values 
+	// over all mu - obtained for (r, 1) and (r, muHorizon) - from which we can recover mu:
+	float dMin = pc.topRadius - r; float dMax = rHor + h; float d = dMin + muR.x * (dMax - dMin);
+	mu = clamp(d == 0.0f ? 1.0f : (h * h - rHor * rHor - d * d) / (2.0f * r * d), -1.0f, 1.0f);
+}
+
 void main()
 {
-	AtmosphereParameters atmosphere = getAtmosphereParameters();
-
 	// Compute camera position from LUT coords
-	float viewHeight, viewZenithCosAngle;
-	uvToLutTransmittanceParams(atmosphere, viewHeight, viewZenithCosAngle, fs.texCoords);
-
-	// A few extra needed constants
+	float viewHeight; float viewZenithCosAngle;
+	uvToTransmittanceRMU(fs.texCoords, viewHeight, viewZenithCosAngle);
 	float3 worldPos = float3(0.0f, 0.0f, viewHeight);
-	float3 worldDir = float3(0.0f, sqrt(1.0f -
-		viewZenithCosAngle * viewZenithCosAngle), viewZenithCosAngle);
+	float3 worldDir = float3(0.0f, sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle), viewZenithCosAngle);
 
-	const bool ground = false;
-	// Can go a low as 10 sample but energy lost starts to be visible.
-	const float sampleCountIni = 40.0f;	
-	const float depthBufferValue = -1.0f;
-	const bool variableSampleCount = false;
-	const bool mieRayPhase = false;
+	const float sampleCountIni = 40.0f; // Can go a low as 10 sample but energy lost starts to be visible.
+	const float depthBufferValue = -1.0;
+	const float tMaxMax = 9000000.0f;
+	AtmosphereParams atmosphere = getAtmosphereParams();
 
-	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords,
-		worldPos, worldDir, pc.sunDir.xyz, atmosphere, ground, sampleCountIni,
-		depthBufferValue, variableSampleCount, mieRayPhase).opticalDepth);
-
-	// Optical depth to transmittance
-	return float4(transmittance, 1.0f);
-}*/
+	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords, worldPos, worldDir, 
+		pc.sunDir, atmosphere, sampleCountIni, depthBufferValue, tMaxMax).opticalDepth);
+	fb.trans = float4(transmittance, 1.0f);
+}

@@ -14,80 +14,122 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief TODO
+ * @brief Physically based atmosphere rendering functions.
  * 
  * @details
  * Based on this paper: https://sebh.github.io/publications/egsr2020.pdf
  * One of implementations: https://www.shadertoy.com/view/slSXRW
+ * 
+ * Measurement Units:
+ *   1 megametre(Mm) = 1000 kilometre(km)
  */
 
-/*
 #pragma once
 #include "garden/system/graphics.hpp"
-
-// Measurement Units
-// 1 megametre(Mm) = 1000 kilometre(km)
-
-// Peak Sensitivity of Human Vision (nm)
-#define WAVELENGTH_R 680 // Higher than peak 580
-#define WAVELENGTH_G 550
-#define WAVELENGTH_B 440
-// TODO: use constexpr instead and put inside namespace
-
-#define EARTH_RADIUS 6371.0 // km - volumetric mean radius
-#define EARTH_ATMOSPHERE_HEIGHT 100.0 // km - karman line
-#define EARTH_AIR_IOR 1.0003 // approx 1.000293
-#define EARTH_AIR_DENSITY 1.15465 // kg/m^3 at 30C and 1atm
-#define EARTH_BOND_ALBEDO 0.3
-
-#define MARS_RADIUS 3389.0 // km - volumetric mean radius
-#define MARS_ATMOSPHERE_HEIGHT 80.0 // km - karman line
-#define MARS_AIR_IOR 1.00028 // approx little less than earth
-#define MARS_AIR_DENSITY 0.020
-#define MARS_BOND_ALBEDO 0.25
 
 namespace garden
 {
 
-enum class Gas : uint8
+/**
+ * @brief Physically based atmosphere rendering system.
+ */
+class AtmosphereRenderSystem final : public System, public Singleton<AtmosphereRenderSystem>
 {
-	He, Ne, Ar, Kr, Xe, H2, N2, O2, CH4, CO, CO2, Count
-};
+public:
+	/**
+	 * brief Atmosphere gas types.
+	 */
+	enum class Gas : uint8
+	{
+		He, Ne, Ar, Kr, Xe, H2, N2, O2, CH4, CO, CO2, Count
+	};
 
-//--------------------------------------------------------------------------------------------------
-// Physically Based Atmosphere
-class AtmosphereRenderSystem final : public System, public IRenderSystem
-{
-	void initialize() final;	
-	void render() final;
-	
+	struct TransmittancePC final
+	{
+		float3 rayleighScattering;
+		float rayDensityExpScale;
+		float3 mieExtinction;
+		float mieDensityExpScale;
+		float3 absorptionExtinction;
+		float miePhaseG;
+		float3 sunDir;
+		float absDensity0LayerWidth;
+		float absDensity0ConstantTerm;
+		float absDensity0LinearTerm;
+		float absDensity1ConstantTerm;
+		float absDensity1LinearTerm;
+		float bottomRadius;
+		float topRadius;
+	};
+
+	// Note: red is higher than peak 580 nm.
+	static constexpr float wavelengthR = 680.0f; /**< Peak red sensitivity of human vision. (nm) */
+	static constexpr float wavelengthG = 550.0f; /**< Peak green sensitivity of human vision. (nm) */
+	static constexpr float wavelengthB = 440.0f; /**< Peak blue sensitivity of human vision. (nm) */
+
+	static constexpr float earthRadius = 6371.0f;      /**< Earth volumetric mean radius. (km) */
+	static constexpr float earthKarmanLine = 100.0f;   /**< Earth atmosphere height. (km) */
+	static constexpr float earthAirIOR = 1.0003f;      /**< Earth air index of refraction. (Approx 1.000293) */
+	static constexpr float earthAirDensity = 1.15465f; /**< Earth air density. (kg/m^3 at 30C and 1atm) */
+	static constexpr float earthBondAlbedo = 0.3f;     /**< Earth bond albedo factor. */
+
+	static constexpr float marsRadius = 3389.0f;   /**< Earth volumetric mean radius. (km) */
+	static constexpr float marsKarmanLine = 80.0f; /**< Earth atmosphere height. (km) */
+	static constexpr float marsAirIOR = 1.00028f;  /**< Earth air index of refraction. (Approx) */
+	static constexpr float marsAirDensity = 0.02f; /**< Earth air density. (kg/m^3 at 30C and 1atm) */
+	static constexpr float marsBondAlbedo = 0.25f; /**< Earth bond albedo factor. */
+
+	static constexpr uint2 transLutSize = uint2(256, 64);
+private:
+	ID<Image> transLUT = {};
+	ID<Framebuffer> transLutFramebuffer = {};
+	ID<GraphicsPipeline> transLutPipeline = {};
+	ID<ComputePipeline> multiScatPipeline = {};
+	ID<GraphicsPipeline> viewLutPipeline = {};
+	ID<ComputePipeline> volumesPipeline = {};
+	bool isInitialized = false;
+
+	/**
+	 * @brief Creates a new physically based atmosphere rendering system instance.
+	 * @param setSingleton set system singleton instance
+	 */
+	AtmosphereRenderSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroys physically based atmosphere rendering system instance.
+	 */
+	~AtmosphereRenderSystem() final;
+
+	void init();	
+	void deinit();
+	void render();
+
 	friend class ecsm::Manager;
 public:
-	f32x4 rayleighScattering = f32x4(5.802f, 13.558f, 33.1f);
+	bool isEnabled = true;
+	float4 rayleighScattering = float4(0.005802f, 0.013558f, 0.033100f, 1);
 	f32x4 ozoneAbsorption = f32x4(0.65f, 1.881f, 0.085f);
-	float planetRadius = EARTH_RADIUS;
-	float atmosphereHeight = EARTH_ATMOSPHERE_HEIGHT;
+	float planetRadius = earthRadius;
+	float atmosphereHeight = earthKarmanLine;
 	float rayleighAbsorption = 0.0f;
 	float mieScattering = 3.996f;
 	float mieAbsorption = 4.4f;
 	float ozoneScattering = 0.0f;
 };
 
-//--------------------------------------------------------------------------------------------------
-constexpr float gasMolarMasses[(psize)Gas::Count] =
+//**********************************************************************************************************************
+static constexpr float gasMolarMasses[(psize)AtmosphereRenderSystem::Gas::Count] =
 {
 	4.002602f, 20.1797f, 39.948f, 83.798f, 131.293f, 2.01588f,
 	28.0134f, 31.9988f, 16.0425f, 28.0101f, 44.0095f,
 };
 
-static float gasToMolarMass(Gas gas)
+static float gasToMolarMass(AtmosphereRenderSystem::Gas gas)
 {
-	GARDEN_ASSERT((psize)gas < (psize)Gas::Count)
+	GARDEN_ASSERT((psize)gas < (psize)AtmosphereRenderSystem::Gas::Count);
 	return gasMolarMasses[(psize)gas];
 }
 
-//--------------------------------------------------------------------------------------------------
-static float calcMolarMass(const vector<pair<float, Gas>>& gases) noexcept // g/mol
+static float calcMolarMass(const vector<pair<float, AtmosphereRenderSystem::Gas>>& gases) noexcept // g/mol
 {
 	double molarMass = 0.0;
 	for (auto pair : gases)
@@ -111,34 +153,45 @@ static constexpr float calcRayleighScattering(float wavelength,
 }
 static constexpr float3 calcRayleighScattering(float airIOR, double molecularDensity) noexcept
 {
+	// TODO: vectorize
 	return float3(
-		calcRayleighScattering(WAVELENGTH_R, airIOR, molecularDensity),
-		calcRayleighScattering(WAVELENGTH_G, airIOR, molecularDensity),
-		calcRayleighScattering(WAVELENGTH_B, airIOR, molecularDensity)); // TODO: vectorize
+		calcRayleighScattering(AtmosphereRenderSystem::wavelengthR, airIOR, molecularDensity),
+		calcRayleighScattering(AtmosphereRenderSystem::wavelengthG, airIOR, molecularDensity),
+		calcRayleighScattering(AtmosphereRenderSystem::wavelengthB, airIOR, molecularDensity)); 
 }
 
-//--------------------------------------------------------------------------------------------------
+//**********************************************************************************************************************
 static float calcEarthAirMolarMass()
 {
-	static const vector<pair<float, Gas>> gasses =
+	static const vector<pair<float, AtmosphereRenderSystem::Gas>> gasses =
 	{
-		{ 0.78084f, Gas::N2 }, { 0.20946f, Gas::O2 }, { 0.00934f, Gas::Ar },
-		{ 0.00033f, Gas::CO2 }, { 0.00001818f, Gas::Ne }, { 0.00000524f, Gas::He },
-		{ 0.00000179f, Gas::CH4 },  { 0.000001f, Gas::Kr },
-		{ 0.0000005f, Gas::H2 }, { 0.00000009f, Gas::Xe }
+		{ 0.78084f, AtmosphereRenderSystem::Gas::N2 }, 
+		{ 0.20946f, AtmosphereRenderSystem::Gas::O2 }, 
+		{ 0.00934f, AtmosphereRenderSystem::Gas::Ar }, 
+		{ 0.00033f, AtmosphereRenderSystem::Gas::CO2 }, 
+		{ 0.00001818f, AtmosphereRenderSystem::Gas::Ne }, 
+		{ 0.00000524f, AtmosphereRenderSystem::Gas::He }, 
+		{ 0.00000179f, AtmosphereRenderSystem::Gas::CH4 }, 
+		{ 0.000001f, AtmosphereRenderSystem::Gas::Kr }, 
+		{ 0.0000005f, AtmosphereRenderSystem::Gas::H2 }, 
+		{ 0.00000009f, AtmosphereRenderSystem::Gas::Xe }
 	};
 	return calcMolarMass(gasses);
 }
 static float calcMarsAirMolarMass()
 {
-	static const vector<pair<float, Gas>> gasses =
+	static const vector<pair<float, AtmosphereRenderSystem::Gas>> gasses =
 	{
-		{ 0.9532f, Gas::CO2 }, { 0.027f, Gas::N2 }, { 0.016f, Gas::Ar },
-		{ 0.0013f, Gas::O2 }, { 0.0007f, Gas::CO }, { 0.0000025f, Gas::Ne },
-		{ 0.0000003f, Gas::Kr }, { 0.00000008f, Gas::Xe }
+		{ 0.9532f, AtmosphereRenderSystem::Gas::CO2 }, 
+		{ 0.027f, AtmosphereRenderSystem::Gas::N2 }, 
+		{ 0.016f, AtmosphereRenderSystem::Gas::Ar }, 
+		{ 0.0013f, AtmosphereRenderSystem::Gas::O2 }, 
+		{ 0.0007f, AtmosphereRenderSystem::Gas::CO }, 
+		{ 0.0000025f, AtmosphereRenderSystem::Gas::Ne }, 
+		{ 0.0000003f, AtmosphereRenderSystem::Gas::Kr },
+		{ 0.00000008f, AtmosphereRenderSystem::Gas::Xe }
 	};
 	return calcMolarMass(gasses);
 }
 
 } // namespace garden
-*/
