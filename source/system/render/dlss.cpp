@@ -18,6 +18,7 @@
 #include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/app-info.hpp"
+#include "garden/system/settings.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
 #include "mpio/directory.hpp"
@@ -232,6 +233,14 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 //**********************************************************************************************************************
 void DlssRenderSystem::preInit()
 {
+	auto isEnabled = true;
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	if (settingsSystem)
+		settingsSystem->getBool("dlss.isEnabled", isEnabled);
+
+	if (!isEnabled)
+		return;
+
 	auto graphicsAPI = GraphicsAPI::get();
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());

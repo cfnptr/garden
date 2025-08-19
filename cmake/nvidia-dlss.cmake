@@ -31,7 +31,11 @@ if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "
 		set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/libnvsdk_ngx.a)
 	elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		set(GARDEN_NVIDIA_DLSS_DIR ${nvidia-dlss_SOURCE_DIR}/lib/Windows_x86_64)
-		set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/khr/x64/nvsdk_ngx_khr_s.lib)
+		if(CMAKE_BUILD_TYPE STREQUAL "Release")
+			set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/khr/x64/nvsdk_ngx_khr_s.lib)
+		else()
+			set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/khr/x64/nvsdk_ngx_khr_s_dbg.lib)
+		endif()
 		# TODO: use non khr path for DirectX, if support will be needed.
 	else()
 		message(FATAL_ERROR "Nvidia DLSS is not supported on target OS!")

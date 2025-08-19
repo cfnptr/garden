@@ -44,6 +44,7 @@ private:
 	ID<Sampler> nearestSampler = {};
 	ID<Image> fontTexture = {};
 	ID<DescriptorSet> fontDescriptorSet = {};
+	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new immediate mode GUI rendering system instance. (ImGui)

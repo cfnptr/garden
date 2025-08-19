@@ -102,7 +102,9 @@ void OitRenderSystem::preLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}
 
-	auto framebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
+	auto upscaledHdrFramebuffer = deferredSystem->getUpscaleHdrFramebuffer();
+	pipelineView->updateFramebuffer(upscaledHdrFramebuffer);
+	auto framebufferView = graphicsSystem->get(upscaledHdrFramebuffer);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{

@@ -86,15 +86,6 @@ void FxaaRenderSystem::init()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getBool("fxaa.isEnabled", isEnabled);
-
-	if (isEnabled)
-	{
-		if (!framebuffer)
-			framebuffer = createFramebuffer();
-		if (!pipeline)
-			pipeline = createPipeline(framebuffer);
-		isInitialized = true;
-	}
 }
 void FxaaRenderSystem::deinit()
 {

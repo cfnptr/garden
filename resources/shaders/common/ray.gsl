@@ -21,4 +21,11 @@ struct Ray
 	float3 direction;
 };
 
+float3 closestPoint(Ray ray, float3 point)
+{
+	float3 a = ray.origin; float3 b = ray.origin + ray.direction;
+	float3 v = b - a; float3 t = dot(point - a, v) / dot(v, v);
+	return fma(ray.direction, max(t, float3(0.0f)), a);
+}
+
 #endif // RAY_GSL

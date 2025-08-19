@@ -26,6 +26,20 @@ struct Aabb
 	float3 max;
 };
 
+bool isInside(Aabb aabb, float3 point)
+{
+	return all(lessThanEqual(aabb.min, point)) && all(greaterThanEqual(aabb.max, point));
+}
+bool isInside(Aabb aabb, Aabb other)
+{
+	return all(lessThanEqual(aabb.min, other.min)) && all(greaterThanEqual(aabb.max, other.max));
+}
+
+float3 closestPoint(Aabb aabb, float3 point)
+{
+	return clamp(point, aabb.min, aabb.max);
+}
+
 //**********************************************************************************************************************
 void raycast(Aabb aabb, Ray ray, out float3 tMin, out float3 tMax)
 {

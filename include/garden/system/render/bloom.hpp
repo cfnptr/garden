@@ -25,7 +25,7 @@ namespace garden
 {
 
 /**
- * @brief Bloom (light glow) rendering functions.
+ * @brief Bloom (light glow) rendering system.
  */
 class BloomRenderSystem final : public System, public Singleton<BloomRenderSystem>
 {
@@ -35,7 +35,7 @@ public:
 		float threshold;
 	};
 
-	static constexpr uint8 maxBloomMipCount = 7;       /**< Maximum bloom buffer mip level count. */
+	static constexpr uint8 maxBloomMipCount = 7; /**< Maximum bloom buffer mip level count. */
 	static constexpr Image::Format bufferFormat = Image::Format::UfloatB10G11R11;
 private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
@@ -73,7 +73,7 @@ public:
 	float threshold = 0.0f;
 	bool isEnabled = true;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Use color threshold for bloom rendering.
 	 */
 	bool getUseThreshold() const noexcept { return useThreshold; }

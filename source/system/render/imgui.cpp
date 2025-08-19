@@ -287,16 +287,6 @@ void ImGuiRenderSystem::preInit()
 
 	auto fontTextureView = graphicsSystem->get(fontTexture);
 	io.Fonts->SetTexID((ImTextureID)*fontTextureView->getDefaultView());
-
-	if (isEnabled)
-	{
-		if (!pipeline)
-			pipeline = createPipeline();
-		if (!linearSampler)
-			linearSampler = createLinearSampler();
-		if (!nearestSampler)
-			nearestSampler = createNearestSampler();
-	}
 }
 void ImGuiRenderSystem::postInit()
 {
@@ -609,16 +599,6 @@ void ImGuiRenderSystem::update()
 	// ImGui_ImplGlfw_UpdateGamepads();
 
 	ImGui::NewFrame();
-
-	if (isEnabled)
-	{
-		if (!pipeline)
-			pipeline = createPipeline();
-		if (!linearSampler)
-			linearSampler = createLinearSampler();
-		if (!nearestSampler)
-			nearestSampler = createNearestSampler();
-	}
 }
 
 void ImGuiRenderSystem::render()
@@ -636,6 +616,17 @@ void ImGuiRenderSystem::uiRender()
 
 	if (!isEnabled)
 		return;
+
+	if (!isInitialized)
+	{
+		if (!pipeline)
+			pipeline = createPipeline();
+		if (!linearSampler)
+			linearSampler = createLinearSampler();
+		if (!nearestSampler)
+			nearestSampler = createNearestSampler();
+		isInitialized = true;
+	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);

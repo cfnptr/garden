@@ -121,6 +121,8 @@ static void computeKi() noexcept
 #endif
 
 //**********************************************************************************************************************
+static constexpr int32 iblDfgSize = 128;
+
 static constexpr float pow5(float x) noexcept
 {
 	float x2 = x * x;

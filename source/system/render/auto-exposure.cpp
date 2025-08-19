@@ -91,13 +91,6 @@ void AutoExposureSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Render", AutoExposureSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
-
-	if (!histogramBuffer)
-		histogramBuffer = createHistogramBuffer();
-	if (!histogramPipeline)
-		histogramPipeline = createHistogramPipeline();
-	if (!averagePipeline)
-		averagePipeline = createAveragePipeline();
 }
 void AutoExposureSystem::deinit()
 {
@@ -126,6 +119,17 @@ void AutoExposureSystem::render()
 
 	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
 		return;
+
+	if (!isInitialized)
+	{
+		if (!histogramBuffer)
+			histogramBuffer = createHistogramBuffer();
+		if (!histogramPipeline)
+			histogramPipeline = createHistogramPipeline();
+		if (!averagePipeline)
+			averagePipeline = createAveragePipeline();
+		isInitialized = true;
+	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto toneMappingSystem = ToneMappingSystem::Instance::get();
