@@ -61,6 +61,45 @@ public:
 		float bottomRadius;
 		float topRadius;
 	};
+	struct MultiScatPC final
+	{
+		float3 rayleighScattering;
+		float rayDensityExpScale;
+		float3 mieExtinction;
+		float mieDensityExpScale;
+		float3 absorptionExtinction;
+		float miePhaseG;
+		float3 mieScattering;
+		float absDensity0LayerWidth;
+		float3 groundAlbedo;
+		float absDensity0ConstantTerm;
+		float absDensity0LinearTerm;
+		float absDensity1ConstantTerm;
+		float absDensity1LinearTerm;
+		float bottomRadius;
+		float topRadius;
+		float multiScatFactor;
+	};
+	struct SkyViewPC final
+	{
+		float3 rayleighScattering;
+		float rayDensityExpScale;
+		float3 mieExtinction;
+		float mieDensityExpScale;
+		float3 absorptionExtinction;
+		float miePhaseG;
+		float3 mieScattering;
+		float absDensity0LayerWidth;
+		float3 groundAlbedo;
+		float absDensity0ConstantTerm;
+		float3 sunDir;
+		float absDensity0LinearTerm;
+		float3 cameraPos;
+		float absDensity1ConstantTerm;
+		float absDensity1LinearTerm;
+		float bottomRadius;
+		float topRadius;
+	};
 
 	// Note: red is higher than peak 580 nm.
 	static constexpr float wavelengthR = 680.0f; /**< Peak red sensitivity of human vision. (nm) */
@@ -80,13 +119,19 @@ public:
 	static constexpr float marsBondAlbedo = 0.25f; /**< Earth bond albedo factor. */
 
 	static constexpr uint2 transLutSize = uint2(256, 64);
+	static constexpr uint32 multiScatLutLength = 32;
 private:
 	ID<Image> transLUT = {};
+	ID<Image> multiScatLUT = {};
+	ID<Image> skyViewLUT = {};
 	ID<Framebuffer> transLutFramebuffer = {};
+	ID<Framebuffer> skyViewFramebuffer = {};
 	ID<GraphicsPipeline> transLutPipeline = {};
 	ID<ComputePipeline> multiScatPipeline = {};
-	ID<GraphicsPipeline> viewLutPipeline = {};
+	ID<GraphicsPipeline> skyViewPipeline = {};
 	ID<ComputePipeline> volumesPipeline = {};
+	ID<DescriptorSet> multiScatDS = {};
+	ID<DescriptorSet> skyViewDS = {};
 	bool isInitialized = false;
 
 	/**

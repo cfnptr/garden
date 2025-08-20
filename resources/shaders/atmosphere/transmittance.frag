@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Procedural atmosphere transmittance look up table.
 // Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
-#define USE_OPTICAL_DEPTH_ONLY
 #include "atmosphere/common.gsl"
 
 // #define RAY_MARCH_SPP_MIN 4 // TODO: move where needed
@@ -25,7 +25,7 @@ pipelineState
 	faceCulling = off;
 }
 
-in noperspective  float2 fs.texCoords;
+in noperspective float2 fs.texCoords;
 out float4 fb.trans;
 
 uniform pushConstants
@@ -68,17 +68,14 @@ AtmosphereParams getAtmosphereParams()
 //**********************************************************************************************************************
 void uvToTransmittanceRMU(float2 uv, out float r, out float mu)
 {
-	const float2 transmittanceLutSize = float2(TRANSMITTANCE_LUT_WIDTH, TRANSMITTANCE_LUT_HEIGHT);
-	float2 muR = (uv - 0.5f / transmittanceLutSize) / (1.0f - 1.0f / transmittanceLutSize);
-
 	// Distance to top atmosphere boundary for a horizontal ray at ground level.
 	float h = sqrt(pc.topRadius * pc.topRadius - pc.bottomRadius * pc.bottomRadius);
-	float rHor = h * muR.y; // Distance to the horizon, from which we can compute r.
+	float rHor = h * uv.y; // Distance to the horizon, from which we can compute r.
 	r = sqrt(rHor * rHor + pc.bottomRadius * pc.bottomRadius);
 
 	// Distance to the top atmosphere boundary for the ray (r, mu), and its minimum and maximum values 
 	// over all mu - obtained for (r, 1) and (r, muHorizon) - from which we can recover mu:
-	float dMin = pc.topRadius - r; float dMax = rHor + h; float d = dMin + muR.x * (dMax - dMin);
+	float dMin = pc.topRadius - r; float dMax = rHor + h; float d = dMin + uv.x * (dMax - dMin);
 	mu = clamp(d == 0.0f ? 1.0f : (h * h - rHor * rHor - d * d) / (2.0f * r * d), -1.0f, 1.0f);
 }
 
@@ -87,8 +84,8 @@ void main()
 	// Compute camera position from LUT coords
 	float viewHeight; float viewZenithCosAngle;
 	uvToTransmittanceRMU(fs.texCoords, viewHeight, viewZenithCosAngle);
-	float3 worldPos = float3(0.0f, 0.0f, viewHeight);
-	float3 worldDir = float3(0.0f, sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle), viewZenithCosAngle);
+	float3 worldPos = float3(0.0f, viewHeight, 0.0f);
+	float3 worldDir = float3(0.0f, viewZenithCosAngle, sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle));
 
 	const float sampleCountIni = 40.0f; // Can go a low as 10 sample but energy lost starts to be visible.
 	const float depthBufferValue = -1.0;

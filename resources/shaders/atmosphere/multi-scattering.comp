@@ -1,0 +1,164 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Procedural atmosphere multiple scattering.
+// Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
+
+#define USE_SCATTERING_GROUND
+#define USE_TRANSMITTANCE_LUT
+
+#include "atmosphere/common.gsl"
+
+localSize = 1, 1, 64;
+
+uniform sampler2D
+{
+	filter = linear;
+} transLUT;
+
+uniform writeonly restrict image2D multiScatLUT : sfloatR16G16B16A16;
+
+uniform pushConstants
+{
+	float3 rayleighScattering;
+	float rayDensityExpScale;
+	float3 mieExtinction;
+	float mieDensityExpScale;
+	float3 absorptionExtinction;
+	float miePhaseG;
+	float3 mieScattering;
+	float absDensity0LayerWidth;
+	float3 groundAlbedo;
+	float absDensity0ConstantTerm;
+	float absDensity0LinearTerm;
+	float absDensity1ConstantTerm;
+	float absDensity1LinearTerm;
+	float bottomRadius;
+	float topRadius;
+	float multiScatFactor;
+} pc;
+
+shared float3 multiScatAs1Shared[64];
+shared float3 lShared[64];
+
+AtmosphereParams getAtmosphereParams()
+{
+	AtmosphereParams params;
+	params.rayleighScattering = pc.rayleighScattering;
+	params.rayDensityExpScale = pc.rayDensityExpScale;
+	params.mieExtinction = pc.mieExtinction;
+	params.mieDensityExpScale = pc.mieDensityExpScale;
+	params.absorptionExtinction = pc.absorptionExtinction;
+	params.miePhaseG = pc.miePhaseG;
+	params.absDensity0LayerWidth = pc.absDensity0LayerWidth;
+	params.absDensity0ConstantTerm = pc.absDensity0ConstantTerm;
+	params.absDensity0LinearTerm = pc.absDensity0LinearTerm;
+	params.absDensity1ConstantTerm = pc.absDensity1ConstantTerm;
+	params.absDensity1LinearTerm = pc.absDensity1LinearTerm;
+	params.bottomRadius = pc.bottomRadius;
+	params.topRadius = pc.topRadius;
+	params.mieScattering = pc.mieScattering;
+	params.groundAlbedo = pc.groundAlbedo;
+	return params;
+}
+
+//**********************************************************************************************************************
+void main()
+{
+	float2 texCoords = (float2(gl.globalInvocationID.xy) + 0.5f) * (1.0f / MULTI_SCAT_LUT_LENGTH);
+	texCoords = (texCoords - 0.5f / MULTI_SCAT_LUT_LENGTH) * (MULTI_SCAT_LUT_LENGTH / (MULTI_SCAT_LUT_LENGTH - 1.0f));
+
+	AtmosphereParams atmosphere = getAtmosphereParams();
+	float cosSunZenithAngle = texCoords.x * 2.0f - 1.0f;
+	float3 sunDir = float3(0.0f, sqrt(clamp(1.0f - cosSunZenithAngle * 
+		cosSunZenithAngle, 0.0f, 1.0f)), cosSunZenithAngle);
+	// We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
+	float viewHeight = atmosphere.bottomRadius + clamp(texCoords.y + PLANET_RADIUS_OFFSET, 0.0f, 1.0f) * 
+		(atmosphere.topRadius - atmosphere.bottomRadius - PLANET_RADIUS_OFFSET);
+	float3 worldPos = float3(0.0f, 0.0f, viewHeight);
+
+	const uint32 sqrtSampleCount = 8;
+	float i = 0.5f + float(gl.localInvocationID.z / sqrtSampleCount);
+	float j = 0.5f + float(gl.localInvocationID.z - 
+		float((gl.localInvocationID.z / sqrtSampleCount) * sqrtSampleCount));
+	float randA = i / sqrtSampleCount; float randB = j / sqrtSampleCount;
+	// Uniform distribution: https://mathworld.wolfram.com/SpherePointPicking.html
+	float2 thetaPhi = float2(2.0f * M_PI * randA, acosFast4(1.0f - 2.0f * randB));
+	float2 sinThetaPhi = sin(thetaPhi); float2 cosThetaPhi = cos(thetaPhi);
+	float3 worldDir = float3(cosThetaPhi.x * sinThetaPhi.y, sinThetaPhi.x * sinThetaPhi.y, cosThetaPhi.y);
+
+	const float sampleCountIni = 20.0f; // A minimum set of step is required for accuracy unfortunately.
+	const float depthBufferValue = -1.0f;
+	const float tMaxMax = 9000000.0f;
+	ScatteringResult result = integrateScatteredLuminance(texCoords, worldPos, worldDir, 
+		sunDir, atmosphere, sampleCountIni, depthBufferValue, tMaxMax, transLUT);
+
+	const float sphereSolidAngle = 4.0f * M_PI;
+	multiScatAs1Shared[gl.localInvocationID.z] = result.multiScatAs1 * 
+		sphereSolidAngle / (sqrtSampleCount * sqrtSampleCount);
+	lShared[gl.localInvocationID.z] = result.l * sphereSolidAngle / (sqrtSampleCount * sqrtSampleCount);
+	barrier();
+
+	// TODO: add subgroupVote implementation enabled by spec const.
+	if (gl.localInvocationID.z < 32)
+	{
+		multiScatAs1Shared[gl.localInvocationID.z] += multiScatAs1Shared[gl.localInvocationID.z + 32];
+		lShared[gl.localInvocationID.z] += lShared[gl.localInvocationID.z + 32];
+	}
+	barrier();
+	if (gl.localInvocationID.z < 16)
+	{
+		multiScatAs1Shared[gl.localInvocationID.z] += multiScatAs1Shared[gl.localInvocationID.z + 16];
+		lShared[gl.localInvocationID.z] += lShared[gl.localInvocationID.z + 16];
+	}
+	barrier();
+	if (gl.localInvocationID.z < 8)
+	{
+		multiScatAs1Shared[gl.localInvocationID.z] += multiScatAs1Shared[gl.localInvocationID.z + 8];
+		lShared[gl.localInvocationID.z] += lShared[gl.localInvocationID.z + 8];
+	}
+	barrier();
+	if (gl.localInvocationID.z < 4)
+	{
+		multiScatAs1Shared[gl.localInvocationID.z] += multiScatAs1Shared[gl.localInvocationID.z + 4];
+		lShared[gl.localInvocationID.z] += lShared[gl.localInvocationID.z + 4];
+	}
+	barrier();
+	if (gl.localInvocationID.z < 2)
+	{
+		multiScatAs1Shared[gl.localInvocationID.z] += multiScatAs1Shared[gl.localInvocationID.z + 2];
+		lShared[gl.localInvocationID.z] += lShared[gl.localInvocationID.z + 2];
+	}
+	barrier();
+	if (gl.localInvocationID.z < 1)
+	{
+		multiScatAs1Shared[gl.localInvocationID.z] += multiScatAs1Shared[gl.localInvocationID.z + 1];
+		lShared[gl.localInvocationID.z] += lShared[gl.localInvocationID.z + 1];
+	}
+	barrier();
+
+	if (gl.localInvocationID.z == 0)
+	{
+		const float isotropicPhase = 1.0f / sphereSolidAngle;
+		float3 multiScatAs1 = multiScatAs1Shared[0] * isotropicPhase;
+		float3 inScatteredLuminance	= lShared[0] * isotropicPhase;
+
+		// MultiScatAs1 represents the amount of luminance scattered as if the 
+		// integral of scattered luminance over the sphere would be 1.
+		float3 multiScatAs1SQR = multiScatAs1 * multiScatAs1;
+		float3 l = inScatteredLuminance * (1.0f + multiScatAs1 + multiScatAs1SQR + 
+			multiScatAs1 * multiScatAs1SQR + multiScatAs1SQR * multiScatAs1SQR);
+		imageStore(multiScatLUT, int2(gl.globalInvocationID.xy), float4(pc.multiScatFactor * l, 1.0f));
+	}
+}
