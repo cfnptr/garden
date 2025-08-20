@@ -50,7 +50,7 @@ struct AtmosphereParams
 	float absDensity1LinearTerm;
 	float bottomRadius;
 	float topRadius;
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	float3 mieScattering;
 	float3 groundAlbedo;
 	#endif
@@ -62,22 +62,19 @@ struct MediumSampleRGB
 	float3 scatteringRay;
 	float3 absorptionOzo;
 	float3 extinction;
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	float3 scatteringMie;
 	float3 scattering;
-	float3 albedo;
 	#endif
 };
 
 struct ScatteringResult
 {
 	float3 opticalDepth;
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	float3 l;
 	float3 transmittance;
 	float3 multiScatAs1;
-	float3 newMultiScatStep0Out;
-	float3 newMultiScatStep1Out;
 	#endif
 };
 
@@ -86,12 +83,10 @@ ScatteringResult initScatteringResult()
 {
 	ScatteringResult result;
 	result.opticalDepth = float3(0.0f);
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	result.l = float3(0.0f);
 	result.transmittance = float3(0.0f);
 	result.multiScatAs1 = float3(0.0f);
-	result.newMultiScatStep0Out = float3(0.0f);
-	result.newMultiScatStep1Out = float3(0.0f);
 	#endif
 	return result;
 }
@@ -118,12 +113,12 @@ float intersectSphere(float3 rayOrigin, float3 rayDirection, float3 sphereCenter
 
 float miePhase(float g, float cosTheta) // Cornette-Shanks
 {
-	float k = 3.0f / (8.0f * M_PI) * (1.0f - g * g) / (2.0f + g * g);
+	float k = (3.0f / (8.0f * M_PI)) * (1.0f - g * g) / (2.0f + g * g);
 	return k * (1.0f + cosTheta * cosTheta) / pow(1.0f + g * g - 2.0f * g * -cosTheta, 1.5f);
 }
 float rayleighPhase(float cosTheta)
 {
-	float factor = 3.0f / (16.0f * M_PI);
+	const float factor = 3.0f / (16.0f * M_PI);
 	return factor * (1.0f + cosTheta * cosTheta);
 }
 
@@ -133,27 +128,26 @@ MediumSampleRGB sampleMediumRGB(AtmosphereParams atmosphere, float pHeight)
 	float viewHeight = pHeight - atmosphere.bottomRadius;
 	float densityMie = exp(atmosphere.mieDensityExpScale * viewHeight);
 	float densityRay = exp(atmosphere.rayDensityExpScale * viewHeight);
-	float densityOzo = clamp(viewHeight < atmosphere.absDensity0LayerWidth ?
-		atmosphere.absDensity0LinearTerm * viewHeight + atmosphere.absDensity0ConstantTerm :
-		atmosphere.absDensity1LinearTerm * viewHeight + atmosphere.absDensity1ConstantTerm, 0.0f, 1.0f);
+	float densityOzo = viewHeight < atmosphere.absDensity0LayerWidth ?
+		clamp(atmosphere.absDensity0LinearTerm * viewHeight + atmosphere.absDensity0ConstantTerm, 0.0f, 1.0f) :
+		clamp(atmosphere.absDensity1LinearTerm * viewHeight + atmosphere.absDensity1ConstantTerm, 0.0f, 1.0f);
 
 	MediumSampleRGB s;
 	s.extinctionMie = densityMie * atmosphere.mieExtinction;
 	s.scatteringRay = densityRay * atmosphere.rayleighScattering;
 	s.absorptionOzo = densityOzo * atmosphere.absorptionExtinction;
 	s.extinction = s.extinctionMie + s.scatteringRay + s.absorptionOzo;
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	s.scatteringMie = densityMie * atmosphere.mieScattering;
 	s.scattering = s.scatteringMie + s.scatteringRay;
-	s.albedo = s.scattering / max(0.001f, s.extinction);
 	#endif
 	return s;
 }
 
 float3 getMultipleScattering(sampler2D multiScatLUT, 
-	AtmosphereParams atmosphere, float3 worldPos, float viewZenithCosAngle)
+	AtmosphereParams atmosphere, float pHeight, float viewZenithCosAngle)
 {
-	float2 texCoords = clamp(float2(viewZenithCosAngle * 0.5f + 0.5f, (length(worldPos) - 
+	float2 texCoords = clamp(float2(viewZenithCosAngle * 0.5f + 0.5f, (pHeight - 
 		atmosphere.bottomRadius) / (atmosphere.topRadius - atmosphere.bottomRadius)), 0.0f, 1.0f);
 	texCoords = (texCoords + 0.5f / MULTI_SCAT_LUT_LENGTH) * 
 		(MULTI_SCAT_LUT_LENGTH / (MULTI_SCAT_LUT_LENGTH + 1.0f));
@@ -169,20 +163,20 @@ float2 transmittanceRmuToUV(AtmosphereParams atmosphere, float r, float mu)
 
 	// Distance to the top atmosphere boundary for the ray (r, mu), and its minimum
 	// and maximum values over all mu - obtained for (r, 1) and (r, muHorizon).
-	float discriminant = r * r * (mu * mu - 1.0) + atmosphere.topRadius * atmosphere.topRadius;
-	float d = max(0.0, (-r * mu + sqrt(discriminant)));
+	float discriminant = r * r * (mu * mu - 1.0f) + atmosphere.topRadius * atmosphere.topRadius;
+	float d = max(0.0f, (-r * mu + sqrt(discriminant)));
 	float dMin = atmosphere.topRadius - r; float dMax = rHor + h;
-	float2 muR = float2((d - dMin) / (dMax - dMin), rHor / h);
-
-	const float2 transmittanceLutSize = float2(TRANSMITTANCE_LUT_WIDTH, TRANSMITTANCE_LUT_HEIGHT);
-	return 0.5f / transmittanceLutSize + muR * (1.0f - 1.0f / transmittanceLutSize);
+	return float2((d - dMin) / (dMax - dMin), rHor / h);
 }
 
 //**********************************************************************************************************************
 ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, float3 worldDir, float3 sunDir, 
 	const AtmosphereParams atmosphere, float sampleCountInit, float depthBufferValue, float tMaxMax
-	#ifndef USE_OPTICAL_DEPTH_ONLY
-	, sampler2D transLUT, sampler2D multiScatLUT
+	#ifdef USE_TRANSMITTANCE_LUT
+	, sampler2D transLUT
+	#endif
+	#ifdef USE_MULTI_SCATTERING_LUT
+	, sampler2D multiScatLUT
 	#endif
 	)
 {
@@ -220,106 +214,97 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 	*/
 	tMax = min(tMax, tMaxMax);
 
-	float sampleCount = sampleCountInit; float sampleCountFloor = sampleCountInit; float tMaxFloor = tMax;
+	float sampleCount = sampleCountInit; float invSampleCount = 1.0f / sampleCountInit;
+	float sampleCountFloor = sampleCountInit; float tMaxFloor = tMax;
 	#ifdef USE_SCAT_VAR_SAMPLE_COUNT
 		sampleCount = mix(RAY_MARCH_SPP_MIN, RAY_MARCH_SPP_MAX, clamp(tMax * 0.01f, 0.0f, 1.0f));
 		sampleCountFloor = floor(sampleCount);
 		// Rescale tMax to map to the last entire step segment.
-		tMaxFloor = tMax * sampleCountFloor / sampleCount;	
+		tMaxFloor = tMax * sampleCountFloor * invSampleCount;	
 	#endif
+	sampleCountFloor = 1.0f / sampleCountFloor;
 
-	const float sampleSegmentT = 0.3f; float deltaT = tMax / sampleCount;
+	const float sampleSegmentT = 0.3f; float deltaT = tMax * invSampleCount;
 	float3 opticalDepth = float3(0.0f); float t = 0.0f; 
 
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	const float uniformPhase = 1.0f / (4.0f * M_PI);
 	float3 wi = sunDir; float3 wo = worldDir; float cosTheta = dot(wi, wo);
 	// Negate cosTheta because due to WorldDir being a "in" direction.
 	float miePhaseValue = miePhase(atmosphere.miePhaseG, -cosTheta);	
 	float rayleighPhaseValue = rayleighPhase(cosTheta);
-	const float3 globalL = 1.0f; // Light illuminance.
-	float3 l = 0.0f; float3 throughput = 1.0f;
+	const float3 globalL = float3(1.0f); // Light illuminance.
+	float3 l = float3(0.0f); float3 throughput = float3(1.0f);
 	#endif
 
-	for (float s = 0.0f; s < sampleCount; s += 1.0f)
+	for (float i = 0.0f; i < sampleCount; i += 1.0f)
 	{
 		#ifdef USE_SCAT_VAR_SAMPLE_COUNT
 			// More expensive but artefact free.
-			float t0 = s / sampleCountFloor;
-			float t1 = (s + 1.0f) / sampleCountFloor;
-			// Non linear distribution of sample within the range.
-			t0 = t0 * t0; t1 = t1 * t1;
-			// Make t0 and t1 world space distances.
-			t0 = tMaxFloor * t0;
+			float t0 = i * sampleCountFloor; float t1 = (i + 1.0f) * sampleCountFloor;
+			t0 = t0 * t0; t1 = t1 * t1; // Non linear distribution of sample within the range.
+			t0 = tMaxFloor * t0; // Make t0 and t1 world space distances.
 
 			if (t1 > 1.0f) t1 = tMax;
 			else t1 = tMaxFloor * t1;
 			t = t0 + (t1 - t0) * sampleSegmentT;
 			deltaT = t1 - t0;
 		#else
-			// Exact difference, important for accuracy of multiple scattering
-			float newT = tMax * (s + sampleSegmentT) / sampleCount;
+			// Exact difference, important for accuracy of multiple scattering.
+			float newT = tMax * (i + sampleSegmentT) * invSampleCount;
 			deltaT = newT - t; t = newT;
 		#endif
 
 		float3 p = worldPos + t * worldDir;
 		float pHeight = length(p); float3 upVector = p / pHeight;
+		float sunZenithCosAngle = dot(sunDir, upVector);
 		MediumSampleRGB medium = sampleMediumRGB(atmosphere, pHeight);
 		float3 sampleOpticalDepth = medium.extinction * deltaT;
 		float3 sampleTransmittance = exp(-sampleOpticalDepth);
 		opticalDepth += sampleOpticalDepth;
 
-		#ifndef USE_OPTICAL_DEPTH_ONLY
-		float sunZenithCosAngle = dot(sunDir, upVector);
+		#ifdef USE_MULTI_SCATTERING_LUT
+		float3 multiScatLuminance = getMultipleScattering(
+			multiScatLUT, atmosphere, pHeight, sunZenithCosAngle);
+		#else
+		const float3 multiScatLuminance = float3(0.0f);
+		#endif
+
+		#ifdef USE_TRANSMITTANCE_LUT
 		float2 uv = transmittanceRmuToUV(atmosphere, pHeight, sunZenithCosAngle);
 		float3 transmittanceToSun = textureLod(transLUT, uv, 0).rgb;
 
-		#ifdef USE_MIE_RAY_PHASE
+		#ifdef USE_SCAT_MIE_RAY_PHASE
 		float3 phaseTimesScattering = medium.scatteringMie * 
 			miePhaseValue + medium.scatteringRay * rayleighPhaseValue;
 		#else
 		float3 phaseTimesScattering = medium.scattering * uniformPhase;
 		#endif
 
-		float tPlanet = raySphereIntersectNearest(p, sunDir, planetPos + 
+		float tPlanet = intersectSphere(p, sunDir, planetPos + 
 			PLANET_RADIUS_OFFSET * upVector, atmosphere.bottomRadius);
 		float planetShadow = tPlanet >= 0.0f ? 0.0f : 1.0f;
 
-		#ifdef USE_MULTI_SCATTERING
-		float3 multiScatteredLuminance = getMultipleScattering(multiScatLUT, atmosphere, p, sunZenithCosAngle);
-		#else
-		const float3 multiScatteredLuminance = float3(0.0f);
-		#endif
-
-		#if USE_SCAT_SHADOW_MAP
-		// First evaluate opaque shadow
+		#if USE_ATMOSPHERE_SHADOWS
 		float shadow = getShadow(atmosphere, p);
 		#else
 		const float shadow = 1.0f;
 		#endif
 
 		float3 s = globalL * (planetShadow * shadow * transmittanceToSun * 
-			phaseTimesScattering + multiScatteredLuminance * medium.scattering);
+			phaseTimesScattering + multiScatLuminance * medium.scattering);
+		// 1 is the integration of luminance over the 4pi of a sphere, with isotropic phase function of 1 / (4 * PI).
+		result.multiScatAs1 += throughput * medium.scattering * deltaT;
 
-		// When using the power serie to accumulate all scattering order, serie r must be < 1 for a serie to converge.
-		// Under extreme coefficient, MultiScatAs1 can grow larger and thus result in broken visuals.
-		float3 msInt = (medium.scattering - medium.scattering * sampleTransmittance) / medium.extinction;
-		result.multiScatAs1 += throughput * msInt;
-
-		float3 newMS = planetShadow * transmittanceToSun * medium.scattering * uniformPhase;
-		result.newMultiScatStep0Out += throughput * (newMS - newMS * sampleTransmittance) / medium.extinction;
-
-		newMS = medium.scattering * uniformPhase * multiScatteredLuminance;
-		result.newMultiScatStep1Out += throughput * (newMS - newMS * sampleTransmittance) / medium.extinction;
-
-		float3 sInt = (s - s * sampleTransmittance) / medium.extinction; // Integrate along the current step segment.
+		// Integrate along the current step segment.
+		float3 sInt = (s - s * sampleTransmittance) / max(medium.extinction, FLOAT_EPS9); 
 		l += throughput * sInt; // Accumulate and also take into account the transmittance from previous steps.
 		throughput *= sampleTransmittance;
 		#endif
 	}
 
-	#if defined(USE_SCATTERING_GROUND) && !defined(USE_OPTICAL_DEPTH_ONLY)
-	if (tMax == tBottom && tBottom > 0.0)
+	#if defined(USE_SCATTERING_GROUND) && defined(USE_TRANSMITTANCE_LUT)
+	if (tMax == tBottom && tBottom > 0.0f)
 	{
 		// Account for bounced light off the planet
 		float3 p = worldPos + tBottom * worldDir;
@@ -328,12 +313,12 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 		float2 uv = transmittanceRmuToUV(atmosphere, pHeight, sunZenithCosAngle);
 		float3 transmittanceToSun = textureLod(transLUT, uv, 0).rgb;
 		float nol = clamp(dot(normalize(upVector), normalize(sunDir)), 0.0f, 1.0f);
-		l += globalL * transmittanceToSun * throughput * nol * atmosphere.groundAlbedo / M_PI;
+		l += globalL * transmittanceToSun * throughput * nol * atmosphere.groundAlbedo * M_1_PI;
 	}
 	#endif
 
 	result.opticalDepth = opticalDepth;
-	#ifndef USE_OPTICAL_DEPTH_ONLY
+	#ifdef USE_TRANSMITTANCE_LUT
 	result.l = l;
 	result.transmittance = throughput;
 	#endif
