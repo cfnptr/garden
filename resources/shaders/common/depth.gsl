@@ -19,13 +19,13 @@
 
 float3 calcWorldPosition(float depth, float2 texCoords, float4x4 invViewProj)
 {
-	float2 ndc = texCoords * 2.0f - 1.0f;
+	float2 ndc = fma(texCoords, float2(2.0f), float2(-1.0f));
 	float4 position = invViewProj * float4(ndc, depth, 1.0f);
 	return position.xyz / position.w;
 }
 float3 calcWorldPositionSafe(float depth, float2 texCoords, float4x4 invViewProj)
 {
-	float2 ndc = texCoords * 2.0f - 1.0f;
+	float2 ndc = fma(texCoords, float2(2.0f), float2(-1.0f));
 	float4 position = invViewProj * float4(ndc, depth, 1.0f);
 	return position.xyz / max(position.w, FLOAT_SMALL);
 }

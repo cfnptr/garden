@@ -33,6 +33,7 @@
 
 #define FLOAT_EPS3   0.001f
 #define FLOAT_EPS6   0.000001f
+#define FLOAT_EPS9   0.000000001f
 #define FLOAT_SMALL  (1.0f / 16777216.0f)
 #define FLOAT32_MAX  3.402823466e+38f
 #define FLOAT32_MIN  1.175494351e-38f
@@ -60,8 +61,7 @@
 #define UINT64_MIN 0ull
 
 //**********************************************************************************************************************
-// C++ atan2 implementation.
-float atan2(float y, float x)
+float atan2(float y, float x) // C++ atan2 implementation.
 {
 	return abs(x) > abs(y) ? atan(y, x) : M_PI_2 - atan(x, y);
 }
@@ -105,5 +105,14 @@ int32 getHighest(float3 value)
 float distanceSq(float2 a, float2 b) { a -= b; return dot(a, a); }
 float distanceSq(float3 a, float3 b) { a -= b; return dot(a, a); }
 float distanceSq(float4 a, float4 b) { a -= b; return dot(a, a); }
+
+//**********************************************************************************************************************
+float acosFast4(float angle) // 0.00007 radians precision
+{
+	float x1 = abs(angle); float x2 = x1 * x1; float x3 = x2 * x1;
+	float r = fma(x1, -0.2121144f, 1.5707288f); r = fma(x2, 0.0742610f, r);
+	r = fma(x3, -0.0187293f, r); r = sqrt(1.0f - x1) * r;
+	return angle < 0.0f ? M_PI - r : r;
+}
 
 #endif // MATH_GSL

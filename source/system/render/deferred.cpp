@@ -698,7 +698,7 @@ void DeferredRenderSystem::render()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_CPU_ZONE_SCOPED("Copy LDR to UI");
+		SET_GPU_DEBUG_LABEL("Copy LDR to UI", Color::transparent);
 
 		auto _uiBuffer = getUiBuffer();
 		if (_uiBuffer == gBuffers[0])

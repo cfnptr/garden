@@ -680,12 +680,14 @@ void PbrLightingSystem::preHdrRender()
 
 		if (hasAnyShadow)
 		{
+			SET_GPU_DEBUG_LABEL("Shadows Blur", Color::transparent);
 			GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[0], 
 				shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
 			hasAnyShadow = false;
 		}
 		else
 		{
+			SET_GPU_DEBUG_LABEL("Shadows Clear", Color::transparent);
 			auto imageView = graphicsSystem->get(shadowBuffer);
 			imageView->clear(float4::one);
 		}
@@ -706,12 +708,14 @@ void PbrLightingSystem::preHdrRender()
 
 		if (hasAnyAO)
 		{
+			SET_GPU_DEBUG_LABEL("AO Blur", Color::transparent);
 			GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
 				aoFramebuffers[1], blurSharpness, aoBlurPipeline, aoBlurDS);
 			hasAnyAO = false;
 		}
 		else
 		{
+			SET_GPU_DEBUG_LABEL("AO Clear", Color::transparent);
 			auto imageView = graphicsSystem->get(aoBuffer);
 			imageView->clear(float4::one);
 			imageView = graphicsSystem->get(aoBlurBuffer);

@@ -160,29 +160,34 @@ void AutoExposureSystem::render()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_GPU_DEBUG_LABEL("Automatic Exposure", Color::transparent);
-		auto histogramView = graphicsSystem->get(histogramBuffer);
-		histogramView->fill(0);
 
-		HistogramPC histogramPC;
-		histogramPC.minLogLum = minLogLum;
-		histogramPC.invLogLumRange = 1.0f / logLumRange;
+		{
+			auto histogramView = graphicsSystem->get(histogramBuffer);
+			HistogramPC pc;
+			pc.minLogLum = minLogLum;
+			pc.invLogLumRange = 1.0f / logLumRange;
 
-		histogramPipelineView->bind();
-		histogramPipelineView->bindDescriptorSet(histogramDS);
-		histogramPipelineView->pushConstants(&histogramPC);
-		histogramPipelineView->dispatch(framebufferSize);
+			SET_GPU_DEBUG_LABEL("Histogram", Color::transparent);
+			histogramView->fill(0);
+			histogramPipelineView->bind();
+			histogramPipelineView->bindDescriptorSet(histogramDS);
+			histogramPipelineView->pushConstants(&pc);
+			histogramPipelineView->dispatch(framebufferSize);
+		}
+		{
+			AveragePC pc;
+			pc.minLogLum = minLogLum;
+			pc.logLumRange = logLumRange;
+			pc.pixelCount = (float)framebufferSize.x * framebufferSize.y;
+			pc.darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
+			pc.brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
 
-		AveragePC averagePC;
-		averagePC.minLogLum = minLogLum;
-		averagePC.logLumRange = logLumRange;
-		averagePC.pixelCount = (float)framebufferSize.x * framebufferSize.y;
-		averagePC.darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
-		averagePC.brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
-
-		averagePipelineView->bind();
-		averagePipelineView->bindDescriptorSet(averageDS);
-		averagePipelineView->pushConstants(&averagePC);
-		averagePipelineView->dispatch(1);
+			SET_GPU_DEBUG_LABEL("Average", Color::transparent);
+			averagePipelineView->bind();
+			averagePipelineView->bindDescriptorSet(averageDS);
+			averagePipelineView->pushConstants(&pc);
+			averagePipelineView->dispatch(1);
+		}
 	}
 	graphicsSystem->stopRecording();
 }

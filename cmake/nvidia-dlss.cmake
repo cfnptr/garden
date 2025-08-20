@@ -31,10 +31,10 @@ if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "
 		set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/libnvsdk_ngx.a)
 	elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		set(GARDEN_NVIDIA_DLSS_DIR ${nvidia-dlss_SOURCE_DIR}/lib/Windows_x86_64)
-		if(CMAKE_BUILD_TYPE STREQUAL "Release")
-			set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/khr/x64/nvsdk_ngx_khr_s.lib)
-		else()
+		if(NVIDIA_DLSS_BUILD_TYPE STREQUAL "Debug")
 			set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/khr/x64/nvsdk_ngx_khr_s_dbg.lib)
+		else()
+			set(GARDEN_NVIDIA_DLSS_SDK_LIB ${GARDEN_NVIDIA_DLSS_DIR}/khr/x64/nvsdk_ngx_khr_s.lib)
 		endif()
 		# TODO: use non khr path for DirectX, if support will be needed.
 	else()
