@@ -47,13 +47,21 @@ class GraphicsSystem;
 #define SET_RESOURCE_DEBUG_NAME(resource, name) (void)0
 #endif
 
+/**
+ * @brief Graphics rendering quality levels.
+ */
+enum class GraphicsQuality : uint8
+{
+	PotatoPC, Low, Medium, High, Ultra, Count
+};
+
 /***********************************************************************************************************************
  * @brief Contains information about swapchain changes.
  */
 struct SwapchainChanges final
 {
 	bool framebufferSize = false; /**< Is framebuffer size has been changed. */
-	bool imageCount = false;     /**< Is swapchain image count been changed. */
+	bool imageCount = false;      /**< Is swapchain image count been changed. */
 	bool vsyncState = false;      /**< Is V-Sync state has been changed. */
 };
 
@@ -66,7 +74,7 @@ struct SwapchainChanges final
  * shader pipelines (programs). It also responsible for recording a set of rendering, computation and 
  * transfer commands in command buffers before submitting them to the GPU for execution.
  * 
- * Registers events: Render, Present, SwapchainRecreate.
+ * Registers events: Render, Present, SwapchainRecreate, QualityChange.
  */
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
@@ -89,6 +97,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	bool outOfDateSwapchain = false;
 	bool wasTeleported = false;
 	SwapchainChanges swapchainChanges;
+	GraphicsQuality lastQuality = GraphicsQuality::High;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	ID<GraphicsPipeline> linePipeline;
@@ -129,7 +138,8 @@ public:
 	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
 	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
 	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */
-	bool useJittering = false;        /**< Use sub pixel jittering. (Temporal anti alisaing) */
+	bool useJittering = false;        /**< Use sub pixel jittering. (Temporal anti aliasing) */
+	GraphicsQuality quality = GraphicsQuality::High;
 
 	/*******************************************************************************************************************
 	 * @brief Returns true if scene was drastically changed.

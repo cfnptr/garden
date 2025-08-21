@@ -77,6 +77,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	manager->registerEventAfter("Render", "Update");
 	manager->registerEventAfter("Present", "Render");
 	manager->registerEvent("SwapchainRecreate");
+	manager->registerEvent("QualityChange");
 
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", GraphicsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
@@ -431,6 +432,12 @@ void GraphicsSystem::update()
 			currentCommonConstants, jitterOffsets, frameIndex, useJittering);
 		auto cameraBuffer = graphicsAPI->bufferPool.get(commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
 		cameraBuffer->writeData(&currentCommonConstants);
+	}
+
+	if (lastQuality != quality)
+	{
+		Manager::Instance::get()->runEvent("QualityChange");
+		lastQuality = quality;
 	}
 }
 
@@ -945,7 +952,6 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	// TODO: we can use attachments with different sizes, but should we?
 
 	#if GARDEN_DEBUG
-	uint32 validColorAttachCount = 0;
 	for	(uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 	{
 		auto colorAttachment = colorAttachments[i];
@@ -960,9 +966,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 			to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
 			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
-		validColorAttachCount++;
 	}
-	GARDEN_ASSERT((!colorAttachments.empty() && validColorAttachCount > 0) || colorAttachments.empty());
+	GARDEN_ASSERT((!colorAttachments.empty()) || colorAttachments.empty());
 
 	if (depthStencilAttachment.imageView)
 	{
