@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Procedural atmosphere multiple scattering.
+// Physically based atmosphere multiple scattering.
 // Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
 #define USE_SCATTERING_GROUND
 #define USE_TRANSMITTANCE_LUT
+
+// A minimum set of step is required for accuracy unfortunately.
+#define SAMPLE_COUNT 20
 
 #include "atmosphere/common.gsl"
 
@@ -60,7 +63,6 @@ AtmosphereParams getAtmosphereParams()
 	params.mieExtinction = pc.mieExtinction;
 	params.mieDensityExpScale = pc.mieDensityExpScale;
 	params.absorptionExtinction = pc.absorptionExtinction;
-	params.miePhaseG = pc.miePhaseG;
 	params.absDensity0LayerWidth = pc.absDensity0LayerWidth;
 	params.absDensity0ConstantTerm = pc.absDensity0ConstantTerm;
 	params.absDensity0LinearTerm = pc.absDensity0LinearTerm;
@@ -69,6 +71,7 @@ AtmosphereParams getAtmosphereParams()
 	params.bottomRadius = pc.bottomRadius;
 	params.topRadius = pc.topRadius;
 	params.mieScattering = pc.mieScattering;
+	params.miePhaseG = pc.miePhaseG;
 	params.groundAlbedo = pc.groundAlbedo;
 	return params;
 }
@@ -76,11 +79,11 @@ AtmosphereParams getAtmosphereParams()
 //**********************************************************************************************************************
 void main()
 {
+	AtmosphereParams atmosphere = getAtmosphereParams();
 	float2 texCoords = (float2(gl.globalInvocationID.xy) + 0.5f) * (1.0f / MULTI_SCAT_LUT_LENGTH);
 	texCoords = (texCoords - 0.5f / MULTI_SCAT_LUT_LENGTH) * (MULTI_SCAT_LUT_LENGTH / (MULTI_SCAT_LUT_LENGTH - 1.0f));
 
-	AtmosphereParams atmosphere = getAtmosphereParams();
-	float cosSunZenithAngle = texCoords.x * 2.0f - 1.0f;
+	float cosSunZenithAngle = fma(texCoords.x, 2.0f, -1.0f);
 	float3 sunDir = float3(0.0f, sqrt(clamp(1.0f - cosSunZenithAngle * 
 		cosSunZenithAngle, 0.0f, 1.0f)), cosSunZenithAngle);
 	// We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
@@ -98,11 +101,8 @@ void main()
 	float2 sinThetaPhi = sin(thetaPhi); float2 cosThetaPhi = cos(thetaPhi);
 	float3 worldDir = float3(cosThetaPhi.x * sinThetaPhi.y, sinThetaPhi.x * sinThetaPhi.y, cosThetaPhi.y);
 
-	const float sampleCountIni = 20.0f; // A minimum set of step is required for accuracy unfortunately.
-	const float depthBufferValue = -1.0f;
-	const float tMaxMax = 9000000.0f;
-	ScatteringResult result = integrateScatteredLuminance(texCoords, worldPos, worldDir, 
-		sunDir, atmosphere, sampleCountIni, depthBufferValue, tMaxMax, transLUT);
+	ScatteringResult result = integrateScatteredLuminance(texCoords, worldPos, 
+		worldDir, sunDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX, transLUT);
 
 	const float sphereSolidAngle = 4.0f * M_PI;
 	multiScatAs1Shared[gl.localInvocationID.z] = result.multiScatAs1 * 
@@ -154,8 +154,17 @@ void main()
 		float3 multiScatAs1 = multiScatAs1Shared[0] * isotropicPhase;
 		float3 inScatteredLuminance	= lShared[0] * isotropicPhase;
 
-		// MultiScatAs1 represents the amount of luminance scattered as if the 
-		// integral of scattered luminance over the sphere would be 1.
+		// multiScatAs1 represents the amount of luminance scattered as if 
+		// the integral of scattered luminance over the sphere would be 1.
+		//
+		//  - 1st order of scattering: one can ray-march a straight path 
+		//    as usual over the sphere. That is inScatteredLuminance.
+		//  - 2nd order of scattering: the in-scattered luminance is inScatteredLuminance at each of samples 
+		//    of fist order integration. Assuming a uniform phase function that is represented by multiScatAs1,
+		//  - 3nd order of scattering: the in-scattered luminance is 
+		//    (inScatteredLuminance * multiScatAs1 * multiScatAs1)
+		//  - etc.
+
 		float3 multiScatAs1SQR = multiScatAs1 * multiScatAs1;
 		float3 l = inScatteredLuminance * (1.0f + multiScatAs1 + multiScatAs1SQR + 
 			multiScatAs1 * multiScatAs1SQR + multiScatAs1SQR * multiScatAs1SQR);

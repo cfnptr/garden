@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Procedural atmosphere transmittance look up table.
+// Physically based atmosphere transmittance look up table.
 // Based on this: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
 #include "atmosphere/common.gsl"
-
-// #define RAY_MARCH_SPP_MIN 4 // TODO: move where needed
-// #define RAY_MARCH_SPP_MAX 14
 
 pipelineState
 {
@@ -35,9 +32,8 @@ uniform pushConstants
 	float3 mieExtinction;
 	float mieDensityExpScale;
 	float3 absorptionExtinction;
-	float miePhaseG;
-	float3 sunDir;
 	float absDensity0LayerWidth;
+	float3 sunDir;
 	float absDensity0ConstantTerm;
 	float absDensity0LinearTerm;
 	float absDensity1ConstantTerm;
@@ -54,7 +50,6 @@ AtmosphereParams getAtmosphereParams()
 	params.mieExtinction = pc.mieExtinction;
 	params.mieDensityExpScale = pc.mieDensityExpScale;
 	params.absorptionExtinction = pc.absorptionExtinction;
-	params.miePhaseG = pc.miePhaseG;
 	params.absDensity0LayerWidth = pc.absDensity0LayerWidth;
 	params.absDensity0ConstantTerm = pc.absDensity0ConstantTerm;
 	params.absDensity0LinearTerm = pc.absDensity0LinearTerm;
@@ -75,7 +70,7 @@ void uvToTransmittanceRMU(float2 uv, out float r, out float mu)
 
 	// Distance to the top atmosphere boundary for the ray (r, mu), and its minimum and maximum values 
 	// over all mu - obtained for (r, 1) and (r, muHorizon) - from which we can recover mu:
-	float dMin = pc.topRadius - r; float dMax = rHor + h; float d = dMin + uv.x * (dMax - dMin);
+	float dMin = pc.topRadius - r; float dMax = rHor + h; float d = fma(uv.x, dMax - dMin, dMin);
 	mu = clamp(d == 0.0f ? 1.0f : (h * h - rHor * rHor - d * d) / (2.0f * r * d), -1.0f, 1.0f);
 }
 
@@ -88,11 +83,8 @@ void main()
 	float3 worldDir = float3(0.0f, viewZenithCosAngle, sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle));
 
 	const float sampleCountIni = 40.0f; // Can go a low as 10 sample but energy lost starts to be visible.
-	const float depthBufferValue = -1.0;
-	const float tMaxMax = 9000000.0f;
 	AtmosphereParams atmosphere = getAtmosphereParams();
-
-	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords, worldPos, worldDir, 
-		pc.sunDir, atmosphere, sampleCountIni, depthBufferValue, tMaxMax).opticalDepth);
+	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords, worldPos, 
+		worldDir, pc.sunDir, atmosphere, sampleCountIni, DEFAULT_T_MAX_MAX).opticalDepth);
 	fb.trans = float4(transmittance, 1.0f);
 }
