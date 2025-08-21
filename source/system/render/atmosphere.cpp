@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/atmosphere.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/resource.hpp"
 
 using namespace garden;
@@ -33,6 +34,14 @@ static ID<Image> createMultiScatLUT()
 	SET_RESOURCE_DEBUG_NAME(multiScatLUT, "image.atmosphere.multiScatLUT");
 	return multiScatLUT;
 }
+static ID<Image> createCameraVolume()
+{
+	auto cameraVolume = GraphicsSystem::Instance::get()->createImage(Image::Format::SfloatR16G16B16A16,
+		Image::Usage::Sampled | Image::Usage::Storage, { { nullptr } },
+		uint3(AtmosphereRenderSystem::cameraVolumeLength), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(cameraVolume, "image.atmosphere.cameraVolume");
+	return cameraVolume;
+}
 static ID<Image> createSkyViewLUT()
 {
 	auto size = uint2(192, 108); // TODO: framebufferSize / 10.
@@ -43,7 +52,7 @@ static ID<Image> createSkyViewLUT()
 }
 
 //**********************************************************************************************************************
-static ID<Framebuffer> createScatterFramebuffer(ID<Image> lut, const char* debugName)
+static ID<Framebuffer> createScatLutFramebuffer(ID<Image> lut, const char* debugName)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto lutView = graphicsSystem->get(lut);
@@ -55,25 +64,51 @@ static ID<Framebuffer> createScatterFramebuffer(ID<Image> lut, const char* debug
 	return framebuffer;
 }
 
+static void createSkyboxFramebuffers(ID<Framebuffer>* framebuffers)
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	for (uint8 i = 0; i < 6; i++)
+	{
+		vector<Framebuffer::OutputAttachment> colorAttachments =
+		{ Framebuffer::OutputAttachment({}, {false, false, true}) };
+		auto framebuffer = graphicsSystem->createFramebuffer(uint2(16), std::move(colorAttachments));
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere.skybox" + to_string(i));
+		framebuffers[i] = framebuffer;
+	}
+}
+static void destroySkyboxFramebuffers(ID<Framebuffer>* framebuffers)
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	for (uint8 i = 0; i < 6; i++)
+		graphicsSystem->destroy(framebuffers[i]);
+}
+
+//**********************************************************************************************************************
 static ID<GraphicsPipeline> createTransLutPipeline(ID<Framebuffer> transLutFramebuffer)
 {
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"atmosphere/transmittance", transLutFramebuffer, options);
 }
-static ID<ComputePipeline> createMultiScatPipeline()
+static ID<ComputePipeline> createMultiScatLutPipeline()
 {
 	ResourceSystem::ComputeOptions options;
 	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/multi-scattering", options);
 }
-static ID<GraphicsPipeline> createSkyViewPipeline(ID<Framebuffer> skyViewFramebuffer)
+static ID<ComputePipeline> createCameraVolumePipeline()
+{
+	ResourceSystem::ComputeOptions options;
+	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/camera-volume", options);
+}
+static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewFramebuffer)
 {
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"atmosphere/sky-view", skyViewFramebuffer, options);
 }
 
-static DescriptorSet::Uniforms getScatterUniforms(ID<Image> transLUT, ID<Image> multiScatLUT)
+//**********************************************************************************************************************
+static DescriptorSet::Uniforms getScatLutUniforms(ID<Image> transLUT, ID<Image> multiScatLUT)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
@@ -83,6 +118,24 @@ static DescriptorSet::Uniforms getScatterUniforms(ID<Image> transLUT, ID<Image> 
 	{
 		{ "transLUT", DescriptorSet::Uniform(transLutView) },
 		{ "multiScatLUT", DescriptorSet::Uniform(multiScatLutView) }
+	};
+	return uniforms;
+}
+static DescriptorSet::Uniforms getCameraVolumeUniforms(
+	ID<Image> transLUT, ID<Image> multiScatLUT, ID<Image> cameraVolume)
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
+	auto multiScatLutView = graphicsSystem->get(multiScatLUT)->getDefaultView();
+	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
+	auto inFlightCount = graphicsSystem->getInFlightCount();
+
+	DescriptorSet::Uniforms uniforms =
+	{
+		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
+		{ "multiScatLUT", DescriptorSet::Uniform(multiScatLutView, 1, inFlightCount) },
+		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
+		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
 	};
 	return uniforms;
 }
@@ -106,35 +159,34 @@ AtmosphereRenderSystem::~AtmosphereRenderSystem()
 
 void AtmosphereRenderSystem::init()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Render", AtmosphereRenderSystem::render);
-
-	auto earthAirMolarMass = calcEarthAirMolarMass();
-	auto molecularDensity = calcMolecularDensity(earthAirDensity, earthAirMolarMass);
-	auto test = calcRayleighScattering(earthAirIOR, molecularDensity) * 1e6f;
-	test += test; // TODO: remove
+	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", AtmosphereRenderSystem::preDeferredRender);
 }
 void AtmosphereRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(skyViewDS);
-		graphicsSystem->destroy(multiScatDS);
-		graphicsSystem->destroy(skyViewPipeline);
-		graphicsSystem->destroy(multiScatPipeline);
+		graphicsSystem->destroy(skyViewLutDS);
+		graphicsSystem->destroy(cameraVolumeDS);
+		graphicsSystem->destroy(multiScatLutDS);
+		graphicsSystem->destroy(skyViewLutPipeline);
+		graphicsSystem->destroy(cameraVolumePipeline);
+		graphicsSystem->destroy(multiScatLutPipeline);
 		graphicsSystem->destroy(transLutPipeline);
-		graphicsSystem->destroy(skyViewFramebuffer);
+		destroySkyboxFramebuffers(skyboxFramebuffers);
+		graphicsSystem->destroy(skyViewLutFramebuffer);
 		graphicsSystem->destroy(transLutFramebuffer);
 		graphicsSystem->destroy(skyViewLUT);
+		graphicsSystem->destroy(cameraVolume);
 		graphicsSystem->destroy(multiScatLUT);
 		graphicsSystem->destroy(transLUT);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", AtmosphereRenderSystem::render);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", AtmosphereRenderSystem::preDeferredRender);
 	}
 }
 
 //**********************************************************************************************************************
-void AtmosphereRenderSystem::render()
+void AtmosphereRenderSystem::preDeferredRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->canRender())
@@ -146,41 +198,67 @@ void AtmosphereRenderSystem::render()
 			transLUT = createTransLUT();
 		if (!multiScatLUT)
 			multiScatLUT = createMultiScatLUT();
+		if (!cameraVolume)
+			cameraVolume = createCameraVolume();
 		if (!skyViewLUT)
 			skyViewLUT = createSkyViewLUT();
 		if (!transLutFramebuffer)
-			transLutFramebuffer = createScatterFramebuffer(transLUT, "transLUT");
-		if (!skyViewFramebuffer)
-			skyViewFramebuffer = createScatterFramebuffer(skyViewLUT, "skyViewLUT");
+			transLutFramebuffer = createScatLutFramebuffer(transLUT, "transLUT");
+		if (!skyViewLutFramebuffer)
+			skyViewLutFramebuffer = createScatLutFramebuffer(skyViewLUT, "skyViewLUT");
+		if (!skyboxFramebuffers[0])
+			createSkyboxFramebuffers(skyboxFramebuffers);
 		if (!transLutPipeline)
 			transLutPipeline = createTransLutPipeline(transLutFramebuffer);
-		if (!multiScatPipeline)
-			multiScatPipeline = createMultiScatPipeline();
-		if (!skyViewPipeline)
-			skyViewPipeline = createSkyViewPipeline(skyViewFramebuffer);
+		if (!multiScatLutPipeline)
+			multiScatLutPipeline = createMultiScatLutPipeline();
+		if (!cameraVolumePipeline)
+			cameraVolumePipeline = createCameraVolumePipeline();
+		if (!skyViewLutPipeline)
+			skyViewLutPipeline = createSkyViewLutPipeline(skyViewLutFramebuffer);
 		isInitialized = true;
 	}
 
 	auto transLutPipelineView = graphicsSystem->get(transLutPipeline);
-	auto multiScatPipelineView = graphicsSystem->get(multiScatPipeline);
-	auto skyViewPipelineView = graphicsSystem->get(skyViewPipeline);
-	if (!transLutPipelineView->isReady() || !multiScatPipelineView->isReady() || !skyViewPipelineView->isReady())
-		return;
+	auto multiScatLutPipelineView = graphicsSystem->get(multiScatLutPipeline);
+	auto cameraVolumePipelineView = graphicsSystem->get(cameraVolumePipeline);
+	auto skyViewLutPipelineView = graphicsSystem->get(skyViewLutPipeline);
 
-	if (!multiScatDS)
+	if (!transLutPipelineView->isReady() || !multiScatLutPipelineView->isReady() ||
+		!cameraVolumePipelineView->isReady() || !skyViewLutPipelineView->isReady())
 	{
-		auto uniforms = getScatterUniforms(transLUT, multiScatLUT);
-		multiScatDS = graphicsSystem->createDescriptorSet(multiScatPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(multiScatDS, "descriptorSet.atmosphere.multiScatLUT");
+		return;
 	}
-	if (!skyViewDS)
+
+	if (!multiScatLutDS)
 	{
-		auto uniforms = getScatterUniforms(transLUT, multiScatLUT);
-		skyViewDS = graphicsSystem->createDescriptorSet(skyViewPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(skyViewDS, "descriptorSet.atmosphere.skyViewLUT");
+		auto uniforms = getScatLutUniforms(transLUT, multiScatLUT);
+		multiScatLutDS = graphicsSystem->createDescriptorSet(multiScatLutPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(multiScatLutDS, "descriptorSet.atmosphere.multiScatLUT");
+	}
+	if (!cameraVolumeDS)
+	{
+		auto uniforms = getCameraVolumeUniforms(transLUT, multiScatLUT, cameraVolume);
+		cameraVolumeDS = graphicsSystem->createDescriptorSet(cameraVolumePipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(cameraVolumeDS, "descriptorSet.atmosphere.cameraVolume");
+	}
+	if (!skyViewLutDS)
+	{
+		auto uniforms = getScatLutUniforms(transLUT, multiScatLUT);
+		skyViewLutDS = graphicsSystem->createDescriptorSet(skyViewLutPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(skyViewLutDS, "descriptorSet.atmosphere.skyViewLUT");
 	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
+	auto cameraPos = (float3)fma(cc.cameraPos, f32x4(0.001f), f32x4(0.0f, groundRadius, 0.0f));
+	auto topRadius = groundRadius + atmosphereHeight;
+	auto sunDir = (float3)-cc.lightDir;
+	auto rayDensityExpScale = -1.0f / rayleightScaleHeight;
+	auto mieExtinction = mieScattering + mieAbsorption;
+	auto mieDensityExpScale = -1.0f / mieScaleHeight;
+	auto absDensity0ConstantTerm = ozoneLayerTip - ozoneLayerWidth * ozoneLayerSlope;
+	auto absDensity1ConstantTerm = ozoneLayerTip - ozoneLayerWidth * -ozoneLayerSlope;
+
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	BEGIN_GPU_DEBUG_LABEL("Atmosphere", Color::transparent);
 	graphicsSystem->stopRecording();
@@ -188,29 +266,20 @@ void AtmosphereRenderSystem::render()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		auto framebufferView = graphicsSystem->get(transLutFramebuffer);
-		TransmittancePC pc; // TODO: get from system vars.
-		pc.rayleighScattering = float3(0.0058, 0.01356, 0.0331);
-		pc.rayDensityExpScale = -0.125f;
-		pc.mieExtinction = float3(0.00443999982f);
-		pc.mieDensityExpScale = -0.833333313f;
-		pc.absorptionExtinction = float3(0.000650000002f, 0.00188100000f, 8.49999997e-05f);
-		pc.miePhaseG = 0.8f;
-		pc.sunDir = float3(0.0f, 0.434965521, 0.900447130);
-		pc.absDensity0LayerWidth = 25.0f;
-		pc.absDensity0ConstantTerm = -0.666666687f;
-		pc.absDensity0LinearTerm = 0.0666666701f;
-		pc.absDensity1ConstantTerm = 2.66666675f;
-		pc.absDensity1LinearTerm = -0.0666666701f;
-		pc.bottomRadius = 6360.0f;
-		pc.topRadius = 6460.0f;
-
-		//Parameters.RayleighDensityExpScale = rayleigh_density[1].w;
-		//Parameters.MieDensityExpScale = mie_density[1].w;
-		//Parameters.AbsorptionDensity0LayerWidth = absorption_density[0].x;
-		//Parameters.AbsorptionDensity0ConstantTerm = absorption_density[1].x;
-		//Parameters.AbsorptionDensity0LinearTerm = absorption_density[0].w;
-		//Parameters.AbsorptionDensity1ConstantTerm = absorption_density[2].y;
-		//Parameters.AbsorptionDensity1LinearTerm = absorption_density[2].x;
+		TransmittancePC pc;
+		pc.rayleighScattering = rayleighScattering;
+		pc.rayDensityExpScale = rayDensityExpScale;
+		pc.mieExtinction = mieExtinction;
+		pc.mieDensityExpScale = mieDensityExpScale;
+		pc.absorptionExtinction = ozoneAbsorption;
+		pc.absDensity0LayerWidth = ozoneLayerWidth;
+		pc.sunDir = sunDir;
+		pc.absDensity0ConstantTerm = absDensity0ConstantTerm;
+		pc.absDensity0LinearTerm = ozoneLayerSlope;
+		pc.absDensity1ConstantTerm = absDensity1ConstantTerm;
+		pc.absDensity1LinearTerm = -ozoneLayerSlope;
+		pc.bottomRadius = groundRadius;
+		pc.topRadius = topRadius;
 
 		SET_GPU_DEBUG_LABEL("Trans LUT", Color::transparent);
 		framebufferView->beginRenderPass(float4::zero);
@@ -222,63 +291,122 @@ void AtmosphereRenderSystem::render()
 	}
 	{
 		MultiScatPC pc;
-		pc.rayleighScattering = float3(0.0058f, 0.01356f, 0.0331f);
-		pc.rayDensityExpScale = -0.125f;
-		pc.mieExtinction = float3(0.00443999982f);
-		pc.mieDensityExpScale = -0.833333313f;
-		pc.absorptionExtinction = float3(0.000650000002f, 0.00188100000f, 8.49999997e-05f);
-		pc.miePhaseG = 0.8f;
-		pc.mieScattering = float3(0.004f, 0.004f, 0.004f);
-		pc.absDensity0LayerWidth = 25.0f;
-		pc.groundAlbedo = float3(0.0f);
-		pc.absDensity0ConstantTerm = -0.666666687f;
-		pc.absDensity0LinearTerm = 0.0666666701f;
-		pc.absDensity1ConstantTerm = 2.66666675f;
-		pc.absDensity1LinearTerm = -0.0666666701f;
-		pc.bottomRadius = 6360.0f;
-		pc.topRadius = 6460.0f;
-		pc.multiScatFactor = 1.0f;
+		pc.rayleighScattering = rayleighScattering;
+		pc.rayDensityExpScale = rayDensityExpScale;
+		pc.mieExtinction = mieExtinction;
+		pc.mieDensityExpScale = mieDensityExpScale;
+		pc.absorptionExtinction = ozoneAbsorption;
+		pc.miePhaseG = miePhaseG;
+		pc.mieScattering = mieScattering;
+		pc.absDensity0LayerWidth = ozoneLayerWidth;
+		pc.groundAlbedo = groundAlbedo;
+		pc.absDensity0ConstantTerm = absDensity0ConstantTerm;
+		pc.absDensity0LinearTerm = ozoneLayerSlope;
+		pc.absDensity1ConstantTerm = absDensity1ConstantTerm;
+		pc.absDensity1LinearTerm = -ozoneLayerSlope;
+		pc.bottomRadius = groundRadius;
+		pc.topRadius = topRadius;
+		pc.multiScatFactor = multiScatFactor;
 
 		SET_GPU_DEBUG_LABEL("Multi Scat LUT", Color::transparent);
-		multiScatPipelineView->bind();
-		multiScatPipelineView->bindDescriptorSet(multiScatDS);
-		multiScatPipelineView->pushConstants(&pc);
-		multiScatPipelineView->dispatch(uint2(multiScatLutLength), false);
+		multiScatLutPipelineView->bind();
+		multiScatLutPipelineView->bindDescriptorSet(multiScatLutDS);
+		multiScatLutPipelineView->pushConstants(&pc);
+		multiScatLutPipelineView->dispatch(uint2(multiScatLutLength), false);
 	}
 	{
-		auto framebufferView = graphicsSystem->get(skyViewFramebuffer);
+		auto inFlightIndex = graphicsSystem->getInFlightIndex();
+		CameraVolumePC pc;
+		pc.rayleighScattering = rayleighScattering;
+		pc.rayDensityExpScale = rayDensityExpScale;
+		pc.mieExtinction = mieExtinction;
+		pc.mieDensityExpScale = mieDensityExpScale;
+		pc.absorptionExtinction = ozoneAbsorption;
+		pc.miePhaseG = miePhaseG;
+		pc.mieScattering = mieScattering;
+		pc.absDensity0LayerWidth = ozoneLayerWidth;
+		pc.sunDir = sunDir;
+		pc.absDensity0ConstantTerm = absDensity0ConstantTerm;
+		pc.cameraPos = cameraPos;
+		pc.absDensity0LinearTerm = ozoneLayerSlope;
+		pc.absDensity1ConstantTerm = absDensity1ConstantTerm;
+		pc.absDensity1LinearTerm = -ozoneLayerSlope;
+		pc.bottomRadius = groundRadius;
+		pc.topRadius = topRadius;
+
+		SET_GPU_DEBUG_LABEL("Camera Volume", Color::transparent);
+		cameraVolumePipelineView->bind();
+		cameraVolumePipelineView->bindDescriptorSet(cameraVolumeDS, inFlightIndex);
+		cameraVolumePipelineView->pushConstants(&pc);
+		cameraVolumePipelineView->dispatch(uint3(cameraVolumeLength));
+	}
+	{
+		auto framebufferView = graphicsSystem->get(skyViewLutFramebuffer);
 		SkyViewPC pc;
-		pc.rayleighScattering = float3(0.0058f, 0.01356f, 0.0331f);
-		pc.rayDensityExpScale = -0.125f;
-		pc.mieExtinction = float3(0.00443999982f);
-		pc.mieDensityExpScale = -0.833333313f;
-		pc.absorptionExtinction = float3(0.000650000002f, 0.00188100000f, 8.49999997e-05f);
-		pc.miePhaseG = 0.8f;
-		pc.mieScattering = float3(0.004f, 0.004f, 0.004f);
-		pc.absDensity0LayerWidth = 25.0f;
-		pc.groundAlbedo = float3(0.0f);
-		pc.absDensity0ConstantTerm = -0.666666687f;
-		pc.sunDir = float3(0.0f, 0.434965521f, 0.900447130f);
-		pc.absDensity0LinearTerm = 0.0666666701f;
-		pc.cameraPos = (float3)(cc.cameraPos + f32x4(0.0f, 6360.0f, 0.0f));
-		//pc.skyViewLutSize = framebufferView->getSize();
-		pc.absDensity1ConstantTerm = 2.66666675f;
-		pc.absDensity1LinearTerm = -0.0666666701f;
-		pc.bottomRadius = 6360.0f;
-		pc.topRadius = 6460.0f;
+		pc.rayleighScattering = rayleighScattering;
+		pc.rayDensityExpScale = rayDensityExpScale;
+		pc.mieExtinction = mieExtinction;
+		pc.mieDensityExpScale = mieDensityExpScale;
+		pc.absorptionExtinction = ozoneAbsorption;
+		pc.miePhaseG = miePhaseG;
+		pc.mieScattering = mieScattering;
+		pc.absDensity0LayerWidth = ozoneLayerWidth;
+		pc.sunDir = sunDir;
+		pc.absDensity0ConstantTerm = absDensity0ConstantTerm;
+		pc.cameraPos = cameraPos;
+		pc.absDensity0LinearTerm = ozoneLayerSlope;
+		pc.skyViewLutSize = framebufferView->getSize();
+		pc.absDensity1ConstantTerm = absDensity1ConstantTerm;
+		pc.absDensity1LinearTerm = -ozoneLayerSlope;
+		pc.bottomRadius = groundRadius;
+		pc.topRadius = topRadius;
 
 		SET_GPU_DEBUG_LABEL("Sky View LUT", Color::transparent);
 		framebufferView->beginRenderPass(float4::zero);
-		skyViewPipelineView->bind();
-		skyViewPipelineView->setViewportScissor();
-		skyViewPipelineView->bindDescriptorSet(skyViewDS);
-		skyViewPipelineView->pushConstants(&pc);
-		skyViewPipelineView->drawFullscreen();
+		skyViewLutPipelineView->bind();
+		skyViewLutPipelineView->setViewportScissor();
+		skyViewLutPipelineView->bindDescriptorSet(skyViewLutDS);
+		skyViewLutPipelineView->pushConstants(&pc);
+		skyViewLutPipelineView->drawFullscreen();
 		framebufferView->endRenderPass();
 	}
 	graphicsSystem->stopRecording();
 
+	auto pbrLightingView = PbrLightingSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	if (pbrLightingView)
+	{
+		if (pbrLightingView->cubemap)
+		{
+			// TODO:
+		}
+	}
+
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	END_GPU_DEBUG_LABEL();
 	graphicsSystem->stopRecording();
+}
+
+ID<Image> AtmosphereRenderSystem::getTransLUT()
+{
+	if (!transLUT)
+		transLUT = createTransLUT();
+	return transLUT;
+}
+ID<Image> AtmosphereRenderSystem::getMultiScatLUT()
+{
+	if (!multiScatLUT)
+		multiScatLUT = createMultiScatLUT();
+	return multiScatLUT;
+}
+ID<Image> AtmosphereRenderSystem::getCameraVolume()
+{
+	if (!cameraVolume)
+		cameraVolume = createCameraVolume();
+	return cameraVolume;
+}
+ID<Image> AtmosphereRenderSystem::getSkyViewLUT()
+{
+	if (!skyViewLUT)
+		skyViewLUT = createSkyViewLUT();
+	return skyViewLUT;
 }
