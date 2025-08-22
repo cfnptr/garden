@@ -141,17 +141,18 @@ private:
 	void init();	
 	void deinit();
 	void preDeferredRender();
+	void depthHdrRender();
 
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true;
-	float3 rayleighScattering = float3(0.005802f, 0.013558f, 0.033100f);
+	float4 rayleighScattering = float4(0.005802f, 0.013558f, 0.033100f, 1.0f);
 	float rayleightScaleHeight = 8.0f; /**< (km) */
-	float3 mieScattering = float3(0.003996f);
+	float4 mieScattering = float4(float3(0.003996f), 1.0f);
+	float4 mieAbsorption = float4(float3(0.000444f), 1.0f);
 	float mieScaleHeight = 1.2f; /**< (km) */
-	float3 mieAbsorption = float3(0.000444f);
 	float miePhaseG = 0.8f;
-	float3 ozoneAbsorption = float3(0.000650f, 0.001881f, 0.000085f);
+	float4 ozoneAbsorption = float4(0.000650f, 0.001881f, 0.000085f, 1.0f);
 	float ozoneLayerWidth = 25.0f; /**< (km) */
 	float ozoneLayerSlope = 1.0f / 15.0f;
 	float ozoneLayerTip = 1.0f;

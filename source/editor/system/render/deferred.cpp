@@ -273,8 +273,7 @@ void DeferredRenderEditorSystem::ldrRender()
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(bufferPipeline);
-
-	if (!pipelineView->isReady() || !graphicsSystem->camera)
+	if (!pipelineView->isReady())
 		return;
 
 	const auto& cc = graphicsSystem->getCommonConstants();

@@ -108,8 +108,7 @@ void InfiniteGridEditorSystem::deinit()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::preRender()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->camera)
+	if (!isEnabled)
 		return;
 
 	if (!pipeline)
@@ -145,6 +144,7 @@ void InfiniteGridEditorSystem::preRender()
 		}
 	}
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -163,7 +163,7 @@ void InfiniteGridEditorSystem::render()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
-	
+
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;

@@ -14,6 +14,8 @@
 
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
 
 // TODO: Add stencil support like in the deferred system.
@@ -166,12 +168,15 @@ void ForwardRenderSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Forward Render");
 
-	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	
+	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	if (!cameraView || !transformView || !transformView->isActive())
+		return;
+
 	#if GARDEN_DEBUG
 	if (DeferredRenderSystem::Instance::tryGet())
 	{
@@ -180,6 +185,7 @@ void ForwardRenderSystem::render()
 	}
 	#endif
 
+	auto manager = Manager::Instance::get();
 	auto event = &manager->getEvent("PreForwardRender");
 	if (event->hasSubscribers())
 	{

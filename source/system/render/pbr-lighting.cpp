@@ -15,9 +15,7 @@
 #include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/render/gpu-process.hpp"
 #include "garden/system/render/deferred.hpp"
-#include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/camera.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
 
@@ -615,9 +613,6 @@ void PbrLightingSystem::preHdrRender()
 	SET_CPU_ZONE_SCOPED("PBR Lighting Pre HDR Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -817,9 +812,6 @@ void PbrLightingSystem::hdrRender()
 	SET_CPU_ZONE_SCOPED("PBR Lighting HDR Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	if (!isLoaded)
 	{
@@ -828,10 +820,6 @@ void PbrLightingSystem::hdrRender()
 			return;
 		isLoaded = true;
 	}
-
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
-	if (transformView && !transformView->isActive())
-		return;
 
 	auto pbrLightingView = tryGetComponent(graphicsSystem->camera);
 	if (!pbrLightingView || !pbrLightingView->cubemap || !pbrLightingView->sh || !pbrLightingView->specular)

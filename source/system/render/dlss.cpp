@@ -395,10 +395,10 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 //**********************************************************************************************************************
 void DlssRenderSystem::preLdrRender()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!parameters || !graphicsSystem->canRender() || !graphicsSystem->camera)
+	if (!parameters)
 		return;
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		BEGIN_GPU_DEBUG_LABEL("DLSS Evaluate", Color::transparent);
