@@ -324,13 +324,10 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& cc = graphicsSystem->getCommonConstants();
-	if (cc.shadowColor.getW() <= 0.0f || !graphicsSystem->camera || !graphicsSystem->directionalLight)
+	if (cc.shadowColor.getW() <= 0.0f || !graphicsSystem->directionalLight)
 		return false;
 
-	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
-	if (!cameraView)
-		return false;
-
+	auto cameraView = CameraSystem::Instance::get()->getComponent(graphicsSystem->camera);
 	auto nearPlane = cameraView->p.perspective.nearPlane;
 	if (passIndex > 0)
 		nearPlane = distance * cascadeSplits[passIndex - 1];

@@ -188,8 +188,7 @@ void AtmosphereRenderSystem::deinit()
 //**********************************************************************************************************************
 void AtmosphereRenderSystem::preDeferredRender()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender())
+	if (!isEnabled)
 		return;
 
 	if (!isInitialized)
@@ -219,6 +218,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		isInitialized = true;
 	}
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto transLutPipelineView = graphicsSystem->get(transLutPipeline);
 	auto multiScatLutPipelineView = graphicsSystem->get(multiScatLutPipeline);
 	auto cameraVolumePipelineView = graphicsSystem->get(cameraVolumePipeline);
@@ -253,9 +253,12 @@ void AtmosphereRenderSystem::preDeferredRender()
 	auto cameraPos = (float3)fma(cc.cameraPos, f32x4(0.001f), f32x4(0.0f, groundRadius, 0.0f));
 	auto topRadius = groundRadius + atmosphereHeight;
 	auto sunDir = (float3)-cc.lightDir;
+	auto rayleighScattering = (float3)this->rayleighScattering * this->rayleighScattering.w;
 	auto rayDensityExpScale = -1.0f / rayleightScaleHeight;
-	auto mieExtinction = mieScattering + mieAbsorption;
+	auto mieScattering = (float3)this->mieScattering * this->mieScattering.w;
+	auto mieExtinction = mieScattering + (float3)mieAbsorption * mieAbsorption.w;
 	auto mieDensityExpScale = -1.0f / mieScaleHeight;
+	auto absorptionExtinction = (float3)ozoneAbsorption * ozoneAbsorption.w;
 	auto absDensity0ConstantTerm = ozoneLayerTip - ozoneLayerWidth * ozoneLayerSlope;
 	auto absDensity1ConstantTerm = ozoneLayerTip - ozoneLayerWidth * -ozoneLayerSlope;
 
@@ -271,7 +274,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = ozoneAbsorption;
+		pc.absorptionExtinction = absorptionExtinction;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
 		pc.sunDir = sunDir;
 		pc.absDensity0ConstantTerm = absDensity0ConstantTerm;
@@ -295,7 +298,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = ozoneAbsorption;
+		pc.absorptionExtinction = absorptionExtinction;
 		pc.miePhaseG = miePhaseG;
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
@@ -321,7 +324,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = ozoneAbsorption;
+		pc.absorptionExtinction = absorptionExtinction;
 		pc.miePhaseG = miePhaseG;
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
@@ -347,7 +350,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = ozoneAbsorption;
+		pc.absorptionExtinction = absorptionExtinction;
 		pc.miePhaseG = miePhaseG;
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
@@ -384,6 +387,16 @@ void AtmosphereRenderSystem::preDeferredRender()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	END_GPU_DEBUG_LABEL();
 	graphicsSystem->stopRecording();
+}
+
+//**********************************************************************************************************************
+void AtmosphereRenderSystem::depthHdrRender()
+{
+	if (!isEnabled)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	
 }
 
 ID<Image> AtmosphereRenderSystem::getTransLUT()

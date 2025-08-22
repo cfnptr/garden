@@ -15,6 +15,8 @@
 #include "garden/system/render/gpu-process.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
 #include "math/brdf.hpp"
 
@@ -443,11 +445,14 @@ void DeferredRenderSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Deferred Render");
 
-	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
-		return;
-	
-	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
+		return;
+
+	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	if (!cameraView || !transformView || !transformView->isActive())
+		return;
 
 	if (graphicsSystem->useUpscaling)
 	{
@@ -476,6 +481,7 @@ void DeferredRenderSystem::render()
 	}
 	#endif
 
+	auto manager = Manager::Instance::get();
 	auto event = &manager->getEvent("PreDeferredRender");
 	if (event->hasSubscribers())
 	{

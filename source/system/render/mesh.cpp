@@ -787,14 +787,10 @@ void MeshRenderSystem::preForwardRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre Forward Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
 	prepareSystems();
 	renderShadows();
 
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	prepareMeshes(cc.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 
@@ -802,11 +798,7 @@ void MeshRenderSystem::forwardRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Forward Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
 	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
 
@@ -824,109 +816,87 @@ void MeshRenderSystem::preDeferredRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre Deferred Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
 	prepareSystems();
 	renderShadows();
 
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	prepareMeshes(cc.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 void MeshRenderSystem::deferredRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Deferred Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
 }
 void MeshRenderSystem::depthHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Depth HDR Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!graphicsSystem->camera)
-		return;
-
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
 }
 void MeshRenderSystem::preRefractedRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre Refracted Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!hasAnyRefr || !graphicsSystem->camera)
+	if (!hasAnyRefr)
 		return;
-
 	DeferredRenderSystem::Instance::get()->markAnyRefraction();
 }
 void MeshRenderSystem::refractedRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Refracted Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (isOpaqueOnly || !graphicsSystem->camera)
+	if (isOpaqueOnly)
 		return;
 
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Refracted, -1);
 }
 void MeshRenderSystem::translucentRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Translucent Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (isOpaqueOnly || !graphicsSystem->camera)
+	if (isOpaqueOnly)
 		return;
 
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderSorted(cc.viewProj, -1);
 }
 void MeshRenderSystem::preTransDepthRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre Translucent Depth Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!hasAnyTransDepth || !graphicsSystem->camera)
+	if (!hasAnyTransDepth)
 		return;
-
 	DeferredRenderSystem::Instance::get()->markAnyTransDepth();
 }
 void MeshRenderSystem::transDepthRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Translucent Depth Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (isOpaqueOnly || !graphicsSystem->camera)
+	if (isOpaqueOnly)
 		return;
 
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::TransDepth, -1);
 }
 void MeshRenderSystem::preOitRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre OIT Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!hasAnyOIT || !graphicsSystem->camera)
+	if (!hasAnyOIT)
 		return;
-
 	DeferredRenderSystem::Instance::get()->markAnyOIT();
 }
 void MeshRenderSystem::oitRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh OIT Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (isOpaqueOnly || !graphicsSystem->camera)
+	if (isOpaqueOnly)
 		return;
 
-	const auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::OIT, -1);
 }
