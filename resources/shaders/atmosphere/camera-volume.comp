@@ -19,6 +19,9 @@
 #define USE_MULTI_SCATTERING_LUT
 #define USE_SCAT_MIE_RAY_PHASE
 
+spec const float SLICE_COUNT = 8.0f;
+spec const float KM_PER_SLICE = 12.0f;
+
 #include "common/depth.gsl"
 #include "common/constants.gsl"
 #include "atmosphere/common.gsl"
@@ -81,13 +84,7 @@ AtmosphereParams getAtmosphereParams()
 	return params;
 }
 
-#define AERIAL_PERSP_SLICE_COUNT 32.0f // TODO: spec const
-#define AERIAL_PERSP_KM_PER_SLICE 4.0f
-
-float aerialPerspSliceToDepth(float slice)
-{
-	return slice * AERIAL_PERSP_KM_PER_SLICE;
-}
+float aerialPerspSliceToDepth(float slice) { return slice * KM_PER_SLICE; }
 
 //**********************************************************************************************************************
 void main()
@@ -95,8 +92,8 @@ void main()
 	AtmosphereParams atmosphere = getAtmosphereParams();
 	float2 texCoords = (float2(gl.globalInvocationID.xy) + 0.5f) * (1.0f / CAMERA_VOLUME_LENGTH);
 	float3 worldDir = calcViewDirection(0.5f, texCoords, cc.invViewProj);
-	float slice = (float(gl.globalInvocationID.z) + 0.5f) * (1.0f / AERIAL_PERSP_SLICE_COUNT);
-	slice *= slice; slice *= AERIAL_PERSP_SLICE_COUNT;
+	float slice = (float(gl.globalInvocationID.z) + 0.5f) * (1.0f / SLICE_COUNT);
+	slice = slice * slice * SLICE_COUNT;
 
 	// Compute position from froxel information.
 	float tMaxMax = aerialPerspSliceToDepth(slice);

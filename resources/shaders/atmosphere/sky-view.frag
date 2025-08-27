@@ -20,9 +20,9 @@
 #define USE_SCAT_VAR_SAMPLE_COUNT
 #define USE_SCAT_MIE_RAY_PHASE
 
-#define RAY_MARCH_SPP_MIN 4 // TODO: use spec const?
-#define RAY_MARCH_SPP_MAX 14
-#define RAY_MARCH_SPP_MUL 0.01f // TODO: (1.0f / 150.0f)
+spec const float RAY_MARCH_SPP_MIN = 4.0f;
+spec const float RAY_MARCH_SPP_MAX = 32.0f;
+spec const float RAY_MARCH_SPP_DIST = 150.0f;
 
 #include "common/depth.gsl"
 #include "common/constants.gsl"
@@ -87,12 +87,12 @@ AtmosphereParams getAtmosphereParams()
 }
 
 //**********************************************************************************************************************
-void uvToSkyView(AtmosphereParams atmosphere, float viewHeight, 
+void uvToSkyView(float bottomRadius, float viewHeight, 
 	float2 uv, out float viewZenithCosAngle, out float lightViewCosAngle)
 {
 	// Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage visible).
 	uv = (uv - 0.5f / pc.skyViewLutSize) * (pc.skyViewLutSize / (pc.skyViewLutSize - 1.0f));
-	float vHorizon = sqrt(viewHeight * viewHeight - atmosphere.bottomRadius * atmosphere.bottomRadius);
+	float vHorizon = sqrt(viewHeight * viewHeight - bottomRadius * bottomRadius);
 	float beta = acosFast4(vHorizon / viewHeight); float zenithHorizonAngle = M_PI - beta;
 
 	if (uv.y < 0.5f)
@@ -113,7 +113,7 @@ void main()
 {
 	AtmosphereParams atmosphere = getAtmosphereParams();
 	float viewHeight = length(pc.cameraPos); float viewZenithCosAngle; float lightViewCosAngle;
-	uvToSkyView(atmosphere, viewHeight, fs.texCoords, viewZenithCosAngle, lightViewCosAngle);
+	uvToSkyView(atmosphere.bottomRadius, viewHeight, fs.texCoords, viewZenithCosAngle, lightViewCosAngle);
 
 	float3 upVector = pc.cameraPos / viewHeight; float sunZenithCosAngle = dot(upVector, pc.sunDir);
 	float3 sunDir = normalize(float3(sqrt(1.0f - sunZenithCosAngle * sunZenithCosAngle), sunZenithCosAngle, 0.0f));
@@ -127,8 +127,7 @@ void main()
 		return; // Ray is not intersecting the atmosphere.
 	}
 
-	const float sampleCountIni = 30.0f;
 	ScatteringResult result = integrateScatteredLuminance(fs.texCoords, worldPos, worldDir, 
-		sunDir, atmosphere, sampleCountIni, DEFAULT_T_MAX_MAX, transLUT, multiScatLUT);
+		sunDir, atmosphere, 0.0f, DEFAULT_T_MAX_MAX, transLUT, multiScatLUT);
 	fb.color = float4(result.l, 1.0f);
 }

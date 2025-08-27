@@ -18,14 +18,7 @@
 #define ATMOSPHERE_GSL
 
 #include "common/math.gsl"
-
-#define TRANSMITTANCE_LUT_WIDTH 256
-#define TRANSMITTANCE_LUT_HEIGHT 64
-#define MULTI_SCAT_LUT_LENGTH 32
-#define CAMERA_VOLUME_LENGTH 32
-
-#define DEFAULT_T_MAX_MAX 9000000.0f
-#define PLANET_RADIUS_OFFSET 0.01f
+#include "atmosphere/constants.h"
 
 //**********************************************************************************************************************
 struct AtmosphereParams
@@ -112,7 +105,7 @@ bool moveToTopAtmosphere(inout float3 worldPos, float3 worldDir, float atmospher
 	{
 		float tTop = intersectSphere(worldPos, worldDir, float3(0.0f), atmosphereTopRadius);
 		if (tTop < 0.0f)
-			return false; // Ray is not intersecting the atmosphere
+			return false; // Ray is not intersecting the atmosphere.
 
 		float3 upVector = worldPos / viewHeight;
 		float3 upOffset = upVector * -PLANET_RADIUS_OFFSET;
@@ -154,29 +147,37 @@ MediumSampleRGB sampleMediumRGB(AtmosphereParams atmosphere, float pHeight)
 	return s;
 }
 
-float3 getMultipleScattering(sampler2D multiScatLUT, 
-	AtmosphereParams atmosphere, float pHeight, float viewZenithCosAngle)
+float3 getMultipleScattering(sampler2D multiScatLUT, float bottomRadius, 
+	float topRadius, float pHeight, float viewZenithCosAngle)
 {
-	float2 texCoords = clamp(float2(fma(viewZenithCosAngle, 0.5f, 0.5f), (pHeight - 
-		atmosphere.bottomRadius) / (atmosphere.topRadius - atmosphere.bottomRadius)), 0.0f, 1.0f);
+	float2 texCoords = clamp(float2(fma(viewZenithCosAngle, 0.5f, 0.5f), 
+		(pHeight - bottomRadius) / (topRadius - bottomRadius)), 0.0f, 1.0f);
 	texCoords = (texCoords + 0.5f / MULTI_SCAT_LUT_LENGTH) * 
 		(MULTI_SCAT_LUT_LENGTH / (MULTI_SCAT_LUT_LENGTH + 1.0f));
 	return textureLod(multiScatLUT, texCoords, 0).rgb;
 }
 
-float2 transmittanceRmuToUV(AtmosphereParams atmosphere, float r, float mu)
+float2 transmittanceRmuToUV(float bottomRadius, float topRadius, float r, float mu)
 {
 	// Distance to top atmosphere boundary for a horizontal ray at ground level.
-	float h = sqrt(max(0.0f, atmosphere.topRadius * atmosphere.topRadius -
-		atmosphere.bottomRadius * atmosphere.bottomRadius));
-	float rHor = sqrt(max(0.0f, r * r - atmosphere.bottomRadius * atmosphere.bottomRadius)); // Distance to the horizon.
+	float h = sqrt(max(0.0f, topRadius * topRadius - bottomRadius * bottomRadius));
+	float rHor = sqrt(max(0.0f, r * r - bottomRadius * bottomRadius)); // Distance to the horizon.
 
 	// Distance to the top atmosphere boundary for the ray (r, mu), and its minimum
 	// and maximum values over all mu - obtained for (r, 1) and (r, muHorizon).
-	float discriminant = fma(atmosphere.topRadius, atmosphere.topRadius, r * r * fma(mu, mu, -1.0f));
+	float discriminant = fma(topRadius, topRadius, r * r * fma(mu, mu, -1.0f));
 	float d = max(0.0f, fma(-r, mu, sqrt(discriminant)));
-	float dMin = atmosphere.topRadius - r; float dMax = rHor + h;
+	float dMin = topRadius - r; float dMax = rHor + h;
 	return float2((d - dMin) / (dMax - dMin), rHor / h);
+}
+float3 getTransmittance(sampler2D transLUT, float3 worldPos, float3 worldDir, float bottomRadius, float topRadius)
+{
+	if (intersectSphere(worldPos, worldDir, float3(0.0f), bottomRadius) >= 0.0f)
+		return float3(0.0f);
+	float viewHeight = length(worldPos); float3 upVector = worldPos / viewHeight;
+	float viewZenithCosAngle = dot(worldDir, upVector);
+	float2 uv = transmittanceRmuToUV(bottomRadius, topRadius, viewHeight, viewZenithCosAngle);
+	return textureLod(transLUT, uv, 0.0f).rgb;
 }
 
 //**********************************************************************************************************************
@@ -210,16 +211,16 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 	}
 	tMax = min(tMax, tMaxMax);
 
-	float sampleCount = sampleCountInit; 
 	#ifdef USE_SCAT_VAR_SAMPLE_COUNT
-		sampleCount = mix(RAY_MARCH_SPP_MIN, RAY_MARCH_SPP_MAX, 
-			clamp(tMax * RAY_MARCH_SPP_MUL, 0.0f, 1.0f));
-		float sampleCountFloor = floor(sampleCount);
-		// Rescale tMax to map to the last entire step segment.
-		float invSampleCount = 1.0f / sampleCount;
-		float tMaxFloor = tMax * sampleCountFloor * invSampleCount;
-		sampleCountFloor = 1.0f / sampleCountFloor;
+	float sampleCount = mix(RAY_MARCH_SPP_MIN, RAY_MARCH_SPP_MAX, 
+		clamp(tMax * (1.0f / RAY_MARCH_SPP_DIST), 0.0f, 1.0f));
+	float sampleCountFloor = floor(sampleCount);
+	// Rescale tMax to map to the last entire step segment.
+	float invSampleCount = 1.0f / sampleCount;
+	float tMaxFloor = tMax * sampleCountFloor * invSampleCount;
+	sampleCountFloor = 1.0f / sampleCountFloor;
 	#else
+	float sampleCount = sampleCountInit; 
 	float invSampleCount = 1.0f / sampleCount;
 	#endif
 
@@ -263,14 +264,15 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 		opticalDepth += sampleOpticalDepth;
 
 		#ifdef USE_MULTI_SCATTERING_LUT
-		float3 multiScatLuminance = getMultipleScattering(
-			multiScatLUT, atmosphere, pHeight, sunZenithCosAngle);
+		float3 multiScatLuminance = getMultipleScattering(multiScatLUT, 
+			atmosphere.bottomRadius, atmosphere.topRadius, pHeight, sunZenithCosAngle);
 		#else
 		const float3 multiScatLuminance = float3(0.0f);
 		#endif
 
 		#ifdef USE_TRANSMITTANCE_LUT
-		float2 uv = transmittanceRmuToUV(atmosphere, pHeight, sunZenithCosAngle);
+		float2 uv = transmittanceRmuToUV(atmosphere.bottomRadius, 
+			atmosphere.topRadius, pHeight, sunZenithCosAngle);
 		float3 transmittanceToSun = textureLod(transLUT, uv, 0).rgb;
 
 		#ifdef USE_SCAT_MIE_RAY_PHASE
@@ -309,7 +311,8 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 		float3 p = fma(float3(tBottom), worldDir, worldPos);
 		float pHeight = length(p); float3 upVector = p / pHeight;
 		float sunZenithCosAngle = dot(sunDir, upVector);
-		float2 uv = transmittanceRmuToUV(atmosphere, pHeight, sunZenithCosAngle);
+		float2 uv = transmittanceRmuToUV(atmosphere.bottomRadius, 
+			atmosphere.topRadius, pHeight, sunZenithCosAngle);
 		float3 transmittanceToSun = textureLod(transLUT, uv, 0).rgb;
 		float nol = clamp(dot(normalize(upVector), normalize(sunDir)), 0.0f, 1.0f);
 		l += globalL * transmittanceToSun * throughput * nol * atmosphere.groundAlbedo * M_1_PI;

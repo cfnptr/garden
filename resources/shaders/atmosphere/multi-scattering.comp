@@ -19,7 +19,7 @@
 #define USE_TRANSMITTANCE_LUT
 
 // A minimum set of step is required for accuracy unfortunately.
-#define SAMPLE_COUNT 20
+spec const float SAMPLE_COUNT = 15.0f;
 
 #include "atmosphere/common.gsl"
 
