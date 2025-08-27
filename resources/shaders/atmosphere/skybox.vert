@@ -12,33 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/depth.gsl"
+#include "common/fullscreen.gsl"
 
-pipelineState
-{
-	faceCulling = off;
-	blending0 = on;
-}
-
-in noperspective float2 fs.texCoords;
-out float4 fb.color;
-
-uniform sampler2D depthBuffer;
-
-uniform pushConstants
-{
-	float3 farPlanes;
-} pc;
+out noperspective float2 fs.texCoords;
 
 void main()
 {
-	float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
-	if (IS_DEPTH_GREATER(depth, pc.farPlanes.x))
-		fb.color = float4(0.0f, 0.8f, 0.0f, 0.5f);
-	else if (IS_DEPTH_GREATER(depth, pc.farPlanes.y))
-		fb.color = float4(0.8f, 0.8f, 0.0f, 0.5f);
-	else if (IS_DEPTH_GREATER(depth, pc.farPlanes.z))
-		fb.color = float4(0.8f, 0.0f, 0.0f, 0.5f);
-	else
-		fb.color = float4(0.8f, 0.0f, 0.8f, 0.5f);
+	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
 }

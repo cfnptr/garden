@@ -26,6 +26,16 @@ namespace garden
 class PbrLightingSystem;
 
 /**
+ * @brief PBR lighting cubemap rendering modes.
+ */
+enum class PbrCubemapMode
+{
+	Static,  /**< Cubemap is loaded once and reused for rendering. (Skybox) */
+	Dynamic, /**< Cubemap is rendered and updated at runtime. (Atmosphere) */
+	Count    /**< PBR lighting cubemap rendering mode count. */
+};
+
+/**
  * @brief PBR lighting rendering data container. (Physically Based Rendering)
  */
 struct PbrLightingComponent final : public Component
@@ -35,13 +45,18 @@ struct PbrLightingComponent final : public Component
 	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
 private:
-	bool dataReady = false;
+	PbrCubemapMode mode = PbrCubemapMode::Static;
 	friend class PbrLightingSystem;
 public:
 	/**
-	 * @brief Are PBR lighting data transfered and ready.
+	 * @brief Returns PBR lighting cubemap rendering mode.
 	 */
-	bool isReady() const noexcept { return dataReady; }
+	PbrCubemapMode getCubemapMode() const noexcept { return mode; }
+	/**
+	 * @brief Sets PBR lighting cubemap rendering mode.
+	 * @param mode target PBR cubemap mode
+	 */
+	void setCubemapMode(PbrCubemapMode mode);
 };
 
 /**
@@ -52,10 +67,11 @@ public:
  * based on physical principles, taking into account material properties such as roughness, metallicity, albedo 
  * color, as well as the characteristics of light sources.
  * 
- * Registers events: PreShadowRender, ShadowRender, PostShadowRender ShadowRecreate, 
- * 	                 PreAoRender, AoRender, PostAoRender, AoRecreate, 
- *                   PreReflRender, ReflRender, PostReflRender, ReflRecreate,
- *                   PreGiRender, GiRender, PostGiRender, GiRecreate.
+ * Registers events:
+ *   PreShadowRender, ShadowRender, PostShadowRender ShadowRecreate, 
+ * 	 PreAoRender, AoRender, PostAoRender, AoRecreate, 
+ *   PreReflRender, ReflRender, PostReflRender, ReflRecreate,
+ *   PreGiRender, GiRender, PostGiRender, GiRecreate.
  */
 class PbrLightingSystem final : public ComponentSystem<
 	PbrLightingComponent, false>, public Singleton<PbrLightingSystem>
@@ -121,11 +137,12 @@ private:
 	ID<DescriptorSet> shadowBlurDS = {};
 	ID<DescriptorSet> aoBlurDS = {};
 	Options options = {};
+	GraphicsQuality quality = GraphicsQuality::High;
 	bool hasAnyShadow = false;
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
 	bool hasAnyGI = false;
-	bool isLoaded = false;
+	uint16 _alignment = 0;
 
 	/**
 	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
@@ -144,6 +161,7 @@ private:
 	void preHdrRender();
 	void hdrRender();
 	void gBufferRecreate();
+	void qualityChange();
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
@@ -164,6 +182,16 @@ public:
 	 * @param options target PBR lighting system options
 	 */
 	void setOptions(Options options);
+
+	/**
+	 * @brief Returns PBR lighting rendering graphics quality.
+	 */
+	GraphicsQuality getQuality() const noexcept { return quality; }
+	/**
+	 * @brief Sets PBR lighting rendering graphics quality.
+	 * @param quality target graphics quality level
+	 */
+	void setQuality(GraphicsQuality quality);
 
 	/**
 	 * @brief Returns PBR lighting graphics pipeline.
@@ -216,7 +244,7 @@ public:
 	 */
 	ID<Framebuffer> getReflBaseFB() { return getReflFramebuffers()[0]; }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
 	 */
 	ID<Image> getDfgLUT();
@@ -293,6 +321,16 @@ public:
 	ID<ImageView> getReflBaseView() { return getReflImageViews()[0]; }
 
 	/*******************************************************************************************************************
+	 * @brief Calculates specular cubemap mip level count.
+	 * @param cubemapSize cubemap size along one axis in pixels
+	 */
+	static uint8 calcSpecularMipCount(uint32 cubemapSize) noexcept
+	{
+		constexpr uint8 maxMipCount = 5; // Note: Optimal value based on filament research.
+		return std::min(calcMipCount(cubemapSize), maxMipCount);
+	}
+
+	/**
 	 * @brief Loads cubemap rendering data from the resource pack.
 	 * @note Loads from the scenes directory in debug build.
 	 * 
@@ -306,7 +344,7 @@ public:
 	void loadCubemap(const fs::path& path, Ref<Image>& cubemap, Ref<Buffer>& sh, Ref<Image>& specular, 
 		Memory::Strategy strategy = Memory::Strategy::Size, vector<f32x4>* shBuffer = nullptr);
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Creates PBR lighting descriptor set.
 	 *
 	 * @param entity target PBR lighting entity

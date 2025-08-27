@@ -107,10 +107,16 @@ public:
 		float bottomRadius;
 		float topRadius;
 	};
-
-	static constexpr uint2 transLutSize = uint2(256, 64);
-	static constexpr uint32 multiScatLutLength = 32;
-	static constexpr uint32 cameraVolumeLength = 32;
+	struct SkyboxPC final
+	{
+		float4x4 invViewProj;
+		float3 cameraPos;
+		float bottomRadius;
+		float3 sunDir;
+		float topRadius;
+		float3 sunColor;
+		float sunSize;
+	};
 private:
 	ID<Image> transLUT = {};
 	ID<Image> multiScatLUT = {};
@@ -118,15 +124,21 @@ private:
 	ID<Image> skyViewLUT = {};
 	ID<Framebuffer> transLutFramebuffer = {};
 	ID<Framebuffer> skyViewLutFramebuffer = {};
-	ID<Framebuffer> skyboxFramebuffers[6] = {};
 	ID<GraphicsPipeline> transLutPipeline = {};
 	ID<ComputePipeline> multiScatLutPipeline = {};
 	ID<ComputePipeline> cameraVolumePipeline = {};
 	ID<GraphicsPipeline> skyViewLutPipeline = {};
+	ID<GraphicsPipeline> skyboxPipeline = {};
 	ID<DescriptorSet> multiScatLutDS = {};
 	ID<DescriptorSet> cameraVolumeDS = {};
 	ID<DescriptorSet> skyViewLutDS = {};
+	ID<DescriptorSet> skyboxDS = {};
+	ID<ImageView> skyboxViews[Image::cubemapSideCount] = {};
+	ID<Framebuffer> skyboxFramebuffers[Image::cubemapSideCount] = {};
+	Ref<Image> lastSkybox = {};
+	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
+	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new physically based atmosphere rendering system instance.
@@ -141,11 +153,13 @@ private:
 	void init();	
 	void deinit();
 	void preDeferredRender();
-	void depthHdrRender();
+	void hdrRender();
+	void gBufferRecreate();
+	void qualityChange();
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true;
+	bool isEnabled = true; /**< Is physically based atmosphere rendering enabled. */
 	float4 rayleighScattering = float4(0.005802f, 0.013558f, 0.033100f, 1.0f);
 	float rayleightScaleHeight = 8.0f; /**< (km) */
 	float4 mieScattering = float4(float3(0.003996f), 1.0f);
@@ -159,7 +173,19 @@ public:
 	float3 groundAlbedo = float3(0.4f);
 	float groundRadius = 6371.0f; /**< (km) */
 	float atmosphereHeight = 60.0f; /**< (km) */
+	float4 sunColor = float4(float3(1.0f), 64000.0f);
+	float sunAngularSize = 0.53f; /**< (degrees) */
 	float multiScatFactor = 1.0f;
+
+	/**
+	 * @brief Returns atmosphere rendering graphics quality.
+	 */
+	GraphicsQuality getQuality() const noexcept { return quality; }
+	/**
+	 * @brief Sets atmosphere rendering graphics quality.
+	 * @param quality target graphics quality level
+	 */
+	void setQuality(GraphicsQuality quality);
 
 	/**
 	 * @brief Returns atmosphere transmittance LUT. (Look Up Table)

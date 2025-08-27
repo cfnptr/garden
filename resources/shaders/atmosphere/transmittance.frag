@@ -17,6 +17,9 @@
 
 #include "atmosphere/common.gsl"
 
+// Can go a low as 10 samples but energy loss starts to be visible.
+spec const float SAMPLE_COUNT = 10.0f;
+
 pipelineState
 {
 	faceCulling = off;
@@ -63,7 +66,7 @@ AtmosphereParams getAtmosphereParams()
 //**********************************************************************************************************************
 void uvToTransmittanceRMU(float2 uv, out float r, out float mu)
 {
-	// Distance to top atmosphere boundary for a horizontal ray at ground level.
+	// Distance to the top atmosphere boundary for a horizontal ray at ground level.
 	float h = sqrt(pc.topRadius * pc.topRadius - pc.bottomRadius * pc.bottomRadius);
 	float rHor = h * uv.y; // Distance to the horizon, from which we can compute r.
 	r = sqrt(rHor * rHor + pc.bottomRadius * pc.bottomRadius);
@@ -76,15 +79,13 @@ void uvToTransmittanceRMU(float2 uv, out float r, out float mu)
 
 void main()
 {
-	// Compute camera position from LUT coords
-	float viewHeight; float viewZenithCosAngle;
+	float viewHeight; float viewZenithCosAngle; // Compute camera position from the LUT coords.
 	uvToTransmittanceRMU(fs.texCoords, viewHeight, viewZenithCosAngle);
 	float3 worldPos = float3(0.0f, viewHeight, 0.0f);
 	float3 worldDir = float3(0.0f, viewZenithCosAngle, sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle));
 
-	const float sampleCountIni = 40.0f; // Can go a low as 10 sample but energy lost starts to be visible.
 	AtmosphereParams atmosphere = getAtmosphereParams();
 	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords, worldPos, 
-		worldDir, pc.sunDir, atmosphere, sampleCountIni, DEFAULT_T_MAX_MAX).opticalDepth);
+		worldDir, pc.sunDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX).opticalDepth);
 	fb.trans = float4(transmittance, 1.0f);
 }

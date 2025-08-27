@@ -119,8 +119,6 @@ static void computeKi() noexcept
 #endif
 
 //**********************************************************************************************************************
-static constexpr int32 iblDfgSize = 128;
-
 static constexpr float pow5(float x) noexcept
 {
 	float x2 = x * x;
@@ -138,17 +136,16 @@ static float smithGGXCorrelated(float nov, float nol, float a) noexcept
 	auto lambdaL = nov * sqrt((nol - nol * a2) * nol + a2);
 	return 0.5f / (lambdaV + lambdaL);
 }
-static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
+static float2 dfvMultiscatter(uint32 x, uint32 y, uint32 dfgSize, uint32 sampleCount) noexcept
 {
-	constexpr auto invSampleCount = 1.0f / specularSampleCount;
-	auto nov = clamp((x + 0.5f) / iblDfgSize, 0.0f, 1.0f);
-	auto coord = clamp((iblDfgSize - y + 0.5f) / iblDfgSize, 0.0f, 1.0f);
+	auto invSampleCount = 1.0f / sampleCount;
+	auto nov = clamp((x + 0.5f) / dfgSize, 0.0f, 1.0f);
+	auto coord = clamp((dfgSize - y + 0.5f) / dfgSize, 0.0f, 1.0f);
 	auto v = f32x4(sqrt(1.0f - nov * nov), 0.0f, nov);
 	auto linearRoughness = coord * coord;
 
 	auto r = float2(0.0f);
-
-	for (uint32 i = 0; i < specularSampleCount; i++)
+	for (uint32 i = 0; i < sampleCount; i++)
 	{
 		auto u = hammersley(i, invSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
@@ -163,12 +160,10 @@ static float2 dfvMultiscatter(uint32 x, uint32 y) noexcept
 			auto visibility = smithGGXCorrelated(
 				nov, nol, linearRoughness) * nol * (voh / noh);
 			auto fc = pow5(1.0f - voh);
-			r.x += visibility * fc;
-			r.y += visibility;
+			r.x += visibility * fc; r.y += visibility;
 		}
 	}
-
-	return r * (4.0f / specularSampleCount);
+	return r * (4.0f / sampleCount);
 }
 
 static float mipToLinearRoughness(uint8 lodCount, uint8 mip) noexcept
@@ -445,27 +440,28 @@ static ID<ComputePipeline> createIblSpecularPipeline()
 }
 
 //**********************************************************************************************************************
-static ID<Image> createDfgLUT()
+static ID<Image> createDfgLUT(uint32 dfgSize)
 {
-	vector<float2> pixels(iblDfgSize * iblDfgSize);
+	auto sampleCount = (uint32)(dfgSize < 128 ? 2048 : 1024);
+	vector<float2> pixels(dfgSize * dfgSize);
 	auto pixelData = pixels.data();
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
-		threadPool.addItems([pixelData](const ThreadPool::Task& task)
+		threadPool.addItems([pixelData, dfgSize, sampleCount](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("DFG LUT Create");
 
 			auto itemCount = task.getItemCount();
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
-				auto y = i / iblDfgSize, x = i - y * iblDfgSize;
-				pixelData[i] = dfvMultiscatter(x, (iblDfgSize - 1) - y);
+				auto y = i / dfgSize, x = i - y * dfgSize;
+				pixelData[i] = dfvMultiscatter(x, (dfgSize - 1) - y, dfgSize, sampleCount);
 			}
 		},
-		iblDfgSize * iblDfgSize);
+		dfgSize * dfgSize);
 		threadPool.wait();
 	}
 	else
@@ -473,19 +469,53 @@ static ID<Image> createDfgLUT()
 		SET_CPU_ZONE_SCOPED("DFG LUT Create");
 
 		uint32 index = 0;
-		for (int32 y = iblDfgSize - 1; y >= 0; y--)
+		for (int32 y = dfgSize - 1; y >= 0; y--)
 		{
-			for (uint32 x = 0; x < iblDfgSize; x++)
-				pixelData[index++] = dfvMultiscatter(x, y);
+			for (uint32 x = 0; x < dfgSize; x++)
+				pixelData[index++] = dfvMultiscatter(x, y, dfgSize, sampleCount);
 		}
 	}
 	
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, 
 		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::ComputeQ, 
-		{ { pixelData } }, uint2(iblDfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
+		{ { pixelData } }, uint2(dfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
 	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
 	return image;
+}
+
+static uint32 getDfgLutSize(GraphicsQuality quality) noexcept
+{
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: return 64;
+		case GraphicsQuality::Ultra: return 256;
+		default: return 128;
+	}
+}
+static uint32 getCubemapSize(GraphicsQuality quality) noexcept
+{
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: return 32;
+		case GraphicsQuality::Low: return 64;
+		case GraphicsQuality::Medium: return 128;
+		case GraphicsQuality::High: return 256;
+		case GraphicsQuality::Ultra: return 512;
+		default: abort();
+	}
+}
+
+void PbrLightingComponent::setCubemapMode(PbrCubemapMode mode)
+{
+	if (this->mode == mode)
+		return;
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(descriptorSet);
+	graphicsSystem->destroy(specular);
+	graphicsSystem->destroy(cubemap);
+	descriptorSet = {}; specular = {}; cubemap = {};
+	this->mode = mode;
 }
 
 //**********************************************************************************************************************
@@ -553,9 +583,10 @@ void PbrLightingSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", PbrLightingSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", PbrLightingSystem::qualityChange);
 
 	if (!dfgLUT)
-		dfgLUT = createDfgLUT();
+		dfgLUT = createDfgLUT(getDfgLutSize(quality));
 	if (!shadowBuffer)
 		shadowBuffer = createShadowBuffers(shadowImageViews);
 	if (!shadowFramebuffers[0])
@@ -604,6 +635,7 @@ void PbrLightingSystem::deinit()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", PbrLightingSystem::hdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", PbrLightingSystem::qualityChange);
 	}
 }
 
@@ -614,7 +646,8 @@ void PbrLightingSystem::preHdrRender()
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
-	if (!pipelineView->isReady())
+	auto dfgLutView = graphicsSystem->get(dfgLUT);
+	if (!pipelineView->isReady() || !dfgLutView->isReady())
 		return;
 
 	if (!lightingDS)
@@ -676,8 +709,11 @@ void PbrLightingSystem::preHdrRender()
 		if (hasAnyShadow)
 		{
 			SET_GPU_DEBUG_LABEL("Shadows Blur", Color::transparent);
-			GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[0], 
-				shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
+			if (quality > GraphicsQuality::Low)
+			{
+				GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[0], 
+						shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
+			}
 			hasAnyShadow = false;
 		}
 		else
@@ -811,28 +847,58 @@ void PbrLightingSystem::hdrRender()
 {
 	SET_CPU_ZONE_SCOPED("PBR Lighting HDR Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pipelineView = graphicsSystem->get(lightingPipeline);
-	if (!isLoaded)
-	{
-		auto dfgLutView = graphicsSystem->get(dfgLUT);
-		if (!dfgLutView->isReady() || !lightingDS)
-			return;
-		isLoaded = true;
-	}
-
-	auto pbrLightingView = tryGetComponent(graphicsSystem->camera);
-	if (!pbrLightingView || !pbrLightingView->cubemap || !pbrLightingView->sh || !pbrLightingView->specular)
+	if (!lightingDS)
 		return;
 
-	if (!pbrLightingView->dataReady)
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pbrLightingView = tryGetComponent(graphicsSystem->camera);
+	if (!pbrLightingView)
+		return;
+
+	if (pbrLightingView->mode == PbrCubemapMode::Static)
 	{
+		if (!pbrLightingView->cubemap || !pbrLightingView->specular)
+			return;
+
 		auto cubemapView = graphicsSystem->get(pbrLightingView->cubemap);
 		auto shView = graphicsSystem->get(pbrLightingView->sh);
 		auto specularView = graphicsSystem->get(pbrLightingView->specular);
 		if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
 			return;
-		pbrLightingView->dataReady = true;
+	}
+
+	if (!pbrLightingView->cubemap)
+	{
+		auto cubemapSize = getCubemapSize(quality);
+		auto mipCount = calcMipCount(cubemapSize);
+		Image::Mips mips(mipCount);
+		for (uint8 i = 0; i < mipCount; i++)
+			mips[i] = Image::Layers(6);
+
+		pbrLightingView->cubemap = Ref<Image>(graphicsSystem->createCubemap(
+			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::Storage | 
+			Image::Usage::TransferSrc, mips, uint2(cubemapSize), Image::Strategy::Size));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->cubemap, "image.cubemap" + to_string(*pbrLightingView->cubemap));
+	}
+	if (!pbrLightingView->sh)
+	{
+		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
+			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffCount * sizeof(f32x4), 
+			Buffer::Location::PreferGPU, Buffer::Strategy::Size));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.sh" + to_string(*pbrLightingView->sh));
+	}
+	if (!pbrLightingView->specular)
+	{
+		auto cubemapSize = getCubemapSize(quality);
+		auto specularMipCount = calcSpecularMipCount(cubemapSize);
+		Image::Mips mips(specularMipCount);
+		for (uint8 i = 0; i < specularMipCount; i++)
+			mips[i] = Image::Layers(6);
+
+		pbrLightingView->specular = Ref<Image>(graphicsSystem->createCubemap(
+			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  Image::Usage::Storage | 
+			Image::Usage::TransferDst, mips, uint2(cubemapSize), Buffer::Strategy::Size));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->specular, "image.specular" + to_string(*pbrLightingView->specular));
 	}
 
 	if (!pbrLightingView->descriptorSet)
@@ -848,6 +914,7 @@ void PbrLightingSystem::hdrRender()
 	descriptorSetRange[0] = DescriptorSet::Range(lightingDS);
 	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
+	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	const auto& cc = graphicsSystem->getCommonConstants();
 
 	LightingPC pc;
@@ -985,6 +1052,11 @@ void PbrLightingSystem::gBufferRecreate()
 		Manager::Instance::get()->runEvent("GiRecreate");
 }
 
+void PbrLightingSystem::qualityChange()
+{
+	setQuality(GraphicsSystem::Instance::get()->quality);
+}
+
 //**********************************************************************************************************************
 void PbrLightingSystem::resetComponent(View<Component> component, bool full)
 {
@@ -1020,8 +1092,7 @@ void PbrLightingSystem::setOptions(Options options)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(lightingDS);
-	lightingDS = {};
+	graphicsSystem->destroy(lightingDS); lightingDS = {};
 
 	for (auto& pbrLighting : components)
 	{
@@ -1104,6 +1175,34 @@ void PbrLightingSystem::setOptions(Options options)
 	this->options = options;
 }
 
+void PbrLightingSystem::setQuality(GraphicsQuality quality)
+{
+	if (this->quality == quality)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(lightingDS); lightingDS = {};
+
+	if (dfgLUT)
+	{
+		graphicsSystem->destroy(dfgLUT);
+		dfgLUT = createDfgLUT(getDfgLutSize(quality));
+	}
+
+	for (auto& component : components)
+	{
+		if (component.getCubemapMode() != PbrCubemapMode::Dynamic)
+			continue;
+
+		graphicsSystem->destroy(component.descriptorSet);
+		graphicsSystem->destroy(component.specular);
+		graphicsSystem->destroy(component.cubemap);
+		component.descriptorSet = {}; component.specular = {}; component.cubemap = {};
+	}
+
+	this->quality = quality;
+}
+
 //**********************************************************************************************************************
 ID<GraphicsPipeline> PbrLightingSystem::getLightingPipeline()
 {
@@ -1151,7 +1250,7 @@ ID<Framebuffer> PbrLightingSystem::getGiFramebuffer()
 ID<Image> PbrLightingSystem::getDfgLUT()
 {
 	if (!dfgLUT)
-		dfgLUT = createDfgLUT();
+		dfgLUT = createDfgLUT(getDfgLutSize(quality));
 	return dfgLUT;
 }
 
@@ -1299,8 +1398,8 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem, const vector<const v
 	shaderPreprocessSH(shBufferData);
 
 	return GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Uniform | 
-		Buffer::Usage::TransferDst | Buffer::Usage::ComputeQ, Buffer::CpuAccess::None, 
-		shBufferData, shCoeffCount * sizeof(f32x4), Buffer::Location::PreferGPU, strategy);
+		Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shBufferData, 
+		shCoeffCount * sizeof(f32x4), Buffer::Location::PreferGPU, strategy);
 }
 
 //**********************************************************************************************************************
@@ -1370,10 +1469,8 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	auto cubemapMipCount = cubemapView->getMipCount();
 	auto defaultCubemapView = cubemapView->getDefaultView();
 	
-	const uint8 maxMipCount = 5; // Note: Optimal value based on filament research.
-	auto specularMipCount = std::min(calcMipCount(cubemapSize), maxMipCount);
+	auto specularMipCount = PbrLightingSystem::calcSpecularMipCount(cubemapSize);
 	Image::Mips mips(specularMipCount);
-
 	for (uint8 i = 0; i < specularMipCount; i++)
 		mips[i] = Image::Layers(6);
 
@@ -1534,19 +1631,19 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 	GARDEN_ASSERT(entity);
 
 	auto pbrLightingView = tryGetComponent(entity);
-	if (!isLoaded || !pbrLightingView || !pbrLightingView->isReady() || 
-		!pbrLightingView->sh || !pbrLightingView->specular)
-	{
+	if (!lightingDS || !pbrLightingView || !pbrLightingView->sh || !pbrLightingView->specular)
 		return {};
-	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto specularView = graphicsSystem->get(pbrLightingView->specular)->getDefaultView();
+	auto shView = graphicsSystem->get(pbrLightingView->sh);
+	auto specularView = graphicsSystem->get(pbrLightingView->specular);
+	if (!shView->isReady() || !specularView->isReady())
+		return {};
 
 	DescriptorSet::Uniforms iblUniforms =
 	{ 
 		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->sh)) },
-		{ "specular", DescriptorSet::Uniform(specularView) }
+		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 
 	ID<DescriptorSet> descriptorSet;
