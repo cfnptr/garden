@@ -246,52 +246,52 @@ static string_view toGlslString(Image::Format imageFormat)
 {
 	switch (imageFormat)
 	{
-	case Image::Format::UintR8: return "r8ui";
-	case Image::Format::UintR8G8: return "rg8ui";
-	case Image::Format::UintR8G8B8A8: return "rgba8ui";
-	case Image::Format::UintR16: return "r16ui";
-	case Image::Format::UintR16G16: return "rg16ui";
-	case Image::Format::UintR16G16B16A16: return "rgba16ui";
-	case Image::Format::UintR32: return "r32ui";
-	case Image::Format::UintR32G32: return "rg32ui";
-	case Image::Format::UintR32G32B32A32: return "rgba32ui";
-	case Image::Format::UintA2R10G10B10: return "rgb10_a2ui";
+		case Image::Format::UintR8: return "r8ui";
+		case Image::Format::UintR8G8: return "rg8ui";
+		case Image::Format::UintR8G8B8A8: return "rgba8ui";
+		case Image::Format::UintR16: return "r16ui";
+		case Image::Format::UintR16G16: return "rg16ui";
+		case Image::Format::UintR16G16B16A16: return "rgba16ui";
+		case Image::Format::UintR32: return "r32ui";
+		case Image::Format::UintR32G32: return "rg32ui";
+		case Image::Format::UintR32G32B32A32: return "rgba32ui";
+		case Image::Format::UintA2R10G10B10: return "rgb10_a2ui";
 
-	case Image::Format::SintR8: return "r8i";
-	case Image::Format::SintR8G8: return "rg8i";
-	case Image::Format::SintR8G8B8A8: return "rgba8i";
-	case Image::Format::SintR16: return "r16i";
-	case Image::Format::SintR16G16: return "rg16i";
-	case Image::Format::SintR16G16B16A16: return "rgba16i";
-	case Image::Format::SintR32: return "r32i";
-	case Image::Format::SintR32G32: return "rg32i";
-	case Image::Format::SintR32G32B32A32: return "rgba32i";
+		case Image::Format::SintR8: return "r8i";
+		case Image::Format::SintR8G8: return "rg8i";
+		case Image::Format::SintR8G8B8A8: return "rgba8i";
+		case Image::Format::SintR16: return "r16i";
+		case Image::Format::SintR16G16: return "rg16i";
+		case Image::Format::SintR16G16B16A16: return "rgba16i";
+		case Image::Format::SintR32: return "r32i";
+		case Image::Format::SintR32G32: return "rg32i";
+		case Image::Format::SintR32G32B32A32: return "rgba32i";
 
-	case Image::Format::UnormR8: return "r8";
-	case Image::Format::UnormR8G8: return "rg8";
-	case Image::Format::UnormR8G8B8A8: return "rgba8";
-	case Image::Format::UnormR16: return "r16";
-	case Image::Format::UnormR16G16: return "rg16";
-	case Image::Format::UnormR16G16B16A16: return "rgba16";
-	case Image::Format::UnormA2R10G10B10: return "rgb10_a2";
+		case Image::Format::UnormR8: return "r8";
+		case Image::Format::UnormR8G8: return "rg8";
+		case Image::Format::UnormR8G8B8A8: return "rgba8";
+		case Image::Format::UnormR16: return "r16";
+		case Image::Format::UnormR16G16: return "rg16";
+		case Image::Format::UnormR16G16B16A16: return "rgba16";
+		case Image::Format::UnormA2R10G10B10: return "rgb10_a2";
 
-	case Image::Format::SnormR8: return "r8_snorm";
-	case Image::Format::SnormR8G8: return "rg8_snorm";
-	case Image::Format::SnormR8G8B8A8: return "rgba8_snorm";
-	case Image::Format::SnormR16: return "r16_snorm";
-	case Image::Format::SnormR16G16: return "rg16_snorm";
-	case Image::Format::SnormR16G16B16A16: return "rgba16_snorm";
+		case Image::Format::SnormR8: return "r8_snorm";
+		case Image::Format::SnormR8G8: return "rg8_snorm";
+		case Image::Format::SnormR8G8B8A8: return "rgba8_snorm";
+		case Image::Format::SnormR16: return "r16_snorm";
+		case Image::Format::SnormR16G16: return "rg16_snorm";
+		case Image::Format::SnormR16G16B16A16: return "rgba16_snorm";
 
-	case Image::Format::SfloatR16: return "r16f";
-	case Image::Format::SfloatR16G16: return "rg16f";
-	case Image::Format::SfloatR16G16B16A16: return "rgba16f";
-	case Image::Format::SfloatR32: return "r32f";
-	case Image::Format::SfloatR32G32: return "rg32f";
-	case Image::Format::SfloatR32G32B32A32: return "rgba32f";
+		case Image::Format::SfloatR16: return "r16f";
+		case Image::Format::SfloatR16G16: return "rg16f";
+		case Image::Format::SfloatR16G16B16A16: return "rgba16f";
+		case Image::Format::SfloatR32: return "r32f";
+		case Image::Format::SfloatR32G32: return "rg32f";
+		case Image::Format::SfloatR32G32B32A32: return "rgba32f";
 
-	case Image::Format::UfloatB10G11R11: return "r11f_g11f_b10f"; // Yeah, it's inverted.
+		case Image::Format::UfloatB10G11R11: return "r11f_g11f_b10f"; // Yeah, it's inverted.
 
-	default: abort();
+		default: abort();
 	}
 }
 

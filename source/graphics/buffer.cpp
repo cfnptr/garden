@@ -52,32 +52,30 @@ static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::CpuAccess memoryCpu
 {
 	switch (memoryCpuAccess)
 	{
-	case Buffer::CpuAccess::None: return {};
-	case Buffer::CpuAccess::SequentialWrite:
-		return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	case Buffer::CpuAccess::RandomReadWrite:
-		return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-	default: abort();
+		case Buffer::CpuAccess::None: return {};
+		case Buffer::CpuAccess::SequentialWrite: return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		case Buffer::CpuAccess::RandomReadWrite: return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+		default: abort();
 	}
 }
 static VmaMemoryUsage toVmaMemoryUsage(Buffer::Location memoryLocation) noexcept
 {
 	switch (memoryLocation)
 	{
-	case Buffer::Location::Auto: return VMA_MEMORY_USAGE_AUTO;
-	case Buffer::Location::PreferGPU: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-	case Buffer::Location::PreferCPU: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-	default: abort();
+		case Buffer::Location::Auto: return VMA_MEMORY_USAGE_AUTO;
+		case Buffer::Location::PreferGPU: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		case Buffer::Location::PreferCPU: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+		default: abort();
 	}
 }
 static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUsage) noexcept
 {
 	switch (memoryUsage)
 	{
-	case Buffer::Strategy::Default: return {};
-	case Buffer::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-	case Buffer::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
-	default: abort();
+		case Buffer::Strategy::Default: return {};
+		case Buffer::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+		case Buffer::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
+		default: abort();
 	}
 }
 

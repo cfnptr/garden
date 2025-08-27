@@ -251,6 +251,8 @@ public:
 			compLayoutTrans(0), rtLayoutTrans(0), _unused(0) { }
 	};
 
+	static constexpr uint8 cubemapSideCount = 6;
+
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;
 private:
@@ -988,71 +990,71 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 {
 	switch (imageFormat)
 	{
-	case Image::Format::UintR8: return 1;
-	case Image::Format::UintR8G8: return 2;
-	case Image::Format::UintR8G8B8A8: return 4;
-	case Image::Format::UintR16: return 2;
-	case Image::Format::UintR16G16: return 4;
-	case Image::Format::UintR16G16B16A16: return 8;
-	case Image::Format::UintR32: return 4;
-	case Image::Format::UintR32G32: return 8;
-	case Image::Format::UintR32G32B32A32: return 16;
-	case Image::Format::UintA2R10G10B10: return 4;
-	case Image::Format::UintA2B10G10R10: return 4;
+		case Image::Format::UintR8: return 1;
+		case Image::Format::UintR8G8: return 2;
+		case Image::Format::UintR8G8B8A8: return 4;
+		case Image::Format::UintR16: return 2;
+		case Image::Format::UintR16G16: return 4;
+		case Image::Format::UintR16G16B16A16: return 8;
+		case Image::Format::UintR32: return 4;
+		case Image::Format::UintR32G32: return 8;
+		case Image::Format::UintR32G32B32A32: return 16;
+		case Image::Format::UintA2R10G10B10: return 4;
+		case Image::Format::UintA2B10G10R10: return 4;
 
-	case Image::Format::SintR8: return 1;
-	case Image::Format::SintR8G8: return 2;
-	case Image::Format::SintR8G8B8A8: return 4;
-	case Image::Format::SintR16: return 2;
-	case Image::Format::SintR16G16: return 4;
-	case Image::Format::SintR16G16B16A16: return 8;
-	case Image::Format::SintR32: return 4;
-	case Image::Format::SintR32G32: return 8;
-	case Image::Format::SintR32G32B32A32: return 16;
+		case Image::Format::SintR8: return 1;
+		case Image::Format::SintR8G8: return 2;
+		case Image::Format::SintR8G8B8A8: return 4;
+		case Image::Format::SintR16: return 2;
+		case Image::Format::SintR16G16: return 4;
+		case Image::Format::SintR16G16B16A16: return 8;
+		case Image::Format::SintR32: return 4;
+		case Image::Format::SintR32G32: return 8;
+		case Image::Format::SintR32G32B32A32: return 16;
 
-	case Image::Format::UnormR8: return 1;
-	case Image::Format::UnormR8G8: return 2;
-	case Image::Format::UnormR8G8B8A8: return 4;
-	case Image::Format::UnormB8G8R8A8: return 4;
-	case Image::Format::UnormR16: return 2;
-	case Image::Format::UnormR16G16: return 4;
-	case Image::Format::UnormR16G16B16A16: return 8;
-	case Image::Format::UnormR5G6B5: return 2;
-	case Image::Format::UnormA1R5G5B5: return 2;
-	case Image::Format::UnormR5G5B5A1: return 2;
-	case Image::Format::UnormB5G5R5A1: return 2;
-	case Image::Format::UnormR4G4B4A4: return 2;
-	case Image::Format::UnormB4G4R4A4: return 2;
-	case Image::Format::UnormA2R10G10B10: return 4;
-	case Image::Format::UnormA2B10G10R10: return 4;
+		case Image::Format::UnormR8: return 1;
+		case Image::Format::UnormR8G8: return 2;
+		case Image::Format::UnormR8G8B8A8: return 4;
+		case Image::Format::UnormB8G8R8A8: return 4;
+		case Image::Format::UnormR16: return 2;
+		case Image::Format::UnormR16G16: return 4;
+		case Image::Format::UnormR16G16B16A16: return 8;
+		case Image::Format::UnormR5G6B5: return 2;
+		case Image::Format::UnormA1R5G5B5: return 2;
+		case Image::Format::UnormR5G5B5A1: return 2;
+		case Image::Format::UnormB5G5R5A1: return 2;
+		case Image::Format::UnormR4G4B4A4: return 2;
+		case Image::Format::UnormB4G4R4A4: return 2;
+		case Image::Format::UnormA2R10G10B10: return 4;
+		case Image::Format::UnormA2B10G10R10: return 4;
 
-	case Image::Format::SnormR8: return 1;
-	case Image::Format::SnormR8G8: return 2;
-	case Image::Format::SnormR8G8B8A8: return 4;
-	case Image::Format::SnormR16: return 2;
-	case Image::Format::SnormR16G16: return 4;
-	case Image::Format::SnormR16G16B16A16: return 8;
+		case Image::Format::SnormR8: return 1;
+		case Image::Format::SnormR8G8: return 2;
+		case Image::Format::SnormR8G8B8A8: return 4;
+		case Image::Format::SnormR16: return 2;
+		case Image::Format::SnormR16G16: return 4;
+		case Image::Format::SnormR16G16B16A16: return 8;
 
-	case Image::Format::SfloatR16: return 2;
-	case Image::Format::SfloatR16G16: return 4;
-	case Image::Format::SfloatR16G16B16A16: return 8;
-	case Image::Format::SfloatR32: return 4;
-	case Image::Format::SfloatR32G32: return 8;
-	case Image::Format::SfloatR32G32B32A32: return 16;
+		case Image::Format::SfloatR16: return 2;
+		case Image::Format::SfloatR16G16: return 4;
+		case Image::Format::SfloatR16G16B16A16: return 8;
+		case Image::Format::SfloatR32: return 4;
+		case Image::Format::SfloatR32G32: return 8;
+		case Image::Format::SfloatR32G32B32A32: return 16;
 
-	case Image::Format::UfloatB10G11R11: return 4;
-	case Image::Format::UfloatE5B9G9R9: return 4;
+		case Image::Format::UfloatB10G11R11: return 4;
+		case Image::Format::UfloatE5B9G9R9: return 4;
 
-	case Image::Format::SrgbR8G8B8A8: return 4;
-	case Image::Format::SrgbB8G8R8A8: return 4;
-	
-	case Image::Format::UnormD16: return 2;
-	case Image::Format::SfloatD32: return 4;
-	case Image::Format::UintS8: return 1;
-	case Image::Format::UnormD24UintS8: return 4;
-	case Image::Format::SfloatD32UintS8: return 5;
-	
-	default: return 0;
+		case Image::Format::SrgbR8G8B8A8: return 4;
+		case Image::Format::SrgbB8G8R8A8: return 4;
+		
+		case Image::Format::UnormD16: return 2;
+		case Image::Format::SfloatD32: return 4;
+		case Image::Format::UintS8: return 1;
+		case Image::Format::UnormD24UintS8: return 4;
+		case Image::Format::SfloatD32UintS8: return 5;
+		
+		default: return 0;
 	}
 }
 

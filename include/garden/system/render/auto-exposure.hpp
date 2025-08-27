@@ -62,6 +62,7 @@ private:
 	ID<DescriptorSet> histogramDS = {};
 	ID<DescriptorSet> averageDS = {};
 	ID<Buffer> histogramBuffer = {};
+	uint16 _alignment = 0;
 	bool isInitialized = false;
 
 	/**
@@ -81,11 +82,11 @@ private:
 
 	friend class ecsm::Manager;
 public:
+	bool isEnabled = true; /**< Is automatic exposure rendering enabled. */
 	float minLogLum = -8.0f;
 	float maxLogLum = 4.0f;
 	float darkAdaptRate = 0.5f;
 	float brightAdaptRate = 0.5f;
-	bool isEnabled = true;
 
 	/**
 	 * @brief Returns automatic exposure histogram compute pipeline.

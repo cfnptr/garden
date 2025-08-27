@@ -906,13 +906,13 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			auto filePath = path.generic_string();
 			switch (task.getTaskIndex())
 			{
-			case 0: loadImageData(filePath + "-nx", left, leftSize, leftFormat, task.getThreadIndex()); break;
-			case 1: loadImageData(filePath + "-px", right, rightSize, rightFormat, task.getThreadIndex()); break;
-			case 2: loadImageData(filePath + "-ny", bottom, bottomSize, bottomFormat, task.getThreadIndex()); break;
-			case 3: loadImageData(filePath + "-py", top, topSize, topFormat, task.getThreadIndex()); break;
-			case 4: loadImageData(filePath + "-nz", back, backSize, backFormat, task.getThreadIndex()); break;
-			case 5: loadImageData(filePath + "-pz", front, frontSize, frontFormat, task.getThreadIndex()); break;
-			default: abort();
+				case 0: loadImageData(filePath + "-nx", left, leftSize, leftFormat, task.getThreadIndex()); break;
+				case 1: loadImageData(filePath + "-px", right, rightSize, rightFormat, task.getThreadIndex()); break;
+				case 2: loadImageData(filePath + "-ny", bottom, bottomSize, bottomFormat, task.getThreadIndex()); break;
+				case 3: loadImageData(filePath + "-py", top, topSize, topFormat, task.getThreadIndex()); break;
+				case 4: loadImageData(filePath + "-nz", back, backSize, backFormat, task.getThreadIndex()); break;
+				case 5: loadImageData(filePath + "-pz", front, frontSize, frontFormat, task.getThreadIndex()); break;
+				default: abort();
 			}
 		}, 6);
 		threadPool.wait();

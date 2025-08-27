@@ -15,6 +15,7 @@
 #define SHADOW_MAP_CASCADE_COUNT 3 // TODO: allow to use less cascade count
 
 #include "common/csm.gsl"
+#include "common/depth.gsl"
 #include "common/gbuffer.gsl"
 
 pipelineState
@@ -49,7 +50,7 @@ uniform ShadowData
 void main()
 {
 	float pixelDepth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
-	if (pixelDepth < shadowData.farPlanes.z)
+	if (IS_DEPTH_LESS(pixelDepth, shadowData.farPlanes.z))
 		discard;
 
 	float3 normal = decodeNormal(textureLod(gNormals, fs.texCoords, 0.0f));

@@ -112,15 +112,15 @@ public:
 			newState.fragLayoutTrans = newState.transLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 0;
 			switch (newState.stage)
 			{
-				case (uint32)vk::PipelineStageFlagBits::eFragmentShader:
-					newState.transLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 1; break;
-				case (uint32)vk::PipelineStageFlagBits::eTransfer:
-					newState.fragLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 1; break;
-				case (uint32)vk::PipelineStageFlagBits::eComputeShader:
-					newState.fragLayoutTrans = newState.transLayoutTrans = newState.rtLayoutTrans = 1; break;
-				case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR:
-					newState.fragLayoutTrans = newState.transLayoutTrans = newState.compLayoutTrans = 1; break;
-				// TODO: other stages.
+			case (uint32)vk::PipelineStageFlagBits::eFragmentShader:
+				newState.transLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 1; break;
+			case (uint32)vk::PipelineStageFlagBits::eTransfer:
+				newState.fragLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 1; break;
+			case (uint32)vk::PipelineStageFlagBits::eComputeShader:
+				newState.fragLayoutTrans = newState.transLayoutTrans = newState.rtLayoutTrans = 1; break;
+			case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR:
+				newState.fragLayoutTrans = newState.transLayoutTrans = newState.compLayoutTrans = 1; break;
+			// TODO: other stages.
 			}
 			return;
 		}

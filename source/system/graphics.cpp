@@ -130,6 +130,7 @@ GraphicsSystem::~GraphicsSystem()
 		manager->unregisterEvent("Render");
 		manager->unregisterEvent("Present");
 		manager->unregisterEvent("SwapchainRecreate");
+		manager->unregisterEvent("QualityChange");
 
 		GraphicsAPI::terminate();
 	}
@@ -1279,14 +1280,11 @@ bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 {
 	switch (commandBufferType)
 	{
-	case CommandBufferType::Frame: return false;
-	case CommandBufferType::Graphics:
-		return GraphicsAPI::get()->graphicsCommandBuffer->isBusy();
-	case CommandBufferType::TransferOnly:
-		return GraphicsAPI::get()->transferCommandBuffer->isBusy();
-	case CommandBufferType::Compute:
-		return GraphicsAPI::get()->computeCommandBuffer->isBusy();
-	default: abort();
+		case CommandBufferType::Frame: return false;
+		case CommandBufferType::Graphics: return GraphicsAPI::get()->graphicsCommandBuffer->isBusy();
+		case CommandBufferType::TransferOnly: return GraphicsAPI::get()->transferCommandBuffer->isBusy();
+		case CommandBufferType::Compute: return GraphicsAPI::get()->computeCommandBuffer->isBusy();
+		default: abort();
 	}
 }
 

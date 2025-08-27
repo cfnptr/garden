@@ -50,12 +50,12 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 		const char* name = nullptr;
 		switch (type)
 		{
-		case CommandBufferType::Graphics: name = "commandBuffer.graphics"; break;
-		case CommandBufferType::TransferOnly: name = "commandBuffer.transferOnly"; break;
-		case CommandBufferType::Compute: name = "commandBuffer.compute"; break;
-		case CommandBufferType::AsyncCompute: name = "commandBuffer.asyncCompute"; break;
-		case CommandBufferType::Frame: break;
-		default: abort();
+			case CommandBufferType::Graphics: name = "commandBuffer.graphics"; break;
+			case CommandBufferType::TransferOnly: name = "commandBuffer.transferOnly"; break;
+			case CommandBufferType::Compute: name = "commandBuffer.compute"; break;
+			case CommandBufferType::AsyncCompute: name = "commandBuffer.asyncCompute"; break;
+			case CommandBufferType::Frame: break;
+			default: abort();
 		}
 
 		if (name)

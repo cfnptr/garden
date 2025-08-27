@@ -486,21 +486,11 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 
 		switch (shapeView->getSubType())
 		{
-		case ShapeSubType::Empty:
-			shapeType = 1;
-			break;
-		case ShapeSubType::Box:
-			shapeType = 2;
-			break;
-		case ShapeSubType::Sphere:
-			shapeType = 3;
-			break;
-		case ShapeSubType::Capsule:
-			shapeType = 4;
-			break;
-		default:
-			shapeType = 5;
-			break;
+			case ShapeSubType::Empty: shapeType = 1; break;
+			case ShapeSubType::Box: shapeType = 2; break;
+			case ShapeSubType::Sphere: shapeType = 3; break;
+			case ShapeSubType::Capsule: shapeType = 4; break;
+			default: shapeType = 5; break;
 		}
 	}
 
@@ -530,29 +520,22 @@ static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, Physic
 			rigidbodyView->setShape({});
 			break;
 		case 1: case 2: case 3: case 4:
-			isChanged = true;
-			break;
-		default:
-			break;
+			isChanged = true; break;
+		default: break;
 		}
 	}
 
 	switch (shapeType)
 	{
 	case 1:
-		renderEmptyShape(rigidbodyView, cache, isChanged);
-		break;
+		renderEmptyShape(rigidbodyView, cache, isChanged); break;
 	case 2:
-		renderBoxShape(rigidbodyView, cache, isChanged);
-		break;
+		renderBoxShape(rigidbodyView, cache, isChanged); break;
 	case 3:
-		renderSphereShape(rigidbodyView, cache, isChanged);
-		break;
+		renderSphereShape(rigidbodyView, cache, isChanged); break;
 	case 4:
-		renderCapsuleShape(rigidbodyView, cache, isChanged);
-		break;
-	default:
-		break;
+		renderCapsuleShape(rigidbodyView, cache, isChanged); break;
+	default: break;
 	}
 }
 
@@ -979,23 +962,17 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 		switch (rigidbodyView->getCollisionLayer())
 		{
 		case (uint16)CollisionLayer::NonMoving:
-			ImGui::Text("Collision Layer: Non Moving");
-			break;
+			ImGui::Text("Collision Layer: Non Moving"); break;
 		case (uint16)CollisionLayer::Moving:
-			ImGui::Text("Collision Layer: Moving");
-			break;
+			ImGui::Text("Collision Layer: Moving"); break;
 		case (uint16)CollisionLayer::Sensor:
-			ImGui::Text("Collision Layer: Sensor");
-			break;
+			ImGui::Text("Collision Layer: Sensor"); break;
 		case (uint16)CollisionLayer::HqDebris:
-			ImGui::Text("Collision Layer: High Quality Debris");
-			break;
+			ImGui::Text("Collision Layer: High Quality Debris"); break;
 		case (uint16)CollisionLayer::LqDebris:
-			ImGui::Text("Collision Layer: Low Quality Debris");
-			break;
+			ImGui::Text("Collision Layer: Low Quality Debris"); break;
 		default:
-			ImGui::Text("Collision Layer: Custom");
-			break;
+			ImGui::Text("Collision Layer: Custom"); break;
 		}
 		ImGui::EndTooltip();
 	}
@@ -1048,21 +1025,16 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 			{
 			case ShapeSubType::Empty:
 				cache.centerOfMass = shapeView->getCenterOfMass();
-				shapeType = 1;
-				break;
+				shapeType = 1; break;
 			case ShapeSubType::Box:
 				cache.shapeSize = shapeView->getBoxHalfExtent() * 2.0f;
 				cache.convexRadius = shapeView->getBoxConvexRadius();
-				shapeType = 2;
-				break;
+				shapeType = 2; break;
 			case ShapeSubType::Capsule:
 				cache.shapeHeight = shapeView->getCapsuleHalfHeight() * 2.0f;
 				cache.shapeRadius = shapeView->getCapsuleRadius();
-				shapeType = 3;
-				break;
-			default:
-				shapeType = 4;
-				break;
+				shapeType = 3; break;
+			default: shapeType = 4; break;
 			}
 		}
 		else
@@ -1164,8 +1136,7 @@ static void renderShapeProperties(View<CharacterComponent> characterView, Physic
 			shape = physicsSystem->createRotTransShape(innerShape, cache.shapePosition);
 			characterView->setShape(shape);
 			break;
-		default:
-			break;
+		default: break;
 		}
 	}
 

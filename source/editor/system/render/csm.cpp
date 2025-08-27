@@ -111,22 +111,9 @@ void CsmRenderEditorSystem::preUiRender()
 			}
 
 			auto pipelineView = graphicsSystem->get(cascadesPipeline);
-			if (pipelineView->isReady())
-			{
-				if (!cascadesDS)
-				{
-					auto uniforms = getCascadesUniforms();
-					cascadesDS = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(cascadesDS, "descriptorSet.editor.csm.cascades");
-				}
-			}
-			else
-			{
+			if (!pipelineView->isReady())
 				ImGui::TextDisabled("Cascades pipeline is loading...");
-			}
 		}
-
-			
 	}
 	ImGui::End();
 }
@@ -139,6 +126,13 @@ void CsmRenderEditorSystem::uiRender()
 	auto pipelineView = graphicsSystem->get(cascadesPipeline);
 	if (!pipelineView->isReady())
 		return;
+
+	if (!cascadesDS)
+	{
+		auto uniforms = getCascadesUniforms();
+		cascadesDS = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(cascadesDS, "descriptorSet.editor.csm.cascades");
+	}
 
 	auto csmSystem = CsmRenderSystem::Instance::get();
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -159,11 +153,8 @@ void CsmRenderEditorSystem::gBufferRecreate()
 {
 	if (cascadesDS)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(cascadesDS);
-		auto uniforms = getCascadesUniforms();
-		cascadesDS = graphicsSystem->createDescriptorSet(cascadesPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(cascadesDS, "descriptorSet.editor.csm.cascades");
+		GraphicsSystem::Instance::get()->destroy(cascadesDS);
+		cascadesDS = {};
 	}
 }
 

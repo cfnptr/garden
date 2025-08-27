@@ -149,13 +149,13 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline,
 		auto descriptorType = toVkDescriptorType(pair.second.type);
 		switch (descriptorType)
 		{
-		case vk::DescriptorType::eCombinedImageSampler: DescriptorSet::combinedSamplerCount -= setCount; break;
-		case vk::DescriptorType::eUniformBuffer: DescriptorSet::uniformBufferCount -= setCount; break;
-		case vk::DescriptorType::eStorageImage: DescriptorSet::storageImageCount -= setCount; break;
-		case vk::DescriptorType::eStorageBuffer: DescriptorSet::storageBufferCount -= setCount; break;
-		case vk::DescriptorType::eInputAttachment: DescriptorSet::inputAttachmentCount -= setCount; break;
-		case vk::DescriptorType::eAccelerationStructureKHR: DescriptorSet::accelStructureCount -= setCount; break;
-		default: abort();
+			case vk::DescriptorType::eCombinedImageSampler: DescriptorSet::combinedSamplerCount -= setCount; break;
+			case vk::DescriptorType::eUniformBuffer: DescriptorSet::uniformBufferCount -= setCount; break;
+			case vk::DescriptorType::eStorageImage: DescriptorSet::storageImageCount -= setCount; break;
+			case vk::DescriptorType::eStorageBuffer: DescriptorSet::storageBufferCount -= setCount; break;
+			case vk::DescriptorType::eInputAttachment: DescriptorSet::inputAttachmentCount -= setCount; break;
+			case vk::DescriptorType::eAccelerationStructureKHR: DescriptorSet::accelStructureCount -= setCount; break;
+			default: abort();
 		}
 	}
 	#endif

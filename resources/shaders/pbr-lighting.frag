@@ -83,7 +83,7 @@ uniform pushConstants
 void main()
 {
 	float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
-	if (depth == 0.0f)
+	if (depth == FAR_PLANE_DEPTH)
 		discard;
 
 	GBufferValues gBuffer = decodeGBufferValues(g0, g1, g2, g3, g4, g0, fs.texCoords);

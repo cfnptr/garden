@@ -36,7 +36,7 @@ float calcConeRayCapArea(ConeRay coneRay)
 float calcConeRayTexArea(ConeRay coneRay, float3 rayDir, float3 normal, float uvWorldArea)
 {
 	float capArea = calcConeRayCapArea(coneRay); float raySlope = dot(rayDir, normal);
-	return max((uvWorldArea * capArea) / max(raySlope * raySlope, FLOAT_SMALL), FLOAT_SMALL);
+	return max((uvWorldArea * capArea) / max(raySlope * raySlope, FLOAT_SMALL_24), FLOAT_SMALL_24);
 }
 
 float calcConeRayLod(float coneRayTexArea, int2 textureSize)

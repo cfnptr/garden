@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "hiz/variants.h"
-#include "common/math.gsl"
+#include "common/depth.gsl"
 
 #variantCount 2
 
@@ -34,7 +34,7 @@ void main()
 		int2 fragCoords = int2(gl.fragCoord.xy) * 2;
 		const float2 srcSize = 1.0f / float2(textureSize(srcBuffer, 0));
 		float2 texCoords = (float2(fragCoords) + 0.5f) * srcSize;
-		depth = min(textureGather(srcBuffer, texCoords, 0));
+		depth = MIN_DEPTH_X(textureGather(srcBuffer, texCoords, 0));
 
 		bool2 isPrevLevelOdd = equal(textureSize(srcBuffer, 0) & 1, int2(1));
 		if (isPrevLevelOdd.x)
@@ -43,14 +43,14 @@ void main()
 			if (isPrevLevelOdd.x)
 			{
 				int2 coords = min(fragCoords + int2(2, 2), textureSize(srcBuffer, 0) - 1);
-				depth = min(depth, texelFetch(srcBuffer, coords, 0).r);
+				depth = MIN_DEPTH(depth, texelFetch(srcBuffer, coords, 0).r);
 			}
-			depth = min(depth, min(c.y, c.z));
+			depth = MIN_DEPTH(depth, MIN_DEPTH(c.y, c.z));
 		}
 		if (isPrevLevelOdd.y)
 		{
 			float4 c = textureGatherOffset(srcBuffer, texCoords, int2(0, 1), 0);
-			depth = min(depth, min(c.x, c.y));
+			depth = MIN_DEPTH(depth, MIN_DEPTH(c.x, c.y));
 		}
 	}
 	else // gsl.variant == HIZ_VARIANT_FIRST

@@ -279,11 +279,8 @@ void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> com
 
 	switch (spawnerView->mode)
 	{
-	case SpawnMode::Manual:
-		serializer.write("mode", string_view("Manual"));
-		break;
-	default:
-		break;
+		case SpawnMode::Manual: serializer.write("mode", string_view("Manual")); break;
+		default: break;
 	}
 }
 void SpawnerSystem::deserialize(IDeserializer& deserializer, View<Component> component)

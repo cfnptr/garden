@@ -158,20 +158,10 @@ void AutoExposureEditorSystem::preUiRender()
 				limitsPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer(), options);
 			}
+
 			auto pipelineView = graphicsSystem->get(limitsPipeline);
-			if (pipelineView->isReady())
-			{
-				if (!limitsDS)
-				{
-					auto uniforms = getLimitsUniforms();
-					limitsDS = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
-				}
-			}
-			else
-			{
+			if (!pipelineView->isReady())
 				ImGui::TextDisabled("Limits pipeline is loading...");
-			}
 		}
 
 		auto toneMappingSystem = ToneMappingSystem::Instance::get();
@@ -201,6 +191,13 @@ void AutoExposureEditorSystem::uiRender()
 	if (!pipelineView->isReady())
 		return;
 
+	if (!limitsDS)
+	{
+		auto uniforms = getLimitsUniforms();
+		limitsDS = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
+	}
+
 	auto autoExposureSystem = AutoExposureSystem::Instance::get();
 
 	PushConstants pc;
@@ -220,11 +217,8 @@ void AutoExposureEditorSystem::gBufferRecreate()
 {
 	if (limitsDS)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(limitsDS);
-		auto uniforms = getLimitsUniforms();
-		limitsDS = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
+		GraphicsSystem::Instance::get()->destroy(limitsDS);
+		limitsDS = {};
 	}
 }
 
