@@ -25,11 +25,11 @@
 
 using namespace garden;
 
-static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews)
+static ID<Image> createBloomBuffer(vector<ID<ImageView>>& imageViews, uint8 maxMipCount)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto bloomBufferSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
-	auto mipCount = std::min(BloomRenderSystem::maxBloomMipCount, calcMipCount(bloomBufferSize));
+	auto mipCount = std::min(calcMipCount(bloomBufferSize), maxMipCount);
 	imageViews.resize(mipCount);
 
 	Image::Mips mips(mipCount);
@@ -103,6 +103,18 @@ static void createBloomDescriptorSets(ID<GraphicsPipeline> downsamplePipeline, I
 		descriptorSets[index] = descriptorSet;
 	}
 }
+static uint8 getMaxMipCount(GraphicsQuality quality) noexcept
+{
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: return 1;
+		case GraphicsQuality::Low: return 3;
+		case GraphicsQuality::Medium: return 5;
+		case GraphicsQuality::High: return 7;
+		case GraphicsQuality::Ultra: return 9;
+		default: abort();
+	}
+}
 
 static ID<GraphicsPipeline> createDownsamplePipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
@@ -149,6 +161,7 @@ void BloomRenderSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", BloomRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BloomRenderSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", BloomRenderSystem::qualityChange);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -167,6 +180,7 @@ void BloomRenderSystem::deinit()
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", BloomRenderSystem::preLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BloomRenderSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", BloomRenderSystem::qualityChange);
 	}
 }
 
@@ -187,11 +201,11 @@ void BloomRenderSystem::preLdrRender()
 		}
 		return;
 	}
-	
+
 	if (!isInitialized)
 	{
 		if (!bloomBuffer)
-			bloomBuffer = createBloomBuffer(imageViews);
+			bloomBuffer = createBloomBuffer(imageViews, getMaxMipCount(quality));
 		if (framebuffers.empty())
 			createBloomFramebuffers(imageViews, framebuffers);
 		if (!downsamplePipeline)
@@ -204,7 +218,6 @@ void BloomRenderSystem::preLdrRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto downsamplePipelineView = graphicsSystem->get(downsamplePipeline);
 	auto upsamplePipelineView = graphicsSystem->get(upsamplePipeline);
-	
 	if (!downsamplePipelineView->isReady() || !upsamplePipelineView->isReady())
 		return;
 
@@ -279,7 +292,7 @@ void BloomRenderSystem::gBufferRecreate()
 	{
 		graphicsSystem->destroy(bloomBuffer);
 		graphicsSystem->destroy(imageViews);
-		bloomBuffer = createBloomBuffer(imageViews);
+		bloomBuffer = createBloomBuffer(imageViews, getMaxMipCount(quality));
 	}
 	if (!framebuffers.empty())
 	{
@@ -289,14 +302,20 @@ void BloomRenderSystem::gBufferRecreate()
 		if (downsamplePipeline)
 		{
 			auto pipelineView = graphicsSystem->get(downsamplePipeline);
-			pipelineView->updateFramebuffer(framebuffers[0]);
+			if (pipelineView->isReady())
+				pipelineView->updateFramebuffer(framebuffers[0]);
 		}
 		if (upsamplePipeline)
 		{
 			auto pipelineView = graphicsSystem->get(upsamplePipeline);
-			pipelineView->updateFramebuffer(framebuffers[0]);
+			if (pipelineView->isReady())
+				pipelineView->updateFramebuffer(framebuffers[0]);
 		}
 	}
+}
+void BloomRenderSystem::qualityChange()
+{
+	setQuality(GraphicsSystem::Instance::get()->quality);
 }
 
 void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
@@ -318,6 +337,16 @@ void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
 	}
 }
 
+void BloomRenderSystem::setQuality(GraphicsQuality quality)
+{
+	if (this->quality == quality)
+		return;
+
+	gBufferRecreate();
+	this->quality = quality;
+}
+
+//**********************************************************************************************************************
 ID<GraphicsPipeline> BloomRenderSystem::getDownsamplePipeline()
 {
 	if (!downsamplePipeline)
@@ -334,13 +363,13 @@ ID<GraphicsPipeline> BloomRenderSystem::getUpsamplePipeline()
 ID<Image> BloomRenderSystem::getBloomBuffer()
 {
 	if (!bloomBuffer)
-		bloomBuffer = createBloomBuffer(imageViews);
+		bloomBuffer = createBloomBuffer(imageViews, getMaxMipCount(quality));
 	return bloomBuffer;
 }
 const vector<ID<ImageView>>& BloomRenderSystem::getImageViews()
 {
 	if (!bloomBuffer)
-		bloomBuffer = createBloomBuffer(imageViews);
+		bloomBuffer = createBloomBuffer(imageViews, getMaxMipCount(quality));
 	return imageViews;
 }
 const vector<ID<Framebuffer>>& BloomRenderSystem::getFramebuffers()

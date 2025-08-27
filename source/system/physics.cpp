@@ -1148,22 +1148,12 @@ static void toEventName(string& eventName, string_view eventListener, BodyEvent 
 	eventName.assign(eventListener);
 	switch (eventType)
 	{
-	case BodyEvent::Activated:
-		eventName += ".Activated";
-		break;
-	case BodyEvent::Deactivated:
-		eventName += ".Deactivated";
-		break;
-	case BodyEvent::Entered:
-		eventName += ".Entered";
-		break;
-	case BodyEvent::Stayed:
-		eventName += ".Stayed";
-		break;
-	case BodyEvent::Exited:
-		eventName += ".Exited";
-		break;
-	default: abort();
+		case BodyEvent::Activated: eventName += ".Activated"; break;
+		case BodyEvent::Deactivated: eventName += ".Deactivated"; break;
+		case BodyEvent::Entered: eventName += ".Entered"; break;
+		case BodyEvent::Stayed: eventName += ".Stayed"; break;
+		case BodyEvent::Exited: eventName += ".Exited"; break;
+		default: abort();
 	}
 }
 
@@ -1511,11 +1501,8 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 
 			switch (constraint.type)
 			{
-			case ConstraintType::Point:
-				serializer.write("type", string_view("Point"));
-				break;
-			default:
-				break;
+				case ConstraintType::Point: serializer.write("type", string_view("Point")); break;
+				default: break;
 			}
 
 			auto constraintView = getComponent(constraint.otherBody);

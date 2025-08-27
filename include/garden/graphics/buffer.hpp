@@ -458,13 +458,13 @@ static psize toBinarySize(BufferChannel channel) noexcept
 {
 	switch (channel)
 	{
-	case BufferChannel::Positions: return sizeof(float3);
-	case BufferChannel::Normals: return sizeof(float3);
-	case BufferChannel::Tangents: return sizeof(float3);
-	case BufferChannel::Bitangents: return sizeof(float3);
-	case BufferChannel::TextureCoords: return sizeof(float2);
-	case BufferChannel::VertexColors: return sizeof(float4);
-	default: abort();
+		case BufferChannel::Positions: return sizeof(float3);
+		case BufferChannel::Normals: return sizeof(float3);
+		case BufferChannel::Tangents: return sizeof(float3);
+		case BufferChannel::Bitangents: return sizeof(float3);
+		case BufferChannel::TextureCoords: return sizeof(float2);
+		case BufferChannel::VertexColors: return sizeof(float4);
+		default: abort();
 	}
 }
 /**

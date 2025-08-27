@@ -115,21 +115,9 @@ void BloomRenderEditorSystem::preUiRender()
 					"editor/bloom-threshold", deferredSystem->getUiFramebuffer(), options);
 			}
 
-			auto graphicsSystem = GraphicsSystem::Instance::get();
-			auto pipelineView = graphicsSystem->get(thresholdPipeline);
-			if (pipelineView->isReady())
-			{
-				if (!thresholdDS)
-				{
-					auto uniforms = getThresholdUniforms();
-					thresholdDS = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
-				}
-			}
-			else
-			{
+			auto pipelineView = GraphicsSystem::Instance::get()->get(thresholdPipeline);
+			if (!pipelineView->isReady())
 				ImGui::TextDisabled("Threshold pipeline is loading...");
-			}
 		}
 	}
 	ImGui::End();
@@ -144,10 +132,15 @@ void BloomRenderEditorSystem::uiRender()
 	if (!pipelineView->isReady())
 		return;
 
-	auto bloomSystem = BloomRenderSystem::Instance::get();
+	if (!thresholdDS)
+	{
+		auto uniforms = getThresholdUniforms();
+		thresholdDS = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
+	}
 
 	PushConstants pc;
-	pc.threshold = bloomSystem->threshold;
+	pc.threshold = BloomRenderSystem::Instance::get()->threshold;
 
 	SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
 	pipelineView->bind();
@@ -162,11 +155,8 @@ void BloomRenderEditorSystem::gBufferRecreate()
 {
 	if (thresholdDS)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(thresholdDS);
-		auto uniforms = getThresholdUniforms();
-		thresholdDS = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
+		GraphicsSystem::Instance::get()->destroy(thresholdDS);
+		thresholdDS = {};
 	}
 }
 

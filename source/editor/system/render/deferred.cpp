@@ -254,16 +254,6 @@ void DeferredRenderEditorSystem::preLdrRender()
 		bufferPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/gbuffer-data", deferredSystem->getLdrFramebuffer(), options);
 	}
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pipelineView = graphicsSystem->get(bufferPipeline);
-
-	if (pipelineView->isReady() && !bufferDescriptorSet)
-	{
-		auto uniforms = getBufferUniforms(blackPlaceholder);
-		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
-	}
 }
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::ldrRender()
@@ -275,6 +265,13 @@ void DeferredRenderEditorSystem::ldrRender()
 	auto pipelineView = graphicsSystem->get(bufferPipeline);
 	if (!pipelineView->isReady())
 		return;
+
+	if (!bufferDescriptorSet)
+	{
+		auto uniforms = getBufferUniforms(blackPlaceholder);
+		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
+	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
 
@@ -308,11 +305,8 @@ void DeferredRenderEditorSystem::gBufferRecreate()
 {
 	if (bufferDescriptorSet)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(bufferDescriptorSet);
-		auto uniforms = getBufferUniforms(blackPlaceholder);
-		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
+		GraphicsSystem::Instance::get()->destroy(bufferDescriptorSet);
+		bufferDescriptorSet = {};
 	}
 }
 

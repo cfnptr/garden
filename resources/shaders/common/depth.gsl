@@ -17,6 +17,18 @@
 
 #include "common/math.gsl"
 
+#define NEAR_PLANE_DEPTH 1.0f
+#define FAR_PLANE_DEPTH 0.0f
+#define DEPTH_EPS FLOAT_EPS6
+
+#define IS_DEPTH_LESS(a, b) (a) < (b)
+#define IS_DEPTH_GREATER(a, b) (a) > (b)
+
+#define MIN_DEPTH_X(depth) min(depth)
+#define MIN_DEPTH(a, b) min(a, b)
+#define MAX_DEPTH_X(depth) min(depth)
+#define MAX_DEPTH(a, b) max(a, b)
+
 float3 calcWorldPosition(float depth, float2 texCoords, float4x4 invViewProj)
 {
 	float2 ndc = fma(texCoords, float2(2.0f), float2(-1.0f));
@@ -27,7 +39,7 @@ float3 calcWorldPositionSafe(float depth, float2 texCoords, float4x4 invViewProj
 {
 	float2 ndc = fma(texCoords, float2(2.0f), float2(-1.0f));
 	float4 position = invViewProj * float4(ndc, depth, 1.0f);
-	return position.xyz / max(position.w, FLOAT_SMALL);
+	return position.xyz / max(position.w, FLOAT_SMALL_24);
 }
 
 float calcDepth(float3 worldPos, float4x4 viewProj)
@@ -38,13 +50,13 @@ float calcDepth(float3 worldPos, float4x4 viewProj)
 float calcDepthSafe(float3 worldPos, float4x4 viewProj)
 {
 	float4 clipPos = viewProj * float4(worldPos, 1.0f);
-	return clipPos.z / max(clipPos.w, FLOAT_SMALL);
+	return clipPos.z / max(clipPos.w, FLOAT_SMALL_24);
 }
 
 // Infinite Reversed Z Perspective Projection
 float calcLinearDepthIRZ(float depth, float nearPlane)
 {
-	return nearPlane / max(depth, FLOAT_SMALL);
+	return nearPlane / max(depth, FLOAT_SMALL_24);
 }
 
 float3 calcViewDirection(float3 worldPosition)

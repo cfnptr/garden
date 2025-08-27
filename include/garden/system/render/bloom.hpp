@@ -35,7 +35,6 @@ public:
 		float threshold;
 	};
 
-	static constexpr uint8 maxBloomMipCount = 7; /**< Maximum bloom buffer mip level count. */
 	static constexpr Image::Format bufferFormat = Image::Format::UfloatB10G11R11;
 private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
@@ -44,10 +43,10 @@ private:
 	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
+	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	bool useThreshold = false;
 	bool useAntiFlickering = false;
-	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new bloom (light glow) rendering system instance.
@@ -66,12 +65,13 @@ private:
 	void deinit();
 	void preLdrRender();
 	void gBufferRecreate();
+	void qualityChange();
 
 	friend class ecsm::Manager;
 public:
+	bool isEnabled = true; /**< Is bloom rendering enabled. */
 	float intensity = 0.004f;
 	float threshold = 0.0f;
-	bool isEnabled = true;
 
 	/*******************************************************************************************************************
 	 * @brief Use color threshold for bloom rendering.
@@ -88,6 +88,16 @@ public:
 	 * @param useAntiFlickering use anti flickering algorithm for rendering (anti fireflies)
 	 */
 	void setConsts(bool useThreshold, bool useAntiFlickering);
+
+	/**
+	 * @brief Returns bloom rendering graphics quality.
+	 */
+	GraphicsQuality getQuality() const noexcept { return quality; }
+	/**
+	 * @brief Sets bloom rendering graphics quality.
+	 * @param quality target graphics quality level
+	 */
+	void setQuality(GraphicsQuality quality);
 
 	/**
 	 * @brief Returns bloom downsample graphics pipeline.

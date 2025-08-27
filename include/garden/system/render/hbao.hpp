@@ -47,8 +47,8 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 stepCount = 4;
-	bool isInitialized = false;
 	uint16 _alignment = 0;
+	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new screen space horizon-based ambient occlusion rendering system instance. (HBAO)

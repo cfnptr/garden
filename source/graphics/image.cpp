@@ -72,10 +72,10 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 {
 	switch (memoryUsage)
 	{
-	case Image::Strategy::Default: return {};
-	case Image::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-	case Image::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
-	default: abort();
+		case Image::Strategy::Default: return {};
+		case Image::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+		case Image::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
+		default: abort();
 	}
 }
 

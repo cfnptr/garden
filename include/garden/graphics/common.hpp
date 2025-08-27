@@ -114,9 +114,9 @@ static constexpr psize toBinarySize(IndexType indexType) noexcept
 {
 	switch (indexType)
 	{
-	case IndexType::Uint16: return sizeof(uint16);
-	case IndexType::Uint32: return sizeof(uint32);
-	default: return 0;
+		case IndexType::Uint16: return sizeof(uint16);
+		case IndexType::Uint32: return sizeof(uint32);
+		default: return 0;
 	}
 }
 
@@ -200,18 +200,18 @@ static string_view toShaderStageExt(ShaderStage shaderStage)
 {
 	switch (shaderStage)
 	{
-	case ShaderStage::Vertex: return ".vert";
-	case ShaderStage::Fragment: return ".frag";
-	case ShaderStage::Compute: return ".comp";
-	case ShaderStage::RayGeneration: return ".rgen";
-	case ShaderStage::Intersection: return ".rint";
-	case ShaderStage::AnyHit: return ".rahit";
-	case ShaderStage::ClosestHit: return ".rchit";
-	case ShaderStage::Miss: return ".rmiss";
-	case ShaderStage::Callable: return ".rcall";
-	case ShaderStage::Mesh: return ".mesh";
-	case ShaderStage::Task: return ".task";
-	default: throw GardenError("Unknown shader stage. (" + string(toString(shaderStage)) + ")");
+		case ShaderStage::Vertex: return ".vert";
+		case ShaderStage::Fragment: return ".frag";
+		case ShaderStage::Compute: return ".comp";
+		case ShaderStage::RayGeneration: return ".rgen";
+		case ShaderStage::Intersection: return ".rint";
+		case ShaderStage::AnyHit: return ".rahit";
+		case ShaderStage::ClosestHit: return ".rchit";
+		case ShaderStage::Miss: return ".rmiss";
+		case ShaderStage::Callable: return ".rcall";
+		case ShaderStage::Mesh: return ".mesh";
+		case ShaderStage::Task: return ".task";
+		default: throw GardenError("Unknown shader stage. (" + string(toString(shaderStage)) + ")");
 	}
 }
 

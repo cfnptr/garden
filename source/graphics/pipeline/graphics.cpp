@@ -23,41 +23,41 @@ static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology to
 {
 	switch (topology)
 	{
-	case GraphicsPipeline::Topology::TriangleList: return vk::PrimitiveTopology::eTriangleList;
-	case GraphicsPipeline::Topology::TriangleStrip: return vk::PrimitiveTopology::eTriangleStrip;
-	case GraphicsPipeline::Topology::LineList: return vk::PrimitiveTopology::eLineList;
-	case GraphicsPipeline::Topology::LineStrip: return vk::PrimitiveTopology::eLineStrip;
-	case GraphicsPipeline::Topology::PointList: return vk::PrimitiveTopology::ePointList;
-	default: abort();
+		case GraphicsPipeline::Topology::TriangleList: return vk::PrimitiveTopology::eTriangleList;
+		case GraphicsPipeline::Topology::TriangleStrip: return vk::PrimitiveTopology::eTriangleStrip;
+		case GraphicsPipeline::Topology::LineList: return vk::PrimitiveTopology::eLineList;
+		case GraphicsPipeline::Topology::LineStrip: return vk::PrimitiveTopology::eLineStrip;
+		case GraphicsPipeline::Topology::PointList: return vk::PrimitiveTopology::ePointList;
+		default: abort();
 	}
 }
 static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon) noexcept
 {
 	switch (polygon)
 	{
-	case GraphicsPipeline::Polygon::Fill: return vk::PolygonMode::eFill;
-	case GraphicsPipeline::Polygon::Line: return vk::PolygonMode::eLine;
-	case GraphicsPipeline::Polygon::Point: return vk::PolygonMode::ePoint;
-	default: abort();
+		case GraphicsPipeline::Polygon::Fill: return vk::PolygonMode::eFill;
+		case GraphicsPipeline::Polygon::Line: return vk::PolygonMode::eLine;
+		case GraphicsPipeline::Polygon::Point: return vk::PolygonMode::ePoint;
+		default: abort();
 	}
 }
 static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace) noexcept
 {
 	switch (cullFace)
 	{
-	case GraphicsPipeline::CullFace::Front: return vk::CullModeFlagBits::eFront;
-	case GraphicsPipeline::CullFace::Back: return vk::CullModeFlagBits::eBack;
-	case GraphicsPipeline::CullFace::FrontAndBack: return vk::CullModeFlagBits::eFrontAndBack;
-	default: abort();
+		case GraphicsPipeline::CullFace::Front: return vk::CullModeFlagBits::eFront;
+		case GraphicsPipeline::CullFace::Back: return vk::CullModeFlagBits::eBack;
+		case GraphicsPipeline::CullFace::FrontAndBack: return vk::CullModeFlagBits::eFrontAndBack;
+		default: abort();
 	}
 }
 static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace) noexcept
 {
 	switch (frontFace)
 	{
-	case GraphicsPipeline::FrontFace::Clockwise: return vk::FrontFace::eClockwise;
-	case GraphicsPipeline::FrontFace::CounterClockwise: return vk::FrontFace::eCounterClockwise;
-	default: abort();
+		case GraphicsPipeline::FrontFace::Clockwise: return vk::FrontFace::eClockwise;
+		case GraphicsPipeline::FrontFace::CounterClockwise: return vk::FrontFace::eCounterClockwise;
+		default: abort();
 	}
 }
 
@@ -66,37 +66,37 @@ static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor
 {
 	switch (blendFactor)
 	{
-	case GraphicsPipeline::BlendFactor::Zero: return vk::BlendFactor::eZero;
-	case GraphicsPipeline::BlendFactor::One: return vk::BlendFactor::eOne;
-	case GraphicsPipeline::BlendFactor::SrcColor: return vk::BlendFactor::eSrcColor;
-	case GraphicsPipeline::BlendFactor::OneMinusSrcColor: return vk::BlendFactor::eOneMinusSrcColor;
-	case GraphicsPipeline::BlendFactor::DstColor: return vk::BlendFactor::eDstColor;
-	case GraphicsPipeline::BlendFactor::OneMinusDstColor: return vk::BlendFactor::eOneMinusDstColor;
-	case GraphicsPipeline::BlendFactor::SrcAlpha: return vk::BlendFactor::eSrcAlpha;
-	case GraphicsPipeline::BlendFactor::OneMinusSrcAlpha: return vk::BlendFactor::eOneMinusSrcAlpha;
-	case GraphicsPipeline::BlendFactor::DstAlpha: return vk::BlendFactor::eDstAlpha;
-	case GraphicsPipeline::BlendFactor::OneMinusDstAlpha: return vk::BlendFactor::eOneMinusDstAlpha;
-	case GraphicsPipeline::BlendFactor::ConstColor: return vk::BlendFactor::eConstantColor;
-	case GraphicsPipeline::BlendFactor::OneMinusConstColor: return vk::BlendFactor::eOneMinusConstantColor;
-	case GraphicsPipeline::BlendFactor::ConstAlpha: return vk::BlendFactor::eConstantAlpha;
-	case GraphicsPipeline::BlendFactor::OneMinusConstAlpha: return vk::BlendFactor::eOneMinusConstantAlpha;
-	case GraphicsPipeline::BlendFactor::Src1Color: return vk::BlendFactor::eSrc1Color;
-	case GraphicsPipeline::BlendFactor::OneMinusSrc1Color: return vk::BlendFactor::eOneMinusSrc1Color;
-	case GraphicsPipeline::BlendFactor::Src1Alpha: return vk::BlendFactor::eSrc1Alpha;
-	case GraphicsPipeline::BlendFactor::SrcAlphaSaturate: return vk::BlendFactor::eSrcAlphaSaturate;
-	default: abort();
+		case GraphicsPipeline::BlendFactor::Zero: return vk::BlendFactor::eZero;
+		case GraphicsPipeline::BlendFactor::One: return vk::BlendFactor::eOne;
+		case GraphicsPipeline::BlendFactor::SrcColor: return vk::BlendFactor::eSrcColor;
+		case GraphicsPipeline::BlendFactor::OneMinusSrcColor: return vk::BlendFactor::eOneMinusSrcColor;
+		case GraphicsPipeline::BlendFactor::DstColor: return vk::BlendFactor::eDstColor;
+		case GraphicsPipeline::BlendFactor::OneMinusDstColor: return vk::BlendFactor::eOneMinusDstColor;
+		case GraphicsPipeline::BlendFactor::SrcAlpha: return vk::BlendFactor::eSrcAlpha;
+		case GraphicsPipeline::BlendFactor::OneMinusSrcAlpha: return vk::BlendFactor::eOneMinusSrcAlpha;
+		case GraphicsPipeline::BlendFactor::DstAlpha: return vk::BlendFactor::eDstAlpha;
+		case GraphicsPipeline::BlendFactor::OneMinusDstAlpha: return vk::BlendFactor::eOneMinusDstAlpha;
+		case GraphicsPipeline::BlendFactor::ConstColor: return vk::BlendFactor::eConstantColor;
+		case GraphicsPipeline::BlendFactor::OneMinusConstColor: return vk::BlendFactor::eOneMinusConstantColor;
+		case GraphicsPipeline::BlendFactor::ConstAlpha: return vk::BlendFactor::eConstantAlpha;
+		case GraphicsPipeline::BlendFactor::OneMinusConstAlpha: return vk::BlendFactor::eOneMinusConstantAlpha;
+		case GraphicsPipeline::BlendFactor::Src1Color: return vk::BlendFactor::eSrc1Color;
+		case GraphicsPipeline::BlendFactor::OneMinusSrc1Color: return vk::BlendFactor::eOneMinusSrc1Color;
+		case GraphicsPipeline::BlendFactor::Src1Alpha: return vk::BlendFactor::eSrc1Alpha;
+		case GraphicsPipeline::BlendFactor::SrcAlphaSaturate: return vk::BlendFactor::eSrcAlphaSaturate;
+		default: abort();
 	}
 }
 static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOperation blendOperation) noexcept
 {
 	switch (blendOperation)
 	{
-	case GraphicsPipeline::BlendOperation::Add: return vk::BlendOp::eAdd;
-	case GraphicsPipeline::BlendOperation::Subtract: return vk::BlendOp::eSubtract;
-	case GraphicsPipeline::BlendOperation::ReverseSubtract: return vk::BlendOp::eReverseSubtract;
-	case GraphicsPipeline::BlendOperation::Minimum: return vk::BlendOp::eMin;
-	case GraphicsPipeline::BlendOperation::Maximum: return vk::BlendOp::eMax;
-	default: abort();
+		case GraphicsPipeline::BlendOperation::Add: return vk::BlendOp::eAdd;
+		case GraphicsPipeline::BlendOperation::Subtract: return vk::BlendOp::eSubtract;
+		case GraphicsPipeline::BlendOperation::ReverseSubtract: return vk::BlendOp::eReverseSubtract;
+		case GraphicsPipeline::BlendOperation::Minimum: return vk::BlendOp::eMin;
+		case GraphicsPipeline::BlendOperation::Maximum: return vk::BlendOp::eMax;
+		default: abort();
 	}
 }
 static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorComponent colorComponents) noexcept

@@ -222,7 +222,8 @@ void HizRenderSystem::gBufferRecreate()
 		if (pipeline)
 		{
 			auto pipelineView = graphicsSystem->get(pipeline);
-			pipelineView->updateFramebuffer(framebuffers[0]);
+			if (pipelineView->isReady())
+				pipelineView->updateFramebuffer(framebuffers[0]);
 		}
 	}
 }

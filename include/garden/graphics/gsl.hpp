@@ -328,32 +328,32 @@ static uint8 toComponentCount(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-	case GslDataType::Bool: return 1;
-	case GslDataType::Int32: return 1;
-	case GslDataType::Uint32: return 1;
-	case GslDataType::Float: return 1;
-	case GslDataType::Bool2: return 2;
-	case GslDataType::Int2: return 2;
-	case GslDataType::Uint2: return 2;
-	case GslDataType::Float2: return 2;
-	case GslDataType::Bool3: return 3;
-	case GslDataType::Int3: return 3;
-	case GslDataType::Uint3: return 3;
-	case GslDataType::Float3: return 3;
-	case GslDataType::Bool4: return 4;
-	case GslDataType::Int4: return 4;
-	case GslDataType::Uint4: return 4;
-	case GslDataType::Float4: return 4;
-	case GslDataType::Float2x2: return 4;
-	case GslDataType::Float3x3: return 9;
-	case GslDataType::Float4x4: return 16;
-	case GslDataType::Float2x3: return 6;
-	case GslDataType::Float3x2: return 6;
-	case GslDataType::Float2x4: return 8;
-	case GslDataType::Float4x2: return 8;
-	case GslDataType::Float3x4: return 12;
-	case GslDataType::Float4x3: return 12;
-	default: abort();
+		case GslDataType::Bool: return 1;
+		case GslDataType::Int32: return 1;
+		case GslDataType::Uint32: return 1;
+		case GslDataType::Float: return 1;
+		case GslDataType::Bool2: return 2;
+		case GslDataType::Int2: return 2;
+		case GslDataType::Uint2: return 2;
+		case GslDataType::Float2: return 2;
+		case GslDataType::Bool3: return 3;
+		case GslDataType::Int3: return 3;
+		case GslDataType::Uint3: return 3;
+		case GslDataType::Float3: return 3;
+		case GslDataType::Bool4: return 4;
+		case GslDataType::Int4: return 4;
+		case GslDataType::Uint4: return 4;
+		case GslDataType::Float4: return 4;
+		case GslDataType::Float2x2: return 4;
+		case GslDataType::Float3x3: return 9;
+		case GslDataType::Float4x4: return 16;
+		case GslDataType::Float2x3: return 6;
+		case GslDataType::Float3x2: return 6;
+		case GslDataType::Float2x4: return 8;
+		case GslDataType::Float4x2: return 8;
+		case GslDataType::Float3x4: return 12;
+		case GslDataType::Float4x3: return 12;
+		default: abort();
 	}
 }
 
@@ -365,32 +365,32 @@ static uint8 toLocationOffset(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-	case GslDataType::Bool: return 1;
-	case GslDataType::Int32: return 1;
-	case GslDataType::Uint32: return 1;
-	case GslDataType::Float: return 1;
-	case GslDataType::Bool2: return 1;
-	case GslDataType::Int2: return 1;
-	case GslDataType::Uint2: return 1;
-	case GslDataType::Float2: return 1;
-	case GslDataType::Bool3: return 1;
-	case GslDataType::Int3: return 1;
-	case GslDataType::Uint3: return 1;
-	case GslDataType::Float3: return 1;
-	case GslDataType::Bool4: return 1;
-	case GslDataType::Int4: return 1;
-	case GslDataType::Uint4: return 1;
-	case GslDataType::Float4: return 1;
-	case GslDataType::Float2x2: return 2;
-	case GslDataType::Float3x3: return 3;
-	case GslDataType::Float4x4: return 4;
-	case GslDataType::Float2x3: return 3;
-	case GslDataType::Float3x2: return 2;
-	case GslDataType::Float2x4: return 4;
-	case GslDataType::Float4x2: return 2;
-	case GslDataType::Float3x4: return 4;
-	case GslDataType::Float4x3: return 3;
-	default: abort();
+		case GslDataType::Bool: return 1;
+		case GslDataType::Int32: return 1;
+		case GslDataType::Uint32: return 1;
+		case GslDataType::Float: return 1;
+		case GslDataType::Bool2: return 1;
+		case GslDataType::Int2: return 1;
+		case GslDataType::Uint2: return 1;
+		case GslDataType::Float2: return 1;
+		case GslDataType::Bool3: return 1;
+		case GslDataType::Int3: return 1;
+		case GslDataType::Uint3: return 1;
+		case GslDataType::Float3: return 1;
+		case GslDataType::Bool4: return 1;
+		case GslDataType::Int4: return 1;
+		case GslDataType::Uint4: return 1;
+		case GslDataType::Float4: return 1;
+		case GslDataType::Float2x2: return 2;
+		case GslDataType::Float3x3: return 3;
+		case GslDataType::Float4x4: return 4;
+		case GslDataType::Float2x3: return 3;
+		case GslDataType::Float3x2: return 2;
+		case GslDataType::Float2x4: return 4;
+		case GslDataType::Float4x2: return 2;
+		case GslDataType::Float3x4: return 4;
+		case GslDataType::Float4x3: return 3;
+		default: abort();
 	}
 }
 
@@ -402,32 +402,32 @@ static constexpr psize toBinarySize(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-	case GslDataType::Bool: return sizeof(uint32);
-	case GslDataType::Int32: return sizeof(int32);
-	case GslDataType::Uint32: return sizeof(uint32);
-	case GslDataType::Float: return sizeof(float);
-	case GslDataType::Bool2: return sizeof(uint32) * 2;
-	case GslDataType::Bool3: return sizeof(uint32) * 3;
-	case GslDataType::Bool4: return sizeof(uint32) * 4;
-	case GslDataType::Int2: return sizeof(int32) * 2;
-	case GslDataType::Int3: return sizeof(int32) * 3;
-	case GslDataType::Int4: return sizeof(int32) * 4;
-	case GslDataType::Uint2: return sizeof(uint32) * 2;
-	case GslDataType::Uint3: return sizeof(uint32) * 3;
-	case GslDataType::Uint4: return sizeof(uint32) * 4;
-	case GslDataType::Float2: return sizeof(float) * 2;
-	case GslDataType::Float3: return sizeof(float) * 3;
-	case GslDataType::Float4: return sizeof(float) * 4;
-	case GslDataType::Float2x2: return sizeof(float) * 2 * 2;
-	case GslDataType::Float3x3: return sizeof(float) * 3 * 3;
-	case GslDataType::Float4x4: return sizeof(float) * 4 * 4;
-	case GslDataType::Float2x3: return sizeof(float) * 2 * 3;
-	case GslDataType::Float3x2: return sizeof(float) * 3 * 2;
-	case GslDataType::Float2x4: return sizeof(float) * 2 * 4;
-	case GslDataType::Float4x2: return sizeof(float) * 4 * 2;
-	case GslDataType::Float3x4: return sizeof(float) * 3 * 4;
-	case GslDataType::Float4x3: return sizeof(float) * 4 * 3;
-	default: return 0;
+		case GslDataType::Bool: return sizeof(uint32);
+		case GslDataType::Int32: return sizeof(int32);
+		case GslDataType::Uint32: return sizeof(uint32);
+		case GslDataType::Float: return sizeof(float);
+		case GslDataType::Bool2: return sizeof(uint32) * 2;
+		case GslDataType::Bool3: return sizeof(uint32) * 3;
+		case GslDataType::Bool4: return sizeof(uint32) * 4;
+		case GslDataType::Int2: return sizeof(int32) * 2;
+		case GslDataType::Int3: return sizeof(int32) * 3;
+		case GslDataType::Int4: return sizeof(int32) * 4;
+		case GslDataType::Uint2: return sizeof(uint32) * 2;
+		case GslDataType::Uint3: return sizeof(uint32) * 3;
+		case GslDataType::Uint4: return sizeof(uint32) * 4;
+		case GslDataType::Float2: return sizeof(float) * 2;
+		case GslDataType::Float3: return sizeof(float) * 3;
+		case GslDataType::Float4: return sizeof(float) * 4;
+		case GslDataType::Float2x2: return sizeof(float) * 2 * 2;
+		case GslDataType::Float3x3: return sizeof(float) * 3 * 3;
+		case GslDataType::Float4x4: return sizeof(float) * 4 * 4;
+		case GslDataType::Float2x3: return sizeof(float) * 2 * 3;
+		case GslDataType::Float3x2: return sizeof(float) * 3 * 2;
+		case GslDataType::Float2x4: return sizeof(float) * 2 * 4;
+		case GslDataType::Float4x2: return sizeof(float) * 4 * 2;
+		case GslDataType::Float3x4: return sizeof(float) * 3 * 4;
+		case GslDataType::Float4x3: return sizeof(float) * 4 * 3;
+		default: return 0;
 	}
 }
 /**
@@ -438,16 +438,16 @@ static constexpr psize toBinarySize(GslDataFormat dataFormat) noexcept
 {
 	switch (dataFormat)
 	{
-	case GslDataFormat::F8: return sizeof(uint8);
-	case GslDataFormat::F16: return sizeof(uint16);
-	case GslDataFormat::F32: return sizeof(float);
-	case GslDataFormat::I8: return sizeof(int8);
-	case GslDataFormat::I16: return sizeof(int16);
-	case GslDataFormat::I32: return sizeof(int32);
-	case GslDataFormat::U8: return sizeof(uint8);
-	case GslDataFormat::U16: return sizeof(uint16);
-	case GslDataFormat::U32: return sizeof(uint32);
-	default: return 0;
+		case GslDataFormat::F8: return sizeof(uint8);
+		case GslDataFormat::F16: return sizeof(uint16);
+		case GslDataFormat::F32: return sizeof(float);
+		case GslDataFormat::I8: return sizeof(int8);
+		case GslDataFormat::I16: return sizeof(int16);
+		case GslDataFormat::I32: return sizeof(int32);
+		case GslDataFormat::U8: return sizeof(uint8);
+		case GslDataFormat::U16: return sizeof(uint16);
+		case GslDataFormat::U32: return sizeof(uint32);
+		default: return 0;
 	}
 }
 

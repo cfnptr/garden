@@ -275,11 +275,11 @@ static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance)
 			uint32 score;
 			switch (properties.deviceType)
 			{
-			case vk::PhysicalDeviceType::eDiscreteGpu: score = 100000; break;
-			case vk::PhysicalDeviceType::eVirtualGpu: score = 90000; break;
-			case vk::PhysicalDeviceType::eIntegratedGpu: score = 80000; break;
-			case vk::PhysicalDeviceType::eCpu: score = 70000; break;
-			default: score = 0;
+				case vk::PhysicalDeviceType::eDiscreteGpu: score = 100000; break;
+				case vk::PhysicalDeviceType::eVirtualGpu: score = 90000; break;
+				case vk::PhysicalDeviceType::eIntegratedGpu: score = 80000; break;
+				case vk::PhysicalDeviceType::eCpu: score = 70000; break;
+				default: score = 0;
 			}
 
 			score += properties.limits.maxImageDimension2D;
