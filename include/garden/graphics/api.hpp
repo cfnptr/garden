@@ -226,6 +226,10 @@ public:
 	 * @brief Stores shader pipeline cache to the disk.
 	 */
 	virtual void storePipelineCache() { }
+	/**
+	 * @brief Wait for a GPU to become idle.
+	 */
+	virtual void waitIdle() = 0;
 
 	/**
 	 * @brief Creates and initializes a new graphics API instance.

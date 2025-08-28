@@ -46,10 +46,10 @@ public:
 	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbB8G8R8A8;
 	static constexpr Image::Format depthStencilFormat = Image::Format::UnormD16;
 
-	static constexpr Framebuffer::OutputAttachment::Flags colorBufferFlags = { false, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags colorBufferFlags = { false, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferFlags = { false, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags uiBufferFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags depthBufferFlags = { true, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags depthBufferFlags = { true, false, true };
 private:
 	ID<Image> colorBuffer = {};
 	ID<Image> uiBuffer = {};

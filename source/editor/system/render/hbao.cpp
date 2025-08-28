@@ -61,7 +61,7 @@ void HbaoRenderEditorSystem::preUiRender()
 		{
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
-				settingsSystem->setBool("hbao.isEnabled", hbaoSystem->isEnabled);
+				settingsSystem->setBool("hbao.enabled", hbaoSystem->isEnabled);
 		}
 
 		ImGui::DragFloat("Radius", &hbaoSystem->radius, 0.01f, 0.0f, FLT_MAX);

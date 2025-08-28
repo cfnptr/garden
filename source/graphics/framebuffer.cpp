@@ -538,6 +538,7 @@ void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments
 	GARDEN_ASSERT_MSG(subpasses.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!colorAttachments.empty() || depthStencilAttachment.imageView, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
 
 	#if GARDEN_DEBUG
 	auto graphicsAPI = GraphicsAPI::get();

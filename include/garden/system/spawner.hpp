@@ -37,7 +37,7 @@ enum class SpawnMode : uint8
 /**
  * @brief Common entity spawn mode names.
  */
-static constexpr const char* spawnModeNames[(uint8)SpawnMode::Count] =
+constexpr const char* spawnModeNames[(uint8)SpawnMode::Count] =
 {
 	"One Shot", "Manual"
 };

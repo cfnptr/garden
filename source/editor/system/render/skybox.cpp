@@ -56,18 +56,11 @@ void SkyboxRenderEditorSystem::deinit()
 
 void SkyboxRenderEditorSystem::editorSettings()
 {
-	if (ImGui::CollapsingHeader("Skybox"))
-	{
-		ImGui::Indent();
-		ImGui::PushID("skybox");
-
-		auto skyboxSystem = SkyboxRenderSystem::Instance::get();
-		ImGui::Checkbox("Enabled", &skyboxSystem->isEnabled);
-
-		ImGui::PopID();
-		ImGui::Unindent();
-		ImGui::Spacing();
-	}
+	ImGui::Spacing();
+	ImGui::PushID("skybox");
+	auto skyboxSystem = SkyboxRenderSystem::Instance::get();
+	ImGui::Checkbox("Skybox Enabled", &skyboxSystem->isEnabled);
+	ImGui::PopID();
 }
 
 void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)

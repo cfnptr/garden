@@ -123,7 +123,7 @@ static constexpr psize toBinarySize(IndexType indexType) noexcept
 /**
  * @brief Pipeline type name strings.
  */
-constexpr string_view pipelineTypeNames[(psize)PipelineType::Count] =
+constexpr const char* pipelineTypeNames[(psize)PipelineType::Count] =
 {
 	"Graphics", "Compute", "RayTracing"
 };

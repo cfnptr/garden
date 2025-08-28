@@ -402,8 +402,7 @@ void DeferredRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		if (upscaleHdrFramebuffer != hdrFramebuffer)
-			graphicsSystem->destroy(upscaleHdrFramebuffer);
+		graphicsSystem->destroy(upscaleHdrFramebuffer);
 		graphicsSystem->destroy(transDepthFramebuffer);
 		graphicsSystem->destroy(oitFramebuffer);
 		graphicsSystem->destroy(uiFramebuffer);
@@ -453,25 +452,6 @@ void DeferredRenderSystem::render()
 	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
 	if (!cameraView || !transformView || !transformView->isActive())
 		return;
-
-	if (graphicsSystem->useUpscaling)
-	{
-		if (upscaleHdrFramebuffer == hdrFramebuffer)
-		{
-			upscaleHdrFramebuffer = {}; upscaleHdrBuffer = {};
-			upscaleHdrFramebuffer = getUpscaleHdrFramebuffer();
-		}
-	}
-	else
-	{
-		if (upscaleHdrFramebuffer != hdrFramebuffer)
-		{
-			graphicsSystem->destroy(upscaleHdrFramebuffer);
-			graphicsSystem->destroy(upscaleHdrBuffer);
-			upscaleHdrFramebuffer = {}; upscaleHdrBuffer = {};
-			upscaleHdrFramebuffer = getUpscaleHdrFramebuffer();
-		}
-	}
 
 	#if GARDEN_DEBUG
 	if (ForwardRenderSystem::Instance::tryGet())
@@ -864,7 +844,7 @@ void DeferredRenderSystem::swapchainRecreate()
 			depthStencilAttachment.setFlags(DeferredRenderSystem::transBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
 		}
-		if (upscaleHdrFramebuffer && upscaleHdrFramebuffer != hdrFramebuffer)
+		if (upscaleHdrFramebuffer)
 		{
 			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
 				getUpscaleHdrBuffer())->getDefaultView(), DeferredRenderSystem::upscaleHdrFlags);
@@ -1046,10 +1026,7 @@ ID<Framebuffer> DeferredRenderSystem::getTransDepthFramebuffer()
 ID<Framebuffer> DeferredRenderSystem::getUpscaleHdrFramebuffer()
 {
 	if (!upscaleHdrFramebuffer)
-	{
-		upscaleHdrFramebuffer = GraphicsSystem::Instance::get()->useUpscaling ? 
-			createHdrFramebuffer(getUpscaleHdrBuffer(), true) : getHdrFramebuffer();
-	}
+		upscaleHdrFramebuffer = createHdrFramebuffer(getUpscaleHdrBuffer(), true);
 	return upscaleHdrFramebuffer;
 }
 const vector<ID<Framebuffer>>& DeferredRenderSystem::getHdrCopyBlurFBs()

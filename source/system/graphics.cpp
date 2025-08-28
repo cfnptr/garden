@@ -194,15 +194,13 @@ void GraphicsSystem::preInit()
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 	{
-		settingsSystem->getBool("useVsync", useVsync);
-		settingsSystem->getInt("maxFPS", maxFPS);
+		settingsSystem->getBool("render.useVsync", useVsync);
+		settingsSystem->getInt("render.maxFPS", maxFPS);
 	}
 }
 void GraphicsSystem::preDeinit()
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		VulkanAPI::get()->device.waitIdle();
-	else abort();
+	GraphicsAPI::get()->waitIdle();
 
 	if (Manager::Instance::get()->isRunning)
 	{
@@ -409,22 +407,26 @@ void GraphicsSystem::update()
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
-		auto framebufferSize = swapchain->getFramebufferSize();
-		calcJitterOffsets(jitterOffsets, scaledFrameSize == uint2::zero ? 
-			framebufferSize : scaledFrameSize, framebufferSize);
-
-		Manager::Instance::get()->runEvent("SwapchainRecreate");
-
-		if (!forceRecreateSwapchain)
+		if (useJittering)
 		{
-			auto graphicsAPI = GraphicsAPI::get();
-			graphicsAPI->forceResourceDestroy = true;
-			disposeGpuResources(graphicsAPI);
-			graphicsAPI->forceResourceDestroy = false;
+			auto framebufferSize = swapchain->getFramebufferSize();
+			calcJitterOffsets(jitterOffsets, getScaledFrameSize(), framebufferSize);
 		}
 
+		if (forceRecreateSwapchain)
+		{
+			GARDEN_LOG_INFO("Forced swapchain recreate.");
+			GraphicsAPI::get()->waitIdle();
+			forceRecreateSwapchain = false;
+		}
+
+		Manager::Instance::get()->runEvent("SwapchainRecreate");
 		swapchainChanges = {};
-		forceRecreateSwapchain = false;
+
+		auto graphicsAPI = GraphicsAPI::get();
+		graphicsAPI->forceResourceDestroy = true;
+		disposeGpuResources(graphicsAPI);
+		graphicsAPI->forceResourceDestroy = false;
 	}
 
 	if (camera && isFramebufferSizeValid)
@@ -498,14 +500,14 @@ uint2 GraphicsSystem::getScaledFrameSize()
 }
 void GraphicsSystem::setScaledFrameSize(uint2 frameSize)
 {
-	GARDEN_ASSERT(areAllTrue(frameSize > uint2::zero));
 	if (frameSize == scaledFrameSize)
 		return;
-	scaledFrameSize = frameSize;
 
 	SwapchainChanges swapchainChanges;
 	swapchainChanges.framebufferSize = true;
 	recreateSwapchain(swapchainChanges);
+
+	scaledFrameSize = frameSize;
 }
 
 uint2 GraphicsSystem::getFramebufferSize() const noexcept

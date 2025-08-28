@@ -85,7 +85,7 @@ void FxaaRenderSystem::init()
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getBool("fxaa.isEnabled", isEnabled);
+		settingsSystem->getBool("fxaa.enabled", isEnabled);
 }
 void FxaaRenderSystem::deinit()
 {

@@ -28,7 +28,7 @@ namespace garden
 {
 
 /**
- * @brief Physically based atmosphere rendering system.
+ * @brief Physically based atmosphere rendering system. (Sky)
  */
 class AtmosphereRenderSystem final : public System, public Singleton<AtmosphereRenderSystem>
 {
@@ -117,6 +117,34 @@ public:
 		float3 sunColor;
 		float sunSize;
 	};
+
+	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.033100f);
+	static constexpr float earthRayleightScaleHeight = 8.0f;
+	static constexpr float3 earthMieScattering = float3(0.003996f);
+	static constexpr float earthMieScaleHeight = 1.2f;
+	static constexpr float3 earthMieAbsorption = float3(0.000444f);
+	static constexpr float earthMiePhaseG = 0.8f;
+	static constexpr float3 earthOzoneAbsorption = float3(0.000650f, 0.001881f, 0.000085f);
+	static constexpr float earthOzoneLayerWidth = 25.0f;
+	static constexpr float earthOzoneLayerSlope = 1.0f / 15.0f;
+	static constexpr float earthOzoneLayerTip = 1.0f;
+	static constexpr float3 earthGroundAlbedo = float3(0.4f);
+	static constexpr float earthGroundRadius = 6371.0f;
+	static constexpr float earthAtmosphereHeight = 60.0f;
+	static constexpr float earthSunAngularSize = 0.53f;
+
+	// TOOD: visually adjust values or use better source
+	static constexpr float3 marsRayleighScattering = float3(0.00008703f, 0.00020337f, 0.00049650f);
+	static constexpr float marsRayleightScaleHeight = 11.1f;
+	static constexpr float3 marsMieScattering = float3(0.0120f, 0.01f, 0.007f);
+	static constexpr float marsMieScaleHeight = 10.0f;
+	static constexpr float3 marsMieAbsorption = float3(0.0008f, 0.0006f, 0.0004f);
+	static constexpr float marsMiePhaseG = 0.7f;
+	static constexpr float3 marsOzoneAbsorption = float3(0.0f);
+	static constexpr float3 marsGroundAlbedo = float3(0.16f);
+	static constexpr float marsGroundRadius = 3389.5f;
+	static constexpr float marsAtmosphereHeight = 80.0f;
+	static constexpr float marsSunAngularSize = 0.35f;
 private:
 	ID<Image> transLUT = {};
 	ID<Image> multiScatLUT = {};
@@ -141,12 +169,12 @@ private:
 	uint8 _alignment = 0;
 
 	/**
-	 * @brief Creates a new physically based atmosphere rendering system instance.
+	 * @brief Creates a new physically based atmosphere rendering system instance. (Sky)
 	 * @param setSingleton set system singleton instance
 	 */
 	AtmosphereRenderSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroys physically based atmosphere rendering system instance.
+	 * @brief Destroys physically based atmosphere rendering system instance. (Sky)
 	 */
 	~AtmosphereRenderSystem() final;
 
@@ -160,21 +188,21 @@ private:
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is physically based atmosphere rendering enabled. */
-	float4 rayleighScattering = float4(0.005802f, 0.013558f, 0.033100f, 1.0f);
-	float rayleightScaleHeight = 8.0f; /**< (km) */
-	float4 mieScattering = float4(float3(0.003996f), 1.0f);
-	float4 mieAbsorption = float4(float3(0.000444f), 1.0f);
-	float mieScaleHeight = 1.2f; /**< (km) */
-	float miePhaseG = 0.8f;
-	float4 ozoneAbsorption = float4(0.000650f, 0.001881f, 0.000085f, 1.0f);
-	float ozoneLayerWidth = 25.0f; /**< (km) */
-	float ozoneLayerSlope = 1.0f / 15.0f;
-	float ozoneLayerTip = 1.0f;
-	float3 groundAlbedo = float3(0.4f);
-	float groundRadius = 6371.0f; /**< (km) */
-	float atmosphereHeight = 60.0f; /**< (km) */
+	float3 rayleighScattering = earthRayleighScattering;
+	float rayleightScaleHeight = earthRayleightScaleHeight; /**< (km) */
+	float3 mieScattering = earthMieScattering;
+	float mieScaleHeight = earthMieScaleHeight; /**< (km) */
+	float3 mieAbsorption = earthMieAbsorption;
+	float miePhaseG = earthMiePhaseG;
+	float3 ozoneAbsorption = earthOzoneAbsorption;
+	float ozoneLayerWidth = earthOzoneLayerWidth; /**< (km) */
+	float ozoneLayerSlope = earthOzoneLayerSlope;
+	float ozoneLayerTip = earthOzoneLayerTip;
+	float3 groundAlbedo = earthGroundAlbedo;
+	float groundRadius = earthGroundRadius; /**< (km) */
+	float atmosphereHeight = earthAtmosphereHeight; /**< (km) */
 	float4 sunColor = float4(float3(1.0f), 64000.0f);
-	float sunAngularSize = 0.53f; /**< (degrees) */
+	float sunAngularSize = earthSunAngularSize; /**< (degrees) */
 	float multiScatFactor = 1.0f;
 
 	/**

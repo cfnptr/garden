@@ -73,7 +73,7 @@ private:
 	void init();
 	void deinit();
 	void ldrRender();
-	void gBufferRecreate();
+	void dsRecreate();
 
 	friend class ecsm::Manager;
 public:

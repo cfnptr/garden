@@ -16,7 +16,6 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/render/fxaa.hpp"
-#include "garden/system/render/deferred.hpp"
 #include "garden/system/settings.hpp"
 
 using namespace garden;
@@ -48,22 +47,15 @@ void FxaaRenderEditorSystem::deinit()
 
 void FxaaRenderEditorSystem::editorSettings()
 {
-	if (ImGui::CollapsingHeader("FXAA (Anti-aliasing)"))
+	ImGui::Spacing();
+	ImGui::PushID("fxaa");
+	auto fxaaSystem = FxaaRenderSystem::Instance::get();
+	if (ImGui::Checkbox("FXAA Enabled", &fxaaSystem->isEnabled))
 	{
-		ImGui::Indent();
-		ImGui::PushID("fxaa");
-
-		auto fxaaSystem = FxaaRenderSystem::Instance::get();
-		if (ImGui::Checkbox("Enabled", &fxaaSystem->isEnabled))
-		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
-			if (settingsSystem)
-				settingsSystem->setBool("fxaa.isEnabled", fxaaSystem->isEnabled);
-		}
-
-		ImGui::PopID();
-		ImGui::Unindent();
-		ImGui::Spacing();
+		auto settingsSystem = SettingsSystem::Instance::tryGet();
+		if (settingsSystem)
+			settingsSystem->setBool("fxaa.enabled", fxaaSystem->isEnabled);
 	}
+	ImGui::PopID();
 }
 #endif

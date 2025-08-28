@@ -237,21 +237,21 @@ static Sampler::CompareOp toCompareOperation(string_view compareOperation)
 /***********************************************************************************************************************
  * @brief Sampler filter name strings.
  */
-constexpr string_view samplerFilterNames[(psize)Sampler::Filter::Count] =
+constexpr const char* samplerFilterNames[(psize)Sampler::Filter::Count] =
 {
 	"Nearest", "Linear"
 };
 /**
  * @brief Sampler address mode name strings.
  */
-constexpr string_view addressModeNames[(psize)Sampler::AddressMode::Count] =
+constexpr const char* addressModeNames[(psize)Sampler::AddressMode::Count] =
 {
 	"Repeat", "MirroredRepeat", "ClampToEdge", "ClampToBorder", "MirrorClampToEdge"
 };
 /**
  * @brief Sampler border color name strings.
  */
-constexpr string_view borderColorNames[(psize)Sampler::BorderColor::Count] =
+constexpr const char* borderColorNames[(psize)Sampler::BorderColor::Count] =
 {
 	"FloatTransparentBlack", "IntTransparentBlack", "FloatOpaqueBlack",
 	"IntOpaqueBlack", "FloatOpaqueWhite", "IntOpaqueWhite"
@@ -259,7 +259,7 @@ constexpr string_view borderColorNames[(psize)Sampler::BorderColor::Count] =
 /**
  * @brief Sampler compare operation name strings.
  */
-constexpr string_view compareOperationNames[(psize)Sampler::CompareOp::Count] =
+constexpr const char* compareOperationNames[(psize)Sampler::CompareOp::Count] =
 {
 	"Never", "Less", "Equal", "LessOrEqual", "Greater", "NotEqual", "GreaterOrEqual", "Always"
 };

@@ -278,7 +278,7 @@ void EditorRenderSystem::showOptionsWindow()
 		if (ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync))
 		{
 			if (settingsSystem)
-				settingsSystem->setBool("useVsync", graphicsSystem->useVsync);
+				settingsSystem->setBool("render.useVsync", graphicsSystem->useVsync);
 		}
 
 		ImGui::SameLine();
@@ -289,8 +289,19 @@ void EditorRenderSystem::showOptionsWindow()
 		{
 			graphicsSystem->maxFPS = (uint16)frameRate;
 			if (settingsSystem)
-				settingsSystem->setInt("maxFPS", frameRate);
+				settingsSystem->setInt("render.maxFPS", frameRate);
 		}
+
+		ImGui::BeginDisabled(graphicsSystem->useUpscaling);
+		auto scaledSize = graphicsSystem->getScaledFrameSize();
+		auto framebufferSize = graphicsSystem->getFramebufferSize();
+		if (ImGui::SliderInt("Scaled Size X", (int*)&scaledSize.x, 
+			GraphicsAPI::minFramebufferSize, framebufferSize.x))
+		{
+			scaledSize.y = ((float)scaledSize.x / framebufferSize.x) * framebufferSize.y;
+			graphicsSystem->setScaledFrameSize(scaledSize);
+		}
+		ImGui::EndDisabled();
 		ImGui::Spacing();
 
 		auto appInfoSystem = AppInfoSystem::Instance::tryGet();

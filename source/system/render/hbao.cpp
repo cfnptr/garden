@@ -98,7 +98,7 @@ void HbaoRenderSystem::init()
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getBool("hbao.isEnabled", isEnabled);
+		settingsSystem->getBool("hbao.enabled", isEnabled);
 }
 void HbaoRenderSystem::deinit()
 {

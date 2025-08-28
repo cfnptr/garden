@@ -27,11 +27,10 @@ namespace garden
 
 /**
  * @brief Nvidia DLSS performance quality modes.
- * 
  */
 enum class DlssQuality : uint8
 {
-	MaxPerformance, Balanced, MaxQuality, UltraPerformance, UltraQuality, DLAA, Count
+	Off, Auto, UltraPerformance, Performance, Balanced, Quality, UltraQuality, DLAA, Count
 };
 
 /**
@@ -83,6 +82,40 @@ public:
 	 */
 	float calcMipLodBias(float nativeBias = 0.0f) noexcept;
 };
+
+/**
+ * @brief Nvidia DLSS performance quality name strings.
+ */
+constexpr const char* dlssQualityNames[(psize)DlssQuality::Count] =
+{
+	"Off", "Auto", "UltraPerformance", "Performance", "Balanced", "Quality", "UltraQuality", "DLAA"
+};
+/**
+ * @brief Returns Nvidia DLSS performance quality mode.
+ * @param dlssQuality target DLSS quality mode
+ * @throw GardenError on unknown DLSS quality mode.
+ */
+static DlssQuality toDlssQuality(string_view dlssQuality)
+{
+	if (dlssQuality == "Off") return DlssQuality::Off;
+	if (dlssQuality == "Auto") return DlssQuality::Auto;
+	if (dlssQuality == "UltraPerformance") return DlssQuality::UltraPerformance;
+	if (dlssQuality == "Performance") return DlssQuality::Performance;
+	if (dlssQuality == "Balanced") return DlssQuality::Balanced;
+	if (dlssQuality == "Quality") return DlssQuality::Quality;
+	if (dlssQuality == "UltraQuality") return DlssQuality::UltraQuality;
+	if (dlssQuality == "DLAA") return DlssQuality::DLAA;
+	throw GardenError("Unknown DLSS quality. (" + string(dlssQuality) + ")");
+}
+/**
+ * @brief Returns Nvidia DLSS performance quality name string.
+ * @param dlssQuality target DLSS quality mode
+ */
+static string_view toString(DlssQuality dlssQuality) noexcept
+{
+	GARDEN_ASSERT(dlssQuality < DlssQuality::Count);
+	return dlssQualityNames[(psize)dlssQuality];
+}
 
 } // namespace garden
 

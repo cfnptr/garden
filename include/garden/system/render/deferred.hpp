@@ -105,8 +105,8 @@ public:
 	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format transBufferFormat = Image::Format::UnormR8;
 
-	static constexpr Framebuffer::OutputAttachment::Flags gBufferFlags = { false, false, true};
-	static constexpr Framebuffer::OutputAttachment::Flags gBufferDepthFlags = { true, false, true};
+	static constexpr Framebuffer::OutputAttachment::Flags gBufferFlags = { false, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags gBufferDepthFlags = { true, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferDepthFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags ldrBufferFlags = { false, true, true };

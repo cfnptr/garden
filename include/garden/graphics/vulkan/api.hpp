@@ -140,6 +140,10 @@ public:
 	 * @brief Stores shader pipeline cache to the disk.
 	 */
 	void storePipelineCache() final;
+	/**
+	 * @brief Wait for a GPU to become idle.
+	 */
+	void waitIdle() final;
 
 	/**
 	 * @brief Returns true if device buffer address supported.

@@ -1158,14 +1158,14 @@ static string toStringList(Image::Usage imageUsage) noexcept
 /***********************************************************************************************************************
  * @brief Image dimensionality type name strings.
  */
-constexpr string_view imageTypeNames[(psize)Image::Type::Count] =
+constexpr const char* imageTypeNames[(psize)Image::Type::Count] =
 {
 	"Texture1D", "Texture2D", "Texture3D", "Texture1DArray", "Texture2DArray", "Cubemap"
 };
 /**
  * @brief Image data format name strings.
  */
-constexpr string_view imageFormatNames[(psize)Image::Format::Count] =
+constexpr const char* imageFormatNames[(psize)Image::Format::Count] =
 {
 	"Undefined",
 	

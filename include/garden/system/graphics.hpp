@@ -1217,4 +1217,35 @@ public:
 	#endif
 };
 
+/**
+ * @brief Graphics quality name strings.
+ */
+constexpr const char* graphicsQualityNames[(psize)GraphicsQuality::Count] =
+{
+	"PotatoPC", "Low", "Medium", "High", "Ultra"
+};
+/**
+ * @brief Returns graphics quality level.
+ * @param graphicsQuality target graphics quality level
+ * @throw GardenError on unknown graphics quality level.
+ */
+static GraphicsQuality toGraphicsQuality(string_view graphicsQuality)
+{
+	if (graphicsQuality == "PotatoPC") return GraphicsQuality::PotatoPC;
+	if (graphicsQuality == "Low") return GraphicsQuality::Low;
+	if (graphicsQuality == "Medium") return GraphicsQuality::Medium;
+	if (graphicsQuality == "High") return GraphicsQuality::High;
+	if (graphicsQuality == "Ultra") return GraphicsQuality::Ultra;
+	throw GardenError("Unknown graphics quality. (" + string(graphicsQuality) + ")");
+}
+/**
+ * @brief Returns graphics quality name string.
+ * @param graphicsQuality target graphics quality level
+ */
+static string_view toString(GraphicsQuality graphicsQuality) noexcept
+{
+	GARDEN_ASSERT(graphicsQuality < GraphicsQuality::Count);
+	return graphicsQualityNames[(psize)graphicsQuality];
+}
+
 } // namespace garden

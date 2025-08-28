@@ -16,6 +16,7 @@
 #include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/settings.hpp"
 #include "atmosphere/constants.h"
 #include "math/angles.hpp"
 
@@ -121,7 +122,9 @@ static ID<GraphicsPipeline> createTransLutPipeline(ID<Framebuffer> transLutFrame
 	float sampleCount;
 	switch (quality)
 	{
-		case GraphicsQuality::Ultra: sampleCount = 30.0f; break;
+		case GraphicsQuality::Medium: sampleCount = 20.0f; break;
+		case GraphicsQuality::High: sampleCount = 30.0f; break;
+		case GraphicsQuality::Ultra: sampleCount = 40.0f; break;
 		default: sampleCount = 10.0f; break;
 	}
 	Pipeline::SpecConstValues specConstValues = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
@@ -136,8 +139,8 @@ static ID<ComputePipeline> createMultiScatLutPipeline(GraphicsQuality quality)
 	float sampleCount;
 	switch (quality)
 	{
-		case GraphicsQuality::Ultra: sampleCount = 20.0f; break;
-		default: sampleCount = 15.0f; break;
+		case GraphicsQuality::Ultra: sampleCount = 30.0f; break;
+		default: sampleCount = 20.0f; break;
 	}
 	Pipeline::SpecConstValues specConstValues = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
 	
@@ -190,8 +193,10 @@ static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewFram
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"atmosphere/sky-view", skyViewFramebuffer, options);
 }
-static ID<GraphicsPipeline> createSkyboxPipeline()
+static ID<GraphicsPipeline> createSkyboxPipeline(GraphicsQuality quality)
 {
+	// TODO: slice count based on quality
+
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
@@ -250,6 +255,10 @@ AtmosphereRenderSystem::AtmosphereRenderSystem(bool setSingleton) :Singleton(set
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AtmosphereRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AtmosphereRenderSystem::deinit);
+
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	if (settingsSystem)
+		settingsSystem->getType("atmosphere.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 }
 AtmosphereRenderSystem::~AtmosphereRenderSystem()
 {
@@ -330,7 +339,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		if (!skyViewLutPipeline)
 			skyViewLutPipeline = createSkyViewLutPipeline(skyViewLutFramebuffer, quality);
 		if (!skyboxPipeline)
-			skyboxPipeline = createSkyboxPipeline();
+			skyboxPipeline = createSkyboxPipeline(quality);
 		isInitialized = true;
 	}
 
@@ -366,19 +375,14 @@ void AtmosphereRenderSystem::preDeferredRender()
 	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
-	auto multiScatMul = graphicsSystem->get(transLUT)->getFormat() == 
-		Image::Format::SfloatR16G16B16A16 ? 1.0f : 2.0f;
 	auto cameraHeight = fma(max(cc.cameraPos.getY(), 0.0f), 
 		0.001f, groundRadius + PLANET_RADIUS_OFFSET);
 	auto cameraPos = float3(0.0f, cameraHeight, 0.0f);
 	auto topRadius = groundRadius + atmosphereHeight;
 	auto sunDir = (float3)-cc.lightDir;
-	auto rayleighScattering = (float3)this->rayleighScattering * this->rayleighScattering.w;
 	auto rayDensityExpScale = -1.0f / rayleightScaleHeight;
-	auto mieScattering = (float3)this->mieScattering * this->mieScattering.w;
-	auto mieExtinction = mieScattering + (float3)mieAbsorption * mieAbsorption.w;
+	auto mieExtinction = mieScattering + mieAbsorption;
 	auto mieDensityExpScale = -1.0f / mieScaleHeight;
-	auto absorptionExtinction = (float3)ozoneAbsorption * ozoneAbsorption.w;
 	auto absDensity0ConstantTerm = ozoneLayerTip - ozoneLayerWidth * ozoneLayerSlope;
 	auto absDensity1ConstantTerm = ozoneLayerTip - ozoneLayerWidth * -ozoneLayerSlope;
 
@@ -394,7 +398,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = absorptionExtinction;
+		pc.absorptionExtinction = ozoneAbsorption;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
 		pc.sunDir = sunDir;
 		pc.absDensity0ConstantTerm = absDensity0ConstantTerm;
@@ -418,7 +422,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = absorptionExtinction;
+		pc.absorptionExtinction = ozoneAbsorption;
 		pc.miePhaseG = miePhaseG;
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
@@ -429,7 +433,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.absDensity1LinearTerm = -ozoneLayerSlope;
 		pc.bottomRadius = groundRadius;
 		pc.topRadius = topRadius;
-		pc.multiScatFactor = multiScatFactor * multiScatMul;
+		pc.multiScatFactor = multiScatFactor;
 
 		SET_GPU_DEBUG_LABEL("Multi Scat LUT", Color::transparent);
 		multiScatLutPipelineView->bind();
@@ -444,7 +448,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = absorptionExtinction;
+		pc.absorptionExtinction = ozoneAbsorption;
 		pc.miePhaseG = miePhaseG;
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
@@ -470,7 +474,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.rayDensityExpScale = rayDensityExpScale;
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
-		pc.absorptionExtinction = absorptionExtinction;
+		pc.absorptionExtinction = ozoneAbsorption;
 		pc.miePhaseG = miePhaseG;
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
@@ -556,6 +560,9 @@ void AtmosphereRenderSystem::hdrRender()
 	skyboxPipelineView->bindDescriptorSet(skyboxDS);
 	skyboxPipelineView->pushConstants(&pc);
 	skyboxPipelineView->drawFullscreen();
+
+	// TODO: write motion vectors for the sky plane based on camera rotation
+	// We can attach velocity as image2D and write for skybox pixels.
 }
 
 //**********************************************************************************************************************
@@ -593,15 +600,53 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(skyboxDS);
 	graphicsSystem->destroy(skyViewLutDS);
 	graphicsSystem->destroy(cameraVolumeDS);
 	graphicsSystem->destroy(multiScatLutDS);
-	multiScatLutDS = cameraVolumeDS = skyViewLutDS = {};
+	multiScatLutDS = cameraVolumeDS = skyViewLutDS = skyboxDS = {};
 
 	if (transLUT)
 	{
-		graphicsSystem->destroy(transLUT);
-		transLUT = createTransLUT(getTransLutFormat(quality));
+		auto transLutView = graphicsSystem->get(transLUT);
+		if (transLutView->getFormat() != getTransLutFormat(quality))
+		{
+			graphicsSystem->destroy(skyboxDS); skyboxDS = {};
+			graphicsSystem->destroy(transLUT);
+			transLUT = createTransLUT(getTransLutFormat(quality));
+
+			if (transLutFramebuffer)
+			{
+				graphicsSystem->destroy(transLutFramebuffer);
+				transLutFramebuffer = createScatLutFramebuffer(transLUT, "transLUT");
+			}
+		}
+	}
+
+	if (transLutPipeline)
+	{
+		graphicsSystem->destroy(transLutPipeline);
+		transLutPipeline = createTransLutPipeline(transLutFramebuffer, quality);
+	}
+	if (multiScatLutPipeline)
+	{
+		graphicsSystem->destroy(multiScatLutPipeline);
+		multiScatLutPipeline = createMultiScatLutPipeline(quality);
+	}
+	if (cameraVolumePipeline)
+	{
+		graphicsSystem->destroy(cameraVolumePipeline);
+		cameraVolumePipeline = createCameraVolumePipeline(quality);
+	}
+	if (skyViewLutPipeline)
+	{
+		graphicsSystem->destroy(skyViewLutPipeline);
+		skyViewLutPipeline = createSkyViewLutPipeline(skyViewLutFramebuffer, quality);
+	}
+	if (skyboxPipeline)
+	{
+		graphicsSystem->destroy(skyboxPipeline);
+		skyboxPipeline = createSkyboxPipeline(quality);
 	}
 
 	this->quality = quality;
