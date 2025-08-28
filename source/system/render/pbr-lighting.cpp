@@ -16,6 +16,7 @@
 #include "garden/system/render/gpu-process.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/settings.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
 
@@ -522,6 +523,9 @@ void PbrLightingComponent::setCubemapMode(PbrCubemapMode mode)
 PbrLightingSystem::PbrLightingSystem(Options options, bool setSingleton) : Singleton(setSingleton), options(options)
 {
 	auto manager = Manager::Instance::get();
+	manager->registerEvent("DfgLutRecreate");
+	manager->registerEvent("PbrIblRecreate");
+
 	manager->registerEvent("PreShadowRender");
 	manager->registerEvent("ShadowRender");
 	manager->registerEvent("PostShadowRender");
@@ -553,6 +557,9 @@ PbrLightingSystem::~PbrLightingSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingSystem::deinit);
 
 		auto manager = Manager::Instance::get();
+		manager->unregisterEvent("DfgLutRecreate");
+		manager->unregisterEvent("PbrIblRecreate");
+
 		manager->unregisterEvent("PreShadowRender");
 		manager->unregisterEvent("ShadowRender");
 		manager->unregisterEvent("PostShadowRender");
@@ -584,6 +591,10 @@ void PbrLightingSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", PbrLightingSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", PbrLightingSystem::qualityChange);
+
+	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	if (settingsSystem)
+		settingsSystem->getType("pbrLighting.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 
 	if (!dfgLUT)
 		dfgLUT = createDfgLUT(getDfgLutSize(quality));
@@ -1181,12 +1192,15 @@ void PbrLightingSystem::setQuality(GraphicsQuality quality)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(lightingDS); lightingDS = {};
-
 	if (dfgLUT)
 	{
-		graphicsSystem->destroy(dfgLUT);
-		dfgLUT = createDfgLUT(getDfgLutSize(quality));
+		auto dfgLutView = graphicsSystem->get(dfgLUT);
+		if (dfgLutView->getSize() != getDfgLutSize(quality))
+		{
+			graphicsSystem->destroy(lightingDS); lightingDS = {};
+			graphicsSystem->destroy(dfgLUT);
+			dfgLUT = createDfgLUT(getDfgLutSize(quality));
+		}
 	}
 
 	for (auto& component : components)
@@ -1201,6 +1215,10 @@ void PbrLightingSystem::setQuality(GraphicsQuality quality)
 	}
 
 	this->quality = quality;
+
+	auto manager = Manager::Instance::get();
+	manager->runEvent("PbrIblRecreate");
+	manager->runEvent("DfgLutRecreate");
 }
 
 //**********************************************************************************************************************

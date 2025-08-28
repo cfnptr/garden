@@ -1269,3 +1269,8 @@ void VulkanAPI::storePipelineCache()
 		}
 	}
 }
+
+void VulkanAPI::waitIdle()
+{
+	device.waitIdle();
+}

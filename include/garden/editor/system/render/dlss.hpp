@@ -15,33 +15,19 @@
 #pragma once
 #include "garden/system/render/editor.hpp"
 
-#if GARDEN_EDITOR
+#if GARDEN_EDITOR && GARDEN_NVIDIA_DLSS
 namespace garden
 {
 
-class CsmRenderEditorSystem final : public System
+class DlssRenderEditorSystem final : public System
 {
-	struct PushConstants final
-	{
-		float3 farPlanes;
-	};
-
-	ID<GraphicsPipeline> cascadesPipeline = {};
-	ID<DescriptorSet> cascadesDS = {};
-	int sizeType = 0;
-	bool visualizeCascades = false;
-	bool showWindow = false;
-
-	CsmRenderEditorSystem();
-	~CsmRenderEditorSystem();
+	DlssRenderEditorSystem();
+	~DlssRenderEditorSystem() final;
 
 	void init();
 	void deinit();
-	void preUiRender();
-	void uiRender();
-	void gBufferRecreate();
-	void editorBarToolPP();
-	
+	void editorSettings();
+
 	friend class ecsm::Manager;
 };
 

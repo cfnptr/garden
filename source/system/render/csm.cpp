@@ -86,7 +86,7 @@ static void createShadowFramebuffers(const vector<ID<ImageView>>& imageViews,
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(CsmRenderSystem::cascadeCount);
-	Framebuffer::OutputAttachment depthStencilAttachment({}, { true, false, true });
+	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::shadowFlags);
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
@@ -103,12 +103,12 @@ static void createTransparentFramebuffers(const vector<ID<ImageView>>& transImag
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(CsmRenderSystem::cascadeCount);
-	Framebuffer::OutputAttachment depthStencilAttachment({}, { false, true, false} );
+	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::transDepthFlags);
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(transImageViews[i], { true, false, true }) };
+		{ Framebuffer::OutputAttachment(transImageViews[i], CsmRenderSystem::transColorFlags) };
 		depthStencilAttachment.imageView = shadowImageViews[i];
 		auto framebuffer = graphicsSystem->createFramebuffer(uint2(shadowMapSize), 
 			std::move(colorAttachments), depthStencilAttachment);
@@ -201,26 +201,11 @@ void CsmRenderSystem::shadowRender()
 {
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
 
-	if (!isEnabled)
+	if (!isEnabled || !depthMap || !transparentMap || dataBuffers.empty())
 		return;
 
-	if (!isInitialized)
-	{
-		if (!pipeline)
-			pipeline = createPipeline();
-		if (dataBuffers.empty())
-			createDataBuffers(dataBuffers);
-		if (!depthMap)
-			depthMap = createDepthData(shadowImageViews, shadowMapSize);
-		if (!transparentMap)
-			transparentMap = createTransparentData(transImageViews, shadowMapSize);
-	
-		if (shadowFramebuffers.empty())
-			createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
-		if (transFramebuffers.empty())
-			createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
-		isInitialized = true;
-	}
+	if (!pipeline)
+		pipeline = createPipeline();
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -322,6 +307,17 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	if (!isEnabled)
 		return false;
 
+	if (dataBuffers.empty())
+		createDataBuffers(dataBuffers);
+	if (!depthMap)
+		depthMap = createDepthData(shadowImageViews, shadowMapSize);
+	if (!transparentMap)
+		transparentMap = createTransparentData(transImageViews, shadowMapSize);
+	if (shadowFramebuffers.empty())
+		createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
+	if (transFramebuffers.empty())
+		createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	const auto& cc = graphicsSystem->getCommonConstants();
 	if (cc.shadowColor.getW() <= 0.0f || !graphicsSystem->directionalLight)
@@ -360,6 +356,8 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 	}
 	else if (renderType == MeshRenderType::Translucent)
 	{
+		if (!renderTranslucent)
+			return false;
 		framebuffer = transFramebuffers[passIndex];
 		clearColors = &float4::one;
 		clearColorCount = 1;
@@ -388,9 +386,46 @@ void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderTyp
 //**********************************************************************************************************************
 void CsmRenderSystem::setShadowMapSize(uint32 size)
 {
-	abort(); // TODO:
+	GARDEN_ASSERT(size > 0);
+	if (shadowMapSize == size)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (descriptorSet)
+	{
+		graphicsSystem->destroy(descriptorSet);
+		descriptorSet = {};
+	}
+
+	if (depthMap)
+	{
+		graphicsSystem->destroy(shadowImageViews);
+		graphicsSystem->destroy(depthMap);
+		depthMap = {}; shadowImageViews.clear();
+
+		if (!shadowFramebuffers.empty())
+		{
+			graphicsSystem->destroy(shadowFramebuffers);
+			shadowFramebuffers.clear();
+		}
+	}
+	if (transparentMap)
+	{
+		graphicsSystem->destroy(transImageViews);
+		graphicsSystem->destroy(transparentMap);
+		transparentMap = {}; transImageViews.clear();
+
+		if (!transFramebuffers.empty())
+		{
+			graphicsSystem->destroy(transFramebuffers);
+			transFramebuffers.clear();
+		}
+	}
+
+	shadowMapSize = size;
 }
 
+//**********************************************************************************************************************
 ID<GraphicsPipeline> CsmRenderSystem::getPipeline()
 {
 	if (!pipeline)

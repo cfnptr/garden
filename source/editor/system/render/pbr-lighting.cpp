@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/render/pbr-lighting.hpp"
+#include "garden/system/settings.hpp"
 
 using namespace garden;
 
@@ -65,6 +66,16 @@ void PbrLightingEditorSystem::preUiRender()
 	if (ImGui::Begin("PBR Lighting", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+
+		auto quality = (int)pbrLightingSystem->getQuality();
+		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
+		{
+			pbrLightingSystem->setQuality((GraphicsQuality)quality);
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			if (settingsSystem)
+				settingsSystem->setString("pbrLighting.quality", toString((GraphicsQuality)quality));
+		}
+
 		ImGui::DragFloat("Reflectance Coeff", &pbrLightingSystem->reflectanceCoeff, 0.1f, 0.0f, FLT_MAX);
 		ImGui::DragFloat("Blur Sharpness", &pbrLightingSystem->blurSharpness, 0.1f, 0.0f, FLT_MAX);
 	}

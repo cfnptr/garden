@@ -47,7 +47,7 @@ enum class ProjectionType : uint8
 /**
  * @brief Camera projection type names.
  */
-static constexpr const char* projectionTypeNames[(uint8)ProjectionType::Count] = 
+constexpr const char* projectionTypeNames[(uint8)ProjectionType::Count] = 
 {
 	"Perspective", "Orthographic"
 };

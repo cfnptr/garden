@@ -17,6 +17,7 @@
 #include "garden/system/render/tone-mapping.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
+#include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
 #include "bloom/variants.h"
 
@@ -107,11 +108,11 @@ static uint8 getMaxMipCount(GraphicsQuality quality) noexcept
 {
 	switch (quality)
 	{
-		case GraphicsQuality::PotatoPC: return 1;
-		case GraphicsQuality::Low: return 3;
+		case GraphicsQuality::PotatoPC: return 2;
+		case GraphicsQuality::Low: return 4;
 		case GraphicsQuality::Medium: return 5;
 		case GraphicsQuality::High: return 7;
-		case GraphicsQuality::Ultra: return 9;
+		case GraphicsQuality::Ultra: return 7;
 		default: abort();
 	}
 }
@@ -145,6 +146,7 @@ BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool useAntiFlickering, 
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BloomRenderSystem::deinit);
+	Manager::Instance::get()->registerEvent("BloomRecreate");
 }
 BloomRenderSystem::~BloomRenderSystem()
 {
@@ -152,6 +154,7 @@ BloomRenderSystem::~BloomRenderSystem()
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderSystem::deinit);
+		Manager::Instance::get()->unregisterEvent("BloomRecreate");
 	}
 
 	unsetSingleton();
@@ -165,7 +168,10 @@ void BloomRenderSystem::init()
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getBool("bloom.isEnabled", isEnabled);
+	{
+		settingsSystem->getBool("bloom.enabled", isEnabled);
+		settingsSystem->getType("bloom.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
+	}
 }
 void BloomRenderSystem::deinit()
 {
@@ -249,9 +255,9 @@ void BloomRenderSystem::preLdrRender()
 			{
 				framebufferView = graphicsSystem->get(framebuffers[i - 1]);
 				auto framebufferSize = framebufferView->getSize();
-
 				framebufferView = graphicsSystem->get(framebuffers[i]);
 				downsamplePipelineView->updateFramebuffer(framebuffers[i]);
+
 				framebufferView->beginRenderPass(float4::zero);
 				downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
 					BLOOM_DOWNSAMPLE_BASE : BLOOM_DOWNSAMPLE_6X6);
@@ -342,8 +348,10 @@ void BloomRenderSystem::setQuality(GraphicsQuality quality)
 	if (this->quality == quality)
 		return;
 
-	gBufferRecreate();
 	this->quality = quality;
+	gBufferRecreate();
+
+	Manager::Instance::get()->runEvent("BloomRecreate");
 }
 
 //**********************************************************************************************************************

@@ -237,6 +237,34 @@ public:
 		value = (float2)colorValue;
 	}
 
+	/**
+	 * @brief Returns settings type value.
+	 * @tparam T target setting type
+	 * @param[in] name target setting name
+	 * @param[out] value reference to the setting value
+	 * @param[in] names setting type name string array
+	 * @param nameCount type name string array size
+	 * @return Setting value if exists, otherwise adds and returns initial value.
+	 */
+	template<class T>
+	void getType(const string& name, T& value, const char* const* names, uint32 nameCount)
+	{
+		GARDEN_ASSERT(names);
+		GARDEN_ASSERT(nameCount > 0);
+		GARDEN_ASSERT((uint32)value < nameCount);
+
+		auto typeString = string(names[(uint32)value]);
+		getString(name, typeString);
+
+		for (uint32 i = 0; i < nameCount; i++)
+		{
+			if (typeString != names[i])
+				continue;
+			value = (T)i;
+			break;
+		}
+	}
+
 	/*******************************************************************************************************************
 	 * @brief Sets settings integer value. (int64)
 	 * @param[in] name target setting name

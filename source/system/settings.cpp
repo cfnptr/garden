@@ -82,7 +82,7 @@ void SettingsSystem::postDeinit()
 			case Type::Int: confWriter.write(pair.first, *((int64*)&pair.second.data)); break;
 			case Type::Float: confWriter.write(pair.first, *((double*)&pair.second.data)); break;
 			case Type::Bool: confWriter.write(pair.first, *((bool*)&pair.second.data)); break;
-			case Type::String: confWriter.write(pair.first, *((const char*)&pair.second.data)); break;
+			case Type::String: confWriter.write(pair.first, string_view(*((const char**)&pair.second.data))); break;
 			case Type::Color:
 				hex = Color((uint32)pair.second.data).toHex4();
 				confWriter.write(pair.first, hex);
@@ -160,6 +160,8 @@ void SettingsSystem::getString(const string& name, string& value)
 			auto result = ((conf::Reader*)confReader)->get(name, stringView);
 			if (result)
 				value = string(stringView);
+			else if (value.empty())
+				return;
 		}
 
 		auto instance = new char[value.length() + 1];
@@ -240,6 +242,8 @@ void SettingsSystem::setBool(const string& name, bool value)
 void SettingsSystem::setString(const string& name, string_view value)
 {
 	GARDEN_ASSERT(!name.empty());
+	GARDEN_ASSERT(!value.empty());
+
 	auto instance = new char[value.length() + 1];
 	memcpy(instance, value.data(), value.length());
 	instance[value.length()] = '\0';

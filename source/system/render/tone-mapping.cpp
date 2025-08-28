@@ -105,7 +105,8 @@ ToneMappingSystem::~ToneMappingSystem()
 void ToneMappingSystem::init()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", ToneMappingSystem::ldrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingSystem::dsRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
 
 	if (!luminanceBuffer)
 		luminanceBuffer = createLuminanceBuffer();
@@ -122,7 +123,8 @@ void ToneMappingSystem::deinit()
 		graphicsSystem->destroy(luminanceBuffer);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", ToneMappingSystem::ldrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingSystem::dsRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
 	}
 }
 
@@ -168,7 +170,7 @@ void ToneMappingSystem::ldrRender()
 }
 
 //**********************************************************************************************************************
-void ToneMappingSystem::gBufferRecreate()
+void ToneMappingSystem::dsRecreate()
 {
 	if (descriptorSet)
 	{

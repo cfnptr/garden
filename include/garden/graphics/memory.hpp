@@ -108,21 +108,21 @@ public:
 /**
  * @brief Memory CPU side access name strings.
  */
-constexpr string_view memoryCpuAccessNames[(psize)Memory::CpuAccess::Count] =
+constexpr const char* memoryCpuAccessNames[(psize)Memory::CpuAccess::Count] =
 {
 	"None", "SequentialWrite", "RandomReadWrite"
 };
 /**
  * @brief Memory preferred location name strings.
  */
-constexpr string_view memoryLocationNames[(psize)Memory::Location::Count] =
+constexpr const char* memoryLocationNames[(psize)Memory::Location::Count] =
 {
 	"Auto", "PreferGPU", "PreferCPU"
 };
 /**
  * @brief Memory allocation strategy name strings.
  */
-constexpr string_view memoryStrategyNames[(psize)Memory::Strategy::Count] =
+constexpr const char* memoryStrategyNames[(psize)Memory::Strategy::Count] =
 {
 	"Default", "Size", "Speed"
 };

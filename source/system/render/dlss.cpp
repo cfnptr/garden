@@ -49,6 +49,20 @@ DlssRenderSystem::~DlssRenderSystem()
 	unsetSingleton();
 }
 
+static NVSDK_NGX_PerfQuality_Value toNgxPerfQUality(DlssQuality quality)
+{
+	switch (quality)
+	{
+		case DlssQuality::UltraPerformance: return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+		case DlssQuality::Performance: return NVSDK_NGX_PerfQuality_Value_MaxPerf;
+		case DlssQuality::Balanced: return NVSDK_NGX_PerfQuality_Value_Balanced;
+		case DlssQuality::Quality: return NVSDK_NGX_PerfQuality_Value_MaxQuality;
+		case DlssQuality::UltraQuality: return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+		case DlssQuality::DLAA: return NVSDK_NGX_PerfQuality_Value_DLAA;
+		default: abort();
+	}
+}
+
 static void onDlssLog(const char* message, NVSDK_NGX_Logging_Level loggingLevel, NVSDK_NGX_Feature sourceComponent)
 {
 	std::cout << message;
@@ -233,13 +247,9 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 //**********************************************************************************************************************
 void DlssRenderSystem::preInit()
 {
-	auto isEnabled = true;
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
-		settingsSystem->getBool("dlss.isEnabled", isEnabled);
-
-	if (!isEnabled)
-		return;
+		settingsSystem->getType("dlss.quality", quality, dlssQualityNames, (uint32)DlssQuality::Count);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto appInfoSystem = AppInfoSystem::Instance::get();
@@ -325,7 +335,7 @@ void DlssRenderSystem::createDlssFeatureCommand(void* commandBuffer, void* argum
 	GARDEN_ASSERT(!dlssSystem->feature);
 
 	dlssSystem->feature = createDlssFeature((CommandBuffer*)commandBuffer, 
-		(NVSDK_NGX_Parameter*)dlssSystem->parameters, (NVSDK_NGX_PerfQuality_Value)dlssSystem->quality, {},
+		(NVSDK_NGX_Parameter*)dlssSystem->parameters, toNgxPerfQUality(dlssSystem->quality), {},
 		dlssSystem->optimalSize, dlssSystem->minSize, dlssSystem->maxSize, dlssSystem->sharpness);
 	GARDEN_LOG_INFO("Recreated Nvidia DLSS feature. (optimalSize: " + toString(dlssSystem->optimalSize) + ")");
 }
@@ -395,7 +405,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 //**********************************************************************************************************************
 void DlssRenderSystem::preLdrRender()
 {
-	if (!parameters)
+	if (!parameters || quality == DlssQuality::Off)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -430,12 +440,18 @@ void DlssRenderSystem::swapchainRecreate()
 
 void DlssRenderSystem::setQuality(DlssQuality quality)
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		VulkanAPI::get()->device.waitIdle();
-	else abort();
-
+	GraphicsAPI::get()->waitIdle();
 	destroyDlssFeature((NVSDK_NGX_Handle*)feature);
 	feature = {};
+
+	if (quality == DlssQuality::Off)
+	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->setScaledFrameSize(uint2::zero);
+		graphicsSystem->setMipLodBias(0.0f);
+		graphicsSystem->useUpscaling = graphicsSystem->useJittering = false;
+	}
+
 	this->quality = quality;
 }
 

@@ -45,6 +45,10 @@ public:
 	static constexpr Image::Format depthFormat = Image::Format::UnormD16;
 	static constexpr Image::Format transparentFormat = Image::Format::SrgbB8G8R8A8;
 
+	static constexpr Framebuffer::OutputAttachment::Flags shadowFlags = { true, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags transDepthFlags = { false, true, false };
+	static constexpr Framebuffer::OutputAttachment::Flags transColorFlags = { true, false, true };
+
 	struct ShadowData final
 	{
 		float4x4 uvToLight[cascadeCount];
@@ -64,7 +68,6 @@ private:
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 shadowMapSize = 2048;
 	uint16 _alignment = 0;
-	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new cascade shadow maps rendering system instance.
@@ -89,6 +92,7 @@ private:
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is cascade shadow maps rendering enabled. */
+	bool renderTranslucent = true;
 	float2 cascadeSplits = float2(0.1f, 0.25f);
 	float distance = 100.0f;
 	float biasConstantFactor = -1.25f;

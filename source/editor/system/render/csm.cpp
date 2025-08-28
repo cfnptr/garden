@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/render/csm.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 
 using namespace garden;
@@ -64,6 +65,31 @@ void CsmRenderEditorSystem::deinit()
 	}
 }
 
+static uint32 shadowMapTypeToSize(int sizeType) noexcept
+{
+	switch (sizeType)
+	{
+		case 1: return 256;
+		case 2: return 512;
+		case 3: return 1024;
+		case 4: return 2048;
+		case 5: return 4096;
+		default: return 128;
+	}
+}
+static uint32 shadowMapSizeToType(int sizeType) noexcept
+{
+	switch (sizeType)
+	{
+		case 256: return 1;
+		case 512: return 2;
+		case 1024: return 3;
+		case 2048: return 4;
+		case 4096: return 5;
+		default: return 0;
+	}
+}
+
 //**********************************************************************************************************************
 void CsmRenderEditorSystem::preUiRender()
 {
@@ -73,6 +99,9 @@ void CsmRenderEditorSystem::preUiRender()
 	auto csmSystem = CsmRenderSystem::Instance::get();
 	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
+		ImGui::Checkbox("Enabled", &csmSystem->isEnabled); ImGui::SameLine();
+		ImGui::Checkbox("Render Tranlucent", &csmSystem->renderTranslucent);
+
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		const auto& cc = graphicsSystem->getCommonConstants();
 		auto shadowColor = cc.shadowColor;
@@ -84,21 +113,54 @@ void CsmRenderEditorSystem::preUiRender()
 		ImGui::DragFloat("Distance", &csmSystem->distance, 1.0f);
 		ImGui::DragFloat("Bias Constant Factor", &csmSystem->biasConstantFactor, 0.01f);
 		ImGui::DragFloat("Bias Slope Factor", &csmSystem->biasSlopeFactor, 0.01f);
-		ImGui::DragFloat("Bias Normal Factor", &csmSystem->biasNormalFactor, 0.01f);
+		ImGui::DragFloat("Bias Normal Factor", &csmSystem->biasNormalFactor, 0.0001f, 0.0f, 0.0f, "%.4f");
 		ImGui::DragFloat("Z-Axis Offset Coefficient", &csmSystem->zCoeff, 0.01f);
 		ImGui::SliderFloat2("Cascade Splits", &csmSystem->cascadeSplits, 0.001f, 0.999f);
 
+		auto isChanged = false;
+		sizeType = shadowMapSizeToType(csmSystem->getShadowMapSize());
+
+		constexpr auto sizeTypes = " Custom\0 256px\0 512px\0 1024px\0 2048px\0 4096px\00";
+		if (ImGui::Combo("Map Size", &sizeType, sizeTypes))
+		{
+			auto size = shadowMapTypeToSize(sizeType);
+			if (size > 0)
+			{
+				csmSystem->setShadowMapSize(size);
+				isChanged = true;
+			}
+		}
+		if (sizeType == 0)
+		{
+			int size = csmSystem->getShadowMapSize();
+			if (ImGui::InputInt("Size (px)", &size, 128, 512))
+			{
+				csmSystem->setShadowMapSize(size);
+				isChanged = true;
+			}
+		}
+
+		if (isChanged)
+		{
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			if (settingsSystem)
+				settingsSystem->setInt("csm.shadowMapSize", csmSystem->getShadowMapSize());
+		}
+
+		if (visualizeCascades && !csmSystem->isEnabled)
+			visualizeCascades = false;
+
+		ImGui::BeginDisabled(!csmSystem->isEnabled);
 		ImGui::Checkbox("Visualize Cascades", &visualizeCascades);
 		if (ImGui::BeginItemTooltip())
 		{
 			ImGui::Text("Cascade 1 = green, 2 = yellow, 3 = red, outside = magenta");
 			ImGui::EndTooltip();
 		}
+		ImGui::EndDisabled();
 
 		ImGui::Text("Cascade Far Planes: %f, %f, %f", csmSystem->cascadeSplits.x * csmSystem->distance, 
 			csmSystem->cascadeSplits.y * csmSystem->distance, csmSystem->distance);
-
-		// TODO: set shadow map size, also set it in the settings
 
 		if (visualizeCascades)
 		{

@@ -144,7 +144,7 @@ enum class GslUniformType : uint8
 /***********************************************************************************************************************
  * @brief GSL data type name strings. (camelCase)
  */
-constexpr string_view gslDataTypeNames[(psize)GslDataType::Count] =
+constexpr const char* gslDataTypeNames[(psize)GslDataType::Count] =
 {
 	"bool", "int", "uint", "float", "bool2", "bool3", "bool4",
 	"int2", "int3", "int4", "uint2", "uint3", "uint4",
@@ -154,14 +154,14 @@ constexpr string_view gslDataTypeNames[(psize)GslDataType::Count] =
 /**
  * @brief GSL data format name strings. (camelCase)
  */
-constexpr string_view gslDataFormatNames[(psize)GslDataFormat::Count] =
+constexpr const char* gslDataFormatNames[(psize)GslDataFormat::Count] =
 {
 	"f8", "f16", "f32", "i8", "i16", "i32", "u8", "u16", "u32"
 };
 /**
  * @brief GSL uniform type name strings. (camelCase)
  */
-constexpr string_view gslUniformTypeNames[(psize)GslUniformType::Count] =
+constexpr const char* gslUniformTypeNames[(psize)GslUniformType::Count] =
 {
 	"sampler1D", "sampler2D", "sampler3D", "samplerCube", "sampler1DArray", "sampler2DArray",
 	"isampler1D", "isampler2D", "isampler3D", "isamplerCube", "isampler1DArray", "isampler2DArray",

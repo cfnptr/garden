@@ -84,7 +84,16 @@ void BloomRenderEditorSystem::preUiRender()
 		{
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
-				settingsSystem->setBool("bloom.isEnabled", bloomSystem->isEnabled);
+				settingsSystem->setBool("bloom.enabled", bloomSystem->isEnabled);
+		}
+
+		auto quality = (int)bloomSystem->getQuality();
+		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
+		{
+			bloomSystem->setQuality((GraphicsQuality)quality);
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			if (settingsSystem)
+				settingsSystem->setString("bloom.quality", toString((GraphicsQuality)quality));
 		}
 
 		ImGui::SliderFloat("Intensity", &bloomSystem->intensity, 0.0f, 1.0f);
