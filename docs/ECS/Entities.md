@@ -24,8 +24,8 @@ healthView->value = 100.0f;
 auto transformView = TransformSystem::Instance::get()->getComponent(player);
 if (transformView->getPosition().getY() < -1000.0f)
 {
-	auto healthView = manager->get<HealthComponent>(player);
-	healthView->value -= 1.0f;
+    auto healthView = manager->get<HealthComponent>(player);
+    healthView->value -= 1.0f;
 }
 
 //...
@@ -65,7 +65,7 @@ using namespace ecsm;
 
 struct MyItem
 {
-	float someData = 3.14f;
+    float someData = 3.14f;
 };
 
 LinearPool<MyItem, false> items;

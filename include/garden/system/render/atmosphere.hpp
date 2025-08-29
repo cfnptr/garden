@@ -145,6 +145,8 @@ public:
 	static constexpr float marsGroundRadius = 3389.5f;
 	static constexpr float marsAtmosphereHeight = 80.0f;
 	static constexpr float marsSunAngularSize = 0.35f;
+
+	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
 	ID<Image> transLUT = {};
 	ID<Image> multiScatLUT = {};
@@ -156,17 +158,19 @@ private:
 	ID<ComputePipeline> multiScatLutPipeline = {};
 	ID<ComputePipeline> cameraVolumePipeline = {};
 	ID<GraphicsPipeline> skyViewLutPipeline = {};
+	ID<GraphicsPipeline> hdrSkyPipeline = {};
 	ID<GraphicsPipeline> skyboxPipeline = {};
 	ID<DescriptorSet> multiScatLutDS = {};
 	ID<DescriptorSet> cameraVolumeDS = {};
 	ID<DescriptorSet> skyViewLutDS = {};
+	ID<DescriptorSet> hdrSkyDS = {};
 	ID<DescriptorSet> skyboxDS = {};
 	ID<ImageView> skyboxViews[Image::cubemapSideCount] = {};
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapSideCount] = {};
 	Ref<Image> lastSkybox = {};
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
-	uint8 _alignment = 0;
+	uint8 updatePhase = 0;
 
 	/**
 	 * @brief Creates a new physically based atmosphere rendering system instance. (Sky)

@@ -55,7 +55,7 @@ void AtmosphereEditorSystem::preUiRender()
 	if (!showWindow)
 		return;
 
-	if (ImGui::Begin("Automatic Exposure (AE)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Atmosphere (Sky)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 		ImGui::Checkbox("Enabled", &atmosphereSystem->isEnabled);
@@ -95,7 +95,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::ColorEdit3("Scattering", (float*)&scattering, 
 				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
 			ImGui::DragFloat("Density", (float*)&density, 0.001f, 0.0f, FLT_MAX, "%.4f");
-			ImGui::DragFloat("Scale Height", 
+			ImGui::DragFloat("Layer Height", 
 				(float*)&atmosphereSystem->rayleightScaleHeight, 0.01f, 0.001f, FLT_MAX, "%.3f km");
 			atmosphereSystem->rayleighScattering = scattering * max(density, 0.000001f);
 			ImGui::PopID(); ImGui::Spacing();
@@ -113,7 +113,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::ColorEdit3("Absorption", (float*)&absorption, 
 				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
 			ImGui::DragFloat("Factor", (float*)&factor, 0.001f, 0.0f, FLT_MAX, "%.4f");
-			ImGui::DragFloat("Scale Height", 
+			ImGui::DragFloat("Layer Height", 
 				(float*)&atmosphereSystem->mieScaleHeight, 0.01f, 0.001f, FLT_MAX, "%.3f km");
 			ImGui::SliderFloat("Phase G", (float*)&atmosphereSystem->miePhaseG, 0.0f, 1.0f);
 			atmosphereSystem->mieScattering = scattering * max(density, 0.000001f);
@@ -128,7 +128,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::ColorEdit3("Absorption", 
 				(float*)&absorption, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
 			ImGui::DragFloat("Factor", (float*)&factor, 0.001f, 0.0f, FLT_MAX, "%.4f");
-			ImGui::DragFloat("Layer Width", 
+			ImGui::DragFloat("Layer Height", 
 				(float*)&atmosphereSystem->ozoneLayerWidth, 0.01f, 0.0f, FLT_MAX, "%.3f km");
 			ImGui::DragFloat("Layer Slope", (float*)&atmosphereSystem->ozoneLayerSlope, 0.01f, 0.0f, FLT_MAX);
 			ImGui::DragFloat("Layer Tip", (float*)&atmosphereSystem->ozoneLayerTip, 0.01f, 0.0f, FLT_MAX);

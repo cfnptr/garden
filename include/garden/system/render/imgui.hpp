@@ -45,6 +45,7 @@ private:
 	ID<Image> fontTexture = {};
 	ID<DescriptorSet> fontDescriptorSet = {};
 	bool isInitialized = false;
+	bool isRendered = true;
 
 	/**
 	 * @brief Creates a new immediate mode GUI rendering system instance. (ImGui)
@@ -63,7 +64,6 @@ private:
 	void postDeinit();
 	void input();
 	void update();
-	void render();
 	void uiRender();
 
 	friend class ecsm::Manager;

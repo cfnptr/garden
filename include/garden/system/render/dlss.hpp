@@ -30,7 +30,7 @@ namespace garden
  */
 enum class DlssQuality : uint8
 {
-	Off, Auto, UltraPerformance, Performance, Balanced, Quality, UltraQuality, DLAA, Count
+	Off, UltraPerformance, Performance, Balanced, Quality, UltraQuality, DLAA, Count
 };
 
 /**
@@ -88,7 +88,7 @@ public:
  */
 constexpr const char* dlssQualityNames[(psize)DlssQuality::Count] =
 {
-	"Off", "Auto", "UltraPerformance", "Performance", "Balanced", "Quality", "UltraQuality", "DLAA"
+	"Off", "UltraPerformance", "Performance", "Balanced", "Quality", "UltraQuality", "DLAA"
 };
 /**
  * @brief Returns Nvidia DLSS performance quality mode.
@@ -98,7 +98,6 @@ constexpr const char* dlssQualityNames[(psize)DlssQuality::Count] =
 static DlssQuality toDlssQuality(string_view dlssQuality)
 {
 	if (dlssQuality == "Off") return DlssQuality::Off;
-	if (dlssQuality == "Auto") return DlssQuality::Auto;
 	if (dlssQuality == "UltraPerformance") return DlssQuality::UltraPerformance;
 	if (dlssQuality == "Performance") return DlssQuality::Performance;
 	if (dlssQuality == "Balanced") return DlssQuality::Balanced;
