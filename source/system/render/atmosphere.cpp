@@ -17,7 +17,10 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
+#include "garden/system/camera.hpp"
 #include "atmosphere/constants.h"
+
+#include "math/matrix/projection.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;
@@ -66,9 +69,8 @@ static ID<Framebuffer> createScatLutFramebuffer(ID<Image> lut, const char* debug
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto lutView = graphicsSystem->get(lut);
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(lutView->getDefaultView(), { false, false, true }) };
-	auto framebuffer = graphicsSystem->createFramebuffer(
-		(uint2)lutView->getSize(), std::move(colorAttachments));
+	{ Framebuffer::OutputAttachment(lutView->getDefaultView(), AtmosphereRenderSystem::framebufferFlags) };
+	auto framebuffer = graphicsSystem->createFramebuffer((uint2)lutView->getSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere." + string(debugName));
 	return framebuffer;
 }
@@ -100,7 +102,7 @@ static void createSkyboxFramebuffers(ID<Framebuffer>* framebuffers)
 	for (uint8 i = 0; i < Image::cubemapSideCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment({}, { false, false, true }) };
+		{ Framebuffer::OutputAttachment({}, AtmosphereRenderSystem::framebufferFlags) };
 		auto framebuffer = graphicsSystem->createFramebuffer(uint2(16), std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere.skybox" + to_string(i));
 		framebuffers[i] = framebuffer;
@@ -193,7 +195,7 @@ static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewFram
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"atmosphere/sky-view", skyViewFramebuffer, options);
 }
-static ID<GraphicsPipeline> createSkyboxPipeline(GraphicsQuality quality)
+static ID<GraphicsPipeline> createHdrSkyPipeline(GraphicsQuality quality)
 {
 	// TODO: slice count based on quality
 
@@ -201,6 +203,13 @@ static ID<GraphicsPipeline> createSkyboxPipeline(GraphicsQuality quality)
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"atmosphere/skybox", deferredSystem->getHdrFramebuffer(), options);
+}
+static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
+{
+	// TODO: slice count based on quality
+
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("atmosphere/skybox", framebuffer, options);
 }
 
 //**********************************************************************************************************************
@@ -235,11 +244,14 @@ static DescriptorSet::Uniforms getCameraVolumeUniforms(
 	};
 	return uniforms;
 }
-static DescriptorSet::Uniforms getSkyboxUniforms(ID<Image> transLUT, ID<Image> skyViewLUT)
+static DescriptorSet::Uniforms getSkyUniforms(ID<Image> transLUT, ID<Image> skyViewLUT)
 {
-	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthImageView();
-	auto transLutView = GraphicsSystem::Instance::get()->get(transLUT)->getDefaultView();
-	auto skyViewLutView = GraphicsSystem::Instance::get()->get(skyViewLUT)->getDefaultView();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto depthBufferView = deferredSystem->getDepthImageView();
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
+	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getDefaultView();
 
 	DescriptorSet::Uniforms uniforms =
 	{
@@ -284,10 +296,12 @@ void AtmosphereRenderSystem::deinit()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(skyboxDS);
+		graphicsSystem->destroy(hdrSkyDS);
 		graphicsSystem->destroy(skyViewLutDS);
 		graphicsSystem->destroy(cameraVolumeDS);
 		graphicsSystem->destroy(multiScatLutDS);
 		graphicsSystem->destroy(skyboxPipeline);
+		graphicsSystem->destroy(hdrSkyPipeline);
 		graphicsSystem->destroy(skyViewLutPipeline);
 		graphicsSystem->destroy(cameraVolumePipeline);
 		graphicsSystem->destroy(multiScatLutPipeline);
@@ -306,6 +320,15 @@ void AtmosphereRenderSystem::deinit()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", AtmosphereRenderSystem::qualityChange);
 	}
+}
+
+static float calcCameraHeight(float cameraPosY, float groundRadius) noexcept
+{
+	return fma(max(cameraPosY, 0.0f), 0.001f, groundRadius + PLANET_RADIUS_OFFSET);
+}
+static float calcSunSize(float sunAngularSize) noexcept
+{
+	return cos(radians(sunAngularSize * 0.5f));
 }
 
 //**********************************************************************************************************************
@@ -338,8 +361,8 @@ void AtmosphereRenderSystem::preDeferredRender()
 			cameraVolumePipeline = createCameraVolumePipeline(quality);
 		if (!skyViewLutPipeline)
 			skyViewLutPipeline = createSkyViewLutPipeline(skyViewLutFramebuffer, quality);
-		if (!skyboxPipeline)
-			skyboxPipeline = createSkyboxPipeline(quality);
+		if (!hdrSkyPipeline)
+			hdrSkyPipeline = createHdrSkyPipeline(quality);
 		isInitialized = true;
 	}
 
@@ -375,8 +398,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight = fma(max(cc.cameraPos.getY(), 0.0f), 
-		0.001f, groundRadius + PLANET_RADIUS_OFFSET);
+	auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
 	auto cameraPos = float3(0.0f, cameraHeight, 0.0f);
 	auto topRadius = groundRadius + atmosphereHeight;
 	auto sunDir = (float3)-cc.lightDir;
@@ -509,11 +531,79 @@ void AtmosphereRenderSystem::preDeferredRender()
 
 			destroySkyboxViews(skyboxViews);
 			createSkyboxViews(ID<Image>(lastSkybox), skyboxViews);
+			
+			auto framebufferSize = (uint2)graphicsSystem->get(lastSkybox)->getSize();
+			Framebuffer::OutputAttachment colorAttachment = Framebuffer::OutputAttachment(
+				{}, AtmosphereRenderSystem::framebufferFlags);
+			for (uint8 i = 0; i < Image::cubemapSideCount; i++)
+			{
+				auto framebufferView = graphicsSystem->get(skyboxFramebuffers[i]);
+				colorAttachment.imageView = skyboxViews[i];
+				framebufferView->update(framebufferSize, &colorAttachment, 1);
+			}
 		}
+
+		graphicsSystem->startRecording(CommandBufferType::Frame);
+		if (updatePhase < Image::cubemapSideCount && false)
+		{
+			auto framebuffer = skyboxFramebuffers[updatePhase];
+			if (!skyboxPipeline)
+				skyboxPipeline = createSkyboxPipeline(framebuffer, quality);
+
+			auto pipelineView = graphicsSystem->get(skyboxPipeline);		
+			if (pipelineView->isReady())
+			{
+				if (!skyboxDS)
+				{
+					auto uniforms = getSkyUniforms(transLUT, skyViewLUT);
+					skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
+					SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
+				}
+
+				auto& cc = graphicsSystem->getCommonConstants();
+				auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
+				auto viewProj = (f32x4x4)calcPerspProjInfRevZ(radians(90.0f), 1.0f, defaultHmdDepth) * 
+					f32x4x4::identity; // TODO: view for each cubemap side
+				pipelineView->updateFramebuffer(framebuffer);
+				auto framebufferView = graphicsSystem->get(framebuffer);
+
+				SkyboxPC pc;
+				pc.invViewProj = (float4x4)inverse4x4(viewProj);
+				pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
+				pc.bottomRadius = groundRadius;
+				pc.sunDir = (float3)-cc.lightDir;
+				pc.topRadius = groundRadius + atmosphereHeight;
+				pc.sunColor = (float3)sunColor * sunColor.w;
+				pc.sunSize = calcSunSize(sunAngularSize);
+
+				SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
+				framebufferView->beginRenderPass(float4::zero);
+				pipelineView->setViewportScissor();
+				pipelineView->bindDescriptorSet(skyboxDS);
+				pipelineView->pushConstants(&pc);
+				pipelineView->drawFullscreen();
+				framebufferView->endRenderPass();
+			}
+		}
+		else
+		{
+			if (updatePhase == Image::cubemapSideCount)
+			{
+				auto skyboxView = graphicsSystem->get(lastSkybox);
+				skyboxView->generateMips(Sampler::Filter::Linear);
+			}
+			else
+			{
+				// TODO: specular IBL evaluate.
+			}
+		}
+		graphicsSystem->stopRecording();
 
 		// TODO: update sky color from SH.
 		//auto skyColor = brdf::diffuseIrradiance(float3::top, shBuffer.data());
 		//graphicsSystem->setSkyColor((float3)skyColor);
+
+		updatePhase = (updatePhase + 1) % (Image::cubemapSideCount + 2);
 	}
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -528,41 +618,36 @@ void AtmosphereRenderSystem::hdrRender()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto skyboxPipelineView = graphicsSystem->get(skyboxPipeline);
-	if (!skyboxPipelineView->isReady())
+	auto pipelineView = graphicsSystem->get(hdrSkyPipeline);
+	if (!pipelineView->isReady())
 		return;
 
-	if (!skyboxDS)
+	if (!hdrSkyDS)
 	{
-		auto uniforms = getSkyboxUniforms(transLUT, skyViewLUT);
-		skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
+		auto uniforms = getSkyUniforms(transLUT, skyViewLUT);
+		hdrSkyDS = graphicsSystem->createDescriptorSet(hdrSkyPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(hdrSkyDS, "descriptorSet.atmosphere.hdrSky");
 	}
 
 	auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight = fma(max(cc.cameraPos.getY(), 0.0f), 
-		0.001f, groundRadius + PLANET_RADIUS_OFFSET);
-	auto cameraPos = float3(0.0f, cameraHeight, 0.0f);
-	skyboxPipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
+	auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
+	pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
 
 	SkyboxPC pc;
 	pc.invViewProj = (float4x4)cc.invViewProj;
-	pc.cameraPos = cameraPos;
+	pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
 	pc.bottomRadius = groundRadius;
 	pc.sunDir = (float3)-cc.lightDir;
 	pc.topRadius = groundRadius + atmosphereHeight;
 	pc.sunColor = (float3)sunColor * sunColor.w;
-	pc.sunSize = cos(radians(sunAngularSize * 0.5f));
+	pc.sunSize = calcSunSize(sunAngularSize);
 
 	SET_GPU_DEBUG_LABEL("Atmosphere Skybox", Color::transparent);
-	skyboxPipelineView->bind();
-	skyboxPipelineView->setViewportScissor();
-	skyboxPipelineView->bindDescriptorSet(skyboxDS);
-	skyboxPipelineView->pushConstants(&pc);
-	skyboxPipelineView->drawFullscreen();
-
-	// TODO: write motion vectors for the sky plane based on camera rotation
-	// We can attach velocity as image2D and write for skybox pixels.
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(hdrSkyDS);
+	pipelineView->pushConstants(&pc);
+	pipelineView->drawFullscreen();
 }
 
 //**********************************************************************************************************************
@@ -573,6 +658,11 @@ void AtmosphereRenderSystem::gBufferRecreate()
 	{
 		graphicsSystem->destroy(skyboxDS);
 		skyboxDS = {};
+	}
+	if (hdrSkyDS)
+	{
+		graphicsSystem->destroy(hdrSkyDS);
+		hdrSkyDS = {};
 	}
 	if (skyViewLUT)
 	{
@@ -601,22 +691,26 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(skyboxDS);
+	graphicsSystem->destroy(hdrSkyDS);
 	graphicsSystem->destroy(skyViewLutDS);
 	graphicsSystem->destroy(cameraVolumeDS);
 	graphicsSystem->destroy(multiScatLutDS);
-	multiScatLutDS = cameraVolumeDS = skyViewLutDS = skyboxDS = {};
+	graphicsSystem->destroy(skyboxPipeline);
+
+	multiScatLutDS = cameraVolumeDS = skyViewLutDS = 
+		hdrSkyDS = skyboxDS = {}; skyboxPipeline = {};
 
 	if (transLUT)
 	{
 		auto transLutView = graphicsSystem->get(transLUT);
 		if (transLutView->getFormat() != getTransLutFormat(quality))
 		{
-			graphicsSystem->destroy(skyboxDS); skyboxDS = {};
 			graphicsSystem->destroy(transLUT);
 			transLUT = createTransLUT(getTransLutFormat(quality));
 
 			if (transLutFramebuffer)
 			{
+				// Note: destroying because it may be already recorder.
 				graphicsSystem->destroy(transLutFramebuffer);
 				transLutFramebuffer = createScatLutFramebuffer(transLUT, "transLUT");
 			}
@@ -643,10 +737,10 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 		graphicsSystem->destroy(skyViewLutPipeline);
 		skyViewLutPipeline = createSkyViewLutPipeline(skyViewLutFramebuffer, quality);
 	}
-	if (skyboxPipeline)
+	if (hdrSkyPipeline)
 	{
-		graphicsSystem->destroy(skyboxPipeline);
-		skyboxPipeline = createSkyboxPipeline(quality);
+		graphicsSystem->destroy(hdrSkyPipeline);
+		hdrSkyPipeline = createHdrSkyPipeline(quality);
 	}
 
 	this->quality = quality;

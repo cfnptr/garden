@@ -484,8 +484,6 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 
 	#if GARDEN_DEBUG
 	auto graphicsAPI = GraphicsAPI::get();
-
-	uint32 validColorAttachCount = 0;
 	for	(uint32 i = 0; i < colorAttachmentCount; i++)
 	{
 		const auto& colorAttachment = colorAttachments[i];
@@ -502,11 +500,7 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing "
 			"framebuffer [" + debugName + "] color attachment [" + to_string(i) + "] "
 			"image view [" + imageView->getDebugName() + "] flag");
-		validColorAttachCount++;
 	}
-
-	GARDEN_ASSERT_MSG((colorAttachmentCount > 0 && validColorAttachCount > 0) || 
-		colorAttachmentCount == 0, "Assert " + debugName);
 
 	if (depthStencilAttachment.imageView)
 	{

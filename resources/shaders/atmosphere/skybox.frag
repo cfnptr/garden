@@ -107,6 +107,8 @@ void main()
 	discard;
 	float3 l = float3(0.0f);
 
+	// TODO: use 2 variant one with camera volume and second without (for skybox).
+
 	/*
 	ClipSpace = float3((pixPos / float2(gResolution))*float2(2.0, -2.0) - float2(1.0, -1.0), DepthBufferValue);
 	float4 DepthBufferWorldPos = mul(gSkyInvViewProjMat, float4(ClipSpace, 1.0));

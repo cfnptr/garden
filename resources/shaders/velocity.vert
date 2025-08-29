@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VELOCITY_GSL
-#define VELOCITY_GSL
+#include "common/fullscreen.gsl"
 
-float2 calcVelocity(float2 currNdcPos, float2 prevNdcPos, float2 currJitter, float2 prevJitter)
-{
-	return (currNdcPos - currJitter) - (prevNdcPos - prevJitter);
-}
-float2 calcVelocity(float4 currNdcPos, float4 prevNdcPos, float2 currJitter, float2 prevJitter)
-{
-	return calcVelocity(currNdcPos.xy / currNdcPos.w, 
-		prevNdcPos.xy / prevNdcPos.w, currJitter, prevJitter);
-}
+out noperspective float2 fs.currNdcPos;
 
-#endif // VELOCITY_GSL
+void main()
+{
+	float2 texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	gl.position = float4(toFullscreenPosition(texCoords), 1.0f);
+	fs.currNdcPos = gl.position.xy;
+}

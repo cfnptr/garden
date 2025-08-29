@@ -970,7 +970,6 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
 			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
 	}
-	GARDEN_ASSERT((!colorAttachments.empty()) || colorAttachments.empty());
 
 	if (depthStencilAttachment.imageView)
 	{

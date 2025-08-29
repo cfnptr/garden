@@ -868,7 +868,7 @@ void PbrLightingSystem::hdrRender()
 
 	if (pbrLightingView->mode == PbrCubemapMode::Static)
 	{
-		if (!pbrLightingView->cubemap || !pbrLightingView->specular)
+		if (!pbrLightingView->cubemap || !pbrLightingView->sh || !pbrLightingView->specular)
 			return;
 
 		auto cubemapView = graphicsSystem->get(pbrLightingView->cubemap);
@@ -884,11 +884,11 @@ void PbrLightingSystem::hdrRender()
 		auto mipCount = calcMipCount(cubemapSize);
 		Image::Mips mips(mipCount);
 		for (uint8 i = 0; i < mipCount; i++)
-			mips[i] = Image::Layers(6);
+			mips[i] = Image::Layers(Image::cubemapSideCount);
 
 		pbrLightingView->cubemap = Ref<Image>(graphicsSystem->createCubemap(
-			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::Storage | 
-			Image::Usage::TransferSrc, mips, uint2(cubemapSize), Image::Strategy::Size));
+			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::ColorAttachment | 
+			Image::Usage::TransferSrc | Image::Usage::TransferDst, mips, uint2(cubemapSize), Image::Strategy::Size));
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->cubemap, "image.cubemap" + to_string(*pbrLightingView->cubemap));
 	}
 	if (!pbrLightingView->sh)
@@ -904,7 +904,7 @@ void PbrLightingSystem::hdrRender()
 		auto specularMipCount = calcSpecularMipCount(cubemapSize);
 		Image::Mips mips(specularMipCount);
 		for (uint8 i = 0; i < specularMipCount; i++)
-			mips[i] = Image::Layers(6);
+			mips[i] = Image::Layers(Image::cubemapSideCount);
 
 		pbrLightingView->specular = Ref<Image>(graphicsSystem->createCubemap(
 			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  Image::Usage::Storage | 
@@ -1490,7 +1490,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	auto specularMipCount = PbrLightingSystem::calcSpecularMipCount(cubemapSize);
 	Image::Mips mips(specularMipCount);
 	for (uint8 i = 0; i < specularMipCount; i++)
-		mips[i] = Image::Layers(6);
+		mips[i] = Image::Layers(Image::cubemapSideCount);
 
 	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  
 		Image::Usage::Storage | Image::Usage::TransferDst, mips, uint2(cubemapSize), strategy);
@@ -1611,7 +1611,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 	mips[0] = { right.data(), left.data(), top.data(), bottom.data(), front.data(), back.data() };
 
 	for (uint8 i = 1; i < mipCount; i++)
-		mips[i] = Image::Layers(6);
+		mips[i] = Image::Layers(Image::cubemapSideCount);
 
 	if (!iblSpecularPipeline)
 		iblSpecularPipeline = createIblSpecularPipeline();
@@ -1625,7 +1625,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
 	auto cubemapView = graphicsSystem->get(cubemap);
-	cubemapView->generateMips();
+	cubemapView->generateMips(Sampler::Filter::Linear);
 
 	vector<f32x4> localSH;
 	if (!shBuffer)

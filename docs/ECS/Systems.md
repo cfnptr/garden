@@ -40,11 +40,11 @@ using namespace my::app;
 
 MyCustomSystem::MyCustomSystem()
 {
-	// Initalize your system...
+    // Initalize your system...
 }
 ~MyCustomSystem::MyCustomSystem()
 {
-	// Deinitalize your system...
+    // Deinitalize your system...
 }
 ```
 
@@ -99,7 +99,7 @@ class MyCustomSystem : public System
     MyCustomSystem();
     ~MyCustomSystem() final;
 
-	void update(); 
+    void update(); 
 
     friend class ecsm::Manager;
 };

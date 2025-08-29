@@ -118,7 +118,6 @@ public:
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferFlags = { true, false, true};
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferDepthFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags upscaleHdrFlags = { false, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags velocityFlags = { true, false, true };
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};
@@ -145,7 +144,9 @@ private:
 	ID<Framebuffer> oitFramebuffer = {};
 	ID<Framebuffer> transDepthFramebuffer = {};
 	ID<Framebuffer> upscaleHdrFramebuffer = {};
+	ID<GraphicsPipeline> velocityPipeline = {};
 	ID<GraphicsPipeline> hdrCopyBlurPipeline = {};
+	ID<DescriptorSet> velocityDS = {};
 	vector<ID<ImageView>> hdrCopyBlurViews;
 	vector<ID<Framebuffer>> hdrCopyBlurFBs;
 	vector<ID<DescriptorSet>> hdrCopyBlurDSes;

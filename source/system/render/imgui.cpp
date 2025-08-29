@@ -217,7 +217,6 @@ static LRESULT CALLBACK imGuiWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 void ImGuiRenderSystem::preInit()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
-	ECSM_SUBSCRIBE_TO_EVENT("Render", ImGuiRenderSystem::render);
 
 	auto& io = ImGui::GetIO();
 	auto graphicsAPI = GraphicsAPI::get();
@@ -324,7 +323,6 @@ void ImGuiRenderSystem::postDeinit()
 			ImGuiBackendFlags_HasSetMousePos | ImGuiBackendFlags_HasGamepad);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ImGuiRenderSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 	}
 }
@@ -588,21 +586,17 @@ void ImGuiRenderSystem::update()
 	// ImGui_ImplGlfw_UpdateMouseData();
 	// ImGui_ImplGlfw_UpdateGamepads();
 
-	ImGui::NewFrame();
-}
-
-void ImGuiRenderSystem::render()
-{
-	if (!GraphicsSystem::Instance::get()->canRender())
+	if (!isRendered)
 		ImGui::EndFrame();
+
+	ImGui::NewFrame();
+	isRendered = false;
 }
 
 //**********************************************************************************************************************
 void ImGuiRenderSystem::uiRender()
 {
 	SET_CPU_ZONE_SCOPED("ImGui UI Render");
-
-	ImGui::Render();
 
 	if (!isEnabled)
 		return;
@@ -623,6 +617,8 @@ void ImGuiRenderSystem::uiRender()
 	auto fontTextureView = graphicsSystem->get(fontTexture);
 	if (!pipelineView->isReady() || !fontTextureView->isReady())
 		return;
+
+	ImGui::Render();
 
 	if (!fontDescriptorSet)
 	{
@@ -740,6 +736,8 @@ void ImGuiRenderSystem::uiRender()
 		globalIdxOffset += cmdList->IdxBuffer.Size;
 		globalVtxOffset += cmdList->VtxBuffer.Size;
 	}
+
+	isRendered = true;
 }
 
 ID<GraphicsPipeline> ImGuiRenderSystem::getPipeline()

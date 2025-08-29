@@ -16,6 +16,7 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
 #include "math/brdf.hpp"
@@ -69,6 +70,7 @@ static ID<Image> createDepthStencilBuffer(bool useStencil, bool isCopy)
 	return image;
 }
 
+//**********************************************************************************************************************
 static ID<Image> createHdrBuffer(bool isCopy, bool isFullSize)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -111,6 +113,7 @@ static ID<Image> createUiBuffer()
 	return image;
 }
 
+//**********************************************************************************************************************
 static ID<Image> createOitAccumBuffer()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -140,6 +143,7 @@ static ID<Image> createTransBuffer()
 	return image;
 }
 
+//**********************************************************************************************************************
 static ID<ImageView> createDepthStencilIV(ID<Image> depthStencilBuffer, bool useStencil)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -180,6 +184,7 @@ static ID<ImageView> createStencilImageView(ID<Image> depthStencilBuffer)
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.deferred.stencil");
 	return imageView;
 }
+
 static ID<ImageView> createHdrCopyIV(ID<Image> hdrCopyBuffer)
 {
 	auto imageView = GraphicsSystem::Instance::get()->createImageView(hdrCopyBuffer, 
@@ -206,7 +211,6 @@ static ID<Framebuffer> createGFramebuffer(const vector<ID<Image>> gBuffers, ID<I
 		colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView, DeferredRenderSystem::gBufferFlags);
 	}
 
-	colorAttachments[DeferredRenderSystem::gBufferVelocity].flags = DeferredRenderSystem::velocityFlags;
 	Framebuffer::OutputAttachment depthStencilAttachment(
 		depthStencilIV, DeferredRenderSystem::gBufferDepthFlags);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
@@ -324,6 +328,18 @@ static ID<Framebuffer> createTransDepthFramebuffer(ID<Image> transBuffer, ID<Ima
 	return framebuffer;
 }
 
+static ID<GraphicsPipeline> createVelocityPipeline(ID<Framebuffer> gFramebuffer, bool useAsyncRecording)
+{
+	ResourceSystem::GraphicsOptions options;
+	options.useAsyncRecording = useAsyncRecording;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("velocity", gFramebuffer, options);
+}
+static DescriptorSet::Uniforms getVelocityUniforms()
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	return { { "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) } };
+}
+
 //**********************************************************************************************************************
 DeferredRenderSystem::DeferredRenderSystem(Options options, 
 	bool setSingleton) : Singleton(setSingleton), options(options)
@@ -402,6 +418,7 @@ void DeferredRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(velocityDS);
 		graphicsSystem->destroy(upscaleHdrFramebuffer);
 		graphicsSystem->destroy(transDepthFramebuffer);
 		graphicsSystem->destroy(oitFramebuffer);
@@ -430,6 +447,7 @@ void DeferredRenderSystem::deinit()
 		graphicsSystem->destroy(hdrCopyBlurFBs);
 		graphicsSystem->destroy(hdrCopyBlurViews);
 		graphicsSystem->destroy(hdrCopyBlurPipeline);
+		graphicsSystem->destroy(velocityPipeline);
 		graphicsSystem->destroy(hdrCopyBuffer);
 		graphicsSystem->destroy(hdrBuffer);
 		graphicsSystem->destroy(gBuffers);
@@ -453,6 +471,13 @@ void DeferredRenderSystem::render()
 	if (!cameraView || !transformView || !transformView->isActive())
 		return;
 
+	if (!velocityPipeline)
+		velocityPipeline = createVelocityPipeline(getGFramebuffer(), options.useAsyncRecording);
+
+	auto velocityPipelineView = graphicsSystem->get(velocityPipeline);
+	if (!velocityPipelineView->isReady())
+		return;
+
 	#if GARDEN_DEBUG
 	if (ForwardRenderSystem::Instance::tryGet())
 	{
@@ -472,15 +497,43 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Deferred Render Pass");
+
+		if (!velocityDS)
+		{
+			auto uniforms = getVelocityUniforms();
+			velocityDS = graphicsSystem->createDescriptorSet(velocityPipeline, std::move(uniforms));
+			SET_RESOURCE_DEBUG_NAME(velocityDS, "descriptorSet.deferred.velocity");
+		}
+
 		static const array<float4, gBufferCount> clearColors = 
 		{ float4::zero, float4::zero, float4::zero, float4::zero, float4::zero, float4::zero };
 		auto framebufferView = graphicsSystem->get(getGFramebuffer());
+		velocityPipelineView = graphicsSystem->get(velocityPipeline); // Note: do not remove.
+		auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Deferred Pass", Color::transparent);
 			framebufferView->beginRenderPass(clearColors, 0.0f, 0, int4::zero, options.useAsyncRecording);
+
 			event->run();
+
+			if (options.useAsyncRecording)
+			{
+				auto threadIndex = graphicsSystem->getThreadCount() - 1;
+				velocityPipelineView->bindAsync(0, threadIndex);
+				velocityPipelineView->setViewportScissorAsync(float4::zero, threadIndex);
+				velocityPipelineView->bindDescriptorSetAsync(velocityDS, inFlightIndex, threadIndex);
+				velocityPipelineView->drawFullscreenAsync(threadIndex);
+			}
+			else
+			{
+				velocityPipelineView->bind();
+				velocityPipelineView->setViewportScissor();
+				velocityPipelineView->bindDescriptorSet(velocityDS, inFlightIndex);
+				velocityPipelineView->drawFullscreen();
+			}
+
 			framebufferView->endRenderPass();
 		}
 		graphicsSystem->stopRecording();
@@ -785,7 +838,6 @@ void DeferredRenderSystem::swapchainRecreate()
 				colorAttachments[i] = Framebuffer::OutputAttachment(graphicsSystem->get(
 					_gBuffers[i])->getDefaultView(), DeferredRenderSystem::gBufferFlags);
 			}
-			colorAttachments[DeferredRenderSystem::gBufferVelocity].flags = DeferredRenderSystem::velocityFlags;
 			depthStencilAttachment.setFlags(DeferredRenderSystem::gBufferDepthFlags);
 			framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
 		}
