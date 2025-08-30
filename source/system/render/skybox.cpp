@@ -30,9 +30,9 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"skybox", deferredSystem->getDepthHdrFramebuffer(), options);
 }
-static DescriptorSet::Uniforms getUniforms(ID<Image> cubemap)
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> cubemap)
 {
-	auto cubemapView = GraphicsSystem::Instance::get()->get(cubemap)->getDefaultView();
+	auto cubemapView = graphicsSystem->get(cubemap)->getDefaultView();
 	return { { "cubemap", DescriptorSet::Uniform(cubemapView) } };
 }
 
@@ -129,7 +129,7 @@ void SkyboxRenderSystem::depthHdrRender()
 
 	if (!skyboxView->descriptorSet)
 	{
-		auto uniforms = getUniforms(ID<Image>(skyboxView->cubemap));
+		auto uniforms = getUniforms(graphicsSystem, ID<Image>(skyboxView->cubemap));
 		auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.skybox");
 		skyboxView->descriptorSet = Ref<DescriptorSet>(descriptorSet);
@@ -172,7 +172,8 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(cubemap);
 
-	auto cubemapView = GraphicsSystem::Instance::get()->get(cubemap);
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto cubemapView = graphicsSystem->get(cubemap);
 	auto imageSize = (uint2)cubemapView->getSize();
 	auto imageType = cubemapView->getType();
 
@@ -183,7 +184,7 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image
 	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
-	auto uniforms = getUniforms(cubemap);
+	auto uniforms = getUniforms(graphicsSystem, cubemap);
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), pipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));

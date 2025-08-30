@@ -20,12 +20,11 @@
 
 using namespace garden;
 
-static ID<Buffer> createGgxKernel()
+static ID<Buffer> createGgxKernel(GraphicsSystem* graphicsSystem)
 {
 	float2 coeffs[brdf::ggxCoeffCount];
 	GpuProcessSystem::calcGaussCoeffs(brdf::ggxSigma0, coeffs, brdf::ggxCoeffCount);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto kernel = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst | 
 		Buffer::Usage::TransferQ, Buffer::CpuAccess::None, coeffs, brdf::ggxCoeffCount * 
 		sizeof(float2), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
@@ -94,7 +93,7 @@ void GpuProcessSystem::deinit()
 ID<Buffer> GpuProcessSystem::getGgxBlurKernel()
 {
 	if (!ggxBlurKernel)
-		ggxBlurKernel = createGgxKernel();
+		ggxBlurKernel = createGgxKernel(GraphicsSystem::Instance::get());
 	return ggxBlurKernel;
 }
 ID<ComputePipeline> GpuProcessSystem::getDownsampleNorm()

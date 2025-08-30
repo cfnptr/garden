@@ -26,10 +26,10 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"oit", deferredSystem->getUpscaleHdrFramebuffer(), options);
 }
-static DescriptorSet::Uniforms getUniforms()
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto oitFramebufferView = GraphicsSystem::Instance::get()->get(deferredSystem->getOitFramebuffer());
+	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
 	const auto& colorAttachments = oitFramebufferView->getColorAttachments();
 
 	DescriptorSet::Uniforms uniforms =
@@ -97,7 +97,7 @@ void OitRenderSystem::preLdrRender()
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms();
+		auto uniforms = getUniforms(graphicsSystem);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}

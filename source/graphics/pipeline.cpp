@@ -635,17 +635,22 @@ bool Pipeline::checkThreadIndex(int32 threadIndex)
 //**********************************************************************************************************************
 void Pipeline::bind(uint8 variant)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(variant < variantCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->isCurrentRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
-	auto graphicsAPI = GraphicsAPI::get();
 	auto pipeline = graphicsAPI->getPipeline(type, this);
+	if (pipeline == graphicsAPI->currentPipelines[0] && type == graphicsAPI->currentPipelineTypes[0] &&
+		variant == graphicsAPI->currentPipelineVariants[0])
+	{
+		return;
+	}
 
 	if (type == PipelineType::Graphics)
 	{
-		GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+		GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer, "Assert " + debugName);
 		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
 		{
 			busyLock++;
@@ -675,19 +680,23 @@ void Pipeline::bind(uint8 variant)
 	command.variant = variant;
 	command.pipeline = pipeline;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
+
+	graphicsAPI->currentPipelines[0] = pipeline;
+	graphicsAPI->currentPipelineTypes[0] = type;
+	graphicsAPI->currentPipelineVariants[0] = variant;
 }
 
 //**********************************************************************************************************************
 void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(variant < variantCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(threadIndex < GraphicsAPI::get()->threadCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->isCurrentRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(threadIndex < graphicsAPI->threadCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
-	auto graphicsAPI = GraphicsAPI::get();
 	auto pipeline = graphicsAPI->getPipeline(type, this);
 
 	graphicsAPI->currentCommandBuffer->commandMutex.lock();
@@ -746,12 +755,14 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 //**********************************************************************************************************************
 void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(descriptorSetRange, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->isCurrentRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
+		graphicsAPI->currentPipelines[0], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
-	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
@@ -779,14 +790,16 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 //**********************************************************************************************************************
 void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 threadIndex)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(descriptorSetRange, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(threadIndex < GraphicsAPI::get()->threadCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->isCurrentRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(threadIndex < graphicsAPI->threadCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
+		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
-	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
@@ -854,10 +867,11 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 //**********************************************************************************************************************
 void Pipeline::pushConstants(const void* data)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(pushConstantsSize > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->isCurrentRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
 	PushConstantsCommand command;
@@ -865,20 +879,21 @@ void Pipeline::pushConstants(const void* data)
 	command.shaderStages = pushConstantsMask;
 	command.pipelineLayout = pipelineLayout;
 	command.data = data;
-	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
+	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
 void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(pushConstantsSize > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(threadIndex < GraphicsAPI::get()->threadCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->isCurrentRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(threadIndex < graphicsAPI->threadCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
 			vk::PipelineLayout((VkPipelineLayout)pipelineLayout), 

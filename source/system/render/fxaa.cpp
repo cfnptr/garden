@@ -20,9 +20,8 @@
 
 using namespace garden;
 
-static ID<Framebuffer> createFramebuffer()
+static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gBuffer = deferredSystem->getGBuffers()[0]; // Note: Reusing G-Buffer memory.
 	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); 
@@ -42,9 +41,8 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer, options);
 }
 
-static DescriptorSet::Uniforms getUniforms()
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
@@ -109,23 +107,23 @@ void FxaaRenderSystem::preUiRender()
 	if (!isEnabled)
 		return;
 	
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isInitialized)
 	{
 		if (!framebuffer)
-			framebuffer = createFramebuffer();
+			framebuffer = createFramebuffer(graphicsSystem);
 		if (!pipeline)
 			pipeline = createPipeline(framebuffer);
 		isInitialized = true;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms();
+		auto uniforms = getUniforms(graphicsSystem);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
@@ -176,7 +174,7 @@ void FxaaRenderSystem::gBufferRecreate()
 ID<Framebuffer> FxaaRenderSystem::getFramebuffer()
 {
 	if (!framebuffer)
-		framebuffer = createFramebuffer();
+		framebuffer = createFramebuffer(GraphicsSystem::Instance::get());
 	return framebuffer;
 }
 ID<GraphicsPipeline> FxaaRenderSystem::getPipeline()

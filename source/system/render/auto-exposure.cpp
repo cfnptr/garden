@@ -20,23 +20,22 @@
 
 using namespace garden;
 
-static ID<Buffer> createHistogramBuffer()
+static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 {
 	auto usage = Buffer::Usage::Storage | Buffer::Usage::TransferDst;
 	#if GARDEN_EDITOR
 	usage |= Buffer::Usage::TransferSrc;
 	#endif
 	
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(usage, Buffer::CpuAccess::None, 
+	auto buffer = graphicsSystem->createBuffer(usage, Buffer::CpuAccess::None, 
 		AutoExposureSystem::histogramSize * sizeof(uint32), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.autoExposure.histogram");
 	return buffer;
 }
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getHistogramUniforms(ID<Buffer> histogramBuffer)
+static DescriptorSet::Uniforms getHistogramUniforms(GraphicsSystem* graphicsSystem, ID<Buffer> histogramBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
@@ -117,13 +116,14 @@ void AutoExposureSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Auto Exposure Render");
 
-	if (!isEnabled || !GraphicsSystem::Instance::get()->canRender())
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!isEnabled || !graphicsSystem->canRender())
 		return;
 
 	if (!isInitialized)
 	{
 		if (!histogramBuffer)
-			histogramBuffer = createHistogramBuffer();
+			histogramBuffer = createHistogramBuffer(graphicsSystem);
 		if (!histogramPipeline)
 			histogramPipeline = createHistogramPipeline();
 		if (!averagePipeline)
@@ -131,7 +131,6 @@ void AutoExposureSystem::render()
 		isInitialized = true;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	auto histogramPipelineView = graphicsSystem->get(histogramPipeline);
 	auto averagePipelineView = graphicsSystem->get(averagePipeline);
@@ -141,7 +140,7 @@ void AutoExposureSystem::render()
 
 	if (!histogramDS)
 	{
-		auto uniforms = getHistogramUniforms(histogramBuffer);
+		auto uniforms = getHistogramUniforms(graphicsSystem, histogramBuffer);
 		histogramDS = graphicsSystem->createDescriptorSet(histogramPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(histogramDS, "descriptorSet.autoExposure.histogram");
 	}
@@ -218,6 +217,6 @@ ID<ComputePipeline> AutoExposureSystem::getAveragePipeline()
 ID<Buffer> AutoExposureSystem::getHistogramBuffer()
 {
 	if (!histogramBuffer)
-		histogramBuffer = createHistogramBuffer();
+		histogramBuffer = createHistogramBuffer(GraphicsSystem::Instance::get());
 	return histogramBuffer;
 }

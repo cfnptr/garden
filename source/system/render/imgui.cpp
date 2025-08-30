@@ -117,17 +117,17 @@ static ID<GraphicsPipeline> createPipeline()
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("imgui", framebuffer, options);
 }
-static ID<Sampler> createLinearSampler()
+static ID<Sampler> createLinearSampler(GraphicsSystem* graphicsSystem)
 {
 	Sampler::State state;
 	state.setFilter(Sampler::Filter::Linear);
-	auto sampler = GraphicsSystem::Instance::get()->createSampler(state);
+	auto sampler = graphicsSystem->createSampler(state);
 	SET_RESOURCE_DEBUG_NAME(sampler, "sampler.imgui.linear");
 	return sampler;
 }
-static ID<Sampler> createNearestSampler()
+static ID<Sampler> createNearestSampler(GraphicsSystem* graphicsSystem)
 {
-	auto sampler = GraphicsSystem::Instance::get()->createSampler({});
+	auto sampler = graphicsSystem->createSampler({});
 	SET_RESOURCE_DEBUG_NAME(sampler, "sampler.imgui.nearest");
 	return sampler;
 }
@@ -141,9 +141,9 @@ static DescriptorSet::Samplers getSamplers(ID<Sampler> sampler)
 	return { { "tex", sampler } };
 }
 
-static void createBuffers(vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Usage usage)
+static void createBuffers(GraphicsSystem* graphicsSystem, 
+	vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Usage usage)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	buffers.resize(inFlightCount);
 
@@ -601,18 +601,18 @@ void ImGuiRenderSystem::uiRender()
 	if (!isEnabled)
 		return;
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isInitialized)
 	{
 		if (!pipeline)
 			pipeline = createPipeline();
 		if (!linearSampler)
-			linearSampler = createLinearSampler();
+			linearSampler = createLinearSampler(graphicsSystem);
 		if (!nearestSampler)
-			nearestSampler = createNearestSampler();
+			nearestSampler = createNearestSampler(graphicsSystem);
 		isInitialized = true;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	auto fontTextureView = graphicsSystem->get(fontTexture);
 	if (!pipelineView->isReady() || !fontTextureView->isReady())
@@ -642,12 +642,12 @@ void ImGuiRenderSystem::uiRender()
 		if (vertexBuffers.size() == 0 || graphicsSystem->get(vertexBuffers[0])->getBinarySize() < vertexSize)
 		{
 			graphicsSystem->destroy(vertexBuffers);
-			createBuffers(vertexBuffers, vertexSize, Buffer::Usage::Vertex);
+			createBuffers(graphicsSystem, vertexBuffers, vertexSize, Buffer::Usage::Vertex);
 		}
 		if (indexBuffers.size() == 0 || graphicsSystem->get(indexBuffers[0])->getBinarySize() < indexSize)
 		{
 			graphicsSystem->destroy(indexBuffers);
-			createBuffers(indexBuffers, indexSize, Buffer::Usage::Index);
+			createBuffers(graphicsSystem, indexBuffers, indexSize, Buffer::Usage::Index);
 		}
 
 		auto inFlightIndex = graphicsSystem->getInFlightIndex();

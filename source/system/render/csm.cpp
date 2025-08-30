@@ -25,9 +25,8 @@
 
 using namespace garden;
 
-static void createDataBuffers(DescriptorSet::Buffers& dataBuffers)
+static void createDataBuffers(GraphicsSystem* graphicsSystem, DescriptorSet::Buffers& dataBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	dataBuffers.resize(inFlightCount);
 
@@ -41,9 +40,9 @@ static void createDataBuffers(DescriptorSet::Buffers& dataBuffers)
 }
 
 //**********************************************************************************************************************
-static ID<Image> createDepthData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
+static ID<Image> createDepthData(GraphicsSystem* graphicsSystem, 
+	vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(CsmRenderSystem::depthFormat, 
 		Image::Usage::DepthStencilAttachment | Image::Usage::Sampled, { Image::Layers(CsmRenderSystem::cascadeCount) }, 
 		uint2(shadowMapSize), Image::Strategy::Size);
@@ -60,9 +59,9 @@ static ID<Image> createDepthData(vector<ID<ImageView>>& imageViews, uint32 shado
 	
 	return image;
 }
-static ID<Image> createTransparentData(vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
+static ID<Image> createTransparentData(GraphicsSystem* graphicsSystem, 
+	vector<ID<ImageView>>& imageViews, uint32 shadowMapSize)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(CsmRenderSystem::transparentFormat, 
 		Image::Usage::ColorAttachment | Image::Usage::Sampled, { Image::Layers(CsmRenderSystem::cascadeCount) }, 
 		uint2(shadowMapSize), Image::Strategy::Size);
@@ -81,10 +80,9 @@ static ID<Image> createTransparentData(vector<ID<ImageView>>& imageViews, uint32
 }
 
 //**********************************************************************************************************************
-static void createShadowFramebuffers(const vector<ID<ImageView>>& imageViews,
-	vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
+static void createShadowFramebuffers(GraphicsSystem* graphicsSystem, 
+	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(CsmRenderSystem::cascadeCount);
 	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::shadowFlags);
 
@@ -98,10 +96,9 @@ static void createShadowFramebuffers(const vector<ID<ImageView>>& imageViews,
 		framebuffers[i] = framebuffer;
 	}
 }
-static void createTransparentFramebuffers(const vector<ID<ImageView>>& transImageViews,
+static void createTransparentFramebuffers(GraphicsSystem* graphicsSystem, const vector<ID<ImageView>>& transImageViews,
 	const vector<ID<ImageView>>& shadowImageViews, vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	framebuffers.resize(CsmRenderSystem::cascadeCount);
 	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::transDepthFlags);
 
@@ -127,10 +124,9 @@ static ID<GraphicsPipeline> createPipeline()
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadowBaseFB(), options);
 }
 
-static DescriptorSet::Uniforms getUniforms(ID<Image> depthMap, 
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> depthMap, 
 	ID<Image> transparentMap, const DescriptorSet::Buffers& dataBuffers)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto depthMapView = graphicsSystem->get(depthMap)->getDefaultView();
 	auto transparentMapView = graphicsSystem->get(transparentMap)->getDefaultView();
@@ -218,7 +214,7 @@ void CsmRenderSystem::shadowRender()
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms(depthMap, transparentMap, dataBuffers);
+		auto uniforms = getUniforms(graphicsSystem, depthMap, transparentMap, dataBuffers);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.csm");
 	}
@@ -307,18 +303,21 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	if (!isEnabled)
 		return false;
 
-	if (dataBuffers.empty())
-		createDataBuffers(dataBuffers);
-	if (!depthMap)
-		depthMap = createDepthData(shadowImageViews, shadowMapSize);
-	if (!transparentMap)
-		transparentMap = createTransparentData(transImageViews, shadowMapSize);
-	if (shadowFramebuffers.empty())
-		createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
-	if (transFramebuffers.empty())
-		createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
-
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (dataBuffers.empty())
+		createDataBuffers(graphicsSystem, dataBuffers);
+	if (!depthMap)
+		depthMap = createDepthData(graphicsSystem, shadowImageViews, shadowMapSize);
+	if (!transparentMap)
+		transparentMap = createTransparentData(graphicsSystem, transImageViews, shadowMapSize);
+	if (shadowFramebuffers.empty())
+		createShadowFramebuffers(graphicsSystem, shadowImageViews, shadowFramebuffers, shadowMapSize);
+	if (transFramebuffers.empty())
+	{
+		createTransparentFramebuffers(graphicsSystem, transImageViews, 
+			shadowImageViews, transFramebuffers, shadowMapSize);
+	}
+
 	const auto& cc = graphicsSystem->getCommonConstants();
 	if (cc.shadowColor.getW() <= 0.0f || !graphicsSystem->directionalLight)
 		return false;
@@ -435,36 +434,39 @@ ID<GraphicsPipeline> CsmRenderSystem::getPipeline()
 const DescriptorSet::Buffers& CsmRenderSystem::getDataBuffers()
 {
 	if (dataBuffers.empty())
-		createDataBuffers(dataBuffers);
+		createDataBuffers(GraphicsSystem::Instance::get(), dataBuffers);
 	return dataBuffers;
 }
 
 ID<Image> CsmRenderSystem::getDepthMap()
 {
 	if (!depthMap)
-		depthMap = createDepthData(shadowImageViews, shadowMapSize);
+		depthMap = createDepthData(GraphicsSystem::Instance::get(), shadowImageViews, shadowMapSize);
 	return depthMap;
 }
 ID<Image> CsmRenderSystem::getTransparentMap()
 {
 	if (!transparentMap)
-		transparentMap = createTransparentData(transImageViews, shadowMapSize);
+		transparentMap = createTransparentData(GraphicsSystem::Instance::get(), transImageViews, shadowMapSize);
 	return transparentMap;
 }
 
 const vector<ID<Framebuffer>>& CsmRenderSystem::getShadowFramebuffers()
 {
 	if (!depthMap)
-		depthMap = createDepthData(shadowImageViews, shadowMapSize);
+		depthMap = createDepthData(GraphicsSystem::Instance::get(), shadowImageViews, shadowMapSize);
 	if (shadowFramebuffers.empty())
-		createShadowFramebuffers(shadowImageViews, shadowFramebuffers, shadowMapSize);
+		createShadowFramebuffers(GraphicsSystem::Instance::get(), shadowImageViews, shadowFramebuffers, shadowMapSize);
 	return shadowFramebuffers;
 }
 const vector<ID<Framebuffer>>& CsmRenderSystem::getTransFramebuffers()
 {
 	if (!transparentMap)
-		transparentMap = createTransparentData(transImageViews, shadowMapSize);
+		transparentMap = createTransparentData(GraphicsSystem::Instance::get(), transImageViews, shadowMapSize);
 	if (transFramebuffers.empty())
-		createTransparentFramebuffers(transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
+	{
+		createTransparentFramebuffers(GraphicsSystem::Instance::get(), 
+			transImageViews, shadowImageViews, transFramebuffers, shadowMapSize);
+	}
 	return transFramebuffers;
 }

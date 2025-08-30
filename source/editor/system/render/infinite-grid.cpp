@@ -23,9 +23,9 @@
 
 using namespace garden;
 
-static DescriptorSet::Uniforms getUniforms()
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
-	return { { "cc", DescriptorSet::Uniform(GraphicsSystem::Instance::get()->getCommonConstantsBuffers()) } };
+	return { { "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) } };
 }
 
 //**********************************************************************************************************************
@@ -151,7 +151,7 @@ void InfiniteGridEditorSystem::preRender()
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms();
+		auto uniforms = getUniforms(graphicsSystem);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}

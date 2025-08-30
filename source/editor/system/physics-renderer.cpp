@@ -24,9 +24,9 @@
 using namespace garden;
 using namespace garden::physics;
 
-static ID<Buffer> createVertexBuffer(uint64 size, const void* data)
+static ID<Buffer> createVertexBuffer(GraphicsSystem* graphicsSystem, uint64 size, const void* data)
 {
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst,
+	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst,
 		Buffer::CpuAccess::None, data, size, Buffer::Location::PreferGPU, Buffer::Strategy::Default);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.vertex.physicsDebug" + to_string(*buffer));
 	return buffer;
@@ -34,15 +34,16 @@ static ID<Buffer> createVertexBuffer(uint64 size, const void* data)
 
 bool PhysicsDebugRenderer::isReady()
 {
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto result = true;
 	if (linePipeline)
 	{
-		auto pipelineView = GraphicsSystem::Instance::get()->get(linePipeline);
+		auto pipelineView = graphicsSystem->get(linePipeline);
 		result &= pipelineView->isReady();
 	}
 	if (trianglePipeline)
 	{
-		auto pipelineView = GraphicsSystem::Instance::get()->get(trianglePipeline);
+		auto pipelineView = graphicsSystem->get(trianglePipeline);
 		result &= pipelineView->isReady();
 	}
 	return result;
@@ -110,10 +111,11 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 
 void PhysicsDebugRenderer::preDraw()
 {
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!lines.empty())
-		linesBuffer = createVertexBuffer(lines.size() * sizeof(Line), lines.data());
+		linesBuffer = createVertexBuffer(graphicsSystem, lines.size() * sizeof(Line), lines.data());
 	if (!triangles.empty())
-		trianglesBuffer = createVertexBuffer(triangles.size() * sizeof(Triangle), triangles.data());
+		trianglesBuffer = createVertexBuffer(graphicsSystem, triangles.size() * sizeof(Triangle), triangles.data());
 }
 void PhysicsDebugRenderer::draw(const f32x4x4& viewProj)
 {

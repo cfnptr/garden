@@ -210,16 +210,15 @@ Blas::Blas(uint64 size, BuildFlagsAS flags)
 //**********************************************************************************************************************
 ID<Blas> Blas::compact()
 {
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
-		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::AllowCompaction), 
 		"BLAS [" + debugName + "] compaction is not allowed");
 	GARDEN_ASSERT_MSG(buildData, "BLAS [" + debugName + "] is already compacted");
 	GARDEN_ASSERT_MSG(isStorageReady(), "BLAS [" + debugName + "] storage is not ready");
 
-	auto graphicsAPI = GraphicsAPI::get();
 	auto buildDataHeader = (const BuildDataHeader*)buildData;
 	auto data = (CompactData*)buildDataHeader->compactData;
 

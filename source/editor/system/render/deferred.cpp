@@ -22,9 +22,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getBufferUniforms(ID<Image>& blackPlaceholder)
+static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem, ID<Image>& blackPlaceholder)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
@@ -268,7 +267,7 @@ void DeferredRenderEditorSystem::ldrRender()
 
 	if (!bufferDescriptorSet)
 	{
-		auto uniforms = getBufferUniforms(blackPlaceholder);
+		auto uniforms = getBufferUniforms(graphicsSystem, blackPlaceholder);
 		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
 	}

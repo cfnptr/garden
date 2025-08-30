@@ -107,7 +107,7 @@ public:
 		float bottomRadius;
 		float topRadius;
 	};
-	struct SkyboxPC final
+	struct SkyPushConstants final
 	{
 		float4x4 invViewProj;
 		float3 cameraPos;

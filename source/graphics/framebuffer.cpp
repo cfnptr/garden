@@ -529,14 +529,13 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 void Framebuffer::update(uint2 size, vector<OutputAttachment>&& colorAttachments,
 	OutputAttachment depthStencilAttachment)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(subpasses.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!colorAttachments.empty() || depthStencilAttachment.imageView, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
 
 	#if GARDEN_DEBUG
-	auto graphicsAPI = GraphicsAPI::get();
-
 	for	(uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 	{
 		auto colorAttachment = colorAttachments[i];
@@ -590,14 +589,14 @@ void Framebuffer::recreate(uint2 size, const vector<SubpassImages>& subpasses)
 void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCount,
 	float clearDepth, uint32 clearStencil, int4 region, bool asyncRecording)
 {
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(clearColorCount == colorAttachments.size(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!clearColors || (clearColors && clearColorCount > 0), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(region.x + region.z <= size.x, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(region.y + region.w <= size.y, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	
-	auto graphicsAPI = GraphicsAPI::get();
 	graphicsAPI->currentFramebuffer = graphicsAPI->framebufferPool.getID(this);
 	graphicsAPI->currentSubpassIndex = 0;
 
@@ -627,6 +626,14 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 			graphicsAPI->currentIndexBuffers[i] = {};
 		}
 	}
+	else
+	{
+		graphicsAPI->currentPipelines[0] = {};
+		graphicsAPI->currentPipelineTypes[0] = {}; 
+		graphicsAPI->currentPipelineVariants[0] = 0;
+		graphicsAPI->currentVertexBuffers[0] = {};
+		graphicsAPI->currentIndexBuffers[0] = {};
+	}
 
 	BeginRenderPassCommand command;
 	command.clearColorCount = clearColorCount;
@@ -650,11 +657,11 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 //**********************************************************************************************************************
 void Framebuffer::nextSubpass(bool asyncRecording)
 {
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer == 
-		GraphicsAPI::get()->framebufferPool.getID(this), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentSubpassIndex + 1 < subpasses.size(), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer == 
+		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentSubpassIndex + 1 < subpasses.size(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -683,7 +690,21 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 	if (asyncRecording)
 	{
 		for (uint32 i = 0; i < graphicsAPI->threadCount; i++)
-			graphicsAPI->currentVertexBuffers[i] = graphicsAPI->currentIndexBuffers[i] = {};
+		{
+			graphicsAPI->currentPipelines[i] = {};
+			graphicsAPI->currentPipelineTypes[i] = {};
+			graphicsAPI->currentPipelineVariants[i] = 0;
+			graphicsAPI->currentVertexBuffers[i] = {};
+			graphicsAPI->currentIndexBuffers[i] = {};
+		}
+	}
+	else
+	{
+		graphicsAPI->currentPipelines[0] = {};
+		graphicsAPI->currentPipelineTypes[0] = {};
+		graphicsAPI->currentPipelineVariants[0] = 0;
+		graphicsAPI->currentVertexBuffers[0] = {};
+		graphicsAPI->currentIndexBuffers[0] = {};
 	}
 	
 	NextSubpassCommand command;
@@ -695,11 +716,11 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 }
 void Framebuffer::endRenderPass()
 {
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer == 
-		GraphicsAPI::get()->framebufferPool.getID(this), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
-
 	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer == 
+		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
+
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -720,10 +741,10 @@ void Framebuffer::endRenderPass()
 void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 	uint8 attachmentCount, const ClearRegion* regions, uint32 regionCount)
 {
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentFramebuffer == 
-		GraphicsAPI::get()->framebufferPool.getID(this), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
 	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer == 
+		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 
 	ClearAttachmentsCommand command;
 	command.attachmentCount = attachmentCount;

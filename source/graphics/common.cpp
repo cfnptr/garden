@@ -23,38 +23,42 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 void DebugLabel::begin(const string& name, Color color)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + name);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + name);
 
 	BeginLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
 
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	currentCommandBuffer->commandMutex.lock();
 	currentCommandBuffer->addCommand(command);
 	currentCommandBuffer->commandMutex.unlock();
 }
 void DebugLabel::end()
 {
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+
 	EndLabelCommand command;
 
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	currentCommandBuffer->commandMutex.lock();
 	currentCommandBuffer->addCommand(command);
 	currentCommandBuffer->commandMutex.unlock();
 }
 void DebugLabel::insert(const string& name, Color color)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + name);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + name);
 
 	InsertLabelCommand command;
 	command.name = name.c_str();
 	command.color = color;
 
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	currentCommandBuffer->commandMutex.lock();
 	currentCommandBuffer->addCommand(command);
 	currentCommandBuffer->commandMutex.unlock();
