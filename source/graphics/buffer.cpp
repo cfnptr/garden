@@ -165,7 +165,7 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 		throw GardenError("Ray tracing acceleration is not supported on this GPU.");
 	}
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkBuffer(usage, cpuAccess, location, strategy, size, instance, allocation, map, deviceAddress);
 	else abort();
 
@@ -310,13 +310,12 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 //**********************************************************************************************************************
 void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(size == 0 || size % 4 == 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(size == 0 || size + offset <= binarySize, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
-
-	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
@@ -348,13 +347,13 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 //**********************************************************************************************************************
 void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto srcView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 

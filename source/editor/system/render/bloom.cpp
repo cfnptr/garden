@@ -22,9 +22,8 @@
 
 using namespace garden;
 
-static DescriptorSet::Uniforms getThresholdUniforms()
+static DescriptorSet::Uniforms getThresholdUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
@@ -143,7 +142,7 @@ void BloomRenderEditorSystem::uiRender()
 
 	if (!thresholdDS)
 	{
-		auto uniforms = getThresholdUniforms();
+		auto uniforms = getThresholdUniforms(graphicsSystem);
 		thresholdDS = graphicsSystem->createDescriptorSet(thresholdPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
 	}

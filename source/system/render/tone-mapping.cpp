@@ -20,7 +20,7 @@
 
 using namespace garden;
 
-static ID<Buffer> createLuminanceBuffer()
+static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 {
 	#if GARDEN_EDITOR
 	constexpr auto usage = Buffer::Usage::TransferSrc;
@@ -29,7 +29,7 @@ static ID<Buffer> createLuminanceBuffer()
 	#endif
 
 	constexpr float data[2] = { 1.0f / ToneMappingSystem::lumToExp, 1.0f };
-	auto buffer = GraphicsSystem::Instance::get()->createBuffer(Buffer::Usage::Storage | Buffer::Usage::Uniform | 
+	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::Uniform | 
 		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | usage, Buffer::CpuAccess::None, data, 
 		sizeof(ToneMappingSystem::LuminanceData), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
@@ -37,9 +37,9 @@ static ID<Buffer> createLuminanceBuffer()
 }
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getUniforms(ID<Buffer> luminanceBuffer, bool useBloomBuffer)
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, 
+	ID<Buffer> luminanceBuffer, bool useBloomBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
@@ -109,7 +109,7 @@ void ToneMappingSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
 
 	if (!luminanceBuffer)
-		luminanceBuffer = createLuminanceBuffer();
+		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::Instance::get());
 	if (!pipeline)
 		pipeline = createPipeline(useBloomBuffer, toneMapper);
 }
@@ -148,7 +148,7 @@ void ToneMappingSystem::ldrRender()
 	}
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms(luminanceBuffer, useBloomBuffer);
+		auto uniforms = getUniforms(graphicsSystem, luminanceBuffer, useBloomBuffer);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
 	}
@@ -209,7 +209,7 @@ ID<GraphicsPipeline> ToneMappingSystem::getPipeline()
 ID<Buffer> ToneMappingSystem::getLuminanceBuffer()
 {
 	if (!luminanceBuffer)
-		luminanceBuffer = createLuminanceBuffer();
+		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::Instance::get());
 	return luminanceBuffer;
 }
 

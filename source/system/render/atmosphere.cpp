@@ -25,35 +25,32 @@
 
 using namespace garden;
 
-static ID<Image> createTransLUT(Image::Format format)
+static ID<Image> createTransLUT(GraphicsSystem* graphicsSystem, Image::Format format)
 {
-	auto transLUT = GraphicsSystem::Instance::get()->createImage(format, 
-		Image::Usage::Sampled | Image::Usage::ColorAttachment, { { nullptr } }, 
-		uint2(TRANSMITTANCE_LUT_WIDTH, TRANSMITTANCE_LUT_HEIGHT), Image::Strategy::Size);
+	auto transLUT = graphicsSystem->createImage(format, Image::Usage::Sampled | Image::Usage::ColorAttachment, 
+		{ { nullptr } }, uint2(TRANSMITTANCE_LUT_WIDTH, TRANSMITTANCE_LUT_HEIGHT), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(transLUT, "image.atmosphere.transLUT");
 	return transLUT;
 }
-static ID<Image> createMultiScatLUT()
+static ID<Image> createMultiScatLUT(GraphicsSystem* graphicsSystem)
 {
-	auto multiScatLUT = GraphicsSystem::Instance::get()->createImage(
-		Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::Storage, 
-		{ { nullptr } }, uint2(MULTI_SCAT_LUT_LENGTH), Image::Strategy::Size);
+	auto multiScatLUT = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | 
+		Image::Usage::Storage, { { nullptr } }, uint2(MULTI_SCAT_LUT_LENGTH), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(multiScatLUT, "image.atmosphere.multiScatLUT");
 	return multiScatLUT;
 }
-static ID<Image> createCameraVolume()
+static ID<Image> createCameraVolume(GraphicsSystem* graphicsSystem)
 {
-	auto cameraVolume = GraphicsSystem::Instance::get()->createImage(
-		Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::Storage, 
-		{ { nullptr } }, uint3(CAMERA_VOLUME_LENGTH), Image::Strategy::Size);
+	auto cameraVolume = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | 
+		Image::Usage::Storage, { { nullptr } }, uint3(CAMERA_VOLUME_LENGTH), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(cameraVolume, "image.atmosphere.cameraVolume");
 	return cameraVolume;
 }
-static ID<Image> createSkyViewLUT()
+static ID<Image> createSkyViewLUT(GraphicsSystem* graphicsSystem)
 {
-	auto size = max(GraphicsSystem::Instance::get()->getScaledFrameSize() / 10, uint2::one);
-	auto skyViewLUT = GraphicsSystem::Instance::get()->createImage(Image::Format::UfloatB10G11R11,
-		Image::Usage::Sampled | Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
+	auto size = max(graphicsSystem->getScaledFrameSize() / 10, uint2::one);
+	auto skyViewLUT = graphicsSystem->createImage(Image::Format::UfloatB10G11R11, Image::Usage::Sampled | 
+		Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(skyViewLUT, "image.atmosphere.skyViewLUT");
 	return skyViewLUT;
 }
@@ -64,9 +61,8 @@ static constexpr Image::Format getTransLutFormat(GraphicsQuality quality) noexce
 }
 
 //**********************************************************************************************************************
-static ID<Framebuffer> createScatLutFramebuffer(ID<Image> lut, const char* debugName)
+static ID<Framebuffer> createScatLutFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> lut, const char* debugName)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto lutView = graphicsSystem->get(lut);
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(lutView->getDefaultView(), AtmosphereRenderSystem::framebufferFlags) };
@@ -75,9 +71,8 @@ static ID<Framebuffer> createScatLutFramebuffer(ID<Image> lut, const char* debug
 	return framebuffer;
 }
 
-static void createSkyboxViews(ID<Image> skybox, ID<ImageView>* imageViews)
+static void createSkyboxViews(GraphicsSystem* graphicsSystem, ID<Image> skybox, ID<ImageView>* imageViews)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint8 i = 0; i < Image::cubemapSideCount; i++)
 	{
 		auto imageView = graphicsSystem->createImageView(skybox, 
@@ -86,9 +81,8 @@ static void createSkyboxViews(ID<Image> skybox, ID<ImageView>* imageViews)
 		imageViews[i] = imageView;
 	}
 }
-static void destroySkyboxViews(ID<ImageView>* imageViews)
+static void destroySkyboxViews(GraphicsSystem* graphicsSystem, ID<ImageView>* imageViews)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint8 i = 0; i < Image::cubemapSideCount; i++)
 	{
 		graphicsSystem->destroy(imageViews[i]);
@@ -96,9 +90,8 @@ static void destroySkyboxViews(ID<ImageView>* imageViews)
 	}
 }
 
-static void createSkyboxFramebuffers(ID<Framebuffer>* framebuffers)
+static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* framebuffers)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint8 i = 0; i < Image::cubemapSideCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
@@ -108,9 +101,8 @@ static void createSkyboxFramebuffers(ID<Framebuffer>* framebuffers)
 		framebuffers[i] = framebuffer;
 	}
 }
-static void destroySkyboxFramebuffers(ID<Framebuffer>* framebuffers)
+static void destroySkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* framebuffers)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	for (uint8 i = 0; i < Image::cubemapSideCount; i++)
 	{
 		graphicsSystem->destroy(framebuffers[i]);
@@ -213,9 +205,9 @@ static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, Gr
 }
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getScatLutUniforms(ID<Image> transLUT, ID<Image> multiScatLUT)
+static DescriptorSet::Uniforms getScatLutUniforms(
+	GraphicsSystem* graphicsSystem, ID<Image> transLUT, ID<Image> multiScatLUT)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
 	auto multiScatLutView = graphicsSystem->get(multiScatLUT)->getDefaultView();
 
@@ -226,10 +218,9 @@ static DescriptorSet::Uniforms getScatLutUniforms(ID<Image> transLUT, ID<Image> 
 	};
 	return uniforms;
 }
-static DescriptorSet::Uniforms getCameraVolumeUniforms(
+static DescriptorSet::Uniforms getCameraVolumeUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> transLUT, ID<Image> multiScatLUT, ID<Image> cameraVolume)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
 	auto multiScatLutView = graphicsSystem->get(multiScatLUT)->getDefaultView();
 	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
@@ -244,9 +235,8 @@ static DescriptorSet::Uniforms getCameraVolumeUniforms(
 	};
 	return uniforms;
 }
-static DescriptorSet::Uniforms getSkyUniforms(ID<Image> transLUT, ID<Image> skyViewLUT)
+static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem, ID<Image> transLUT, ID<Image> skyViewLUT)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
@@ -306,8 +296,8 @@ void AtmosphereRenderSystem::deinit()
 		graphicsSystem->destroy(cameraVolumePipeline);
 		graphicsSystem->destroy(multiScatLutPipeline);
 		graphicsSystem->destroy(transLutPipeline);
-		destroySkyboxFramebuffers(skyboxFramebuffers);
-		destroySkyboxViews(skyboxViews);
+		destroySkyboxFramebuffers(graphicsSystem, skyboxFramebuffers);
+		destroySkyboxViews(graphicsSystem, skyboxViews);
 		graphicsSystem->destroy(skyViewLutFramebuffer);
 		graphicsSystem->destroy(transLutFramebuffer);
 		graphicsSystem->destroy(skyViewLUT);
@@ -337,22 +327,23 @@ void AtmosphereRenderSystem::preDeferredRender()
 	if (!isEnabled)
 		return;
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isInitialized)
 	{
 		if (!transLUT)
-			transLUT = createTransLUT(getTransLutFormat(quality));
+			transLUT = createTransLUT(graphicsSystem, getTransLutFormat(quality));
 		if (!multiScatLUT)
-			multiScatLUT = createMultiScatLUT();
+			multiScatLUT = createMultiScatLUT(graphicsSystem);
 		if (!cameraVolume)
-			cameraVolume = createCameraVolume();
+			cameraVolume = createCameraVolume(graphicsSystem);
 		if (!skyViewLUT)
-			skyViewLUT = createSkyViewLUT();
+			skyViewLUT = createSkyViewLUT(graphicsSystem);
 		if (!transLutFramebuffer)
-			transLutFramebuffer = createScatLutFramebuffer(transLUT, "transLUT");
+			transLutFramebuffer = createScatLutFramebuffer(graphicsSystem, transLUT, "transLUT");
 		if (!skyViewLutFramebuffer)
-			skyViewLutFramebuffer = createScatLutFramebuffer(skyViewLUT, "skyViewLUT");
+			skyViewLutFramebuffer = createScatLutFramebuffer(graphicsSystem, skyViewLUT, "skyViewLUT");
 		if (!skyboxFramebuffers[0])
-			createSkyboxFramebuffers(skyboxFramebuffers);
+			createSkyboxFramebuffers(graphicsSystem, skyboxFramebuffers);
 		if (!transLutPipeline)
 			transLutPipeline = createTransLutPipeline(transLutFramebuffer, quality);
 		if (!multiScatLutPipeline)
@@ -366,7 +357,6 @@ void AtmosphereRenderSystem::preDeferredRender()
 		isInitialized = true;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto transLutPipelineView = graphicsSystem->get(transLutPipeline);
 	auto multiScatLutPipelineView = graphicsSystem->get(multiScatLutPipeline);
 	auto cameraVolumePipelineView = graphicsSystem->get(cameraVolumePipeline);
@@ -380,19 +370,19 @@ void AtmosphereRenderSystem::preDeferredRender()
 
 	if (!multiScatLutDS)
 	{
-		auto uniforms = getScatLutUniforms(transLUT, multiScatLUT);
+		auto uniforms = getScatLutUniforms(graphicsSystem, transLUT, multiScatLUT);
 		multiScatLutDS = graphicsSystem->createDescriptorSet(multiScatLutPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(multiScatLutDS, "descriptorSet.atmosphere.multiScatLUT");
 	}
 	if (!cameraVolumeDS)
 	{
-		auto uniforms = getCameraVolumeUniforms(transLUT, multiScatLUT, cameraVolume);
+		auto uniforms = getCameraVolumeUniforms(graphicsSystem, transLUT, multiScatLUT, cameraVolume);
 		cameraVolumeDS = graphicsSystem->createDescriptorSet(cameraVolumePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(cameraVolumeDS, "descriptorSet.atmosphere.cameraVolume");
 	}
 	if (!skyViewLutDS)
 	{
-		auto uniforms = getScatLutUniforms(transLUT, multiScatLUT);
+		auto uniforms = getScatLutUniforms(graphicsSystem, transLUT, multiScatLUT);
 		skyViewLutDS = graphicsSystem->createDescriptorSet(skyViewLutPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(skyViewLutDS, "descriptorSet.atmosphere.skyViewLUT");
 	}
@@ -529,8 +519,8 @@ void AtmosphereRenderSystem::preDeferredRender()
 			graphicsSystem->destroy(lastSkybox);
 			lastSkybox = pbrLightingView->cubemap;
 
-			destroySkyboxViews(skyboxViews);
-			createSkyboxViews(ID<Image>(lastSkybox), skyboxViews);
+			destroySkyboxViews(graphicsSystem, skyboxViews);
+			createSkyboxViews(graphicsSystem, ID<Image>(lastSkybox), skyboxViews);
 			
 			auto framebufferSize = (uint2)graphicsSystem->get(lastSkybox)->getSize();
 			Framebuffer::OutputAttachment colorAttachment = Framebuffer::OutputAttachment(
@@ -544,7 +534,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		}
 
 		graphicsSystem->startRecording(CommandBufferType::Frame);
-		if (updatePhase < Image::cubemapSideCount && false)
+		if (updatePhase < Image::cubemapSideCount)
 		{
 			auto framebuffer = skyboxFramebuffers[updatePhase];
 			if (!skyboxPipeline)
@@ -555,7 +545,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 			{
 				if (!skyboxDS)
 				{
-					auto uniforms = getSkyUniforms(transLUT, skyViewLUT);
+					auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT);
 					skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
 					SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
 				}
@@ -567,7 +557,9 @@ void AtmosphereRenderSystem::preDeferredRender()
 				pipelineView->updateFramebuffer(framebuffer);
 				auto framebufferView = graphicsSystem->get(framebuffer);
 
-				SkyboxPC pc;
+				auto test = graphicsSystem->get(framebufferView->getColorAttachments()[0].imageView);
+
+				SkyPushConstants pc;
 				pc.invViewProj = (float4x4)inverse4x4(viewProj);
 				pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
 				pc.bottomRadius = groundRadius;
@@ -578,6 +570,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 
 				SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
 				framebufferView->beginRenderPass(float4::zero);
+				pipelineView->bind();
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(skyboxDS);
 				pipelineView->pushConstants(&pc);
@@ -624,7 +617,7 @@ void AtmosphereRenderSystem::hdrRender()
 
 	if (!hdrSkyDS)
 	{
-		auto uniforms = getSkyUniforms(transLUT, skyViewLUT);
+		auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT);
 		hdrSkyDS = graphicsSystem->createDescriptorSet(hdrSkyPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(hdrSkyDS, "descriptorSet.atmosphere.hdrSky");
 	}
@@ -633,7 +626,7 @@ void AtmosphereRenderSystem::hdrRender()
 	auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
 	pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
 
-	SkyboxPC pc;
+	SkyPushConstants pc;
 	pc.invViewProj = (float4x4)cc.invViewProj;
 	pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
 	pc.bottomRadius = groundRadius;
@@ -667,7 +660,7 @@ void AtmosphereRenderSystem::gBufferRecreate()
 	if (skyViewLUT)
 	{
 		graphicsSystem->destroy(skyViewLUT);
-		skyViewLUT = createSkyViewLUT();
+		skyViewLUT = createSkyViewLUT(graphicsSystem);
 	}
 	if (skyViewLutFramebuffer)
 	{
@@ -706,13 +699,13 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 		if (transLutView->getFormat() != getTransLutFormat(quality))
 		{
 			graphicsSystem->destroy(transLUT);
-			transLUT = createTransLUT(getTransLutFormat(quality));
+			transLUT = createTransLUT(graphicsSystem, getTransLutFormat(quality));
 
 			if (transLutFramebuffer)
 			{
 				// Note: destroying because it may be already recorder.
 				graphicsSystem->destroy(transLutFramebuffer);
-				transLutFramebuffer = createScatLutFramebuffer(transLUT, "transLUT");
+				transLutFramebuffer = createScatLutFramebuffer(graphicsSystem, transLUT, "transLUT");
 			}
 		}
 	}
@@ -749,24 +742,24 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 ID<Image> AtmosphereRenderSystem::getTransLUT()
 {
 	if (!transLUT)
-		transLUT = createTransLUT(getTransLutFormat(quality));
+		transLUT = createTransLUT(GraphicsSystem::Instance::get(), getTransLutFormat(quality));
 	return transLUT;
 }
 ID<Image> AtmosphereRenderSystem::getMultiScatLUT()
 {
 	if (!multiScatLUT)
-		multiScatLUT = createMultiScatLUT();
+		multiScatLUT = createMultiScatLUT(GraphicsSystem::Instance::get());
 	return multiScatLUT;
 }
 ID<Image> AtmosphereRenderSystem::getCameraVolume()
 {
 	if (!cameraVolume)
-		cameraVolume = createCameraVolume();
+		cameraVolume = createCameraVolume(GraphicsSystem::Instance::get());
 	return cameraVolume;
 }
 ID<Image> AtmosphereRenderSystem::getSkyViewLUT()
 {
 	if (!skyViewLUT)
-		skyViewLUT = createSkyViewLUT();
+		skyViewLUT = createSkyViewLUT(GraphicsSystem::Instance::get());
 	return skyViewLUT;
 }

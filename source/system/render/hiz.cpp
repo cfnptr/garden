@@ -20,9 +20,8 @@
 
 using namespace garden;
 
-static ID<Image> createHizBuffer(vector<ID<ImageView>>& imageViews)
+static ID<Image> createHizBuffer(GraphicsSystem* graphicsSystem, vector<ID<ImageView>>& imageViews)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto hizBufferSize =  graphicsSystem->getScaledFrameSize();
 	auto mipCount = calcMipCount(hizBufferSize);
 	imageViews.resize(mipCount);
@@ -45,9 +44,9 @@ static ID<Image> createHizBuffer(vector<ID<ImageView>>& imageViews)
 	return image;
 }
 
-static void createHizFramebuffers(const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
+static void createHizFramebuffers(GraphicsSystem* graphicsSystem, 
+	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	auto mipCount = (uint8)imageViews.size();
 	framebuffers.resize(mipCount);
@@ -67,10 +66,9 @@ static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcBuffer)
 {
 	return { { "srcBuffer", DescriptorSet::Uniform(srcBuffer) } };
 }
-static void createHizDescriptorSets(ID<GraphicsPipeline> pipeline,  
+static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsPipeline> pipeline,  
 	const vector<ID<ImageView>>& imageViews, vector<ID<DescriptorSet>>& descriptorSets)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gFramebuffer = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto mipCount = (uint8)imageViews.size();
@@ -135,11 +133,12 @@ void HizRenderSystem::deinit()
 
 void HizRenderSystem::downsampleHiz(uint8 levelCount)
 {
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isEnabled)
 	{
 		if (hizBuffer)
 		{
-			auto imageView = GraphicsSystem::Instance::get()->get(hizBuffer);
+			auto imageView = graphicsSystem->get(hizBuffer);
 			imageView->clear(float4::zero);
 		}
 		return;
@@ -148,21 +147,20 @@ void HizRenderSystem::downsampleHiz(uint8 levelCount)
 	if (!isInitialized)
 	{
 		if (!hizBuffer)
-			hizBuffer = createHizBuffer(imageViews);
+			hizBuffer = createHizBuffer(graphicsSystem, imageViews);
 		if (framebuffers.empty())
-			createHizFramebuffers(imageViews, framebuffers);
+			createHizFramebuffers(graphicsSystem, imageViews, framebuffers);
 		if (!pipeline)
 			pipeline = createPipeline(framebuffers[0]);
 		isInitialized = true;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;
 
 	if (descriptorSets.empty())
-		createHizDescriptorSets(pipeline, imageViews, descriptorSets);
+		createHizDescriptorSets(graphicsSystem, pipeline, imageViews, descriptorSets);
 	
 	auto framebufferView = graphicsSystem->get(framebuffers[0]);
 	pipelineView->updateFramebuffer(framebuffers[0]);
@@ -212,12 +210,12 @@ void HizRenderSystem::gBufferRecreate()
 	{
 		graphicsSystem->destroy(hizBuffer);
 		graphicsSystem->destroy(imageViews);
-		hizBuffer = createHizBuffer(imageViews);
+		hizBuffer = createHizBuffer(graphicsSystem, imageViews);
 	}
 	if (!framebuffers.empty())
 	{
 		graphicsSystem->destroy(framebuffers);
-		createHizFramebuffers(imageViews, framebuffers);
+		createHizFramebuffers(graphicsSystem, imageViews, framebuffers);
 
 		if (pipeline)
 		{
@@ -237,18 +235,18 @@ ID<GraphicsPipeline> HizRenderSystem::getPipeline()
 ID<Image> HizRenderSystem::getHizBuffer()
 {
 	if (!hizBuffer)
-		hizBuffer = createHizBuffer(imageViews);
+		hizBuffer = createHizBuffer(GraphicsSystem::Instance::get(), imageViews);
 	return hizBuffer;
 }
 const vector<ID<ImageView>>& HizRenderSystem::getImageViews()
 {
 	if (!hizBuffer)
-		hizBuffer = createHizBuffer(imageViews);
+		hizBuffer = createHizBuffer(GraphicsSystem::Instance::get(), imageViews);
 	return imageViews;
 }
 const vector<ID<Framebuffer>>& HizRenderSystem::getFramebuffers()
 {
 	if (framebuffers.empty())
-		createHizFramebuffers(imageViews, framebuffers);
+		createHizFramebuffers(GraphicsSystem::Instance::get(), imageViews, framebuffers);
 	return framebuffers;
 }

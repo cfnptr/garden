@@ -85,7 +85,7 @@ static void updateHistogram(const char* name, float* sampleBuffer, float* sorted
 	auto onePercentLow = 0.0f;
 	for (uint32 i = 0; i < GraphicsEditorSystem::sampleBufferSize / 100; i++)
 		onePercentLow += sortedBuffer[i];
-	onePercentLow /= GraphicsEditorSystem::sampleBufferSize / 100;
+	onePercentLow /= (float)(GraphicsEditorSystem::sampleBufferSize / 100);
 
 	ImGui::Text("Time: %f | 1%% Low: %f",
 		1.0f / average, 1.0f / onePercentLow);

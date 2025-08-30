@@ -34,9 +34,8 @@ static DescriptorSet::Buffers createAddressBuffers(uint32 capacity,
 
 	return addressBuffers;
 }
-static void destroyAddressBuffers(const DescriptorSet::Buffers& addressBuffers)
+static void destroyAddressBuffers(GraphicsAPI* graphicsAPI, const DescriptorSet::Buffers& addressBuffers)
 {
-	auto graphicsAPI = GraphicsAPI::get();
 	for (const auto& buffers : addressBuffers)
 	{
 		for (auto buffer : buffers)
@@ -131,12 +130,12 @@ void AddressPool::free(uint32 allocation)
 //**********************************************************************************************************************
 void AddressPool::recreate()
 {
-	destroyAddressBuffers(addressBuffers);
+	auto graphicsAPI = GraphicsAPI::get();
+	destroyAddressBuffers(graphicsAPI, addressBuffers);
 	addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
 	memset(isFlushed.data(), 0, inFlightCount);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	auto graphicsAPI = GraphicsAPI::get();
 	for (const auto& buffers : addressBuffers)
 	{
 		for (auto buffer : buffers)
@@ -163,7 +162,7 @@ void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 		auto bufferView = graphicsAPI->bufferPool.get(addressBuffers[0][0]);
 		if (bufferView->getBinarySize() < capacity * sizeof(uint64))
 		{
-			destroyAddressBuffers(addressBuffers);
+			destroyAddressBuffers(graphicsAPI, addressBuffers);
 			addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
 			newAddressBuffer = true;
 		}
@@ -198,21 +197,18 @@ void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 
 void AddressPool::destroy()
 {
-	destroyAddressBuffers(addressBuffers);
-	resources.clear();
-	deviceAddresses.clear();
-	freeAllocs.clear();
-	addressBuffers.clear();
+	destroyAddressBuffers(GraphicsAPI::get(), addressBuffers);
+	resources.clear(); deviceAddresses.clear(); freeAllocs.clear(); addressBuffers.clear();
 }
 
 //**********************************************************************************************************************
 void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 {
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
 	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->transferCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
 	{
 		for (uint32 i = 0; i < (uint32)resources.size(); i++)
 		{
@@ -223,7 +219,7 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 				"Buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
 		}
 	}
-	else if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->computeCommandBuffer)
+	else if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
 	{
 		for (uint32 i = 0; i < (uint32)resources.size(); i++)
 		{

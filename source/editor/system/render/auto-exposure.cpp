@@ -22,9 +22,8 @@
 
 using namespace garden;
 
-static ID<Buffer> createReadbackBuffer()
+static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto size = (sizeof(ToneMappingSystem::LuminanceData) + 
 		AutoExposureSystem::histogramSize * sizeof(uint32)) * graphicsSystem->getInFlightCount();
 	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::TransferDst, 
@@ -33,9 +32,8 @@ static ID<Buffer> createReadbackBuffer()
 	return buffer;
 }
 
-static DescriptorSet::Uniforms getLimitsUniforms()
+static DescriptorSet::Uniforms getLimitsUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
@@ -96,9 +94,10 @@ void AutoExposureEditorSystem::preUiRender()
 
 	if (ImGui::Begin("Automatic Exposure (AE)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
+		auto graphicsSystem = GraphicsSystem::Instance::get();
 		if (!readbackBuffer)
 		{
-			readbackBuffer = createReadbackBuffer();
+			readbackBuffer = createReadbackBuffer(graphicsSystem);
 			histogramSamples.resize(AutoExposureSystem::histogramSize);
 		}
 
@@ -109,7 +108,6 @@ void AutoExposureEditorSystem::preUiRender()
 		ImGui::DragFloat("Dark Adaptation Rate", &autoExposureSystem->darkAdaptRate, 0.01f, 0.001f);
 		ImGui::DragFloat("Bright Adaptation Rate", &autoExposureSystem->brightAdaptRate, 0.01f, 0.001f);
 
-		auto graphicsSystem = GraphicsSystem::Instance::get();
 		auto readbackBufferView = graphicsSystem->get(readbackBuffer);
 		auto size = sizeof(ToneMappingSystem::LuminanceData) + AutoExposureSystem::histogramSize * sizeof(uint32);
 		auto offset = size * graphicsSystem->getInFlightIndex();
@@ -193,7 +191,7 @@ void AutoExposureEditorSystem::uiRender()
 
 	if (!limitsDS)
 	{
-		auto uniforms = getLimitsUniforms();
+		auto uniforms = getLimitsUniforms(graphicsSystem);
 		limitsDS = graphicsSystem->createDescriptorSet(limitsPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
 	}

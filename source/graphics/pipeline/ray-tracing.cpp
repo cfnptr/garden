@@ -154,17 +154,17 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 //**********************************************************************************************************************
 RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 {
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
-		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
 	SBT sbt;
 	sbt.groupRegions.resize(variantCount);
 	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;	
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto handleSize = vulkanAPI->rtProperties.shaderGroupHandleSize;
@@ -282,14 +282,14 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 //**********************************************************************************************************************
 void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(sbt.buffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!sbt.groupRegions.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
-
-	auto graphicsAPI = GraphicsAPI::get();
+	
 	#if GARDEN_DEBUG
 	auto bufferView = graphicsAPI->bufferPool.get(sbt.buffer);
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)

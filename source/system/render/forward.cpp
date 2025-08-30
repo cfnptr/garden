@@ -23,9 +23,8 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static ID<Image> createColorBuffer(bool useHdrColorBuffer)
+static ID<Image> createColorBuffer(GraphicsSystem* graphicsSystem, bool useHdrColorBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(useHdrColorBuffer ? 
 		ForwardRenderSystem::hdrBufferFormat : ForwardRenderSystem::colorBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::Fullscreen, 
@@ -33,34 +32,30 @@ static ID<Image> createColorBuffer(bool useHdrColorBuffer)
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.color");
 	return image;
 }
-static ID<Image> createUiBuffer()
+static ID<Image> createUiBuffer(GraphicsSystem* graphicsSystem)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(ForwardRenderSystem::uiBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::Fullscreen,
 		{ { nullptr } }, graphicsSystem->getFramebufferSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.ui");
 	return image;
 }
-static ID<Image> createDepthStencilBuffer()
+static ID<Image> createDepthStencilBuffer(GraphicsSystem* graphicsSystem)
 {
 	auto usage = Image::Usage::DepthStencilAttachment | Image::Usage::Fullscreen;
 	#if GARDEN_EDITOR
 	usage |= Image::Usage::TransferSrc;
 	#endif
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto image = graphicsSystem->createImage(ForwardRenderSystem::depthStencilFormat, usage, 
 		{ { nullptr } }, graphicsSystem->getScaledFrameSize(), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.forward.depthStencil");
 	return image;
 }
 
-static ID<Framebuffer> createColorFramebuffer(ID<Image> colorBuffer)
+static ID<Framebuffer> createColorFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> colorBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto colorBufferView = graphicsSystem->get(colorBuffer)->getDefaultView();
-
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(colorBufferView, ForwardRenderSystem::colorBufferFlags), };
 
@@ -69,9 +64,9 @@ static ID<Framebuffer> createColorFramebuffer(ID<Image> colorBuffer)
 	SET_RESOURCE_DEBUG_NAME(framebuffer,"framebuffer.forward.color");
 	return framebuffer;
 }
-static ID<Framebuffer> createFullFramebuffer(ID<Image> colorBuffer, ID<Image> depthStencilBuffer)
+static ID<Framebuffer> createFullFramebuffer(GraphicsSystem* graphicsSystem, 
+	ID<Image> colorBuffer, ID<Image> depthStencilBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto colorBufferView = graphicsSystem->get(colorBuffer)->getDefaultView();
 	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
 
@@ -85,11 +80,9 @@ static ID<Framebuffer> createFullFramebuffer(ID<Image> colorBuffer, ID<Image> de
 	SET_RESOURCE_DEBUG_NAME(framebuffer,"framebuffer.forward.full");
 	return framebuffer;
 }
-static ID<Framebuffer> createUiFramebuffer(ID<Image> uiBuffer)
+static ID<Framebuffer> createUiFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> uiBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto uiBufferView = graphicsSystem->get(uiBuffer)->getDefaultView();
-
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(uiBufferView, ForwardRenderSystem::uiBufferFlags) };
 
@@ -323,7 +316,7 @@ void ForwardRenderSystem::swapchainRecreate()
 ID<Image> ForwardRenderSystem::getColorBuffer()
 {
 	if (!colorBuffer)
-		colorBuffer = createColorBuffer(hdrColorBuffer);
+		colorBuffer = createColorBuffer(GraphicsSystem::Instance::get(), hdrColorBuffer);
 	return colorBuffer;
 }
 ID<Image> ForwardRenderSystem::getUiBuffer()
@@ -331,28 +324,31 @@ ID<Image> ForwardRenderSystem::getUiBuffer()
 	if (!uiBuffer)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		uiBuffer = graphicsSystem->getScaledFrameSize() != 
-			graphicsSystem->getFramebufferSize() ? createUiBuffer() : colorBuffer;
+		uiBuffer = graphicsSystem->getScaledFrameSize() != graphicsSystem->getFramebufferSize() ? 
+			createUiBuffer(graphicsSystem) : colorBuffer;
 	}
 	return uiBuffer;
 }
 ID<Image> ForwardRenderSystem::getDepthStencilBuffer()
 {
 	if (!depthStencilBuffer)
-		depthStencilBuffer = createDepthStencilBuffer();
+		depthStencilBuffer = createDepthStencilBuffer(GraphicsSystem::Instance::get());
 	return depthStencilBuffer;
 }
 
 ID<Framebuffer> ForwardRenderSystem::getColorFramebuffer()
 {
 	if (!colorFramebuffer)
-		colorFramebuffer = createColorFramebuffer(getColorBuffer());
+		colorFramebuffer = createColorFramebuffer(GraphicsSystem::Instance::get(), getColorBuffer());
 	return colorFramebuffer;
 }
 ID<Framebuffer> ForwardRenderSystem::getFullFramebuffer()
 {
 	if (!fullFramebuffer)
-		fullFramebuffer = createFullFramebuffer(getColorBuffer(), getDepthStencilBuffer());
+	{
+		fullFramebuffer = createFullFramebuffer(GraphicsSystem::Instance::get(), 
+			getColorBuffer(), getDepthStencilBuffer());
+	}
 	return fullFramebuffer;
 }
 ID<Framebuffer> ForwardRenderSystem::getUiFramebuffer()
@@ -361,7 +357,7 @@ ID<Framebuffer> ForwardRenderSystem::getUiFramebuffer()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		uiFramebuffer = graphicsSystem->getScaledFrameSize() != graphicsSystem->getFramebufferSize() ? 
-			createUiFramebuffer(getUiBuffer()) : getColorFramebuffer();
+			createUiFramebuffer(graphicsSystem, getUiBuffer()) : getColorFramebuffer();
 	}
 	return uiFramebuffer;
 }

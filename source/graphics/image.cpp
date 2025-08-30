@@ -303,10 +303,9 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 
 void Image::generateMips(Sampler::Filter filter)
 {
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
-
 	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
@@ -352,14 +351,13 @@ void Image::generateMips(Sampler::Filter filter)
 //**********************************************************************************************************************
 void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
-
-	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -385,14 +383,13 @@ void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatSint(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
-
-	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -418,14 +415,13 @@ void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatUint(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
-
-	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -451,14 +447,13 @@ void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatDepthOrStencil(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
-
-	auto graphicsAPI = GraphicsAPI::get();
 
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -486,14 +481,13 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 //**********************************************************************************************************************
 void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-
-	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
@@ -575,14 +569,13 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 //**********************************************************************************************************************
 void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-
-	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto bufferView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
@@ -669,14 +662,13 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 //**********************************************************************************************************************
 void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegion* regions, uint32 count)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-
-	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto imageView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferSrc),
@@ -764,13 +756,13 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 void Image::blit(ID<Image> source, ID<Image> destination, 
 	const BlitRegion* regions, uint32 count, Sampler::Filter filter)
 {
+	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
-	GARDEN_ASSERT(!GraphicsAPI::get()->currentFramebuffer);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
-	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc),

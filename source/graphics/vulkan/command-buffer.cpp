@@ -845,15 +845,6 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			}
 		}
 	}
-
-	if (!command.asyncRecording)
-	{
-		vulkanAPI->currentPipelines[0] = {};
-		vulkanAPI->currentPipelineTypes[0] = {}; 
-		vulkanAPI->currentPipelineVariants[0] = 0;
-		vulkanAPI->currentVertexBuffers[0] = {};
-		vulkanAPI->currentIndexBuffers[0] = {};
-	}
 }
 
 //**********************************************************************************************************************
@@ -863,16 +854,6 @@ void VulkanCommandBuffer::processCommand(const NextSubpassCommand& command)
 
 	instance.nextSubpass(command.asyncRecording ?
 		vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
-
-	if (!command.asyncRecording)
-	{
-		auto vulkanAPI = VulkanAPI::get();
-		vulkanAPI->currentPipelines[0] = {};
-		vulkanAPI->currentPipelineTypes[0] = {};
-		vulkanAPI->currentPipelineVariants[0] = 0;
-		vulkanAPI->currentVertexBuffers[0] = {};
-		vulkanAPI->currentIndexBuffers[0] = {};
-	}
 }
 
 void VulkanCommandBuffer::processCommand(const ExecuteCommand& command)
@@ -994,20 +975,10 @@ void VulkanCommandBuffer::processCommand(const BindPipelineCommand& command)
 {	
 	SET_CPU_ZONE_SCOPED("BindPipeline Command Process");
 
-	auto vulkanAPI = VulkanAPI::get();
-	if (command.pipeline != vulkanAPI->currentPipelines[0] || 
-		command.pipelineType != vulkanAPI->currentPipelineTypes[0] ||
-		command.variant != vulkanAPI->currentPipelineVariants[0])
-	{
-		auto pipelineView = vulkanAPI->getPipelineView(command.pipelineType, command.pipeline);
-		auto pipeline = ResourceExt::getInstance(**pipelineView);
-		instance.bindPipeline(toVkPipelineBindPoint(command.pipelineType), 
-			pipelineView->getVariantCount() > 1 ? ((VkPipeline*)pipeline)[command.variant] : (VkPipeline)pipeline);
-
-		vulkanAPI->currentPipelines[0] = command.pipeline;
-		vulkanAPI->currentPipelineTypes[0] = command.pipelineType;
-		vulkanAPI->currentPipelineVariants[0] = command.variant;
-	}
+	auto pipelineView = VulkanAPI::get()->getPipelineView(command.pipelineType, command.pipeline);
+	auto pipeline = ResourceExt::getInstance(**pipelineView);
+	instance.bindPipeline(toVkPipelineBindPoint(command.pipelineType), pipelineView->getVariantCount() > 1 ? 
+		((VkPipeline*)pipeline)[command.variant] : (VkPipeline)pipeline);
 }
 
 //**********************************************************************************************************************

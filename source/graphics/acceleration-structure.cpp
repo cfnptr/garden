@@ -128,17 +128,16 @@ bool AccelerationStructure::isStorageReady() const noexcept
 //**********************************************************************************************************************
 void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 {
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(GraphicsAPI::get()->currentCommandBuffer != 
-		GraphicsAPI::get()->frameCommandBuffer, "Assert " + debugName);
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(buildData, "Acceleration structure [" + debugName + "] is already build");
 
-	auto graphicsAPI = GraphicsAPI::get();
 	auto buildDataHeader = (const BuildDataHeader*)buildData;
 
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == GraphicsAPI::get()->computeCommandBuffer)
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::ComputeQ), 
 			"Acceleration structure [" + debugName + "] does not have compute queue flag");
@@ -210,10 +209,11 @@ void AccelerationStructure::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
+	auto graphicsAPI = GraphicsAPI::get();
+	auto storageView = graphicsAPI->bufferPool.get(storageBuffer);
 	storageView->setDebugName("asBuffer.storage." + name);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();

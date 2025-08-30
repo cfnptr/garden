@@ -25,7 +25,7 @@
 
 using namespace garden;
 
-static ID<Image> createNoiseImage()
+static ID<Image> createNoiseImage(GraphicsSystem* graphicsSystem)
 {
 	std::mt19937 rmt;
 	float4 hbaoNoise[SSAO_NOISE_SIZE * SSAO_NOISE_SIZE];
@@ -38,7 +38,7 @@ static ID<Image> createNoiseImage()
 		hbaoNoise[i] = float4(cosf(angle), sinf(angle), rand2, 0.0f);
 	}
 
-	auto noiseImage = GraphicsSystem::Instance::get()->createImage(Image::Format::SfloatR16G16B16A16,
+	auto noiseImage = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16,
 		Image::Usage::Sampled | Image::Usage::TransferDst, { { hbaoNoise } },
 		uint2(SSAO_NOISE_SIZE), Image::Strategy::Size, Image::Format::SfloatR32G32B32A32);
 	SET_RESOURCE_DEBUG_NAME(noiseImage, "image.hbao.noise");
@@ -58,10 +58,9 @@ static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"hbao", pbrLightingSystem->getAoBaseFB(), options);
 }
-static DescriptorSet::Uniforms getUniforms(ID<Image> noiseImage)
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> noiseImage)
 {
 	auto hizSystem = HizRenderSystem::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto hizBufferView = hizSystem->getImageViews()[1];
 	auto noiseView = graphicsSystem->get(noiseImage)->getDefaultView();
 
@@ -126,7 +125,7 @@ void HbaoRenderSystem::preAoRender()
 	if (!isInitialized)
 	{
 		if (!noiseImage)
-			noiseImage = createNoiseImage();
+			noiseImage = createNoiseImage(GraphicsSystem::Instance::get());
 		if (!pipeline)
 			pipeline = createPipeline(stepCount);
 		isInitialized = true;
@@ -147,7 +146,7 @@ void HbaoRenderSystem::aoRender()
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms(noiseImage);
+		auto uniforms = getUniforms(graphicsSystem, noiseImage);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hbao");
 	}
@@ -240,7 +239,7 @@ void HbaoRenderSystem::setConsts(uint32 stepCount)
 ID<Image> HbaoRenderSystem::getNoiseImage()
 {
 	if (!noiseImage)
-		noiseImage = createNoiseImage();
+		noiseImage = createNoiseImage(GraphicsSystem::Instance::get());
 	return noiseImage;
 }
 ID<GraphicsPipeline> HbaoRenderSystem::getPipeline()

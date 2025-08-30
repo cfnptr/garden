@@ -233,9 +233,9 @@ static f32x4x4 calcRelativeView(const TransformComponent* transform)
 	return view;
 }
 
-static void updateCurrentFramebuffer(ID<Framebuffer> swapchainFramebuffer, uint2 framebufferSize)
+static void updateCurrentFramebuffer(GraphicsAPI* graphicsAPI, 
+	ID<Framebuffer> swapchainFramebuffer, uint2 framebufferSize)
 {
-	auto graphicsAPI = GraphicsAPI::get();
 	auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
 	auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->swapchain->getCurrentImage());
 	FramebufferExt::getSize(**framebufferView) = framebufferSize;
@@ -400,7 +400,7 @@ void GraphicsSystem::update()
 			GARDEN_LOG_DEBUG("Out of date swapchain. [Acquire]");
 		}
 
-		updateCurrentFramebuffer(swapchainFramebuffer, swapchain->getFramebufferSize());
+		updateCurrentFramebuffer(graphicsAPI, swapchainFramebuffer, swapchain->getFramebufferSize());
 	}
 	
 	if (swapchainRecreated || forceRecreateSwapchain)
@@ -423,7 +423,6 @@ void GraphicsSystem::update()
 		Manager::Instance::get()->runEvent("SwapchainRecreate");
 		swapchainChanges = {};
 
-		auto graphicsAPI = GraphicsAPI::get();
 		graphicsAPI->forceResourceDestroy = true;
 		disposeGpuResources(graphicsAPI);
 		graphicsAPI->forceResourceDestroy = false;
