@@ -70,7 +70,6 @@ static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsP
 	const vector<ID<ImageView>>& imageViews, vector<ID<DescriptorSet>>& descriptorSets)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gFramebuffer = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto mipCount = (uint8)imageViews.size();
 	descriptorSets.resize(mipCount);
 
@@ -170,24 +169,24 @@ void HizRenderSystem::downsampleHiz(uint8 levelCount)
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("HiZ Downsample", Color::transparent);
-		framebufferView->beginRenderPass(float4::zero);
-		pipelineView->bind(HIZ_VARIANT_FIRST);
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(descriptorSets[0]);
-		pipelineView->drawFullscreen();
-		framebufferView->endRenderPass();
+		SET_GPU_DEBUG_LABEL("HiZ Downsample");
+		{
+			RenderPass renderPass(framebuffers[0], float4::zero);
+			pipelineView->bind(HIZ_VARIANT_FIRST);
+			pipelineView->setViewportScissor();
+			pipelineView->bindDescriptorSet(descriptorSets[0]);
+			pipelineView->drawFullscreen();
+		}
 		
 		for (uint8 i = 1; i < levelCount; i++)
 		{
-			framebufferView = graphicsSystem->get(framebuffers[i]);
 			pipelineView->updateFramebuffer(framebuffers[i]);
-			framebufferView->beginRenderPass(float4::zero);
+
+			RenderPass renderPass(framebuffers[i], float4::zero);
 			pipelineView->bind(HIZ_VARIANT_BASE);
 			pipelineView->setViewportScissor();
 			pipelineView->bindDescriptorSet(descriptorSets[i]);
 			pipelineView->drawFullscreen();
-			framebufferView->endRenderPass();
 		}
 	}
 	graphicsSystem->stopRecording();

@@ -158,15 +158,14 @@ void AutoExposureSystem::render()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("Automatic Exposure", Color::transparent);
-
+		SET_GPU_DEBUG_LABEL("Automatic Exposure");
 		{
 			auto histogramView = graphicsSystem->get(histogramBuffer);
 			HistogramPC pc;
 			pc.minLogLum = minLogLum;
 			pc.invLogLumRange = 1.0f / logLumRange;
 
-			SET_GPU_DEBUG_LABEL("Histogram", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Histogram");
 			histogramView->fill(0);
 			histogramPipelineView->bind();
 			histogramPipelineView->bindDescriptorSet(histogramDS);
@@ -181,7 +180,7 @@ void AutoExposureSystem::render()
 			pc.darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
 			pc.brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
 
-			SET_GPU_DEBUG_LABEL("Average", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Average");
 			averagePipelineView->bind();
 			averagePipelineView->bindDescriptorSet(averageDS);
 			averagePipelineView->pushConstants(&pc);

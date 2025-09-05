@@ -175,7 +175,7 @@ void MeshSelectorEditorSystem::render()
 			auto mvp = commonConstants.viewProj * model * translate(
 				selectedEntityAabb.getPosition()) * scale(selectedEntityAabb.getSize());
 
-			SET_GPU_DEBUG_LABEL("Selected Mesh AABB", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Selected Mesh AABB");
 			graphicsSystem->drawAabb(mvp, (f32x4)aabbColor);
 		}
 	}

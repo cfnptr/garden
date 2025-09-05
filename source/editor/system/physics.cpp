@@ -153,7 +153,7 @@ void PhysicsEditorSystem::preDepthLdrRender()
 	if (drawConstraintRefFrame)
 		instance->DrawConstraintReferenceFrame(renderer);
 
-	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Physics Debug");
 	renderer->preDraw();
 }
 void PhysicsEditorSystem::depthLdrRender()
@@ -164,7 +164,7 @@ void PhysicsEditorSystem::depthLdrRender()
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 
-	SET_GPU_DEBUG_LABEL("Physics Debug", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Physics Debug");
 	renderer->draw(cc.viewProj);
 }
 

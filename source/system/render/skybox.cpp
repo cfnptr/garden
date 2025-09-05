@@ -140,7 +140,7 @@ void SkyboxRenderSystem::depthHdrRender()
 	PushConstants pc;
 	pc.viewProj = (float4x4)cc.viewProj;
 
-	SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Skybox");
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0, 0);

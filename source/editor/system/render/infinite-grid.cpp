@@ -128,6 +128,7 @@ void InfiniteGridEditorSystem::preRender()
 			if (DeferredRenderSystem::Instance::has())
 			{
 				framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
+				useAsyncRecording = false;
 			}
 			else
 			{
@@ -186,7 +187,7 @@ void InfiniteGridEditorSystem::render()
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
-	SET_GPU_DEBUG_LABEL("Infinite Grid", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Infinite Grid");
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		pipelineView->bindAsync(0);

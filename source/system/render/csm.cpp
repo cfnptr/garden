@@ -223,7 +223,7 @@ void CsmRenderSystem::shadowRender()
 	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
 	dataBufferView->flush();
 
-	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
@@ -365,7 +365,7 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 
 	auto asyncRecording = MeshRenderSystem::Instance::get()->useAsyncRecording();
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);
-	framebufferView->beginRenderPass(clearColors, clearColorCount, 0.0f, 0, int4::zero, asyncRecording);
+	framebufferView->beginRenderPass(clearColors, clearColorCount, 0.0f, 0x00, int4::zero, asyncRecording);
 	GraphicsPipeline::setDepthBiasAsync(biasConstantFactor, biasSlopeFactor);
 	return true;
 }

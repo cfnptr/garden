@@ -778,3 +778,24 @@ void Framebuffer::setDebugName(const string& name)
 	else abort();
 }
 #endif
+
+RenderPass::RenderPass(ID<Framebuffer> framebuffer, const float4* clearColors, 
+	uint8 clearColorCount, float clearDepth, uint32 clearStencil, int4 region, bool asyncRecording)
+{
+	GARDEN_ASSERT(framebuffer);
+	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	framebufferView->beginRenderPass(clearColors, clearColorCount, clearDepth, clearStencil, region, asyncRecording);
+	this->framebuffer = framebuffer;
+}
+RenderPass::~RenderPass()
+{
+	GARDEN_ASSERT(framebuffer);
+	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	framebufferView->endRenderPass();
+}
+void RenderPass::nextSubpass(bool asyncRecording)
+{
+	GARDEN_ASSERT(framebuffer);
+	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	framebufferView->nextSubpass(asyncRecording);
+}

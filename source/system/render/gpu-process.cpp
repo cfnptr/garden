@@ -220,14 +220,13 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 		pipeline = createGaussianBlur(dstFramebuffer);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
-
 	if (!descriptorSet)
 	{
-		auto srcBufferView = framebufferView->getColorAttachments()[0].imageView;
+		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
+		auto tmpBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
 		DescriptorSet::Uniforms uniforms 
 		{
-			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { srcBufferView } })},
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBufferView } })},
 			{ "kernel", DescriptorSet::Uniform(kernelBuffer, 1, 2) }
 		};
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
@@ -244,27 +243,26 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 	pipelineView->updateFramebuffer(tmpFramebuffer);
 	pc.texelSize = float2(texelSize.x, 0.0f);
 
-	SET_GPU_DEBUG_LABEL("Gaussian Blur", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Gaussian Blur");
+	{
+		RenderPass renderPass(tmpFramebuffer, float4::zero);
+		pipelineView->bind(variant);
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet, 0);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
 
-	framebufferView->beginRenderPass(float4::zero);
-	pipelineView->bind(variant);
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, 0);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
-	framebufferView->endRenderPass();
-
-	framebufferView = graphicsSystem->get(dstFramebuffer);
 	pipelineView->updateFramebuffer(dstFramebuffer);
 	pc.texelSize = float2(0.0f, texelSize.y);
-
-	framebufferView->beginRenderPass(float4::zero);
-	pipelineView->bind(variant);
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, 1);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
-	framebufferView->endRenderPass();
+	{
+		RenderPass renderPass(dstFramebuffer, float4::zero);
+		pipelineView->bind(variant);
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet, 1);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
 }
 
 //**********************************************************************************************************************
@@ -283,15 +281,14 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 		pipeline = createBilateralBlurD(dstFramebuffer, kernelRadius);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferView = graphicsSystem->get(tmpFramebuffer);
-
 	if (!descriptorSet)
 	{
 		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews()[0];
-		auto srcBufferView = framebufferView->getColorAttachments()[0].imageView;
+		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
+		auto tmpcBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
 		DescriptorSet::Uniforms uniforms
 		{
-			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { srcBufferView } }) },
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpcBufferView } }) },
 			{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
 		};
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
@@ -309,27 +306,26 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 	pipelineView->updateFramebuffer(tmpFramebuffer);
 	pc.texelSize = float2(texelSize.x, 0.0f);
 
-	SET_GPU_DEBUG_LABEL("Bilateral Blur (D)", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Bilateral Blur (D)");
+	{
+		RenderPass renderPass(tmpFramebuffer, float4::zero);
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet, 0);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
 
-	framebufferView->beginRenderPass(float4::zero);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, 0);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
-	framebufferView->endRenderPass();
-
-	framebufferView = graphicsSystem->get(dstFramebuffer);
 	pipelineView->updateFramebuffer(dstFramebuffer);
 	pc.texelSize = float2(0.0f, texelSize.y);
-
-	framebufferView->beginRenderPass(float4::zero);
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet, 1);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
-	framebufferView->endRenderPass();
+	{
+		RenderPass renderPass(dstFramebuffer, float4::zero);
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(descriptorSet, 1);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
 }
 
 //**********************************************************************************************************************
@@ -408,7 +404,7 @@ bool GpuProcessSystem::ggxBlur(ID<Image> buffer,
 	auto framebufferData = framebuffers.data();
 	auto reinhard = true;
 
-	SET_GPU_DEBUG_LABEL("GGX Blur", Color::transparent);
+	SET_GPU_DEBUG_LABEL("GGX Blur");
 	
 	for (uint8 i = 1; i < roughnessLodCount; i++)
 	{

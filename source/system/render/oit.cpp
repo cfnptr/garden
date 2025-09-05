@@ -104,17 +104,17 @@ void OitRenderSystem::preLdrRender()
 
 	auto upscaledHdrFramebuffer = deferredSystem->getUpscaleHdrFramebuffer();
 	pipelineView->updateFramebuffer(upscaledHdrFramebuffer);
-	auto framebufferView = graphicsSystem->get(upscaledHdrFramebuffer);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("OIT Compose", Color::transparent);
-		framebufferView->beginRenderPass(float4::zero);
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(descriptorSet);
-		pipelineView->drawFullscreen();
-		framebufferView->endRenderPass();
+		SET_GPU_DEBUG_LABEL("OIT Compose");
+		{
+			RenderPass renderPass(upscaledHdrFramebuffer, float4::zero);
+			pipelineView->bind();
+			pipelineView->setViewportScissor();
+			pipelineView->bindDescriptorSet(descriptorSet);
+			pipelineView->drawFullscreen();
+		}
 	}
 	graphicsSystem->stopRecording();
 }

@@ -228,56 +228,51 @@ void BloomRenderSystem::preLdrRender()
 		createBloomDescriptorSets(graphicsSystem, downsamplePipeline, upsamplePipeline, imageViews, descriptorSets);
 	
 	auto mipCount = (uint8)imageViews.size();
-	auto framebufferView = graphicsSystem->get(framebuffers[0]);
 	downsamplePipelineView->updateFramebuffer(framebuffers[0]);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("Bloom", Color::transparent);
+		SET_GPU_DEBUG_LABEL("Bloom");
 		{
-			SET_GPU_DEBUG_LABEL("Downsample", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Downsample");
 
 			PushConstants pc;
 			pc.threshold = threshold;
 			downsamplePipelineView->pushConstants(&pc);
-
-			framebufferView->beginRenderPass(float4::zero);
-			downsamplePipelineView->bind(BLOOM_DOWNSAMPLE_FIRST);
-			downsamplePipelineView->setViewportScissor();
-			downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
-			downsamplePipelineView->drawFullscreen();
-			framebufferView->endRenderPass();
+			{
+				RenderPass renderPass(framebuffers[0], float4::zero);
+				downsamplePipelineView->bind(BLOOM_DOWNSAMPLE_FIRST);
+				downsamplePipelineView->setViewportScissor();
+				downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
+				downsamplePipelineView->drawFullscreen();
+			}
 
 			for (uint8 i = 1; i < mipCount; i++)
 			{
-				framebufferView = graphicsSystem->get(framebuffers[i - 1]);
+				auto framebufferView = graphicsSystem->get(framebuffers[i - 1]);
 				auto framebufferSize = framebufferView->getSize();
-				framebufferView = graphicsSystem->get(framebuffers[i]);
 				downsamplePipelineView->updateFramebuffer(framebuffers[i]);
 
-				framebufferView->beginRenderPass(float4::zero);
+				RenderPass renderPass(framebuffers[i], float4::zero);
 				downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
 					BLOOM_DOWNSAMPLE_BASE : BLOOM_DOWNSAMPLE_6X6);
 				downsamplePipelineView->setViewportScissor();
 				downsamplePipelineView->bindDescriptorSet(descriptorSets[i]);
 				downsamplePipelineView->drawFullscreen();
-				framebufferView->endRenderPass();
 			}
 		}
 		{
-			SET_GPU_DEBUG_LABEL("Upsample", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Upsample");
 
 			for (int8 i = mipCount - 2; i >= 0; i--)
 			{
-				framebufferView = graphicsSystem->get(framebuffers[i]);
 				upsamplePipelineView->updateFramebuffer(framebuffers[i]);
 
-				framebufferView->beginRenderPass(float4::zero);
+				RenderPass renderPass(framebuffers[i], float4::zero);
 				upsamplePipelineView->bind();
 				upsamplePipelineView->setViewportScissor();
 				upsamplePipelineView->bindDescriptorSet(descriptorSets[mipCount + i]);
 				upsamplePipelineView->drawFullscreen();
-				framebufferView->endRenderPass();
 			}
 		}
 	}

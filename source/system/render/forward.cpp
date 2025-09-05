@@ -190,14 +190,14 @@ void ForwardRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Forward Render Pass");
-		auto framebufferView = graphicsSystem->get(getColorFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Forward Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, asyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Forward Pass");
+			{
+				RenderPass renderPass(getColorFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, asyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -213,14 +213,14 @@ void ForwardRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Depth Forward Render Pass");
-		auto framebufferView = graphicsSystem->get(getFullFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Depth Forward Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, asyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Depth Forward Pass");
+			{
+				RenderPass renderPass(getFullFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, asyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -235,32 +235,31 @@ void ForwardRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("UI Render Pass");
-		auto framebufferView = graphicsSystem->get(getUiFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("UI Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("UI Pass");
+			{
+				RenderPass renderPass(getUiFramebuffer(), float4::zero);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
 
-	auto _uiBuffer = getUiBuffer();
-	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-	const auto& colorAttachments = framebufferView->getColorAttachments();
-	auto swapchainImageView = graphicsSystem->get(colorAttachments[0].imageView);
-
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("Copy UI to Pass", Color::transparent);
+		SET_GPU_DEBUG_LABEL("Copy UI to Pass");
 		if (hdrColorBuffer)
 		{
 			abort(); // TODO: tonemapping.
 		}
 		else
 		{
+			auto _uiBuffer = getUiBuffer();
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+			const auto& colorAttachments = framebufferView->getColorAttachments();
+			auto swapchainImageView = graphicsSystem->get(colorAttachments[0].imageView);
+
 			if (uiBufferFormat == swapchainImageView->getFormat())
 				Image::copy(_uiBuffer, swapchainImageView->getImage());
 			else

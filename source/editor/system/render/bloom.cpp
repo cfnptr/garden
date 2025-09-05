@@ -150,7 +150,7 @@ void BloomRenderEditorSystem::uiRender()
 	PushConstants pc;
 	pc.threshold = BloomRenderSystem::Instance::get()->threshold;
 
-	SET_GPU_DEBUG_LABEL("Bloom Threshold", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Bloom Threshold");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(thresholdDS);

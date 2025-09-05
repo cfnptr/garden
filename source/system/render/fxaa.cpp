@@ -137,14 +137,15 @@ void FxaaRenderSystem::preUiRender()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("FXAA", Color::transparent);
-		framebufferView->beginRenderPass(float4::zero);
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(descriptorSet);
-		pipelineView->pushConstants(&pc);
-		pipelineView->drawFullscreen();
-		framebufferView->endRenderPass();
+		SET_GPU_DEBUG_LABEL("FXAA");
+		{
+			RenderPass renderPass(framebuffer, float4::zero);
+			pipelineView->bind();
+			pipelineView->setViewportScissor();
+			pipelineView->bindDescriptorSet(descriptorSet);
+			pipelineView->pushConstants(&pc);
+			pipelineView->drawFullscreen();
+		}
 		Image::copy(fxaaBufferView->getImage(), deferredSystem->getLdrBuffer());
 	}
 	graphicsSystem->stopRecording();

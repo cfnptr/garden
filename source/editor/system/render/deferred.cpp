@@ -155,7 +155,7 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pipelineView->isReady())
 		return;
 
-	SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer", Color::transparent);
+	SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer");
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		auto threadIndex = graphicsSystem->getThreadCount() - 1;
@@ -291,7 +291,7 @@ void DeferredRenderEditorSystem::ldrRender()
 		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
 	}
 
-	SET_GPU_DEBUG_LABEL("G-Buffer Visualizer", Color::transparent);
+	SET_GPU_DEBUG_LABEL("G-Buffer Visualizer");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(bufferDescriptorSet);

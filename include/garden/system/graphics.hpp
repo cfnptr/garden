@@ -683,7 +683,7 @@ public:
 	 * 
 	 * @param size framebuffer size in pixels
 	 * @param colorAttachments color attachments or empty array
-	 * @param colorAttachments depth or/and stencil attachment or null
+	 * @param depthStencilAttachment depth or/and stencil attachment or null
 	 */
 	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::OutputAttachment>&& colorAttachments,
 		Framebuffer::OutputAttachment depthStencilAttachment = {});

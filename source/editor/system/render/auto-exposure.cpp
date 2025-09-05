@@ -165,7 +165,7 @@ void AutoExposureEditorSystem::preUiRender()
 		auto toneMappingSystem = ToneMappingSystem::Instance::get();
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data");
 			Buffer::CopyRegion copyRegion;
 			copyRegion.dstOffset = offset;
 			copyRegion.size = sizeof(ToneMappingSystem::LuminanceData);
@@ -202,7 +202,7 @@ void AutoExposureEditorSystem::uiRender()
 	pc.minLum = std::exp2(autoExposureSystem->minLogLum);
 	pc.maxLum = std::exp2(autoExposureSystem->maxLogLum);
 
-	SET_GPU_DEBUG_LABEL("Auto Exposure Limits", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Auto Exposure Limits");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(limitsDS);

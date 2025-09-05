@@ -699,16 +699,16 @@ void PbrLightingSystem::preHdrRender()
 		auto event = &manager->getEvent("ShadowRender");
 		if (event->hasSubscribers())
 		{
-			auto framebufferView = graphicsSystem->get(shadowFramebuffers[0]);
-			SET_GPU_DEBUG_LABEL("Shadows Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::one);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Shadows Pass");
+			{
+				RenderPass renderPass(shadowFramebuffers[0], float4::one);
+				event->run();
+			}
 		}
 
 		if (hasAnyShadow)
 		{
-			SET_GPU_DEBUG_LABEL("Shadows Blur", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Shadows Blur");
 			if (quality > GraphicsQuality::Low)
 			{
 				GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[0], 
@@ -718,7 +718,7 @@ void PbrLightingSystem::preHdrRender()
 		}
 		else
 		{
-			SET_GPU_DEBUG_LABEL("Shadows Clear", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Shadows Clear");
 			auto imageView = graphicsSystem->get(shadowBuffer);
 			imageView->clear(float4::one);
 		}
@@ -731,22 +731,23 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[2]);
-			SET_GPU_DEBUG_LABEL("AO Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::one);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("AO Pass");
+			{
+				RenderPass renderPass(aoFramebuffers[2], float4::one);
+				event->run();
+			}
 		}
 
 		if (hasAnyAO)
 		{
-			SET_GPU_DEBUG_LABEL("AO Blur", Color::transparent);
+			SET_GPU_DEBUG_LABEL("AO Blur");
 			GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
 				aoFramebuffers[1], blurSharpness, aoBlurPipeline, aoBlurDS);
 			hasAnyAO = false;
 		}
 		else
 		{
-			SET_GPU_DEBUG_LABEL("AO Clear", Color::transparent);
+			SET_GPU_DEBUG_LABEL("AO Clear");
 			auto imageView = graphicsSystem->get(aoBuffer);
 			imageView->clear(float4::one);
 			imageView = graphicsSystem->get(aoBlurBuffer);
@@ -760,11 +761,11 @@ void PbrLightingSystem::preHdrRender()
 		auto event = &manager->getEvent("ReflRender");
 		if (event->hasSubscribers())
 		{
-			auto framebufferView = graphicsSystem->get(reflFramebuffers[0]);
-			SET_GPU_DEBUG_LABEL("Reflection Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Reflection Pass");
+			{
+				RenderPass renderPass(reflFramebuffers[0], float4::zero);
+				event->run();
+			}
 		}
 
 		if (hasAnyRefl)
@@ -791,11 +792,11 @@ void PbrLightingSystem::preHdrRender()
 		auto event = &manager->getEvent("GiRender");
 		if (event->hasSubscribers())
 		{
-			auto framebufferView = graphicsSystem->get(giFramebuffer);
-			SET_GPU_DEBUG_LABEL("GI Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("GI Pass");
+			{
+				RenderPass renderPass(giFramebuffer, float4::zero);
+				event->run();
+			}
 		}
 
 		if (!hasAnyGI)
@@ -924,7 +925,7 @@ void PbrLightingSystem::hdrRender()
 	pc.emissiveCoeff = cc.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;
 
-	SET_GPU_DEBUG_LABEL("PBR Lighting", Color::transparent);
+	SET_GPU_DEBUG_LABEL("PBR Lighting");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSets(descriptorSetRange, 2);
@@ -1528,7 +1529,7 @@ static ID<Image> generateIblSpecular(ThreadSystem* threadSystem,
 	cpuSpecularCacheView->flush();	
 	specularCacheSize = 0;
 
-	SET_GPU_DEBUG_LABEL("IBL Specular Generation", Color::transparent);
+	SET_GPU_DEBUG_LABEL("IBL Specular Generation");
 	for (uint32 i = 0; i < (uint32)gpuSpecularCache.size(); i++)
 	{
 		auto cacheSize = countBuffer[i] * sizeof(SpecularItem);
