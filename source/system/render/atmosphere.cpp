@@ -399,12 +399,11 @@ void AtmosphereRenderSystem::preDeferredRender()
 	auto absDensity1ConstantTerm = ozoneLayerTip - ozoneLayerWidth * -ozoneLayerSlope;
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
-	BEGIN_GPU_DEBUG_LABEL("Atmosphere", Color::transparent);
+	BEGIN_GPU_DEBUG_LABEL("Atmosphere");
 	graphicsSystem->stopRecording();
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		auto framebufferView = graphicsSystem->get(transLutFramebuffer);
 		TransmittancePC pc;
 		pc.rayleighScattering = rayleighScattering;
 		pc.rayDensityExpScale = rayDensityExpScale;
@@ -420,13 +419,14 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.bottomRadius = groundRadius;
 		pc.topRadius = topRadius;
 
-		SET_GPU_DEBUG_LABEL("Trans LUT", Color::transparent);
-		framebufferView->beginRenderPass(float4::zero);
-		transLutPipelineView->bind();
-		transLutPipelineView->setViewportScissor();
-		transLutPipelineView->pushConstants(&pc);
-		transLutPipelineView->drawFullscreen();
-		framebufferView->endRenderPass();
+		SET_GPU_DEBUG_LABEL("Trans LUT");
+		{
+			RenderPass renderPass(transLutFramebuffer, float4::zero);
+			transLutPipelineView->bind();
+			transLutPipelineView->setViewportScissor();
+			transLutPipelineView->pushConstants(&pc);
+			transLutPipelineView->drawFullscreen();
+		}
 	}
 	{
 		MultiScatPC pc;
@@ -447,14 +447,15 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.topRadius = topRadius;
 		pc.multiScatFactor = multiScatFactor;
 
-		SET_GPU_DEBUG_LABEL("Multi Scat LUT", Color::transparent);
-		multiScatLutPipelineView->bind();
-		multiScatLutPipelineView->bindDescriptorSet(multiScatLutDS);
-		multiScatLutPipelineView->pushConstants(&pc);
-		multiScatLutPipelineView->dispatch(uint2(MULTI_SCAT_LUT_LENGTH), false);
+		SET_GPU_DEBUG_LABEL("Multi Scat LUT");
+		{
+			multiScatLutPipelineView->bind();
+			multiScatLutPipelineView->bindDescriptorSet(multiScatLutDS);
+			multiScatLutPipelineView->pushConstants(&pc);
+			multiScatLutPipelineView->dispatch(uint2(MULTI_SCAT_LUT_LENGTH), false);
+		}
 	}
 	{
-		auto inFlightIndex = graphicsSystem->getInFlightIndex();
 		CameraVolumePC pc;
 		pc.rayleighScattering = rayleighScattering;
 		pc.rayDensityExpScale = rayDensityExpScale;
@@ -472,12 +473,15 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.absDensity1LinearTerm = -ozoneLayerSlope;
 		pc.bottomRadius = groundRadius;
 		pc.topRadius = topRadius;
+		auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
-		SET_GPU_DEBUG_LABEL("Camera Volume", Color::transparent);
-		cameraVolumePipelineView->bind();
-		cameraVolumePipelineView->bindDescriptorSet(cameraVolumeDS, inFlightIndex);
-		cameraVolumePipelineView->pushConstants(&pc);
-		cameraVolumePipelineView->dispatch(uint3(CAMERA_VOLUME_LENGTH));
+		SET_GPU_DEBUG_LABEL("Camera Volume");
+		{
+			cameraVolumePipelineView->bind();
+			cameraVolumePipelineView->bindDescriptorSet(cameraVolumeDS, inFlightIndex);
+			cameraVolumePipelineView->pushConstants(&pc);
+			cameraVolumePipelineView->dispatch(uint3(CAMERA_VOLUME_LENGTH));
+		}
 	}
 	{
 		auto framebufferView = graphicsSystem->get(skyViewLutFramebuffer);
@@ -500,14 +504,15 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.bottomRadius = groundRadius;
 		pc.topRadius = topRadius;
 
-		SET_GPU_DEBUG_LABEL("Sky View LUT", Color::transparent);
-		framebufferView->beginRenderPass(float4::zero);
-		skyViewLutPipelineView->bind();
-		skyViewLutPipelineView->setViewportScissor();
-		skyViewLutPipelineView->bindDescriptorSet(skyViewLutDS);
-		skyViewLutPipelineView->pushConstants(&pc);
-		skyViewLutPipelineView->drawFullscreen();
-		framebufferView->endRenderPass();
+		SET_GPU_DEBUG_LABEL("Sky View LUT");
+		{
+			RenderPass renderPass(skyViewLutFramebuffer, float4::zero);
+			skyViewLutPipelineView->bind();
+			skyViewLutPipelineView->setViewportScissor();
+			skyViewLutPipelineView->bindDescriptorSet(skyViewLutDS);
+			skyViewLutPipelineView->pushConstants(&pc);
+			skyViewLutPipelineView->drawFullscreen();
+		}
 	}
 	graphicsSystem->stopRecording();
 
@@ -555,9 +560,6 @@ void AtmosphereRenderSystem::preDeferredRender()
 				auto viewProj = (f32x4x4)calcPerspProjInfRevZ(radians(90.0f), 1.0f, defaultHmdDepth) * 
 					f32x4x4::identity; // TODO: view for each cubemap side
 				pipelineView->updateFramebuffer(framebuffer);
-				auto framebufferView = graphicsSystem->get(framebuffer);
-
-				auto test = graphicsSystem->get(framebufferView->getColorAttachments()[0].imageView);
 
 				SkyPushConstants pc;
 				pc.invViewProj = (float4x4)inverse4x4(viewProj);
@@ -568,14 +570,15 @@ void AtmosphereRenderSystem::preDeferredRender()
 				pc.sunColor = (float3)sunColor * sunColor.w;
 				pc.sunSize = calcSunSize(sunAngularSize);
 
-				SET_GPU_DEBUG_LABEL("Skybox", Color::transparent);
-				framebufferView->beginRenderPass(float4::zero);
-				pipelineView->bind();
-				pipelineView->setViewportScissor();
-				pipelineView->bindDescriptorSet(skyboxDS);
-				pipelineView->pushConstants(&pc);
-				pipelineView->drawFullscreen();
-				framebufferView->endRenderPass();
+				SET_GPU_DEBUG_LABEL("Skybox");
+				{
+					RenderPass renderPass(framebuffer, float4::zero);
+					pipelineView->bind();
+					pipelineView->setViewportScissor();
+					pipelineView->bindDescriptorSet(skyboxDS);
+					pipelineView->pushConstants(&pc);
+					pipelineView->drawFullscreen();
+				}
 			}
 		}
 		else
@@ -635,7 +638,7 @@ void AtmosphereRenderSystem::hdrRender()
 	pc.sunColor = (float3)sunColor * sunColor.w;
 	pc.sunSize = calcSunSize(sunAngularSize);
 
-	SET_GPU_DEBUG_LABEL("Atmosphere Skybox", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Atmosphere Skybox");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(hdrSkyDS);

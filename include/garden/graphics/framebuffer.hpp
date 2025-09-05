@@ -464,6 +464,99 @@ public:
 };
 
 /***********************************************************************************************************************
+ * @brief Framebuffer render pass abstraction class.
+ */
+class RenderPass final
+{
+	ID<Framebuffer> framebuffer = {};
+public:
+	/**
+	 * @brief Begins framebuffer rendering pass.
+	 *
+	 * @details
+	 * This command initiates a block of operations where rendering takes place within a defined set of framebuffer
+	 * attachments. It sets up the necessary state and resources to perform rendering and defines how the framebuffer
+	 * attachments (like color, depth and stencil buffers) are to be handled during the rendering pass.
+	 *
+	 * @note Clearing at the beginning the render pass is faster than clearing attachments or images.
+	 *
+	 * @param framebuffer target framebuffer instance
+	 * @param[in] clearColors attachment clear color array or null
+	 * @param clearColorCount clear color array size or 0
+	 * @param clearDepth clear depth value or 0
+	 * @param clearStencil clear stencil value or 0
+	 * @param region rendering region (0 = full size)
+	 * @param asyncRecording render with multithreaded commands recording
+	 */
+	RenderPass(ID<Framebuffer> framebuffer, const float4* clearColors = nullptr, uint8 clearColorCount = 0,
+		float clearDepth = 0.0f, uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false);
+	/**
+	 * @brief Begins framebuffer rendering pass.
+	 * @details See the @ref Framebuffer::beginRenderPass().
+	 *
+	 * @tparam N clear color array size
+	 * @param framebuffer target framebuffer instance
+	 * @param[in] clearColors attachment clear color array
+	 * @param clearDepth clear depth value or 0
+	 * @param clearStencil clear stencil value or 0
+	 * @param region rendering region (0 = full size)
+	 * @param asyncRecording render with multithreaded commands recording
+	 */
+	template<psize N>
+	RenderPass(ID<Framebuffer> framebuffer, const array<float4, N>& clearColors, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false) :
+		RenderPass(framebuffer, clearColors.data(), (uint8)N, clearDepth, clearStencil, region, asyncRecording) { }
+	/**
+	 * @brief Begins framebuffer rendering pass.
+	 * @details See the @ref Framebuffer::beginRenderPass().
+	 *
+	 * @param framebuffer target framebuffer instance
+	 * @param[in] clearColors attachment clear color vector
+	 * @param clearDepth clear depth value or 0
+	 * @param clearStencil clear stencil value or 0
+	 * @param region rendering region (0 = full size)
+	 * @param asyncRecording render with multithreaded commands recording
+	 */
+	RenderPass(ID<Framebuffer> framebuffer, const vector<float4>& clearColors, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false) :
+		RenderPass(framebuffer, clearColors.data(), (uint8)clearColors.size(), 
+			clearDepth, clearStencil, region, asyncRecording) { }
+	/**
+	 * @brief Begins framebuffer rendering pass.
+	 * @details See the @ref Framebuffer::beginRenderPass().
+	 *
+	 * @param framebuffer target framebuffer instance
+	 * @param[in] clearColor attachment clear color
+	 * @param clearDepth clear depth value or 0
+	 * @param clearStencil clear stencil value or 0
+	 * @param region rendering region (0 = full size)
+	 * @param asyncRecording render with multithreaded commands recording
+	 */
+	RenderPass(ID<Framebuffer> framebuffer, const float4& clearColor, float clearDepth = 0.0f,
+		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false) : 
+		RenderPass(framebuffer, &clearColor, 1, clearDepth, clearStencil, region, asyncRecording) { }
+	/**
+	 * @brief Ends framebuffer render pass.
+	 *
+	 * @details
+	 * Concludes a render pass that was initiated with a @ref Framebuffer::beginRenderPass() command. This command
+	 * is essential for properly finalizing the sequence of operations within a render pass, ensuring that all rendering
+	 * outputs are correctly handled and that the GPU is ready to proceed with other tasks or another render pass.
+	 */
+	~RenderPass();
+
+	/*******************************************************************************************************************
+	 * @brief Proceeds to the next framebuffer subpass.
+	 * @param asyncRecording render with multithreaded commands recording
+	 *
+	 * @details
+	 * Subpasses are a feature that allows multiple rendering operations to be
+	 * efficiently batched together into a single render pass with multiple steps.
+	 */
+	void nextSubpass(bool asyncRecording = false);
+};
+
+/***********************************************************************************************************************
  * @brief Graphics framebuffer resource extension mechanism.
  * @warning Use only if you know what you are doing!
  */

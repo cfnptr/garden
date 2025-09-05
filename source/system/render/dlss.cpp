@@ -411,7 +411,7 @@ void DlssRenderSystem::preLdrRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		BEGIN_GPU_DEBUG_LABEL("DLSS Evaluate", Color::transparent);
+		BEGIN_GPU_DEBUG_LABEL("DLSS Evaluate");
 		if (!feature)
 			graphicsSystem->customCommand(createDlssFeatureCommand, this);
 		graphicsSystem->customCommand(evaluateDlssCommand, this);

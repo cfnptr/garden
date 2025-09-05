@@ -369,7 +369,7 @@ void MeshGizmosEditorSystem::render()
 			meshSelector->skipUpdate();
 	}
 
-	SET_GPU_DEBUG_LABEL("Gizmos", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Gizmos");
 	renderGizmosMeshes(gizmosMeshes, backPipelineView, cc.viewProj, patternScale, false);
 	renderGizmosMeshes(gizmosMeshes, frontPipelineView, cc.viewProj, patternScale, true);
 	gizmosMeshes.clear();

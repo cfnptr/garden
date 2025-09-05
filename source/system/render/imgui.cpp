@@ -680,7 +680,7 @@ void ImGuiRenderSystem::uiRender()
 	pc.translate = float2(-1.0f - drawData->DisplayPos.x * pc.scale.x,
 		-1.0f - drawData->DisplayPos.y * pc.scale.y);
 
-	SET_GPU_DEBUG_LABEL("ImGui", Color::transparent);
+	SET_GPU_DEBUG_LABEL("ImGui");
 	pipelineView->bind();
 	pipelineView->setViewport();
 	pipelineView->pushConstants(&pc);

@@ -202,7 +202,7 @@ void CsmRenderEditorSystem::uiRender()
 	PushConstants pc;
 	pc.farPlanes = (float3)(cc.nearPlane / csmSystem->getFarPlanes());
 
-	SET_GPU_DEBUG_LABEL("Shadow Map Cascades", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Shadow Map Cascades");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(cascadesDS);

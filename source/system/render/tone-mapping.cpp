@@ -161,7 +161,7 @@ void ToneMappingSystem::ldrRender()
 	pc.ditherIntensity = ditherIntensity;
 	pc.bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
 
-	SET_GPU_DEBUG_LABEL("Tone Mapping", Color::transparent);
+	SET_GPU_DEBUG_LABEL("Tone Mapping");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);

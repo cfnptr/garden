@@ -291,7 +291,6 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 
 	if (renderFinishedSemaphores.size() < images.size())
 	{
-		auto diff = (uint32)(images.size() - renderFinishedSemaphores.size());
 		auto offset = (uint32)renderFinishedSemaphores.size();
 		renderFinishedSemaphores.resize(images.size());
 		vk::SemaphoreCreateInfo semaphoreInfo;

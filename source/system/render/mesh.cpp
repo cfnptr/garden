@@ -733,7 +733,7 @@ void MeshRenderSystem::renderShadows()
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
-	BEGIN_GPU_DEBUG_LABEL("Shadow Pass", Color::transparent);
+	BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
 	graphicsSystem->stopRecording();
 
 	const auto& systems = Manager::Instance::get()->getSystems();
@@ -756,7 +756,7 @@ void MeshRenderSystem::renderShadows()
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
 			{
 				SET_CPU_ZONE_SCOPED("Opaque/Color Shadow Render");
-				SET_GPU_DEBUG_LABEL("Opaque/Color Shadow Pass", Color::transparent);
+				SET_GPU_DEBUG_LABEL("Opaque/Color Shadow Pass");
 				renderUnsorted(viewProj, MeshRenderType::Opaque, i);
 				renderUnsorted(viewProj, MeshRenderType::Color, i);
 				// Note: No TransDepth rendering for shadows, expected RT instead.
@@ -765,7 +765,7 @@ void MeshRenderSystem::renderShadows()
 			if (!isOpaqueOnly && shadowSystem->beginShadowRender(i, MeshRenderType::Translucent))
 			{
 				SET_CPU_ZONE_SCOPED("Translucent/Refracted/OIT Shadow Render");
-				SET_GPU_DEBUG_LABEL("Translucent/Refracted/OIT Shadow Pass", Color::transparent);
+				SET_GPU_DEBUG_LABEL("Translucent/Refracted/OIT Shadow Pass");
 				renderUnsorted(viewProj, MeshRenderType::Refracted, i);
 				renderUnsorted(viewProj, MeshRenderType::OIT, i);
 				renderSorted(viewProj, i);

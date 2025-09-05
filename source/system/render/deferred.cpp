@@ -485,34 +485,33 @@ void DeferredRenderSystem::render()
 
 		static const array<float4, gBufferCount> clearColors = 
 		{ float4::zero, float4::zero, float4::zero, float4::zero, float4::zero, float4::zero };
-		auto framebufferView = graphicsSystem->get(getGFramebuffer());
 		velocityPipelineView = graphicsSystem->get(velocityPipeline); // Note: do not remove.
 		auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Deferred Pass", Color::transparent);
-			framebufferView->beginRenderPass(clearColors, 0.0f, 0, int4::zero, options.useAsyncRecording);
-
-			event->run();
-
-			if (options.useAsyncRecording)
+			SET_GPU_DEBUG_LABEL("Deferred Pass");
 			{
-				auto threadIndex = graphicsSystem->getThreadCount() - 1;
-				velocityPipelineView->bindAsync(0, threadIndex);
-				velocityPipelineView->setViewportScissorAsync(float4::zero, threadIndex);
-				velocityPipelineView->bindDescriptorSetAsync(velocityDS, inFlightIndex, threadIndex);
-				velocityPipelineView->drawFullscreenAsync(threadIndex);
-			}
-			else
-			{
-				velocityPipelineView->bind();
-				velocityPipelineView->setViewportScissor();
-				velocityPipelineView->bindDescriptorSet(velocityDS, inFlightIndex);
-				velocityPipelineView->drawFullscreen();
-			}
+				RenderPass renderPass(getGFramebuffer(), clearColors,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
+				event->run();
 
-			framebufferView->endRenderPass();
+				if (options.useAsyncRecording)
+				{
+					auto threadIndex = graphicsSystem->getThreadCount() - 1;
+					velocityPipelineView->bindAsync(0, threadIndex);
+					velocityPipelineView->setViewportScissorAsync(float4::zero, threadIndex);
+					velocityPipelineView->bindDescriptorSetAsync(velocityDS, inFlightIndex, threadIndex);
+					velocityPipelineView->drawFullscreenAsync(threadIndex);
+				}
+				else
+				{
+					velocityPipelineView->bind();
+					velocityPipelineView->setViewportScissor();
+					velocityPipelineView->bindDescriptorSet(velocityDS, inFlightIndex);
+					velocityPipelineView->drawFullscreen();
+				}
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -527,14 +526,13 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("HDR Render Pass");
-		auto framebufferView = graphicsSystem->get(getHdrFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("HDR Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("HDR Pass");
+			{
+				RenderPass renderPass(getHdrFramebuffer(), float4::zero);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -549,14 +547,14 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Depth HDR Render Pass");
-		auto framebufferView = graphicsSystem->get(getDepthHdrFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Depth HDR Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, options.useAsyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Depth HDR Pass");
+			{
+				RenderPass renderPass(getDepthHdrFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -575,21 +573,21 @@ void DeferredRenderSystem::render()
 		auto _hdrCopyBuffer = getHdrCopyBuffer();
 		auto gpuProcessSystem = GpuProcessSystem::Instance::get();
 		gpuProcessSystem->prepareGgxBlur(_hdrCopyBuffer, hdrCopyBlurViews, hdrCopyBlurFBs);
-		auto framebufferView = graphicsSystem->get(getDepthHdrFramebuffer());
 		
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Refracted Pass", Color::transparent);
+			SET_GPU_DEBUG_LABEL("Refracted Pass");
+			{
+				Image::copy(depthStencilBuffer, getDepthCopyBuffer());
+				Image::copy(hdrBuffer, _hdrCopyBuffer);
 
-			Image::copy(depthStencilBuffer, getDepthCopyBuffer());
-			Image::copy(hdrBuffer, _hdrCopyBuffer);
+				gpuProcessSystem->ggxBlur(_hdrCopyBuffer, hdrCopyBlurViews,
+					hdrCopyBlurFBs, hdrCopyBlurPipeline, hdrCopyBlurDSes);
 
-			gpuProcessSystem->ggxBlur(_hdrCopyBuffer, hdrCopyBlurViews, 
-				hdrCopyBlurFBs, hdrCopyBlurPipeline, hdrCopyBlurDSes);
-
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, options.useAsyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+				RenderPass renderPass(getDepthHdrFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -604,14 +602,14 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Translucent Render Pass");
-		auto framebufferView = graphicsSystem->get(getDepthHdrFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Translucent Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, options.useAsyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Translucent Pass");
+			{
+				RenderPass renderPass(getDepthHdrFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -626,15 +624,15 @@ void DeferredRenderSystem::render()
 	if (hasAnyTD && event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Translucent Depth Render Pass");
-		auto framebufferView = graphicsSystem->get(getTransDepthFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Translucent Depth Pass", Color::transparent);
-			Image::copy(depthStencilBuffer, getDepthCopyBuffer());
-			framebufferView->beginRenderPass(float4::zero, 0.0f, 0, int4::zero, options.useAsyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Translucent Depth Pass");
+			{
+				Image::copy(depthStencilBuffer, getDepthCopyBuffer());
+				RenderPass renderPass(getTransDepthFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -649,15 +647,16 @@ void DeferredRenderSystem::render()
 	if (hasAnyOit && event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("OIT Render Pass");
-		auto framebufferView = graphicsSystem->get(getOitFramebuffer());
 		static const vector<float4> clearColors = { float4::zero, float4::one };
 
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("OIT Pass", Color::transparent);
-			framebufferView->beginRenderPass(clearColors, 0.0f, 0, int4::zero, options.useAsyncRecording);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("OIT Pass");
+			{
+				RenderPass renderPass(getOitFramebuffer(), clearColors,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -672,14 +671,13 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("LDR Render Pass");
-		auto framebufferView = graphicsSystem->get(getLdrFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("LDR Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("LDR Pass");
+			{
+				RenderPass renderPass(getLdrFramebuffer(), float4::zero);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -694,14 +692,13 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Depth LDR Render Pass");
-		auto framebufferView = graphicsSystem->get(getDepthLdrFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Depth LDR Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("Depth LDR Pass");
+			{
+				RenderPass renderPass(getDepthLdrFramebuffer(), float4::zero);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -715,8 +712,7 @@ void DeferredRenderSystem::render()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("Copy LDR to UI", Color::transparent);
-
+		SET_GPU_DEBUG_LABEL("Copy LDR to UI");
 		auto _uiBuffer = getUiBuffer();
 		if (_uiBuffer == gBuffers[0])
 			Image::copy(ldrBuffer, _uiBuffer);
@@ -729,14 +725,13 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("UI Render Pass");
-		auto framebufferView = graphicsSystem->get(getUiFramebuffer());
-
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("UI Pass", Color::transparent);
-			framebufferView->beginRenderPass(float4::zero);
-			event->run();
-			framebufferView->endRenderPass();
+			SET_GPU_DEBUG_LABEL("UI Pass");
+			{
+				RenderPass renderPass(getUiFramebuffer(), float4::zero);
+				event->run();
+			}
 		}
 		graphicsSystem->stopRecording();
 	}
@@ -747,7 +742,7 @@ void DeferredRenderSystem::render()
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("Copy UI to Swapchain", Color::transparent);
+		SET_GPU_DEBUG_LABEL("Copy UI to Swapchain");
 		if (uiBufferFormat == swapchainImageView->getFormat())
 			Image::copy(uiBuffer, swapchainImageView->getImage());
 		else

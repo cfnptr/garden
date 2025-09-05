@@ -311,7 +311,7 @@ void ResourceSystem::dequeueBuffers()
 	if (hasDequeueItems)
 	{
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer", Color::transparent);
+		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer");
 		graphicsSystem->stopRecording();
 	}
 	#endif
@@ -381,7 +381,7 @@ void ResourceSystem::dequeueImages()
 	if (hasDequeueItems)
 	{
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		BEGIN_GPU_DEBUG_LABEL("Images Transfer", Color::transparent);
+		BEGIN_GPU_DEBUG_LABEL("Images Transfer");
 		graphicsSystem->stopRecording();
 	}
 	#endif

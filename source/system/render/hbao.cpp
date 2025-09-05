@@ -198,7 +198,7 @@ void HbaoRenderSystem::aoRender()
 	pc.aoMultiplier = 1.0f / (1.0f - pc.novBias);
 	pc.nearPlane = cc.nearPlane;
 
-	SET_GPU_DEBUG_LABEL("HBAO", Color::transparent);
+	SET_GPU_DEBUG_LABEL("HBAO");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(descriptorSet);
