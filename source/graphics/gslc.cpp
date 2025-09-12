@@ -2488,7 +2488,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	vector<fs::path> includePaths; int logOffset = 1;
+	vector<fs::path> includePaths;
 	fs::path workingPath = fs::path(argv[0]).parent_path();
 	auto inputPath = workingPath, outputPath = workingPath;
 	ThreadPool* threadPool = nullptr; atomic_int compileResult = true;
@@ -2526,8 +2526,7 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			inputPath = argv[i + 1];
-			logOffset += 2; i++;
+			inputPath = argv[i + 1]; i++;
 		}
 		else if (strcmp(arg, "-o") == 0)
 		{
@@ -2537,8 +2536,7 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			outputPath = argv[i + 1];
-			logOffset += 2; i++;
+			outputPath = argv[i + 1]; i++;
 		}
 		else if (strcmp(arg, "-I") == 0)
 		{
@@ -2548,8 +2546,7 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			includePaths.push_back(argv[i + 1]);
-			logOffset += 2; i++;
+			includePaths.push_back(argv[i + 1]); i++;
 		}
 		else if (strcmp(arg, "-t") == 0)
 		{
@@ -2569,7 +2566,7 @@ int main(int argc, char *argv[])
 				}
 				threadPool = new ThreadPool(false, "T", count);
 			}
-			logOffset += 2; i++;
+			i++;
 		}
 		else if (arg[0] == '-')
 		{

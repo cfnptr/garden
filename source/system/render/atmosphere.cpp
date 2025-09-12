@@ -21,6 +21,7 @@
 #include "atmosphere/constants.h"
 
 #include "math/matrix/projection.hpp"
+#include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
 
 using namespace garden;
@@ -557,8 +558,8 @@ void AtmosphereRenderSystem::preDeferredRender()
 
 				auto& cc = graphicsSystem->getCommonConstants();
 				auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
-				auto viewProj = (f32x4x4)calcPerspProjInfRevZ(radians(90.0f), 1.0f, defaultHmdDepth) * 
-					f32x4x4::identity; // TODO: view for each cubemap side
+				auto viewProj = (f32x4x4)calcPerspProjInfRevZ(
+					radians(90.0f), 1.0f, defaultHmdDepth) * sideLookAts[updatePhase];
 				pipelineView->updateFramebuffer(framebuffer);
 
 				SkyPushConstants pc;

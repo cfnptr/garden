@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
-  VCPKG_CACHE: Windows-zlib-openssl
+  VCPKG_CACHE: Windows-zlib-openssl-assimp
 
 jobs:
   build:
@@ -42,8 +42,8 @@ jobs:
         echo "PATH=$PATH:$VULKAN_SDK/bin" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$VULKAN_SDK/lib" >> $GITHUB_ENV
         sudo cp -r $VULKAN_SDK/include/vulkan/ /usr/local/include/
-        sudo cp -P $VULKAN_SDK/lib/libvulkan.so* /usr/local/lib/
-        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev
+        sudo cp -P $VULKAN_SDK/lib/libvulkan.so* /usr/local/lib/Q
+        sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev xorg-dev libassimp-dev
 
     - name: Install macOS packages
       if: matrix.os == 'macos-latest'
@@ -52,11 +52,11 @@ jobs:
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
         unzip vulkan_sdk.zip
         sudo ./vulkansdk-macOS-$vulkanVersion.app/Contents/MacOS/vulkansdk-macOS-$vulkanVersion --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr
-        brew update && brew install zlib openssl
+        brew update && brew install zlib openssl assimp
 
     - name: Install Windows packages
       if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
-      run: vcpkg install zlib:x64-windows-static openssl:x64-windows-static
+      run: vcpkg install zlib:x64-windows-static openssl:x64-windows-static assimp:x64-windows-static
 
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'

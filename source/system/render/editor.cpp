@@ -1054,7 +1054,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 
 	if (ImGui::BeginPopupContextItem())
 	{
-		if (ImGui::MenuItem("Select File"))
+		if (ImGui::MenuItem("Select Image"))
 		{
 			openFileSelector([&](const fs::path& selectedFile)
 			{
@@ -1087,6 +1087,58 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 			resourceSystem->destroyShared(image);
 			resourceSystem->destroyShared(descriptorSet);
 			path = ""; image = {}; descriptorSet = {};
+		}
+		ImGui::EndPopup();
+	}
+}
+
+//**********************************************************************************************************************
+void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref<Buffer>& vertexBuffer,
+	Ref<Buffer>& indexBuffer, ID<Entity> entity, type_index componentType)
+{
+	GARDEN_ASSERT(name);
+	GARDEN_ASSERT(entity);
+
+	auto pathString = path.generic_string();
+	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))
+		path = pathString;
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		if (ImGui::MenuItem("Select Model"))
+		{
+			openFileSelector([&](const fs::path& selectedFile)
+			{
+				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
+					!Manager::Instance::get()->has(entity, componentType))
+				{
+					return;
+				}
+			
+				auto resourceSystem = ResourceSystem::Instance::get();
+				resourceSystem->destroyShared(vertexBuffer);
+				resourceSystem->destroyShared(indexBuffer);
+
+				path = selectedFile;
+				path.replace_extension();
+
+				abort();
+				// TODO: resourceSystem->loadModel(path, );
+			},
+			AppInfoSystem::Instance::get()->getResourcesPath() / "models", ResourceSystem::modelFileExts);
+		}
+
+		auto gpuResourceSystem = Manager::Instance::get()->tryGet<GpuResourceEditorSystem>();
+		if (ImGui::MenuItem("Show Vertex Resource", nullptr, false, gpuResourceSystem && vertexBuffer))
+			gpuResourceSystem->openTab(ID<Buffer>(vertexBuffer));
+		if (ImGui::MenuItem("Show Index Resource", nullptr, false, gpuResourceSystem && indexBuffer))
+			gpuResourceSystem->openTab(ID<Buffer>(indexBuffer));
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			auto resourceSystem = ResourceSystem::Instance::get();
+			resourceSystem->destroyShared(vertexBuffer);
+			resourceSystem->destroyShared(indexBuffer);
+			path = ""; vertexBuffer = {}; indexBuffer = {};
 		}
 		ImGui::EndPopup();
 	}

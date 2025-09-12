@@ -77,6 +77,7 @@ class ResourceSystem : public System, public Singleton<ResourceSystem>
 public:
 	static const vector<string_view> imageFileExts;    /**< Supported image file extensions. */
 	static const vector<ImageFileType> imageFileTypes; /**< Supported image file types. */
+	static const vector<string_view> modelFileExts;    /**< Supported model file extensions. */
 
 	/**
 	 * @brief Pipeline load options container.

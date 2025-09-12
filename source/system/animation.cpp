@@ -204,7 +204,9 @@ void AnimationSystem::resetComponent(View<Component> component, bool full)
 		auto resourceSystem = ResourceSystem::Instance::get();
 		for (const auto& pair : animationView->animations)
 			resourceSystem->destroyShared(pair.second);
-		animationView->animations.clear();
+
+		if (full) animationView->animations = {};
+		else animationView->animations.clear();
 	}
 }
 void AnimationSystem::copyComponent(View<Component> source, View<Component> destination)

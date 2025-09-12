@@ -329,8 +329,16 @@ void TransformComponent::shrinkChilds()
 	if (!childs)
 		return;
 
-	auto newChilds = realloc<ID<Entity>>(childs, childCount());
-	childs = newChilds;
+	if (childCount() > 0)
+	{
+		auto newChilds = realloc<ID<Entity>>(childs, childCount());
+		childs = newChilds;
+	}
+	else
+	{
+		free(childs);
+		childs = nullptr;
+	}
 }
 
 //**********************************************************************************************************************
@@ -445,6 +453,10 @@ void TransformSystem::resetComponent(View<Component> component, bool full)
 		transformView->setScale(f32x4::one);
 		transformView->setRotation(quat::identity);
 		transformView->uid = 0;
+		transformView->selfActive = true;
+		transformView->ancestorsActive = true;
+		transformView->modelWithAncestors = true;
+		transformView->shrinkChilds();
 	}
 }
 void TransformSystem::copyComponent(View<Component> source, View<Component> destination)

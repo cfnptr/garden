@@ -56,6 +56,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | Name                        | Description                                      | Default value |
 |-----------------------------|--------------------------------------------------|---------------|
 | GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
+| GARDEN_BUILD_MODELC         | Build Garden model converter                     | `ON`          |
 | GARDEN_BUILD_JSON2BSON      | Build JSON to binary JSON converter              | `ON`          |
 | GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
@@ -105,6 +106,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 
 ## Third-party
 
+* [Assimp](https://github.com/assimp/assimp) (assimp license)
 * [Conf](https://github.com/cfnptr/conf) (Apache-2.0 license)
 * [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
