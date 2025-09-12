@@ -113,6 +113,11 @@ const vector<ImageFileType> ResourceSystem::imageFileTypes =
 	ImageFileType::Tga, ImageFileType::Pic, ImageFileType::Gif
 };
 
+const vector<string_view> ResourceSystem::modelFileExts =
+{
+	".fbx", ".dae", ".gltf", ".glb", ".blend", ".3ds", ".ase", ".obj"
+};
+
 //**********************************************************************************************************************
 ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 {
@@ -540,6 +545,7 @@ static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8
 			*(float3*)(vertices + vertexSize    ) = float3(0.0f, 1.0f, 0.0f);
 			*(float3*)(vertices + vertexSize * 2) = float3(0.0f, 1.0f, 0.0f);
 			vertices += sizeof(float3);
+			break;
 		case BufferChannel::TextureCoords:
 			*(float2*)(vertices                 ) = float2(0.0f, 0.0f);
 			*(float2*)(vertices + vertexSize    ) = float2(1.0f, 0.0f);

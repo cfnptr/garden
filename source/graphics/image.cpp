@@ -854,8 +854,23 @@ static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format 
 	auto vulkanAPI = VulkanAPI::get();
 	auto imageView = vulkanAPI->imagePool.get(image);
 	auto aspectFlags = toVkImageAspectFlags(format);
+
 	if (isFormatDepthAndStencil(imageView->getFormat()))
 		format = imageView->getFormat();
+	if (type == Image::Type::Cubemap && layerCount == 1)
+	{
+		switch (baseLayer) // Note: remapping Vulkan API cubemap side indices.
+		{
+		case 0: baseLayer = 1; break;
+		case 1: baseLayer = 0; break;
+		case 2: baseLayer = 3; break;
+		case 3: baseLayer = 2; break;
+		case 4: baseLayer = 5; break;
+		case 5: baseLayer = 4; break;
+		default: abort();
+		}
+	}
+
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
 		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,

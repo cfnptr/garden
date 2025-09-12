@@ -8,7 +8,7 @@ IF NOT %ERRORLEVEL% == 0 (
     EXIT /B %ERRORLEVEL%
 )
 
-vcpkg install zlib:x64-windows-static openssl:x64-windows-static
+vcpkg install zlib:x64-windows-static openssl:x64-windows-static assimp:x64-windows-static
 
 IF NOT %ERRORLEVEL% == 0 (
     ECHO vcpkg failed to install required packages.

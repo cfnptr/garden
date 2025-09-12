@@ -232,6 +232,19 @@ void SpawnerSystem::resetComponent(View<Component> component, bool full)
 {
 	auto spawnerView = View<SpawnerComponent>(component);
 	spawnerView->destroySpawned();
+
+	if (full)
+	{
+		spawnerView->path = "";
+		spawnerView->prefab = {};
+		spawnerView->maxCount = 1;
+		spawnerView->delay = 0.0f;
+		spawnerView->mode = {};
+		spawnerView->isActive = true;
+		spawnerView->spawnAsChild = true;
+		spawnerView->delayTime = 0.0f;
+		spawnerView->spawnedEntities = {};
+	}
 }
 void SpawnerSystem::copyComponent(View<Component> source, View<Component> destination)
 {

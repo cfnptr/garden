@@ -695,20 +695,17 @@ void PbrLightingSystem::preHdrRender()
 	if (options.useShadowBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Shadows Render Pass");
+		SET_GPU_DEBUG_LABEL("Shadows Pass");
 
 		auto event = &manager->getEvent("ShadowRender");
 		if (event->hasSubscribers())
 		{
-			SET_GPU_DEBUG_LABEL("Shadows Pass");
-			{
-				RenderPass renderPass(shadowFramebuffers[0], float4::one);
-				event->run();
-			}
+			RenderPass renderPass(shadowFramebuffers[0], float4::one);
+			event->run();
 		}
 
 		if (hasAnyShadow)
 		{
-			SET_GPU_DEBUG_LABEL("Shadows Blur");
 			if (quality > GraphicsQuality::Low)
 			{
 				GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[0], 
@@ -718,7 +715,6 @@ void PbrLightingSystem::preHdrRender()
 		}
 		else
 		{
-			SET_GPU_DEBUG_LABEL("Shadows Clear");
 			auto imageView = graphicsSystem->get(shadowBuffer);
 			imageView->clear(float4::one);
 		}
@@ -726,28 +722,24 @@ void PbrLightingSystem::preHdrRender()
 	if (options.useAoBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("AO Render Pass");
+		SET_GPU_DEBUG_LABEL("AO Pass");
 
 		auto event = &manager->getEvent("AoRender");
 		if (event->hasSubscribers())
 		{
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[2]);
-			SET_GPU_DEBUG_LABEL("AO Pass");
-			{
-				RenderPass renderPass(aoFramebuffers[2], float4::one);
-				event->run();
-			}
+			RenderPass renderPass(aoFramebuffers[2], float4::one);
+			event->run();
 		}
 
 		if (hasAnyAO)
 		{
-			SET_GPU_DEBUG_LABEL("AO Blur");
 			GpuProcessSystem::Instance::get()->bilateralBlurD(aoImageViews[2], aoFramebuffers[0], 
 				aoFramebuffers[1], blurSharpness, aoBlurPipeline, aoBlurDS);
 			hasAnyAO = false;
 		}
 		else
 		{
-			SET_GPU_DEBUG_LABEL("AO Clear");
 			auto imageView = graphicsSystem->get(aoBuffer);
 			imageView->clear(float4::one);
 			imageView = graphicsSystem->get(aoBlurBuffer);
@@ -757,15 +749,13 @@ void PbrLightingSystem::preHdrRender()
 	if (options.useReflBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Reflections Render Pass");
+		SET_GPU_DEBUG_LABEL("Reflection Pass");
 
 		auto event = &manager->getEvent("ReflRender");
 		if (event->hasSubscribers())
 		{
-			SET_GPU_DEBUG_LABEL("Reflection Pass");
-			{
-				RenderPass renderPass(reflFramebuffers[0], float4::zero);
-				event->run();
-			}
+			RenderPass renderPass(reflFramebuffers[0], float4::zero);
+			event->run();
 		}
 
 		if (hasAnyRefl)
@@ -788,15 +778,13 @@ void PbrLightingSystem::preHdrRender()
 	if (options.useGiBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("GI Render Pass");
+		SET_GPU_DEBUG_LABEL("GI Pass");
 
 		auto event = &manager->getEvent("GiRender");
 		if (event->hasSubscribers())
 		{
-			SET_GPU_DEBUG_LABEL("GI Pass");
-			{
-				RenderPass renderPass(giFramebuffer, float4::zero);
-				event->run();
-			}
+			RenderPass renderPass(giFramebuffer, float4::zero);
+			event->run();
 		}
 
 		if (!hasAnyGI)

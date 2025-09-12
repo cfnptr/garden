@@ -10,7 +10,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         exit $status
     fi
 
-    brew update && brew install git cmake zlib openssl
+    brew update && brew install git cmake zlib openssl assimp
     status=$?
 
     if [ $status -ne 0 ]; then
@@ -26,7 +26,7 @@ else
         exit $status
     fi
 
-    sudo apt-get update && sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev
+    sudo apt-get update && sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev libassimp-dev
     status=$?
 
     if [ $status -ne 0 ]; then
