@@ -28,7 +28,7 @@ static ID<Buffer> createGgxKernel(GraphicsSystem* graphicsSystem)
 	auto kernel = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst | 
 		Buffer::Usage::TransferQ, Buffer::CpuAccess::None, coeffs, brdf::ggxCoeffCount * 
 		sizeof(float2), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(kernel, "buffer.uniform.ggxBlurKernel");
+	SET_RESOURCE_DEBUG_NAME(kernel, "buffer.storage.ggxBlurKernel");
 	return kernel;
 }
 

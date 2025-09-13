@@ -28,18 +28,13 @@ using namespace math::sh;
 using namespace math::ibl;
 using namespace math::brdf;
 
-static constexpr uint32 specularSampleCount = 1024;
-
 namespace garden::graphics
 {
-	struct SpecularItem final
+	struct SpecularData final
 	{
-		f32x4 l = f32x4::zero;
-		f32x4 nolMip = f32x4::zero;
-
-		SpecularItem(f32x4 l, float nol, float mip) noexcept :
-			l(l, 0.0f), nolMip(nol, mip, 0.0f, 0.0f) { }
-		SpecularItem() = default;
+		float4 lMip = float4::zero;
+		SpecularData(float3 l, float mip) noexcept : lMip(l, mip) { }
+		SpecularData() = default;
 	};
 }
 
@@ -176,9 +171,9 @@ static float mipToLinearRoughness(uint8 lodCount, uint8 mip) noexcept
 	return perceptualRoughness * perceptualRoughness;
 }
 
-static uint32 calcSampleCount(uint8 mipLevel) noexcept
+static uint32 calcIblSampleCount(uint8 mipLevel, uint32 sampleCount) noexcept
 {
-	return specularSampleCount * (uint32)exp2((float)std::max((int)mipLevel - 1, 0));
+	return sampleCount * (uint32)exp2((float)std::max((int)mipLevel - 1, 0));
 }
 
 //**********************************************************************************************************************
@@ -193,20 +188,20 @@ static ID<Image> createAoBuffers(GraphicsSystem* graphicsSystem, ID<ImageView>* 
 
 	auto aoBuffer = graphicsSystem->createImage(
 		PbrLightingSystem::aoBufferFormat, usage, mips, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(aoBuffer, "image.lighting.aoBuffer");
+	SET_RESOURCE_DEBUG_NAME(aoBuffer, "image.pbrLighting.aoBuffer");
 	aoBlurBuffer = graphicsSystem->createImage(PbrLightingSystem::aoBufferFormat, 
 		usage, { { nullptr } }, framebufferSize, strategy);
-	SET_RESOURCE_DEBUG_NAME(aoBlurBuffer, "image.lighting.aoBlurBuffer");
+	SET_RESOURCE_DEBUG_NAME(aoBlurBuffer, "image.pbrLighting.aoBlurBuffer");
 
 	auto aoBlurBufferView = graphicsSystem->get(aoBlurBuffer);
 	aoImageViews[0] = aoBlurBufferView->getDefaultView();
-	SET_RESOURCE_DEBUG_NAME(aoImageViews[0], "imageView.lighting.aoBlurBuffer");
+	SET_RESOURCE_DEBUG_NAME(aoImageViews[0], "imageView.pbrLighting.aoBlurBuffer");
 
 	for (uint8 i = 1; i < PbrLightingSystem::aoBufferCount; i++)
 	{
 		aoImageViews[i] = graphicsSystem->createImageView(aoBuffer, Image::Type::Texture2D, 
 			PbrLightingSystem::aoBufferFormat, i - 1, 1, 0, 1);
-		SET_RESOURCE_DEBUG_NAME(aoImageViews[i], "imageView.lighting.ao" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(aoImageViews[i], "imageView.pbrLighting.ao" + to_string(i));
 	}
 	return aoBuffer;
 }
@@ -231,16 +226,16 @@ static void createAoFramebuffers(GraphicsSystem* graphicsSystem,
 	vector<Framebuffer::OutputAttachment> colorAttachments
 	{ Framebuffer::OutputAttachment(aoImageViews[0], PbrLightingSystem::framebufferFlags) };
 	aoFramebuffers[0] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[0], "framebuffer.lighting.aoBlur");
+	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[0], "framebuffer.pbrLighting.aoBlur");
 
 	colorAttachments = { Framebuffer::OutputAttachment(aoImageViews[1], PbrLightingSystem::framebufferFlags) };
 	aoFramebuffers[1] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[1], "framebuffer.lighting.ao1");
+	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[1], "framebuffer.pbrLighting.ao1");
 
 	framebufferSize = max(framebufferSize / 2u, uint2::one);
 	colorAttachments = { Framebuffer::OutputAttachment(aoImageViews[2], PbrLightingSystem::framebufferFlags) };
 	aoFramebuffers[2] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[2], "framebuffer.lighting.ao2");
+	SET_RESOURCE_DEBUG_NAME(aoFramebuffers[2], "framebuffer.pbrLighting.ao2");
 }
 static void destroyAoFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* aoFramebuffers)
 {
@@ -258,13 +253,13 @@ static ID<Image> createShadowBuffers(GraphicsSystem* graphicsSystem, ID<ImageVie
 	auto buffer = graphicsSystem->createImage(PbrLightingSystem::shadowBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::Fullscreen, 
 		{ { nullptr, nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(buffer, "image.lighting.shadowBuffer");
+	SET_RESOURCE_DEBUG_NAME(buffer, "image.pbrLighting.shadowBuffer");
 
 	for (uint8 i = 0; i < PbrLightingSystem::shadowBufferCount; i++)
 	{
 		imageViews[i] = graphicsSystem->createImageView(buffer, Image::Type::Texture2D, 
 			PbrLightingSystem::shadowBufferFormat, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(imageViews[i], "imageView.lighting.shadow" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(imageViews[i], "imageView.pbrLighting.shadow" + to_string(i));
 	}
 	return buffer;
 }
@@ -288,7 +283,7 @@ static void createShadowFramebuffers(GraphicsSystem* graphicsSystem,
 		vector<Framebuffer::OutputAttachment> colorAttachments
 		{ Framebuffer::OutputAttachment(shadowImageViews[i], PbrLightingSystem::framebufferFlags) };
 		shadowFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[0], "framebuffer.lighting.shadow" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[0], "framebuffer.pbrLighting.shadow" + to_string(i));
 	}
 }
 static void destroyShadowFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* shadowFramebuffers)
@@ -319,11 +314,11 @@ static ID<Image> createReflBuffer(GraphicsSystem* graphicsSystem, ID<ImageView>&
 	auto image = graphicsSystem->createImage(PbrLightingSystem::reflBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | Image::Usage::TransferSrc | 
 		Image::Usage::Fullscreen, mips, reflBufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.reflBuffer");
+	SET_RESOURCE_DEBUG_NAME(image, "image.pbrLighting.reflBuffer");
 
 	reflBufferView = graphicsSystem->createImageView(image, 
 		Image::Type::Texture2D, PbrLightingSystem::reflBufferFormat, 0, 0, 0, 1);
-	SET_RESOURCE_DEBUG_NAME(reflBufferView, "imageView.lighting.reflBuffer");
+	SET_RESOURCE_DEBUG_NAME(reflBufferView, "imageView.pbrLighting.reflBuffer");
 	return image;
 }
 static void createReflData(GraphicsSystem* graphicsSystem, ID<ImageView> reflBufferView,
@@ -336,7 +331,7 @@ static void createReflData(GraphicsSystem* graphicsSystem, ID<ImageView> reflBuf
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(reflBufferView, PbrLightingSystem::framebufferFlags) };
 	auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.lighting.reflections");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.pbrLighting.reflections");
 	reflFramebuffers[0] = framebuffer;
 }
 
@@ -347,7 +342,7 @@ static ID<Image> createGiBuffer(GraphicsSystem* graphicsSystem)
 	auto buffer = graphicsSystem->createImage(PbrLightingSystem::giBufferFormat, 
 		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
 		Image::Usage::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(buffer, "image.lighting.giBuffer");
+	SET_RESOURCE_DEBUG_NAME(buffer, "image.pbrLighting.giBuffer");
 	return buffer;
 }
 static ID<Framebuffer> createGiFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> giBuffer)
@@ -357,7 +352,7 @@ static ID<Framebuffer> createGiFramebuffer(GraphicsSystem* graphicsSystem, ID<Im
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(giBufferView, PbrLightingSystem::framebufferFlags) };
 	auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.lighting.gi");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.pbrLighting.gi");
 	return framebuffer;
 }
 
@@ -468,7 +463,7 @@ static ID<Image> createDfgLUT(GraphicsSystem* graphicsSystem, uint32 dfgSize)
 	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16, 
 		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::ComputeQ, 
 		{ { pixelData } }, uint2(dfgSize), Image::Strategy::Size, Image::Format::SfloatR32G32);
-	SET_RESOURCE_DEBUG_NAME(image, "image.lighting.dfgLUT");
+	SET_RESOURCE_DEBUG_NAME(image, "image.pbrLighting.dfgLUT");
 	return image;
 }
 
@@ -493,6 +488,18 @@ static uint32 getCubemapSize(GraphicsQuality quality) noexcept
 		default: abort();
 	}
 }
+static uint32 getSpecularSampleCount(GraphicsQuality quality)
+{
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: return 32;
+		case GraphicsQuality::Low: return 64;
+		case GraphicsQuality::Medium: return 128;
+		case GraphicsQuality::High: return 256;
+		case GraphicsQuality::Ultra: return 512;
+		default: abort();
+	}
+}
 
 void PbrLightingComponent::setCubemapMode(PbrCubemapMode mode)
 {
@@ -501,8 +508,8 @@ void PbrLightingComponent::setCubemapMode(PbrCubemapMode mode)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(descriptorSet);
 	graphicsSystem->destroy(specular);
-	graphicsSystem->destroy(cubemap);
-	descriptorSet = {}; specular = {}; cubemap = {};
+	graphicsSystem->destroy(skybox);
+	descriptorSet = {}; specular = {}; skybox = {};
 	this->mode = mode;
 }
 
@@ -654,7 +661,7 @@ void PbrLightingSystem::preHdrRender()
 		auto uniforms = getLightingUniforms(graphicsSystem, dfgLUT, 
 			shadowImageViews, aoImageViews, reflBufferView, giBuffer);
 		lightingDS = graphicsSystem->createDescriptorSet(lightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.lighting.base");
+		SET_RESOURCE_DEBUG_NAME(lightingDS, "descriptorSet.pbrLighting.base");
 	}
 	
 	auto manager = Manager::Instance::get();
@@ -846,17 +853,17 @@ void PbrLightingSystem::hdrRender()
 
 	if (pbrLightingView->mode == PbrCubemapMode::Static)
 	{
-		if (!pbrLightingView->cubemap || !pbrLightingView->sh || !pbrLightingView->specular)
+		if (!pbrLightingView->skybox || !pbrLightingView->sh || !pbrLightingView->specular)
 			return;
 
-		auto cubemapView = graphicsSystem->get(pbrLightingView->cubemap);
+		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
 		auto shView = graphicsSystem->get(pbrLightingView->sh);
 		auto specularView = graphicsSystem->get(pbrLightingView->specular);
 		if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
 			return;
 	}
 
-	if (!pbrLightingView->cubemap)
+	if (!pbrLightingView->skybox)
 	{
 		auto cubemapSize = getCubemapSize(quality);
 		auto mipCount = calcMipCount(cubemapSize);
@@ -864,17 +871,18 @@ void PbrLightingSystem::hdrRender()
 		for (uint8 i = 0; i < mipCount; i++)
 			mips[i] = Image::Layers(Image::cubemapSideCount);
 
-		pbrLightingView->cubemap = Ref<Image>(graphicsSystem->createCubemap(
+		pbrLightingView->skybox = Ref<Image>(graphicsSystem->createCubemap(
 			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::ColorAttachment | 
 			Image::Usage::TransferSrc | Image::Usage::TransferDst, mips, uint2(cubemapSize), Image::Strategy::Size));
-		SET_RESOURCE_DEBUG_NAME(pbrLightingView->cubemap, "image.cubemap" + to_string(*pbrLightingView->cubemap));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->skybox, 
+			"image.pbrLighting.skybox" + to_string(*pbrLightingView->skybox));
 	}
 	if (!pbrLightingView->sh)
 	{
 		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
 			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffCount * sizeof(f32x4), 
 			Buffer::Location::PreferGPU, Buffer::Strategy::Size));
-		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.sh" + to_string(*pbrLightingView->sh));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.uniform.sh" + to_string(*pbrLightingView->sh));
 	}
 	if (!pbrLightingView->specular)
 	{
@@ -887,7 +895,8 @@ void PbrLightingSystem::hdrRender()
 		pbrLightingView->specular = Ref<Image>(graphicsSystem->createCubemap(
 			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  Image::Usage::Storage | 
 			Image::Usage::TransferDst, mips, uint2(cubemapSize), Buffer::Strategy::Size));
-		SET_RESOURCE_DEBUG_NAME(pbrLightingView->specular, "image.specular" + to_string(*pbrLightingView->specular));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->specular, 
+			"image.pbrLighting.specular" + to_string(*pbrLightingView->specular));
 	}
 
 	if (!pbrLightingView->descriptorSet)
@@ -895,7 +904,7 @@ void PbrLightingSystem::hdrRender()
 		auto descriptorSet = createDescriptorSet(graphicsSystem->camera, ID<GraphicsPipeline>());
 		if (!descriptorSet)
 			return;
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.lighting" + to_string(*descriptorSet));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.pbrLighting" + to_string(*descriptorSet));
 		pbrLightingView->descriptorSet = descriptorSet;
 	}
 
@@ -1051,11 +1060,11 @@ void PbrLightingSystem::resetComponent(View<Component> component, bool full)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pbrLightingView = View<PbrLightingComponent>(component);
-	graphicsSystem->destroy(pbrLightingView->cubemap);
+	graphicsSystem->destroy(pbrLightingView->skybox);
 	graphicsSystem->destroy(pbrLightingView->sh);
 	graphicsSystem->destroy(pbrLightingView->specular);
 	graphicsSystem->destroy(pbrLightingView->descriptorSet);
-	pbrLightingView->cubemap = {};
+	pbrLightingView->skybox = {};
 	pbrLightingView->sh = {};
 	pbrLightingView->specular = {};
 	pbrLightingView->descriptorSet = {};
@@ -1064,7 +1073,7 @@ void PbrLightingSystem::copyComponent(View<Component> source, View<Component> de
 {
 	auto destinationView = View<PbrLightingComponent>(destination);
 	const auto sourceView = View<PbrLightingComponent>(source);
-	destinationView->cubemap = sourceView->cubemap;
+	destinationView->skybox = sourceView->skybox;
 	destinationView->sh = sourceView->sh;
 	destinationView->specular = sourceView->specular;
 	destinationView->descriptorSet = sourceView->descriptorSet;
@@ -1188,8 +1197,8 @@ void PbrLightingSystem::setQuality(GraphicsQuality quality)
 
 		graphicsSystem->destroy(component.descriptorSet);
 		graphicsSystem->destroy(component.specular);
-		graphicsSystem->destroy(component.cubemap);
-		component.descriptorSet = {}; component.specular = {}; component.cubemap = {};
+		graphicsSystem->destroy(component.skybox);
+		component.descriptorSet = {}; component.specular = {}; component.skybox = {};
 	}
 
 	this->quality = quality;
@@ -1399,179 +1408,232 @@ static ID<Buffer> generateIblSH(ThreadSystem* threadSystem, GraphicsSystem* grap
 }
 
 //**********************************************************************************************************************
-static void calcIblSpecular(SpecularItem* specularMap, uint32* countBufferData,
-	uint32 cubemapSize, uint8 cubemapMipCount, uint8 specularMipCount, uint32 taskIndex)
+static void calcIblSpecular(SpecularData* specularMap, float* weightBufferData, uint32* countBufferData, 
+	uint32 cubemapSize, uint32 sampleCount, uint8 skyboxMipCount, uint8 specularMipCount, uint32 taskIndex)
 {
 	psize mapOffset = 0;
 	auto mipIndex = taskIndex + 1;
 	for (uint8 i = 1; i < mipIndex; i++)
-		mapOffset += calcSampleCount(i);
+		mapOffset += calcIblSampleCount(i, sampleCount);
 	auto map = specularMap + mapOffset;
 
-	auto sampleCount = calcSampleCount(mipIndex);
-	auto invSampleCount = 1.0f / sampleCount;
+	auto iblSampleCount = calcIblSampleCount(mipIndex, sampleCount);
+	auto invIblSampleCount = 1.0f / iblSampleCount;
 	auto linearRoughness = mipToLinearRoughness(specularMipCount, mipIndex);
 	auto logOmegaP = log4((4.0f * (float)M_PI) / (6.0f * cubemapSize * cubemapSize));
 	float weight = 0.0f; uint32 count = 0;
 
-	for (uint32 i = 0; i < sampleCount; i++)
+	for (uint32 i = 0; i < iblSampleCount; i++)
 	{
-		auto u = hammersley(i, invSampleCount);
+		auto u = hammersley(i, invIblSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
-		auto noh = h.getZ(), noh2 = noh * noh;
-		auto nol = 2.0f * noh2 - 1.0f;
-		auto l = f32x4(2.0f * noh * h.getX(), 2.0f * noh * h.getY(), nol);
+		auto noh = h.getZ(), noh2 = noh * noh, nol = 2.0f * noh2 - 1.0f;
 
 		if (nol > 0.0f)
 		{
 			constexpr auto k = 1.0f; // log4(4.0f);
 			auto pdf = ggx(noh, linearRoughness) / 4.0f;
-			auto omegaS = 1.0f / (sampleCount * pdf);
+			auto omegaS = 1.0f / (iblSampleCount * pdf);
 			auto level = log4(omegaS) - logOmegaP + k;
-			auto mip = clamp(level, 0.0f, (float)(cubemapMipCount - 1));
-			map[count++] = SpecularItem(l, nol, mip);
-			weight += nol;
+			auto mip = clamp(level, 0.0f, (float)(skyboxMipCount - 1));
+			auto l = float3(2.0f * noh * h.getX(), 2.0f * noh * h.getY(), nol);
+			map[count++] = SpecularData(l, mip); weight += nol;
 		}
 	}
-
-	auto invWeight = 1.0f / weight;
-	for (uint32 i = 0; i < count; i++)
-	{
-		auto& nolMip = map[i].nolMip;
-		nolMip.setX(nolMip.getX() * invWeight);
-	}
 		
-	qsort(map, count, sizeof(SpecularItem), [](const void* a, const void* b)
+	qsort(map, count, sizeof(SpecularData), [](const void* a, const void* b)
 	{
-		auto aa = (const SpecularItem*)a; auto bb = (const SpecularItem*)b;
-		if (aa->nolMip.getX() < bb->nolMip.getX())
+		auto aa = (const SpecularData*)a; auto bb = (const SpecularData*)b;
+		if (aa->lMip.z < bb->lMip.z)
 			return -1;
-		if (aa->nolMip.getX() > bb->nolMip.getX())
+		if (aa->lMip.z > bb->lMip.z)
 			return 1;
 		return 0;
 	});
 
+	weightBufferData[taskIndex] = 1.0f / weight;
 	countBufferData[taskIndex] = count;
 }
 
 //**********************************************************************************************************************
-static ID<Image> generateIblSpecular(ThreadSystem* threadSystem, 
-	ID<ComputePipeline> iblSpecularPipeline, ID<Image> cubemap, Memory::Strategy strategy)
+ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize, 
+	vector<float>& iblWeightBuffer, vector<uint32>& iblCountBuffer)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto cubemapView = graphicsSystem->get(cubemap);
-	auto cubemapSize = cubemapView->getSize().getX();
-	auto cubemapFormat = cubemapView->getFormat();
-	auto cubemapMipCount = cubemapView->getMipCount();
-	auto defaultCubemapView = cubemapView->getDefaultView();
-	
-	auto specularMipCount = PbrLightingSystem::calcSpecularMipCount(cubemapSize);
-	Image::Mips mips(specularMipCount);
-	for (uint8 i = 0; i < specularMipCount; i++)
-		mips[i] = Image::Layers(Image::cubemapSideCount);
-
-	auto specular = graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  
-		Image::Usage::Storage | Image::Usage::TransferDst, mips, uint2(cubemapSize), strategy);
+	GARDEN_ASSERT(cubemapSize > 0);
+	auto skyboxMipCount = calcMipCount(cubemapSize);
+	auto specularMipCount = calcSpecularMipCount(cubemapSize);
+	auto sampleCount = getSpecularSampleCount(quality);
 
 	uint64 specularCacheSize = 0;
 	for (uint8 i = 1; i < specularMipCount; i++)
-		specularCacheSize += calcSampleCount(i);
-	specularCacheSize *= sizeof(SpecularItem);
+		specularCacheSize += calcIblSampleCount(i, sampleCount);
+	specularCacheSize *= sizeof(SpecularData);
 
-	auto cpuSpecularCache = graphicsSystem->createBuffer(
-		Buffer::Usage::TransferSrc, Buffer::CpuAccess::RandomReadWrite,
-		specularCacheSize, Buffer::Location::Auto, Buffer::Strategy::Speed);
-	SET_RESOURCE_DEBUG_NAME(cpuSpecularCache,
-		"buffer.storage.lighting.cpuSpecularCache" + to_string(*cpuSpecularCache));
-	auto cpuSpecularCacheView = graphicsSystem->get(cpuSpecularCache);
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto stagingBuffer = graphicsSystem->createBuffer(Buffer::Usage::TransferSrc, 
+		Buffer::CpuAccess::RandomReadWrite, specularCacheSize, Buffer::Location::Auto, Buffer::Strategy::Speed);
+	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.specularCache" + to_string(*stagingBuffer));
 
-	vector<uint32> countBuffer(specularMipCount - 1);
-	vector<ID<Buffer>> gpuSpecularCache(countBuffer.size());
-	auto specularMap = (SpecularItem*)cpuSpecularCacheView->getMap();
-	auto countBufferData = countBuffer.data();
+	auto stagingView = graphicsSystem->get(stagingBuffer);
+	auto specularMap = (SpecularData*)stagingView->getMap();
+	iblWeightBuffer.resize(specularMipCount - 1);
+	iblCountBuffer.resize(specularMipCount - 1);
+	auto weightBufferData = iblWeightBuffer.data();
+	auto countBufferData = iblCountBuffer.data();
 
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addTasks([=](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL Specular Generate");
-
-			calcIblSpecular(specularMap, countBufferData, cubemapSize,
-				cubemapMipCount, specularMipCount, task.getTaskIndex());
+			calcIblSpecular(specularMap, weightBufferData, countBufferData, cubemapSize, 
+				sampleCount, skyboxMipCount, specularMipCount, task.getTaskIndex());
 		},
-		(uint32)countBuffer.size());
+		(uint32)iblCountBuffer.size());
 		threadPool.wait();
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("IBL Specular Generate");
-
-		for (uint32 i = 0; i < (uint32)countBuffer.size(); i++)
+		for (uint32 i = 0; i < (uint32)iblCountBuffer.size(); i++)
 		{
-			calcIblSpecular(specularMap, countBufferData, cubemapSize,
-				cubemapMipCount, specularMipCount, i);
+			calcIblSpecular(specularMap, weightBufferData, countBufferData, 
+				cubemapSize, sampleCount, skyboxMipCount, specularMipCount, i);
 		}
 	}
 
-	cpuSpecularCacheView->flush();	
-	specularCacheSize = 0;
+	stagingView->flush();
 
-	SET_GPU_DEBUG_LABEL("IBL Specular Generation");
-	for (uint32 i = 0; i < (uint32)gpuSpecularCache.size(); i++)
+	uint64 gpuCacheSize = 0;
+	for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
+		gpuCacheSize += iblCountBuffer[i] * sizeof(SpecularData);
+
+	auto specularCache = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst, 
+		Buffer::CpuAccess::None, gpuCacheSize, Buffer::Location::PreferGPU, Buffer::Strategy::Speed);
+	SET_RESOURCE_DEBUG_NAME(specularCache, "buffer.storage.specularCache" + to_string(*specularCache));
+
+	auto stopRecording = false;
+	if (!graphicsSystem->isRecording())
 	{
-		auto cacheSize = countBuffer[i] * sizeof(SpecularItem);
-		auto cache = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst, 
-			Buffer::CpuAccess::None, cacheSize, Buffer::Location::PreferGPU, Buffer::Strategy::Speed);
-		SET_RESOURCE_DEBUG_NAME(cache, "buffer.storage.lighting.gpuSpecularCache" + to_string(*cache));
-		gpuSpecularCache[i] = cache;
-
-		Buffer::CopyRegion bufferCopyRegion;
-		bufferCopyRegion.size = cacheSize;
-		bufferCopyRegion.srcOffset = specularCacheSize;
-		Buffer::copy(cpuSpecularCache, cache, bufferCopyRegion);
-		specularCacheSize += (uint64)calcSampleCount(i + 1) * sizeof(SpecularItem);
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		stopRecording = true;
 	}
 
-	Image::CopyImageRegion imageCopyRegion;
-	imageCopyRegion.layerCount = 6;
-	Image::copy(cubemap, specular, imageCopyRegion);
+	specularCacheSize = gpuCacheSize = 0;
+	Buffer::CopyRegion bufferCopyRegion;
 
-	auto pipelineView = graphicsSystem->get(iblSpecularPipeline);
-	pipelineView->bind();
-
-	cubemapSize /= 2;
-	for (uint8 i = 0; i < (uint32)gpuSpecularCache.size(); i++)
+	BEGIN_GPU_DEBUG_LABEL("Generate Specular Cache");
+	for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
 	{
-		auto iblSpecularView = graphicsSystem->createImageView(specular,
-			Image::Type::Texture2DArray, cubemapFormat, i + 1, 1, 0, 6);
+		bufferCopyRegion.size = iblCountBuffer[i] * sizeof(SpecularData);
+		bufferCopyRegion.srcOffset = specularCacheSize;
+		bufferCopyRegion.dstOffset = gpuCacheSize;
+		Buffer::copy(stagingBuffer, specularCache, bufferCopyRegion);
+
+		specularCacheSize += (uint64)calcIblSampleCount(
+			i + 1, sampleCount) * sizeof(SpecularData);
+		gpuCacheSize += bufferCopyRegion.size;
+	}
+	END_GPU_DEBUG_LABEL();
+
+	if (stopRecording)
+		graphicsSystem->stopRecording();
+	graphicsSystem->destroy(stagingBuffer);
+	return specularCache;
+}
+
+//**********************************************************************************************************************
+void PbrLightingSystem::createIblSpecularViews(ID<Image> specular, vector<ID<ImageView>>& specularViews)
+{
+	GARDEN_ASSERT(specular);
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto specularView = graphicsSystem->get(specular);
+	auto specularFormat = specularView->getFormat();
+	auto count = (uint8)(specularView->getMipCount() - 1);
+	specularViews.resize(count);
+
+	for (uint8 i = 0; i < count; i++)
+	{
+		auto specularView = graphicsSystem->createImageView(specular,
+			Image::Type::Texture2DArray, specularFormat, i + 1, 1, 0, Image::cubemapSideCount);
+		SET_RESOURCE_DEBUG_NAME(specularView, "imageView.pbrLighting.specular" + 
+			to_string(*specularView) + "_" + to_string(i));
+		specularViews[i] = specularView;
+	}
+}
+void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> specularCache, 
+	const vector<ID<ImageView>>& specularViews, vector<ID<DescriptorSet>>& iblDescriptorSets)
+{
+	GARDEN_ASSERT(skybox);
+	GARDEN_ASSERT(specularCache);
+	GARDEN_ASSERT(!specularViews.empty());
+
+	if (!iblSpecularPipeline)
+		iblSpecularPipeline = createIblSpecularPipeline();
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto skyboxView = graphicsSystem->get(skybox)->getDefaultView();
+	iblDescriptorSets.resize(specularViews.size());
+
+	for (uint8 i = 0; i < (uint8)specularViews.size(); i++)
+	{
 		DescriptorSet::Uniforms iblSpecularUniforms =
 		{
-			{ "cubemap", DescriptorSet::Uniform(defaultCubemapView) },
-			{ "specular", DescriptorSet::Uniform(iblSpecularView) },
-			{ "cache", DescriptorSet::Uniform(gpuSpecularCache[i]) }
+			{ "skybox", DescriptorSet::Uniform(skyboxView) },
+			{ "specular", DescriptorSet::Uniform(specularViews[i]) },
+			{ "cache", DescriptorSet::Uniform(specularCache) }
 		};
-		auto iblSpecularDescriptorSet = graphicsSystem->createDescriptorSet(
-			iblSpecularPipeline, std::move(iblSpecularUniforms));
-		SET_RESOURCE_DEBUG_NAME(iblSpecularDescriptorSet,
-			"descriptorSet.lighting.iblSpecular" + to_string(*iblSpecularDescriptorSet));
-		pipelineView->bindDescriptorSet(iblSpecularDescriptorSet);
 
-		PbrLightingSystem::SpecularPC pc;
+		auto descriptorSet = graphicsSystem->createDescriptorSet(iblSpecularPipeline, std::move(iblSpecularUniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.pbrLighting.iblSpecular" + to_string(*descriptorSet));
+		iblDescriptorSets[i] = descriptorSet;
+	}
+}
+void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular,
+	const vector<float>& iblWeightBuffer, const vector<uint32>& iblCountBuffer, 
+	const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 side)
+{
+	GARDEN_ASSERT(skybox);
+	GARDEN_ASSERT(specular);
+	GARDEN_ASSERT(!iblWeightBuffer.empty());
+	GARDEN_ASSERT(!iblCountBuffer.empty());
+	GARDEN_ASSERT(!iblDescriptorSets.empty());
+	GARDEN_ASSERT(iblWeightBuffer.size() == iblCountBuffer.size());
+	GARDEN_ASSERT(iblWeightBuffer.size() == iblDescriptorSets.size());
+	GARDEN_ASSERT(side < Image::cubemapSideCount);
+
+	Image::CopyImageRegion imageCopyRegion;
+	imageCopyRegion.layerCount = Image::cubemapSideCount;
+	Image::copy(ID<Image>(skybox), ID<Image>(specular), imageCopyRegion);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto skyboxView = graphicsSystem->get(skybox);
+	auto cubemapSize = skyboxView->getSize().getX() / 2;
+	auto pipelineView = graphicsSystem->get(iblSpecularPipeline);
+	auto sideCount = side < 0 ? Image::cubemapSideCount : 1;
+
+	SET_GPU_DEBUG_LABEL("Generate IBL Specular");
+	pipelineView->bind();
+	
+	PbrLightingSystem::SpecularPC pc;
+	pc.sampleOffset = 0;
+	pc.sideOffset = max(side, (int8)0);
+
+	for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
+	{
+		pipelineView->bindDescriptorSet(iblDescriptorSets[i]);
+
 		pc.imageSize = cubemapSize;
-		pc.itemCount = countBuffer[i];
+		pc.sampleCount = iblCountBuffer[i];
+		pc.weight = iblWeightBuffer[i];
 		pipelineView->pushConstants(&pc);
 
-		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, 6));
-
-		graphicsSystem->destroy(iblSpecularDescriptorSet);
-		graphicsSystem->destroy(iblSpecularView);
-		graphicsSystem->destroy(gpuSpecularCache[i]);
-		cubemapSize /= 2;
+		// TODO: Maybe there are faster approaches for IBL specular evaluation. Check Unreal's approach.
+		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, sideCount));
+		pc.sampleOffset += pc.sampleCount; cubemapSize /= 2;
 	}
-
-	graphicsSystem->destroy(cpuSpecularCache);
-	return specular;
 }
 
 //**********************************************************************************************************************
@@ -1579,6 +1641,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy, vector<f32x4>* shBuffer)
 {
 	GARDEN_ASSERT(!path.empty());
+	SET_CPU_ZONE_SCOPED("PBR Cubemap Load");
 	
 	vector<uint8> left, right, bottom, top, back, front; uint2 size;
 	ResourceSystem::Instance::get()->loadCubemapData(path, left, right, bottom, top, back, front, size, true);
@@ -1586,37 +1649,53 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 
 	auto mipCount = calcMipCount(cubemapSize);
 	Image::Mips mips(mipCount);
-	mips[0] = { right.data(), left.data(), top.data(), bottom.data(), front.data(), back.data() };
+	mips[0] = { left.data(), right.data(), bottom.data(), top.data(), back.data(), front.data() };
 
 	for (uint8 i = 1; i < mipCount; i++)
 		mips[i] = Image::Layers(Image::cubemapSideCount);
 
-	if (!iblSpecularPipeline)
-		iblSpecularPipeline = createIblSpecularPipeline();
-
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
+	{
+		SET_GPU_DEBUG_LABEL("Load Cubemap PBR");
 
-	cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, 
-		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferSrc, 
-		mips, size, strategy, Image::Format::SfloatR32G32B32A32));
-	SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
+		vector<f32x4> localSH;
+		if (!shBuffer) shBuffer = &localSH;
 
-	auto cubemapView = graphicsSystem->get(cubemap);
-	cubemapView->generateMips(Sampler::Filter::Linear);
+		auto threadSystem = ThreadSystem::Instance::tryGet();
+		sh = Ref<Buffer>(generateIblSH(threadSystem, graphicsSystem,  mips[0], *shBuffer, cubemapSize, strategy));
+		SET_RESOURCE_DEBUG_NAME(sh, "buffer.uniform.sh." + path.generic_string());
 
-	vector<f32x4> localSH;
-	if (!shBuffer)
-		shBuffer = &localSH;
+		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;
+		auto specularCache = createSpecularCache(cubemapSize, iblWeightBuffer, iblCountBuffer);
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	sh = Ref<Buffer>(generateIblSH(threadSystem, graphicsSystem,  mips[0], *shBuffer, cubemapSize, strategy));
-	SET_RESOURCE_DEBUG_NAME(sh, "buffer.sh." + path.generic_string());
+		cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, 
+			Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferSrc, 
+			mips, size, strategy, Image::Format::SfloatR32G32B32A32));
+		SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
 
-	specular = Ref<Image>(generateIblSpecular(threadSystem, 
-		iblSpecularPipeline, ID<Image>(cubemap), strategy));
-	SET_RESOURCE_DEBUG_NAME(specular, "image.cubemap.specular." + path.generic_string());
+		auto cubemapView = graphicsSystem->get(cubemap);
+		cubemapView->generateMips(Sampler::Filter::Linear);		
+
+		auto specularMipCount = calcSpecularMipCount(cubemapSize);
+		mips.resize(specularMipCount);
+		for (uint8 i = 0; i < specularMipCount; i++)
+			mips[i] = Image::Layers(Image::cubemapSideCount);
+
+		specular = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  
+			Image::Usage::Storage | Image::Usage::TransferDst, mips, uint2(cubemapSize), strategy));
+		SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap.specular." + path.generic_string());
+
+		vector<ID<ImageView>> specularViews; vector<ID<DescriptorSet>> iblDescriptorSets;
+		createIblSpecularViews(ID<Image>(specular), specularViews);
+		createIblDescriptorSets(ID<Image>(cubemap), specularCache, specularViews, iblDescriptorSets);
+
+		dispatchIblSpecular(ID<Image>(cubemap), ID<Image>(specular), 
+			iblWeightBuffer, iblCountBuffer, iblDescriptorSets);
 	
+		graphicsSystem->destroy(iblDescriptorSets); graphicsSystem->destroy(specularViews);
+		graphicsSystem->destroy(specularCache);
+	}
 	graphicsSystem->stopRecording();
 }
 

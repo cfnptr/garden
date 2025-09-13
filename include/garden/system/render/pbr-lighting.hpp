@@ -40,7 +40,7 @@ enum class PbrCubemapMode
  */
 struct PbrLightingComponent final : public Component
 {
-	Ref<Image> cubemap = {};               /**< PBR lighting cubemap image. */
+	Ref<Image> skybox = {};                /**< PBR lighting skybox cubemap. */
 	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
 	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
@@ -101,7 +101,10 @@ public:
 	struct SpecularPC final
 	{
 		uint32 imageSize;
-		uint32 itemCount;
+		uint32 sampleOffset;
+		uint32 sampleCount;
+		uint32 sideOffset;
+		float weight;
 	};
 
 	static constexpr uint8 shadowBufferCount = 2;
@@ -329,6 +332,46 @@ public:
 		constexpr uint8 maxMipCount = 5; // Note: Optimal value based on filament research.
 		return std::min(calcMipCount(cubemapSize), maxMipCount);
 	}
+
+	/**
+	 * @brief Creates IBL specular cubemap cache buffer. (Image Based Lighting)
+	 * 
+	 * @param cubemapSize cubemap size along one axis in pixels
+	 * @param[out] iblWeightBuffer sample weight per mip level
+	 * @param[out] iblCountBuffer sample count per mip level
+	 */
+	ID<Buffer> createSpecularCache(uint32 cubemapSize, 
+		vector<float>& iblWeightBuffer, vector<uint32>& iblCountBuffer);
+	/**
+	 * @brief Creates IBL specular image views. (Image Based Lighting)
+	 * 
+	 * @param specular target specular cubemap instance
+	 * @param[out] specularViews specular image view array
+	 */
+	void createIblSpecularViews(ID<Image> specular, vector<ID<ImageView>>& specularViews);
+	/**
+	 * @brief Creates IBL specular descriptor sets. (Image Based Lighting)
+	 * 
+	 * @param skybox target skybox cubemap instance
+	 * @param[in] specularCache specular cache buffer
+	 * @param[in] specularViews specular image view array
+	 * @param[out] descriptorSets specular descriptor set array
+	 */
+	void createIblDescriptorSets(ID<Image> skybox, ID<Buffer> specularCache, 
+		const vector<ID<ImageView>>& specularViews, vector<ID<DescriptorSet>>& descriptorSets);
+
+	/**
+	 * @brief Dispatches IBL specular calculation command. (Image Based Lighting)
+	 * 
+	 * @param skybox target skybox cubemap instance
+	 * @param specular specular cubemap instance
+	 * @param[in] iblWeightBuffer sample weight per mip level
+	 * @param[in] iblCountBuffer sample count per mip level
+	 * @param[in] iblDescriptorSets IBL specular descriptor set array
+	 * @param side cubemap side index to dispatch (-1 = all sides)
+	 */
+	void dispatchIblSpecular(ID<Image> skybox, ID<Image> specular, const vector<float>& iblWeightBuffer,
+		const vector<uint32>& iblCountBuffer, const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 side = -1);
 
 	/**
 	 * @brief Loads cubemap rendering data from the resource pack.

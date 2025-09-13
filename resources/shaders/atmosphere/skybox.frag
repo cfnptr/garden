@@ -18,6 +18,8 @@
 #include "atmosphere/common.gsl"
 #include "common/depth.gsl"
 
+spec const bool USE_CUBEMAP_ONLY = false;
+
 pipelineState
 {
 	faceCulling = off;
@@ -84,7 +86,7 @@ float3 getSunLuminance(float3 worldDir)
 
 void main()
 {
-	float depth = textureLod(depthBuffer, fs.texCoords, 0.0f).r;
+	float depth = USE_CUBEMAP_ONLY ? FAR_PLANE_DEPTH : textureLod(depthBuffer, fs.texCoords, 0.0f).r;
 	float3 worldDir = calcViewDirection(0.5f, fs.texCoords, pc.invViewProj);
 	float viewHeight = length(pc.cameraPos);
 
@@ -103,6 +105,9 @@ void main()
 		fb.color = float4(min(skyColor, float3(FLOAT_BIG_16)), 1.0f);
 		return;
 	}
+
+	if (USE_CUBEMAP_ONLY)
+		return;
 
 	discard;
 	float3 l = float3(0.0f);

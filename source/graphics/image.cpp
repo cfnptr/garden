@@ -298,7 +298,6 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 			layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers;
 	}
 	else abort();
-	
 }
 
 void Image::generateMips(Sampler::Filter filter)
@@ -319,6 +318,8 @@ void Image::generateMips(Sampler::Filter filter)
 			"Image [" + debugName + "] does not have compute queue flag");
 	}
 	#endif
+
+	SET_GPU_DEBUG_LABEL("Generate Mips");
 
 	auto image = graphicsAPI->imagePool.getID(this);
 	auto layerCount = getLayerCount();
@@ -857,7 +858,7 @@ static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format 
 
 	if (isFormatDepthAndStencil(imageView->getFormat()))
 		format = imageView->getFormat();
-	if (type == Image::Type::Cubemap && layerCount == 1)
+	if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
 	{
 		switch (baseLayer) // Note: remapping Vulkan API cubemap side indices.
 		{
