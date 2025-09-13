@@ -730,7 +730,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	{
 		GARDEN_ASSERT(size.x == size.y);
 		GARDEN_ASSERT(size.z == 1);
-		GARDEN_ASSERT(layerCount == 6);
+		GARDEN_ASSERT(layerCount == Image::cubemapSideCount);
 	}
 	else abort();
 	#endif
@@ -804,7 +804,15 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 			for (uint32 layer = 0; layer < mipLayerCount; layer++)
 			{
-				auto layerData = mipData[layer];
+				const void* layerData;
+				if (type == Image::Type::Cubemap && graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+				{
+					if (layer % 2 == 0) 
+						layerData = mipData[min(layer + 1, mipLayerCount - 1)];
+					else layerData = mipData[layer - 1];
+				}
+				else layerData = mipData[layer];
+
 				if (!layerData)
 					continue;
 
@@ -859,7 +867,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				mipSize = max(mipSize / 2u, uint3::one);
 			}
 
-			Image::blit(targetImage, image, blitRegions);
+			Image::blit(targetImage, image, blitRegions, Sampler::Filter::Nearest);
 			if (shouldEnd)
 				stopRecording();
 			graphicsAPI->imagePool.destroy(targetImage);

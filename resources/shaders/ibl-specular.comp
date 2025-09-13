@@ -20,28 +20,25 @@ localSize = 16, 16, 1;
 uniform samplerCube
 {
 	filter = linear;
-} cubemap;
+} skybox;
 
 uniform writeonly restrict image2DArray specular : sfloatR16G16B16A16;
 
-struct CacheItem
-{
-	float4 l;
-	float4 nolMip;
-};
-
 buffer restrict readonly Cache
 {
-	CacheItem items[];
+	float4 lMip[];
 } cache;
 
 uniform pushConstants
 {
 	uint32 imageSize;
-	uint32 itemCount;
+	uint32 sampleOffset;
+	uint32 sampleCount;
+	uint32 sideOffset;
+	float weight;
 } pc;
 
-// TODO: utilize shader memory or subgroups
+shared float4 lMipShared[256];
 
 //**********************************************************************************************************************
 void main()
@@ -49,18 +46,32 @@ void main()
 	if (any(greaterThanEqual(gl.globalInvocationID.xy, uint2(pc.imageSize))))
 		return;
 
-	float3 dir = coordsToDir(gl.globalInvocationID, 1.0f / pc.imageSize);
+	uint3 globalID = gl.globalInvocationID + uint3(0, 0, pc.sideOffset);
+	float3 dir = coordsToDir(globalID, 1.0f / pc.imageSize);
 	float3x3 tbn = approximateTBN(dir);
 	// TODO: try to add blue noise random rotation. It may improve quality.
 
+	uint32 count = pc.sampleOffset + pc.sampleCount;
 	float3 li = float3(0.0f);
-	for (uint32 i = 0; i < pc.itemCount; i++)
+
+	for (uint32 i = pc.sampleOffset; i < count; i += 256)
 	{
-		CacheItem item = cache.items[i];
-		float3 l = tbn * item.l.xyz;
-		float3 c0 = textureLod(cubemap, l, item.nolMip.y).rgb;
-		li += c0 * item.nolMip.x;
+		uint32 globalIndex = i + gl.localInvocationIndex;
+		if (globalIndex < count)
+			lMipShared[gl.localInvocationIndex] = cache.lMip[globalIndex];
+		barrier();
+
+		uint32 localCount = min(count - i, 256u);
+		for (uint32 j = 0; j < localCount; j++)
+		{
+			float4 lMip = lMipShared[j];
+			float3 l = tbn * lMip.xyz;
+			float3 c0 = textureLod(skybox, l, lMip.w).rgb;
+			li += c0 * lMip.z;
+		}
+		barrier();
 	}
 
-	imageStore(specular, int3(gl.globalInvocationID), float4(li, 1.0f));
+	float4 color = float4(li * pc.weight, 1.0f);
+	imageStore(specular, int3(globalID), color);
 }

@@ -32,7 +32,7 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::Uniform | 
 		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | usage, Buffer::CpuAccess::None, data, 
 		sizeof(ToneMappingSystem::LuminanceData), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.toneMapping.luminance");
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer..toneMapping.luminance");
 	return buffer;
 }
 

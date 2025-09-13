@@ -881,7 +881,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 					case 5: writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front); break;
 					default: abort();
 				}
-			}, 6);
+			}, Image::cubemapSideCount);
 			threadPool.wait();
 		}
 		else
@@ -920,7 +920,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 				case 5: loadImageData(filePath + "-pz", front, frontSize, frontFormat, task.getThreadIndex()); break;
 				default: abort();
 			}
-		}, 6);
+		}, Image::cubemapSideCount);
 		threadPool.wait();
 	}
 	else

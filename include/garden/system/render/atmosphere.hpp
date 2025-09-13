@@ -148,10 +148,12 @@ public:
 
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
-	ID<Image> transLUT = {};
-	ID<Image> multiScatLUT = {};
-	ID<Image> cameraVolume = {};
-	ID<Image> skyViewLUT = {};
+	vector<float> iblWeightBuffer;
+	vector<uint32> iblCountBuffer;
+	vector<ID<ImageView>> specularViews;
+	vector<ID<DescriptorSet>> iblDescriptorSets;
+	ID<Image> transLUT = {}, multiScatLUT = {};
+	ID<Image> cameraVolume = {}, skyViewLUT = {};
 	ID<Framebuffer> transLutFramebuffer = {};
 	ID<Framebuffer> skyViewLutFramebuffer = {};
 	ID<GraphicsPipeline> transLutPipeline = {};
@@ -160,14 +162,15 @@ private:
 	ID<GraphicsPipeline> skyViewLutPipeline = {};
 	ID<GraphicsPipeline> hdrSkyPipeline = {};
 	ID<GraphicsPipeline> skyboxPipeline = {};
-	ID<DescriptorSet> multiScatLutDS = {};
-	ID<DescriptorSet> cameraVolumeDS = {};
-	ID<DescriptorSet> skyViewLutDS = {};
-	ID<DescriptorSet> hdrSkyDS = {};
-	ID<DescriptorSet> skyboxDS = {};
+	ID<ComputePipeline> shSkyPipeline = {};
+	ID<DescriptorSet> multiScatLutDS = {}, cameraVolumeDS = {};
+	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {};
+	ID<DescriptorSet> skyboxDS = {}, shSkyDS = {};
 	ID<ImageView> skyboxViews[Image::cubemapSideCount] = {};
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapSideCount] = {};
-	Ref<Image> lastSkybox = {};
+	Ref<Image> lastSkybox = {}, lastSpecular = {};
+	ID<Buffer> specularCache = {}, shCache = {};
+	uint32 lastSkyboxSize = 0;
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	uint8 updatePhase = 0;
