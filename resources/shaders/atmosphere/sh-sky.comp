@@ -25,10 +25,10 @@ buffer restrict writeonly ShCache
 
 void main()
 {
-	const int32 lod = max(textureQueryLevels(skybox) - 4, 0);
-	uint32 layer = remapCubemapSide(gl.globalInvocationID.z);
-	uint32 index = gl.localInvocationIndex + layer * 256;
-	const int2 skyboxSize = textureSize(skybox, lod).xy - 1;
+	uint32 index = gl.globalInvocationID.z * 256 + gl.localInvocationIndex;
+	const int2 skyboxSize = textureSize(skybox, 0).xy - 1;
 	int2 texCoords = min(int2(gl.localInvocationID.xy), skyboxSize);
-	sh.cache[index] = texelFetch(skybox, int3(texCoords, layer), lod);
+	texCoords.y = skyboxSize.y - texCoords.y;
+	uint32 layer = remapCubemapFace(gl.globalInvocationID.z);
+	sh.cache[index] = texelFetch(skybox, int3(texCoords, layer), 0);
 }

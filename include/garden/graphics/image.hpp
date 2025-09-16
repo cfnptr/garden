@@ -251,7 +251,7 @@ public:
 			compLayoutTrans(0), rtLayoutTrans(0), _unused(0) { }
 	};
 
-	static constexpr uint8 cubemapSideCount = 6; /**< Cubemap image layer count. */
+	static constexpr uint8 cubemapFaceCount = 6; /**< Cubemap image layer count. */
 
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;

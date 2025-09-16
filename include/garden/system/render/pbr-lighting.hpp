@@ -103,7 +103,7 @@ public:
 		uint32 imageSize;
 		uint32 sampleOffset;
 		uint32 sampleCount;
-		uint32 sideOffset;
+		uint32 faceOffset;
 		float weight;
 	};
 
@@ -368,10 +368,12 @@ public:
 	 * @param[in] iblWeightBuffer sample weight per mip level
 	 * @param[in] iblCountBuffer sample count per mip level
 	 * @param[in] iblDescriptorSets IBL specular descriptor set array
-	 * @param side cubemap side index to dispatch (-1 = all sides)
+	 * @param face cubemap face index to dispatch (-1 = all faces)
 	 */
 	void dispatchIblSpecular(ID<Image> skybox, ID<Image> specular, const vector<float>& iblWeightBuffer,
-		const vector<uint32>& iblCountBuffer, const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 side = -1);
+		const vector<uint32>& iblCountBuffer, const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 face = -1);
+
+	static void generateIblSH(const float4* const* skyboxFaces, vector<f32x4>& shBuffer, uint32 cubemapSize);
 
 	/**
 	 * @brief Loads cubemap rendering data from the resource pack.

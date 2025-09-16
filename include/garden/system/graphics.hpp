@@ -185,7 +185,7 @@ public:
 		currentCommonConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
 	}
 	/**
-	 * @brief Sets sky color and intensity. (Pre multiplied with 1/Pi!)
+	 * @brief Sets sky color and intensity.
 	 * @details See the @ref getCommonConstants().
 	 * @param skyColor target sky color value
 	 */
