@@ -34,7 +34,7 @@ uniform pushConstants
 	uint32 imageSize;
 	uint32 sampleOffset;
 	uint32 sampleCount;
-	uint32 sideOffset;
+	uint32 faceOffset;
 	float weight;
 } pc;
 
@@ -46,7 +46,7 @@ void main()
 	if (any(greaterThanEqual(gl.globalInvocationID.xy, uint2(pc.imageSize))))
 		return;
 
-	uint3 globalID = gl.globalInvocationID + uint3(0, 0, pc.sideOffset);
+	uint3 globalID = gl.globalInvocationID + uint3(0, 0, pc.faceOffset);
 	float3 dir = coordsToDir(globalID, 1.0f / pc.imageSize);
 	float3x3 tbn = approximateTBN(dir);
 	// TODO: try to add blue noise random rotation. It may improve quality.

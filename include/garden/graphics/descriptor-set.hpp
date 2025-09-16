@@ -46,6 +46,14 @@ public:
 	 * @brief Descriptor set buffer instances for each in-flight frame.
 	 */
 	using Buffers = vector<vector<ID<Buffer>>>;
+	/*
+	 * @brief Descriptor set image view instances for each in-flight frame.
+	 */
+	using ImageViews = vector<vector<ID<ImageView>>>;
+	/*
+	 * @brief Descriptor set TLAS instances for each in-flight frame.
+	 */
+	using Tlases = vector<vector<ID<Tlas>>>;
 
 	/**
 	 * @brief Descriptor set uniform resources container.
@@ -93,13 +101,13 @@ public:
 		 * @brief Creates a new descriptor set uniform out of image views.
 		 * @param[in] imageViews target image view array
 		 */
-		Uniform(const vector<vector<ID<ImageView>>>& imageViews) noexcept :
+		Uniform(const ImageViews& imageViews) noexcept :
 			resourceSets(*((const vector<ResourceArray>*)&imageViews)) { }
 		/**
 		 * @brief Creates a new descriptor set uniform out of image views.
 		 * @param[in] tlases target top level acceleration structure array (TLAS)
 		 */
-		Uniform(const vector<vector<ID<Tlas>>>& tlases) noexcept :
+		Uniform(const Tlases& tlases) noexcept :
 			resourceSets(*((const vector<ResourceArray>*)&tlases)) { }
 
 		/**

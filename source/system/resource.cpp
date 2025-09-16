@@ -489,7 +489,7 @@ static void loadMissingImage(vector<uint8>& data, uint2& size, Image::Format& fo
 static void loadMissingImageFloat(vector<uint8>& data, uint2& size, Image::Format& format)
 {
 	const f32x4 colorMagenta = (f32x4)Color::magenta; const f32x4 colorBlack = (f32x4)Color::black;
-	data.resize(sizeof(f32x4) * 16);
+	data.resize(sizeof(float4) * 16);
 	auto pixels = (f32x4*)data.data();
 	pixels[0] = colorMagenta; pixels[1] = colorBlack;    pixels[2] = colorMagenta;  pixels[3] = colorBlack;
 	pixels[4] = colorBlack;   pixels[5] = colorMagenta;  pixels[6] = colorBlack;    pixels[7] = colorMagenta;
@@ -697,7 +697,7 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 static void clampFloatImageData(vector<uint8>& equiData)
 {
 	auto pixelData = (f32x4*)equiData.data();
-	auto pixelCount = equiData.size() / sizeof(f32x4);
+	auto pixelCount = equiData.size() / sizeof(float4);
 
 	for (psize i = 0; i < pixelCount; i++)
 	{
@@ -748,16 +748,16 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 	auto cubemapSize = equiSize.x / 4;
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - uint2::one;
-	auto pixelsSize = sizeof(f32x4) * cubemapSize * cubemapSize;
+	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
 	left.resize(pixelsSize); right.resize(pixelsSize);
 	bottom.resize(pixelsSize); top.resize(pixelsSize);
 	back.resize(pixelsSize); front.resize(pixelsSize);
 
-	f32x4* cubePixelArray[6] =
+	f32x4* cubeFaces[Image::cubemapFaceCount] =
 	{
-		(f32x4*)right.data(), (f32x4*)left.data(),
-		(f32x4*)top.data(), (f32x4*)bottom.data(),
-		(f32x4*)front.data(), (f32x4*)back.data(),
+		(f32x4*)left.data(), (f32x4*)right.data(),
+		(f32x4*)bottom.data(), (f32x4*)top.data(),
+		(f32x4*)back.data(), (f32x4*)front.data(),
 	};
 
 	if (threadIndex < 0 && threadSystem)
@@ -775,20 +775,20 @@ static void convertCubemapImageData(ThreadSystem* threadSystem, const vector<uin
 				index %= layerSize;
 				coords.y = index / cubemapSize;
 				coords.x = index % cubemapSize;
-				auto cubePixels = cubePixelArray[coords.z];
+				auto cubePixels = cubeFaces[coords.z];
 
 				Equi2Cube::convert(coords, cubemapSize, equiSize,
 					equiSizeMinus1, equiPixels, cubePixels, invDim);
 			}
 		},
-		cubemapSize * cubemapSize * 6);
+		cubemapSize * cubemapSize * Image::cubemapFaceCount);
 		threadPool.wait();
 	}
 	else
 	{
-		for (uint32 face = 0; face < 6; face++)
+		for (uint32 face = 0; face < Image::cubemapFaceCount; face++)
 		{
-			auto cubePixels = cubePixelArray[face];
+			auto cubePixels = cubeFaces[face];
 			for (int32 y = 0; y < cubemapSize; y++)
 			{
 				for (int32 x = 0; x < cubemapSize; x++)
@@ -881,7 +881,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 					case 5: writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front); break;
 					default: abort();
 				}
-			}, Image::cubemapSideCount);
+			}, Image::cubemapFaceCount);
 			threadPool.wait();
 		}
 		else
@@ -920,7 +920,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 				case 5: loadImageData(filePath + "-pz", front, frontSize, frontFormat, task.getThreadIndex()); break;
 				default: abort();
 			}
-		}, Image::cubemapSideCount);
+		}, Image::cubemapFaceCount);
 		threadPool.wait();
 	}
 	else
@@ -950,7 +950,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
 		backSize.x != backSize.y || frontSize.x != frontSize.y)
 	{
-		GARDEN_LOG_ERROR("Invalid cubemap side size. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Invalid cubemap face size. (path: " + path.generic_string() + ")");
 		loadMissingImageFloat(left, right, bottom, top, back, front, size, format);
 		return;
 	}
@@ -1027,7 +1027,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		}
 
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(f32x4) * imageSize.x * imageSize.y);
+		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		free(pixelData);
 	}
@@ -1039,7 +1039,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		if (!pixelData)
 			throw GardenError("Invalid HDR image data.");
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(f32x4) * imageSize.x * imageSize.y);
+		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
 		memcpy(pixels.data(), pixelData, pixels.size());
 		stbi_image_free(pixelData);
 	}

@@ -860,7 +860,7 @@ static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format 
 		format = imageView->getFormat();
 	if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
 	{
-		switch (baseLayer) // Note: remapping Vulkan API cubemap side indices.
+		switch (baseLayer) // Note: remapping Vulkan API cubemap face indices.
 		{
 		case 0: baseLayer = 1; break;
 		case 1: baseLayer = 0; break;

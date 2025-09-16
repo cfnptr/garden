@@ -152,8 +152,10 @@ private:
 	vector<uint32> iblCountBuffer;
 	vector<ID<ImageView>> specularViews;
 	vector<ID<DescriptorSet>> iblDescriptorSets;
+	DescriptorSet::Buffers shCaches, shStagings;
 	ID<Image> transLUT = {}, multiScatLUT = {};
 	ID<Image> cameraVolume = {}, skyViewLUT = {};
+	ID<Buffer> specularCache = {};
 	ID<Framebuffer> transLutFramebuffer = {};
 	ID<Framebuffer> skyViewLutFramebuffer = {};
 	ID<GraphicsPipeline> transLutPipeline = {};
@@ -166,11 +168,12 @@ private:
 	ID<DescriptorSet> multiScatLutDS = {}, cameraVolumeDS = {};
 	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {};
 	ID<DescriptorSet> skyboxDS = {}, shSkyDS = {};
-	ID<ImageView> skyboxViews[Image::cubemapSideCount] = {};
-	ID<Framebuffer> skyboxFramebuffers[Image::cubemapSideCount] = {};
+	ID<ImageView> skyboxViews[Image::cubemapFaceCount] = {};
+	ID<Framebuffer> skyboxFramebuffers[Image::cubemapFaceCount] = {};
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
-	ID<Buffer> specularCache = {}, shCache = {};
-	uint32 lastSkyboxSize = 0;
+	ID<ImageView> lastSkyboxShView = {};
+	float3 sunDir = float3::top;
+	uint32 lastSkyboxSize = 0, shInFlightIndex = 0;
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	uint8 updatePhase = 0;
@@ -191,6 +194,7 @@ private:
 	void hdrRender();
 	void gBufferRecreate();
 	void qualityChange();
+	void updateSkybox();
 
 	friend class ecsm::Manager;
 public:

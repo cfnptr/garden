@@ -869,7 +869,7 @@ void PbrLightingSystem::hdrRender()
 		auto mipCount = calcMipCount(cubemapSize);
 		Image::Mips mips(mipCount);
 		for (uint8 i = 0; i < mipCount; i++)
-			mips[i] = Image::Layers(Image::cubemapSideCount);
+			mips[i] = Image::Layers(Image::cubemapFaceCount);
 
 		pbrLightingView->skybox = Ref<Image>(graphicsSystem->createCubemap(
 			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | Image::Usage::ColorAttachment | 
@@ -880,7 +880,7 @@ void PbrLightingSystem::hdrRender()
 	if (!pbrLightingView->sh)
 	{
 		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
-			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffCount * sizeof(f32x4), 
+			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffCount * sizeof(float4), 
 			Buffer::Location::PreferGPU, Buffer::Strategy::Size));
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.uniform.sh" + to_string(*pbrLightingView->sh));
 	}
@@ -890,7 +890,7 @@ void PbrLightingSystem::hdrRender()
 		auto specularMipCount = calcSpecularMipCount(cubemapSize);
 		Image::Mips mips(specularMipCount);
 		for (uint8 i = 0; i < specularMipCount; i++)
-			mips[i] = Image::Layers(Image::cubemapSideCount);
+			mips[i] = Image::Layers(Image::cubemapFaceCount);
 
 		pbrLightingView->specular = Ref<Image>(graphicsSystem->createCubemap(
 			Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  Image::Usage::Storage | 
@@ -1326,14 +1326,14 @@ ID<ImageView> PbrLightingSystem::getReflBufferView()
 }
 
 //**********************************************************************************************************************
-static void calcIblSH(f32x4* shBufferData, const f32x4** faces, uint32 cubemapSize, 
-	uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
+static void calcIblSH(f32x4* shBufferData, const float4* const* faces, 
+	uint32 cubemapSize, uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
 {
 	auto sh = shBufferData + taskIndex * shCoeffCount;
 	auto invDim = 1.0f / cubemapSize;
 	float shb[shCoeffCount];
 
-	for (uint32 face = 0; face < 6; face++)
+	for (uint32 face = 0; face < Image::cubemapFaceCount; face++)
 	{
 		auto pixels = faces[face];
 		for (uint32 i = itemOffset; i < itemCount; i++)
@@ -1346,68 +1346,10 @@ static void calcIblSH(f32x4* shBufferData, const f32x4** faces, uint32 cubemapSi
 			computeShBasis(dir, shb);
 
 			for (uint32 j = 0; j < shCoeffCount; j++)
-				sh[j] += color * shb[j];
+				sh[j] += f32x4(color) * shb[j];
 		}
 	}
 }
-
-//**********************************************************************************************************************
-static ID<Buffer> generateIblSH(ThreadSystem* threadSystem, GraphicsSystem* graphicsSystem, 
-	const vector<const void*>& _pixels, vector<f32x4>& shBuffer, uint32 cubemapSize, Buffer::Strategy strategy)
-{
-	auto faces = (const f32x4**)_pixels.data();
-	uint32 bufferCount;
-
-	if (threadSystem)
-	{
-		auto& threadPool = threadSystem->getForegroundPool();
-		bufferCount = threadPool.getThreadCount();
-		shBuffer.resize(bufferCount * shCoeffCount);
-		auto shBufferData = shBuffer.data();
-
-		threadPool.addItems([shBufferData, faces, cubemapSize](const ThreadPool::Task& task)
-		{
-			SET_CPU_ZONE_SCOPED("IBL SH Generate");
-
-			calcIblSH(shBufferData, faces, cubemapSize, task.getTaskIndex(),
-				task.getItemOffset(), task.getItemCount());
-		},
-		cubemapSize * cubemapSize);
-		threadPool.wait();
-	}
-	else
-	{
-		SET_CPU_ZONE_SCOPED("IBL SH Generate");
-
-		bufferCount = 1;
-		shBuffer.resize(shCoeffCount);
-		calcIblSH(shBuffer.data(), faces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
-	}
-
-	auto shBufferData = shBuffer.data();
-	if (bufferCount > 1)
-	{
-		for (uint32 i = 1; i < bufferCount; i++)
-		{
-			auto data = shBufferData + i * shCoeffCount;
-			for (uint32 j = 0; j < shCoeffCount; j++)
-				shBufferData[j] += data[j];
-		}
-		shBuffer.resize(shCoeffCount);
-	}
-
-	for (uint32 i = 0; i < shCoeffCount; i++)
-		shBufferData[i] *= ki[i];
-	
-	deringingSH(shBufferData);
-	shaderPreprocessSH(shBufferData);
-
-	return graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
-		Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shBufferData, 
-		shCoeffCount * sizeof(f32x4), Buffer::Location::PreferGPU, strategy);
-}
-
-//**********************************************************************************************************************
 static void calcIblSpecular(SpecularData* specularMap, float* weightBufferData, uint32* countBufferData, 
 	uint32 cubemapSize, uint32 sampleCount, uint8 skyboxMipCount, uint8 specularMipCount, uint32 taskIndex)
 {
@@ -1557,7 +1499,7 @@ void PbrLightingSystem::createIblSpecularViews(ID<Image> specular, vector<ID<Ima
 	for (uint8 i = 0; i < count; i++)
 	{
 		auto specularView = graphicsSystem->createImageView(specular,
-			Image::Type::Texture2DArray, specularFormat, i + 1, 1, 0, Image::cubemapSideCount);
+			Image::Type::Texture2DArray, specularFormat, i + 1, 1, 0, Image::cubemapFaceCount);
 		SET_RESOURCE_DEBUG_NAME(specularView, "imageView.pbrLighting.specular" + 
 			to_string(*specularView) + "_" + to_string(i));
 		specularViews[i] = specularView;
@@ -1593,7 +1535,7 @@ void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> spe
 }
 void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular,
 	const vector<float>& iblWeightBuffer, const vector<uint32>& iblCountBuffer, 
-	const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 side)
+	const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 face)
 {
 	GARDEN_ASSERT(skybox);
 	GARDEN_ASSERT(specular);
@@ -1602,24 +1544,24 @@ void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular
 	GARDEN_ASSERT(!iblDescriptorSets.empty());
 	GARDEN_ASSERT(iblWeightBuffer.size() == iblCountBuffer.size());
 	GARDEN_ASSERT(iblWeightBuffer.size() == iblDescriptorSets.size());
-	GARDEN_ASSERT(side < Image::cubemapSideCount);
+	GARDEN_ASSERT(face < Image::cubemapFaceCount);
 
 	Image::CopyImageRegion imageCopyRegion;
-	imageCopyRegion.layerCount = Image::cubemapSideCount;
+	imageCopyRegion.layerCount = Image::cubemapFaceCount;
 	Image::copy(ID<Image>(skybox), ID<Image>(specular), imageCopyRegion);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto skyboxView = graphicsSystem->get(skybox);
 	auto cubemapSize = skyboxView->getSize().getX() / 2;
 	auto pipelineView = graphicsSystem->get(iblSpecularPipeline);
-	auto sideCount = side < 0 ? Image::cubemapSideCount : 1;
+	auto faceCount = face < 0 ? Image::cubemapFaceCount : 1;
 
 	SET_GPU_DEBUG_LABEL("Generate IBL Specular");
 	pipelineView->bind();
 	
 	PbrLightingSystem::SpecularPC pc;
 	pc.sampleOffset = 0;
-	pc.sideOffset = max(side, (int8)0);
+	pc.faceOffset = max(face, (int8)0);
 
 	for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
 	{
@@ -1631,9 +1573,60 @@ void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular
 		pipelineView->pushConstants(&pc);
 
 		// TODO: Maybe there are faster approaches for IBL specular evaluation. Check Unreal's approach.
-		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, sideCount));
+		pipelineView->dispatch(uint3(cubemapSize, cubemapSize, faceCount));
 		pc.sampleOffset += pc.sampleCount; cubemapSize /= 2;
 	}
+}
+
+//**********************************************************************************************************************
+void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, vector<f32x4>& shBuffer, uint32 cubemapSize)
+{
+	GARDEN_ASSERT(skyboxFaces);
+	GARDEN_ASSERT(cubemapSize > 0);
+
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	uint32 bufferCount;
+
+	if (threadSystem)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		bufferCount = threadPool.getThreadCount();
+		shBuffer.resize(bufferCount * shCoeffCount);
+		auto shBufferData = shBuffer.data();
+
+		threadPool.addItems([shBufferData, skyboxFaces, cubemapSize](const ThreadPool::Task& task)
+		{
+			SET_CPU_ZONE_SCOPED("IBL SH Generate");
+			calcIblSH(shBufferData, skyboxFaces, cubemapSize, 
+				task.getTaskIndex(), task.getItemOffset(), task.getItemCount());
+		},
+		cubemapSize * cubemapSize);
+		threadPool.wait();
+	}
+	else
+	{
+		SET_CPU_ZONE_SCOPED("IBL SH Generate");
+		bufferCount = 1; shBuffer.resize(shCoeffCount);
+		calcIblSH(shBuffer.data(), skyboxFaces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
+	}
+
+	auto shBufferData = shBuffer.data();
+	if (bufferCount > 1)
+	{
+		for (uint32 i = 1; i < bufferCount; i++)
+		{
+			auto data = shBufferData + i * shCoeffCount;
+			for (uint32 j = 0; j < shCoeffCount; j++)
+				shBufferData[j] += data[j];
+		}
+		shBuffer.resize(shCoeffCount);
+	}
+
+	for (uint32 i = 0; i < shCoeffCount; i++)
+		shBufferData[i] *= ki[i];
+	
+	deringingSH(shBufferData);
+	shaderPreprocessSH(shBufferData);
 }
 
 //**********************************************************************************************************************
@@ -1652,7 +1645,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 	mips[0] = { left.data(), right.data(), bottom.data(), top.data(), back.data(), front.data() };
 
 	for (uint8 i = 1; i < mipCount; i++)
-		mips[i] = Image::Layers(Image::cubemapSideCount);
+		mips[i] = Image::Layers(Image::cubemapFaceCount);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
@@ -1661,9 +1654,11 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 
 		vector<f32x4> localSH;
 		if (!shBuffer) shBuffer = &localSH;
+		generateIblSH((const float4* const*)mips[0].data(), *shBuffer, cubemapSize);
 
-		auto threadSystem = ThreadSystem::Instance::tryGet();
-		sh = Ref<Buffer>(generateIblSH(threadSystem, graphicsSystem,  mips[0], *shBuffer, cubemapSize, strategy));
+		sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
+			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shBuffer->data(), 
+			shCoeffCount * sizeof(float4), Buffer::Location::PreferGPU, strategy));
 		SET_RESOURCE_DEBUG_NAME(sh, "buffer.uniform.sh." + path.generic_string());
 
 		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;
@@ -1680,7 +1675,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 		auto specularMipCount = calcSpecularMipCount(cubemapSize);
 		mips.resize(specularMipCount);
 		for (uint8 i = 0; i < specularMipCount; i++)
-			mips[i] = Image::Layers(Image::cubemapSideCount);
+			mips[i] = Image::Layers(Image::cubemapFaceCount);
 
 		specular = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled |  
 			Image::Usage::Storage | Image::Usage::TransferDst, mips, uint2(cubemapSize), strategy));

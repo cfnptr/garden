@@ -138,7 +138,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 
 	equiSize = uint2((uint32)sizeX, (uint32)sizeY);
-	equiData.resize(sizeof(f32x4) * equiSize.x * equiSize.y);
+	equiData.resize(sizeof(float4) * equiSize.x * equiSize.y);
 	memcpy(equiData.data(), pixels, equiData.size());
 	free(pixels);
 
@@ -149,21 +149,21 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1u;
 	auto equiPixels = (f32x4*)equiData.data();
-	auto pixelsSize = sizeof(f32x4) * cubemapSize * cubemapSize;
+	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
 
 	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
 		top(pixelsSize), back(pixelsSize), front(pixelsSize);
 
-	f32x4* cubePixelArray[6] =
+	f32x4* cubeFaces[6] =
 	{
-		(f32x4*)right.data(), (f32x4*)left.data(),
-		(f32x4*)top.data(), (f32x4*)bottom.data(),
-		(f32x4*)front.data(), (f32x4*)back.data(),
+		(f32x4*)left.data(), (f32x4*)right.data(),
+		(f32x4*)bottom.data(), (f32x4*)top.data(),
+		(f32x4*)back.data(), (f32x4*)front.data(),
 	};
 
 	for (uint32 face = 0; face < 6; face++)
 	{
-		auto cubePixels = cubePixelArray[face];
+		auto cubePixels = cubeFaces[face];
 		for (uint32 y = 0; y < cubemapSize; y++)
 		{
 			for (uint32 x = 0; x < cubemapSize; x++)

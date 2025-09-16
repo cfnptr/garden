@@ -43,12 +43,16 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 	endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		add_compile_options(-fstandalone-debug)
 	endif()
 	if(GARDEN_USE_ASAN)
 		add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
 		add_link_options(-fsanitize=address)
+	endif()
+	if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+		# This warning is emmited due to Brew iclude directories.
+		add_compile_options(-Wno-poison-system-directories) 
 	endif()
 endif()

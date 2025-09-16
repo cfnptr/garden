@@ -730,7 +730,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	{
 		GARDEN_ASSERT(size.x == size.y);
 		GARDEN_ASSERT(size.z == 1);
-		GARDEN_ASSERT(layerCount == Image::cubemapSideCount);
+		GARDEN_ASSERT(layerCount == Image::cubemapFaceCount);
 	}
 	else abort();
 	#endif

@@ -15,10 +15,10 @@
 #ifndef CUBEMAP_GSL
 #define CUBEMAP_GSL
 
-// Remaps Vulkan API cubemap side indices.
-uint32 remapCubemapSide(uint32 side)
+// Remaps Vulkan API cubemap face indices.
+uint32 remapCubemapFace(uint32 face)
 {
-	switch (side)
+	switch (face)
 	{
 		case 0: return 1;
 		case 1: return 0;

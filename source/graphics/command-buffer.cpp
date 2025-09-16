@@ -193,14 +193,14 @@ void CommandBuffer::addCommand(const BufferBarrierCommand& command)
 void CommandBuffer::addCommand(const BeginRenderPassCommand& command)
 {
 	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)(sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(f32x4));
+	auto commandSize = (uint32)(sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(float4));
 	auto allocation = allocateCommand(commandSize);
 	memcpy((uint8*)allocation, &command, sizeof(BeginRenderPassCommandBase));
 
 	if (command.clearColorCount > 0)
 	{
 		memcpy((uint8*)allocation + sizeof(BeginRenderPassCommandBase),
-			command.clearColors, command.clearColorCount * sizeof(f32x4));
+			command.clearColors, command.clearColorCount * sizeof(float4));
 	}
 
 	allocation->thisSize = commandSize;
