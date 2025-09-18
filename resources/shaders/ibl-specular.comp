@@ -51,14 +51,15 @@ void main()
 	float3x3 tbn = approximateTBN(dir);
 	// TODO: try to add blue noise random rotation. It may improve quality.
 
+	uint32 localIndex = gl.localInvocationIndex;
 	uint32 count = pc.sampleOffset + pc.sampleCount;
 	float3 li = float3(0.0f);
 
 	for (uint32 i = pc.sampleOffset; i < count; i += 256)
 	{
-		uint32 globalIndex = i + gl.localInvocationIndex;
+		uint32 globalIndex = i + localIndex;
 		if (globalIndex < count)
-			lMipShared[gl.localInvocationIndex] = cache.lMip[globalIndex];
+			lMipShared[localIndex] = cache.lMip[globalIndex];
 		barrier();
 
 		uint32 localCount = min(count - i, 256u);

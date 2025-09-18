@@ -85,6 +85,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::DragFloat("Angular Size", (float*)&atmosphereSystem->sunAngularSize, 0.01f, 0.0f, 360.0f, "%.3f°");
 			ImGui::ColorEdit3("Color", (float*)&atmosphereSystem->sunColor);
 			ImGui::DragFloat("Luminance", (float*)&atmosphereSystem->sunColor.w, 100.0f, 0.0f, FLT_MAX);
+			ImGui::DragFloat("GI Factor", (float*)&atmosphereSystem->giFactor, 0.1f, 0.0f, FLT_MAX);
 			ImGui::PopID(); ImGui::Spacing();
 		}
 		if (ImGui::CollapsingHeader("Rayleigh"))

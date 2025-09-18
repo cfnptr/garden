@@ -206,8 +206,8 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 }
 
 //**********************************************************************************************************************
-Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint64 version) : 
-	Memory(toBinarySize(format) * size.x * size.y, CpuAccess::None, Location::Auto, strategy, version), barrierStates(1)
+Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend) : 
+	Memory(toBinarySize(format) * size.x * size.y, CpuAccess::None, Location::Auto, strategy, 0), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 
@@ -217,6 +217,10 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 	this->usage = usage;
 	this->swapchain = true;
 	this->size = u32x4(size.x, size.y, 1, 1);
+
+	if ((GraphicsBackend)backend == GraphicsBackend::VulkanAPI) // Note: do not remove.
+		barrierStates[0].stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	else abort();
 }
 bool Image::destroy()
 {

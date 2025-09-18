@@ -269,7 +269,7 @@ private:
 	Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version);
 	Image(Usage usage, Strategy strategy, uint64 version) noexcept :
 		Memory(0, CpuAccess::None, Location::Auto, strategy, version), usage(usage) { }
-	Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint64 version);
+	Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend);
 	bool destroy() final;
 
 	friend class ImageExt;

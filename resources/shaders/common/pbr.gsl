@@ -89,7 +89,7 @@ IblTerms evaluateIBL(const GBufferValues gBuffer, sampler2D dfgLUT, const float4
 	irradiance = mix(gBuffer.giColor, irradiance, shadow.a);
 	#endif
 	float3 diffuseColor = computeDiffuseColor(gBuffer.baseColor, gBuffer.metallic);
-	terms.fd = diffuseColor * (1.0f - terms.e) * irradiance * shadow.rgb;
+	terms.fd = diffuseColor * (1.0f - terms.e) * irradiance * shadow.rgb * lambert();
 	#endif
 
 	#if defined(USE_SUBSURFACE_SCATTERING) && !defined(USE_SPECULAR_ONLY)
