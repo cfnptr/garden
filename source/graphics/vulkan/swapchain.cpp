@@ -177,8 +177,8 @@ static vector<ID<Image>> createVkSwapchainImages(VulkanAPI* vulkanAPI,
 	
 	for (uint32 i = 0; i < (uint32)images.size(); i++)
 	{
-		auto image = vulkanAPI->imagePool.create((VkImage)vkImages[i], imageFormat,
-			Image::Usage::TransferDst, Image::Strategy::Default, framebufferSize, 0);
+		auto image = vulkanAPI->imagePool.create((VkImage)vkImages[i], imageFormat, Image::Usage::TransferDst, 
+			Image::Strategy::Default, framebufferSize, (uint8)GraphicsBackend::VulkanAPI);
 		images[i] = image;
 
 		#if GARDEN_DEBUG || GARDEN_DEBUG

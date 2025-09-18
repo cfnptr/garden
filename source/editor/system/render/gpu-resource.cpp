@@ -1177,8 +1177,8 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 	ImGui::SeparatorText(computePipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(computePipeline));
-	ImGui::TextWrapped("Local size: %lux%lux%lu", (unsigned long)localSize.getX(), 
-		(unsigned long)localSize.getY(), (unsigned long)localSize.getZ());
+	ImGui::TextWrapped("Local size: %lux%lux%lu", (unsigned long)localSize.x, 
+		(unsigned long)localSize.y, (unsigned long)localSize.z);
 	auto instance = ID<Pipeline>(graphicsAPI->computePipelinePool.getID(&computePipeline));
 	renderPipelineDetails(computePipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();

@@ -45,7 +45,7 @@ float3 schlick(float voh, float3 f0, float f90)
 {
 	return f0 + (f90 - f0) * pow(1.0f - voh, 5.0f);
 }
-float lambert() { return 1.0f / M_PI; }
+float lambert() { return M_1_PI; } // 1.0 / Pi
 
 //**********************************************************************************************************************
 float2 hammersley(uint32 index, float invSampleCount)

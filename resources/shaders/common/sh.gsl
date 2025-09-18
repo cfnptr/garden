@@ -1,0 +1,81 @@
+// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Spherical Harmonics
+
+#ifndef SH_GSL
+#define SH_GSL
+
+#include "common/ibl.gsl"
+#include "common/math.gsl"
+
+int32 shIndex(int32 m, int32 l)
+{
+	return l * (l + 1) + m;
+}
+float sphereQuadrantArea(float x, float y)
+{
+	return atan2(x * y, length(float3(x, y, 1.0f)));
+}
+float calcSolidAngle(float2 st, float invDim)
+{
+	float2 v0 = st - invDim; float2 v1 = st + invDim;
+	return sphereQuadrantArea(v0.x, v0.y) - sphereQuadrantArea(v0.x, v1.y) -
+		sphereQuadrantArea(v1.x, v0.y) + sphereQuadrantArea(v1.x, v1.y);
+}
+
+void computeShBasis(float3 s, out float shb[SH_COEFF_COUNT])
+{
+	float pml2 = 0.0f; float pml1 = 1.0f;
+	shb[0] = pml1;
+
+	for (int32 l = 1; l < SH_BAND_COUNT; l++)
+	{
+		float pml = ((2 * l - 1) * pml1 * s.z - (l - 1) * pml2) / l;
+		pml2 = pml1; pml1 = pml;
+		shb[shIndex(0, l)] = pml;
+	}
+
+	float pmm = 1.0f;
+	for (int32 m = 1; m < SH_BAND_COUNT; m++)
+	{
+		pmm = (1 - 2 * m) * pmm;
+		pml2 = pmm; pml1 = (2 * m + 1) * pmm * s.z;
+
+		shb[shIndex(-m, m)] = pml2;
+		shb[shIndex( m, m)] = pml2;
+
+		if (m + 1 < SH_BAND_COUNT)
+		{
+			shb[shIndex(-m, m + 1)] = pml1;
+			shb[shIndex( m, m + 1)] = pml1;
+		}
+	}
+
+	float cm = s.x; float sm = s.y;
+	for (int32 m = 1; m <= SH_BAND_COUNT; m++)
+	{
+		for (int32 l = m; l < SH_BAND_COUNT; l++)
+		{
+			shb[shIndex(-m, l)] *= sm;
+			shb[shIndex( m, l)] *= cm;
+		}
+
+		float cm1 = cm * s.x - sm * s.y;
+		float sm1 = sm * s.x + cm * s.y;
+		cm = cm1; sm = sm1;
+	}
+}
+
+#endif // SH_GSL

@@ -879,9 +879,9 @@ void PbrLightingSystem::hdrRender()
 	}
 	if (!pbrLightingView->sh)
 	{
-		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
-			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffCount * sizeof(float4), 
-			Buffer::Location::PreferGPU, Buffer::Strategy::Size));
+		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(
+			Buffer::Usage::Uniform | Buffer::Usage::TransferDst, Buffer::CpuAccess::None, 
+			shBinarySize, Buffer::Location::PreferGPU, Buffer::Strategy::Size));
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.uniform.sh" + to_string(*pbrLightingView->sh));
 	}
 	if (!pbrLightingView->specular)
@@ -1579,10 +1579,19 @@ void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular
 }
 
 //**********************************************************************************************************************
-void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, vector<f32x4>& shBuffer, uint32 cubemapSize)
+void PbrLightingSystem::processIblSH(f32x4* shBuffer) noexcept
+{
+	GARDEN_ASSERT(shBuffer);
+	applyShKi(shBuffer);
+	deringSH(shBuffer);
+	shaderPreprocessSH(shBuffer);
+}
+
+//**********************************************************************************************************************
+void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, uint32 skyboxSize, vector<f32x4>& shBuffer)
 {
 	GARDEN_ASSERT(skyboxFaces);
-	GARDEN_ASSERT(cubemapSize > 0);
+	GARDEN_ASSERT(skyboxSize > 0);
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	uint32 bufferCount;
@@ -1594,20 +1603,20 @@ void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, vector<f
 		shBuffer.resize(bufferCount * shCoeffCount);
 		auto shBufferData = shBuffer.data();
 
-		threadPool.addItems([shBufferData, skyboxFaces, cubemapSize](const ThreadPool::Task& task)
+		threadPool.addItems([shBufferData, skyboxFaces, skyboxSize](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL SH Generate");
-			calcIblSH(shBufferData, skyboxFaces, cubemapSize, 
+			calcIblSH(shBufferData, skyboxFaces, skyboxSize, 
 				task.getTaskIndex(), task.getItemOffset(), task.getItemCount());
 		},
-		cubemapSize * cubemapSize);
+		skyboxSize * skyboxSize);
 		threadPool.wait();
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("IBL SH Generate");
 		bufferCount = 1; shBuffer.resize(shCoeffCount);
-		calcIblSH(shBuffer.data(), skyboxFaces, cubemapSize, 0, 0, cubemapSize * cubemapSize);
+		calcIblSH(shBuffer.data(), skyboxFaces, skyboxSize, 0, 0, skyboxSize * skyboxSize);
 	}
 
 	auto shBufferData = shBuffer.data();
@@ -1622,11 +1631,7 @@ void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, vector<f
 		shBuffer.resize(shCoeffCount);
 	}
 
-	for (uint32 i = 0; i < shCoeffCount; i++)
-		shBufferData[i] *= ki[i];
-	
-	deringingSH(shBufferData);
-	shaderPreprocessSH(shBufferData);
+	processIblSH(shBufferData);
 }
 
 //**********************************************************************************************************************
@@ -1654,11 +1659,11 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 
 		vector<f32x4> localSH;
 		if (!shBuffer) shBuffer = &localSH;
-		generateIblSH((const float4* const*)mips[0].data(), *shBuffer, cubemapSize);
+		generateIblSH((const float4* const*)mips[0].data(), cubemapSize, *shBuffer);
 
 		sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
 			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shBuffer->data(), 
-			shCoeffCount * sizeof(float4), Buffer::Location::PreferGPU, strategy));
+			shBinarySize, Buffer::Location::PreferGPU, strategy));
 		SET_RESOURCE_DEBUG_NAME(sh, "buffer.uniform.sh." + path.generic_string());
 
 		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;

@@ -373,7 +373,19 @@ public:
 	void dispatchIblSpecular(ID<Image> skybox, ID<Image> specular, const vector<float>& iblWeightBuffer,
 		const vector<uint32>& iblCountBuffer, const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 face = -1);
 
-	static void generateIblSH(const float4* const* skyboxFaces, vector<f32x4>& shBuffer, uint32 cubemapSize);
+	/**
+	 * @brief Process IBL spherical harmonics global illumination. (Image Based Lighting)
+	 * @param[in,out] shBuffer spherical harmonics coefficients buffer (SH)
+	 */
+	static void processIblSH(f32x4* shBuffer) noexcept;
+	/**
+	 * @brief Generates IBL spherical harmonics global illumination. (Image Based Lighting)
+	 * 
+	 * @param[in] skyboxFaces skybox face array
+	 * @param skyboxSize skybox face size along one axis in pixels
+	 * @param[out] shBuffer spherical harmonics coefficients buffer (SH)
+	 */
+	static void generateIblSH(const float4* const* skyboxFaces, uint32 skyboxSize, vector<f32x4>& shBuffer);
 
 	/**
 	 * @brief Loads cubemap rendering data from the resource pack.

@@ -117,6 +117,10 @@ public:
 		float3 sunColor;
 		float sunSize;
 	};
+	struct ShReducePC final
+	{
+		uint32 offset;
+	};
 
 	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.033100f);
 	static constexpr float earthRayleightScaleHeight = 8.0f;
@@ -164,10 +168,11 @@ private:
 	ID<GraphicsPipeline> skyViewLutPipeline = {};
 	ID<GraphicsPipeline> hdrSkyPipeline = {};
 	ID<GraphicsPipeline> skyboxPipeline = {};
-	ID<ComputePipeline> shSkyPipeline = {};
+	ID<ComputePipeline> shGeneratePipeline = {};
+	ID<ComputePipeline> shReducePipeline = {};
 	ID<DescriptorSet> multiScatLutDS = {}, cameraVolumeDS = {};
-	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {};
-	ID<DescriptorSet> skyboxDS = {}, shSkyDS = {};
+	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {}, skyboxDS = {};
+	ID<DescriptorSet> shGenerateDS = {}, shReduceDS = {};
 	ID<ImageView> skyboxViews[Image::cubemapFaceCount] = {};
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapFaceCount] = {};
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
@@ -214,6 +219,7 @@ public:
 	float atmosphereHeight = earthAtmosphereHeight; /**< (km) */
 	float4 sunColor = float4(float3(1.0f), 64000.0f);
 	float sunAngularSize = earthSunAngularSize; /**< (degrees) */
+	float giFactor = 0.5f;
 	float multiScatFactor = 1.0f;
 
 	/**

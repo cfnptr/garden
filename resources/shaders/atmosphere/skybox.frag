@@ -74,13 +74,11 @@ float2 skyViewToUv(bool intersectGround, float viewZenithCosAngle, float lightVi
 
 float3 getSunLuminance(float3 worldDir)
 {
-	float sunDisk = dot(worldDir, pc.sunDir);
-	if (sunDisk < pc.sunSize)
-		return float3(0.0f);
+	// Note: No early exit to smooth the sun disk.
 	if (intersectSphere(pc.cameraPos, worldDir, float3(0.0f), pc.bottomRadius) >= 0.0f)
 		return float3(0.0f);
 	float3 transmittance = getTransmittance(transLUT, pc.cameraPos, worldDir, pc.bottomRadius, pc.topRadius);
-	sunDisk = clamp(((sunDisk - pc.sunSize) * 2.0f) / (1.0f - pc.sunSize), 0.0f, 1.0f);
+	float sunDisk = clamp(((dot(worldDir, pc.sunDir) - pc.sunSize) * 2.0f) / (1.0f - pc.sunSize), 0.0f, 1.0f);
 	return transmittance * pc.sunColor * sunDisk;
 }
 

@@ -82,7 +82,7 @@ public:
 	 * @brief Returns shader local work group size.
 	 * @details It is also available in the shader: gl.workGroupSize
 	 */
-	u32x4 getLocalSize() const noexcept { return (u32x4)localSize; }
+	uint3 getLocalSize() const noexcept { return localSize; }
 
 	//******************************************************************************************************************
 	// Render commands
