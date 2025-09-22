@@ -38,12 +38,11 @@ private:
 	fs::path fontPath;
 	vector<ID<Buffer>> vertexBuffers;
 	vector<ID<Buffer>> indexBuffers;
+	tsl::robin_map<ID<ImageView>, ID<DescriptorSet>> dsCache;
 	float2 lastValidMousePos = float2::zero;
 	ID<GraphicsPipeline> pipeline = {};
 	ID<Sampler> linearSampler = {};
 	ID<Sampler> nearestSampler = {};
-	ID<Image> fontTexture = {};
-	ID<DescriptorSet> fontDescriptorSet = {};
 	bool isInitialized = false;
 	bool isRendered = true;
 
@@ -64,6 +63,7 @@ private:
 	void postDeinit();
 	void input();
 	void update();
+	void postLdrToUI();
 	void uiRender();
 
 	friend class ecsm::Manager;

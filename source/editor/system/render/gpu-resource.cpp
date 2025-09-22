@@ -82,7 +82,7 @@ static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem,
 
 	ImGui::TextWrapped("%lu/%lu (count/occupancy)", (unsigned long)count, (unsigned long)occupancy);
 	ImGui::BeginChild("##itemList", ImVec2(256.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)),
-		ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
+		ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 	
 	for (uint32 i = 0; i < occupancy; i++)
