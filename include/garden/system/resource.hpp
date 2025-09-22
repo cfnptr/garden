@@ -56,9 +56,11 @@ enum class ImageLoadFlags : uint8
 	LoadSync    = 0x01, /**< Load image synchronously. (Blocking call) */
 	LoadShared  = 0x02, /**< Load and share instance on second load call. */
 	LoadArray   = 0x04, /**< Load as image array. (Slice to layers) */
-	ArrayType   = 0x08, /**< Load with array image type. (Texture2DArray) */
-	CubemapType = 0x10, /**< Load with cubemap image type. (Cubemap) */
-	LinearData  = 0x20  /**< Load image data in linear color space. */
+	Load3D      = 0x08, /**< Load as 3D image. (Slice to layers) */
+	TypeArray   = 0x10, /**< Load with array image type. (Texture2DArray) */
+	Type3D      = 0x20, /**< Load with 3D image type. (Texture3D) */
+	TypeCubemap = 0x40, /**< Load with cubemap image type. (Cubemap) */
+	LinearData  = 0x80  /**< Load image data as linear color space. */
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)

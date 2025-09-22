@@ -24,7 +24,7 @@ static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gBuffer = deferredSystem->getGBuffers()[0]; // Note: Reusing G-Buffer memory.
-	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); 
+	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView();
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
@@ -54,7 +54,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) },
+		{ "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) }
 	};
 	return uniforms;
 }

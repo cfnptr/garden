@@ -81,11 +81,11 @@ void main()
 {
 	float viewHeight; float viewZenithCosAngle; // Compute camera position from the LUT coords.
 	uvToTransmittanceRMU(fs.texCoords, viewHeight, viewZenithCosAngle);
-	float3 worldPos = float3(0.0f, viewHeight, 0.0f);
-	float3 worldDir = float3(0.0f, viewZenithCosAngle, sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle));
+	float3 worldDir = normalize(float3(0.0f, viewZenithCosAngle, 
+		sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle)));
 
 	AtmosphereParams atmosphere = getAtmosphereParams();
-	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords, worldPos, 
-		worldDir, pc.sunDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX).opticalDepth);
+	float3 transmittance = exp(-integrateScatteredLuminance(fs.texCoords, Ray(float3(0.0f, viewHeight, 
+		0.0f), worldDir), pc.sunDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX).opticalDepth);
 	fb.trans = float4(transmittance, 1.0f);
 }

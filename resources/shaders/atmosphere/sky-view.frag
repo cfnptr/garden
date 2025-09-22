@@ -119,15 +119,15 @@ void main()
 	float3 sunDir = normalize(float3(sqrt(1.0f - sunZenithCosAngle * sunZenithCosAngle), sunZenithCosAngle, 0.0f));
 	float3 worldPos = float3(0.0f, viewHeight, 0.0f);
 	float viewZenithSinAngle = sqrt(1.0f - viewZenithCosAngle * viewZenithCosAngle);
-	float3 worldDir = float3(viewZenithSinAngle * lightViewCosAngle, viewZenithCosAngle,
-		viewZenithSinAngle * sqrt(1.0f - lightViewCosAngle * lightViewCosAngle));
+	float3 worldDir = normalize(float3(viewZenithSinAngle * lightViewCosAngle, viewZenithCosAngle,
+		viewZenithSinAngle * sqrt(1.0f - lightViewCosAngle * lightViewCosAngle)));
 	if (!moveToTopAtmosphere(worldPos, worldDir, atmosphere.topRadius))
 	{
 		fb.color = float4(float3(0.0f), 1.0f); 
 		return; // Ray is not intersecting the atmosphere.
 	}
 
-	ScatteringResult result = integrateScatteredLuminance(fs.texCoords, worldPos, worldDir, 
-		sunDir, atmosphere, 0.0f, DEFAULT_T_MAX_MAX, transLUT, multiScatLUT);
+	ScatteringResult result = integrateScatteredLuminance(fs.texCoords, Ray(worldPos, 
+		worldDir), sunDir, atmosphere, 0.0f, DEFAULT_T_MAX_MAX, transLUT, multiScatLUT);
 	fb.color = float4(result.l, 1.0f);
 }

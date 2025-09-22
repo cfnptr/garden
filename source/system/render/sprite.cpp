@@ -234,7 +234,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	float taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
-	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
+	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 	if (spriteRenderView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
@@ -338,7 +338,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	float taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
-	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
+	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 	if (frame.isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, Image::Usage::Sampled | 

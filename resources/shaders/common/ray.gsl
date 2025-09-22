@@ -28,4 +28,10 @@ float3 closestPoint(Ray ray, float3 point)
 	return fma(ray.direction, max(float3(t), float3(0.0f)), a);
 }
 
+bool isIntersected(float2 raycastDists)
+{
+	// If tMax < 0.0f, ray is intersecting shape, but whole shape is behing us.
+	return raycastDists.y > max(raycastDists.x, 0.0f);
+}
+
 #endif // RAY_GSL

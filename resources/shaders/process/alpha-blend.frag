@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ATMOSPHERE_CONSTANTS_H
-#define ATMOSPHERE_CONSTANTS_H
+pipelineState
+{
+	faceCulling = off;
+	blending0 = on;
+}
 
-#define TRANSMITTANCE_LUT_WIDTH 256
-#define TRANSMITTANCE_LUT_HEIGHT 64
-#define MULTI_SCAT_LUT_LENGTH 32
-#define CAMERA_VOLUME_LENGTH 32
+in noperspective float2 fs.texCoords;
+out float4 fb.color;
 
-#define DEFAULT_T_MAX_MAX 9000000.0f
-#define PLANET_RADIUS_OFFSET 0.1f // km
+uniform sampler2D 
+{
+	filter = linear;
+} srcBuffer;
 
-#endif // ATMOSPHERE_CONSTANTS_H
+void main()
+{
+	fb.color = textureLod(srcBuffer, fs.texCoords, 0.0f);
+}

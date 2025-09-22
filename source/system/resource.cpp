@@ -1092,7 +1092,7 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 	uint2 realSize, uint2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
 {
 	psize mapOffset = 0;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray) && realSize.x > realSize.y)
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D) && realSize.x > realSize.y)
 	{
 		auto pixels = pixelArrays[0].data();
 		auto layerCount = realSize.x / realSize.y;
@@ -1127,7 +1127,7 @@ static void calcLoadedImageDim(psize pathCount, uint2 realSize,
 	imageSize = realSize;
 	layerCount = (uint32)pathCount;
 
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D))
 	{
 		if (realSize.x > realSize.y)
 		{
@@ -1143,15 +1143,14 @@ static void calcLoadedImageDim(psize pathCount, uint2 realSize,
 		if (layerCount == 0) layerCount = 1;
 	}
 }
-static Image::Type calcLoadedImageType(psize pathCount, uint32 sizeY, ImageLoadFlags flags) noexcept
+static Image::Type calcLoadedImageType(uint32 sizeY, ImageLoadFlags flags) noexcept
 {
-	if (pathCount > 1)
-	{
-		if (hasAnyFlag(flags, ImageLoadFlags::CubemapType))
-			return Image::Type::Cubemap;
-		if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::ArrayType))
-			return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
-	}
+	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
+		return Image::Type::Cubemap;
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::TypeArray))
+		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
+	if (hasAnyFlag(flags, ImageLoadFlags::Load3D | ImageLoadFlags::Type3D))
+		return Image::Type::Texture3D;
 	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
 }
 static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcept
@@ -1171,13 +1170,27 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (paths.size() > 1)
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray));
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D));
 	}
 	else
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::CubemapType));
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::TypeCubemap));
 	}
-
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::TypeArray))
+	{
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::Load3D | 
+			ImageLoadFlags::Type3D | ImageLoadFlags::TypeCubemap));
+	}
+	if (hasAnyFlag(flags, ImageLoadFlags::Load3D | ImageLoadFlags::Type3D))
+	{
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray | 
+			ImageLoadFlags::TypeArray | ImageLoadFlags::TypeCubemap));
+	}
+	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
+	{
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::TypeArray | 
+			ImageLoadFlags::Load3D | ImageLoadFlags::Type3D));
+	}
 	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
 
@@ -1218,10 +1231,13 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto resource = graphicsAPI->imagePool.get(image);
-	if (paths.size() > 1 || hasAnyFlag(flags, ImageLoadFlags::LoadArray))
-		resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
-	else
-		resource->setDebugName("image." + debugName + paths[0].generic_string());
+	if (paths.size() > 1)
+	{
+		if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
+			resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
+		else resource->setDebugName("image3D." + debugName + paths[0].generic_string());
+	}
+	else resource->setDebugName("image." + debugName + paths[0].generic_string());
 	#endif
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
@@ -1251,7 +1267,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			uint2 imageSize; uint32 layerCount;
 			calcLoadedImageDim(paths.size(), realSize, data->flags, imageSize, layerCount);
 			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
-			auto type = calcLoadedImageType(paths.size(), realSize.y, data->flags);
+			auto type = calcLoadedImageType(realSize.y, data->flags);
 			
 			ImageQueueItem item =
 			{
@@ -1289,7 +1305,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		uint2 imageSize; uint32 layerCount;
 		calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
-		auto type = calcLoadedImageType(paths.size(), realSize.y, flags);
+		auto type = calcLoadedImageType(realSize.y, flags);
 
 		auto imageInstance = ImageExt::create(type, format, usage, strategy,
 			u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
